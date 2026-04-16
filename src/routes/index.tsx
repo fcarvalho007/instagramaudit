@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Container } from "@/components/layout/container";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -59,11 +60,7 @@ function Section({
 
 function Index() {
   return (
-    <div
-      className="min-h-screen px-6 py-16 md:px-12 md:py-24"
-      style={{ backgroundColor: "rgb(var(--surface-base))" }}
-    >
-      <div className="mx-auto max-w-5xl space-y-16">
+    <Container size="lg" as="section" className="py-16 space-y-16">
         <header className="space-y-4">
           <p
             className="font-mono text-xs uppercase"
@@ -360,7 +357,6 @@ function Index() {
             <Switch size="md" defaultChecked disabled />
           </div>
         </Section>
-      </div>
-    </div>
+    </Container>
   );
 }

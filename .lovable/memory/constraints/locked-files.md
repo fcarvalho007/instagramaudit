@@ -15,3 +15,8 @@ Locked files:
 - /src/components/ui/card.tsx (since Sprint 0, Prompt 2b)
 - /src/components/ui/input.tsx (since Sprint 0, Prompt 2b)
 - /src/components/ui/switch.tsx (since Sprint 0, Prompt 2b)
+- /src/components/layout/container.tsx (since Sprint 0, Prompt 3)
+- /src/components/layout/header.tsx (since Sprint 0, Prompt 3)
+- /src/components/layout/footer.tsx (since Sprint 0, Prompt 3)
+- /src/components/layout/app-shell.tsx (since Sprint 0, Prompt 3)
+- /src/components/layout/brand-mark.tsx (since Sprint 0, Prompt 3)
