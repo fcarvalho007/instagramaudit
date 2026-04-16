@@ -10,3 +10,5 @@ Locked files:
 - /src/styles.css (the @theme inline configuration section)
 - /src/routes/__root.tsx (meta tags and base layout)
 - /LOCKED_FILES.md itself
+- /src/components/ui/button.tsx (since Sprint 0, Prompt 2a)
+- /src/components/ui/badge.tsx (since Sprint 0, Prompt 2a)

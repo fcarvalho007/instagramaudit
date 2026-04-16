@@ -12,6 +12,10 @@ explicitly asks for a modification in a new prompt.
 - /src/routes/__root.tsx (meta tags and base layout)
 - /LOCKED_FILES.md itself
 
+## Atomic Components (locked since Sprint 0, Prompt 2a)
+- /src/components/ui/button.tsx
+- /src/components/ui/badge.tsx
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,
