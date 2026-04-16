@@ -50,8 +50,8 @@ const inputVariants = cva(
 );
 
 const iconPaddingMap = {
-  left: { sm: "pl-9", md: "pl-10", lg: "pl-12" },
-  right: { sm: "pr-9", md: "pr-10", lg: "pr-12" },
+  left: { sm: "pl-10", md: "pl-12", lg: "pl-14" },
+  right: { sm: "pr-10", md: "pr-12", lg: "pr-14" },
 } as const;
 
 const iconSizeMap = {
@@ -61,8 +61,8 @@ const iconSizeMap = {
 } as const;
 
 const iconPositionMap = {
-  left: { sm: "left-3", md: "left-3", lg: "left-4" },
-  right: { sm: "right-3", md: "right-3", lg: "right-4" },
+  left: { sm: "left-3", md: "left-4", lg: "left-4" },
+  right: { sm: "right-3", md: "right-4", lg: "right-4" },
 } as const;
 
 export interface InputProps
