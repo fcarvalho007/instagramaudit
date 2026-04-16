@@ -20,3 +20,6 @@ Locked files:
 - /src/components/layout/footer.tsx (since Sprint 0, Prompt 3)
 - /src/components/layout/app-shell.tsx (since Sprint 0, Prompt 3)
 - /src/components/layout/brand-mark.tsx (since Sprint 0, Prompt 3)
+- /src/components/landing/hero-section.tsx (since Sprint 1, Prompt 1.1)
+- /src/components/landing/hero-aurora-background.tsx (since Sprint 1, Prompt 1.1)
+- /src/components/landing/hero-action-bar.tsx (since Sprint 1, Prompt 1.1)
