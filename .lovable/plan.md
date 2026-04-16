@@ -1,52 +1,79 @@
 
 
-## Revisão pós-fix: estado actual e refinamentos sugeridos
+## Plano: /design-system + nova homepage placeholder (Sprint 0, Prompt 4 — final)
 
-### O que está confirmado OK
+### Ficheiros a criar
+1. `src/components/design-system/ds-section.tsx` — helpers `DSSection` + `DSExample`
+2. `src/routes/design-system.tsx` — rota `/design-system` com sidenav sticky + 7 secções
+3. `src/routes/index.tsx` — **rewrite total** para placeholder hero "em breve"
 
-**Bug do ícone do Input — RESOLVIDO correctamente:**
-- `iconPaddingMap` actualizado: `sm: pl-10`, `md: pl-12`, `lg: pl-14` (mirror para right) ✅
-- `iconPositionMap` actualizado: md/lg agora a `left-4`/`right-4` ✅
-- Math validada: ícone md acaba aos 32px, texto começa aos 48px → 16px de respiração limpa
-- Variantes, sizes, error, `aria-invalid`, `InputLabel`, `InputHelper`, ref forwarding intactos ✅
-- Outros locked files (button, badge, card, switch, layout, tokens) não tocados ✅
-- Sem runtime errors, sem console errors ✅
+### Ficheiros NÃO tocados
+- Tudo em `LOCKED_FILES.md`: tokens, styles, __root, button, badge, card, input, switch, container, header, footer, app-shell, brand-mark
+- `routeTree.gen.ts` (auto-gerado pelo plugin Vite)
 
-### Refinamentos detectados (não bloqueantes para Prompt 0.4)
+---
 
-Encontrei **3 questões menores** no showcase (`src/routes/index.tsx`) — não no Input em si. Decisão tua se queres limpá-las antes ou deixar para quando o `/design-system` substituir este showcase no Prompt 0.4:
+### 1. `ds-section.tsx` — API
 
-**R1. Cabeçalho do showcase desactualizado** (linha 72)
+```tsx
+<DSSection id="button" label="ATOMS" title="Button" description="...">
+  <DSExample label="VARIANTS">
+    {children}
+  </DSExample>
+</DSSection>
 ```
-"Sprint 0 · Prompt 2b · Container & Input"
-```
-Já estamos pós-Prompt 3. Sugestão: `"Sprint 0 · Prompt 3 · Atoms & Shell"` ou simplesmente remover (vai ser substituído na próxima prompt).
 
-**R2. Indentação inconsistente** (linhas 64–94, 96+)
-O `<header>` e as `<Section>` têm indentação extra de um nível (legacy do wrapper `<div>` que foi removido quando se migrou para `<Container>`). Funciona, mas é desleixo visual no código. Re-indentar para alinhar com o `<Container>`.
+- `DSSection`: `<section id={id} className="scroll-mt-24 mb-24">` + bloco header (micro-label font-mono, título font-display 3xl/4xl, descrição) + `<div className="space-y-12">{children}</div>`
+- `DSExample`: wrapper `space-y-4` + label font-mono + caixa "sandbox" `rounded-lg border border-border-subtle bg-surface-secondary/40 p-6`
 
-**R3. Texto desnecessariamente "tu"** (linha 156)
-```
-"Precisas de mais informação?"
-```
-A regra do projeto pede impessoal sempre que possível. Sugestão pt-PT impessoal: `"É necessária mais informação?"` ou `"Mais informação?"`.
+### 2. Nova homepage (`src/routes/index.tsx`)
 
-### Recomendação
+Hero centrado dentro de `<Container size="md">` com `min-h-[70vh] flex flex-col items-center justify-center text-center`:
 
-O fix do Input está **production-grade**. Os 3 refinamentos acima são cosmética do showcase temporário que vai desaparecer no Prompt 0.4.
+- Micro-label: "Em breve · Instagram Benchmark Analyzer"
+- H1 font-display 4xl/6xl: **"O benchmark de Instagram que faltava ao mercado."**
+- Lead paragraph (text-lg, content-secondary, max-w-2xl): copy pt-PT impessoal sobre análise pública, benchmarks, IA e relatório por email
+- CTAs (flex gap-4):
+  - Primary `<Button variant="primary" rightIcon={<ArrowRight />}>Receber aviso de lançamento</Button>`
+  - Secondary `<Button asChild variant="secondary"><Link to="/design-system">Ver design system</Link></Button>`
+- Status strip (font-mono text-xs content-tertiary com Badge dot): "Sprint 0 completo · Design system finalizado"
 
-**Duas opções:**
+**Toda a copy em pt-PT impessoal** — sem "tu/precisas/queres/podes".
 
-**Opção A — Avançar já para Prompt 0.4** (recomendado)
-Os refinamentos R1/R2 morrem com o showcase; R3 vale a pena corrigir junto (1 linha).
+### 3. `/design-system` — estrutura
 
-**Opção B — Limpar showcase agora** (10 minutos)
-Corrigir R1 + R2 + R3 antes de avançar. Apenas `src/routes/index.tsx` tocado, nenhum locked file.
+`<Container size="xl" className="py-12">` com grid `lg:grid-cols-[200px_1fr] gap-12`:
 
-Se aprovares a Opção B, o âmbito é exactamente:
-- Linha 72: actualizar texto do micro-label
-- Linhas 64–334: re-indentar para nível correcto dentro de `<Container>`
-- Linha 156: trocar `"Precisas de"` → `"É necessária"`
+**Sidenav (`<aside>`):**
+- Desktop: `sticky top-24 self-start hidden lg:block`
+- Mobile: barra horizontal scrollável no topo do conteúdo (`lg:hidden flex gap-4 overflow-x-auto pb-4 mb-8 border-b border-border-subtle`)
+- Header: "Design system · v0.1" (font-mono micro-label)
+- Items (anchors `<a href="#tokens">` etc.): Tokens, Button, Badge, Card, Input, Switch, Layout — font-mono uppercase tracking-wide, py-2, border-l-2 border-transparent hover:border-accent-primary hover:text-content-primary
 
-Nada mais. Sem alterações estruturais, sem mudanças de componentes, sem novos imports.
+**Conteúdo:**
+- DSHero (inline): micro-label "Living documentation · Sprint 0 completo", título font-display 4xl/5xl "Design System", descrição
+- Secção 1 — Tokens:
+  - DSExample "SURFACES & ACCENTS": grid 2/3 cols com 9 swatches (h-20 rounded-lg + nome token + hex), usando classes utilitárias `bg-surface-base`, `bg-accent-primary`, etc.
+  - DSExample "TYPOGRAPHIC SCALE": lista vertical com "Aa" em Fraunces 5xl/4xl/3xl, "The quick brown fox..." Inter lg/base, "ENGAGEMENT · 0.52%" mono sm — cada um com label font-mono content-tertiary à direita ou abaixo
+- Secção 2 — Button: VARIANTS, SIZES, STATES (loading + disabled, com nota sobre hover), WITH ICONS
+- Secção 3 — Badge: STATUS VARIANTS (7), SIZES (sm/md/lg), WITH DOT (estático + pulse), WITH ICONS
+- Secção 4 — Card: VARIANTS (grid 5 cards) + PADDING SIZES (4 cards lado a lado)
+- Secção 5 — Input: DEFAULT (com leftIcon AtSign, rightIcon Search, sem ícone), GLASS (Search), GHOST (inline), SIZES (sm/md/lg stacked), STATES (error + disabled) — todos com `InputLabel` + `InputHelper` em pt-PT
+- Secção 6 — Switch: SIZES (3 stacked) + STATES (off/on/disabled-off/disabled-on com label à esquerda)
+- Secção 7 — Layout: DSExample "CONTAINER SIZES" — 5 barras stacked centradas (`mx-auto`) com larguras `max-w-3xl`, `max-w-5xl`, `max-w-7xl`, `max-w-[1440px]`, `w-full`, cada uma com label "SIZE sm · max-w-3xl" font-mono e bar `h-12 border border-border-subtle bg-surface-secondary/40 rounded-md flex items-center px-4`
+
+### Detalhes técnicos
+
+- Rota registada automaticamente pelo plugin Vite ao criar o ficheiro (TanStack file-based routing)
+- `head()` em `/design-system`: title "Design System · InstaBench", description em pt-PT
+- `head()` em `/`: title "InstaBench · O benchmark de Instagram que faltava ao mercado", og:title/og:description correspondentes
+- `<Link to="/design-system">` é type-safe assim que o ficheiro existir
+- Sem cores/spacing/fonts hardcoded — só utilities baseadas em tokens
+- Placeholder homepage usa apenas componentes já locked (Button, Badge, Container)
+
+### Desvios face à spec
+
+1. **Mobile sidenav** — spec só pede "visível no mobile pelo menos como navegação topo"; implemento como barra horizontal scrollável acima do conteúdo (mais elegante que dropdown e mantém os anchors funcionais).
+2. **Status strip na homepage** — uso `<Badge variant="success" size="sm" dot pulse>` em vez de SVG manual; reutiliza componente locked, mantém o tom premium.
+3. **Sem ficheiros locked tocados** — registo do route é 100% automático via Vite plugin; `routeTree.gen.ts` regenera sozinho no build.
 
