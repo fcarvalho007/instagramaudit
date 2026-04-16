@@ -37,6 +37,8 @@ export const Route = createRootRoute({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Instagram Benchmark Analyzer" },
+      { name: "twitter:description", content: "Analyze your Instagram performance against industry benchmarks" },
     ],
     links: [
       {
