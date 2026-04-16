@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, AtSign, Plus, Search } from "lucide-react";
+import { ArrowRight, AtSign, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,10 +98,6 @@ export function HeroActionBar() {
         )}
       </div>
 
-      {/* Hidden import keep — Search reserved for future variants */}
-      <span className="hidden">
-        <Search />
-      </span>
     </div>
   );
 }
