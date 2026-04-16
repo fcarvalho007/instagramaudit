@@ -1,96 +1,107 @@
 
 
-## Plan: Card + Input + Switch atomic components (Sprint 0, Prompt 2b)
+## Plan: Application shell — Container + Header + Footer + AppShell (Sprint 0, Prompt 3)
 
-Three production-grade atomics consuming design tokens only, plus showcase rows in pt-PT.
+### Files to create
+1. `src/components/layout/container.tsx` — horizontal constraint with 5 sizes + responsive padding
+2. `src/components/layout/header.tsx` — sticky header w/ scroll-aware border, brand zone, desktop nav, mobile drawer (Radix Dialog)
+3. `src/components/layout/footer.tsx` — 4-column top row + divided bottom row
+4. `src/components/layout/app-shell.tsx` — composes Header + main + Footer
 
-### Files
+### Files to modify (with explicit permission)
+5. `src/routes/__root.tsx` — wrap `<Outlet />` in `<AppShell>` only; meta/links/shell untouched
+6. `src/routes/index.tsx` — strip outer min-h-screen wrapper, wrap showcase in `<Container size="lg" as="section" className="py-16">`. Keep all existing Sections intact.
+7. `LOCKED_FILES.md` — append "Application Shell (locked since Sprint 0, Prompt 3)" with the 4 layout files
+8. `.lovable/memory/constraints/locked-files.md` — mirror
 
-1. `src/components/ui/card.tsx` — full rewrite (compound + cva variants/padding)
-2. `src/components/ui/input.tsx` — full rewrite (variants/sizes/states/icons + `InputLabel`, `InputHelper`)
-3. `src/components/ui/switch.tsx` — full rewrite (Radix Switch with size variants)
-4. `src/routes/index.tsx` — append three showcase sections (Card / Input / Switch)
-5. `LOCKED_FILES.md` — new section "Container & Input Components (locked since Sprint 0, Prompt 2b)"
-6. `.lovable/memory/constraints/locked-files.md` — mirror lock additions
+### Container API
+```tsx
+<Container size="md" as="section" className="...">
+```
+- cva: `size`: sm (max-w-3xl) | md (max-w-5xl, default) | lg (max-w-7xl) | xl (max-w-[1440px]) | full (max-w-none)
+- Base: `mx-auto w-full px-6 md:px-8 lg:px-10`
+- `as` polymorphic via `React.ElementType` (default `div`)
 
-### Card (`card.tsx`)
+### Header
+- Wrapper: `sticky top-0 w-full transition-[backdrop-filter,border-color] duration-[250ms] ease-[cubic-bezier(0.16,1,0.3,1)]` + inline `style={{ zIndex: "var(--z-sticky)" }}`
+- Resting: `bg-surface-base/80 backdrop-blur-md border-b border-transparent`
+- Scrolled (>40px): `backdrop-blur-lg border-border-subtle`
+- Hook: inline `useScrollPast(threshold)` using `useEffect` + `window.addEventListener('scroll', …, { passive: true })`; cleanup on unmount; SSR-safe (initial state false, sets in effect)
+- Inner: `<Container size="xl">` with `flex h-16 md:h-20 items-center justify-between gap-6`
 
-Compound exports: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`.
+**BrandMark** (inline SVG component): 32×32 svg, cyan circle with luminous gradient stroke (`stroke="url(#bm)"`, defs with linearGradient from `--accent-primary` to `--accent-luminous`), using `currentColor`/inline rgb refs.
 
-cva on `Card` root:
-- `variant`: `default` | `glass` | `outline` | `elevated` | `interactive`
-- `padding`: `none` | `sm` | `md` (default) | `lg`
+Left zone: `<Link to="/">` containing BrandMark + wordmark "InstaBench" (font-display text-lg font-semibold tracking-tight text-content-primary). Tagline "INSTAGRAM BENCHMARK" hidden < md, separated by a vertical `h-5 w-px bg-border-default`.
 
-Tokens:
-- `bg-surface-elevated`, `bg-surface-elevated/60` (glass), `border-border-default`, `border-border-subtle`, `border-border-strong`, `shadow-md`, `shadow-lg`, `rounded-xl`, `backdrop-blur-md`
-- Interactive: `hover:-translate-y-0.5 hover:shadow-lg hover:border-border-strong transition-all duration-slow ease-out-expo`
-- Base transition on all variants: `transition-all duration-base ease-out-expo`
+Center nav (hidden < md): `<nav><ul class="flex items-center gap-8">` 4 items as `<Link>` with text-sm font-medium text-content-secondary hover:text-content-primary transition-colors duration-[150ms]. Items: Analisar `/`, Como funciona `/como-funciona`, Preços `/precos`, Recursos `/recursos`. (Routes don't exist yet — use `<a href>` instead of `<Link to>` to avoid TanStack typecheck failures on missing routes.)
 
-Sub-components:
-- `CardHeader` — `flex flex-col space-y-1.5`. Optional `action` prop: when present, wraps children in a `flex items-start justify-between` row with `action` right-aligned.
-- `CardTitle` — `font-display text-xl font-semibold tracking-tight text-content-primary`
-- `CardDescription` — `font-sans text-sm text-content-secondary leading-normal`
-- `CardContent` — base `pt-0` so it sits flush under the header (parent spacing controls rhythm)
-- `CardFooter` — `flex items-center mt-auto`. Optional `bordered` prop adds `border-t border-border-subtle pt-4`.
+Right zone: 
+- Theme toggle placeholder: `<Button size="icon" aria-label="Mudar tema"><Moon /></Button>` (defaults ghost)
+- Hamburger (md:hidden): `<DialogTrigger asChild><Button size="icon" aria-label="Abrir menu"><Menu /></Button></DialogTrigger>`
+- Primary CTA hidden < sm: `<Button variant="primary" rightIcon={<ArrowRight />}>Analisar agora</Button>`
 
-### Input (`input.tsx`)
+**Mobile drawer** using Radix Dialog (`@radix-ui/react-dialog` already present via shadcn dialog.tsx):
+- Import primitives directly to build right-slide drawer (existing dialog.tsx is centered modal, not a slide drawer)
+- Overlay: `fixed inset-0 bg-surface-base/80 backdrop-blur-sm z-overlay` w/ data-state animations
+- Content: `fixed right-0 top-0 h-full w-[calc(100vw-60px)] sm:w-80 bg-surface-secondary border-l border-border-default flex flex-col`, slide-in-from-right animation
+- Close X top-right (ghost icon button)
+- Nav items stacked: `py-4 text-lg text-content-primary border-b border-border-subtle`
+- Bottom: full-width primary CTA "Analisar agora"
 
-cva (`inputVariants`) on the `<input>`:
-- `variant`: `default` (`bg-surface-secondary border border-border-default`) | `glass` (`bg-surface-elevated/40 backdrop-blur-md border border-border-subtle`) | `ghost` (transparent, `border-b border-border-default`, no other borders, `rounded-none`, `px-0`)
-- `inputSize`: `sm` (h-9 px-3 text-sm) | `md` (h-11 px-4 text-base) | `lg` (h-14 px-5 text-lg)
-- States via Tailwind: `text-content-primary placeholder:text-content-tertiary hover:border-border-strong focus:border-accent-primary focus:ring-[3px] focus:ring-accent-primary/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-base transition-colors duration-base ease-out-expo`
-- Error (prop): when `error` true, override border to `border-signal-danger` and ring to `focus:ring-signal-danger/20`; sets `aria-invalid="true"`
+### Footer
+- `<footer class="bg-surface-secondary border-t border-border-subtle py-16 md:py-20">`
+- `<Container size="xl">`
+- Top row: `grid grid-cols-1 md:grid-cols-4 gap-10`
+  - Col 1 Brand: BrandMark (reuse — extract to shared file `src/components/layout/brand-mark.tsx` so header + footer share it) + wordmark below + description paragraph (max-w-xs, sans text-sm content-secondary leading-relaxed)
+  - Cols 2–4: micro label header (font-mono text-xs uppercase tracking-wide content-tertiary mb-4) + `<ul class="space-y-3">` of links (text-sm content-secondary hover:content-primary)
+- Bottom row: `flex flex-col md:flex-row md:justify-between md:items-center gap-4 pt-8 mt-12 border-t border-border-subtle text-center md:text-left`
+  - Left: copyright text-xs content-tertiary
+  - Right: `<ul class="flex items-center gap-3 justify-center md:justify-end">` micro-links separated by `·` middot (rendered as `<li>` between items or via separator span)
 
-Component wraps `<input>` in a `relative` div when `leftIcon`/`rightIcon` are provided:
-- Icon wrapper: `absolute inset-y-0 [left|right]-3 flex items-center pointer-events-none text-content-tertiary peer-focus:text-content-secondary` (use group-focus-within instead of peer for reliability)
-- Padding offset based on `inputSize` × side (`pl-10` md / `pl-9` sm / `pl-12` lg, mirror for right)
-- Icon size resolved from `inputSize` and applied via `[&>svg]:h-4 [&>svg]:w-4` etc.
+Note: extracting BrandMark to its own file in `/src/components/layout/brand-mark.tsx` is one extra file (5 layout files total); will lock all five.
 
-Helpers exported in same file:
-- `InputLabel` — `<label>` with `font-mono text-xs uppercase tracking-wide text-content-tertiary mb-2 block`
-- `InputHelper` — `<p>` with `font-sans text-sm mt-2`. Prop `error: boolean` toggles color between `text-content-tertiary` and `text-signal-danger`.
+### AppShell
+```tsx
+<div className="min-h-screen flex flex-col">
+  <Header />
+  <main className="flex-1 pt-8 pb-24">{children}</main>
+  <Footer />
+</div>
+```
 
-Forwarded ref: `React.forwardRef<HTMLInputElement, ...>`. Accepts all native input attrs.
+### __root.tsx surgical change
+Modify only `RootComponent`:
+```tsx
+function RootComponent() {
+  return <AppShell><Outlet /></AppShell>;
+}
+```
+Plus the new `import { AppShell } from "@/components/layout/app-shell";` line. Nothing else changes (meta, links, shellComponent, NotFoundComponent untouched).
 
-### Switch (`switch.tsx`)
-
-Radix `@radix-ui/react-switch` (already installed). cva on `Root` for size:
-- `sm`: `h-5 w-9`, thumb `h-4 w-4`, `data-[state=checked]:translate-x-4`
-- `md`: `h-6 w-11`, thumb `h-5 w-5`, `data-[state=checked]:translate-x-5`
-- `lg`: `h-7 w-[3.25rem]`, thumb `h-6 w-6`, `data-[state=checked]:translate-x-6`
-
-Track classes: `inline-flex shrink-0 cursor-pointer items-center rounded-full border transition-colors duration-base ease-out-expo bg-surface-elevated border-border-default data-[state=checked]:bg-accent-primary data-[state=checked]:border-accent-primary data-[state=checked]:shadow-glow-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-luminous focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base disabled:opacity-50 disabled:cursor-not-allowed`
-
-Thumb classes: `pointer-events-none block rounded-full bg-content-tertiary data-[state=checked]:bg-content-primary shadow-sm ring-0 transition-transform duration-base ease-out-expo data-[state=unchecked]:translate-x-0.5`
-
-Size prop is the only addition; otherwise mirrors Radix Switch API. ForwardRef preserved.
-
-### Showcase additions (`src/routes/index.tsx`)
-
-Reuse existing `Section` helper. Three new sections appended after current ones:
-
-1. **Card · Variants** — responsive grid `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6` with the 5 cards using exact pt-PT copy from spec. Each card uses `flex flex-col` so footer sits at bottom; default footer button uses `variant="secondary"` ("Ver detalhes") except elevated (premium "Conhecer Pro") and interactive (primary "Analisar agora" with ArrowRight rightIcon).
-
-2. **Input · Variants & States** — vertical stack `space-y-6 max-w-md` with the 6 examples. Each wrapped in a `<div>` with `InputLabel` + `Input` + optional `InputHelper`. Sizes example uses a horizontal flex with three inputs.
-
-3. **Switch · Sizes & States** — `space-y-4 max-w-md` rows, each `flex items-center justify-between` with label `text-sm text-content-secondary` on the left and Switch on the right. The "on" defaults set via `defaultChecked`.
-
-All copy verified pt-PT, impersonal/imperative preferred, "tu" avoided in this batch (only neutral imperatives needed).
+### index.tsx change
+- Remove outer `<div className="min-h-screen px-6 py-16 md:px-12 md:py-24" style={…surface-base}>`
+- Replace inner `<div className="mx-auto max-w-5xl space-y-16">` with `<Container size="lg" as="section" className="py-16 space-y-16">`
+- All Sections inside preserved verbatim
+- Note: AppShell already provides `pt-8 pb-24` so `py-16` here adds the showcase-specific breathing room
 
 ### Lock governance
-
 Append to `LOCKED_FILES.md`:
 ```
-## Container & Input Components (locked since Sprint 0, Prompt 2b)
-- /src/components/ui/card.tsx
-- /src/components/ui/input.tsx
-- /src/components/ui/switch.tsx
+## Application Shell (locked since Sprint 0, Prompt 3)
+- /src/components/layout/container.tsx
+- /src/components/layout/header.tsx
+- /src/components/layout/footer.tsx
+- /src/components/layout/app-shell.tsx
+- /src/components/layout/brand-mark.tsx
 ```
 Mirror in `.lovable/memory/constraints/locked-files.md`.
 
-### Out of scope (untouched)
+### Deviations from spec
+1. **BrandMark extracted to its own file** — header + footer both use it; DRY beats inlining. Locked together with the others.
+2. **Nav links use `<a href>` not `<Link to>`** — TanStack Router enforces type-safe routes at typecheck; `/como-funciona`, `/precos`, `/recursos` don't exist yet and would fail the build. Plain anchors render the same and are trivially upgradable to `<Link>` once those routes ship.
+3. **Custom drawer built from Radix Dialog primitives** in header.tsx (not the shadcn dialog.tsx wrapper) — needed for right-slide layout instead of centered modal. No new dep.
+4. **z-sticky / z-overlay** — these tokens are CSS vars but not exposed as Tailwind utilities in `@theme inline`. Applied via inline `style={{ zIndex: "var(--z-sticky)" }}` to honor tokens without modifying the locked styles.css.
 
-- All previously locked files (tokens.css, styles.css, __root.tsx, button.tsx, badge.tsx, LOCKED_FILES.md content above the new section)
-- No new dependencies (`@radix-ui/react-switch` already present)
-- Existing showcase sections preserved verbatim
+### Tokens used (no hardcoding)
+`bg-surface-base/80`, `bg-surface-secondary`, `border-border-subtle`, `border-border-default`, `text-content-primary/secondary/tertiary`, `font-display`, `font-mono`, `font-sans`, `backdrop-blur-md/lg/sm`, custom durations/easings via inline transition class, `accent-primary`, `accent-luminous` (in BrandMark gradient via `rgb(var(--accent-…))`).
 
