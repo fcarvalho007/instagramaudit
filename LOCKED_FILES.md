@@ -16,6 +16,11 @@ explicitly asks for a modification in a new prompt.
 - /src/components/ui/button.tsx
 - /src/components/ui/badge.tsx
 
+## Container & Input Components (locked since Sprint 0, Prompt 2b)
+- /src/components/ui/card.tsx
+- /src/components/ui/input.tsx
+- /src/components/ui/switch.tsx
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,

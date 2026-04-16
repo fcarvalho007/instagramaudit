@@ -1,8 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, Sparkles, Download, Check } from "lucide-react";
+import {
+  ArrowRight,
+  Sparkles,
+  Download,
+  Check,
+  AtSign,
+  Search,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input, InputLabel, InputHelper } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -11,10 +28,19 @@ export const Route = createFileRoute("/")({
 function Section({
   title,
   children,
+  layout = "row",
 }: {
   title: string;
   children: React.ReactNode;
+  layout?: "row" | "stack" | "grid";
 }) {
+  const layoutClass =
+    layout === "grid"
+      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      : layout === "stack"
+        ? "flex flex-col gap-6 max-w-md"
+        : "flex flex-wrap items-center gap-4";
+
   return (
     <section className="space-y-6">
       <h2
@@ -26,7 +52,7 @@ function Section({
       >
         {title}
       </h2>
-      <div className="flex flex-wrap items-center gap-4">{children}</div>
+      <div className={layoutClass}>{children}</div>
     </section>
   );
 }
@@ -46,7 +72,7 @@ function Index() {
               color: "rgb(var(--text-tertiary))",
             }}
           >
-            Sprint 0 · Prompt 2a · Atomic Components
+            Sprint 0 · Prompt 2b · Container & Input
           </p>
           <h1
             className="font-display text-4xl font-semibold md:text-5xl"
@@ -56,7 +82,7 @@ function Index() {
               lineHeight: "var(--leading-tight)",
             }}
           >
-            Button & Badge
+            Card · Input · Switch
           </h1>
           <p
             className="max-w-xl text-lg"
@@ -167,6 +193,172 @@ function Index() {
           <Badge variant="success" leftIcon={<Check />}>
             Verificado
           </Badge>
+        </Section>
+
+        <Section title="Card · Variants" layout="grid">
+          <Card variant="default" className="flex flex-col">
+            <CardHeader>
+              <CardTitle>Visão Geral</CardTitle>
+              <CardDescription>
+                Taxa de engagement, frequência e formato dominante
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              A análise cobre os últimos 30 posts do perfil selecionado.
+            </CardContent>
+            <CardFooter className="pt-6">
+              <Button variant="secondary" size="sm">
+                Ver detalhes
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card variant="glass" className="flex flex-col">
+            <CardHeader>
+              <CardTitle>Comparação com Concorrentes</CardTitle>
+              <CardDescription>
+                Posicionamento face a até 2 perfis concorrentes
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              Benchmarking lado a lado, com ranking automático.
+            </CardContent>
+            <CardFooter className="pt-6">
+              <Button variant="secondary" size="sm">
+                Ver detalhes
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card variant="outline" className="flex flex-col">
+            <CardHeader>
+              <CardTitle>Histórico de Análises</CardTitle>
+              <CardDescription>
+                Relatórios gerados nos últimos 30 dias
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              Acesso rápido a todos os relatórios recentes.
+            </CardContent>
+            <CardFooter className="pt-6">
+              <Button variant="secondary" size="sm">
+                Ver detalhes
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card variant="elevated" className="flex flex-col">
+            <CardHeader>
+              <CardTitle>Plano Pro</CardTitle>
+              <CardDescription>
+                Análises ilimitadas e seguimento contínuo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              Acompanha concorrentes com alertas automáticos.
+            </CardContent>
+            <CardFooter className="pt-6">
+              <Button variant="premium" size="sm" leftIcon={<Sparkles />}>
+                Conhecer Pro
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card variant="interactive" className="flex flex-col">
+            <CardHeader>
+              <CardTitle>Começar nova análise</CardTitle>
+              <CardDescription>
+                Insere um username do Instagram para iniciar
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              Análise gratuita, resultados em segundos.
+            </CardContent>
+            <CardFooter className="pt-6">
+              <Button variant="primary" size="sm" rightIcon={<ArrowRight />}>
+                Analisar agora
+              </Button>
+            </CardFooter>
+          </Card>
+        </Section>
+
+        <Section title="Input · Variants & States" layout="stack">
+          <div>
+            <InputLabel htmlFor="ig-username">Username do Instagram</InputLabel>
+            <Input
+              id="ig-username"
+              placeholder="@exemplo ou URL do perfil"
+              leftIcon={<AtSign />}
+            />
+            <InputHelper>
+              Aceita @username, username ou URL completo
+            </InputHelper>
+          </div>
+
+          <div>
+            <InputLabel htmlFor="email-error">Email</InputLabel>
+            <Input
+              id="email-error"
+              type="email"
+              placeholder="email@empresa.pt"
+              defaultValue="not-valid-email"
+              error
+            />
+            <InputHelper error>Endereço de email inválido</InputHelper>
+          </div>
+
+          <div>
+            <InputLabel htmlFor="search-reports">
+              Pesquisar relatórios
+            </InputLabel>
+            <Input
+              id="search-reports"
+              variant="glass"
+              placeholder="Pesquisa por username ou data"
+              leftIcon={<Search />}
+            />
+          </div>
+
+          <div>
+            <Input variant="ghost" placeholder="Adicionar concorrente" />
+          </div>
+
+          <div>
+            <InputLabel htmlFor="plan-disabled">Plano</InputLabel>
+            <Input id="plan-disabled" defaultValue="Gratuito" disabled />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <InputLabel>Tamanhos</InputLabel>
+            <Input inputSize="sm" placeholder="Texto de exemplo" />
+            <Input inputSize="md" placeholder="Texto de exemplo" />
+            <Input inputSize="lg" placeholder="Texto de exemplo" />
+          </div>
+        </Section>
+
+        <Section title="Switch · Sizes & States" layout="stack">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-content-secondary">
+              Notificações por email
+            </span>
+            <Switch size="sm" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-content-secondary">
+              Receber resumo semanal
+            </span>
+            <Switch size="md" defaultChecked />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-content-secondary">Modo escuro</span>
+            <Switch size="lg" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-content-secondary">
+              Plano Agency (ativo)
+            </span>
+            <Switch size="md" defaultChecked disabled />
+          </div>
         </Section>
       </div>
     </div>

@@ -12,3 +12,6 @@ Locked files:
 - /LOCKED_FILES.md itself
 - /src/components/ui/button.tsx (since Sprint 0, Prompt 2a)
 - /src/components/ui/badge.tsx (since Sprint 0, Prompt 2a)
+- /src/components/ui/card.tsx (since Sprint 0, Prompt 2b)
+- /src/components/ui/input.tsx (since Sprint 0, Prompt 2b)
+- /src/components/ui/switch.tsx (since Sprint 0, Prompt 2b)
