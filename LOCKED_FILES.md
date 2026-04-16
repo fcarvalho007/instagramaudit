@@ -1,11 +1,15 @@
 # LOCKED FILES — DO NOT MODIFY WITHOUT EXPLICIT PERMISSION
 
+> **Note:** This project uses Tailwind CSS v4 with native `@theme inline`
+> configuration in `src/styles.css`. There is no `tailwind.config.ts`.
+
 These files are foundational and must not be changed unless the user
 explicitly asks for a modification in a new prompt.
 
 ## Design Foundation (locked since Sprint 0, Prompt 1)
 - /src/styles/tokens.css
-- /src/styles.css (theme and imports section)
+- /src/styles.css (the @theme inline configuration section)
+- /src/routes/__root.tsx (meta tags and base layout)
 - /LOCKED_FILES.md itself
 
 When working on future features, always:
