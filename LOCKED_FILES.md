@@ -21,6 +21,13 @@ explicitly asks for a modification in a new prompt.
 - /src/components/ui/input.tsx
 - /src/components/ui/switch.tsx
 
+## Application Shell (locked since Sprint 0, Prompt 3)
+- /src/components/layout/container.tsx
+- /src/components/layout/header.tsx
+- /src/components/layout/footer.tsx
+- /src/components/layout/app-shell.tsx
+- /src/components/layout/brand-mark.tsx
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,
