@@ -1,51 +1,51 @@
 
 
-## Plan: Atomic Components — Button + Badge
-
-Build two production-grade atomic components that consume the locked design tokens. Then update governance and add a temporary showcase to verify rendering.
+## Plan: Button polish (3 surgical fixes)
 
 ### Files to modify
+1. `src/components/ui/button.tsx` — explicit permission granted for these polish items
+2. `src/routes/index.tsx` — showcase layout adjustments
 
-1. **`/src/components/ui/button.tsx`** — full rewrite
-2. **`/src/components/ui/badge.tsx`** — full rewrite
-3. **`/src/routes/index.tsx`** — replace foundation test with temporary showcase of all variants
-4. **`/LOCKED_FILES.md`** — add new section for atomic components
-5. **`/src/styles/tokens.css`** — *NOT MODIFIED* (locked). Add the `badge-pulse` keyframe to `/src/styles.css` global layer instead — wait, that's also locked (`@theme inline` section). Solution: add the keyframe to a new file `/src/styles/animations.css` and import it from `/src/styles.css`. **Reconsidering:** importing a new file into `styles.css` modifies it. Cleaner: put the keyframe inside `tokens.css`? Also locked. **Final approach:** define the keyframe inline via Tailwind v4's `@theme` is not possible without touching locked files. Use Tailwind's arbitrary CSS via a `style` attribute on the dot element (inline `animation` property referencing a `@keyframes` declared in a NEW non-locked file `/src/components/ui/badge.tsx` adjacent CSS — not ideal). **Best clean solution:** declare the `@keyframes badge-pulse` inside `/src/styles/animations.css` (new file) and import it from `__root.tsx` — but `__root.tsx` is locked too.
-6. **`/src/styles/animations.css`** (new) — keyframe definition, imported once. Since we can't modify locked files to import it, we'll inline the keyframe via a `<style>` tag inside the Badge component itself (rendered once at module level using a small style injection) — too hacky.
+### Fix 1 — Ghost variant
+In the `ghost` variant cva entry:
+- Add resting border: `border border-border-subtle`
+- Change resting text from `text-content-secondary` → `text-content-primary`
+- Keep hover (`hover:bg-surface-elevated/50 hover:text-content-primary`) as-is
+- Add active inset shadow for tactile press feedback: `active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]`
 
-**Resolution:** The cleanest path that respects locks: define `@keyframes badge-pulse` inside the Badge component file using a single `<style>` tag rendered conditionally. This keeps everything self-contained and avoids touching any locked file.
+Result: ghost reads as "quiet but clearly a button", not "muted text".
 
-### Component specs (summary)
+### Fix 2 — Icon-only default variant
+Currently `size: "icon"` inherits whatever variant defaults are set (primary cyan when none passed). Change behavior so `size="icon"` alone resolves to `variant="ghost"`, while explicit variant still wins.
 
-**Button** — 7 variants (primary/secondary/ghost/outline/destructive/premium/link), 4 sizes (sm/md/lg/icon), `loading` (Loader2 spinner, text hidden but width reserved via opacity), `leftIcon`/`rightIcon`, `asChild` via Radix Slot, hover scale 1.02 / active 0.98, focus-visible cyan ring, full a11y (aria-busy, aria-disabled).
-
-**Badge** — 7 variants (default/success/warning/danger/accent/premium/solid), 3 sizes (sm/md/lg), font-mono uppercase tracking-wide weight 500, `leftIcon` prop, `dot` boolean (overrides icon), `pulse` boolean (soft 2s opacity 1→0.4→1 keyframe, only when dot+pulse).
-
-### Showcase (temporary, on `/`)
-
-A clean grid showing one example of each Button variant (in default size) and each Badge variant. Will be replaced by `/design-system` route in Prompt 0.4. Keeps the editorial dark aesthetic.
-
-### Governance update
-
-Append to `/LOCKED_FILES.md`:
+Approach inside the `Button` forwardRef:
+```ts
+const resolvedVariant = variant ?? (size === "icon" ? "ghost" : "primary");
 ```
-## Atomic Components (locked since Sprint 0, Prompt 2a)
-- /src/components/ui/button.tsx
-- /src/components/ui/badge.tsx
-```
+Then pass `resolvedVariant` to `buttonVariants({ variant: resolvedVariant, size })`. Remove `primary` from `defaultVariants.variant` (set to `undefined`) so the resolution logic above is the single source of truth — keeps `<Button>` (no props) still rendering as primary `md` via the fallback.
 
-Also update `mem://constraints/locked-files` index entries to match.
+### Fix 3 — Showcase layout
+In `src/routes/index.tsx`:
+- Remove `<Button variant="link">Saber mais</Button>` from the "Button · Variants" row
+- Update the icon example in "Button · Sizes" to drop the explicit `variant="secondary"` (so it demonstrates the new ghost default), and add a code-level comment showing how to force primary when intentional
+- Add new section after "Button · States":
+  ```
+  Section title: "Button · Link"
+  Content: a sentence in pt-PT with "tu" form —
+    "Precisas de mais informação? <Button variant="link">Saber mais →</Button>"
+  Wrapper text uses color: rgb(var(--text-secondary))
+  ```
+- Wrap the inline sentence in a `<p>` with `flex flex-wrap items-baseline gap-1` instead of the section's default `gap-4` so the link sits naturally inline with the text rather than as a separated chip
 
-### Token consumption check
+### Out of scope (untouched)
+- `src/components/ui/badge.tsx`
+- `src/styles/tokens.css`, `src/styles.css`, `src/routes/__root.tsx`
+- All other Button variants, sizes, loading state, asChild logic
 
-All colors will use slash alpha syntax on Tailwind utilities mapped in `@theme inline`:
-- `bg-accent-primary`, `bg-accent-luminous`, `bg-accent-gold`
-- `bg-signal-success/15`, `border-signal-success/30`, `text-signal-success`
-- `bg-surface-elevated`, `text-content-primary/secondary/tertiary`
-- `shadow-glow-cyan`, `shadow-glow-gold`
-- `rounded-md`, `rounded-lg`
-- `font-mono`, `font-sans`
-- `transition-all duration-base ease-out-expo` (custom durations/easings already in `@theme`)
-
-No hardcoded hex/rgb anywhere.
+### Verification
+After changes, render preview at `/` and visually confirm:
+- Ghost button has visible thin border at rest, primary-color text
+- Icon-only Check button is now subtle (ghost) instead of cyan
+- Link variant appears inline within a Portuguese sentence on its own labeled row
+- Default `<Button>` with no props still renders as primary cyan (regression check)
 
