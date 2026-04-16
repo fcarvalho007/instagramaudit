@@ -83,7 +83,6 @@ function Index() {
           <Button variant="premium" leftIcon={<Sparkles />}>
             Upgrade Pro
           </Button>
-          <Button variant="link">Saber mais</Button>
         </Section>
 
         <Section title="Button · Sizes">
@@ -96,7 +95,8 @@ function Index() {
           <Button variant="primary" size="lg">
             Large
           </Button>
-          <Button variant="secondary" size="icon" aria-label="Confirm">
+          {/* Icon-only defaults to ghost. For a bold CTA use <Button size="icon" variant="primary">. */}
+          <Button size="icon" aria-label="Confirmar">
             <Check />
           </Button>
         </Section>
@@ -112,6 +112,28 @@ function Index() {
             A guardar
           </Button>
         </Section>
+
+        <section className="space-y-6">
+          <h2
+            className="font-mono text-xs uppercase"
+            style={{
+              letterSpacing: "var(--tracking-wide)",
+              color: "rgb(var(--text-tertiary))",
+            }}
+          >
+            Button · Link
+          </h2>
+          <p
+            className="flex flex-wrap items-baseline gap-1 text-base"
+            style={{
+              color: "rgb(var(--text-secondary))",
+              lineHeight: "var(--leading-normal)",
+            }}
+          >
+            Precisas de mais informação?
+            <Button variant="link">Saber mais →</Button>
+          </p>
+        </section>
 
         <Section title="Badge · Variants">
           <Badge variant="default">Neutro</Badge>

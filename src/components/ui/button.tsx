@@ -30,8 +30,10 @@ const buttonVariants = cva(
           "hover:bg-surface-elevated hover:border-border-default hover:scale-[1.02]",
         ].join(" "),
         ghost: [
-          "font-medium text-content-secondary bg-transparent",
+          "font-medium text-content-primary bg-transparent",
+          "border border-border-subtle",
           "hover:bg-surface-elevated/50 hover:text-content-primary",
+          "active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]",
         ].join(" "),
         outline: [
           "font-medium text-content-primary bg-transparent",
@@ -68,7 +70,6 @@ const buttonVariants = cva(
       { variant: "link", size: "lg", class: "h-auto px-0" },
     ],
     defaultVariants: {
-      variant: "primary",
       size: "md",
     },
   },
@@ -103,6 +104,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const Comp = asChild ? Slot : "button";
     const isDisabled = disabled || loading;
+    const resolvedVariant = variant ?? (size === "icon" ? "ghost" : "primary");
 
     const content = asChild ? (
       (children as React.ReactNode)
@@ -130,7 +132,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         ref={ref}
         type={asChild ? undefined : (type ?? "button")}
-        className={cn(buttonVariants({ variant, size }), className)}
+        className={cn(buttonVariants({ variant: resolvedVariant, size }), className)}
         disabled={asChild ? undefined : isDisabled}
         aria-disabled={isDisabled || undefined}
         aria-busy={loading || undefined}
