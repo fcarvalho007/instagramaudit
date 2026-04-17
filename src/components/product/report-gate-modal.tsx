@@ -141,7 +141,7 @@ export function ReportGateModal({
   const handleDisplay = username ? `@${username}` : "do perfil analisado";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
           "bg-surface-secondary border-border-default rounded-2xl p-0 overflow-hidden",
