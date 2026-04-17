@@ -35,6 +35,12 @@ interface ReportGateModalProps {
   /** Snapshot id of the analysis the user is currently viewing. */
   analysisSnapshotId?: string;
   onSubmit?: (data: GateFormData) => Promise<void> | void;
+  /**
+   * Fired whenever the server returns a definitive outcome for the request.
+   * Lets the parent (e.g. analysis dashboard) lift conversion state without
+   * duplicating form logic. Optional and side-effect free for the modal UX.
+   */
+  onRequestOutcome?: (outcome: "success" | "limit-reached") => void;
 }
 
 type ModalState = "idle" | "submitting" | "success" | "success-last" | "paywall";
