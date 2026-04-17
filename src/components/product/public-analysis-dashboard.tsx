@@ -31,11 +31,17 @@ export function PublicAnalysisDashboard({
 }: PublicAnalysisDashboardProps) {
   const { profile, content_summary } = data;
 
-  const positioning = computeBenchmarkPositioning({
-    followers: profile.followers_count,
-    engagement: content_summary.average_engagement_rate,
-    dominantFormat: content_summary.dominant_format,
-  });
+  // Prefer the server-precomputed positioning (resolved against the
+  // cloud-managed benchmark dataset). Fall back to a local computation
+  // using the in-code defaults for backward compatibility with older
+  // responses that don't carry the field.
+  const positioning =
+    data.benchmark_positioning ??
+    computeBenchmarkPositioning({
+      followers: profile.followers_count,
+      engagement: content_summary.average_engagement_rate,
+      dominantFormat: content_summary.dominant_format,
+    });
 
   const benchmarkReference =
     positioning.status === "available"
