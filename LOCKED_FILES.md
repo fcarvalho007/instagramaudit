@@ -45,6 +45,12 @@ explicitly asks for a modification in a new prompt.
 - /src/components/landing/mockup-dashboard.tsx
 - /src/components/landing/product-preview-section.tsx
 
+## Landing Micro-components (Sprint 1, Prompt 1.1B)
+- /src/components/landing/blur-reveal-text.tsx
+- /src/components/landing/animated-counter.tsx
+- /src/components/landing/handwritten-note.tsx
+- /src/components/landing/scroll-indicator.tsx
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,

@@ -1,53 +1,42 @@
-import { Check } from "lucide-react";
-
 import { Container } from "@/components/layout/container";
+import { BlurRevealText } from "@/components/landing/blur-reveal-text";
+import { HandwrittenNote } from "@/components/landing/handwritten-note";
 import { HeroActionBar } from "@/components/landing/hero-action-bar";
 import { HeroAuroraBackground } from "@/components/landing/hero-aurora-background";
-
-const proofPoints = [
-  "Análise em 30 segundos",
-  "Sem registo necessário",
-  "RGPD compliant",
-];
+import { ScrollIndicator } from "@/components/landing/scroll-indicator";
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-[92vh] w-full overflow-hidden bg-surface-base flex items-center">
+    <section className="relative min-h-screen w-full overflow-hidden bg-surface-base flex items-center">
       <HeroAuroraBackground />
 
       <Container size="lg" className="relative z-10 py-20 md:py-28">
-        {/* 1. Action bar FIRST */}
-        <div className="mb-16 md:mb-20">
-          <HeroActionBar />
-        </div>
+        <div className="max-w-4xl mx-auto text-center space-y-8 md:space-y-10">
+          {/* Headline — blur reveal, no gradient */}
+          <BlurRevealText
+            text="Instagram analisado em 30 segundos."
+            as="h1"
+            className="font-display text-4xl md:text-6xl lg:text-7xl tracking-tight font-medium leading-[1.05] text-content-primary"
+            delayMs={200}
+          />
 
-        {/* 2. Headline + sub-headline AFTER */}
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h1 className="font-display text-4xl md:text-6xl lg:text-7xl tracking-tight font-medium leading-[1.05] text-content-primary">
-            O benchmark de Instagram
-            <span className="block bg-gradient-to-r from-accent-primary to-accent-luminous bg-clip-text text-transparent">
-              que faltava ao mercado.
-            </span>
-          </h1>
+          {/* Subtitle — single line, delayed */}
+          <BlurRevealText
+            text="Benchmark, comparação com concorrentes e insights por IA."
+            as="p"
+            className="font-sans text-lg md:text-xl text-content-secondary leading-relaxed max-w-2xl mx-auto"
+            delayMs={800}
+          />
 
-          <p className="font-sans text-lg md:text-xl text-content-secondary leading-relaxed max-w-2xl mx-auto">
-            Análise instantânea de qualquer perfil público, comparação com até
-            dois concorrentes e relatório detalhado com leitura estratégica por
-            IA. Enviado por email. Sem custos.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 pt-4">
-            {proofPoints.map((point) => (
-              <div key={point} className="flex items-center gap-2">
-                <Check className="size-4 text-signal-success" aria-hidden="true" />
-                <span className="font-mono text-xs uppercase tracking-wide text-content-tertiary">
-                  {point}
-                </span>
-              </div>
-            ))}
+          {/* Action bar with handwritten note anchored top-right */}
+          <div className="relative pt-6 md:pt-8">
+            <HeroActionBar />
+            <HandwrittenNote className="absolute -top-6 right-0 sm:-top-8 sm:right-4 md:right-12 lg:right-20 hidden sm:block" />
           </div>
         </div>
       </Container>
+
+      <ScrollIndicator />
     </section>
   );
 }
