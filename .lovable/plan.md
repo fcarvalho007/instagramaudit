@@ -2,31 +2,33 @@
 
 ## Entendimento
 
-**1. Fluxo landing → analyze → gate**: hero action bar (`/`) → `/analyze/$username` → `<PublicAnalysisDashboard>` (header real + métricas reais + benchmark real + concorrentes placeholder + premium gate) → `<ReportGateModal>` com quota agora 100% server-side via `/api/request-full-report`.
+**1. Fluxo landing → analyze → gate**: hero (`/`) → `/analyze/$username[?vs=h1,h2]` → `<PublicAnalysisDashboard>` (header + métricas + benchmark + concorrentes reais + premium gate) → `<ReportGateModal>` com quota server-side via `/api/request-full-report` (insere em `leads` + `report_requests`).
 
-**2. Rota `/analyze/$username`**: SSR-disabled, faz `fetchPublicAnalysis(cleaned)` no `useEffect`, gere `loading | ready` com `<AnalysisSkeleton>` / `<AnalysisErrorState>` / `<PublicAnalysisDashboard>`. Não passa concorrentes ao backend hoje.
+**2. Estado real de `/analyze/[username]`**: SSR-disabled, lê `?vs=` via `validateSearch`, chama `fetchPublicAnalysis(username, competitors)` no `useEffect` → `POST /api/analyze-public-v1`. Estados `loading | ready` com `<AnalysisSkeleton>` / `<AnalysisErrorState>` / `<PublicAnalysisDashboard>`. **Cada visita = nova chamada Apify.**
 
-**3. Estado real do perfil primário**: totalmente real via `POST /api/analyze-public-v1` → Apify `instagram-profile-scraper` + `instagram-post-scraper` (12 posts via `directUrls`) → `normalizeProfile()` + `computeContentSummary()` → shape `PublicAnalysisResponse`. Boundary servidor sólido (`APIFY_TOKEN` em secret).
+**3. Fluxo provider actual**: `/api/analyze-public-v1` valida payload (Zod), 1 call batched ao `instagram-profile-scraper` com `[primary, ...competitors]`, depois `Promise.allSettled` ao `instagram-post-scraper` por handle (12 posts via `directUrls`). Normaliza tudo via `normalizeProfile()` + `computeContentSummary()` → devolve `PublicAnalysisSuccess { profile, content_summary, competitors[], status }`. Boundary servidor sólido, `APIFY_TOKEN` em secret.
 
-**4. Estado do bloco benchmark**: real desde Sprint anterior — engine pura `computeBenchmarkPositioning()` em `src/lib/benchmark/engine.ts` consome `followers`, `engagement`, `dominantFormat` reais e devolve `available | unavailable`. UI já distingue ambos os estados.
+**4. Foundation Supabase**: 2 tabelas (`leads`, `report_requests`) com RLS fechado, escritas só via `supabaseAdmin` no server route. Trigger `set_updated_at()` partilhado. Sem tabela de análises hoje — cada análise é volátil.
 
-**5. Bloco concorrentes hoje**: `<PublicAnalysisDashboard>` tem uma `<section>` inline com eyebrow *"Em breve"* + parágrafo placeholder *"Comparação directa com até dois concorrentes disponível em breve."* — sem props, sem dados, sem componente dedicado.
-
-**6. Porquê fazer concorrentes reais agora sem expandir para PDF/email/pagamentos/scoring**: o triângulo (perfil + benchmark + concorrentes) é a proposta de valor central — sem concorrentes a página parece amputada. PDF/email/pagamentos/auth são camadas de monetização e entrega que assentam sobre dados reais; sem comparação real, monetizar uma análise incompleta destrói a percepção premium. Scoring composto/IA precisam de dataset estatístico maior do que 1+2 perfis para serem credíveis. Limite de 2 concorrentes mantém custo Apify previsível (3× em vez de 1×) e contracto de UI estável para receber IA depois.
+**5. Porquê cache+snapshot agora antes de PDF/email**: cada análise consome 1 profile call + N post calls Apify. Sem cache, refresh do browser, share de link, ou reanálise dispara nova factura. Mais grave: PDF e email vão precisar de **referenciar** uma análise concreta (`snapshot_id`) para gerar o ficheiro/enviar — sem persistência, teria de re-scrapear no momento de gerar o PDF, duplicando custo e arriscando dados diferentes entre dashboard e PDF. Persistir o payload normalizado primeiro estabelece a *source of truth* sobre a qual PDF/email/admin/reanálise vão assentar. Cache de 24h é o equilíbrio entre frescura (Instagram move-se devagar à escala de 1 dia) e custo.
 
 ---
 
 ## Discrepâncias e decisões
 
-**Edge Function vs server route TanStack**: Project Knowledge diz *"Do NOT use Supabase Edge Functions. Use TanStack Start's built-in server capabilities instead."* Mantenho o padrão do `/api/analyze-public-v1` actual.
+**Snapshot key vs (username, vs)**: cache key determinística baseada em `lower(primary) + sort(lower(competitors))` joined com `|`. Ordenação alfabética dos concorrentes evita duplicar `nike|adidas,puma` vs `nike|puma,adidas` — a UI mostra a mesma comparação independente da ordem de input. Format: `v1:nike|adidas,puma`. Prefix `v1:` permite invalidar tudo no futuro mudando para `v2:` sem migração.
 
-**Versionar ou estender?** Estender em vez de criar `v2`. O endpoint actual já aceita um único username — adicionar `competitor_usernames?: string[]` (max 2) ao schema mantém compatibilidade total: chamadas antigas sem o campo continuam a funcionar, novas chamadas recebem `competitors` no response. Versionar agora seria over-engineering; a v2 fica para quando houver breaking changes reais (ex: concurrent benchmark, persistência).
+**Reanálise forçada**: adicionar `?refresh=1` à query como escape hatch server-side (não exposto na UI agora). Bypassa cache, força provider call, sobrescreve snapshot. Útil para dev e para um futuro botão "Atualizar análise" sem mudar contracto.
 
-**Como entram os usernames dos concorrentes?** Via query string `?vs=handle1,handle2` na rota `/analyze/$username`. Vantagens: shareable (link → mesma análise para todos), zero estado novo, fácil de adicionar UI de input mais tarde sem mudar contracto. URLs curtos: `/analyze/nike?vs=adidas,puma`.
+**Stale-while-error**: se provider falhar e existir snapshot expirado < 7 dias, devolver o expirado com `data_source: "stale"`. Robustez sem complicar — limite duro de 7 dias evita servir dados arqueologicamente velhos.
 
-**`directUrls` para perfis vs `usernames` para profile-scraper**: o `instagram-profile-scraper` aceita `usernames` array — adiciono os 3 handles num único `runActor` para baixar latência/custo (1 chamada de profile em vez de 3). Posts continuam por handle (3 chamadas paralelas com `Promise.allSettled`) porque o `instagram-post-scraper` espera `directUrls` por handle.
+**`updated_at` trigger**: reusar `set_updated_at()` existente. Aplicar à nova tabela.
 
-**Race condition / partial failure**: `Promise.allSettled` para os post fetches. Cada concorrente vira `{ success: true, profile, content_summary } | { success: false, username, error_code, message }`. Frontend renderiza o que conseguir; primário é sempre prioritário (se falhar, mostra error state global; se concorrente falhar, mostra row degradada).
+**RLS**: enable + zero policies. `supabaseAdmin` (service role) bypassa, browser não toca. Mesmo padrão de `leads`/`report_requests`.
+
+**Frontend**: mudança mínima. `PublicAnalysisStatus` ganha `data_source: "fresh" | "cache" | "stale"` (substitui o actual `"apify_v1"` que era source-of-data, não freshness). Hint subtil opcional no header (decisão: **não adicionar UI hint agora** — guardrail diz "do not clutter"; basta que o backend devolva a info para uso futuro).
+
+**Sem nova lib**: `createHash` do `node:crypto` já disponível no Worker runtime (nodejs_compat). Cache key é texto deterministico, hash não estritamente necessário, mas usado para coluna `cache_key` curta e indexável. **Decisão: sem hash** — cache key é human-readable (`v1:nike|adidas,puma`), cabe folgado em `text`, mais fácil de debugar.
 
 ---
 
@@ -34,112 +36,101 @@
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `src/lib/analysis/types.ts` | Editar — adicionar `CompetitorAnalysis` (success / failure variants); `PublicAnalysisSuccess` ganha `competitors: CompetitorAnalysis[]` | Não |
-| `src/routes/api/analyze-public-v1.ts` | Editar — payload aceita `competitor_usernames` (z.array max 2 opcional); 1 call de profile com array de handles + `Promise.allSettled` para posts; devolve array `competitors` com partial failures tipados | Não |
-| `src/lib/analysis/client.ts` | Editar — `fetchPublicAnalysis(username, competitors?)` aceita 2º arg opcional e envia no body | Não |
-| `src/routes/analyze.$username.tsx` | Editar — ler `?vs=` da search string com `Route.useSearch()` (precisa de `validateSearch`); passar para `fetchPublicAnalysis`; key do effect inclui handles | Não |
-| `src/components/product/public-analysis-dashboard.tsx` | Editar — substituir placeholder inline por `<AnalysisCompetitorComparison primary={...} competitors={data.competitors} />` | Não |
-| `src/components/product/analysis-competitor-comparison.tsx` | **Criar** — recebe primary + array de concorrentes; renderiza tabela comparativa real (engagement, frequência, formato dominante, média likes, média comentários) + empty state + linhas degradadas para failures | Não |
+| `supabase/migrations/{ts}_analysis_snapshots.sql` | **Criar** — tabela + trigger updated_at + indexes + RLS enabled (zero policies) | Não |
+| `src/lib/analysis/cache.ts` | **Criar** — `buildCacheKey()`, `lookupSnapshot()`, `storeSnapshot()`, constantes TTL | Não |
+| `src/lib/analysis/types.ts` | Editar — `PublicAnalysisStatus.data_source` passa a `"fresh" \| "cache" \| "stale"`; mantém `analyzed_at` | Não |
+| `src/routes/api/analyze-public-v1.ts` | Editar — cache lookup antes do provider; após scrape persistir snapshot; stale-on-error fallback | Não |
+| `src/lib/analysis/client.ts` | Não mexer (response shape estável) | Não |
+| `src/routes/analyze.$username.tsx` | Não mexer | Não |
+| `src/components/product/public-analysis-dashboard.tsx` | Não mexer (não usa `data_source` hoje) | Não |
 
-**Nenhum ficheiro locked tocado.** Confirmado contra `mem://constraints/locked-files`: o dashboard e a rota analyze não estão lá. (O componente antigo `analysis-competitor-comparison.tsx` foi apagado na auditoria anterior — recriado aqui com shape real.)
+**Zero ficheiros locked tocados.** Confirmar contra `mem://constraints/locked-files` antes de editar.
 
 ---
 
-## Backend — design
+## Schema da tabela
 
-**Payload (Zod)**:
+```sql
+CREATE TABLE public.analysis_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cache_key text NOT NULL UNIQUE,
+  instagram_username text NOT NULL,
+  competitor_usernames jsonb NOT NULL DEFAULT '[]'::jsonb,
+  normalized_payload jsonb NOT NULL,
+  provider text NOT NULL DEFAULT 'apify',
+  analysis_status text NOT NULL DEFAULT 'ready',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL
+);
+
+CREATE INDEX idx_analysis_snapshots_expires_at ON public.analysis_snapshots (expires_at);
+CREATE INDEX idx_analysis_snapshots_username ON public.analysis_snapshots (instagram_username);
+
+CREATE TRIGGER set_updated_at_analysis_snapshots
+  BEFORE UPDATE ON public.analysis_snapshots
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER TABLE public.analysis_snapshots ENABLE ROW LEVEL SECURITY;
+-- No policies: server-only via service role.
+```
+
+`UNIQUE` em `cache_key` permite `upsert` atómico (`onConflict: "cache_key"`).
+
+---
+
+## Cache key
+
 ```ts
-{
-  instagram_username: string,           // existing
-  competitor_usernames?: string[]       // NEW — max 2, same regex, deduped vs primary
+function buildCacheKey(primary: string, competitors: string[]): string {
+  const p = primary.toLowerCase();
+  const c = [...competitors].map(s => s.toLowerCase()).sort();
+  return `v1:${p}|${c.join(",")}`;
 }
 ```
 
-**Fluxo**:
-1. Validar payload + dedup competitors (remover dupes e o próprio primary)
-2. 1 call `profile-scraper` com `usernames: [primary, ...competitors]`
-3. Mapear rows → `Map<username, profile>`
-4. Se primary não estiver no map → `PROFILE_NOT_FOUND` (mesmo comportamento que hoje)
-5. `Promise.allSettled` para post-scraper de cada handle válido
-6. Compor response: primary igual ao actual + `competitors: CompetitorAnalysis[]`
-
-**Custo**: 1 profile call (até 3 handles) + N post calls em paralelo (1 + até 2). Apify cobra por actor run, não por handle no profile-scraper, portanto o profile fica praticamente igual; posts crescem linearmente mas paralelizados.
+Exemplos:
+- `("Nike", [])` → `v1:nike|`
+- `("Nike", ["Adidas", "Puma"])` → `v1:nike|adidas,puma`
+- `("Nike", ["Puma", "Adidas"])` → `v1:nike|adidas,puma` (mesma key)
 
 ---
 
-## Shape normalizado v1
+## Fluxo do server route
 
-```ts
-type CompetitorAnalysis =
-  | {
-      success: true;
-      profile: PublicProfile;          // mesmo shape que primary
-      content_summary: ContentSummary; // mesmo shape que primary
-    }
-  | {
-      success: false;
-      username: string;
-      error_code: "PROFILE_NOT_FOUND" | "POSTS_UNAVAILABLE" | "UPSTREAM_FAILED";
-      message: string;                 // pt-PT, calmo
-    };
-
-PublicAnalysisSuccess.competitors: CompetitorAnalysis[]; // [] se não houver
+```
+1. validate payload (existing)
+2. cacheKey = buildCacheKey(primary, competitors)
+3. snapshot = SELECT * WHERE cache_key = $1
+4. if snapshot && expires_at > now() && !refresh:
+     return { ...snapshot.normalized_payload, status: { data_source: "cache", analyzed_at: snapshot.updated_at } }
+5. try provider (existing scrape + normalize logic)
+6. on success:
+     payload = { profile, content_summary, competitors }  // sem status
+     UPSERT snapshot (cache_key, payload, expires_at = now() + 24h, ...)
+     return { ...payload, status: { data_source: "fresh", analyzed_at: now() } }
+7. on provider failure:
+     if snapshot && (now() - snapshot.created_at) < 7 days:
+       return { ...snapshot.normalized_payload, status: { data_source: "stale", analyzed_at: snapshot.updated_at } }
+     else:
+       return failure(UPSTREAM_FAILED)
 ```
 
-Métricas comparáveis em v1 (todas já existem no `content_summary`):
-- `average_engagement_rate`
-- `estimated_posts_per_week`
-- `dominant_format`
-- `average_likes`
-- `average_comments`
-
-`followers_count` mostrado como contexto, não como métrica de comparação directa.
+**Snapshot stored shape**: o `normalized_payload` guarda `{ profile, content_summary, competitors }` — **sem** o campo `status`. O `status` é sempre re-calculado na resposta (depende de cache vs fresh vs stale, e do `analyzed_at` correcto).
 
 ---
 
-## Frontend — comparação
-
-**Layout (mobile-first, 375px)**:
-- Tabela vertical em mobile (cada concorrente em coluna stacked)
-- Grid 3-col em ≥md (primary + até 2)
-- Linha por métrica com label + valor
-- Highlight subtil no melhor valor por linha (sem storytelling, só `font-medium` + cor accent)
-- Failure: card com username + mensagem pt-PT calma + ícone discreto
-
-**Empty state** (zero concorrentes):
-- Eyebrow: *"Comparação"*
-- Título: *"Comparar com até 2 concorrentes"*
-- Copy: *"Adicionar `?vs=username` ao endereço para comparar desempenho directo entre perfis."*
-- Mantém border + bg do bloco para não parecer buraco
-
----
-
-## Search params (validateSearch)
+## TypeScript — shape update
 
 ```ts
-export const Route = createFileRoute("/analyze/$username")({
-  ssr: false,
-  validateSearch: (search): { vs?: string } => ({
-    vs: typeof search.vs === "string" ? search.vs : undefined,
-  }),
-  // ...
-});
-
-const { vs } = Route.useSearch();
-const competitors = vs?.split(",").map(s => s.trim().replace(/^@/, "")).filter(Boolean).slice(0, 2) ?? [];
+export interface PublicAnalysisStatus {
+  success: true;
+  data_source: "fresh" | "cache" | "stale";
+  analyzed_at: string; // ISO timestamp
+}
 ```
 
----
-
-## Erros (pt-PT)
-
-| Caso | Mensagem |
-|---|---|
-| Concorrente não encontrado | "Não foi possível encontrar @{handle}." |
-| Posts indisponíveis | "Métricas indisponíveis para @{handle}." |
-| Upstream genérico | "Não foi possível analisar @{handle} neste momento." |
-
-Primary mantém os códigos actuais inalterados.
+Remoção de `"apify_v1"`. Se algo no frontend depender da string antiga (não depende — grep confirmará), ajustar.
 
 ---
 
@@ -147,29 +138,28 @@ Primary mantém os códigos actuais inalterados.
 
 | Guardrail | Estado |
 |---|---|
-| Sem PDF / email / pagamentos / auth / IA / scoring composto | ✅ |
+| Sem PDF / email / pagamentos / auth / IA / admin | ✅ |
 | Sem novas dependências | ✅ |
-| Apify só server-side (`APIFY_TOKEN` em secret) | ✅ |
-| Sem secrets na UI | ✅ |
-| Raw payloads Apify nunca expostos | ✅ (normalize antes de devolver) |
+| Provider só server-side | ✅ |
+| Secrets em Supabase | ✅ |
+| UI sem caching/persistência | ✅ |
 | Locked files intactos | ✅ |
 | pt-PT impessoal | ✅ |
-| Comentários técnicos em inglês | ✅ |
-| Mobile 375px | ✅ (layout stacked) |
-| Future-ready (caching, persistência, IA, PDF) | ✅ (shape estável + boundary server) |
+| Comentários em inglês | ✅ |
+| RLS fechado por defeito | ✅ |
+| Future-ready (PDF/email referenciam `snapshot.id`) | ✅ |
 
 ---
 
 ## Checkpoints
 
-- ☐ Schema Zod aceita `competitor_usernames` (max 2, dedup, regex)
-- ☐ 1 call profile-scraper com array de handles
-- ☐ `Promise.allSettled` para posts dos concorrentes
-- ☐ Shape `CompetitorAnalysis` (success + failure) tipado
-- ☐ Rota lê `?vs=` via `validateSearch`
-- ☐ `fetchPublicAnalysis` aceita competitors opcional
-- ☐ `<AnalysisCompetitorComparison>` criado: tabela real + empty state + failure rows
-- ☐ Dashboard substitui placeholder pelo componente novo
-- ☐ Mobile 375px verificado
-- ☐ Sem PDF/email/pagamentos/auth/IA introduzidos
+- ☐ Migração `analysis_snapshots` criada (tabela + trigger + indexes + RLS)
+- ☐ `cache.ts` com `buildCacheKey` deterministica + helpers de lookup/store
+- ☐ `PublicAnalysisStatus.data_source` actualizado para `"fresh" | "cache" | "stale"`
+- ☐ Server route consulta cache antes de chamar Apify
+- ☐ Snapshot persistido após scrape bem-sucedido (upsert por `cache_key`)
+- ☐ Stale-on-error fallback (≤ 7 dias) implementado
+- ☐ `?refresh=1` escape hatch server-side
+- ☐ Frontend continua funcional sem mudanças visuais
+- ☐ Sem PDF/email/pagamentos/auth/IA/admin introduzidos
 
