@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermosRouteImport } from './routes/termos'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -25,6 +27,16 @@ import { Route as ApiAdminLogoutRouteImport } from './routes/api/admin/logout'
 import { Route as ApiAdminAuthRouteImport } from './routes/api/admin/auth'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
@@ -106,6 +118,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/design-system': typeof DesignSystemRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
@@ -123,6 +137,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/design-system': typeof DesignSystemRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
@@ -141,6 +157,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/design-system': typeof DesignSystemRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/termos': typeof TermosRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
@@ -160,6 +178,8 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/design-system'
+    | '/privacidade'
+    | '/termos'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
@@ -177,6 +197,8 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/design-system'
+    | '/privacidade'
+    | '/termos'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
@@ -194,6 +216,8 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/design-system'
+    | '/privacidade'
+    | '/termos'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
@@ -212,6 +236,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   DesignSystemRoute: typeof DesignSystemRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
+  TermosRoute: typeof TermosRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
   ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
   ApiGenerateReportPdfRoute: typeof ApiGenerateReportPdfRoute
@@ -227,6 +253,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/design-system': {
       id: '/design-system'
       path: '/design-system'
@@ -353,6 +393,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   DesignSystemRoute: DesignSystemRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
+  TermosRoute: TermosRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
   ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,
   ApiGenerateReportPdfRoute: ApiGenerateReportPdfRoute,

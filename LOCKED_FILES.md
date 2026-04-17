@@ -54,6 +54,11 @@ explicitly asks for a modification in a new prompt.
 ## Landing Micro-components (Sprint 1, Prompt 1.1C)
 - /src/components/landing/instagram-glyph.tsx
 
+## Legal / Compliance (Sprint 1, Legal MVP)
+- /src/components/legal/legal-layout.tsx
+- /src/routes/privacidade.tsx
+- /src/routes/termos.tsx
+
 ## Report Components (Sprint 1, Prompt 1.10)
 - /src/styles/tokens-light.css
 - /src/components/report/report-theme-wrapper.tsx

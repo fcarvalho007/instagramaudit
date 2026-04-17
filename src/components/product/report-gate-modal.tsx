@@ -483,7 +483,18 @@ export function ReportGateModal({
                       className="mt-0.5"
                     />
                     <span className="font-sans text-sm text-content-secondary leading-relaxed">
-                      Aceito receber o relatório por email e a política de privacidade.
+                      Aceito o tratamento dos dados (nome, email) para envio do relatório, conforme
+                      a{" "}
+                      <a
+                        href="/privacidade"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-accent-luminous underline decoration-accent-luminous/40 underline-offset-2 hover:decoration-accent-luminous transition-colors"
+                      >
+                        Política de Privacidade
+                      </a>
+                      .
                     </span>
                   </label>
                   {touched.rgpd && errors.rgpd && (
