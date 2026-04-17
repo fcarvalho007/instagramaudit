@@ -3,10 +3,13 @@
  *
  * The browser CANNOT write to `leads` / `report_requests` directly — RLS is
  * closed. All public writes go through the server route
- * `POST /api/request-full-report`, which uses the service-role admin client.
- *
- * Keep this helper thin: it just shapes the request and parses the response.
+ * `POST /api/request-full-report`, which uses the service-role admin client
+ * AND enforces the monthly free-report quota server-side (counted by
+ * `lead_id + request_month`). The client trusts the server's `quota_status`
+ * verdict to drive UI state.
  */
+
+export type QuotaStatus = "first_free" | "last_free" | "limit_reached";
 
 export interface RequestFullReportPayload {
   email: string;
@@ -20,8 +23,17 @@ export interface RequestFullReportPayload {
 export type RequestFullReportResult =
   | {
       success: true;
+      quota_status: "first_free" | "last_free";
+      remaining_free_reports: number;
       lead_id: string;
       report_request_id: string;
+      message: string;
+    }
+  | {
+      success: false;
+      quota_status: "limit_reached";
+      remaining_free_reports: 0;
+      error_code: "QUOTA_REACHED";
       message: string;
     }
   | {
