@@ -113,12 +113,15 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           }
 
           // 2) Posts actor — recent window, capped to POSTS_LIMIT.
+          // `directUrls` is the documented input for instagram-post-scraper
+          // and is more reliable than `username` alone (which silently returns
+          // empty for some handles). We also keep `resultsLimit` for cost control.
           let contentSummary;
           try {
             const postRows = await runActor<Record<string, unknown>>(
               POST_ACTOR,
               {
-                username: [username],
+                directUrls: [`https://www.instagram.com/${username}/`],
                 resultsLimit: POSTS_LIMIT,
                 resultsType: "posts",
               },

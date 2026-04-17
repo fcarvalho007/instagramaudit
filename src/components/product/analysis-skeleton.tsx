@@ -8,10 +8,17 @@ function Pulse({ className }: { className?: string }) {
   );
 }
 
-export function AnalysisSkeleton({ username }: { username?: string }) {
+export function AnalysisSkeleton(_: { username?: string }) {
   return (
     <div className="bg-surface-base">
       <Container size="lg" as="section" className="py-10 md:py-16 space-y-12 md:space-y-16">
+        {/* Eyebrow — single discreet status line, no editorial copy */}
+        <div className="flex justify-center">
+          <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+            A analisar perfil
+          </span>
+        </div>
+
         {/* Header */}
         <div className="flex flex-col gap-6 border-b border-border-subtle pb-8 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4 md:gap-5">
@@ -23,19 +30,6 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
             </div>
           </div>
           <Pulse className="h-6 w-36 rounded-full" />
-        </div>
-
-        {/* Status line */}
-        <div className="flex flex-col items-center gap-3 text-center">
-          <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
-            A analisar perfil
-          </span>
-          <p className="font-display text-lg md:text-xl text-content-primary tracking-tight">
-            {username ? `A processar @${username.replace(/^@/, "")}` : "A processar análise"}
-          </p>
-          <p className="font-sans text-sm text-content-secondary max-w-md">
-            A recolher dados públicos e a calcular o posicionamento face ao benchmark.
-          </p>
         </div>
 
         {/* Metrics row */}
