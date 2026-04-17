@@ -154,10 +154,6 @@ function PrivacidadePage() {
           <li>
             <strong>Resend</strong> — entrega transacional do relatório por email.
           </li>
-          <li>
-            <strong>Lovable AI Gateway</strong> e respetivos modelos de IA (incluindo Anthropic) —
-            geração da leitura estratégica incluída no relatório.
-          </li>
         </ul>
         <p>
           Os pagamentos não estão atualmente ativos no produto. Quando forem disponibilizados, esta
