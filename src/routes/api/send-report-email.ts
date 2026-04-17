@@ -34,13 +34,22 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 type ErrorCode =
   | "INVALID_PAYLOAD"
+  | "UNAUTHORIZED"
   | "EMAIL_PROVIDER_NOT_CONFIGURED"
   | "REQUEST_NOT_FOUND"
   | "PDF_NOT_READY"
   | "LEAD_EMAIL_MISSING"
+  | "LEAD_EMAIL_INVALID"
+  | "DELIVERY_IN_PROGRESS"
   | "SIGNED_URL_FAILED"
   | "RESEND_FAILED"
+  | "RESEND_SANDBOX_RECIPIENT_BLOCKED"
+  | "RESEND_TIMEOUT"
   | "PERSISTENCE_FAILED";
+
+const RESEND_TIMEOUT_MS = 10_000;
+// Basic RFC 5322-lite check; intentionally permissive but rejects whitespace.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -74,7 +83,25 @@ export const Route = createFileRoute("/api/send-report-email")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // 1. Parse + validate payload
+        // 1. Internal auth — server-to-server only.
+        const internalToken = process.env.INTERNAL_API_TOKEN;
+        if (!internalToken) {
+          return errorResponse(
+            "EMAIL_PROVIDER_NOT_CONFIGURED",
+            "INTERNAL_API_TOKEN is not configured.",
+            500,
+          );
+        }
+        const providedToken = request.headers.get("x-internal-token");
+        if (providedToken !== internalToken) {
+          return errorResponse(
+            "UNAUTHORIZED",
+            "Missing or invalid internal token.",
+            401,
+          );
+        }
+
+        // 2. Parse + validate payload
         let payload: { report_request_id: string };
         try {
           const raw = await request.json();
@@ -87,7 +114,7 @@ export const Route = createFileRoute("/api/send-report-email")({
           return errorResponse("INVALID_PAYLOAD", message, 400);
         }
 
-        // 2. Provider configured?
+        // 3. Provider configured?
         const resendApiKey = process.env.RESEND_API_KEY;
         if (!resendApiKey) {
           return errorResponse(
@@ -97,7 +124,7 @@ export const Route = createFileRoute("/api/send-report-email")({
           );
         }
 
-        // 3. Fetch report request
+        // 4. Fetch report request
         const { data: reportRequest, error: requestError } = await supabaseAdmin
           .from("report_requests")
           .select(
@@ -121,7 +148,7 @@ export const Route = createFileRoute("/api/send-report-email")({
           );
         }
 
-        // 4. PDF readiness
+        // 5. PDF readiness
         if (
           reportRequest.pdf_status !== "ready" ||
           !reportRequest.pdf_storage_path
@@ -133,7 +160,7 @@ export const Route = createFileRoute("/api/send-report-email")({
           );
         }
 
-        // 5. Resolve lead
+        // 6. Resolve lead
         const { data: lead, error: leadError } = await supabaseAdmin
           .from("leads")
           .select("email, name")
@@ -156,16 +183,48 @@ export const Route = createFileRoute("/api/send-report-email")({
           );
         }
 
-        // 6. Mark sending
-        await supabaseAdmin
+        // 7. Validate lead email format (trim + regex)
+        const recipientEmail = lead.email.trim();
+        if (!EMAIL_REGEX.test(recipientEmail)) {
+          await markFailed(
+            reportRequest.id,
+            `Lead email failed validation: "${lead.email}".`,
+          );
+          return errorResponse(
+            "LEAD_EMAIL_INVALID",
+            "Linked lead email is malformed.",
+            422,
+          );
+        }
+
+        // 8. Optimistic lock — atomically claim 'sending' state.
+        // Prevents two concurrent re-sends from both calling Resend.
+        const { data: lockedRows, error: lockError } = await supabaseAdmin
           .from("report_requests")
           .update({
             delivery_status: "sending",
             email_error_message: null,
           })
-          .eq("id", reportRequest.id);
+          .eq("id", reportRequest.id)
+          .neq("delivery_status", "sending")
+          .select("id");
 
-        // 7. Generate signed URL (7 days)
+        if (lockError) {
+          return errorResponse(
+            "PERSISTENCE_FAILED",
+            `Failed to acquire delivery lock: ${lockError.message}`,
+            500,
+          );
+        }
+        if (!lockedRows || lockedRows.length === 0) {
+          return errorResponse(
+            "DELIVERY_IN_PROGRESS",
+            "Another delivery is already in progress for this request.",
+            409,
+          );
+        }
+
+        // 9. Generate signed URL (7 days)
         const { data: signed, error: signError } = await supabaseAdmin.storage
           .from(REPORT_PDF_BUCKET)
           .createSignedUrl(
@@ -179,7 +238,7 @@ export const Route = createFileRoute("/api/send-report-email")({
           return errorResponse("SIGNED_URL_FAILED", msg, 500);
         }
 
-        // 8. Build email content
+        // 10. Build email content
         const emailParams = {
           recipientName: lead.name ?? null,
           instagramUsername: reportRequest.instagram_username,
@@ -191,7 +250,12 @@ export const Route = createFileRoute("/api/send-report-email")({
         const html = buildReportEmailHtml(emailParams);
         const text = buildReportEmailText(emailParams);
 
-        // 9. Send via Resend
+        // 11. Send via Resend (with timeout)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(
+          () => controller.abort(),
+          RESEND_TIMEOUT_MS,
+        );
         let resendResponse: Response;
         try {
           resendResponse = await fetch(RESEND_ENDPOINT, {
@@ -202,28 +266,53 @@ export const Route = createFileRoute("/api/send-report-email")({
             },
             body: JSON.stringify({
               from: SENDER_FROM,
-              to: [lead.email],
+              to: [recipientEmail],
               subject,
               html,
               text,
             }),
+            signal: controller.signal,
           });
         } catch (err) {
+          const isAbort =
+            err instanceof Error &&
+            (err.name === "AbortError" || err.name === "TimeoutError");
           const msg = err instanceof Error ? err.message : "Network error.";
-          await markFailed(reportRequest.id, `Resend network error: ${msg}`);
-          return errorResponse(
-            "RESEND_FAILED",
-            "Failed to reach email provider.",
-            502,
+          await markFailed(
+            reportRequest.id,
+            isAbort
+              ? `Resend timeout after ${RESEND_TIMEOUT_MS}ms.`
+              : `Resend network error: ${msg}`,
           );
+          return errorResponse(
+            isAbort ? "RESEND_TIMEOUT" : "RESEND_FAILED",
+            isAbort
+              ? "Email provider request timed out."
+              : "Failed to reach email provider.",
+            isAbort ? 504 : 502,
+          );
+        } finally {
+          clearTimeout(timeoutId);
         }
 
         if (!resendResponse.ok) {
           const bodyText = await resendResponse.text().catch(() => "");
+          // Detect Resend sandbox restriction explicitly.
+          const isSandboxBlock =
+            /you can only send testing emails to your own email/i.test(
+              bodyText,
+            );
           await markFailed(
             reportRequest.id,
             `Resend ${resendResponse.status}: ${bodyText.slice(0, 300)}`,
           );
+          if (isSandboxBlock) {
+            return errorResponse(
+              "RESEND_SANDBOX_RECIPIENT_BLOCKED",
+              "Sandbox sender can only deliver to the Resend account owner. Verify a sender domain to send to other recipients.",
+              502,
+            );
+          }
           return errorResponse(
             "RESEND_FAILED",
             `Email provider returned ${resendResponse.status}.`,
@@ -236,7 +325,7 @@ export const Route = createFileRoute("/api/send-report-email")({
         };
         const messageId = resendData.id ?? null;
 
-        // 10. Persist success
+        // 12. Persist success
         const sentAt = new Date().toISOString();
         const { error: updateError } = await supabaseAdmin
           .from("report_requests")
