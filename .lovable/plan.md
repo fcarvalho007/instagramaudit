@@ -1,54 +1,115 @@
 
 
-## Plano: Refinamento light section + How it works
+## Entendimento
 
-### Diagnóstico
+**1. Arquitectura actual da landing**: SPA TanStack Start. Routes em `src/routes/` (`index.tsx`, `design-system.tsx`). Landing = `<HeroSection>` → micro-proof → `<SocialProofSection>` → `<HowItWorksSection>` → `<ProductPreviewSection>` (que envolve `<MockupDashboard>` light, com KPIs, gauge, comparação concorrentes, AI insight, fade+lock no fundo).
 
-1. **White haze na light section**: o gradient `from-surface-base via-surface-light to-surface-light-elevated` termina em slate-50 (quase branco) + studio stage radial off-white por trás = lavagem branca. O frame `bg-white/40` reforça o efeito.
-2. **Palco "almofadado"**: `border-slate-300/40` (40% opacidade) + `bg-white/40 backdrop-blur-sm` + `p-3 md:p-5` + `--shadow-stage` cria um halo branco difuso. Falta nitidez de borda.
-3. **Bloco do relatório sem nitidez estrutural**: o frame envolve o card mas a fronteira mockup↔frame fica borrada por causa do `bg-white/40` translúcido.
-4. **"Como funciona" sem tensão**: 3 passos com gap uniforme, connector tracejado horizontal único, ícones com glow violet idêntico — pacing demasiado plano. Falta hierarquia (passo 02 é o "core" técnico) e diferenciação rítmica.
+**2. Promessa InstaBench**: análise pública e imediata de qualquer perfil Instagram em <30s. Freemium: dashboard público sem registo → relatório completo (PDF + IA) com email → planos pagos. Tom editorial, não-técnico, decisão-ready.
 
-### Mudanças
+**3. "Editorial Tech Noir"**: dark-first navy, cyan accent técnico, violet CTA premium, Fraunces display + Inter sans + JetBrains Mono. Linear/Stripe/Attio quality, anti-Hootsuite. Glow controlado, hierarquia editorial.
 
-**`product-preview-section.tsx`**
-- Background gradient: terminar em `surface-light` (slate-200) em vez de `surface-light-elevated` (slate-50). Mais cor, menos lavagem. → `from-surface-base via-surface-light to-surface-light`
-- Studio stage: reduzir tamanho (`h-[80%] w-[90%]` → `h-[60%] w-[70%]`) e baixar opacidade central (`60%` → `40%`) para spotlight mais focado, menos atmosférico
-- Frame: `border-slate-300/40 bg-white/40 backdrop-blur-sm p-3 md:p-5` → `border-slate-300/70 bg-surface-light-elevated p-2 md:p-3` (sólido, borda definida, padding reduzido para o relatório respirar com a sua própria sombra)
-- Corner brackets: aumentar para `h-4 w-4` e cor `border-slate-600/80` (mais nítidos)
-- Top transition fade reduzir de `h-32 md:h-40` → `h-24 md:h-32` (transição mais decidida)
+**4. Público vs Premium**: público mostra métricas agregadas + benchmark + ranking concorrentes (valor demonstrado). Premium adiciona alcance estimado, insights IA estratégicos, oportunidades, recomendações 30d, PDF detalhado por email. O `MockupDashboard` actual já encena essa divisão com fade+blur+lock label.
 
-**`how-it-works-section.tsx`** — tensão visual entre passos
-- Substituir grid uniforme `gap-12 md:gap-8` por grid com **separadores verticais hairline** entre passos em desktop (em vez do connector horizontal único que une só os ícones)
-- Connector tracejado horizontal: substituir por **linha hairline contínua + dois nós (dots) violet** alinhados sobre os ícones do passo 02 e 03 — sugere fluxo direccional, não estática
-- Adicionar coluna numerada lateral grande (passo "02" em mancha tipográfica grande) para criar ritmo visual entre os 3
-- Background HUD vertical lines: aumentar opacidade `0.03` → `0.04` e adicionar segundo layer com glow radial violet shifted (não centrado) para assimetria editorial
+## Conflitos com LOCKED_FILES.md
 
-**`how-it-works-step.tsx`** — diferenciação por step
-- Adicionar prop `emphasis?: "default" | "primary"` para destacar o passo 02 (core)
-- Passo 02 (`primary`): icon container maior `h-16 w-16` (vs `h-14 w-14`), glow violet mais forte (`var(--shadow-glow-violet)` continua mas adicionar `bg-accent-violet/10` no fundo do container em vez de `bg-surface-elevated/70`)
-- Passos 01 e 03: manter dimensão actual mas reduzir opacidade do glow para criar hierarquia (`bg-surface-elevated/70` → `bg-surface-elevated/90` mais sólido, sem glow extra)
-- Adicionar separador hairline vertical à direita de cada step em desktop (`md:border-r md:border-border-subtle md:pr-8` excepto último) para tensão estrutural
+- `hero-action-bar.tsx` (LOCKED) — precisa de wiring mínimo: state controlado para o input + `useNavigate` no submit. **Autorizado pela spec** ("Wire the landing action bar... simple client-side routing only"). Sem alterar estilo/UX.
+- `mockup-dashboard.tsx`, `mockup-metric-card.tsx`, `mockup-benchmark-gauge.tsx` (LOCKED) — **NÃO modifico**. Em vez disso, **promovo para componentes reutilizáveis novos** em `src/components/product/` (estratégia "componentes-produto" baseada nos mockups, sem tocar nos originais que continuam a servir a landing).
 
-### Ficheiros tocados
+## Estratégia: "promote, don't mutate"
 
-| Ficheiro | Scope |
+Os componentes locked do `landing/` continuam exclusivos da landing (mockup decorativo). Crio gémeos limpos em `src/components/product/` que podem evoluir para dados reais sem comprometer a landing. Reutilizam tokens, primitives (`Card`, `Badge`, `Button`) e estética.
+
+## Ficheiros a criar
+
+| Ficheiro | Propósito |
 |---|---|
-| `src/components/landing/product-preview-section.tsx` | Background gradient final, studio stage menor/menos opaco, frame sólido + borda nítida + padding reduzido, brackets reforçados, transição topo |
-| `src/components/landing/how-it-works-section.tsx` | Connector substituído por linha + nós direccionais, HUD reforçado, glow assimétrico |
-| `src/components/landing/how-it-works-step.tsx` | Prop `emphasis`, separador vertical entre steps, hierarquia visual passo 02 |
+| `src/routes/analyze.$username.tsx` | Rota TanStack file-based: `/analyze/$username`. Lê `username` via `Route.useParams()`. Head meta pt-PT. Renderiza `<PublicAnalysisDashboard>`. |
+| `src/lib/mock-analysis.ts` | Função `getMockAnalysis(username)` retorna `AnalysisData` realista e determinística (seed por username): identidade, 4 KPIs, benchmark, 2 concorrentes, premium-locked teasers. |
+| `src/components/product/analysis-header.tsx` | Top: avatar (gradient placeholder), `@handle`, nome, categoria, seguidores formatados, badge `Dados de exemplo`. |
+| `src/components/product/analysis-metric-card.tsx` | KPI dark-tone (variante "produto" do mockup-metric-card, sem `tone` prop — sempre dark editorial). |
+| `src/components/product/analysis-benchmark-block.tsx` | Bloco com gauge horizontal (reaproveita lógica visual do mockup-benchmark-gauge mas dark-themed) + helper text pt-PT + badge posicionamento. |
+| `src/components/product/analysis-competitor-comparison.tsx` | Linhas com nome + barra + valor para perfil + 2 concorrentes; perfil próprio destacado em violet/cyan. |
+| `src/components/product/premium-locked-section.tsx` | 4 cartões teaser (alcance estimado, insights IA, oportunidades, recomendações 30d) com blur + overlay gradient + CTA "Desbloquear relatório completo" + "PDF detalhado por email" microcopy. |
+| `src/components/product/public-analysis-dashboard.tsx` | Composição completa: container, header, secção KPIs, benchmark, comparação, premium veil. Aceita prop `data: AnalysisData`. |
 
-**Sem novos tokens. Sem novos ficheiros.** Reutiliza `surface-light`, `surface-light-elevated`, `accent-violet*`, `border-subtle`, `shadow-stage`, `shadow-glow-violet`.
+## Ficheiros a modificar
 
-### Confirmação
+| Ficheiro | Mudança |
+|---|---|
+| `src/components/landing/hero-action-bar.tsx` (LOCKED — autorizado) | (a) `useState` para input value; (b) `useNavigate` do TanStack; (c) `onSubmit`: trim + valida não-vazio → strip `@`/URL → `navigate({ to: "/analyze/$username", params: { username } })`; (d) erro inline pt-PT se vazio. Zero alterações de estilo. |
 
-✅ UI-only. Zero alterações em routing, lógica, forms, state, integrações.
-✅ Mobile 375px: studio stage `max-w-[70vw]`, separadores verticais só em `md+`, prop `emphasis` apenas afecta dimensões dentro do mesmo grid.
-✅ pt-PT preservado. Acessibilidade preservada (focus, contrastes WCAG AA).
-✅ Locked files autorizados pelo escopo de "refinamento visual da landing".
+## Estrutura de mock data
 
-### Desvios face à spec
+```ts
+export interface AnalysisData {
+  profile: { handle, displayName, category, followers, avatarSeed };
+  metrics: { engagement, postsAnalyzed, weeklyFrequency, dominantFormat };
+  benchmark: { value, reference, max, position: "above"|"on"|"below", helperText };
+  competitors: Array<{ handle, engagement, isSelf }>;
+  premiumTeasers: { estimatedReach, aiInsightsCount, opportunitiesCount, recommendations30d };
+}
+```
+Determinístico por hash do username → mesmo input devolve mesmo output (UX consistente em refresh).
 
-1. **Hierarquia passo 02**: a spec pede "tensão visual entre os 3 passos" sem especificar como. Interpreto como hierarquia (1 passo "âncora", 2 satélites) em vez de 3 passos iguais — gera tensão direccional. Se preferires tensão simétrica (3 iguais com mais separadores), ajusto.
-2. **Frame sólido vs glass**: removo `backdrop-blur-sm` + `bg-white/40` translúcido por `bg-surface-light-elevated` sólido para nitidez estrutural. Perde o efeito glass mas ganha definição editorial — alinha com a metáfora "documento premium pousado", não "vidro flutuante".
+## Layout do dashboard `/analyze/$username`
+
+```
+[App shell — header/footer existentes]
+  [Container size="lg" — padding vertical generoso]
+    ┌─ AnalysisHeader ──────────────────┐
+    │ avatar · @handle · cat · followers │ [badge: Dados de exemplo]
+    └────────────────────────────────────┘
+    
+    Análise pública                     ← section label
+    
+    [grid 4 KPIs — AnalysisMetricCard × 4]
+    
+    [AnalysisBenchmarkBlock — gauge + helper]
+    
+    [AnalysisCompetitorComparison]
+    
+    ─── divisor hairline + label "Conteúdo premium" ───
+    
+    [PremiumLockedSection — 4 teaser cards blur + CTA central]
+```
+
+Mobile 375px: KPIs em grid 2-col, comparação stack, premium cards 1-col.
+
+## Visual direction (operacional, não decorativo)
+
+- Surface: dark `surface-base` (não light como o mockup landing — landing = "preview", produto = "ecrã real")
+- KPIs: `surface-secondary` cards, valor em Fraunces `text-3xl`, label mono uppercase `text-content-tertiary`
+- Benchmark gauge: cyan fill (assinatura técnica), benchmark marker dashed, badge violet/success
+- Comparação: barra perfil próprio em violet→cyan gradient, concorrentes em `border-default`
+- Premium veil: `backdrop-blur-md` sobre cards, overlay `bg-surface-base/70`, lock icon, CTA button `variant="primary"` (violet)
+- Sem aurora, sem decoração de landing — apenas hairlines + labels mono + spacing generoso
+
+## Copy pt-PT (impessoal)
+
+- "Análise pública"
+- "Dados de exemplo"
+- "Posicionamento face ao benchmark"
+- "Comparação com concorrentes"
+- "Conteúdo disponível no relatório completo"
+- "Desbloquear relatório completo"
+- "PDF detalhado enviado por email"
+- "Três insights estratégicos por IA"
+- Erro vazio: "Inserir um username válido para continuar"
+
+## Confirmação
+
+✅ Mock-data only. Zero Supabase/Apify/Claude/Resend/EuPago/Stripe.
+✅ Zero novas dependências. Apenas TanStack Router (já instalado), shadcn primitives existentes, lucide-react.
+✅ Tokens-only (sem hardcoded colors/spacing/radii).
+✅ pt-PT impessoal. Sem placeholders.
+✅ Mobile-first 375px validado no plano (grids responsivos).
+✅ Landing visualmente intacta (apenas wiring funcional na action bar).
+✅ Locked file `hero-action-bar.tsx` autorizado pela spec; restantes locked files NÃO tocados — em vez disso promovo para `src/components/product/`.
+✅ Arquitectura future-ready: `getMockAnalysis()` substituível por `loader` async com fetch real; componentes recebem `data` como prop, sem fetch interno.
+
+## Desvios face à spec
+
+1. **"Promote existing dashboard pieces into reusable components"** — interpreto como criar gémeos limpos em `src/components/product/` (não mutar os locked landing mockups). Os landing mockups continuam a servir a landing como "preview decorativo"; os product components vivem a sua vida e podem evoluir para dados reais. Alternativa seria desbloquear os ficheiros e refactorizar in-place — mais invasivo, com risco de partir a landing. Se preferires refactor in-place, ajusto.
+2. **Avatar do perfil** — sem fetch real do IG, uso gradient determinístico (hash username → matiz). Não tento simular foto.
+3. **Rota TanStack file-based**: ficheiro `analyze.$username.tsx` (dot-syntax). O routeTree.gen.ts auto-regenera; não toco nele.
 
