@@ -1,162 +1,65 @@
 
 
-## Entendimento
+## Entendimento da situação real
 
-**1. Fluxo público atual**: hero (`/`) → input do username → `/analyze/$username` → `<PublicAnalysisDashboard>` (métricas + benchmark + concorrentes) → camada de conversão pós-análise → `<PremiumLockedSection>` → `<ReportGateModal>`. Após o gate, pipeline automático gera PDF e envia por email.
+**O que pedes**: nunca usar Lovable AI; criar secret OpenAI; ler API e listar modelos disponíveis a partir de "ChatGPT 5.4".
 
-**2. Captura de leads / pedido de relatório**: `<ReportGateModal>` recolhe **nome (obrigatório)**, **email (obrigatório)**, **empresa (opcional)** + checkbox RGPD. Submete para `/api/request-full-report` que faz upsert em `leads` e cria `report_requests` ligado ao `analysis_snapshot_id`. Quota servida pelo servidor (2 grátis/mês por lead).
+**Realidade no código (verificado)**:
+- **Não existe geração de IA implementada hoje.** Procurei em todo o `src/` e `supabase/` — zero chamadas a Lovable AI Gateway, zero chamadas a Anthropic, zero chamadas a OpenAI, zero edge functions.
+- Os "AI insights" que aparecem no relatório são **mock data hardcoded** em `src/components/report/report-mock-data.ts` (3 insights estáticos sobre `@frederico.marketing`).
+- O `LOVABLE_API_KEY` aparece como secret porque é injetado automaticamente pela plataforma (marcado "cannot be deleted") — mas **nunca é lido em código**.
+- A única menção textual a "Lovable AI Gateway" está na **política de privacidade** (`/privacidade`), como subcontratante — mas nada o sustenta tecnicamente.
 
-**3. Supabase / storage / email / pagamentos**:
-   - **Postgres**: tabelas `leads` (email, email_normalized, name, company, source), `report_requests` (lead_id, instagram_username, competitor_usernames, snapshot_id, status fields), `analysis_snapshots` (cache 24h de dados Apify normalizados).
-   - **Storage**: bucket privado `report-pdfs` com PDFs + signed URLs 7 dias.
-   - **Apify**: scrape de perfis públicos do Instagram (token em secret).
-   - **Resend**: envio dos PDFs por email.
-   - **EuPago**: **ainda não integrado** (paywall mostra "Em breve"). Não deve aparecer em política como ativo hoje.
-   - **Lovable AI Gateway / Anthropic**: insights estratégicos no PDF.
+**Consequência**: não há nada para "migrar". Há que **construir** a integração OpenAI de raiz quando chegar a altura, e **corrigir a política de privacidade** que hoje declara um subcontratante que não é usado.
 
-**4. Onde se processam dados pessoais**:
-   - Email + nome + empresa opcional via gate modal → `leads` (persistente).
-   - Email associado ao envio de PDF via Resend (transactional).
-   - **Username analisado** = dado público de terceiro, não do utilizador autenticado.
-   - Cookies essenciais: sessão admin httpOnly (`/admin`), sidebar UI state. **Sem analytics/tracking de marketing** (verificado: zero gtag, posthog, plausible, mixpanel).
+## Resposta à informação pedida
 
-**5. Porquê esta camada agora**: o produto recolhe email + nome + empresa de utilizadores reais, processa-os via Supabase + Resend, mostra "RGPD compliant" no hero/footer, mas **não tem página de privacidade nem termos**. Os links no rodapé apontam para `/privacidade` e `/termos` que **dão 404**. Antes de qualquer empurrão de tráfego, é preciso credibilizar a base legal — caso contrário expõe-se a risco regulatório (CNPD) e quebra a confiança quando alguém clica em "Privacidade" e cai num 404.
+**"ChatGPT 5.4" é a família GPT-5.4 da OpenAI.** Lida diretamente da página oficial de modelos da OpenAI agora mesmo (https://platform.openai.com/docs/models), os modelos disponíveis na família **GPT-5.4** são:
 
----
+| Model ID | Posicionamento | Input | Output | Context | Max output | Latência |
+|---|---|---|---|---|---|---|
+| `gpt-5.4` | Flagship — raciocínio complexo, código, fluxos profissionais | $2.50/MTok | $15/MTok | 1M tokens | 128K | Fast |
+| `gpt-5.4-mini` | Modelo "mini" mais forte da OpenAI — código, computer use, subagents | $0.75/MTok | $4.50/MTok | 400K tokens | 128K | Faster |
+| `gpt-5.4-nano` | Mais barato da classe — tarefas simples de alto volume | $0.20/MTok | $1.25/MTok | 400K tokens | 128K | Faster |
 
-## Auditoria de tracking / cookies (resultado)
+Todos suportam: text+image input, text output, multilingual, vision, reasoning (none/low/medium/high/xhigh), Functions, Web search, File search. Knowledge cutoff: **31 de agosto de 2025**.
 
-| Mecanismo | Estado | Necessita banner? |
-|---|---|---|
-| Google Analytics / GA4 | ❌ não existe | — |
-| Posthog / Mixpanel / Plausible | ❌ não existe | — |
-| Cookies de marketing | ❌ nenhum | — |
-| Cookie sessão admin (httpOnly, `/admin`) | ✅ essencial | Não (estritamente necessário) |
-| Cookie sidebar UI (`sidebar_state`) | ✅ funcional não-essencial mas trivial | Não obrigatório (preferência UI) |
-| localStorage / sessionStorage marketing | ❌ não existe | — |
+Modelos especializados disponíveis na mesma altura (não pertencem à família 5.4 mas funcionam no mesmo API):
+- `gpt-image-1.5` e `gpt-image-1-mini` — imagem
+- `gpt-realtime-1.5` e `gpt-realtime-mini` — speech-to-speech
+- `gpt-4o-mini-tts` — text-to-speech
+- `gpt-4o-transcribe` e `gpt-4o-mini-transcribe` — transcrição
 
-**Conclusão**: **não é necessário banner de cookies** neste momento. Basta uma secção "Cookies" dentro da Política de Privacidade a explicar honestamente que só se usam cookies essenciais (sessão admin) e uma preferência funcional (sidebar). Quando se adicionar analytics, aí sim, será preciso banner com consent.
+Para o caso de uso do InstaBench (insights estratégicos curtos em pt-PT a partir de métricas estruturadas), o ponto ótimo de custo/qualidade é **`gpt-5.4-mini`**. `gpt-5.4` só se justifica se houver raciocínio analítico mais profundo a fazer.
 
----
+## Bloqueio de segurança antes de criar o secret
 
-## Decisões-chave
+Não criei o secret ainda. Antes:
 
-1. **2 páginas legais novas**: `/privacidade` e `/termos` em pt-PT, escritas para refletir **exatamente** o que o produto faz hoje (sem inventar EuPago ativo, sem prometer self-service de exportação).
+1. **Não partilhes a chave aqui em chat.** O fluxo correto é o tool `add_secret`, que abre um input mascarado no browser — a chave nunca passa pela conversa nem fica em logs. Quando aprovares este plano, eu disparo esse pedido.
+2. **A chave deve ter scope restrito.** Recomendo criar um **Project API key** em https://platform.openai.com/api-keys, não uma chave de organização, e dar-lhe acesso apenas aos modelos GPT-5.4 que vais usar.
+3. **Definir um spending limit** no projeto OpenAI antes de gerar a chave — para impedir corridas desbocadas em caso de bug ou abuso.
 
-2. **Footer está locked** mas **já tem os links corretos** para `/privacidade` e `/termos` na coluna "Empresa". **Não toco no footer.** Os links `/rgpd`, `/cookies`, `/seguranca`, `/sobre`, `/contacto` no footer continuam a 404 — flag para próximo prompt, fora do âmbito.
+## Plano para esta interação (apenas informativo + secret)
 
-3. **Componente partilhado `<LegalLayout>`** com header tipográfico editorial, prose styling consistente, índice lateral em desktop. Reutilizado pelas duas páginas.
+Como o que pediste **explicitamente** foi (a) criar o secret e (b) listar opções a partir de GPT-5.4 — e **não** implementar a integração — o âmbito é mínimo:
 
-4. **Gate modal — refinar copy de consent** (não está locked):
-   - Atual: "Aceito receber o relatório por email e a política de privacidade." — vago, sem link.
-   - Novo: "Aceito o tratamento dos dados (nome, email) para envio do relatório, conforme a [Política de Privacidade](/privacidade)." — link explícito que abre em nova aba, wording impessoal.
+1. **Apresentar a lista de modelos** (feito acima, lida em direto da OpenAI agora).
+2. **Disparar `add_secret`** para criar `OPENAI_API_KEY` (input mascarado no browser).
+3. **Não escrever código de integração ainda** — isso será um prompt próprio com plano dedicado (escolha de modelo, onde injetar o insight no PDF, prompt engineering em pt-PT, error handling, custo por relatório, retry, timeout).
+4. **Corrigir uma frase na `/privacidade`**: hoje diz "Lovable AI Gateway e respetivos modelos de IA (incluindo Anthropic) — geração da leitura estratégica incluída no relatório." Isto é **factualmente falso** (não há geração de IA hoje) e vai ficar duplamente errado quando passares a usar OpenAI. Proposta: remover essa linha agora e voltar a adicioná-la (com o nome certo: "OpenAI") apenas quando a integração for de facto implementada.
 
-5. **Disclaimer de não-afiliação Meta/Instagram** já existe no `report-footer.tsx` ("Não afiliado com Meta"). Adiciono também:
-   - Linha discreta dentro das páginas legais.
-   - Linha mono pequena no `<AnalysisHeader>` ou rodapé do dashboard de análise (a confirmar onde encaixa melhor sem poluir).
-   - **Não toco no footer locked** que poderia ser o sítio óbvio — mencionado como follow-up.
+## Ficheiros tocados nesta interação
 
-6. **Contacto privacidade**: email `privacidade@instabench.pt` (placeholder real, registável no domínio próprio). Visível nas duas páginas legais. Sem formulário.
+- **Nenhum ficheiro de código** (a integração não é âmbito deste prompt).
+- **`src/routes/privacidade.tsx`** — remoção de uma linha factualmente incorreta sobre o subcontratante de IA. Esta route não está locked.
 
-7. **Conteúdo legal — o que vou escrever honestamente**:
-   - **Responsável**: nome a confirmar (pergunta abaixo) ou placeholder "InstaBench (operado por [a definir])".
-   - **Dados recolhidos**: nome, email, empresa opcional, username analisado, snapshot dos dados públicos do Instagram, registos técnicos (IP, user-agent) ao chamar APIs.
-   - **Finalidades**: gerar e entregar o relatório, controlo de quota mensal, comunicação operacional sobre o pedido.
-   - **Bases legais**: execução do serviço pedido (Art. 6(1)(b) RGPD); interesse legítimo para prevenção de abuso (quota).
-   - **Subcontratantes**: Supabase (UE), Resend (EUA — DPF), Apify (UE/EUA), Lovable Cloud (UE), Anthropic via Lovable Gateway. Cloudflare como CDN/runtime.
-   - **Retenção**: leads e report_requests indefinidamente até pedido de eliminação; snapshots expiram em 24h; PDFs com signed URLs 7d.
-   - **Direitos RGPD**: acesso, retificação, eliminação, portabilidade, oposição — exercidos por email.
-   - **Transferências internacionais**: para fora UE (Resend, Apify) com base em DPF/SCC.
-   - **Cookies**: secção curta a esclarecer só essenciais.
+## Pergunta de confirmação
 
-8. **Termos — o que vou escrever**:
-   - Descrição do serviço (análise de perfis públicos, relatórios PDF).
-   - Aceitação ao usar.
-   - Uso aceitável (não scrape massivo, não tentativa de aceder a perfis privados, não revenda do PDF como se fosse próprio).
-   - Quotas e gratuitidade atual.
-   - Pagamentos: secção curta a dizer que pagamentos one-time/subscrições serão regulados em adenda quando ativos (não inventar EuPago hoje).
-   - Limitação de responsabilidade calma — dados do Instagram podem mudar/falhar, recomendações são orientadoras.
-   - Propriedade intelectual: relatório fica licenciado ao utilizador para uso interno.
-   - Disponibilidade: "best effort", sem SLA.
-   - Lei aplicável: portuguesa. Foro: comarca de Lisboa.
-   - Alterações aos termos com data de última atualização.
+**Confirmas que avançamos com**:
+1. Criar `OPENAI_API_KEY` via `add_secret` (input mascarado, sem partilhar em chat)
+2. Remover da política de privacidade a menção a "Lovable AI Gateway" (que hoje é factualmente falsa) e voltar a colocá-la — com o nome "OpenAI" — quando a integração for implementada
+3. **Não** escrever código de integração agora — fica para um prompt próprio com plano dedicado
 
-9. **Sem novas dependências, sem novo schema, sem novos endpoints, sem CMP, sem cookie banner.**
-
----
-
-## Ficheiros
-
-**Novos (3):**
-- `src/components/legal/legal-layout.tsx` — wrapper editorial partilhado (header serif + meta data + prose container + nota de não-afiliação no fim)
-- `src/routes/privacidade.tsx` — Política de Privacidade pt-PT, head com title/description/noindex parcial (deixar indexável para credibilidade)
-- `src/routes/termos.tsx` — Termos e Condições pt-PT
-
-**Editados (1):**
-- `src/components/product/report-gate-modal.tsx` — refinar texto da checkbox RGPD com link real para `/privacidade` (target="_blank", rel="noopener"), sem alterar UX de validação
-
-**Locked files**: 
-- `LOCKED_FILES.md`: footer já aponta para `/privacidade` e `/termos` ✅. Não toco em footer.
-- `report-gate-modal.tsx`: **não está locked** ✅.
-- Adiciono os 3 novos ficheiros à lista de locked files no fim, em nova secção "Legal/Compliance (Sprint 1, Prompt 1.X)".
-
----
-
-## Mapa de cobertura por exigência do prompt
-
-| Requisito | Onde fica resolvido |
-|---|---|
-| Página `/privacidade` em pt-PT | Nova route |
-| Página `/termos` em pt-PT | Nova route |
-| Footer com links legais | ✅ já existe (footer locked) |
-| Disclaimer não-afiliação Meta | Dentro das duas páginas + já presente no report-footer |
-| Consent no gate com link à política | Edição cirúrgica do modal |
-| Providers reais refletidos | Supabase, Resend, Apify, Lovable AI, Cloudflare na política |
-| Auditoria cookies/tracking | Feita acima — sem banner necessário |
-| Contacto privacidade | Email visível nas páginas legais |
-
----
-
-## Pergunta pendente (não bloqueante — posso usar placeholders)
-
-**Identidade do responsável pelo tratamento**: o domínio é `instabench.pt`. Como deve aparecer na política?
-- (A) "InstaBench, operado por [Nome / NIF a definir]" (placeholder honesto, fácil de substituir depois)
-- (B) Nome real do responsável (se já tiveres, partilha no próximo prompt)
-- (C) Apenas "InstaBench" com email de contacto e adicionar dados completos numa revisão posterior
-
-Sem resposta, avanço com (A) — coloco marcador `[Nome do responsável · NIF · morada]` em duas linhas claramente identificadas para edição manual posterior.
-
----
-
-## Validação dos guardrails
-
-| Guardrail | Estado |
-|---|---|
-| Sem certeza legal falsa — texto é trabalho honesto, não substitui revisor jurídico | ✅ aviso explícito no fim das páginas |
-| Sem redesign landing/análise | ✅ |
-| Sem GDPR self-service completo | ✅ só email de contacto |
-| Sem CMP / cookie banner pesado | ✅ auditoria mostra que não é preciso |
-| Sem novas libs | ✅ |
-| Sem secrets hardcoded | ✅ |
-| Locked files intactos | ✅ footer não tocado |
-| Copy pt-PT pós-1990, impessoal | ✅ |
-| Mobile 375px | ✅ prose responsivo |
-| Sem afirmações inventadas (EuPago ativo, self-service GDPR, etc.) | ✅ |
-
----
-
-## Checkpoints
-
-- ☐ `<LegalLayout>` criado com header editorial + prose + nota de não-afiliação
-- ☐ `/privacidade` criada em pt-PT, refletindo Supabase/Resend/Apify/Lovable/Cloudflare reais
-- ☐ `/termos` criada em pt-PT, refletindo MVP atual (sem fingir EuPago ativo)
-- ☐ Disclaimer de não-afiliação Meta/Instagram presente nas duas páginas
-- ☐ `<ReportGateModal>` consent reescrito com link real para `/privacidade`
-- ☐ Email de contacto `privacidade@instabench.pt` visível nas páginas legais
-- ☐ Secção "Cookies" honesta (só essenciais) dentro da política — sem banner
-- ☐ Aviso final em ambas as páginas: "Este texto não substitui aconselhamento jurídico formal"
-- ☐ Footer locked não tocado — links `/privacidade` e `/termos` deixam de dar 404
-- ☐ `LOCKED_FILES.md` atualizado com nova secção
-- ☐ Zero novas dependências, zero schema, zero endpoints
-- ☐ Mobile 375px validado
+Se confirmares, no próximo turno eu disparo o `add_secret` (sem mais código) e edito a linha da privacidade. Se quiseres já o plano da integração, di-lo e abro um plano separado para isso.
 
