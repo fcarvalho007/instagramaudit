@@ -1,92 +1,90 @@
 
 
-## Auditoria interna — Estado actual e refinamentos necessários
+## Plano — quota mensal 100% server-side
 
-A app está funcionalmente sã (typecheck limpo, sem erros runtime), mas há **inconsistências de qualidade, código órfão e bugs latentes** que minam a coerência. Foco em correcções, não em features novas.
+### Entendimento
 
----
+Confirmo o diagnóstico: hoje `report-gate-modal.tsx` decide a quota via `getQuotaUsage`/`incrementQuota` em localStorage, e o server route `/api/request-full-report` aceita tudo o que esteja bem formado. Limpar o storage permite criar N requests com o mesmo email. As tabelas `leads` (UNIQUE em `email_normalized`) e `report_requests` (com `request_month` e `is_free_request`) já existem com RLS fechado, mas falta a FK `lead_id → leads.id` e um índice para a contagem.
 
-### Achados (por prioridade)
+### Arquitectura
 
-#### ALTA — Inconsistências de produto
+Backend passa a ser source of truth. Após upsert do lead, contar `report_requests` do mês corrente para esse `lead_id` com `is_free_request = true`. Decidir 3 outcomes (`first_free`, `last_free`, `limit_reached`) e responder com shape novo. Frontend deixa de pré-validar — chama o backend e mapeia `quota_status` para o estado UI.
 
-**1. `analysis-header.tsx` — duplicação visual "Análise pública"**
-O eyebrow (`text-[0.625rem]`) e o badge à direita mostram exactamente a mesma string *"Análise pública"*. Redundância editorial. **Fix**: badge passa a *"Dados em direto"* (sinaliza que é fresh do Apify, não placeholder).
-
-**2. `report-gate-modal.tsx` — quota local desactualizada (race condition)**
-Modal ainda usa `getQuotaUsage` / `incrementQuota` (localStorage) **antes** do submit. Mas o backend `request-full-report` **não conta nem bloqueia**. Resultado: utilizador limpa storage → cria N pedidos reais na BD. O plano original previa migrar para enforcement server-side; nunca aconteceu. **Fix mínimo agora** (sem alargar scope): remover a pré-check local + decisão pós-submit baseada em `incrementQuota` (mantém UX) e marcar claramente em `metadata.quota_mode: "client_local"` que continua client-side. O verdadeiro server-side fica para um prompt dedicado.
-
-→ **Decisão**: como é "refinamento de qualidade" e não nova feature, mantenho a quota local mas **adiciono comentário JSDoc explícito** em ambos os ficheiros a marcar como dívida técnica conhecida e simplifico o flow (sem mudar a semântica). Evita destruir o que funciona hoje.
-
-#### MÉDIA — Código órfão
-
-**3. `src/components/product/analysis-competitor-comparison.tsx`** — não é importado por nada (grep confirmou). Resíduo da fase mock. **Acção**: apagar.
-
-**4. `src/lib/mock-analysis.ts` — `getMockAnalysis` órfão**
-Ninguém chama `getMockAnalysis` ou os tipos `AnalysisData`/`AnalysisProfile`/`AnalysisMetrics`/`AnalysisBenchmark`/`AnalysisCompetitor`. Apenas `formatFollowers`, `formatPercent` e `AnalysisPremiumTeasers` são usados. **Acção**: reduzir o ficheiro a esses 3 exports + renomear para `src/lib/format.ts` *ou* manter em `mock-analysis.ts` e apagar o resto. Mantenho o ficheiro (renomear obriga a tocar imports em vários ficheiros) e podo o conteúdo morto.
-
-**5. `src/lib/quota.ts` — `getRemainingFree` órfão** — função nunca chamada. Apagar.
-
-#### MÉDIA — Bugs latentes
-
-**6. `analysis-header.tsx` — fallback de avatar quebrado**
-Se `avatarUrl` existe mas falha o load, o `onError` faz `display: none` no `<img>` e tenta mostrar o `<div>` gradient. Mas o div está renderizado com `display: avatarUrl ? "none" : "block"` **inline style**, e o fallback assume `nextElementSibling`. Funciona, mas é frágil (inline style + DOM mutation). **Fix**: refactor para `useState<boolean>("imgFailed")` — React-idiomático, sem mutações DOM directas.
-
-**7. `analyze-public-v1.ts` — input do post scraper provavelmente errado**
-Actor `apify/instagram-post-scraper` espera `username` como **string**, não array. Linha 121: `username: [username]`. Pode silenciosamente devolver vazio, e o código degrada para "0 posts analisados" sem erro visível. **Fix**: passar `username: [username]` mantém-se (alguns actors aceitam ambos), mas adicionar `directUrls: [`https://instagram.com/${username}/`]` como fallback é mais robusto. Alternativa mínima: mudar para `username: username` (string) — verificar contra docs Apify. **Decisão prudente**: passar `directUrls` como input — é o padrão documentado para post scraper.
-
-**8. `analysis-skeleton.tsx` — copy fora do tom**
-Mostra dois textos editoriais ("A processar @x", "A recolher dados públicos…") **dentro de um skeleton**. Quebra a abstracção do skeleton (que devia ser puramente visual). **Fix**: manter só o visual pulse + um único eyebrow discreto *"A analisar perfil"*.
-
-#### BAIXA — Polish
-
-**9. `mock-analysis.ts` import path em `analysis-header.tsx`**
-Header importa `formatFollowers` de `@/lib/mock-analysis`. Se eu podar mock-analysis (achado #4), o import continua válido. Mantém-se.
-
-**10. `__root.tsx` (LOCKED) — meta tags ok**, não toco.
-
----
+Race condition aceite como risco residual (sem auth, volume baixo). Solução robusta com lock fica anotada como follow-up.
 
 ### Ficheiros tocados
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `src/components/product/analysis-header.tsx` | Editar — fix avatar fallback (useState), badge passa a "Dados em direto" | Não |
-| `src/components/product/analysis-skeleton.tsx` | Editar — remover copy editorial, manter só pulses + eyebrow discreto | Não |
-| `src/components/product/analysis-competitor-comparison.tsx` | **Apagar** — órfão | Não |
-| `src/lib/mock-analysis.ts` | Editar — podar tudo excepto `formatFollowers`, `formatPercent`, `AnalysisPremiumTeasers`; reescrever doc-comment | Não |
-| `src/lib/quota.ts` | Editar — remover `getRemainingFree`; adicionar JSDoc a marcar dívida técnica (server-side enforcement em falta) | Não |
-| `src/components/product/report-gate-modal.tsx` | Editar mínimo — adicionar comentário JSDoc explicando que quota é client-side intencionalmente até prompt dedicado; remover import órfão se aplicável | Não |
-| `src/routes/api/analyze-public-v1.ts` | Editar — input do post scraper passa a usar `directUrls` (mais robusto) + manter `resultsLimit` | Não |
+| `supabase/migrations/{ts}_quota_index_and_fk.sql` | Criar — FK idempotente + index parcial | Não |
+| `src/routes/api/request-full-report.ts` | Editar — count + decisão + nova response shape | Não |
+| `src/integrations/supabase/queries/report-requests.ts` | Editar — `RequestFullReportResult` ganha `quota_status` + `remaining_free_reports` + `error_code: "QUOTA_REACHED"` | Não |
+| `src/components/product/report-gate-modal.tsx` | Editar — remover pré-check; mapear resposta backend → estado; `renderQuotaLine` usa `remaining` | Não |
+| `src/lib/quota.ts` | Editar — reduzir a `FREE_MONTHLY_LIMIT` + `normalizeEmail`; remover storage helpers; reescrever doc-comment | Não |
 
-**Zero ficheiros locked tocados.**
+Zero ficheiros locked.
 
----
+### Backend — fluxo
 
-### Validação dos guardrails
+```
+upsert lead → count(month, lead_id, is_free_request=true)
+  ├─ used >= 2 → { success:false, error_code:"QUOTA_REACHED", quota_status:"limit_reached", remaining_free_reports:0 }  (HTTP 200, business outcome)
+  └─ used < 2  → insert request → { success:true, quota_status: used===0 ? "first_free" : "last_free", remaining_free_reports: 2 - (used+1) }
+```
 
-| Guardrail | Estado |
+`metadata.quota_mode` passa a `"server_enforced"`. Mês calculado como `date_trunc('month', now())::date` para bater certo com o default da coluna.
+
+### Frontend — mapeamento
+
+```
+result.success && quota_status === "last_free" → state "success-last"
+result.success && quota_status === "first_free" → state "success"
+!result.success && error_code === "QUOTA_REACHED" → state "paywall"
+outro erro → setSubmitError + state "idle"
+```
+
+Novo estado local `quotaInfo` guarda `remaining_free_reports` para alimentar `renderQuotaLine` com valor real do servidor.
+
+### Migração SQL (idempotente)
+
+```sql
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'report_requests_lead_id_fkey'
+  ) THEN
+    ALTER TABLE public.report_requests
+      ADD CONSTRAINT report_requests_lead_id_fkey
+      FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_report_requests_free_quota
+  ON public.report_requests (lead_id, request_month)
+  WHERE is_free_request = true;
+```
+
+Sem nova tabela, sem função SQL, sem alteração de RLS (mantém-se fechada — o server route usa service role).
+
+### Guardrails
+
+| Item | Estado |
 |---|---|
-| Sem nova feature | ✅ (apenas refinamento e correcção) |
+| Sem auth, scraping, email, PDF, IA, pagamentos | ✅ |
 | Sem novas dependências | ✅ |
-| Sem mudanças visuais radicais | ✅ (badge, skeleton e fallback são polish) |
-| pt-PT impessoal | ✅ |
-| Comentários técnicos em inglês | ✅ |
-| Locked files intactos | ✅ |
-| Design tokens preservados | ✅ |
-| Sem auth/pagamentos/email/PDF/scraping novo | ✅ |
-
----
+| RLS fechado mantido; writes só via server route | ✅ |
+| Service role só no server | ✅ |
+| Zero locked files | ✅ |
+| pt-PT impessoal; comentários em inglês | ✅ |
+| localStorage deixa de ser source of truth | ✅ |
 
 ### Checkpoints
 
-- ☐ Header sem duplicação editorial; badge sinaliza "Dados em direto"
-- ☐ Avatar fallback refactorizado para `useState` (sem mutação DOM)
-- ☐ Skeleton volta a ser puramente visual
-- ☐ `analysis-competitor-comparison.tsx` apagado
-- ☐ `mock-analysis.ts` reduzido aos exports realmente usados
-- ☐ `quota.ts` limpo + JSDoc de dívida técnica
-- ☐ `report-gate-modal.tsx` documenta a opção arquitectural client-side
-- ☐ Post scraper recebe `directUrls` (input robusto)
-- ☐ Typecheck continua limpo
+- ☐ Migração com FK + index parcial aplicada
+- ☐ Server route conta free requests por `lead_id + request_month`
+- ☐ Outcomes `first_free` / `last_free` / `limit_reached` implementados
+- ☐ Sem insert quando quota esgotada
+- ☐ `quota.ts` reduzido a constante + `normalizeEmail`
+- ☐ Modal sem pré-check; mapeia resposta backend → estado UI
+- ☐ `renderQuotaLine` usa `remaining_free_reports` do servidor
+- ☐ Sem auth/email/PDF/IA/scraping/pagamentos introduzidos
 
