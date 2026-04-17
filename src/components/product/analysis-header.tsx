@@ -21,9 +21,13 @@ export function AnalysisHeader({ profile }: AnalysisHeaderProps) {
             Análise pública
           </span>
           <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight truncate">
-            @{profile.handle}
+            {profile.displayName}
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-sm text-content-secondary">
+            <span className="font-mono text-content-secondary">@{profile.handle}</span>
+            <span aria-hidden="true" className="text-content-tertiary">
+              ·
+            </span>
             <span>{profile.category}</span>
             <span aria-hidden="true" className="text-content-tertiary">
               ·
