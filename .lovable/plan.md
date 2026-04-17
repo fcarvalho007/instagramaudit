@@ -2,114 +2,144 @@
 
 ## Entendimento
 
-**1. Arquitectura actual da landing**: SPA TanStack Start. Routes em `src/routes/` (`index.tsx`, `design-system.tsx`). Landing = `<HeroSection>` → micro-proof → `<SocialProofSection>` → `<HowItWorksSection>` → `<ProductPreviewSection>` (que envolve `<MockupDashboard>` light, com KPIs, gauge, comparação concorrentes, AI insight, fade+lock no fundo).
+**1. Landing flow**: Hero (action bar com username) → submit → `useNavigate` para `/analyze/$username`. Landing dark editorial, mockup light intercalado.
 
-**2. Promessa InstaBench**: análise pública e imediata de qualquer perfil Instagram em <30s. Freemium: dashboard público sem registo → relatório completo (PDF + IA) com email → planos pagos. Tom editorial, não-técnico, decisão-ready.
+**2. Rota `/analyze/$username`**: dashboard público dark com mock determinístico. Composição: header → métricas → benchmark → comparação concorrentes → `<PremiumLockedSection>` com CTA "Desbloquear relatório completo" (actualmente Button sem onClick).
 
-**3. "Editorial Tech Noir"**: dark-first navy, cyan accent técnico, violet CTA premium, Fraunces display + Inter sans + JetBrains Mono. Linear/Stripe/Attio quality, anti-Hootsuite. Glow controlado, hierarquia editorial.
+**3. Público vs Premium**: público = valor demonstrado (KPIs, benchmark, ranking). Premium = alcance estimado + 3 insights IA + 5 oportunidades + 7 recomendações 30d + PDF por email. O gate vive sobre o relatório completo, não sobre a primeira análise.
 
-**4. Público vs Premium**: público mostra métricas agregadas + benchmark + ranking concorrentes (valor demonstrado). Premium adiciona alcance estimado, insights IA estratégicos, oportunidades, recomendações 30d, PDF detalhado por email. O `MockupDashboard` actual já encena essa divisão com fade+blur+lock label.
+**4. Linguagem pt-PT**: impessoal, Acordo 90, sem "podes/queres/tens", sem pt-BR. Tom premium calmo.
 
 ## Conflitos com LOCKED_FILES.md
 
-- `hero-action-bar.tsx` (LOCKED) — precisa de wiring mínimo: state controlado para o input + `useNavigate` no submit. **Autorizado pela spec** ("Wire the landing action bar... simple client-side routing only"). Sem alterar estilo/UX.
-- `mockup-dashboard.tsx`, `mockup-metric-card.tsx`, `mockup-benchmark-gauge.tsx` (LOCKED) — **NÃO modifico**. Em vez disso, **promovo para componentes reutilizáveis novos** em `src/components/product/` (estratégia "componentes-produto" baseada nos mockups, sem tocar nos originais que continuam a servir a landing).
+- `src/components/ui/dialog.tsx` — **NÃO está locked** (apenas button, badge, card, input, switch). Posso usar livremente.
+- `src/components/ui/checkbox.tsx`, `label.tsx` — não locked. Disponíveis.
+- `src/components/product/premium-locked-section.tsx` — não locked. Vou converter o Button num trigger controlado.
 
-## Estratégia: "promote, don't mutate"
-
-Os componentes locked do `landing/` continuam exclusivos da landing (mockup decorativo). Crio gémeos limpos em `src/components/product/` que podem evoluir para dados reais sem comprometer a landing. Reutilizam tokens, primitives (`Card`, `Badge`, `Button`) e estética.
+**Zero ficheiros locked tocados.**
 
 ## Ficheiros a criar
 
 | Ficheiro | Propósito |
 |---|---|
-| `src/routes/analyze.$username.tsx` | Rota TanStack file-based: `/analyze/$username`. Lê `username` via `Route.useParams()`. Head meta pt-PT. Renderiza `<PublicAnalysisDashboard>`. |
-| `src/lib/mock-analysis.ts` | Função `getMockAnalysis(username)` retorna `AnalysisData` realista e determinística (seed por username): identidade, 4 KPIs, benchmark, 2 concorrentes, premium-locked teasers. |
-| `src/components/product/analysis-header.tsx` | Top: avatar (gradient placeholder), `@handle`, nome, categoria, seguidores formatados, badge `Dados de exemplo`. |
-| `src/components/product/analysis-metric-card.tsx` | KPI dark-tone (variante "produto" do mockup-metric-card, sem `tone` prop — sempre dark editorial). |
-| `src/components/product/analysis-benchmark-block.tsx` | Bloco com gauge horizontal (reaproveita lógica visual do mockup-benchmark-gauge mas dark-themed) + helper text pt-PT + badge posicionamento. |
-| `src/components/product/analysis-competitor-comparison.tsx` | Linhas com nome + barra + valor para perfil + 2 concorrentes; perfil próprio destacado em violet/cyan. |
-| `src/components/product/premium-locked-section.tsx` | 4 cartões teaser (alcance estimado, insights IA, oportunidades, recomendações 30d) com blur + overlay gradient + CTA "Desbloquear relatório completo" + "PDF detalhado por email" microcopy. |
-| `src/components/product/public-analysis-dashboard.tsx` | Composição completa: container, header, secção KPIs, benchmark, comparação, premium veil. Aceita prop `data: AnalysisData`. |
+| `src/components/product/report-gate-modal.tsx` | Modal controlado: estado `idle`/`submitting`/`success`. Form com Nome, Email, Empresa, RGPD. Validação local + confirmação. Aceita `open`, `onOpenChange`, `username` props. |
+| `src/components/product/report-gate-form.tsx` | (interno) Subcomponente do form para isolar lógica de validação e estado. Opcional — pode viver dentro do modal se ficar conciso. Decisão: **inline no modal** para evitar fragmentação. |
+
+**Apenas 1 ficheiro novo.**
 
 ## Ficheiros a modificar
 
 | Ficheiro | Mudança |
 |---|---|
-| `src/components/landing/hero-action-bar.tsx` (LOCKED — autorizado) | (a) `useState` para input value; (b) `useNavigate` do TanStack; (c) `onSubmit`: trim + valida não-vazio → strip `@`/URL → `navigate({ to: "/analyze/$username", params: { username } })`; (d) erro inline pt-PT se vazio. Zero alterações de estilo. |
+| `src/components/product/premium-locked-section.tsx` | Adicionar `useState` para `gateOpen`. Passar `onClick` ao Button. Renderizar `<ReportGateModal open={gateOpen} onOpenChange={setGateOpen} username={...}>`. Aceitar nova prop opcional `username?: string` para passar ao modal (contexto). |
+| `src/components/product/public-analysis-dashboard.tsx` | Passar `username={profile.handle}` ao `<PremiumLockedSection>`. |
 
-## Estrutura de mock data
+## Estrutura do modal
+
+```
+<Dialog>
+  <DialogContent (dark editorial: bg-surface-secondary border-border-default rounded-2xl, max-w-md md:max-w-lg)>
+    
+    [State: form]
+    ─ Header
+      · Eyebrow mono "Relatório completo"
+      · Title Fraunces "Receber relatório completo por email"
+      · Description sans (tom calmo, o que está incluído)
+    
+    ─ Value reinforcement (4 micro-rows com check icon)
+      · PDF detalhado por email
+      · Comparação com concorrentes
+      · Insights estratégicos por IA
+      · Recomendações prioritárias para 30 dias
+    
+    ─ Form
+      · Nome [Input]                  → required, min 2 chars
+      · Email [Input type=email]      → required, regex válido
+      · Empresa (opcional) [Input]    → optional
+      · [Checkbox] + label RGPD       → required
+      · Erros inline pt-PT por campo
+    
+    ─ Footer
+      · Button primary "Receber relatório completo" (full-width md)
+      · DialogClose secundário "Cancelar" (ghost)
+    
+    [State: submitting]
+    · Mesmo layout, button com Loader2 spinner + "A preparar relatório…"
+    · Inputs disabled
+    
+    [State: success]
+    · Ícone CheckCircle2 grande em violet-luminous com glow
+    · Title "Pedido recebido"
+    · Texto: "O relatório de @{handle} será enviado para {email} nos próximos minutos."
+    · Microcopy reassurance: "Verificar a caixa de entrada e a pasta de spam."
+    · Button "Continuar" (fecha modal)
+</Dialog>
+```
+
+Transição form → submitting → success: setTimeout 900ms a simular processamento (lightweight, transmite valor sem ser fake API).
+
+## Validação (local, sem libs)
 
 ```ts
-export interface AnalysisData {
-  profile: { handle, displayName, category, followers, avatarSeed };
-  metrics: { engagement, postsAnalyzed, weeklyFrequency, dominantFormat };
-  benchmark: { value, reference, max, position: "above"|"on"|"below", helperText };
-  competitors: Array<{ handle, engagement, isSelf }>;
-  premiumTeasers: { estimatedReach, aiInsightsCount, opportunitiesCount, recommendations30d };
-}
-```
-Determinístico por hash do username → mesmo input devolve mesmo output (UX consistente em refresh).
-
-## Layout do dashboard `/analyze/$username`
-
-```
-[App shell — header/footer existentes]
-  [Container size="lg" — padding vertical generoso]
-    ┌─ AnalysisHeader ──────────────────┐
-    │ avatar · @handle · cat · followers │ [badge: Dados de exemplo]
-    └────────────────────────────────────┘
-    
-    Análise pública                     ← section label
-    
-    [grid 4 KPIs — AnalysisMetricCard × 4]
-    
-    [AnalysisBenchmarkBlock — gauge + helper]
-    
-    [AnalysisCompetitorComparison]
-    
-    ─── divisor hairline + label "Conteúdo premium" ───
-    
-    [PremiumLockedSection — 4 teaser cards blur + CTA central]
+nome: trim().length >= 2 → "Indicar o nome para personalizar o relatório"
+email: regex /^[^\s@]+@[^\s@]+\.[^\s@]+$/ → "Inserir um email válido"
+empresa: opcional, sem regra
+rgpd: must be true → "É necessário aceitar a política de privacidade para continuar"
 ```
 
-Mobile 375px: KPIs em grid 2-col, comparação stack, premium cards 1-col.
+Validação on-blur por campo + on-submit global. Mensagens calmas, impessoais.
 
-## Visual direction (operacional, não decorativo)
+## Visual direction (Editorial Tech Noir)
 
-- Surface: dark `surface-base` (não light como o mockup landing — landing = "preview", produto = "ecrã real")
-- KPIs: `surface-secondary` cards, valor em Fraunces `text-3xl`, label mono uppercase `text-content-tertiary`
-- Benchmark gauge: cyan fill (assinatura técnica), benchmark marker dashed, badge violet/success
-- Comparação: barra perfil próprio em violet→cyan gradient, concorrentes em `border-default`
-- Premium veil: `backdrop-blur-md` sobre cards, overlay `bg-surface-base/70`, lock icon, CTA button `variant="primary"` (violet)
-- Sem aurora, sem decoração de landing — apenas hairlines + labels mono + spacing generoso
+- Surface: `bg-surface-secondary` com `border-border-default`, `rounded-2xl`, sombra `shadow-elevated`
+- Overlay: manter o `bg-black/80` actual + adicionar `backdrop-blur-sm` via override className
+- Eyebrow mono uppercase tracking, title Fraunces medium, body Inter
+- Inputs: `Input` primitive existente (já dark-aware via tokens)
+- Checkbox: `Checkbox` primitive existente, label com Fraunces italic-free
+- Value rows: ícone Check em `text-accent-luminous` (cyan = valor entregue) num círculo `bg-accent-primary/10 border-accent-primary/20`
+- Success: ícone `CheckCircle2` grande em `text-accent-violet-luminous` (violet = premium concluído), com `shadow-glow-violet`
+- Sem glow excessivo, sem decoração desnecessária
+
+## Acessibilidade
+
+- `Dialog` Radix já fornece focus-trap, ESC, aria
+- `aria-invalid` + `aria-describedby` em campos com erro
+- `aria-live="polite"` na success state para anunciar a transição
+- Focus visível em todos os inputs (token `--ring`)
+- Mobile 375px: stack vertical, button full-width, padding `p-6`
 
 ## Copy pt-PT (impessoal)
 
-- "Análise pública"
-- "Dados de exemplo"
-- "Posicionamento face ao benchmark"
-- "Comparação com concorrentes"
-- "Conteúdo disponível no relatório completo"
-- "Desbloquear relatório completo"
-- "PDF detalhado enviado por email"
-- "Três insights estratégicos por IA"
-- Erro vazio: "Inserir um username válido para continuar"
+- Eyebrow: "Relatório completo"
+- Title: "Receber relatório completo por email"
+- Description: "Inclui comparação com concorrentes, benchmark e leitura estratégica por IA."
+- Labels: "Nome", "Email", "Empresa (opcional)"
+- Placeholder nome: "Nome próprio"
+- Placeholder email: "email@dominio.pt"
+- Placeholder empresa: "Nome da empresa ou marca"
+- RGPD: "Aceito receber o relatório por email e a política de privacidade."
+- Submit: "Receber relatório completo"
+- Submitting: "A preparar relatório…"
+- Cancel: "Cancelar"
+- Success title: "Pedido recebido"
+- Success body: "O relatório de @{handle} será enviado para {email} nos próximos minutos."
+- Success microcopy: "Verificar a caixa de entrada e a pasta de spam."
+- Continue: "Continuar"
+
+## Future-ready
+
+- `ReportGateModal` recebe handler optional `onSubmit?: (data: GateFormData) => Promise<void>` — default mock setTimeout. Substituível por Supabase mutation depois.
+- `GateFormData` interface exportada (Nome, Email, Empresa, RGPD timestamp).
+- Sem singletons, sem state global — fácil migrar para `useMutation` da TanStack Query.
 
 ## Confirmação
 
-✅ Mock-data only. Zero Supabase/Apify/Claude/Resend/EuPago/Stripe.
-✅ Zero novas dependências. Apenas TanStack Router (já instalado), shadcn primitives existentes, lucide-react.
-✅ Tokens-only (sem hardcoded colors/spacing/radii).
-✅ pt-PT impessoal. Sem placeholders.
-✅ Mobile-first 375px validado no plano (grids responsivos).
-✅ Landing visualmente intacta (apenas wiring funcional na action bar).
-✅ Locked file `hero-action-bar.tsx` autorizado pela spec; restantes locked files NÃO tocados — em vez disso promovo para `src/components/product/`.
-✅ Arquitectura future-ready: `getMockAnalysis()` substituível por `loader` async com fetch real; componentes recebem `data` como prop, sem fetch interno.
-
-## Desvios face à spec
-
-1. **"Promote existing dashboard pieces into reusable components"** — interpreto como criar gémeos limpos em `src/components/product/` (não mutar os locked landing mockups). Os landing mockups continuam a servir a landing como "preview decorativo"; os product components vivem a sua vida e podem evoluir para dados reais. Alternativa seria desbloquear os ficheiros e refactorizar in-place — mais invasivo, com risco de partir a landing. Se preferires refactor in-place, ajusto.
-2. **Avatar do perfil** — sem fetch real do IG, uso gradient determinístico (hash username → matiz). Não tento simular foto.
-3. **Rota TanStack file-based**: ficheiro `analyze.$username.tsx` (dot-syntax). O routeTree.gen.ts auto-regenera; não toco nele.
+✅ UI + local flow only. Zero Supabase/Resend/Apify/Claude/EuPago.
+✅ Zero quotas.
+✅ Zero novas dependências (Radix Dialog/Checkbox/Label já existentes; Input/Button/Badge primitives já em uso).
+✅ Tokens-only.
+✅ pt-PT impessoal.
+✅ Apenas 1 ficheiro novo + 2 ficheiros não-locked modificados.
+✅ Mobile 375px validado.
+✅ Future-ready (handler opcional, interface exportada).
 
