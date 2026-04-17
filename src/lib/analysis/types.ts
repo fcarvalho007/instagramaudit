@@ -60,6 +60,15 @@ export type CompetitorAnalysis =
 
 export interface PublicAnalysisSuccess {
   success: true;
+  /**
+   * UUID of the persisted `analysis_snapshots` row that backs this response.
+   * The frontend echoes this id back when the user requests a full report so
+   * the request can be linked to the exact data shown on screen — making
+   * future PDF generation deterministic and reproducible regardless of cache
+   * rotation. Optional for backward compatibility with snapshots persisted
+   * before this field was introduced.
+   */
+  analysis_snapshot_id?: string;
   profile: PublicAnalysisProfile;
   content_summary: PublicAnalysisContentSummary;
   competitors: CompetitorAnalysis[];
