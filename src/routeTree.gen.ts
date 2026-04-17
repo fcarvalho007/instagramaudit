@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiSendReportEmailRouteImport } from './routes/api/send-report-email'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
 import { Route as ApiGenerateReportPdfRouteImport } from './routes/api/generate-report-pdf'
 import { Route as ApiAnalyzePublicV1RouteImport } from './routes/api/analyze-public-v1'
@@ -24,6 +25,11 @@ const DesignSystemRoute = DesignSystemRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSendReportEmailRoute = ApiSendReportEmailRouteImport.update({
+  id: '/api/send-report-email',
+  path: '/api/send-report-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRequestFullReportRoute = ApiRequestFullReportRouteImport.update({
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
+  '/api/send-report-email': typeof ApiSendReportEmailRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
+  '/api/send-report-email': typeof ApiSendReportEmailRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
+  '/api/send-report-email': typeof ApiSendReportEmailRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
+    | '/api/send-report-email'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
+    | '/api/send-report-email'
   id:
     | '__root__'
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
+    | '/api/send-report-email'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
   ApiGenerateReportPdfRoute: typeof ApiGenerateReportPdfRoute
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
+  ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -122,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/send-report-email': {
+      id: '/api/send-report-email'
+      path: '/api/send-report-email'
+      fullPath: '/api/send-report-email'
+      preLoaderRoute: typeof ApiSendReportEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/request-full-report': {
@@ -162,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,
   ApiGenerateReportPdfRoute: ApiGenerateReportPdfRoute,
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
+  ApiSendReportEmailRoute: ApiSendReportEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
