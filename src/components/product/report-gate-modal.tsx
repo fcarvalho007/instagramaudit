@@ -134,7 +134,7 @@ export function ReportGateModal({
       } else {
         // Persist to Lovable Cloud + minimum delay for premium UX feel
         const minDelay = new Promise((resolve) => setTimeout(resolve, 600));
-        const insert = supabase.from("report_requests").insert({
+        const insert = insertReportRequest({
           username: username ?? "unknown",
           name: data.nome,
           email: data.email,
