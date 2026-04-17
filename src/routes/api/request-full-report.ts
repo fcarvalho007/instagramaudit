@@ -299,6 +299,12 @@ export const Route = createFileRoute("/api/request-full-report")({
         const remaining = Math.max(0, FREE_MONTHLY_LIMIT - (used + 1));
         const quota_status: "first_free" | "last_free" = used === 0 ? "first_free" : "last_free";
 
+        // 6) Kick off the automated pipeline (PDF → email) in the background.
+        // The client receives the success response immediately; the orchestrator
+        // updates `request_status` as it progresses.
+        const origin = new URL(request.url).origin;
+        runInBackground(runReportPipeline(reqRow.id, origin));
+
         return json(
           {
             success: true,
