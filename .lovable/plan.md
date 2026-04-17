@@ -1,117 +1,139 @@
 
 
-## Auditoria — estado actual vs Workspace + Project Knowledge
+## Entendimento
 
-Revisão focada na preocupação central: **evitar hardcoded para que tudo viva na cloud e sobreviva a updates da app**.
+**1. Fluxo landing → analyze → gate**: hero (`/`) → `/analyze/$username[?vs=h1,h2]` → `<PublicAnalysisDashboard>` (header + métricas + benchmark cloud + concorrentes + premium gate) → `<ReportGateModal>` (form: nome/email/empresa) → `POST /api/request-full-report` (quota 100% server-side: upsert lead, conta `report_requests` do mês, decide `first_free | last_free | limit_reached`, insere row).
 
-### O que já está bem alinhado
+**2. Análise pública + snapshots persistidos**: `POST /api/analyze-public-v1` calcula `cache_key = v1:primary|sorted-competitors`, faz `lookupSnapshot()`. Se fresh (< 24h) → devolve do snapshot. Caso contrário → scrape Apify, normaliza, faz `storeSnapshot()` (upsert por `cache_key`), devolve. Stale-on-error 7d. Cada snapshot tem `id uuid` único, mas **esse id nunca é exposto na response** — `PublicAnalysisSuccess` traz `profile + content_summary + competitors + status + benchmark_positioning`, sem `snapshot_id`.
 
-- Secrets todas em Supabase (`APIFY_TOKEN`, `LOVABLE_API_KEY`, service role) — nenhum token no código.
-- `localStorage` apenas em `client.ts` (auto-gerado, sessão Supabase) — quota deixou de viver no browser.
-- Provider Apify isolado em server routes (`/api/analyze-public-v1`, `/api/request-full-report`) com `supabaseAdmin`.
-- RLS fechado em `leads`, `report_requests`, `analysis_snapshots` — escritas só via service role. Os 3 INFO do linter são intencionais.
-- Snapshots persistidos com cache de 24h + stale-on-error 7d.
-- Design tokens em `tokens.css`, sem cores/spacing hardcoded nos componentes.
+**3. Fluxo de report request actual**: `<PremiumLockedSection>` mostra CTA → abre `<ReportGateModal>` → submit envia `{ email, name, company?, instagram_username, competitor_usernames[], request_source }` → backend persiste em `report_requests` com `metadata: { quota_mode, flow_version, route }`. **Não há referência ao snapshot que estava no ecrã.** Quem ver o `report_requests` no futuro tem o username mas não sabe quais foram exactamente os números/posts/concorrentes mostrados ao utilizador.
 
-### Achados — o que ainda está hardcoded ou disperso
+**4. Porquê linkar agora cada request ao snapshot exacto**: hoje há *drift* potencial entre o que o utilizador viu e o que o sistema tem em cache. Cenário: utilizador analisa @nike às 14h00 (snapshot A com 12.3M followers), TTL expira às 14h+24h, scrape novo às 14h05 do dia seguinte gera snapshot B com 12.4M e métricas diferentes; se o request do utilizador foi gravado no dia 1 sem `snapshot_id` e o PDF for gerado mais tarde, o PDF vai conter dados do snapshot B, não os que motivaram a conversão. Linkar `report_requests.analysis_snapshot_id` → `analysis_snapshots.id` torna o snapshot **imutável e reproducible** para esse pedido específico, mesmo que a cache rode entretanto.
 
-**ALTA — duplicação `FREE_MONTHLY_LIMIT = 2`**
-Existe em `src/lib/quota.ts` **e** `src/routes/api/request-full-report.ts:23` (constantes duplicadas). Pior: a mensagem `"limite de 2 relatórios gratuitos"` em `request-full-report.ts:189` tem o número escrito à mão. Se mudar o limite (ex: promoção de 3 free), tem de tocar em 3 sítios e arriscar inconsistência. Solução: backend importa de `quota.ts` + interpola na mensagem.
-
-**ALTA — benchmark dataset hardcoded em código**
-`src/lib/benchmark/reference-data.ts` define `ENGAGEMENT_REFERENCE` (15 valores nano/micro/mid/macro/mega × Reels/Carrosséis/Imagens) directamente no bundle. Cada ajuste editorial (que vai acontecer — comentário no ficheiro confirma *"Refinable in later prompts"*) força um deploy. Mover para tabela `benchmark_references` na cloud permite afinar valores sem rebuild.
-
-**ALTA — tier thresholds hardcoded**
-`src/lib/benchmark/tiers.ts` cola os limites (10K, 50K, 250K, 1M) no código. Mesmo problema: ajustar tiers obriga a deploy. Devem viver junto do dataset, na mesma tabela ou tabela companheira.
-
-**MÉDIA — `BENCHMARK_DATASET_VERSION = "v1.0-2025-04"`**
-String estática em código. Se o dataset migrar para a DB, esta versão deve vir da row consultada (cada update bumps version automaticamente).
-
-**MÉDIA — copy do gate "limite de 2 relatórios"**
-Em `request-full-report.ts:189` o `2` está hardcoded na string. Trocar por interpolação `${FREE_MONTHLY_LIMIT}`.
-
-**BAIXA — actores Apify por nome no código**
-`PROFILE_ACTOR = "apify/instagram-profile-scraper"` etc. em `analyze-public-v1.ts`. Aceitável manter no código (raramente muda, parte do contracto técnico), **não** mover para DB. Mencionar no plano só para dispensar.
-
-**BAIXA — `POSTS_LIMIT = 12` e `MAX_COMPETITORS = 2`**
-Constantes de produto. Aceitável no código por enquanto — só vale a pena mover se virem a tornar-se planos pagos (ex: Pro analisa 30 posts). Nada a fazer agora.
-
-### Não-problemas (confirmados após verificação)
-
-- `client.ts` usa `localStorage` para sessão Supabase — auto-gerado, não tocar.
-- Copy hardcoded em pt-PT nos componentes de UI — está correcto (não é dado, é apresentação).
-- Ano `© 2026` no footer — está correcto para 2026.
+**5. Porquê antes do PDF**: o gerador de PDF terá de ser puro: `(snapshot_id) → PDF binary`. Sem o link, o gerador teria de re-procurar por `cache_key` (não estável no tempo) ou re-fazer scrape (custo + drift). Com o link, o PDF é determinístico, auditável e reproducível anos depois. Email/admin tooling assentam na mesma cadeia (`request → snapshot`). Implementar isto antes evita refactorizar o `request_full_report` outra vez quando o PDF chegar.
 
 ---
 
-## Refinamentos propostos (single feature: **centralizar configuração crítica na cloud**)
+## Discrepâncias e decisões
 
-### Migração — nova tabela `benchmark_references`
+**Fonte canónica do `snapshot_id` no frontend**: o backend devolve no payload da análise (`PublicAnalysisSuccess.analysis_snapshot_id: string`). Frontend mantém em `Route` state (já existe `state.data` no `analyze.$username.tsx`); modal recebe via prop como já recebe `instagram_username` + `competitor_usernames`. Sem context global novo.
 
-```sql
-CREATE TABLE public.benchmark_references (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tier text NOT NULL,                    -- 'nano' | 'micro' | 'mid' | 'macro' | 'mega'
-  format text NOT NULL,                  -- 'Reels' | 'Carrosséis' | 'Imagens'
-  engagement_pct numeric(5,2) NOT NULL,  -- e.g. 5.60
-  tier_min_followers bigint NOT NULL,
-  tier_max_followers bigint,             -- NULL = +∞
-  tier_label text NOT NULL,              -- 'Nano (até 10K)'
-  dataset_version text NOT NULL,         -- 'v1.0-2025-04'
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (tier, format, dataset_version)
-);
+**Validação no backend**: pragmática — verificar que o snapshot existe e que o `instagram_username` da row bate certo (case-insensitive) com o submetido. Não validar concorrentes contra o snapshot porque o utilizador pode ter chegado ao gate vindo de uma análise sem `?vs=` mas o request inclui mesmo assim os mesmos handles — não é blocking. Suficiente para garantir auditoria.
 
-CREATE INDEX idx_benchmark_active ON benchmark_references (is_active, dataset_version);
-ALTER TABLE benchmark_references ENABLE ROW LEVEL SECURITY;
--- Server-only (service role) for writes; reads also via server route to keep contract stable.
-```
+**FK `ON DELETE SET NULL`** em vez de `CASCADE`: se um snapshot for limpo (futura cron de garbage collection), preferimos manter o `report_requests` com `snapshot_id = null` em vez de apagar evidência da conversão. O lead/email mantêm-se válidos para outras finalidades.
 
-Seed inicial = valores actuais de `reference-data.ts` + thresholds de `tiers.ts`. Idempotente.
+**`analysis_snapshot_id` nullable**: rows antigos não têm o link. Rows novos terão, mas backend tolera ausência (devolve erro estruturado, não 500). Modal mostra mensagem calma se faltar.
 
-### Ficheiros tocados
+**Legacy modal sem snapshot_id**: zero rows hoje têm o campo (acabou de ser introduzido). Não há legacy real — o nullable é só por defesa de FK + futura limpeza de snapshots.
+
+**Status do report_requests via `metadata`?** Não. Adicionar coluna dedicada é mais limpo e indexável; `metadata` permanece para flags futuras menores.
+
+---
+
+## Ficheiros tocados
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `supabase/migrations/{ts}_benchmark_references.sql` | **Criar** — tabela + seed inicial + RLS | Não |
-| `src/lib/benchmark/reference-data.ts` | Editar — passa a `loadBenchmarkReferences()` async, busca da DB com cache em memória do server runtime; mantém shape compatível | Não |
-| `src/lib/benchmark/tiers.ts` | Editar — `getTierForFollowers()` + `TIER_LABELS` derivam da mesma carga | Não |
-| `src/lib/benchmark/engine.ts` | Editar — `computeBenchmarkPositioning()` recebe referências como argumento (injecção, não import directo) | Não |
-| `src/routes/api/analyze-public-v1.ts` | Editar — chama loader uma vez, passa ao engine, importa `FREE_MONTHLY_LIMIT` de `quota.ts` se necessário | Não |
-| `src/routes/api/request-full-report.ts` | Editar — importa `FREE_MONTHLY_LIMIT` de `@/lib/quota`, interpola na mensagem (`${FREE_MONTHLY_LIMIT} relatórios`) | Não |
+| `supabase/migrations/{ts}_link_request_to_snapshot.sql` | **Criar** — `ALTER TABLE report_requests ADD COLUMN analysis_snapshot_id uuid REFERENCES analysis_snapshots(id) ON DELETE SET NULL` + index parcial | Não |
+| `src/lib/analysis/types.ts` | Editar — `PublicAnalysisSuccess.analysis_snapshot_id: string` (obrigatório nas novas responses) | Não |
+| `src/lib/analysis/cache.ts` | Editar — `lookupSnapshot()` e `storeSnapshot()` devolvem `id` (já podem, é só garantir que está no select/insert returning) | Não |
+| `src/routes/api/analyze-public-v1.ts` | Editar — embeber `analysis_snapshot_id` no `PublicAnalysisSuccess` (cache hit, fresh, stale) | Não |
+| `src/routes/api/request-full-report.ts` | Editar — Zod aceita `analysis_snapshot_id?: string().uuid()`; valida existência + match de username; persiste no insert | Não |
+| `src/components/product/public-analysis-dashboard.tsx` | Editar — passa `data.analysis_snapshot_id` para `<PremiumLockedSection>` ou directamente para o modal | Não |
+| `src/components/product/premium-locked-section.tsx` | Editar — recebe `analysisSnapshotId` via prop, passa ao modal | Não |
+| `src/components/product/report-gate-modal.tsx` | Editar — recebe `analysisSnapshotId` via prop, inclui no payload do submit; mostra erro calmo se backend rejeitar por snapshot inválido | Não |
 
-**Zero ficheiros locked tocados.**
+**Nenhum ficheiro locked tocado.** A confirmar contra `mem://constraints/locked-files` antes de editar.
 
-### Estratégia de carregamento (cost-conscious)
+---
 
-- `loadBenchmarkReferences()` lê a tabela uma vez por request lifecycle do server route.
-- Cache simples em módulo (`let cached: { data, ts } | null`) com TTL de 10 min — evita que cada análise seja +1 query SQL ao Postgres.
-- Se a query falhar, fallback para snapshot de constantes em código (fail-safe), com `console.warn`. Garante que a app nunca quebra por causa do refinamento.
+## Schema da migração
 
-### Guardrails
+```sql
+ALTER TABLE public.report_requests
+  ADD COLUMN analysis_snapshot_id uuid
+  REFERENCES public.analysis_snapshots(id) ON DELETE SET NULL;
 
-| Item | Estado |
+-- Partial index — only meaningful for rows that have the link
+CREATE INDEX idx_report_requests_snapshot
+  ON public.report_requests (analysis_snapshot_id)
+  WHERE analysis_snapshot_id IS NOT NULL;
+```
+
+Idempotente via `IF NOT EXISTS` nos comandos.
+
+---
+
+## Backend — fluxo do request
+
+```
+1. validate Zod payload (now includes optional analysis_snapshot_id uuid)
+2. if analysis_snapshot_id present:
+     SELECT id, instagram_username FROM analysis_snapshots WHERE id = $1
+     if not found → return { error_code: "SNAPSHOT_NOT_FOUND", message: "Não foi possível associar o pedido à análise atual." }
+     if lower(snapshot.instagram_username) !== lower(payload.instagram_username):
+       return { error_code: "SNAPSHOT_MISMATCH", message: "A análise não corresponde ao perfil indicado." }
+3. existing lead upsert + quota count + gate (unchanged)
+4. INSERT report_requests with analysis_snapshot_id (or null)
+5. existing success/last/quota response (unchanged)
+```
+
+Mensagens pt-PT calmas, sem jargão técnico, sem alerts.
+
+---
+
+## Frontend — passagem do id
+
+```
+analyze.$username.tsx
+  └─ data.analysis_snapshot_id (string)
+     └─ <PublicAnalysisDashboard data={data} />
+        └─ <PremiumLockedSection analysisSnapshotId={data.analysis_snapshot_id} ... />
+           └─ <ReportGateModal analysisSnapshotId={...} ... />
+              └─ submit body inclui analysis_snapshot_id
+```
+
+Se `analysis_snapshot_id` faltar (cenário não esperado pós-deploy), o modal envia `undefined` → backend grava com `null`. Sem hard fail, mas log no servidor para visibilidade.
+
+---
+
+## Erros — copy pt-PT
+
+| Caso | Mensagem |
 |---|---|
-| Sem PDF / email / pagamentos / auth / IA | ✅ |
+| Snapshot não encontrado | "Não foi possível associar o pedido à análise atual. Atualizar a análise e tentar novamente." |
+| Snapshot não bate com username | "A análise não corresponde ao perfil indicado." |
+| Erro genérico de validação (já existe) | "Dados inválidos. Verificar os campos e tentar novamente." |
+
+Apresentadas no modal através do estado `paywall`/erro existente — sem novo estado UI.
+
+---
+
+## Validação dos guardrails
+
+| Guardrail | Estado |
+|---|---|
+| Sem PDF / email / pagamentos / auth / IA / admin | ✅ |
 | Sem novas dependências | ✅ |
 | Provider só server-side | ✅ |
-| Secrets em Supabase | ✅ |
-| RLS fechado | ✅ |
+| Sem reanálise / re-fetch | ✅ |
+| Sem secrets na UI | ✅ |
+| Locked files intactos | ✅ |
 | pt-PT impessoal | ✅ |
 | Comentários em inglês | ✅ |
-| Locked files intactos | ✅ |
-| Mensagem do gate sem número hardcoded | ✅ |
-| Refinar valores de benchmark sem deploy | ✅ |
+| Schema mínimo (1 coluna + 1 FK + 1 index) | ✅ |
+| Future-ready (PDF/email lêem `report_requests.analysis_snapshot_id`) | ✅ |
 
-### Checkpoints
+---
 
-- ☐ Tabela `benchmark_references` criada + RLS + seed inicial idempotente
-- ☐ `reference-data.ts` carrega da DB com cache 10min + fallback em código
-- ☐ `tiers.ts` deriva thresholds e labels da mesma fonte
-- ☐ `engine.ts` recebe referências por injecção
-- ☐ `request-full-report.ts` importa `FREE_MONTHLY_LIMIT` de `quota.ts` e interpola na mensagem
-- ☐ Sem regressões visuais no dashboard (mesmos números, mesmo layout)
-- ☐ Linter Supabase: 3 INFO esperados (RLS no policy é intencional)
+## Checkpoints
+
+- ☐ Migração adiciona `analysis_snapshot_id` + FK `ON DELETE SET NULL` + index parcial
+- ☐ `PublicAnalysisSuccess.analysis_snapshot_id` exposto em todas as paths (cache/fresh/stale)
+- ☐ `cache.ts` devolve `id` no lookup e no store
+- ☐ Frontend propaga `snapshot_id` até ao submit do modal
+- ☐ `/api/request-full-report` valida existência + match de username
+- ☐ Insert em `report_requests` grava `analysis_snapshot_id`
+- ☐ Erros de snapshot inválido com copy pt-PT calma no modal
+- ☐ Sem PDF/email/pagamentos/auth/IA/reanálise introduzidos
 
