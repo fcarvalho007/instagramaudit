@@ -1,12 +1,36 @@
 import { useState } from "react";
 import { ArrowRight, AtSign, Plus } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InstagramGlyph } from "./instagram-glyph";
 
+function extractUsername(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  // Handle URLs like https://instagram.com/handle/ or @handle
+  const urlMatch = trimmed.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+  if (urlMatch) return urlMatch[1];
+  return trimmed.replace(/^@/, "").replace(/\/+$/g, "");
+}
+
 export function HeroActionBar() {
+  const navigate = useNavigate();
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [competitorsOpen, setCompetitorsOpen] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const username = extractUsername(value);
+    if (!username) {
+      setError("Inserir um username válido para continuar");
+      return;
+    }
+    setError(null);
+    navigate({ to: "/analyze/$username", params: { username } });
+  };
 
   return (
     <div className="relative w-full max-w-3xl mx-auto">
