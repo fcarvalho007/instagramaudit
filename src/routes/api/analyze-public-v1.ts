@@ -43,8 +43,9 @@ import type { BenchmarkData } from "@/lib/benchmark/reference-data";
 import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 
-const PROFILE_ACTOR = "apify/instagram-profile-scraper";
-const POST_ACTOR = "apify/instagram-post-scraper";
+// Unified Apify actor — returns profile details with `latestPosts[]` embedded
+// in a single call per handle. Replaces the previous two-actor split.
+const UNIFIED_ACTOR = "apify/instagram-scraper";
 const POSTS_LIMIT = 12;
 const MAX_COMPETITORS = 2;
 
@@ -119,20 +120,24 @@ function competitorFailure(
   };
 }
 
-async function fetchPostsForHandle(
+/**
+ * Single unified call: returns the profile details with `latestPosts[]`
+ * embedded. Replaces the previous two-step (profile then posts) flow.
+ */
+async function fetchProfileWithPosts(
   username: string,
-  followersCount: number,
-) {
-  const postRows = await runActor<Record<string, unknown>>(
-    POST_ACTOR,
+): Promise<Record<string, unknown> | null> {
+  const rows = await runActor<Record<string, unknown>>(
+    UNIFIED_ACTOR,
     {
       directUrls: [`https://www.instagram.com/${username}/`],
+      resultsType: "details",
       resultsLimit: POSTS_LIMIT,
-      resultsType: "posts",
+      addParentData: false,
     },
     { timeoutMs: 60_000, apifyTimeoutSecs: 55 },
   );
-  return computeContentSummary(postRows, followersCount);
+  return rows[0] ?? null;
 }
 
 export const Route = createFileRoute("/api/analyze-public-v1")({
@@ -189,45 +194,67 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           );
         }
 
-        const allHandles = [primary, ...competitors];
-
         try {
-          // 2) Single batched profile call for primary + competitors.
-          const profileRows = await runActor<Record<string, unknown>>(
-            PROFILE_ACTOR,
-            { usernames: allHandles },
-            { timeoutMs: 60_000, apifyTimeoutSecs: 55 },
+          // 2) One unified call per handle, in parallel. Each call returns
+          // the profile details with `latestPosts[]` embedded, so there is
+          // no separate posts fetch and no cross-handle merge step.
+          const primaryRowP = fetchProfileWithPosts(primary);
+          const competitorRowsP = competitors.map((handle) =>
+            fetchProfileWithPosts(handle).catch((err: unknown) => {
+              console.error(
+                "[analyze-public-v1] competitor fetch failed",
+                handle,
+                err,
+              );
+              return err instanceof ApifyUpstreamError && err.status === 404
+                ? ({ __notFound: true } as const)
+                : ({ __failed: true } as const);
+            }),
           );
 
-          // Map normalised rows by lowercased username for lookup.
-          const profilesByHandle = new Map<string, PublicAnalysisProfile>();
-          for (const row of profileRows) {
-            const np = normalizeProfile(row);
-            if (np) profilesByHandle.set(np.username.toLowerCase(), np);
-          }
-
-          const primaryProfile = profilesByHandle.get(primary.toLowerCase());
+          const primaryRow = await primaryRowP;
+          const primaryProfile = primaryRow ? normalizeProfile(primaryRow) : null;
           if (!primaryProfile) {
             return failure("PROFILE_NOT_FOUND");
           }
 
-          // 3) Posts in parallel — primary + each competitor that resolved.
-          const primaryPostsP = fetchPostsForHandle(
-            primaryProfile.username,
+          const primaryPosts = Array.isArray(
+            (primaryRow as { latestPosts?: unknown }).latestPosts,
+          )
+            ? ((primaryRow as { latestPosts: unknown[] }).latestPosts as Record<
+                string,
+                unknown
+              >[])
+            : [];
+          const primarySummary = computeContentSummary(
+            primaryPosts,
             primaryProfile.followers_count,
-          ).catch((err) => {
-            console.error("[analyze-public-v1] primary posts failed", err);
-            return computeContentSummary([], primaryProfile.followers_count);
-          });
+          );
 
-          const competitorTasks = competitors.map(async (handle) => {
-            const profile = profilesByHandle.get(handle.toLowerCase());
-            if (!profile) {
-              return competitorFailure(handle, "PROFILE_NOT_FOUND");
-            }
-            try {
-              const summary = await fetchPostsForHandle(
-                profile.username,
+          const competitorRows = await Promise.all(competitorRowsP);
+          const competitorResults: CompetitorAnalysis[] = competitorRows.map(
+            (row, idx) => {
+              const handle = competitors[idx];
+              if (row && "__notFound" in row) {
+                return competitorFailure(handle, "PROFILE_NOT_FOUND");
+              }
+              if (!row || "__failed" in row) {
+                return competitorFailure(handle, "UPSTREAM_FAILED");
+              }
+              const profile = normalizeProfile(
+                row as Record<string, unknown>,
+              );
+              if (!profile) {
+                return competitorFailure(handle, "PROFILE_NOT_FOUND");
+              }
+              const posts = Array.isArray(
+                (row as { latestPosts?: unknown }).latestPosts,
+              )
+                ? ((row as { latestPosts: unknown[] })
+                    .latestPosts as Record<string, unknown>[])
+                : [];
+              const summary = computeContentSummary(
+                posts,
                 profile.followers_count,
               );
               return {
@@ -235,24 +262,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 profile,
                 content_summary: summary,
               };
-            } catch (postErr) {
-              console.error(
-                "[analyze-public-v1] competitor posts failed",
-                handle,
-                postErr,
-              );
-              const code =
-                postErr instanceof ApifyUpstreamError && postErr.status === 404
-                  ? "PROFILE_NOT_FOUND"
-                  : "POSTS_UNAVAILABLE";
-              return competitorFailure(handle, code);
-            }
-          });
+            },
+          );
 
-          const [primarySummary, competitorResults] = await Promise.all([
-            primaryPostsP,
-            Promise.all(competitorTasks),
-          ]);
 
           // 4) Persist snapshot (best-effort). The status field is intentionally
           // excluded — it's recomputed per response based on freshness.
