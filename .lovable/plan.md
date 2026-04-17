@@ -1,109 +1,119 @@
 
 
-## Entendimento
+## Plano — Sprint 1, Prompt 1.10: Página de relatório completa em modo claro
 
-**1. Landing → analyze → gate**: hero (`/`) → `/analyze/$username` → `<PublicAnalysisDashboard>` → `<ReportGateModal>` (form) → `POST /api/request-full-report`.
+### Entendimento
 
-**2. Análise pública + snapshots**: `/api/analyze-public-v1` cacheia 24h em `analysis_snapshots` (com `id` reutilizável e `expires_at`).
+**Auditoria atual:**
+- Header e Footer **já usam tokens semânticos** (`bg-surface-base`, `bg-surface-secondary`, `text-content-*`, `border-border-*`). Zero valores hardcoded — basta o switch de tokens fazer flip automático.
+- Recharts **já instalado** (`^2.15.4`), sem nova dependência.
+- App-shell é simples (Header + main + Footer) — não precisa de alteração estrutural. O `ReportThemeWrapper` faz o trabalho via `data-theme="light"` no `<body>`.
+- Tokens em `tokens.css` definem `:root` — basta adicionar override `[data-theme="light"]` num ficheiro novo. O `@theme inline` resolve as variáveis em runtime, então o flip é automático.
 
-**3. Quota livre**: `request-full-report` conta `report_requests` por `lead_id + request_month + is_free_request=true`. Limite = 2 (`FREE_MONTHLY_LIMIT`). Quando atingido, devolve `error_code='QUOTA_REACHED'` → modal entra em estado `paywall` com 2 cards (3€ pontual + Pro 10€/mês), **ambos disabled** ("Disponível em breve"). Sem card Agency hoje.
+**Sistema visual dual confirmado:** landing fica dark (sem `data-theme`); `/report/example` aplica `data-theme="light"` via wrapper, restaurado no unmount. Isolamento total por route.
 
-**4. Lifecycle do pedido**: insert `report_requests` com `request_status='pending'` → orchestrator transita `pending → processing → completed | failed_pdf | failed_email`.
+### Decisões-chave
 
-**5. Pipeline automático**: `runReportPipeline` chama `/api/generate-report-pdf` (idempotente, atualiza `pdf_status`) → `/api/send-report-email` (auth `INTERNAL_API_TOKEN`, lock optimista em `delivery_status`). Gravação em bucket `report-pdfs` (privado, signed URL 7d).
+1. **Token override sem tocar em `tokens.css`** — novo ficheiro `tokens-light.css` com seletor `[data-theme="light"]` redefine apenas variáveis de cor (surfaces, accents, signals, text, borders, shadows). Tipografia, espaçamentos, radii mantêm-se.
 
-**6. Porquê pagamento agora**: hoje o paywall é cosmético — utilizador esgota quota e fica preso até ao próximo mês. Não há forma de monetizar nem de validar willingness-to-pay. Sem este passo, o produto não tem receita nem sinal de conversão. Subscrições (Pro/Agency) ficam fora porque exigem auth + customer portal + lifecycle de subscription, o que multiplica o âmbito por 5x. One-time é o MVP correto: testa preço, fluxo de checkout, webhook, e ativa o pipeline existente sem tocar em auth.
+2. **Tokens novos exclusivos do light** — `--tint-*` (backgrounds para circular icon containers Iconosquare-style) e `--accent-tertiary` (cyan). Adicionados ao `@theme inline` em `styles.css` como `--color-tint-*`, `--color-accent-tertiary`, `--color-accent-secondary`. Ficam disponíveis em ambos os modos mas só fazem sentido visual no light.
 
----
+3. **Body noise overlay desativado em light** — adiciono `body[data-theme="light"]::before { display: none; }` em `tokens-light.css`. A textura de ruído ficaria visualmente ruidosa no light.
 
-## 🛑 BLOQUEIO — REGRA CRITICAL PROVIDER RULE ACIONADA
+4. **Header/Footer audit** — confirmado que estão limpos. Não precisam de edição. Removo da lista de ficheiros tocados (poupa risco em locked files). Apenas se a verificação revelar algo durante implementação, alinho via tokens.
 
-A regra do prompt diz: *"If the official EuPago API contract... is not sufficiently available in the current project context, do NOT improvise undocumented integration details."*
+5. **Mock data realista mas determinístico** — séries temporais e heatmap geradas com padrões reconhecíveis (picos quartas/sextas, weekend tarde) em vez de aleatório. Resultado consistente entre renders.
 
-**Auditoria do contexto atual:**
+6. **Recharts custom tooltip** — componente partilhado `report-chart-tooltip.tsx` reutilizado entre temporal-chart e best-days. Card branco, border subtle, valores mono.
 
-| Recurso EuPago | Estado |
+7. **Heatmap sem Recharts** — grid CSS simples (7×24 divs), mais leve e mais fiel ao Iconosquare. Color scale via classes condicionais.
+
+8. **Word cloud do top-keywords** — opto pelo formato lista com barras horizontais (consistente com hashtags ao lado, cleaner que cloud tipográfico). Mantém ritmo da página.
+
+9. **Tier badge "PERFIL" na linha do próprio perfil** em competitors — substitui possíveis confusões.
+
+### Ficheiros a criar (16 novos)
+
+| Ficheiro | Propósito |
 |---|---|
-| Documentação API no projeto | ❌ Inexistente |
-| Secret `EUPAGO_API_KEY` ou similar | ❌ Não está em `fetch_secrets` |
-| Conta EuPago do utilizador | ❌ Não confirmada (sandbox vs produção) |
-| Endpoint base (sandbox/prod) | ❌ Desconhecido |
-| Schema do payload de criação de link hosted | ❌ Desconhecido |
-| Schema do webhook + método de validação de assinatura | ❌ **Crítico — sem isto qualquer um pode forjar pagamentos** |
-| Identifier de transação devolvido | ❌ Desconhecido |
-| Métodos de pagamento ativos na conta (MB Way, cartão, Multibanco) | ❌ Desconhecidos |
-| Política de retorno (return_url, success/cancel) | ❌ Desconhecida |
+| `src/styles/tokens-light.css` | Override de tokens em `[data-theme="light"]` |
+| `src/components/report/report-theme-wrapper.tsx` | Mount/unmount `data-theme="light"` no body |
+| `src/components/report/report-mock-data.ts` | Dataset único e consistente |
+| `src/components/report/report-page.tsx` | Orquestrador — empilha 12 secções |
+| `src/components/report/report-section.tsx` | Wrapper label + título + subtítulo + slot |
+| `src/components/report/report-header.tsx` | Top bar perfil + ações |
+| `src/components/report/report-kpi-card.tsx` | Atomic card Iconosquare-style |
+| `src/components/report/report-key-metrics.tsx` | Grid 4 KPI cards |
+| `src/components/report/report-temporal-chart.tsx` | AreaChart 3 séries 30 dias (centrepiece) |
+| `src/components/report/report-chart-tooltip.tsx` | Tooltip partilhado para Recharts |
+| `src/components/report/report-benchmark-gauge.tsx` | Gauge horizontal vs benchmark |
+| `src/components/report/report-format-breakdown.tsx` | 3 cards (Reels/Carousels/Imagens) |
+| `src/components/report/report-competitors.tsx` | Tabela 3 linhas com barras |
+| `src/components/report/report-top-posts.tsx` | Grid 5 cards com thumbnails gradient |
+| `src/components/report/report-posting-heatmap.tsx` | Grid 7×24 + 3 best slots |
+| `src/components/report/report-best-days.tsx` | BarChart Recharts |
+| `src/components/report/report-hashtags-keywords.tsx` | 2 colunas lado a lado |
+| `src/components/report/report-ai-insights.tsx` | Card grande com 3 insights numerados |
+| `src/components/report/report-footer.tsx` | Linha de fecho |
+| `src/routes/report.example.tsx` | Route file-based + meta noindex |
 
-**EuPago tem múltiplas APIs distintas** (REST 3.0, SOAP legacy, Pay-by-Link, Direct API por método). Não é possível decidir qual sem confirmação.
+### Ficheiros editados
 
-**Risco de improviso**: implementar com payload inventado → 4xx em produção, ou pior, webhook sem validação de assinatura → forjar pagamentos pagos sem nunca pagar. Inaceitável.
+| Ficheiro | Edição | Locked? |
+|---|---|---|
+| `src/styles.css` | `@import "./styles/tokens-light.css";` + adicionar `--color-tint-*`, `--color-accent-secondary`, `--color-accent-tertiary`, `--color-shadow-card` ao `@theme inline` | ⚠️ Secção `@theme inline` está locked — adicionar novos tokens é extensão, não alteração. **Pedido permissão explícita abaixo.** |
+| `LOCKED_FILES.md` + `mem://constraints/locked-files` | Adicionar nova secção "Report Components (Sprint 1, Prompt 1.10)" com os 19 novos ficheiros | Não |
 
----
+### Locked files — impacto
 
-## Detalhes técnicos EuPago em falta (mínimo para prosseguir)
+- **`src/styles.css`**: precisa de **2 novas linhas no topo** (import) + **adições à `@theme inline`** (novos tokens, sem mexer nos existentes). Pedido sancionado pelo prompt apenas para Header/Footer/AppShell, **não para `styles.css`**. Solução proposta: limitar edição estritamente a (a) adicionar uma linha de import depois do `tokens.css` import, (b) acrescentar 8-10 novas variáveis no fim do bloco `@theme inline`. Sem rescrever nada existente.
+- **`src/components/layout/header.tsx`** e **`footer.tsx`**: auditoria mostra que **já estão 100% baseados em tokens semânticos** — não precisam de edição. Reporto isto no checklist final em vez de fazer edição cosmética.
+- **`src/components/layout/app-shell.tsx`**: idem, sem alteração necessária.
 
-Antes de qualquer código, preciso de **resposta concreta** a:
+### Schema / dependências
 
-1. **Conta EuPago**: existe? sandbox ativada? qual o `clientId` / `username` da conta? (não preciso do valor, preciso de saber que existe)
-2. **Produto contratado**: "Pay-by-Link" / "API REST 3.0" / "Multibanco direto" / "MB Way direto"? Documentação relevante: link público da EuPago doc para o produto escolhido.
-3. **Credenciais a guardar como secrets** (nomes esperados):
-   - `EUPAGO_API_KEY` (ou `EUPAGO_CLIENT_SECRET`)
-   - `EUPAGO_CLIENT_ID`
-   - `EUPAGO_ENVIRONMENT` = `sandbox` | `production`
-   - `EUPAGO_WEBHOOK_SECRET` (chave HMAC para validar webhook — **sem isto não há integração segura**)
-4. **Endpoint base**: `https://sandbox.eupago.pt/...` vs `https://clientes.eupago.pt/...` — confirmar.
-5. **Webhook**: EuPago suporta HMAC signature? IP whitelist? Query token? **Como é validado server-side?**
-6. **Payload de criação de link**: campos obrigatórios (`valor`, `id`, `chave`, `descricao`, `email`, etc.) e formato exato da resposta (onde vem `checkout_url` e `referencia`).
-7. **Identificador de correlação**: que campo é devolvido no webhook que permite ligar de volta ao `payment_session.id`? (geralmente `identifier` ou `referencia` enviado no create — confirmar).
+- Sem alterações DB
+- Sem novas npm dependencies
 
----
+### Validação dos guardrails
 
-## O que faria SE os bloqueios fossem resolvidos
+| Guardrail | Estado |
+|---|---|
+| Locked files intactos exceto extensão controlada de `styles.css` | ⚠️ pedir confirmação |
+| Header/Footer audit confirmado limpos | ✅ |
+| Recharts já instalado | ✅ |
+| Theme isolation via mount/unmount | ✅ |
+| Landing dark intacta | ✅ |
+| Copy pt-PT pós-1990, impessoal | ✅ |
+| Sem placeholders, sem lorem | ✅ |
+| Mock data único e consistente | ✅ |
+| Mobile responsive (375px+) | ✅ |
+| `noindex, nofollow` na meta | ✅ |
 
-Para o utilizador validar o âmbito, esboço do plano que executaria depois (não implemento agora):
+### Checkpoints
 
-**Schema (1 migração):**
-- `payment_status text not null default 'not_required'` + `paid_at timestamptz` em `report_requests`
-- Tabela `payment_sessions` (campos como propostos no prompt)
-- `is_free_request=false` para requests pagos; nova quota gate aceita `payment_status='paid'` como bypass
+- ☐ `tokens-light.css` criado com override completo + noise disable
+- ☐ `styles.css` extendido com import + novos tokens (tints, accent-secondary/tertiary, shadow-card) — **requer confirmação**
+- ☐ `ReportThemeWrapper` aplica/remove `data-theme` no body
+- ☐ Header/Footer **verificados sem edição** (já em tokens semânticos)
+- ☐ Mock data centralizado em `report-mock-data.ts`
+- ☐ Route `/report/example` com meta noindex
+- ☐ 12 secções renderizadas em ordem (header, key metrics, temporal, benchmark, formats, competitors, top posts, heatmap, best days, hashtags+keywords, AI insights, footer)
+- ☐ Temporal chart com 3 séries suaves + área + tooltip custom + chips toggle
+- ☐ Heatmap 7×24 com 5 níveis de azul + 3 best slots
+- ☐ Best days BarChart com bar líder destacada
+- ☐ Cards: bg-surface-secondary, border subtle, rounded-xl, shadow-card
+- ☐ Mobile: cards stack 1-col, charts responsive
+- ☐ Landing (`/`) confirma intacta em dark
+- ☐ `LOCKED_FILES.md` + `mem://constraints/locked-files` atualizados
 
-**Backend:**
-- `POST /api/create-paid-report-checkout` — valida snapshot, upsert lead, insere `report_requests` com `request_status='awaiting_payment'`, cria `payment_session`, chama EuPago, devolve `checkout_url`
-- `POST /api/eupago-webhook` — valida assinatura, resolve `payment_session` por `provider_reference`, marca `paid`, atualiza `report_requests`, chama `runReportPipeline` em background
-- `runReportPipeline` aceita request com `request_status='awaiting_payment'` apenas se `payment_status='paid'`
+### Pergunta bloqueante antes de implementar
 
-**Frontend:**
-- 3 cards no paywall (Extra 3€ ativo, Pro 10€/mês "Em breve", Agency 39€/mês "Em breve")
-- Pro destacado como "Recomendado" (já está hoje)
-- Click no Extra → POST checkout → redirect para `checkout_url`
-- Nova route `/pagamento/confirmacao` com mensagem calma "Pagamento em confirmação"
+`src/styles.css` está em `LOCKED_FILES.md` e o prompt **não concede permissão explícita** para o editar (só Header, Footer, AppShell). Mas a integração do tokens-light **exige**:
+1. Uma linha `@import "./styles/tokens-light.css";` (sem isto o ficheiro de tokens não é carregado)
+2. Adicionar `--color-tint-*`, `--color-accent-secondary`, `--color-accent-tertiary`, `--color-shadow-card` ao `@theme inline` (sem isto as classes `bg-tint-primary`, `bg-accent-tertiary` etc. não existem em Tailwind)
 
-**Ficheiros a tocar (todos não-locked):**
-- `supabase/migrations/{ts}_payment_sessions.sql` (criar)
-- `src/lib/payments/eupago-client.server.ts` (criar)
-- `src/routes/api/create-paid-report-checkout.ts` (criar)
-- `src/routes/api/eupago-webhook.ts` (criar)
-- `src/routes/pagamento.confirmacao.tsx` (criar)
-- `src/components/product/report-gate-modal.tsx` (editar — adicionar 3º card + ativar CTA)
-- `src/lib/orchestration/run-report-pipeline.ts` (editar — gate `payment_status`)
+**Sem permissão para editar `styles.css`, esta tarefa não pode ser executada como especificada.** Alternativa puramente cosmética seria escrever todas as cores via `style={{ background: 'rgb(var(--tint-primary))' }}` inline — mas isto viola a regra "nunca hardcode colors fora do token system" e fica inconsistente com o resto do projeto.
 
-**Locked files**: nenhum impactado.
-
----
-
-## Próximos passos propostos
-
-**Não avanço sem responder ao seguinte:**
-
-1. Confirmar se há conta EuPago e qual produto (Pay-by-Link recomendado para hosted flow).
-2. Partilhar **link da documentação oficial EuPago** do produto escolhido.
-3. Confirmar que o secret de webhook (HMAC) existe e estará disponível via `add_secret`.
-4. Decidir: **Agency** entra como 3º card "Em breve" ou só implementamos 2 cards (Extra ativo + Pro "Em breve")? O modal hoje tem 2 cards — adicionar Agency é trivial mas o prompt pede explicitamente os 3.
-
-**Alternativa pragmática se EuPago não estiver pronto**: usar Stripe via integração nativa Lovable (`enable_stripe_payments`) — Merchant of Record, zero gestão de credenciais, suporta MB Way em PT, hosted checkout out-of-the-box. Mantém-se future-ready para trocar por EuPago quando a conta estiver pronta.
-
-Sem estas respostas, qualquer código escrito agora fica:
-- inseguro (webhook sem validação)
-- não-testável (sem credenciais sandbox)
-- provavelmente errado (payload improvisado)
+**Pedido**: confirmar permissão para edição cirúrgica de `src/styles.css` (apenas adicionar import + novos tokens, sem alterar existentes), OU autorizar o uso de inline styles com CSS vars como fallback.
 
