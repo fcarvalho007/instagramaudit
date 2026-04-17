@@ -2,7 +2,13 @@
  * Deterministic mock analysis data generator.
  * Same username → same output (consistent UX across refreshes).
  * Future: replace with real Apify+Supabase fetch in route loader.
+ *
+ * Benchmark positioning is computed by the real benchmark engine
+ * (src/lib/benchmark/) — only the upstream profile metrics remain mocked.
  */
+
+import { computeBenchmarkPositioning } from "./benchmark/engine";
+import type { BenchmarkPositioning } from "./benchmark/types";
 
 export interface AnalysisProfile {
   handle: string;
