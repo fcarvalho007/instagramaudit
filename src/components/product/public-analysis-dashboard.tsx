@@ -1,32 +1,60 @@
 import { Container } from "@/components/layout/container";
-import {
-  formatPercent,
-  type AnalysisData,
-} from "@/lib/mock-analysis";
+import { computeBenchmarkPositioning } from "@/lib/benchmark/engine";
+import type { PublicAnalysisSuccess } from "@/lib/analysis/types";
+import { formatPercent } from "@/lib/mock-analysis";
 
 import { AnalysisBenchmarkBlock } from "./analysis-benchmark-block";
-import { AnalysisCompetitorComparison } from "./analysis-competitor-comparison";
 import { AnalysisHeader } from "./analysis-header";
 import { AnalysisMetricCard } from "./analysis-metric-card";
 import { PremiumLockedSection } from "./premium-locked-section";
 
 interface PublicAnalysisDashboardProps {
-  data: AnalysisData;
+  data: PublicAnalysisSuccess;
+}
+
+// Stable, non-personalised premium teasers — the gate must look credible
+// without leaking made-up numbers per profile until the real engine ships.
+const PREMIUM_TEASERS = {
+  estimatedReach: "12K – 38K",
+  aiInsightsCount: 3,
+  opportunitiesCount: 5,
+  recommendations30d: 7,
+};
+
+function formatPostsPerWeek(value: number): string {
+  return value.toFixed(1).replace(".", ",");
 }
 
 export function PublicAnalysisDashboard({
   data,
 }: PublicAnalysisDashboardProps) {
-  const { profile, metrics, benchmarkPositioning, competitors, premiumTeasers } = data;
+  const { profile, content_summary } = data;
+
+  const positioning = computeBenchmarkPositioning({
+    followers: profile.followers_count,
+    engagement: content_summary.average_engagement_rate,
+    dominantFormat: content_summary.dominant_format,
+  });
+
   const benchmarkReference =
-    benchmarkPositioning.status === "available"
-      ? benchmarkPositioning.benchmarkValue
-      : metrics.engagement;
+    positioning.status === "available"
+      ? positioning.benchmarkValue
+      : content_summary.average_engagement_rate;
+
+  const engagementDelta =
+    content_summary.average_engagement_rate - benchmarkReference;
 
   return (
     <div className="bg-surface-base">
       <Container size="lg" as="section" className="py-10 md:py-16 space-y-12 md:space-y-16">
-        <AnalysisHeader profile={profile} />
+        <AnalysisHeader
+          username={profile.username}
+          displayName={profile.display_name}
+          followers={profile.followers_count}
+          avatarUrl={profile.avatar_url}
+          isVerified={profile.is_verified}
+          bio={profile.bio}
+        />
 
         <section aria-labelledby="metrics-heading" className="space-y-5">
           <header className="flex items-baseline justify-between gap-4">
@@ -37,43 +65,65 @@ export function PublicAnalysisDashboard({
               Métricas-chave
             </h2>
             <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
-              Últimos 30 dias
+              {`${content_summary.posts_analyzed} publicações analisadas`}
             </span>
           </header>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <AnalysisMetricCard
               label="Envolvimento médio"
-              value={formatPercent(metrics.engagement)}
+              value={formatPercent(content_summary.average_engagement_rate)}
               hint={
-                metrics.engagement > benchmarkReference
-                  ? `+${formatPercent(metrics.engagement - benchmarkReference)} vs benchmark`
-                  : `${formatPercent(metrics.engagement - benchmarkReference)} vs benchmark`
+                positioning.status === "available"
+                  ? engagementDelta >= 0
+                    ? `+${formatPercent(engagementDelta)} vs benchmark`
+                    : `${formatPercent(engagementDelta)} vs benchmark`
+                  : "benchmark indisponível"
               }
               emphasis
             />
             <AnalysisMetricCard
               label="Publicações analisadas"
-              value={String(metrics.postsAnalyzed)}
-              hint="janela de 30 dias"
+              value={String(content_summary.posts_analyzed)}
+              hint="amostra recente"
             />
             <AnalysisMetricCard
               label="Frequência semanal"
-              value={metrics.weeklyFrequency.toString().replace(".", ",")}
+              value={formatPostsPerWeek(content_summary.estimated_posts_per_week)}
               hint="publicações por semana"
             />
             <AnalysisMetricCard
               label="Formato dominante"
-              value={metrics.dominantFormat}
-              hint={`${metrics.dominantFormatShare}% do conteúdo`}
+              value={content_summary.dominant_format}
+              hint={`média de ${content_summary.average_likes.toLocaleString("pt-PT")} gostos`}
             />
           </div>
         </section>
 
-        <AnalysisBenchmarkBlock positioning={benchmarkPositioning} />
+        <AnalysisBenchmarkBlock positioning={positioning} />
 
-        <AnalysisCompetitorComparison competitors={competitors} />
+        {/* Competitor comparison — placeholder until competitor scraping ships. */}
+        <section
+          aria-labelledby="competitors-heading"
+          className="rounded-xl border border-border-subtle bg-surface-secondary p-5 md:p-6 space-y-3"
+        >
+          <header className="flex flex-col gap-1">
+            <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
+              Em breve
+            </span>
+            <h2
+              id="competitors-heading"
+              className="font-display text-lg font-medium text-content-primary tracking-tight"
+            >
+              Comparação com concorrentes
+            </h2>
+          </header>
+          <p className="font-sans text-sm text-content-secondary leading-relaxed">
+            Comparação direta com até dois concorrentes disponível em breve.
+            Permitirá contextualizar o envolvimento face a perfis equivalentes.
+          </p>
+        </section>
 
-        <PremiumLockedSection teasers={premiumTeasers} username={profile.handle} />
+        <PremiumLockedSection teasers={PREMIUM_TEASERS} username={profile.username} />
       </Container>
     </div>
   );
