@@ -8,8 +8,25 @@ const metrics = [
 
 export function SocialProofSection() {
   return (
-    <section className="relative border-y border-border-subtle/10 bg-surface-secondary/40">
-      <Container size="lg" className="py-12 md:py-16">
+    <section className="relative overflow-hidden bg-surface-secondary/40">
+      {/* Top luminous divider */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-violet/30 to-transparent"
+      />
+
+      {/* Subtle HUD micro-grid background */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgb(255 255 255 / 0.6) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / 0.6) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+        }}
+      />
+
+      <Container size="lg" className="relative py-12 md:py-16">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-10 md:gap-12">
           {/* Left: editorial micro-statement */}
           <div className="flex-1">
@@ -27,8 +44,14 @@ export function SocialProofSection() {
           <div className="grid grid-cols-3 gap-6 md:gap-12 w-full md:w-auto">
             {metrics.map((metric) => (
               <div key={metric.label} className="text-left">
-                <div className="font-display text-3xl md:text-4xl text-content-primary font-medium tracking-tight mb-1 leading-none">
-                  {metric.value}
+                <div className="relative inline-block mb-2">
+                  <div className="font-display text-3xl md:text-4xl text-content-primary font-medium tracking-tight leading-none">
+                    {metric.value}
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -bottom-1.5 left-0 h-[2px] w-8 bg-accent-violet/60 rounded-full"
+                  />
                 </div>
                 <div className="font-mono text-[0.65rem] md:text-xs uppercase tracking-wide text-content-tertiary leading-snug">
                   {metric.label}
@@ -38,6 +61,12 @@ export function SocialProofSection() {
           </div>
         </div>
       </Container>
+
+      {/* Bottom hairline */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 h-px bg-border-default"
+      />
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { Lock, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -20,7 +20,7 @@ export function MockupDashboard() {
     <Card
       variant="glass"
       padding="none"
-      className="overflow-hidden border-border-strong shadow-xl"
+      className="overflow-hidden border-slate-700/60 shadow-[0_25px_50px_-12px_rgb(0_0_0_/_0.5)]"
     >
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-surface-secondary/40 px-4 py-3 md:px-6 md:py-4">
@@ -33,15 +33,21 @@ export function MockupDashboard() {
             <span className="font-display text-base md:text-lg font-medium text-content-primary truncate">
               @example_brand
             </span>
-            <span className="font-mono text-[0.625rem] md:text-xs text-content-tertiary truncate">
+            <span className="font-mono text-[0.625rem] md:text-xs uppercase tracking-[0.12em] text-content-tertiary truncate">
               Análise · 30 posts · 14 Abr 2026
             </span>
           </div>
         </div>
-        <Badge variant="success" size="sm" dot pulse className="shrink-0">
-          <span className="hidden sm:inline">Relatório completo</span>
-          <span className="sm:hidden">Completo</span>
-        </Badge>
+        <div className="flex items-center gap-2 shrink-0 rounded-full border border-accent-violet/30 bg-accent-violet/10 px-2.5 py-1">
+          <span
+            aria-hidden="true"
+            className="h-1.5 w-1.5 rounded-full bg-accent-violet-luminous animate-pulse"
+          />
+          <span className="font-mono text-[0.625rem] md:text-xs uppercase tracking-wide text-accent-violet-luminous">
+            <span className="hidden sm:inline">Relatório completo</span>
+            <span className="sm:hidden">Completo</span>
+          </span>
+        </div>
       </div>
 
       {/* Body — progressive blur reveal */}

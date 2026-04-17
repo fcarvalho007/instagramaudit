@@ -44,7 +44,7 @@ function Home() {
   return (
     <>
       <HeroSection />
-      <section className="border-y border-border-subtle bg-surface-secondary/30 py-6">
+      <section className="bg-gradient-to-b from-surface-base to-surface-secondary/60 border-b border-border-default py-6">
         <Container size="lg">
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             {microProofPoints.map((point) => (
