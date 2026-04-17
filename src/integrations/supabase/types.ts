@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_snapshots: {
+        Row: {
+          analysis_status: string
+          cache_key: string
+          competitor_usernames: Json
+          created_at: string
+          expires_at: string
+          id: string
+          instagram_username: string
+          normalized_payload: Json
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          analysis_status?: string
+          cache_key: string
+          competitor_usernames?: Json
+          created_at?: string
+          expires_at: string
+          id?: string
+          instagram_username: string
+          normalized_payload: Json
+          provider?: string
+          updated_at?: string
+        }
+        Update: {
+          analysis_status?: string
+          cache_key?: string
+          competitor_usernames?: Json
+          created_at?: string
+          expires_at?: string
+          id?: string
+          instagram_username?: string
+          normalized_payload?: Json
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           company: string | null
