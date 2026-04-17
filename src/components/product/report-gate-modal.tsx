@@ -14,19 +14,11 @@ import { Input, InputHelper, InputLabel } from "@/components/ui/input";
 
 import { cn } from "@/lib/utils";
 /**
- * ⚠️ Quota enforcement is intentionally client-side (localStorage) for now.
- * See src/lib/quota.ts for the full caveat. Server-side enforcement (auth +
- * per-email monthly counter) is tracked as known technical debt and will land
- * in a dedicated future prompt. Until then the gate is a UX nudge, not a
- * security boundary, and the backend `/api/request-full-report` route accepts
- * every well-formed submission.
+ * Quota is now enforced server-side by `/api/request-full-report`. The modal
+ * no longer pre-checks usage — it submits and maps the server's `quota_status`
+ * verdict (`first_free` / `last_free` / `limit_reached`) onto UI state.
  */
-import {
-  FREE_MONTHLY_LIMIT,
-  getQuotaUsage,
-  incrementQuota,
-  normalizeEmail,
-} from "@/lib/quota";
+import { FREE_MONTHLY_LIMIT, normalizeEmail } from "@/lib/quota";
 import { requestFullReport } from "@/integrations/supabase/queries/report-requests";
 
 export interface GateFormData {
@@ -88,6 +80,9 @@ export function ReportGateModal({
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Server-reported remaining free reports for the current month (post-insert).
+  // Drives the quota line copy without trusting any client storage.
+  const [remainingFree, setRemainingFree] = useState<number | null>(null);
 
   const resetForm = () => {
     setState("idle");
@@ -98,6 +93,7 @@ export function ReportGateModal({
     setErrors({});
     setTouched({});
     setSubmitError(null);
+    setRemainingFree(null);
   };
 
   // Synchronous reset on close — avoids flash on rapid reopen
@@ -121,13 +117,6 @@ export function ReportGateModal({
 
     const normalizedEmail = normalizeEmail(email);
 
-    // Quota check BEFORE any backend mutation — avoids capturing leads we cannot serve.
-    const currentUsage = getQuotaUsage(normalizedEmail);
-    if (currentUsage >= FREE_MONTHLY_LIMIT) {
-      setState("paywall");
-      return;
-    }
-
     setState("submitting");
     setSubmitError(null);
     const data: GateFormData = {
@@ -138,27 +127,39 @@ export function ReportGateModal({
     };
 
     try {
+      // When a parent provides `onSubmit`, defer entirely to it (used in tests
+      // / storybook / alternative flows). The server-enforced quota only
+      // applies to the default backend path.
       if (onSubmit) {
         await onSubmit(data);
-      } else {
-        // Persist via server route (service-role admin client behind RLS).
-        // Quota counting still lives in localStorage — server-side quota will
-        // land with auth + rate limiting in a later prompt.
-        const result = await requestFullReport({
-          email: data.email,
-          name: data.nome,
-          company: data.empresa,
-          instagram_username: username ?? "",
-          competitor_usernames: [],
-          request_source: "public_dashboard",
-        });
-        if (!result.success) {
-          throw new Error(result.message);
-        }
+        setState("success");
+        return;
       }
 
-      const newCount = incrementQuota(normalizedEmail);
-      setState(newCount >= FREE_MONTHLY_LIMIT ? "success-last" : "success");
+      const result = await requestFullReport({
+        email: data.email,
+        name: data.nome,
+        company: data.empresa,
+        instagram_username: username ?? "",
+        competitor_usernames: [],
+        request_source: "public_dashboard",
+      });
+
+      // Map server-decided quota outcome → modal state.
+      if (result.success) {
+        setRemainingFree(result.remaining_free_reports);
+        setState(result.quota_status === "last_free" ? "success-last" : "success");
+        return;
+      }
+
+      if (result.error_code === "QUOTA_REACHED") {
+        setRemainingFree(0);
+        setState("paywall");
+        return;
+      }
+
+      setSubmitError(result.message);
+      setState("idle");
     } catch (err) {
       console.error("Report request submission failed", err);
       const message =

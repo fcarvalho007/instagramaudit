@@ -5,17 +5,22 @@
  * RLS is closed. This server route uses the service-role admin client to:
  *   1. validate + normalize payload
  *   2. upsert lead by `email_normalized`
- *   3. insert a new `report_requests` row
+ *   3. count free `report_requests` for that lead in the current month
+ *   4. decide quota outcome: `first_free` | `last_free` | `limit_reached`
+ *   5. only insert a new `report_requests` row when the quota allows it
  *
- * Quota enforcement still lives in the browser (localStorage) for now —
- * this endpoint trusts the caller's quota check. Server-side quota will be
- * added in a later prompt together with auth + rate limiting.
+ * Quota is now strictly server-enforced (no localStorage trust). Race condition
+ * (two concurrent submits crossing the count gate) is accepted as a residual
+ * risk for the current low-volume / no-auth milestone — a `SELECT ... FOR
+ * UPDATE` or SQL function with row lock can be added later when needed.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+const FREE_MONTHLY_LIMIT = 2;
 
 const PayloadSchema = z.object({
   email: z.string().trim().email().max(255),
@@ -40,8 +45,18 @@ const PayloadSchema = z.object({
 
 type SuccessBody = {
   success: true;
+  quota_status: "first_free" | "last_free";
+  remaining_free_reports: number;
   lead_id: string;
   report_request_id: string;
+  message: string;
+};
+
+type QuotaReachedBody = {
+  success: false;
+  quota_status: "limit_reached";
+  remaining_free_reports: 0;
+  error_code: "QUOTA_REACHED";
   message: string;
 };
 
@@ -51,11 +66,21 @@ type FailureBody = {
   message: string;
 };
 
-const json = (body: SuccessBody | FailureBody, status: number) =>
+const json = (body: SuccessBody | QuotaReachedBody | FailureBody, status: number) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
   });
+
+/**
+ * Compute the current month's first-day in UTC as `YYYY-MM-01`, matching the
+ * default of `report_requests.request_month` (`date_trunc('month', now())::date`).
+ */
+function currentMonthStartIso(): string {
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  return monthStart.toISOString().slice(0, 10);
+}
 
 export const Route = createFileRoute("/api/request-full-report")({
   server: {
@@ -130,7 +155,45 @@ export const Route = createFileRoute("/api/request-full-report")({
           );
         }
 
-        // 2) Insert report_request row. DB defaults handle status / month / metadata baseline.
+        // 2) Count current month's free report_requests for this lead.
+        const requestMonth = currentMonthStartIso();
+        const { count, error: countError } = await supabaseAdmin
+          .from("report_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", leadRow.id)
+          .eq("request_month", requestMonth)
+          .eq("is_free_request", true);
+
+        if (countError) {
+          console.error("[request-full-report] quota count failed", countError);
+          return json(
+            {
+              success: false,
+              error_code: "PERSISTENCE_FAILED",
+              message: "Não foi possível verificar a quota. Tentar novamente.",
+            },
+            500,
+          );
+        }
+
+        const used = count ?? 0;
+
+        // 3) Quota gate — block before insert if limit reached.
+        if (used >= FREE_MONTHLY_LIMIT) {
+          return json(
+            {
+              success: false,
+              quota_status: "limit_reached",
+              remaining_free_reports: 0,
+              error_code: "QUOTA_REACHED",
+              message: "Foi atingido o limite de 2 relatórios gratuitos este mês.",
+            },
+            // 200 — business outcome, not a transport-level error
+            200,
+          );
+        }
+
+        // 4) Insert report_request row.
         const { data: reqRow, error: reqError } = await supabaseAdmin
           .from("report_requests")
           .insert({
@@ -139,8 +202,8 @@ export const Route = createFileRoute("/api/request-full-report")({
             competitor_usernames,
             request_source,
             metadata: {
-              quota_mode: "local_mock",
-              flow_version: "v1",
+              quota_mode: "server_enforced",
+              flow_version: "v2",
               route: `/analyze/${instagram_username}`,
             },
           })
@@ -159,12 +222,21 @@ export const Route = createFileRoute("/api/request-full-report")({
           );
         }
 
+        // 5) Successful outcome — derive quota status from pre-insert count.
+        const remaining = Math.max(0, FREE_MONTHLY_LIMIT - (used + 1));
+        const quota_status: "first_free" | "last_free" = used === 0 ? "first_free" : "last_free";
+
         return json(
           {
             success: true,
+            quota_status,
+            remaining_free_reports: remaining,
             lead_id: leadRow.id,
             report_request_id: reqRow.id,
-            message: "Pedido registado com sucesso.",
+            message:
+              quota_status === "first_free"
+                ? "O pedido foi registado com sucesso."
+                : "Foi utilizado o segundo e último relatório gratuito deste mês.",
           },
           200,
         );
