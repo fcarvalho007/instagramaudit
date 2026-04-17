@@ -54,6 +54,28 @@ explicitly asks for a modification in a new prompt.
 ## Landing Micro-components (Sprint 1, Prompt 1.1C)
 - /src/components/landing/instagram-glyph.tsx
 
+## Report Components (Sprint 1, Prompt 1.10)
+- /src/styles/tokens-light.css
+- /src/components/report/report-theme-wrapper.tsx
+- /src/components/report/report-mock-data.ts
+- /src/components/report/report-page.tsx
+- /src/components/report/report-section.tsx
+- /src/components/report/report-header.tsx
+- /src/components/report/report-kpi-card.tsx
+- /src/components/report/report-key-metrics.tsx
+- /src/components/report/report-temporal-chart.tsx
+- /src/components/report/report-chart-tooltip.tsx
+- /src/components/report/report-benchmark-gauge.tsx
+- /src/components/report/report-format-breakdown.tsx
+- /src/components/report/report-competitors.tsx
+- /src/components/report/report-top-posts.tsx
+- /src/components/report/report-posting-heatmap.tsx
+- /src/components/report/report-best-days.tsx
+- /src/components/report/report-hashtags-keywords.tsx
+- /src/components/report/report-ai-insights.tsx
+- /src/components/report/report-footer.tsx
+- /src/routes/report.example.tsx
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,

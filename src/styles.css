@@ -17,6 +17,7 @@
 
 /* === Design tokens === */
 @import "./styles/tokens.css";
+@import "./styles/tokens-light.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -40,10 +41,24 @@
   /* === Accent colors === */
   --color-accent-primary: rgb(var(--accent-primary));
   --color-accent-luminous: rgb(var(--accent-luminous));
+  --color-accent-secondary: rgb(var(--accent-secondary, var(--accent-violet)));
+  --color-accent-tertiary: rgb(var(--accent-tertiary, var(--accent-primary)));
   --color-accent-gold: rgb(var(--accent-gold));
   --color-accent-violet: rgb(var(--accent-violet));
   --color-accent-violet-luminous: rgb(var(--accent-violet-luminous));
   --color-accent-violet-deep: rgb(var(--accent-violet-deep));
+
+  /* === Tinted backgrounds (icon containers, light mode) === */
+  --color-tint-primary: rgb(var(--tint-primary, var(--surface-elevated)));
+  --color-tint-success: rgb(var(--tint-success, var(--surface-elevated)));
+  --color-tint-warning: rgb(var(--tint-warning, var(--surface-elevated)));
+  --color-tint-danger: rgb(var(--tint-danger, var(--surface-elevated)));
+  --color-tint-neutral: rgb(var(--tint-neutral, var(--surface-elevated)));
+  --color-tint-indigo: rgb(var(--tint-indigo, var(--surface-elevated)));
+  --color-tint-cyan: rgb(var(--tint-cyan, var(--surface-elevated)));
+
+  /* === Surface (light mode extension) === */
+  --color-surface-muted: rgb(var(--surface-muted, var(--surface-secondary)));
 
   /* === Light surfaces (editorial reveal) === */
   --color-surface-light: rgb(var(--surface-light));
@@ -83,6 +98,7 @@
   --shadow-glow-gold: var(--shadow-glow-gold);
   --shadow-glow-violet: var(--shadow-glow-violet);
   --shadow-stage: var(--shadow-stage);
+  --shadow-card: var(--shadow-card, var(--shadow-md));
 
   /* === Transitions === */
   --ease-out-expo: var(--ease-out-expo);

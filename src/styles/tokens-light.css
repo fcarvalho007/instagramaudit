@@ -1,0 +1,76 @@
+/* === LIGHT THEME OVERRIDE ===
+ * Activated only when [data-theme="light"] is set on <body>.
+ * Used by /report/example to switch from "Editorial Tech Noir" (dark)
+ * to "Clean Analytical" (light, Iconosquare-style).
+ */
+
+[data-theme="light"] {
+  /* === COLORS — Surface === */
+  --surface-base: 250 251 252;       /* #FAFBFC soft warm off-white */
+  --surface-secondary: 255 255 255;  /* #FFFFFF pure white for cards */
+  --surface-elevated: 255 255 255;
+  --surface-overlay: 255 255 255;
+  --surface-muted: 241 243 245;      /* #F1F3F5 subtle tint */
+
+  /* === COLORS — Accent === */
+  --accent-primary: 59 130 246;      /* #3B82F6 confident blue */
+  --accent-luminous: 96 165 250;     /* #60A5FA */
+  --accent-secondary: 99 102 241;    /* #6366F1 indigo */
+  --accent-tertiary: 6 182 212;      /* #06B6D4 cyan */
+  --accent-gold: 245 158 11;         /* #F59E0B amber */
+  --accent-violet: 99 102 241;
+  --accent-violet-luminous: 129 140 248;
+  --accent-violet-deep: 79 70 229;
+
+  /* === COLORS — Semantic === */
+  --signal-success: 16 185 129;
+  --signal-warning: 245 158 11;
+  --signal-danger: 239 68 68;
+  --signal-neutral: 100 116 139;
+
+  /* === COLORS — Tinted backgrounds for icon containers === */
+  --tint-primary: 219 234 254;       /* blue-50 */
+  --tint-success: 209 250 229;       /* emerald-50 */
+  --tint-warning: 254 243 199;       /* amber-50 */
+  --tint-danger: 254 226 226;        /* red-50 */
+  --tint-neutral: 241 245 249;       /* slate-50 */
+  --tint-indigo: 224 231 255;        /* indigo-50 */
+  --tint-cyan: 207 250 254;          /* cyan-50 */
+
+  /* === COLORS — Text === */
+  --text-primary: 15 23 42;          /* #0F172A */
+  --text-secondary: 71 85 105;       /* #475569 */
+  --text-tertiary: 148 163 184;      /* #94A3B8 */
+  --text-inverse: 250 251 252;
+
+  /* === COLORS — Border === */
+  --border-subtle: 15 23 42;
+  --border-default: 15 23 42;
+  --border-strong: 15 23 42;
+
+  /* === SHADOWS — much softer in light mode === */
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.04);
+  --shadow-md: 0 1px 3px rgb(15 23 42 / 0.04),
+               0 1px 2px rgb(15 23 42 / 0.02);
+  --shadow-lg: 0 4px 6px rgb(15 23 42 / 0.05),
+               0 2px 4px rgb(15 23 42 / 0.03);
+  --shadow-xl: 0 10px 20px rgb(15 23 42 / 0.06),
+               0 4px 8px rgb(15 23 42 / 0.04);
+  --shadow-card: 0 1px 3px rgb(15 23 42 / 0.06),
+                 0 1px 2px rgb(15 23 42 / 0.03);
+  --shadow-glow-cyan: none;
+  --shadow-glow-gold: none;
+  --shadow-glow-violet: none;
+  --shadow-stage: 0 10px 30px -10px rgb(15 23 42 / 0.08);
+}
+
+/* Disable cinematic noise overlay in light mode — would feel grainy */
+body[data-theme="light"]::before {
+  display: none !important;
+}
+
+/* Lighter selection in light mode */
+body[data-theme="light"] ::selection {
+  background-color: rgb(59 130 246 / 0.18);
+  color: rgb(15 23 42);
+}

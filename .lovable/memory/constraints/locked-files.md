@@ -36,3 +36,8 @@ Locked files:
 - /src/components/landing/handwritten-note.tsx (since Sprint 1, Prompt 1.1B)
 - /src/components/landing/scroll-indicator.tsx (since Sprint 1, Prompt 1.1B)
 - /src/components/landing/instagram-glyph.tsx (since Sprint 1, Prompt 1.1C)
+
+Report Components (Sprint 1, Prompt 1.10):
+- /src/styles/tokens-light.css
+- /src/components/report/* (all 14 report components + theme wrapper + mock data)
+- /src/routes/report.example.tsx
