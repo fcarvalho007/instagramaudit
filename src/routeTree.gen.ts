@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
+import { Route as ApiGenerateReportPdfRouteImport } from './routes/api/generate-report-pdf'
 import { Route as ApiAnalyzePublicV1RouteImport } from './routes/api/analyze-public-v1'
 import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
 
@@ -30,6 +31,11 @@ const ApiRequestFullReportRoute = ApiRequestFullReportRouteImport.update({
   path: '/api/request-full-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGenerateReportPdfRoute = ApiGenerateReportPdfRouteImport.update({
+  id: '/api/generate-report-pdf',
+  path: '/api/generate-report-pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAnalyzePublicV1Route = ApiAnalyzePublicV1RouteImport.update({
   id: '/api/analyze-public-v1',
   path: '/api/analyze-public-v1',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
+  '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
+  '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRoutesById {
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
+  '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRouteTypes {
@@ -70,6 +79,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
+    | '/api/generate-report-pdf'
     | '/api/request-full-report'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -77,6 +87,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
+    | '/api/generate-report-pdf'
     | '/api/request-full-report'
   id:
     | '__root__'
@@ -84,6 +95,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
+    | '/api/generate-report-pdf'
     | '/api/request-full-report'
   fileRoutesById: FileRoutesById
 }
@@ -92,6 +104,7 @@ export interface RootRouteChildren {
   DesignSystemRoute: typeof DesignSystemRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
   ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
+  ApiGenerateReportPdfRoute: typeof ApiGenerateReportPdfRoute
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
 }
 
@@ -118,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRequestFullReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/generate-report-pdf': {
+      id: '/api/generate-report-pdf'
+      path: '/api/generate-report-pdf'
+      fullPath: '/api/generate-report-pdf'
+      preLoaderRoute: typeof ApiGenerateReportPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/analyze-public-v1': {
       id: '/api/analyze-public-v1'
       path: '/api/analyze-public-v1'
@@ -140,17 +160,9 @@ const rootRouteChildren: RootRouteChildren = {
   DesignSystemRoute: DesignSystemRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
   ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,
+  ApiGenerateReportPdfRoute: ApiGenerateReportPdfRoute,
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
