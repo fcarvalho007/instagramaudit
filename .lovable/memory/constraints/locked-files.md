@@ -41,3 +41,8 @@ Report Components (Sprint 1, Prompt 1.10):
 - /src/styles/tokens-light.css
 - /src/components/report/* (all 14 report components + theme wrapper + mock data)
 - /src/routes/report.example.tsx
+
+Legal / Compliance (Sprint 1, Legal MVP):
+- /src/components/legal/legal-layout.tsx
+- /src/routes/privacidade.tsx
+- /src/routes/termos.tsx
