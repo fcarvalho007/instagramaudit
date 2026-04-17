@@ -17,7 +17,7 @@ interface PublicAnalysisDashboardProps {
 export function PublicAnalysisDashboard({
   data,
 }: PublicAnalysisDashboardProps) {
-  const { profile, metrics, benchmark, competitors, premiumTeasers } = data;
+  const { profile, metrics, benchmark, benchmarkPositioning, competitors, premiumTeasers } = data;
 
   return (
     <div className="bg-surface-base">
