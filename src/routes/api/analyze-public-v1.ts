@@ -271,6 +271,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             >,
           });
 
+          // Compute benchmark positioning server-side using the cloud
+          // dataset, so the dashboard renders the same numbers regardless
+          // of where it runs (browser, future PDF, future email).
+          const benchmarkPositioning: BenchmarkPositioning =
+            computeBenchmarkPositioning(
+              {
+                followers: primaryProfile.followers_count,
+                engagement: primarySummary.average_engagement_rate,
+                dominantFormat: primarySummary.dominant_format,
+              },
+              benchmarkData,
+            );
+
           const response: PublicAnalysisSuccess = {
             success: true,
             ...normalizedPayload,
@@ -279,6 +292,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               data_source: "fresh",
               analyzed_at: new Date().toISOString(),
             },
+            benchmark_positioning: benchmarkPositioning,
           };
           return jsonResponse(response, 200);
         } catch (err) {
@@ -289,7 +303,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "[analyze-public-v1] serving stale snapshot after provider failure",
               cacheKey,
             );
-            return jsonResponse(buildCachedResponse(existing, "stale"), 200);
+            return jsonResponse(
+              buildCachedResponse(existing, "stale", benchmarkData),
+              200,
+            );
           }
 
           if (err instanceof ApifyConfigError) {
@@ -321,12 +338,24 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 function buildCachedResponse(
   snapshot: SnapshotRow,
   source: "cache" | "stale",
+  benchmarkData: import("@/lib/benchmark/reference-data").BenchmarkData,
 ): PublicAnalysisSuccess {
   const payload = snapshot.normalized_payload as unknown as {
     profile: PublicAnalysisProfile;
     content_summary: PublicAnalysisSuccess["content_summary"];
     competitors: CompetitorAnalysis[];
   };
+  // Recompute positioning against the current cloud dataset, not the version
+  // captured when the snapshot was stored — editorial tweaks should reflect
+  // immediately on cached responses.
+  const benchmark_positioning = computeBenchmarkPositioning(
+    {
+      followers: payload.profile.followers_count,
+      engagement: payload.content_summary.average_engagement_rate,
+      dominantFormat: payload.content_summary.dominant_format,
+    },
+    benchmarkData,
+  );
   return {
     success: true,
     profile: payload.profile,
@@ -337,5 +366,6 @@ function buildCachedResponse(
       data_source: source,
       analyzed_at: snapshot.updated_at,
     },
+    benchmark_positioning,
   };
 }
