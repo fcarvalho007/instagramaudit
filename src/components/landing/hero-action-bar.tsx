@@ -11,8 +11,8 @@ export function HeroActionBar() {
   return (
     <div className="relative w-full max-w-3xl mx-auto">
       {/* Micro-label above the bar */}
-      <div className="mb-3 flex items-center justify-center gap-2 text-content-tertiary">
-        <InstagramGlyph className="size-4" />
+      <div className="mb-3 flex items-center justify-center gap-2 text-content-secondary">
+        <InstagramGlyph className="size-[18px]" />
         <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em]">
           Perfil público do Instagram
         </span>

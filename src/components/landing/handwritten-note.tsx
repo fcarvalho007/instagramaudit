@@ -26,7 +26,7 @@ export function HandwrittenNote({ className }: HandwrittenNoteProps) {
   return (
     <div
       className={cn(
-        "pointer-events-none select-none text-accent-luminous",
+        "pointer-events-none select-none text-accent-violet-luminous",
         className,
       )}
       aria-hidden="true"
@@ -34,7 +34,7 @@ export function HandwrittenNote({ className }: HandwrittenNoteProps) {
       {/* Handwritten text — Fraunces italic, tilted */}
       <div
         className={cn(
-          "relative font-display italic font-medium leading-tight text-base md:text-lg",
+          "relative font-display italic font-normal leading-tight text-sm md:text-base",
           "transition-all duration-500 ease-out motion-reduce:!opacity-100 motion-reduce:!translate-y-0",
           textIn
             ? "opacity-100 translate-y-0"

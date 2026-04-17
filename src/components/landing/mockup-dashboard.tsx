@@ -8,9 +8,9 @@ import { MockupBenchmarkGauge } from "./mockup-benchmark-gauge";
 import { MockupMetricCard } from "./mockup-metric-card";
 
 const competitors = [
-  { name: "@example_brand", value: 0.64, self: true },
-  { name: "@competitor_a", value: 0.48, self: false },
-  { name: "@competitor_b", value: 0.31, self: false },
+  { name: "@marca_exemplo", value: 0.64, self: true },
+  { name: "@concorrente_a", value: 0.48, self: false },
+  { name: "@concorrente_b", value: 0.31, self: false },
 ];
 
 const COMPARISON_SCALE = 0.7;
@@ -18,32 +18,32 @@ const COMPARISON_SCALE = 0.7;
 export function MockupDashboard() {
   return (
     <Card
-      variant="glass"
+      variant="default"
       padding="none"
-      className="overflow-hidden border-slate-700/60 shadow-[0_25px_50px_-12px_rgb(0_0_0_/_0.5)]"
+      className="overflow-hidden bg-surface-light-elevated border-slate-200 shadow-[0_25px_50px_-12px_rgb(15_23_42_/_0.25),0_10px_20px_-8px_rgb(15_23_42_/_0.15)]"
     >
       {/* Top bar */}
-      <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-surface-secondary/60 px-4 py-3 md:px-6 md:py-4">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/80 px-4 py-3 md:px-6 md:py-4">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-accent-primary to-accent-luminous shrink-0"
+            className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-accent-violet to-accent-violet-luminous shrink-0"
             aria-hidden="true"
           />
           <div className="flex flex-col min-w-0">
-            <span className="font-display text-base md:text-lg font-medium text-content-primary truncate">
-              @example_brand
+            <span className="font-display text-base md:text-lg font-medium text-on-light-primary truncate">
+              @marca_exemplo
             </span>
-            <span className="font-mono text-[0.625rem] md:text-xs uppercase tracking-[0.12em] text-content-tertiary truncate">
-              Análise · 30 posts · 14 Abr 2026
+            <span className="font-mono text-[0.625rem] md:text-xs uppercase tracking-[0.12em] text-on-light-tertiary truncate">
+              Análise · 30 publicações · 14 Abr 2026
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 rounded-full border border-accent-violet/30 bg-accent-violet/10 px-2.5 py-1">
+        <div className="flex items-center gap-2 shrink-0 rounded-full border border-accent-violet/30 bg-accent-violet/15 px-2.5 py-1">
           <span
             aria-hidden="true"
-            className="h-1.5 w-1.5 rounded-full bg-accent-violet-luminous animate-pulse"
+            className="h-1.5 w-1.5 rounded-full bg-accent-violet animate-pulse"
           />
-          <span className="font-mono text-[0.625rem] md:text-xs uppercase tracking-wide text-accent-violet-luminous">
+          <span className="font-mono text-[0.625rem] md:text-xs uppercase tracking-wide text-accent-violet-deep">
             <span className="hidden sm:inline">Relatório completo</span>
             <span className="sm:hidden">Completo</span>
           </span>
@@ -51,7 +51,7 @@ export function MockupDashboard() {
       </div>
 
       {/* Body — progressive blur reveal */}
-      <div className="relative">
+      <div className="relative bg-surface-light-elevated">
         <div
           aria-hidden="true"
           className="p-4 md:p-6 space-y-4 md:space-y-6"
@@ -66,23 +66,27 @@ export function MockupDashboard() {
           {/* Metric cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <MockupMetricCard
-              label="Engagement médio"
+              tone="light"
+              label="Envolvimento médio"
               value="0,64%"
               trend="+0,18 vs benchmark"
               variant="success"
               featured
             />
             <MockupMetricCard
-              label="Posts analisados"
+              tone="light"
+              label="Publicações analisadas"
               value="30"
-              suffix="últimos 30d"
+              suffix="últimos 30 dias"
             />
             <MockupMetricCard
+              tone="light"
               label="Frequência semanal"
               value="3,2"
-              suffix="posts/sem"
+              suffix="publicações/sem"
             />
             <MockupMetricCard
+              tone="light"
               label="Formato dominante"
               value="Reels"
               badge="62%"
@@ -90,13 +94,13 @@ export function MockupDashboard() {
           </div>
 
           {/* Benchmark gauge */}
-          <div className="rounded-lg border border-border-subtle bg-surface-base/40 p-4 md:p-5 space-y-4">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 md:p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex flex-col gap-1 min-w-0">
-                <span className="font-mono text-[0.625rem] uppercase tracking-wide text-content-tertiary">
+                <span className="font-mono text-[0.625rem] uppercase tracking-wide text-on-light-tertiary">
                   Benchmark · Reels
                 </span>
-                <span className="font-sans text-sm text-content-secondary">
+                <span className="font-sans text-sm text-on-light-secondary">
                   Posicionamento face ao esperado
                 </span>
               </div>
@@ -109,7 +113,7 @@ export function MockupDashboard() {
 
           {/* Competitor comparison */}
           <div className="space-y-3">
-            <span className="font-mono text-[0.625rem] uppercase tracking-wide text-content-tertiary block">
+            <span className="font-mono text-[0.625rem] uppercase tracking-wide text-on-light-tertiary block">
               Comparação com concorrentes
             </span>
             <div className="space-y-2.5">
@@ -127,19 +131,19 @@ export function MockupDashboard() {
                       className={cn(
                         "font-mono text-xs md:text-sm truncate",
                         row.self
-                          ? "text-content-primary"
-                          : "text-content-secondary",
+                          ? "text-on-light-primary font-semibold"
+                          : "text-on-light-secondary",
                       )}
                     >
                       {row.name}
                     </span>
-                    <div className="relative h-2 rounded-full bg-surface-base/60 border border-border-subtle overflow-hidden">
+                    <div className="relative h-2 rounded-full bg-slate-200 border border-slate-300 overflow-hidden">
                       <div
                         className={cn(
                           "absolute inset-y-0 left-0 h-full rounded-full",
                           row.self
                             ? "bg-gradient-to-r from-accent-primary to-accent-luminous shadow-[0_0_12px_-2px_rgb(6_182_212_/_0.4)]"
-                            : "bg-content-tertiary/40",
+                            : "bg-slate-400",
                         )}
                         style={{ width: `${widthPct}%` }}
                       />
@@ -148,8 +152,8 @@ export function MockupDashboard() {
                       className={cn(
                         "font-mono text-xs md:text-sm text-right",
                         row.self
-                          ? "text-content-primary"
-                          : "text-content-secondary",
+                          ? "text-on-light-primary font-semibold"
+                          : "text-on-light-secondary",
                       )}
                     >
                       {row.value.toFixed(2).replace(".", ",")}%
@@ -161,19 +165,20 @@ export function MockupDashboard() {
           </div>
 
           {/* AI insight */}
-          <div className="rounded-lg border border-border-subtle bg-surface-elevated/60 p-4 md:p-5">
+          <div className="rounded-lg border border-accent-violet/20 bg-violet-50 p-4 md:p-5">
             <div className="flex gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-primary/10 border border-accent-primary/30 text-accent-luminous">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-violet/10 border border-accent-violet/30 text-accent-violet-deep">
                 <Sparkles className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="flex flex-col gap-2 min-w-0">
-                <span className="font-mono text-[0.625rem] uppercase tracking-wide text-accent-luminous">
+                <span className="font-mono text-[0.625rem] uppercase tracking-wide text-accent-violet-deep">
                   Insight prioritário
                 </span>
-                <p className="font-sans text-sm md:text-base text-content-secondary leading-relaxed">
+                <p className="font-sans text-sm md:text-base text-on-light-secondary leading-relaxed">
                   A performance em Reels está 23% acima do benchmark. A
-                  frequência pode subir de 3,2 para 4 posts/semana sem saturar
-                  — os concorrentes publicam menos mas com menor engagement.
+                  frequência pode subir de 3,2 para 4 publicações/semana sem
+                  saturar — os concorrentes publicam menos mas com menor
+                  envolvimento.
                 </p>
               </div>
             </div>
@@ -181,11 +186,11 @@ export function MockupDashboard() {
         </div>
 
         {/* Soft gradient fade — invites scroll, hides bottom content */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-b from-transparent via-surface-base/60 to-surface-base" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-b from-transparent via-surface-light-elevated/80 to-surface-light-elevated" />
 
         {/* Central intrigue label with lock icon */}
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
-          <span className="inline-flex items-center gap-2 font-mono text-[0.625rem] uppercase tracking-[0.24em] text-content-secondary px-3.5 py-1.5 rounded-full bg-surface-base/85 backdrop-blur-md border border-border-default">
+          <span className="inline-flex items-center gap-2 font-mono text-[0.625rem] uppercase tracking-[0.24em] text-on-light-secondary px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-sm">
             <Lock className="h-3 w-3" aria-hidden="true" />
             Conteúdo completo no relatório
           </span>

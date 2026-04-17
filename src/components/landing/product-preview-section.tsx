@@ -50,12 +50,12 @@ function MockupWithReveal() {
         aria-hidden="true"
         className="absolute inset-x-0 -bottom-6 -z-10 flex justify-center pointer-events-none"
       >
-        <div className="h-12 w-[80%] max-w-[700px] rounded-[50%] bg-slate-900/15 blur-2xl" />
+        <div className="h-12 w-[80%] max-w-[700px] rounded-[50%] bg-slate-900/10 blur-2xl" />
       </div>
 
       {/* Editorial frame with corner brackets */}
       <div
-        className="relative rounded-3xl border border-slate-300/60 bg-surface-light-elevated/80 backdrop-blur-sm p-3 md:p-5"
+        className="relative rounded-3xl border border-slate-300/40 bg-white/40 backdrop-blur-sm p-3 md:p-5"
         style={{ boxShadow: "var(--shadow-stage)" }}
       >
         {/* Corner brackets */}
