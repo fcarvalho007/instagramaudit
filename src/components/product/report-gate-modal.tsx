@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input, InputHelper, InputLabel } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
+import { insertReportRequest } from "@/integrations/supabase/queries/report-requests";
 import { cn } from "@/lib/utils";
 import {
   FREE_MONTHLY_LIMIT,
@@ -134,7 +134,7 @@ export function ReportGateModal({
       } else {
         // Persist to Lovable Cloud + minimum delay for premium UX feel
         const minDelay = new Promise((resolve) => setTimeout(resolve, 600));
-        const insert = supabase.from("report_requests").insert({
+        const insert = insertReportRequest({
           username: username ?? "unknown",
           name: data.nome,
           email: data.email,
