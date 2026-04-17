@@ -12,20 +12,29 @@ import { Button } from "@/components/ui/button";
 import type { AnalysisPremiumTeasers } from "@/lib/mock-analysis";
 
 import { ReportGateModal } from "./report-gate-modal";
+import type { ConversionState } from "./post-analysis-conversion-layer";
 
 interface PremiumLockedSectionProps {
   teasers: AnalysisPremiumTeasers;
   username?: string;
   /** Forwarded to the gate modal so the request can be linked to the exact snapshot. */
   analysisSnapshotId?: string;
+  /** Lifted conversion state — adapts CTA copy when the report is already requested. */
+  conversionState?: ConversionState;
+  /** Propagated from gate modal so the parent dashboard can flip conversion state. */
+  onRequestOutcome?: (outcome: "success" | "limit-reached") => void;
 }
 
 export function PremiumLockedSection({
   teasers,
   username,
   analysisSnapshotId,
+  conversionState = "acquisition",
+  onRequestOutcome,
 }: PremiumLockedSectionProps) {
   const [gateOpen, setGateOpen] = useState(false);
+  const isRequested = conversionState === "requested";
+  const isLimitReached = conversionState === "limit-reached";
   const cards = [
     {
       icon: TrendingUp,
