@@ -130,6 +130,7 @@ export type Database = {
       }
       report_requests: {
         Row: {
+          analysis_snapshot_id: string | null
           competitor_usernames: Json
           created_at: string
           delivery_status: string
@@ -144,6 +145,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          analysis_snapshot_id?: string | null
           competitor_usernames?: Json
           created_at?: string
           delivery_status?: string
@@ -158,6 +160,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          analysis_snapshot_id?: string | null
           competitor_usernames?: Json
           created_at?: string
           delivery_status?: string
@@ -172,6 +175,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "report_requests_analysis_snapshot_id_fkey"
+            columns: ["analysis_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_snapshots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "report_requests_lead_id_fkey"
             columns: ["lead_id"]

@@ -16,9 +16,15 @@ import { ReportGateModal } from "./report-gate-modal";
 interface PremiumLockedSectionProps {
   teasers: AnalysisPremiumTeasers;
   username?: string;
+  /** Forwarded to the gate modal so the request can be linked to the exact snapshot. */
+  analysisSnapshotId?: string;
 }
 
-export function PremiumLockedSection({ teasers, username }: PremiumLockedSectionProps) {
+export function PremiumLockedSection({
+  teasers,
+  username,
+  analysisSnapshotId,
+}: PremiumLockedSectionProps) {
   const [gateOpen, setGateOpen] = useState(false);
   const cards = [
     {
@@ -140,6 +146,7 @@ export function PremiumLockedSection({ teasers, username }: PremiumLockedSection
         open={gateOpen}
         onOpenChange={setGateOpen}
         username={username}
+        analysisSnapshotId={analysisSnapshotId}
       />
     </section>
   );

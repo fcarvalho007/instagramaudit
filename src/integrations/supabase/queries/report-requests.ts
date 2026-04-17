@@ -18,6 +18,8 @@ export interface RequestFullReportPayload {
   instagram_username: string;
   competitor_usernames?: string[];
   request_source?: "public_dashboard";
+  /** Links the request to the exact analysis snapshot the user saw. */
+  analysis_snapshot_id?: string;
 }
 
 export type RequestFullReportResult =
@@ -38,7 +40,12 @@ export type RequestFullReportResult =
     }
   | {
       success: false;
-      error_code: "INVALID_PAYLOAD" | "PERSISTENCE_FAILED" | "NETWORK";
+      error_code:
+        | "INVALID_PAYLOAD"
+        | "PERSISTENCE_FAILED"
+        | "NETWORK"
+        | "SNAPSHOT_NOT_FOUND"
+        | "SNAPSHOT_MISMATCH";
       message: string;
     };
 

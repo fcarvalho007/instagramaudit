@@ -82,15 +82,16 @@ export function isWithinStaleWindow(snapshot: SnapshotRow): boolean {
 
 /**
  * Upsert a fresh snapshot keyed by cache_key.
- * Errors are logged but never thrown — caching is best-effort, the response
- * to the user must succeed even if persistence fails.
+ * Returns the snapshot's id so callers can echo it back to the client and
+ * link future report requests to this exact row. Errors are logged but never
+ * thrown — caching is best-effort, the response must succeed even on failure.
  */
 export async function storeSnapshot(params: {
   cacheKey: string;
   instagramUsername: string;
   competitorUsernames: string[];
   normalizedPayload: Record<string, unknown>;
-}): Promise<void> {
+}): Promise<string | null> {
   const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
   try {
     const row = {
@@ -103,15 +104,20 @@ export async function storeSnapshot(params: {
       expires_at: expiresAt,
       updated_at: new Date().toISOString(),
     };
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("analysis_snapshots")
       // Cast: generated types treat upsert payload as InsertSingle which is
       // overly strict about mixing insert + update fields in one call.
-      .upsert(row as never, { onConflict: "cache_key" });
+      .upsert(row as never, { onConflict: "cache_key" })
+      .select("id")
+      .single();
     if (error) {
       console.error("[analysis/cache] store error", error.message);
+      return null;
     }
+    return (data as { id: string } | null)?.id ?? null;
   } catch (err) {
     console.error("[analysis/cache] store exception", err);
+    return null;
   }
 }

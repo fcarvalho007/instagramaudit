@@ -32,6 +32,8 @@ interface ReportGateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   username?: string;
+  /** Snapshot id of the analysis the user is currently viewing. */
+  analysisSnapshotId?: string;
   onSubmit?: (data: GateFormData) => Promise<void> | void;
 }
 
@@ -70,6 +72,7 @@ export function ReportGateModal({
   open,
   onOpenChange,
   username,
+  analysisSnapshotId,
   onSubmit,
 }: ReportGateModalProps) {
   const [state, setState] = useState<ModalState>("idle");
@@ -143,6 +146,7 @@ export function ReportGateModal({
         instagram_username: username ?? "",
         competitor_usernames: [],
         request_source: "public_dashboard",
+        analysis_snapshot_id: analysisSnapshotId,
       });
 
       // Map server-decided quota outcome → modal state.

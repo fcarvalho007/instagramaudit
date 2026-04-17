@@ -39,7 +39,8 @@ import type {
   PublicAnalysisSuccess,
 } from "@/lib/analysis/types";
 import { computeBenchmarkPositioning } from "@/lib/benchmark/engine";
-import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data";
+import type { BenchmarkData } from "@/lib/benchmark/reference-data";
+import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 
 const PROFILE_ACTOR = "apify/instagram-profile-scraper";
@@ -261,7 +262,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             competitors: competitorResults,
           };
 
-          await storeSnapshot({
+          const snapshotId = await storeSnapshot({
             cacheKey,
             instagramUsername: primaryProfile.username,
             competitorUsernames: competitors,
@@ -287,6 +288,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const response: PublicAnalysisSuccess = {
             success: true,
             ...normalizedPayload,
+            ...(snapshotId ? { analysis_snapshot_id: snapshotId } : {}),
             status: {
               success: true,
               data_source: "fresh",
@@ -338,7 +340,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 function buildCachedResponse(
   snapshot: SnapshotRow,
   source: "cache" | "stale",
-  benchmarkData: import("@/lib/benchmark/reference-data").BenchmarkData,
+  benchmarkData: BenchmarkData,
 ): PublicAnalysisSuccess {
   const payload = snapshot.normalized_payload as unknown as {
     profile: PublicAnalysisProfile;
@@ -358,6 +360,7 @@ function buildCachedResponse(
   );
   return {
     success: true,
+    analysis_snapshot_id: snapshot.id,
     profile: payload.profile,
     content_summary: payload.content_summary,
     competitors: payload.competitors ?? [],
