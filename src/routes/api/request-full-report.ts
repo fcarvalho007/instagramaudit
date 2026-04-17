@@ -40,6 +40,9 @@ const PayloadSchema = z.object({
     .optional()
     .default([]),
   request_source: z.enum(["public_dashboard"]).optional().default("public_dashboard"),
+  // Optional: links the request to the exact analysis snapshot the user saw.
+  // Backward compatible — absence is tolerated but logged.
+  analysis_snapshot_id: z.string().uuid().optional(),
 });
 
 type SuccessBody = {
@@ -61,7 +64,11 @@ type QuotaReachedBody = {
 
 type FailureBody = {
   success: false;
-  error_code: "INVALID_PAYLOAD" | "PERSISTENCE_FAILED";
+  error_code:
+    | "INVALID_PAYLOAD"
+    | "PERSISTENCE_FAILED"
+    | "SNAPSHOT_NOT_FOUND"
+    | "SNAPSHOT_MISMATCH";
   message: string;
 };
 
@@ -122,9 +129,71 @@ export const Route = createFileRoute("/api/request-full-report")({
           );
         }
 
-        const { email, name, company, instagram_username, competitor_usernames, request_source } =
-          parsed.data;
+        const {
+          email,
+          name,
+          company,
+          instagram_username,
+          competitor_usernames,
+          request_source,
+          analysis_snapshot_id,
+        } = parsed.data;
         const email_normalized = email.toLowerCase();
+
+        // 0) Validate snapshot link (when provided) before any writes.
+        // Pragmatic checks: snapshot exists + username matches (case-insensitive).
+        // Competitors are intentionally not cross-validated — the user may have
+        // landed on the gate from an analysis without `?vs=` and submit competitors
+        // anyway; that mismatch is not blocking for v1 auditability.
+        let validatedSnapshotId: string | null = null;
+        if (analysis_snapshot_id) {
+          const { data: snapRow, error: snapError } = await supabaseAdmin
+            .from("analysis_snapshots")
+            .select("id, instagram_username")
+            .eq("id", analysis_snapshot_id)
+            .maybeSingle();
+
+          if (snapError) {
+            console.error(
+              "[request-full-report] snapshot lookup error",
+              snapError,
+            );
+            // Soft-fail: treat as missing snapshot to avoid 5xx leaks.
+          }
+
+          if (!snapRow) {
+            return json(
+              {
+                success: false,
+                error_code: "SNAPSHOT_NOT_FOUND",
+                message:
+                  "Não foi possível associar o pedido à análise atual. Atualizar a análise e tentar novamente.",
+              },
+              409,
+            );
+          }
+
+          if (
+            snapRow.instagram_username.toLowerCase() !==
+            instagram_username.toLowerCase()
+          ) {
+            return json(
+              {
+                success: false,
+                error_code: "SNAPSHOT_MISMATCH",
+                message: "A análise não corresponde ao perfil indicado.",
+              },
+              409,
+            );
+          }
+
+          validatedSnapshotId = snapRow.id;
+        } else {
+          console.warn(
+            "[request-full-report] missing analysis_snapshot_id for",
+            instagram_username,
+          );
+        }
 
         // 1) Upsert lead by `email_normalized`.
         const { data: leadRow, error: leadError } = await supabaseAdmin
