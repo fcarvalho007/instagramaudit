@@ -13,7 +13,7 @@ export function HowItWorksSection() {
             Como funciona
           </span>
           <h2 className="font-display text-3xl md:text-5xl text-content-primary font-medium tracking-tight leading-[1.1] mb-6">
-            Do username ao relatório em três passos.
+            Relatório em 3 passos simples.
           </h2>
           <p className="font-sans text-lg text-content-secondary leading-relaxed">
             Sem fricção, sem registo, sem tempo perdido. Apenas análise

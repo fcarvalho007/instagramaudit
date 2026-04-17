@@ -14,7 +14,7 @@ export function HeroSection() {
         <div className="max-w-4xl mx-auto text-center space-y-8 md:space-y-10">
           {/* Headline — blur reveal, no gradient */}
           <BlurRevealText
-            text="Instagram analisado em 30 segundos."
+            text="Analise o teu Instagram em menos de 30 segundos."
             as="h1"
             className="font-display text-4xl md:text-6xl lg:text-7xl tracking-tight font-medium leading-[1.05] text-content-primary"
             delayMs={200}
@@ -22,7 +22,7 @@ export function HeroSection() {
 
           {/* Subtitle — single line, delayed */}
           <BlurRevealText
-            text="Benchmark, comparação com concorrentes e insights por IA."
+            text="Análise competitiva e dados concretos para comparar com a concorrência."
             as="p"
             className="font-sans text-lg md:text-xl text-content-secondary leading-relaxed max-w-2xl mx-auto"
             delayMs={800}

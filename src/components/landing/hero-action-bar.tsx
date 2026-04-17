@@ -3,14 +3,23 @@ import { ArrowRight, AtSign, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InstagramGlyph } from "./instagram-glyph";
 
 export function HeroActionBar() {
   const [competitorsOpen, setCompetitorsOpen] = useState(false);
 
   return (
     <div className="relative w-full max-w-3xl mx-auto">
+      {/* Micro-label above the bar */}
+      <div className="mb-3 flex items-center justify-center gap-2 text-content-tertiary">
+        <InstagramGlyph className="size-4" />
+        <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em]">
+          Perfil público do Instagram
+        </span>
+      </div>
+
       {/* The bar — glass card with input + button inline */}
-      <div className="relative rounded-2xl border border-border-strong bg-surface-secondary/60 backdrop-blur-xl shadow-2xl overflow-hidden hero-bar-breathe">
+      <div className="relative rounded-2xl border border-border-strong bg-surface-base/80 backdrop-blur-xl shadow-2xl overflow-hidden hero-bar-breathe">
         <form
           onSubmit={(e) => e.preventDefault()}
           className="flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-subtle"
@@ -36,7 +45,7 @@ export function HeroActionBar() {
               variant="primary"
               size="lg"
               rightIcon={<ArrowRight />}
-              className="w-full sm:w-auto sm:h-14 px-6 sm:px-8 whitespace-nowrap"
+              className="w-full sm:w-auto sm:h-14 px-6 sm:px-8 whitespace-nowrap shadow-[0_0_32px_-4px_rgb(6_182_212_/_0.5)]"
             >
               Analisar
             </Button>

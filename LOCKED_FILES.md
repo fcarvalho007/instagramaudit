@@ -51,6 +51,9 @@ explicitly asks for a modification in a new prompt.
 - /src/components/landing/handwritten-note.tsx
 - /src/components/landing/scroll-indicator.tsx
 
+## Landing Micro-components (Sprint 1, Prompt 1.1C)
+- /src/components/landing/instagram-glyph.tsx
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,

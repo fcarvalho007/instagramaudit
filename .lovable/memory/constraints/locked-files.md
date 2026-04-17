@@ -35,3 +35,4 @@ Locked files:
 - /src/components/landing/animated-counter.tsx (since Sprint 1, Prompt 1.1B)
 - /src/components/landing/handwritten-note.tsx (since Sprint 1, Prompt 1.1B)
 - /src/components/landing/scroll-indicator.tsx (since Sprint 1, Prompt 1.1B)
+- /src/components/landing/instagram-glyph.tsx (since Sprint 1, Prompt 1.1C)
