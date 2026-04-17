@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, AtSign, Plus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -10,18 +9,8 @@ export function HeroActionBar() {
 
   return (
     <div className="relative w-full max-w-3xl mx-auto">
-      {/* Floating micro-label above the bar */}
-      <div className="flex items-center justify-center gap-3 mb-4">
-        <span className="font-mono text-xs uppercase tracking-wide text-content-tertiary">
-          Analisar perfil
-        </span>
-        <Badge variant="success" size="sm" dot pulse>
-          Gratuito
-        </Badge>
-      </div>
-
       {/* The bar — glass card with input + button inline */}
-      <div className="relative rounded-2xl border border-border-strong bg-surface-secondary/60 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="relative rounded-2xl border border-border-strong bg-surface-secondary/60 backdrop-blur-xl shadow-2xl overflow-hidden hero-bar-breathe">
         <form
           onSubmit={(e) => e.preventDefault()}
           className="flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-subtle"
@@ -98,6 +87,18 @@ export function HeroActionBar() {
         )}
       </div>
 
+      <style>{`
+        .hero-bar-breathe {
+          animation: hero-bar-breathe-kf 4s ease-in-out infinite;
+        }
+        @keyframes hero-bar-breathe-kf {
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.005); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-bar-breathe { animation: none; }
+        }
+      `}</style>
     </div>
   );
 }

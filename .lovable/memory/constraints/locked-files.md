@@ -31,3 +31,7 @@ Locked files:
 - /src/components/landing/mockup-benchmark-gauge.tsx (since Sprint 1, Prompt 1.3)
 - /src/components/landing/mockup-dashboard.tsx (since Sprint 1, Prompt 1.3)
 - /src/components/landing/product-preview-section.tsx (since Sprint 1, Prompt 1.3)
+- /src/components/landing/blur-reveal-text.tsx (since Sprint 1, Prompt 1.1B)
+- /src/components/landing/animated-counter.tsx (since Sprint 1, Prompt 1.1B)
+- /src/components/landing/handwritten-note.tsx (since Sprint 1, Prompt 1.1B)
+- /src/components/landing/scroll-indicator.tsx (since Sprint 1, Prompt 1.1B)
