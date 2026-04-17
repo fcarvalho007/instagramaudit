@@ -19,7 +19,7 @@ export function HeroActionBar() {
       </div>
 
       {/* The bar — glass card with input + button inline */}
-      <div className="relative rounded-2xl border border-border-strong bg-surface-base/80 backdrop-blur-xl shadow-2xl overflow-hidden hero-bar-breathe">
+      <div className="relative rounded-2xl border border-border-strong bg-surface-base/80 backdrop-blur-xl shadow-2xl shadow-[inset_0_1px_0_rgb(255_255_255_/_0.04)] overflow-hidden hero-bar-breathe focus-within:border-accent-violet/40 transition-colors">
         <form
           onSubmit={(e) => e.preventDefault()}
           className="flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-subtle"
@@ -39,13 +39,13 @@ export function HeroActionBar() {
           </div>
 
           {/* Submit zone */}
-          <div className="p-2 flex items-stretch">
+          <div className="p-2.5 flex items-stretch">
             <Button
               type="submit"
               variant="primary"
               size="lg"
               rightIcon={<ArrowRight />}
-              className="w-full sm:w-auto sm:h-14 px-6 sm:px-8 whitespace-nowrap shadow-[0_0_32px_-4px_rgb(6_182_212_/_0.5)]"
+              className="w-full sm:w-auto sm:h-14 px-6 sm:px-8 whitespace-nowrap shadow-glow-violet"
             >
               Analisar
             </Button>

@@ -19,10 +19,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: [
-          "font-semibold text-content-inverse",
-          "bg-gradient-to-br from-accent-luminous via-accent-primary to-accent-primary",
-          "shadow-glow-cyan",
-          "hover:scale-[1.02] hover:brightness-110 hover:shadow-glow-cyan",
+          "font-semibold text-white",
+          "bg-gradient-to-br from-accent-violet-luminous via-accent-violet to-accent-violet",
+          "shadow-glow-violet",
+          "hover:scale-[1.02] hover:brightness-110 hover:shadow-[0_0_40px_-4px_rgb(139_92_246_/_0.6)]",
         ].join(" "),
         secondary: [
           "font-medium text-content-primary",

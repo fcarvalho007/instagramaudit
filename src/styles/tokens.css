@@ -11,6 +11,15 @@
     --accent-primary: 6 182 212;
     --accent-luminous: 103 232 249;
     --accent-gold: 252 211 77;
+    --accent-violet: 139 92 246;
+    --accent-violet-luminous: 167 139 250;
+
+    /* === COLORS — Light surfaces (for editorial reveal moments) === */
+    --surface-light: 241 245 249;
+    --surface-light-elevated: 255 255 255;
+    --text-on-light-primary: 15 23 42;
+    --text-on-light-secondary: 71 85 105;
+    --text-on-light-tertiary: 100 116 139;
 
     /* === COLORS — Semantic === */
     --signal-success: 16 185 129;
@@ -88,6 +97,7 @@
                  0 8px 10px -6px rgb(0 0 0 / 0.4);
     --shadow-glow-cyan: 0 0 24px -4px rgb(6 182 212 / 0.4);
     --shadow-glow-gold: 0 0 24px -4px rgb(252 211 77 / 0.3);
+    --shadow-glow-violet: 0 0 32px -4px rgb(139 92 246 / 0.5);
 
     /* === TRANSITIONS === */
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
