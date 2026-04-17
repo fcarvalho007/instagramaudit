@@ -2,155 +2,138 @@
 
 ## Entendimento
 
-**Arquitetura actual da landing** (`src/routes/index.tsx`):
-1. `<HeroSection>` — aurora cyan + headline + subtitle + action bar + handwritten note
-2. Micro-proof strip inline (3 checks)
-3. `<SocialProofSection>` — métricas
-4. `<HowItWorksSection>` — 3 passos
-5. `<ProductPreviewSection>` — header + mockup + 3 highlights
+Landing já tem boa estrutura (Hero dark → micro-proof → Social proof → How it works → Product preview light). Os pontos a refinar:
 
-**Visual intent "Editorial Tech Noir"**: dark-first, Fraunces+Inter+JetBrains Mono, cyan accent, glassmorphism, scroll-triggered reveals. Linear/Vercel/Attio refs.
-
-**Problemas identificados**: (a) cyan dominante em CTAs sem hierarquia clara; (b) secções todas no mesmo escuro = ritmo plano; (c) Product Preview parece mais um "slab escuro" do que um momento de revelação; (d) hero copy precisa de afinação; (e) mockup colado num fundo quase preto perde valor.
-
-## Ficheiros homepage tocados
-
-| Ficheiro | Locked? | Permissão | Scope |
-|---|---|---|---|
-| `src/styles/tokens.css` | **LOCKED** | Prompt autoriza adicionar tokens — só **adições** (CTA violet + light surfaces), zero alterações a tokens existentes | Add |
-| `src/styles.css` (`@theme inline`) | **LOCKED** | Mesma autorização, só novas entradas para os tokens novos | Add |
-| `src/components/ui/button.tsx` | **LOCKED** | Sprint 1.1C já alterou variante primary; agora reaplico para violet (mesma cirurgia, só primary) | Edit |
-| `src/components/landing/hero-section.tsx` | **LOCKED** | Refinamento visual aprovado | Edit (copy + spacing) |
-| `src/components/landing/hero-action-bar.tsx` | **LOCKED** | Refinamento visual | Edit (CTA glow color → violet, separação input/CTA) |
-| `src/components/landing/social-proof-section.tsx` | **LOCKED** | Refinamento visual | Edit (surface differentiation + dividers) |
-| `src/components/landing/how-it-works-section.tsx` | **LOCKED** | Refinamento visual | Edit (HUD grid background + step glow → violet) |
-| `src/components/landing/how-it-works-step.tsx` | **LOCKED** | Refinamento visual | Edit (icon glow violet) |
-| `src/components/landing/product-preview-section.tsx` | **LOCKED** | Refinamento visual | Edit (light surface, framing device, transition) |
-| `src/components/landing/mockup-dashboard.tsx` | **LOCKED** | Refinamento visual | Edit (sharper, KPI emphasis, controlled glow, cleaner teaser) |
-| `src/components/landing/mockup-metric-card.tsx` | **LOCKED** | Refinamento visual | Edit (KPI emphasis variant) |
-| `src/routes/index.tsx` | — | — | Edit (micro-proof strip surface treatment) |
-| `LOCKED_FILES.md` + memory | — | — | Sem novos ficheiros locked |
-
-**Nenhum ficheiro novo é criado.** Tudo é refinamento dentro da arquitectura existente.
-
-## Novos tokens (adicionados, nunca alterados)
-
-Em `tokens.css`:
-```
---accent-violet: 139 92 246;       /* premium violet */
---accent-violet-luminous: 167 139 250;
---shadow-glow-violet: 0 0 32px -4px rgb(139 92 246 / 0.5);
-
---surface-light: 241 245 249;       /* cool light surface (slate-100) */
---surface-light-elevated: 255 255 255;
---text-on-light-primary: 15 23 42;   /* slate-900 */
---text-on-light-secondary: 71 85 105; /* slate-600 */
---text-on-light-tertiary: 100 116 139;
-```
-
-Em `styles.css` (`@theme inline`): expor como `--color-accent-violet`, `--color-accent-violet-luminous`, `--color-surface-light`, etc., + `--shadow-glow-violet`.
-
-## Mudanças por secção
-
-### Hero
-- H1 → `"Analisa o teu Instagram em menos de 30 segundos."` (já está "Analise"; passar a "Analisa" tu-form imperativo conforme pedido)
-- Subtitle → `"Benchmark, comparação e insights claros para decidir melhor."` + `md:whitespace-nowrap` para garantir uma linha em desktop/tablet landscape, sem nowrap em mobile
-- Spacing cadence: `space-y-8 md:space-y-10` → `space-y-6 md:space-y-8` para apertar headline↔subtitle, e `pt-6 md:pt-8` → `pt-10 md:pt-12` para arejar antes do action bar
-- Subtitle leve bump de contraste: `text-content-secondary` → `text-content-secondary/95`
-
-### Action bar
-- CTA: `shadow-[0_0_32px_-4px_rgb(6_182_212_/_0.5)]` → `shadow-glow-violet`
-- Separação input/CTA: aumentar padding do submit zone `p-2` → `p-2.5`, e adicionar uma sombra interior subtil ao bar (`shadow-[inset_0_1px_0_rgb(255_255_255_/_0.04)]`) para definição extra
-- Border do bar reforçado em focus-within: `focus-within:border-accent-violet/40 transition-colors`
-
-### Button (variante primary apenas)
-```
-bg-gradient-to-br from-accent-violet-luminous via-accent-violet to-accent-violet
-shadow-glow-violet
-text-white (em vez de text-content-inverse — violet pede branco para contraste WCAG)
-hover:scale-[1.02] hover:brightness-110 hover:shadow-[0_0_40px_-4px_rgb(139_92_246_/_0.6)]
-```
-Hover/active/focus/disabled preservados. Cyan continua disponível em `accent-primary` para uso decorativo (aurora, gauges, badges).
-
-### Micro-proof strip (em index.tsx)
-Surface: `bg-surface-secondary/30` → `bg-gradient-to-b from-surface-base to-surface-secondary/60`, com border-bottom mais marcada (`border-b border-border-default`) e remoção do border-top (deixa o hero flutuar para a strip naturalmente).
-
-### Social proof
-- Background: `bg-surface-secondary/40` mantido mas com **divider luminoso** subtil no topo (linha de gradient horizontal violet→transparent→violet 1px, opacity 20%)
-- Adicionar uma micro-grid HUD em background (CSS gradient lines, opacity 0.025) — anchorage editorial discreta
-- Métricas: número grande continua, mas adicionar pequeno underline animado de 2px violet por baixo de cada valor (decorativo)
-
-### How It Works
-- Background: adicionar uma camada HUD com linhas verticais subtis (`linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), rgb(255 255 255 / 0.03) 100%)` repeat-x a cada 80px) + glow radial violet muito ténue centrado
-- Step icons: `box-shadow: var(--shadow-glow-cyan)` → `var(--shadow-glow-violet)` com border violet/20
-- Adicionar separadores connector entre steps em desktop (linha pontilhada horizontal `border-t border-dashed border-border-subtle` ligando ícones — só md+)
-- Section divider no topo: linha hairline `border-t border-border-default`
-
-### Product Preview — **a transição dramática**
-Esta é a mudança mais importante.
-
-**Background da secção**: passa de escuro para **light editorial surface**.
-- Wrapper section: `bg-gradient-to-b from-surface-base via-surface-light to-surface-light` com `padding-top` extra para a transição
-- Camada de transição no topo: 120px de altura `bg-gradient-to-b from-surface-base to-transparent` para fundir suavemente
-- Header (label "Preview do produto", h2, lead) muda para tipografia em **dark text** sobre fundo claro: `text-on-light-primary`, `text-on-light-secondary`, label muda para `text-accent-violet`
-- Highlights abaixo: também em dark text sobre light surface
-
-**Framing device editorial** (à volta do mockup):
-- "Studio light stage": gradient radial branco→transparent atrás do mockup criando spotlight
-- Frame fino com `rounded-3xl border border-slate-200/60 bg-white/40 backdrop-blur-sm p-3 md:p-5` envolvendo o mockup (parece um "objecto" pousado num expositor)
-- Sombra dramática multi-layer: `shadow-[0_30px_60px_-20px_rgb(15_23_42_/_0.25),_0_60px_120px_-40px_rgb(139_92_246_/_0.15)]`
-- 4 corner brackets SVG (L-shapes) nos cantos do frame externo — cor `slate-300` — sinaliza "produto enquadrado", linguagem editorial/tech
-
-**Section divider topo**: hairline divider violet 1px com fade lateral
-
-### Mockup dashboard (continua dark, agora contrasta com fundo claro)
-- Border: `border-border-strong` → `border-slate-700/60` (mais contraste contra fundo claro)
-- Shadow: `shadow-xl` → `shadow-[0_25px_50px_-12px_rgb(0_0_0_/_0.5)]`
-- Top bar: refinar — `font-mono text-xs` da meta com mais tracking, badge "Relatório completo" passa a usar dot violet
-- **KPI hero emphasis**: o primeiro metric card (`Engagement médio`) ganha tratamento especial via nova prop `featured`:
-  - Border `border-accent-violet/40` em vez de subtle
-  - Valor maior: `text-3xl md:text-4xl` (em vez de `2xl/3xl`)
-  - Sombra glow violet muito subtil
-  - Trend mantém success green
-- Outros 3 cards: tipografia mais apertada, label `text-[0.625rem]` → `text-[0.6875rem]` para legibilidade, `gap-2` → `gap-1.5`
-- Glow do gauge: reduzir `shadow-glow-cyan` no fill para `shadow-[0_0_12px_-2px_rgb(6_182_212_/_0.4)]` (mais controlado)
-- Teaser bottom: o mask + fade já existe; clarificar — substituir `via-surface-base/40 to-surface-base` por um fade que vai para o frame interior (semi-transparente preto), e label "Conteúdo completo no relatório" passa a ter um pequeno ícone Lock à esquerda + tracking maior. O blur de 0.5px mantém-se, mas o mask começa mais cedo (`black 35%` → `transparent 100%`) para criar mais "convite à inscrição"
-
-### Footer
-Mantém-se dark mas com transição editorial: top border vira gradient hairline violet/cyan/transparent. Footer já é `bg-surface-secondary` — ok.
-
-## Cadência de scroll resultante
-
-```
-[Hero — dark cinematic + aurora cyan]
-  ↓ (micro-proof strip — gradient sutil escuro→escuro)
-[Social Proof — surface-secondary/40 + HUD grid]
-  ↓ (hairline divider)
-[How It Works — dark + grid HUD + glow violet ténue]
-  ↓ (gradient transition 120px dark→light)
-[Product Preview — LIGHT editorial surface + studio stage + dark mockup contrastado]  ← MOMENTO DE REVELAÇÃO
-  ↓ (gradient light→dark)
-[Footer — dark]
-```
-
-## Confirmação visual-only
-
-✅ Sem mudanças em routing (`createFileRoute`, links), `head()`/SEO, form handlers (`onSubmit`), state da action bar, props funcionais. Zero alterações em integrações, analytics, ou APIs (não existem ainda nesta landing).
-
-## Validação mobile (375px)
-
-- Hero: H1 mantém escala fluida `text-4xl md:text-6xl lg:text-7xl`; subtitle perde `whitespace-nowrap` em mobile (wrap natural)
-- Métricas mockup: grid `2 cols` mantido em mobile, KPI featured destaca-se mas não rebenta layout
-- Frame do mockup: padding reduzido em mobile (`p-3` vs `md:p-5`)
-- Studio light stage: dimensionado em vw (`max-w-[90vw]`)
+1. **Light section washed out** — `--surface-light: 241 245 249` (slate-100) com `bg-white/40` no frame e radial spotlight branco puro = neblina/fog branca. Falta sofisticação.
+2. **Mockup dashboard** — fade + lock label estão bem, mas top bar e KPI hierarchy podem ficar mais editorial; gauge ainda usa `shadow-glow-cyan` cheio (não controlado).
+3. **CTA roxo** — funciona, mas gradient pode ganhar mais profundidade (deeper indigo/violet stop) e estado pressed ainda usa só `active:scale-[0.98]` global.
+4. **Hero spacing** — cadência entre subtitle e action bar (`pt-10/12`) está OK mas pode refinar; subtitle `text-content-secondary/95` ainda pode ganhar leve bump.
+5. **Section rhythm** — Hero→micro-proof→Social proof transita bem; Social proof→How it works falta separator visível; How it works→Product preview já tem gradient transition.
 
 ## Conflitos com LOCKED_FILES.md
 
-Todos os ficheiros visados estão lockados desde Sprints 0/1. **Esta prompt concede explicitamente permissão para refinamento visual da landing**, satisfazendo a regra "only proceed if this prompt already grants permission". Sem ficheiros novos — nada a adicionar a `LOCKED_FILES.md` nem à memory.
+Todos os ficheiros visados estão lockados (Sprints 0/1). Esta prompt **autoriza explicitamente refinamento visual da landing**. Sem ficheiros novos. Sem alterações estruturais. Confirmado: **UI-only, zero impacto em lógica/routing/forms/state**.
+
+## Tokens — refinamentos cirúrgicos
+
+Em `tokens.css` (apenas adições/refinamentos):
+```
+/* Light surface — cooler, more editorial (was slate-100, now cool-slate with depth) */
+--surface-light: 226 232 240;          /* slate-200 — menos lavado */
+--surface-light-elevated: 248 250 252; /* slate-50 — para o palco do mockup */
+--surface-light-deep: 203 213 225;     /* slate-300 — bordas e profundidade */
+
+/* CTA violet — refinado para premium, não playful */
+--accent-violet-deep: 109 40 217;      /* violet-700 — para gradient stop profundo */
+
+/* Glow controlado para o mockup no light surface */
+--shadow-stage: 0 30px 60px -25px rgb(15 23 42 / 0.35),
+                0 60px 120px -50px rgb(79 70 229 / 0.18);
+```
+
+Em `styles.css` (`@theme inline`): expor `--color-surface-light-deep`, `--color-accent-violet-deep`.
+
+## Mudanças por secção
+
+### Hero (`hero-section.tsx`)
+- Subtitle: `text-content-secondary/95` → `text-content-secondary` (full token, mais legível)
+- Spacing: `space-y-6 md:space-y-8` mantido; `pt-10 md:pt-12` → `pt-8 md:pt-10` para apertar ligação visual com action bar
+
+### Action bar (`hero-action-bar.tsx`)
+- Adicionar separador visual entre input e CTA: já existe `divide-x divide-border-subtle` — reforçar com `divide-border-default` em sm+
+- Refinar shadow do bar: adicionar segunda camada `shadow-[0_30px_60px_-30px_rgb(0_0_0_/_0.6)]` para mais profundidade
+- Submit button glow já é `shadow-glow-violet` — manter
+
+### Button primary (`button.tsx`)
+- Gradient mais rico: `from-accent-violet-luminous via-accent-violet to-accent-violet-deep` (3-stop com profundidade real)
+- Pressed state explícito: `active:brightness-95 active:shadow-[0_0_16px_-4px_rgb(139_92_246_/_0.4)]` (substitui glow forte por subtil quando pressed)
+- Hover já bem (`hover:scale-[1.02] hover:brightness-110`)
+
+### Social proof (`social-proof-section.tsx`)
+- Métricas: subir contraste do label `text-content-tertiary` → `text-content-secondary` (estava muito ténue)
+- Underline violet: `bg-accent-violet/60` → `bg-gradient-to-r from-accent-violet to-accent-violet-luminous` (mais editorial)
+
+### How it works (`how-it-works-section.tsx`)
+- Section header label: já é `text-accent-violet-luminous` — bom
+- Adicionar hairline divider no topo da secção: `border-t border-border-subtle` para separar visualmente de social-proof
+- Step icons (`how-it-works-step.tsx`): manter glow violet, mas reduzir intensidade do background `bg-surface-elevated` → `bg-surface-elevated/70` para integrar melhor
+
+### Product preview (`product-preview-section.tsx`) — **a grande mudança**
+**Background**: passa de `from-surface-base via-surface-light to-surface-light` (slate-100 lavado) para uma composição editorial cool-slate:
+```
+bg-gradient-to-b from-surface-base via-surface-light to-surface-light-elevated
+```
+Com `surface-light` agora a slate-200 (mais cor, menos lavado).
+
+**Studio light stage** — substituir o radial branco puro por uma composição de duas camadas:
+- Camada 1 (atmosfera): radial gradient suave de `surface-light-elevated` (off-white quente) → transparent, mais pequeno (`h-[80%] w-[90%]`)
+- Camada 2 (bottom shadow grounding): elipse escura subtil por baixo do mockup `shadow-stage` para "pousar" o objecto
+- Remover `bg-[radial-gradient(ellipse_at_center,_rgb(255_255_255)_0%,...)]` puro branco
+
+**Frame editorial**: `bg-white/50 backdrop-blur-sm` → `bg-surface-light-elevated/80 border-slate-300/60`. Sombra: `shadow-[0_30px_60px_-20px_...]` → `shadow-stage` (token).
+
+**Corner brackets**: `border-slate-400/60` → `border-slate-500/70` (ligeiramente mais visíveis, mais editorial).
+
+**Header tipografia** (sobre fundo light): label `text-accent-violet` → `text-accent-violet-deep` (melhor contraste em light surface). h2 já é `text-on-light-primary` — bom.
+
+**Highlights abaixo**: label `text-on-light-tertiary` → `text-on-light-secondary` (estava ténue demais sobre slate-200).
+
+### Mockup dashboard (`mockup-dashboard.tsx`)
+- Top bar: `bg-surface-secondary/40` → `bg-surface-secondary/60` (mais peso visual). Avatar gradient `from-accent-primary to-accent-luminous` mantido (cyan = "perfil", não CTA).
+- Badge "Relatório completo" já usa violet — bom.
+- KPI featured (Engagement médio): glow `shadow-[0_0_24px_-8px_rgb(139_92_246_/_0.4)]` → `shadow-[0_0_32px_-12px_rgb(139_92_246_/_0.5)]` (mais focado, menos espalhado).
+- Gauge bar (`mockup-benchmark-gauge.tsx`): `shadow-glow-cyan` → `shadow-[0_0_8px_-2px_rgb(6_182_212_/_0.3)]` (mais controlado).
+- Bottom teaser: aumentar opacidade do label backdrop `bg-surface-base/70` → `bg-surface-base/85` (mais legível); mask já parou em `transparent 100%` — manter.
+
+## Cadência visual resultante
+
+```
+[Hero — dark + aurora cyan + violet CTA]
+  ↓ gradient suave
+[Micro-proof — gradient bridge]
+  ↓
+[Social Proof — surface-secondary/40 + HUD grid + métricas com underline gradient]
+  ↓ hairline divider
+[How It Works — dark + grid HUD + violet glow + steps integrados]
+  ↓ gradient transition dark→light
+[Product Preview — slate-200 editorial + studio stage + dark mockup pousado]  ← REVELAÇÃO
+  ↓
+[Footer]
+```
+
+## Ficheiros tocados
+
+| Ficheiro | Scope |
+|---|---|
+| `src/styles/tokens.css` | Add: `--surface-light` refinado, `--surface-light-elevated` ajustado, `--surface-light-deep` novo, `--accent-violet-deep` novo, `--shadow-stage` novo |
+| `src/styles.css` | Add: expor novos tokens em `@theme inline` |
+| `src/components/ui/button.tsx` | Edit primary variant: gradient 3-stop + active state |
+| `src/components/landing/hero-section.tsx` | Edit: subtitle contrast, spacing |
+| `src/components/landing/hero-action-bar.tsx` | Edit: divider reforçado, shadow extra |
+| `src/components/landing/social-proof-section.tsx` | Edit: underline gradient |
+| `src/components/landing/how-it-works-section.tsx` | Edit: top hairline divider |
+| `src/components/landing/how-it-works-step.tsx` | Edit: bg-surface-elevated/70 |
+| `src/components/landing/product-preview-section.tsx` | Edit: studio stage 2-layer, frame token-based, header colors |
+| `src/components/landing/mockup-dashboard.tsx` | Edit: top bar weight, KPI glow refinado, label opacity |
+| `src/components/landing/mockup-metric-card.tsx` | Edit: featured glow refinado |
+| `src/components/landing/mockup-benchmark-gauge.tsx` | Edit: gauge glow controlado |
+
+**Sem novos ficheiros.** Sem alterações em `routes/index.tsx`, header, footer, hero-aurora, blur-reveal, animated-counter, handwritten-note, scroll-indicator, instagram-glyph.
+
+## Confirmação UI-only
+
+✅ Zero alterações em: rotas, `head()`/SEO, form handlers, state da action bar, props funcionais, integrações, analytics, APIs, dependências.
+
+## Mobile 375px
+
+- Hero spacing reduzido funciona melhor em mobile (menos vazio entre subtitle e bar).
+- Studio stage `max-w-[90vw]` mantido.
+- Mockup grid 2-col em mobile, KPI featured destaca-se sem rebentar.
+- Frame padding `p-3 md:p-5` mantido.
 
 ## Desvios face à spec
 
-1. **CTA color**: violet `#8B5CF6` (slate-violet 500) — premium, não roxo carnaval. Glow `rgb(139 92 246 / 0.5)`.
-2. **Hero copy**: spec pede "Analisa" (tu-form imperativo) — adopto literal. O ficheiro actual tem "Analise" (formal). Mudo para "Analisa".
-3. **"Studio light stage"**: implementado com gradient radial + frame branco translúcido + corner brackets, em vez de tentar desenhar moldura de monitor (que ficaria literal demais e contra a estética editorial).
+1. **Light surface**: passa de `slate-100` (#F1F5F9) para `slate-200` (#E2E8F0) como base + `slate-50` (#F8FAFC) como elevated. Justificação: slate-200 dá a "cool editorial" pedido, sem o efeito washed-out; slate-50 reservado para o palco onde o mockup pousa, criando contraste interno.
+2. **Violet deep**: violet-700 (`#6D28D9`) como stop final do gradient — mantém a família roxa mas adiciona profundidade premium.
+3. **Shadow stage como token**: criado `--shadow-stage` para reutilização no frame do mockup, evitando shadow arbitrária inline.
 
