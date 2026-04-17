@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Compass,
   FileText,
@@ -10,11 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import type { AnalysisPremiumTeasers } from "@/lib/mock-analysis";
 
+import { ReportGateModal } from "./report-gate-modal";
+
 interface PremiumLockedSectionProps {
   teasers: AnalysisPremiumTeasers;
+  username?: string;
 }
 
-export function PremiumLockedSection({ teasers }: PremiumLockedSectionProps) {
+export function PremiumLockedSection({ teasers, username }: PremiumLockedSectionProps) {
+  const [gateOpen, setGateOpen] = useState(false);
   const cards = [
     {
       icon: TrendingUp,
@@ -116,7 +121,12 @@ export function PremiumLockedSection({ teasers }: PremiumLockedSectionProps) {
                 PDF detalhado enviado por email. Sem cartão.
               </p>
             </div>
-            <Button variant="primary" size="lg" leftIcon={<FileText />}>
+            <Button
+              variant="primary"
+              size="lg"
+              leftIcon={<FileText />}
+              onClick={() => setGateOpen(true)}
+            >
               Desbloquear relatório completo
             </Button>
             <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
@@ -125,6 +135,12 @@ export function PremiumLockedSection({ teasers }: PremiumLockedSectionProps) {
           </div>
         </div>
       </div>
+
+      <ReportGateModal
+        open={gateOpen}
+        onOpenChange={setGateOpen}
+        username={username}
+      />
     </section>
   );
 }

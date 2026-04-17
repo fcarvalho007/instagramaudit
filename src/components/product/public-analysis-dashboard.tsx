@@ -69,7 +69,7 @@ export function PublicAnalysisDashboard({
 
         <AnalysisCompetitorComparison competitors={competitors} />
 
-        <PremiumLockedSection teasers={premiumTeasers} />
+        <PremiumLockedSection teasers={premiumTeasers} username={profile.handle} />
       </Container>
     </div>
   );
