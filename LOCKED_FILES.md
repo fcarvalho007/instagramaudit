@@ -33,6 +33,12 @@ explicitly asks for a modification in a new prompt.
 - /src/components/landing/hero-aurora-background.tsx
 - /src/components/landing/hero-action-bar.tsx
 
+## Landing Components (Sprint 1, Prompt 1.2)
+- /src/components/landing/use-in-view.ts
+- /src/components/landing/social-proof-section.tsx
+- /src/components/landing/how-it-works-step.tsx
+- /src/components/landing/how-it-works-section.tsx
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,

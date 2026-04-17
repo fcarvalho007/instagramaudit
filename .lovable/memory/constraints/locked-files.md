@@ -23,3 +23,7 @@ Locked files:
 - /src/components/landing/hero-section.tsx (since Sprint 1, Prompt 1.1)
 - /src/components/landing/hero-aurora-background.tsx (since Sprint 1, Prompt 1.1)
 - /src/components/landing/hero-action-bar.tsx (since Sprint 1, Prompt 1.1)
+- /src/components/landing/use-in-view.ts (since Sprint 1, Prompt 1.2)
+- /src/components/landing/social-proof-section.tsx (since Sprint 1, Prompt 1.2)
+- /src/components/landing/how-it-works-step.tsx (since Sprint 1, Prompt 1.2)
+- /src/components/landing/how-it-works-section.tsx (since Sprint 1, Prompt 1.2)
