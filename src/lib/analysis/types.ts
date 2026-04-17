@@ -31,10 +31,29 @@ export interface PublicAnalysisStatus {
   analyzed_at: string; // ISO timestamp
 }
 
+export type CompetitorErrorCode =
+  | "PROFILE_NOT_FOUND"
+  | "POSTS_UNAVAILABLE"
+  | "UPSTREAM_FAILED";
+
+export type CompetitorAnalysis =
+  | {
+      success: true;
+      profile: PublicAnalysisProfile;
+      content_summary: PublicAnalysisContentSummary;
+    }
+  | {
+      success: false;
+      username: string;
+      error_code: CompetitorErrorCode;
+      message: string; // pt-PT, user-facing
+    };
+
 export interface PublicAnalysisSuccess {
   success: true;
   profile: PublicAnalysisProfile;
   content_summary: PublicAnalysisContentSummary;
+  competitors: CompetitorAnalysis[];
   status: PublicAnalysisStatus;
 }
 

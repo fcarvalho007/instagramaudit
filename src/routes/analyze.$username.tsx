@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
@@ -7,10 +7,17 @@ import { PublicAnalysisDashboard } from "@/components/product/public-analysis-da
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import type { PublicAnalysisResponse } from "@/lib/analysis/types";
 
+interface AnalyzeSearch {
+  vs?: string;
+}
+
 export const Route = createFileRoute("/analyze/$username")({
   // SSR-disabled: the analysis fetch runs only in the browser to keep the
   // Apify boundary inside the server route and avoid SSR-time fetch loops.
   ssr: false,
+  validateSearch: (search: Record<string, unknown>): AnalyzeSearch => ({
+    vs: typeof search.vs === "string" ? search.vs : undefined,
+  }),
   head: ({ params }) => {
     const handle = params.username.replace(/^@/, "");
     return {
@@ -38,7 +45,20 @@ export const Route = createFileRoute("/analyze/$username")({
 
 function AnalyzePage() {
   const { username } = Route.useParams();
+  const { vs } = Route.useSearch();
   const cleaned = username.replace(/^@/, "");
+
+  // Parse competitors from the `?vs=` query string. Capped at 2.
+  const competitors = useMemo(() => {
+    if (!vs) return [];
+    return vs
+      .split(",")
+      .map((s: string) => s.trim().replace(/^@/, ""))
+      .filter((s: string) => s.length > 0)
+      .slice(0, 2);
+  }, [vs]);
+
+  const competitorsKey = competitors.join(",");
 
   const [state, setState] = useState<
     | { status: "loading" }
@@ -47,9 +67,10 @@ function AnalyzePage() {
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
-    const data = await fetchPublicAnalysis(cleaned);
+    const data = await fetchPublicAnalysis(cleaned, competitors);
     setState({ status: "ready", data });
-  }, [cleaned]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleaned, competitorsKey]);
 
   useEffect(() => {
     void load();

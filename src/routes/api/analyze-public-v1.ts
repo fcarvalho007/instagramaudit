@@ -1,11 +1,14 @@
 /**
- * Public analysis endpoint — primary profile only.
+ * Public analysis endpoint — primary profile + up to 2 optional competitors.
  *
- * Server-side boundary for the Apify integration. Validates the username,
- * scrapes profile + recent posts, normalizes everything to PublicAnalysisResponse,
- * and never exposes raw upstream payloads or the Apify token to the browser.
+ * Server-side boundary for the Apify integration. Validates input, scrapes
+ * profiles (single batched call) and posts (per-handle, in parallel via
+ * allSettled), normalizes everything into PublicAnalysisResponse, and never
+ * exposes raw upstream payloads or the Apify token to the browser.
  *
- * Scope: 1 profile, 12 recent posts. No competitors, no caching, no persistence.
+ * Scope: 1 primary profile + up to 2 competitors, 12 recent posts each.
+ * No caching, no persistence, no AI. Partial competitor failures degrade
+ * gracefully — the primary profile is always prioritised.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -21,20 +24,30 @@ import {
   normalizeProfile,
 } from "@/lib/analysis/normalize";
 import type {
+  CompetitorAnalysis,
   PublicAnalysisErrorCode,
+  PublicAnalysisProfile,
   PublicAnalysisResponse,
 } from "@/lib/analysis/types";
 
 const PROFILE_ACTOR = "apify/instagram-profile-scraper";
 const POST_ACTOR = "apify/instagram-post-scraper";
 const POSTS_LIMIT = 12;
+const MAX_COMPETITORS = 2;
+
+const usernameSchema = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/^@/, ""))
+  .pipe(z.string().regex(/^[A-Za-z0-9._]{1,30}$/));
 
 const PayloadSchema = z.object({
-  instagram_username: z
-    .string()
-    .trim()
-    .transform((v) => v.replace(/^@/, ""))
-    .pipe(z.string().regex(/^[A-Za-z0-9._]{1,30}$/)),
+  instagram_username: usernameSchema,
+  competitor_usernames: z
+    .array(usernameSchema)
+    .max(MAX_COMPETITORS)
+    .optional()
+    .default([]),
 });
 
 const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
@@ -76,6 +89,39 @@ function failure(code: PublicAnalysisErrorCode): Response {
   );
 }
 
+function competitorFailure(
+  username: string,
+  code: "PROFILE_NOT_FOUND" | "POSTS_UNAVAILABLE" | "UPSTREAM_FAILED",
+): CompetitorAnalysis {
+  const messages: Record<typeof code, string> = {
+    PROFILE_NOT_FOUND: `Não foi possível encontrar @${username}.`,
+    POSTS_UNAVAILABLE: `Métricas indisponíveis para @${username}.`,
+    UPSTREAM_FAILED: `Não foi possível analisar @${username} neste momento.`,
+  };
+  return {
+    success: false,
+    username,
+    error_code: code,
+    message: messages[code],
+  };
+}
+
+async function fetchPostsForHandle(
+  username: string,
+  followersCount: number,
+) {
+  const postRows = await runActor<Record<string, unknown>>(
+    POST_ACTOR,
+    {
+      directUrls: [`https://www.instagram.com/${username}/`],
+      resultsLimit: POSTS_LIMIT,
+      resultsType: "posts",
+    },
+    { timeoutMs: 60_000, apifyTimeoutSecs: 55 },
+  );
+  return computeContentSummary(postRows, followersCount);
+}
+
 export const Route = createFileRoute("/api/analyze-public-v1")({
   server: {
     handlers: {
@@ -94,57 +140,91 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         if (!parsed.success) {
           return failure("INVALID_USERNAME");
         }
-        const username = parsed.data.instagram_username;
+        const primary = parsed.data.instagram_username;
+
+        // Dedup competitors: lowercase comparison, drop primary, drop dupes,
+        // cap at MAX_COMPETITORS. Original casing preserved for display.
+        const seen = new Set<string>([primary.toLowerCase()]);
+        const competitors: string[] = [];
+        for (const c of parsed.data.competitor_usernames ?? []) {
+          const key = c.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          competitors.push(c);
+          if (competitors.length >= MAX_COMPETITORS) break;
+        }
+
+        const allHandles = [primary, ...competitors];
 
         try {
-          // 1) Profile actor — minimal input, single username.
+          // 1) Single batched profile call for primary + competitors.
           const profileRows = await runActor<Record<string, unknown>>(
             PROFILE_ACTOR,
-            { usernames: [username] },
-            { timeoutMs: 50_000, apifyTimeoutSecs: 45 },
+            { usernames: allHandles },
+            { timeoutMs: 60_000, apifyTimeoutSecs: 55 },
           );
 
-          const profile = profileRows.length > 0
-            ? normalizeProfile(profileRows[0])
-            : null;
+          // Map normalised rows by lowercased username for lookup.
+          const profilesByHandle = new Map<string, PublicAnalysisProfile>();
+          for (const row of profileRows) {
+            const np = normalizeProfile(row);
+            if (np) profilesByHandle.set(np.username.toLowerCase(), np);
+          }
 
-          if (!profile) {
+          const primaryProfile = profilesByHandle.get(primary.toLowerCase());
+          if (!primaryProfile) {
             return failure("PROFILE_NOT_FOUND");
           }
 
-          // 2) Posts actor — recent window, capped to POSTS_LIMIT.
-          // `directUrls` is the documented input for instagram-post-scraper
-          // and is more reliable than `username` alone (which silently returns
-          // empty for some handles). We also keep `resultsLimit` for cost control.
-          let contentSummary;
-          try {
-            const postRows = await runActor<Record<string, unknown>>(
-              POST_ACTOR,
-              {
-                directUrls: [`https://www.instagram.com/${username}/`],
-                resultsLimit: POSTS_LIMIT,
-                resultsType: "posts",
-              },
-              { timeoutMs: 60_000, apifyTimeoutSecs: 55 },
-            );
-            contentSummary = computeContentSummary(
-              postRows,
-              profile.followers_count,
-            );
-          } catch (postErr) {
-            // Profile worked, posts didn't — degrade gracefully with empty summary.
-            console.error(
-              "[analyze-public-v1] post scrape failed",
-              postErr,
-            );
-            contentSummary = computeContentSummary([], profile.followers_count);
-          }
+          // 2) Posts in parallel — primary + each competitor that resolved.
+          const primaryPostsP = fetchPostsForHandle(
+            primaryProfile.username,
+            primaryProfile.followers_count,
+          ).catch((err) => {
+            console.error("[analyze-public-v1] primary posts failed", err);
+            return computeContentSummary([], primaryProfile.followers_count);
+          });
+
+          const competitorTasks = competitors.map(async (handle) => {
+            const profile = profilesByHandle.get(handle.toLowerCase());
+            if (!profile) {
+              return competitorFailure(handle, "PROFILE_NOT_FOUND");
+            }
+            try {
+              const summary = await fetchPostsForHandle(
+                profile.username,
+                profile.followers_count,
+              );
+              return {
+                success: true as const,
+                profile,
+                content_summary: summary,
+              };
+            } catch (postErr) {
+              console.error(
+                "[analyze-public-v1] competitor posts failed",
+                handle,
+                postErr,
+              );
+              const code =
+                postErr instanceof ApifyUpstreamError && postErr.status === 404
+                  ? "PROFILE_NOT_FOUND"
+                  : "POSTS_UNAVAILABLE";
+              return competitorFailure(handle, code);
+            }
+          });
+
+          const [primarySummary, competitorResults] = await Promise.all([
+            primaryPostsP,
+            Promise.all(competitorTasks),
+          ]);
 
           return jsonResponse(
             {
               success: true,
-              profile,
-              content_summary: contentSummary,
+              profile: primaryProfile,
+              content_summary: primarySummary,
+              competitors: competitorResults,
               status: {
                 success: true,
                 data_source: "apify_v1",
@@ -164,7 +244,6 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               err.status,
               err.message,
             );
-            // Apify returns 404 when the actor cannot resolve the user.
             if (err.status === 404) return failure("PROFILE_NOT_FOUND");
             return failure("UPSTREAM_FAILED");
           }
