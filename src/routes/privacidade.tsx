@@ -165,9 +165,9 @@ function PrivacidadePage() {
         <h2>5. Transferências internacionais</h2>
         <p>
           Alguns subcontratantes (nomeadamente Resend, Apify e parte da infraestrutura de
-          Cloudflare e Anthropic) podem tratar dados fora do Espaço Económico Europeu, em particular
-          nos Estados Unidos da América. Estas transferências apoiam-se nas garantias previstas no
-          RGPD, incluindo, consoante aplicável, o EU–U.S. Data Privacy Framework e/ou Cláusulas
+          Cloudflare) podem tratar dados fora do Espaço Económico Europeu, em particular nos Estados
+          Unidos da América. Estas transferências apoiam-se nas garantias previstas no RGPD,
+          incluindo, consoante aplicável, o EU–U.S. Data Privacy Framework e/ou Cláusulas
           Contratuais-Tipo aprovadas pela Comissão Europeia.
         </p>
       </section>
