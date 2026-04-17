@@ -5,7 +5,7 @@ import { HowItWorksStep } from "./how-it-works-step";
 
 export function HowItWorksSection() {
   return (
-    <section className="relative py-24 md:py-32 overflow-hidden">
+    <section className="relative py-24 md:py-32 overflow-hidden border-t border-border-subtle">
       {/* HUD vertical lines background */}
       <div
         aria-hidden="true"

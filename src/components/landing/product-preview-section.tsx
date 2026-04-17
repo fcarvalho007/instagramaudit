@@ -37,16 +37,27 @@ function MockupWithReveal() {
           : "opacity-0 scale-95 translate-y-8",
       )}
     >
-      {/* Studio light spotlight behind the mockup */}
+      {/* Studio stage — atmospheric warm off-white spotlight */}
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none"
       >
-        <div className="h-[120%] w-[110%] max-w-[95vw] rounded-full bg-[radial-gradient(ellipse_at_center,_rgb(255_255_255)_0%,_rgb(255_255_255_/_0.5)_30%,_transparent_65%)]" />
+        <div className="h-[80%] w-[90%] max-w-[90vw] rounded-full bg-[radial-gradient(ellipse_at_center,_rgb(var(--surface-light-elevated))_0%,_rgb(var(--surface-light-elevated)_/_0.6)_35%,_transparent_70%)]" />
+      </div>
+
+      {/* Bottom grounding shadow — pousa o objecto no palco */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 -bottom-6 -z-10 flex justify-center pointer-events-none"
+      >
+        <div className="h-12 w-[80%] max-w-[700px] rounded-[50%] bg-slate-900/15 blur-2xl" />
       </div>
 
       {/* Editorial frame with corner brackets */}
-      <div className="relative rounded-3xl border border-slate-200/70 bg-white/50 backdrop-blur-sm p-3 md:p-5 shadow-[0_30px_60px_-20px_rgb(15_23_42_/_0.25),_0_60px_120px_-40px_rgb(139_92_246_/_0.15)]">
+      <div
+        className="relative rounded-3xl border border-slate-300/60 bg-surface-light-elevated/80 backdrop-blur-sm p-3 md:p-5"
+        style={{ boxShadow: "var(--shadow-stage)" }}
+      >
         {/* Corner brackets */}
         {[
           "top-2 left-2 border-t border-l rounded-tl-md",
@@ -58,7 +69,7 @@ function MockupWithReveal() {
             key={i}
             aria-hidden="true"
             className={cn(
-              "absolute h-3 w-3 border-slate-400/60 pointer-events-none",
+              "absolute h-3 w-3 border-slate-500/70 pointer-events-none",
               pos,
             )}
           />
@@ -71,7 +82,7 @@ function MockupWithReveal() {
 
 export function ProductPreviewSection() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-surface-base via-surface-light to-surface-light pt-32 md:pt-40 pb-24 md:pb-32">
+    <section className="relative overflow-hidden bg-gradient-to-b from-surface-base via-surface-light to-surface-light-elevated pt-32 md:pt-40 pb-24 md:pb-32">
       {/* Top transition fade — dark to light */}
       <div
         aria-hidden="true"
@@ -87,7 +98,7 @@ export function ProductPreviewSection() {
       <Container size="lg" className="relative z-10">
         {/* Header — dark text on light surface */}
         <div className="max-w-2xl mb-12 md:mb-16">
-          <span className="font-mono text-xs uppercase tracking-wide text-accent-violet mb-4 block">
+          <span className="font-mono text-xs uppercase tracking-wide text-accent-violet-deep mb-4 block">
             Preview do produto
           </span>
           <h2 className="font-display text-3xl md:text-5xl font-medium tracking-tight text-on-light-primary leading-[1.1] mb-6">
@@ -107,7 +118,7 @@ export function ProductPreviewSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mt-16 md:mt-20">
           {highlights.map((item) => (
             <div key={item.label} className="flex flex-col gap-3">
-              <span className="font-mono text-xs uppercase tracking-wide text-on-light-tertiary">
+              <span className="font-mono text-xs uppercase tracking-wide text-on-light-secondary">
                 {item.label}
               </span>
               <h3 className="font-display text-xl font-medium text-on-light-primary tracking-tight">
