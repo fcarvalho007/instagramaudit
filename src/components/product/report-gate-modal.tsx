@@ -143,6 +143,7 @@ export function ReportGateModal({
       if (onSubmit) {
         await onSubmit(data);
         setState("success");
+        onRequestOutcome?.("success");
         return;
       }
 
@@ -160,12 +161,14 @@ export function ReportGateModal({
       if (result.success) {
         setRemainingFree(result.remaining_free_reports);
         setState(result.quota_status === "last_free" ? "success-last" : "success");
+        onRequestOutcome?.("success");
         return;
       }
 
       if (result.error_code === "QUOTA_REACHED") {
         setRemainingFree(0);
         setState("paywall");
+        onRequestOutcome?.("limit-reached");
         return;
       }
 
