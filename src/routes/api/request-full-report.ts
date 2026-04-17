@@ -261,7 +261,7 @@ export const Route = createFileRoute("/api/request-full-report")({
           );
         }
 
-        // 4) Insert report_request row.
+        // 4) Insert report_request row, linked to the validated snapshot.
         const { data: reqRow, error: reqError } = await supabaseAdmin
           .from("report_requests")
           .insert({
@@ -269,6 +269,7 @@ export const Route = createFileRoute("/api/request-full-report")({
             instagram_username,
             competitor_usernames,
             request_source,
+            analysis_snapshot_id: validatedSnapshotId,
             metadata: {
               quota_mode: "server_enforced",
               flow_version: "v2",
