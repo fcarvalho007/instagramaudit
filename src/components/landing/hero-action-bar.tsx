@@ -19,10 +19,10 @@ export function HeroActionBar() {
       </div>
 
       {/* The bar — glass card with input + button inline */}
-      <div className="relative rounded-2xl border border-border-strong bg-surface-base/80 backdrop-blur-xl shadow-2xl shadow-[inset_0_1px_0_rgb(255_255_255_/_0.04)] overflow-hidden hero-bar-breathe focus-within:border-accent-violet/40 transition-colors">
+      <div className="relative rounded-2xl border border-border-strong bg-surface-base/80 backdrop-blur-xl shadow-2xl shadow-[inset_0_1px_0_rgb(255_255_255_/_0.04),0_30px_60px_-30px_rgb(0_0_0_/_0.6)] overflow-hidden hero-bar-breathe focus-within:border-accent-violet/40 transition-colors">
         <form
           onSubmit={(e) => e.preventDefault()}
-          className="flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-subtle"
+          className="flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-subtle sm:divide-border-default"
         >
           {/* Input zone */}
           <div className="relative flex-1">

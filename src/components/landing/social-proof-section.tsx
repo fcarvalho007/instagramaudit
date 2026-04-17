@@ -50,10 +50,10 @@ export function SocialProofSection() {
                   </div>
                   <span
                     aria-hidden="true"
-                    className="absolute -bottom-1.5 left-0 h-[2px] w-8 bg-accent-violet/60 rounded-full"
+                    className="absolute -bottom-1.5 left-0 h-[2px] w-8 bg-gradient-to-r from-accent-violet to-accent-violet-luminous rounded-full"
                   />
                 </div>
-                <div className="font-mono text-[0.65rem] md:text-xs uppercase tracking-wide text-content-tertiary leading-snug">
+                <div className="font-mono text-[0.65rem] md:text-xs uppercase tracking-wide text-content-secondary leading-snug">
                   {metric.label}
                 </div>
               </div>

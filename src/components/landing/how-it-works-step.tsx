@@ -34,7 +34,7 @@ export function HowItWorksStep({
       {/* Icon + number row */}
       <div className="flex items-center gap-4">
         <div
-          className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-surface-elevated border border-accent-violet/20"
+          className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-surface-elevated/70 border border-accent-violet/20"
           style={{ boxShadow: "var(--shadow-glow-violet)" }}
         >
           <span className="text-accent-violet-luminous [&>svg]:h-6 [&>svg]:w-6">

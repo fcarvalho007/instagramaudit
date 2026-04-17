@@ -16,7 +16,7 @@ export function MockupBenchmarkGauge({
     <div className="space-y-3">
       <div className="relative h-2 rounded-full bg-surface-base/60 border border-border-subtle overflow-visible">
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent-primary to-accent-luminous shadow-glow-cyan"
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent-primary to-accent-luminous shadow-[0_0_8px_-2px_rgb(6_182_212_/_0.3)]"
           style={{ width: `${valuePercent}%` }}
         />
         <div

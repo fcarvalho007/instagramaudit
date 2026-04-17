@@ -43,7 +43,7 @@ export function MockupMetricCard({
       className={cn(
         "flex flex-col gap-1.5",
         featured &&
-          "border-accent-violet/40 shadow-[0_0_24px_-8px_rgb(139_92_246_/_0.4)]",
+          "border-accent-violet/40 shadow-[0_0_32px_-12px_rgb(139_92_246_/_0.5)]",
       )}
     >
       <span

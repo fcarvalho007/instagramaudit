@@ -23,7 +23,7 @@ export function MockupDashboard() {
       className="overflow-hidden border-slate-700/60 shadow-[0_25px_50px_-12px_rgb(0_0_0_/_0.5)]"
     >
       {/* Top bar */}
-      <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-surface-secondary/40 px-4 py-3 md:px-6 md:py-4">
+      <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-surface-secondary/60 px-4 py-3 md:px-6 md:py-4">
         <div className="flex items-center gap-3 min-w-0">
           <div
             className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-accent-primary to-accent-luminous shrink-0"
@@ -185,7 +185,7 @@ export function MockupDashboard() {
 
         {/* Central intrigue label with lock icon */}
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
-          <span className="inline-flex items-center gap-2 font-mono text-[0.625rem] uppercase tracking-[0.24em] text-content-secondary px-3.5 py-1.5 rounded-full bg-surface-base/70 backdrop-blur-md border border-border-default">
+          <span className="inline-flex items-center gap-2 font-mono text-[0.625rem] uppercase tracking-[0.24em] text-content-secondary px-3.5 py-1.5 rounded-full bg-surface-base/85 backdrop-blur-md border border-border-default">
             <Lock className="h-3 w-3" aria-hidden="true" />
             Conteúdo completo no relatório
           </span>
