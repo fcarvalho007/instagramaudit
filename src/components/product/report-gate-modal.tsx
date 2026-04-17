@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, CheckCircle2, FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input, InputHelper, InputLabel } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 export interface GateFormData {
@@ -71,23 +72,24 @@ export function ReportGateModal({
   const [rgpd, setRgpd] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!open) {
-      // delay reset slightly to avoid flash during close animation
-      const t = setTimeout(() => {
-        setState("idle");
-        setNome("");
-        setEmail("");
-        setEmpresa("");
-        setRgpd(false);
-        setErrors({});
-        setTouched({});
-      }, 200);
-      return () => clearTimeout(t);
-    }
-  }, [open]);
+  const resetForm = () => {
+    setState("idle");
+    setNome("");
+    setEmail("");
+    setEmpresa("");
+    setRgpd(false);
+    setErrors({});
+    setTouched({});
+    setSubmitError(null);
+  };
+
+  // Synchronous reset on close — avoids flash on rapid reopen
+  const handleOpenChange = (next: boolean) => {
+    if (!next) resetForm();
+    onOpenChange(next);
+  };
 
   const handleBlur = (field: keyof FormErrors) => {
     setTouched((t) => ({ ...t, [field]: true }));
@@ -103,6 +105,7 @@ export function ReportGateModal({
     if (Object.keys(next).length > 0) return;
 
     setState("submitting");
+    setSubmitError(null);
     const data: GateFormData = {
       nome: nome.trim(),
       email: email.trim(),
@@ -114,10 +117,22 @@ export function ReportGateModal({
       if (onSubmit) {
         await onSubmit(data);
       } else {
-        await new Promise((resolve) => setTimeout(resolve, 900));
+        // Persist to Lovable Cloud + minimum delay for premium UX feel
+        const minDelay = new Promise((resolve) => setTimeout(resolve, 600));
+        const insert = supabase.from("report_requests").insert({
+          username: username ?? "unknown",
+          name: data.nome,
+          email: data.email,
+          company: data.empresa ?? null,
+          rgpd_accepted_at: data.rgpdAcceptedAt,
+        });
+        const [{ error }] = await Promise.all([insert, minDelay]);
+        if (error) throw error;
       }
       setState("success");
-    } catch {
+    } catch (err) {
+      console.error("Report request submission failed", err);
+      setSubmitError("Não foi possível processar o pedido. Tentar novamente.");
       setState("idle");
     }
   };
