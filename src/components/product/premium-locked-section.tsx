@@ -130,10 +130,16 @@ export function PremiumLockedSection({
             </div>
             <div className="space-y-2">
               <p className="font-display text-xl font-medium text-content-primary tracking-tight">
-                Três insights estratégicos por IA, alcance estimado e plano para 30 dias.
+                {isRequested
+                  ? "Relatório a caminho — ver opções de acompanhamento contínuo."
+                  : isLimitReached
+                    ? "Quota gratuita esgotada. Continuar com compra pontual ou Pro."
+                    : "Três insights estratégicos por IA, alcance estimado e plano para 30 dias."}
               </p>
               <p className="font-sans text-sm text-content-secondary">
-                PDF detalhado enviado por email. Sem cartão.
+                {isRequested
+                  ? "PDF entregue nos próximos minutos. Acompanhamento disponível em breve."
+                  : "PDF detalhado enviado por email. Sem cartão."}
               </p>
             </div>
             <Button
@@ -141,8 +147,13 @@ export function PremiumLockedSection({
               size="lg"
               leftIcon={<FileText />}
               onClick={() => setGateOpen(true)}
+              disabled={isRequested}
             >
-              Desbloquear relatório completo
+              {isRequested
+                ? "Pedido enviado"
+                : isLimitReached
+                  ? "Ver opções de upgrade"
+                  : "Desbloquear relatório completo"}
             </Button>
             <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
               Dois relatórios gratuitos por mês
@@ -156,6 +167,7 @@ export function PremiumLockedSection({
         onOpenChange={setGateOpen}
         username={username}
         analysisSnapshotId={analysisSnapshotId}
+        onRequestOutcome={onRequestOutcome}
       />
     </section>
   );
