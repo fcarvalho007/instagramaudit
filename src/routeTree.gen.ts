@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
 import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
 
 const DesignSystemRoute = DesignSystemRouteImport.update({
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRequestFullReportRoute = ApiRequestFullReportRouteImport.update({
+  id: '/api/request-full-report',
+  path: '/api/request-full-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyzeUsernameRoute = AnalyzeUsernameRouteImport.update({
   id: '/analyze/$username',
   path: '/analyze/$username',
@@ -33,30 +39,43 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
+  '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
+  '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
+  '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/design-system' | '/analyze/$username'
+  fullPaths:
+    | '/'
+    | '/design-system'
+    | '/analyze/$username'
+    | '/api/request-full-report'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/design-system' | '/analyze/$username'
-  id: '__root__' | '/' | '/design-system' | '/analyze/$username'
+  to: '/' | '/design-system' | '/analyze/$username' | '/api/request-full-report'
+  id:
+    | '__root__'
+    | '/'
+    | '/design-system'
+    | '/analyze/$username'
+    | '/api/request-full-report'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DesignSystemRoute: typeof DesignSystemRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
+  ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +94,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/request-full-report': {
+      id: '/api/request-full-report'
+      path: '/api/request-full-report'
+      fullPath: '/api/request-full-report'
+      preLoaderRoute: typeof ApiRequestFullReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analyze/$username': {
       id: '/analyze/$username'
       path: '/analyze/$username'
@@ -89,7 +115,17 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DesignSystemRoute: DesignSystemRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
+  ApiRequestFullReportRoute: ApiRequestFullReportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

@@ -19,6 +19,7 @@ import {
   incrementQuota,
   normalizeEmail,
 } from "@/lib/quota";
+import { requestFullReport } from "@/integrations/supabase/queries/report-requests";
 
 export interface GateFormData {
   nome: string;
@@ -132,18 +133,31 @@ export function ReportGateModal({
       if (onSubmit) {
         await onSubmit(data);
       } else {
-        // TODO: persistence intentionally disabled — schema was migrated to
-        // normalized leads + report_requests tables. Frontend rewire (create
-        // lead, then insert report_request) will land in a later prompt.
-        // Mock UX is driven entirely by the localStorage quota below.
-        await new Promise((resolve) => setTimeout(resolve, 600));
+        // Persist via server route (service-role admin client behind RLS).
+        // Quota counting still lives in localStorage — server-side quota will
+        // land with auth + rate limiting in a later prompt.
+        const result = await requestFullReport({
+          email: data.email,
+          name: data.nome,
+          company: data.empresa,
+          instagram_username: username ?? "",
+          competitor_usernames: [],
+          request_source: "public_dashboard",
+        });
+        if (!result.success) {
+          throw new Error(result.message);
+        }
       }
 
       const newCount = incrementQuota(normalizedEmail);
       setState(newCount >= FREE_MONTHLY_LIMIT ? "success-last" : "success");
     } catch (err) {
       console.error("Report request submission failed", err);
-      setSubmitError("Não foi possível processar o pedido. Tentar novamente.");
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Não foi possível concluir o pedido. Tentar novamente.";
+      setSubmitError(message);
       setState("idle");
     }
   };
