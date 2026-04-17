@@ -2,61 +2,52 @@
 
 ## Entendimento
 
-**1. Landing → analyze → gate**: hero (`/`) → `/analyze/$username` → `<PublicAnalysisDashboard>` → `<ReportGateModal>` → `POST /api/request-full-report` (insert `report_requests` com snapshot ligado, devolve `report_request_id` + `quota_status`).
+**1. Landing → analyze → gate**: hero (`/`) → `/analyze/$username` → `<PublicAnalysisDashboard>` → `<ReportGateModal>` → `POST /api/request-full-report`.
 
-**2. Análise + snapshots**: `/api/analyze-public-v1` cacheia 24h em `analysis_snapshots`, devolve `analysis_snapshot_id`.
+**2. Análise pública**: `/api/analyze-public-v1` cacheia 24h em `analysis_snapshots`. Cada análise tem `id` reutilizável.
 
-**3. Full report request**: server route insere row em `report_requests` (defaults: `request_status='pending'`, `pdf_status='not_generated'`, `delivery_status='not_sent'`). Hoje **pára aqui** — nada acontece a seguir sem chamada manual.
+**3. Lifecycle do pedido**: `/api/request-full-report` valida payload + snapshot, faz upsert do `lead`, conta quota mensal, insere `report_requests` com `request_status='pending'`, dispara `runReportPipeline` em background, responde imediatamente ao cliente.
 
-**4. PDF v1**: `/api/generate-report-pdf` resolve `report_request_id → snapshot → render → upload bucket → update pdf_status='ready'`. Idempotente.
+**4. PDF + Email**: orchestrator transita `pending → processing → completed | failed_pdf | failed_email`. Reutiliza `/api/generate-report-pdf` (idempotente) e `/api/send-report-email` (auth via `INTERNAL_API_TOKEN`, lock optimista em `delivery_status`).
 
-**5. Email v1**: `/api/send-report-email` exige header `X-Internal-Token`, faz lock optimista (`delivery_status='sending'`), gera signed URL 7d, envia via Resend, marca `delivery_status='sent'`.
-
-**6. Porquê automatizar agora**: hoje o pipeline está parcelado e exige execução manual. O utilizador submete o gate, recebe "Pedido recebido", mas **nada gera o PDF nem envia o email**. As peças existem mas não estão encadeadas. O passo certo é orquestrar server-side, sem queue externa, mantendo as funções existentes intactas e reutilizadas.
+**5. Porquê admin agora**: hoje **não há forma de ver** se um pedido falhou, em que passo, ou recuperá-lo. Sem isto, falhas (especialmente sandbox Resend) ficam invisíveis. Antes de monetização ou auth completa, é preciso uma camada operacional mínima para inspecionar e re-executar pedidos manualmente.
 
 ---
 
 ## Decisões-chave
 
-**A. Entry point: extensão da `/api/request-full-report`**
-Após o insert bem-sucedido em `report_requests`, a própria route dispara a orquestração. Sem nova Edge Function, sem queue. Razão: latência baixa, código já no mesmo runtime, simples.
+**A. Acesso temporário — gate por token server-side**
+Sem auth completa, a opção mais segura é reutilizar o `INTERNAL_API_TOKEN` que já existe nos secrets (foi adicionado para o pipeline). O fluxo:
+- `/admin` carrega um ecrã de gate (input do token) se não houver cookie de sessão admin.
+- Submit envia o token a `POST /api/admin/auth` (server route); se válido (compara com `process.env.INTERNAL_API_TOKEN`), seta cookie `admin_session` httpOnly, secure, signed via `useSession` do TanStack Start (com `password` derivado do mesmo token + sufixo).
+- Todas as routes `/api/admin/*` validam essa session cookie server-side antes de devolver dados ou executar ações.
+- **Sem credenciais hardcoded.** Sem nova lib.
 
-**B. Padrão "fire-and-forget" no Worker**
-A orquestração corre em background **sem bloquear** a resposta HTTP ao cliente. O cliente recebe o `report_request_id` + sucesso imediatamente; o pipeline continua server-side. Em Cloudflare Workers usa-se `ctx.waitUntil(promise)` — TanStack Start expõe via `getEvent()` / handler context. Fallback: `void promise.catch(...)` (não bloqueia mas pode ser cortado se Worker terminar; aceita-se em v1 dado o low-volume).
+**B. Routes**: `/admin` (lista + detail panel inline). Um único route file. Detail abre como Sheet/Drawer lateral (já existe componente shadcn).
 
-**Decisão**: tentar `waitUntil` se disponível no contexto do handler; senão `void`. Encapsulado num helper `runInBackground(promise)`.
+**C. Server routes para dados e ações** (sem expor `supabaseAdmin` ao cliente):
+- `POST /api/admin/auth` — valida token, seta session.
+- `POST /api/admin/logout` — limpa session.
+- `GET /api/admin/report-requests` — lista paginada com filtros (status, pdf_status, delivery_status, search).
+- `GET /api/admin/report-requests/$id` — detalhe (join lead + snapshot reference).
+- `POST /api/admin/regenerate-pdf` — chama `/api/generate-report-pdf` com `force=true`.
+- `POST /api/admin/resend-email` — chama `/api/send-report-email` com `X-Internal-Token`.
 
-**C. Reutilização — chamada HTTP interna**
-A orquestração chama `/api/generate-report-pdf` e `/api/send-report-email` por HTTP interno (via `fetch` para a própria origin). Razão: zero duplicação, respeita o contrato existente, idempotência já garantida por essas rotas. Construir URL absoluto a partir do `request.url` recebido no handler.
+Todas verificam session cookie. Reutilizam routes existentes — zero duplicação.
 
-**Alternativa rejeitada**: extrair a lógica para módulos partilhados e chamar funções diretamente. Mais "limpo" no papel, mas exige refactor de duas rotas existentes (já estáveis e auditadas) — viola o guardrail de não duplicar/refazer. HTTP interno é mais barato e mais auditável.
+**D. Status model — apresentação calma**
+Mapping pt-PT no client (sem alterar DB):
+- `request_status`: pending → "Pendente", processing → "Em processamento", completed → "Concluído", failed_pdf → "Falhou (PDF)", failed_email → "Falhou (email)".
+- `pdf_status`: not_generated/generating/ready/failed → "Por gerar"/"A gerar"/"Pronto"/"Falhou".
+- `delivery_status`: not_sent/sending/sent/failed → "Por enviar"/"A enviar"/"Enviado"/"Falhou".
+- Badges com variants: muted (pending), accent (processing), success (ready/sent/completed), danger (failed).
 
-**D. Modelo de status — minimalista**
-Usar `request_status` (já existe) como estado agregado da orquestração:
-- `pending` (default no insert)
-- `processing` (ao iniciar a orquestração)
-- `completed` (PDF + email OK)
-- `failed_pdf` (PDF falhou)
-- `failed_email` (PDF OK, email falhou — recuperável)
+**E. UX**
+- **Lista**: tabela `<Table>` com colunas: Data, Username, Lead (nome + email), Estado pedido, PDF, Email, Ações rápidas (botão "Detalhes"). Sort por created_at desc default. Filtros via search params (`status`, `pdf`, `email`, `q`).
+- **Detail Sheet**: abre da direita. Mostra metadata, lead completo, snapshot id (link copy), timestamps, mensagens de erro (se houver), CTAs "Regenerar PDF" e "Reenviar email".
+- **Feedback**: `useToast` (sonner já existe) para success/failure das ações. Sem `alert()`.
 
-Step-level statuses (`pdf_status`, `delivery_status`) **continuam intactos** — já são granulares e suficientes para inspeção. Sem novas colunas.
-
-**E. Idempotência e duplicate safety**
-- A orquestração só dispara após **insert com sucesso** de uma row nova → cada `report_request_id` é único.
-- `generate-report-pdf` já é idempotente (short-circuit em `pdf_status='ready'`).
-- `send-report-email` já tem optimistic lock contra envio concorrente.
-- Se a orquestração for re-invocada manualmente no futuro (admin re-run), respeitar a regra: **se `request_status='completed'` → não fazer nada**. v1 não expõe re-run, mas o helper já implementa o guard.
-
-**F. Failure handling**
-- `generate-report-pdf` falha → `request_status='failed_pdf'`, **não** chamar email.
-- `send-report-email` falha → `request_status='failed_email'`, PDF fica gravado intacto (recuperável num prompt futuro com botão admin "re-enviar").
-- Erros logged via `console.error` com prefixo `[orchestrate]`. Sem leaks ao utilizador (a UX modal já mostrou sucesso).
-
-**G. UX após submit — sem alterações ao modal**
-O modal já mostra `"Pedido recebido"` + `"O relatório de @x será enviado para email@... nos próximos minutos."` Tom calmo, premium, alinhado. **Zero mudanças** ao `report-gate-modal.tsx`. O cliente nunca espera pelo pipeline.
-
-**H. Sandbox Resend**
-Limitação conhecida: `onboarding@resend.dev` só entrega ao owner da conta. Em v1 o `request_status` ficará `failed_email` para a maioria dos leads — comportamento esperado e auditável até verificação de domínio. Sem mitigação adicional neste prompt.
+**F. Sem novas dependências.** Reutiliza shadcn Table, Sheet, Badge, Button, Input, Select, Toast.
 
 ---
 
@@ -64,62 +55,70 @@ Limitação conhecida: `onboarding@resend.dev` só entrega ao owner da conta. Em
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `supabase/migrations/{ts}_request_lifecycle.sql` | **Criar** — index em `request_status` para queries futuras de admin (sem alterar default existente) | Não |
-| `src/lib/orchestration/run-report-pipeline.ts` | **Criar** — helper `runReportPipeline(reportRequestId, origin)`: chama PDF route, depois email route, atualiza `request_status` em cada transição | Não |
-| `src/routes/api/request-full-report.ts` | **Editar** — após insert OK, computa `origin` do `request.url`, dispara `runReportPipeline` em background (waitUntil/void), responde imediatamente como hoje | Não |
+| `src/routes/admin.tsx` | Criar — route principal com gate + lista + detail sheet | Não |
+| `src/routes/api/admin/auth.ts` | Criar — POST valida token, seta session | Não |
+| `src/routes/api/admin/logout.ts` | Criar — POST limpa session | Não |
+| `src/routes/api/admin/report-requests.ts` | Criar — GET lista paginada com filtros | Não |
+| `src/routes/api/admin/report-requests.$id.ts` | Criar — GET detalhe | Não |
+| `src/routes/api/admin/regenerate-pdf.ts` | Criar — POST chama PDF route | Não |
+| `src/routes/api/admin/resend-email.ts` | Criar — POST chama email route | Não |
+| `src/lib/admin/session.ts` | Criar — helpers `requireAdminSession`, `setAdminSession`, `clearAdminSession` (usa `useSession` do TanStack runtime) | Não |
+| `src/lib/admin/labels.ts` | Criar — mappings pt-PT para os 3 status fields + variant resolver | Não |
+| `src/components/admin/admin-gate.tsx` | Criar — formulário de entrada do token | Não |
+| `src/components/admin/request-list.tsx` | Criar — tabela + filtros | Não |
+| `src/components/admin/request-detail-sheet.tsx` | Criar — Sheet com detalhes + actions | Não |
+| `src/components/admin/status-badge.tsx` | Criar — badge tipado para os 3 statuses | Não |
 
-**Locked files**: nenhum. `report-gate-modal.tsx` não está locked mas **não vai ser modificado** — UX já cumpre o requisito.
-
-**Sem novas dependências.** Sem novas Edge Functions Supabase. Sem queue.
-
----
-
-## Schema (mínimo)
-
-Apenas index — zero colunas novas, zero alterações de defaults:
-
-```sql
-CREATE INDEX IF NOT EXISTS report_requests_request_status_idx
-  ON public.report_requests (request_status, created_at DESC);
-```
-
-`request_status` lifecycle (texto livre, sem enum para manter flexibilidade):
-`pending → processing → completed | failed_pdf | failed_email`
+**Locked files**: nenhum. `app-shell.tsx` está locked mas o admin **não** vai usar Header/Footer públicos — terá layout próprio dentro do route (mais clean para uso operacional).
 
 ---
 
-## Fluxo da orquestração
+## Schema
 
-```
-POST /api/request-full-report
-  ├─ valida + insert lead + insert report_requests (request_status='pending')
-  ├─ resposta HTTP imediata ao cliente { success, report_request_id, ... }
-  └─ background: runReportPipeline(report_request_id, origin)
-        ├─ UPDATE request_status='processing'
-        ├─ POST {origin}/api/generate-report-pdf  { report_request_id }
-        │    ├─ se !ok: UPDATE request_status='failed_pdf' → STOP
-        │    └─ se ok: continua
-        ├─ POST {origin}/api/send-report-email
-        │    headers: { X-Internal-Token: process.env.INTERNAL_API_TOKEN }
-        │    body: { report_request_id }
-        │    ├─ se !ok: UPDATE request_status='failed_email' → STOP
-        │    └─ se ok: continua
-        └─ UPDATE request_status='completed'
-```
-
-Pre-check em `runReportPipeline`: se `request_status` já é `'completed'` ou `'processing'`, abortar silenciosamente (idempotência).
+**Zero alterações ao DB.** Tudo cabe nas tabelas existentes (`report_requests`, `leads`, `analysis_snapshots`).
 
 ---
 
-## UX após submit
+## Fluxo de acesso
 
-**Sem alterações.** O modal já mostra:
-- `"Pedido recebido"` + `"O relatório de @x será enviado para email@... nos próximos minutos."` (state `success`)
-- ou state `success-last` com aviso de quota.
+```
+GET /admin
+  ├─ se cookie admin_session válido → mostra lista
+  └─ senão → mostra <AdminGate />
+        └─ submit token → POST /api/admin/auth
+              ├─ token === process.env.INTERNAL_API_TOKEN → seta session, redirect /admin
+              └─ inválido → erro inline pt-PT
+```
 
-Tom já é calmo, premium, impessoal, pt-PT. Cumpre os exemplos do prompt:
-- ✅ "O pedido foi registado com sucesso." (mensagem do server)
-- ✅ "O envio será feito por email assim que estiver pronto." (implícito em "nos próximos minutos")
+```
+Acção "Regenerar PDF" no detail sheet
+  └─ POST /api/admin/regenerate-pdf { report_request_id }
+        ├─ valida session cookie
+        ├─ POST /api/generate-report-pdf { report_request_id, force: true }
+        ├─ devolve novo pdf_status
+        └─ client mostra toast + invalida query
+```
+
+```
+Acção "Reenviar email"
+  └─ POST /api/admin/resend-email { report_request_id }
+        ├─ valida session cookie
+        ├─ POST /api/send-report-email com X-Internal-Token
+        ├─ devolve novo delivery_status
+        └─ client mostra toast + invalida query
+```
+
+**"Reprocessar pedido"** fica **fora de v1** — risco de ambiguidade (reset de `request_status` + chamada ao orchestrator) preferível avaliar quando houver mais sinal.
+
+---
+
+## Copy pt-PT (impessoal)
+
+- Gate: "Acesso restrito" / "Token de acesso" / "Entrar"
+- Lista vazia: "Sem pedidos registados."
+- Filtros: "Estado do pedido" / "Estado do PDF" / "Estado do email" / "Procurar por username ou email"
+- Acções: "Regenerar PDF" / "Reenviar email" / "Copiar ID do snapshot"
+- Toasts: "PDF regenerado com sucesso." / "Não foi possível regenerar o PDF." / "Email reenviado com sucesso." / "O envio do email falhou."
 
 ---
 
@@ -127,31 +126,31 @@ Tom já é calmo, premium, impessoal, pt-PT. Cumpre os exemplos do prompt:
 
 | Guardrail | Estado |
 |---|---|
-| Sem reanálise/scraping | ✅ |
-| Sem regenerar PDF (idempotência reusada) | ✅ |
-| Sem queue externa / job runner | ✅ |
+| Sem alterações ao landing/dashboard público | ✅ |
+| Sem auth completa (apenas gate por token) | ✅ |
+| Sem roles/permissions | ✅ |
+| Sem pagamentos / settings / analytics | ✅ |
 | Sem novas libs | ✅ |
-| Sem pagamentos / auth / admin UI | ✅ |
-| Orquestração 100% server-side | ✅ |
-| Browser não encadeia ações | ✅ |
+| Sem credenciais hardcoded (usa env secret) | ✅ |
 | Locked files intactos | ✅ |
-| Copy pt-PT impessoal mantido | ✅ |
-| Modular: PDF + email reutilizados, não duplicados | ✅ |
-| Future-ready (admin re-run, queue swap, retry) | ✅ |
+| Copy pt-PT impessoal | ✅ |
+| Reutiliza routes PDF/email existentes | ✅ |
+| Future-ready (auth real, mais filtros, audit log) | ✅ |
 
 ---
 
 ## Checkpoints
 
-- ☐ Migração: index em `request_status`
-- ☐ `src/lib/orchestration/run-report-pipeline.ts` criado
-- ☐ `request-full-report` dispara `runReportPipeline` em background após insert OK
-- ☐ Resposta HTTP ao cliente continua imediata (sem aguardar pipeline)
-- ☐ `request_status` transita: pending → processing → completed | failed_pdf | failed_email
-- ☐ PDF route reutilizada via HTTP interno (sem duplicar lógica)
-- ☐ Email route reutilizada via HTTP interno + `X-Internal-Token`
-- ☐ Idempotência: re-invocar com `request_status='completed'` é no-op
-- ☐ Failures preservam estado granular (`pdf_status`, `delivery_status`, mensagens internas)
-- ☐ Sem alterações ao `report-gate-modal.tsx` (UX já cumpre o requisito)
-- ☐ Sem queue / admin UI / pagamentos / auth / retry scheduler
+- ☐ `/admin` route criada com gate + lista + detail sheet
+- ☐ Acesso temporário via `INTERNAL_API_TOKEN` server-side, sem hardcode
+- ☐ Session cookie httpOnly + signed (TanStack `useSession`)
+- ☐ Lista com colunas: data, username, lead, request_status, pdf_status, delivery_status
+- ☐ Filtros: status pedido, status PDF, status email, search username/email
+- ☐ Detail sheet: metadata + lead + snapshot ref + timestamps + mensagens de erro
+- ☐ Acção "Regenerar PDF" reutiliza `/api/generate-report-pdf` (force=true)
+- ☐ Acção "Reenviar email" reutiliza `/api/send-report-email` (com token)
+- ☐ Status badges com mapping pt-PT calmo
+- ☐ Feedback via toasts (sonner) — sem `alert()`
+- ☐ Sem auth completa, payments, analytics, settings, roles
+- ☐ Locked files intactos
 
