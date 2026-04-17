@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
+import { Route as ApiAnalyzePublicV1RouteImport } from './routes/api/analyze-public-v1'
 import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
 
 const DesignSystemRoute = DesignSystemRouteImport.update({
@@ -29,6 +30,11 @@ const ApiRequestFullReportRoute = ApiRequestFullReportRouteImport.update({
   path: '/api/request-full-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAnalyzePublicV1Route = ApiAnalyzePublicV1RouteImport.update({
+  id: '/api/analyze-public-v1',
+  path: '/api/analyze-public-v1',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyzeUsernameRoute = AnalyzeUsernameRouteImport.update({
   id: '/analyze/$username',
   path: '/analyze/$username',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
+  '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
+  '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRoutesById {
@@ -52,6 +60,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
+  '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/request-full-report': typeof ApiRequestFullReportRoute
 }
 export interface FileRouteTypes {
@@ -60,14 +69,21 @@ export interface FileRouteTypes {
     | '/'
     | '/design-system'
     | '/analyze/$username'
+    | '/api/analyze-public-v1'
     | '/api/request-full-report'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/design-system' | '/analyze/$username' | '/api/request-full-report'
+  to:
+    | '/'
+    | '/design-system'
+    | '/analyze/$username'
+    | '/api/analyze-public-v1'
+    | '/api/request-full-report'
   id:
     | '__root__'
     | '/'
     | '/design-system'
     | '/analyze/$username'
+    | '/api/analyze-public-v1'
     | '/api/request-full-report'
   fileRoutesById: FileRoutesById
 }
@@ -75,6 +91,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DesignSystemRoute: typeof DesignSystemRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
+  ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
 }
 
@@ -101,6 +118,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRequestFullReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/analyze-public-v1': {
+      id: '/api/analyze-public-v1'
+      path: '/api/analyze-public-v1'
+      fullPath: '/api/analyze-public-v1'
+      preLoaderRoute: typeof ApiAnalyzePublicV1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analyze/$username': {
       id: '/analyze/$username'
       path: '/analyze/$username'
@@ -115,8 +139,18 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DesignSystemRoute: DesignSystemRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
+  ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
