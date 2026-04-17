@@ -34,13 +34,22 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 type ErrorCode =
   | "INVALID_PAYLOAD"
+  | "UNAUTHORIZED"
   | "EMAIL_PROVIDER_NOT_CONFIGURED"
   | "REQUEST_NOT_FOUND"
   | "PDF_NOT_READY"
   | "LEAD_EMAIL_MISSING"
+  | "LEAD_EMAIL_INVALID"
+  | "DELIVERY_IN_PROGRESS"
   | "SIGNED_URL_FAILED"
   | "RESEND_FAILED"
+  | "RESEND_SANDBOX_RECIPIENT_BLOCKED"
+  | "RESEND_TIMEOUT"
   | "PERSISTENCE_FAILED";
+
+const RESEND_TIMEOUT_MS = 10_000;
+// Basic RFC 5322-lite check; intentionally permissive but rejects whitespace.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
