@@ -35,6 +35,12 @@ interface ReportGateModalProps {
   /** Snapshot id of the analysis the user is currently viewing. */
   analysisSnapshotId?: string;
   onSubmit?: (data: GateFormData) => Promise<void> | void;
+  /**
+   * Fired whenever the server returns a definitive outcome for the request.
+   * Lets the parent (e.g. analysis dashboard) lift conversion state without
+   * duplicating form logic. Optional and side-effect free for the modal UX.
+   */
+  onRequestOutcome?: (outcome: "success" | "limit-reached") => void;
 }
 
 type ModalState = "idle" | "submitting" | "success" | "success-last" | "paywall";
@@ -74,6 +80,7 @@ export function ReportGateModal({
   username,
   analysisSnapshotId,
   onSubmit,
+  onRequestOutcome,
 }: ReportGateModalProps) {
   const [state, setState] = useState<ModalState>("idle");
   const [nome, setNome] = useState("");
@@ -136,6 +143,7 @@ export function ReportGateModal({
       if (onSubmit) {
         await onSubmit(data);
         setState("success");
+        onRequestOutcome?.("success");
         return;
       }
 
@@ -153,12 +161,14 @@ export function ReportGateModal({
       if (result.success) {
         setRemainingFree(result.remaining_free_reports);
         setState(result.quota_status === "last_free" ? "success-last" : "success");
+        onRequestOutcome?.("success");
         return;
       }
 
       if (result.error_code === "QUOTA_REACHED") {
         setRemainingFree(0);
         setState("paywall");
+        onRequestOutcome?.("limit-reached");
         return;
       }
 
