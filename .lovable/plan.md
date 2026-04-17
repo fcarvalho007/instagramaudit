@@ -1,42 +1,68 @@
 
+## Diagnóstico
 
-## Plano — Re-validação após upgrade para Creator + smoke test E2E
+O problema não está no facto de o token ser “o mesmo”. A evidência que partilhaste indica que o bloqueio é do **plano**, não do token.
 
-O utilizador confirma upgrade para plano **Creator**. Vou repetir o smoke test exatamente como aprovado anteriormente, agora que o bloqueio de plano foi resolvido.
+### O que foi validado
+- O código atual já usa o ator certo: `apify/instagram-scraper`
+- A chamada é server-side via `run-sync-get-dataset-items`
+- O token é lido de `process.env.APIFY_TOKEN`
+- Não há sinal, no código lido, de fallback para os dois atores antigos
 
-### Contexto dos uploads
-- PDF 1: confirma subscription page no console Apify (Creator)
-- PDF 2: confirma actor `shu8hvrXbJbY3Eb9W` (= `apify/instagram-scraper`) acessível na conta
+### Evidência direta dos PDFs
+1. **PDF de billing**
+   - O plano **Creator** mostra: **Access to Actors = Universal only**
+   - Não mostra acesso a “All”
 
-Não preciso ler os PDFs — a informação já está confirmada na mensagem.
+2. **PDF do ator**
+   - A própria consola do ator diz:
+   - **“You cannot run this public Actor on your current Creator Plan. The Creator Plan does not include permission to run public Actors.”**
 
-### Sequência (idêntica ao plano anterior aprovado)
+3. **Página pública do ator**
+   - `apify/instagram-scraper` é um **public Actor** da Store
 
-1. **Análise real** — `POST /api/analyze-public-v1` para `frederico.m.carvalho`, sem competidores. Esperado: 200 + `success: true` + `analysis_snapshot_id`.
-2. **Snapshot persistido** — query `analysis_snapshots` por `cache_key` para validar `normalized_payload` íntegro.
-3. **Pedido de relatório** — `POST /api/request-full-report` com snapshot_id + `frederico.carvalho@digitalfc.pt`.
-4. **Pipeline** — observar `report_requests.status` evoluir até `completed` (60-90s).
-5. **PDF em storage** — validar `pdf_storage_path` + ficheiro existe + tamanho >50KB.
-6. **Email** — validar `email_sent_at` + entrega Resend.
+### Conclusão
+Sim: **o plano Creator não permite correr este ator público**.  
+Se o `APIFY_TOKEN` pertence à conta Creator, o comportamento esperado continua a ser **403 / public-actor-disabled**.
 
-### Saída
-Tabela A→G com resultado de cada etapa + smallest next fix se algo falhar.
+Ou seja:
+- não é um bug do endpoint `/api/analyze-public-v1`
+- não é um problema de normalização
+- não é por o token estar desatualizado, se ele for mesmo da conta Creator
+- o PDF que partilhaste já contém a explicação do bloqueio
 
-### Guardrails
-| | |
-|---|---|
-| Zero código novo | ✅ |
-| Zero refactor | ✅ |
-| Apenas observação | ✅ |
-| Locked files intactos | ✅ |
-| pt-PT preservado | ✅ |
+## Implicação prática
+Mesmo com o token correto, enquanto a conta ligada ao `APIFY_TOKEN` estiver em **Creator**, este ator continuará bloqueado.
 
-### Checkpoints
-- ☐ Análise real devolve 200 + snapshot ID (espero passar agora pós-Creator)
-- ☐ Snapshot persistido com payload válido
-- ☐ Lead + report_request criados
-- ☐ Pipeline corre até `completed`
-- ☐ PDF em storage com tamanho razoável
-- ☐ Email diagnosticado
-- ☐ Tabela A→G + smallest next fix
+## Menor próxima ação
+Escolher uma destas vias:
 
+1. **Upgrade para Starter (ou superior)**  
+   - mantém a arquitetura atual
+   - depois repete-se o smoke test
+
+2. **Mudar de estratégia de scraping**
+   - deixar de depender deste public Actor
+   - procurar um ator/abordagem compatível com Creator
+   - isso já implica novo plano técnico
+
+3. **Hardening separado depois**
+   - o cliente Apify atual ainda envia o token na query string server-side
+   - isso é um tema de segurança/higiene, mas **não é a causa deste 403**
+
+## Plano de trabalho se quiseres avançar
+- Confirmar qual das 2 vias queres:
+  - manter Apify Store e fazer upgrade para Starter+
+  - ou redesenhar a integração para não depender deste public Actor
+- Depois, em modo de execução:
+  - revalidar o `APIFY_TOKEN`
+  - repetir o smoke test end-to-end
+  - confirmar se a análise volta a 200 e se o pipeline continua até PDF/email
+
+## Checkpoint
+- ☑ Código atual alinhado com o ator unificado
+- ☑ PDFs lidos e usados como prova
+- ☑ Causa isolada: **Creator não permite este public Actor**
+- ☑ Não parece ser bug de código
+- ☐ Decidir entre **upgrade para Starter+** ou **migrar a integração**
+- ☐ Só depois repetir o smoke test real
