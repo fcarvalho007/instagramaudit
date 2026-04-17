@@ -53,6 +53,48 @@ export type Database = {
         }
         Relationships: []
       }
+      benchmark_references: {
+        Row: {
+          created_at: string
+          dataset_version: string
+          engagement_pct: number
+          format: string
+          id: string
+          is_active: boolean
+          tier: string
+          tier_label: string
+          tier_max_followers: number | null
+          tier_min_followers: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dataset_version: string
+          engagement_pct: number
+          format: string
+          id?: string
+          is_active?: boolean
+          tier: string
+          tier_label: string
+          tier_max_followers?: number | null
+          tier_min_followers: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dataset_version?: string
+          engagement_pct?: number
+          format?: string
+          id?: string
+          is_active?: boolean
+          tier?: string
+          tier_label?: string
+          tier_max_followers?: number | null
+          tier_min_followers?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           company: string | null
