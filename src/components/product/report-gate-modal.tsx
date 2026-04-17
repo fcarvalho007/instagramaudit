@@ -80,6 +80,7 @@ export function ReportGateModal({
   username,
   analysisSnapshotId,
   onSubmit,
+  onRequestOutcome,
 }: ReportGateModalProps) {
   const [state, setState] = useState<ModalState>("idle");
   const [nome, setNome] = useState("");
