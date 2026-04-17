@@ -52,6 +52,7 @@ export interface AnalysisData {
   profile: AnalysisProfile;
   metrics: AnalysisMetrics;
   benchmark: AnalysisBenchmark;
+  benchmarkPositioning: BenchmarkPositioning;
   competitors: AnalysisCompetitor[];
   premiumTeasers: AnalysisPremiumTeasers;
 }
