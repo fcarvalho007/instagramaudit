@@ -110,6 +110,8 @@ export async function renderReportPdf({
     generatedAt,
   });
 
-  const buffer = await renderToBuffer(doc);
+  // ReportDocument returns a <Document>; the cast satisfies the strict
+  // ReactElement<DocumentProps> signature of renderToBuffer.
+  const buffer = await renderToBuffer(doc as Parameters<typeof renderToBuffer>[0]);
   return new Uint8Array(buffer);
 }
