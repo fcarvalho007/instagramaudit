@@ -1,165 +1,117 @@
 
 
-## Entendimento
+## Auditoria — estado actual vs Workspace + Project Knowledge
 
-**1. Fluxo landing → analyze → gate**: hero (`/`) → `/analyze/$username[?vs=h1,h2]` → `<PublicAnalysisDashboard>` (header + métricas + benchmark + concorrentes reais + premium gate) → `<ReportGateModal>` com quota server-side via `/api/request-full-report` (insere em `leads` + `report_requests`).
+Revisão focada na preocupação central: **evitar hardcoded para que tudo viva na cloud e sobreviva a updates da app**.
 
-**2. Estado real de `/analyze/[username]`**: SSR-disabled, lê `?vs=` via `validateSearch`, chama `fetchPublicAnalysis(username, competitors)` no `useEffect` → `POST /api/analyze-public-v1`. Estados `loading | ready` com `<AnalysisSkeleton>` / `<AnalysisErrorState>` / `<PublicAnalysisDashboard>`. **Cada visita = nova chamada Apify.**
+### O que já está bem alinhado
 
-**3. Fluxo provider actual**: `/api/analyze-public-v1` valida payload (Zod), 1 call batched ao `instagram-profile-scraper` com `[primary, ...competitors]`, depois `Promise.allSettled` ao `instagram-post-scraper` por handle (12 posts via `directUrls`). Normaliza tudo via `normalizeProfile()` + `computeContentSummary()` → devolve `PublicAnalysisSuccess { profile, content_summary, competitors[], status }`. Boundary servidor sólido, `APIFY_TOKEN` em secret.
+- Secrets todas em Supabase (`APIFY_TOKEN`, `LOVABLE_API_KEY`, service role) — nenhum token no código.
+- `localStorage` apenas em `client.ts` (auto-gerado, sessão Supabase) — quota deixou de viver no browser.
+- Provider Apify isolado em server routes (`/api/analyze-public-v1`, `/api/request-full-report`) com `supabaseAdmin`.
+- RLS fechado em `leads`, `report_requests`, `analysis_snapshots` — escritas só via service role. Os 3 INFO do linter são intencionais.
+- Snapshots persistidos com cache de 24h + stale-on-error 7d.
+- Design tokens em `tokens.css`, sem cores/spacing hardcoded nos componentes.
 
-**4. Foundation Supabase**: 2 tabelas (`leads`, `report_requests`) com RLS fechado, escritas só via `supabaseAdmin` no server route. Trigger `set_updated_at()` partilhado. Sem tabela de análises hoje — cada análise é volátil.
+### Achados — o que ainda está hardcoded ou disperso
 
-**5. Porquê cache+snapshot agora antes de PDF/email**: cada análise consome 1 profile call + N post calls Apify. Sem cache, refresh do browser, share de link, ou reanálise dispara nova factura. Mais grave: PDF e email vão precisar de **referenciar** uma análise concreta (`snapshot_id`) para gerar o ficheiro/enviar — sem persistência, teria de re-scrapear no momento de gerar o PDF, duplicando custo e arriscando dados diferentes entre dashboard e PDF. Persistir o payload normalizado primeiro estabelece a *source of truth* sobre a qual PDF/email/admin/reanálise vão assentar. Cache de 24h é o equilíbrio entre frescura (Instagram move-se devagar à escala de 1 dia) e custo.
+**ALTA — duplicação `FREE_MONTHLY_LIMIT = 2`**
+Existe em `src/lib/quota.ts` **e** `src/routes/api/request-full-report.ts:23` (constantes duplicadas). Pior: a mensagem `"limite de 2 relatórios gratuitos"` em `request-full-report.ts:189` tem o número escrito à mão. Se mudar o limite (ex: promoção de 3 free), tem de tocar em 3 sítios e arriscar inconsistência. Solução: backend importa de `quota.ts` + interpola na mensagem.
+
+**ALTA — benchmark dataset hardcoded em código**
+`src/lib/benchmark/reference-data.ts` define `ENGAGEMENT_REFERENCE` (15 valores nano/micro/mid/macro/mega × Reels/Carrosséis/Imagens) directamente no bundle. Cada ajuste editorial (que vai acontecer — comentário no ficheiro confirma *"Refinable in later prompts"*) força um deploy. Mover para tabela `benchmark_references` na cloud permite afinar valores sem rebuild.
+
+**ALTA — tier thresholds hardcoded**
+`src/lib/benchmark/tiers.ts` cola os limites (10K, 50K, 250K, 1M) no código. Mesmo problema: ajustar tiers obriga a deploy. Devem viver junto do dataset, na mesma tabela ou tabela companheira.
+
+**MÉDIA — `BENCHMARK_DATASET_VERSION = "v1.0-2025-04"`**
+String estática em código. Se o dataset migrar para a DB, esta versão deve vir da row consultada (cada update bumps version automaticamente).
+
+**MÉDIA — copy do gate "limite de 2 relatórios"**
+Em `request-full-report.ts:189` o `2` está hardcoded na string. Trocar por interpolação `${FREE_MONTHLY_LIMIT}`.
+
+**BAIXA — actores Apify por nome no código**
+`PROFILE_ACTOR = "apify/instagram-profile-scraper"` etc. em `analyze-public-v1.ts`. Aceitável manter no código (raramente muda, parte do contracto técnico), **não** mover para DB. Mencionar no plano só para dispensar.
+
+**BAIXA — `POSTS_LIMIT = 12` e `MAX_COMPETITORS = 2`**
+Constantes de produto. Aceitável no código por enquanto — só vale a pena mover se virem a tornar-se planos pagos (ex: Pro analisa 30 posts). Nada a fazer agora.
+
+### Não-problemas (confirmados após verificação)
+
+- `client.ts` usa `localStorage` para sessão Supabase — auto-gerado, não tocar.
+- Copy hardcoded em pt-PT nos componentes de UI — está correcto (não é dado, é apresentação).
+- Ano `© 2026` no footer — está correcto para 2026.
 
 ---
 
-## Discrepâncias e decisões
+## Refinamentos propostos (single feature: **centralizar configuração crítica na cloud**)
 
-**Snapshot key vs (username, vs)**: cache key determinística baseada em `lower(primary) + sort(lower(competitors))` joined com `|`. Ordenação alfabética dos concorrentes evita duplicar `nike|adidas,puma` vs `nike|puma,adidas` — a UI mostra a mesma comparação independente da ordem de input. Format: `v1:nike|adidas,puma`. Prefix `v1:` permite invalidar tudo no futuro mudando para `v2:` sem migração.
+### Migração — nova tabela `benchmark_references`
 
-**Reanálise forçada**: adicionar `?refresh=1` à query como escape hatch server-side (não exposto na UI agora). Bypassa cache, força provider call, sobrescreve snapshot. Útil para dev e para um futuro botão "Atualizar análise" sem mudar contracto.
+```sql
+CREATE TABLE public.benchmark_references (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tier text NOT NULL,                    -- 'nano' | 'micro' | 'mid' | 'macro' | 'mega'
+  format text NOT NULL,                  -- 'Reels' | 'Carrosséis' | 'Imagens'
+  engagement_pct numeric(5,2) NOT NULL,  -- e.g. 5.60
+  tier_min_followers bigint NOT NULL,
+  tier_max_followers bigint,             -- NULL = +∞
+  tier_label text NOT NULL,              -- 'Nano (até 10K)'
+  dataset_version text NOT NULL,         -- 'v1.0-2025-04'
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tier, format, dataset_version)
+);
 
-**Stale-while-error**: se provider falhar e existir snapshot expirado < 7 dias, devolver o expirado com `data_source: "stale"`. Robustez sem complicar — limite duro de 7 dias evita servir dados arqueologicamente velhos.
+CREATE INDEX idx_benchmark_active ON benchmark_references (is_active, dataset_version);
+ALTER TABLE benchmark_references ENABLE ROW LEVEL SECURITY;
+-- Server-only (service role) for writes; reads also via server route to keep contract stable.
+```
 
-**`updated_at` trigger**: reusar `set_updated_at()` existente. Aplicar à nova tabela.
+Seed inicial = valores actuais de `reference-data.ts` + thresholds de `tiers.ts`. Idempotente.
 
-**RLS**: enable + zero policies. `supabaseAdmin` (service role) bypassa, browser não toca. Mesmo padrão de `leads`/`report_requests`.
-
-**Frontend**: mudança mínima. `PublicAnalysisStatus` ganha `data_source: "fresh" | "cache" | "stale"` (substitui o actual `"apify_v1"` que era source-of-data, não freshness). Hint subtil opcional no header (decisão: **não adicionar UI hint agora** — guardrail diz "do not clutter"; basta que o backend devolva a info para uso futuro).
-
-**Sem nova lib**: `createHash` do `node:crypto` já disponível no Worker runtime (nodejs_compat). Cache key é texto deterministico, hash não estritamente necessário, mas usado para coluna `cache_key` curta e indexável. **Decisão: sem hash** — cache key é human-readable (`v1:nike|adidas,puma`), cabe folgado em `text`, mais fácil de debugar.
-
----
-
-## Ficheiros tocados
+### Ficheiros tocados
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `supabase/migrations/{ts}_analysis_snapshots.sql` | **Criar** — tabela + trigger updated_at + indexes + RLS enabled (zero policies) | Não |
-| `src/lib/analysis/cache.ts` | **Criar** — `buildCacheKey()`, `lookupSnapshot()`, `storeSnapshot()`, constantes TTL | Não |
-| `src/lib/analysis/types.ts` | Editar — `PublicAnalysisStatus.data_source` passa a `"fresh" \| "cache" \| "stale"`; mantém `analyzed_at` | Não |
-| `src/routes/api/analyze-public-v1.ts` | Editar — cache lookup antes do provider; após scrape persistir snapshot; stale-on-error fallback | Não |
-| `src/lib/analysis/client.ts` | Não mexer (response shape estável) | Não |
-| `src/routes/analyze.$username.tsx` | Não mexer | Não |
-| `src/components/product/public-analysis-dashboard.tsx` | Não mexer (não usa `data_source` hoje) | Não |
+| `supabase/migrations/{ts}_benchmark_references.sql` | **Criar** — tabela + seed inicial + RLS | Não |
+| `src/lib/benchmark/reference-data.ts` | Editar — passa a `loadBenchmarkReferences()` async, busca da DB com cache em memória do server runtime; mantém shape compatível | Não |
+| `src/lib/benchmark/tiers.ts` | Editar — `getTierForFollowers()` + `TIER_LABELS` derivam da mesma carga | Não |
+| `src/lib/benchmark/engine.ts` | Editar — `computeBenchmarkPositioning()` recebe referências como argumento (injecção, não import directo) | Não |
+| `src/routes/api/analyze-public-v1.ts` | Editar — chama loader uma vez, passa ao engine, importa `FREE_MONTHLY_LIMIT` de `quota.ts` se necessário | Não |
+| `src/routes/api/request-full-report.ts` | Editar — importa `FREE_MONTHLY_LIMIT` de `@/lib/quota`, interpola na mensagem (`${FREE_MONTHLY_LIMIT} relatórios`) | Não |
 
-**Zero ficheiros locked tocados.** Confirmar contra `mem://constraints/locked-files` antes de editar.
+**Zero ficheiros locked tocados.**
 
----
+### Estratégia de carregamento (cost-conscious)
 
-## Schema da tabela
+- `loadBenchmarkReferences()` lê a tabela uma vez por request lifecycle do server route.
+- Cache simples em módulo (`let cached: { data, ts } | null`) com TTL de 10 min — evita que cada análise seja +1 query SQL ao Postgres.
+- Se a query falhar, fallback para snapshot de constantes em código (fail-safe), com `console.warn`. Garante que a app nunca quebra por causa do refinamento.
 
-```sql
-CREATE TABLE public.analysis_snapshots (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  cache_key text NOT NULL UNIQUE,
-  instagram_username text NOT NULL,
-  competitor_usernames jsonb NOT NULL DEFAULT '[]'::jsonb,
-  normalized_payload jsonb NOT NULL,
-  provider text NOT NULL DEFAULT 'apify',
-  analysis_status text NOT NULL DEFAULT 'ready',
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  expires_at timestamptz NOT NULL
-);
+### Guardrails
 
-CREATE INDEX idx_analysis_snapshots_expires_at ON public.analysis_snapshots (expires_at);
-CREATE INDEX idx_analysis_snapshots_username ON public.analysis_snapshots (instagram_username);
-
-CREATE TRIGGER set_updated_at_analysis_snapshots
-  BEFORE UPDATE ON public.analysis_snapshots
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
-ALTER TABLE public.analysis_snapshots ENABLE ROW LEVEL SECURITY;
--- No policies: server-only via service role.
-```
-
-`UNIQUE` em `cache_key` permite `upsert` atómico (`onConflict: "cache_key"`).
-
----
-
-## Cache key
-
-```ts
-function buildCacheKey(primary: string, competitors: string[]): string {
-  const p = primary.toLowerCase();
-  const c = [...competitors].map(s => s.toLowerCase()).sort();
-  return `v1:${p}|${c.join(",")}`;
-}
-```
-
-Exemplos:
-- `("Nike", [])` → `v1:nike|`
-- `("Nike", ["Adidas", "Puma"])` → `v1:nike|adidas,puma`
-- `("Nike", ["Puma", "Adidas"])` → `v1:nike|adidas,puma` (mesma key)
-
----
-
-## Fluxo do server route
-
-```
-1. validate payload (existing)
-2. cacheKey = buildCacheKey(primary, competitors)
-3. snapshot = SELECT * WHERE cache_key = $1
-4. if snapshot && expires_at > now() && !refresh:
-     return { ...snapshot.normalized_payload, status: { data_source: "cache", analyzed_at: snapshot.updated_at } }
-5. try provider (existing scrape + normalize logic)
-6. on success:
-     payload = { profile, content_summary, competitors }  // sem status
-     UPSERT snapshot (cache_key, payload, expires_at = now() + 24h, ...)
-     return { ...payload, status: { data_source: "fresh", analyzed_at: now() } }
-7. on provider failure:
-     if snapshot && (now() - snapshot.created_at) < 7 days:
-       return { ...snapshot.normalized_payload, status: { data_source: "stale", analyzed_at: snapshot.updated_at } }
-     else:
-       return failure(UPSTREAM_FAILED)
-```
-
-**Snapshot stored shape**: o `normalized_payload` guarda `{ profile, content_summary, competitors }` — **sem** o campo `status`. O `status` é sempre re-calculado na resposta (depende de cache vs fresh vs stale, e do `analyzed_at` correcto).
-
----
-
-## TypeScript — shape update
-
-```ts
-export interface PublicAnalysisStatus {
-  success: true;
-  data_source: "fresh" | "cache" | "stale";
-  analyzed_at: string; // ISO timestamp
-}
-```
-
-Remoção de `"apify_v1"`. Se algo no frontend depender da string antiga (não depende — grep confirmará), ajustar.
-
----
-
-## Validação dos guardrails
-
-| Guardrail | Estado |
+| Item | Estado |
 |---|---|
-| Sem PDF / email / pagamentos / auth / IA / admin | ✅ |
+| Sem PDF / email / pagamentos / auth / IA | ✅ |
 | Sem novas dependências | ✅ |
 | Provider só server-side | ✅ |
 | Secrets em Supabase | ✅ |
-| UI sem caching/persistência | ✅ |
-| Locked files intactos | ✅ |
+| RLS fechado | ✅ |
 | pt-PT impessoal | ✅ |
 | Comentários em inglês | ✅ |
-| RLS fechado por defeito | ✅ |
-| Future-ready (PDF/email referenciam `snapshot.id`) | ✅ |
+| Locked files intactos | ✅ |
+| Mensagem do gate sem número hardcoded | ✅ |
+| Refinar valores de benchmark sem deploy | ✅ |
 
----
+### Checkpoints
 
-## Checkpoints
-
-- ☐ Migração `analysis_snapshots` criada (tabela + trigger + indexes + RLS)
-- ☐ `cache.ts` com `buildCacheKey` deterministica + helpers de lookup/store
-- ☐ `PublicAnalysisStatus.data_source` actualizado para `"fresh" | "cache" | "stale"`
-- ☐ Server route consulta cache antes de chamar Apify
-- ☐ Snapshot persistido após scrape bem-sucedido (upsert por `cache_key`)
-- ☐ Stale-on-error fallback (≤ 7 dias) implementado
-- ☐ `?refresh=1` escape hatch server-side
-- ☐ Frontend continua funcional sem mudanças visuais
-- ☐ Sem PDF/email/pagamentos/auth/IA/admin introduzidos
+- ☐ Tabela `benchmark_references` criada + RLS + seed inicial idempotente
+- ☐ `reference-data.ts` carrega da DB com cache 10min + fallback em código
+- ☐ `tiers.ts` deriva thresholds e labels da mesma fonte
+- ☐ `engine.ts` recebe referências por injecção
+- ☐ `request-full-report.ts` importa `FREE_MONTHLY_LIMIT` de `quota.ts` e interpola na mensagem
+- ☐ Sem regressões visuais no dashboard (mesmos números, mesmo layout)
+- ☐ Linter Supabase: 3 INFO esperados (RLS no policy é intencional)
 
