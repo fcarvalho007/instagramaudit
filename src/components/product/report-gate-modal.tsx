@@ -1,0 +1,307 @@
+import { useEffect, useState } from "react";
+import { Check, CheckCircle2, FileText } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input, InputHelper, InputLabel } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+export interface GateFormData {
+  nome: string;
+  email: string;
+  empresa?: string;
+  rgpdAcceptedAt: string;
+}
+
+interface ReportGateModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  username?: string;
+  onSubmit?: (data: GateFormData) => Promise<void> | void;
+}
+
+type ModalState = "idle" | "submitting" | "success";
+
+interface FormErrors {
+  nome?: string;
+  email?: string;
+  rgpd?: string;
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const VALUE_ITEMS = [
+  "PDF detalhado por email",
+  "Comparação com concorrentes",
+  "Insights estratégicos por IA",
+  "Recomendações prioritárias para 30 dias",
+];
+
+function validate(values: { nome: string; email: string; rgpd: boolean }): FormErrors {
+  const errors: FormErrors = {};
+  if (values.nome.trim().length < 2) {
+    errors.nome = "Indicar o nome para personalizar o relatório";
+  }
+  if (!EMAIL_REGEX.test(values.email.trim())) {
+    errors.email = "Inserir um email válido";
+  }
+  if (!values.rgpd) {
+    errors.rgpd = "É necessário aceitar a política de privacidade para continuar";
+  }
+  return errors;
+}
+
+export function ReportGateModal({
+  open,
+  onOpenChange,
+  username,
+  onSubmit,
+}: ReportGateModalProps) {
+  const [state, setState] = useState<ModalState>("idle");
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [empresa, setEmpresa] = useState("");
+  const [rgpd, setRgpd] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      // delay reset slightly to avoid flash during close animation
+      const t = setTimeout(() => {
+        setState("idle");
+        setNome("");
+        setEmail("");
+        setEmpresa("");
+        setRgpd(false);
+        setErrors({});
+        setTouched({});
+      }, 200);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  const handleBlur = (field: keyof FormErrors) => {
+    setTouched((t) => ({ ...t, [field]: true }));
+    const next = validate({ nome, email, rgpd });
+    setErrors((e) => ({ ...e, [field]: next[field] }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const next = validate({ nome, email, rgpd });
+    setErrors(next);
+    setTouched({ nome: true, email: true, rgpd: true });
+    if (Object.keys(next).length > 0) return;
+
+    setState("submitting");
+    const data: GateFormData = {
+      nome: nome.trim(),
+      email: email.trim(),
+      empresa: empresa.trim() || undefined,
+      rgpdAcceptedAt: new Date().toISOString(),
+    };
+
+    try {
+      if (onSubmit) {
+        await onSubmit(data);
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+      }
+      setState("success");
+    } catch {
+      setState("idle");
+    }
+  };
+
+  const isSubmitting = state === "submitting";
+  const handleDisplay = username ? `@${username}` : "do perfil analisado";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn(
+          "bg-surface-secondary border-border-default rounded-2xl p-0 overflow-hidden",
+          "max-w-md md:max-w-lg shadow-elevated",
+        )}
+      >
+        {state === "success" ? (
+          <div
+            className="flex flex-col items-center text-center gap-5 p-6 md:p-8"
+            aria-live="polite"
+          >
+            <div className="flex size-16 items-center justify-center rounded-full bg-accent-violet/10 border border-accent-violet/40 text-accent-violet-luminous shadow-glow-violet">
+              <CheckCircle2 className="size-8" aria-hidden="true" />
+            </div>
+            <div className="space-y-2">
+              <DialogTitle className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
+                Pedido recebido
+              </DialogTitle>
+              <DialogDescription className="font-sans text-base text-content-secondary">
+                O relatório de {handleDisplay} será enviado para{" "}
+                <span className="text-content-primary font-medium">{email}</span> nos próximos
+                minutos.
+              </DialogDescription>
+            </div>
+            <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+              Verificar a caixa de entrada e a pasta de spam
+            </p>
+            <DialogClose asChild>
+              <Button variant="primary" size="md" className="w-full md:w-auto">
+                Continuar
+              </Button>
+            </DialogClose>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col" noValidate>
+            <div className="p-6 md:p-8 space-y-6">
+              <header className="space-y-2">
+                <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+                  Relatório completo
+                </span>
+                <DialogTitle className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
+                  Receber relatório completo por email
+                </DialogTitle>
+                <DialogDescription className="font-sans text-sm md:text-base text-content-secondary">
+                  Inclui comparação com concorrentes, benchmark e leitura estratégica por IA.
+                </DialogDescription>
+              </header>
+
+              <ul className="space-y-2.5" aria-label="Conteúdo do relatório">
+                {VALUE_ITEMS.map((item) => (
+                  <li key={item} className="flex items-center gap-3">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent-primary/10 border border-accent-primary/20 text-accent-luminous">
+                      <Check className="size-3" aria-hidden="true" />
+                    </span>
+                    <span className="font-sans text-sm text-content-secondary">{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="space-y-4">
+                <div>
+                  <InputLabel htmlFor="gate-nome">Nome</InputLabel>
+                  <Input
+                    id="gate-nome"
+                    type="text"
+                    autoComplete="name"
+                    placeholder="Nome próprio"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    onBlur={() => handleBlur("nome")}
+                    error={touched.nome && !!errors.nome}
+                    aria-describedby={errors.nome ? "gate-nome-error" : undefined}
+                    disabled={isSubmitting}
+                  />
+                  {touched.nome && errors.nome && (
+                    <InputHelper id="gate-nome-error" error>
+                      {errors.nome}
+                    </InputHelper>
+                  )}
+                </div>
+
+                <div>
+                  <InputLabel htmlFor="gate-email">Email</InputLabel>
+                  <Input
+                    id="gate-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="email@dominio.pt"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onBlur={() => handleBlur("email")}
+                    error={touched.email && !!errors.email}
+                    aria-describedby={errors.email ? "gate-email-error" : undefined}
+                    disabled={isSubmitting}
+                  />
+                  {touched.email && errors.email && (
+                    <InputHelper id="gate-email-error" error>
+                      {errors.email}
+                    </InputHelper>
+                  )}
+                </div>
+
+                <div>
+                  <InputLabel htmlFor="gate-empresa">Empresa (opcional)</InputLabel>
+                  <Input
+                    id="gate-empresa"
+                    type="text"
+                    autoComplete="organization"
+                    placeholder="Nome da empresa ou marca"
+                    value={empresa}
+                    onChange={(e) => setEmpresa(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <Checkbox
+                      checked={rgpd}
+                      onCheckedChange={(checked) => {
+                        const value = checked === true;
+                        setRgpd(value);
+                        if (touched.rgpd) {
+                          setErrors((e) => ({
+                            ...e,
+                            rgpd: value
+                              ? undefined
+                              : "É necessário aceitar a política de privacidade para continuar",
+                          }));
+                        }
+                      }}
+                      onBlur={() => handleBlur("rgpd")}
+                      disabled={isSubmitting}
+                      aria-describedby={errors.rgpd ? "gate-rgpd-error" : undefined}
+                      className="mt-0.5"
+                    />
+                    <span className="font-sans text-sm text-content-secondary leading-relaxed">
+                      Aceito receber o relatório por email e a política de privacidade.
+                    </span>
+                  </label>
+                  {touched.rgpd && errors.rgpd && (
+                    <InputHelper id="gate-rgpd-error" error className="mt-0">
+                      {errors.rgpd}
+                    </InputHelper>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-end gap-3 px-6 md:px-8 py-5 border-t border-border-subtle bg-surface-base/30">
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  disabled={isSubmitting}
+                  className="w-full md:w-auto"
+                >
+                  Cancelar
+                </Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                loading={isSubmitting}
+                leftIcon={!isSubmitting ? <FileText /> : undefined}
+                className="w-full md:w-auto"
+              >
+                {isSubmitting ? "A preparar relatório…" : "Receber relatório completo"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
