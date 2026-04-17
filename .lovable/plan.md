@@ -1,59 +1,64 @@
 
-Já tenho a informação no excerpt do `apify-client.ts` (constants no topo de `analyze-public-v1.ts`). Confirmo por leitura direta.
 
-## Resposta
+## Plano — Refactor Apify para actor unificado
 
-**1. Actor IDs em uso (reais, no código atual)**
+### Resumo
+Substituir os dois actors (`apify/instagram-profile-scraper` + `apify/instagram-post-scraper`) por **`apify/instagram-scraper`** com `resultsType: "details"`, que devolve o perfil **com `latestPosts[]` embutido** numa única chamada por handle. Isto colapsa 2 chamadas → 1 chamada por handle, alinha com o plano Apify atual, e mantém o contrato normalizado intacto.
 
-```ts
-const PROFILE_ACTOR = "apify/instagram-profile-scraper";
-const POST_ACTOR    = "apify/instagram-post-scraper";
-```
+### Descobertas-chave
+- **Input do actor unificado**: `{ directUrls: ["https://www.instagram.com/<user>/"], resultsType: "details", resultsLimit: 12, addParentData: false }`.
+- **Output**: objeto profile com campos **idênticos aos que o `normalize.ts` já lê** — `username`, `fullName`, `biography`, `followersCount`, `followsCount`, `postsCount`, `verified`, `profilePicUrl`, `profilePicUrlHD`, e crucialmente `latestPosts[]` com `type`, `likesCount`, `commentsCount`, `timestamp`, `videoViewCount`, `productType`.
+- **Resultado**: `normalize.ts` (`normalizeProfile` + `computeContentSummary`) **NÃO precisa mudar** — as suas signatures já cobrem este shape.
 
-**2. Ficheiro onde estão definidos**
-
-- `src/routes/api/analyze-public-v1.ts` (linhas ~38-39, constantes no topo do módulo)
-- Cliente HTTP genérico que os invoca: `src/lib/analysis/apify-client.ts` (recebe `actorId` como argumento, não hardcoda IDs)
-
-Não existem outras referências a actor IDs no código de produção.
-
-**3. Configuração atual**
-
-- ❌ NÃO usa `apify/instagram-scraper` (o actor unificado)
-- ✅ USA `apify/instagram-profile-scraper` + `apify/instagram-post-scraper` (dois actors separados, chamados em sequência: profile batch → posts por handle em paralelo)
-- ❌ Nada mais
-
-**4. Match com o screenshot Apify**
-
-Não tenho acesso ao screenshot — só vejo o codebase. Para confirmar match preciso que digas qual o actor que aparece no teu dashboard Apify (o nome exato, ex.: `apify/instagram-scraper` vs `apify/instagram-profile-scraper`). 
-
-**Cenários:**
-
-| Screenshot mostra | Match? | Implicação |
+### Ficheiros a modificar (3) e impacto em locked files
+| Ficheiro | Mudança | Locked? |
 |---|---|---|
-| `apify/instagram-profile-scraper` E `apify/instagram-post-scraper` (ambos) | ✅ Match total | Plano Creator deve cobrir — re-correr smoke test |
-| Só `apify/instagram-scraper` (unificado) | ❌ Mismatch | Plano cobre o errado; código continua a chamar dois actors que o teu plano pode não cobrir |
-| Só `apify/instagram-profile-scraper` (sem post-scraper) | ⚠️ Match parcial | Profile passa, posts falham → snapshot fica vazio |
-| Outro actor (ex.: comunitário) | ❌ Mismatch total | Bloqueador continua |
+| `src/routes/api/analyze-public-v1.ts` | Trocar 2 actor IDs + orquestração para 1 chamada com `latestPosts` | Não |
+| `src/lib/analysis/apify-client.ts` | Sem mudança (cliente é genérico) | Não |
+| `src/lib/analysis/normalize.ts` | **Sem mudança** (shape coincide) | Não |
 
-**5. Plano Creator suficiente?**
+Verificado contra `LOCKED_FILES.md` — **zero locked files tocados**.
 
-Não posso responder definitivamente sem saber o que o screenshot mostra. Mas com base apenas no que está no código:
+### Implementação
 
-- O código depende de **DOIS actors oficiais Apify** (`instagram-profile-scraper` + `instagram-post-scraper`).
-- Se o teu plano Creator cobrir ambos → ✅ desbloqueado.
-- Se cobrir só um → ⚠️ falha parcial garantida (snapshot sem posts ou sem profile).
-- Se cobrir o `instagram-scraper` unificado em vez destes dois → ❌ continua bloqueado, porque o código não chama esse actor.
+**1. Em `analyze-public-v1.ts`:**
+- Remover `PROFILE_ACTOR` + `POST_ACTOR`. Adicionar `UNIFIED_ACTOR = "apify/instagram-scraper"`.
+- Substituir `fetchPostsForHandle()` por `fetchProfileWithPosts(username)` que faz **uma** chamada:
+  ```ts
+  runActor(UNIFIED_ACTOR, {
+    directUrls: [`https://www.instagram.com/${username}/`],
+    resultsType: "details",
+    resultsLimit: POSTS_LIMIT,
+    addParentData: false,
+  })
+  ```
+- Devolve o profile row (que já contém `latestPosts`). Aplicar `normalizeProfile(row)` + `computeContentSummary(row.latestPosts ?? [], followers)`.
+- Orquestração: primary + competitors em **paralelo via `Promise.allSettled`** (1 chamada cada). Mais simples que o atual fluxo de 2 fases (batched profiles → posts paralelos).
+- Mapeamento de erros mantém-se: `ApifyUpstreamError` 404 → `PROFILE_NOT_FOUND`; outros → `UPSTREAM_FAILED`; falha primary com snapshot recente → stale fallback (já existe).
 
-## Próxima ação que preciso de ti
+**2. Cleanup:**
+- Eliminar a função `fetchPostsForHandle` (substituída).
+- Eliminar a lógica de `Map<lowercase-handle, profile>` que existia para juntar 2 outputs distintos — agora cada handle tem o seu próprio resultado atómico.
 
-Diz-me literalmente o nome/ID do actor que aparece no screenshot do teu dashboard Apify (ex.: "apify/instagram-scraper", "apify/instagram-profile-scraper", etc.). Com isso fecho o diagnóstico em uma linha.
+**3. Snapshot/cache**: zero mudanças. `normalizedPayload` mantém o mesmo shape (`{ profile, content_summary, competitors }`). `cache_key` mantém-se determinístico.
 
-## Guardrails
+**4. Frontend contract**: zero mudanças. `PublicAnalysisResponse` idêntico.
 
-| | |
-|---|---|
-| Zero código novo | ✅ |
-| Zero refactor | ✅ |
-| Apenas leitura + report | ✅ |
-| Locked files intactos | ✅ |
+### Risco e fallbacks
+- **Risco baixo**: shapes do unified actor batem com o normalizer existente. Único campo onde competimos com convenção: `latestPosts` é a fonte de posts em vez de uma chamada separada — `computeContentSummary` já aceita o array.
+- **Se `latestPosts` vier truncado** (Apify às vezes devolve <12): `posts_analyzed` reflete o que veio, e o `estimated_posts_per_week` usa o fallback `postsAnalyzed / 4` que já existe.
+- **Competitor handling**: continua a tolerar falhas individuais via `allSettled`. Estrutura `CompetitorAnalysis` inalterada.
+
+### O que fica fora deste prompt
+PDF, email, payments, admin, OpenAI, landing, legal — não tocados. Cache TTL e benchmark engine — não tocados.
+
+### Checkpoints
+- ☐ `PROFILE_ACTOR` + `POST_ACTOR` removidos, substituídos por `UNIFIED_ACTOR`
+- ☐ Uma chamada Apify por handle (não duas)
+- ☐ `normalize.ts` intacto
+- ☐ Snapshot/cache compatível (mesmo shape)
+- ☐ Frontend contract estável (`PublicAnalysisResponse` igual)
+- ☐ Erros pt-PT preservados
+- ☐ Zero locked files modificados
+- ☐ Pronto para smoke test imediato
+
