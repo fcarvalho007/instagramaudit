@@ -1,94 +1,74 @@
 
 
-## Plan: Hero action-first com Aurora + Action Bar (Sprint 1, Prompt 1.1)
+## Plano: Social Proof + Como Funciona (Sprint 1, Prompt 1.2)
 
 ### Ficheiros a criar
-1. `src/components/landing/hero-aurora-background.tsx` — 5 blobs radiais animados + noise + vignette, com `prefers-reduced-motion`
-2. `src/components/landing/hero-action-bar.tsx` — barra glass com input + botão inline + reveal progressivo de concorrentes
-3. `src/components/landing/hero-section.tsx` — orquestra aurora + action bar (primeiro) + headline + micro-proof
+1. `src/components/landing/use-in-view.ts` — hook com Intersection Observer, unobserve após primeira intersecção
+2. `src/components/landing/social-proof-section.tsx` — strip de credibilidade com border-y, micro-statement editorial à esquerda + 3 métricas à direita
+3. `src/components/landing/how-it-works-step.tsx` — step individual com reveal scroll-triggered (fade + translate-y), delay configurável
+4. `src/components/landing/how-it-works-section.tsx` — header + grid 3 colunas com delays 0/150/300ms, ícones AtSign/LineChart/Mail
 
 ### Ficheiros a modificar
-4. `src/routes/index.tsx` — rewrite total: importa `HeroSection`, mantém `head()` com meta pt-PT
-5. `LOCKED_FILES.md` — nova secção "Landing Components (locked since Sprint 1, Prompt 1.1)" com os 3 ficheiros novos
-6. `.lovable/memory/constraints/locked-files.md` — espelhar entradas
+5. `src/routes/index.tsx` — `Home()` compõe `<HeroSection /> + <SocialProofSection /> + <HowItWorksSection />` num fragment; meta `head()` intacta
+6. `LOCKED_FILES.md` — nova secção "Landing Components (Sprint 1, Prompt 1.2)" com os 4 ficheiros novos
+7. `.lovable/memory/constraints/locked-files.md` — espelhar entradas
 
 ### Ficheiros NÃO tocados
-Tudo em `LOCKED_FILES.md` actual: tokens, styles, __root, button, badge, card, input, switch, container, header, footer, app-shell, brand-mark.
+Tudo em `LOCKED_FILES.md` actual (tokens, atoms, shell, hero).
 
 ---
 
-### 1. Aurora background
+### Detalhes-chave
 
-- `<div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>`
-- 5 blobs `<div className="aurora-blob aurora-blob-N">` com classes inline
-- Camada noise SVG inline (data URI), `mix-blend-mode: overlay`, `opacity: 0.04`
-- Vignette radial para focar centro e fundir com `surface-base`
-- `<style>{...}</style>` inline com `@keyframes aurora-float-1..5`, `.aurora-blob`, `.aurora-noise`, `.aurora-vignette`, e `@media (prefers-reduced-motion: reduce) { .aurora-blob { animation: none } }`
-- Cores via `rgb(6 182 212 / X)` e `rgb(103 232 249 / X)` (valores literais dos tokens `accent-primary` e `accent-luminous` — única forma de injectar dentro de `radial-gradient` sem CSS vars; consistente com tokens.css)
-- `will-change: transform` + `filter: blur(80px)` + `mix-blend-mode: screen`
+**use-in-view.ts**
+- Ref tipada como `RefObject<HTMLElement | null>`
+- `threshold: 0.2`, `rootMargin: "0px 0px -100px 0px"`, override via options
+- Unobserve após primeira intersecção → animação não re-dispara
 
-### 2. Action bar
+**social-proof-section.tsx**
+- `<section className="relative border-y border-border-subtle bg-surface-secondary/40">`
+- Container `size="lg" py-12 md:py-16`
+- Flex stacked → row em `md:`
+- Métricas: `35M+` / `0,52%` / `3×` em font-display medium tracking-tight; labels font-mono uppercase tracking-wide content-tertiary
+- Labels pt-PT: "Posts analisados (fonte: Socialinsider 2025)", "Engagement médio em reels", "Camadas de comparação"
 
-Estrutura:
-- Wrapper `relative w-full max-w-3xl mx-auto`
-- Floating micro-label (acima, absolute top-0 -translate-y-full): font-mono uppercase + Badge "Gratuito" variant=success size=sm dot pulse
-- Card glass: `relative rounded-2xl border border-border-strong bg-surface-secondary/60 backdrop-blur-xl shadow-2xl overflow-hidden`
-- `<form onSubmit={(e) => e.preventDefault()}>` flex stacked → row em `sm:`, divisores `divide-y sm:divide-y-0 sm:divide-x divide-border-subtle`
-- Zona input: `relative flex-1`, `<AtSign />` icon absolute left-5 top-1/2 -translate-y-1/2 size-5 text-content-tertiary, `<input>` nativo (NÃO o componente `Input` locked) `h-16 sm:h-18 bg-transparent pl-14 pr-4` font-sans text-base md:text-lg, placeholder pt-PT `"@username ou URL do perfil"`, focus ring custom (`focus:outline-none`)
-- Zona submit: `p-2 sm:p-2 flex items-stretch`, `<Button variant="primary" size="lg" rightIcon={<ArrowRight />} className="w-full sm:w-auto sm:h-14 px-6 sm:px-8 whitespace-nowrap">Analisar</Button>`
+**how-it-works-step.tsx**
+- Props: `number`, `title`, `description`, `icon`, `delay?`
+- Wrapper com `transition-all duration-[700ms] ease-[cubic-bezier(0.16,1,0.3,1)]` + `style={{ transitionDelay }}`
+- Estado inicial: `opacity-0 translate-y-8` → `opacity-100 translate-y-0` quando `inView`
+- Ícone num quadrado `h-14 w-14 rounded-xl bg-surface-elevated border border-border-strong shadow-glow-cyan` com ícone `text-accent-luminous`
+- Label "Passo 0X" font-mono uppercase tracking-wide content-tertiary
+- Título font-display 2xl/3xl medium; descrição font-sans base/lg content-secondary
 
-Reveal concorrentes (state `competitorsOpen`):
-- Wrapper `mt-4`
-- Fechado: `<button>` com `<Plus />` + texto "Adicionar até 2 concorrentes para comparar" (font-sans text-sm, content-secondary → accent-luminous on hover)
-- Aberto: container `space-y-3 animate-fade-in`, header com label font-mono "Concorrentes (opcional)" + botão "Remover" à direita, dois `<Input variant="glass" inputSize="md" leftIcon={<AtSign />}>` com placeholders `"@concorrente 1"` e `"@concorrente 2 (opcional)"`
+**how-it-works-section.tsx**
+- `py-24 md:py-32`
+- Header `max-w-2xl mb-16 md:mb-20`: micro-label "Como funciona" em accent-luminous, h2 font-display 3xl/5xl "Do username ao relatório em três passos.", lead em content-secondary
+- Grid `grid-cols-1 md:grid-cols-3 gap-12 md:gap-8`
+- 3 steps com copy pt-PT impessoal:
+  - 01 · Inserir o username · "Qualquer perfil público do Instagram. Opcionalmente, até dois concorrentes para comparação directa." · `<AtSign />`
+  - 02 · Análise automática · "Os últimos 30 posts são processados contra benchmarks atualizados da plataforma e da dimensão do perfil." · `<LineChart />`
+  - 03 · Relatório no email · "PDF detalhado com métricas, ranking de concorrentes e três insights estratégicos gerados por IA." · `<Mail />`
+- Delays: 0 / 150 / 300 ms
 
-### 3. Hero section
-
-- `<section className="relative min-h-[92vh] w-full overflow-hidden bg-surface-base flex items-center">`
-- `<HeroAuroraBackground />` (camada absoluta)
-- `<Container size="lg" className="relative z-10 py-20 md:py-28">`
-  - `<HeroActionBar />` com `mb-16 md:mb-20`
-  - Bloco texto centrado `max-w-4xl mx-auto text-center space-y-8`:
-    - H1 font-display text-4xl md:text-6xl lg:text-7xl tracking-tight font-medium leading-[1.05] (peso 500 conforme nota da spec — text-7xl pesa demasiado a 600), duas linhas: "O benchmark de Instagram" + `<span className="block bg-gradient-to-r from-accent-primary to-accent-luminous bg-clip-text text-transparent">que faltava ao mercado.</span>`
-    - Sub-headline `font-sans text-lg md:text-xl text-content-secondary leading-relaxed max-w-2xl mx-auto`: "Análise instantânea de qualquer perfil público, comparação com até dois concorrentes e relatório detalhado com leitura estratégica por IA. Enviado por email. Sem custos."
-    - Micro-proof strip: `flex flex-wrap items-center justify-center gap-x-8 gap-y-3 pt-4`, três items com `<Check className="size-4 text-signal-success" />` + texto font-mono uppercase tracking-wide text-xs content-tertiary: "Análise em 30 segundos", "Sem registo necessário", "RGPD compliant"
-
-### 4. Homepage rewrite
-
+**index.tsx**
 ```tsx
-import { createFileRoute } from "@tanstack/react-router";
-import { HeroSection } from "@/components/landing/hero-section";
-
-export const Route = createFileRoute("/")({
-  head: () => ({ meta: [/* pt-PT meta */] }),
-  component: Home,
-});
-function Home() { return <HeroSection />; }
+function Home() {
+  return (
+    <>
+      <HeroSection />
+      <SocialProofSection />
+      <HowItWorksSection />
+    </>
+  );
+}
 ```
-
-### 5. LOCKED_FILES.md
-
-Adicionar bloco no fundo:
-```
-## Landing Components (locked since Sprint 1, Prompt 1.1)
-- /src/components/landing/hero-section.tsx
-- /src/components/landing/hero-aurora-background.tsx
-- /src/components/landing/hero-action-bar.tsx
-```
-Espelhar em `.lovable/memory/constraints/locked-files.md`.
-
----
 
 ### Decisões técnicas
-
-- **Cores aurora hardcoded em rgb()**: única solução técnica para injectar dentro de `radial-gradient` em CSS keyframes sem suporte universal de `color-mix`. Os valores correspondem 1:1 aos tokens `accent-primary` (#06B6D4) e `accent-luminous` (#67E8F9) — semanticamente consistentes, apenas em formato literal.
-- **Input nativo no action bar**: a spec diz explicitamente "NOT wrapped in the shadcn Input component" para conseguir o efeito "barra contínua dividida". Estilizado para herdar tom premium (font-sans, text-content-primary, placeholder content-tertiary/70).
-- **Headline a 6xl/7xl com peso 500** (não 600) — segue a nota da spec sobre densidade visual a estes tamanhos.
-- **`min-h-[92vh]`** em vez de `min-h-screen` para deixar 8vh de "respiração" antes do header sticky e indicar que há scroll.
-- **Aurora aria-hidden + pointer-events-none** — decorativo, não interfere com SR nem cliques.
+- **Sem framer-motion** (não está instalado) — Intersection Observer + transitions Tailwind, conforme spec.
+- **Linha decorativa entre steps**: a spec marca como opcional. Decisão: **omitir** — risco de sujar o ritmo editorial e complicar o responsive sem ganho claro. Manter o grid limpo.
+- **Tokens only**: `border-border-subtle`, `bg-surface-secondary/40`, `bg-surface-elevated`, `border-border-strong`, `shadow-glow-cyan`, `text-accent-luminous`, `text-content-primary/secondary/tertiary`, `text-signal-success` — todos já existentes.
 
 ### Desvios face à spec
-
-1. **Headline weight 500 em vez de 600** — pré-validado pela própria spec ("If visually dense, drop to weight 500"). Decisão: aplicar já 500 a partir de `md:text-6xl`.
-2. **Aurora cores em literal rgb()** — explicado acima; não há alternativa técnica viável dentro de keyframes/gradients sem var() suportado em todos os browsers para esta sintaxe específica.
+1. **Linha decorativa entre ícones dos steps** marcada como opcional na spec — omitida (ver acima).
+2. **"comparação directa"** em pt-PT (com "c") em vez de "direta" — ortografia europeia pré-acordo é "directa"; sigo a regra do projecto de pt-PT estrito. Se preferires pós-acordo ("direta"), digo já.
 
