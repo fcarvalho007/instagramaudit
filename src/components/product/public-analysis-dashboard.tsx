@@ -45,9 +45,9 @@ export function PublicAnalysisDashboard({
               label="Envolvimento médio"
               value={formatPercent(metrics.engagement)}
               hint={
-                metrics.engagement > benchmark.reference
-                  ? `+${formatPercent(metrics.engagement - benchmark.reference)} vs benchmark`
-                  : `${formatPercent(metrics.engagement - benchmark.reference)} vs benchmark`
+                metrics.engagement > benchmarkReference
+                  ? `+${formatPercent(metrics.engagement - benchmarkReference)} vs benchmark`
+                  : `${formatPercent(metrics.engagement - benchmarkReference)} vs benchmark`
               }
               emphasis
             />
