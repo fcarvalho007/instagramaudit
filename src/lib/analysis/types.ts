@@ -27,7 +27,13 @@ export interface PublicAnalysisContentSummary {
 
 export interface PublicAnalysisStatus {
   success: true;
-  data_source: "apify_v1";
+  /**
+   * Freshness of the response:
+   * - "fresh": just scraped from the provider
+   * - "cache": served from a non-expired snapshot (< 24h old)
+   * - "stale": provider failed, served from an expired but recent snapshot (< 7d old)
+   */
+  data_source: "fresh" | "cache" | "stale";
   analyzed_at: string; // ISO timestamp
 }
 
