@@ -1,56 +1,88 @@
 
 
-## Plano: Social Proof + Como Funciona (Sprint 1, Prompt 1.2)
+## Plano: Product Preview com mockup do dashboard (Sprint 1, Prompt 1.3)
 
 ### Ficheiros a criar
-1. `src/components/landing/use-in-view.ts` — hook com Intersection Observer, unobserve após primeira intersecção
-2. `src/components/landing/social-proof-section.tsx` — strip de credibilidade com border-y, micro-statement editorial à esquerda + 3 métricas à direita
-3. `src/components/landing/how-it-works-step.tsx` — step individual com reveal scroll-triggered (fade + translate-y), delay configurável
-4. `src/components/landing/how-it-works-section.tsx` — header + grid 3 colunas com delays 0/150/300ms, ícones AtSign/LineChart/Mail
+1. `src/components/landing/mockup-metric-card.tsx` — card de métrica reutilizável (label + value + suffix + trend + badge)
+2. `src/components/landing/mockup-benchmark-gauge.tsx` — gauge horizontal com marcador de benchmark + barra de valor actual com glow
+3. `src/components/landing/mockup-dashboard.tsx` — dashboard fake completo (top bar + 4 métricas + gauge + comparação + AI insight)
+4. `src/components/landing/product-preview-section.tsx` — secção wrapper com glow cyan, header, reveal e 3 feature highlights
 
 ### Ficheiros a modificar
-5. `src/routes/index.tsx` — `Home()` compõe `<HeroSection /> + <SocialProofSection /> + <HowItWorksSection />` num fragment; meta `head()` intacta
-6. `LOCKED_FILES.md` — nova secção "Landing Components (Sprint 1, Prompt 1.2)" com os 4 ficheiros novos
+5. `src/routes/index.tsx` — adicionar `<ProductPreviewSection />` após `<HowItWorksSection />`; `head()` intacta
+6. `LOCKED_FILES.md` — bloco "Landing Components (Sprint 1, Prompt 1.3)" com os 4 ficheiros novos
 7. `.lovable/memory/constraints/locked-files.md` — espelhar entradas
 
 ### Ficheiros NÃO tocados
-Tudo em `LOCKED_FILES.md` actual (tokens, atoms, shell, hero).
+Tudo em `LOCKED_FILES.md` actual (tokens, atoms, shell, hero, social proof, how it works, hook `use-in-view`).
 
 ---
 
-### Detalhes-chave
+### 1. `mockup-metric-card.tsx`
 
-**use-in-view.ts**
-- Ref tipada como `RefObject<HTMLElement | null>`
-- `threshold: 0.2`, `rootMargin: "0px 0px -100px 0px"`, override via options
-- Unobserve após primeira intersecção → animação não re-dispara
+Card pequeno com:
+- Wrapper `Card` variant="default" padding="md" (atom locked)
+- Label font-mono uppercase tracking-wide text-xs content-tertiary
+- Linha de valor: número grande font-display text-2xl/3xl medium content-primary + suffix font-mono text-sm content-tertiary + Badge opcional
+- Trend opcional: ícone TrendingUp/Down + texto font-mono text-xs (cor por variant: success/warning/danger/default)
+- Variant map: `success → text-signal-success`, `warning → text-signal-warning`, `danger → text-signal-danger`, `default → text-content-secondary`
 
-**social-proof-section.tsx**
-- `<section className="relative border-y border-border-subtle bg-surface-secondary/40">`
-- Container `size="lg" py-12 md:py-16`
-- Flex stacked → row em `md:`
-- Métricas: `35M+` / `0,52%` / `3×` em font-display medium tracking-tight; labels font-mono uppercase tracking-wide content-tertiary
-- Labels pt-PT: "Posts analisados (fonte: Socialinsider 2025)", "Engagement médio em reels", "Camadas de comparação"
+### 2. `mockup-benchmark-gauge.tsx`
 
-**how-it-works-step.tsx**
-- Props: `number`, `title`, `description`, `icon`, `delay?`
-- Wrapper com `transition-all duration-[700ms] ease-[cubic-bezier(0.16,1,0.3,1)]` + `style={{ transitionDelay }}`
-- Estado inicial: `opacity-0 translate-y-8` → `opacity-100 translate-y-0` quando `inView`
-- Ícone num quadrado `h-14 w-14 rounded-xl bg-surface-elevated border border-border-strong shadow-glow-cyan` com ícone `text-accent-luminous`
-- Label "Passo 0X" font-mono uppercase tracking-wide content-tertiary
-- Título font-display 2xl/3xl medium; descrição font-sans base/lg content-secondary
+- Barra horizontal: `relative h-2 rounded-full bg-surface-base/60 border border-border-subtle overflow-hidden`
+- Fill da esquerda até `value/max %`: `bg-gradient-to-r from-accent-primary to-accent-luminous shadow-glow-cyan rounded-full`
+- Marcador vertical do benchmark: `absolute top-1/2 -translate-y-1/2 h-4 w-0.5 bg-content-tertiary` posicionado a `left: benchmarkPercent%`
+- Labels abaixo (flex justify-between): "Atual" / "Benchmark" font-mono uppercase tracking-wide content-tertiary + valor font-mono content-primary
 
-**how-it-works-section.tsx**
-- `py-24 md:py-32`
-- Header `max-w-2xl mb-16 md:mb-20`: micro-label "Como funciona" em accent-luminous, h2 font-display 3xl/5xl "Do username ao relatório em três passos.", lead em content-secondary
-- Grid `grid-cols-1 md:grid-cols-3 gap-12 md:gap-8`
-- 3 steps com copy pt-PT impessoal:
-  - 01 · Inserir o username · "Qualquer perfil público do Instagram. Opcionalmente, até dois concorrentes para comparação directa." · `<AtSign />`
-  - 02 · Análise automática · "Os últimos 30 posts são processados contra benchmarks atualizados da plataforma e da dimensão do perfil." · `<LineChart />`
-  - 03 · Relatório no email · "PDF detalhado com métricas, ranking de concorrentes e três insights estratégicos gerados por IA." · `<Mail />`
-- Delays: 0 / 150 / 300 ms
+### 3. `mockup-dashboard.tsx`
 
-**index.tsx**
+Frame: `Card variant="glass" padding="none" className="overflow-hidden border-border-strong shadow-2xl"`.
+
+**Top bar** (`border-b border-border-subtle px-6 py-4 flex items-center justify-between bg-surface-secondary/40`):
+- Esquerda: avatar circular `h-10 w-10 rounded-full bg-gradient-to-br from-accent-primary to-accent-luminous` + nome `@example_brand` font-display text-lg medium + meta "Análise · 30 posts · 14 Abr 2026" font-mono text-xs content-tertiary
+- Direita: `<Badge variant="success" size="sm" dot pulse>Relatório completo</Badge>`
+
+**Body** (`p-6 space-y-6`):
+
+a) Grid de 4 métricas — `grid grid-cols-2 md:grid-cols-4 gap-3`:
+- "Engagement médio" · 0,64% · trend "+0,18 vs benchmark" · variant=success
+- "Posts analisados" · 30 · suffix "últimos 30d" · variant=default
+- "Frequência semanal" · 3,2 · suffix "posts/sem" · variant=default
+- "Formato dominante" · Reels · badge "62%" · variant=default
+
+b) Bloco gauge — `rounded-lg border border-border-subtle bg-surface-base/40 p-5 space-y-4`:
+- Header flex justify-between: esquerda label font-mono "Benchmark · Reels" + sub "Posicionamento face ao esperado" font-sans text-sm content-secondary; direita `<Badge variant="success" size="sm">Acima benchmark</Badge>`
+- `<MockupBenchmarkGauge value={0.64} benchmark={0.52} max={1.2} />`
+
+c) Comparação com concorrentes — `space-y-3`:
+- Header label font-mono "Comparação com concorrentes" content-tertiary
+- 3 linhas com grid `grid-cols-[140px_1fr_56px] gap-4 items-center`:
+  - Nome font-mono text-sm (self → content-primary, outros → content-secondary)
+  - Barra: track `h-2 rounded-full bg-surface-base/60 border border-border-subtle` + fill `h-full rounded-full` com width `${(value/0.7)*100}%` (escala normalizada para visual). Self → `bg-gradient-to-r from-accent-primary to-accent-luminous shadow-glow-cyan`; outros → `bg-content-tertiary/40`
+  - Valor à direita font-mono text-sm text-right (self primary, outros secondary)
+
+d) AI insight — `rounded-lg border border-border-subtle bg-surface-elevated/60 p-5`:
+- Flex gap-4: ícone `<Sparkles />` num quadrado `h-10 w-10 rounded-lg bg-accent-primary/10 border border-accent-primary/30 text-accent-luminous`
+- Coluna texto: label font-mono "Insight prioritário" text-accent-luminous + parágrafo font-sans text-sm/base content-secondary leading-relaxed com o copy pt-PT: "A performance em Reels está 23% acima do benchmark. A frequência pode subir de 3,2 para 4 posts/semana sem saturar — os concorrentes publicam menos mas com menor engagement."
+
+### 4. `product-preview-section.tsx`
+
+- `<section className="relative py-24 md:py-32 overflow-hidden">`
+- Glow decorativo: `absolute inset-0 pointer-events-none` com div centrado `top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[800px] rounded-full bg-accent-primary/10 blur-3xl` (aria-hidden)
+- `<Container size="lg" className="relative z-10">`
+  - Header `max-w-2xl mb-12 md:mb-16`: micro-label "Preview do produto" font-mono uppercase accent-luminous; h2 font-display text-3xl md:text-5xl medium tracking-tight "O relatório que recebes no email." (única excepção pt-PT com "tu" — alinhada com tom premium do projecto e linguagem do brief; alternativa impessoal proposta abaixo); lead font-sans text-lg content-secondary
+  - `<MockupWithReveal />` — usa `useInView` (hook locked), wrapper com transição `opacity-0 scale-95 translate-y-8` → `opacity-100 scale-100 translate-y-0`, `duration-[900ms]` ease-out-expo
+  - `<FeatureHighlights />` — grid `grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mt-16 md:mt-20`, cada item:
+    - Label font-mono text-xs uppercase tracking-wide content-tertiary
+    - Título font-display text-xl medium content-primary
+    - Descrição font-sans text-sm content-secondary leading-relaxed
+  - Conteúdo (3 highlights pt-PT impessoal):
+    - DADOS · "Métricas accionáveis" · "Engagement, alcance, frequência e formato dominante. Tudo o que importa, nada do que distrai."
+    - BENCHMARK · "Comparação imediata" · "Cada métrica contextualizada face ao benchmark da plataforma e da dimensão do perfil."
+    - IA · "Leitura estratégica" · "Três insights prioritários gerados por IA, com recomendações concretas para os próximos 30 dias."
+
+### 5. Homepage
+
 ```tsx
 function Home() {
   return (
@@ -58,17 +90,25 @@ function Home() {
       <HeroSection />
       <SocialProofSection />
       <HowItWorksSection />
+      <ProductPreviewSection />
     </>
   );
 }
 ```
 
+---
+
 ### Decisões técnicas
-- **Sem framer-motion** (não está instalado) — Intersection Observer + transitions Tailwind, conforme spec.
-- **Linha decorativa entre steps**: a spec marca como opcional. Decisão: **omitir** — risco de sujar o ritmo editorial e complicar o responsive sem ganho claro. Manter o grid limpo.
-- **Tokens only**: `border-border-subtle`, `bg-surface-secondary/40`, `bg-surface-elevated`, `border-border-strong`, `shadow-glow-cyan`, `text-accent-luminous`, `text-content-primary/secondary/tertiary`, `text-signal-success` — todos já existentes.
+
+- **Mockup 100% em componentes**: `Card`, `Badge`, `Container` (atoms locked) + divs com tokens. Zero imagens, zero SVG externo. Apenas ícones lucide (`Sparkles`, `TrendingUp`).
+- **Escala da barra de concorrentes**: normalizo a `value / 0.7` para que `@example_brand` (0,64) fique perto do fim da barra mas não a 100% — visualmente convincente sem parecer "max out".
+- **Glow decorativo**: `bg-accent-primary/10` + `blur-3xl` em vez de aurora completa (já existe no hero) — discreta, dá profundidade sem competir com o mockup.
+- **Reveal**: reusa `use-in-view.ts` locked. Sem nova dependência.
+- **Tokens-only**: surfaces, accents, signals, borders, shadows todos via classes Tailwind dos tokens existentes.
 
 ### Desvios face à spec
-1. **Linha decorativa entre ícones dos steps** marcada como opcional na spec — omitida (ver acima).
-2. **"comparação directa"** em pt-PT (com "c") em vez de "direta" — ortografia europeia pré-acordo é "directa"; sigo a regra do projecto de pt-PT estrito. Se preferires pós-acordo ("direta"), digo já.
+
+1. **Headline "O relatório que recebes no email."** usa "recebes" (segunda pessoa). Alinhado com o brief literal mas viola a regra de impessoalidade preferencial. **Proposta alternativa impessoal**: "O relatório enviado por email." ou "O relatório que chega ao email." Aplico a versão da spec por defeito; se preferires impessoal, digo já qual aplicar.
+2. **`Badge` no metric card** sem variante específica — uso `variant="outline"` size=sm para o "62%" do formato dominante (subtil, não compete com a métrica).
+3. **Trend icons (TrendingUp/Down)** só aparecem quando há `trend` definido, e só uso `TrendingUp` no mockup (engagement positivo) — `TrendingDown` importado mas não renderizado para já, removido do import para evitar warning.
 
