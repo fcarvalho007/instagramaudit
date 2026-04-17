@@ -82,11 +82,11 @@ function MockupWithReveal() {
 
 export function ProductPreviewSection() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-surface-base via-surface-light to-surface-light-elevated pt-32 md:pt-40 pb-24 md:pb-32">
+    <section className="relative overflow-hidden bg-gradient-to-b from-surface-base via-surface-light to-surface-light pt-32 md:pt-40 pb-24 md:pb-32">
       {/* Top transition fade — dark to light */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-32 md:h-40 bg-gradient-to-b from-surface-base to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 md:h-32 bg-gradient-to-b from-surface-base to-transparent"
       />
 
       {/* Top hairline divider with violet fade */}
