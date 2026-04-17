@@ -45,14 +45,13 @@ export function HandwrittenNote({ className }: HandwrittenNoteProps) {
         <span className="block whitespace-nowrap">
           <AnimatedCounter to={2} delayMs={2100} durationMs={600} /> relatórios grátis
         </span>
-        <span className="block whitespace-nowrap pl-3">por mês</span>
       </div>
 
       {/* Curvy arrow */}
       <svg
         viewBox="0 0 200 120"
         fill="none"
-        className="absolute top-full left-1/2 -translate-x-1/2 w-28 md:w-32 h-auto -mt-1"
+        className="absolute top-full left-1/2 -translate-x-1/2 w-24 md:w-28 h-auto mt-1"
         stroke="currentColor"
         strokeWidth="1.75"
         strokeLinecap="round"

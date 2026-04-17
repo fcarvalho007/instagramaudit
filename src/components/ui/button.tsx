@@ -20,7 +20,7 @@ const buttonVariants = cva(
       variant: {
         primary: [
           "font-semibold text-content-inverse",
-          "bg-gradient-to-br from-accent-primary to-accent-luminous",
+          "bg-gradient-to-br from-accent-luminous via-accent-primary to-accent-primary",
           "shadow-glow-cyan",
           "hover:scale-[1.02] hover:brightness-110 hover:shadow-glow-cyan",
         ].join(" "),
