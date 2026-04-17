@@ -2,35 +2,38 @@
 
 ## Entendimento
 
-**1. Fluxo landing → análise**: hero action bar (regex de username) → `useNavigate` → `/analyze/$username`.
+**1. Fluxo landing → analyze → gate**: hero action bar → `/analyze/$username` → `<PublicAnalysisDashboard>` (header, métricas, benchmark, concorrentes, premium gate) → modal já real (server route + Supabase).
 
-**2. Rota `/analyze/$username`**: SSR-friendly, `getMockAnalysis(username)` (determinístico) → `<PublicAnalysisDashboard>` → `<PremiumLockedSection>` que abre `<ReportGateModal>` com `username` prop.
+**2. Rota `/analyze/$username`**: SSR friendly, chama `getMockAnalysis(username)` (determinístico via hash do handle) e passa `data` ao dashboard. Sem loader, sem fetch, sem error/notFound boundaries ainda.
 
-**3. Gate modal + quota local**: 5 estados (`idle | submitting | success | success-last | paywall`). Validação client (Nome, Email, RGPD). Fluxo actual: `validate` → `getQuotaUsage(normalizedEmail)` → se `>= FREE_MONTHLY_LIMIT` mostra `paywall`; caso contrário `setState("submitting")` → mock delay 600ms → `incrementQuota` → `success` ou `success-last`. **Sem persistência real** (TODO documentado, linhas 135-139).
+**3. Partes já reais no fluxo público**:
+- Captura de leads (`/api/request-full-report`) — server route + service role + Supabase (`leads` + `report_requests`).
+- Quota local (localStorage).
+- Validação de username, navegação, design system, modal premium.
 
-**4. Supabase actual**:
-- Cliente browser: `src/integrations/supabase/client.ts` (locked, auto-gerado)
-- Cliente admin: `src/integrations/supabase/client.server.ts` (service role, server-only)
-- Tabelas: `public.leads` (com `email_normalized UNIQUE`) + `public.report_requests` (FK `lead_id`, todos os status fields, `request_month`, `metadata jsonb`)
-- RLS: **enabled, zero policies** (closed baseline) em ambas
-- Helper: `src/integrations/supabase/queries/report-requests.ts` (tipado, não usado)
-- Sem Edge Functions ainda (`supabase/` tem só `migrations/` + `config.toml`)
+**4. Partes ainda provisórias / mock**:
+- **Tudo o que é dados de análise**: profile, métricas, benchmark, concorrentes, premium teasers — todos derivados de `getMockAnalysis()`.
+- Sem Apify, sem cache, sem persistência de análises, sem backend de análise.
 
-**5. Porquê Edge Function (não insert directo)**: RLS está fechado — frontend com anon key não consegue fazer `INSERT`. Abrir policy pública de `INSERT` em `leads` e `report_requests` expõe escrita anónima sem rate limit, sem validação server-side, sem possibilidade de futuras checagens (disposable email, IP throttling, captcha). Edge Function com `SUPABASE_SERVICE_ROLE_KEY` é o **boundary público** correcto: valida payload, normaliza email, faz upsert atómico, mantém RLS fechado.
+**5. Porquê o benchmark deve ser real antes dos concorrentes**: o benchmark é a peça que dá *contexto interno* a uma única conta — depende só de métricas próprias + tabela de referência. Concorrentes exigem scraping adicional (Apify), gestão de quotas, cache cruzada. Tornar benchmark real primeiro: (a) elimina dependência de hash determinístico no número mais visível do dashboard, (b) cria a camada de configuração reutilizável que os concorrentes vão consumir, (c) é entregável sem nova dependência externa.
 
 ---
 
 ## Discrepância arquitectural a resolver
 
-A spec pede **Supabase Edge Function** (Deno, em `supabase/functions/`). O projecto está na stack **TanStack Start** que tem dois mecanismos server nativos:
-- `createServerFn` (RPC interno)
-- Server routes (`createFileRoute` com `server.handlers` em `src/routes/api/`)
+**A spec assume um "Edge Function de análise pública" que enriquece a resposta com `benchmark_positioning`. Esse endpoint NÃO existe.** A única coisa que a rota `/analyze/$username` faz é correr `getMockAnalysis()` em SSR. O único endpoint server real é `/api/request-full-report` (captura de leads, irrelevante aqui).
 
-A Project Knowledge / TanStack Start guidance diz explicitamente: **"Do NOT use Supabase Edge Functions. Use TanStack Start's built-in server capabilities instead."**
+Opções:
 
-**Decisão**: usar **server route TanStack** em `src/routes/api/request-full-report.ts` com `POST` handler. Cumpre o objectivo da spec (boundary público server-side com service role) usando o mecanismo nativo do projecto. O nome da rota (`/api/request-full-report`) preserva a intenção semântica.
+**A. Criar um server route `/api/analyze/$username`** que faz o "mock + benchmark enrichment" no servidor, e mudar a rota para fazer fetch via loader.
+- Prós: cumpre literalmente a spec ("Edge Function enrichment").
+- Contras: introduz fetch+loader+boundaries para zero ganho real (os dados continuam mock); o "enrichment" está a acontecer em código que vai ser deitado fora quando o Apify entrar; cria infra que será reescrita.
 
-Justificação para o utilizador: as "Edge Functions" da Supabase exigiriam infra Deno separada e não há nenhuma neste projecto; as server routes TanStack correm no mesmo runtime edge (Cloudflare Worker), têm acesso ao `supabaseAdmin` já configurado, e seguem a arquitectura definida pelo workspace.
+**B. Criar a engine de benchmark como módulo puro** (`src/lib/benchmark/`) que recebe `{ followers, engagement, dominantFormat }` e devolve `BenchmarkPositioning`. Chamar essa engine **dentro** de `getMockAnalysis()` (substitui o cálculo `reference` baseado em hash) ou no loader da rota. A engine fica isolada, testável, e quando o Apify+Edge Function chegarem é literalmente um `import` dentro do handler server.
+- Prós: cumpre o objectivo real da spec ("benchmark logic in reusable product layer, not in UI"); zero código throwaway; evita fetch fictício; mantém SSR rápido; engine 100% reutilizável depois.
+- Contras: o "Edge Function enrichment" da spec passa a ser "library that any future Edge Function will call" — diferença semântica, não arquitectural.
+
+**Recomendação: B.** A spec optimiza para o estado final (server-side enrichment), mas no estado actual não há server de análise. Construir a engine como módulo puro cumpre a *intenção* (lógica fora da UI, reutilizável, productizada) sem criar plumbing descartável. Quando o Apify+server entrarem, o módulo é importado lá dentro — zero retrabalho.
 
 ---
 
@@ -38,59 +41,108 @@ Justificação para o utilizador: as "Edge Functions" da Supabase exigiriam infr
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `src/routes/api/request-full-report.ts` | **Criar** — server route POST + OPTIONS, valida payload, upsert lead, insert report_request, retorna shape estruturado | Não |
-| `src/integrations/supabase/queries/report-requests.ts` | **Editar** — substituir helper antigo por `requestFullReport(payload)` que faz `fetch("/api/request-full-report")` | Não |
-| `src/components/product/report-gate-modal.tsx` | **Editar mínimo** — substituir mock `setTimeout` por chamada a `requestFullReport`, passar `username` + `competitor_usernames: []`, manter quota local intacta, tratar erro com mensagem pt-PT | Não |
-| `src/components/product/premium-locked-section.tsx` | **Editar minúsculo** — passar `competitorUsernames` extraído de `data.competitors` ao modal (opcional; alternativa: hardcode `[]` no modal) | Não |
+| `src/lib/benchmark/tiers.ts` | **Criar** — `AccountTier` enum + `getTierForFollowers()` + thresholds explícitos (Nano/Micro/Mid/Macro/Mega) | Não |
+| `src/lib/benchmark/reference-data.ts` | **Criar** — tabela 2D `[tier][format] → benchmark engagement %` + labels pt-PT + última actualização | Não |
+| `src/lib/benchmark/engine.ts` | **Criar** — `computeBenchmarkPositioning({ followers, engagement, dominantFormat })` → `BenchmarkPositioning` shape normalizado + fallback `unavailable` | Não |
+| `src/lib/benchmark/types.ts` | **Criar** — `BenchmarkPositioning`, `PositionStatus`, `AccountTier`, `BenchmarkFormat` | Não |
+| `src/lib/mock-analysis.ts` | **Editar** — substituir cálculo aleatório de `reference` por chamada real à engine; expor novo campo `benchmarkPositioning` na `AnalysisData`; manter `benchmark` legacy preenchido a partir do positioning para não partir nada | Não |
+| `src/components/product/analysis-benchmark-block.tsx` | **Editar** — consumir `BenchmarkPositioning` (props nova `positioning`); renderizar tier + formato + delta% + estado; tratar caso `unavailable` com mensagem pt-PT calma | Não |
+| `src/components/product/public-analysis-dashboard.tsx` | **Editar mínimo** — passar `data.benchmarkPositioning` ao block | Não |
 
-**Zero ficheiros locked.** Não toco em `client.ts`, `client.server.ts`, `types.ts`, `.env`, nem foundation files.
-
----
-
-## Server route — design
-
-`POST /api/request-full-report`:
-- Validação Zod: `email` (string email, max 255), `name` (1-120), `company` (opcional, max 120), `instagram_username` (regex `^[A-Za-z0-9._]{1,30}$`), `competitor_usernames` (array opcional de strings, max 2), `request_source` (enum: `public_dashboard`, default).
-- Normaliza `email_normalized = email.trim().toLowerCase()`.
-- `supabaseAdmin.from("leads").upsert({ email, email_normalized, name, company, source: "public_report_gate" }, { onConflict: "email_normalized" }).select("id").single()` — devolve `lead_id`.
-- `supabaseAdmin.from("report_requests").insert({ lead_id, instagram_username, competitor_usernames, request_source: "public_dashboard", metadata: { quota_mode: "local_mock", flow_version: "v1" } }).select("id").single()`.
-- Sucesso: `{ success: true, lead_id, report_request_id, message: "Pedido registado com sucesso." }` (200).
-- Erro validação: `{ success: false, error_code: "INVALID_PAYLOAD", message: "Dados inválidos." }` (400).
-- Erro DB: log server-side + `{ success: false, error_code: "PERSISTENCE_FAILED", message: "Não foi possível registar o pedido." }` (500). Sem stack traces.
-- Handler `OPTIONS` para preflight (boa prática mesmo sendo same-origin).
+**Zero ficheiros locked.** Não toco em tokens, layout, modal, server route de leads, types Supabase, `__root.tsx`.
 
 ---
 
-## Modal — alterações mínimas
+## Engine de benchmark — design
+
+### Tiers (thresholds explícitos)
 
 ```ts
-// dentro de handleSubmit, substituir o bloco mock:
-try {
-  if (onSubmit) {
-    await onSubmit(data);
-  } else {
-    const result = await requestFullReport({
-      email: data.email,
-      name: data.nome,
-      company: data.empresa,
-      instagram_username: username ?? "",
-      competitor_usernames: [], // future: vir do dashboard
-      request_source: "public_dashboard",
-    });
-    if (!result.success) throw new Error(result.message);
+nano:  0       – 9,999     followers
+micro: 10,000  – 49,999
+mid:   50,000  – 249,999
+macro: 250,000 – 999,999
+mega:  1,000,000+
+```
+
+### Reference data (engagement % esperado, formato × tier)
+
+Valores baseados em ranges públicos comuns da indústria (Influencer Marketing Hub, HypeAuditor, etc.). Documentados como **v1 baseline editorial** — não tabela definitiva, refinável depois.
+
+```
+              Reels   Carrosséis   Imagens
+nano          5.60    4.20         3.10
+micro         3.20    2.40         1.80
+mid           1.80    1.30         0.95
+macro         1.10    0.80         0.55
+mega          0.70    0.50         0.35
+```
+
+### Cálculo
+
+```ts
+function computeBenchmarkPositioning(input): BenchmarkPositioning {
+  if (!input.followers || !input.engagement || !input.dominantFormat) {
+    return { status: "unavailable", reason: "missing_inputs" };
   }
-  const newCount = incrementQuota(normalizedEmail);
-  setState(newCount >= FREE_MONTHLY_LIMIT ? "success-last" : "success");
-} catch (err) {
-  console.error("Report request submission failed", err);
-  setSubmitError("Não foi possível concluir o pedido. Tentar novamente.");
-  setState("idle");
+  const tier = getTierForFollowers(input.followers);
+  const benchmarkValue = getReference(tier, input.dominantFormat);
+  const delta = input.engagement - benchmarkValue;
+  const deltaPct = (delta / benchmarkValue) * 100;
+
+  // ±10% threshold for "aligned"
+  const positionStatus =
+    deltaPct > 10 ? "above" : deltaPct < -10 ? "below" : "aligned";
+
+  return {
+    status: "available",
+    accountTier: tier,
+    accountTierLabel: TIER_LABELS[tier],            // "Micro (10K–50K)"
+    dominantFormat: input.dominantFormat,
+    benchmarkValue,
+    profileValue: input.engagement,
+    differencePercent: deltaPct,
+    positionStatus,
+    shortExplanation: buildExplanation(positionStatus, tier, format),
+  };
 }
 ```
 
-UX já tem `submitError` declarado (linha 81) mas **não é renderizado** no form actual — refinamento incluído: adicionar bloco de erro pt-PT visível acima do botão submit quando `submitError` existe.
+### Shape normalizado (consumido pela UI hoje, server amanhã)
 
-Quota local **fica intacta** (check antes do call, increment depois do call bem-sucedido).
+```ts
+type BenchmarkPositioning =
+  | { status: "available"; accountTier; accountTierLabel; dominantFormat;
+      benchmarkValue; profileValue; differencePercent; positionStatus;
+      shortExplanation }
+  | { status: "unavailable"; reason: "missing_inputs" | "no_reference_for_tier" };
+```
+
+Espelha exactamente o que um futuro server route devolveria — sem retrabalho.
+
+---
+
+## UI — alterações no benchmark block
+
+- Header mantém-se. Subtítulo passa a ser dinâmico: *"Benchmark · {dominantFormat} · {accountTierLabel}"*.
+- Barra mantém visual; `max` deixa de ser `1.8` hardcoded — usa `Math.max(profileValue, benchmarkValue) * 1.4`.
+- Badge: 3 estados pt-PT — "Acima do benchmark" / "Alinhado com o benchmark" / "Abaixo do benchmark".
+- Linha numérica: adicionar `differencePercent` com sinal (`+18%` / `−12%`).
+- Helper text: `shortExplanation` da engine.
+- Estado `unavailable`: bloco mantém estrutura, mostra mensagem pt-PT calma — *"Não foi possível calcular o benchmark neste momento. A comparação será apresentada assim que os dados estiverem disponíveis."* Sem barra, sem badge.
+
+---
+
+## Copy pt-PT (impessoal)
+
+- Title: *"Posicionamento face ao benchmark"* (mantém)
+- Sub: *"Comparação com contas do mesmo escalão e formato dominante"* (nova helper line)
+- Status: *"Acima do benchmark"* / *"Alinhado com o benchmark"* / *"Abaixo do benchmark"*
+- Explanations exemplo:
+  - above: *"Envolvimento {X}% acima do benchmark para contas {tier} no formato {formato}."*
+  - aligned: *"Envolvimento em linha com o benchmark para contas {tier} no formato {formato}."*
+  - below: *"Envolvimento {X}% abaixo do benchmark para contas {tier} no formato {formato}. Margem para refinar formato dominante e pacing."*
+- Fallback: *"Não foi possível calcular o benchmark neste momento."*
 
 ---
 
@@ -98,22 +150,33 @@ Quota local **fica intacta** (check antes do call, increment depois do call bem-
 
 | Guardrail | Estado |
 |---|---|
-| Sem auth | ✅ |
-| Sem alterar quota localStorage | ✅ |
-| Sem report generation / email / PDF / IA / scraping / EuPago | ✅ |
-| Sem novas dependências (zod já está no projecto, supabase admin já configurado) | ✅ |
-| Sem mudanças visuais desnecessárias | ✅ (só adicionar mensagem de erro inline pt-PT) |
-| RLS fechado mantido | ✅ (escrita via service role no server) |
-| Service role nunca no cliente | ✅ (só em `client.server.ts` importado pela route server) |
+| Sem competitor scraping / dados reais | ✅ (concorrentes intactos no mock) |
+| Sem PDF / email / pagamentos / auth | ✅ |
+| Sem novas dependências | ✅ (zod já no projecto, nada novo) |
+| Sem redesign | ✅ (block mantém estrutura visual, só conteúdo melhora) |
+| Lógica de benchmark fora da UI | ✅ (módulo `src/lib/benchmark/`) |
+| Sem hardcode de cores/fontes/spacing | ✅ |
 | Zero locked files | ✅ |
 | pt-PT impessoal | ✅ |
 | Comentários técnicos em inglês | ✅ |
+| Future-ready para Apify+server | ✅ (engine pura, importável de qualquer server route) |
 
 ---
 
-## Confirmações antes de implementar
+## Checkpoints
 
-1. **Aprovas usar TanStack server route (`/api/request-full-report`) em vez de Supabase Edge Function (Deno)?** É o que a Project Knowledge define. Mesma intenção arquitectural.
-2. **`competitor_usernames` na primeira versão fica `[]`** (o dashboard mock tem `competitors` mas o hero/modal não recolhem inputs de concorrentes ainda). Confirmas? Alternativa: extrair handles do mock `data.competitors` em `PremiumLockedSection` e passar adiante.
-3. **Adicionar bloco de erro inline no form do modal** (actualmente `submitError` é guardado mas nunca mostrado) — confirmo que conta como "no unnecessary visual change" porque é refinamento funcional pt-PT?
+- ☐ `src/lib/benchmark/` criado (tiers + reference-data + engine + types)
+- ☐ Tier por `followers_count` implementado e legível
+- ☐ Cálculo de positioning com 3 estados (`above`/`aligned`/`below`)
+- ☐ Estado `unavailable` com fallback pt-PT
+- ☐ `mock-analysis.ts` integra a engine real (substitui `reference` aleatório)
+- ☐ `analysis-benchmark-block.tsx` consome shape normalizado
+- ☐ Concorrentes intencionalmente fora de scope
+- ☐ Sem novas dependências, sem locked files, sem auth/email/PDF/pagamentos
+
+---
+
+## Nota de comunicação ao utilizador
+
+A spec pede para enriquecer "a Edge Function existente". Não existe nenhuma Edge Function de análise pública neste projecto — a rota `/analyze/$username` corre o mock em SSR directo. Construo a engine como módulo puro reutilizável (`src/lib/benchmark/`) que cumpre 100% a intenção arquitectural ("benchmark logic in reusable product layer, not in UI"). Quando o backend Apify+análise existir num prompt futuro, o handler server faz `import { computeBenchmarkPositioning }` e devolve o mesmo shape — zero retrabalho.
 
