@@ -39,6 +39,12 @@ explicitly asks for a modification in a new prompt.
 - /src/components/landing/how-it-works-step.tsx
 - /src/components/landing/how-it-works-section.tsx
 
+## Landing Components (Sprint 1, Prompt 1.3)
+- /src/components/landing/mockup-metric-card.tsx
+- /src/components/landing/mockup-benchmark-gauge.tsx
+- /src/components/landing/mockup-dashboard.tsx
+- /src/components/landing/product-preview-section.tsx
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,

@@ -27,3 +27,7 @@ Locked files:
 - /src/components/landing/social-proof-section.tsx (since Sprint 1, Prompt 1.2)
 - /src/components/landing/how-it-works-step.tsx (since Sprint 1, Prompt 1.2)
 - /src/components/landing/how-it-works-section.tsx (since Sprint 1, Prompt 1.2)
+- /src/components/landing/mockup-metric-card.tsx (since Sprint 1, Prompt 1.3)
+- /src/components/landing/mockup-benchmark-gauge.tsx (since Sprint 1, Prompt 1.3)
+- /src/components/landing/mockup-dashboard.tsx (since Sprint 1, Prompt 1.3)
+- /src/components/landing/product-preview-section.tsx (since Sprint 1, Prompt 1.3)

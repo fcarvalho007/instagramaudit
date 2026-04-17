@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { HeroSection } from "@/components/landing/hero-section";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
+import { ProductPreviewSection } from "@/components/landing/product-preview-section";
 import { SocialProofSection } from "@/components/landing/social-proof-section";
 
 export const Route = createFileRoute("/")({
@@ -37,6 +38,7 @@ function Home() {
       <HeroSection />
       <SocialProofSection />
       <HowItWorksSection />
+      <ProductPreviewSection />
     </>
   );
 }
