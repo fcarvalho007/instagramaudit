@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input, InputHelper, InputLabel } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
+import { insertReportRequest } from "@/integrations/supabase/queries/report-requests";
 import { cn } from "@/lib/utils";
 import {
   FREE_MONTHLY_LIMIT,
