@@ -37,12 +37,12 @@ function MockupWithReveal() {
           : "opacity-0 scale-95 translate-y-8",
       )}
     >
-      {/* Studio stage — atmospheric warm off-white spotlight */}
+      {/* Studio stage — focused warm spotlight */}
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none"
       >
-        <div className="h-[80%] w-[90%] max-w-[90vw] rounded-full bg-[radial-gradient(ellipse_at_center,_rgb(var(--surface-light-elevated))_0%,_rgb(var(--surface-light-elevated)_/_0.6)_35%,_transparent_70%)]" />
+        <div className="h-[60%] w-[70%] max-w-[70vw] rounded-full bg-[radial-gradient(ellipse_at_center,_rgb(var(--surface-light-elevated)_/_0.4)_0%,_rgb(var(--surface-light-elevated)_/_0.25)_35%,_transparent_70%)]" />
       </div>
 
       {/* Bottom grounding shadow — pousa o objecto no palco */}
@@ -53,9 +53,9 @@ function MockupWithReveal() {
         <div className="h-12 w-[80%] max-w-[700px] rounded-[50%] bg-slate-900/10 blur-2xl" />
       </div>
 
-      {/* Editorial frame with corner brackets */}
+      {/* Editorial frame with corner brackets — solid, structural */}
       <div
-        className="relative rounded-3xl border border-slate-300/40 bg-white/40 backdrop-blur-sm p-3 md:p-5"
+        className="relative rounded-3xl border border-slate-300/70 bg-surface-light-elevated p-2 md:p-3"
         style={{ boxShadow: "var(--shadow-stage)" }}
       >
         {/* Corner brackets */}
@@ -69,7 +69,7 @@ function MockupWithReveal() {
             key={i}
             aria-hidden="true"
             className={cn(
-              "absolute h-3 w-3 border-slate-500/70 pointer-events-none",
+              "absolute h-4 w-4 border-slate-600/80 pointer-events-none",
               pos,
             )}
           />
