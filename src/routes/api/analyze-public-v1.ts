@@ -20,6 +20,14 @@ import {
   runActor,
 } from "@/lib/analysis/apify-client";
 import {
+  buildCacheKey,
+  isFresh,
+  isWithinStaleWindow,
+  lookupSnapshot,
+  storeSnapshot,
+  type SnapshotRow,
+} from "@/lib/analysis/cache";
+import {
   computeContentSummary,
   normalizeProfile,
 } from "@/lib/analysis/normalize";
@@ -28,6 +36,7 @@ import type {
   PublicAnalysisErrorCode,
   PublicAnalysisProfile,
   PublicAnalysisResponse,
+  PublicAnalysisSuccess,
 } from "@/lib/analysis/types";
 
 const PROFILE_ACTOR = "apify/instagram-profile-scraper";
@@ -154,10 +163,24 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           if (competitors.length >= MAX_COMPETITORS) break;
         }
 
+        // Server-side escape hatch: ?refresh=1 bypasses cache and forces a
+        // fresh provider call. Not exposed in the UI today; useful for dev
+        // and a future "Atualizar análise" button without contract changes.
+        const url = new URL(request.url);
+        const forceRefresh = url.searchParams.get("refresh") === "1";
+
+        const cacheKey = buildCacheKey(primary, competitors);
+
+        // 1) Cache lookup. A non-expired snapshot short-circuits the provider.
+        const existing = await lookupSnapshot(cacheKey);
+        if (existing && !forceRefresh && isFresh(existing)) {
+          return jsonResponse(buildCachedResponse(existing, "cache"), 200);
+        }
+
         const allHandles = [primary, ...competitors];
 
         try {
-          // 1) Single batched profile call for primary + competitors.
+          // 2) Single batched profile call for primary + competitors.
           const profileRows = await runActor<Record<string, unknown>>(
             PROFILE_ACTOR,
             { usernames: allHandles },
@@ -176,7 +199,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("PROFILE_NOT_FOUND");
           }
 
-          // 2) Posts in parallel — primary + each competitor that resolved.
+          // 3) Posts in parallel — primary + each competitor that resolved.
           const primaryPostsP = fetchPostsForHandle(
             primaryProfile.username,
             primaryProfile.followers_count,
@@ -219,21 +242,45 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             Promise.all(competitorTasks),
           ]);
 
-          return jsonResponse(
-            {
+          // 4) Persist snapshot (best-effort). The status field is intentionally
+          // excluded — it's recomputed per response based on freshness.
+          const normalizedPayload = {
+            profile: primaryProfile,
+            content_summary: primarySummary,
+            competitors: competitorResults,
+          };
+
+          await storeSnapshot({
+            cacheKey,
+            instagramUsername: primaryProfile.username,
+            competitorUsernames: competitors,
+            normalizedPayload: normalizedPayload as unknown as Record<
+              string,
+              unknown
+            >,
+          });
+
+          const response: PublicAnalysisSuccess = {
+            success: true,
+            ...normalizedPayload,
+            status: {
               success: true,
-              profile: primaryProfile,
-              content_summary: primarySummary,
-              competitors: competitorResults,
-              status: {
-                success: true,
-                data_source: "apify_v1",
-                analyzed_at: new Date().toISOString(),
-              },
+              data_source: "fresh",
+              analyzed_at: new Date().toISOString(),
             },
-            200,
-          );
+          };
+          return jsonResponse(response, 200);
         } catch (err) {
+          // 5) Stale-while-error: if provider failed but we have a recent
+          // snapshot (≤ 7 days), serve it rather than breaking the page.
+          if (existing && isWithinStaleWindow(existing)) {
+            console.warn(
+              "[analyze-public-v1] serving stale snapshot after provider failure",
+              cacheKey,
+            );
+            return jsonResponse(buildCachedResponse(existing, "stale"), 200);
+          }
+
           if (err instanceof ApifyConfigError) {
             console.error("[analyze-public-v1] missing config", err.message);
             return failure("UPSTREAM_UNAVAILABLE");
@@ -254,3 +301,30 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
     },
   },
 });
+
+/**
+ * Reconstruct a PublicAnalysisSuccess from a stored snapshot.
+ * The status block is always recomputed: data_source reflects freshness,
+ * analyzed_at reflects when the underlying scrape happened (updated_at).
+ */
+function buildCachedResponse(
+  snapshot: SnapshotRow,
+  source: "cache" | "stale",
+): PublicAnalysisSuccess {
+  const payload = snapshot.normalized_payload as unknown as {
+    profile: PublicAnalysisProfile;
+    content_summary: PublicAnalysisSuccess["content_summary"];
+    competitors: CompetitorAnalysis[];
+  };
+  return {
+    success: true,
+    profile: payload.profile,
+    content_summary: payload.content_summary,
+    competitors: payload.competitors ?? [],
+    status: {
+      success: true,
+      data_source: source,
+      analyzed_at: snapshot.updated_at,
+    },
+  };
+}
