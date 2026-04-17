@@ -3,7 +3,10 @@
  * Stable, frontend-friendly shape. Raw Apify payloads must never reach this.
  */
 
-import type { BenchmarkFormat } from "@/lib/benchmark/types";
+import type {
+  BenchmarkFormat,
+  BenchmarkPositioning,
+} from "@/lib/benchmark/types";
 
 export interface PublicAnalysisProfile {
   username: string;
@@ -61,6 +64,13 @@ export interface PublicAnalysisSuccess {
   content_summary: PublicAnalysisContentSummary;
   competitors: CompetitorAnalysis[];
   status: PublicAnalysisStatus;
+  /**
+   * Benchmark positioning resolved server-side using the cloud-managed
+   * `benchmark_references` dataset. Optional for backward compatibility with
+   * snapshots stored before this field existed — the dashboard falls back to
+   * client-side computation when absent.
+   */
+  benchmark_positioning?: BenchmarkPositioning;
 }
 
 export type PublicAnalysisErrorCode =

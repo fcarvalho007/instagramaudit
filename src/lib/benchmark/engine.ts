@@ -1,10 +1,19 @@
 /**
  * Benchmark engine — computes positioning for a single profile.
- * Pure module, no side effects, fully reusable from server routes later.
+ *
+ * Pure module. Accepts an optional `BenchmarkData` snapshot via dependency
+ * injection. When omitted, falls back to the in-code defaults so client-side
+ * callers (dashboard) keep working synchronously without a DB round-trip.
+ * Server callers should always inject a freshly-loaded snapshot from
+ * `loadBenchmarkReferences()`.
  */
 
-import { getReference } from "./reference-data";
-import { getTierForFollowers, TIER_LABELS } from "./tiers";
+import {
+  FALLBACK_BENCHMARK_DATA,
+  getReferenceFromData,
+  type BenchmarkData,
+} from "./reference-data";
+import { getTierForFollowers, getTierLabel } from "./tiers";
 import type {
   BenchmarkEngineInput,
   BenchmarkPositioning,
@@ -44,6 +53,7 @@ function buildExplanation(
 
 export function computeBenchmarkPositioning(
   input: BenchmarkEngineInput,
+  data: BenchmarkData = FALLBACK_BENCHMARK_DATA,
 ): BenchmarkPositioning {
   const { followers, engagement, dominantFormat } = input;
 
@@ -57,8 +67,8 @@ export function computeBenchmarkPositioning(
     return { status: "unavailable", reason: "missing_inputs" };
   }
 
-  const tier = getTierForFollowers(followers);
-  const benchmarkValue = getReference(tier, dominantFormat);
+  const tier = getTierForFollowers(followers, data);
+  const benchmarkValue = getReferenceFromData(data, tier, dominantFormat);
 
   if (benchmarkValue === null || benchmarkValue <= 0) {
     return { status: "unavailable", reason: "no_reference_for_tier" };
@@ -74,7 +84,7 @@ export function computeBenchmarkPositioning(
         ? "below"
         : "aligned";
 
-  const accountTierLabel = TIER_LABELS[tier];
+  const accountTierLabel = getTierLabel(tier, data);
 
   return {
     status: "available",

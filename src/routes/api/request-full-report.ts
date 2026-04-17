@@ -19,8 +19,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-
-const FREE_MONTHLY_LIMIT = 2;
+import { FREE_MONTHLY_LIMIT } from "@/lib/quota";
 
 const PayloadSchema = z.object({
   email: z.string().trim().email().max(255),
@@ -186,7 +185,7 @@ export const Route = createFileRoute("/api/request-full-report")({
               quota_status: "limit_reached",
               remaining_free_reports: 0,
               error_code: "QUOTA_REACHED",
-              message: "Foi atingido o limite de 2 relatórios gratuitos este mês.",
+              message: `Foi atingido o limite de ${FREE_MONTHLY_LIMIT} relatórios gratuitos este mês.`,
             },
             // 200 — business outcome, not a transport-level error
             200,
