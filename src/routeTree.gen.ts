@@ -10,16 +10,28 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSendReportEmailRouteImport } from './routes/api/send-report-email'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
 import { Route as ApiGenerateReportPdfRouteImport } from './routes/api/generate-report-pdf'
 import { Route as ApiAnalyzePublicV1RouteImport } from './routes/api/analyze-public-v1'
 import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
+import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
+import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
+import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
+import { Route as ApiAdminLogoutRouteImport } from './routes/api/admin/logout'
+import { Route as ApiAdminAuthRouteImport } from './routes/api/admin/auth'
+import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -52,73 +64,152 @@ const AnalyzeUsernameRoute = AnalyzeUsernameRouteImport.update({
   path: '/analyze/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminResendEmailRoute = ApiAdminResendEmailRouteImport.update({
+  id: '/api/admin/resend-email',
+  path: '/api/admin/resend-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminReportRequestsRoute = ApiAdminReportRequestsRouteImport.update({
+  id: '/api/admin/report-requests',
+  path: '/api/admin/report-requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminRegeneratePdfRoute = ApiAdminRegeneratePdfRouteImport.update({
+  id: '/api/admin/regenerate-pdf',
+  path: '/api/admin/regenerate-pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminLogoutRoute = ApiAdminLogoutRouteImport.update({
+  id: '/api/admin/logout',
+  path: '/api/admin/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAuthRoute = ApiAdminAuthRouteImport.update({
+  id: '/api/admin/auth',
+  path: '/api/admin/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminReportRequestsIdRoute =
+  ApiAdminReportRequestsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => ApiAdminReportRequestsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/api/admin/auth': typeof ApiAdminAuthRoute
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
+  '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/api/admin/auth': typeof ApiAdminAuthRoute
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
+  '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/design-system': typeof DesignSystemRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/api/admin/auth': typeof ApiAdminAuthRoute
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
+  '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/design-system'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/api/admin/auth'
+    | '/api/admin/logout'
+    | '/api/admin/regenerate-pdf'
+    | '/api/admin/report-requests'
+    | '/api/admin/resend-email'
+    | '/api/admin/report-requests/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/design-system'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/api/admin/auth'
+    | '/api/admin/logout'
+    | '/api/admin/regenerate-pdf'
+    | '/api/admin/report-requests'
+    | '/api/admin/resend-email'
+    | '/api/admin/report-requests/$id'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/design-system'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/api/admin/auth'
+    | '/api/admin/logout'
+    | '/api/admin/regenerate-pdf'
+    | '/api/admin/report-requests'
+    | '/api/admin/resend-email'
+    | '/api/admin/report-requests/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   DesignSystemRoute: typeof DesignSystemRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
   ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
   ApiGenerateReportPdfRoute: typeof ApiGenerateReportPdfRoute
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
   ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
+  ApiAdminAuthRoute: typeof ApiAdminAuthRoute
+  ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
+  ApiAdminRegeneratePdfRoute: typeof ApiAdminRegeneratePdfRoute
+  ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
+  ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -128,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/design-system'
       fullPath: '/design-system'
       preLoaderRoute: typeof DesignSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -172,18 +270,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyzeUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/resend-email': {
+      id: '/api/admin/resend-email'
+      path: '/api/admin/resend-email'
+      fullPath: '/api/admin/resend-email'
+      preLoaderRoute: typeof ApiAdminResendEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/report-requests': {
+      id: '/api/admin/report-requests'
+      path: '/api/admin/report-requests'
+      fullPath: '/api/admin/report-requests'
+      preLoaderRoute: typeof ApiAdminReportRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/regenerate-pdf': {
+      id: '/api/admin/regenerate-pdf'
+      path: '/api/admin/regenerate-pdf'
+      fullPath: '/api/admin/regenerate-pdf'
+      preLoaderRoute: typeof ApiAdminRegeneratePdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/logout': {
+      id: '/api/admin/logout'
+      path: '/api/admin/logout'
+      fullPath: '/api/admin/logout'
+      preLoaderRoute: typeof ApiAdminLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/auth': {
+      id: '/api/admin/auth'
+      path: '/api/admin/auth'
+      fullPath: '/api/admin/auth'
+      preLoaderRoute: typeof ApiAdminAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/report-requests/$id': {
+      id: '/api/admin/report-requests/$id'
+      path: '/$id'
+      fullPath: '/api/admin/report-requests/$id'
+      preLoaderRoute: typeof ApiAdminReportRequestsIdRouteImport
+      parentRoute: typeof ApiAdminReportRequestsRoute
+    }
   }
 }
 
+interface ApiAdminReportRequestsRouteChildren {
+  ApiAdminReportRequestsIdRoute: typeof ApiAdminReportRequestsIdRoute
+}
+
+const ApiAdminReportRequestsRouteChildren: ApiAdminReportRequestsRouteChildren =
+  {
+    ApiAdminReportRequestsIdRoute: ApiAdminReportRequestsIdRoute,
+  }
+
+const ApiAdminReportRequestsRouteWithChildren =
+  ApiAdminReportRequestsRoute._addFileChildren(
+    ApiAdminReportRequestsRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   DesignSystemRoute: DesignSystemRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
   ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,
   ApiGenerateReportPdfRoute: ApiGenerateReportPdfRoute,
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
   ApiSendReportEmailRoute: ApiSendReportEmailRoute,
+  ApiAdminAuthRoute: ApiAdminAuthRoute,
+  ApiAdminLogoutRoute: ApiAdminLogoutRoute,
+  ApiAdminRegeneratePdfRoute: ApiAdminRegeneratePdfRoute,
+  ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,
+  ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
