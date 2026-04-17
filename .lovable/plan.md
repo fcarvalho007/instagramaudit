@@ -2,43 +2,37 @@
 
 ## Entendimento
 
-**1. Landing → analyze → gate**: hero (`/`) → `/analyze/$username[?vs=h1,h2]` → `<PublicAnalysisDashboard>` (header + métricas + benchmark cloud + concorrentes + premium gate) → `<ReportGateModal>` → `POST /api/request-full-report` (quota server-side + insert em `report_requests` ligado ao snapshot exacto via `analysis_snapshot_id`).
+**1. Landing → analyze → gate**: hero (`/`) → `/analyze/$username` → `<PublicAnalysisDashboard>` → `<ReportGateModal>` → `POST /api/request-full-report` (quota server-side, insert em `report_requests` ligado ao `analysis_snapshot_id`).
 
-**2. Análise pública + snapshots**: `/api/analyze-public-v1` calcula `cache_key`, faz `lookupSnapshot()` (TTL 24h, stale 7d), persiste `analysis_snapshots` com `id` único e `normalized_payload` jsonb (`{ profile, content_summary, competitors }`). Frontend recebe `analysis_snapshot_id` no payload.
+**2. Análise + snapshots persistidos**: `/api/analyze-public-v1` faz cache 24h, persiste `analysis_snapshots` com `id` + `normalized_payload`. Frontend recebe `analysis_snapshot_id`.
 
-**3. Report request**: `report_requests` tem hoje `lead_id`, `instagram_username`, `competitor_usernames`, `request_source`, `request_status`, `delivery_status`, `is_free_request`, `request_month`, `metadata`, e crucialmente `analysis_snapshot_id` (FK `ON DELETE SET NULL`). Sem campos de PDF ainda.
+**3. Report request**: `report_requests` tem `lead_id` (FK lógica → `leads`), `instagram_username`, `analysis_snapshot_id`, `pdf_status` ('not_generated'|'generating'|'ready'|'failed'), `pdf_storage_path`, `pdf_generated_at`, e crucialmente já tem `delivery_status text default 'not_sent'` desde a génese.
 
-**4. Linkagem snapshot**: cada request **já está ligado** ao snapshot exacto que motivou a conversão. O backend valida existência + match de username antes do insert. Snapshot é imutável e reproducible.
+**4. Snapshot link**: cada request liga a um snapshot exacto, validado por username no insert.
 
-**5. Porquê PDF a partir de `report_request_id` → `analysis_snapshot_id`**: a cadeia já está montada. PDF v1 deve ser puro `(report_request_id) → snapshot → render → storage`. Sem Apify, sem reanálise, sem dependência de estado do browser. Determinístico, auditável, regenerável anos depois com o mesmo resultado.
+**5. PDF v1 gerado**: `/api/generate-report-pdf` resolve `report_request_id → snapshot → render → upload bucket privado `report-pdfs` → update`. Idempotente. Path determinístico `reports/{YYYY}/{MM}/{request_id}.pdf`.
+
+**6. Porquê email reusar PDF stored**: o artefacto já existe, é imutável e auditável. Regenerar custaria CPU + duplicaria storage churn + arriscaria *drift* de benchmark se o dataset cloud mudasse entre PDF e email. Email v1 = puro `(report_request_id) → fetch row → assert pdf_status='ready' → signed URL → Resend → update delivery_status`. Sem PDF render, sem snapshot read, sem provider.
 
 ---
 
 ## Discrepâncias e decisões
 
-**Server route vs Edge Function**: o prompt pede "Edge Function" mas o projecto usa **TanStack Server Routes** (não Supabase Edge Functions — knowledge confirma "Do NOT use Supabase Edge Functions"). Implementar como `/api/generate-report-pdf` (server route POST).
+**`delivery_status` já existe**: a coluna `delivery_status text NOT NULL DEFAULT 'not_sent'` já está no schema. Decisão: **reusar** em vez de adicionar `email_status`. Lifecycle: `'not_sent' → 'sending' → 'sent' | 'failed'`. Schema mais limpo, zero conflito com colunas legadas. Os 3 campos novos a adicionar: `email_sent_at timestamptz`, `email_message_id text`, `email_error_message text`.
 
-**`@react-pdf/renderer` no Cloudflare Worker**: ⚠️ **risco crítico**. A lib usa `fontkit` + assume APIs Node (Buffer/streams). Já tem reports de funcionar em Workers com `nodejs_compat`, mas com pegadinhas: fontes têm de ser embutidas como ArrayBuffer, sem `fs.readFileSync` em runtime. **Plano**: usar fonts default da lib (Helvetica/Times — não precisam de embed) para v1; Fraunces/Inter ficam para v2 quando estabilizarmos o pipeline. Aceito como trade-off premium-vs-shippable.
+**Signed URL vs attachment**: signed URL. v1 mais robusto (sem limite de tamanho de email, sem rejeições por anexos pesados, sem fontkit-Worker-attachment edge cases). TTL **7 dias** — suficiente para o utilizador agir, curto o suficiente para não vazar indefinidamente. URL gerado on-send, não persistido (regenerável a cada re-send).
 
-**Bucket público vs privado**: privado. PDFs contêm dados curados para o lead específico — nunca expostos por URL adivinhável. Acesso futuro via signed URL gerado por server route autenticada (não neste prompt). RLS storage policies fechadas, leitura só por service role.
+**Idempotência — escolha clara**: **re-send permitido sempre**. Cada call sobrescreve `email_sent_at` + `email_message_id`. Razão: signed URLs expiram; impedir re-send forçaria a regenerar PDF para emitir novo link, que viola guardrail "não regenerar". Re-send simples e seguro = melhor v1. `delivery_status='sent'` + chamar de novo → re-envia, novo timestamp, novo message_id.
 
-**Idempotência**: se `pdf_status = 'ready'` e `pdf_storage_path` existe → devolver referência existente sem regenerar (poupa CPU + storage churn). Se `?force=1` na query → regenera e sobrescreve no mesmo path (upsert no bucket). Decisão clara, documentada na response.
+**Resend API key**: secret `RESEND_API_KEY` ainda **não está configurado**. Plano usa `add_secret` no início. Sem ela, route devolve `error_code: "EMAIL_PROVIDER_NOT_CONFIGURED"`.
 
-**Path naming**: `reports/{YYYY}/{MM}/{report_request_id}.pdf`. Determinístico, ordenável por mês, sem colisões (UUID único por request). `YYYY/MM` derivados de `request_month` da row (não de `now()`) para manter consistência mesmo em regeneração tardia.
+**Sender identity**: `relatorios@instabench.pt` ainda não tem domínio verificado no Resend. Decisão v1: usar **`onboarding@resend.dev`** (sandbox do Resend, funciona sem domain verification). Documentar como tech debt — assim que o utilizador tiver domínio verificado em Resend, troca-se uma constante. Resend permite envio de teste de qualquer domínio via sandbox.
 
-**Status lifecycle**: `not_generated` → `generating` → `ready` | `failed`. Marca `generating` antes do render para detectar processos em curso (caso futuro de retries paralelos).
+**Sem Edge Function Supabase**: project knowledge é claro — usar TanStack Server Routes. Implementar como `/api/send-report-email`. (Apesar do prompt dizer "Edge Function", segue-se a arquitectura do projecto).
 
-**Conteúdo v1**: o snapshot tem `profile + content_summary + competitors`. Render fiel a isto:
-- Capa com username, avatar (se URL https acessível) ou placeholder, data de análise
-- Identidade do perfil (nome, bio, followers/following/posts, verified)
-- Métricas-chave (engagement rate, avg likes/comments, posts analisados, dominant format, posts/semana)
-- Benchmark positioning (recomputado server-side a partir do dataset cloud actual + dados do snapshot — mesma lógica que o dashboard faz)
-- Concorrentes (tabela: handle, followers, engagement, avg likes/comments) + linhas de falha graceful
-- Footer com timestamp + branding pt-PT
+**Sem `@react-email/components`**: o template é simples e a integração `scaffold_transactional_email` traz infra pesada (queue pgmq, cron, suppression, unsubscribe tokens) que excede o scope deste prompt. Decisão: **HTML inline** num template literal pt-PT, premium, com fallback `text/plain`. Quando o produto evoluir para emails de marketing/lifecycle, pode adoptar-se a infra completa. v1 é uma chamada directa `fetch` ao Resend API com HTML inline.
 
-**Sem AI insights neste prompt** — o snapshot v1 não tem narrativa LLM. Render só o que existe. Secção "Recomendações estratégicas" omitida (não inventar).
-
-**Avatares**: tentar embed da `avatar_url` via fetch + ArrayBuffer no momento do render. Se falhar, placeholder geométrico (iniciais sobre fundo de cor derivada). Não bloquear PDF por causa de imagem.
+**Resolver lead**: `report_requests.lead_id` → `SELECT email, name FROM leads WHERE id = $1`. Se faltar email → `LEAD_EMAIL_MISSING`.
 
 ---
 
@@ -46,15 +40,13 @@
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `supabase/migrations/{ts}_pdf_tracking.sql` | **Criar** — colunas pdf no `report_requests` + bucket privado `report-pdfs` + storage RLS server-only | Não |
-| `src/lib/pdf/report-document.tsx` | **Criar** — componente React-PDF (`<Document>`/`<Page>`) com layout v1 | Não |
-| `src/lib/pdf/styles.ts` | **Criar** — StyleSheet do react-pdf (cores, spacing, tipografia adaptada para print) | Não |
-| `src/lib/pdf/render.ts` | **Criar** — `renderReportPdf(snapshot, requestMeta)` → `Uint8Array` | Não |
-| `src/lib/pdf/storage.ts` | **Criar** — `uploadReportPdf(path, bytes)` + `buildReportPath(request)` via `supabaseAdmin` | Não |
-| `src/routes/api/generate-report-pdf.ts` | **Criar** — server route POST, valida payload, orquestra fetch → render → upload → update | Não |
-| `package.json` | Editar — adicionar `@react-pdf/renderer` (única lib nova, alinhada com stack decidido) | Não |
+| `supabase/migrations/{ts}_email_delivery_tracking.sql` | **Criar** — `ALTER report_requests ADD email_sent_at, email_message_id, email_error_message` | Não |
+| `src/lib/email/report-email-template.ts` | **Criar** — `buildReportEmailHtml()` + `buildReportEmailText()` em pt-PT | Não |
+| `src/routes/api/send-report-email.ts` | **Criar** — server route POST, valida → fetch row → fetch lead → signed URL → Resend → update | Não |
 
-**Zero ficheiros locked tocados.** Confirmado contra `mem://constraints/locked-files`.
+**Secret a adicionar** (via `add_secret`): `RESEND_API_KEY` — necessária antes de a route funcionar.
+
+**Zero ficheiros locked tocados.** Confirmado contra `LOCKED_FILES.md`.
 
 ---
 
@@ -62,97 +54,71 @@
 
 ```sql
 ALTER TABLE public.report_requests
-  ADD COLUMN IF NOT EXISTS pdf_status text NOT NULL DEFAULT 'not_generated',
-  ADD COLUMN IF NOT EXISTS pdf_storage_path text,
-  ADD COLUMN IF NOT EXISTS pdf_generated_at timestamptz,
-  ADD COLUMN IF NOT EXISTS pdf_error_message text;
-
--- Private bucket: PDFs are personalized for each lead, never publicly addressable.
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('report-pdfs', 'report-pdfs', false)
-ON CONFLICT (id) DO NOTHING;
-
--- Storage RLS: server-only access via service role (no policies = closed by default
--- for non-service contexts; service role bypasses RLS).
+  ADD COLUMN IF NOT EXISTS email_sent_at timestamptz,
+  ADD COLUMN IF NOT EXISTS email_message_id text,
+  ADD COLUMN IF NOT EXISTS email_error_message text;
 ```
 
-Status enum implícito: `'not_generated' | 'generating' | 'ready' | 'failed'`.
+`delivery_status` (`'not_sent' | 'sending' | 'sent' | 'failed'`) já existe — reusar.
 
 ---
 
 ## Fluxo do server route
 
 ```
-POST /api/generate-report-pdf
-  body: { report_request_id: uuid, force?: boolean }
+POST /api/send-report-email
+  body: { report_request_id: uuid }
 
 1. Zod validate payload
-2. SELECT report_requests WHERE id = $1
+2. Check RESEND_API_KEY present
+   → if missing: { error_code: "EMAIL_PROVIDER_NOT_CONFIGURED" }
+3. SELECT report_requests (id, lead_id, instagram_username, pdf_status,
+                           pdf_storage_path, request_month, delivery_status,
+                           email_sent_at)
    → if not found: { error_code: "REQUEST_NOT_FOUND" }
-3. If pdf_status = 'ready' && !force:
-   → return existing { pdf_storage_path, pdf_generated_at, pdf_status: 'ready' }
-4. Validate analysis_snapshot_id present
-   → if null: mark failed + { error_code: "SNAPSHOT_LINK_MISSING" }
-5. SELECT analysis_snapshots WHERE id = $1
-   → if not found: mark failed + { error_code: "SNAPSHOT_NOT_FOUND" }
-6. UPDATE report_requests SET pdf_status = 'generating'
-7. Try:
-     a. Render PDF (renderReportPdf with snapshot.normalized_payload + benchmark recompute)
-     b. Build path: reports/{YYYY}/{MM}/{request.id}.pdf (from request_month)
-     c. Upload to storage (upsert: true)
-     d. UPDATE report_requests SET pdf_status='ready', pdf_storage_path, pdf_generated_at=now(), pdf_error_message=null
-     e. return { success: true, ... }
-   Catch:
-     UPDATE pdf_status='failed', pdf_error_message=<sanitized>
-     return { error_code: "RENDER_FAILED" | "UPLOAD_FAILED" }
+4. Validate pdf_status === 'ready' AND pdf_storage_path
+   → if not: { error_code: "PDF_NOT_READY" }
+5. SELECT leads (email, name) WHERE id = lead_id
+   → if no email: mark failed + { error_code: "LEAD_EMAIL_MISSING" }
+6. UPDATE delivery_status = 'sending', email_error_message = null
+7. Generate signed URL (TTL 7d) for pdf_storage_path
+   → if fails: mark failed + { error_code: "SIGNED_URL_FAILED" }
+8. Build email HTML + plain text from template
+9. POST https://api.resend.com/emails with sandbox sender
+   → if !ok: mark failed + { error_code: "RESEND_FAILED" }
+10. UPDATE delivery_status='sent', email_sent_at=now(), email_message_id=<resend id>
+11. Return { success: true, ... }
 ```
-
-Mensagens de erro internas (admin-friendly), nunca stack traces.
 
 ---
 
-## Conteúdo PDF v1 — secções
+## Email template — pt-PT premium
 
-```
-Page 1 (Cover):
-  - InstaBench wordmark (header)
-  - "Relatório de Análise"
-  - @username + display name
-  - Avatar (embedded ou placeholder)
-  - "Análise realizada em DD MMM YYYY"
+**Subject**: `O relatório do perfil @{username} está pronto`
 
-Page 2 (Perfil + Métricas):
-  - Identidade: nome, bio, verified badge, contadores (seguidores/seguir/publicações)
-  - Métricas-chave (grid): taxa de engagement, média de gostos, média de comentários,
-    publicações analisadas, formato dominante, publicações/semana
+**HTML body** (resumo):
+- Header: `INSTABENCH` wordmark
+- Heading: `O relatório está pronto`
+- Lead text: `A análise completa de @{username} já está disponível.`
+- Meta line: `Inclui benchmark por tier, leitura de métricas-chave e comparação com concorrentes.`
+- CTA button: `Aceder ao relatório` → signed URL
+- Fallback text: `Em alternativa, copiar o seguinte endereço:` + `<code>{signedUrl}</code>`
+- Note: `O acesso ao ficheiro expira dentro de 7 dias.`
+- Signature: `InstaBench · Relatórios premium para Instagram`
 
-Page 3 (Benchmark):
-  - Posicionamento: tier do perfil (label do dataset cloud)
-  - Engagement do perfil vs benchmark do tier × formato dominante
-  - Diferença em pontos percentuais + interpretação textual neutra
-    ("acima da média", "em linha", "abaixo da média") — sem AI
-
-Page 4 (Concorrentes) — só se array competitors não vazio:
-  - Tabela: @handle, seguidores, engagement, média gostos, média comentários
-  - Linhas de falha mostradas como "Dados indisponíveis" sem detalhe técnico
-
-Footer (todas as páginas):
-  - "InstaBench · {data} · Página X de Y"
-```
-
-Tipografia: Helvetica (default react-pdf, sem embed) — Fraunces/Inter ficam para v2.
-Paleta print-friendly: fundo branco, texto navy escuro `#0A0E1A`, accent cyan `#06B6D4` em cabeçalhos. Reverso do dark-first do produto, propositadamente — tinta em papel funciona melhor assim.
+Inline styles, fundo branco, sem dark mode (premium editorial print-ready feel). Sem unsubscribe link (transaccional puro, gerado por acção do utilizador).
 
 ---
 
 ## Idempotência — regra v1
 
-**Regra única e clara**: 
-- Sem `force`: se `pdf_status = 'ready'`, devolve referência existente (HTTP 200, sem regenerar).
-- Com `?force=true` no body: regenera, sobrescreve no mesmo path do storage (upsert), actualiza `pdf_generated_at`.
-- `pdf_status = 'generating'`: aceita nova request (sem locking distribuído em v1; race rara, último wins via upsert determinístico).
+**Re-send sempre permitido.** Sem flag `force` necessária. Cada call:
+- Sobrescreve `email_sent_at` com novo timestamp
+- Sobrescreve `email_message_id` com novo id do Resend
+- Mantém `delivery_status = 'sent'` no sucesso
+- Gera signed URL nova (7d a contar do momento do re-send)
 
-Documentado na resposta via campo `regenerated: boolean`.
+Ratione: signed URLs expiram, utilizadores podem perder email, suporte pode pedir re-envio. Bloquear re-send seria UX-hostile. Risco de spam (mesmo lead recebe múltiplos) é mitigado pela natureza low-volume + auditável (`email_sent_at` mostra histórico no campo, e poderemos adicionar `email_send_count` numa fase posterior se necessário).
 
 ---
 
@@ -163,10 +129,9 @@ Documentado na resposta via campo `regenerated: boolean`.
 {
   "success": true,
   "report_request_id": "uuid",
-  "pdf_status": "ready",
-  "pdf_storage_path": "reports/2026/04/uuid.pdf",
-  "pdf_generated_at": "2026-04-17T...",
-  "regenerated": false
+  "delivery_status": "sent",
+  "email_sent_at": "2026-04-17T...",
+  "message": "Report email sent."
 }
 ```
 
@@ -174,26 +139,15 @@ Documentado na resposta via campo `regenerated: boolean`.
 ```json
 {
   "success": false,
-  "error_code": "REQUEST_NOT_FOUND" | "SNAPSHOT_LINK_MISSING" | "SNAPSHOT_NOT_FOUND" | "RENDER_FAILED" | "UPLOAD_FAILED" | "INVALID_PAYLOAD",
+  "error_code": "INVALID_PAYLOAD" | "REQUEST_NOT_FOUND" | "PDF_NOT_READY"
+              | "LEAD_EMAIL_MISSING" | "SIGNED_URL_FAILED"
+              | "RESEND_FAILED" | "EMAIL_PROVIDER_NOT_CONFIGURED"
+              | "PERSISTENCE_FAILED",
   "message": "..."
 }
 ```
 
-Sem mensagens user-facing pt-PT no route — não é exposto a utilizadores ainda (server-to-server / futuro admin). Mensagens internas em inglês.
-
----
-
-## Risco e mitigação — `@react-pdf/renderer` no Worker
-
-| Risco | Mitigação |
-|---|---|
-| Lib usa `fontkit` que pode falhar a importar no Worker | Usar fonts default (PDF standard 14 — Helvetica, Times, Courier — não precisam de fontkit) |
-| `Buffer`/`stream` indisponível | `nodejs_compat` flag já cobre (verificar `wrangler.jsonc`) |
-| Tamanho do bundle | react-pdf é ~2MB minified; aceitável para um server route |
-| Imagens externas (avatar) bloqueiam render | Fetch com timeout 3s + try/catch; fallback para placeholder |
-| Erro no build | Verificar build após adicionar dependência antes de avançar com server route |
-
-Se o build falhar após adicionar a dep, **plano B**: gerar HTML server-side e devolver instrução para o utilizador (não shippable, mas isolado). Decisão tomada na hora se acontecer.
+Mensagens internas em inglês (server-to-server, futuro admin).
 
 ---
 
@@ -201,28 +155,30 @@ Se o build falhar após adicionar a dep, **plano B**: gerar HTML server-side e d
 
 | Guardrail | Estado |
 |---|---|
-| Sem email / pagamentos / auth / admin UI / download UI | ✅ |
-| Sem reanálise / Apify | ✅ |
-| `@react-pdf/renderer` (única lib nova, alinhada com stack) | ✅ |
-| Server-side only, secrets em Supabase | ✅ |
+| Sem regenerar PDF | ✅ |
+| Sem provider/Apify call | ✅ |
+| Sem pagamentos / auth / admin UI | ✅ |
+| Sem trigger automático no frontend | ✅ |
+| Resend server-side only | ✅ |
+| Secret em Supabase (`RESEND_API_KEY`) | ✅ |
 | Locked files intactos | ✅ |
-| pt-PT impessoal no PDF | ✅ |
+| Email pt-PT impessoal | ✅ |
 | Comentários em inglês | ✅ |
-| Snapshot como única fonte | ✅ |
-| Idempotência clara (sem `force` = devolve existente) | ✅ |
-| Future-ready (email/admin/signed URLs lêem `pdf_storage_path`) | ✅ |
+| Schema mínimo (3 colunas, reusa `delivery_status`) | ✅ |
+| Future-ready (auto-trigger / admin / attachments adicionáveis) | ✅ |
 
 ---
 
 ## Checkpoints
 
-- ☐ Migração adiciona `pdf_status` + `pdf_storage_path` + `pdf_generated_at` + `pdf_error_message`
-- ☐ Bucket privado `report-pdfs` criado
-- ☐ `@react-pdf/renderer` instalado e build verde
-- ☐ `src/lib/pdf/` com componente Document, styles, render, storage helpers
-- ☐ `/api/generate-report-pdf` orquestra fetch → render → upload → update
-- ☐ Idempotência: sem `force` devolve existente quando `pdf_status='ready'`
-- ☐ Erros estruturados, sem stack leaks, status `failed` persistido
-- ☐ PDF v1 só usa dados do snapshot (sem AI, sem reanálise, sem provider call)
-- ☐ Sem email/pagamentos/auth/admin/download UI introduzidos
+- ☐ Secret `RESEND_API_KEY` adicionada
+- ☐ Migração: `email_sent_at` + `email_message_id` + `email_error_message`
+- ☐ Reusa `delivery_status` existente (`not_sent | sending | sent | failed`)
+- ☐ `src/lib/email/report-email-template.ts` com HTML + text pt-PT
+- ☐ `/api/send-report-email` orquestra fetch → signed URL 7d → Resend → update
+- ☐ Signed URL gerado on-send (não persistido)
+- ☐ Re-send sempre permitido, sobrescreve timestamp + message_id
+- ☐ Erros estruturados, sem stack leaks, `delivery_status='failed'` em falhas
+- ☐ Sender sandbox `onboarding@resend.dev` em v1 (tech debt anotado)
+- ☐ Sem PDF re-render / Apify / pagamentos / auth / admin / trigger automático
 
