@@ -83,6 +83,15 @@ export function HeroActionBar() {
         </form>
       </div>
 
+      {error ? (
+        <p
+          role="alert"
+          className="mt-3 text-center font-sans text-sm text-signal-danger"
+        >
+          {error}
+        </p>
+      ) : null}
+
       {/* Progressive reveal: competitors */}
       <div className="mt-4 flex justify-center">
         {!competitorsOpen ? (
