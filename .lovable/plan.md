@@ -1,80 +1,66 @@
 
 
-Já fiz o refactor do actor unificado no prompt anterior. Agora preciso de validar se a implementação atual está alinhada com o contexto adicional fornecido (actor ID `shu8hvrXbJbY3Eb9W`, fluxo `run-sync-get-dataset-items`, sem tokens em URLs).
+## Plano — Smoke test end-to-end (sem alterações de código)
 
-Vou inspecionar o estado atual antes de propor mudanças.
-<lov-tool-use id="toolu_vrtx_01M5GUQYkc6XG8ZdgBFbEgPM" name="code--view" integration-id="code" data="{\"file_path\": \"src/routes/api/analyze-public-v1.ts\"}">
-</lov-tool-use>
+Decisão registada: manter slug `apify/instagram-scraper`. Avançar para validação real.
 
-<lov-tool-use id="toolu_vrtx_01HPxmAtZxLXKaxy49JkQQ18" name="code--view" integration-id="code" data="{\"file_path\": \"src/lib/analysis/apify-client.ts\"}">
-</lov-tool-use>
+### Sequência do smoke test
 
-<lov-tool-use id="toolu_vrtx_01LsfdDjCkuNbrCyk56xugSn" name="code--view" integration-id="code" data="{\"file_path\": \"src/routes/api/analyze-public-v1.ts\"}">
-</lov-tool-use>
+**1. Análise real (Apify unified actor)**
+- Disparar `POST /api/analyze-public-v1` com `instagram_username: "frederico.m.carvalho"`, sem competidores
+- Esperado: 200 + `success: true` + `analysis_snapshot_id` presente + `data_source: "fresh"`
+- Validar: `profile.followers_count > 0`, `content_summary.posts_analyzed > 0`, `latestPosts` populado
 
-<lov-tool-use id="toolu_vrtx_01FsgKV8mfhB6FBehwoiEvw8" name="code--view" integration-id="code" data="{\"file_path\": \"src/lib/analysis/apify-client.ts\"}">
-</lov-tool-use>
-Already aligned. Just need to confirm the actor ID format and check the docs. Current code uses `apify/instagram-scraper` (slug form) which the client encodes to `apify~instagram-scraper`. The user provided actor ID `shu8hvrXbJbY3Eb9W` is the alternative form. Both work with Apify's API.
+**2. Snapshot persistido**
+- Query `analysis_snapshots` por `cache_key` correspondente
+- Validar: `normalized_payload` contém `{ profile, content_summary, competitors }` íntegro
+- Validar: `updated_at` recente (<1min)
 
-<lov-plan>
+**3. Pedido de relatório completo**
+- Disparar `POST /api/request-full-report` com `analysis_snapshot_id` + `email: "frederico.carvalho@digitalfc.pt"`
+- Validar: cria row em `leads` + `report_requests` com `status: "pending"`
 
-## Diagnóstico — refactor já está concluído
+**4. Pipeline orquestrado (60-90s)**
+- Observar `report_requests.status` evolução: `pending` → `generating_pdf` → `sending_email` → `completed`
+- Logs do worker: confirmar invocação de `run-report-pipeline.ts`
 
-A refatoração para o actor unificado já foi aplicada na sessão anterior. Confirmo por leitura direta:
+**5. PDF em storage**
+- Validar `report_requests.pdf_storage_path` populado
+- Confirmar ficheiro existe no bucket + tamanho > 50KB
 
-**`src/routes/api/analyze-public-v1.ts`**
-- Linha 48: `const UNIFIED_ACTOR = "apify/instagram-scraper";` ✅
-- Linhas 127-141: `fetchProfileWithPosts()` — uma chamada por handle com `resultsType: "details"`, `resultsLimit: 12`, `addParentData: false` ✅
-- Linhas 201-213: orquestração paralela via `Promise.allSettled`-pattern (primary + competitors) ✅
-- Linhas 221-228: extrai `latestPosts[]` embutido na resposta do profile ✅
-- Zero referências a `instagram-profile-scraper` ou `instagram-post-scraper` ✅
+**6. Email entregue**
+- Validar `report_requests.email_sent_at` populado
+- Confirmar entrega via Resend (ou identificar bloqueio sandbox/domínio)
 
-**`src/lib/analysis/apify-client.ts`**
-- Usa `run-sync-get-dataset-items` (linha 55) — exatamente o endpoint pedido ✅
-- Token lido server-side de `process.env.APIFY_TOKEN`, nunca exposto ao browser ✅
-- Encoding correto de actor IDs com `/` → `~` (linha 53), funciona tanto para slug `apify/instagram-scraper` como para ID `shu8hvrXbJbY3Eb9W` ✅
+### Checkpoints
 
-**`src/lib/analysis/normalize.ts`** (já validado)
-- Lê os campos do payload unificado: `username`, `fullName`, `biography`, `followersCount`, `followsCount`, `postsCount`, `verified`, `profilePicUrl`, `profilePicUrlHD`, e `latestPosts[]` com `type`, `productType`, `likesCount`, `commentsCount`, `timestamp` ✅
+- ☐ Análise real devolve 200 + snapshot ID
+- ☐ Snapshot persistido com payload válido
+- ☐ Lead + report_request criados
+- ☐ Pipeline corre até `completed` em 60-90s
+- ☐ PDF existe em storage com tamanho razoável
+- ☐ Email diagnosticado (sent | sandbox-blocked | outro)
+- ☐ Tabela final A→G + smallest next fix
+- ☐ Zero ficheiros tocados
 
-## Decisão sobre o ID adicional fornecido
+### Saída esperada
 
-O contexto extra dá `shu8hvrXbJbY3Eb9W` como ID interno do actor. O código usa o slug humano `apify/instagram-scraper`. **Ambos resolvem para o mesmo actor na API Apify** — o slug é apenas o alias canónico do ID. Não há ganho funcional em trocar; o slug é mais legível e auto-documentado em logs.
+Tabela A→G:
+- A. Análise real funciona pós-upgrade?
+- B. Snapshot persistido?
+- C. Request flow funciona?
+- D. PDF gerado em runtime?
+- E. Email entregue?
+- F. Pipeline end-to-end OK?
+- G. Smallest next fix (se algum)
 
-Recomendo **manter o slug**. Se preferires forçar o ID estável (imune a renomeação futura por parte da Apify, embora improvável para um actor oficial), troca-se uma linha:
+### Guardrails
 
-```ts
-// Opção A (atual): slug humano
-const UNIFIED_ACTOR = "apify/instagram-scraper";
-
-// Opção B: ID interno estável
-const UNIFIED_ACTOR = "shu8hvrXbJbY3Eb9W";
-```
-
-Ambas chamam `https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items` com sucesso.
-
-## Locked files
-
-Nenhum impacto. `apify-client.ts` e `analyze-public-v1.ts` não estão em `LOCKED_FILES.md`.
-
-## Plano de ação
-
-Nada a implementar — a integração já está como pediste. Próximo passo é executar o smoke test end-to-end (já planeado e aprovado anteriormente, bloqueado apenas pela falta deste refactor).
-
-**Decisão pendente para ti:**
-
-1. **Manter `apify/instagram-scraper` (slug)** — recomendado, sem alterações de código.
-2. **Trocar para `shu8hvrXbJbY3Eb9W` (ID interno)** — mudança de 1 linha, ligeiramente mais robusto contra renomeações futuras.
-3. **Avançar diretamente para o smoke test** — assumir que está bom como está.
-
-## Checkpoints
-
-- ☑ Refactor para actor unificado já aplicado
-- ☑ Endpoint `run-sync-get-dataset-items` em uso
-- ☑ Token APIFY_TOKEN server-side, nunca exposto
-- ☑ Actor IDs antigos removidos
-- ☑ Normalização compatível com payload unificado
-- ☑ Locked files intactos
-- ☐ Decisão sobre slug vs ID interno (1, 2 ou 3)
-- ☐ Smoke test end-to-end (próximo prompt)
+| | |
+|---|---|
+| Zero código novo | ✅ |
+| Zero refactor | ✅ |
+| Locked files intactos | ✅ |
+| Apenas observação + diagnóstico | ✅ |
+| pt-PT preservado | ✅ |
 
