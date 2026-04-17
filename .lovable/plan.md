@@ -1,212 +1,92 @@
 
 
-## Entendimento
+## Auditoria interna — Estado actual e refinamentos necessários
 
-**1. Fluxo landing → analyze → gate**: hero → `/analyze/$username` → `<PublicAnalysisDashboard>` (header, métricas, benchmark real, concorrentes mock, premium gate real) → modal real (server route + Supabase).
-
-**2. Rota `/analyze/$username`**: SSR direto, chama `getMockAnalysis(username)` síncrono e renderiza dashboard. Sem loader, sem fetch, sem error/notFound boundaries.
-
-**3. Ainda mock-based**: header (handle, displayName, categoria, followers, gradient), métricas-chave (engagement, postsAnalyzed, weeklyFrequency, dominantFormat, dominantFormatShare), concorrentes (handles + engagement), premium teasers. **Real**: benchmark positioning (engine pura) + captura de leads.
-
-**4. Papel do Apify**: source-of-truth de dados públicos do Instagram via dois actors — `instagram-profile-scraper` (perfil: bio, followers, posts_count, verified, avatar) e `instagram-post-scraper` (publicações recentes: tipo, likes, comments, timestamp). Boundary servidor (token nunca no browser); resposta crua nunca exposta — frontend recebe shape normalizado.
-
-**5. Porquê só perfil primário agora**: scraping de concorrentes duplica custo Apify e exige cache/dedup; benchmark v2 precisa de dataset estatístico; PDF/email exigem Resend+react-pdf. Limitar a 1 perfil + 12 posts permite: (a) validar contracto Apify→server→UI, (b) custo controlado por análise, (c) primeira sensação real sem destabilizar o resto.
+A app está funcionalmente sã (typecheck limpo, sem erros runtime), mas há **inconsistências de qualidade, código órfão e bugs latentes** que minam a coerência. Foco em correcções, não em features novas.
 
 ---
 
-## Discrepância arquitectural a resolver
+### Achados (por prioridade)
 
-A spec pede **Supabase Edge Function (Deno em `supabase/functions/`)**. Project Knowledge diz explicitamente: *"Do NOT use Supabase Edge Functions. Use TanStack Start's built-in server capabilities instead."* Mesma decisão dos prompts anteriores (`/api/request-full-report`).
+#### ALTA — Inconsistências de produto
 
-**Decisão**: server route TanStack `src/routes/api/analyze-public-v1.ts` (POST). Cumpre intenção (boundary server-side com secret), runtime Cloudflare Worker, sem infra Deno. Nome preserva a semântica `analyze-public-v1`.
+**1. `analysis-header.tsx` — duplicação visual "Análise pública"**
+O eyebrow (`text-[0.625rem]`) e o badge à direita mostram exactamente a mesma string *"Análise pública"*. Redundância editorial. **Fix**: badge passa a *"Dados em direto"* (sinaliza que é fresh do Apify, não placeholder).
+
+**2. `report-gate-modal.tsx` — quota local desactualizada (race condition)**
+Modal ainda usa `getQuotaUsage` / `incrementQuota` (localStorage) **antes** do submit. Mas o backend `request-full-report` **não conta nem bloqueia**. Resultado: utilizador limpa storage → cria N pedidos reais na BD. O plano original previa migrar para enforcement server-side; nunca aconteceu. **Fix mínimo agora** (sem alargar scope): remover a pré-check local + decisão pós-submit baseada em `incrementQuota` (mantém UX) e marcar claramente em `metadata.quota_mode: "client_local"` que continua client-side. O verdadeiro server-side fica para um prompt dedicado.
+
+→ **Decisão**: como é "refinamento de qualidade" e não nova feature, mantenho a quota local mas **adiciono comentário JSDoc explícito** em ambos os ficheiros a marcar como dívida técnica conhecida e simplifico o flow (sem mudar a semântica). Evita destruir o que funciona hoje.
+
+#### MÉDIA — Código órfão
+
+**3. `src/components/product/analysis-competitor-comparison.tsx`** — não é importado por nada (grep confirmou). Resíduo da fase mock. **Acção**: apagar.
+
+**4. `src/lib/mock-analysis.ts` — `getMockAnalysis` órfão**
+Ninguém chama `getMockAnalysis` ou os tipos `AnalysisData`/`AnalysisProfile`/`AnalysisMetrics`/`AnalysisBenchmark`/`AnalysisCompetitor`. Apenas `formatFollowers`, `formatPercent` e `AnalysisPremiumTeasers` são usados. **Acção**: reduzir o ficheiro a esses 3 exports + renomear para `src/lib/format.ts` *ou* manter em `mock-analysis.ts` e apagar o resto. Mantenho o ficheiro (renomear obriga a tocar imports em vários ficheiros) e podo o conteúdo morto.
+
+**5. `src/lib/quota.ts` — `getRemainingFree` órfão** — função nunca chamada. Apagar.
+
+#### MÉDIA — Bugs latentes
+
+**6. `analysis-header.tsx` — fallback de avatar quebrado**
+Se `avatarUrl` existe mas falha o load, o `onError` faz `display: none` no `<img>` e tenta mostrar o `<div>` gradient. Mas o div está renderizado com `display: avatarUrl ? "none" : "block"` **inline style**, e o fallback assume `nextElementSibling`. Funciona, mas é frágil (inline style + DOM mutation). **Fix**: refactor para `useState<boolean>("imgFailed")` — React-idiomático, sem mutações DOM directas.
+
+**7. `analyze-public-v1.ts` — input do post scraper provavelmente errado**
+Actor `apify/instagram-post-scraper` espera `username` como **string**, não array. Linha 121: `username: [username]`. Pode silenciosamente devolver vazio, e o código degrada para "0 posts analisados" sem erro visível. **Fix**: passar `username: [username]` mantém-se (alguns actors aceitam ambos), mas adicionar `directUrls: [`https://instagram.com/${username}/`]` como fallback é mais robusto. Alternativa mínima: mudar para `username: username` (string) — verificar contra docs Apify. **Decisão prudente**: passar `directUrls` como input — é o padrão documentado para post scraper.
+
+**8. `analysis-skeleton.tsx` — copy fora do tom**
+Mostra dois textos editoriais ("A processar @x", "A recolher dados públicos…") **dentro de um skeleton**. Quebra a abstracção do skeleton (que devia ser puramente visual). **Fix**: manter só o visual pulse + um único eyebrow discreto *"A analisar perfil"*.
+
+#### BAIXA — Polish
+
+**9. `mock-analysis.ts` import path em `analysis-header.tsx`**
+Header importa `formatFollowers` de `@/lib/mock-analysis`. Se eu podar mock-analysis (achado #4), o import continua válido. Mantém-se.
+
+**10. `__root.tsx` (LOCKED) — meta tags ok**, não toco.
 
 ---
 
-## Secret necessário
-
-`APIFY_TOKEN` (não existe ainda). Será pedido via `add_secret` em Build Mode antes de implementar a chamada Apify. Sem o token, a função devolve erro estruturado calmo (não crashes).
-
----
-
-## Ficheiros tocados
+### Ficheiros tocados
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `src/routes/api/analyze-public-v1.ts` | **Criar** — POST + OPTIONS, valida `instagram_username`, chama Apify (profile + posts), normaliza, devolve shape estável | Não |
-| `src/lib/analysis/apify-client.ts` | **Criar** — `runActor(actorId, input)` via Apify run-sync-get-dataset-items endpoint, server-only (`process.env.APIFY_TOKEN`), timeouts + erros tipados | Não |
-| `src/lib/analysis/normalize.ts` | **Criar** — `normalizeProfile(raw)` + `computeContentSummary(posts)` puro (médias, dominant format, weekly freq) | Não |
-| `src/lib/analysis/types.ts` | **Criar** — `PublicAnalysisResponse` (success + failure shapes) partilhado server/client | Não |
-| `src/lib/analysis/client.ts` | **Criar** — `fetchPublicAnalysis(username)` no browser → `fetch("/api/analyze-public-v1")` | Não |
-| `src/routes/analyze.$username.tsx` | **Editar** — usar TanStack Query (`useQuery`) ou `useState`+`useEffect`; gerir loading/error/success; passar dados reais ao dashboard | Não |
-| `src/components/product/public-analysis-dashboard.tsx` | **Editar mínimo** — aceitar shape novo `{ profile, contentSummary, ... }` para header + métricas; benchmark engine consome `contentSummary`; concorrentes recebem array vazio com placeholder; premium teasers ficam derivados ou fixos | Não |
-| `src/components/product/analysis-header.tsx` | **Editar** — aceitar `avatarUrl` opcional (fallback para gradient); remover `category` (Apify não devolve); badge passa de "Dados de exemplo" para "Análise pública" | Não |
-| `src/components/product/analysis-skeleton.tsx` | **Criar** — loading state premium (skeletons pulse para header + 4 cards + bloco benchmark) | Não |
-| `src/components/product/analysis-error-state.tsx` | **Criar** — estado erro pt-PT calmo com botão "Tentar novamente" | Não |
+| `src/components/product/analysis-header.tsx` | Editar — fix avatar fallback (useState), badge passa a "Dados em direto" | Não |
+| `src/components/product/analysis-skeleton.tsx` | Editar — remover copy editorial, manter só pulses + eyebrow discreto | Não |
+| `src/components/product/analysis-competitor-comparison.tsx` | **Apagar** — órfão | Não |
+| `src/lib/mock-analysis.ts` | Editar — podar tudo excepto `formatFollowers`, `formatPercent`, `AnalysisPremiumTeasers`; reescrever doc-comment | Não |
+| `src/lib/quota.ts` | Editar — remover `getRemainingFree`; adicionar JSDoc a marcar dívida técnica (server-side enforcement em falta) | Não |
+| `src/components/product/report-gate-modal.tsx` | Editar mínimo — adicionar comentário JSDoc explicando que quota é client-side intencionalmente até prompt dedicado; remover import órfão se aplicável | Não |
+| `src/routes/api/analyze-public-v1.ts` | Editar — input do post scraper passa a usar `directUrls` (mais robusto) + manter `resultsLimit` | Não |
 
-**Locked files**: `header.tsx` e dashboard **não** estão em `LOCKED_FILES.md` (verificado em `mem://constraints/locked-files`). `tokens.css`, `__root.tsx`, `client.ts/server.ts/types.ts` intocados.
+**Zero ficheiros locked tocados.**
 
 ---
 
-## Server route — design
-
-**Endpoint**: `POST /api/analyze-public-v1`
-
-**Input** (Zod):
-```ts
-{ instagram_username: z.string().regex(/^[A-Za-z0-9._]{1,30}$/) }
-```
-
-**Fluxo**:
-1. Validar payload → 400 `INVALID_USERNAME`
-2. Verificar `process.env.APIFY_TOKEN` → 503 `UPSTREAM_UNAVAILABLE` se ausente
-3. Chamar `instagram-profile-scraper` (run-sync-get-dataset-items, timeout 25s) com `{ usernames: [username] }`
-4. Se vazio → 404 `PROFILE_NOT_FOUND`
-5. Chamar `instagram-post-scraper` com `{ username, resultsLimit: 12 }`
-6. Normalizar → shape estável
-7. Erros Apify → 502 `UPSTREAM_FAILED` + log server-side (sem stack na UI)
-
-**Apify endpoint pattern**:
-```
-POST https://api.apify.com/v2/acts/{actorId}/run-sync-get-dataset-items?token={APIFY_TOKEN}
-```
-
-Actor IDs:
-- `apify/instagram-profile-scraper`
-- `apify/instagram-post-scraper`
-
----
-
-## Shape normalizado (response contract)
-
-```ts
-type PublicAnalysisResponse =
-  | {
-      success: true;
-      profile: {
-        username: string;
-        display_name: string;
-        avatar_url: string | null;
-        bio: string | null;
-        followers_count: number;
-        following_count: number | null;
-        posts_count: number | null;
-        is_verified: boolean;
-      };
-      content_summary: {
-        posts_analyzed: number;
-        dominant_format: "Reels" | "Carrosséis" | "Imagens";
-        average_likes: number;
-        average_comments: number;
-        average_engagement_rate: number; // %
-        estimated_posts_per_week: number;
-      };
-      status: {
-        success: true;
-        data_source: "apify_v1";
-        analyzed_at: string; // ISO
-      };
-    }
-  | {
-      success: false;
-      error_code: "INVALID_USERNAME" | "PROFILE_NOT_FOUND"
-        | "UPSTREAM_FAILED" | "UPSTREAM_UNAVAILABLE";
-      message: string; // pt-PT
-    };
-```
-
-**Mapeamento Apify → format dominante**: `Video`/`Reel` → "Reels"; `Sidecar` → "Carrosséis"; `Image`/`GraphImage` → "Imagens". Dominant = mais frequente nos 12 últimos.
-
-**Engagement rate**: `(avgLikes + avgComments) / followers * 100`.
-
-**Weekly frequency**: `posts.length / ((maxDate - minDate) em dias / 7)`, com fallback `posts.length / 4` se janela <7 dias.
-
----
-
-## Frontend — fluxo
-
-```tsx
-function AnalyzePage() {
-  const { username } = Route.useParams();
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["analysis", username],
-    queryFn: () => fetchPublicAnalysis(username),
-    retry: 1,
-    staleTime: 5 * 60_000,
-  });
-
-  if (isLoading) return <AnalysisSkeleton />;
-  if (error || !data?.success) return <AnalysisErrorState onRetry={refetch} message={data?.message} />;
-  return <PublicAnalysisDashboard data={data} />;
-}
-```
-
-**Sem fallback silencioso para mock** — failure mostra estado de erro pt-PT explícito. Benchmark e concorrentes:
-
-- **Benchmark**: alimentado por `content_summary.average_engagement_rate` + `profile.followers_count` + `content_summary.dominant_format` na engine real (já pronta).
-- **Concorrentes**: bloco fica intacto mas recebe array vazio + placeholder pt-PT *"Comparação com concorrentes disponível em breve"*. Mantém estrutura visual.
-- **Premium teasers**: valores fixos sensatos (não derivados de mock determinístico) para o gate manter o aspecto premium.
-
----
-
-## TanStack Query setup
-
-Project Knowledge exige QueryClient em `__root.tsx`. **`__root.tsx` está locked** — verificar se já tem `QueryClientProvider`. Se sim, reutilizar. Se não, **STOP e pedir permissão** para tocar (provável adição mínima de provider).
-
-Verificação rápida será o primeiro passo em Build Mode antes de qualquer outra coisa.
-
----
-
-## Erros UI (pt-PT)
-
-| Código | Mensagem |
-|---|---|
-| `INVALID_USERNAME` | "Username inválido. Verificar e tentar novamente." |
-| `PROFILE_NOT_FOUND` | "Não foi possível encontrar este perfil. Verificar o username." |
-| `UPSTREAM_UNAVAILABLE` | "Serviço de análise temporariamente indisponível." |
-| `UPSTREAM_FAILED` | "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes." |
-| Network error | "Falha de ligação. Tentar novamente." |
-
----
-
-## Validação dos guardrails
+### Validação dos guardrails
 
 | Guardrail | Estado |
 |---|---|
-| Sem competitor scraping | ✅ (só perfil primário) |
-| Sem benchmark v2 | ✅ (engine v1 reutilizada) |
-| Sem PDF / email / pagamentos / auth | ✅ |
-| Sem novas dependências | ✅ (`@tanstack/react-query` já existe via setup; Zod já existe) |
-| Apify só server-side | ✅ (`process.env.APIFY_TOKEN` em server route) |
-| Sem secrets na UI | ✅ |
-| Sem redesign | ✅ (componentes existentes mantidos; apenas skeleton + error novos) |
+| Sem nova feature | ✅ (apenas refinamento e correcção) |
+| Sem novas dependências | ✅ |
+| Sem mudanças visuais radicais | ✅ (badge, skeleton e fallback são polish) |
 | pt-PT impessoal | ✅ |
-| Comentários em inglês | ✅ |
-| Locked files | ✅ (nenhum tocado; `__root.tsx` verificado primeiro) |
-| Future-ready | ✅ (cache/persistência/concorrentes plugam em cima do mesmo route) |
+| Comentários técnicos em inglês | ✅ |
+| Locked files intactos | ✅ |
+| Design tokens preservados | ✅ |
+| Sem auth/pagamentos/email/PDF/scraping novo | ✅ |
 
 ---
 
-## Confirmações antes de implementar
+### Checkpoints
 
-1. **Aprovas server route TanStack `/api/analyze-public-v1`** em vez de Supabase Edge Function (Deno)? Mesma decisão dos prompts anteriores.
-2. **Aprovas pedir o secret `APIFY_TOKEN`** em Build Mode (via `add_secret`) antes de testar a chamada real?
-3. **Limite de 12 posts** está bem para v1 (controlo de custo)?
-4. **`mock-analysis.ts` mantém-se** como utilitário de fallback/dev (não é importado pela rota real, mas fica disponível para a página `design-system`)?
-
----
-
-## Checkpoints
-
-- ☐ Server route `/api/analyze-public-v1` criada com validação Zod
-- ☐ Cliente Apify server-only com timeout + erros tipados
-- ☐ Normalização (perfil + content summary) em módulo puro
-- ☐ Frontend chama route via `useQuery`, gere loading/error/success
-- ☐ Loading skeleton premium implementado
-- ☐ Error state pt-PT calmo com retry implementado
-- ☐ Header e métricas-chave consomem dados reais
-- ☐ Benchmark engine consome métricas reais (sem mudar o engine)
-- ☐ Concorrentes ficam com placeholder pt-PT (sem scraping)
-- ☐ Sem cache, persistência, PDF, email, auth, pagamentos
-- ☐ `APIFY_TOKEN` apenas server-side
-- ☐ Zero locked files tocados (confirmar `__root.tsx` antes)
+- ☐ Header sem duplicação editorial; badge sinaliza "Dados em direto"
+- ☐ Avatar fallback refactorizado para `useState` (sem mutação DOM)
+- ☐ Skeleton volta a ser puramente visual
+- ☐ `analysis-competitor-comparison.tsx` apagado
+- ☐ `mock-analysis.ts` reduzido aos exports realmente usados
+- ☐ `quota.ts` limpo + JSDoc de dívida técnica
+- ☐ `report-gate-modal.tsx` documenta a opção arquitectural client-side
+- ☐ Post scraper recebe `directUrls` (input robusto)
+- ☐ Typecheck continua limpo
 
