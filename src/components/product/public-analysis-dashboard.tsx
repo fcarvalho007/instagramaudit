@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Container } from "@/components/layout/container";
 import { computeBenchmarkPositioning } from "@/lib/benchmark/engine";
 import type { PublicAnalysisSuccess } from "@/lib/analysis/types";
@@ -7,7 +9,12 @@ import { AnalysisBenchmarkBlock } from "./analysis-benchmark-block";
 import { AnalysisCompetitorComparison } from "./analysis-competitor-comparison";
 import { AnalysisHeader } from "./analysis-header";
 import { AnalysisMetricCard } from "./analysis-metric-card";
+import {
+  PostAnalysisConversionLayer,
+  type ConversionState,
+} from "./post-analysis-conversion-layer";
 import { PremiumLockedSection } from "./premium-locked-section";
+import { ReportGateModal } from "./report-gate-modal";
 
 interface PublicAnalysisDashboardProps {
   data: PublicAnalysisSuccess;
@@ -31,6 +38,13 @@ export function PublicAnalysisDashboard({
 }: PublicAnalysisDashboardProps) {
   const { profile, content_summary } = data;
 
+  // Lifted: drives both the post-analysis conversion layer and the
+  // premium-locked section. State transitions are only triggered by the
+  // gate modal's `onRequestOutcome` callback — never inferred locally.
+  const [conversionState, setConversionState] =
+    useState<ConversionState>("acquisition");
+  const [gateOpen, setGateOpen] = useState(false);
+
   // Prefer the server-precomputed positioning (resolved against the
   // cloud-managed benchmark dataset). Fall back to a local computation
   // using the in-code defaults for backward compatibility with older
@@ -50,6 +64,10 @@ export function PublicAnalysisDashboard({
 
   const engagementDelta =
     content_summary.average_engagement_rate - benchmarkReference;
+
+  const handleOutcome = (outcome: "success" | "limit-reached") => {
+    setConversionState(outcome === "success" ? "requested" : "limit-reached");
+  };
 
   return (
     <div className="bg-surface-base">
@@ -113,12 +131,32 @@ export function PublicAnalysisDashboard({
           competitors={data.competitors}
         />
 
+        <PostAnalysisConversionLayer
+          state={conversionState}
+          onPrimaryAction={() => setGateOpen(true)}
+          username={profile.username}
+        />
+
         <PremiumLockedSection
           teasers={PREMIUM_TEASERS}
           username={profile.username}
           analysisSnapshotId={data.analysis_snapshot_id}
+          conversionState={conversionState}
+          onRequestOutcome={handleOutcome}
         />
       </Container>
+
+      {/* Single shared gate modal driven by the conversion layer.
+          The premium-locked section keeps its own modal instance so the
+          existing CTA path stays untouched; both routes funnel into the
+          same `handleOutcome` reducer above. */}
+      <ReportGateModal
+        open={gateOpen}
+        onOpenChange={setGateOpen}
+        username={profile.username}
+        analysisSnapshotId={data.analysis_snapshot_id}
+        onRequestOutcome={handleOutcome}
+      />
     </div>
   );
 }
