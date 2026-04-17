@@ -132,17 +132,11 @@ export function ReportGateModal({
       if (onSubmit) {
         await onSubmit(data);
       } else {
-        // Persist to Lovable Cloud + minimum delay for premium UX feel
-        const minDelay = new Promise((resolve) => setTimeout(resolve, 600));
-        const insert = insertReportRequest({
-          username: username ?? "unknown",
-          name: data.nome,
-          email: data.email,
-          company: data.empresa ?? null,
-          rgpd_accepted_at: data.rgpdAcceptedAt,
-        });
-        const [{ error }] = await Promise.all([insert, minDelay]);
-        if (error) throw error;
+        // TODO: persistence intentionally disabled — schema was migrated to
+        // normalized leads + report_requests tables. Frontend rewire (create
+        // lead, then insert report_request) will land in a later prompt.
+        // Mock UX is driven entirely by the localStorage quota below.
+        await new Promise((resolve) => setTimeout(resolve, 600));
       }
 
       const newCount = incrementQuota(normalizedEmail);
