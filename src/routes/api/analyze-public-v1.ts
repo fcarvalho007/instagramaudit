@@ -120,20 +120,24 @@ function competitorFailure(
   };
 }
 
-async function fetchPostsForHandle(
+/**
+ * Single unified call: returns the profile details with `latestPosts[]`
+ * embedded. Replaces the previous two-step (profile then posts) flow.
+ */
+async function fetchProfileWithPosts(
   username: string,
-  followersCount: number,
-) {
-  const postRows = await runActor<Record<string, unknown>>(
-    POST_ACTOR,
+): Promise<Record<string, unknown> | null> {
+  const rows = await runActor<Record<string, unknown>>(
+    UNIFIED_ACTOR,
     {
       directUrls: [`https://www.instagram.com/${username}/`],
+      resultsType: "details",
       resultsLimit: POSTS_LIMIT,
-      resultsType: "posts",
+      addParentData: false,
     },
     { timeoutMs: 60_000, apifyTimeoutSecs: 55 },
   );
-  return computeContentSummary(postRows, followersCount);
+  return rows[0] ?? null;
 }
 
 export const Route = createFileRoute("/api/analyze-public-v1")({
