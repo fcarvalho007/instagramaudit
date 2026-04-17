@@ -291,6 +291,15 @@ export function ReportGateModal({
               </div>
             </div>
 
+            {submitError && (
+              <div
+                role="alert"
+                className="mx-6 md:mx-8 -mt-2 rounded-lg border border-signal-danger/30 bg-signal-danger/10 px-4 py-3"
+              >
+                <p className="font-sans text-sm text-signal-danger">{submitError}</p>
+              </div>
+            )}
+
             <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-end gap-3 px-6 md:px-8 py-5 border-t border-border-subtle bg-surface-base/30">
               <DialogClose asChild>
                 <Button
