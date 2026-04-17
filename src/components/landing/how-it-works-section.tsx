@@ -9,7 +9,7 @@ export function HowItWorksSection() {
       {/* HUD vertical lines background */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        className="absolute inset-0 opacity-[0.04] pointer-events-none"
         style={{
           backgroundImage:
             "linear-gradient(90deg, transparent 0, transparent 79px, rgb(255 255 255) 79px, rgb(255 255 255) 80px)",
@@ -17,10 +17,16 @@ export function HowItWorksSection() {
         }}
       />
 
-      {/* Soft violet radial glow */}
+      {/* Asymmetric violet glow — shifted right for editorial tension */}
       <div
         aria-hidden="true"
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] max-w-[80vw] rounded-full bg-accent-violet/[0.06] blur-3xl pointer-events-none"
+        className="absolute top-1/3 left-[65%] -translate-x-1/2 -translate-y-1/2 h-[420px] w-[600px] max-w-[70vw] rounded-full bg-accent-violet/[0.07] blur-3xl pointer-events-none"
+      />
+
+      {/* Soft secondary glow — anchor on left */}
+      <div
+        aria-hidden="true"
+        className="absolute top-2/3 left-[20%] -translate-x-1/2 -translate-y-1/2 h-[300px] w-[400px] max-w-[60vw] rounded-full bg-accent-violet/[0.04] blur-3xl pointer-events-none"
       />
 
       <Container size="lg" className="relative">
@@ -39,34 +45,55 @@ export function HowItWorksSection() {
           </p>
         </div>
 
-        {/* 3 steps grid with dashed connector on desktop */}
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
-          {/* Dashed connector — only between icons on desktop */}
+        {/* 3 steps grid with directional flow line */}
+        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-0">
+          {/* Continuous hairline + directional violet nodes (desktop only) */}
           <div
             aria-hidden="true"
-            className="hidden md:block absolute top-7 left-[16.66%] right-[16.66%] border-t border-dashed border-border-default pointer-events-none"
+            className="hidden md:block absolute top-8 left-[8%] right-[8%] h-px bg-gradient-to-r from-transparent via-border-default to-transparent pointer-events-none"
           />
-          <HowItWorksStep
-            number="01"
-            title="Inserir o username"
-            description="Qualquer perfil público do Instagram. Opcionalmente, até dois concorrentes para comparação directa."
-            icon={<AtSign />}
-            delay={0}
+          {/* Node on step 02 icon */}
+          <div
+            aria-hidden="true"
+            className="hidden md:block absolute top-[30px] left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-accent-violet-luminous pointer-events-none"
+            style={{ boxShadow: "var(--shadow-glow-violet)" }}
           />
-          <HowItWorksStep
-            number="02"
-            title="Análise automática"
-            description="Os últimos 30 posts são processados contra benchmarks atualizados da plataforma e da dimensão do perfil."
-            icon={<LineChart />}
-            delay={150}
+          {/* Node on step 03 icon */}
+          <div
+            aria-hidden="true"
+            className="hidden md:block absolute top-[31px] left-[83.33%] -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-accent-violet/70 pointer-events-none"
           />
-          <HowItWorksStep
-            number="03"
-            title="Relatório no email"
-            description="PDF detalhado com métricas, ranking de concorrentes e três insights estratégicos gerados por IA."
-            icon={<Mail />}
-            delay={300}
-          />
+
+          <div className="md:pr-8">
+            <HowItWorksStep
+              number="01"
+              title="Inserir o username"
+              description="Qualquer perfil público do Instagram. Opcionalmente, até dois concorrentes para comparação directa."
+              icon={<AtSign />}
+              delay={0}
+              showDivider
+            />
+          </div>
+          <div className="md:px-8">
+            <HowItWorksStep
+              number="02"
+              title="Análise automática"
+              description="Os últimos 30 posts são processados contra benchmarks atualizados da plataforma e da dimensão do perfil."
+              icon={<LineChart />}
+              delay={150}
+              emphasis="primary"
+              showDivider
+            />
+          </div>
+          <div className="md:pl-8">
+            <HowItWorksStep
+              number="03"
+              title="Relatório no email"
+              description="PDF detalhado com métricas, ranking de concorrentes e três insights estratégicos gerados por IA."
+              icon={<Mail />}
+              delay={300}
+            />
+          </div>
         </div>
       </Container>
     </section>
