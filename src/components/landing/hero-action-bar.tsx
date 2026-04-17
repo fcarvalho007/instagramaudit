@@ -1,12 +1,36 @@
 import { useState } from "react";
 import { ArrowRight, AtSign, Plus } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InstagramGlyph } from "./instagram-glyph";
 
+function extractUsername(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  // Handle URLs like https://instagram.com/handle/ or @handle
+  const urlMatch = trimmed.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+  if (urlMatch) return urlMatch[1];
+  return trimmed.replace(/^@/, "").replace(/\/+$/g, "");
+}
+
 export function HeroActionBar() {
+  const navigate = useNavigate();
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [competitorsOpen, setCompetitorsOpen] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const username = extractUsername(value);
+    if (!username) {
+      setError("Inserir um username válido para continuar");
+      return;
+    }
+    setError(null);
+    navigate({ to: "/analyze/$username", params: { username } });
+  };
 
   return (
     <div className="relative w-full max-w-3xl mx-auto">
@@ -21,7 +45,7 @@ export function HeroActionBar() {
       {/* The bar — glass card with input + button inline */}
       <div className="relative rounded-2xl border border-border-strong bg-surface-base/80 backdrop-blur-xl shadow-2xl shadow-[inset_0_1px_0_rgb(255_255_255_/_0.04),0_30px_60px_-30px_rgb(0_0_0_/_0.6)] overflow-hidden hero-bar-breathe focus-within:border-accent-violet/40 transition-colors">
         <form
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={handleSubmit}
           className="flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-subtle sm:divide-border-default"
         >
           {/* Input zone */}
@@ -32,8 +56,14 @@ export function HeroActionBar() {
             />
             <input
               type="text"
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="@username ou URL do perfil"
               aria-label="Username ou URL do perfil do Instagram"
+              aria-invalid={error ? true : undefined}
               className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg text-content-primary placeholder:text-content-tertiary/70 focus:outline-none"
             />
           </div>
@@ -52,6 +82,15 @@ export function HeroActionBar() {
           </div>
         </form>
       </div>
+
+      {error ? (
+        <p
+          role="alert"
+          className="mt-3 text-center font-sans text-sm text-signal-danger"
+        >
+          {error}
+        </p>
+      ) : null}
 
       {/* Progressive reveal: competitors */}
       <div className="mt-4 flex justify-center">

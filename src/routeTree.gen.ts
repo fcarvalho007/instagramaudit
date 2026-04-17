@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
 
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
@@ -22,31 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyzeUsernameRoute = AnalyzeUsernameRouteImport.update({
+  id: '/analyze/$username',
+  path: '/analyze/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
+  '/analyze/$username': typeof AnalyzeUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
+  '/analyze/$username': typeof AnalyzeUsernameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
+  '/analyze/$username': typeof AnalyzeUsernameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/design-system'
+  fullPaths: '/' | '/design-system' | '/analyze/$username'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/design-system'
-  id: '__root__' | '/' | '/design-system'
+  to: '/' | '/design-system' | '/analyze/$username'
+  id: '__root__' | '/' | '/design-system' | '/analyze/$username'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DesignSystemRoute: typeof DesignSystemRoute
+  AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analyze/$username': {
+      id: '/analyze/$username'
+      path: '/analyze/$username'
+      fullPath: '/analyze/$username'
+      preLoaderRoute: typeof AnalyzeUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DesignSystemRoute: DesignSystemRoute,
+  AnalyzeUsernameRoute: AnalyzeUsernameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
