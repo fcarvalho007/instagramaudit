@@ -2,31 +2,43 @@
 
 ## Entendimento
 
-**1. Fluxo landing → analyze → gate**: hero (`/`) → `/analyze/$username[?vs=h1,h2]` → `<PublicAnalysisDashboard>` (header + métricas + benchmark cloud + concorrentes + premium gate) → `<ReportGateModal>` (form: nome/email/empresa) → `POST /api/request-full-report` (quota 100% server-side: upsert lead, conta `report_requests` do mês, decide `first_free | last_free | limit_reached`, insere row).
+**1. Landing → analyze → gate**: hero (`/`) → `/analyze/$username[?vs=h1,h2]` → `<PublicAnalysisDashboard>` (header + métricas + benchmark cloud + concorrentes + premium gate) → `<ReportGateModal>` → `POST /api/request-full-report` (quota server-side + insert em `report_requests` ligado ao snapshot exacto via `analysis_snapshot_id`).
 
-**2. Análise pública + snapshots persistidos**: `POST /api/analyze-public-v1` calcula `cache_key = v1:primary|sorted-competitors`, faz `lookupSnapshot()`. Se fresh (< 24h) → devolve do snapshot. Caso contrário → scrape Apify, normaliza, faz `storeSnapshot()` (upsert por `cache_key`), devolve. Stale-on-error 7d. Cada snapshot tem `id uuid` único, mas **esse id nunca é exposto na response** — `PublicAnalysisSuccess` traz `profile + content_summary + competitors + status + benchmark_positioning`, sem `snapshot_id`.
+**2. Análise pública + snapshots**: `/api/analyze-public-v1` calcula `cache_key`, faz `lookupSnapshot()` (TTL 24h, stale 7d), persiste `analysis_snapshots` com `id` único e `normalized_payload` jsonb (`{ profile, content_summary, competitors }`). Frontend recebe `analysis_snapshot_id` no payload.
 
-**3. Fluxo de report request actual**: `<PremiumLockedSection>` mostra CTA → abre `<ReportGateModal>` → submit envia `{ email, name, company?, instagram_username, competitor_usernames[], request_source }` → backend persiste em `report_requests` com `metadata: { quota_mode, flow_version, route }`. **Não há referência ao snapshot que estava no ecrã.** Quem ver o `report_requests` no futuro tem o username mas não sabe quais foram exactamente os números/posts/concorrentes mostrados ao utilizador.
+**3. Report request**: `report_requests` tem hoje `lead_id`, `instagram_username`, `competitor_usernames`, `request_source`, `request_status`, `delivery_status`, `is_free_request`, `request_month`, `metadata`, e crucialmente `analysis_snapshot_id` (FK `ON DELETE SET NULL`). Sem campos de PDF ainda.
 
-**4. Porquê linkar agora cada request ao snapshot exacto**: hoje há *drift* potencial entre o que o utilizador viu e o que o sistema tem em cache. Cenário: utilizador analisa @nike às 14h00 (snapshot A com 12.3M followers), TTL expira às 14h+24h, scrape novo às 14h05 do dia seguinte gera snapshot B com 12.4M e métricas diferentes; se o request do utilizador foi gravado no dia 1 sem `snapshot_id` e o PDF for gerado mais tarde, o PDF vai conter dados do snapshot B, não os que motivaram a conversão. Linkar `report_requests.analysis_snapshot_id` → `analysis_snapshots.id` torna o snapshot **imutável e reproducible** para esse pedido específico, mesmo que a cache rode entretanto.
+**4. Linkagem snapshot**: cada request **já está ligado** ao snapshot exacto que motivou a conversão. O backend valida existência + match de username antes do insert. Snapshot é imutável e reproducible.
 
-**5. Porquê antes do PDF**: o gerador de PDF terá de ser puro: `(snapshot_id) → PDF binary`. Sem o link, o gerador teria de re-procurar por `cache_key` (não estável no tempo) ou re-fazer scrape (custo + drift). Com o link, o PDF é determinístico, auditável e reproducível anos depois. Email/admin tooling assentam na mesma cadeia (`request → snapshot`). Implementar isto antes evita refactorizar o `request_full_report` outra vez quando o PDF chegar.
+**5. Porquê PDF a partir de `report_request_id` → `analysis_snapshot_id`**: a cadeia já está montada. PDF v1 deve ser puro `(report_request_id) → snapshot → render → storage`. Sem Apify, sem reanálise, sem dependência de estado do browser. Determinístico, auditável, regenerável anos depois com o mesmo resultado.
 
 ---
 
 ## Discrepâncias e decisões
 
-**Fonte canónica do `snapshot_id` no frontend**: o backend devolve no payload da análise (`PublicAnalysisSuccess.analysis_snapshot_id: string`). Frontend mantém em `Route` state (já existe `state.data` no `analyze.$username.tsx`); modal recebe via prop como já recebe `instagram_username` + `competitor_usernames`. Sem context global novo.
+**Server route vs Edge Function**: o prompt pede "Edge Function" mas o projecto usa **TanStack Server Routes** (não Supabase Edge Functions — knowledge confirma "Do NOT use Supabase Edge Functions"). Implementar como `/api/generate-report-pdf` (server route POST).
 
-**Validação no backend**: pragmática — verificar que o snapshot existe e que o `instagram_username` da row bate certo (case-insensitive) com o submetido. Não validar concorrentes contra o snapshot porque o utilizador pode ter chegado ao gate vindo de uma análise sem `?vs=` mas o request inclui mesmo assim os mesmos handles — não é blocking. Suficiente para garantir auditoria.
+**`@react-pdf/renderer` no Cloudflare Worker**: ⚠️ **risco crítico**. A lib usa `fontkit` + assume APIs Node (Buffer/streams). Já tem reports de funcionar em Workers com `nodejs_compat`, mas com pegadinhas: fontes têm de ser embutidas como ArrayBuffer, sem `fs.readFileSync` em runtime. **Plano**: usar fonts default da lib (Helvetica/Times — não precisam de embed) para v1; Fraunces/Inter ficam para v2 quando estabilizarmos o pipeline. Aceito como trade-off premium-vs-shippable.
 
-**FK `ON DELETE SET NULL`** em vez de `CASCADE`: se um snapshot for limpo (futura cron de garbage collection), preferimos manter o `report_requests` com `snapshot_id = null` em vez de apagar evidência da conversão. O lead/email mantêm-se válidos para outras finalidades.
+**Bucket público vs privado**: privado. PDFs contêm dados curados para o lead específico — nunca expostos por URL adivinhável. Acesso futuro via signed URL gerado por server route autenticada (não neste prompt). RLS storage policies fechadas, leitura só por service role.
 
-**`analysis_snapshot_id` nullable**: rows antigos não têm o link. Rows novos terão, mas backend tolera ausência (devolve erro estruturado, não 500). Modal mostra mensagem calma se faltar.
+**Idempotência**: se `pdf_status = 'ready'` e `pdf_storage_path` existe → devolver referência existente sem regenerar (poupa CPU + storage churn). Se `?force=1` na query → regenera e sobrescreve no mesmo path (upsert no bucket). Decisão clara, documentada na response.
 
-**Legacy modal sem snapshot_id**: zero rows hoje têm o campo (acabou de ser introduzido). Não há legacy real — o nullable é só por defesa de FK + futura limpeza de snapshots.
+**Path naming**: `reports/{YYYY}/{MM}/{report_request_id}.pdf`. Determinístico, ordenável por mês, sem colisões (UUID único por request). `YYYY/MM` derivados de `request_month` da row (não de `now()`) para manter consistência mesmo em regeneração tardia.
 
-**Status do report_requests via `metadata`?** Não. Adicionar coluna dedicada é mais limpo e indexável; `metadata` permanece para flags futuras menores.
+**Status lifecycle**: `not_generated` → `generating` → `ready` | `failed`. Marca `generating` antes do render para detectar processos em curso (caso futuro de retries paralelos).
+
+**Conteúdo v1**: o snapshot tem `profile + content_summary + competitors`. Render fiel a isto:
+- Capa com username, avatar (se URL https acessível) ou placeholder, data de análise
+- Identidade do perfil (nome, bio, followers/following/posts, verified)
+- Métricas-chave (engagement rate, avg likes/comments, posts analisados, dominant format, posts/semana)
+- Benchmark positioning (recomputado server-side a partir do dataset cloud actual + dados do snapshot — mesma lógica que o dashboard faz)
+- Concorrentes (tabela: handle, followers, engagement, avg likes/comments) + linhas de falha graceful
+- Footer com timestamp + branding pt-PT
+
+**Sem AI insights neste prompt** — o snapshot v1 não tem narrativa LLM. Render só o que existe. Secção "Recomendações estratégicas" omitida (não inventar).
+
+**Avatares**: tentar embed da `avatar_url` via fetch + ArrayBuffer no momento do render. Se falhar, placeholder geométrico (iniciais sobre fundo de cor derivada). Não bloquear PDF por causa de imagem.
 
 ---
 
@@ -34,16 +46,15 @@
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `supabase/migrations/{ts}_link_request_to_snapshot.sql` | **Criar** — `ALTER TABLE report_requests ADD COLUMN analysis_snapshot_id uuid REFERENCES analysis_snapshots(id) ON DELETE SET NULL` + index parcial | Não |
-| `src/lib/analysis/types.ts` | Editar — `PublicAnalysisSuccess.analysis_snapshot_id: string` (obrigatório nas novas responses) | Não |
-| `src/lib/analysis/cache.ts` | Editar — `lookupSnapshot()` e `storeSnapshot()` devolvem `id` (já podem, é só garantir que está no select/insert returning) | Não |
-| `src/routes/api/analyze-public-v1.ts` | Editar — embeber `analysis_snapshot_id` no `PublicAnalysisSuccess` (cache hit, fresh, stale) | Não |
-| `src/routes/api/request-full-report.ts` | Editar — Zod aceita `analysis_snapshot_id?: string().uuid()`; valida existência + match de username; persiste no insert | Não |
-| `src/components/product/public-analysis-dashboard.tsx` | Editar — passa `data.analysis_snapshot_id` para `<PremiumLockedSection>` ou directamente para o modal | Não |
-| `src/components/product/premium-locked-section.tsx` | Editar — recebe `analysisSnapshotId` via prop, passa ao modal | Não |
-| `src/components/product/report-gate-modal.tsx` | Editar — recebe `analysisSnapshotId` via prop, inclui no payload do submit; mostra erro calmo se backend rejeitar por snapshot inválido | Não |
+| `supabase/migrations/{ts}_pdf_tracking.sql` | **Criar** — colunas pdf no `report_requests` + bucket privado `report-pdfs` + storage RLS server-only | Não |
+| `src/lib/pdf/report-document.tsx` | **Criar** — componente React-PDF (`<Document>`/`<Page>`) com layout v1 | Não |
+| `src/lib/pdf/styles.ts` | **Criar** — StyleSheet do react-pdf (cores, spacing, tipografia adaptada para print) | Não |
+| `src/lib/pdf/render.ts` | **Criar** — `renderReportPdf(snapshot, requestMeta)` → `Uint8Array` | Não |
+| `src/lib/pdf/storage.ts` | **Criar** — `uploadReportPdf(path, bytes)` + `buildReportPath(request)` via `supabaseAdmin` | Não |
+| `src/routes/api/generate-report-pdf.ts` | **Criar** — server route POST, valida payload, orquestra fetch → render → upload → update | Não |
+| `package.json` | Editar — adicionar `@react-pdf/renderer` (única lib nova, alinhada com stack decidido) | Não |
 
-**Nenhum ficheiro locked tocado.** A confirmar contra `mem://constraints/locked-files` antes de editar.
+**Zero ficheiros locked tocados.** Confirmado contra `mem://constraints/locked-files`.
 
 ---
 
@@ -51,61 +62,138 @@
 
 ```sql
 ALTER TABLE public.report_requests
-  ADD COLUMN analysis_snapshot_id uuid
-  REFERENCES public.analysis_snapshots(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS pdf_status text NOT NULL DEFAULT 'not_generated',
+  ADD COLUMN IF NOT EXISTS pdf_storage_path text,
+  ADD COLUMN IF NOT EXISTS pdf_generated_at timestamptz,
+  ADD COLUMN IF NOT EXISTS pdf_error_message text;
 
--- Partial index — only meaningful for rows that have the link
-CREATE INDEX idx_report_requests_snapshot
-  ON public.report_requests (analysis_snapshot_id)
-  WHERE analysis_snapshot_id IS NOT NULL;
+-- Private bucket: PDFs are personalized for each lead, never publicly addressable.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('report-pdfs', 'report-pdfs', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage RLS: server-only access via service role (no policies = closed by default
+-- for non-service contexts; service role bypasses RLS).
 ```
 
-Idempotente via `IF NOT EXISTS` nos comandos.
+Status enum implícito: `'not_generated' | 'generating' | 'ready' | 'failed'`.
 
 ---
 
-## Backend — fluxo do request
+## Fluxo do server route
 
 ```
-1. validate Zod payload (now includes optional analysis_snapshot_id uuid)
-2. if analysis_snapshot_id present:
-     SELECT id, instagram_username FROM analysis_snapshots WHERE id = $1
-     if not found → return { error_code: "SNAPSHOT_NOT_FOUND", message: "Não foi possível associar o pedido à análise atual." }
-     if lower(snapshot.instagram_username) !== lower(payload.instagram_username):
-       return { error_code: "SNAPSHOT_MISMATCH", message: "A análise não corresponde ao perfil indicado." }
-3. existing lead upsert + quota count + gate (unchanged)
-4. INSERT report_requests with analysis_snapshot_id (or null)
-5. existing success/last/quota response (unchanged)
+POST /api/generate-report-pdf
+  body: { report_request_id: uuid, force?: boolean }
+
+1. Zod validate payload
+2. SELECT report_requests WHERE id = $1
+   → if not found: { error_code: "REQUEST_NOT_FOUND" }
+3. If pdf_status = 'ready' && !force:
+   → return existing { pdf_storage_path, pdf_generated_at, pdf_status: 'ready' }
+4. Validate analysis_snapshot_id present
+   → if null: mark failed + { error_code: "SNAPSHOT_LINK_MISSING" }
+5. SELECT analysis_snapshots WHERE id = $1
+   → if not found: mark failed + { error_code: "SNAPSHOT_NOT_FOUND" }
+6. UPDATE report_requests SET pdf_status = 'generating'
+7. Try:
+     a. Render PDF (renderReportPdf with snapshot.normalized_payload + benchmark recompute)
+     b. Build path: reports/{YYYY}/{MM}/{request.id}.pdf (from request_month)
+     c. Upload to storage (upsert: true)
+     d. UPDATE report_requests SET pdf_status='ready', pdf_storage_path, pdf_generated_at=now(), pdf_error_message=null
+     e. return { success: true, ... }
+   Catch:
+     UPDATE pdf_status='failed', pdf_error_message=<sanitized>
+     return { error_code: "RENDER_FAILED" | "UPLOAD_FAILED" }
 ```
 
-Mensagens pt-PT calmas, sem jargão técnico, sem alerts.
+Mensagens de erro internas (admin-friendly), nunca stack traces.
 
 ---
 
-## Frontend — passagem do id
+## Conteúdo PDF v1 — secções
 
 ```
-analyze.$username.tsx
-  └─ data.analysis_snapshot_id (string)
-     └─ <PublicAnalysisDashboard data={data} />
-        └─ <PremiumLockedSection analysisSnapshotId={data.analysis_snapshot_id} ... />
-           └─ <ReportGateModal analysisSnapshotId={...} ... />
-              └─ submit body inclui analysis_snapshot_id
+Page 1 (Cover):
+  - InstaBench wordmark (header)
+  - "Relatório de Análise"
+  - @username + display name
+  - Avatar (embedded ou placeholder)
+  - "Análise realizada em DD MMM YYYY"
+
+Page 2 (Perfil + Métricas):
+  - Identidade: nome, bio, verified badge, contadores (seguidores/seguir/publicações)
+  - Métricas-chave (grid): taxa de engagement, média de gostos, média de comentários,
+    publicações analisadas, formato dominante, publicações/semana
+
+Page 3 (Benchmark):
+  - Posicionamento: tier do perfil (label do dataset cloud)
+  - Engagement do perfil vs benchmark do tier × formato dominante
+  - Diferença em pontos percentuais + interpretação textual neutra
+    ("acima da média", "em linha", "abaixo da média") — sem AI
+
+Page 4 (Concorrentes) — só se array competitors não vazio:
+  - Tabela: @handle, seguidores, engagement, média gostos, média comentários
+  - Linhas de falha mostradas como "Dados indisponíveis" sem detalhe técnico
+
+Footer (todas as páginas):
+  - "InstaBench · {data} · Página X de Y"
 ```
 
-Se `analysis_snapshot_id` faltar (cenário não esperado pós-deploy), o modal envia `undefined` → backend grava com `null`. Sem hard fail, mas log no servidor para visibilidade.
+Tipografia: Helvetica (default react-pdf, sem embed) — Fraunces/Inter ficam para v2.
+Paleta print-friendly: fundo branco, texto navy escuro `#0A0E1A`, accent cyan `#06B6D4` em cabeçalhos. Reverso do dark-first do produto, propositadamente — tinta em papel funciona melhor assim.
 
 ---
 
-## Erros — copy pt-PT
+## Idempotência — regra v1
 
-| Caso | Mensagem |
+**Regra única e clara**: 
+- Sem `force`: se `pdf_status = 'ready'`, devolve referência existente (HTTP 200, sem regenerar).
+- Com `?force=true` no body: regenera, sobrescreve no mesmo path do storage (upsert), actualiza `pdf_generated_at`.
+- `pdf_status = 'generating'`: aceita nova request (sem locking distribuído em v1; race rara, último wins via upsert determinístico).
+
+Documentado na resposta via campo `regenerated: boolean`.
+
+---
+
+## Resposta do route
+
+**Sucesso**:
+```json
+{
+  "success": true,
+  "report_request_id": "uuid",
+  "pdf_status": "ready",
+  "pdf_storage_path": "reports/2026/04/uuid.pdf",
+  "pdf_generated_at": "2026-04-17T...",
+  "regenerated": false
+}
+```
+
+**Falha**:
+```json
+{
+  "success": false,
+  "error_code": "REQUEST_NOT_FOUND" | "SNAPSHOT_LINK_MISSING" | "SNAPSHOT_NOT_FOUND" | "RENDER_FAILED" | "UPLOAD_FAILED" | "INVALID_PAYLOAD",
+  "message": "..."
+}
+```
+
+Sem mensagens user-facing pt-PT no route — não é exposto a utilizadores ainda (server-to-server / futuro admin). Mensagens internas em inglês.
+
+---
+
+## Risco e mitigação — `@react-pdf/renderer` no Worker
+
+| Risco | Mitigação |
 |---|---|
-| Snapshot não encontrado | "Não foi possível associar o pedido à análise atual. Atualizar a análise e tentar novamente." |
-| Snapshot não bate com username | "A análise não corresponde ao perfil indicado." |
-| Erro genérico de validação (já existe) | "Dados inválidos. Verificar os campos e tentar novamente." |
+| Lib usa `fontkit` que pode falhar a importar no Worker | Usar fonts default (PDF standard 14 — Helvetica, Times, Courier — não precisam de fontkit) |
+| `Buffer`/`stream` indisponível | `nodejs_compat` flag já cobre (verificar `wrangler.jsonc`) |
+| Tamanho do bundle | react-pdf é ~2MB minified; aceitável para um server route |
+| Imagens externas (avatar) bloqueiam render | Fetch com timeout 3s + try/catch; fallback para placeholder |
+| Erro no build | Verificar build após adicionar dependência antes de avançar com server route |
 
-Apresentadas no modal através do estado `paywall`/erro existente — sem novo estado UI.
+Se o build falhar após adicionar a dep, **plano B**: gerar HTML server-side e devolver instrução para o utilizador (não shippable, mas isolado). Decisão tomada na hora se acontecer.
 
 ---
 
@@ -113,27 +201,28 @@ Apresentadas no modal através do estado `paywall`/erro existente — sem novo e
 
 | Guardrail | Estado |
 |---|---|
-| Sem PDF / email / pagamentos / auth / IA / admin | ✅ |
-| Sem novas dependências | ✅ |
-| Provider só server-side | ✅ |
-| Sem reanálise / re-fetch | ✅ |
-| Sem secrets na UI | ✅ |
+| Sem email / pagamentos / auth / admin UI / download UI | ✅ |
+| Sem reanálise / Apify | ✅ |
+| `@react-pdf/renderer` (única lib nova, alinhada com stack) | ✅ |
+| Server-side only, secrets em Supabase | ✅ |
 | Locked files intactos | ✅ |
-| pt-PT impessoal | ✅ |
+| pt-PT impessoal no PDF | ✅ |
 | Comentários em inglês | ✅ |
-| Schema mínimo (1 coluna + 1 FK + 1 index) | ✅ |
-| Future-ready (PDF/email lêem `report_requests.analysis_snapshot_id`) | ✅ |
+| Snapshot como única fonte | ✅ |
+| Idempotência clara (sem `force` = devolve existente) | ✅ |
+| Future-ready (email/admin/signed URLs lêem `pdf_storage_path`) | ✅ |
 
 ---
 
 ## Checkpoints
 
-- ☐ Migração adiciona `analysis_snapshot_id` + FK `ON DELETE SET NULL` + index parcial
-- ☐ `PublicAnalysisSuccess.analysis_snapshot_id` exposto em todas as paths (cache/fresh/stale)
-- ☐ `cache.ts` devolve `id` no lookup e no store
-- ☐ Frontend propaga `snapshot_id` até ao submit do modal
-- ☐ `/api/request-full-report` valida existência + match de username
-- ☐ Insert em `report_requests` grava `analysis_snapshot_id`
-- ☐ Erros de snapshot inválido com copy pt-PT calma no modal
-- ☐ Sem PDF/email/pagamentos/auth/IA/reanálise introduzidos
+- ☐ Migração adiciona `pdf_status` + `pdf_storage_path` + `pdf_generated_at` + `pdf_error_message`
+- ☐ Bucket privado `report-pdfs` criado
+- ☐ `@react-pdf/renderer` instalado e build verde
+- ☐ `src/lib/pdf/` com componente Document, styles, render, storage helpers
+- ☐ `/api/generate-report-pdf` orquestra fetch → render → upload → update
+- ☐ Idempotência: sem `force` devolve existente quando `pdf_status='ready'`
+- ☐ Erros estruturados, sem stack leaks, status `failed` persistido
+- ☐ PDF v1 só usa dados do snapshot (sem AI, sem reanálise, sem provider call)
+- ☐ Sem email/pagamentos/auth/admin/download UI introduzidos
 
