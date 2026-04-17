@@ -14,6 +14,7 @@ interface MockupMetricCardProps {
   trendDirection?: "up" | "down";
   variant?: MetricVariant;
   badge?: string;
+  featured?: boolean;
 }
 
 const trendColorMap: Record<MetricVariant, string> = {
@@ -31,16 +32,37 @@ export function MockupMetricCard({
   trendDirection = "up",
   variant = "default",
   badge,
+  featured = false,
 }: MockupMetricCardProps) {
   const TrendIcon = trendDirection === "up" ? TrendingUp : TrendingDown;
 
   return (
-    <Card variant="default" padding="md" className="flex flex-col gap-2">
-      <span className="font-mono text-[0.625rem] uppercase tracking-wide text-content-tertiary">
+    <Card
+      variant="default"
+      padding="md"
+      className={cn(
+        "flex flex-col gap-1.5",
+        featured &&
+          "border-accent-violet/40 shadow-[0_0_24px_-8px_rgb(139_92_246_/_0.4)]",
+      )}
+    >
+      <span
+        className={cn(
+          "font-mono uppercase tracking-wide text-content-tertiary",
+          featured ? "text-[0.6875rem]" : "text-[0.6875rem]",
+        )}
+      >
         {label}
       </span>
       <div className="flex items-baseline gap-2 flex-wrap">
-        <span className="font-display text-2xl md:text-3xl font-medium tracking-tight text-content-primary leading-none">
+        <span
+          className={cn(
+            "font-display font-medium tracking-tight text-content-primary leading-none",
+            featured
+              ? "text-3xl md:text-4xl"
+              : "text-2xl md:text-3xl",
+          )}
+        >
           {value}
         </span>
         {suffix ? (

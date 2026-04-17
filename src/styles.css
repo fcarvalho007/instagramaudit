@@ -41,6 +41,15 @@
   --color-accent-primary: rgb(var(--accent-primary));
   --color-accent-luminous: rgb(var(--accent-luminous));
   --color-accent-gold: rgb(var(--accent-gold));
+  --color-accent-violet: rgb(var(--accent-violet));
+  --color-accent-violet-luminous: rgb(var(--accent-violet-luminous));
+
+  /* === Light surfaces (editorial reveal) === */
+  --color-surface-light: rgb(var(--surface-light));
+  --color-surface-light-elevated: rgb(var(--surface-light-elevated));
+  --color-on-light-primary: rgb(var(--text-on-light-primary));
+  --color-on-light-secondary: rgb(var(--text-on-light-secondary));
+  --color-on-light-tertiary: rgb(var(--text-on-light-tertiary));
 
   /* === Signal colors === */
   --color-signal-success: rgb(var(--signal-success));
@@ -70,6 +79,7 @@
   --shadow-xl: var(--shadow-xl);
   --shadow-glow-cyan: var(--shadow-glow-cyan);
   --shadow-glow-gold: var(--shadow-glow-gold);
+  --shadow-glow-violet: var(--shadow-glow-violet);
 
   /* === Transitions === */
   --ease-out-expo: var(--ease-out-expo);
