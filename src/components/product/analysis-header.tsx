@@ -1,19 +1,59 @@
 import { Badge } from "@/components/ui/badge";
-import { formatFollowers, type AnalysisProfile } from "@/lib/mock-analysis";
+import { formatFollowers } from "@/lib/mock-analysis";
 
 interface AnalysisHeaderProps {
-  profile: AnalysisProfile;
+  username: string;
+  displayName: string;
+  followers: number;
+  avatarUrl?: string | null;
+  isVerified?: boolean;
+  bio?: string | null;
 }
 
-export function AnalysisHeader({ profile }: AnalysisHeaderProps) {
-  const gradient = `linear-gradient(135deg, hsl(${profile.avatarHue}, 70%, 55%), hsl(${(profile.avatarHue + 60) % 360}, 75%, 45%))`;
+function hashHue(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) % 360;
+}
+
+export function AnalysisHeader({
+  username,
+  displayName,
+  followers,
+  avatarUrl,
+  isVerified = false,
+  bio,
+}: AnalysisHeaderProps) {
+  const hue = hashHue(username);
+  const gradient = `linear-gradient(135deg, hsl(${hue}, 70%, 55%), hsl(${(hue + 60) % 360}, 75%, 45%))`;
 
   return (
     <header className="flex flex-col gap-6 border-b border-border-subtle pb-8 md:flex-row md:items-center md:justify-between">
-      <div className="flex items-center gap-4 md:gap-5">
+      <div className="flex items-center gap-4 md:gap-5 min-w-0">
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={`Avatar de @${username}`}
+            loading="lazy"
+            className="size-16 md:size-20 shrink-0 rounded-full ring-1 ring-border-default object-cover bg-surface-elevated"
+            onError={(e) => {
+              // Graceful fallback to gradient when avatar URL fails to load.
+              const el = e.currentTarget;
+              el.style.display = "none";
+              const fallback = el.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = "block";
+            }}
+          />
+        ) : null}
         <div
           className="size-16 md:size-20 shrink-0 rounded-full ring-1 ring-border-default"
-          style={{ background: gradient }}
+          style={{
+            background: gradient,
+            display: avatarUrl ? "none" : "block",
+          }}
           aria-hidden="true"
         />
         <div className="flex flex-col gap-1 min-w-0">
@@ -21,30 +61,39 @@ export function AnalysisHeader({ profile }: AnalysisHeaderProps) {
             Análise pública
           </span>
           <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight truncate">
-            {profile.displayName}
+            {displayName}
+            {isVerified ? (
+              <span
+                className="ml-2 inline-block align-middle font-mono text-[0.5625rem] uppercase tracking-wider text-accent-luminous"
+                aria-label="Conta verificada"
+              >
+                · Verificada
+              </span>
+            ) : null}
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-sm text-content-secondary">
-            <span className="font-mono text-content-secondary">@{profile.handle}</span>
-            <span aria-hidden="true" className="text-content-tertiary">
-              ·
-            </span>
-            <span>{profile.category}</span>
+            <span className="font-mono text-content-secondary">@{username}</span>
             <span aria-hidden="true" className="text-content-tertiary">
               ·
             </span>
             <span>
               <span className="font-mono text-content-primary">
-                {formatFollowers(profile.followers)}
+                {formatFollowers(followers)}
               </span>{" "}
               seguidores
             </span>
           </div>
+          {bio ? (
+            <p className="mt-1 font-sans text-sm text-content-tertiary line-clamp-2 max-w-xl">
+              {bio}
+            </p>
+          ) : null}
         </div>
       </div>
 
       <div className="md:shrink-0">
-        <Badge variant="default" size="md" dot pulse>
-          Dados de exemplo
+        <Badge variant="success" size="md" dot pulse>
+          Análise pública
         </Badge>
       </div>
     </header>
