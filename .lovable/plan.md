@@ -1,65 +1,68 @@
 
 
-## Plano: Refactor do Hero (Sprint 1, Prompt 1.1B)
+## Plano: Refinamentos cinemáticos (Sprint 1, Prompt 1.1C)
 
 ### Ficheiros a criar
-1. `src/components/landing/blur-reveal-text.tsx` — reveal palavra-a-palavra com blur→focus, props: `text`, `as`, `staggerMs`, `durationMs`, `delayMs`. Acessibilidade via `aria-label` no parent + `aria-hidden` nos spans.
-2. `src/components/landing/animated-counter.tsx` — counter 0→`to` com easing ease-out-expo via `requestAnimationFrame`, suporta `delayMs` e `durationMs`.
-3. `src/components/landing/handwritten-note.tsx` — texto Fraunces *italic* tilted -6deg + arrow SVG curvo que desenha-se com `stroke-dasharray`, integra `AnimatedCounter` para o "2". Cor `accent-luminous`. Sequência: arrow (900ms, delay 1200ms) → text fade-in (500ms, delay 1700ms) → counter (600ms, delay 2100ms).
-4. `src/components/landing/scroll-indicator.tsx` — barra vertical pulsante + label "Explorar" font-mono uppercase, posicionada `absolute bottom-8 left-1/2`. `prefers-reduced-motion` desactiva animação.
+1. `src/components/landing/instagram-glyph.tsx` — SVG genérico minimalista (quadrado arredondado + círculo + ponto), sem usar logo oficial Meta. `currentColor`, `aria-hidden`.
 
 ### Ficheiros a modificar (com permissão explícita)
-5. `src/components/landing/hero-action-bar.tsx` — **cirúrgico**:
-   - Remover bloco linhas 13-21 (micro-label "Analisar perfil" + Badge "Gratuito")
-   - Remover imports `Badge` (já não usado)
-   - Adicionar classe `hero-bar-breathe` no wrapper do Card glass (linha 24)
-   - Adicionar `<style>` no fim com keyframe `hero-bar-breathe-kf` (scale 1 → 1.005 → 1, 4s loop) + media `prefers-reduced-motion`
-   - Tudo o resto (form, input, button, reveal de concorrentes) **intacto**
 
-6. `src/components/landing/hero-section.tsx` — **rewrite completo**:
-   - `min-h-screen` em vez de `min-h-[92vh]`
-   - Composição centrada
-   - Headline H1: `<BlurRevealText text="Instagram analisado em 30 segundos." as="h1" className="font-display text-4xl md:text-6xl lg:text-7xl tracking-tight font-medium leading-[1.05] text-content-primary" delayMs={200} />` — **sem gradiente**, cyan reservado para CTAs
-   - Subtitle: `<BlurRevealText text="Benchmark, comparação com concorrentes e insights por IA." as="p" className="font-sans text-lg md:text-xl text-content-secondary leading-relaxed max-w-2xl mx-auto" delayMs={800} />`
-   - Wrapper `relative` à volta do `<HeroActionBar />` para ancorar `<HandwrittenNote />` em `absolute -top-8 -right-12 hidden sm:block` (apontando para o botão Analisar)
-   - `<ScrollIndicator />` no fim
-   - Remover micro-proof strip (3 checks) — passa para below-the-fold
-   - Remover import `Check` (já não usado)
+2. `src/components/ui/button.tsx` — **APENAS** variante `primary`:
+   - `bg-gradient-to-br from-accent-luminous via-accent-primary to-accent-primary` (diagonal, mais saturado)
+   - `font-semibold` (era medium)
+   - `hover:brightness-110`
+   - Resto (sizes, states, loading, icons, outras variantes) **intacto**
 
-7. `src/routes/index.tsx` — adicionar micro-proof strip entre `<HeroSection />` e `<SocialProofSection />`:
-   - `<section className="border-y border-border-subtle bg-surface-secondary/30 py-6">` com `<Container size="lg">` e flex centrado com 3 items (Check + label font-mono uppercase): "Análise em 30 segundos", "Sem registo necessário", "RGPD compliant"
-   - Importar `Check` de lucide-react e `Container`
+3. `src/components/landing/hero-action-bar.tsx`:
+   - Adicionar micro-label acima do Card glass: flex centrado com `<InstagramGlyph className="size-4" />` + `<span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">Perfil público do Instagram</span>` em `mb-3`
+   - Alterar background do Card: `bg-surface-secondary/60` → `bg-surface-base/80` (mais escuro, mais peso)
+   - Botão Analisar: adicionar `shadow-[0_0_32px_-4px_rgb(6_182_212_/_0.5)]` para glow exterior reforçado
+   - Breathing animation, form, reveal de concorrentes — intacto
 
-8. `LOCKED_FILES.md` — adicionar bloco "Landing Micro-components (Sprint 1, Prompt 1.1B)" com os 4 novos ficheiros
-9. `.lovable/memory/constraints/locked-files.md` — espelhar entradas
+4. `src/components/landing/hero-section.tsx` — apenas 2 props de texto:
+   - Headline: `"Analise o teu Instagram em menos de 30 segundos."`
+   - Subtitle: `"Análise competitiva e dados concretos para comparar com a concorrência."`
+   - Tudo o resto (BlurRevealText, timings, layout, handwritten note, scroll indicator) intacto
+
+5. `src/components/landing/handwritten-note.tsx`:
+   - Remover segundo `<span>` ("por mês")
+   - Manter apenas `<AnimatedCounter to={2} /> relatórios grátis` numa linha
+   - Ajustar SVG arrow: reduzir altura visual (mt menor) e reposicionar para apontar bem para o botão
+   - Tilt -6deg, Fraunces italic, glow cyan, sequência de animação — intacto
+
+6. `src/components/landing/mockup-dashboard.tsx` — refactor estratégico do body:
+   - Top bar (linhas 26-50) **intacta** — permanece crystal clear
+   - Wrapper do body: `<div className="relative">`
+   - Body content actual: aplicar `style={{ filter: "blur(0.5px)", maskImage: "linear-gradient(to bottom, black 0%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.4) 80%, transparent 100%)", WebkitMaskImage: "..." }}` + `aria-hidden="true"` para SR não tropeçar em conteúdo decorativo
+   - Overlay extra: `<div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-b from-transparent via-surface-base/40 to-surface-base" />` para fade reforçado
+   - Label de intriga centrado: `<div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center"><span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-content-tertiary/80 px-3 py-1.5 rounded-full bg-surface-base/60 backdrop-blur-sm border border-border-subtle">Conteúdo completo no relatório</span></div>`
+   - Conteúdo (métricas, gauge, comparação, insight) permanece no DOM — apenas visualmente velado
+
+7. `src/components/landing/how-it-works-section.tsx` — única alteração: h2 de `"Do username ao relatório em três passos."` para `"Relatório em 3 passos simples."`
+
+8. `LOCKED_FILES.md` — adicionar bloco "Landing Micro-components (Sprint 1, Prompt 1.1C)" com `instagram-glyph.tsx`
+
+9. `.lovable/memory/constraints/locked-files.md` — espelhar entrada
 
 ### Ficheiros NÃO tocados
-- `hero-aurora-background.tsx`, todos os atoms (button, badge, card, input, switch), layout (container, header, footer, app-shell, brand-mark), tokens, styles, social-proof, how-it-works (todos), product-preview (todos), use-in-view.
+- `hero-aurora-background.tsx`, `blur-reveal-text.tsx`, `animated-counter.tsx`, `scroll-indicator.tsx`
+- Atoms (badge, card, input, switch), layout (container, header, footer, app-shell, brand-mark)
+- Tokens, styles, social-proof, how-it-works-step, mockup-metric-card, mockup-benchmark-gauge, product-preview-section, use-in-view
+- `src/routes/index.tsx`
 
 ---
 
-### Sequência de animação no load
-
-| t (ms) | Evento |
-|---|---|
-| 0 | Aurora começa a flutuar (já em loop) |
-| 200 | Headline começa reveal palavra-a-palavra (stagger 80ms, ~7 palavras = ~700ms total) |
-| 800 | Subtitle começa reveal (stagger 80ms, ~9 palavras) |
-| ~1000 | Action bar visível (sem animação de entrada, só breathing 4s loop) |
-| 1200 | Handwritten note: arrow SVG draws-in (900ms) |
-| 1700 | Texto da note fade-in + tilt (500ms) |
-| 2100 | Counter "0→2" anima (600ms ease-out-expo) |
-| ~contínuo | Scroll indicator pulsa (1.4s loop), action bar respira (4s loop) |
-
 ### Decisões técnicas
 
-- **Handwritten note via SVG + Fraunces italic** (não cursive font) — viewBox ~`0 0 200 120`, path curvo `M 30 30 Q 60 80, 130 100` com `stroke-linecap="round"`, arrowhead com 2 paths curtos. Animação stroke via `stroke-dasharray: <length>; stroke-dashoffset: <length>→0` em 900ms.
-- **Posicionamento da note**: `absolute -top-12 -right-16 sm:block hidden` no wrapper do action bar (que é `relative`). Em mobile fica oculto (sem espaço).
-- **Cor do headline**: `text-content-primary` puro, sem gradient — segue regra "cyan reservado para CTAs".
-- **`prefers-reduced-motion`**: respeitado em blur-reveal (mostra texto imediatamente), counter (mostra valor final), scroll-indicator (sem pulse), handwritten arrow (mostra final), action bar breathing (sem scale).
+- **Instagram glyph**: SVG 24×24 viewBox, `rx="6"` no rect exterior, círculo central, ponto pequeno top-right. `stroke="currentColor"` `fill="none"` `strokeWidth="1.5"` — encaixa no tom editorial monocromático e evita problemas legais com logo Meta.
+- **Progressive blur**: combinação `filter: blur(0.5px)` no conteúdo + `mask-image` com gradient (preto→transparente) para criar fade direccional. Browsers modernos suportam `mask-image`/`-webkit-mask-image` nativamente. O `blur(0.5px)` é subtil — o efeito principal de "esconder" vem do mask + overlay gradient, não do blur intenso (que custaria GPU).
+- **Acessibilidade do mockup**: `aria-hidden="true"` no wrapper do body porque é decorativo no contexto da landing. Top bar permanece acessível.
+- **Botão glow extra**: shadow custom com cor `rgb(6 182 212 / 0.5)` (accent-primary com 50% opacity) — token-aligned mesmo sendo arbitrary value, dado que reproduz `--accent-primary`.
+- **Handwritten arrow re-position**: provavelmente baixar `-mt-1` para `mt-0` ou `mt-1` agora que só há uma linha de texto. Ajuste fino visual.
 
 ### Desvios face à spec
-1. **Headline copy**: spec sugere "Instagram analisado em 30 segundos." — aplico literal. Confirmar se preferes "O Instagram analisado em 30 segundos." (artigo definido pt-PT mais natural).
-2. **Subtitle**: "Benchmark, comparação com concorrentes e insights por IA." — 9 palavras, dentro do alvo "single line".
-3. **Imports a remover**: `Badge` em hero-action-bar e `Check` em hero-section — para não deixar warnings.
+
+1. **Micro-label "PERFIL PÚBLICO DO INSTAGRAM"** — em pt-PT respeitando capitalização, renderizo em `uppercase` via CSS; texto fonte fica `"Perfil público do Instagram"` (correcto ortograficamente; CSS faz uppercase). Alternativa: hardcoded em maiúsculas no JSX. Vou pelo CSS uppercase para preservar o texto semântico legível.
+2. **Botão glow custom** usa arbitrary Tailwind value (`shadow-[...]`) porque os tokens existentes (`shadow-glow-cyan`) podem não ter a intensidade certa. Mantém-se token-aligned por usar a cor exacta de `--accent-primary`.
+3. **Mockup blur intensity** — uso `blur(0.5px)` global + mask gradient agressivo em vez de blur progressivo via múltiplas camadas (que seria mais caro e complexo). Resultado visual equivalente ao spec, mais performante.
 
