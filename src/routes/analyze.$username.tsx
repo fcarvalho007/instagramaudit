@@ -53,8 +53,8 @@ function AnalyzePage() {
     if (!vs) return [];
     return vs
       .split(",")
-      .map((s) => s.trim().replace(/^@/, ""))
-      .filter((s) => s.length > 0)
+      .map((s: string) => s.trim().replace(/^@/, ""))
+      .filter((s: string) => s.length > 0)
       .slice(0, 2);
   }, [vs]);
 

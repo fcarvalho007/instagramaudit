@@ -102,27 +102,10 @@ export function PublicAnalysisDashboard({
 
         <AnalysisBenchmarkBlock positioning={positioning} />
 
-        {/* Competitor comparison — placeholder until competitor scraping ships. */}
-        <section
-          aria-labelledby="competitors-heading"
-          className="rounded-xl border border-border-subtle bg-surface-secondary p-5 md:p-6 space-y-3"
-        >
-          <header className="flex flex-col gap-1">
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
-              Em breve
-            </span>
-            <h2
-              id="competitors-heading"
-              className="font-display text-lg font-medium text-content-primary tracking-tight"
-            >
-              Comparação com concorrentes
-            </h2>
-          </header>
-          <p className="font-sans text-sm text-content-secondary leading-relaxed">
-            Comparação direta com até dois concorrentes disponível em breve.
-            Permitirá contextualizar o envolvimento face a perfis equivalentes.
-          </p>
-        </section>
+        <AnalysisCompetitorComparison
+          primary={{ profile, content_summary }}
+          competitors={data.competitors}
+        />
 
         <PremiumLockedSection teasers={PREMIUM_TEASERS} username={profile.username} />
       </Container>
