@@ -174,9 +174,18 @@ export function ReportGateModal({
   const isSubmitting = state === "submitting";
   const handleDisplay = username ? `@${username}` : "do perfil analisado";
 
-  const renderQuotaLine = (used: number) => (
+  // Quota line is driven by the server's `remaining_free_reports`. Falls back
+  // to a sensible default if the server response did not carry a remaining count
+  // (e.g. parent-provided onSubmit path).
+  const usedFromServer =
+    remainingFree !== null
+      ? Math.max(0, FREE_MONTHLY_LIMIT - remainingFree)
+      : state === "success-last"
+        ? FREE_MONTHLY_LIMIT
+        : 1;
+  const renderQuotaLine = () => (
     <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
-      {used} de {FREE_MONTHLY_LIMIT} relatórios utilizados este mês
+      {usedFromServer} de {FREE_MONTHLY_LIMIT} relatórios utilizados este mês
     </p>
   );
 
@@ -206,7 +215,7 @@ export function ReportGateModal({
                 minutos.
               </DialogDescription>
             </div>
-            {renderQuotaLine(1)}
+            {renderQuotaLine()}
             <DialogClose asChild>
               <Button variant="primary" size="md" className="w-full md:w-auto">
                 Continuar
@@ -248,7 +257,7 @@ export function ReportGateModal({
               </div>
             </div>
 
-            {renderQuotaLine(FREE_MONTHLY_LIMIT)}
+            {renderQuotaLine()}
 
             <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-center gap-3 w-full">
               <Button
