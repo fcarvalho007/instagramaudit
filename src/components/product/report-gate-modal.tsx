@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, CheckCircle2, FileText } from "lucide-react";
+import { Check, CheckCircle2, Crown, FileText, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,6 +13,12 @@ import {
 import { Input, InputHelper, InputLabel } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import {
+  FREE_MONTHLY_LIMIT,
+  getQuotaUsage,
+  incrementQuota,
+  normalizeEmail,
+} from "@/lib/quota";
 
 export interface GateFormData {
   nome: string;
@@ -28,7 +34,7 @@ interface ReportGateModalProps {
   onSubmit?: (data: GateFormData) => Promise<void> | void;
 }
 
-type ModalState = "idle" | "submitting" | "success";
+type ModalState = "idle" | "submitting" | "success" | "success-last" | "paywall";
 
 interface FormErrors {
   nome?: string;
@@ -104,11 +110,20 @@ export function ReportGateModal({
     setTouched({ nome: true, email: true, rgpd: true });
     if (Object.keys(next).length > 0) return;
 
+    const normalizedEmail = normalizeEmail(email);
+
+    // Quota check BEFORE any backend mutation — avoids capturing leads we cannot serve.
+    const currentUsage = getQuotaUsage(normalizedEmail);
+    if (currentUsage >= FREE_MONTHLY_LIMIT) {
+      setState("paywall");
+      return;
+    }
+
     setState("submitting");
     setSubmitError(null);
     const data: GateFormData = {
       nome: nome.trim(),
-      email: email.trim(),
+      email: normalizedEmail,
       empresa: empresa.trim() || undefined,
       rgpdAcceptedAt: new Date().toISOString(),
     };
@@ -129,7 +144,9 @@ export function ReportGateModal({
         const [{ error }] = await Promise.all([insert, minDelay]);
         if (error) throw error;
       }
-      setState("success");
+
+      const newCount = incrementQuota(normalizedEmail);
+      setState(newCount >= FREE_MONTHLY_LIMIT ? "success-last" : "success");
     } catch (err) {
       console.error("Report request submission failed", err);
       setSubmitError("Não foi possível processar o pedido. Tentar novamente.");
@@ -140,6 +157,12 @@ export function ReportGateModal({
   const isSubmitting = state === "submitting";
   const handleDisplay = username ? `@${username}` : "do perfil analisado";
 
+  const renderQuotaLine = (used: number) => (
+    <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+      {used} de {FREE_MONTHLY_LIMIT} relatórios utilizados este mês
+    </p>
+  );
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -148,7 +171,7 @@ export function ReportGateModal({
           "max-w-md md:max-w-lg shadow-elevated",
         )}
       >
-        {state === "success" ? (
+        {state === "success" && (
           <div
             className="flex flex-col items-center text-center gap-5 p-6 md:p-8"
             aria-live="polite"
@@ -166,16 +189,157 @@ export function ReportGateModal({
                 minutos.
               </DialogDescription>
             </div>
-            <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
-              Verificar a caixa de entrada e a pasta de spam
-            </p>
+            {renderQuotaLine(1)}
             <DialogClose asChild>
               <Button variant="primary" size="md" className="w-full md:w-auto">
                 Continuar
               </Button>
             </DialogClose>
           </div>
-        ) : (
+        )}
+
+        {state === "success-last" && (
+          <div
+            className="flex flex-col items-center text-center gap-5 p-6 md:p-8"
+            aria-live="polite"
+          >
+            <div className="flex size-16 items-center justify-center rounded-full bg-accent-violet/10 border border-accent-violet/40 text-accent-violet-luminous shadow-glow-violet">
+              <CheckCircle2 className="size-8" aria-hidden="true" />
+            </div>
+            <div className="space-y-2">
+              <DialogTitle className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
+                Pedido recebido
+              </DialogTitle>
+              <DialogDescription className="font-sans text-base text-content-secondary">
+                O relatório será enviado para{" "}
+                <span className="text-content-primary font-medium">{email}</span> nos próximos
+                minutos.
+              </DialogDescription>
+            </div>
+
+            <div className="w-full rounded-xl border border-accent-gold/30 bg-accent-gold/5 px-4 py-3.5 text-left">
+              <div className="flex items-start gap-2.5">
+                <Sparkles className="size-4 mt-0.5 shrink-0 text-accent-gold" aria-hidden="true" />
+                <div className="space-y-1">
+                  <p className="font-sans text-sm text-content-primary font-medium">
+                    Foi utilizado o segundo e último relatório gratuito deste mês.
+                  </p>
+                  <p className="font-sans text-xs text-content-secondary leading-relaxed">
+                    Para mais relatórios: compra pontual ou acesso Pro.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {renderQuotaLine(FREE_MONTHLY_LIMIT)}
+
+            <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-center gap-3 w-full">
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                onClick={() => setState("paywall")}
+                className="w-full md:w-auto"
+              >
+                Ver opções de upgrade
+              </Button>
+              <DialogClose asChild>
+                <Button variant="primary" size="md" className="w-full md:w-auto">
+                  Continuar
+                </Button>
+              </DialogClose>
+            </div>
+          </div>
+        )}
+
+        {state === "paywall" && (
+          <div className="flex flex-col p-6 md:p-8 gap-6" aria-live="polite">
+            <header className="space-y-2 text-center">
+              <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-accent-gold">
+                Limite mensal atingido
+              </span>
+              <DialogTitle className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
+                2 relatórios gratuitos já utilizados este mês
+              </DialogTitle>
+              <DialogDescription className="font-sans text-sm md:text-base text-content-secondary">
+                Continuar com compra pontual ou acesso Pro.
+              </DialogDescription>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* One-time purchase */}
+              <div className="flex flex-col rounded-xl border border-border-default bg-surface-base/40 p-4 gap-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-4 text-accent-luminous" aria-hidden="true" />
+                  <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+                    Compra pontual
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-display text-xl text-content-primary font-medium tracking-tight">
+                    1 relatório
+                  </p>
+                  <p className="font-sans text-sm text-content-secondary">
+                    <span className="text-content-primary font-medium">3 €</span> · pagamento único
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled
+                  className="w-full mt-auto"
+                  title="Disponível em breve"
+                >
+                  Desbloquear novo relatório
+                </Button>
+              </div>
+
+              {/* Pro subscription */}
+              <div className="relative flex flex-col rounded-xl border border-accent-gold/40 bg-accent-gold/5 p-4 gap-3 shadow-glow-gold">
+                <span className="absolute -top-2 right-3 rounded-full bg-accent-gold px-2 py-0.5 font-mono text-[0.5625rem] uppercase tracking-[0.14em] text-text-inverse">
+                  Recomendado
+                </span>
+                <div className="flex items-center gap-2">
+                  <Crown className="size-4 text-accent-gold" aria-hidden="true" />
+                  <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-accent-gold">
+                    Acesso Pro
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-display text-xl text-content-primary font-medium tracking-tight">
+                    Relatórios ilimitados
+                  </p>
+                  <p className="font-sans text-sm text-content-secondary">
+                    <span className="text-content-primary font-medium">10 €</span> /mês
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  disabled
+                  className="w-full mt-auto"
+                  title="Disponível em breve"
+                >
+                  Ver plano Pro
+                </Button>
+              </div>
+            </div>
+
+            <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary text-center">
+              A quota reinicia no início do próximo mês
+            </p>
+
+            <DialogClose asChild>
+              <Button variant="ghost" size="md" className="w-full md:w-auto md:self-center">
+                Fechar
+              </Button>
+            </DialogClose>
+          </div>
+        )}
+
+        {(state === "idle" || state === "submitting") && (
           <form onSubmit={handleSubmit} className="flex flex-col" noValidate>
             <div className="p-6 md:p-8 space-y-6">
               <header className="space-y-2">
