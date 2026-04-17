@@ -1,28 +1,59 @@
 /**
- * Typed query helpers for the `report_requests` table.
+ * Client-side helper for the public report request flow.
  *
- * Convention for this folder (`src/integrations/supabase/queries/`):
- *   - one file per domain entity
- *   - small, typed, single-purpose functions
- *   - UI never calls `supabase.from()` directly — always go through these helpers
+ * The browser CANNOT write to `leads` / `report_requests` directly — RLS is
+ * closed. All public writes go through the server route
+ * `POST /api/request-full-report`, which uses the service-role admin client.
  *
- * NOTE: with the new normalized schema, a `report_request` always references
- * a `lead_id`. Lead creation lives in `./leads.ts` (added when frontend is wired).
- * For now this helper is unused at runtime — kept ready for the future rewire.
+ * Keep this helper thin: it just shapes the request and parses the response.
  */
 
-import { supabase } from "../client";
-import type { TablesInsert } from "../types";
-
-export type ReportRequestInsert = TablesInsert<"report_requests">;
-
-export interface InsertReportRequestResult {
-  error: Error | null;
+export interface RequestFullReportPayload {
+  email: string;
+  name: string;
+  company?: string;
+  instagram_username: string;
+  competitor_usernames?: string[];
+  request_source?: "public_dashboard";
 }
 
-export async function insertReportRequest(
-  payload: ReportRequestInsert,
-): Promise<InsertReportRequestResult> {
-  const { error } = await supabase.from("report_requests").insert(payload);
-  return { error: error ? new Error(error.message) : null };
+export type RequestFullReportResult =
+  | {
+      success: true;
+      lead_id: string;
+      report_request_id: string;
+      message: string;
+    }
+  | {
+      success: false;
+      error_code: "INVALID_PAYLOAD" | "PERSISTENCE_FAILED" | "NETWORK";
+      message: string;
+    };
+
+export async function requestFullReport(
+  payload: RequestFullReportPayload,
+): Promise<RequestFullReportResult> {
+  try {
+    const res = await fetch("/api/request-full-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const body = (await res.json().catch(() => null)) as RequestFullReportResult | null;
+    if (body) return body;
+
+    return {
+      success: false,
+      error_code: "PERSISTENCE_FAILED",
+      message: "Não foi possível registar o pedido. Tentar novamente.",
+    };
+  } catch (err) {
+    console.error("[requestFullReport] network error", err);
+    return {
+      success: false,
+      error_code: "NETWORK",
+      message: "Sem ligação. Verificar a internet e tentar novamente.",
+    };
+  }
 }
