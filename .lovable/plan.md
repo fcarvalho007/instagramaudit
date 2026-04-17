@@ -1,66 +1,42 @@
 
 
-## Plano — Smoke test end-to-end (sem alterações de código)
+## Plano — Re-validação após upgrade para Creator + smoke test E2E
 
-Decisão registada: manter slug `apify/instagram-scraper`. Avançar para validação real.
+O utilizador confirma upgrade para plano **Creator**. Vou repetir o smoke test exatamente como aprovado anteriormente, agora que o bloqueio de plano foi resolvido.
 
-### Sequência do smoke test
+### Contexto dos uploads
+- PDF 1: confirma subscription page no console Apify (Creator)
+- PDF 2: confirma actor `shu8hvrXbJbY3Eb9W` (= `apify/instagram-scraper`) acessível na conta
 
-**1. Análise real (Apify unified actor)**
-- Disparar `POST /api/analyze-public-v1` com `instagram_username: "frederico.m.carvalho"`, sem competidores
-- Esperado: 200 + `success: true` + `analysis_snapshot_id` presente + `data_source: "fresh"`
-- Validar: `profile.followers_count > 0`, `content_summary.posts_analyzed > 0`, `latestPosts` populado
+Não preciso ler os PDFs — a informação já está confirmada na mensagem.
 
-**2. Snapshot persistido**
-- Query `analysis_snapshots` por `cache_key` correspondente
-- Validar: `normalized_payload` contém `{ profile, content_summary, competitors }` íntegro
-- Validar: `updated_at` recente (<1min)
+### Sequência (idêntica ao plano anterior aprovado)
 
-**3. Pedido de relatório completo**
-- Disparar `POST /api/request-full-report` com `analysis_snapshot_id` + `email: "frederico.carvalho@digitalfc.pt"`
-- Validar: cria row em `leads` + `report_requests` com `status: "pending"`
+1. **Análise real** — `POST /api/analyze-public-v1` para `frederico.m.carvalho`, sem competidores. Esperado: 200 + `success: true` + `analysis_snapshot_id`.
+2. **Snapshot persistido** — query `analysis_snapshots` por `cache_key` para validar `normalized_payload` íntegro.
+3. **Pedido de relatório** — `POST /api/request-full-report` com snapshot_id + `frederico.carvalho@digitalfc.pt`.
+4. **Pipeline** — observar `report_requests.status` evoluir até `completed` (60-90s).
+5. **PDF em storage** — validar `pdf_storage_path` + ficheiro existe + tamanho >50KB.
+6. **Email** — validar `email_sent_at` + entrega Resend.
 
-**4. Pipeline orquestrado (60-90s)**
-- Observar `report_requests.status` evolução: `pending` → `generating_pdf` → `sending_email` → `completed`
-- Logs do worker: confirmar invocação de `run-report-pipeline.ts`
-
-**5. PDF em storage**
-- Validar `report_requests.pdf_storage_path` populado
-- Confirmar ficheiro existe no bucket + tamanho > 50KB
-
-**6. Email entregue**
-- Validar `report_requests.email_sent_at` populado
-- Confirmar entrega via Resend (ou identificar bloqueio sandbox/domínio)
-
-### Checkpoints
-
-- ☐ Análise real devolve 200 + snapshot ID
-- ☐ Snapshot persistido com payload válido
-- ☐ Lead + report_request criados
-- ☐ Pipeline corre até `completed` em 60-90s
-- ☐ PDF existe em storage com tamanho razoável
-- ☐ Email diagnosticado (sent | sandbox-blocked | outro)
-- ☐ Tabela final A→G + smallest next fix
-- ☐ Zero ficheiros tocados
-
-### Saída esperada
-
-Tabela A→G:
-- A. Análise real funciona pós-upgrade?
-- B. Snapshot persistido?
-- C. Request flow funciona?
-- D. PDF gerado em runtime?
-- E. Email entregue?
-- F. Pipeline end-to-end OK?
-- G. Smallest next fix (se algum)
+### Saída
+Tabela A→G com resultado de cada etapa + smallest next fix se algo falhar.
 
 ### Guardrails
-
 | | |
 |---|---|
 | Zero código novo | ✅ |
 | Zero refactor | ✅ |
+| Apenas observação | ✅ |
 | Locked files intactos | ✅ |
-| Apenas observação + diagnóstico | ✅ |
 | pt-PT preservado | ✅ |
+
+### Checkpoints
+- ☐ Análise real devolve 200 + snapshot ID (espero passar agora pós-Creator)
+- ☐ Snapshot persistido com payload válido
+- ☐ Lead + report_request criados
+- ☐ Pipeline corre até `completed`
+- ☐ PDF em storage com tamanho razoável
+- ☐ Email diagnosticado
+- ☐ Tabela A→G + smallest next fix
 
