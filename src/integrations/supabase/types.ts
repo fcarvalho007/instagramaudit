@@ -134,6 +134,9 @@ export type Database = {
           competitor_usernames: Json
           created_at: string
           delivery_status: string
+          email_error_message: string | null
+          email_message_id: string | null
+          email_sent_at: string | null
           id: string
           instagram_username: string
           is_free_request: boolean
@@ -153,6 +156,9 @@ export type Database = {
           competitor_usernames?: Json
           created_at?: string
           delivery_status?: string
+          email_error_message?: string | null
+          email_message_id?: string | null
+          email_sent_at?: string | null
           id?: string
           instagram_username: string
           is_free_request?: boolean
@@ -172,6 +178,9 @@ export type Database = {
           competitor_usernames?: Json
           created_at?: string
           delivery_status?: string
+          email_error_message?: string | null
+          email_message_id?: string | null
+          email_sent_at?: string | null
           id?: string
           instagram_username?: string
           is_free_request?: boolean
