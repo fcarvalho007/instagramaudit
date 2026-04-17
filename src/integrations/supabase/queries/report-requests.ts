@@ -6,8 +6,9 @@
  *   - small, typed, single-purpose functions
  *   - UI never calls `supabase.from()` directly — always go through these helpers
  *
- * This keeps the data layer swappable (e.g., moving to RPCs or edge functions)
- * without touching consumer components.
+ * NOTE: with the new normalized schema, a `report_request` always references
+ * a `lead_id`. Lead creation lives in `./leads.ts` (added when frontend is wired).
+ * For now this helper is unused at runtime — kept ready for the future rewire.
  */
 
 import { supabase } from "../client";
