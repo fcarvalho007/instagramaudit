@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { formatFollowers } from "@/lib/mock-analysis";
 
@@ -27,35 +29,33 @@ export function AnalysisHeader({
   isVerified = false,
   bio,
 }: AnalysisHeaderProps) {
+  // React-idiomatic fallback: track image load failure in state instead of
+  // mutating the DOM via onError. Avoids inline display styles + sibling
+  // traversal, and resets cleanly when avatarUrl changes.
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = Boolean(avatarUrl) && !imgFailed;
+
   const hue = hashHue(username);
   const gradient = `linear-gradient(135deg, hsl(${hue}, 70%, 55%), hsl(${(hue + 60) % 360}, 75%, 45%))`;
 
   return (
     <header className="flex flex-col gap-6 border-b border-border-subtle pb-8 md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-4 md:gap-5 min-w-0">
-        {avatarUrl ? (
+        {showImage ? (
           <img
-            src={avatarUrl}
+            src={avatarUrl as string}
             alt={`Avatar de @${username}`}
             loading="lazy"
+            onError={() => setImgFailed(true)}
             className="size-16 md:size-20 shrink-0 rounded-full ring-1 ring-border-default object-cover bg-surface-elevated"
-            onError={(e) => {
-              // Graceful fallback to gradient when avatar URL fails to load.
-              const el = e.currentTarget;
-              el.style.display = "none";
-              const fallback = el.nextElementSibling as HTMLElement | null;
-              if (fallback) fallback.style.display = "block";
-            }}
           />
-        ) : null}
-        <div
-          className="size-16 md:size-20 shrink-0 rounded-full ring-1 ring-border-default"
-          style={{
-            background: gradient,
-            display: avatarUrl ? "none" : "block",
-          }}
-          aria-hidden="true"
-        />
+        ) : (
+          <div
+            className="size-16 md:size-20 shrink-0 rounded-full ring-1 ring-border-default"
+            style={{ background: gradient }}
+            aria-hidden="true"
+          />
+        )}
         <div className="flex flex-col gap-1 min-w-0">
           <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
             Análise pública
@@ -93,7 +93,7 @@ export function AnalysisHeader({
 
       <div className="md:shrink-0">
         <Badge variant="success" size="md" dot pulse>
-          Análise pública
+          Dados em direto
         </Badge>
       </div>
     </header>

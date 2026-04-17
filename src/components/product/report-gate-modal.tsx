@@ -13,6 +13,14 @@ import {
 import { Input, InputHelper, InputLabel } from "@/components/ui/input";
 
 import { cn } from "@/lib/utils";
+/**
+ * ⚠️ Quota enforcement is intentionally client-side (localStorage) for now.
+ * See src/lib/quota.ts for the full caveat. Server-side enforcement (auth +
+ * per-email monthly counter) is tracked as known technical debt and will land
+ * in a dedicated future prompt. Until then the gate is a UX nudge, not a
+ * security boundary, and the backend `/api/request-full-report` route accepts
+ * every well-formed submission.
+ */
 import {
   FREE_MONTHLY_LIMIT,
   getQuotaUsage,

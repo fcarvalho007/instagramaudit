@@ -5,8 +5,19 @@
  *   instabench:quota:{normalizedEmail}:{YYYY-MM}
  *
  * The month is encoded into the key so usage auto-resets on month change.
- * Designed to be swapped later for a Supabase-backed implementation
- * without changing the consumer surface.
+ *
+ * ⚠️ KNOWN TECHNICAL DEBT — client-side enforcement only.
+ *
+ * The quota is currently enforced exclusively in the browser. A user clearing
+ * localStorage (or using a different device/browser) can bypass the limit and
+ * trigger additional `report_requests` rows on the backend. The server route
+ * `/api/request-full-report` does NOT count or block by email/month yet.
+ *
+ * This is intentional for the current milestone (capture leads + premium UX)
+ * and will be replaced by server-side enforcement (auth + per-email monthly
+ * counter, likely via a Supabase function) in a dedicated future prompt.
+ * Until then, treat any client-side quota signal as a UX hint, not a
+ * security boundary.
  */
 
 export const FREE_MONTHLY_LIMIT = 2;
@@ -60,8 +71,4 @@ export function incrementQuota(email: string, date: Date = new Date()): number {
     // Storage unavailable (private mode, quota exceeded) — degrade silently.
   }
   return next;
-}
-
-export function getRemainingFree(email: string, date: Date = new Date()): number {
-  return Math.max(0, FREE_MONTHLY_LIMIT - getQuotaUsage(email, date));
 }
