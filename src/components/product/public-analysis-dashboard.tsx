@@ -65,7 +65,7 @@ export function PublicAnalysisDashboard({
           </div>
         </section>
 
-        <AnalysisBenchmarkBlock benchmark={benchmark} />
+        <AnalysisBenchmarkBlock positioning={benchmarkPositioning} />
 
         <AnalysisCompetitorComparison competitors={competitors} />
 
