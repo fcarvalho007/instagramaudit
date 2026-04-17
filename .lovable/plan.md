@@ -1,119 +1,107 @@
 
 
-## Plano — Sprint 1, Prompt 1.10: Página de relatório completa em modo claro
+## Entendimento
 
-### Entendimento
+**1. Landing → analyze → gate**: hero (`/`) → `/analyze/$username` → `<PublicAnalysisDashboard>` → `<PremiumLockedSection>` (CTA único) → `<ReportGateModal>`.
 
-**Auditoria atual:**
-- Header e Footer **já usam tokens semânticos** (`bg-surface-base`, `bg-surface-secondary`, `text-content-*`, `border-border-*`). Zero valores hardcoded — basta o switch de tokens fazer flip automático.
-- Recharts **já instalado** (`^2.15.4`), sem nova dependência.
-- App-shell é simples (Header + main + Footer) — não precisa de alteração estrutural. O `ReportThemeWrapper` faz o trabalho via `data-theme="light"` no `<body>`.
-- Tokens em `tokens.css` definem `:root` — basta adicionar override `[data-theme="light"]` num ficheiro novo. O `@theme inline` resolve as variáveis em runtime, então o flip é automático.
+**2. Análise pública**: dashboard com header de perfil, 4 métricas-chave, benchmark block, comparação de concorrentes, e secção premium bloqueada (cards blurred com overlay CTA).
 
-**Sistema visual dual confirmado:** landing fica dark (sem `data-theme`); `/report/example` aplica `data-theme="light"` via wrapper, restaurado no unmount. Isolamento total por route.
+**3. Pedido de relatório**: gate modal valida, chama `requestFullReport` → `/api/request-full-report`. Server devolve `quota_status` (`first_free` / `last_free` / `limit_reached`) → modal transita para estados `success`, `success-last`, ou `paywall`.
 
-### Decisões-chave
+**4. Limit-reached + pago pontual**: estado `paywall` mostra 2 cards (3€ pontual + Pro 10€/mês), **ambos disabled** ("Disponível em breve"). Sem checkout funcional. Sem Agency.
 
-1. **Token override sem tocar em `tokens.css`** — novo ficheiro `tokens-light.css` com seletor `[data-theme="light"]` redefine apenas variáveis de cor (surfaces, accents, signals, text, borders, shadows). Tipografia, espaçamentos, radii mantêm-se.
+**5. Porquê camada de conversão agora**: a página de análise tem hoje **um único momento de conversão** — o `<PremiumLockedSection>` no fundo. Quem fecha o modal sem submeter, ou quem já submeteu, fica sem próximo passo claro. O produto ainda parece uma ferramenta one-shot, não um lead magnet com escada de valor visível. Adicionar mais backend (subs, webhook, auth) sem antes optimizar a superfície de conversão é construir tubagem para tráfego que ainda não converte. Esta camada é UX-only, reutiliza tudo o que já existe, e dá sinal real sobre que CTA funciona antes de investir em billing recorrente.
 
-2. **Tokens novos exclusivos do light** — `--tint-*` (backgrounds para circular icon containers Iconosquare-style) e `--accent-tertiary` (cyan). Adicionados ao `@theme inline` em `styles.css` como `--color-tint-*`, `--color-accent-tertiary`, `--color-accent-secondary`. Ficam disponíveis em ambos os modos mas só fazem sentido visual no light.
+## Decisões-chave
 
-3. **Body noise overlay desativado em light** — adiciono `body[data-theme="light"]::before { display: none; }` em `tokens-light.css`. A textura de ruído ficaria visualmente ruidosa no light.
+1. **Novo componente único**: `<PostAnalysisConversionLayer>` colocado **entre** `<AnalysisCompetitorComparison>` e `<PremiumLockedSection>`. Posição estratégica: depois do valor entregue (métricas + benchmark + concorrentes), antes do gate atual. Não desloca o gate existente — soma-se a ele.
 
-4. **Header/Footer audit** — confirmado que estão limpos. Não precisam de edição. Removo da lista de ficheiros tocados (poupa risco em locked files). Apenas se a verificação revelar algo durante implementação, alinho via tokens.
+2. **3 estados visuais derivados de prop `conversionState`**:
+   - `acquisition` (default, anónimo): foco em "receber por email" — CTA primário abre o `<ReportGateModal>` reutilizado.
+   - `requested` (após submit bem-sucedido): foco em ongoing value — Pro destacado como "Em breve · Pedir acesso", Agency como link discreto.
+   - `limit-reached` (após `QUOTA_REACHED`): mantém 3€ pontual visível (também "Em breve" hoje, alinhado com o paywall do modal) + Pro recomendado.
 
-5. **Mock data realista mas determinístico** — séries temporais e heatmap geradas com padrões reconhecíveis (picos quartas/sextas, weekend tarde) em vez de aleatório. Resultado consistente entre renders.
+3. **Estado lifted para `<PublicAnalysisDashboard>`**: passa-se `conversionState` + `setConversionState` para `<PostAnalysisConversionLayer>` **e** para `<PremiumLockedSection>`. Quando o gate modal sinaliza sucesso (via novo callback `onRequestOutcome`), o dashboard atualiza o estado e ambas as superfícies reagem.
 
-6. **Recharts custom tooltip** — componente partilhado `report-chart-tooltip.tsx` reutilizado entre temporal-chart e best-days. Card branco, border subtle, valores mono.
+4. **Reutilização do `<ReportGateModal>`**: zero duplicação de formulário. O novo componente apenas dispara `setGateOpen(true)` partilhado. Adiciona-se **um único callback** `onRequestOutcome?: (outcome: "success" | "limit-reached") => void` ao modal para propagar o resultado para cima.
 
-7. **Heatmap sem Recharts** — grid CSS simples (7×24 divs), mais leve e mais fiel ao Iconosquare. Color scale via classes condicionais.
+5. **Nudge inline (não popup)**: dentro do bloco de conversão, quando `acquisition`, mostra-se uma linha compacta "Receber também por email" com micro-CTA "Enviar análise". Reusa o mesmo modal. Sem segundo formulário, sem banner flutuante, sem drawer extra.
 
-8. **Word cloud do top-keywords** — opto pelo formato lista com barras horizontais (consistente com hashtags ao lado, cleaner que cloud tipográfico). Mantém ritmo da página.
+6. **Pricing ladder com 3 opções honestas**:
+   - Compra pontual 3€ — "Em breve" (consistente com paywall atual)
+   - Pro 10€/mês — "Em breve · Pedir acesso" (CTA `mailto:` ou link para form futuro — por agora, abre `mailto:hello@instabench.pt?subject=Pro` para ser real)
+   - Agency 39€/mês — "Pedir acesso" (mesmo tratamento)
+   
+   Pro destacado visualmente (border accent-gold, badge "Recomendado"). Sem fake checkout.
 
-9. **Tier badge "PERFIL" na linha do próprio perfil** em competitors — substitui possíveis confusões.
+7. **Visual "Editorial Tech Noir"**: card com border subtle, background `bg-surface-secondary/40`, hairline mono labels, separadores subtis. Sem neon, sem gradient agressivo. Spacing generoso. Mobile: stack vertical, cards 1-col.
 
-### Ficheiros a criar (16 novos)
+8. **Sem novas dependências, sem alterações de schema, sem novos endpoints.**
 
-| Ficheiro | Propósito |
-|---|---|
-| `src/styles/tokens-light.css` | Override de tokens em `[data-theme="light"]` |
-| `src/components/report/report-theme-wrapper.tsx` | Mount/unmount `data-theme="light"` no body |
-| `src/components/report/report-mock-data.ts` | Dataset único e consistente |
-| `src/components/report/report-page.tsx` | Orquestrador — empilha 12 secções |
-| `src/components/report/report-section.tsx` | Wrapper label + título + subtítulo + slot |
-| `src/components/report/report-header.tsx` | Top bar perfil + ações |
-| `src/components/report/report-kpi-card.tsx` | Atomic card Iconosquare-style |
-| `src/components/report/report-key-metrics.tsx` | Grid 4 KPI cards |
-| `src/components/report/report-temporal-chart.tsx` | AreaChart 3 séries 30 dias (centrepiece) |
-| `src/components/report/report-chart-tooltip.tsx` | Tooltip partilhado para Recharts |
-| `src/components/report/report-benchmark-gauge.tsx` | Gauge horizontal vs benchmark |
-| `src/components/report/report-format-breakdown.tsx` | 3 cards (Reels/Carousels/Imagens) |
-| `src/components/report/report-competitors.tsx` | Tabela 3 linhas com barras |
-| `src/components/report/report-top-posts.tsx` | Grid 5 cards com thumbnails gradient |
-| `src/components/report/report-posting-heatmap.tsx` | Grid 7×24 + 3 best slots |
-| `src/components/report/report-best-days.tsx` | BarChart Recharts |
-| `src/components/report/report-hashtags-keywords.tsx` | 2 colunas lado a lado |
-| `src/components/report/report-ai-insights.tsx` | Card grande com 3 insights numerados |
-| `src/components/report/report-footer.tsx` | Linha de fecho |
-| `src/routes/report.example.tsx` | Route file-based + meta noindex |
+## Ficheiros
 
-### Ficheiros editados
+**Novos (1):**
+- `src/components/product/post-analysis-conversion-layer.tsx`
 
-| Ficheiro | Edição | Locked? |
-|---|---|---|
-| `src/styles.css` | `@import "./styles/tokens-light.css";` + adicionar `--color-tint-*`, `--color-accent-secondary`, `--color-accent-tertiary`, `--color-shadow-card` ao `@theme inline` | ⚠️ Secção `@theme inline` está locked — adicionar novos tokens é extensão, não alteração. **Pedido permissão explícita abaixo.** |
-| `LOCKED_FILES.md` + `mem://constraints/locked-files` | Adicionar nova secção "Report Components (Sprint 1, Prompt 1.10)" com os 19 novos ficheiros | Não |
+**Editados (3):**
+- `src/components/product/public-analysis-dashboard.tsx` — lifted state + insere `<PostAnalysisConversionLayer>` entre concorrentes e premium
+- `src/components/product/premium-locked-section.tsx` — aceita `conversionState` opcional, ajusta copy do CTA quando estado já é `requested` (ex: "Já recebido — ver opções Pro"); recebe e propaga `onRequestOutcome` do modal
+- `src/components/product/report-gate-modal.tsx` — novo prop opcional `onRequestOutcome?: (outcome) => void` chamado em `success` / `success-last` / `paywall`. Sem mudanças de UX/copy.
 
-### Locked files — impacto
+**Locked files**: `LOCKED_FILES.md` lista apenas tokens, layout, landing e report. **Nenhum dos ficheiros tocados está locked.** ✅
 
-- **`src/styles.css`**: precisa de **2 novas linhas no topo** (import) + **adições à `@theme inline`** (novos tokens, sem mexer nos existentes). Pedido sancionado pelo prompt apenas para Header/Footer/AppShell, **não para `styles.css`**. Solução proposta: limitar edição estritamente a (a) adicionar uma linha de import depois do `tokens.css` import, (b) acrescentar 8-10 novas variáveis no fim do bloco `@theme inline`. Sem rescrever nada existente.
-- **`src/components/layout/header.tsx`** e **`footer.tsx`**: auditoria mostra que **já estão 100% baseados em tokens semânticos** — não precisam de edição. Reporto isto no checklist final em vez de fazer edição cosmética.
-- **`src/components/layout/app-shell.tsx`**: idem, sem alteração necessária.
+## Estrutura do componente novo
 
-### Schema / dependências
+```text
+<PostAnalysisConversionLayer state="...">
+  ├── label mono ("PRÓXIMO PASSO" | "ACOMPANHAMENTO" | "OPÇÕES DE UPGRADE")
+  ├── título serif (varia por estado)
+  ├── subtítulo curto
+  ├── [acquisition only] Linha nudge: "Receber também por email" + micro-CTA
+  ├── Grid 3 cards:
+  │     ├── Compra pontual 3€  (CTA "Em breve")
+  │     ├── Pro 10€/mês        (recomendado, "Pedir acesso")
+  │     └── Agency 39€/mês     (link discreto)
+  └── nota mono pequena (varia por estado)
+</PostAnalysisConversionLayer>
+```
 
-- Sem alterações DB
-- Sem novas npm dependencies
+## Mapeamento copy por estado (pt-PT impessoal)
 
-### Validação dos guardrails
+| Estado | Label | Título | Subtítulo |
+|---|---|---|---|
+| `acquisition` | Próximo passo | Receber análise completa por email | PDF detalhado com benchmark, comparação e leitura estratégica por IA. |
+| `requested` | Acompanhamento | Acompanhar este perfil ao longo do tempo | Novas análises, comparações regulares e alertas de variação. |
+| `limit-reached` | Opções de upgrade | Continuar com mais relatórios este mês | Compra pontual disponível em breve ou acesso recorrente via Pro. |
+
+CTAs Pro/Agency: `mailto:hello@instabench.pt?subject=Acesso%20Pro%20—%20InstaBench` (real, não fake; substituível por route futura sem refactor).
+
+## Validação dos guardrails
 
 | Guardrail | Estado |
 |---|---|
-| Locked files intactos exceto extensão controlada de `styles.css` | ⚠️ pedir confirmação |
-| Header/Footer audit confirmado limpos | ✅ |
-| Recharts já instalado | ✅ |
-| Theme isolation via mount/unmount | ✅ |
-| Landing dark intacta | ✅ |
-| Copy pt-PT pós-1990, impessoal | ✅ |
-| Sem placeholders, sem lorem | ✅ |
-| Mock data único e consistente | ✅ |
-| Mobile responsive (375px+) | ✅ |
-| `noindex, nofollow` na meta | ✅ |
+| Sem redesign de landing/analysis | ✅ apenas insere bloco entre secções existentes |
+| Sem subs/auth/CRM | ✅ zero billing, zero auth, zero novos endpoints |
+| Sem novas libs | ✅ |
+| Reutiliza gate existente | ✅ um único modal, um único form |
+| Sem hardcoded secrets | ✅ |
+| Locked files intactos | ✅ |
+| Copy pt-PT impessoal pós-1990 | ✅ |
+| Mobile 375px | ✅ stack vertical, cards 1-col |
+| Sem fake checkout | ✅ Pro/Agency = "Pedir acesso" via mailto real |
 
-### Checkpoints
+## Checkpoints
 
-- ☐ `tokens-light.css` criado com override completo + noise disable
-- ☐ `styles.css` extendido com import + novos tokens (tints, accent-secondary/tertiary, shadow-card) — **requer confirmação**
-- ☐ `ReportThemeWrapper` aplica/remove `data-theme` no body
-- ☐ Header/Footer **verificados sem edição** (já em tokens semânticos)
-- ☐ Mock data centralizado em `report-mock-data.ts`
-- ☐ Route `/report/example` com meta noindex
-- ☐ 12 secções renderizadas em ordem (header, key metrics, temporal, benchmark, formats, competitors, top posts, heatmap, best days, hashtags+keywords, AI insights, footer)
-- ☐ Temporal chart com 3 séries suaves + área + tooltip custom + chips toggle
-- ☐ Heatmap 7×24 com 5 níveis de azul + 3 best slots
-- ☐ Best days BarChart com bar líder destacada
-- ☐ Cards: bg-surface-secondary, border subtle, rounded-xl, shadow-card
-- ☐ Mobile: cards stack 1-col, charts responsive
-- ☐ Landing (`/`) confirma intacta em dark
-- ☐ `LOCKED_FILES.md` + `mem://constraints/locked-files` atualizados
-
-### Pergunta bloqueante antes de implementar
-
-`src/styles.css` está em `LOCKED_FILES.md` e o prompt **não concede permissão explícita** para o editar (só Header, Footer, AppShell). Mas a integração do tokens-light **exige**:
-1. Uma linha `@import "./styles/tokens-light.css";` (sem isto o ficheiro de tokens não é carregado)
-2. Adicionar `--color-tint-*`, `--color-accent-secondary`, `--color-accent-tertiary`, `--color-shadow-card` ao `@theme inline` (sem isto as classes `bg-tint-primary`, `bg-accent-tertiary` etc. não existem em Tailwind)
-
-**Sem permissão para editar `styles.css`, esta tarefa não pode ser executada como especificada.** Alternativa puramente cosmética seria escrever todas as cores via `style={{ background: 'rgb(var(--tint-primary))' }}` inline — mas isto viola a regra "nunca hardcode colors fora do token system" e fica inconsistente com o resto do projeto.
-
-**Pedido**: confirmar permissão para edição cirúrgica de `src/styles.css` (apenas adicionar import + novos tokens, sem alterar existentes), OU autorizar o uso de inline styles com CSS vars como fallback.
+- ☐ `<PostAnalysisConversionLayer>` criado com 3 estados visuais
+- ☐ Inserido entre concorrentes e `<PremiumLockedSection>` no dashboard
+- ☐ State lifted em `<PublicAnalysisDashboard>` (`conversionState` + setter)
+- ☐ `<ReportGateModal>` ganha `onRequestOutcome` opcional, sem mudar UX
+- ☐ Nudge inline "receber também por email" só no estado `acquisition`
+- ☐ 3 cards de pricing: 3€ pontual, Pro (recomendado), Agency
+- ☐ Pro/Agency = `mailto:` (real, honesto), sem fake checkout
+- ☐ `<PremiumLockedSection>` adapta copy do CTA principal quando `requested`
+- ☐ Mobile 375px validado, stack vertical
+- ☐ Copy pt-PT impessoal, sem pt-BR, sem "Queres/Tens/Podes"
+- ☐ Zero ficheiros locked tocados
+- ☐ Sem novas dependências, sem schema, sem endpoints
 
