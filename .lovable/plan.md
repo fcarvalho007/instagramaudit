@@ -2,38 +2,29 @@
 
 ## Entendimento
 
-**1. Fluxo landing → analyze → gate**: hero action bar → `/analyze/$username` → `<PublicAnalysisDashboard>` (header, métricas, benchmark, concorrentes, premium gate) → modal já real (server route + Supabase).
+**1. Fluxo landing → analyze → gate**: hero → `/analyze/$username` → `<PublicAnalysisDashboard>` (header, métricas, benchmark real, concorrentes mock, premium gate real) → modal real (server route + Supabase).
 
-**2. Rota `/analyze/$username`**: SSR friendly, chama `getMockAnalysis(username)` (determinístico via hash do handle) e passa `data` ao dashboard. Sem loader, sem fetch, sem error/notFound boundaries ainda.
+**2. Rota `/analyze/$username`**: SSR direto, chama `getMockAnalysis(username)` síncrono e renderiza dashboard. Sem loader, sem fetch, sem error/notFound boundaries.
 
-**3. Partes já reais no fluxo público**:
-- Captura de leads (`/api/request-full-report`) — server route + service role + Supabase (`leads` + `report_requests`).
-- Quota local (localStorage).
-- Validação de username, navegação, design system, modal premium.
+**3. Ainda mock-based**: header (handle, displayName, categoria, followers, gradient), métricas-chave (engagement, postsAnalyzed, weeklyFrequency, dominantFormat, dominantFormatShare), concorrentes (handles + engagement), premium teasers. **Real**: benchmark positioning (engine pura) + captura de leads.
 
-**4. Partes ainda provisórias / mock**:
-- **Tudo o que é dados de análise**: profile, métricas, benchmark, concorrentes, premium teasers — todos derivados de `getMockAnalysis()`.
-- Sem Apify, sem cache, sem persistência de análises, sem backend de análise.
+**4. Papel do Apify**: source-of-truth de dados públicos do Instagram via dois actors — `instagram-profile-scraper` (perfil: bio, followers, posts_count, verified, avatar) e `instagram-post-scraper` (publicações recentes: tipo, likes, comments, timestamp). Boundary servidor (token nunca no browser); resposta crua nunca exposta — frontend recebe shape normalizado.
 
-**5. Porquê o benchmark deve ser real antes dos concorrentes**: o benchmark é a peça que dá *contexto interno* a uma única conta — depende só de métricas próprias + tabela de referência. Concorrentes exigem scraping adicional (Apify), gestão de quotas, cache cruzada. Tornar benchmark real primeiro: (a) elimina dependência de hash determinístico no número mais visível do dashboard, (b) cria a camada de configuração reutilizável que os concorrentes vão consumir, (c) é entregável sem nova dependência externa.
+**5. Porquê só perfil primário agora**: scraping de concorrentes duplica custo Apify e exige cache/dedup; benchmark v2 precisa de dataset estatístico; PDF/email exigem Resend+react-pdf. Limitar a 1 perfil + 12 posts permite: (a) validar contracto Apify→server→UI, (b) custo controlado por análise, (c) primeira sensação real sem destabilizar o resto.
 
 ---
 
 ## Discrepância arquitectural a resolver
 
-**A spec assume um "Edge Function de análise pública" que enriquece a resposta com `benchmark_positioning`. Esse endpoint NÃO existe.** A única coisa que a rota `/analyze/$username` faz é correr `getMockAnalysis()` em SSR. O único endpoint server real é `/api/request-full-report` (captura de leads, irrelevante aqui).
+A spec pede **Supabase Edge Function (Deno em `supabase/functions/`)**. Project Knowledge diz explicitamente: *"Do NOT use Supabase Edge Functions. Use TanStack Start's built-in server capabilities instead."* Mesma decisão dos prompts anteriores (`/api/request-full-report`).
 
-Opções:
+**Decisão**: server route TanStack `src/routes/api/analyze-public-v1.ts` (POST). Cumpre intenção (boundary server-side com secret), runtime Cloudflare Worker, sem infra Deno. Nome preserva a semântica `analyze-public-v1`.
 
-**A. Criar um server route `/api/analyze/$username`** que faz o "mock + benchmark enrichment" no servidor, e mudar a rota para fazer fetch via loader.
-- Prós: cumpre literalmente a spec ("Edge Function enrichment").
-- Contras: introduz fetch+loader+boundaries para zero ganho real (os dados continuam mock); o "enrichment" está a acontecer em código que vai ser deitado fora quando o Apify entrar; cria infra que será reescrita.
+---
 
-**B. Criar a engine de benchmark como módulo puro** (`src/lib/benchmark/`) que recebe `{ followers, engagement, dominantFormat }` e devolve `BenchmarkPositioning`. Chamar essa engine **dentro** de `getMockAnalysis()` (substitui o cálculo `reference` baseado em hash) ou no loader da rota. A engine fica isolada, testável, e quando o Apify+Edge Function chegarem é literalmente um `import` dentro do handler server.
-- Prós: cumpre o objectivo real da spec ("benchmark logic in reusable product layer, not in UI"); zero código throwaway; evita fetch fictício; mantém SSR rápido; engine 100% reutilizável depois.
-- Contras: o "Edge Function enrichment" da spec passa a ser "library that any future Edge Function will call" — diferença semântica, não arquitectural.
+## Secret necessário
 
-**Recomendação: B.** A spec optimiza para o estado final (server-side enrichment), mas no estado actual não há server de análise. Construir a engine como módulo puro cumpre a *intenção* (lógica fora da UI, reutilizável, productizada) sem criar plumbing descartável. Quando o Apify+server entrarem, o módulo é importado lá dentro — zero retrabalho.
+`APIFY_TOKEN` (não existe ainda). Será pedido via `add_secret` em Build Mode antes de implementar a chamada Apify. Sem o token, a função devolve erro estruturado calmo (não crashes).
 
 ---
 
@@ -41,108 +32,139 @@ Opções:
 
 | Ficheiro | Acção | Locked? |
 |---|---|---|
-| `src/lib/benchmark/tiers.ts` | **Criar** — `AccountTier` enum + `getTierForFollowers()` + thresholds explícitos (Nano/Micro/Mid/Macro/Mega) | Não |
-| `src/lib/benchmark/reference-data.ts` | **Criar** — tabela 2D `[tier][format] → benchmark engagement %` + labels pt-PT + última actualização | Não |
-| `src/lib/benchmark/engine.ts` | **Criar** — `computeBenchmarkPositioning({ followers, engagement, dominantFormat })` → `BenchmarkPositioning` shape normalizado + fallback `unavailable` | Não |
-| `src/lib/benchmark/types.ts` | **Criar** — `BenchmarkPositioning`, `PositionStatus`, `AccountTier`, `BenchmarkFormat` | Não |
-| `src/lib/mock-analysis.ts` | **Editar** — substituir cálculo aleatório de `reference` por chamada real à engine; expor novo campo `benchmarkPositioning` na `AnalysisData`; manter `benchmark` legacy preenchido a partir do positioning para não partir nada | Não |
-| `src/components/product/analysis-benchmark-block.tsx` | **Editar** — consumir `BenchmarkPositioning` (props nova `positioning`); renderizar tier + formato + delta% + estado; tratar caso `unavailable` com mensagem pt-PT calma | Não |
-| `src/components/product/public-analysis-dashboard.tsx` | **Editar mínimo** — passar `data.benchmarkPositioning` ao block | Não |
+| `src/routes/api/analyze-public-v1.ts` | **Criar** — POST + OPTIONS, valida `instagram_username`, chama Apify (profile + posts), normaliza, devolve shape estável | Não |
+| `src/lib/analysis/apify-client.ts` | **Criar** — `runActor(actorId, input)` via Apify run-sync-get-dataset-items endpoint, server-only (`process.env.APIFY_TOKEN`), timeouts + erros tipados | Não |
+| `src/lib/analysis/normalize.ts` | **Criar** — `normalizeProfile(raw)` + `computeContentSummary(posts)` puro (médias, dominant format, weekly freq) | Não |
+| `src/lib/analysis/types.ts` | **Criar** — `PublicAnalysisResponse` (success + failure shapes) partilhado server/client | Não |
+| `src/lib/analysis/client.ts` | **Criar** — `fetchPublicAnalysis(username)` no browser → `fetch("/api/analyze-public-v1")` | Não |
+| `src/routes/analyze.$username.tsx` | **Editar** — usar TanStack Query (`useQuery`) ou `useState`+`useEffect`; gerir loading/error/success; passar dados reais ao dashboard | Não |
+| `src/components/product/public-analysis-dashboard.tsx` | **Editar mínimo** — aceitar shape novo `{ profile, contentSummary, ... }` para header + métricas; benchmark engine consome `contentSummary`; concorrentes recebem array vazio com placeholder; premium teasers ficam derivados ou fixos | Não |
+| `src/components/product/analysis-header.tsx` | **Editar** — aceitar `avatarUrl` opcional (fallback para gradient); remover `category` (Apify não devolve); badge passa de "Dados de exemplo" para "Análise pública" | Não |
+| `src/components/product/analysis-skeleton.tsx` | **Criar** — loading state premium (skeletons pulse para header + 4 cards + bloco benchmark) | Não |
+| `src/components/product/analysis-error-state.tsx` | **Criar** — estado erro pt-PT calmo com botão "Tentar novamente" | Não |
 
-**Zero ficheiros locked.** Não toco em tokens, layout, modal, server route de leads, types Supabase, `__root.tsx`.
+**Locked files**: `header.tsx` e dashboard **não** estão em `LOCKED_FILES.md` (verificado em `mem://constraints/locked-files`). `tokens.css`, `__root.tsx`, `client.ts/server.ts/types.ts` intocados.
 
 ---
 
-## Engine de benchmark — design
+## Server route — design
 
-### Tiers (thresholds explícitos)
+**Endpoint**: `POST /api/analyze-public-v1`
+
+**Input** (Zod):
+```ts
+{ instagram_username: z.string().regex(/^[A-Za-z0-9._]{1,30}$/) }
+```
+
+**Fluxo**:
+1. Validar payload → 400 `INVALID_USERNAME`
+2. Verificar `process.env.APIFY_TOKEN` → 503 `UPSTREAM_UNAVAILABLE` se ausente
+3. Chamar `instagram-profile-scraper` (run-sync-get-dataset-items, timeout 25s) com `{ usernames: [username] }`
+4. Se vazio → 404 `PROFILE_NOT_FOUND`
+5. Chamar `instagram-post-scraper` com `{ username, resultsLimit: 12 }`
+6. Normalizar → shape estável
+7. Erros Apify → 502 `UPSTREAM_FAILED` + log server-side (sem stack na UI)
+
+**Apify endpoint pattern**:
+```
+POST https://api.apify.com/v2/acts/{actorId}/run-sync-get-dataset-items?token={APIFY_TOKEN}
+```
+
+Actor IDs:
+- `apify/instagram-profile-scraper`
+- `apify/instagram-post-scraper`
+
+---
+
+## Shape normalizado (response contract)
 
 ```ts
-nano:  0       – 9,999     followers
-micro: 10,000  – 49,999
-mid:   50,000  – 249,999
-macro: 250,000 – 999,999
-mega:  1,000,000+
+type PublicAnalysisResponse =
+  | {
+      success: true;
+      profile: {
+        username: string;
+        display_name: string;
+        avatar_url: string | null;
+        bio: string | null;
+        followers_count: number;
+        following_count: number | null;
+        posts_count: number | null;
+        is_verified: boolean;
+      };
+      content_summary: {
+        posts_analyzed: number;
+        dominant_format: "Reels" | "Carrosséis" | "Imagens";
+        average_likes: number;
+        average_comments: number;
+        average_engagement_rate: number; // %
+        estimated_posts_per_week: number;
+      };
+      status: {
+        success: true;
+        data_source: "apify_v1";
+        analyzed_at: string; // ISO
+      };
+    }
+  | {
+      success: false;
+      error_code: "INVALID_USERNAME" | "PROFILE_NOT_FOUND"
+        | "UPSTREAM_FAILED" | "UPSTREAM_UNAVAILABLE";
+      message: string; // pt-PT
+    };
 ```
 
-### Reference data (engagement % esperado, formato × tier)
+**Mapeamento Apify → format dominante**: `Video`/`Reel` → "Reels"; `Sidecar` → "Carrosséis"; `Image`/`GraphImage` → "Imagens". Dominant = mais frequente nos 12 últimos.
 
-Valores baseados em ranges públicos comuns da indústria (Influencer Marketing Hub, HypeAuditor, etc.). Documentados como **v1 baseline editorial** — não tabela definitiva, refinável depois.
+**Engagement rate**: `(avgLikes + avgComments) / followers * 100`.
 
-```
-              Reels   Carrosséis   Imagens
-nano          5.60    4.20         3.10
-micro         3.20    2.40         1.80
-mid           1.80    1.30         0.95
-macro         1.10    0.80         0.55
-mega          0.70    0.50         0.35
-```
+**Weekly frequency**: `posts.length / ((maxDate - minDate) em dias / 7)`, com fallback `posts.length / 4` se janela <7 dias.
 
-### Cálculo
+---
 
-```ts
-function computeBenchmarkPositioning(input): BenchmarkPositioning {
-  if (!input.followers || !input.engagement || !input.dominantFormat) {
-    return { status: "unavailable", reason: "missing_inputs" };
-  }
-  const tier = getTierForFollowers(input.followers);
-  const benchmarkValue = getReference(tier, input.dominantFormat);
-  const delta = input.engagement - benchmarkValue;
-  const deltaPct = (delta / benchmarkValue) * 100;
+## Frontend — fluxo
 
-  // ±10% threshold for "aligned"
-  const positionStatus =
-    deltaPct > 10 ? "above" : deltaPct < -10 ? "below" : "aligned";
+```tsx
+function AnalyzePage() {
+  const { username } = Route.useParams();
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["analysis", username],
+    queryFn: () => fetchPublicAnalysis(username),
+    retry: 1,
+    staleTime: 5 * 60_000,
+  });
 
-  return {
-    status: "available",
-    accountTier: tier,
-    accountTierLabel: TIER_LABELS[tier],            // "Micro (10K–50K)"
-    dominantFormat: input.dominantFormat,
-    benchmarkValue,
-    profileValue: input.engagement,
-    differencePercent: deltaPct,
-    positionStatus,
-    shortExplanation: buildExplanation(positionStatus, tier, format),
-  };
+  if (isLoading) return <AnalysisSkeleton />;
+  if (error || !data?.success) return <AnalysisErrorState onRetry={refetch} message={data?.message} />;
+  return <PublicAnalysisDashboard data={data} />;
 }
 ```
 
-### Shape normalizado (consumido pela UI hoje, server amanhã)
+**Sem fallback silencioso para mock** — failure mostra estado de erro pt-PT explícito. Benchmark e concorrentes:
 
-```ts
-type BenchmarkPositioning =
-  | { status: "available"; accountTier; accountTierLabel; dominantFormat;
-      benchmarkValue; profileValue; differencePercent; positionStatus;
-      shortExplanation }
-  | { status: "unavailable"; reason: "missing_inputs" | "no_reference_for_tier" };
-```
-
-Espelha exactamente o que um futuro server route devolveria — sem retrabalho.
+- **Benchmark**: alimentado por `content_summary.average_engagement_rate` + `profile.followers_count` + `content_summary.dominant_format` na engine real (já pronta).
+- **Concorrentes**: bloco fica intacto mas recebe array vazio + placeholder pt-PT *"Comparação com concorrentes disponível em breve"*. Mantém estrutura visual.
+- **Premium teasers**: valores fixos sensatos (não derivados de mock determinístico) para o gate manter o aspecto premium.
 
 ---
 
-## UI — alterações no benchmark block
+## TanStack Query setup
 
-- Header mantém-se. Subtítulo passa a ser dinâmico: *"Benchmark · {dominantFormat} · {accountTierLabel}"*.
-- Barra mantém visual; `max` deixa de ser `1.8` hardcoded — usa `Math.max(profileValue, benchmarkValue) * 1.4`.
-- Badge: 3 estados pt-PT — "Acima do benchmark" / "Alinhado com o benchmark" / "Abaixo do benchmark".
-- Linha numérica: adicionar `differencePercent` com sinal (`+18%` / `−12%`).
-- Helper text: `shortExplanation` da engine.
-- Estado `unavailable`: bloco mantém estrutura, mostra mensagem pt-PT calma — *"Não foi possível calcular o benchmark neste momento. A comparação será apresentada assim que os dados estiverem disponíveis."* Sem barra, sem badge.
+Project Knowledge exige QueryClient em `__root.tsx`. **`__root.tsx` está locked** — verificar se já tem `QueryClientProvider`. Se sim, reutilizar. Se não, **STOP e pedir permissão** para tocar (provável adição mínima de provider).
+
+Verificação rápida será o primeiro passo em Build Mode antes de qualquer outra coisa.
 
 ---
 
-## Copy pt-PT (impessoal)
+## Erros UI (pt-PT)
 
-- Title: *"Posicionamento face ao benchmark"* (mantém)
-- Sub: *"Comparação com contas do mesmo escalão e formato dominante"* (nova helper line)
-- Status: *"Acima do benchmark"* / *"Alinhado com o benchmark"* / *"Abaixo do benchmark"*
-- Explanations exemplo:
-  - above: *"Envolvimento {X}% acima do benchmark para contas {tier} no formato {formato}."*
-  - aligned: *"Envolvimento em linha com o benchmark para contas {tier} no formato {formato}."*
-  - below: *"Envolvimento {X}% abaixo do benchmark para contas {tier} no formato {formato}. Margem para refinar formato dominante e pacing."*
-- Fallback: *"Não foi possível calcular o benchmark neste momento."*
+| Código | Mensagem |
+|---|---|
+| `INVALID_USERNAME` | "Username inválido. Verificar e tentar novamente." |
+| `PROFILE_NOT_FOUND` | "Não foi possível encontrar este perfil. Verificar o username." |
+| `UPSTREAM_UNAVAILABLE` | "Serviço de análise temporariamente indisponível." |
+| `UPSTREAM_FAILED` | "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes." |
+| Network error | "Falha de ligação. Tentar novamente." |
 
 ---
 
@@ -150,33 +172,41 @@ Espelha exactamente o que um futuro server route devolveria — sem retrabalho.
 
 | Guardrail | Estado |
 |---|---|
-| Sem competitor scraping / dados reais | ✅ (concorrentes intactos no mock) |
+| Sem competitor scraping | ✅ (só perfil primário) |
+| Sem benchmark v2 | ✅ (engine v1 reutilizada) |
 | Sem PDF / email / pagamentos / auth | ✅ |
-| Sem novas dependências | ✅ (zod já no projecto, nada novo) |
-| Sem redesign | ✅ (block mantém estrutura visual, só conteúdo melhora) |
-| Lógica de benchmark fora da UI | ✅ (módulo `src/lib/benchmark/`) |
-| Sem hardcode de cores/fontes/spacing | ✅ |
-| Zero locked files | ✅ |
+| Sem novas dependências | ✅ (`@tanstack/react-query` já existe via setup; Zod já existe) |
+| Apify só server-side | ✅ (`process.env.APIFY_TOKEN` em server route) |
+| Sem secrets na UI | ✅ |
+| Sem redesign | ✅ (componentes existentes mantidos; apenas skeleton + error novos) |
 | pt-PT impessoal | ✅ |
-| Comentários técnicos em inglês | ✅ |
-| Future-ready para Apify+server | ✅ (engine pura, importável de qualquer server route) |
+| Comentários em inglês | ✅ |
+| Locked files | ✅ (nenhum tocado; `__root.tsx` verificado primeiro) |
+| Future-ready | ✅ (cache/persistência/concorrentes plugam em cima do mesmo route) |
+
+---
+
+## Confirmações antes de implementar
+
+1. **Aprovas server route TanStack `/api/analyze-public-v1`** em vez de Supabase Edge Function (Deno)? Mesma decisão dos prompts anteriores.
+2. **Aprovas pedir o secret `APIFY_TOKEN`** em Build Mode (via `add_secret`) antes de testar a chamada real?
+3. **Limite de 12 posts** está bem para v1 (controlo de custo)?
+4. **`mock-analysis.ts` mantém-se** como utilitário de fallback/dev (não é importado pela rota real, mas fica disponível para a página `design-system`)?
 
 ---
 
 ## Checkpoints
 
-- ☐ `src/lib/benchmark/` criado (tiers + reference-data + engine + types)
-- ☐ Tier por `followers_count` implementado e legível
-- ☐ Cálculo de positioning com 3 estados (`above`/`aligned`/`below`)
-- ☐ Estado `unavailable` com fallback pt-PT
-- ☐ `mock-analysis.ts` integra a engine real (substitui `reference` aleatório)
-- ☐ `analysis-benchmark-block.tsx` consome shape normalizado
-- ☐ Concorrentes intencionalmente fora de scope
-- ☐ Sem novas dependências, sem locked files, sem auth/email/PDF/pagamentos
-
----
-
-## Nota de comunicação ao utilizador
-
-A spec pede para enriquecer "a Edge Function existente". Não existe nenhuma Edge Function de análise pública neste projecto — a rota `/analyze/$username` corre o mock em SSR directo. Construo a engine como módulo puro reutilizável (`src/lib/benchmark/`) que cumpre 100% a intenção arquitectural ("benchmark logic in reusable product layer, not in UI"). Quando o backend Apify+análise existir num prompt futuro, o handler server faz `import { computeBenchmarkPositioning }` e devolve o mesmo shape — zero retrabalho.
+- ☐ Server route `/api/analyze-public-v1` criada com validação Zod
+- ☐ Cliente Apify server-only com timeout + erros tipados
+- ☐ Normalização (perfil + content summary) em módulo puro
+- ☐ Frontend chama route via `useQuery`, gere loading/error/success
+- ☐ Loading skeleton premium implementado
+- ☐ Error state pt-PT calmo com retry implementado
+- ☐ Header e métricas-chave consomem dados reais
+- ☐ Benchmark engine consome métricas reais (sem mudar o engine)
+- ☐ Concorrentes ficam com placeholder pt-PT (sem scraping)
+- ☐ Sem cache, persistência, PDF, email, auth, pagamentos
+- ☐ `APIFY_TOKEN` apenas server-side
+- ☐ Zero locked files tocados (confirmar `__root.tsx` antes)
 
