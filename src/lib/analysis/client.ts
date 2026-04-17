@@ -8,14 +8,22 @@ import type { PublicAnalysisResponse } from "./types";
 
 export async function fetchPublicAnalysis(
   username: string,
+  competitorUsernames: string[] = [],
 ): Promise<PublicAnalysisResponse> {
   const cleaned = username.trim().replace(/^@/, "");
+  const competitors = competitorUsernames
+    .map((c) => c.trim().replace(/^@/, ""))
+    .filter((c) => c.length > 0)
+    .slice(0, 2);
 
   try {
     const res = await fetch("/api/analyze-public-v1", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ instagram_username: cleaned }),
+      body: JSON.stringify({
+        instagram_username: cleaned,
+        competitor_usernames: competitors,
+      }),
     });
 
     const json = (await res.json().catch(() => null)) as

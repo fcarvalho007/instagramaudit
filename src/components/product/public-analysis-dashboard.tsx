@@ -4,6 +4,7 @@ import type { PublicAnalysisSuccess } from "@/lib/analysis/types";
 import { formatPercent } from "@/lib/mock-analysis";
 
 import { AnalysisBenchmarkBlock } from "./analysis-benchmark-block";
+import { AnalysisCompetitorComparison } from "./analysis-competitor-comparison";
 import { AnalysisHeader } from "./analysis-header";
 import { AnalysisMetricCard } from "./analysis-metric-card";
 import { PremiumLockedSection } from "./premium-locked-section";
