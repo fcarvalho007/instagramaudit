@@ -38,6 +38,9 @@ import type {
   PublicAnalysisResponse,
   PublicAnalysisSuccess,
 } from "@/lib/analysis/types";
+import { computeBenchmarkPositioning } from "@/lib/benchmark/engine";
+import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data";
+import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 
 const PROFILE_ACTOR = "apify/instagram-profile-scraper";
 const POST_ACTOR = "apify/instagram-post-scraper";
