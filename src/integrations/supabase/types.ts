@@ -14,35 +14,91 @@ export type Database = {
   }
   public: {
     Tables: {
-      report_requests: {
+      leads: {
         Row: {
           company: string | null
           created_at: string
           email: string
+          email_normalized: string
           id: string
           name: string
-          rgpd_accepted_at: string
-          username: string
+          source: string
+          updated_at: string
         }
         Insert: {
           company?: string | null
           created_at?: string
           email: string
+          email_normalized: string
           id?: string
           name: string
-          rgpd_accepted_at: string
-          username: string
+          source?: string
+          updated_at?: string
         }
         Update: {
           company?: string | null
           created_at?: string
           email?: string
+          email_normalized?: string
           id?: string
           name?: string
-          rgpd_accepted_at?: string
-          username?: string
+          source?: string
+          updated_at?: string
         }
         Relationships: []
+      }
+      report_requests: {
+        Row: {
+          competitor_usernames: Json
+          created_at: string
+          delivery_status: string
+          id: string
+          instagram_username: string
+          is_free_request: boolean
+          lead_id: string
+          metadata: Json
+          request_month: string
+          request_source: string
+          request_status: string
+          updated_at: string
+        }
+        Insert: {
+          competitor_usernames?: Json
+          created_at?: string
+          delivery_status?: string
+          id?: string
+          instagram_username: string
+          is_free_request?: boolean
+          lead_id: string
+          metadata?: Json
+          request_month?: string
+          request_source?: string
+          request_status?: string
+          updated_at?: string
+        }
+        Update: {
+          competitor_usernames?: Json
+          created_at?: string
+          delivery_status?: string
+          id?: string
+          instagram_username?: string
+          is_free_request?: boolean
+          lead_id?: string
+          metadata?: Json
+          request_month?: string
+          request_source?: string
+          request_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
