@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReportExampleRouteImport } from './routes/report.example'
 import { Route as ApiSendReportEmailRouteImport } from './routes/api/send-report-email'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
 import { Route as ApiGenerateReportPdfRouteImport } from './routes/api/generate-report-pdf'
@@ -37,6 +38,11 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportExampleRoute = ReportExampleRouteImport.update({
+  id: '/report/example',
+  path: '/report/example',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSendReportEmailRoute = ApiSendReportEmailRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/report/example': typeof ReportExampleRoute
   '/api/admin/auth': typeof ApiAdminAuthRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/report/example': typeof ReportExampleRoute
   '/api/admin/auth': typeof ApiAdminAuthRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/report/example': typeof ReportExampleRoute
   '/api/admin/auth': typeof ApiAdminAuthRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/report/example'
     | '/api/admin/auth'
     | '/api/admin/logout'
     | '/api/admin/regenerate-pdf'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/report/example'
     | '/api/admin/auth'
     | '/api/admin/logout'
     | '/api/admin/regenerate-pdf'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/report/example'
     | '/api/admin/auth'
     | '/api/admin/logout'
     | '/api/admin/regenerate-pdf'
@@ -205,6 +217,7 @@ export interface RootRouteChildren {
   ApiGenerateReportPdfRoute: typeof ApiGenerateReportPdfRoute
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
   ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
+  ReportExampleRoute: typeof ReportExampleRoute
   ApiAdminAuthRoute: typeof ApiAdminAuthRoute
   ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
   ApiAdminRegeneratePdfRoute: typeof ApiAdminRegeneratePdfRoute
@@ -233,6 +246,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report/example': {
+      id: '/report/example'
+      path: '/report/example'
+      fullPath: '/report/example'
+      preLoaderRoute: typeof ReportExampleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/send-report-email': {
@@ -338,6 +358,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGenerateReportPdfRoute: ApiGenerateReportPdfRoute,
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
   ApiSendReportEmailRoute: ApiSendReportEmailRoute,
+  ReportExampleRoute: ReportExampleRoute,
   ApiAdminAuthRoute: ApiAdminAuthRoute,
   ApiAdminLogoutRoute: ApiAdminLogoutRoute,
   ApiAdminRegeneratePdfRoute: ApiAdminRegeneratePdfRoute,
@@ -347,3 +368,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
