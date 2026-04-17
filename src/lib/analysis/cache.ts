@@ -93,21 +93,21 @@ export async function storeSnapshot(params: {
 }): Promise<void> {
   const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
   try {
+    const row = {
+      cache_key: params.cacheKey,
+      instagram_username: params.instagramUsername,
+      competitor_usernames: params.competitorUsernames,
+      normalized_payload: params.normalizedPayload,
+      provider: "apify",
+      analysis_status: "ready",
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    };
     const { error } = await supabaseAdmin
       .from("analysis_snapshots")
-      .upsert(
-        {
-          cache_key: params.cacheKey,
-          instagram_username: params.instagramUsername,
-          competitor_usernames: params.competitorUsernames,
-          normalized_payload: params.normalizedPayload,
-          provider: "apify",
-          analysis_status: "ready",
-          expires_at: expiresAt,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "cache_key" },
-      );
+      // Cast: generated types treat upsert payload as InsertSingle which is
+      // overly strict about mixing insert + update fields in one call.
+      .upsert(row as never, { onConflict: "cache_key" });
     if (error) {
       console.error("[analysis/cache] store error", error.message);
     }
