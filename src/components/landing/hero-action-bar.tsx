@@ -6,13 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InstagramGlyph } from "./instagram-glyph";
 
+// Instagram username spec: 1-30 chars, letters/numbers/dots/underscores only
+const USERNAME_REGEX = /^[A-Za-z0-9._]{1,30}$/;
+
 function extractUsername(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
   // Handle URLs like https://instagram.com/handle/ or @handle
   const urlMatch = trimmed.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
-  if (urlMatch) return urlMatch[1];
-  return trimmed.replace(/^@/, "").replace(/\/+$/g, "");
+  if (urlMatch) return urlMatch[1].toLowerCase();
+  return trimmed.replace(/^@/, "").replace(/\/+$/g, "").toLowerCase();
 }
 
 export function HeroActionBar() {
@@ -26,6 +29,10 @@ export function HeroActionBar() {
     const username = extractUsername(value);
     if (!username) {
       setError("Inserir um username válido para continuar");
+      return;
+    }
+    if (!USERNAME_REGEX.test(username)) {
+      setError("Username inválido. Apenas letras, números, ponto e underscore.");
       return;
     }
     setError(null);
