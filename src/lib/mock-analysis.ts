@@ -2,7 +2,13 @@
  * Deterministic mock analysis data generator.
  * Same username → same output (consistent UX across refreshes).
  * Future: replace with real Apify+Supabase fetch in route loader.
+ *
+ * Benchmark positioning is computed by the real benchmark engine
+ * (src/lib/benchmark/) — only the upstream profile metrics remain mocked.
  */
+
+import { computeBenchmarkPositioning } from "./benchmark/engine";
+import type { BenchmarkPositioning } from "./benchmark/types";
 
 export interface AnalysisProfile {
   handle: string;
@@ -46,6 +52,7 @@ export interface AnalysisData {
   profile: AnalysisProfile;
   metrics: AnalysisMetrics;
   benchmark: AnalysisBenchmark;
+  benchmarkPositioning: BenchmarkPositioning;
   competitors: AnalysisCompetitor[];
   premiumTeasers: AnalysisPremiumTeasers;
 }
@@ -87,16 +94,31 @@ export function getMockAnalysis(rawUsername: string): AnalysisData {
 
   const followers = 2400 + (seed % 180000);
   const engagement = parseFloat((0.32 + ((seed % 130) / 100)).toFixed(2)); // 0.32 - 1.62
-  const reference = parseFloat((0.45 + ((seed % 35) / 100)).toFixed(2)); // 0.45 - 0.80
   const dominantFormat = pick(FORMATS, seed);
   const dominantFormatShare = 48 + (seed % 35);
 
+  // Real benchmark engine — single source of truth for positioning
+  const benchmarkPositioning = computeBenchmarkPositioning({
+    followers,
+    engagement,
+    dominantFormat,
+  });
+
+  // Legacy benchmark shape — derived from engine result for back-compat
+  // with consumers that haven't migrated yet (e.g., metric card hint).
+  const reference =
+    benchmarkPositioning.status === "available"
+      ? benchmarkPositioning.benchmarkValue
+      : engagement;
+
   const position: AnalysisBenchmark["position"] =
-    engagement > reference + 0.05
-      ? "above"
-      : engagement < reference - 0.05
-        ? "below"
-        : "on";
+    benchmarkPositioning.status === "available"
+      ? benchmarkPositioning.positionStatus === "above"
+        ? "above"
+        : benchmarkPositioning.positionStatus === "below"
+          ? "below"
+          : "on"
+      : "on";
 
   const positionHelper: Record<AnalysisBenchmark["position"], string> = {
     above: "Posicionamento acima do benchmark do segmento. Margem para escalar frequência sem perder envolvimento.",
@@ -131,6 +153,7 @@ export function getMockAnalysis(rawUsername: string): AnalysisData {
       helperText: positionHelper[position],
       formatLabel: `Benchmark · ${dominantFormat}`,
     },
+    benchmarkPositioning,
     competitors: [
       { handle, engagement, isSelf: true },
       {

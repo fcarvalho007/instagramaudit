@@ -17,7 +17,11 @@ interface PublicAnalysisDashboardProps {
 export function PublicAnalysisDashboard({
   data,
 }: PublicAnalysisDashboardProps) {
-  const { profile, metrics, benchmark, competitors, premiumTeasers } = data;
+  const { profile, metrics, benchmarkPositioning, competitors, premiumTeasers } = data;
+  const benchmarkReference =
+    benchmarkPositioning.status === "available"
+      ? benchmarkPositioning.benchmarkValue
+      : metrics.engagement;
 
   return (
     <div className="bg-surface-base">
@@ -41,9 +45,9 @@ export function PublicAnalysisDashboard({
               label="Envolvimento médio"
               value={formatPercent(metrics.engagement)}
               hint={
-                metrics.engagement > benchmark.reference
-                  ? `+${formatPercent(metrics.engagement - benchmark.reference)} vs benchmark`
-                  : `${formatPercent(metrics.engagement - benchmark.reference)} vs benchmark`
+                metrics.engagement > benchmarkReference
+                  ? `+${formatPercent(metrics.engagement - benchmarkReference)} vs benchmark`
+                  : `${formatPercent(metrics.engagement - benchmarkReference)} vs benchmark`
               }
               emphasis
             />
@@ -65,7 +69,7 @@ export function PublicAnalysisDashboard({
           </div>
         </section>
 
-        <AnalysisBenchmarkBlock benchmark={benchmark} />
+        <AnalysisBenchmarkBlock positioning={benchmarkPositioning} />
 
         <AnalysisCompetitorComparison competitors={competitors} />
 
