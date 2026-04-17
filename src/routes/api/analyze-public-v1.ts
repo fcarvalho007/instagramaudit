@@ -174,10 +174,18 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
         const cacheKey = buildCacheKey(primary, competitors);
 
+        // Load benchmark references upfront (cached in-memory for 10 min) so
+        // both cache-hit and fresh-path responses can embed a positioning
+        // computed against the cloud-managed dataset.
+        const benchmarkData = await loadBenchmarkReferences();
+
         // 1) Cache lookup. A non-expired snapshot short-circuits the provider.
         const existing = await lookupSnapshot(cacheKey);
         if (existing && !forceRefresh && isFresh(existing)) {
-          return jsonResponse(buildCachedResponse(existing, "cache"), 200);
+          return jsonResponse(
+            buildCachedResponse(existing, "cache", benchmarkData),
+            200,
+          );
         }
 
         const allHandles = [primary, ...competitors];
