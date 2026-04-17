@@ -17,7 +17,11 @@ interface PublicAnalysisDashboardProps {
 export function PublicAnalysisDashboard({
   data,
 }: PublicAnalysisDashboardProps) {
-  const { profile, metrics, benchmark, benchmarkPositioning, competitors, premiumTeasers } = data;
+  const { profile, metrics, benchmarkPositioning, competitors, premiumTeasers } = data;
+  const benchmarkReference =
+    benchmarkPositioning.status === "available"
+      ? benchmarkPositioning.benchmarkValue
+      : metrics.engagement;
 
   return (
     <div className="bg-surface-base">
