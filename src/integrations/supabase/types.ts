@@ -139,6 +139,10 @@ export type Database = {
           is_free_request: boolean
           lead_id: string
           metadata: Json
+          pdf_error_message: string | null
+          pdf_generated_at: string | null
+          pdf_status: string
+          pdf_storage_path: string | null
           request_month: string
           request_source: string
           request_status: string
@@ -154,6 +158,10 @@ export type Database = {
           is_free_request?: boolean
           lead_id: string
           metadata?: Json
+          pdf_error_message?: string | null
+          pdf_generated_at?: string | null
+          pdf_status?: string
+          pdf_storage_path?: string | null
           request_month?: string
           request_source?: string
           request_status?: string
@@ -169,6 +177,10 @@ export type Database = {
           is_free_request?: boolean
           lead_id?: string
           metadata?: Json
+          pdf_error_message?: string | null
+          pdf_generated_at?: string | null
+          pdf_status?: string
+          pdf_storage_path?: string | null
           request_month?: string
           request_source?: string
           request_status?: string
