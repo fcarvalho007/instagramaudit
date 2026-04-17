@@ -113,7 +113,11 @@ export function PublicAnalysisDashboard({
           competitors={data.competitors}
         />
 
-        <PremiumLockedSection teasers={PREMIUM_TEASERS} username={profile.username} />
+        <PremiumLockedSection
+          teasers={PREMIUM_TEASERS}
+          username={profile.username}
+          analysisSnapshotId={data.analysis_snapshot_id}
+        />
       </Container>
     </div>
   );
