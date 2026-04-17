@@ -20,6 +20,10 @@ import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { FREE_MONTHLY_LIMIT } from "@/lib/quota";
+import {
+  runInBackground,
+  runReportPipeline,
+} from "@/lib/orchestration/run-report-pipeline";
 
 const PayloadSchema = z.object({
   email: z.string().trim().email().max(255),
