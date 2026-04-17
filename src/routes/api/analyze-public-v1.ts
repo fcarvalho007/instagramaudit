@@ -43,8 +43,9 @@ import type { BenchmarkData } from "@/lib/benchmark/reference-data";
 import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 
-const PROFILE_ACTOR = "apify/instagram-profile-scraper";
-const POST_ACTOR = "apify/instagram-post-scraper";
+// Unified Apify actor — returns profile details with `latestPosts[]` embedded
+// in a single call per handle. Replaces the previous two-actor split.
+const UNIFIED_ACTOR = "apify/instagram-scraper";
 const POSTS_LIMIT = 12;
 const MAX_COMPETITORS = 2;
 
