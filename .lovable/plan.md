@@ -1,68 +1,97 @@
 
-## Diagnóstico
 
-O problema não está no facto de o token ser “o mesmo”. A evidência que partilhaste indica que o bloqueio é do **plano**, não do token.
+# Auditoria — bugs e refinamentos
 
-### O que foi validado
-- O código atual já usa o ator certo: `apify/instagram-scraper`
-- A chamada é server-side via `run-sync-get-dataset-items`
-- O token é lido de `process.env.APIFY_TOKEN`
-- Não há sinal, no código lido, de fallback para os dois atores antigos
+Inspeção end-to-end do código. Achados ordenados por severidade. **Nenhuma alteração feita** — auditoria apenas.
 
-### Evidência direta dos PDFs
-1. **PDF de billing**
-   - O plano **Creator** mostra: **Access to Actors = Universal only**
-   - Não mostra acesso a “All”
+---
 
-2. **PDF do ator**
-   - A própria consola do ator diz:
-   - **“You cannot run this public Actor on your current Creator Plan. The Creator Plan does not include permission to run public Actors.”**
+## A. Bugs (corrigir)
 
-3. **Página pública do ator**
-   - `apify/instagram-scraper` é um **public Actor** da Store
+### A1. Hero viola regra de pt-PT impessoal — **alta prioridade**
+`src/components/landing/hero-section.tsx:17`
+```
+"Analisa o teu Instagram em menos de 30 segundos."
+```
+Project Knowledge proíbe explicitamente "Analisa", "o teu", "tu". Deve ser:
+> "Analisar qualquer perfil de Instagram em menos de 30 segundos."
 
-### Conclusão
-Sim: **o plano Creator não permite correr este ator público**.  
-Se o `APIFY_TOKEN` pertence à conta Creator, o comportamento esperado continua a ser **403 / public-actor-disabled**.
+Esta é a primeira frase que o utilizador vê. Quebra a identidade de tom em todo o resto do produto.
 
-Ou seja:
-- não é um bug do endpoint `/api/analyze-public-v1`
-- não é um problema de normalização
-- não é por o token estar desatualizado, se ele for mesmo da conta Creator
-- o PDF que partilhaste já contém a explicação do bloqueio
+### A2. Concorrentes na hero são UI mortos
+`src/components/landing/hero-action-bar.tsx:127-140`
+Os dois `Input` de concorrentes não têm `value`/`onChange` nem são lidos no `handleSubmit`. O utilizador escreve `@adidas` + `@puma`, clica "Analisar", navega para `/analyze/nike` **sem `?vs=`**. Promessa visível ≠ comportamento.
 
-## Implicação prática
-Mesmo com o token correto, enquanto a conta ligada ao `APIFY_TOKEN` estiver em **Creator**, este ator continuará bloqueado.
+Correção mínima: ligar estado + passar como `search.vs="adidas,puma"` no `navigate`.
 
-## Menor próxima ação
-Escolher uma destas vias:
+### A3. Token Apify exposto no query string
+`src/lib/analysis/apify-client.ts:57`
+```ts
+url.searchParams.set("token", token);
+```
+Apesar de server-side, o token aparece em **logs do Worker, do Apify, e em qualquer trace intermédio**. A própria UI do Apify avisa: "URLs contain your API token. Don't share." Solução: header `Authorization: Bearer <token>`.
 
-1. **Upgrade para Starter (ou superior)**  
-   - mantém a arquitetura atual
-   - depois repete-se o smoke test
+Não é crítico funcionalmente, mas é higiene de segurança real (não cosmética).
 
-2. **Mudar de estratégia de scraping**
-   - deixar de depender deste public Actor
-   - procurar um ator/abordagem compatível com Creator
-   - isso já implica novo plano técnico
+### A4. Pipeline depende de `INTERNAL_API_TOKEN` mas não está documentado como obrigatório
+`run-report-pipeline.ts:142-149` falha com `failed_pdf` se o token não existir. O secret está configurado, mas o `request_status` resultante é confuso (a falha é de email, não de PDF). Refinamento: estado `failed_config` ou `failed_email_auth`.
 
-3. **Hardening separado depois**
-   - o cliente Apify atual ainda envia o token na query string server-side
-   - isso é um tema de segurança/higiene, mas **não é a causa deste 403**
+### A5. Race condition em `lookupSnapshot` + `storeSnapshot`
+Duas requests concorrentes ao mesmo handle podem fazer dois scrapes Apify simultâneos (custo duplicado). Aceitável em v1, mas vale registar.
 
-## Plano de trabalho se quiseres avançar
-- Confirmar qual das 2 vias queres:
-  - manter Apify Store e fazer upgrade para Starter+
-  - ou redesenhar a integração para não depender deste public Actor
-- Depois, em modo de execução:
-  - revalidar o `APIFY_TOKEN`
-  - repetir o smoke test end-to-end
-  - confirmar se a análise volta a 200 e se o pipeline continua até PDF/email
+---
 
-## Checkpoint
-- ☑ Código atual alinhado com o ator unificado
-- ☑ PDFs lidos e usados como prova
-- ☑ Causa isolada: **Creator não permite este public Actor**
-- ☑ Não parece ser bug de código
-- ☐ Decidir entre **upgrade para Starter+** ou **migrar a integração**
-- ☐ Só depois repetir o smoke test real
+## B. Refinamentos (vale fazer)
+
+### B1. Sender de email ainda em sandbox Resend
+`send-report-email.ts:32`: `onboarding@resend.dev`. **Só consegue entregar ao dono da conta Resend**. Para enviar a `frederico.carvalho@digitalfc.pt` é preciso domínio verificado. Bloqueia o smoke test E2E mesmo após resolver o Apify.
+
+### B2. PREMIUM_TEASERS hardcoded no dashboard
+`public-analysis-dashboard.tsx:25-30`: valores fixos (`"12K – 38K"`, `3 insights`, `5 oportunidades`). Comentário admite "until the real engine ships". Risco: utilizador vê os mesmos números para perfis muito diferentes. Pode parecer pouco credível.
+
+### B3. Falta um botão "Atualizar análise"
+Cache de 24h é correto, mas se o utilizador vê dados de ontem não tem como forçar refresh. O endpoint já suporta `?refresh=1` — falta apenas o botão.
+
+### B4. `estimated_posts_per_week` — fallback de 4 semanas é otimista
+`normalize.ts:175,178`: quando há <2 timestamps ou janela <7 dias, divide por 4. Para um perfil que postou 12 posts em 1 semana, devolve `3 posts/sem` em vez de `12`. Fórmula assimétrica.
+
+### B5. `data_source: "stale"` não é comunicado na UI
+A resposta marca dados servidos por stale-while-error, mas o dashboard não mostra "dados de X dias atrás · provider indisponível". Utilizador não sabe.
+
+### B6. Erros do orchestrator não chegam ao utilizador
+Modal mostra "O relatório será enviado nos próximos minutos" e fecha. Se `request_status='failed_pdf'`, o utilizador nunca sabe — fica à espera de um email que nunca chega. Falta mecanismo de fallback (email de erro? polling de status? page de status?).
+
+### B7. PDF: sem polling de status no cliente
+Após submeter o gate, não há forma de o utilizador ver progresso. Não é bloqueio mas é UX fraca para algo que demora 60-90s.
+
+---
+
+## C. Observações neutras (não tocar)
+
+- Estado da DB: `snapshots=0, leads=0, requests=0, benchmarks=15` — coerente com o bloqueio Apify atual; nada a recuperar.
+- RLS habilitado em todas as 4 tabelas, sem policies — correto para o modelo "tudo via supabaseAdmin server-side". Confirmei que **nenhum componente cliente faz `supabase.from(...)`**.
+- Cache de benchmarks (10 min) está bem dimensionado.
+- PDF render usa `@react-pdf/renderer` no Worker — funciona com nodejs_compat.
+- Idempotência do PDF (`pdf_status='ready'` short-circuit) e do email (lock `delivery_status='sending'`) está bem feita.
+
+---
+
+## D. Recomendação de execução
+
+Sugiro 3 PRs pequenos, em ordem de impacto:
+
+| # | PR | Esforço | Impacto |
+|---|----|---------|---------|
+| 1 | A1 (copy hero) + A2 (ligar concorrentes) | XS | Alto — primeira impressão e promessa cumprida |
+| 2 | A3 (token no header) | XS | Médio — higiene de segurança |
+| 3 | B5 + B6 (comunicar stale + falhas do pipeline) | S | Médio — confiança do utilizador |
+
+B1 (domínio Resend) e o desbloqueio Apify são **decisões do utilizador**, não código — ficam fora desta auditoria.
+
+### Checkpoint
+- ☑ Auditoria completa (código, copy, segurança, DB, RLS, pipeline)
+- ☑ 5 bugs identificados (A1–A5)
+- ☑ 7 refinamentos propostos (B1–B7)
+- ☐ Decidir qual PR avançar primeiro
+- ☐ Smoke test E2E continua bloqueado por Apify (Creator) + Resend (sandbox)
+
