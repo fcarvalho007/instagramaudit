@@ -229,6 +229,17 @@ export function ReportGateModal({
                 minutos.
               </DialogDescription>
             </div>
+            <p className="font-sans text-xs text-content-tertiary leading-relaxed max-w-sm">
+              A geração do PDF demora normalmente 1 a 3 minutos. Caso o email
+              não chegue em 15 minutos, verificar a pasta de spam ou contactar{" "}
+              <a
+                href="mailto:hello@instabench.pt"
+                className="underline hover:text-content-secondary transition-colors"
+              >
+                hello@instabench.pt
+              </a>
+              .
+            </p>
             {renderQuotaLine()}
             <DialogClose asChild>
               <Button variant="primary" size="md" className="w-full md:w-auto">
@@ -256,6 +267,17 @@ export function ReportGateModal({
                 minutos.
               </DialogDescription>
             </div>
+            <p className="font-sans text-xs text-content-tertiary leading-relaxed max-w-sm">
+              A geração demora normalmente 1 a 3 minutos. Caso não chegue em 15
+              minutos, verificar a pasta de spam ou contactar{" "}
+              <a
+                href="mailto:hello@instabench.pt"
+                className="underline hover:text-content-secondary transition-colors"
+              >
+                hello@instabench.pt
+              </a>
+              .
+            </p>
 
             <div className="w-full rounded-xl border border-accent-gold/30 bg-accent-gold/5 px-4 py-3.5 text-left">
               <div className="flex items-start gap-2.5">

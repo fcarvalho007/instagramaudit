@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Clock4 } from "lucide-react";
 
 import { Container } from "@/components/layout/container";
 import { computeBenchmarkPositioning } from "@/lib/benchmark/engine";
@@ -37,6 +38,17 @@ export function PublicAnalysisDashboard({
   data,
 }: PublicAnalysisDashboardProps) {
   const { profile, content_summary } = data;
+  const isStale = data.status?.data_source === "stale";
+  const analyzedAt = data.status?.analyzed_at;
+  const staleAgeLabel = (() => {
+    if (!analyzedAt) return null;
+    const diffMs = Date.now() - new Date(analyzedAt).getTime();
+    if (Number.isNaN(diffMs) || diffMs < 0) return null;
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (hours < 24) return `há ${Math.max(1, hours)}h`;
+    const days = Math.floor(hours / 24);
+    return `há ${days} ${days === 1 ? "dia" : "dias"}`;
+  })();
 
   // Lifted: drives both the post-analysis conversion layer and the
   // premium-locked section. State transitions are only triggered by the
@@ -72,6 +84,29 @@ export function PublicAnalysisDashboard({
   return (
     <div className="bg-surface-base">
       <Container size="lg" as="section" className="py-10 md:py-16 space-y-12 md:space-y-16">
+        {isStale ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-start gap-3 rounded-xl border border-signal-warning/40 bg-signal-warning/5 px-4 py-3"
+          >
+            <Clock4
+              className="size-4 mt-0.5 shrink-0 text-signal-warning"
+              aria-hidden="true"
+            />
+            <div className="space-y-0.5">
+              <p className="font-sans text-sm text-content-primary font-medium">
+                Dados de análise anterior
+                {staleAgeLabel ? ` · ${staleAgeLabel}` : ""}
+              </p>
+              <p className="font-sans text-xs text-content-secondary">
+                A fonte de dados está temporariamente indisponível. Os valores
+                mostrados correspondem à análise mais recente em cache.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         <AnalysisHeader
           username={profile.username}
           displayName={profile.display_name}
