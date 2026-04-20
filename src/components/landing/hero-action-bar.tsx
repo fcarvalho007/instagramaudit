@@ -23,6 +23,9 @@ export function HeroActionBar() {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [competitorsOpen, setCompetitorsOpen] = useState(false);
+  const [competitor1, setCompetitor1] = useState("");
+  const [competitor2, setCompetitor2] = useState("");
+  const [competitorError, setCompetitorError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +39,30 @@ export function HeroActionBar() {
       return;
     }
     setError(null);
-    navigate({ to: "/analyze/$username", params: { username } });
+
+    // Validate optional competitors. Silently drop empties, reject invalid.
+    const rawCompetitors = competitorsOpen ? [competitor1, competitor2] : [];
+    const competitors: string[] = [];
+    for (const raw of rawCompetitors) {
+      const c = extractUsername(raw);
+      if (!c) continue;
+      if (!USERNAME_REGEX.test(c)) {
+        setCompetitorError(
+          "Concorrente inválido. Apenas letras, números, ponto e underscore.",
+        );
+        return;
+      }
+      if (c === username) continue; // skip duplicate of primary
+      if (competitors.includes(c)) continue; // dedupe
+      competitors.push(c);
+    }
+    setCompetitorError(null);
+
+    navigate({
+      to: "/analyze/$username",
+      params: { username },
+      search: competitors.length > 0 ? { vs: competitors.join(",") } : {},
+    });
   };
 
   return (
@@ -118,7 +144,12 @@ export function HeroActionBar() {
               </span>
               <button
                 type="button"
-                onClick={() => setCompetitorsOpen(false)}
+                onClick={() => {
+                  setCompetitorsOpen(false);
+                  setCompetitor1("");
+                  setCompetitor2("");
+                  setCompetitorError(null);
+                }}
                 className="font-sans text-xs text-content-tertiary hover:text-content-secondary transition-colors"
               >
                 Remover
@@ -130,6 +161,11 @@ export function HeroActionBar() {
               leftIcon={<AtSign />}
               placeholder="@concorrente 1"
               aria-label="Username do primeiro concorrente"
+              value={competitor1}
+              onChange={(e) => {
+                setCompetitor1(e.target.value);
+                if (competitorError) setCompetitorError(null);
+              }}
             />
             <Input
               variant="glass"
@@ -137,7 +173,20 @@ export function HeroActionBar() {
               leftIcon={<AtSign />}
               placeholder="@concorrente 2 (opcional)"
               aria-label="Username do segundo concorrente"
+              value={competitor2}
+              onChange={(e) => {
+                setCompetitor2(e.target.value);
+                if (competitorError) setCompetitorError(null);
+              }}
             />
+            {competitorError ? (
+              <p
+                role="alert"
+                className="text-center font-sans text-sm text-signal-danger"
+              >
+                {competitorError}
+              </p>
+            ) : null}
           </div>
         )}
       </div>

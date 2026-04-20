@@ -54,7 +54,6 @@ export async function runActor<T = unknown>(
   const url = new URL(
     `${APIFY_BASE}/${encodedActor}/run-sync-get-dataset-items`,
   );
-  url.searchParams.set("token", token);
   url.searchParams.set("timeout", String(apifyTimeoutSecs));
   url.searchParams.set("memory", String(memoryMbytes));
   url.searchParams.set("format", "json");
@@ -65,7 +64,13 @@ export async function runActor<T = unknown>(
   try {
     const res = await fetch(url.toString(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Pass the token via Authorization header instead of query string —
+        // avoids leaking the secret into worker logs, Apify request logs,
+        // and any intermediate proxies/traces.
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(input),
       signal: controller.signal,
     });

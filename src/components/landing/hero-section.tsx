@@ -14,7 +14,7 @@ export function HeroSection() {
         <div className="max-w-4xl mx-auto text-center space-y-6 md:space-y-8">
           {/* Headline — blur reveal, no gradient */}
           <BlurRevealText
-            text="Analisa o teu Instagram em menos de 30 segundos."
+            text="Analisar qualquer perfil de Instagram em menos de 30 segundos."
             as="h1"
             className="font-display text-4xl md:text-6xl lg:text-7xl tracking-tight font-medium leading-[1.05] text-content-primary text-balance"
             delayMs={200}
