@@ -24,6 +24,7 @@ import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/rese
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
 import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
 import { Route as ApiAdminLogoutRouteImport } from './routes/api/admin/logout'
+import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as ApiAdminAuthRouteImport } from './routes/api/admin/auth'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 
@@ -102,6 +103,11 @@ const ApiAdminLogoutRoute = ApiAdminLogoutRouteImport.update({
   path: '/api/admin/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminDiagnosticsRoute = ApiAdminDiagnosticsRouteImport.update({
+  id: '/api/admin/diagnostics',
+  path: '/api/admin/diagnostics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminAuthRoute = ApiAdminAuthRouteImport.update({
   id: '/api/admin/auth',
   path: '/api/admin/auth',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
   '/api/admin/auth': typeof ApiAdminAuthRoute
+  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
   '/api/admin/auth': typeof ApiAdminAuthRoute
+  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
   '/api/admin/auth': typeof ApiAdminAuthRoute
+  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/api/send-report-email'
     | '/report/example'
     | '/api/admin/auth'
+    | '/api/admin/diagnostics'
     | '/api/admin/logout'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/api/send-report-email'
     | '/report/example'
     | '/api/admin/auth'
+    | '/api/admin/diagnostics'
     | '/api/admin/logout'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/api/send-report-email'
     | '/report/example'
     | '/api/admin/auth'
+    | '/api/admin/diagnostics'
     | '/api/admin/logout'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -245,6 +257,7 @@ export interface RootRouteChildren {
   ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
   ReportExampleRoute: typeof ReportExampleRoute
   ApiAdminAuthRoute: typeof ApiAdminAuthRoute
+  ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
   ApiAdminRegeneratePdfRoute: typeof ApiAdminRegeneratePdfRoute
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
@@ -358,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/diagnostics': {
+      id: '/api/admin/diagnostics'
+      path: '/api/admin/diagnostics'
+      fullPath: '/api/admin/diagnostics'
+      preLoaderRoute: typeof ApiAdminDiagnosticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/auth': {
       id: '/api/admin/auth'
       path: '/api/admin/auth'
@@ -402,6 +422,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSendReportEmailRoute: ApiSendReportEmailRoute,
   ReportExampleRoute: ReportExampleRoute,
   ApiAdminAuthRoute: ApiAdminAuthRoute,
+  ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminLogoutRoute: ApiAdminLogoutRoute,
   ApiAdminRegeneratePdfRoute: ApiAdminRegeneratePdfRoute,
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,

@@ -12,12 +12,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminGate } from "@/components/admin/admin-gate";
 import {
   RequestList,
   type AdminRequestRow,
 } from "@/components/admin/request-list";
 import { RequestDetailSheet } from "@/components/admin/request-detail-sheet";
+import { DiagnosticsPanel } from "@/components/admin/diagnostics-panel";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -81,7 +83,7 @@ function AdminPage() {
             <p className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
               InstaBench · Admin
             </p>
-            <h1 className="font-display text-xl text-content-primary">Pedidos de relatório</h1>
+            <h1 className="font-display text-xl text-content-primary">Backoffice</h1>
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Terminar sessão
@@ -90,10 +92,21 @@ function AdminPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        <RequestList
-          onSelect={(row: AdminRequestRow) => setSelectedId(row.id)}
-          refreshKey={refreshKey}
-        />
+        <Tabs defaultValue="diagnostics" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="diagnostics">Diagnóstico</TabsTrigger>
+            <TabsTrigger value="requests">Pedidos de relatório</TabsTrigger>
+          </TabsList>
+          <TabsContent value="diagnostics" className="mt-0">
+            <DiagnosticsPanel />
+          </TabsContent>
+          <TabsContent value="requests" className="mt-0">
+            <RequestList
+              onSelect={(row: AdminRequestRow) => setSelectedId(row.id)}
+              refreshKey={refreshKey}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <RequestDetailSheet
