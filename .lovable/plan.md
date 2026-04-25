@@ -1,177 +1,179 @@
-# Auditoria — Estado actual do InstaBench
+# Auditoria — Apify Readiness (sem alterações de código)
 
-Diagnóstico só-leitura. Nenhum ficheiro alterado.
-
----
-
-## 1. Arquitectura e rotas principais
-
-**Stack:** TanStack Start 1.x · React 19 · Vite 7 · Tailwind v4 · Supabase (Cloud) · Cloudflare Workers (`nodejs_compat`) · `@react-pdf/renderer` · Resend · Apify.
-
-**Rotas de página (`src/routes/`):**
-- `/` — landing
-- `/analyze/$username` — dashboard público (SSR off, fetch só no browser, suporta `?vs=`)
-- `/admin` — backoffice protegido por token
-- `/design-system`, `/report.example` — internos
-- `/privacidade`, `/termos` — legais
-
-**Rotas server (`src/routes/api/`):**
-- `analyze-public-v1` — boundary Apify (público, sem auth)
-- `request-full-report` — gate freemium (público, sem auth)
-- `generate-report-pdf` — render + upload (sem auth ⚠️)
-- `send-report-email` — envio Resend (auth via `x-internal-token`)
-- `admin/*` — `auth`, `logout`, `report-requests`, `report-requests.$id`, `regenerate-pdf`, `resend-email` (todos atrás de `requireAdminSession`)
+Esta é uma **auditoria diagnóstica**. Não toca em código, UI, `/report.example`, PDF ou email. Aprovação serve apenas para registar a leitura — nenhuma alteração será aplicada com base só nesta aprovação.
 
 ---
 
-## 2. Fluxo de análise Instagram
+## 1. Rota do resultado real — `/analyze/$username`
 
-1. Browser chama `POST /api/analyze-public-v1` com `{ instagram_username, competitor_usernames[] }`.
-2. Server valida com Zod (regex `^[A-Za-z0-9._]{1,30}$`), deduplica concorrentes (cap 2).
-3. Constrói `cacheKey = v1:<primary>|<competitors-sorted>` e tenta `lookupSnapshot()` em `analysis_snapshots`.
-4. Cache fresca (≤ 24 h) → devolve imediatamente com `data_source="cache"`.
-5. Caso contrário, chama `apify/instagram-scraper` (uma chamada por handle, paralelo via `Promise.allSettled`-like).
-6. Normaliza com `normalizeProfile` + `computeContentSummary`, persiste snapshot, calcula `benchmark_positioning` server-side.
-7. **Resilência stale-while-error:** se o Apify falhar mas houver snapshot ≤ 7 dias, devolve com `data_source="stale"`.
-8. Erros mapeiam para 5 códigos (`INVALID_USERNAME`, `PROFILE_NOT_FOUND`, `UPSTREAM_UNAVAILABLE`, `UPSTREAM_FAILED`, `NETWORK_ERROR`) com mensagens em pt-PT.
+**OK.** É a rota correta para a análise real:
+- Aceita `?vs=competitor1,competitor2` (cap a 2).
+- SSR desativado intencionalmente (`ssr: false`) para manter Apify do lado servidor.
+- `head()` define `<title>` e `og:*` por handle.
+- Faz `POST` para `/api/analyze-public-v1` via `fetchPublicAnalysis`.
 
-Escape hatch `?refresh=1` força refetch (não exposto na UI).
-
----
-
-## 3. Dependência Apify
-
-- Único ator: `apify/instagram-scraper` (unificado — antes eram 2).
-- Endpoint: `run-sync-get-dataset-items` (síncrono, sem polling).
-- Token via `Authorization: Bearer` (não na query string — boa prática já aplicada na PR2 anterior).
-- Timeouts: 60 s wall-clock, 55 s Apify-side, 1024 MB.
-- **Bloqueio conhecido:** plano Creator não permite Public Actors. Necessário Starter+ para o pipeline completar end-to-end. Nenhum dado real em `analysis_snapshots` (0 linhas) confirma isto.
+**Pequenos riscos** (não bloqueantes):
+- Não há `errorComponent` / `notFoundComponent` específicos da rota (tratado em estado interno via `AnalysisErrorState`).
+- `meta robots` não está definida — qualquer URL `/analyze/<handle>` é indexável. Antes de Apify ativo, recomenda-se `noindex` para evitar o Google a varrer perfis e gerar custo.
 
 ---
 
-## 4. Tabelas Supabase
+## 2. Isolamento de `/report.example`
 
-Quatro tabelas, todas com RLS **activo mas sem policies** (linter confirma 4 avisos INFO). Acesso é exclusivamente via `supabaseAdmin` (service-role) em rotas server.
+**OK, está isolado.**
+- Renderiza apenas `<ReportPage />` com `report-mock-data.ts`.
+- Não importa nada de `analysis-*`, nem chama `/api/analyze-public-v1`.
+- Listada como locked em `LOCKED_FILES.md` e `.lovable/memory/constraints/locked-files.md` (incluindo todos os `report-*` e `report-theme-wrapper`).
+- Tem `noindex, nofollow`.
 
-| Tabela | Uso | Linhas |
+Conclusão: pode ficar como mockup editorial. Nenhum risco de fuga para fluxo real.
+
+---
+
+## 3. Estados de UI no resultado
+
+| Estado | Suportado | Notas |
 |---|---|---|
-| `analysis_snapshots` | Cache 24 h dos resultados Apify; chave única `cache_key` | 0 |
-| `benchmark_references` | Dataset de referência (engagement por tier × formato) | 15 |
-| `leads` | Upsert por `email_normalized` na gate do relatório | 0 |
-| `report_requests` | Pedido de relatório completo; tracking de PDF + email | 0 |
+| Loading | Sim — `AnalysisSkeleton` | Adequado |
+| Erro upstream | Sim — `AnalysisErrorState` com retry | pt-PT, calmo |
+| Perfil não encontrado | Sim — `PROFILE_NOT_FOUND` mapeado | Mensagem específica |
+| Username inválido | Sim — `INVALID_USERNAME` | Validado em cliente + servidor |
+| Falha de rede | Sim — `NETWORK_ERROR` | Mapeado em `client.ts` |
+| Cache fresca | Sim — `data_source: "cache"` | Sem badge visível ao utilizador |
+| Stale (>24h, ≤7d, após erro upstream) | Sim — `data_source: "stale"` + `staleAgeLabel` ("há 2 dias") no dashboard | Bom |
+| Falha parcial de concorrente | Sim — `competitorFailure(...)` com 3 sub-códigos | O concorrente entra como `success: false` no payload |
 
-Sem foreign keys formais entre `report_requests.lead_id` e `leads.id` (validação só ao nível aplicação).
-
----
-
-## 5. Geração de PDF
-
-- Disparada por `runReportPipeline` (background, fire-and-forget) após insert em `report_requests`.
-- `POST /api/generate-report-pdf` (idempotente; `force=true` regenera):
-  1. Lê `report_requests` → `analysis_snapshot_id` → `analysis_snapshots.normalized_payload`.
-  2. Valida shape com `isNormalizedPayload`.
-  3. Marca `pdf_status='generating'`.
-  4. Renderiza com `@react-pdf/renderer` (compatível com Workers via `nodejs_compat`).
-  5. Faz upload para bucket privado `report-pdfs` em path determinístico.
-  6. Marca `pdf_status='ready'` com `pdf_storage_path` + `pdf_generated_at`.
-- Falhas → `pdf_status='failed'` + `pdf_error_message` curto.
-- **Risco:** rota não tem auth — qualquer pessoa com um `report_request_id` pode disparar regeneração.
+**Lacunas menores:**
+- Não existe estado "no posts" explícito (`posts_analyzed === 0`): o dashboard mostra zeros sem aviso. Aceitável para perfis novos, mas merece uma badge tipo "Sem publicações recentes".
+- Não há indicação visível ao utilizador final quando `data_source === "cache"` (apenas `"stale"` sinaliza). Pode ser intencional.
 
 ---
 
-## 6. Envio de email
+## 4. Admin / backoffice
 
-- `POST /api/send-report-email`, autenticado por `x-internal-token` (constant-time não, mas comparação simples).
-- Resolve lead → `createSignedUrl` (TTL 7 dias) no bucket → constrói HTML/texto → `fetch` Resend (timeout 10 s).
-- **Optimistic lock:** UPDATE atómico para `delivery_status='sending'` evita duplo envio concorrente.
-- Tracking: `delivery_status`, `email_sent_at`, `email_message_id`, `email_error_message`.
-- Detecta explicitamente `RESEND_SANDBOX_RECIPIENT_BLOCKED`.
-- **Bloqueio actual:** sender é `onboarding@resend.dev` (sandbox). Só entrega ao dono da conta Resend até verificar domínio próprio.
+**Estado:** Útil para `report_requests`, **insuficiente para diagnosticar Apify**.
 
----
+O que existe (`/admin`):
+- Gate por `INTERNAL_API_TOKEN`.
+- Lista `report_requests` com filtros (status, pdf, delivery).
+- Detalhe por `id` + ações de recovery (`regenerate-pdf`, `resend-email`).
 
-## 7. Fluxo admin
-
-- `/admin` mostra `<AdminGate>` que faz `POST /api/admin/auth` com o token.
-- Server compara em tempo constante contra `INTERNAL_API_TOKEN` e cria sessão via `useSession` do TanStack Start (cookie httpOnly, SameSite=Lax, Secure em prod, max-age 8 h).
-- Password da sessão = `INTERNAL_API_TOKEN` + sufixo determinístico → rotação do token invalida sessões.
-- `requireAdminSession()` no topo de cada rota `/api/admin/*`.
-- Capacidades: listar/filtrar `report_requests` (paginado, search por username ou email), ver detalhe, regenerar PDF, reenviar email.
+O que **falta** para uma operação Apify segura:
+- Sem listagem nem inspeção de `analysis_snapshots` (cache hits, expirados, payloads, freshness, erros).
+- Sem contador/histórico de chamadas Apify (sucesso, 404, timeout, custo estimado).
+- Sem allowlist editável (handles permitidos durante smoke test).
+- Sem botão "purgar cache" / "forçar refresh" controlado (apenas `?refresh=1` server-side, não exposto na UI).
 
 ---
 
-## 8. `.env` e variáveis sensíveis
+## 5. Endpoint Apify — pronto para smoke test?
 
-- `.env` existe localmente em `/dev-server/.env` (642 B) mas está **explicitamente listado em `.gitignore`** e **não aparece em `git ls-files`** → não está commitado.
-- `.env` contém apenas chaves públicas (anon key, URL Supabase, project ID) — todas já visíveis no bundle do cliente, sem risco.
-- Secrets reais (`APIFY_TOKEN`, `RESEND_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `INTERNAL_API_TOKEN`, `LOVABLE_API_KEY`, `OPENAI_API_KEY`) estão em Lovable Cloud secrets, lidos via `process.env` em runtime server. ✅
+`/api/analyze-public-v1` (`apify/instagram-scraper`):
+
+**Fortes:**
+- Token via header `Authorization: Bearer …`, nunca em querystring.
+- Validação Zod estrita (regex `^[A-Za-z0-9._]{1,30}$`).
+- `runActor` com timeout (60s) + memória (1024MB) controlados.
+- Dedupe de concorrentes + cap a 2.
+- Falha de concorrente isolada via `Promise.allSettled`-equivalente — não derruba primário.
+- Cache 24h por `cache_key` determinístico (primário + concorrentes ordenados).
+- Stale-while-error até 7 dias.
+- Errors mapeados em códigos enumerados, payload upstream nunca exposto.
+
+**Fracos / bloqueantes para Apify pago:**
+- **Sem rate limiting** (nem por IP, nem por handle, nem global).
+- **Sem allowlist** — qualquer handle válido é aceite.
+- **Sem CAPTCHA** ou prova-de-humano no frontend.
+- `?refresh=1` está **público** (qualquer utilizador pode anexar à URL e bypassar a cache).
+- `POSTS_LIMIT = 12` (OK, baixo) — mas não é configurável por env, está hardcoded.
+- Sem métrica/log estruturado de custo (apenas `console.error`).
+- Sem kill-switch (env var para devolver `UPSTREAM_UNAVAILABLE` sem chamar Apify).
 
 ---
 
-## 9. Riscos de segurança
+## 6. Proteção de custo — checklist
 
-| # | Risco | Severidade |
+| Mecanismo | Estado | Comentário |
 |---|---|---|
-| S1 | `POST /api/generate-report-pdf` sem auth nem rate-limit. Atacante pode forçar regenerações em massa (custo + load). | **Alta** |
-| S2 | `POST /api/request-full-report` sem rate-limit. Atacante pode floodar `leads` (1 row por email novo) e queimar quota Apify. | **Alta** |
-| S3 | `POST /api/analyze-public-v1` sem rate-limit nem CAPTCHA. Cada miss = chamada Apify paga; varredura de usernames é trivial. | **Alta** |
-| S4 | RLS activo mas zero policies em todas as 4 tabelas. Funciona porque tudo passa por service-role; mas se algum dia uma rota usar o cliente browser autenticado, falha silenciosamente. | Média (latente) |
-| S5 | `analysis_snapshot_id` na payload da gate é confiável só por validação de username (case-insensitive). Atacante pode forjar pares (snapshot, username) válidos para vincular um pedido a um snapshot que não viu. | Baixa |
-| S6 | Sem CSRF em rotas POST públicas (`/api/admin/auth` é mitigado por SameSite=Lax + token, mas uma rota `/api/admin/*` adicional sem `requireAdminSession` seria explorável). | Baixa |
-| S7 | Logs imprimem `instagram_username`, e errors do Resend incluem 300 chars do response — risco baixo de leak de email do destinatário em logs. | Info |
+| Cache 24h | ✅ Sim | `analysis_snapshots` + `cache_key` versionado |
+| Stale fallback 7d | ✅ Sim | Reduz custo em incidente upstream |
+| Limite de posts/perfil | ⚠️ Hardcoded (12) | Bom valor, mas não reconfigurável sem deploy |
+| Limite de concorrentes | ✅ 2 | OK |
+| Rate limiting (IP/global) | ❌ Não | **Bloqueante** |
+| Allowlist temporária | ❌ Não | **Bloqueante para smoke test** |
+| Refresh público desativado | ❌ `?refresh=1` aberto | **Bloqueante** |
+| Kill-switch (`APIFY_ENABLED=false`) | ❌ Não | Recomendado |
+| CAPTCHA / Turnstile | ❌ Não | Recomendado quando público |
+| Logging de custo | ❌ Não | Difícil estimar gasto real |
 
 ---
 
-## 10. Riscos de produto
+## 7. O que preparar **antes** de subscrever Apify Starter
 
-| # | Risco | Impacto |
-|---|---|---|
-| P1 | **Zero dados reais em produção** (0 snapshots, 0 leads, 0 requests). Pipeline E2E nunca completou — provável bloqueio Apify (Creator) + Resend (sandbox). | Crítico — produto não foi validado em condições reais. |
-| P2 | Sem domínio Resend verificado → emails só chegam ao dono da conta. Conversion rate efectivo do gate é 0 % para qualquer outro destinatário. | Alto |
-| P3 | Sem feedback ao utilizador entre o "pedido aceite" e o email chegar (60–90 s). Falhas silenciosas (`failed_pdf`, `failed_email`) ficam só na DB. | Alto |
-| P4 | `Premium Locked` no dashboard usa valores hardcoded (a confirmar em `premium-locked-section.tsx`). Quebra credibilidade quando comparado com métricas reais ao lado. | Médio-Alto |
-| P5 | Quota mensal não tem mecanismo anti-fraude por email descartável (`+alias`, mailinator, etc.). | Médio |
-| P6 | Cache 24 h é agressivo para perfis muito activos; sem botão "Atualizar análise" exposto na UI. | Médio |
-| P7 | Sem analytics/observabilidade (sem Sentry/PostHog). Não há como detectar drops de conversão ou erros do utilizador. | Médio |
-| P8 | `report_requests.lead_id` sem FK formal → se um lead for apagado, registos ficam órfãos. | Baixo |
+Por ordem (cada um é uma futura prompt isolada):
 
----
-
-## 11. Próximos 5 passos recomendados (por prioridade)
-
-1. **Domínio Resend verificado (P2)** — bloqueador absoluto para entrega real. Configurar DNS, atualizar `SENDER_FROM` em `send-report-email.ts`. Sem isto, nada do funil freemium funciona para utilizadores externos.
-2. **Auth + rate-limit nas rotas públicas (S1, S2, S3)** — `generate-report-pdf` deve passar a exigir `x-internal-token` (ou cookie admin). `analyze-public-v1` e `request-full-report` precisam de rate-limit por IP (ex.: 10 req/min, 50 req/dia) e idealmente Turnstile/hCaptcha invisível na gate. Custo Apify e DB protegidos.
-3. **Página de status do relatório + polling (P3)** — rota `/relatorio/$requestId` com polling ao `request_status` para mostrar "A gerar… → A enviar… → Concluído / Falhou". Inclui caminho de download direto via signed URL como fallback ao email.
-4. **Substituir teasers hardcoded por dados reais do snapshot (P4)** — auditar `premium-locked-section.tsx` e ligar os valores ao `normalized_payload` (com blur/lock visual). Mantém o gate, ganha credibilidade.
-5. **Smoke test E2E + observabilidade mínima (P1, P7)** — depois de 1 e 2, fazer um pedido real de ponta-a-ponta com perfil próprio + email próprio, e adicionar logging estruturado (timestamps, request_id) nas 4 rotas críticas. Idealmente Sentry para captura de erros server.
+1. **Kill-switch + allowlist + bloqueio de `?refresh` público** (uma prompt).
+   - Env `APIFY_ENABLED=false` por default → devolve `UPSTREAM_UNAVAILABLE`.
+   - Env `APIFY_ALLOWLIST="frederico.m.carvalho,..."` (comma-separated). Fora da lista → `INVALID_USERNAME` ou nova mensagem "perfil não disponível para análise".
+   - `?refresh=1` só funciona se `Authorization: Bearer ${INTERNAL_API_TOKEN}` estiver presente.
+2. **Rate limiting básico no edge** (uma prompt).
+   - Limite por IP (ex.: 5 análises / hora) usando uma tabela `rate_events` no Supabase com `inserted_at` e janela deslizante. Sem dependência externa.
+3. **Painel admin de snapshots + chamadas Apify** (uma prompt).
+   - Lista `analysis_snapshots` (handle, criado, expira, fresh/stale, tamanho do payload).
+   - Botões "purgar cache" e "forçar refresh" autenticados.
+   - Contador de chamadas Apify por dia (tabela `apify_call_log` com `actor`, `status`, `duration_ms`, `created_at`).
+4. **Smoke test controlado** com Frederico como único handle permitido.
+5. **`noindex` em `/analyze/$username`** até decidir SEO público.
+6. **Subscrição Apify Starter + ativação de `APIFY_ENABLED=true`**.
 
 ---
 
-## 12. Ficheiros bloqueados (não editar sem permissão explícita)
+## 8. Ficheiros que mudariam (referência, sem editar agora)
 
-Listados em `.lovable/memory/constraints/locked-files.md`:
-
-- **Foundation:** `/src/styles/tokens.css`, `/src/styles.css` (bloco `@theme inline`), `/src/routes/__root.tsx`, `/LOCKED_FILES.md`
-- **UI primitives:** `button`, `badge`, `card`, `input`, `switch`
-- **Layout:** `container`, `header`, `footer`, `app-shell`, `brand-mark`
-- **Landing (Sprint 1):** `hero-section`, `hero-aurora-background`, `hero-action-bar`, `use-in-view`, `social-proof-section`, `how-it-works-step`, `how-it-works-section`, `mockup-metric-card`, `mockup-benchmark-gauge`, `mockup-dashboard`, `product-preview-section`, `blur-reveal-text`, `animated-counter`, `handwritten-note`, `scroll-indicator`, `instagram-glyph`
-- **Report:** `/src/styles/tokens-light.css`, todos os componentes em `/src/components/report/*`, `/src/routes/report.example.tsx`
-- **Legal:** `/src/components/legal/legal-layout.tsx`, `/src/routes/privacidade.tsx`, `/src/routes/termos.tsx`
-
-**Auto-geridos pela plataforma (nunca editar manualmente):**
-- `src/integrations/supabase/client.ts`
-- `src/integrations/supabase/types.ts`
-- `src/routeTree.gen.ts`
-- `.env`
+Para os 3 primeiros passos acima:
+- `src/routes/api/analyze-public-v1.ts` (kill-switch, allowlist, gate em `?refresh`).
+- `src/lib/analysis/apify-client.ts` (eventual hook para `apify_call_log`).
+- Nova migração SQL: tabelas `rate_events` e `apify_call_log` (RLS service-role only).
+- Novo `src/lib/security/rate-limit.ts`.
+- Novos endpoints admin: `src/routes/api/admin/snapshots.ts`, `src/routes/api/admin/snapshots.$id.ts`, `src/routes/api/admin/apify-stats.ts`.
+- Novos componentes admin: `src/components/admin/snapshot-list.tsx`, `src/components/admin/apify-stats-panel.tsx`.
+- `src/routes/admin.tsx` (adicionar tabs/secção).
+- `src/routes/analyze.$username.tsx` (apenas para `meta robots: noindex` — não toca UI).
 
 ---
 
-## Checkpoint
+## 9. Ficheiros **bloqueados** (a não tocar sem permissão explícita)
 
-- ☑ Arquitectura, rotas, fluxos e tabelas auditados
-- ☑ `.env` confirmado fora do git
-- ☑ 7 riscos de segurança identificados
-- ☑ 8 riscos de produto identificados
-- ☑ 5 próximos passos priorizados
-- ☑ Lista de ficheiros bloqueados consolidada
-- ☐ Decidir qual dos 5 passos avançar primeiro
+Conforme `LOCKED_FILES.md`:
+- `/src/styles/tokens.css`, `/src/styles/tokens-light.css`, `/src/styles.css` (`@theme inline`).
+- `/src/routes/__root.tsx`.
+- `/src/routes/report.example.tsx` e **todos** os `/src/components/report/*`.
+- Toda a landing (`hero-*`, `how-it-works-*`, `mockup-*`, `product-preview-*`, `social-proof-*`, micro-componentes, `instagram-glyph`).
+- `/src/components/layout/*` (header, footer, container, app-shell, brand-mark).
+- `/src/components/ui/button.tsx`, `badge.tsx`, `card.tsx`, `input.tsx`, `switch.tsx`.
+- `/src/components/legal/*`, `/src/routes/privacidade.tsx`, `/src/routes/termos.tsx`.
+- Auto-gerados: `/src/routeTree.gen.ts`, `/src/integrations/supabase/client.ts`, `/src/integrations/supabase/types.ts`, `/.env`.
+
+Os ficheiros do dashboard real (`/src/components/product/*`) **não estão bloqueados**, mas nenhum precisa de mudar para a fase Apify-readiness.
+
+---
+
+## 10. Menor passo seguro a implementar a seguir
+
+**Prompt único, escopo mínimo, zero risco UI:**
+
+> "Adicionar kill-switch + allowlist + proteção de `?refresh=1` em `/api/analyze-public-v1`."
+>
+> Implementação:
+> - Ler `APIFY_ENABLED` (default `false`) → se off, devolver `UPSTREAM_UNAVAILABLE` sem chamar Apify nem cache.
+> - Ler `APIFY_ALLOWLIST` (CSV, lowercase) → se primário não estiver na lista, devolver `PROFILE_NOT_FOUND` com mensagem "Análise indisponível para este perfil durante o período de testes." (concorrentes fora da lista são silenciosamente removidos).
+> - `?refresh=1` só é honrado se `request.headers.get("authorization") === "Bearer ${INTERNAL_API_TOKEN}"`; caso contrário ignorado.
+> - Sem alterações no frontend, sem alterações em UI, sem schema migration, sem tocar PDF/email.
+
+Esta é a fatia mais pequena que torna seguro ligar a chave `APIFY_TOKEN` a uma conta Apify paga.
+
+---
+
+## Resumo executivo
+
+A app está **arquiteturalmente pronta** para Apify (token server-side, cache, normalização, stale fallback, admin de relatórios). Falta a **camada de proteção de custo** antes de ativar a subscrição: kill-switch, allowlist, bloqueio de refresh público e rate limiting são pré-requisitos. O passo 1 (kill-switch + allowlist + refresh-gate) é a fatia mínima viável.
