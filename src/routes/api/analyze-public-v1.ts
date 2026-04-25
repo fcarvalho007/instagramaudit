@@ -246,8 +246,30 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           );
         }
 
+        // 2) Hard kill-switch. After the cache lookup so cached snapshots
+        // remain serveable, before any provider call so disabled mode never
+        // burns Apify credits. Stale fallback below is also bypassed because
+        // we never reach the provider try/catch.
+        if (!isApifyEnabled()) {
+          if (existing && isWithinStaleWindow(existing)) {
+            console.info(
+              "[analyze-public-v1] APIFY_ENABLED!=true — serving stale snapshot",
+              cacheKey,
+            );
+            return jsonResponse(
+              buildCachedResponse(existing, "stale", benchmarkData),
+              200,
+            );
+          }
+          console.info(
+            "[analyze-public-v1] APIFY_ENABLED!=true — refusing provider call",
+            primary,
+          );
+          return failure("PROVIDER_DISABLED");
+        }
+
         try {
-          // 2) One unified call per handle, in parallel. Each call returns
+          // 3) One unified call per handle, in parallel. Each call returns
           // the profile details with `latestPosts[]` embedded, so there is
           // no separate posts fetch and no cross-handle merge step.
           const primaryRowP = fetchProfileWithPosts(primary);
