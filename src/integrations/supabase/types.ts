@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_events: {
+        Row: {
+          analysis_snapshot_id: string | null
+          billing_event_id: string | null
+          cache_key: string | null
+          competitor_handles: Json
+          created_at: string
+          data_source: string
+          duration_ms: number | null
+          error_code: string | null
+          estimated_cost_usd: number | null
+          handle: string
+          id: string
+          network: string
+          outcome: string
+          posts_returned: number | null
+          profiles_returned: number | null
+          provider_call_log_id: string | null
+          request_ip_hash: string | null
+          user_agent_family: string | null
+        }
+        Insert: {
+          analysis_snapshot_id?: string | null
+          billing_event_id?: string | null
+          cache_key?: string | null
+          competitor_handles?: Json
+          created_at?: string
+          data_source: string
+          duration_ms?: number | null
+          error_code?: string | null
+          estimated_cost_usd?: number | null
+          handle: string
+          id?: string
+          network: string
+          outcome: string
+          posts_returned?: number | null
+          profiles_returned?: number | null
+          provider_call_log_id?: string | null
+          request_ip_hash?: string | null
+          user_agent_family?: string | null
+        }
+        Update: {
+          analysis_snapshot_id?: string | null
+          billing_event_id?: string | null
+          cache_key?: string | null
+          competitor_handles?: Json
+          created_at?: string
+          data_source?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          estimated_cost_usd?: number | null
+          handle?: string
+          id?: string
+          network?: string
+          outcome?: string
+          posts_returned?: number | null
+          profiles_returned?: number | null
+          provider_call_log_id?: string | null
+          request_ip_hash?: string | null
+          user_agent_family?: string | null
+        }
+        Relationships: []
+      }
       analysis_snapshots: {
         Row: {
           analysis_status: string
@@ -128,6 +191,60 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_call_logs: {
+        Row: {
+          actor: string
+          actual_cost_usd: number | null
+          analysis_event_id: string | null
+          apify_run_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error_excerpt: string | null
+          estimated_cost_usd: number | null
+          handle: string
+          http_status: number | null
+          id: string
+          network: string
+          posts_returned: number
+          provider: string
+          status: string
+        }
+        Insert: {
+          actor: string
+          actual_cost_usd?: number | null
+          analysis_event_id?: string | null
+          apify_run_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_excerpt?: string | null
+          estimated_cost_usd?: number | null
+          handle: string
+          http_status?: number | null
+          id?: string
+          network: string
+          posts_returned?: number
+          provider?: string
+          status: string
+        }
+        Update: {
+          actor?: string
+          actual_cost_usd?: number | null
+          analysis_event_id?: string | null
+          apify_run_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_excerpt?: string | null
+          estimated_cost_usd?: number | null
+          handle?: string
+          http_status?: number | null
+          id?: string
+          network?: string
+          posts_returned?: number
+          provider?: string
+          status?: string
+        }
+        Relationships: []
+      }
       report_requests: {
         Row: {
           analysis_snapshot_id: string | null
@@ -212,12 +329,141 @@ export type Database = {
           },
         ]
       }
+      social_profiles: {
+        Row: {
+          analyses_cache: number
+          analyses_failed: number
+          analyses_fresh: number
+          analyses_total: number
+          created_at: string
+          display_name: string | null
+          estimated_cost_usd_total: number
+          first_analyzed_at: string
+          followers_last_seen: number | null
+          handle: string
+          last_analyzed_at: string
+          last_data_source: string | null
+          last_outcome: string | null
+          last_snapshot_id: string | null
+          network: string
+          updated_at: string
+        }
+        Insert: {
+          analyses_cache?: number
+          analyses_failed?: number
+          analyses_fresh?: number
+          analyses_total?: number
+          created_at?: string
+          display_name?: string | null
+          estimated_cost_usd_total?: number
+          first_analyzed_at?: string
+          followers_last_seen?: number | null
+          handle: string
+          last_analyzed_at?: string
+          last_data_source?: string | null
+          last_outcome?: string | null
+          last_snapshot_id?: string | null
+          network: string
+          updated_at?: string
+        }
+        Update: {
+          analyses_cache?: number
+          analyses_failed?: number
+          analyses_fresh?: number
+          analyses_total?: number
+          created_at?: string
+          display_name?: string | null
+          estimated_cost_usd_total?: number
+          first_analyzed_at?: string
+          followers_last_seen?: number | null
+          handle?: string
+          last_analyzed_at?: string
+          last_data_source?: string | null
+          last_outcome?: string | null
+          last_snapshot_id?: string | null
+          network?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      usage_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string
+          handle: string | null
+          id: string
+          kind: string
+          metric_name: string
+          metric_value: number
+          network: string | null
+          notes: string | null
+          request_ip_hash: string | null
+          severity: string
+          threshold_value: number
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string
+          handle?: string | null
+          id?: string
+          kind: string
+          metric_name: string
+          metric_value: number
+          network?: string | null
+          notes?: string | null
+          request_ip_hash?: string | null
+          severity: string
+          threshold_value: number
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string
+          handle?: string | null
+          id?: string
+          kind?: string
+          metric_name?: string
+          metric_value?: number
+          network?: string | null
+          notes?: string | null
+          request_ip_hash?: string | null
+          severity?: string
+          threshold_value?: number
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      record_analysis_event: {
+        Args: {
+          p_analysis_snapshot_id: string
+          p_cache_key: string
+          p_competitor_handles: Json
+          p_data_source: string
+          p_display_name?: string
+          p_duration_ms: number
+          p_error_code: string
+          p_estimated_cost_usd: number
+          p_followers_last_seen?: number
+          p_handle: string
+          p_network: string
+          p_outcome: string
+          p_posts_returned: number
+          p_profiles_returned: number
+          p_provider_call_log_id: string
+          p_request_ip_hash: string
+          p_user_agent_family: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
