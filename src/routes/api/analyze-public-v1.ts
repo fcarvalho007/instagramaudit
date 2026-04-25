@@ -34,6 +34,7 @@ import {
 import {
   getAllowlist,
   isAllowed,
+  isApifyEnabled,
   isTestingModeActive,
 } from "@/lib/security/apify-allowlist";
 import type {
@@ -74,7 +75,9 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   PROFILE_NOT_FOUND:
     "Não foi possível encontrar este perfil. Verificar o username.",
   PROFILE_NOT_ALLOWED:
-    "A análise automática está em validação. Para já, este teste está limitado ao perfil definido.",
+    "A análise automática está em validação. Para já, este teste está limitado aos perfis definidos.",
+  PROVIDER_DISABLED:
+    "A análise automática está temporariamente desativada. Tentar novamente mais tarde.",
   UPSTREAM_UNAVAILABLE:
     "Serviço de análise temporariamente indisponível. Tentar novamente dentro de instantes.",
   UPSTREAM_FAILED:
@@ -86,6 +89,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   INVALID_USERNAME: 400,
   PROFILE_NOT_FOUND: 404,
   PROFILE_NOT_ALLOWED: 403,
+  PROVIDER_DISABLED: 503,
   UPSTREAM_UNAVAILABLE: 503,
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
@@ -242,8 +246,30 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           );
         }
 
+        // 2) Hard kill-switch. After the cache lookup so cached snapshots
+        // remain serveable, before any provider call so disabled mode never
+        // burns Apify credits. Stale fallback below is also bypassed because
+        // we never reach the provider try/catch.
+        if (!isApifyEnabled()) {
+          if (existing && isWithinStaleWindow(existing)) {
+            console.info(
+              "[analyze-public-v1] APIFY_ENABLED!=true — serving stale snapshot",
+              cacheKey,
+            );
+            return jsonResponse(
+              buildCachedResponse(existing, "stale", benchmarkData),
+              200,
+            );
+          }
+          console.info(
+            "[analyze-public-v1] APIFY_ENABLED!=true — refusing provider call",
+            primary,
+          );
+          return failure("PROVIDER_DISABLED");
+        }
+
         try {
-          // 2) One unified call per handle, in parallel. Each call returns
+          // 3) One unified call per handle, in parallel. Each call returns
           // the profile details with `latestPosts[]` embedded, so there is
           // no separate posts fetch and no cross-handle merge step.
           const primaryRowP = fetchProfileWithPosts(primary);
