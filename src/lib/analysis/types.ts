@@ -85,6 +85,7 @@ export interface PublicAnalysisSuccess {
 export type PublicAnalysisErrorCode =
   | "INVALID_USERNAME"
   | "PROFILE_NOT_FOUND"
+  | "PROFILE_NOT_ALLOWED"
   | "UPSTREAM_FAILED"
   | "UPSTREAM_UNAVAILABLE"
   | "NETWORK_ERROR";
