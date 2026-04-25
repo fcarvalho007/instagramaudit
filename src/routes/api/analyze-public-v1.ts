@@ -34,6 +34,7 @@ import {
 import {
   getAllowlist,
   isAllowed,
+  isApifyEnabled,
   isTestingModeActive,
 } from "@/lib/security/apify-allowlist";
 import type {
@@ -74,7 +75,9 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   PROFILE_NOT_FOUND:
     "Não foi possível encontrar este perfil. Verificar o username.",
   PROFILE_NOT_ALLOWED:
-    "A análise automática está em validação. Para já, este teste está limitado ao perfil definido.",
+    "A análise automática está em validação. Para já, este teste está limitado aos perfis definidos.",
+  PROVIDER_DISABLED:
+    "A análise automática está temporariamente desativada. Tentar novamente mais tarde.",
   UPSTREAM_UNAVAILABLE:
     "Serviço de análise temporariamente indisponível. Tentar novamente dentro de instantes.",
   UPSTREAM_FAILED:
@@ -86,6 +89,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   INVALID_USERNAME: 400,
   PROFILE_NOT_FOUND: 404,
   PROFILE_NOT_ALLOWED: 403,
+  PROVIDER_DISABLED: 503,
   UPSTREAM_UNAVAILABLE: 503,
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
