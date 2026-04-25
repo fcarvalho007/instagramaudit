@@ -31,6 +31,11 @@ import {
   computeContentSummary,
   normalizeProfile,
 } from "@/lib/analysis/normalize";
+import {
+  getAllowlist,
+  isAllowed,
+  isTestingModeActive,
+} from "@/lib/security/apify-allowlist";
 import type {
   CompetitorAnalysis,
   PublicAnalysisErrorCode,
@@ -68,6 +73,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   INVALID_USERNAME: "Username inválido. Verificar e tentar novamente.",
   PROFILE_NOT_FOUND:
     "Não foi possível encontrar este perfil. Verificar o username.",
+  PROFILE_NOT_ALLOWED:
+    "A análise automática está em validação. Para já, este teste está limitado ao perfil definido.",
   UPSTREAM_UNAVAILABLE:
     "Serviço de análise temporariamente indisponível. Tentar novamente dentro de instantes.",
   UPSTREAM_FAILED:
@@ -78,6 +85,7 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   INVALID_USERNAME: 400,
   PROFILE_NOT_FOUND: 404,
+  PROFILE_NOT_ALLOWED: 403,
   UPSTREAM_UNAVAILABLE: 503,
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
@@ -172,11 +180,51 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           if (competitors.length >= MAX_COMPETITORS) break;
         }
 
+        // Allowlist gate (smoke-test mode). When testing mode is active, the
+        // primary handle MUST be on the allowlist or the request is rejected
+        // before any cache lookup or provider call. Competitors that are not
+        // allowlisted are silently dropped — the primary analysis still runs.
+        const testingMode = isTestingModeActive();
+        if (testingMode) {
+          if (!isAllowed(primary)) {
+            console.info(
+              "[analyze-public-v1] blocked by allowlist",
+              primary,
+              "allowlist:",
+              getAllowlist().join(","),
+            );
+            return failure("PROFILE_NOT_ALLOWED");
+          }
+          const allowedCompetitors = competitors.filter((c) => isAllowed(c));
+          if (allowedCompetitors.length !== competitors.length) {
+            console.info(
+              "[analyze-public-v1] dropped non-allowlisted competitors",
+              competitors.filter((c) => !isAllowed(c)).join(","),
+            );
+          }
+          competitors.length = 0;
+          for (const c of allowedCompetitors) competitors.push(c);
+        }
+
         // Server-side escape hatch: ?refresh=1 bypasses cache and forces a
-        // fresh provider call. Not exposed in the UI today; useful for dev
-        // and a future "Atualizar análise" button without contract changes.
+        // fresh provider call. While the smoke-test layer is active, this
+        // requires `Authorization: Bearer ${INTERNAL_API_TOKEN}` so a public
+        // visitor cannot drain Apify credits by appending the param.
         const url = new URL(request.url);
-        const forceRefresh = url.searchParams.get("refresh") === "1";
+        const refreshRequested = url.searchParams.get("refresh") === "1";
+        let forceRefresh = false;
+        if (refreshRequested) {
+          const internalToken = process.env.INTERNAL_API_TOKEN;
+          const authHeader = request.headers.get("authorization") ?? "";
+          const expected = internalToken ? `Bearer ${internalToken}` : null;
+          if (expected && authHeader === expected) {
+            forceRefresh = true;
+          } else {
+            console.warn(
+              "[analyze-public-v1] ?refresh=1 ignored — missing or invalid internal token",
+            );
+          }
+        }
 
         const cacheKey = buildCacheKey(primary, competitors);
 
