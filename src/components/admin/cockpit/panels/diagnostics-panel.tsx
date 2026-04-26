@@ -56,6 +56,7 @@ export function DiagnosticsPanel({ data }: Props) {
 
   return (
     <div className="space-y-8">
+      <SmokeTestStatusCard data={data} />
       <ReadinessCard data={data} />
       <ReadinessChecklistCard data={data} />
 
