@@ -8,6 +8,24 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Quando um pedido admin devolve 401, a sessão Supabase está expirada ou
+ * inválida. Disparamos signOut() para que o gate em /admin volte ao estado
+ * "signed_out" e mostre o botão "Entrar com Google" em vez de "Erro 401".
+ */
+let signingOut = false;
+async function handleUnauthorized(): Promise<void> {
+  if (signingOut) return;
+  signingOut = true;
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // ignorar — o listener onAuthStateChange tratará do reset de UI
+  } finally {
+    signingOut = false;
+  }
+}
+
 export async function adminFetch(
   input: string,
   init: RequestInit = {},
@@ -20,5 +38,9 @@ export async function adminFetch(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  return fetch(input, { ...init, headers });
+  const res = await fetch(input, { ...init, headers });
+  if (res.status === 401) {
+    void handleUnauthorized();
+  }
+  return res;
 }
