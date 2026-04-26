@@ -82,6 +82,15 @@ function buildHeatmapMatrix(): number[][] {
 }
 
 export const reportData = {
+  // Editorial meta — defaults match the original visual of /report/example.
+  // The real-data adapter overrides these (e.g. when the sample is smaller
+  // than 30 days). Keep optional to stay backward compatible.
+  meta: {
+    windowLabel: "últimos 30 dias",
+    windowShortLabel: "30 dias",
+    kpiSubtitle: "janela de 30 dias",
+    isAdminPreview: false,
+  },
   profile: {
     username: "frederico.marketing",
     fullName: "Frederico Marketing",
