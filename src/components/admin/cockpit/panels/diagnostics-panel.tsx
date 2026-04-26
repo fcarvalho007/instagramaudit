@@ -693,3 +693,117 @@ function ReadinessChecklistCard({ data }: { data: CockpitData }) {
     </section>
   );
 }
+
+/**
+ * SmokeTestStatusCard — leitura inequívoca da config Apify no runtime
+ * publicado, alimentada pelo bloco `apify_runtime_check` do endpoint de
+ * diagnóstico. Cinco linhas + veredicto único. Quando bloqueado, mostra
+ * a `blocking_reason` exata do backend em pt-PT.
+ */
+function SmokeTestStatusCard({ data }: { data: CockpitData }) {
+  const check = data.apify_runtime_check;
+  if (!check) {
+    return null;
+  }
+
+  const rows: Array<{ label: string; ok: boolean; value: string }> = [
+    {
+      label: "Token Apify",
+      ok: check.apify_token_present,
+      value: check.apify_token_present ? "Configurado" : "Em falta",
+    },
+    {
+      label: "APIFY_ENABLED",
+      ok: check.apify_enabled_raw_is_true,
+      value: check.apify_enabled_state_label,
+    },
+    {
+      label: "Modo de teste",
+      ok: check.testing_mode_active,
+      value: check.testing_mode_active ? "Allowlist ativa" : "Aberto",
+    },
+    {
+      label: "Perfil de teste",
+      ok: check.allowlist_includes_test_handle,
+      value: check.allowlist_includes_test_handle
+        ? `@${check.test_handle} permitido`
+        : `@${check.test_handle} não permitido`,
+    },
+    {
+      label: "Estado final",
+      ok: check.ready_for_smoke_test,
+      value: check.ready_for_smoke_test
+        ? "Pronto para smoke test"
+        : "Bloqueado",
+    },
+  ];
+
+  return (
+    <section
+      className={cn(
+        "rounded-xl border bg-surface-elevated p-5 sm:p-6",
+        check.ready_for_smoke_test
+          ? "border-signal-success/30"
+          : "border-signal-warning/40",
+      )}
+      aria-label="Estado para smoke test"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+            Verificação de runtime
+          </p>
+          <h3 className="font-display text-lg text-content-primary">
+            Estado para smoke test
+          </h3>
+          <p className="max-w-2xl text-sm text-content-secondary">
+            Lê diretamente as variáveis do runtime publicado. Cinco verificações
+            e um veredicto único.
+          </p>
+        </div>
+        <Badge
+          variant={check.ready_for_smoke_test ? "success" : "warning"}
+          dot
+        >
+          {check.ready_for_smoke_test ? "Pronto" : "Bloqueado"}
+        </Badge>
+      </div>
+
+      <ul className="mt-5 divide-y divide-border-subtle overflow-hidden rounded-md border border-border-subtle bg-surface-base">
+        {rows.map((row) => (
+          <li
+            key={row.label}
+            className="flex items-center justify-between gap-3 px-3 py-2.5"
+          >
+            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+              {row.label}
+            </span>
+            <span className="flex items-center gap-2 text-sm text-content-primary">
+              <span>{row.value}</span>
+              {row.ok ? (
+                <CheckCircle2
+                  className="size-4 shrink-0 text-signal-success"
+                  aria-label="OK"
+                />
+              ) : (
+                <AlertTriangle
+                  className="size-4 shrink-0 text-signal-warning"
+                  aria-label="Por resolver"
+                />
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {!check.ready_for_smoke_test && check.blocking_reason ? (
+        <div className="mt-4 rounded-md border border-signal-warning/30 bg-signal-warning/10 p-3 text-sm text-signal-warning">
+          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-signal-warning/80">
+            Razão do bloqueio
+          </p>
+          <p className="mt-1 text-content-primary">{check.blocking_reason}</p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
