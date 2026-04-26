@@ -92,7 +92,7 @@ export function RequestList({ onSelect, refreshKey }: RequestListProps) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/admin/report-requests?${queryString}`)
+    adminFetch(`/api/admin/report-requests?${queryString}`)
       .then(async (res) => {
         const body = (await res.json().catch(() => ({}))) as Partial<ListResponse> & {
           message?: string;
