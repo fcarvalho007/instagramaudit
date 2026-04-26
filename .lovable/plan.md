@@ -1,103 +1,129 @@
-## Objetivo
+# Smoke test controlado · primeira chamada Apify real
 
-Criar uma verificação inequívoca de configuração do Apify no runtime publicado, exposta apenas a admins, sem expor valores de segredos. O painel de Diagnóstico passa a mostrar um cartão definitivo "Estado para smoke test" com 5 linhas e um veredicto único.
+Objetivo: executar **uma única** chamada fresh ao Apify para `frederico.m.carvalho`, seguida de **uma única** chamada de validação de cache, e produzir um relatório completo de cobertura de campos para decidir se podemos começar a construir o adapter real do `/report/example`.
 
-Não vai chamar Apify. Não muda secrets. Não toca em /report/example, PDF, email, UI pública, ou migrações.
+Sem alterações de código, secrets, migrações ou UI.
 
-## Ficheiros alterados
+---
 
-1. **`src/routes/api/admin/diagnostics.ts`** — adicionar o bloco `apify_runtime_check` à resposta GET (já protegido por `requireAdminSession`).
-2. **`src/components/admin/cockpit/cockpit-types.ts`** — estender `CockpitData` com o tipo `ApifyRuntimeCheck`.
-3. **`src/components/admin/cockpit/panels/diagnostics-panel.tsx`** — novo componente `SmokeTestStatusCard` colocado no topo do painel, acima do `ReadinessCard` existente.
+## Fase 1 · Pré-checks (read-only, sem custo)
 
-Nada mais é tocado. Os cartões existentes (ReadinessCard, ReadinessChecklistCard, lista de segredos, allowlist) ficam exatamente como estão.
+1. **Sondar runtime publicado** com handle fora da allowlist:
+   - `POST https://instagramaudit.lovable.app/api/analyze-public-v1` com `instagram_username: "readinessprobe_doNotCall"`.
+   - Esperado: HTTP 403 com `error_code: "PROFILE_NOT_ALLOWED"` (NÃO `PROVIDER_DISABLED`).
+   - Se vier `PROVIDER_DISABLED` → **PARAR**. Significa que `APIFY_ENABLED` ainda não está literalmente `"true"` no Worker publicado.
 
-## Forma exata da resposta
+2. **Validar diagnóstico admin** via `GET /api/admin/diagnostics`:
+   - `apify_runtime_check.apify_token_present === true`
+   - `apify_runtime_check.apify_enabled_raw_is_true === true`
+   - `apify_runtime_check.testing_mode_active === true`
+   - `apify_runtime_check.allowlist_includes_test_handle === true`
+   - `apify_runtime_check.ready_for_smoke_test === true`
+   - `secrets.INTERNAL_API_TOKEN === true`
 
-Adicionado dentro do payload existente do endpoint:
+3. **Snapshot da BD antes do teste**:
+   - `SELECT count(*) FROM provider_call_logs WHERE handle = 'frederico.m.carvalho';`
+   - `SELECT count(*) FROM analysis_events WHERE handle = 'frederico.m.carvalho';`
+   - `SELECT id, created_at FROM analysis_snapshots WHERE instagram_username = 'frederico.m.carvalho' ORDER BY created_at DESC LIMIT 3;`
 
-```json
-{
-  "apify_runtime_check": {
-    "apify_token_present": true,
-    "apify_enabled_raw_is_true": true,
-    "apify_enabled_state_label": "Ligado · chamadas reais",
-    "testing_mode_active": true,
-    "allowlist_count": 1,
-    "allowlist_includes_test_handle": true,
-    "test_handle": "frederico.m.carvalho",
-    "ready_for_smoke_test": true,
-    "blocking_reason": null
-  }
-}
+Se qualquer pré-check falhar → **PARAR e reportar**, sem tocar no Apify.
+
+---
+
+## Fase 2 · Chamada fresh (1× Apify real, com caps)
+
+```
+POST https://instagramaudit.lovable.app/api/analyze-public-v1
+Content-Type: application/json
+
+{ "instagram_username": "frederico.m.carvalho", "competitor_usernames": [] }
 ```
 
-### Regras de derivação
+- **Sem** `?refresh=1`.
+- Caps existentes: `maxItems=1` perfil + posts limitados por actor, `maxTotalChargeUsd=0.10`.
+- Esperado: HTTP 200, `success: true`, `status.data_source === "fresh"`, `analysis_snapshot_id` presente, `content_summary.posts_analyzed > 0`.
 
-- `apify_token_present` = `process.env.APIFY_TOKEN` existe e tem comprimento > 0.
-- `apify_enabled_raw_is_true` = `process.env.APIFY_ENABLED === "true"` (comparação literal). Este é o booleano-chave: torna inequívoco se o runtime publicado vê exatamente `"true"`.
-- `apify_enabled_state_label` = `"Ligado · chamadas reais"` se acima for true, senão `"Desligado · sem chamadas"`.
-- `testing_mode_active` = `isTestingModeActive()` (já existe).
-- `allowlist_count` = `getAllowlist().length`.
-- `allowlist_includes_test_handle` = allowlist contém `"frederico.m.carvalho"` (lowercase).
-- `test_handle` = constante literal `"frederico.m.carvalho"`.
-- `ready_for_smoke_test` = todos verdadeiros: token + enabled_raw_is_true + testing_mode_active + allowlist_includes_test_handle.
-- `blocking_reason` = primeira razão em falta em pt-PT, ou `null`. Mensagens fixas:
-  - `"APIFY_TOKEN em falta nos Secrets."`
-  - `"APIFY_ENABLED não é exatamente \"true\" no runtime publicado. Republica após corrigir o valor."`
-  - `"APIFY_TESTING_MODE inativo — sem allowlist, qualquer handle dispararia o provedor."`
-  - `"@frederico.m.carvalho não está na APIFY_ALLOWLIST."`
+Se a resposta vier com `data_source: "stale"` ou `cache` (existe snapshot recente) → **NÃO** forçar refresh. Reportar e esperar instruções.
 
-### O que NÃO é exposto
+---
 
-- O valor do `APIFY_TOKEN` nem nenhum prefixo, comprimento ou hash.
-- Os valores em texto de qualquer outro segredo.
-- A allowlist não é re-exposta neste bloco (já é exposta pelo bloco `testing_mode.allowlist` existente — comportamento mantido por compatibilidade do painel).
+## Fase 3 · Validação de cache (1× chamada, sem custo)
 
-## Cartão UI: "Estado para smoke test"
+Mesma payload, imediatamente a seguir.
 
-Inserido no topo do `DiagnosticsPanel`, antes do `ReadinessCard`. Layout compacto, leitura imediata.
+- Esperado: HTTP 200, `data_source === "cache"`, **sem** novo `provider_call_logs`, **com** novo `analysis_events` (`data_source = "cache"`).
 
-```text
-┌─ Estado para smoke test ─────────────────── [Pronto / Bloqueado] ─┐
-│ Token Apify:        Configurado ✓         │
-│ APIFY_ENABLED:      Ligado · chamadas reais ✓                     │
-│ Modo de teste:      Allowlist ativa ✓                             │
-│ Perfil de teste:    @frederico.m.carvalho permitido ✓             │
-│ Estado final:       Pronto para smoke test                        │
-│                                                                   │
-│ [Se bloqueado: blocking_reason em destaque a amarelo]             │
-└───────────────────────────────────────────────────────────────────┘
+---
+
+## Fase 4 · Inspeção da BD e mapa de cobertura
+
+Queries (read-only):
+
+```sql
+-- Snapshot recém-criado
+SELECT id, created_at, expires_at, analysis_status, jsonb_pretty(normalized_payload)
+FROM analysis_snapshots
+WHERE instagram_username = 'frederico.m.carvalho'
+ORDER BY created_at DESC LIMIT 1;
+
+-- Provider call logs nos últimos 10 min
+SELECT id, created_at, status, http_status, duration_ms,
+       posts_returned, estimated_cost_usd, actual_cost_usd, error_excerpt
+FROM provider_call_logs
+WHERE handle = 'frederico.m.carvalho'
+  AND created_at > now() - interval '10 minutes'
+ORDER BY created_at DESC;
+
+-- Eventos nos últimos 10 min
+SELECT id, created_at, data_source, outcome, posts_returned,
+       estimated_cost_usd, duration_ms, error_code
+FROM analysis_events
+WHERE handle = 'frederico.m.carvalho'
+  AND created_at > now() - interval '10 minutes'
+ORDER BY created_at DESC;
 ```
 
-Cada linha usa o mesmo `KV` / ícone padrão já em uso no painel (CheckCircle2 verde / AlertTriangle amarelo). Tons via design tokens (`signal-success`, `signal-warning`), nada hardcoded.
+Para o snapshot, calcular cobertura presente/ausente em:
 
-Quando `ready_for_smoke_test === false`, o cartão mostra `blocking_reason` num bloco destacado em `signal-warning/10` com a mensagem exata do backend.
+- **Profile**: `username`, `display_name`, `avatar_url`, `bio`, `followers_count`, `following_count`, `posts_count`, `is_verified`
+- **Posts[]**: `caption`, `taken_at_iso`, `likes`, `comments`, `format`, `thumbnail_url`, `video_views`, `hashtags`, `mentions`, `engagement_pct`
+- **Agregados**: `format_stats`
 
-## Verificação
+---
 
-```bash
-bunx tsc --noEmit
-bun run build
-```
+## Fase 5 · Relatório final (pt-PT)
 
-Sem chamadas a Apify. Sem chamadas a `/api/analyze-public-v1`.
+Documento estruturado com:
 
-## O que /admin → Diagnóstico mostrará antes do smoke test
+1. Resultado HTTP fresh + excerto de body.
+2. Resultado HTTP cache + excerto de body.
+3. Snapshot ID.
+4. Contagem de `provider_call_logs` (esperado: +1 vs baseline).
+5. Eventos criados nos últimos 5 min (esperado: 2 — um `fresh`, um `cache`).
+6. `posts_returned` no provider call.
+7. Nº de posts persistidos em `normalized_payload.posts`.
+8. Conteúdo de `format_stats` (estrutura + valores).
+9. `estimated_cost_usd` real.
+10. **Tabela de cobertura** (presente / parcial / ausente) para todos os campos listados.
 
-Cenário esperado após a republicação dos secrets corretos:
+**Veredicto final**:
+- Podemos começar a construir o adapter real do `/report/example`? (sim/não, com justificação)
+- Que secções do `/report/example` ficam **totalmente** suportadas pela payload real do Apify?
+- Que secções ficam **parcialmente** suportadas (dados aproximáveis ou derivados)?
+- Que campos estão **em falta** e exigirão fallback, derivação, ou aceitação como gap conhecido?
 
-- **Token Apify:** Configurado
-- **APIFY_ENABLED:** Ligado · chamadas reais
-- **Modo de teste:** Allowlist ativa
-- **Perfil de teste:** @frederico.m.carvalho permitido
-- **Estado final:** Pronto para smoke test
+---
 
-Se algum destes falhar, o cartão mostra "Bloqueado" + a `blocking_reason` exata, deixando claro se o problema é o valor do secret, a falta de Publish, ou a allowlist.
+## Restrições absolutas
 
-## Output após implementação
+- 1 chamada fresh ao Apify · 0 retries · 0 chamadas com competitors · 0 chamadas a outro handle.
+- Sem `?refresh=1`.
+- Sem edição de ficheiros, sem migrações, sem alteração de secrets, sem alteração de UI.
+- Se a fase fresh devolver erro Apify (`provider_error`, timeout, 4xx/5xx upstream), reportar sem tentar de novo.
+- Custo máximo absoluto: `maxTotalChargeUsd=0.10` (já configurado no client).
 
-- Lista de ficheiros alterados.
-- Confirmação explícita: 0 chamadas Apify, 0 chamadas a `/api/analyze-public-v1`.
-- Resultado de `tsc --noEmit` e `bun run build`.
-- Print/descrição do que o cartão mostra com a config atual.
+## Detalhes técnicos
+
+- Probe e chamadas reais via `stack_modern--invoke-server-function` contra a Published URL `https://instagramaudit.lovable.app`.
+- Diagnóstico admin requer header `Authorization`/cookie de sessão admin — se não estiver acessível pela ferramenta, infiro a partir do probe (403 vs 503) e do snapshot da BD.
+- BD acedida via `supabase--read_query` (read-only, sem migrações).
