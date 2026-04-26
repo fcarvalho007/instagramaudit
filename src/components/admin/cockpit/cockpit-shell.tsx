@@ -2,8 +2,8 @@
  * CockpitShell — operational/business cockpit for /admin.
  *
  * Six tabs sharing a single `/api/admin/diagnostics` snapshot via
- * `useCockpitData`. Five tabs render lightweight placeholders for now
- * ("A migrar…") while the existing Pedidos panel keeps full functionality.
+ * `useCockpitData`. Diagnostics, analyses, profiles, costs and alerts are
+ * read-only views; the Pedidos panel keeps full report-request functionality.
  *
  * No public UI, no payments, no email gate.
  */
