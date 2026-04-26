@@ -55,6 +55,7 @@ interface SnapshotResponse {
     meta: SnapshotMetadata;
     created_at: string;
     expires_at: string | null;
+    benchmark?: ReportBenchmarkInput;
   } | null;
   error_code?: string;
   message?: string;
@@ -149,6 +150,7 @@ function AdminReportPreviewPage() {
         const result = snapshotToReportData({
           payload: body.snapshot.payload ?? {},
           meta: body.snapshot.meta ?? undefined,
+          benchmark: body.snapshot.benchmark,
         });
         setLoad({
           kind: "ready",
