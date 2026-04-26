@@ -281,6 +281,8 @@ function buildKeyMetrics(payload: SnapshotPayload): ReportData["keyMetrics"] {
 function buildFormatBreakdown(
   payload: SnapshotPayload,
 ): ReportData["formatBreakdown"] {
+  // The mock infers a discriminated union per element; we widen here.
+  type Item = ReportData["formatBreakdown"][number];
   const stats = payload.format_stats ?? {};
   const TINTS = {
     Reels: "primary" as const,
@@ -303,7 +305,7 @@ function buildFormatBreakdown(
   ];
   return formats.map((format) => {
     const s = canonical.get(format) ?? {};
-    return {
+    const item = {
       format,
       sharePct: Math.round(num(s.share_pct, 0)),
       engagement: round2(num(s.avg_engagement_pct, 0)),
@@ -312,8 +314,9 @@ function buildFormatBreakdown(
       tint: TINTS[format],
       // Without a real benchmark we cannot honestly classify status. The
       // visual component still renders; the coverage block flags this.
-      status: "abaixo" as const,
+      status: "abaixo",
     };
+    return item as unknown as Item;
   });
 }
 
