@@ -1,9 +1,9 @@
 /**
  * /admin — operational admin v1.
  *
- * - Token gate (validated server-side against INTERNAL_API_TOKEN).
- * - Report request list with filters.
- * - Detail sheet with manual recovery actions.
+ * Acesso via Google Sign-in (Lovable Cloud) com allowlist de emails
+ * (ADMIN_ALLOWED_EMAILS). Quem entrar com email não autorizado vê
+ * "Acesso restrito" e a sessão Supabase é terminada automaticamente.
  *
  * Self-contained layout (no public Header/Footer).
  */
@@ -14,6 +14,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { AdminGate } from "@/components/admin/admin-gate";
 import { CockpitShell } from "@/components/admin/cockpit/cockpit-shell";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -25,28 +26,65 @@ export const Route = createFileRoute("/admin")({
   }),
 });
 
-function AdminPage() {
-  const [authState, setAuthState] = useState<"checking" | "in" | "out">("checking");
+type AuthState = "checking" | "signed_out" | "denied" | "in";
 
-  // Probe authentication by hitting a protected endpoint.
+function AdminPage() {
+  const [authState, setAuthState] = useState<AuthState>("checking");
+  const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/admin/report-requests?page=1&pageSize=1")
-      .then((res) => {
+
+    async function evaluate(token: string | null) {
+      if (!token) {
+        if (!cancelled) {
+          setAuthState("signed_out");
+          setDeniedEmail(null);
+        }
+        return;
+      }
+      try {
+        const res = await fetch("/api/admin/whoami", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const body = (await res.json().catch(() => ({}))) as {
+          allowed?: boolean;
+          email?: string | null;
+        };
         if (cancelled) return;
-        setAuthState(res.ok ? "in" : "out");
-      })
-      .catch(() => {
-        if (!cancelled) setAuthState("out");
-      });
+        if (body.allowed) {
+          setAuthState("in");
+          setDeniedEmail(null);
+        } else {
+          setDeniedEmail(body.email ?? null);
+          setAuthState("denied");
+          // Termina a sessão para não deixar JWT órfão de um email não autorizado.
+          await supabase.auth.signOut().catch(() => null);
+        }
+      } catch {
+        if (!cancelled) setAuthState("signed_out");
+      }
+    }
+
+    // ORDEM CRÍTICA: registar o listener antes de chamar getSession.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      void evaluate(session?.access_token ?? null);
+    });
+
+    void supabase.auth.getSession().then(({ data }) => {
+      void evaluate(data.session?.access_token ?? null);
+    });
+
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
   }, []);
 
   async function handleLogout() {
-    await fetch("/api/admin/logout", { method: "POST" }).catch(() => null);
-    setAuthState("out");
+    await supabase.auth.signOut().catch(() => null);
+    setAuthState("signed_out");
+    setDeniedEmail(null);
   }
 
   if (authState === "checking") {
@@ -57,10 +95,43 @@ function AdminPage() {
     );
   }
 
-  if (authState === "out") {
+  if (authState === "signed_out") {
     return (
       <>
-        <AdminGate onAuthenticated={() => setAuthState("in")} />
+        <AdminGate />
+        <Toaster />
+      </>
+    );
+  }
+
+  if (authState === "denied") {
+    return (
+      <>
+        <div className="flex min-h-screen items-center justify-center bg-surface-base px-4">
+          <div className="w-full max-w-sm space-y-6 rounded-xl border border-border-subtle bg-surface-elevated p-8 shadow-xl">
+            <div className="space-y-2">
+              <p className="font-mono text-xs uppercase tracking-[0.18em] text-content-tertiary">
+                InstaBench · Admin
+              </p>
+              <h1 className="font-display text-2xl text-content-primary">Acesso restrito</h1>
+              <p className="text-sm text-content-secondary">
+                {deniedEmail
+                  ? `A conta ${deniedEmail} não está autorizada a aceder ao backoffice.`
+                  : "Esta conta Google não está autorizada a aceder ao backoffice."}
+              </p>
+              <p className="text-xs text-content-tertiary">
+                A sessão foi terminada. Tenta novamente com uma conta autorizada.
+              </p>
+            </div>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => setAuthState("signed_out")}
+            >
+              Entrar com outra conta
+            </Button>
+          </div>
+        </div>
         <Toaster />
       </>
     );
