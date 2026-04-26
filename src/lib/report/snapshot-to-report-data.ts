@@ -271,7 +271,10 @@ function buildProfileSection(
   };
 }
 
-function buildKeyMetrics(payload: SnapshotPayload): ReportData["keyMetrics"] {
+function buildKeyMetrics(
+  payload: SnapshotPayload,
+  benchmark: ReportBenchmarkInput | undefined,
+): ReportData["keyMetrics"] {
   const cs = payload.content_summary ?? {};
   const dominantRaw = cs.dominant_format ?? "Carrosséis";
   const fmt = normaliseFormatLabel(dominantRaw);
@@ -289,12 +292,20 @@ function buildKeyMetrics(payload: SnapshotPayload): ReportData["keyMetrics"] {
     return 0;
   })();
 
+  const positioning = benchmark?.positioning;
+  const engagementBenchmark =
+    positioning && positioning.status === "available"
+      ? round2(positioning.benchmarkValue)
+      : 0;
+  const engagementDeltaPct =
+    positioning && positioning.status === "available"
+      ? round1(positioning.differencePercent)
+      : 0;
+
   return {
     engagementRate: round2(num(cs.average_engagement_rate, 0)),
-    // Benchmark numbers are not derived in this step — surfaced as 0 so the
-    // existing component does not crash. The coverage block flags this.
-    engagementBenchmark: 0,
-    engagementDeltaPct: 0,
+    engagementBenchmark,
+    engagementDeltaPct,
     postsAnalyzed: num(cs.posts_analyzed, 0),
     postingFrequencyWeekly: round1(num(cs.estimated_posts_per_week, 0)),
     dominantFormat: fmt,
@@ -304,6 +315,7 @@ function buildKeyMetrics(payload: SnapshotPayload): ReportData["keyMetrics"] {
 
 function buildFormatBreakdown(
   payload: SnapshotPayload,
+  benchmark: ReportBenchmarkInput | undefined,
 ): ReportData["formatBreakdown"] {
   // The mock infers a discriminated union per element; we widen here.
   type Item = ReportData["formatBreakdown"][number];
@@ -329,16 +341,26 @@ function buildFormatBreakdown(
   ];
   return formats.map((format) => {
     const s = canonical.get(format) ?? {};
+    const engagement = round2(num(s.avg_engagement_pct, 0));
+    const refRaw = benchmark?.perFormatReference?.[format] ?? null;
+    const benchValue =
+      typeof refRaw === "number" && refRaw > 0 ? round2(refRaw) : 0;
+    // Status mirrors the engine's ±10% rule. When no benchmark is known, we
+    // fall back to "abaixo" (placeholder), matching the prior behaviour.
+    let status: "abaixo" | "acima" | "ligeiramente-acima" = "abaixo";
+    if (benchValue > 0 && engagement > 0) {
+      const deltaPct = ((engagement - benchValue) / benchValue) * 100;
+      if (deltaPct > 10) status = "acima";
+      else if (deltaPct > 0) status = "ligeiramente-acima";
+      else status = "abaixo";
+    }
     const item = {
       format,
       sharePct: Math.round(num(s.share_pct, 0)),
-      engagement: round2(num(s.avg_engagement_pct, 0)),
-      // No real per-format benchmark in this step → 0. Coverage = placeholder.
-      benchmark: 0,
+      engagement,
+      benchmark: benchValue,
       tint: TINTS[format],
-      // Without a real benchmark we cannot honestly classify status. The
-      // visual component still renders; the coverage block flags this.
-      status: "abaixo",
+      status,
     };
     return item as unknown as Item;
   });
