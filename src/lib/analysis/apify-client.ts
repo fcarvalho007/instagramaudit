@@ -31,6 +31,12 @@ interface RunActorOptions {
   // Apify's per-actor timeout (seconds) for the synchronous run.
   apifyTimeoutSecs?: number;
   memoryMbytes?: number;
+  // Hard cap on dataset items returned by the actor. Cost guard — Apify
+  // stops the run as soon as this many items are produced.
+  maxItems?: number;
+  // Hard cap on the total USD charge for this run. Cost guard — Apify
+  // aborts the run when the projected charge would exceed this value.
+  maxTotalChargeUsd?: number;
 }
 
 export async function runActor<T = unknown>(
@@ -47,6 +53,8 @@ export async function runActor<T = unknown>(
     timeoutMs = DEFAULT_TIMEOUT_MS,
     apifyTimeoutSecs = 50,
     memoryMbytes = 1024,
+    maxItems,
+    maxTotalChargeUsd,
   } = options;
 
   // Actor IDs may use the form "user/name" — encode the slash safely.
@@ -57,6 +65,12 @@ export async function runActor<T = unknown>(
   url.searchParams.set("timeout", String(apifyTimeoutSecs));
   url.searchParams.set("memory", String(memoryMbytes));
   url.searchParams.set("format", "json");
+  if (typeof maxItems === "number") {
+    url.searchParams.set("maxItems", String(maxItems));
+  }
+  if (typeof maxTotalChargeUsd === "number") {
+    url.searchParams.set("maxTotalChargeUsd", String(maxTotalChargeUsd));
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

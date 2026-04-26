@@ -160,7 +160,15 @@ async function fetchProfileWithPosts(
       resultsLimit: POSTS_LIMIT,
       addParentData: false,
     },
-    { timeoutMs: 60_000, apifyTimeoutSecs: 55 },
+    {
+      timeoutMs: 60_000,
+      apifyTimeoutSecs: 55,
+      // Cost guards for the smoke-test phase. The unified actor returns one
+      // profile row per `directUrls` entry, so maxItems=1 is the natural
+      // ceiling. maxTotalChargeUsd=0.10 is a hard USD cap per call.
+      maxItems: 1,
+      maxTotalChargeUsd: 0.10,
+    },
   );
   return rows[0] ?? null;
 }
