@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   Database,
   Network,
+  Circle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export function DiagnosticsPanel({ data }: Props) {
   return (
     <div className="space-y-8">
       <ReadinessCard data={data} />
+      <ReadinessChecklistCard data={data} />
 
       <Section
         title="Segredos"
