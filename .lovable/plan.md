@@ -1,67 +1,113 @@
-# Forçar /report/example sempre em tema claro (sem flicker)
+## Objetivo
 
-## Problema confirmado
+Aplicar apenas as correções mínimas exigidas pela auditoria pré-Apify, para tornar o sistema seguro e fiável antes de subscrever o plano Apify Starter. Sem novas features. Sem alterações ao `/report.example`. Sem alterações ao landing público nem ao `/analyze/$username` (exceto a já existente exibição de erros).
 
-O flicker existe porque `ReportThemeWrapper` aplica `data-theme="light"` dentro de `useEffect`, que só corre **depois** da hidratação. Sequência atual:
+---
 
-1. SSR renderiza HTML sem `data-theme` → `<body>` herda os tokens escuros do `tokens.css`.
-2. Browser pinta a página **escura**.
-3. React hidrata, `useEffect` corre, adiciona `data-theme="light"` ao `<body>`.
-4. Página repinta **branca**.
+## 1. Logging fiável (fire-and-forget pode perder eventos no Worker)
 
-O salto entre passos 2 e 4 é o flash que estás a ver.
+**Problema (auditoria):** O handler usa `void ipHashPromise.then(...).then(recordAnalysisEvent)` em todos os caminhos críticos. No runtime Cloudflare Worker, qualquer trabalho assíncrono pendente quando a `Response` é enviada pode ser cancelado — perdendo logs de `provider_disabled`, `blocked_allowlist`, `cache hit`, `fresh success` e `provider_error`. Isso quebra o cockpit e a vigilância de custos no momento exato em que o Apify estiver ativo.
 
-## Solução
+**Correção (mínima e segura):**
 
-Aplicar `data-theme="light"` ao `<body>` **antes** do primeiro paint, em duas frentes que se complementam:
+- Em `src/routes/api/analyze-public-v1.ts`:
+  - Manter a função `logEvent`, mas torná-la `async` e devolver a `Promise` da gravação (ainda concatenada com `evaluateAlertsForEvent`).
+  - Antes de **cada `return`** dos caminhos críticos, fazer `await logEvent({...})`. Caminhos abrangidos:
+    - `invalid_input` (JSON inválido + Zod inválido)
+    - `blocked_allowlist`
+    - `provider_disabled` (incluindo o ramo stale-fallback)
+    - `cache hit` (sucesso `data_source: "cache"`)
+    - `fresh success`
+    - `not_found` (pré-stale e pós-provider)
+    - `provider_error` (`UPSTREAM_UNAVAILABLE`, `UPSTREAM_FAILED`)
+    - `stale` servido após falha do provedor
+  - O `await` é envolvido num `try/catch` interno que só faz `console.error` — falhar a gravar **nunca** pode crashar a resposta pública.
+  - `recordAnalysisEvent` e `recordProviderCall` já fazem `try/catch` interno e devolvem `null` em erro, portanto não há risco de bloqueio fatal.
+  - Os segredos continuam protegidos — o helper `sanitizeErrorExcerpt` já está em uso e nada de novo é exposto.
 
-1. **No SSR** — emitir `<body data-theme="light">` directamente no HTML servido para `/report/example`, para que o primeiro byte já chegue com o tema correcto.
-2. **Pré-hidratação no cliente** — `<ScriptOnce>` que confirma/aplica `data-theme="light"` antes de qualquer CSS resolver, cobrindo navegação SPA (entrar em /report/example a partir de outra rota).
+- `src/lib/analysis/events.ts` não precisa de alterações — já é resiliente.
 
-Não há toggle, não há persistência, não há detecção de sistema. A página abre branca e fica branca, coerente com o posicionamento editorial do mockup.
+**Impacto na latência:** A gravação extra é uma única RPC Supabase (alguns ms). Aceitável face ao custo de perder um evento no cockpit.
 
-## Alterações
+---
 
-### 1. `src/components/report/report-theme-wrapper.tsx` (refactor)
+## 2. Compatibilidade do payload do actor Apify
 
-Remover o `useEffect`. Substituir por:
-
-- `<ScriptOnce>` com um snippet mínimo que faz `document.body.setAttribute("data-theme","light")` — corre antes do React hidratar, sem flash em navegação SPA.
-- `useEffect` de **cleanup apenas** que remove `data-theme` ao desmontar (volta ao escuro quando o utilizador navega para fora).
-
-### 2. `src/routes/__root.tsx` (alteração mínima e segura)
-
-Adicionar `suppressHydrationWarning` ao `<body>` para evitar warning de hidratação quando o `data-theme` é aplicado antes do React (boa prática documentada do TanStack para scripts pré-hidratação).
-
-### 3. SSR-time body attribute para a rota /report/example
-
-Para garantir que **o primeiro byte HTML já chega com `data-theme="light"`** (eliminando o flash mesmo em hard reload), adicionar no `head()` da rota `/report/example` um `script` inline que corre imediatamente e aplica o atributo antes do primeiro paint:
-
-```ts
-head: () => ({
-  meta: [...existentes],
-  scripts: [
-    {
-      children: `document.body.setAttribute("data-theme","light")`,
-    },
-  ],
-})
+**Resultado da auditoria:** O actor escolhido é `apify/instagram-scraper` com payload:
+```json
+{
+  "directUrls": ["https://www.instagram.com/<handle>/"],
+  "resultsType": "details",
+  "resultsLimit": 12,
+  "addParentData": false
+}
 ```
 
-Este script é injectado pelo `<Scripts />` do root e executa síncronamente antes do React montar, eliminando o flash em hard reload, navegação SPA e back/forward.
+Este formato é **exatamente** o esperado pelo actor `apify/instagram-scraper` para devolver detalhes do perfil com `latestPosts[]` embebido. Cumpre os critérios:
+- `actor: apify/instagram-scraper` mantido.
+- `POSTS_LIMIT = 12` mantido.
+- Uma chamada por handle mantida.
+- Concorrentes opcionais e isolados via `Promise.allSettled`-equivalente mantidos.
 
-## O que NÃO mexo
+**Conclusão:** Nada a mudar aqui. Documentar este facto no relatório final é suficiente. Sem edição de ficheiros.
 
-- `src/components/report/report-page.tsx` e todos os componentes do relatório — intactos.
-- `src/styles/tokens-light.css` — já está bem feito.
-- `src/styles.css`, `tokens.css` — sem alterações.
-- Nenhuma outra rota afectada (cleanup remove o atributo ao sair).
-- Sem toggle, sem `localStorage`, sem `prefers-color-scheme`.
+---
 
-## Validação
+## 3. Precisão do admin
 
-- Hard reload em `/report/example` → abre directamente branco, sem flash escuro.
-- Navegação SPA de `/` para `/report/example` → transição limpa para branco.
-- Navegação de `/report/example` para `/admin` → volta ao tema escuro padrão.
-- Sem warnings de hidratação na consola.
-- Build TypeScript verde.
+**Problema (auditoria):** O painel **Diagnóstico** mostra `Kill-switch: Ativo/Desligado` mas a etiqueta é ambígua — "Ativo" pode ser lido como "kill-switch ativo = bloqueado" ou "Apify ativo = a chamar". Isso induz erro operacional na altura mais crítica (subscrição Apify).
+
+**Correção (mínima e isolada a `src/components/admin/cockpit/panels/diagnostics-panel.tsx`):**
+
+- Renomear o `KV` "Kill-switch" para `APIFY_ENABLED`.
+- Trocar o texto do badge:
+  - `data.apify.enabled === true` → badge variant `success`, texto **"Ligado · chamadas reais"**.
+  - `data.apify.enabled === false` → badge variant `warning`, texto **"Desligado · sem chamadas"**.
+- Adicionar um único `KV` adjacente "Modo de teste" reaproveitando `data.testing_mode.active` (badge `accent` "Allowlist ativa" / `default` "Aberto"). Já existe a secção dedicada "Modo de teste" mais abaixo, mas o operador precisa ver os dois sinais lado a lado no topo para decidir antes de subscrever o Apify.
+
+Sem novas tabs. Sem redesenho. Sem alterações a `cockpit-shell.tsx`, `cockpit-types.ts`, ou `/api/admin/diagnostics.ts` (a API já devolve ambos os campos).
+
+---
+
+## 4. Restrições estritas (sem alterações)
+
+- `/report.example` — intacto.
+- Componentes de relatório, PDF, email — intactos.
+- Landing pública — intacta.
+- `/analyze/$username` — sem alterações de UI.
+- `apify-allowlist.ts`, `apify-client.ts`, `cost.ts`, `cache.ts` — sem alterações.
+- Sem migrações de DB.
+- Sem novas dependências.
+- Sem novas variáveis de ambiente.
+
+---
+
+## 5. Validação pós-implementação
+
+1. `bunx tsc --noEmit` (TypeScript check).
+2. `bun run build` se disponível.
+3. Smoke test mental:
+   - **`APIFY_ENABLED=false`** → `/api/analyze-public-v1` devolve `PROVIDER_DISABLED` para handles allowlistados e regista evento `provider_disabled`. Admin Diagnóstico mostra "Desligado · sem chamadas".
+   - **Allowlist bloqueado** → handle fora da allowlist devolve `PROFILE_NOT_ALLOWED` e regista `blocked_allowlist`. Sem chamada ao Apify.
+   - **`APIFY_ENABLED=true` + allowlist com `frederico.m.carvalho`** → primeira análise é `fresh success`, regista evento + `provider_call_logs`. Segunda análise no mesmo cache key é `cache hit`. Apify só é invocado para handles allowlistados enquanto `APIFY_TESTING_MODE !== "false"`.
+
+---
+
+## 6. Ficheiros a editar
+
+1. `src/routes/api/analyze-public-v1.ts` — tornar `logEvent` aguardável e `await` antes de cada `return` crítico, dentro de um `try/catch` que apenas regista no `console.error`.
+2. `src/components/admin/cockpit/panels/diagnostics-panel.tsx` — etiqueta `APIFY_ENABLED` clara + KV adjacente para modo de teste.
+
+Sem outros ficheiros tocados.
+
+---
+
+## 7. Resposta final ao utilizador (após a edição)
+
+O resumo final irá conter:
+1. Lista exata de ficheiros alterados.
+2. O que foi corrigido (ponto a ponto).
+3. Como testar com `APIFY_ENABLED=false`.
+4. Como testar a allowlist bloqueada.
+5. Como testar com `APIFY_ENABLED=true`.
+6. Confirmação explícita de que o Apify só é chamado para `frederico.m.carvalho` enquanto o modo de teste estiver ativo (e a allowlist contiver apenas esse handle).

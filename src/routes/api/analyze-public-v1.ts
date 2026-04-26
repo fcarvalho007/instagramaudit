@@ -230,7 +230,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         const userAgentFamily = parseUserAgentFamily(request);
         // IP hash kicked off in parallel — awaited only when we actually log.
         const ipHashPromise = hashRequestIp(request);
-        const logEvent = (overrides: {
+        // Critical analytics path. We MUST await these writes before sending
+        // the response — in the Cloudflare Worker runtime, fire-and-forget
+        // promises can be cancelled when the Response is flushed, which would
+        // silently drop provider_disabled / blocked_allowlist / cache hit /
+        // fresh success / provider_error events. The Supabase RPC is a few
+        // ms and any failure is swallowed locally so the public response is
+        // never blocked by analytics issues.
+        const logEvent = async (overrides: {
           handle: string;
           competitorHandles?: string[];
           cacheKey: string | null;
@@ -244,34 +251,36 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           estimatedCostUsd?: number | null;
           displayName?: string | null;
           followersLastSeen?: number | null;
-        }) => {
-          // Fire-and-forget: never block the user response on analytics.
-          void ipHashPromise.then((requestIpHash) =>
-            recordAnalysisEvent({
+        }): Promise<void> => {
+          try {
+            const requestIpHash = await ipHashPromise;
+            await recordAnalysisEvent({
               ...overrides,
               durationMs: Date.now() - startedAt,
               requestIpHash,
               userAgentFamily,
-            }).then(() =>
-              // Evaluate cheap inline alerts after the event is persisted.
-              // Skipped for the synthetic "(invalid)" handle to avoid noise.
-              overrides.handle === "(invalid)"
-                ? null
-                : evaluateAlertsForEvent({
-                    handle: overrides.handle,
-                    requestIpHash,
-                    dataSource: overrides.dataSource,
-                    outcome: overrides.outcome,
-                  }),
-            ),
-          );
+            });
+            // Evaluate cheap inline alerts after the event is persisted.
+            // Skipped for the synthetic "(invalid)" handle to avoid noise.
+            if (overrides.handle !== "(invalid)") {
+              await evaluateAlertsForEvent({
+                handle: overrides.handle,
+                requestIpHash,
+                dataSource: overrides.dataSource,
+                outcome: overrides.outcome,
+              });
+            }
+          } catch (err) {
+            // Logging must never crash the public response.
+            console.error("[analyze-public-v1] logEvent failed", err);
+          }
         };
 
         let raw: unknown;
         try {
           raw = await request.json();
         } catch {
-          logEvent({
+          await logEvent({
             handle: "(invalid)",
             cacheKey: null,
             dataSource: "none",
@@ -283,7 +292,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
         const parsed = PayloadSchema.safeParse(raw);
         if (!parsed.success) {
-          logEvent({
+          await logEvent({
             handle: "(invalid)",
             cacheKey: null,
             dataSource: "none",
