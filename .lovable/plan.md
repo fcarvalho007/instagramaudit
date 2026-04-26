@@ -1,90 +1,100 @@
-Plano para corrigir a biblioteca Admin “Relatórios”
+Plano para ligar dados reais de benchmark ao adaptador do relatório
 
 Estado observado
-- A tab “Relatórios” já existe.
-- Já existe um snapshot ativo para `frederico.m.carvalho`.
-- Esse snapshot tem `updated_at = 2026-04-26 18:34:24.984+00` e expira para a biblioteca admin em `updated_at + 5 dias = 2026-05-01 18:34:24.984+00`.
-- A rota por snapshot id já existe no código atual, mas vou validar e ajustar o que for necessário para cumprir exatamente a regra pedida.
-- Não há necessidade de migrações.
+- O adapter `snapshotToReportData` é puro e devolve `engagementBenchmark: 0`, `engagementDeltaPct: 0` e `formatBreakdown[].benchmark: 0`, com `status: "abaixo"` fixo.
+- Já existe um motor de benchmark completo em `src/lib/benchmark/`:
+  - `loadBenchmarkReferences()` lê de `benchmark_references` (com cache 10min e fallback in-code).
+  - `computeBenchmarkPositioning()` devolve tier, format, valor de benchmark, valor do perfil e delta.
+  - `getReferenceFromData()` permite obter o benchmark para um par tier × format.
+- O componente `report-format-breakdown.tsx` aceita 3 status: `abaixo`, `acima`, `ligeiramente-acima`. Não existe `alinhado` no componente — vou respeitar este conjunto.
+- A rota admin `/admin/report-preview/snapshot/$snapshotId` chama `snapshotToReportData` no cliente, sem benchmarks.
+- A rota admin `/admin/report-preview/$username` faz o mesmo.
 
-O que vou alterar
+Estratégia
+1. Manter o adapter puro: aceitar um input opcional `benchmark` com tudo o que vem da BD, sem fazer I/O.
+2. Calcular o benchmark do lado servidor:
+   - novo helper em `src/lib/report/benchmark-input.server.ts` que carrega `loadBenchmarkReferences()` e devolve um objecto compatível com o adapter, incluindo:
+     - `positioning`: resultado de `computeBenchmarkPositioning()` para o engagement médio do perfil
+     - `perFormatReference`: valores de benchmark para Reels/Carousels/Imagens no tier do perfil
+     - `tierLabel`, `datasetVersion`
+3. Os endpoints `GET /api/admin/snapshot-by-id/$snapshotId` e `GET /api/admin/snapshot/$username` passam a devolver também `benchmark`.
+4. As rotas admin de pré-visualização passam `benchmark` ao adapter.
 
-1. `GET /api/admin/reports`
-- Garantir que a retenção usa sempre `updated_at`, não `created_at`.
-- Devolver em cada linha:
-  - `retention_base_at = updated_at`
-  - `retention_expires_at = updated_at + 5 dias`
-  - `retention_status`:
-    - `active` se tiver menos de 4 dias
-    - `expiring` se tiver entre 4 e 5 dias
-    - `expired` se tiver 5 ou mais dias
-- Manter a lista principal focada nos relatórios ainda disponíveis: `updated_at >= agora - 5 dias`.
-- Adicionar/confirmar `expired_summary` calculado fora da lista principal:
-  - `count`: total de snapshots com `updated_at < agora - 5 dias`
-  - `oldest_updated_at`
-  - `newest_updated_at`
-- Melhorar a contagem para não depender de um limite artificial de 1000 linhas, se necessário.
+Alterações detalhadas
 
-2. `POST /api/admin/reports/cleanup-expired`
-- Garantir que elimina apenas linhas de `analysis_snapshots`.
-- Usar exclusivamente `updated_at < agora - 5 dias`.
-- Não tocar em:
-  - `analysis_events`
-  - `provider_call_logs`
-  - `usage_alerts`
-  - `social_profiles`
-  - PDF/email/report requests
+1. `src/lib/report/snapshot-to-report-data.ts`
+   - Acrescentar tipo:
+     ```
+     ReportBenchmarkInput {
+       positioning: BenchmarkPositioning;
+       perFormatReference: { Reels: number|null; Carousels: number|null; Imagens: number|null };
+       tierLabel: string;
+       datasetVersion: string;
+     }
+     ```
+   - Aceitar `input.benchmark?: ReportBenchmarkInput`.
+   - `buildKeyMetrics` passa a receber `benchmark`:
+     - `engagementBenchmark = positioning.benchmarkValue` quando disponível, senão 0.
+     - `engagementDeltaPct = positioning.differencePercent` arredondado a 1 dp, senão 0.
+   - `buildFormatBreakdown` recebe `benchmark`:
+     - `benchmark[format] = perFormatReference[format] ?? 0`.
+     - `status` calculado por delta vs benchmark do formato com a mesma regra ±10% do motor:
+       - delta > +10% → `acima`
+       - 0 < delta ≤ +10% → `ligeiramente-acima`
+       - delta ≤ 0 → `abaixo`
+     - Quando não há benchmark do formato, manter `benchmark: 0` e `status: "abaixo"` (placeholder).
+   - `coverage.benchmark`:
+     - `real` se `positioning.status === "available"` E pelo menos um formato com benchmark > 0.
+     - `partial` se houver benchmark do tier mas faltam formatos.
+     - `placeholder` quando não há nada.
+   - Adapter continua puro: zero I/O.
 
-3. `ReportsPanel`
-- Usar `expired_summary.count` como fonte única da contagem do botão de limpeza.
-- Quando `expired_summary.count === 0`, manter a ação desativada e mostrar “Sem relatórios expirados.”
-- Manter a copy:
-  - “Por sustentabilidade, os relatórios ficam disponíveis durante 5 dias após a geração.”
-- Adicionar a nota curta pedida:
-  - “A cache técnica pode expirar antes; a biblioteca admin mantém o relatório disponível durante 5 dias.”
-- Garantir que “Ver relatório” usa o id exato do snapshot da linha.
+2. Novo `src/lib/report/benchmark-input.server.ts`
+   - `buildReportBenchmarkInput(payload)`: carrega `loadBenchmarkReferences()`, classifica formato dominante via `normaliseFormatLabel` partilhado, calcula `computeBenchmarkPositioning`, retorna a estrutura `ReportBenchmarkInput`.
+   - Server-only (usa o loader cached).
 
-4. Pré-visualização por snapshot id
-- Confirmar/manter a rota admin:
-  - `/admin/report-preview/snapshot/$snapshotId`
-- Garantir que:
-  - requer sessão admin
-  - carrega exatamente `analysis_snapshots.id`
-  - passa `normalized_payload` pelo `snapshotToReportData`
-  - renderiza `<ReportPage data={realReportData} />`
-- Manter a rota antiga por username se existir, sem a remover.
+3. `src/routes/api/admin/snapshot-by-id.$snapshotId.ts`
+   - Importa o helper server-side e devolve `benchmark` no JSON.
+   - Sem chamadas Apify.
 
-5. Validação
-- Confirmar que o relatório de `frederico.m.carvalho` continua na tab “Relatórios”.
-- Confirmar que a expiração visual é `updated_at + 5 dias`.
-- Confirmar que a limpeza conta expirados com base em `updated_at`.
-- Confirmar que o link “Ver relatório” aponta para `/admin/report-preview/snapshot/{id}`.
-- Não chamar Apify.
-- Não apagar eventos/logs/alertas/perfis.
-- Correr:
-  - `bunx tsc --noEmit`
-  - `bun run build`
+4. `src/routes/api/admin/snapshot.$username.ts`
+   - Mesmo update, para manter paridade na rota username.
+
+5. `src/routes/admin.report-preview.snapshot.$snapshotId.tsx`
+   - Estende o tipo `SnapshotResponse` com `benchmark?: ReportBenchmarkInput`.
+   - Passa `benchmark` ao chamar `snapshotToReportData`.
+
+6. `src/routes/admin.report-preview.$username.tsx`
+   - Mesma alteração para paridade.
+
+Sem alterações
+- `/report/example`: intacto. `report-mock-data` permanece com os seus números.
+- `/analyze/$username`: UI inalterada.
+- Public landing: inalterada.
+- PDF/email: inalterados (já usam `loadBenchmarkReferences` independentemente).
+- Sem migrações: `benchmark_references` já existe e está populado via fallback in-code se a tabela vier vazia.
+
+Validação
+- A pré-visualização do snapshot existente abre.
+- `engagementBenchmark` deixa de ser 0 quando há tier com referência.
+- `formatBreakdown[].benchmark` populado por formato.
+- `coverage.benchmark` actualiza para `real` ou `partial` em vez de `placeholder`.
+- `bunx tsc --noEmit` e `bun run build` verdes.
+- Sem chamadas Apify.
 
 Ficheiros previstos
-- Editar, se necessário:
-  - `src/routes/api/admin/reports.ts`
-  - `src/routes/api/admin/reports.cleanup-expired.ts`
-  - `src/components/admin/cockpit/panels/reports-panel.tsx`
-  - `src/routes/admin.report-preview.snapshot.$snapshotId.tsx`
-  - `src/routes/api/admin/snapshot-by-id.$snapshotId.ts`
-- Não editar:
-  - public landing
-  - `/analyze/$username` UI
-  - `/report/example`
-  - fluxos PDF/email
-  - ficheiros gerados manualmente
-  - ficheiros bloqueados
+- Editar: `src/lib/report/snapshot-to-report-data.ts`
+- Criar: `src/lib/report/benchmark-input.server.ts`
+- Editar: `src/routes/api/admin/snapshot-by-id.$snapshotId.ts`
+- Editar: `src/routes/api/admin/snapshot.$username.ts`
+- Editar: `src/routes/admin.report-preview.snapshot.$snapshotId.tsx`
+- Editar: `src/routes/admin.report-preview.$username.tsx`
 
 Checkpoint
-☐ Retenção baseada em `updated_at`
-☐ `expired_summary` devolvido e usado no botão
-☐ Cleanup apenas em `analysis_snapshots`
-☐ Link “Ver relatório” baseado em snapshot id
-☐ Sem chamadas Apify
-☐ Sem migrações
-☐ Typecheck e build executados
+☐ Adapter puro com input benchmark opcional
+☐ Helper server-side carrega `loadBenchmarkReferences`
+☐ Endpoints admin devolvem `benchmark`
+☐ Pré-visualizações passam `benchmark` ao adapter
+☐ Coverage actualizado
+☐ Sem Apify, sem migrações
+☐ tsc + build ok
