@@ -132,7 +132,10 @@ function AdminPage() {
             <Button
               type="button"
               className="w-full"
-              onClick={() => setAuthState("signed_out")}
+              onClick={() => {
+                lastEvaluatedTokenRef.current = null;
+                setAuthState("signed_out");
+              }}
             >
               Entrar com outra conta
             </Button>
