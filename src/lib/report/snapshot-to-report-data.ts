@@ -14,6 +14,7 @@
  */
 
 import type { ReportData } from "@/components/report/report-mock-data";
+import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 
 import { resolveReportTier } from "./tiers";
 import {
@@ -92,6 +93,29 @@ export interface SnapshotMetadata {
 export interface SnapshotInput {
   payload: SnapshotPayload;
   meta?: SnapshotMetadata;
+  /**
+   * Optional benchmark input resolved server-side from
+   * `benchmark_references` (with in-code fallback). When provided the adapter
+   * fills `keyMetrics.engagementBenchmark/Delta` and per-format benchmarks
+   * with real numbers; when omitted the adapter keeps placeholder zeroes and
+   * marks coverage accordingly.
+   */
+  benchmark?: ReportBenchmarkInput;
+}
+
+/**
+ * Pure DTO consumed by the adapter. The shape is intentionally JSON-friendly
+ * so it can travel over the network from server endpoints to client previews.
+ */
+export interface ReportBenchmarkInput {
+  positioning: BenchmarkPositioning;
+  perFormatReference: {
+    Reels: number | null;
+    Carousels: number | null;
+    Imagens: number | null;
+  };
+  tierLabel: string;
+  datasetVersion: string;
 }
 
 // ============================================================================
