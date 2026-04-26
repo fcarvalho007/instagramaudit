@@ -22,6 +22,7 @@ import { Route as ApiAnalyzePublicV1RouteImport } from './routes/api/analyze-pub
 import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
+import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
 import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
@@ -94,6 +95,11 @@ const ApiAdminResendEmailRoute = ApiAdminResendEmailRouteImport.update({
   path: '/api/admin/resend-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminReportsRoute = ApiAdminReportsRouteImport.update({
+  id: '/api/admin/reports',
+  path: '/api/admin/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminReportRequestsRoute = ApiAdminReportRequestsRouteImport.update({
   id: '/api/admin/report-requests',
   path: '/api/admin/report-requests',
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
+  '/api/admin/reports': typeof ApiAdminReportsRoute
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
+  '/api/admin/reports': typeof ApiAdminReportsRoute
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
+  '/api/admin/reports': typeof ApiAdminReportsRoute
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
+    | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
     | '/api/admin/report-requests/$id'
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
+    | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
     | '/api/admin/report-requests/$id'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
+    | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
     | '/api/admin/report-requests/$id'
@@ -273,6 +285,7 @@ export interface RootRouteChildren {
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminRegeneratePdfRoute: typeof ApiAdminRegeneratePdfRoute
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
+  ApiAdminReportsRoute: typeof ApiAdminReportsRoute
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
@@ -371,6 +384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminResendEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/reports': {
+      id: '/api/admin/reports'
+      path: '/api/admin/reports'
+      fullPath: '/api/admin/reports'
+      preLoaderRoute: typeof ApiAdminReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/report-requests': {
       id: '/api/admin/report-requests'
       path: '/api/admin/report-requests'
@@ -455,6 +475,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminRegeneratePdfRoute: ApiAdminRegeneratePdfRoute,
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,
+  ApiAdminReportsRoute: ApiAdminReportsRoute,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
