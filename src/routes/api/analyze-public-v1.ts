@@ -717,11 +717,25 @@ function buildCachedResponse(
   source: "cache" | "stale",
   benchmarkData: BenchmarkData,
 ): PublicAnalysisSuccess {
+  // Optional enriched fields (Step 1 of the Real Report Data Layer) are
+  // only present on snapshots stored after the enrichment was deployed.
+  // Older snapshots simply omit them and the response stays valid.
   const payload = snapshot.normalized_payload as unknown as {
     profile: PublicAnalysisProfile;
     content_summary: PublicAnalysisSuccess["content_summary"];
     competitors: CompetitorAnalysis[];
+    posts?: unknown;
+    format_stats?: unknown;
   };
+  const enrichedPosts = Array.isArray(payload.posts)
+    ? (payload.posts as PublicAnalysisSuccess["posts"])
+    : undefined;
+  const enrichedFormatStats =
+    payload.format_stats &&
+    typeof payload.format_stats === "object" &&
+    !Array.isArray(payload.format_stats)
+      ? (payload.format_stats as PublicAnalysisSuccess["format_stats"])
+      : undefined;
   // Recompute positioning against the current cloud dataset, not the version
   // captured when the snapshot was stored — editorial tweaks should reflect
   // immediately on cached responses.
@@ -739,6 +753,8 @@ function buildCachedResponse(
     profile: payload.profile,
     content_summary: payload.content_summary,
     competitors: payload.competitors ?? [],
+    ...(enrichedPosts ? { posts: enrichedPosts } : {}),
+    ...(enrichedFormatStats ? { format_stats: enrichedFormatStats } : {}),
     status: {
       success: true,
       data_source: source,
