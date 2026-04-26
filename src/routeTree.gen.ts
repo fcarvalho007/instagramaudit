@@ -25,6 +25,7 @@ import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/rese
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
 import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
+import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 
@@ -108,6 +109,12 @@ const ApiAdminDiagnosticsRoute = ApiAdminDiagnosticsRouteImport.update({
   path: '/api/admin/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminReportPreviewUsernameRoute =
+  AdminReportPreviewUsernameRouteImport.update({
+    id: '/report-preview/$username',
+    path: '/report-preview/$username',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const ApiAdminSnapshotUsernameRoute =
   ApiAdminSnapshotUsernameRouteImport.update({
     id: '/api/admin/snapshot/$username',
@@ -123,7 +130,7 @@ const ApiAdminReportRequestsIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
+  '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -143,7 +151,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
@@ -153,6 +161,7 @@ export interface FileRoutesByTo {
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
+  '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -164,7 +173,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
@@ -174,6 +183,7 @@ export interface FileRoutesById {
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
+  '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
+    | '/admin/report-preview/$username'
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
+    | '/admin/report-preview/$username'
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -236,6 +248,7 @@ export interface FileRouteTypes {
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
+    | '/admin/report-preview/$username'
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -247,7 +260,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
@@ -379,6 +392,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminDiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/report-preview/$username': {
+      id: '/admin/report-preview/$username'
+      path: '/report-preview/$username'
+      fullPath: '/admin/report-preview/$username'
+      preLoaderRoute: typeof AdminReportPreviewUsernameRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/admin/snapshot/$username': {
       id: '/api/admin/snapshot/$username'
       path: '/api/admin/snapshot/$username'
@@ -396,6 +416,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminReportPreviewUsernameRoute: typeof AdminReportPreviewUsernameRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminReportPreviewUsernameRoute: AdminReportPreviewUsernameRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface ApiAdminReportRequestsRouteChildren {
   ApiAdminReportRequestsIdRoute: typeof ApiAdminReportRequestsIdRoute
 }
@@ -412,7 +442,7 @@ const ApiAdminReportRequestsRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
