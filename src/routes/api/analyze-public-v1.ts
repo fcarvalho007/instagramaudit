@@ -42,6 +42,7 @@ import {
   type AnalysisDataSource,
   type AnalysisOutcome,
 } from "@/lib/analysis/events";
+import { evaluateAlertsForEvent } from "@/lib/admin/alerts";
 import {
   getAllowlist,
   isAllowed,
