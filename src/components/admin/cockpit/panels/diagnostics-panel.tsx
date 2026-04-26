@@ -4,7 +4,13 @@
  */
 
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertTriangle, ShieldAlert } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  ShieldAlert,
+  Database,
+  Network,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import {
@@ -48,27 +54,35 @@ export function DiagnosticsPanel({ data }: Props) {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <ReadinessCard data={data} />
 
-      <Section title="Segredos" description="Apenas estado. Os valores nunca são expostos.">
+      <Section
+        title="Segredos"
+        description="Apenas estado. Os valores nunca são expostos."
+      >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {SECRET_LABELS.map((s) => (
             <div
               key={s.key}
               className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3"
             >
-              <span className="font-mono text-xs text-content-secondary">{s.label}</span>
+              <span className="font-mono text-xs text-content-secondary">
+                {s.label}
+              </span>
               <PresenceBadge present={data.secrets[s.key]} />
             </div>
           ))}
         </div>
       </Section>
 
-      <Section title="Apify" description="Estado do provedor e tarifas usadas para estimar custo.">
+      <Section
+        title="Apify"
+        description="Estado do provedor e tarifas usadas para estimar custo."
+      >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KV label="APIFY_ENABLED">
-            <Badge variant={data.apify.enabled ? "success" : "warning"} dot>
+            <Badge variant={data.apify.enabled ? "danger" : "success"} dot>
               {data.apify.enabled
                 ? "Ligado · chamadas reais"
                 : "Desligado · sem chamadas"}
@@ -76,56 +90,71 @@ export function DiagnosticsPanel({ data }: Props) {
           </KV>
           <KV label="Modo de teste">
             <Badge
-              variant={data.testing_mode.active ? "accent" : "default"}
+              variant={data.testing_mode.active ? "accent" : "warning"}
               dot
             >
-              {data.testing_mode.active ? "Allowlist ativa" : "Aberto"}
+              {data.testing_mode.active
+                ? "Allowlist activa"
+                : "Aberto · qualquer handle"}
             </Badge>
           </KV>
           <KV label="Custo / perfil">
-            <span className="font-mono">{formatCost(data.apify.cost_per_profile_usd)}</span>
+            <span className="font-mono">
+              {formatCost(data.apify.cost_per_profile_usd)}
+            </span>
           </KV>
           <KV label="Custo / post">
-            <span className="font-mono">{formatCost(data.apify.cost_per_post_usd)}</span>
+            <span className="font-mono">
+              {formatCost(data.apify.cost_per_post_usd)}
+            </span>
           </KV>
         </div>
       </Section>
 
       <Section
         title="Modo de teste"
-        description="Quando ativo, só os handles na allowlist disparam chamadas reais ao provedor."
+        description="Quando activo, só os handles na allowlist disparam chamadas reais ao provedor."
       >
         <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
               Estado
             </span>
-            <Badge variant={data.testing_mode.active ? "accent" : "default"} dot>
-              {data.testing_mode.active ? "Ativo" : "Inativo"}
+            <Badge variant={data.testing_mode.active ? "accent" : "warning"} dot>
+              {data.testing_mode.active ? "Activo" : "Inactivo · aberto"}
             </Badge>
           </div>
           {data.testing_mode.allowlist.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {data.testing_mode.allowlist.map((h) => (
-                <span
-                  key={h}
-                  className="rounded-md border border-border-subtle bg-surface-base px-2 py-0.5 font-mono text-xs text-content-secondary"
-                >
-                  @{h}
-                </span>
-              ))}
+            <div className="mt-4 space-y-2">
+              <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+                Handles autorizados ({data.testing_mode.allowlist.length})
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {data.testing_mode.allowlist.map((h) => (
+                  <span
+                    key={h}
+                    className="inline-flex items-center rounded-md border border-accent-primary/30 bg-accent-primary/10 px-2.5 py-1 font-mono text-xs text-accent-luminous"
+                  >
+                    @{h}
+                  </span>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="mt-3">
               <Badge variant="warning" dot>
-                Allowlist vazia — nenhuma análise vai disparar Apify
+                Allowlist vazia — nenhuma chamada real será permitida em modo de
+                teste
               </Badge>
             </div>
           )}
         </div>
       </Section>
 
-      <Section title="Última snapshot" description="Estado da última análise armazenada.">
+      <Section
+        title="Última snapshot"
+        description="Estado da última análise armazenada."
+      >
         {data.snapshots.error ? (
           <ErrorBox message={data.snapshots.error} />
         ) : data.snapshots.latest_at ? (
@@ -137,15 +166,23 @@ export function DiagnosticsPanel({ data }: Props) {
               <DataSourceBadge value={data.snapshots.latest_data_source} />
             </KV>
             <KV label="Provider">
-              <span className="font-mono text-xs">{data.snapshots.latest_provider}</span>
+              <span className="font-mono text-xs">
+                {data.snapshots.latest_provider}
+              </span>
             </KV>
             <KV label="Atualizada">{formatDate(data.snapshots.latest_at)}</KV>
           </div>
         ) : (
-          <EmptyState title="Sem snapshots." description="Ainda nenhuma análise foi armazenada." />
+          <EmptyState
+            icon={<Database className="size-4" />}
+            tone="ok"
+            title="Sem snapshots ainda."
+            description="Esperado antes da primeira análise real. Após o primeiro pedido em /analyze/<handle>, a snapshot mais recente aparece aqui."
+          />
         )}
         <p className="mt-2 text-xs text-content-tertiary">
-          Total de snapshots: <span className="font-mono">{formatNumber(data.snapshots.total)}</span>
+          Total de snapshots:{" "}
+          <span className="font-mono">{formatNumber(data.snapshots.total)}</span>
         </p>
       </Section>
 
@@ -160,7 +197,14 @@ export function DiagnosticsPanel({ data }: Props) {
             columns={callColumns}
             rows={providerCalls}
             rowKey={(r) => r.id}
-            empty={<EmptyState title="Sem chamadas registadas." />}
+            empty={
+              <EmptyState
+                icon={<Network className="size-4" />}
+                tone="ok"
+                title="Sem chamadas registadas."
+                description="Quando o Apify for activado e a primeira análise correr, as últimas chamadas (sucesso, timeout, erro) aparecem aqui."
+              />
+            }
           />
         )}
       </Section>
@@ -182,7 +226,7 @@ function Section({
       <div>
         <h3 className="font-display text-base text-content-primary">{title}</h3>
         {description ? (
-          <p className="text-xs text-content-tertiary">{description}</p>
+          <p className="text-sm text-content-secondary">{description}</p>
         ) : null}
       </div>
       {children}
@@ -193,7 +237,7 @@ function Section({
 function KV({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3">
-      <p className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+      <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
         {label}
       </p>
       <div className="mt-1.5 text-sm text-content-primary">{children}</div>
@@ -226,11 +270,11 @@ function PanelSkeleton() {
  * ReadinessCard — leitura imediata de "posso ativar o Apify agora?".
  *
  * Estados:
- *   ready    — APIFY_TOKEN + INTERNAL_API_TOKEN presentes, modo de teste ativo
+ *   ready    — APIFY_TOKEN + INTERNAL_API_TOKEN presentes, modo de teste activo
  *              com allowlist não vazia. Seguro para o smoke test.
- *   warning  — falta token, allowlist vazia, ou modo de teste inativo (mas
+ *   warning  — falta token, allowlist vazia, ou modo de teste inactivo (mas
  *              APIFY_ENABLED também desligado, por isso não há gasto real).
- *   critical — APIFY_ENABLED=true E modo de teste inativo (chamadas reais sem
+ *   critical — APIFY_ENABLED=true E modo de teste inactivo (chamadas reais sem
  *              allowlist → potencial gasto descontrolado).
  */
 
@@ -250,7 +294,7 @@ function buildChecklist(data: CockpitData): ChecklistItem[] {
       label: "APIFY_TOKEN configurado",
       hint: data.secrets.APIFY_TOKEN
         ? undefined
-        : "Define o token nos Secrets antes de ativar o provedor.",
+        : "Define o token nos Secrets antes de activar o provedor.",
     },
     {
       ok: data.secrets.INTERNAL_API_TOKEN,
@@ -270,12 +314,12 @@ function buildChecklist(data: CockpitData): ChecklistItem[] {
       ok: data.testing_mode.active && allowlistSize > 0,
       label:
         data.testing_mode.active && allowlistSize > 0
-          ? `Modo de teste ativo (allowlist com ${allowlistSize} handle${allowlistSize === 1 ? "" : "s"})`
+          ? `Modo de teste activo (allowlist com ${allowlistSize} handle${allowlistSize === 1 ? "" : "s"})`
           : data.testing_mode.active
-            ? "Modo de teste ativo, mas allowlist vazia"
-            : "Modo de teste inativo",
+            ? "Modo de teste activo, mas allowlist vazia"
+            : "Modo de teste inactivo",
       hint: !data.testing_mode.active
-        ? "Sem allowlist, qualquer username dispara Apify quando ativado."
+        ? "Sem allowlist, qualquer username dispara Apify quando activado."
         : allowlistSize === 0
           ? "Adiciona pelo menos um handle (ex.: frederico.m.carvalho)."
           : undefined,
@@ -308,7 +352,7 @@ function ReadinessCard({ data }: { data: CockpitData }) {
     }
   > = {
     ready: {
-      title: "Pronto para ativar Apify",
+      title: "Pronto para activar Apify",
       kicker: "Configuração segura",
       description:
         "Quando ligares APIFY_ENABLED, só os handles na allowlist disparam chamadas reais.",
@@ -322,7 +366,7 @@ function ReadinessCard({ data }: { data: CockpitData }) {
       kicker: "Atenção",
       description: data.apify.enabled
         ? "APIFY está ligado — verifica abaixo o que ainda precisa de ser corrigido."
-        : "APIFY ainda está desligado, por isso não há gasto. Resolve os pontos abaixo antes de ativar.",
+        : "APIFY ainda está desligado, por isso não há gasto. Resolve os pontos abaixo antes de activar.",
       Icon: AlertTriangle,
       iconClass: "text-signal-warning",
       badgeVariant: "warning",
@@ -332,7 +376,7 @@ function ReadinessCard({ data }: { data: CockpitData }) {
       title: "Risco de gasto descontrolado",
       kicker: "Crítico",
       description:
-        "APIFY_ENABLED está ligado SEM modo de teste. Qualquer username submetido vai disparar Apify. Desliga ou ativa a allowlist imediatamente.",
+        "APIFY_ENABLED está ligado SEM modo de teste. Qualquer username submetido vai disparar Apify. Desliga ou activa a allowlist imediatamente.",
       Icon: ShieldAlert,
       iconClass: "text-signal-danger",
       badgeVariant: "danger",
@@ -354,7 +398,7 @@ function ReadinessCard({ data }: { data: CockpitData }) {
         <div className="flex items-start gap-3">
           <m.Icon className={cn("mt-0.5 size-6 shrink-0", m.iconClass)} aria-hidden="true" />
           <div className="space-y-1">
-            <p className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+            <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
               {m.kicker}
             </p>
             <h3 className="font-display text-lg text-content-primary">{m.title}</h3>
@@ -396,18 +440,6 @@ function ReadinessCard({ data }: { data: CockpitData }) {
           </li>
         ))}
       </ul>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border-subtle/60 pt-3 text-xs text-content-tertiary">
-        <span className="font-mono uppercase tracking-[0.18em]">APIFY_ENABLED</span>
-        <Badge variant={data.apify.enabled ? "success" : "default"} dot>
-          {data.apify.enabled ? "Ligado" : "Desligado"}
-        </Badge>
-        <span aria-hidden="true">·</span>
-        <span className="font-mono uppercase tracking-[0.18em]">Modo de teste</span>
-        <Badge variant={data.testing_mode.active ? "accent" : "default"} dot>
-          {data.testing_mode.active ? "Ativo" : "Inativo"}
-        </Badge>
-      </div>
     </section>
   );
 }
