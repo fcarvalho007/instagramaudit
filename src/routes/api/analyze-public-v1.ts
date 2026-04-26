@@ -252,6 +252,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "allowlist:",
               getAllowlist().join(","),
             );
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey: null,
+              dataSource: "none",
+              outcome: "blocked_allowlist",
+              errorCode: "PROFILE_NOT_ALLOWED",
+            });
             return failure("PROFILE_NOT_ALLOWED");
           }
           const allowedCompetitors = competitors.filter((c) => isAllowed(c));
