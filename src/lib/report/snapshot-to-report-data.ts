@@ -542,8 +542,8 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const posts: SnapshotPost[] = Array.isArray(payload.posts) ? payload.posts : [];
 
   const profile = buildProfileSection(payload, meta, posts.length);
-  const keyMetrics = buildKeyMetrics(payload);
-  const formatBreakdown = buildFormatBreakdown(payload);
+  const keyMetrics = buildKeyMetrics(payload, input.benchmark);
+  const formatBreakdown = buildFormatBreakdown(payload, input.benchmark);
   const topPosts = buildTopPosts(posts);
   const temporalSeries = buildTemporalSeries(posts);
   const postingHeatmap = buildPostingHeatmap(posts);
