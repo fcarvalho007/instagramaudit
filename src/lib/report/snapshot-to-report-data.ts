@@ -618,7 +618,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     (f) => f.benchmark > 0,
   ).length;
   let benchmarkCoverage: CoverageState = "placeholder";
-  if (positioningAvailable && formatBenchmarksFilled === formats_count(formatBreakdown)) {
+  if (positioningAvailable && formatBenchmarksFilled === formatBreakdown.length) {
     benchmarkCoverage = "real";
   } else if (positioningAvailable || formatBenchmarksFilled > 0) {
     benchmarkCoverage = "partial";
