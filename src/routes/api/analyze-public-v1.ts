@@ -477,7 +477,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const primaryRow = await callPrimary;
           const primaryProfile = primaryRow ? normalizeProfile(primaryRow) : null;
           if (!primaryProfile) {
-            logEvent({
+            await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey,
@@ -598,7 +598,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             profilesReturned: totalProfiles,
             postsReturned: totalPosts,
           });
-          logEvent({
+          await logEvent({
             handle: primary,
             competitorHandles: competitors,
             cacheKey,
@@ -624,7 +624,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             const stalePayload = existing.normalized_payload as unknown as {
               profile?: { display_name?: string; followers_count?: number };
             };
-            logEvent({
+            await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey,
@@ -642,7 +642,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
           if (err instanceof ApifyConfigError) {
             console.error("[analyze-public-v1] missing config", err.message);
-            logEvent({
+            await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey,
@@ -659,7 +659,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               err.message,
             );
             if (err.status === 404) {
-              logEvent({
+              await logEvent({
                 handle: primary,
                 competitorHandles: competitors,
                 cacheKey,
@@ -669,7 +669,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               });
               return failure("PROFILE_NOT_FOUND");
             }
-            logEvent({
+            await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey,
@@ -680,7 +680,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("UPSTREAM_FAILED");
           }
           console.error("[analyze-public-v1] unexpected", err);
-          logEvent({
+          await logEvent({
             handle: primary,
             competitorHandles: competitors,
             cacheKey,
