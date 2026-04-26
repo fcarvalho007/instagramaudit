@@ -17,6 +17,7 @@ import {
   DollarSign,
   AlertTriangle,
   Inbox,
+  FileText,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import { ProfilesPanel } from "./panels/profiles-panel";
 import { CostsPanel } from "./panels/costs-panel";
 import { AlertsPanel } from "./panels/alerts-panel";
 import { RequestsPanel } from "./panels/requests-panel";
+import { ReportsPanel } from "./panels/reports-panel";
 import { formatDate } from "./cockpit-formatters";
 import type { CockpitData } from "./cockpit-types";
 
@@ -39,7 +41,8 @@ type TabKey =
   | "profiles"
   | "costs"
   | "alerts"
-  | "requests";
+  | "requests"
+  | "reports";
 
 const TABS: { value: TabKey; label: string; Icon: typeof Activity }[] = [
   { value: "diagnostics", label: "Diagnóstico", Icon: Activity },
@@ -48,6 +51,7 @@ const TABS: { value: TabKey; label: string; Icon: typeof Activity }[] = [
   { value: "costs", label: "Custos", Icon: DollarSign },
   { value: "alerts", label: "Alertas", Icon: AlertTriangle },
   { value: "requests", label: "Pedidos", Icon: Inbox },
+  { value: "reports", label: "Relatórios", Icon: FileText },
 ];
 
 export function CockpitShell() {
@@ -122,6 +126,10 @@ export function CockpitShell() {
 
         <TabsContent value="requests" className="mt-0">
           <RequestsPanel />
+        </TabsContent>
+
+        <TabsContent value="reports" className="mt-0">
+          <ReportsPanel />
         </TabsContent>
       </Tabs>
     </div>
