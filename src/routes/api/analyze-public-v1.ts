@@ -727,6 +727,15 @@ function buildCachedResponse(
     posts?: unknown;
     format_stats?: unknown;
   };
+  const enrichedPosts = Array.isArray(payload.posts)
+    ? (payload.posts as PublicAnalysisSuccess["posts"])
+    : undefined;
+  const enrichedFormatStats =
+    payload.format_stats &&
+    typeof payload.format_stats === "object" &&
+    !Array.isArray(payload.format_stats)
+      ? (payload.format_stats as PublicAnalysisSuccess["format_stats"])
+      : undefined;
   // Recompute positioning against the current cloud dataset, not the version
   // captured when the snapshot was stored — editorial tweaks should reflect
   // immediately on cached responses.
@@ -744,12 +753,8 @@ function buildCachedResponse(
     profile: payload.profile,
     content_summary: payload.content_summary,
     competitors: payload.competitors ?? [],
-    ...(Array.isArray(payload.posts) ? { posts: payload.posts } : {}),
-    ...(payload.format_stats &&
-    typeof payload.format_stats === "object" &&
-    !Array.isArray(payload.format_stats)
-      ? { format_stats: payload.format_stats }
-      : {}),
+    ...(enrichedPosts ? { posts: enrichedPosts } : {}),
+    ...(enrichedFormatStats ? { format_stats: enrichedFormatStats } : {}),
     status: {
       success: true,
       data_source: source,
