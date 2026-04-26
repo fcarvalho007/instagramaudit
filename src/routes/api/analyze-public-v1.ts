@@ -368,24 +368,48 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         try {
           // 3) One unified call per handle, in parallel. Each call returns
           // the profile details with `latestPosts[]` embedded, so there is
-          // no separate posts fetch and no cross-handle merge step.
-          const primaryRowP = fetchProfileWithPosts(primary);
+          // no separate posts fetch and no cross-handle merge step. Per-call
+          // results (status + duration + posts returned) are written to
+          // `provider_call_logs` so the admin sees the real Apify ledger.
+          const providerCallIds: string[] = [];
+          const callPrimary = fetchProfileWithPostsLogged(primary).then(
+            (r) => {
+              if (r.providerCallLogId) providerCallIds.push(r.providerCallLogId);
+              if (r.error) throw r.error;
+              return r.row;
+            },
+          );
           const competitorRowsP = competitors.map((handle) =>
-            fetchProfileWithPosts(handle).catch((err: unknown) => {
-              console.error(
-                "[analyze-public-v1] competitor fetch failed",
-                handle,
-                err,
-              );
-              return err instanceof ApifyUpstreamError && err.status === 404
-                ? ({ __notFound: true } as const)
-                : ({ __failed: true } as const);
+            fetchProfileWithPostsLogged(handle).then((r) => {
+              if (r.providerCallLogId)
+                providerCallIds.push(r.providerCallLogId);
+              if (r.error) {
+                console.error(
+                  "[analyze-public-v1] competitor fetch failed",
+                  handle,
+                  r.error,
+                );
+                return r.error instanceof ApifyUpstreamError &&
+                  r.error.status === 404
+                  ? ({ __notFound: true } as const)
+                  : ({ __failed: true } as const);
+              }
+              return r.row;
             }),
           );
 
-          const primaryRow = await primaryRowP;
+          const primaryRow = await callPrimary;
           const primaryProfile = primaryRow ? normalizeProfile(primaryRow) : null;
           if (!primaryProfile) {
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "not_found",
+              errorCode: "PROFILE_NOT_FOUND",
+              providerCallLogId: providerCallIds[0] ?? null,
+            });
             return failure("PROFILE_NOT_FOUND");
           }
 
@@ -479,6 +503,39 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             },
             benchmark_positioning: benchmarkPositioning,
           };
+
+          // Aggregate counts + estimated cost across all successful handles
+          // (primary + competitors). Failed competitor calls already emitted
+          // their own provider_call_logs row with status=http_error/timeout.
+          const successfulCompetitors = competitorResults.filter(
+            (c): c is Extract<CompetitorAnalysis, { success: true }> =>
+              c.success,
+          );
+          const totalProfiles = 1 + successfulCompetitors.length;
+          const totalPosts =
+            primaryPosts.length +
+            successfulCompetitors.reduce(
+              (sum, c) => sum + c.content_summary.posts_analyzed,
+              0,
+            );
+          const estimatedCost = estimateApifyCost({
+            profilesReturned: totalProfiles,
+            postsReturned: totalPosts,
+          });
+          logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "fresh",
+            outcome: "success",
+            analysisSnapshotId: snapshotId ?? null,
+            providerCallLogId: providerCallIds[0] ?? null,
+            postsReturned: totalPosts,
+            profilesReturned: totalProfiles,
+            estimatedCostUsd: estimatedCost,
+            displayName: primaryProfile.display_name,
+            followersLastSeen: primaryProfile.followers_count,
+          });
           return jsonResponse(response, 200);
         } catch (err) {
           // 5) Stale-while-error: if provider failed but we have a recent
@@ -488,6 +545,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "[analyze-public-v1] serving stale snapshot after provider failure",
               cacheKey,
             );
+            const stalePayload = existing.normalized_payload as unknown as {
+              profile?: { display_name?: string; followers_count?: number };
+            };
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "stale",
+              outcome: "success",
+              analysisSnapshotId: existing.id,
+              displayName: stalePayload.profile?.display_name ?? null,
+              followersLastSeen: stalePayload.profile?.followers_count ?? null,
+            });
             return jsonResponse(
               buildCachedResponse(existing, "stale", benchmarkData),
               200,
@@ -496,6 +566,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
           if (err instanceof ApifyConfigError) {
             console.error("[analyze-public-v1] missing config", err.message);
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "provider_error",
+              errorCode: "UPSTREAM_UNAVAILABLE",
+            });
             return failure("UPSTREAM_UNAVAILABLE");
           }
           if (err instanceof ApifyUpstreamError) {
@@ -504,10 +582,36 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               err.status,
               err.message,
             );
-            if (err.status === 404) return failure("PROFILE_NOT_FOUND");
+            if (err.status === 404) {
+              logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "fresh",
+                outcome: "not_found",
+                errorCode: "PROFILE_NOT_FOUND",
+              });
+              return failure("PROFILE_NOT_FOUND");
+            }
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "provider_error",
+              errorCode: "UPSTREAM_FAILED",
+            });
             return failure("UPSTREAM_FAILED");
           }
           console.error("[analyze-public-v1] unexpected", err);
+          logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "fresh",
+            outcome: "provider_error",
+            errorCode: "UPSTREAM_FAILED",
+          });
           return failure("UPSTREAM_FAILED");
         }
       },
