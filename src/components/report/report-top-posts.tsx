@@ -6,11 +6,14 @@ import { cn } from "@/lib/utils";
 export function ReportTopPosts() {
   const reportData = useReportData();
   const windowLabel = reportData.meta?.windowLabel ?? "últimos 30 dias";
+  const subtitle =
+    reportData.meta?.topPostsSubtitle ??
+    `Ordenadas pelo envolvimento percentual nos ${windowLabel}.`;
   return (
     <ReportSection
       label="Top 5 publicações"
       title="Publicações com maior envolvimento"
-      subtitle={`Ordenadas pelo envolvimento percentual nos ${windowLabel}.`}
+      subtitle={subtitle}
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {reportData.topPosts.map((post) => (
