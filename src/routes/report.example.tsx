@@ -12,6 +12,14 @@ export const Route = createFileRoute("/report/example")({
       },
       { name: "robots", content: "noindex, nofollow" },
     ],
+    scripts: [
+      // Pre-hydration: flip <body> to the light palette before the first
+      // paint on hard reloads. The ReportThemeWrapper does the same for SPA
+      // navigations and restores the dark default on unmount.
+      {
+        children: `document.body.setAttribute("data-theme","light")`,
+      },
+    ],
   }),
   component: ReportRoute,
 });
