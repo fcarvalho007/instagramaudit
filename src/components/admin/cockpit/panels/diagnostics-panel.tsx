@@ -445,3 +445,250 @@ function ReadinessCard({ data }: { data: CockpitData }) {
     </section>
   );
 }
+
+/**
+ * ReadinessChecklistCard — checklist operacional de 8 pontos para o smoke
+ * test do Apify. Apenas leitura. Nunca expõe valores de segredos.
+ */
+
+const TEST_HANDLE = "frederico.m.carvalho";
+
+type ChecklistTone = "success" | "warning" | "neutral";
+
+interface ReadinessRow {
+  tone: ChecklistTone;
+  label: string;
+  hint?: string;
+}
+
+function buildReadinessRows(data: CockpitData): ReadinessRow[] {
+  const allowlist = data.testing_mode.allowlist.map((h) => h.toLowerCase());
+  const allowlistSize = allowlist.length;
+  const apifyOn = data.apify.enabled;
+  const testingOn = data.testing_mode.active;
+
+  // 2 — Estado do fornecedor
+  let providerRow: ReadinessRow;
+  if (!apifyOn) {
+    providerRow = {
+      tone: "success",
+      label: "Fornecedor desligado — sem custo",
+      hint: "APIFY_ENABLED está off. Nenhuma chamada real é feita.",
+    };
+  } else if (testingOn) {
+    providerRow = {
+      tone: "success",
+      label: "Fornecedor ligado em modo controlado",
+      hint: "APIFY_ENABLED on, mas restrito à allowlist.",
+    };
+  } else {
+    providerRow = {
+      tone: "warning",
+      label: "Fornecedor ligado sem modo de teste",
+      hint: "Qualquer username dispara Apify. Activa o modo de teste.",
+    };
+  }
+
+  // 5 — Allowlist inclui handle de teste
+  let testHandleRow: ReadinessRow;
+  if (allowlistSize === 0) {
+    testHandleRow = {
+      tone: "neutral",
+      label: "Perfil de teste por confirmar",
+      hint: `Adiciona @${TEST_HANDLE} à allowlist.`,
+    };
+  } else if (allowlist.includes(TEST_HANDLE)) {
+    testHandleRow = {
+      tone: "success",
+      label: "Perfil de teste permitido",
+      hint: `@${TEST_HANDLE} está na allowlist.`,
+    };
+  } else {
+    testHandleRow = {
+      tone: "warning",
+      label: "Perfil de teste não está na allowlist",
+      hint: `Adiciona @${TEST_HANDLE} para correr o smoke test.`,
+    };
+  }
+
+  // 6 — Última chamada ao provedor
+  const calls = data.recent_provider_calls.rows;
+  const latestCall = calls[0];
+  let providerCallRow: ReadinessRow;
+  if (!latestCall) {
+    providerCallRow = {
+      tone: "neutral",
+      label: "Ainda sem chamadas reais",
+      hint: "Esperado antes do primeiro smoke test.",
+    };
+  } else if (latestCall.status === "success") {
+    providerCallRow = {
+      tone: "success",
+      label: "Última chamada com sucesso",
+      hint: `@${latestCall.handle} · ${formatDate(latestCall.created_at)}`,
+    };
+  } else {
+    providerCallRow = {
+      tone: "warning",
+      label: `Última chamada: ${latestCall.status}`,
+      hint: `@${latestCall.handle} · ${formatDate(latestCall.created_at)}`,
+    };
+  }
+
+  // 7 — Última snapshot
+  let snapshotRow: ReadinessRow;
+  if (data.snapshots.error) {
+    snapshotRow = {
+      tone: "warning",
+      label: "Erro a ler snapshots",
+      hint: data.snapshots.error,
+    };
+  } else if (!data.snapshots.latest_at) {
+    snapshotRow = {
+      tone: "neutral",
+      label: "Sem snapshots — esperado antes do primeiro teste",
+    };
+  } else {
+    snapshotRow = {
+      tone: "success",
+      label: "Snapshot mais recente disponível",
+      hint: `@${data.snapshots.latest_username} · ${formatDate(data.snapshots.latest_at)}`,
+    };
+  }
+
+  // 8 — Custo estimado hoje (últimas 24h)
+  const cost24h = data.analytics.last_24h.estimated_cost_usd;
+  const costRow: ReadinessRow =
+    cost24h === 0
+      ? {
+          tone: "success",
+          label: "Sem custo nas últimas 24h",
+          hint: formatCost(0),
+        }
+      : {
+          tone: "neutral",
+          label: "Custo estimado nas últimas 24h",
+          hint: formatCost(cost24h),
+        };
+
+  return [
+    {
+      tone: data.secrets.APIFY_TOKEN ? "success" : "warning",
+      label: data.secrets.APIFY_TOKEN
+        ? "Token Apify configurado"
+        : "Token Apify em falta",
+      hint: data.secrets.APIFY_TOKEN
+        ? undefined
+        : "Define APIFY_TOKEN nos Secrets antes de activar.",
+    },
+    providerRow,
+    {
+      tone: testingOn ? "success" : "warning",
+      label: testingOn ? "Modo de teste ativo" : "Modo de teste inativo",
+      hint: testingOn
+        ? undefined
+        : "Sem allowlist, qualquer handle dispara o provedor.",
+    },
+    {
+      tone: allowlistSize > 0 ? "success" : "warning",
+      label:
+        allowlistSize > 0
+          ? `Allowlist configurada (${allowlistSize} handle${allowlistSize === 1 ? "" : "s"})`
+          : "Allowlist vazia",
+      hint:
+        allowlistSize > 0
+          ? undefined
+          : "Adiciona pelo menos um handle para autorizar chamadas.",
+    },
+    testHandleRow,
+    providerCallRow,
+    snapshotRow,
+    costRow,
+  ];
+}
+
+function ChecklistIcon({ tone }: { tone: ChecklistTone }) {
+  if (tone === "success") {
+    return (
+      <CheckCircle2
+        className="mt-0.5 size-4 shrink-0 text-signal-success"
+        aria-label="OK"
+      />
+    );
+  }
+  if (tone === "warning") {
+    return (
+      <AlertTriangle
+        className="mt-0.5 size-4 shrink-0 text-signal-warning"
+        aria-label="Atenção"
+      />
+    );
+  }
+  return (
+    <Circle
+      className="mt-0.5 size-4 shrink-0 text-content-tertiary"
+      aria-label="Neutro"
+    />
+  );
+}
+
+function ReadinessChecklistCard({ data }: { data: CockpitData }) {
+  const rows = buildReadinessRows(data);
+  const warnings = rows.filter((r) => r.tone === "warning").length;
+  const successes = rows.filter((r) => r.tone === "success").length;
+
+  return (
+    <section
+      className="rounded-xl border border-border-subtle bg-surface-elevated p-5 sm:p-6"
+      aria-label="Checklist de prontidão para o smoke test"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+            Checklist · Prontidão
+          </p>
+          <h3 className="font-display text-base text-content-primary">
+            Verificações operacionais para o primeiro teste
+          </h3>
+          <p className="max-w-2xl text-sm text-content-secondary">
+            Estado item-a-item antes de correr o primeiro pedido real ao Apify.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="success" dot>
+            {successes} ok
+          </Badge>
+          {warnings > 0 ? (
+            <Badge variant="warning" dot>
+              {warnings} a resolver
+            </Badge>
+          ) : null}
+        </div>
+      </div>
+
+      <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {rows.map((row) => (
+          <li
+            key={row.label}
+            className={cn(
+              "flex items-start gap-2.5 rounded-md border bg-surface-base px-3 py-2.5",
+              row.tone === "warning"
+                ? "border-signal-warning/30"
+                : "border-border-subtle",
+            )}
+          >
+            <ChecklistIcon tone={row.tone} />
+            <div className="min-w-0">
+              <p className="text-sm text-content-primary">{row.label}</p>
+              {row.hint ? (
+                <p className="mt-0.5 text-xs text-content-tertiary">
+                  {row.hint}
+                </p>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
