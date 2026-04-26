@@ -8,18 +8,18 @@
  * No public UI, no payments, no email gate.
  */
 
-import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  RequestList,
-  type AdminRequestRow,
-} from "@/components/admin/request-list";
-import { RequestDetailSheet } from "@/components/admin/request-detail-sheet";
 
 import { useCockpitData } from "./use-cockpit-data";
+import { DiagnosticsPanel } from "./panels/diagnostics-panel";
+import { AnalysesPanel } from "./panels/analyses-panel";
+import { ProfilesPanel } from "./panels/profiles-panel";
+import { CostsPanel } from "./panels/costs-panel";
+import { AlertsPanel } from "./panels/alerts-panel";
+import { RequestsPanel } from "./panels/requests-panel";
 
 type TabKey =
   | "diagnostics"
@@ -40,8 +40,6 @@ const TABS: { value: TabKey; label: string }[] = [
 
 export function CockpitShell() {
   const cockpit = useCockpitData();
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
-  const [requestsRefreshKey, setRequestsRefreshKey] = useState(0);
 
   return (
     <div className="space-y-6">
@@ -82,73 +80,29 @@ export function CockpitShell() {
         </TabsList>
 
         <TabsContent value="diagnostics" className="mt-0">
-          <PlaceholderPanel
-            title="Diagnóstico"
-            description="Saúde técnica, secrets, allowlist, snapshots e últimos erros."
-          />
+          <DiagnosticsPanel data={cockpit.data} />
         </TabsContent>
 
         <TabsContent value="analyses" className="mt-0">
-          <PlaceholderPanel
-            title="Análises"
-            description="Histórico recente: handle, outcome, fonte, duração e custo estimado."
-          />
+          <AnalysesPanel data={cockpit.data} />
         </TabsContent>
 
         <TabsContent value="profiles" className="mt-0">
-          <PlaceholderPanel
-            title="Perfis analisados"
-            description="Rollup por handle: total de análises, seguidores e custos acumulados."
-          />
+          <ProfilesPanel data={cockpit.data} />
         </TabsContent>
 
         <TabsContent value="costs" className="mt-0">
-          <PlaceholderPanel
-            title="Custos Apify"
-            description="Agregados 24h / 7d / mês e poupança via cache."
-          />
+          <CostsPanel data={cockpit.data} />
         </TabsContent>
 
         <TabsContent value="alerts" className="mt-0">
-          <PlaceholderPanel
-            title="Alertas"
-            description="Sinais não bloqueantes: perfis repetidos, falhas, picos de IP, custo diário."
-          />
+          <AlertsPanel data={cockpit.data} />
         </TabsContent>
 
         <TabsContent value="requests" className="mt-0">
-          <RequestList
-            onSelect={(row: AdminRequestRow) => setSelectedRequestId(row.id)}
-            refreshKey={requestsRefreshKey}
-          />
+          <RequestsPanel />
         </TabsContent>
       </Tabs>
-
-      <RequestDetailSheet
-        reportRequestId={selectedRequestId}
-        onClose={() => setSelectedRequestId(null)}
-        onChanged={() => setRequestsRefreshKey((k) => k + 1)}
-      />
-    </div>
-  );
-}
-
-function PlaceholderPanel({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-lg border border-border-subtle bg-surface-elevated p-8">
-      <div className="space-y-2">
-        <p className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
-          A migrar…
-        </p>
-        <h3 className="font-display text-base text-content-primary">{title}</h3>
-        <p className="text-sm text-content-secondary">{description}</p>
-      </div>
     </div>
   );
 }
