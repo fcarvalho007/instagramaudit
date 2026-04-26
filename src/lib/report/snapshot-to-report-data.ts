@@ -604,28 +604,32 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
 
   // Editorial meta — overrides the mock defaults when the real sample is
   // smaller than 30 days, so the report stops promising "30 dias" when only
-  // a 12-post sample is available.
+  // a 12-post sample is available. Strings are crafted to read naturally
+  // wherever the layout interpolates them ("nos últimos N dias", etc.).
   const sampleSize = posts.length;
-  const isSmallSample = windowDays > 0 && (windowDays < 7 || sampleSize < 20);
-  const windowLabel = isSmallSample
-    ? "amostra recente"
-    : windowDays > 0
-      ? `últimos ${windowDays} dias`
-      : "amostra recente";
+  const windowLabel =
+    windowDays > 0 ? `últimos ${windowDays} dias` : "amostra recolhida";
   const windowShortLabel =
     windowDays > 0 ? `${windowDays} dias` : "amostra";
   const kpiSubtitle =
     windowDays > 0
       ? `amostra de ${sampleSize} publicações · ${windowDays} dias`
       : `amostra de ${sampleSize} publicações`;
+  const sampleCaption = `Análise baseada nas últimas ${sampleSize} publicações recolhidas.`;
+  const temporalLabel =
+    windowDays > 0
+      ? `Evolução temporal · janela de ${windowDays} dias`
+      : `Evolução temporal · amostra de ${sampleSize} publicações`;
+  const topPostsSubtitle =
+    windowDays > 0
+      ? `Ordenadas por envolvimento. Janela observada: ${windowDays} dias.`
+      : `Ordenadas por envolvimento na amostra recolhida.`;
 
-  const data: ReportData = {
-    meta: {
-      windowLabel,
-      windowShortLabel,
-      kpiSubtitle,
-      isAdminPreview: true,
-    },
+  // Views are only populated for Reels; if every post has 0 views, hide the
+  // series in the temporal chart.
+  const viewsAvailable = posts.some(
+    (p) => typeof p.video_views === "number" && p.video_views > 0,
+  );
     profile: profileWithWindow,
     keyMetrics,
     temporalSeries,
