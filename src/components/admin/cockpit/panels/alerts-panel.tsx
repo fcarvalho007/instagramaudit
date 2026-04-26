@@ -3,6 +3,8 @@
  * Esta versão é só leitura; o ack/arquivamento fica para mais tarde.
  */
 
+import { ShieldCheck, Info } from "lucide-react";
+
 import { AlertKindBadge, SeverityBadge } from "../cockpit-badges";
 import { formatDate, formatNumber } from "../cockpit-formatters";
 import type { AlertRow, CockpitData } from "../cockpit-types";
@@ -51,20 +53,27 @@ export function AlertsPanel({ data }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
-          label="Alertas ativos"
+          label="Alertas activos"
           value={formatNumber(rows.length)}
           sublabel="Não reconhecidos"
           tone={rows.length > 0 ? "warning" : "default"}
         />
-        <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4 text-xs text-content-secondary">
-          Os alertas são informativos. Nenhum utilizador é bloqueado nesta versão.
+        <div className="flex items-start gap-2 rounded-lg border border-border-subtle bg-surface-elevated p-4 text-sm text-content-secondary sm:col-span-2">
+          <Info className="mt-0.5 size-4 shrink-0 text-accent-luminous" aria-hidden="true" />
+          <p>
+            Os alertas são informativos e não bloqueiam utilizadores. Servem
+            para identificar perfis repetidos, picos de IP, taxas de falha
+            elevadas ou custo diário acima do limite definido.
+          </p>
         </div>
       </div>
 
       <section className="space-y-3">
-        <h3 className="font-display text-base text-content-primary">Alertas recentes</h3>
+        <h3 className="font-display text-base text-content-primary">
+          Alertas recentes
+        </h3>
         {data.alerts.error ? (
           <div className="rounded-lg border border-signal-danger/30 bg-signal-danger/10 p-3 text-xs text-signal-danger">
             {data.alerts.error}
@@ -76,8 +85,10 @@ export function AlertsPanel({ data }: Props) {
             rowKey={(r) => r.id}
             empty={
               <EmptyState
-                title="Sem alertas ativos."
-                description="Quando algum limite for ultrapassado, o evento aparece aqui."
+                icon={<ShieldCheck className="size-4" />}
+                tone="ok"
+                title="Sem alertas activos."
+                description="Quando algum limite for ultrapassado, o evento aparece aqui. Os alertas são informativos — não bloqueiam quem está a usar o serviço."
               />
             }
           />
@@ -87,9 +98,11 @@ export function AlertsPanel({ data }: Props) {
       {thresholds ? (
         <section className="space-y-3">
           <div>
-            <h3 className="font-display text-base text-content-primary">Limites configurados</h3>
-            <p className="text-xs text-content-tertiary">
-              Ajustáveis via variáveis de ambiente (sem redeploy).
+            <h3 className="font-display text-base text-content-primary">
+              Limites configurados
+            </h3>
+            <p className="text-sm text-content-secondary">
+              Ajustáveis via variáveis de ambiente, sem redeploy.
             </p>
           </div>
           <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -111,7 +124,9 @@ function ThresholdRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5">
       <dt className="text-sm text-content-secondary">{label}</dt>
-      <dd className="font-mono text-sm text-content-primary">{value}</dd>
+      <dd className="font-mono text-sm tabular-nums text-content-primary">
+        {value}
+      </dd>
     </div>
   );
 }
