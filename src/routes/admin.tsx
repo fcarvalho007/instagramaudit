@@ -12,14 +12,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminGate } from "@/components/admin/admin-gate";
-import {
-  RequestList,
-  type AdminRequestRow,
-} from "@/components/admin/request-list";
-import { RequestDetailSheet } from "@/components/admin/request-detail-sheet";
-import { DiagnosticsPanel } from "@/components/admin/diagnostics-panel";
+import { CockpitShell } from "@/components/admin/cockpit/cockpit-shell";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -33,8 +27,6 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const [authState, setAuthState] = useState<"checking" | "in" | "out">("checking");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Probe authentication by hitting a protected endpoint.
   useEffect(() => {
@@ -55,7 +47,6 @@ function AdminPage() {
   async function handleLogout() {
     await fetch("/api/admin/logout", { method: "POST" }).catch(() => null);
     setAuthState("out");
-    setSelectedId(null);
   }
 
   if (authState === "checking") {
@@ -92,28 +83,9 @@ function AdminPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        <Tabs defaultValue="diagnostics" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="diagnostics">Diagnóstico</TabsTrigger>
-            <TabsTrigger value="requests">Pedidos de relatório</TabsTrigger>
-          </TabsList>
-          <TabsContent value="diagnostics" className="mt-0">
-            <DiagnosticsPanel />
-          </TabsContent>
-          <TabsContent value="requests" className="mt-0">
-            <RequestList
-              onSelect={(row: AdminRequestRow) => setSelectedId(row.id)}
-              refreshKey={refreshKey}
-            />
-          </TabsContent>
-        </Tabs>
+        <CockpitShell />
       </main>
 
-      <RequestDetailSheet
-        reportRequestId={selectedId}
-        onClose={() => setSelectedId(null)}
-        onChanged={() => setRefreshKey((k) => k + 1)}
-      />
       <Toaster />
     </div>
   );
