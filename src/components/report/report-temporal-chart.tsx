@@ -29,6 +29,12 @@ const SERIES: Array<{
 export function ReportTemporalChart() {
   const reportData = useReportData();
   const windowLabel = reportData.meta?.windowLabel ?? "últimos 30 dias";
+  const temporalLabel =
+    reportData.meta?.temporalLabel ?? `Evolução temporal · ${windowLabel}`;
+  // When no post in the snapshot has video views > 0 (e.g. profiles without
+  // Reels), hide the views series and add a small caption. Mock data leaves
+  // `viewsAvailable` undefined → defaults to true, preserving the example.
+  const viewsAvailable = reportData.meta?.viewsAvailable ?? true;
   const [active, setActive] = useState<Record<SeriesKey, boolean>>({
     likes: true,
     comments: true,
@@ -37,9 +43,11 @@ export function ReportTemporalChart() {
 
   const toggle = (k: SeriesKey) => setActive((s) => ({ ...s, [k]: !s[k] }));
 
+  const visibleSeries = SERIES.filter((s) => viewsAvailable || s.key !== "views");
+
   const chips = (
     <div className="flex flex-wrap items-center gap-2">
-      {SERIES.map((s) => (
+      {visibleSeries.map((s) => (
         <button
           key={s.key}
           type="button"
@@ -63,7 +71,7 @@ export function ReportTemporalChart() {
 
   return (
     <ReportSection
-      label={`Evolução temporal · ${windowLabel}`}
+      label={temporalLabel}
       title="Gostos, comentários e visualizações ao longo do tempo"
       subtitle="Soma diária dos sinais de envolvimento por publicação ativa."
       action={chips}
@@ -137,7 +145,7 @@ export function ReportTemporalChart() {
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
               )}
-              {active.views && (
+              {active.views && viewsAvailable && (
                 <Area
                   type="monotone"
                   dataKey="views"
@@ -155,7 +163,7 @@ export function ReportTemporalChart() {
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 mt-2 border-t border-border-subtle/30">
-          {SERIES.map((s) => (
+          {visibleSeries.map((s) => (
             <div
               key={s.key}
               className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-content-tertiary"
@@ -168,6 +176,11 @@ export function ReportTemporalChart() {
             </div>
           ))}
         </div>
+        {!viewsAvailable && (
+          <p className="pt-3 mt-3 text-xs text-content-tertiary text-center">
+            Visualizações disponíveis apenas para Reels — não há dados neste snapshot.
+          </p>
+        )}
       </div>
     </ReportSection>
   );
