@@ -1,3 +1,4 @@
+import type { EnrichedPost, FormatStats } from "./normalize";
 /**
  * Public analysis API contract — shared between server route and browser client.
  * Stable, frontend-friendly shape. Raw Apify payloads must never reach this.
@@ -80,6 +81,17 @@ export interface PublicAnalysisSuccess {
    * client-side computation when absent.
    */
   benchmark_positioning?: BenchmarkPositioning;
+  /**
+   * Step 1 of the Real Report Data Layer — post-level detail captured at
+   * scrape time. Optional for backward compatibility with snapshots stored
+   * before enrichment was added. Capped at 12 posts.
+   */
+  posts?: EnrichedPost[];
+  /**
+   * Per-format aggregates (count, share %, avg engagement %) computed from
+   * the same enriched posts. Optional for backward compatibility.
+   */
+  format_stats?: FormatStats;
 }
 
 export type PublicAnalysisErrorCode =
