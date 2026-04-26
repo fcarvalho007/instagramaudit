@@ -3,7 +3,8 @@
  */
 
 import { Badge } from "@/components/ui/badge";
-import { Users } from "lucide-react";
+import { ExternalLink, Users } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 import { DataSourceBadge, OutcomeBadge } from "../cockpit-badges";
 import {
@@ -78,6 +79,20 @@ export function ProfilesPanel({ data }: Props) {
       key: "last_source",
       header: "Fonte",
       render: (r) => <DataSourceBadge value={r.last_data_source} />,
+    },
+    {
+      key: "report",
+      header: "Relatório",
+      render: (r) => (
+        <Link
+          to="/admin/report-preview/$username"
+          params={{ username: r.handle }}
+          className="inline-flex items-center gap-1 font-mono text-xs text-accent-primary hover:underline"
+        >
+          Ver relatório
+          <ExternalLink className="size-3" />
+        </Link>
+      ),
     },
   ];
 
