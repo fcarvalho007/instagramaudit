@@ -27,6 +27,7 @@ const SERIES: Array<{
 ];
 
 export function ReportTemporalChart() {
+  const reportData = useReportData();
   const [active, setActive] = useState<Record<SeriesKey, boolean>>({
     likes: true,
     comments: true,

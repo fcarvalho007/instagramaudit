@@ -13,6 +13,7 @@ import { ReportChartTooltip } from "./report-chart-tooltip";
 import { useReportData } from "./report-data-context";
 
 export function ReportBestDays() {
+  const reportData = useReportData();
   return (
     <ReportSection
       label="Dias da semana"

@@ -2,6 +2,7 @@ import { ReportSection } from "./report-section";
 import { useReportData } from "./report-data-context";
 
 export function ReportBenchmarkGauge() {
+  const reportData = useReportData();
   const m = reportData.keyMetrics;
   const max = Math.max(m.engagementRate, m.engagementBenchmark) * 1.6;
   const valuePct = (m.engagementRate / max) * 100;

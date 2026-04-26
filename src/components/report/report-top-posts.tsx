@@ -4,6 +4,7 @@ import { useReportData } from "./report-data-context";
 import { cn } from "@/lib/utils";
 
 export function ReportTopPosts() {
+  const reportData = useReportData();
   return (
     <ReportSection
       label="Top 5 publicações"

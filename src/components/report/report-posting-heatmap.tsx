@@ -13,6 +13,7 @@ function intensityClass(v: number): string {
 const HOURS_LABELS = ["00h", "04h", "08h", "12h", "16h", "20h"];
 
 export function ReportPostingHeatmap() {
+  const reportData = useReportData();
   const { days, matrix, bestSlots } = reportData.postingHeatmap;
   return (
     <ReportSection

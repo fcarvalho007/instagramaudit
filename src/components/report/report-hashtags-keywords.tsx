@@ -2,6 +2,7 @@ import { ReportSection } from "./report-section";
 import { useReportData } from "./report-data-context";
 
 export function ReportHashtagsKeywords() {
+  const reportData = useReportData();
   const maxHashtagUses = Math.max(
     ...reportData.topHashtags.map((h) => h.uses),
   );

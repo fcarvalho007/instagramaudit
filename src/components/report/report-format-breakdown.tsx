@@ -31,6 +31,7 @@ const TONE = {
 };
 
 export function ReportFormatBreakdown() {
+  const reportData = useReportData();
   return (
     <ReportSection
       label="Análise por formato"

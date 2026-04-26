@@ -3,6 +3,7 @@ import { ReportSection } from "./report-section";
 import { useReportData } from "./report-data-context";
 
 export function ReportAiInsights() {
+  const reportData = useReportData();
   return (
     <ReportSection
       label="Insights estratégicos · gerados por IA"

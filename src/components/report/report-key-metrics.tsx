@@ -3,6 +3,7 @@ import { ReportKpiCard } from "./report-kpi-card";
 import { useReportData } from "./report-data-context";
 
 export function ReportKeyMetrics() {
+  const reportData = useReportData();
   const m = reportData.keyMetrics;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">

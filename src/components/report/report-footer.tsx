@@ -1,6 +1,7 @@
 import { useReportData } from "./report-data-context";
 
 export function ReportFooter() {
+  const reportData = useReportData();
   return (
     <footer className="pt-6 mt-4 border-t border-border-subtle/30">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
