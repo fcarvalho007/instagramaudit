@@ -168,37 +168,70 @@ export const Route = createFileRoute("/api/admin/reports")({
           };
         });
 
-        // Query auxiliar: sumário dos expirados (updated_at < now() - 5d)
-        // Usamos um único select ordenado para extrair count + extremos sem
-        // gastar três round-trips. O LIMIT defensivo evita memória excessiva
-        // num cenário improvável de muitos expirados acumulados.
-        const expiredRes = await supabaseAdmin
+        // Sumário dos expirados (updated_at < now() - 5d)
+        // Pedimos apenas a contagem exacta + min/max do `updated_at` em
+        // queries dedicadas para nunca depender de um LIMIT artificial.
+        const expiredCountRes = await supabaseAdmin
           .from("analysis_snapshots")
-          .select("updated_at")
-          .lt("updated_at", cutoffIso)
-          .order("updated_at", { ascending: true })
-          .limit(1000);
+          .select("id", { count: "exact", head: true })
+          .lt("updated_at", cutoffIso);
 
-        if (expiredRes.error) {
+        if (expiredCountRes.error) {
           return json(
             {
               success: false,
               error_code: "DB_ERROR",
-              message: expiredRes.error.message,
+              message: expiredCountRes.error.message,
             },
             500,
           );
         }
 
-        const expiredRows = expiredRes.data ?? [];
+        const expiredCount = expiredCountRes.count ?? 0;
+
+        let oldest_updated_at: string | null = null;
+        let newest_updated_at: string | null = null;
+
+        if (expiredCount > 0) {
+          const [oldestRes, newestRes] = await Promise.all([
+            supabaseAdmin
+              .from("analysis_snapshots")
+              .select("updated_at")
+              .lt("updated_at", cutoffIso)
+              .order("updated_at", { ascending: true })
+              .limit(1)
+              .maybeSingle(),
+            supabaseAdmin
+              .from("analysis_snapshots")
+              .select("updated_at")
+              .lt("updated_at", cutoffIso)
+              .order("updated_at", { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+          ]);
+
+          if (oldestRes.error || newestRes.error) {
+            return json(
+              {
+                success: false,
+                error_code: "DB_ERROR",
+                message:
+                  oldestRes.error?.message ?? newestRes.error?.message ?? "",
+              },
+              500,
+            );
+          }
+
+          oldest_updated_at =
+            (oldestRes.data?.updated_at as string | undefined) ?? null;
+          newest_updated_at =
+            (newestRes.data?.updated_at as string | undefined) ?? null;
+        }
+
         const expired_summary: ExpiredSummary = {
-          count: expiredRows.length,
-          oldest_updated_at:
-            expiredRows.length > 0 ? (expiredRows[0]!.updated_at as string) : null,
-          newest_updated_at:
-            expiredRows.length > 0
-              ? (expiredRows[expiredRows.length - 1]!.updated_at as string)
-              : null,
+          count: expiredCount,
+          oldest_updated_at,
+          newest_updated_at,
         };
 
         return json({
