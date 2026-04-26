@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { adminFetch } from "@/lib/admin/fetch";
 import {
   Sheet,
   SheetContent,
@@ -93,7 +94,7 @@ export function RequestDetailSheet({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/admin/report-requests/${reportRequestId}`)
+    adminFetch(`/api/admin/report-requests/${reportRequestId}`)
       .then(async (res) => {
         const body = (await res.json().catch(() => ({}))) as {
           success?: boolean;
@@ -119,7 +120,7 @@ export function RequestDetailSheet({
 
   async function reload() {
     if (!reportRequestId) return;
-    const res = await fetch(`/api/admin/report-requests/${reportRequestId}`);
+    const res = await adminFetch(`/api/admin/report-requests/${reportRequestId}`);
     const body = (await res.json().catch(() => ({}))) as {
       success?: boolean;
       row?: DetailRow;
