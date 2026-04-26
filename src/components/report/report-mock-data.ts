@@ -90,6 +90,18 @@ export const reportData = {
     windowShortLabel: "30 dias",
     kpiSubtitle: "janela de 30 dias",
     isAdminPreview: false,
+    // Optional fields populated only by the real-data adapter. When absent
+    // the editorial mock keeps the original copy and behaviour.
+    sampleCaption: undefined as string | undefined,
+    temporalLabel: undefined as string | undefined,
+    topPostsSubtitle: undefined as string | undefined,
+    benchmarkStatus: undefined as
+      | "real"
+      | "partial"
+      | "placeholder"
+      | undefined,
+    benchmarkDatasetVersion: undefined as string | undefined,
+    viewsAvailable: undefined as boolean | undefined,
   },
   profile: {
     username: "frederico.marketing",
