@@ -13,6 +13,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import { buildReportBenchmarkInput } from "@/lib/report/benchmark-input.server";
+import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -74,12 +76,15 @@ export const Route = createFileRoute(
           return json({ success: true, snapshot: null });
         }
 
+        const payload = (data.normalized_payload ?? {}) as SnapshotPayload;
+        const benchmark = await buildReportBenchmarkInput(payload);
+
         return json({
           success: true,
           snapshot: {
             id: data.id,
             instagram_username: data.instagram_username,
-            payload: data.normalized_payload,
+            payload,
             meta: {
               generated_at: data.created_at,
               instagram_username: data.instagram_username,
@@ -87,6 +92,7 @@ export const Route = createFileRoute(
             created_at: data.created_at,
             updated_at: data.updated_at,
             expires_at: data.expires_at,
+            benchmark,
           },
         });
       },
