@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 export function ReportHeader() {
   const reportData = useReportData();
   const { profile } = reportData;
+  const isAdminPreview = reportData.meta?.isAdminPreview ?? false;
   return (
     <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6 md:p-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
@@ -28,26 +29,37 @@ export function ReportHeader() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-tint-success border border-signal-success/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-signal-success" />
-            <span className="font-mono text-[10px] uppercase tracking-wider text-signal-success font-semibold">
-              Relatório completo
+          {isAdminPreview ? (
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-tint-warning border border-signal-warning/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-signal-warning" />
+              <span className="font-mono text-[10px] uppercase tracking-wider text-signal-warning font-semibold">
+                Pré-visualização admin
+              </span>
             </span>
-          </span>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border-default/40 hover:border-border-strong/60 text-sm font-medium text-content-primary transition-colors"
-          >
-            <Download className="size-4" />
-            Exportar PDF
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
-          >
-            <Share2 className="size-4" />
-            Partilhar
-          </button>
+          ) : (
+            <>
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-tint-success border border-signal-success/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-signal-success" />
+                <span className="font-mono text-[10px] uppercase tracking-wider text-signal-success font-semibold">
+                  Relatório completo
+                </span>
+              </span>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border-default/40 hover:border-border-strong/60 text-sm font-medium text-content-primary transition-colors"
+              >
+                <Download className="size-4" />
+                Exportar PDF
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
+              >
+                <Share2 className="size-4" />
+                Partilhar
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
