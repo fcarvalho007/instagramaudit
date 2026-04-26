@@ -1,29 +1,32 @@
 /**
  * GET /api/admin/reports
  *
- * Listagem administrativa de relatórios disponíveis para pré-visualização.
+ * Lista os snapshots de relatório considerados "ativos" (≤ 5 dias desde
+ * `updated_at`) e devolve, em paralelo, um sumário dos snapshots já
+ * expirados para alimentar o botão de limpeza no painel admin.
  *
- * - Apenas administradores autenticados (Google + allowlist).
- * - Lê de `analysis_snapshots` (a fonte operacional v1).
- * - Devolve apenas snapshots com `created_at >= now() - 5 dias`
- *   (regra de retenção de relatório).
- * - Calcula `retention_expires_at = created_at + 5 dias` e o estado
- *   ("Ativo" | "A expirar" | "Expirado").
- * - NÃO chama Apify. NÃO escreve. NÃO afeta `analysis_events` ou logs.
+ * Regra de negócio (v1):
+ *   - Retenção visível ao admin: 5 dias após `updated_at` (e NÃO `created_at`,
+ *     porque `analysis_snapshots` faz upsert por `cache_key` — uma análise
+ *     refrescada actualiza `updated_at` mas pode manter o `created_at`
+ *     original).
+ *   - Estados:
+ *       active   — age_days < 4
+ *       expiring — 4 ≤ age_days < 5
+ *       expired  — age_days ≥ 5  (não devem aparecer na lista activa, mas
+ *                                  o cálculo é defensivo).
  *
- * IMPORTANTE: o `expires_at` da tabela é o TTL de cache (24h) e mantém-se
- * inalterado. A retenção de 5 dias para o relatório é uma camada própria
- * derivada do `created_at`.
+ * Acesso: apenas administradores autenticados (Google + allowlist).
+ * NÃO chama Apify. NÃO regenera dados. Apenas leitura à BD.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 
-export const REPORT_RETENTION_DAYS = 5;
-const REPORT_RETENTION_MS = REPORT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-/** Quando mostrar "A expirar" no admin (a partir de 4 dias de idade). */
-const EXPIRING_THRESHOLD_MS = 4 * 24 * 60 * 60 * 1000;
+const RETENTION_DAYS = 5;
+const EXPIRING_THRESHOLD_DAYS = 4;
+const MS_PER_DAY = 86_400_000;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -35,57 +38,85 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+type RetentionStatus = "active" | "expiring" | "expired";
+
 interface ReportRow {
   id: string;
   instagram_username: string;
-  competitors_count: number;
+  display_name: string | null;
+  followers: number | null;
+  posts_analyzed: number | null;
+  dominant_format: string | null;
+  avg_engagement_pct: number | null;
   created_at: string;
   updated_at: string;
-  /** TTL de cache da snapshot (24h). NÃO é a retenção do relatório. */
-  cache_expires_at: string | null;
-  /** Retenção do relatório = created_at + 5 dias. */
+  retention_base_at: string;
   retention_expires_at: string;
-  /** "active" | "expiring" | "expired". */
-  retention_status: "active" | "expiring" | "expired";
-  posts_count: number;
+  retention_status: RetentionStatus;
+  age_days: number;
+}
+
+interface ExpiredSummary {
+  count: number;
+  oldest_updated_at: string | null;
+  newest_updated_at: string | null;
+}
+
+/**
+ * Extrai com segurança os campos exibidos na tabela do painel a partir do
+ * `normalized_payload`. Nunca atira — usa defaults seguros para qualquer
+ * forma parcial.
+ */
+function extractRowMetrics(payload: unknown): {
+  display_name: string | null;
+  followers: number | null;
+  posts_analyzed: number | null;
   dominant_format: string | null;
-  engagement_rate: number | null;
-  provider: string;
-  analysis_status: string;
+  avg_engagement_pct: number | null;
+} {
+  const p = (payload ?? {}) as Record<string, unknown>;
+  const profile = (p.profile ?? {}) as Record<string, unknown>;
+  const summary = (p.content_summary ?? {}) as Record<string, unknown>;
+
+  const num = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? v : null;
+  const str = (v: unknown): string | null =>
+    typeof v === "string" && v.length > 0 ? v : null;
+
+  return {
+    display_name: str(profile.display_name),
+    followers: num(profile.followers_count),
+    posts_analyzed: num(summary.posts_analyzed),
+    dominant_format: str(summary.dominant_format),
+    avg_engagement_pct: num(summary.average_engagement_rate),
+  };
 }
 
-export interface ReportsListResponse {
-  success: true;
-  retention_days: number;
-  generated_at: string;
-  total: number;
-  rows: ReportRow[];
-}
+function computeRetention(
+  updatedAtIso: string,
+  nowMs: number,
+): {
+  retention_base_at: string;
+  retention_expires_at: string;
+  retention_status: RetentionStatus;
+  age_days: number;
+} {
+  const baseMs = new Date(updatedAtIso).getTime();
+  const ageMs = Number.isFinite(baseMs) ? Math.max(0, nowMs - baseMs) : 0;
+  const ageDays = ageMs / MS_PER_DAY;
+  const expiresMs = (Number.isFinite(baseMs) ? baseMs : nowMs) + RETENTION_DAYS * MS_PER_DAY;
 
-function safeNumber(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
+  let status: RetentionStatus;
+  if (ageDays < EXPIRING_THRESHOLD_DAYS) status = "active";
+  else if (ageDays < RETENTION_DAYS) status = "expiring";
+  else status = "expired";
 
-function safeString(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null;
-}
-
-function arrayLength(v: unknown): number {
-  return Array.isArray(v) ? v.length : 0;
-}
-
-function deriveStatus(
-  createdAtIso: string,
-  now: number,
-): { retentionExpiresAt: string; status: ReportRow["retention_status"] } {
-  const created = new Date(createdAtIso).getTime();
-  const expiresAt = new Date(created + REPORT_RETENTION_MS).toISOString();
-  const age = now - created;
-  let status: ReportRow["retention_status"];
-  if (age >= REPORT_RETENTION_MS) status = "expired";
-  else if (age >= EXPIRING_THRESHOLD_MS) status = "expiring";
-  else status = "active";
-  return { retentionExpiresAt: expiresAt, status };
+  return {
+    retention_base_at: updatedAtIso,
+    retention_expires_at: new Date(expiresMs).toISOString(),
+    retention_status: status,
+    age_days: Math.round(ageDays * 100) / 100,
+  };
 }
 
 export const Route = createFileRoute("/api/admin/reports")({
@@ -102,59 +133,81 @@ export const Route = createFileRoute("/api/admin/reports")({
           );
         }
 
-        const now = Date.now();
-        const cutoffIso = new Date(now - REPORT_RETENTION_MS).toISOString();
+        const nowMs = Date.now();
+        const cutoffIso = new Date(nowMs - RETENTION_DAYS * MS_PER_DAY).toISOString();
 
-        const { data, error } = await supabaseAdmin
+        // Query principal: snapshots activos (updated_at >= now() - 5d)
+        const activeRes = await supabaseAdmin
           .from("analysis_snapshots")
-          .select(
-            "id, instagram_username, competitor_usernames, normalized_payload, provider, analysis_status, created_at, updated_at, expires_at",
-          )
-          .gte("created_at", cutoffIso)
-          .order("created_at", { ascending: false });
+          .select("id, instagram_username, normalized_payload, created_at, updated_at")
+          .gte("updated_at", cutoffIso)
+          .order("updated_at", { ascending: false })
+          .limit(200);
 
-        if (error) {
+        if (activeRes.error) {
           return json(
-            { success: false, error_code: "DB_ERROR", message: error.message },
+            {
+              success: false,
+              error_code: "DB_ERROR",
+              message: activeRes.error.message,
+            },
             500,
           );
         }
 
-        const rows: ReportRow[] = (data ?? []).map((r) => {
-          const payload =
-            (r.normalized_payload as Record<string, unknown> | null) ?? {};
-          const cs =
-            (payload["content_summary"] as Record<string, unknown> | undefined) ??
-            undefined;
-          const posts = payload["posts"];
-          const { retentionExpiresAt, status } = deriveStatus(r.created_at, now);
+        const reports: ReportRow[] = (activeRes.data ?? []).map((row) => {
+          const metrics = extractRowMetrics(row.normalized_payload);
+          const retention = computeRetention(row.updated_at as string, nowMs);
           return {
-            id: r.id,
-            instagram_username: r.instagram_username,
-            competitors_count: arrayLength(r.competitor_usernames),
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-            cache_expires_at: r.expires_at ?? null,
-            retention_expires_at: retentionExpiresAt,
-            retention_status: status,
-            posts_count: arrayLength(posts),
-            dominant_format: cs ? safeString(cs["dominant_format"]) : null,
-            engagement_rate: cs
-              ? safeNumber(cs["average_engagement_rate"])
-              : null,
-            provider: r.provider,
-            analysis_status: r.analysis_status,
+            id: row.id as string,
+            instagram_username: row.instagram_username as string,
+            ...metrics,
+            created_at: row.created_at as string,
+            updated_at: row.updated_at as string,
+            ...retention,
           };
         });
 
-        const body: ReportsListResponse = {
-          success: true,
-          retention_days: REPORT_RETENTION_DAYS,
-          generated_at: new Date(now).toISOString(),
-          total: rows.length,
-          rows,
+        // Query auxiliar: sumário dos expirados (updated_at < now() - 5d)
+        // Usamos um único select ordenado para extrair count + extremos sem
+        // gastar três round-trips. O LIMIT defensivo evita memória excessiva
+        // num cenário improvável de muitos expirados acumulados.
+        const expiredRes = await supabaseAdmin
+          .from("analysis_snapshots")
+          .select("updated_at")
+          .lt("updated_at", cutoffIso)
+          .order("updated_at", { ascending: true })
+          .limit(1000);
+
+        if (expiredRes.error) {
+          return json(
+            {
+              success: false,
+              error_code: "DB_ERROR",
+              message: expiredRes.error.message,
+            },
+            500,
+          );
+        }
+
+        const expiredRows = expiredRes.data ?? [];
+        const expired_summary: ExpiredSummary = {
+          count: expiredRows.length,
+          oldest_updated_at:
+            expiredRows.length > 0 ? (expiredRows[0]!.updated_at as string) : null,
+          newest_updated_at:
+            expiredRows.length > 0
+              ? (expiredRows[expiredRows.length - 1]!.updated_at as string)
+              : null,
         };
-        return json(body);
+
+        return json({
+          success: true,
+          reports,
+          expired_summary,
+          retention_days: RETENTION_DAYS,
+          generated_at: new Date(nowMs).toISOString(),
+        });
       },
     },
   },

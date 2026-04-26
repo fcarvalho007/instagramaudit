@@ -1,21 +1,26 @@
 /**
  * POST /api/admin/reports/cleanup-expired
  *
- * Apaga apenas `analysis_snapshots` com `created_at < now() - 5 dias`.
+ * Apaga snapshots de relatório com `updated_at < now() - 5 days`.
  *
- * - Apenas administradores autenticados (Google + allowlist).
- * - NÃO toca em `analysis_events`, `provider_call_logs`, `usage_alerts`,
- *   `social_profiles` nem em qualquer outra tabela analítica.
- * - Devolve a contagem real de linhas removidas.
- * - Acionado manualmente via botão no cockpit; não corre automaticamente.
+ * IMPORTANTE — segurança e escopo:
+ *   - DELETE só em `analysis_snapshots`. Nunca outras tabelas.
+ *   - As tabelas abaixo NÃO podem ser tocadas por esta operação:
+ *       analysis_events, provider_call_logs, usage_alerts,
+ *       social_profiles, report_requests, leads.
+ *   - Acesso restrito a administradores autenticados (Google + allowlist).
+ *   - NÃO chama Apify, NÃO regenera nada.
+ *
+ * O critério é `updated_at` (não `created_at`) para coincidir com a regra
+ * de retenção de 5 dias após a última geração/refresh.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 
-const REPORT_RETENTION_DAYS = 5;
-const REPORT_RETENTION_MS = REPORT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+const RETENTION_DAYS = 5;
+const MS_PER_DAY = 86_400_000;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -27,21 +32,12 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-export interface CleanupResponse {
-  success: true;
-  retention_days: number;
-  cutoff: string;
-  deleted: number;
-  deleted_ids: string[];
-}
-
 export const Route = createFileRoute("/api/admin/reports/cleanup-expired")({
   server: {
     handlers: {
       POST: async () => {
-        let admin;
         try {
-          admin = await requireAdminSession();
+          await requireAdminSession();
         } catch (res) {
           if (res instanceof Response) return res;
           return json(
@@ -50,39 +46,35 @@ export const Route = createFileRoute("/api/admin/reports/cleanup-expired")({
           );
         }
 
-        const cutoffIso = new Date(Date.now() - REPORT_RETENTION_MS).toISOString();
+        const cutoffIso = new Date(
+          Date.now() - RETENTION_DAYS * MS_PER_DAY,
+        ).toISOString();
 
-        // Strict guard: só apaga linhas explicitamente mais antigas que o
-        // limite. Nunca filtra por outra coluna, nunca apaga em outra tabela.
+        // .select('id') força o cliente a devolver as linhas eliminadas para
+        // podermos contar o resultado real, em vez de assumir uma contagem
+        // calculada antes do delete.
         const { data, error } = await supabaseAdmin
           .from("analysis_snapshots")
           .delete()
-          .lt("created_at", cutoffIso)
+          .lt("updated_at", cutoffIso)
           .select("id");
 
         if (error) {
           return json(
-            { success: false, error_code: "DB_ERROR", message: error.message },
+            {
+              success: false,
+              error_code: "DB_ERROR",
+              message: error.message,
+            },
             500,
           );
         }
 
-        const deletedIds = (data ?? []).map((r) => r.id);
-        console.info(
-          "[admin/reports/cleanup-expired] admin=%s cutoff=%s deleted=%d",
-          admin.email,
-          cutoffIso,
-          deletedIds.length,
-        );
-
-        const body: CleanupResponse = {
+        return json({
           success: true,
-          retention_days: REPORT_RETENTION_DAYS,
-          cutoff: cutoffIso,
-          deleted: deletedIds.length,
-          deleted_ids: deletedIds,
-        };
-        return json(body);
+          deleted_count: data?.length ?? 0,
+          cutoff_at: cutoffIso,
+        });
       },
     },
   },

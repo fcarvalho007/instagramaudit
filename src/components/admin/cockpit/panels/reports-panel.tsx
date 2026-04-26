@@ -1,19 +1,19 @@
 /**
- * Relatórios — listagem operacional dos snapshots disponíveis para
- * pré-visualização administrativa, com retenção de 5 dias.
+ * Relatórios — listagem dos snapshots de relatório dentro da janela de
+ * retenção (5 dias após `updated_at`) com botão de limpeza dos expirados.
  *
- * - Lê de `GET /api/admin/reports`.
- * - Cada linha liga a `/admin/report-preview/{handle}`.
- * - Mostra o estado de retenção (Ativo / A expirar / Expirado) calculado
- *   sobre `created_at`.
- * - Botão "Limpar relatórios expirados" pede confirmação e chama
- *   `POST /api/admin/reports/cleanup-expired`. NÃO corre automaticamente.
+ * Estado fetched de `/api/admin/reports`. A contagem do botão de limpeza
+ * vem de `expired_summary.count` — não da própria lista, porque os
+ * expirados são intencionalmente filtrados da tabela activa.
+ *
+ * "Ver relatório" navega para `/admin/report-preview/snapshot/{id}` para
+ * garantir que a pré-visualização é da linha exacta listada (e não da
+ * última snapshot do username, que pode divergir após upsert).
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ExternalLink, FileText, RefreshCw, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { ExternalLink, FileText, Loader2, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,102 +26,109 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { adminFetch } from "@/lib/admin/fetch";
 
-import { formatDate, formatNumber } from "../cockpit-formatters";
+import { adminFetch } from "@/lib/admin/fetch";
+import {
+  formatCompact,
+  formatDate,
+  formatNumber,
+} from "../cockpit-formatters";
 import { DataTable, type DataTableColumn } from "../parts/data-table";
 import { EmptyState } from "../parts/empty-state";
+
+// ---------------------------------------------------------------------------
+// Tipos espelhados do endpoint GET /api/admin/reports
+// ---------------------------------------------------------------------------
+
+type RetentionStatus = "active" | "expiring" | "expired";
 
 interface ReportRow {
   id: string;
   instagram_username: string;
-  competitors_count: number;
+  display_name: string | null;
+  followers: number | null;
+  posts_analyzed: number | null;
+  dominant_format: string | null;
+  avg_engagement_pct: number | null;
   created_at: string;
   updated_at: string;
-  cache_expires_at: string | null;
+  retention_base_at: string;
   retention_expires_at: string;
-  retention_status: "active" | "expiring" | "expired";
-  posts_count: number;
-  dominant_format: string | null;
-  engagement_rate: number | null;
-  provider: string;
-  analysis_status: string;
+  retention_status: RetentionStatus;
+  age_days: number;
 }
 
-interface ReportsListResponse {
-  success: true;
+interface ExpiredSummary {
+  count: number;
+  oldest_updated_at: string | null;
+  newest_updated_at: string | null;
+}
+
+interface ReportsResponse {
+  success: boolean;
+  reports: ReportRow[];
+  expired_summary: ExpiredSummary;
   retention_days: number;
   generated_at: string;
-  total: number;
-  rows: ReportRow[];
+  message?: string;
+  error_code?: string;
 }
 
-interface CleanupResponse {
-  success: true;
-  retention_days: number;
-  cutoff: string;
-  deleted: number;
-  deleted_ids: string[];
+// ---------------------------------------------------------------------------
+
+function formatPercent(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${value.toFixed(1)}%`;
 }
 
-type LoadState =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "ready"; data: ReportsListResponse }
-  | { kind: "error"; message: string };
-
-function statusBadge(status: ReportRow["retention_status"]) {
+function RetentionBadge({ status }: { status: RetentionStatus }) {
   if (status === "active") {
     return (
-      <Badge variant="success" size="sm" dot>
+      <Badge variant="success" dot>
         Ativo
       </Badge>
     );
   }
   if (status === "expiring") {
     return (
-      <Badge variant="warning" size="sm" dot>
+      <Badge variant="warning" dot>
         A expirar
       </Badge>
     );
   }
   return (
-    <Badge variant="danger" size="sm" dot>
+    <Badge variant="danger" dot>
       Expirado
     </Badge>
   );
 }
 
-function formatPercent(v: number | null): string {
-  if (v === null || !Number.isFinite(v)) return "—";
-  return `${v.toFixed(2).replace(".", ",")}%`;
-}
-
 export function ReportsPanel() {
-  const [state, setState] = useState<LoadState>({ kind: "idle" });
-  const [confirming, setConfirming] = useState(false);
+  const [data, setData] = useState<ReportsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [cleaning, setCleaning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    setState({ kind: "loading" });
+    setLoading(true);
+    setError(null);
     try {
       const res = await adminFetch("/api/admin/reports");
-      const body = (await res.json().catch(() => ({}))) as
-        | ReportsListResponse
-        | { success: false; message?: string };
-      if (!res.ok || !("success" in body) || !body.success) {
-        const message =
-          (body as { message?: string }).message ?? `Erro ${res.status}`;
-        setState({ kind: "error", message });
-        return;
+      const body = (await res.json().catch(() => ({}))) as ReportsResponse;
+      if (!res.ok || !body.success) {
+        setError(body.message ?? `Erro ${res.status}`);
+        setData(null);
+      } else {
+        setData(body);
       }
-      setState({ kind: "ready", data: body });
     } catch (e) {
-      setState({
-        kind: "error",
-        message: e instanceof Error ? e.message : "Erro desconhecido.",
-      });
+      setError(e instanceof Error ? e.message : "Erro desconhecido.");
+      setData(null);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -129,242 +136,282 @@ export function ReportsPanel() {
     void refresh();
   }, [refresh]);
 
-  const expiredCount = useMemo(() => {
-    if (state.kind !== "ready") return 0;
-    return state.data.rows.filter((r) => r.retention_status === "expired").length;
-  }, [state]);
-
-  async function runCleanup() {
+  async function handleCleanup() {
     setCleaning(true);
+    setCleanupResult(null);
     try {
       const res = await adminFetch("/api/admin/reports/cleanup-expired", {
         method: "POST",
       });
-      const body = (await res.json().catch(() => ({}))) as
-        | CleanupResponse
-        | { success: false; message?: string };
-      if (!res.ok || !("success" in body) || !body.success) {
-        const message =
-          (body as { message?: string }).message ?? `Erro ${res.status}`;
-        toast.error("Falha ao limpar relatórios expirados", {
-          description: message,
-        });
-        return;
+      const body = (await res.json().catch(() => ({}))) as {
+        success: boolean;
+        deleted_count?: number;
+        message?: string;
+      };
+      if (!res.ok || !body.success) {
+        setCleanupResult(`Falhou: ${body.message ?? `Erro ${res.status}`}`);
+      } else {
+        setCleanupResult(
+          `Foram eliminados ${body.deleted_count ?? 0} relatórios expirados.`,
+        );
+        await refresh();
       }
-      toast.success(
-        body.deleted > 0
-          ? `${body.deleted} relatório(s) expirado(s) removido(s).`
-          : "Nada para remover — nenhum relatório expirado.",
-      );
-      setConfirming(false);
-      await refresh();
     } catch (e) {
-      toast.error("Falha ao limpar relatórios expirados", {
-        description: e instanceof Error ? e.message : "Erro desconhecido.",
-      });
+      setCleanupResult(
+        `Falhou: ${e instanceof Error ? e.message : "Erro desconhecido."}`,
+      );
     } finally {
       setCleaning(false);
     }
   }
 
+  const expiredCount = data?.expired_summary.count ?? 0;
+  const cleanupDisabled = loading || cleaning || expiredCount === 0;
+
   const columns: DataTableColumn<ReportRow>[] = [
     {
       key: "handle",
-      header: "Perfil",
+      header: "Handle",
       render: (r) => (
         <div className="flex flex-col">
           <span className="font-mono text-content-primary">
             @{r.instagram_username}
           </span>
-          <span className="text-xs text-content-tertiary">
-            {r.provider} · {r.analysis_status}
-          </span>
+          {r.display_name ? (
+            <span className="text-xs text-content-tertiary">{r.display_name}</span>
+          ) : null}
         </div>
       ),
     },
     {
-      key: "status",
-      header: "Retenção",
-      render: (r) => (
-        <div className="flex flex-col gap-1">
-          {statusBadge(r.retention_status)}
-          <span className="font-mono text-[0.6875rem] uppercase tracking-wide text-content-tertiary">
-            até {formatDate(r.retention_expires_at)}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: "competitors",
-      header: "Concorrentes",
+      key: "followers",
+      header: "Seguidores",
       align: "right",
-      render: (r) => <span className="font-mono">{formatNumber(r.competitors_count)}</span>,
+      render: (r) => (
+        <span className="font-mono">{formatCompact(r.followers)}</span>
+      ),
     },
     {
       key: "posts",
       header: "Posts",
       align: "right",
-      render: (r) => <span className="font-mono">{formatNumber(r.posts_count)}</span>,
+      render: (r) => <span className="font-mono">{formatNumber(r.posts_analyzed)}</span>,
     },
     {
       key: "format",
-      header: "Formato dominante",
+      header: "Formato",
       render: (r) =>
         r.dominant_format ? (
-          <span>{r.dominant_format}</span>
+          <span className="font-mono text-xs uppercase tracking-[0.12em] text-content-secondary">
+            {r.dominant_format}
+          </span>
         ) : (
           <span className="text-content-tertiary">—</span>
         ),
     },
     {
       key: "engagement",
-      header: "Envolvimento",
+      header: "Eng. médio",
       align: "right",
-      render: (r) => <span className="font-mono">{formatPercent(r.engagement_rate)}</span>,
+      render: (r) => <span className="font-mono">{formatPercent(r.avg_engagement_pct)}</span>,
     },
     {
-      key: "created_at",
-      header: "Criado",
-      render: (r) => formatDate(r.created_at),
-    },
-    {
-      key: "updated_at",
+      key: "updated",
       header: "Atualizado",
       render: (r) => formatDate(r.updated_at),
     },
     {
-      key: "cache",
-      header: "Cache até",
-      render: (r) =>
-        r.cache_expires_at ? (
-          <span className="font-mono text-xs">{formatDate(r.cache_expires_at)}</span>
-        ) : (
-          <span className="text-content-tertiary">—</span>
-        ),
+      key: "expires",
+      header: "Expira em",
+      render: (r) => (
+        <span
+          className={
+            r.retention_status === "expiring"
+              ? "text-signal-warning"
+              : "text-content-secondary"
+          }
+        >
+          {formatDate(r.retention_expires_at)}
+        </span>
+      ),
     },
     {
-      key: "open",
-      header: "Ação",
+      key: "status",
+      header: "Estado",
+      render: (r) => <RetentionBadge status={r.retention_status} />,
+    },
+    {
+      key: "preview",
+      header: "Relatório",
       render: (r) => (
         <Link
-          to="/admin/report-preview/$username"
-          params={{ username: r.instagram_username }}
-          className="inline-flex items-center gap-1 font-mono text-xs text-accent-primary hover:underline"
+          to="/admin/report-preview/snapshot/$snapshotId"
+          params={{ snapshotId: r.id }}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-primary transition-colors hover:text-accent-primary/80"
         >
           Ver relatório
-          <ExternalLink className="size-3" />
+          <ExternalLink className="size-3" aria-hidden="true" />
         </Link>
       ),
     },
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="font-display text-base text-content-primary">
-            Relatórios disponíveis
-          </h3>
-          <p className="text-sm text-content-secondary">
-            Por sustentabilidade, os relatórios ficam disponíveis durante 5 dias
-            após a geração. Após esse período, devem ser removidos manualmente.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void refresh()}
-            disabled={state.kind === "loading"}
-          >
-            <RefreshCw
-              className={`mr-2 size-3.5 ${state.kind === "loading" ? "animate-spin" : ""}`}
+    <div className="space-y-6">
+      {/* Cabeçalho explicativo: regra de retenção e distinção cache vs retenção */}
+      <div className="rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2 text-sm text-content-secondary">
+            <p>
+              Por sustentabilidade, os relatórios ficam disponíveis durante 5
+              dias após a geração.
+            </p>
+            <p className="text-xs text-content-tertiary">
+              <span className="font-mono uppercase tracking-[0.12em]">
+                Cache
+              </span>{" "}
+              é a janela técnica de reuso interno (evita repetir chamadas ao
+              provider).{" "}
+              <span className="font-mono uppercase tracking-[0.12em]">
+                Retenção
+              </span>{" "}
+              é a janela de visibilidade administrativa: 5 dias contados a
+              partir de <span className="font-mono">updated_at</span>.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-start gap-2 md:items-end">
+            <CleanupButton
+              count={expiredCount}
+              disabled={cleanupDisabled}
+              cleaning={cleaning}
+              onConfirm={handleCleanup}
+              summary={data?.expired_summary ?? null}
             />
-            Atualizar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setConfirming(true)}
-            disabled={cleaning || state.kind === "loading"}
-          >
-            <Trash2 className="mr-2 size-3.5" />
-            Limpar relatórios expirados
-            {expiredCount > 0 ? (
-              <span className="ml-1 font-mono text-[0.6875rem] text-content-tertiary">
-                ({expiredCount})
-              </span>
+            {expiredCount === 0 ? (
+              <p className="text-xs text-content-tertiary">
+                Sem relatórios expirados.
+              </p>
             ) : null}
-          </Button>
+            {cleanupResult ? (
+              <p className="text-xs text-content-secondary">{cleanupResult}</p>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {state.kind === "error" ? (
-        <div className="rounded-lg border border-signal-danger/30 bg-signal-danger/10 p-3 text-xs text-signal-danger">
-          {state.message}
+      {/* Estado de carregamento / erro */}
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-signal-danger/30 bg-signal-danger/10 px-4 py-3 text-sm text-signal-danger"
+        >
+          {error}
         </div>
       ) : null}
 
-      {state.kind === "ready" ? (
-        <>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-content-tertiary">
-            <span>
-              <span className="font-mono text-content-primary">
-                {state.data.total}
-              </span>{" "}
-              relatório{state.data.total === 1 ? "" : "s"} dentro da janela de{" "}
-              {state.data.retention_days} dias
-            </span>
-            <span>· atualizado a {formatDate(state.data.generated_at)}</span>
-          </div>
-          <DataTable
-            columns={columns}
-            rows={state.data.rows}
-            rowKey={(r) => r.id}
-            empty={
-              <EmptyState
-                icon={<FileText className="size-4" />}
-                tone="ok"
-                title="Sem relatórios nos últimos 5 dias."
-                description="Quando uma análise gera um snapshot, aparece aqui com a janela de retenção e um link para a pré-visualização."
-              />
-            }
-          />
-        </>
-      ) : state.kind === "loading" || state.kind === "idle" ? (
-        <PanelSkeleton />
+      {/* Tabela ou empty-state */}
+      {loading && !data ? (
+        <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3 text-sm text-content-tertiary">
+          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+          A carregar relatórios…
+        </div>
+      ) : data && data.reports.length > 0 ? (
+        <DataTable
+          columns={columns}
+          rows={data.reports}
+          rowKey={(r) => r.id}
+        />
+      ) : data ? (
+        <EmptyState
+          icon={<FileText className="size-4" />}
+          title="Sem relatórios na janela de retenção."
+          description={
+            expiredCount > 0
+              ? `Existem ${expiredCount} relatório${expiredCount === 1 ? "" : "s"} fora da janela. Limpa-os para libertar espaço.`
+              : "Os relatórios gerados nos últimos 5 dias aparecem aqui."
+          }
+        />
       ) : null}
-
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover relatórios expirados?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação remove apenas snapshots com mais de 5 dias da tabela
-              de relatórios. Eventos de análise, registos do provedor e métricas
-              do cockpit não são afetados. A ação é irreversível.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={cleaning}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void runCleanup();
-              }}
-              disabled={cleaning}
-            >
-              {cleaning ? "A remover…" : "Remover expirados"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
 
-function PanelSkeleton() {
+function CleanupButton({
+  count,
+  disabled,
+  cleaning,
+  onConfirm,
+  summary,
+}: {
+  count: number;
+  disabled: boolean;
+  cleaning: boolean;
+  onConfirm: () => void | Promise<void>;
+  summary: ExpiredSummary | null;
+}) {
+  // Quando count = 0 mantemos o botão visível mas desactivado, sem dialog.
+  if (count === 0) {
+    return (
+      <Button variant="outline" size="sm" disabled aria-disabled="true">
+        <Trash2 className="mr-2 size-3.5" aria-hidden="true" />
+        Limpar relatórios expirados (0)
+      </Button>
+    );
+  }
+
   return (
-    <div className="h-64 animate-pulse rounded-lg border border-border-subtle bg-surface-elevated" />
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          aria-busy={cleaning}
+        >
+          {cleaning ? (
+            <Loader2 className="mr-2 size-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Trash2 className="mr-2 size-3.5" aria-hidden="true" />
+          )}
+          Limpar relatórios expirados ({count})
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Limpar relatórios expirados?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Vão ser eliminados {count} snapshot
+            {count === 1 ? "" : "s"} com mais de 5 dias desde a última
+            actualização.
+            {summary?.oldest_updated_at && summary?.newest_updated_at ? (
+              <>
+                {" "}Janela:{" "}
+                <span className="font-mono">
+                  {formatDate(summary.oldest_updated_at)}
+                </span>{" "}
+                até{" "}
+                <span className="font-mono">
+                  {formatDate(summary.newest_updated_at)}
+                </span>
+                .
+              </>
+            ) : null}{" "}
+            Os eventos, logs do provider e alertas <strong>não</strong> são
+            tocados — apenas os snapshots de relatório.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              void onConfirm();
+            }}
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

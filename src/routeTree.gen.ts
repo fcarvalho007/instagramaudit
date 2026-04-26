@@ -28,8 +28,10 @@ import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/re
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
+import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api/admin/snapshot-by-id.$snapshotId'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
+import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
 
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
@@ -128,6 +130,12 @@ const ApiAdminSnapshotUsernameRoute =
     path: '/api/admin/snapshot/$username',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminSnapshotByIdSnapshotIdRoute =
+  ApiAdminSnapshotByIdSnapshotIdRouteImport.update({
+    id: '/api/admin/snapshot-by-id/$snapshotId',
+    path: '/api/admin/snapshot-by-id/$snapshotId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminReportsCleanupExpiredRoute =
   ApiAdminReportsCleanupExpiredRouteImport.update({
     id: '/cleanup-expired',
@@ -139,6 +147,12 @@ const ApiAdminReportRequestsIdRoute =
     id: '/$id',
     path: '/$id',
     getParentRoute: () => ApiAdminReportRequestsRoute,
+  } as any)
+const AdminReportPreviewSnapshotSnapshotIdRoute =
+  AdminReportPreviewSnapshotSnapshotIdRouteImport.update({
+    id: '/report-preview/snapshot/$snapshotId',
+    path: '/report-preview/snapshot/$snapshotId',
+    getParentRoute: () => AdminRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -160,8 +174,10 @@ export interface FileRoutesByFullPath {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
+  '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
 }
 export interface FileRoutesByTo {
@@ -183,8 +199,10 @@ export interface FileRoutesByTo {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
+  '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
 }
 export interface FileRoutesById {
@@ -207,8 +225,10 @@ export interface FileRoutesById {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
+  '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
 }
 export interface FileRouteTypes {
@@ -232,8 +252,10 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
+    | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -255,8 +277,10 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
+    | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
   id:
     | '__root__'
@@ -278,8 +302,10 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
+    | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
   fileRoutesById: FileRoutesById
 }
@@ -301,6 +327,7 @@ export interface RootRouteChildren {
   ApiAdminReportsRoute: typeof ApiAdminReportsRouteWithChildren
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
+  ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
 }
 
@@ -439,6 +466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSnapshotUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/snapshot-by-id/$snapshotId': {
+      id: '/api/admin/snapshot-by-id/$snapshotId'
+      path: '/api/admin/snapshot-by-id/$snapshotId'
+      fullPath: '/api/admin/snapshot-by-id/$snapshotId'
+      preLoaderRoute: typeof ApiAdminSnapshotByIdSnapshotIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/reports/cleanup-expired': {
       id: '/api/admin/reports/cleanup-expired'
       path: '/cleanup-expired'
@@ -453,15 +487,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminReportRequestsIdRouteImport
       parentRoute: typeof ApiAdminReportRequestsRoute
     }
+    '/admin/report-preview/snapshot/$snapshotId': {
+      id: '/admin/report-preview/snapshot/$snapshotId'
+      path: '/report-preview/snapshot/$snapshotId'
+      fullPath: '/admin/report-preview/snapshot/$snapshotId'
+      preLoaderRoute: typeof AdminReportPreviewSnapshotSnapshotIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
   AdminReportPreviewUsernameRoute: typeof AdminReportPreviewUsernameRoute
+  AdminReportPreviewSnapshotSnapshotIdRoute: typeof AdminReportPreviewSnapshotSnapshotIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminReportPreviewUsernameRoute: AdminReportPreviewUsernameRoute,
+  AdminReportPreviewSnapshotSnapshotIdRoute:
+    AdminReportPreviewSnapshotSnapshotIdRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -510,6 +554,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminReportsRoute: ApiAdminReportsRouteWithChildren,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
+  ApiAdminSnapshotByIdSnapshotIdRoute: ApiAdminSnapshotByIdSnapshotIdRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
 }
 export const routeTree = rootRouteImport

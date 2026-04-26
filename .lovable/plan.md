@@ -1,73 +1,141 @@
-# Real Report Data Provider — Refactor Plan
+## Nota importante antes de começar
 
-## Objective
+O pedido pressupõe que existe um painel **Relatórios** no `/admin` e os endpoints `/api/admin/reports` e `/api/admin/reports/cleanup-expired`. Confirmei na inspeção do código atual que **nenhum desses ficheiros existe**:
 
-Allow report section components to consume injected `ReportData` (from real snapshots) while preserving 100% of the current visual output and keeping `/report/example` driven by the existing mock as a fallback.
+- `src/components/admin/cockpit/panels/` tem 6 painéis (alerts, analyses, costs, diagnostics, profiles, requests) — sem `reports-panel.tsx`.
+- `src/routes/api/admin/` tem 7 endpoints — sem `reports.ts` nem `reports.cleanup-expired.ts`.
+- `src/components/admin/cockpit/cockpit-shell.tsx` declara 6 tabs e nenhuma referência a "Relatórios".
+- A única rota de preview é `/admin/report-preview/$username` (por username).
 
-No layout, copy, styling, classes, charts, or section ordering changes. No edits to `report-mock-data.ts`, `/report/example`, PDF, or email flows. No Apify calls, no migrations.
+O resumo de uma iteração anterior afirmou que estes ficheiros foram criados, mas na realidade não estão presentes (provável reverter ou nunca foi aplicado). Em vez de "corrigir" código inexistente, vou **criar o painel já com a lógica correta** que pediste — retenção por `updated_at` e link de preview por snapshot id. O resultado final é exatamente o estado-alvo descrito no teu pedido.
 
-## Files to create
+Na BD existe atualmente 1 snapshot: `frederico.m.carvalho` (id `311067c4-7de3-44e0-b0ee-d20c3a2d5004`).
 
-### `src/components/report/report-data-context.tsx`
+## O que vai ficar feito (visível)
 
-Pure React context module:
+1. Novo separador **Relatórios** no cockpit `/admin`, ao lado dos outros 6.
+2. Lista os snapshots ativos (≤ 5 dias desde `updated_at`) com badge de estado de retenção (active/expiring/expired).
+3. Botão **Limpar relatórios expirados** com contagem real de expirados (mesmo que não estejam na lista), desativado quando count = 0.
+4. Botão **Ver relatório** abre a pré-visualização **do snapshot exato** (por id), não a "última do username".
+5. Texto explícito a separar **TTL de cache** (técnico) de **retenção** (janela admin de 5 dias).
 
-- Imports `reportData` and `type ReportData` from `./report-mock-data`.
-- Creates `ReportDataContext` (default `null`).
-- Exports `ReportDataProvider({ data, children })` that supplies `data` via the context.
-- Exports `useReportData(): ReportData` — returns context value if a provider is present, otherwise returns the mock `reportData` singleton.
+## Detalhes técnicos
 
-This guarantees backward compatibility: any component rendered without a provider keeps rendering the same mock data it does today.
+### 1. Novo endpoint `GET /api/admin/reports`
+Ficheiro novo: `src/routes/api/admin/reports.ts`
 
-## Files to edit
+- Gate: `requireAdminSession()`.
+- Cliente: `supabaseAdmin` (BYPASS RLS — necessário porque `analysis_snapshots` não tem políticas RLS para o utilizador admin via JWT).
+- Query principal: lista snapshots **ativos** (`updated_at >= now() - interval '5 days'`), ordenados `updated_at DESC`. Para cada linha extrai do `normalized_payload` campos seguros para a tabela: `display_name`, `followers`, `posts_analyzed`, `dominant_format`, `avg_engagement_pct` (todos com defaults seguros).
+- Query auxiliar: agregação para `expired_summary` em snapshots com `updated_at < now() - interval '5 days'` — `count`, `min(updated_at)`, `max(updated_at)`.
+- Para cada linha ativa calcula:
+  - `retention_base_at = updated_at`
+  - `retention_expires_at = updated_at + 5 dias` (em JS, ISO string)
+  - `retention_status`:
+    - `active` se `age_days < 4`
+    - `expiring` se `4 ≤ age_days < 5`
+    - `expired` se `age_days ≥ 5` (não deve aparecer na lista ativa, mas o cálculo é defensivo)
+- Resposta:
+  ```ts
+  {
+    success: true,
+    reports: ReportRow[],
+    expired_summary: {
+      count: number,
+      oldest_updated_at: string | null,
+      newest_updated_at: string | null,
+    },
+    generated_at: string,
+  }
+  ```
+- Sem chamadas Apify. Apenas leitura à BD.
 
-### `src/components/report/report-page.tsx`
+### 2. Novo endpoint `POST /api/admin/reports/cleanup-expired`
+Ficheiro novo: `src/routes/api/admin/reports.cleanup-expired.ts`
 
-- Add optional prop `data?: ReportData` (import the type from `./report-mock-data`).
-- When `data` is provided, wrap the existing JSX tree in `<ReportDataProvider data={data}>…</ReportDataProvider>`.
-- When `data` is omitted, render the same JSX as today (no provider needed — components fall back to the mock).
-- Section order, spacing, and container untouched.
+- Gate: `requireAdminSession()`.
+- Cliente: `supabaseAdmin`.
+- DELETE em **`analysis_snapshots` apenas**, condição `updated_at < now() - interval '5 days'`.
+- Comentários explícitos no código a listar tabelas que **NÃO** podem ser tocadas: `analysis_events`, `provider_call_logs`, `usage_alerts`, `social_profiles`, `report_requests`, `leads`.
+- Resposta: `{ success: true, deleted_count: number }` (usar `.select('id')` para contar exatamente quantas foram eliminadas).
 
-### Twelve report section components — identical mechanical change
+### 3. Novo painel `ReportsPanel`
+Ficheiro novo: `src/components/admin/cockpit/panels/reports-panel.tsx`
 
-Files:
+- Faz fetch a `/api/admin/reports` via `adminFetch` (mesmo helper que os outros painéis usam).
+- Renderiza:
+  - **Cabeçalho** com cópia de retenção: *"Por sustentabilidade, os relatórios ficam disponíveis durante 5 dias após a geração."* + segunda linha curta a distinguir TTL de cache (técnico, reuso interno) de retenção (janela admin).
+  - **Botão "Limpar relatórios expirados (N)"** onde N vem de `expired_summary.count`. Se `count === 0`, botão desativado com tooltip/helper "Sem relatórios expirados". Confirmação via `AlertDialog` antes do POST. Após sucesso, refetch da lista.
+  - **Tabela** com colunas: handle, seguidores, posts analisados, formato dominante, eng. médio, **última atualização** (`updated_at`), **expira em** (`retention_expires_at`), badge de **estado de retenção**, link **"Ver relatório"** que aponta para `/admin/report-preview/snapshot/{id}`.
+  - `EmptyState` quando `reports.length === 0` mas com mensagem diferente conforme `expired_summary.count > 0` (sugerir limpar) ou não (sem snapshots).
 
-- `report-header.tsx`
-- `report-key-metrics.tsx`
-- `report-temporal-chart.tsx`
-- `report-benchmark-gauge.tsx`
-- `report-format-breakdown.tsx`
-- `report-competitors.tsx`
-- `report-top-posts.tsx`
-- `report-posting-heatmap.tsx`
-- `report-best-days.tsx`
-- `report-hashtags-keywords.tsx`
-- `report-ai-insights.tsx`
-- `report-footer.tsx`
+### 4. Nova rota de preview por snapshot id
+Ficheiro novo: `src/routes/admin.report-preview.snapshot.$snapshotId.tsx`
 
-For each file:
+- Estrutura espelhada da rota existente `/admin/report-preview/$username` (mesmo `AdminGate`, mesmo `ReportThemeWrapper`, mesmo `ReportPage`, mesma cópia de cobertura/limitações).
+- Diferenças:
+  - URL `/admin/report-preview/snapshot/$snapshotId`.
+  - Faz fetch a um novo endpoint `/api/admin/snapshot-by-id/$snapshotId` (ver ponto 5).
+  - Banner com link "Voltar ao cockpit" mantém-se.
+- A rota antiga `/admin/report-preview/$username` **continua a existir intacta** (compatibilidade com o link no `ProfilesPanel`).
 
-1. Replace `import { reportData } from "./report-mock-data";` with `import { useReportData } from "./report-data-context";`.
-2. Inside the component body (top, before any usage), add `const reportData = useReportData();`.
-3. Leave every other line — JSX, classNames, computations, helper calls, chart configuration — untouched.
+### 5. Novo endpoint `GET /api/admin/snapshot-by-id/$snapshotId`
+Ficheiro novo: `src/routes/api/admin/snapshot-by-id.$snapshotId.ts`
 
-The local variable name `reportData` is kept on purpose so all downstream references (`reportData.profile`, `reportData.keyMetrics`, `reportData.bestDays`, etc.) continue to work without any further edits.
+- Gate: `requireAdminSession()`.
+- Valida que `snapshotId` é UUID (regex simples) — devolve 400 se não.
+- Lê `analysis_snapshots` por `id` (`maybeSingle`) e devolve a mesma forma `SnapshotResponse` que o endpoint por username já usa, para permitir reutilizar a tipagem na rota de preview.
+- Não duplico `snapshot.$username.ts`; mantenho-o como está para não quebrar a rota antiga.
 
-## Locked-files note
+### 6. Wire no cockpit
+Ficheiro editado: `src/components/admin/cockpit/cockpit-shell.tsx`
 
-The 12 report section components and `report-page.tsx` are listed in `LOCKED_FILES.md` / `mem://constraints/locked-files`. The user has explicitly authorised editing them for this data-source refactor only. The lock policy itself is not being changed.
+- Adicionar tab `"reports"` (label "Relatórios", ícone `FileText` do lucide) ao array `TABS` e ao `TabKey`.
+- Adicionar `<TabsContent value="reports">` com `<ReportsPanel />`.
+- Sem outras alterações ao layout/header/readiness strip.
 
-## Validation
+## O que NÃO vou tocar
 
-1. `bunx tsc --noEmit` passes.
-2. `bun run build` passes.
-3. `/report/example` continues to render with mock data via the hook fallback (no provider in that route).
-4. No Apify calls made, no DB migrations created, no secrets touched.
+- `/report/example` e `report-mock-data.ts`.
+- `src/components/admin/cockpit/panels/profiles-panel.tsx` (mantém o link existente para `/admin/report-preview/$username` se já lá estiver — verifico mas não altero a coluna).
+- `/analyze/$username`, landing pública, fluxos PDF/email, `requests-panel.tsx`.
+- Endpoints existentes (`snapshot.$username.ts`, `diagnostics.ts`, etc.).
+- Schema da BD: **sem migrations**. Tudo se faz com queries de leitura e um DELETE pontual em `analysis_snapshots` no endpoint de cleanup.
 
-## Out of scope (intentionally not touched)
+## Validação
 
-- `src/routes/report.example.tsx`
-- `src/components/report/report-mock-data.ts`
-- `src/components/report/report-theme-wrapper.tsx`, `report-section.tsx`, `report-kpi-card.tsx`, `report-chart-tooltip.tsx` (no mock import; nothing to change)
-- Admin preview route (will be added in a follow-up step that consumes the new provider)
-- PDF renderer, email templates, Apify client, snapshot adapter
+1. Abrir `/admin` → novo separador **Relatórios** aparece.
+2. Lista mostra a linha do `frederico.m.carvalho` com `expira em` ≈ `updated_at + 5 dias`.
+3. `expired_summary.count` é 0 (snapshot tem ~1h30 de idade) → botão de cleanup visível mas desativado.
+4. Clicar **Ver relatório** → abre `/admin/report-preview/snapshot/311067c4-…` e renderiza o relatório real do snapshot exato.
+5. Rota antiga `/admin/report-preview/frederico.m.carvalho` continua a funcionar.
+6. `bunx tsc --noEmit` e `bun run build` passam.
+7. Sem nenhuma chamada Apify, sem tocar em `analysis_events`/`provider_call_logs`/`usage_alerts`/`social_profiles`.
+
+## Ficheiros
+
+**Criados (5):**
+- `src/routes/api/admin/reports.ts`
+- `src/routes/api/admin/reports.cleanup-expired.ts`
+- `src/routes/api/admin/snapshot-by-id.$snapshotId.ts`
+- `src/components/admin/cockpit/panels/reports-panel.tsx`
+- `src/routes/admin.report-preview.snapshot.$snapshotId.tsx`
+
+**Editados (1):**
+- `src/components/admin/cockpit/cockpit-shell.tsx` (adicionar tab Relatórios)
+
+**Auto-gerado pelo Vite plugin (não tocar manualmente):**
+- `src/routeTree.gen.ts`
+
+**Bloqueados (não tocar):**
+- `/report/example`, `report-mock-data.ts`, componentes do relatório, fluxos PDF/email, `client.ts`/`types.ts` do Supabase, `.env`.
+
+## Checkpoint
+
+- ☐ Endpoint `GET /api/admin/reports` devolve `reports` + `expired_summary` baseado em `updated_at`.
+- ☐ Endpoint `POST /api/admin/reports/cleanup-expired` apaga só `analysis_snapshots` por `updated_at < now() - 5 days`.
+- ☐ Painel **Relatórios** aparece no cockpit com botão de cleanup ligado ao `expired_summary.count`.
+- ☐ "Ver relatório" navega para `/admin/report-preview/snapshot/{id}`.
+- ☐ Nova rota de preview por id renderiza o snapshot exato.
+- ☐ Sem Apify, sem migrations, sem tocar em logs/eventos.
+- ☐ `bunx tsc --noEmit` + `bun run build` passam.
