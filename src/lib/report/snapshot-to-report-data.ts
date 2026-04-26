@@ -630,6 +630,42 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const viewsAvailable = posts.some(
     (p) => typeof p.video_views === "number" && p.video_views > 0,
   );
+
+  // Benchmark coverage: real when both the engagement positioning and at
+  // least one per-format reference are available; partial when only one of
+  // the two sides exists; placeholder otherwise. Computed up front so we can
+  // surface it through `meta.benchmarkStatus` for the report components.
+  const positioningAvailable =
+    input.benchmark?.positioning?.status === "available";
+  const formatBenchmarksFilled = formatBreakdown.filter(
+    (f) => f.benchmark > 0,
+  ).length;
+  let benchmarkCoverage: CoverageState = "placeholder";
+  if (positioningAvailable && formatBenchmarksFilled === formatBreakdown.length) {
+    benchmarkCoverage = "real";
+  } else if (positioningAvailable || formatBenchmarksFilled > 0) {
+    benchmarkCoverage = "partial";
+  }
+  const benchmarkStatus: "real" | "partial" | "placeholder" =
+    benchmarkCoverage === "real"
+      ? "real"
+      : benchmarkCoverage === "partial"
+        ? "partial"
+        : "placeholder";
+
+  const data: ReportData = {
+    meta: {
+      windowLabel,
+      windowShortLabel,
+      kpiSubtitle,
+      isAdminPreview: true,
+      sampleCaption,
+      temporalLabel,
+      topPostsSubtitle,
+      benchmarkStatus,
+      benchmarkDatasetVersion: input.benchmark?.datasetVersion,
+      viewsAvailable,
+    },
     profile: profileWithWindow,
     keyMetrics,
     temporalSeries,
@@ -642,21 +678,6 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     bestDays,
     aiInsights,
   };
-
-  // Benchmark coverage: real when both the engagement positioning and at
-  // least one per-format reference are available; partial when only one of
-  // the two sides exists; placeholder otherwise.
-  const positioningAvailable =
-    input.benchmark?.positioning?.status === "available";
-  const formatBenchmarksFilled = formatBreakdown.filter(
-    (f) => f.benchmark > 0,
-  ).length;
-  let benchmarkCoverage: CoverageState = "placeholder";
-  if (positioningAvailable && formatBenchmarksFilled === formatBreakdown.length) {
-    benchmarkCoverage = "real";
-  } else if (positioningAvailable || formatBenchmarksFilled > 0) {
-    benchmarkCoverage = "partial";
-  }
 
   const coverage: ReportCoverage = {
     profile: payload.profile ? "real" : "empty",
