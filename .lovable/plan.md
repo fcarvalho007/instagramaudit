@@ -1,129 +1,139 @@
-# Auditoria e refinamento da pré-visualização real (admin)
 
-## O que está mal hoje
+# Redesign do `/admin` — Sistema de design + tab Visão Geral
 
-Após inspeção do snapshot real (`311067c4-…` · `frederico.m.carvalho` · 12 posts · 9 458 seguidores · ER médio 0,15 %) e dos componentes do relatório:
+Este é o **prompt 1 de 6**. Implementa apenas a infraestrutura partilhada e a tab Visão Geral. As outras 5 tabs ficam como stubs "em desenvolvimento". O cockpit legado actual fica acessível como sub-rota em `/admin/sistema/cockpit-legado`.
 
-1. **KPI "Envolvimento médio"** (`report-key-metrics.tsx`)
-   - O chip de tendência está fixo a `direction: "down"` + `trendVariant: "danger"`. Mesmo que `engagementDeltaPct` seja positivo (acima do benchmark), aparece sempre vermelho com seta para baixo.
-   - Quando não há benchmark (`engagementDeltaPct === 0` e `engagementBenchmark === 0`) mostra "0% vs benchmark" como se houvesse leitura.
-2. **Gauge de benchmark** (`report-benchmark-gauge.tsx`)
-   - Badge fixo "Abaixo do benchmark" e parágrafo hardcoded "55% abaixo do benchmark de contas Micro com Reels…", independentemente dos valores reais.
-   - Continua a renderizar mesmo quando não existe benchmark — mostra um marcador a 0 % e linha "Δ 0%".
-3. **Copy de janela** (chart temporal e top-posts)
-   - Adapter define `windowLabel = "amostra recente"` para amostras pequenas, o que dá frases agramaticais: "Evolução temporal · amostra recente" e "Ordenadas pelo envolvimento percentual nos amostra recente".
-   - Falta a frase pedida: *"Análise baseada nas últimas N publicações recolhidas"* e *"Janela observada: X dias"*.
-4. **Sem faixa de cobertura no topo** — o aviso de limitações está só no fim da página, depois de o admin já ter rolado tudo.
-5. **Visualizações no chart temporal** — a série "Visualizações" aparece sempre, mas no snapshot real só Reels têm `video_views` (a maioria fica a 0); convém dizer-lo explicitamente.
-6. **Cobertura de benchmark no notice** — o texto actual ("Benchmarks por escalão e por formato sem dados") só dispara em `placeholder`. Falta uma linha positiva quando `benchmark === "real"` para dar confiança ("Benchmarks reais ligados — dataset vX").
+## Decisões já confirmadas
 
-`/report/example` renderiza com `meta.isAdminPreview === false` e mantém o mock — todas as alterações ficam atrás de `isAdminPreview` ou de campos opcionais novos com fallback para o valor mock actual.
+- **Gráficos**: Recharts (já instalado). Não introduzimos Chart.js.
+- **Cockpit actual**: preservado em `/admin/sistema/cockpit-legado`, com link discreto na tab Sistema.
+- **Tipografia**: Inter (400/500) + JetBrains Mono para eyebrows. Sem Fraunces no admin novo.
 
-## O que vai mudar
+## O que vai ser entregue
 
-### A. Adapter `snapshotToReportData`
+### 1. Sistema de design admin
 
-- Calcular `windowLabel` / `windowShortLabel` mais legíveis:
-  - Se `windowDays > 0`: `windowLabel = "janela de ${windowDays} dias"`, `windowShortLabel = "${windowDays} dias"`.
-  - Caso contrário: `windowLabel = "amostra recolhida"`.
-- Adicionar a `meta` três campos opcionais novos (todos com defaults compatíveis com o mock):
-  - `sampleCaption` — *"Análise baseada nas últimas N publicações recolhidas."*
-  - `temporalLabel` — *"Evolução temporal · janela de X dias"* ou *"Evolução temporal · amostra de N publicações"*.
-  - `topPostsSubtitle` — *"Ordenadas por envolvimento. Janela observada: X dias."*
-- Adicionar `meta.benchmarkStatus: "real" | "partial" | "placeholder"` (mesma lógica já calculada para `coverage.benchmark`).
-- Adicionar `meta.viewsAvailable: boolean` — `true` se pelo menos um post tem `video_views > 0`.
-- Adicionar `meta.benchmarkDatasetVersion?: string` (vem de `benchmark.datasetVersion`).
-- Manter tudo opcional → o mock continua a renderizar exactamente como antes.
+**Ficheiro novo**: `src/styles/admin-tokens.css` — paleta semântica completa do prompt (revenue/leads/expense/signal/danger/info/revenue-alt/neutral em escalas 50-900). Importado a seguir aos tokens existentes em `src/styles.css`.
 
-### B. `report-key-metrics.tsx`
+**Princípios visuais** aplicados em todos os componentes:
+- Pesos de fonte: apenas 400 e 500
+- Bordas: `0.5px solid rgb(var(--admin-neutral-100))`
+- Radii: `8px` (cartões pequenos / badges) e `12px` (cartões grandes)
+- Sem sombras nem gradientes (excepto cartão herói "Receita total" e linha sob header)
+- Sentence case sempre. Eyebrows uppercase + tracking 0.1em + 11px mono.
 
-- Derivar `direction` e `trendVariant` de `engagementDeltaPct`:
-  - `delta > 0` → `direction: "up"` + `trendVariant: "success"`.
-  - `delta < 0` → `direction: "down"` + `trendVariant: "danger"`.
-  - `delta === 0` e `engagementBenchmark === 0` (sem benchmark) → ocultar o chip de tendência ou mostrar "Sem benchmark disponível" em tom neutro.
-- Continuar a usar mock quando `meta.isAdminPreview` é falso (mock tem delta negativo → mantém o visual actual).
+### 2. Componentes reutilizáveis
 
-### C. `report-benchmark-gauge.tsx`
+Pasta nova `src/components/admin/v2/` (separada do cockpit legado para não criar conflitos):
 
-- Calcular badge dinamicamente:
-  - `delta > 10` → "Acima do benchmark" (success), `delta` entre 0 e 10 → "Ligeiramente acima" (success), `delta ≤ 0` → "Abaixo do benchmark" (warning).
-  - Sem benchmark (`engagementBenchmark === 0` e `meta.isAdminPreview`) → ocultar a secção inteira (return `null`) e deixar o `CoverageNotice` explicar.
-- Substituir o parágrafo fixo "55% abaixo…" por uma frase composta com base nos valores reais (`Math.abs(delta)` + escalão + formato dominante). Manter a frase mock quando `meta.isAdminPreview` é falso (passa a ser o fallback default).
+- `admin-page-header.tsx` — eyebrow `INSTABENCH · ADMIN` + h1 28px + subtítulo + slot de acções + linha-gradient sutil em baixo.
+- `admin-section-header.tsx` — barra vertical 3×16px colorida (prop `accent`) + h2 13px uppercase + subtítulo opcional após "·".
+- `admin-tabs-nav.tsx` — navegação horizontal das 6 tabs como `<Link>` TanStack com `activeProps`. Sublinhado 2px na cor temática da tab activa, `margin-bottom: -0.5px` para encavalar a baseline. Cores: visão-geral=leads, receita=revenue, clientes=leads, relatórios=signal, perfis=expense, sistema=neutral.
+- `kpi-card.tsx` — 3 variantes via prop `variant`: `default`, `highlighted` (gradiente esmeralda + borda verde 400), `accent-left` (border-left 3px com prop `accent`). Eyebrow + valor 26px + delta opcional (▲/▼) + subtexto.
+- `progress-bar.tsx` — 8px altura, fundo cor a 12% + preenchimento sólido. Suporte a `showCap` (linha vertical vermelha em 100%) e variante segmentada (array `segments` para a barra Apify+OpenAI).
+- `badge.tsx` (nome final `admin-badge.tsx` para não colidir com shadcn) — variantes revenue/leads/expense/signal/danger/info/neutral, padding 3px 8px, radius 8px (pill), texto sempre em tom 800/900 da família.
 
-### D. `report-temporal-chart.tsx`
+### 3. Routing das 6 tabs
 
-- Usar `meta.temporalLabel` quando disponível para a label da secção (em vez de `Evolução temporal · ${windowLabel}`).
-- Quando `meta.viewsAvailable === false`, ocultar o chip "Visualizações" e a área correspondente, e acrescentar um pequeno rodapé: *"Visualizações disponíveis apenas para Reels — não há dados neste snapshot."*.
+Refactorizar `src/routes/admin.tsx` em layout + sub-rotas (file-based TanStack):
 
-### E. `report-top-posts.tsx`
+```text
+src/routes/
+  admin.tsx                                  → layout (auth gate + header + AdminTabsNav + <Outlet/>)
+  admin.index.tsx                            → redirect para /admin/visao-geral
+  admin.visao-geral.tsx                      → tab Visão Geral (conteúdo completo)
+  admin.receita.tsx                          → stub
+  admin.clientes.tsx                         → stub
+  admin.relatorios.tsx                       → stub
+  admin.perfis.tsx                           → stub
+  admin.sistema.tsx                          → stub + link "abrir cockpit legado"
+  admin.sistema.cockpit-legado.tsx           → renderiza o `<CockpitShell/>` actual sem alterações
+```
 
-- Usar `meta.topPostsSubtitle` quando disponível; senão manter a frase actual.
+A lógica de auth (Google + allowlist via `/api/admin/whoami`) é movida do `admin.tsx` actual para o novo layout `admin.tsx`. O `<CockpitShell/>` legado continua a funcionar idêntico — só muda o ponto de entrada.
 
-### F. `report-competitors.tsx`
+### 4. Tab Visão Geral — 5 secções
 
-- Já oculta correctamente quando `competitors.length === 0 && isAdminPreview`. Sem alterações.
+Cada secção precedida pelo `<AdminSectionHeader/>` com cor temática. Espaçamento vertical 28px entre secções.
 
-### G. `report-ai-insights.tsx`
+**Secção 1 — Funil de conversão** (barra leads/roxo)
+- SVG inline 600×200 com 3 polígonos trapezoidais (`#EEEDFE` → `#CECBF6` → `#534AB7`).
+- Texto sobreposto absoluto em cada camada com flex space-between (visitantes/análises, leads/conversão, clientes/conversão).
+- Grelha 3-col abaixo (Conversão total, Receita por lead, Valor médio cliente) com 1px gap entre células e overflow hidden para efeito separador.
 
-- Já tem empty-state admin. Sem alterações.
+**Secção 2 — Receita** (barra revenue/verde)
+- Linha 1: 3 `<KPICard/>` lado-a-lado — MRR (accent-left verde 500), Avulso 30 dias (accent-left verde-alt 400), Receita total (highlighted/gradiente esmeralda).
+- Cartão "Evolução diária": `<BarChart>` Recharts com `<Bar stackId="r" fill="#1D9E75">` (subscrições) + `<Bar stackId="r" fill="#97C459">` (avulso), 26 dias mock, eixo Y €, tooltips em PT, legenda inline customizada à direita do header.
 
-### H. Página `admin.report-preview.snapshot.$snapshotId.tsx`
+**Secção 3 — Despesa** (barra expense/âmbar)
+- Cartão único com 2 zonas separadas por linha 0.5px:
+  - Zona superior: 3 colunas com bordas verticais — Apify ($18.42/$29 com `<ProgressBar showCap variant="expense"/>`), OpenAI ($9.87/$25 com `<ProgressBar variant="info"/>`), Despesa total ($28.29 com `<ProgressBar segments={[{value:65,color:'expense'},{value:35,color:'info'}]}/>`).
+  - Zona inferior: `<BarChart>` Recharts com stack Apify+OpenAI + `<ReferenceLine y={29/30} strokeDasharray="5 4" stroke="#A32D2D" label={{value:'limite diário · $0.97', position:'right', fill:'#A32D2D', fontSize:10}}/>`.
 
-- **Adicionar uma faixa compacta no topo** (logo abaixo do `AdminBanner`, antes do `<ReportPage />`), só visível em estado `ready`, com 5 chips:
-  - `Posts: N`
-  - `Janela: X dias` (ou "amostra recolhida")
-  - `Benchmarks: Real | Parcial | Indisponível`
-  - `Concorrentes: Presentes (n) | Em falta`
-  - `Insights de IA: Gerados | Por gerar`
-  Cada chip usa as cores do design system (`signal-success`, `signal-warning`, `content-tertiary`) e tipografia mono — coerente com a estética editorial.
-- Atualizar o `CoverageNotice` no fundo:
-  - Quando `coverage.benchmark === "real"` → mostrar linha positiva: *"Benchmarks reais ligados (dataset vX) — leitura comparável com o escalão."*
-  - Quando `coverage.benchmark === "partial"` → indicar quais formatos ficaram sem referência.
-  - Manter as restantes linhas de janela/competitors/AI/imagens.
+**Secção 4 — Clientes kanban** (barra leads/roxo)
+- Grelha 4-col com 10px gap. Cada coluna é um cartão branco com `border-top: 2px solid <cor>` e radius só nos cantos inferiores. Header com título + subtítulo + `<AdminBadge/>` com contador. 3 cartões mock por coluna em fundo `--admin-neutral-50` com nome + plano/preço.
 
-### I. `/report/example`
+**Secção 5 — Sinais de intenção** (barra signal/coral)
+- Grelha 2-col com 14px gap.
+- Cartão esquerdo: 4 linhas mock de pesquisas repetidas (perfil + lead + contador "7×" coral 500 + tempo).
+- Cartão direito: 4 linhas mock de últimos relatórios com `<AdminBadge variant="revenue|expense"/>` para estado.
 
-- **Não tocar.** Toda a lógica nova depende de campos opcionais em `meta` que o mock não preenche; nesses casos os componentes caem no fallback actual. Verificação: confirmar visualmente que a página renderiza idêntica.
+### 5. Mock data
 
-## Detalhe técnico
+`src/lib/admin/mock-data.ts` — todos os números do prompt como constantes nomeadas (`MOCK_FUNNEL`, `MOCK_REVENUE_KPIS`, `MOCK_DAILY_REVENUE`, `MOCK_EXPENSE`, `MOCK_DAILY_COSTS`, `MOCK_KANBAN`, `MOCK_INTENT_SIGNALS`). Comentário no topo a sinalizar que é mock e que será substituído por queries Supabase em prompt posterior.
 
-- Tipos: estender `ReportData["meta"]` em `report-mock-data.ts` (campos novos opcionais) e tipar como `Partial<…>` no adapter.
-- Não há novos imports de pacotes.
-- Não se mexe no `ReportPage` shell.
-- Não se chama Apify, não se cria migração, não se altera storage nem PDF/email.
-- Locked files (`/LOCKED_FILES.md`) — confirmar que nenhum dos ficheiros listados acima está marcado como locked antes de editar.
+## Detalhes técnicos
+
+- **Auth**: a lógica de `useEffect`/`onAuthStateChange`/`whoami` actual é encapsulada num componente `AdminAuthShell` que envolve o `<Outlet/>` no novo `admin.tsx` layout.
+- **Recharts ResponsiveContainer**: wrapper com `position: relative` + altura explícita 180px conforme prompt. `<Tooltip/>` customizado em PT.
+- **Acessibilidade**: cada gráfico envolvido em `<div role="img" aria-label="...">` com texto fallback `<span className="sr-only">` resumindo os números.
+- **Light mode only**: o admin novo força light mode via `<div className="bg-white text-[rgb(var(--admin-neutral-900))]">` no layout — não toca em `dark:` variants. Fica preparado para dark mode futuro mas não implementado.
+- **Sem responsivo mobile**: grelhas usam `repeat(auto-fit, minmax(...))` quando faz sentido para não partir em ecrãs ~1024px, mas não há versão mobile.
+- **TanStack file-based**: `admin.index.tsx` usa `loader: () => { throw redirect({ to: '/admin/visao-geral' }) }` para redirect server-side.
+- **Locked files**: `LOCKED_FILES.md` será verificado antes — nenhum dos componentes do report (`report-*.tsx`) é tocado. O `cockpit-shell.tsx` e panels do cockpit actual ficam **intactos**, apenas mudam de ponto de montagem.
+
+## Ficheiros tocados (resumo)
+
+**Novos**:
+- `src/styles/admin-tokens.css`
+- `src/components/admin/v2/admin-page-header.tsx`
+- `src/components/admin/v2/admin-section-header.tsx`
+- `src/components/admin/v2/admin-tabs-nav.tsx`
+- `src/components/admin/v2/admin-auth-shell.tsx`
+- `src/components/admin/v2/kpi-card.tsx`
+- `src/components/admin/v2/progress-bar.tsx`
+- `src/components/admin/v2/admin-badge.tsx`
+- `src/components/admin/v2/visao-geral/funnel-section.tsx`
+- `src/components/admin/v2/visao-geral/revenue-section.tsx`
+- `src/components/admin/v2/visao-geral/expense-section.tsx`
+- `src/components/admin/v2/visao-geral/kanban-section.tsx`
+- `src/components/admin/v2/visao-geral/intent-section.tsx`
+- `src/components/admin/v2/stub-tab.tsx`
+- `src/lib/admin/mock-data.ts`
+- `src/routes/admin.index.tsx`
+- `src/routes/admin.visao-geral.tsx`
+- `src/routes/admin.receita.tsx`
+- `src/routes/admin.clientes.tsx`
+- `src/routes/admin.relatorios.tsx`
+- `src/routes/admin.perfis.tsx`
+- `src/routes/admin.sistema.tsx`
+- `src/routes/admin.sistema.cockpit-legado.tsx`
+
+**Editados**:
+- `src/styles.css` — `@import "./styles/admin-tokens.css";`
+- `src/routes/admin.tsx` — passa a ser layout (gate de auth + header global + tabs nav + `<Outlet/>`); o conteúdo actual (`<CockpitShell/>`) deixa de ser renderizado aqui.
 
 ## Validação
 
-1. Abrir `/admin/report-preview/snapshot/311067c4-7de3-44e0-b0ee-d20c3a2d5004` e confirmar:
-   - Faixa de cobertura no topo a mostrar "Posts: 12 · Janela: ~N dias · Benchmarks: Real/Parcial · Concorrentes: Em falta · IA: Por gerar".
-   - KPI "Envolvimento médio" com cor coerente com o sinal real do delta (sem hardcoded danger).
-   - Gauge com badge dinâmico ou oculto se não houver benchmark.
-   - Chart temporal sem chip de "Visualizações" se todos os posts tiverem `video_views = 0`, com nota explicativa.
-   - Sem promessas de "30 dias" no real.
-2. Abrir `/report/example` e confirmar pixel-paridade com o estado anterior.
-3. `bunx tsc --noEmit`.
-4. `bun run build`.
+- `bunx tsc --noEmit`
+- `bun run build`
+- Visualmente: percorrer `/admin` → redireciona para `/admin/visao-geral` → ver as 5 secções renderizadas com cores correctas. Clicar em cada uma das outras 5 tabs vê stub. `/admin/sistema/cockpit-legado` mostra o cockpit actual intacto.
 
-## Ficheiros previstos
+## Não faz parte deste prompt
 
-- `src/components/report/report-mock-data.ts` (estender `meta` com campos opcionais)
-- `src/lib/report/snapshot-to-report-data.ts` (preencher novo `meta`)
-- `src/components/report/report-key-metrics.tsx`
-- `src/components/report/report-benchmark-gauge.tsx`
-- `src/components/report/report-temporal-chart.tsx`
-- `src/components/report/report-top-posts.tsx`
-- `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` (faixa de cobertura no topo + ajustes ao `CoverageNotice`)
-- `src/routes/admin.report-preview.$username.tsx` (espelhar a faixa, para coerência)
-
-## Checkpoint
-
-- ☐ Adapter expõe `meta.benchmarkStatus`, `viewsAvailable`, `sampleCaption`, `temporalLabel`, `topPostsSubtitle`.
-- ☐ KPI delta deixa de ser sempre vermelho.
-- ☐ Gauge de benchmark é dinâmico ou oculto quando não há benchmark.
-- ☐ Chart temporal oculta "Visualizações" e explica quando dados não existem.
-- ☐ Faixa compacta de cobertura no topo da pré-visualização.
-- ☐ `CoverageNotice` mostra linha positiva quando benchmark é real.
-- ☐ `/report/example` inalterado.
-- ☐ Sem chamadas Apify, sem migrações.
-- ☐ `bunx tsc --noEmit` e `bun run build` verdes.
+- Conteúdo das tabs Receita, Clientes, Relatórios, Perfis, Sistema (apenas stubs).
+- Ligação a dados reais Supabase (vem em iteração posterior).
+- Dark mode.
+- Responsivo mobile.
+- Qualquer alteração ao `/report/example`, `/analyze/$username`, ou aos componentes do report.
+- Chamadas Apify.

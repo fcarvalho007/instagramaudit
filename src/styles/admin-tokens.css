@@ -1,0 +1,98 @@
+/**
+ * InstaBench Admin v2 — design tokens.
+ *
+ * Paleta semântica usada exclusivamente pelo cockpit `/admin` redesenhado.
+ * Não interfere com `tokens.css` / `tokens-light.css` da app pública.
+ * Importado via side-effect em `src/routes/admin.tsx` (layout).
+ *
+ * Uso: classes Tailwind arbitrárias do tipo
+ *   `bg-[rgb(var(--admin-revenue-500))]`,
+ *   `text-[rgb(var(--admin-leads-900))]`,
+ *   `border-[rgb(var(--admin-neutral-100))]`.
+ */
+
+:root {
+  /* === Receita / sucesso / subscrições (esmeralda) === */
+  --admin-revenue-50: 225 245 238;
+  --admin-revenue-100: 159 225 203;
+  --admin-revenue-400: 93 202 165;
+  --admin-revenue-500: 29 158 117;
+  --admin-revenue-700: 15 110 86;
+  --admin-revenue-800: 8 80 65;
+  --admin-revenue-900: 4 52 44;
+
+  /* === Leads / clientes / pipeline (roxo) === */
+  --admin-leads-50: 238 237 254;
+  --admin-leads-100: 206 203 246;
+  --admin-leads-400: 175 169 236;
+  --admin-leads-500: 83 74 183;
+  --admin-leads-700: 60 52 137;
+  --admin-leads-900: 38 33 92;
+
+  /* === Despesa / avisos / avulso 1 compra (âmbar) === */
+  --admin-expense-50: 250 238 218;
+  --admin-expense-100: 250 199 117;
+  --admin-expense-400: 239 159 39;
+  --admin-expense-500: 186 117 23;
+  --admin-expense-700: 133 79 11;
+  --admin-expense-900: 65 36 2;
+
+  /* === Sinais quentes / intenção (coral) === */
+  --admin-signal-50: 250 236 231;
+  --admin-signal-400: 240 153 123;
+  --admin-signal-500: 216 90 48;
+  --admin-signal-700: 153 60 29;
+
+  /* === Churn / falhas / em risco (vermelho) === */
+  --admin-danger-50: 252 235 235;
+  --admin-danger-400: 240 149 149;
+  --admin-danger-500: 226 75 74;
+  --admin-danger-700: 163 45 45;
+  --admin-danger-900: 80 19 19;
+
+  /* === OpenAI / info / ligações neutras (azul) === */
+  --admin-info-50: 230 241 251;
+  --admin-info-400: 133 183 235;
+  --admin-info-500: 55 138 221;
+  --admin-info-700: 24 95 165;
+  --admin-info-900: 4 44 83;
+
+  /* === Verde claro (avulso recorrente, evolução positiva secundária) === */
+  --admin-revenue-alt-100: 192 221 151;
+  --admin-revenue-alt-400: 151 196 89;
+  --admin-revenue-alt-700: 59 109 17;
+  --admin-revenue-alt-900: 23 52 4;
+
+  /* === Neutros (cinza-pedra editorial) === */
+  --admin-neutral-50: 241 239 232;
+  --admin-neutral-100: 211 209 199;
+  --admin-neutral-200: 180 178 169;
+  --admin-neutral-400: 136 135 128;
+  --admin-neutral-600: 95 94 90;
+  --admin-neutral-800: 68 68 65;
+  --admin-neutral-900: 44 44 42;
+}
+
+/**
+ * Wrapper raiz do admin v2.
+ * Aplicado no layout para forçar light mode + tipografia + base text color
+ * sem tocar nos tokens globais.
+ */
+.admin-v2 {
+  color-scheme: light;
+  background-color: rgb(var(--admin-neutral-50));
+  color: rgb(var(--admin-neutral-900));
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.admin-v2 .admin-eyebrow {
+  font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgb(var(--admin-neutral-600));
+}
