@@ -328,7 +328,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "allowlist:",
               getAllowlist().join(","),
             );
-            logEvent({
+            await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey: null,
@@ -382,7 +382,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const cachedPayload = existing.normalized_payload as unknown as {
             profile?: { display_name?: string; followers_count?: number };
           };
-          logEvent({
+          await logEvent({
             handle: primary,
             competitorHandles: competitors,
             cacheKey,
@@ -411,7 +411,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             const stalePayload = existing.normalized_payload as unknown as {
               profile?: { display_name?: string; followers_count?: number };
             };
-            logEvent({
+            await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey,
@@ -430,7 +430,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             "[analyze-public-v1] APIFY_ENABLED!=true — refusing provider call",
             primary,
           );
-          logEvent({
+          await logEvent({
             handle: primary,
             competitorHandles: competitors,
             cacheKey,
