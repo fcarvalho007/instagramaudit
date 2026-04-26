@@ -609,11 +609,26 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     aiInsights,
   };
 
+  // Benchmark coverage: real when both the engagement positioning and at
+  // least one per-format reference are available; partial when only one of
+  // the two sides exists; placeholder otherwise.
+  const positioningAvailable =
+    input.benchmark?.positioning?.status === "available";
+  const formatBenchmarksFilled = formatBreakdown.filter(
+    (f) => f.benchmark > 0,
+  ).length;
+  let benchmarkCoverage: CoverageState = "placeholder";
+  if (positioningAvailable && formatBenchmarksFilled === formats_count(formatBreakdown)) {
+    benchmarkCoverage = "real";
+  } else if (positioningAvailable || formatBenchmarksFilled > 0) {
+    benchmarkCoverage = "partial";
+  }
+
   const coverage: ReportCoverage = {
     profile: payload.profile ? "real" : "empty",
     keyMetrics: payload.content_summary ? "real" : "empty",
     temporalSeries: temporalSeries.length > 0 ? "partial" : "empty",
-    benchmark: "placeholder",
+    benchmark: benchmarkCoverage,
     formatBreakdown: payload.format_stats ? "partial" : "empty",
     competitors: "empty",
     topPosts: topPosts.length > 0 ? "real" : "empty",
