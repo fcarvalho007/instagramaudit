@@ -131,7 +131,7 @@ export function RequestDetailSheet({
     if (!reportRequestId) return;
     setActionLoading("pdf");
     try {
-      const res = await fetch("/api/admin/regenerate-pdf", {
+      const res = await adminFetch("/api/admin/regenerate-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ report_request_id: reportRequestId }),
@@ -156,7 +156,7 @@ export function RequestDetailSheet({
     if (!reportRequestId) return;
     setActionLoading("email");
     try {
-      const res = await fetch("/api/admin/resend-email", {
+      const res = await adminFetch("/api/admin/resend-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ report_request_id: reportRequestId }),
