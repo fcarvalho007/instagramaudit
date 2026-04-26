@@ -267,6 +267,10 @@ export function ReportsPanel() {
               dias após a geração.
             </p>
             <p className="text-xs text-content-tertiary">
+              A cache técnica pode expirar antes; a biblioteca admin mantém o
+              relatório disponível durante 5 dias.
+            </p>
+            <p className="text-xs text-content-tertiary">
               <span className="font-mono uppercase tracking-[0.12em]">
                 Cache
               </span>{" "}
