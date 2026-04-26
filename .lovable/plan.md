@@ -1,160 +1,130 @@
-## Admin Intelligence Cockpit — v1
+# Admin Intelligence Cockpit — v1
 
-Transformar `/admin` num cockpit com 6 tabs sem reescrever a camada de dados. O endpoint `/api/admin/diagnostics` já devolve quase tudo o que é preciso para as 5 novas tabs; a tab `Pedidos de relatório` continua a usar `/api/admin/report-requests`.
+Implementar os 5 painéis novos (Diagnóstico, Análises, Perfis, Custos, Alertas) e ligar a tab Pedidos no `CockpitShell` já existente. Toda a leitura usa o endpoint `GET /api/admin/diagnostics` que já agrega tudo o que precisamos — **não é necessário criar novos endpoints, novas migrations, nem tocar em segredos**.
 
----
+## Princípios
+- Read-only. Sem mutações, sem ack de alertas (fica para depois).
+- Reutilizar `useCockpitData`, `cockpit-formatters.ts`, `cockpit-badges.tsx` e o componente `Card`/`Badge` já existentes.
+- Nunca expor valores de segredos — apenas `Configurado` / `Em falta`.
+- Labels em pt-PT. Mobile-first (cards empilham em viewport pequena).
+- Não tocar em `/report.example`, componentes de relatório, fluxos PDF/email, UI pública.
 
-### Estrutura final das tabs
+## Arquitetura dos painéis
 
 ```text
-/admin
-├─ Diagnóstico   ← saúde técnica (secrets, Apify, snapshots, último erro)
-├─ Análises      ← histórico de eventos (recent_events)
-├─ Perfis        ← rollup por handle (top_profiles)
-├─ Custos        ← agregados financeiros (analytics + cache savings)
-├─ Alertas       ← sinais não bloqueantes (alerts)
-├─ Pedidos       ← já existe, mantém-se como está
-└─ [Futuro: PnL] ← placeholder visível "Sem receita registada"
+src/components/admin/cockpit/
+├── cockpit-shell.tsx           (já existe — substituir placeholders)
+├── use-cockpit-data.ts         (já existe)
+├── cockpit-types.ts            (já existe)
+├── cockpit-formatters.ts       (já existe)
+├── cockpit-badges.tsx          (já existe)
+├── panels/
+│   ├── diagnostics-panel.tsx   NOVO
+│   ├── analyses-panel.tsx      NOVO
+│   ├── profiles-panel.tsx      NOVO
+│   ├── costs-panel.tsx         NOVO
+│   ├── alerts-panel.tsx        NOVO
+│   └── requests-panel.tsx      NOVO (wrapper fino do RequestList + Sheet)
+└── parts/
+    ├── stat-card.tsx           NOVO  (label + valor grande + sublabel)
+    ├── data-table.tsx          NOVO  (tabela responsiva minimalista)
+    └── empty-state.tsx         NOVO
 ```
 
----
+## Conteúdo de cada tab
 
-### Componentes a criar
+### 1. Diagnóstico
+Saúde técnica e configuração. Consome `secrets`, `apify`, `testing_mode`, `snapshots`, `report_requests`, `recent_provider_calls`.
+- Grid de `PresenceBadge` para `APIFY_TOKEN`, `RESEND_API_KEY`, `INTERNAL_API_TOKEN`.
+- Estado Apify: `enabled` (kill-switch), `cost_per_profile_usd`, `cost_per_post_usd`.
+- Modo de teste: `active` + lista de handles na allowlist (chips).
+- Última snapshot: handle, fonte (`fresh`/`cache`/`stale`), provider, `updated_at`.
+- Últimos 15 provider calls: actor, handle, status (badge), HTTP, duração, posts, custo.
 
-Todos em `src/components/admin/cockpit/` para isolar do código antigo:
+### 2. Análises
+Histórico de eventos. Consome `recent_events` + janela 24h/7d.
+- Header: 4 stat cards — Eventos 24h · Eventos 7d · Perfis únicos 7d · Custo estimado 24h.
+- Tabela dos últimos 20 eventos: data, handle, outcome (badge), fonte (badge), duração, custo, error_code.
+- Empty state se não houver eventos ainda.
 
-| Ficheiro | Responsabilidade |
-|---|---|
-| `use-cockpit-data.ts` | hook que faz `fetch /api/admin/diagnostics` uma vez, partilha resposta entre tabs, expõe `refresh()` e `loading` |
-| `cockpit-shell.tsx` | wrapper com header + `Tabs` + botão "Atualizar" global |
-| `tab-diagnostico.tsx` | secrets, APIFY_ENABLED, allowlist, snapshots, último evento/provider call/erro |
-| `tab-analises.tsx` | tabela de `recent_events` com filtro simples por outcome (cliente) |
-| `tab-perfis.tsx` | tabela `top_profiles` ordenável por total/custo/última análise |
-| `tab-custos.tsx` | cards com custo 24h/7d, projeção mensal heurística, fresh vs cache, "custo poupado pelo cache" |
-| `tab-alertas.tsx` | lista `alerts` agrupada por severidade, com kind humanizado |
-| `tab-pnl-placeholder.tsx` | cartão estático "Sem receita registada — billing por implementar" |
-| `cockpit-formatters.ts` | `formatDate`, `formatCost`, `formatNumber`, label maps (PT-PT) — extraídos do panel antigo |
-| `cockpit-badges.tsx` | `OutcomeBadge`, `DataSourceBadge`, `SeverityBadge`, `ProviderStatusBadge` (extraídos) |
+### 3. Perfis
+Rollup por handle. Consome `top_profiles`.
+- Tabela com top 10: handle, seguidores (compacto), total análises, fresh, cache, falhas, custo total, última análise, última fonte.
+- Coluna "Repetições" destaca handles com `analyses_total >= ALERT_REPEATED_PROFILE_PER_HOUR` (warning visual, não bloqueante).
+- Empty state se vazio.
 
-**Componentes existentes reutilizados:**
-- `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` (`@/components/ui/tabs`)
-- `Card`, `Badge`, `Button` (já usados no panel atual)
-- `Toaster` (`@/components/ui/sonner`)
-- `RequestList`, `RequestDetailSheet` (tab Pedidos)
-- `AdminGate` (gate de acesso)
+### 4. Custos
+Agregados financeiros. Consome `analytics` + `apify`.
+- Stat cards: Custo 24h · Custo 7d · Cache hits 7d · **Custo poupado pela cache 7d** (estimativa = `cache_count_7d * (cost_per_profile + cost_per_post * postsAssumed)`; usar `cost_per_profile + cost_per_post * 12` como estimativa conservadora — explicado em copy "estimativa baseada em ~12 posts/análise").
+- Mini-tabela: rácios fresh vs cache 24h e 7d, taxa de falhas.
+- Nota explicativa em pt-PT sobre a metodologia de custo (estimativa, não fatura real do Apify).
 
----
+### 5. Alertas
+Sinais não bloqueantes. Consome `alerts` + `alert_thresholds`.
+- Header: stat card com nº de alertas não reconhecidos.
+- Tabela: data, severidade (badge), tipo (badge), handle, métrica, valor, limite.
+- Bloco "Limites configurados" lista os 5 thresholds em pt-PT.
+- Empty state "Sem alertas ativos." quando vazio.
+- Banner pequeno: "Os alertas são informativos. Nenhum utilizador é bloqueado nesta versão."
 
-### Endpoints
+### 6. Pedidos de relatório
+Migrar para `requests-panel.tsx` que envolve o `RequestList` + `RequestDetailSheet` já existentes (mantém comportamento atual; tira o estado da `cockpit-shell.tsx` para o painel).
 
-**Não criar nada novo agora.** O endpoint `/api/admin/diagnostics` já devolve:
-- `secrets`, `apify`, `testing_mode` → tab Diagnóstico
-- `snapshots`, `report_requests` (resumo) → tab Diagnóstico
-- `analytics.last_24h` / `last_7d` → tab Custos + Diagnóstico
-- `top_profiles.rows` → tab Perfis
-- `recent_events.rows` → tab Análises
-- `recent_provider_calls.rows` → tab Diagnóstico ("último provider call")
-- `alerts.rows` → tab Alertas
-- `alert_thresholds` → tab Alertas (mostrar limites usados)
+## Detalhes técnicos
 
-**Ajuste mínimo opcional** (só se a tab Custos pedir mais granularidade): adicionar `analytics.cost_today` e `analytics.cost_month_to_date` ao mesmo endpoint. Calculados in-memory a partir das mesmas linhas (`created_at >= startOfDay/startOfMonth`). Sem nova query SQL.
+- `cockpit-shell.tsx`: substituir os 5 `PlaceholderPanel` pelos novos painéis; passar `data`, `loading`, `error` por props (cada painel recebe a fatia que precisa). Manter o botão global "Atualizar" que já existe.
+- Novos painéis são funções puras `({ data }: { data: CockpitData | null }) => JSX`. Skeleton simples quando `data === null` e `loading`. Erro inline quando o bloco respetivo trouxer `error`.
+- `stat-card.tsx`: usa tokens `surface-elevated`, `border-subtle`, `font-display` para o número, `font-mono uppercase tracking` para o label — alinhado com o resto do admin.
+- `data-table.tsx`: tabela `<table>` semântica com classes Tailwind, scroll horizontal em mobile (`overflow-x-auto`), zebra subtil via `divide-y divide-border-subtle`.
+- Custo poupado: cálculo client-side a partir de `cache` (count) × `(cost_per_profile_usd + cost_per_post_usd * 12)`. Constante `ASSUMED_POSTS_PER_CACHE_HIT = 12` definida no painel com comentário a explicar a heurística.
+- Sem novos imports do Supabase no client. Tudo passa pelo `fetch('/api/admin/diagnostics')` que já está protegido por `requireAdminSession`.
+- `diagnostics-panel.tsx` antigo (838 linhas) fica órfão — eliminar para evitar duplicação.
 
-A tab Pedidos continua a chamar `/api/admin/report-requests` (sem alteração).
+## Ficheiros a alterar
 
----
+**Criar (9)**
+- `src/components/admin/cockpit/parts/stat-card.tsx`
+- `src/components/admin/cockpit/parts/data-table.tsx`
+- `src/components/admin/cockpit/parts/empty-state.tsx`
+- `src/components/admin/cockpit/panels/diagnostics-panel.tsx`
+- `src/components/admin/cockpit/panels/analyses-panel.tsx`
+- `src/components/admin/cockpit/panels/profiles-panel.tsx`
+- `src/components/admin/cockpit/panels/costs-panel.tsx`
+- `src/components/admin/cockpit/panels/alerts-panel.tsx`
+- `src/components/admin/cockpit/panels/requests-panel.tsx`
 
-### Ficheiros a modificar
+**Editar (1)**
+- `src/components/admin/cockpit/cockpit-shell.tsx` — substituir placeholders pelos painéis.
 
-| Ficheiro | Mudança |
-|---|---|
-| `src/routes/admin.tsx` | substituir o `<Tabs>` actual de 2 abas pelo novo `CockpitShell`; manter token gate, logout, `RequestDetailSheet` |
-| `src/components/admin/diagnostics-panel.tsx` | **deprecar** — extrair lógica para os novos sub-componentes e apagar (ou deixar como re-export fino para retrocompatibilidade durante a transição). Não está em LOCKED_FILES |
-| `src/routes/api/admin/diagnostics.ts` | só se aceitarmos o ajuste opcional acima — adicionar `cost_today` e `cost_month_to_date` ao bloco `analytics` |
+**Eliminar (1)**
+- `src/components/admin/diagnostics-panel.tsx` — substituído pelo novo painel modular.
 
-Nada mais é tocado.
+**Não tocar**
+- `src/routes/api/admin/diagnostics.ts` (já devolve tudo).
+- Schema Supabase (sem migrations).
+- `/src/routes/report.example.tsx`, `/src/components/report/*`, `routeTree.gen.ts`.
+- Auth admin, fluxos PDF/email, UI pública.
 
----
+## Como validar depois de uma análise
+1. Login em `/admin` com o token.
+2. Correr uma análise em `/analyze/frederico.m.carvalho`.
+3. Em `/admin`:
+   - **Diagnóstico**: última snapshot mostra o handle e fonte `fresh`. Provider calls lista o run Apify.
+   - **Análises**: aparece 1 evento novo no topo, 24h conta `1`, custo > 0.
+   - **Perfis**: o handle aparece na tabela com `analyses_total = 1`, `analyses_fresh = 1`.
+   - **Custos**: custo 24h reflete o valor do evento; cache hits = 0 inicialmente.
+4. Repetir a mesma análise: deve subir `analyses_cache` e o "custo poupado" no painel Custos.
 
-### Ficheiros a manter intactos (não alterar)
+## O que fica para depois
+- Pagamentos (one-off + subscrições).
+- Email gate público.
+- PnL com receita real (atualmente só temos custos estimados).
+- Reconhecer / arquivar alertas (botão de ack + cron de reavaliação).
+- Filtros e paginação nos painéis Análises/Perfis quando o volume crescer.
+- Custo real do Apify (vs estimado) quando ligarmos a billing API deles.
 
-**Locked (LOCKED_FILES.md):** todos os componentes em `/components/landing/*`, `/components/report/*`, `/components/ui/{button,badge,card,input,switch}.tsx`, `/components/layout/*`, `/styles*`, `/routes/__root.tsx`, `/routes/report.example.tsx`, `/routes/privacidade.tsx`, `/routes/termos.tsx`, `/components/legal/*`.
-
-**Não locked mas a preservar:** `/routes/index.tsx`, `/routes/analyze.$username.tsx`, `/routes/api/analyze-public-v1.ts` (camada pública intocada), `/routes/api/admin/report-requests*.ts`, `/components/admin/{request-list,request-detail-sheet,admin-gate,status-badge}.tsx` (já funcionam).
-
----
-
-### Conteúdo de cada tab
-
-**1. Diagnóstico** — apenas saúde técnica, sem analytics:
-- Secrets (3 badges)
-- APIFY_ENABLED + APIFY_TESTING_MODE + allowlist
-- Custo/perfil e custo/post heurísticos
-- Snapshots: total, último username, atualizado, estado, freshness
-- Último `recent_events[0]` resumido + último `recent_provider_calls[0]` + último com `error_code != null` se existir
-
-**2. Análises** — `recent_events.rows` (até 20):
-- Colunas: `created_at` · `@handle` · `network` · outcome (badge) · data_source (badge) · `duration_ms` · `estimated_cost_usd`
-- Filtro client-side por outcome (chips: todos / success / falhas / blocked)
-
-**3. Perfis** — `top_profiles.rows` (até 10):
-- Colunas: `@handle` (+ display_name) · network · followers · total · fresh · cache · falhas · custo total · última análise · último outcome
-- Ordenável client-side por total / custo / data
-
-**4. Custos** — agregados:
-- Cards: "Hoje", "Últimos 7d", "Mês até agora" (USD estimado)
-- Card "Calls Apify (7d)" com fresh vs cache
-- Card "Poupança estimada pela cache" = `analytics.last_7d.cache × média(cost por evento fresh)`
-- Card "Projeção mensal" = `cost_today × 30` (heurística simples, marcada como "estimativa")
-- Pequena nota: "Custos baseados em heurística volume-based; valor real do Apify ainda não reconciliado"
-
-**5. Alertas** — `alerts.rows`:
-- Sub-secção por severidade (`critical` → `warning` → `info`)
-- Cada linha: kind humanizado em PT-PT (`Perfil repetido`, `Falhas elevadas`, `Burst de IP`, `Custo diário acima do limite`, `Snapshot stale servida`) · `@handle` · valor observado vs threshold · `created_at`
-- Estado vazio: "Nenhum alerta ativo. Sistema dentro dos limites configurados." + lista dos thresholds em uso (`alert_thresholds`)
-
-**6. Pedidos** — sem alteração.
-
----
-
-### Ordem de implementação (do menor para o maior)
-
-**Passo 1 (smallest first):** criar `cockpit-formatters.ts` + `cockpit-badges.tsx` + `use-cockpit-data.ts`. Sem efeito visível ainda; só extrai puro do panel actual e adiciona o hook partilhado.
-
-**Passo 2:** criar `cockpit-shell.tsx` com 6 tabs e migrar `/routes/admin.tsx` para o usar. As 5 novas tabs renderizam placeholders ("A migrar…"); a tab Pedidos já funciona.
-
-**Passo 3:** implementar `tab-diagnostico.tsx` (mais simples, dados já disponíveis) e ligar.
-
-**Passo 4:** implementar `tab-analises.tsx`, `tab-perfis.tsx`, `tab-alertas.tsx`. Reutilizam tabelas que já existem no panel actual.
-
-**Passo 5:** implementar `tab-custos.tsx` (e, se preciso, o ajuste opcional ao endpoint para `cost_today` / `cost_month_to_date`).
-
-**Passo 6:** apagar o `diagnostics-panel.tsx` antigo.
-
----
-
-### Detalhes técnicos
-
-- **Sem novas queries SQL.** Tudo in-memory a partir do payload já existente.
-- **Sem novas tabelas / RLS.** As tabelas `social_profiles`, `analysis_events`, `provider_call_logs`, `usage_alerts` já existem com RLS server-only.
-- **Sem novas dependências.** Só `react`, `lucide-react` e os componentes UI/admin já presentes.
-- **Auth.** Continua via `INTERNAL_API_TOKEN` em cookie HTTP-only — gerido por `AdminGate` + `requireAdminSession`. Não introduzir Supabase Auth/RBAC nesta fase (não é necessário, admin é single-user).
-- **i18n.** Toda a copy em pt-PT pós-AO90 (segue regras do workspace).
-- **Tokens.** Apenas tokens semânticos do design system (`bg-surface-base`, `text-content-primary`, etc.). Sem cores hardcoded.
-- **Mobile-first.** Tabs e tabelas com `overflow-x-auto`, viewport mínimo 375px.
-- **Sem PnL real.** Tab "PnL" não está incluída na v1 — placeholder "Em breve" pode entrar como 7ª tab opcional ou ficar fora até billing existir. **Recomendação: ficar fora.**
-
----
-
-### O que esta v1 NÃO faz
-
-- Não toca em `/`, `/analyze/$username`, `/report.example`, `/privacidade`, `/termos`.
-- Não cria endpoints novos (excepto talvez o ajuste opcional ao diagnostics).
-- Não implementa email gate, payments, subscriptions, RBAC.
-- Não adiciona "Reconhecer alerta" (ack) — fica para v2.
-- Não adiciona export CSV — fica para v2.
-- Não adiciona auto-refresh (polling) — só botão manual "Atualizar".
-- Não cria cron de re-avaliação de alertas — o evaluador inline já cobre 95% dos casos.
-
----
-
-Aprova para arrancar pelo Passo 1.
+☐ Painéis criados e renderizam dados reais
+☐ `cockpit-shell.tsx` sem placeholders
+☐ `diagnostics-panel.tsx` antigo removido
+☐ pt-PT em toda a copy, sem segredos expostos
+☐ Mobile (375px) testado: tabelas com scroll horizontal, stat cards empilham
