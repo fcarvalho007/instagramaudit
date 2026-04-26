@@ -303,6 +303,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // 1) Cache lookup. A non-expired snapshot short-circuits the provider.
         const existing = await lookupSnapshot(cacheKey);
         if (existing && !forceRefresh && isFresh(existing)) {
+          const cachedPayload = existing.normalized_payload as unknown as {
+            profile?: { display_name?: string; followers_count?: number };
+          };
+          logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "cache",
+            outcome: "success",
+            analysisSnapshotId: existing.id,
+            displayName: cachedPayload.profile?.display_name ?? null,
+            followersLastSeen: cachedPayload.profile?.followers_count ?? null,
+          });
           return jsonResponse(
             buildCachedResponse(existing, "cache", benchmarkData),
             200,
@@ -319,6 +332,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "[analyze-public-v1] APIFY_ENABLED!=true — serving stale snapshot",
               cacheKey,
             );
+            const stalePayload = existing.normalized_payload as unknown as {
+              profile?: { display_name?: string; followers_count?: number };
+            };
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "stale",
+              outcome: "success",
+              analysisSnapshotId: existing.id,
+              displayName: stalePayload.profile?.display_name ?? null,
+              followersLastSeen: stalePayload.profile?.followers_count ?? null,
+            });
             return jsonResponse(
               buildCachedResponse(existing, "stale", benchmarkData),
               200,
@@ -328,6 +354,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             "[analyze-public-v1] APIFY_ENABLED!=true — refusing provider call",
             primary,
           );
+          logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "none",
+            outcome: "provider_disabled",
+            errorCode: "PROVIDER_DISABLED",
+          });
           return failure("PROVIDER_DISABLED");
         }
 
