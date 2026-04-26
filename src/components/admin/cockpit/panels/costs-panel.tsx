@@ -5,6 +5,8 @@
  * análise. Não é a fatura real do Apify.
  */
 
+import { Info } from "lucide-react";
+
 import { formatCost, formatNumber } from "../cockpit-formatters";
 import type { ActivityWindow, CockpitData } from "../cockpit-types";
 import { StatCard } from "../parts/stat-card";
@@ -33,6 +35,9 @@ export function CostsPanel({ data }: Props) {
   const perHit = costPerCacheHit(data);
   const cacheSaved24h = Math.round(data.analytics.last_24h.cache * perHit * 1e5) / 1e5;
   const cacheSaved7d = Math.round(data.analytics.last_7d.cache * perHit * 1e5) / 1e5;
+  const noCostYet =
+    data.analytics.last_24h.estimated_cost_usd === 0 &&
+    data.analytics.last_7d.estimated_cost_usd === 0;
 
   return (
     <div className="space-y-6">
@@ -40,11 +45,13 @@ export function CostsPanel({ data }: Props) {
         <StatCard
           label="Custo · 24h"
           value={formatCost(data.analytics.last_24h.estimated_cost_usd)}
+          sublabel="Estimativa USD"
           tone="accent"
         />
         <StatCard
           label="Custo · 7d"
           value={formatCost(data.analytics.last_7d.estimated_cost_usd)}
+          sublabel="Estimativa USD"
           tone="accent"
         />
         <StatCard
@@ -60,10 +67,23 @@ export function CostsPanel({ data }: Props) {
         />
       </div>
 
+      {noCostYet ? (
+        <div className="flex items-start gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3 text-sm text-content-secondary">
+          <Info className="mt-0.5 size-4 shrink-0 text-accent-luminous" aria-hidden="true" />
+          <p>
+            Os custos mantêm-se em zero até à primeira chamada{" "}
+            <span className="font-mono text-content-primary">fresh</span> ao
+            Apify. Eventos servidos pela cache não somam custo.
+          </p>
+        </div>
+      ) : null}
+
       <section className="space-y-3">
         <div>
-          <h3 className="font-display text-base text-content-primary">Distribuição</h3>
-          <p className="text-xs text-content-tertiary">
+          <h3 className="font-display text-base text-content-primary">
+            Distribuição
+          </h3>
+          <p className="text-sm text-content-secondary">
             Rácio entre análises servidas pela cache, frescas e falhadas.
           </p>
         </div>
@@ -73,19 +93,25 @@ export function CostsPanel({ data }: Props) {
         </div>
       </section>
 
-      <section className="rounded-lg border border-border-subtle bg-surface-elevated p-4 text-xs text-content-tertiary">
-        <p className="font-mono uppercase tracking-[0.18em] text-content-secondary">
+      <section className="rounded-lg border border-border-subtle bg-surface-elevated p-4 text-sm text-content-secondary">
+        <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-secondary">
           Metodologia
         </p>
         <p className="mt-2">
-          O custo registado em cada evento é{" "}
-          <span className="text-content-secondary">estimado</span> a partir das tarifas
-          configuradas (
-          <span className="font-mono">{formatCost(data.apify.cost_per_profile_usd)}</span>{" "}
-          por perfil +{" "}
-          <span className="font-mono">{formatCost(data.apify.cost_per_post_usd)}</span>{" "}
-          por post). A poupança via cache assume {ASSUMED_POSTS_PER_CACHE_HIT} posts por
-          análise. Estes valores não substituem a fatura real do Apify.
+          Cada evento estima o custo a partir das tarifas configuradas:{" "}
+          <span className="font-mono text-content-primary">
+            {formatCost(data.apify.cost_per_profile_usd)}
+          </span>{" "}
+          por perfil mais{" "}
+          <span className="font-mono text-content-primary">
+            {formatCost(data.apify.cost_per_post_usd)}
+          </span>{" "}
+          por post. A poupança via cache assume{" "}
+          {ASSUMED_POSTS_PER_CACHE_HIT} posts por análise. Todos os valores em
+          USD.
+        </p>
+        <p className="mt-2 text-xs text-content-tertiary">
+          Os custos são estimativas internas, não a fatura real da Apify.
         </p>
       </section>
     </div>
@@ -95,7 +121,7 @@ export function CostsPanel({ data }: Props) {
 function DistributionCard({ label, w }: { label: string; w: ActivityWindow }) {
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
-      <p className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+      <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
         {label}
       </p>
       <dl className="mt-3 space-y-1.5 text-sm">
@@ -112,8 +138,8 @@ function DistributionCard({ label, w }: { label: string; w: ActivityWindow }) {
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="text-content-tertiary">{k}</dt>
-      <dd className="font-mono text-content-primary">{v}</dd>
+      <dt className="text-content-secondary">{k}</dt>
+      <dd className="font-mono tabular-nums text-content-primary">{v}</dd>
     </div>
   );
 }
