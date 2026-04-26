@@ -331,9 +331,11 @@ export type Database = {
       }
       social_profiles: {
         Row: {
+          analyses_blocked: number
           analyses_cache: number
           analyses_failed: number
           analyses_fresh: number
+          analyses_stale: number
           analyses_total: number
           created_at: string
           display_name: string | null
@@ -349,9 +351,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          analyses_blocked?: number
           analyses_cache?: number
           analyses_failed?: number
           analyses_fresh?: number
+          analyses_stale?: number
           analyses_total?: number
           created_at?: string
           display_name?: string | null
@@ -367,9 +371,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          analyses_blocked?: number
           analyses_cache?: number
           analyses_failed?: number
           analyses_fresh?: number
+          analyses_stale?: number
           analyses_total?: number
           created_at?: string
           display_name?: string | null
