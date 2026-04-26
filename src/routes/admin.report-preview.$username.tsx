@@ -24,6 +24,7 @@ import {
   type AdapterResult,
   type SnapshotPayload,
   type SnapshotMetadata,
+  type ReportBenchmarkInput,
 } from "@/lib/report/snapshot-to-report-data";
 
 export const Route = createFileRoute("/admin/report-preview/$username")({
