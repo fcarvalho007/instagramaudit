@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { CockpitData } from "./cockpit-types";
+import { adminFetch } from "@/lib/admin/fetch";
 
 export interface UseCockpitDataResult {
   data: CockpitData | null;
@@ -26,7 +27,7 @@ export function useCockpitData(): UseCockpitDataResult {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/diagnostics");
+      const res = await adminFetch("/api/admin/diagnostics");
       if (!res.ok) {
         setError(`Erro ${res.status}`);
         setData(null);

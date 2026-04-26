@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { adminFetch } from "@/lib/admin/fetch";
 import {
   Table,
   TableBody,
@@ -92,7 +93,7 @@ export function RequestList({ onSelect, refreshKey }: RequestListProps) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/admin/report-requests?${queryString}`)
+    adminFetch(`/api/admin/report-requests?${queryString}`)
       .then(async (res) => {
         const body = (await res.json().catch(() => ({}))) as Partial<ListResponse> & {
           message?: string;

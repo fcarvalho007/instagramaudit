@@ -1,113 +1,185 @@
 ## Objetivo
 
-Aplicar apenas as correções mínimas exigidas pela auditoria pré-Apify, para tornar o sistema seguro e fiável antes de subscrever o plano Apify Starter. Sem novas features. Sem alterações ao `/report.example`. Sem alterações ao landing público nem ao `/analyze/$username` (exceto a já existente exibição de erros).
+Substituir o gate de token estático do `/admin` por **Google Sign-in via Lovable Cloud**, restrito a `fredericodigital@gmail.com` através de allowlist de emails. O `INTERNAL_API_TOKEN` permanece para o seu uso atual no endpoint público de análise (`?refresh=1`) — apenas deixa de gatekeep o admin.
 
 ---
 
-## 1. Logging fiável (fire-and-forget pode perder eventos no Worker)
+## Decisões aprovadas
 
-**Problema (auditoria):** O handler usa `void ipHashPromise.then(...).then(recordAnalysisEvent)` em todos os caminhos críticos. No runtime Cloudflare Worker, qualquer trabalho assíncrono pendente quando a `Response` é enviada pode ser cancelado — perdendo logs de `provider_disabled`, `blocked_allowlist`, `cache hit`, `fresh success` e `provider_error`. Isso quebra o cockpit e a vigilância de custos no momento exato em que o Apify estiver ativo.
-
-**Correção (mínima e segura):**
-
-- Em `src/routes/api/analyze-public-v1.ts`:
-  - Manter a função `logEvent`, mas torná-la `async` e devolver a `Promise` da gravação (ainda concatenada com `evaluateAlertsForEvent`).
-  - Antes de **cada `return`** dos caminhos críticos, fazer `await logEvent({...})`. Caminhos abrangidos:
-    - `invalid_input` (JSON inválido + Zod inválido)
-    - `blocked_allowlist`
-    - `provider_disabled` (incluindo o ramo stale-fallback)
-    - `cache hit` (sucesso `data_source: "cache"`)
-    - `fresh success`
-    - `not_found` (pré-stale e pós-provider)
-    - `provider_error` (`UPSTREAM_UNAVAILABLE`, `UPSTREAM_FAILED`)
-    - `stale` servido após falha do provedor
-  - O `await` é envolvido num `try/catch` interno que só faz `console.error` — falhar a gravar **nunca** pode crashar a resposta pública.
-  - `recordAnalysisEvent` e `recordProviderCall` já fazem `try/catch` interno e devolvem `null` em erro, portanto não há risco de bloqueio fatal.
-  - Os segredos continuam protegidos — o helper `sanitizeErrorExcerpt` já está em uso e nada de novo é exposto.
-
-- `src/lib/analysis/events.ts` não precisa de alterações — já é resiliente.
-
-**Impacto na latência:** A gravação extra é uma única RPC Supabase (alguns ms). Aceitável face ao custo de perder um evento no cockpit.
+- **Estratégia:** Allowlist de emails via env var `ADMIN_ALLOWED_EMAILS` (CSV, lowercase). Sem tabela `user_roles`, sem migração de DB.
+- **Email autorizado inicial:** `fredericodigital@gmail.com`.
+- **Quem entrar com outro email:** vê mensagem "Acesso restrito" e a sessão Supabase é imediatamente terminada via `supabase.auth.signOut()`.
+- **Provider:** Google, gerido pela Lovable Cloud (OAuth pré-configurado, sem necessidade de Google Cloud Console).
 
 ---
 
-## 2. Compatibilidade do payload do actor Apify
+## Novo secret a configurar
 
-**Resultado da auditoria:** O actor escolhido é `apify/instagram-scraper` com payload:
-```json
-{
-  "directUrls": ["https://www.instagram.com/<handle>/"],
-  "resultsType": "details",
-  "resultsLimit": 12,
-  "addParentData": false
-}
+Vou pedir-te para definir **uma única env var** após a implementação:
+
+| Nome | Valor | Onde |
+|---|---|---|
+| `ADMIN_ALLOWED_EMAILS` | `fredericodigital@gmail.com` | Lovable Cloud → Settings → Secrets |
+
+CSV separado por vírgulas para adicionares mais admins no futuro (ex.: `frederico@x.com,outro@y.com`).
+
+---
+
+## Arquitetura nova
+
+```text
+                    ┌──────────────────────────────────┐
+                    │  Browser (/admin)                │
+                    │  ─────────────────────────────   │
+                    │  AdminGate                       │
+                    │  → "Entrar com Google"           │
+                    │     supabase.auth.signInWith…    │
+                    └────────────┬─────────────────────┘
+                                 │ OAuth Google
+                                 ▼
+                    ┌──────────────────────────────────┐
+                    │  Lovable Cloud Auth (Supabase)   │
+                    │  Devolve sessão JWT              │
+                    └────────────┬─────────────────────┘
+                                 │ JWT na cookie/Authorization
+                                 ▼
+                    ┌──────────────────────────────────┐
+                    │  /api/admin/* handlers            │
+                    │  requireAdminSession():           │
+                    │   1. Lê JWT Supabase              │
+                    │   2. Valida user.email            │
+                    │   3. Verifica em ALLOWED_EMAILS   │
+                    │   → 200 ou 401                    │
+                    └──────────────────────────────────┘
 ```
 
-Este formato é **exatamente** o esperado pelo actor `apify/instagram-scraper` para devolver detalhes do perfil com `latestPosts[]` embebido. Cumpre os critérios:
-- `actor: apify/instagram-scraper` mantido.
-- `POSTS_LIMIT = 12` mantido.
-- Uma chamada por handle mantida.
-- Concorrentes opcionais e isolados via `Promise.allSettled`-equivalente mantidos.
+---
 
-**Conclusão:** Nada a mudar aqui. Documentar este facto no relatório final é suficiente. Sem edição de ficheiros.
+## Ficheiros a alterar
+
+### 1. `src/lib/admin/session.ts` — reescrita completa
+
+Substitui a sessão baseada em `INTERNAL_API_TOKEN` + cookie `useSession` por validação de JWT Supabase + allowlist:
+
+- Remove `getSessionConfig()`, `setAdminSession()`, `clearAdminSession()`, `isAdminAuthenticated()`.
+- Mantém o nome `requireAdminSession()` para minimizar diff nos handlers que já o importam.
+- Nova implementação:
+  - Lê o token Bearer do header `Authorization` ou da cookie de sessão Supabase.
+  - Usa `supabaseAdmin.auth.getUser(token)` para validar o JWT.
+  - Compara `user.email.toLowerCase()` com a lista `ADMIN_ALLOWED_EMAILS` (parseada com helper `getAdminAllowlist()`).
+  - Devolve o `user` em caso de sucesso, lança `Response 401` caso contrário.
+- Adiciona `isAdminEmailAllowed(email)` exportado para uso no client.
+
+### 2. `src/components/admin/admin-gate.tsx` — reescrita
+
+- Remove formulário de token.
+- Substitui por card editorial com botão **"Entrar com Google"** que chama `supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin + "/admin" } })`.
+- Mantém o estilo Editorial Tech Noir (mesma estrutura de card, mesma tipografia, mesmo `bg-surface-elevated`).
+- Adiciona estado de erro caso o OAuth falhe.
+
+### 3. `src/routes/admin.tsx` — adaptação do fluxo
+
+- Substitui o probe a `/api/admin/report-requests?page=1&pageSize=1` por:
+  - Setup de listener `supabase.auth.onAuthStateChange` **antes** de `supabase.auth.getSession()` (ordem crítica para evitar deadlock conhecido do Supabase).
+  - Validar que `session.user.email` está na allowlist (chamando endpoint novo `/api/admin/whoami` que devolve `{ allowed: boolean, email: string | null }`).
+  - Se autenticado mas não autorizado: chamar `supabase.auth.signOut()` automaticamente e mostrar `<AccessDeniedScreen />`.
+- `handleLogout()` passa a chamar `supabase.auth.signOut()` em vez de `POST /api/admin/logout`.
+
+### 4. `src/routes/api/admin/auth.ts` — **eliminar**
+
+Já não é necessário. Auth é feita inteiramente client-side via Supabase Auth.
+
+### 5. `src/routes/api/admin/logout.ts` — **eliminar**
+
+Substituído por `supabase.auth.signOut()` no client.
+
+### 6. **Novo:** `src/routes/api/admin/whoami.ts`
+
+Endpoint mínimo `GET` que:
+- Recebe JWT no header `Authorization`.
+- Valida com `supabaseAdmin.auth.getUser(token)`.
+- Devolve `{ allowed: boolean, email: string | null }`.
+- Usado pelo client para decidir se mostra cockpit ou ecrã de acesso negado.
+
+### 7. Handlers `/api/admin/*` que usam `requireAdminSession()`
+
+Sem alterações de assinatura — continuam a chamar `await requireAdminSession()` no topo. Como a função foi reescrita internamente, agora ela:
+- Lê JWT da Authorization header (que o `useCockpitData` e os fetches do client passam automaticamente via `supabase.auth.getSession()`).
+- Valida user + email allowlist.
+- Mantém o mesmo contrato (`throw Response 401` em falha).
+
+Ficheiros impactados (apenas validação interna muda):
+- `src/routes/api/admin/diagnostics.ts`
+- `src/routes/api/admin/report-requests.ts`
+- `src/routes/api/admin/report-requests.$id.ts`
+- `src/routes/api/admin/regenerate-pdf.ts`
+- `src/routes/api/admin/resend-email.ts`
+
+### 8. `src/components/admin/cockpit/use-cockpit-data.ts` (e qualquer outro fetcher)
+
+Adicionar header `Authorization: Bearer ${session.access_token}` em todos os fetches a `/api/admin/*`. O token vem de `supabase.auth.getSession()`.
 
 ---
 
-## 3. Precisão do admin
+## Especificação técnica do novo `requireAdminSession()`
 
-**Problema (auditoria):** O painel **Diagnóstico** mostra `Kill-switch: Ativo/Desligado` mas a etiqueta é ambígua — "Ativo" pode ser lido como "kill-switch ativo = bloqueado" ou "Apify ativo = a chamar". Isso induz erro operacional na altura mais crítica (subscrição Apify).
+```text
+1. Tenta ler "Authorization: Bearer <jwt>" do header.
+2. Se ausente, lê a cookie sb-access-token (fallback opcional).
+3. Se ainda ausente → 401 UNAUTHENTICATED.
+4. supabaseAdmin.auth.getUser(jwt) → { user }.
+5. Se erro ou user.email ausente → 401 INVALID_SESSION.
+6. Lê ADMIN_ALLOWED_EMAILS (CSV, lowercase, trim).
+7. Se user.email.toLowerCase() ∉ allowlist → 403 NOT_ALLOWED.
+8. Devolve user (handler pode usar user.id, user.email).
+```
 
-**Correção (mínima e isolada a `src/components/admin/cockpit/panels/diagnostics-panel.tsx`):**
-
-- Renomear o `KV` "Kill-switch" para `APIFY_ENABLED`.
-- Trocar o texto do badge:
-  - `data.apify.enabled === true` → badge variant `success`, texto **"Ligado · chamadas reais"**.
-  - `data.apify.enabled === false` → badge variant `warning`, texto **"Desligado · sem chamadas"**.
-- Adicionar um único `KV` adjacente "Modo de teste" reaproveitando `data.testing_mode.active` (badge `accent` "Allowlist ativa" / `default` "Aberto"). Já existe a secção dedicada "Modo de teste" mais abaixo, mas o operador precisa ver os dois sinais lado a lado no topo para decidir antes de subscrever o Apify.
-
-Sem novas tabs. Sem redesenho. Sem alterações a `cockpit-shell.tsx`, `cockpit-types.ts`, ou `/api/admin/diagnostics.ts` (a API já devolve ambos os campos).
+Sem alteração no contrato externo (`throw Response`), portanto não quebra nenhum handler existente.
 
 ---
 
-## 4. Restrições estritas (sem alterações)
+## Restrições estritas (não tocar)
 
 - `/report.example` — intacto.
-- Componentes de relatório, PDF, email — intactos.
-- Landing pública — intacta.
-- `/analyze/$username` — sem alterações de UI.
-- `apify-allowlist.ts`, `apify-client.ts`, `cost.ts`, `cache.ts` — sem alterações.
-- Sem migrações de DB.
-- Sem novas dependências.
-- Sem novas variáveis de ambiente.
+- Endpoint público `/api/analyze-public-v1` — intacto. O `INTERNAL_API_TOKEN` continua a proteger `?refresh=1`.
+- Allowlist Apify (`APIFY_ALLOWLIST`, `APIFY_ENABLED`) — intacto.
+- Componentes do cockpit (panels, tabs, formatters) — intactos.
+- Schema da DB — sem migrações.
+- PDF / email pipeline — intactos.
 
 ---
 
-## 5. Validação pós-implementação
+## Pós-implementação: o que tens de fazer
 
-1. `bunx tsc --noEmit` (TypeScript check).
-2. `bun run build` se disponível.
-3. Smoke test mental:
-   - **`APIFY_ENABLED=false`** → `/api/analyze-public-v1` devolve `PROVIDER_DISABLED` para handles allowlistados e regista evento `provider_disabled`. Admin Diagnóstico mostra "Desligado · sem chamadas".
-   - **Allowlist bloqueado** → handle fora da allowlist devolve `PROFILE_NOT_ALLOWED` e regista `blocked_allowlist`. Sem chamada ao Apify.
-   - **`APIFY_ENABLED=true` + allowlist com `frederico.m.carvalho`** → primeira análise é `fresh success`, regista evento + `provider_call_logs`. Segunda análise no mesmo cache key é `cache hit`. Apify só é invocado para handles allowlistados enquanto `APIFY_TESTING_MODE !== "false"`.
-
----
-
-## 6. Ficheiros a editar
-
-1. `src/routes/api/analyze-public-v1.ts` — tornar `logEvent` aguardável e `await` antes de cada `return` crítico, dentro de um `try/catch` que apenas regista no `console.error`.
-2. `src/components/admin/cockpit/panels/diagnostics-panel.tsx` — etiqueta `APIFY_ENABLED` clara + KV adjacente para modo de teste.
-
-Sem outros ficheiros tocados.
+1. **Adicionar o secret** `ADMIN_ALLOWED_EMAILS = fredericodigital@gmail.com` em Lovable Cloud → Settings → Secrets.
+2. Abrir `/admin` → clicar **"Entrar com Google"** → autenticar com `fredericodigital@gmail.com`.
+3. Esperar o redirect de volta a `/admin`.
+4. Confirmar que o cockpit aparece normalmente (mesmos painéis: Visão geral, Análises, Pedidos, Perfis, Custos, Alertas, Diagnóstico).
+5. (Opcional) Testar que outro email Google é bloqueado: abrir browser anónimo, tentar entrar com outra conta → deve ver "Acesso restrito" e ser deslogado automaticamente.
 
 ---
 
-## 7. Resposta final ao utilizador (após a edição)
+## Validação técnica que vou correr
 
-O resumo final irá conter:
-1. Lista exata de ficheiros alterados.
-2. O que foi corrigido (ponto a ponto).
-3. Como testar com `APIFY_ENABLED=false`.
-4. Como testar a allowlist bloqueada.
-5. Como testar com `APIFY_ENABLED=true`.
-6. Confirmação explícita de que o Apify só é chamado para `frederico.m.carvalho` enquanto o modo de teste estiver ativo (e a allowlist contiver apenas esse handle).
+1. `bunx tsc --noEmit` — zero erros TypeScript.
+2. Confirmar que nenhum handler `/api/admin/*` ficou com referência ao antigo `setAdminSession` / `clearAdminSession` / `isAdminAuthenticated`.
+3. Confirmar que o `INTERNAL_API_TOKEN` continua usado apenas em `src/routes/api/analyze-public-v1.ts` (para o gate `?refresh=1`).
+
+---
+
+## Riscos conhecidos
+
+- **Sem o secret `ADMIN_ALLOWED_EMAILS` definido**, o sistema bloqueia todos os logins (fail-closed). Será necessário definir o secret antes do primeiro teste — vou avisar-te com o tool `add_secret` no fim da implementação.
+- **Primeira vez que entras com Google**, a Supabase cria automaticamente a entrada em `auth.users`. Sem ação do teu lado.
+- **Sessão Supabase expira ao fim de 1h por defeito**. O cliente Supabase faz refresh automático via `onAuthStateChange`, portanto não notarás. Logout = `supabase.auth.signOut()` no botão "Terminar sessão".
+
+---
+
+## Resumo do que muda para ti
+
+| Antes | Depois |
+|---|---|
+| Abre `/admin` → cola token longo | Abre `/admin` → clica "Entrar com Google" |
+| Sessão dura 8h via cookie cifrada | Sessão Supabase com refresh automático |
+| Recuperar token = ir aos secrets | "Esqueci-me da password" = problema do Google |
+| Adicionar admin = partilhar token | Adicionar admin = adicionar email à allowlist |
