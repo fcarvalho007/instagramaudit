@@ -62,10 +62,20 @@ export function DiagnosticsPanel({ data }: Props) {
       </Section>
 
       <Section title="Apify" description="Estado do provedor e tarifas usadas para estimar custo.">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <KV label="Kill-switch">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <KV label="APIFY_ENABLED">
             <Badge variant={data.apify.enabled ? "success" : "warning"} dot>
-              {data.apify.enabled ? "Ativo" : "Desligado"}
+              {data.apify.enabled
+                ? "Ligado · chamadas reais"
+                : "Desligado · sem chamadas"}
+            </Badge>
+          </KV>
+          <KV label="Modo de teste">
+            <Badge
+              variant={data.testing_mode.active ? "accent" : "default"}
+              dot
+            >
+              {data.testing_mode.active ? "Allowlist ativa" : "Aberto"}
             </Badge>
           </KV>
           <KV label="Custo / perfil">
