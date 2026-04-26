@@ -1,93 +1,129 @@
-Plano de refinamento UX da pré-visualização admin do relatório real
+# Auditoria e refinamento da pré-visualização real (admin)
 
-Estado observado
-- A rota `/admin/report-preview/snapshot/$snapshotId` já tem banner admin + bloco "Limitações conhecidas". O bloco menciona nº de publicações e janela em dias.
-- Os componentes do relatório (ex.: `report-key-metrics`, `report-temporal-chart`, `report-top-posts`, `report-competitors`) têm strings fixas "30 dias" / "últimos 30 dias" em subtítulos. Isto é enganador no preview real (snapshot do `frederico.m.carvalho` tem 12 posts, não 30 dias).
-- O snapshot real tem 0 concorrentes; o adapter já força "só perfil analisado" mas a secção `ReportCompetitors` continua a mostrar texto fixo "vantagem estreita … 0,18 p.p." no rodapé (texto do mock).
-- O snapshot tem 0 insights de IA → o adapter devolve `aiInsights: []`. A secção `ReportAiInsights` faz `.map` sobre array vazio: render visualmente vazio, mas título/cabeçalho continua → estado vazio confuso.
-- O `ReportHeader` mostra sempre o pill "Relatório completo" e botões "Exportar PDF" / "Partilhar" — no preview admin estas acções não estão ligadas; cria expectativa errada.
-- O adapter NÃO consome `thumbnail_url`/`avatar_url` reais; já usa gradientes. Cumpre o requisito de "não proxy/store de media IG".
-- `/report/example` usa exactamente o mesmo `ReportPage` via mock. Toda a alteração tem de ser feita sem mudar visualmente o exemplo.
+## O que está mal hoje
 
-Princípio
-- Tornar dinâmicas as strings "30 dias" e os textos fixos sensíveis à amostra, com defaults que mantêm o mock idêntico.
-- Esconder ou substituir por estado vazio editorial as secções sem dados reais (concorrentes, AI insights).
-- Adicionar nota explícita no banner admin (posts, janela, competitors, secções derivadas).
-- Não tocar no PDF, no email, no `/analyze/$username`, no landing público.
-- Não chamar Apify.
+Após inspeção do snapshot real (`311067c4-…` · `frederico.m.carvalho` · 12 posts · 9 458 seguidores · ER médio 0,15 %) e dos componentes do relatório:
 
-Alterações detalhadas
+1. **KPI "Envolvimento médio"** (`report-key-metrics.tsx`)
+   - O chip de tendência está fixo a `direction: "down"` + `trendVariant: "danger"`. Mesmo que `engagementDeltaPct` seja positivo (acima do benchmark), aparece sempre vermelho com seta para baixo.
+   - Quando não há benchmark (`engagementDeltaPct === 0` e `engagementBenchmark === 0`) mostra "0% vs benchmark" como se houvesse leitura.
+2. **Gauge de benchmark** (`report-benchmark-gauge.tsx`)
+   - Badge fixo "Abaixo do benchmark" e parágrafo hardcoded "55% abaixo do benchmark de contas Micro com Reels…", independentemente dos valores reais.
+   - Continua a renderizar mesmo quando não existe benchmark — mostra um marcador a 0 % e linha "Δ 0%".
+3. **Copy de janela** (chart temporal e top-posts)
+   - Adapter define `windowLabel = "amostra recente"` para amostras pequenas, o que dá frases agramaticais: "Evolução temporal · amostra recente" e "Ordenadas pelo envolvimento percentual nos amostra recente".
+   - Falta a frase pedida: *"Análise baseada nas últimas N publicações recolhidas"* e *"Janela observada: X dias"*.
+4. **Sem faixa de cobertura no topo** — o aviso de limitações está só no fim da página, depois de o admin já ter rolado tudo.
+5. **Visualizações no chart temporal** — a série "Visualizações" aparece sempre, mas no snapshot real só Reels têm `video_views` (a maioria fica a 0); convém dizer-lo explicitamente.
+6. **Cobertura de benchmark no notice** — o texto actual ("Benchmarks por escalão e por formato sem dados") só dispara em `placeholder`. Falta uma linha positiva quando `benchmark === "real"` para dar confiança ("Benchmarks reais ligados — dataset vX").
 
-1. `src/components/report/report-mock-data.ts`
-   - Estender `reportData` com campos opcionais novos (todos com defaults compatíveis com o mock):
-     - `meta.windowLabel`: `"últimos 30 dias"` (default usado pelo mock).
-     - `meta.windowShortLabel`: `"30 dias"`.
-     - `meta.kpiSubtitle`: `"janela de 30 dias"`.
-     - `meta.isAdminPreview?: boolean` (false no mock).
-   - Adicionar tipo `ReportData["meta"]` ao tipo exportado.
+`/report/example` renderiza com `meta.isAdminPreview === false` e mantém o mock — todas as alterações ficam atrás de `isAdminPreview` ou de campos opcionais novos com fallback para o valor mock actual.
 
-2. Componentes do relatório (substituir strings fixas por `meta.*`, mantendo defaults):
-   - `report-key-metrics.tsx`: `subtitle = meta?.kpiSubtitle ?? "janela de 30 dias"`.
-   - `report-temporal-chart.tsx`: label = `Evolução temporal · ${meta?.windowLabel ?? "últimos 30 dias"}`.
-   - `report-top-posts.tsx`: subtitle = `Ordenadas pelo envolvimento percentual nos ${meta?.windowLabel ?? "últimos 30 dias"}.`
-   - `report-competitors.tsx`: subtitle dinâmica; o parágrafo final ("vantagem estreita …") só aparece quando há > 1 competitor; caso contrário, mostrar texto editorial neutro indicando que apenas o perfil foi analisado neste snapshot.
-   - `report-ai-insights.tsx`: se `aiInsights.length === 0`, renderizar estado vazio editorial ("Insights ainda não gerados para este snapshot.") em vez de cabeçalho sem conteúdo.
-   - `report-header.tsx`: pill "Relatório completo" + botões "Exportar PDF" / "Partilhar" passam a ser ocultados quando `meta?.isAdminPreview === true` (default false → mock inalterado). Substituir por chip neutro "Pré-visualização admin".
+## O que vai mudar
 
-3. `src/lib/report/snapshot-to-report-data.ts`
-   - Calcular `windowLabel`/`windowShortLabel`/`kpiSubtitle` a partir de `windowDays` real e do nº de posts:
-     - `kpiSubtitle = "amostra de N publicações · X dias"` (ou `"amostra de N publicações"` se windowDays = 0).
-     - `windowLabel = "amostra recente"` quando windowDays < 7 ou postsAvailable < 20; senão `"últimos X dias"`.
-     - `windowShortLabel = "X dias"` quando aplicável; senão `"amostra"`.
-   - Definir `meta.isAdminPreview = true` no `data` retornado.
-   - Devolver `competitors: []` quando o snapshot não tem competitors reais (em vez de devolver só o perfil próprio), para que `ReportCompetitors` possa entrar no caminho de estado vazio.
-     - Acrescentar fallback no componente: se `competitors.length === 0`, esconder secção inteira.
+### A. Adapter `snapshotToReportData`
 
-4. `src/routes/admin.report-preview.snapshot.$snapshotId.tsx`
-   - Reforçar `CoverageNotice`:
-     - Sempre indicar `N publicações analisadas · janela aproximada de X dias`.
-     - Linha sobre concorrentes: "Concorrentes não recolhidos — secção ocultada." quando vazio.
-     - Linha sobre AI: "Insights de IA ainda não gerados — estado vazio na secção."
-     - Linha sobre miniaturas: "Miniaturas e avatar usam gradientes editoriais — não são proxy de imagens do Instagram."
-     - Linha sobre benchmark continua, agora reflectindo `coverage.benchmark === "real" | "partial" | "placeholder"`.
+- Calcular `windowLabel` / `windowShortLabel` mais legíveis:
+  - Se `windowDays > 0`: `windowLabel = "janela de ${windowDays} dias"`, `windowShortLabel = "${windowDays} dias"`.
+  - Caso contrário: `windowLabel = "amostra recolhida"`.
+- Adicionar a `meta` três campos opcionais novos (todos com defaults compatíveis com o mock):
+  - `sampleCaption` — *"Análise baseada nas últimas N publicações recolhidas."*
+  - `temporalLabel` — *"Evolução temporal · janela de X dias"* ou *"Evolução temporal · amostra de N publicações"*.
+  - `topPostsSubtitle` — *"Ordenadas por envolvimento. Janela observada: X dias."*
+- Adicionar `meta.benchmarkStatus: "real" | "partial" | "placeholder"` (mesma lógica já calculada para `coverage.benchmark`).
+- Adicionar `meta.viewsAvailable: boolean` — `true` se pelo menos um post tem `video_views > 0`.
+- Adicionar `meta.benchmarkDatasetVersion?: string` (vem de `benchmark.datasetVersion`).
+- Manter tudo opcional → o mock continua a renderizar exactamente como antes.
 
-5. Espelhar mesmas atualizações na rota gémea `src/routes/admin.report-preview.$username.tsx` (banner + CoverageNotice).
+### B. `report-key-metrics.tsx`
 
-Sem alterações
-- `/report/example`: o mock fornece os mesmos defaults antigos via `meta`; texto do `ReportCompetitors` permanece visualmente idêntico (vai pelo caminho `> 1 competitor`).
-- PDF / email: usam dataset próprio; intactos.
-- `/analyze/$username`: intacto.
-- Landing público: intacto.
+- Derivar `direction` e `trendVariant` de `engagementDeltaPct`:
+  - `delta > 0` → `direction: "up"` + `trendVariant: "success"`.
+  - `delta < 0` → `direction: "down"` + `trendVariant: "danger"`.
+  - `delta === 0` e `engagementBenchmark === 0` (sem benchmark) → ocultar o chip de tendência ou mostrar "Sem benchmark disponível" em tom neutro.
+- Continuar a usar mock quando `meta.isAdminPreview` é falso (mock tem delta negativo → mantém o visual actual).
 
-Validação
-- `/admin/report-preview/snapshot/$snapshotId` abre.
-- KPI "Publicações analisadas" mostra "amostra de 12 publicações · X dias", sem "30 dias" fixo.
-- Subtítulo do gráfico temporal e das top posts deixa de prometer 30 dias quando a amostra é menor.
-- Secção de concorrentes oculta para o snapshot do `frederico.m.carvalho` (0 competitors).
-- Secção de AI insights mostra estado vazio claro.
-- Header em modo admin esconde "Exportar PDF" / "Partilhar" e substitui pelo chip "Pré-visualização admin".
-- `/report/example` permanece visualmente idêntico (mock injeta defaults antigos).
-- `bunx tsc --noEmit` ✓ e `bun run build` ✓.
-- Sem chamadas Apify.
+### C. `report-benchmark-gauge.tsx`
 
-Ficheiros previstos
-- editar: `src/components/report/report-mock-data.ts` (acrescentar campo `meta` opcional + defaults)
-- editar: `src/components/report/report-key-metrics.tsx`
-- editar: `src/components/report/report-temporal-chart.tsx`
-- editar: `src/components/report/report-top-posts.tsx`
-- editar: `src/components/report/report-competitors.tsx` (estado vazio + texto dinâmico)
-- editar: `src/components/report/report-ai-insights.tsx` (estado vazio)
-- editar: `src/components/report/report-header.tsx` (modo admin vs público)
-- editar: `src/lib/report/snapshot-to-report-data.ts` (popular `meta`, devolver `[]` em competitors quando vazio)
-- editar: `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` (CoverageNotice mais rico)
-- editar: `src/routes/admin.report-preview.$username.tsx` (paridade)
+- Calcular badge dinamicamente:
+  - `delta > 10` → "Acima do benchmark" (success), `delta` entre 0 e 10 → "Ligeiramente acima" (success), `delta ≤ 0` → "Abaixo do benchmark" (warning).
+  - Sem benchmark (`engagementBenchmark === 0` e `meta.isAdminPreview`) → ocultar a secção inteira (return `null`) e deixar o `CoverageNotice` explicar.
+- Substituir o parágrafo fixo "55% abaixo…" por uma frase composta com base nos valores reais (`Math.abs(delta)` + escalão + formato dominante). Manter a frase mock quando `meta.isAdminPreview` é falso (passa a ser o fallback default).
 
-Checkpoint
-☐ Mock sem alterações visuais em `/report/example`
-☐ Strings "30 dias" deixam de ser fixas no preview real
-☐ Concorrentes vazios → secção oculta
-☐ AI insights vazios → estado vazio editorial
-☐ Header admin esconde acções não ligadas
-☐ CoverageNotice cobre posts, janela, concorrentes, IA, miniaturas
-☐ Sem Apify, sem PDF, sem email, sem migrações
-☐ tsc + build ok
+### D. `report-temporal-chart.tsx`
+
+- Usar `meta.temporalLabel` quando disponível para a label da secção (em vez de `Evolução temporal · ${windowLabel}`).
+- Quando `meta.viewsAvailable === false`, ocultar o chip "Visualizações" e a área correspondente, e acrescentar um pequeno rodapé: *"Visualizações disponíveis apenas para Reels — não há dados neste snapshot."*.
+
+### E. `report-top-posts.tsx`
+
+- Usar `meta.topPostsSubtitle` quando disponível; senão manter a frase actual.
+
+### F. `report-competitors.tsx`
+
+- Já oculta correctamente quando `competitors.length === 0 && isAdminPreview`. Sem alterações.
+
+### G. `report-ai-insights.tsx`
+
+- Já tem empty-state admin. Sem alterações.
+
+### H. Página `admin.report-preview.snapshot.$snapshotId.tsx`
+
+- **Adicionar uma faixa compacta no topo** (logo abaixo do `AdminBanner`, antes do `<ReportPage />`), só visível em estado `ready`, com 5 chips:
+  - `Posts: N`
+  - `Janela: X dias` (ou "amostra recolhida")
+  - `Benchmarks: Real | Parcial | Indisponível`
+  - `Concorrentes: Presentes (n) | Em falta`
+  - `Insights de IA: Gerados | Por gerar`
+  Cada chip usa as cores do design system (`signal-success`, `signal-warning`, `content-tertiary`) e tipografia mono — coerente com a estética editorial.
+- Atualizar o `CoverageNotice` no fundo:
+  - Quando `coverage.benchmark === "real"` → mostrar linha positiva: *"Benchmarks reais ligados (dataset vX) — leitura comparável com o escalão."*
+  - Quando `coverage.benchmark === "partial"` → indicar quais formatos ficaram sem referência.
+  - Manter as restantes linhas de janela/competitors/AI/imagens.
+
+### I. `/report/example`
+
+- **Não tocar.** Toda a lógica nova depende de campos opcionais em `meta` que o mock não preenche; nesses casos os componentes caem no fallback actual. Verificação: confirmar visualmente que a página renderiza idêntica.
+
+## Detalhe técnico
+
+- Tipos: estender `ReportData["meta"]` em `report-mock-data.ts` (campos novos opcionais) e tipar como `Partial<…>` no adapter.
+- Não há novos imports de pacotes.
+- Não se mexe no `ReportPage` shell.
+- Não se chama Apify, não se cria migração, não se altera storage nem PDF/email.
+- Locked files (`/LOCKED_FILES.md`) — confirmar que nenhum dos ficheiros listados acima está marcado como locked antes de editar.
+
+## Validação
+
+1. Abrir `/admin/report-preview/snapshot/311067c4-7de3-44e0-b0ee-d20c3a2d5004` e confirmar:
+   - Faixa de cobertura no topo a mostrar "Posts: 12 · Janela: ~N dias · Benchmarks: Real/Parcial · Concorrentes: Em falta · IA: Por gerar".
+   - KPI "Envolvimento médio" com cor coerente com o sinal real do delta (sem hardcoded danger).
+   - Gauge com badge dinâmico ou oculto se não houver benchmark.
+   - Chart temporal sem chip de "Visualizações" se todos os posts tiverem `video_views = 0`, com nota explicativa.
+   - Sem promessas de "30 dias" no real.
+2. Abrir `/report/example` e confirmar pixel-paridade com o estado anterior.
+3. `bunx tsc --noEmit`.
+4. `bun run build`.
+
+## Ficheiros previstos
+
+- `src/components/report/report-mock-data.ts` (estender `meta` com campos opcionais)
+- `src/lib/report/snapshot-to-report-data.ts` (preencher novo `meta`)
+- `src/components/report/report-key-metrics.tsx`
+- `src/components/report/report-benchmark-gauge.tsx`
+- `src/components/report/report-temporal-chart.tsx`
+- `src/components/report/report-top-posts.tsx`
+- `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` (faixa de cobertura no topo + ajustes ao `CoverageNotice`)
+- `src/routes/admin.report-preview.$username.tsx` (espelhar a faixa, para coerência)
+
+## Checkpoint
+
+- ☐ Adapter expõe `meta.benchmarkStatus`, `viewsAvailable`, `sampleCaption`, `temporalLabel`, `topPostsSubtitle`.
+- ☐ KPI delta deixa de ser sempre vermelho.
+- ☐ Gauge de benchmark é dinâmico ou oculto quando não há benchmark.
+- ☐ Chart temporal oculta "Visualizações" e explica quando dados não existem.
+- ☐ Faixa compacta de cobertura no topo da pré-visualização.
+- ☐ `CoverageNotice` mostra linha positiva quando benchmark é real.
+- ☐ `/report/example` inalterado.
+- ☐ Sem chamadas Apify, sem migrações.
+- ☐ `bunx tsc --noEmit` e `bun run build` verdes.
