@@ -41,6 +41,7 @@ type RawPost = {
   comments?: number;
   timestamp?: string | number;
   takenAtTimestamp?: number;
+  taken_at?: number;
 };
 
 function pickNumber(...values: Array<unknown>): number | null {
@@ -100,14 +101,36 @@ function classifyFormat(post: RawPost): BenchmarkFormat {
   return "Imagens";
 }
 
+/**
+ * Resolve a post timestamp into Unix milliseconds.
+ *
+ * Accepts every promised variant: `timestamp` (number or ISO string),
+ * `takenAtTimestamp` (number) and `taken_at` (number). Numeric values
+ * above 10^10 are treated as milliseconds; lower values are treated as
+ * seconds. String values are parsed with `Date.parse` (ISO 8601, RFC 2822).
+ */
+const MS_THRESHOLD = 10_000_000_000;
+
+function numberToMs(n: number): number {
+  return n > MS_THRESHOLD ? n : n * 1000;
+}
+
 function postTimestampMs(post: RawPost): number | null {
-  if (typeof post.timestamp === "number") return post.timestamp * 1000;
+  if (typeof post.timestamp === "number" && Number.isFinite(post.timestamp)) {
+    return numberToMs(post.timestamp);
+  }
   if (typeof post.timestamp === "string") {
     const parsed = Date.parse(post.timestamp);
     return Number.isNaN(parsed) ? null : parsed;
   }
-  if (typeof post.takenAtTimestamp === "number") {
-    return post.takenAtTimestamp * 1000;
+  if (
+    typeof post.takenAtTimestamp === "number" &&
+    Number.isFinite(post.takenAtTimestamp)
+  ) {
+    return numberToMs(post.takenAtTimestamp);
+  }
+  if (typeof post.taken_at === "number" && Number.isFinite(post.taken_at)) {
+    return numberToMs(post.taken_at);
   }
   return null;
 }
@@ -333,20 +356,48 @@ function pickVideoViews(raw: RawPostExtended): number | null {
   );
 }
 
-function postIdOf(raw: RawPostExtended, shortcode: string | null): string {
+/**
+ * Extract the last non-empty path segment of a permalink (e.g.
+ * `https://www.instagram.com/p/ABC123/?utm=...` → `ABC123`). Used as a
+ * deterministic fallback id when neither `id`, `pk` nor `shortcode` are
+ * present on the raw row.
+ */
+function permalinkSlug(permalink: string | null): string | null {
+  if (!permalink) return null;
+  try {
+    const path = new URL(permalink).pathname;
+    const parts = path.split("/").filter(Boolean);
+    const last = parts[parts.length - 1];
+    return last && last.length > 0 ? last : null;
+  } catch {
+    const trimmed = permalink.replace(/[?#].*$/, "").replace(/\/+$/, "");
+    const parts = trimmed.split("/").filter(Boolean);
+    const last = parts[parts.length - 1];
+    return last && last.length > 0 ? last : null;
+  }
+}
+
+function postIdOf(
+  raw: RawPostExtended,
+  shortcode: string | null,
+  permalink: string | null,
+  index: number,
+): string {
   const direct =
     typeof raw.id === "string" || typeof raw.id === "number"
-      ? String(raw.id)
+      ? String(raw.id).trim()
       : null;
   if (direct) return direct;
   const pk =
     typeof raw.pk === "string" || typeof raw.pk === "number"
-      ? String(raw.pk)
+      ? String(raw.pk).trim()
       : null;
   if (pk) return pk;
   if (shortcode) return shortcode;
-  // Last-resort deterministic id so deduping/keys still work in the UI.
-  return `post-${Math.random().toString(36).slice(2, 10)}`;
+  const slug = permalinkSlug(permalink);
+  if (slug) return slug;
+  // Final deterministic fallback — stable across re-runs of the same payload.
+  return `post-${index}`;
 }
 
 function emptyFormatStats(): FormatStats {
@@ -371,7 +422,7 @@ export function enrichPosts(
     ? (rawPosts.slice(0, POSTS_LIMIT) as RawPostExtended[])
     : [];
 
-  const posts: EnrichedPost[] = list.map((raw) => {
+  const posts: EnrichedPost[] = list.map((raw, index) => {
     const shortcode = pickString(raw.shortcode, raw.code);
     const caption = pickCaption(raw);
     const likes = pickNumber(raw.likesCount, raw.likes) ?? 0;
@@ -393,10 +444,12 @@ export function enrichPosts(
         ? Number((((likes + comments) / followersCount) * 100).toFixed(2))
         : 0;
 
+    const permalink = buildPermalink(raw, shortcode);
+
     return {
-      id: postIdOf(raw, shortcode),
+      id: postIdOf(raw, shortcode, permalink, index),
       shortcode,
-      permalink: buildPermalink(raw, shortcode),
+      permalink,
       format,
       caption,
       hashtags: extractHashtags(caption),
