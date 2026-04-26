@@ -26,6 +26,7 @@ import {
   type AdapterResult,
   type SnapshotPayload,
   type SnapshotMetadata,
+  type ReportBenchmarkInput,
 } from "@/lib/report/snapshot-to-report-data";
 
 export const Route = createFileRoute(
@@ -59,6 +60,7 @@ interface SnapshotResponse {
     created_at: string;
     updated_at: string;
     expires_at: string | null;
+    benchmark?: ReportBenchmarkInput;
   } | null;
   error_code?: string;
   message?: string;
