@@ -1,8 +1,9 @@
 import { ReportSection } from "./report-section";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 import { cn } from "@/lib/utils";
 
 export function ReportCompetitors() {
+  const reportData = useReportData();
   const max = Math.max(...reportData.competitors.map((c) => c.engagement)) * 1.4;
 
   return (

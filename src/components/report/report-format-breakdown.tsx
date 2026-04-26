@@ -1,6 +1,6 @@
 import { Film, LayoutGrid, Image as ImageIcon } from "lucide-react";
 import { ReportSection } from "./report-section";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
@@ -31,6 +31,7 @@ const TONE = {
 };
 
 export function ReportFormatBreakdown() {
+  const reportData = useReportData();
   return (
     <ReportSection
       label="Análise por formato"

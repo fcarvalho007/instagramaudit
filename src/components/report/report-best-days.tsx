@@ -10,9 +10,10 @@ import {
 } from "recharts";
 import { ReportSection } from "./report-section";
 import { ReportChartTooltip } from "./report-chart-tooltip";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 
 export function ReportBestDays() {
+  const reportData = useReportData();
   return (
     <ReportSection
       label="Dias da semana"

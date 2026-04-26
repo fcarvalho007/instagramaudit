@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { ReportSection } from "./report-section";
 import { ReportChartTooltip } from "./report-chart-tooltip";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 import { cn } from "@/lib/utils";
 
 type SeriesKey = "likes" | "comments" | "views";
@@ -27,6 +27,7 @@ const SERIES: Array<{
 ];
 
 export function ReportTemporalChart() {
+  const reportData = useReportData();
   const [active, setActive] = useState<Record<SeriesKey, boolean>>({
     likes: true,
     comments: true,

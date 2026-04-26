@@ -1,5 +1,5 @@
 import { ReportSection } from "./report-section";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 import { cn } from "@/lib/utils";
 
 function intensityClass(v: number): string {
@@ -13,6 +13,7 @@ function intensityClass(v: number): string {
 const HOURS_LABELS = ["00h", "04h", "08h", "12h", "16h", "20h"];
 
 export function ReportPostingHeatmap() {
+  const reportData = useReportData();
   const { days, matrix, bestSlots } = reportData.postingHeatmap;
   return (
     <ReportSection

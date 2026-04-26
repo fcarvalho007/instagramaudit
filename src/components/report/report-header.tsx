@@ -1,8 +1,9 @@
 import { Download, Share2 } from "lucide-react";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 import { cn } from "@/lib/utils";
 
 export function ReportHeader() {
+  const reportData = useReportData();
   const { profile } = reportData;
   return (
     <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6 md:p-8">
