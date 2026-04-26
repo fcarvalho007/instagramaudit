@@ -50,7 +50,10 @@ export async function recordAnalysisEvent(
   input: RecordAnalysisEventInput,
 ): Promise<string | null> {
   try {
-    const { data, error } = await supabaseAdmin.rpc("record_analysis_event", {
+    // The SQL function tolerates NULLs on optional params, but the generated
+    // Supabase types mark them as non-nullable. Cast through unknown so we
+    // can pass null explicitly without losing call-site type safety.
+    const args = {
       p_network: input.network ?? "instagram",
       p_handle: input.handle,
       p_competitor_handles: (input.competitorHandles ?? []).map((c) =>
@@ -70,7 +73,13 @@ export async function recordAnalysisEvent(
       p_user_agent_family: input.userAgentFamily ?? null,
       p_display_name: input.displayName ?? null,
       p_followers_last_seen: input.followersLastSeen ?? null,
-    });
+    } as unknown as Parameters<
+      typeof supabaseAdmin.rpc<"record_analysis_event">
+    >[1];
+    const { data, error } = await supabaseAdmin.rpc(
+      "record_analysis_event",
+      args,
+    );
     if (error) {
       console.error("[analytics] record_analysis_event failed", error.message);
       return null;
