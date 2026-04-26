@@ -72,6 +72,20 @@ export interface AlertThresholds {
   daily_cost_usd: number;
 }
 
+export interface ApifyRuntimeCheck {
+  apify_token_present: boolean;
+  apify_enabled_raw_is_true: boolean;
+  apify_enabled_state_label:
+    | "Ligado · chamadas reais"
+    | "Desligado · sem chamadas";
+  testing_mode_active: boolean;
+  allowlist_count: number;
+  allowlist_includes_test_handle: boolean;
+  test_handle: "frederico.m.carvalho";
+  ready_for_smoke_test: boolean;
+  blocking_reason: string | null;
+}
+
 export interface SnapshotsBlock {
   total: number | null;
   latest_at: string | null;
@@ -125,5 +139,6 @@ export interface CockpitData {
   };
   alerts: { rows: AlertRow[]; error: string | null };
   alert_thresholds?: AlertThresholds;
+  apify_runtime_check?: ApifyRuntimeCheck;
   generated_at: string;
 }

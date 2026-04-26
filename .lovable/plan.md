@@ -1,120 +1,103 @@
 ## Objetivo
 
-Adicionar duas opções de proteção de custo suportadas pela API do Apify (`maxItems` e `maxTotalChargeUsd`) ao cliente, e usá-las com limites conservadores no `fetchProfileWithPosts()` antes do primeiro smoke test real.
+Criar uma verificação inequívoca de configuração do Apify no runtime publicado, exposta apenas a admins, sem expor valores de segredos. O painel de Diagnóstico passa a mostrar um cartão definitivo "Estado para smoke test" com 5 linhas e um veredicto único.
 
-Isto garante que mesmo que algo corra mal (loop, payload inesperado, actor mal configurado), o Apify nunca vai cobrar mais do que **0,10 USD** ou devolver mais do que **1 item** durante o smoke test.
+Não vai chamar Apify. Não muda secrets. Não toca em /report/example, PDF, email, UI pública, ou migrações.
 
-Não é feita nenhuma chamada ao Apify nesta tarefa.
+## Ficheiros alterados
 
----
+1. **`src/routes/api/admin/diagnostics.ts`** — adicionar o bloco `apify_runtime_check` à resposta GET (já protegido por `requireAdminSession`).
+2. **`src/components/admin/cockpit/cockpit-types.ts`** — estender `CockpitData` com o tipo `ApifyRuntimeCheck`.
+3. **`src/components/admin/cockpit/panels/diagnostics-panel.tsx`** — novo componente `SmokeTestStatusCard` colocado no topo do painel, acima do `ReadinessCard` existente.
 
-## Ficheiros a alterar
+Nada mais é tocado. Os cartões existentes (ReadinessCard, ReadinessChecklistCard, lista de segredos, allowlist) ficam exatamente como estão.
 
-### 1. `src/lib/analysis/apify-client.ts`
+## Forma exata da resposta
 
-**Estender `RunActorOptions`:**
+Adicionado dentro do payload existente do endpoint:
 
-```ts
-interface RunActorOptions {
-  timeoutMs?: number;
-  apifyTimeoutSecs?: number;
-  memoryMbytes?: number;
-  maxItems?: number;            // novo
-  maxTotalChargeUsd?: number;   // novo
+```json
+{
+  "apify_runtime_check": {
+    "apify_token_present": true,
+    "apify_enabled_raw_is_true": true,
+    "apify_enabled_state_label": "Ligado · chamadas reais",
+    "testing_mode_active": true,
+    "allowlist_count": 1,
+    "allowlist_includes_test_handle": true,
+    "test_handle": "frederico.m.carvalho",
+    "ready_for_smoke_test": true,
+    "blocking_reason": null
+  }
 }
 ```
 
-**Destructurar no corpo de `runActor()`:**
+### Regras de derivação
 
-```ts
-const {
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-  apifyTimeoutSecs = 50,
-  memoryMbytes = 1024,
-  maxItems,
-  maxTotalChargeUsd,
-} = options;
+- `apify_token_present` = `process.env.APIFY_TOKEN` existe e tem comprimento > 0.
+- `apify_enabled_raw_is_true` = `process.env.APIFY_ENABLED === "true"` (comparação literal). Este é o booleano-chave: torna inequívoco se o runtime publicado vê exatamente `"true"`.
+- `apify_enabled_state_label` = `"Ligado · chamadas reais"` se acima for true, senão `"Desligado · sem chamadas"`.
+- `testing_mode_active` = `isTestingModeActive()` (já existe).
+- `allowlist_count` = `getAllowlist().length`.
+- `allowlist_includes_test_handle` = allowlist contém `"frederico.m.carvalho"` (lowercase).
+- `test_handle` = constante literal `"frederico.m.carvalho"`.
+- `ready_for_smoke_test` = todos verdadeiros: token + enabled_raw_is_true + testing_mode_active + allowlist_includes_test_handle.
+- `blocking_reason` = primeira razão em falta em pt-PT, ou `null`. Mensagens fixas:
+  - `"APIFY_TOKEN em falta nos Secrets."`
+  - `"APIFY_ENABLED não é exatamente \"true\" no runtime publicado. Republica após corrigir o valor."`
+  - `"APIFY_TESTING_MODE inativo — sem allowlist, qualquer handle dispararia o provedor."`
+  - `"@frederico.m.carvalho não está na APIFY_ALLOWLIST."`
+
+### O que NÃO é exposto
+
+- O valor do `APIFY_TOKEN` nem nenhum prefixo, comprimento ou hash.
+- Os valores em texto de qualquer outro segredo.
+- A allowlist não é re-exposta neste bloco (já é exposta pelo bloco `testing_mode.allowlist` existente — comportamento mantido por compatibilidade do painel).
+
+## Cartão UI: "Estado para smoke test"
+
+Inserido no topo do `DiagnosticsPanel`, antes do `ReadinessCard`. Layout compacto, leitura imediata.
+
+```text
+┌─ Estado para smoke test ─────────────────── [Pronto / Bloqueado] ─┐
+│ Token Apify:        Configurado ✓         │
+│ APIFY_ENABLED:      Ligado · chamadas reais ✓                     │
+│ Modo de teste:      Allowlist ativa ✓                             │
+│ Perfil de teste:    @frederico.m.carvalho permitido ✓             │
+│ Estado final:       Pronto para smoke test                        │
+│                                                                   │
+│ [Se bloqueado: blocking_reason em destaque a amarelo]             │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
-**Anexar à query string apenas se definidos** (logo a seguir aos `set("timeout"|"memory"|"format")` existentes):
+Cada linha usa o mesmo `KV` / ícone padrão já em uso no painel (CheckCircle2 verde / AlertTriangle amarelo). Tons via design tokens (`signal-success`, `signal-warning`), nada hardcoded.
 
-```ts
-if (typeof maxItems === "number") {
-  url.searchParams.set("maxItems", String(maxItems));
-}
-if (typeof maxTotalChargeUsd === "number") {
-  url.searchParams.set("maxTotalChargeUsd", String(maxTotalChargeUsd));
-}
-```
-
-**Não tocar:**
-- `Authorization: Bearer ${token}` continua via header (token nunca na query string).
-- `format=json`, `timeout`, `memory` mantêm-se exatamente como estão.
-- Tratamento de erros, timeouts e tipos de retorno mantêm-se.
-
-### 2. `src/routes/api/analyze-public-v1.ts`
-
-**Em `fetchProfileWithPosts()` (linha ~152), passar os novos limites conservadores ao `runActor`:**
-
-```ts
-const rows = await runActor<Record<string, unknown>>(
-  UNIFIED_ACTOR,
-  {
-    directUrls: [`https://www.instagram.com/${username}/`],
-    resultsType: "details",
-    resultsLimit: POSTS_LIMIT,
-    addParentData: false,
-  },
-  {
-    timeoutMs: 60_000,
-    apifyTimeoutSecs: 55,
-    maxItems: 1,                // teto duro: 1 perfil por chamada
-    maxTotalChargeUsd: 0.10,    // teto de custo por chamada: 0,10 USD
-  },
-);
-```
-
-**Mantém-se igual:**
-- `actor: apify/instagram-scraper` (constante `UNIFIED_ACTOR`)
-- `resultsType: "details"`
-- `resultsLimit: 12` (constante `POSTS_LIMIT`)
-- `directUrls` inalterado
-- Restante lógica (cache, allowlist, kill-switch, logging, alerts) intacta
-
----
+Quando `ready_for_smoke_test === false`, o cartão mostra `blocking_reason` num bloco destacado em `signal-warning/10` com a mensagem exata do backend.
 
 ## Verificação
 
-1. `bunx tsc --noEmit` — confirmar que tipos compilam.
-2. `bun run build` — confirmar que o build passa.
-3. **Não** chamar o Apify.
-4. **Não** chamar `/api/analyze-public-v1`.
+```bash
+bunx tsc --noEmit
+bun run build
+```
 
----
+Sem chamadas a Apify. Sem chamadas a `/api/analyze-public-v1`.
 
-## Notas de segurança
+## O que /admin → Diagnóstico mostrará antes do smoke test
 
-- **Token**: continua exclusivamente no header `Authorization: Bearer ...`. Nenhum dos novos parâmetros é um secret.
-- **Cap duplo**: `maxItems=1` limita pelo volume; `maxTotalChargeUsd=0.10` limita pelo custo. O Apify aplica o que for mais restritivo.
-- **Não-regressão**: como ambos os campos são opcionais e só são adicionados à URL quando definidos, qualquer outro chamador de `runActor` (atual ou futuro) continua a funcionar sem alterações.
+Cenário esperado após a republicação dos secrets corretos:
 
----
+- **Token Apify:** Configurado
+- **APIFY_ENABLED:** Ligado · chamadas reais
+- **Modo de teste:** Allowlist ativa
+- **Perfil de teste:** @frederico.m.carvalho permitido
+- **Estado final:** Pronto para smoke test
 
-## Saída esperada após implementação
+Se algum destes falhar, o cartão mostra "Bloqueado" + a `blocking_reason` exata, deixando claro se o problema é o valor do secret, a falta de Publish, ou a allowlist.
 
-- Lista exata dos ficheiros alterados.
-- Confirmação de que nenhuma chamada ao Apify foi feita.
-- Confirmação de que o token continua a ir pelo header `Authorization`.
-- Confirmação de que o smoke test fica protegido por `maxItems=1` e `maxTotalChargeUsd=0.10`.
+## Output após implementação
 
----
-
-## Checkpoint
-
-- ☐ `RunActorOptions` estendido com `maxItems` e `maxTotalChargeUsd`
-- ☐ Parâmetros anexados à query string apenas se definidos
-- ☐ `fetchProfileWithPosts()` passa `maxItems: 1` e `maxTotalChargeUsd: 0.10`
-- ☐ Token continua via `Authorization` header
-- ☐ `tsc --noEmit` passa
-- ☐ `bun run build` passa
-- ☐ Nenhuma chamada ao Apify feita
+- Lista de ficheiros alterados.
+- Confirmação explícita: 0 chamadas Apify, 0 chamadas a `/api/analyze-public-v1`.
+- Resultado de `tsc --noEmit` e `bun run build`.
+- Print/descrição do que o cartão mostra com a config atual.
