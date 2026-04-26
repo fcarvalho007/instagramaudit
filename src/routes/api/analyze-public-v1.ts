@@ -29,6 +29,7 @@ import {
 } from "@/lib/analysis/cache";
 import {
   computeContentSummary,
+  enrichPosts,
   normalizeProfile,
 } from "@/lib/analysis/normalize";
 import {
@@ -539,10 +540,21 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
           // 4) Persist snapshot (best-effort). The status field is intentionally
           // excluded — it's recomputed per response based on freshness.
+          // Step 1 of the Real Report Data Layer: also persist post-level
+          // detail and per-format aggregates so the future
+          // snapshotToReportData adapter can populate the visual report
+          // without a second Apify round-trip. Backwards compatible — old
+          // snapshots without these fields are still readable.
+          const primaryEnriched = enrichPosts(
+            primaryPosts,
+            primaryProfile.followers_count,
+          );
           const normalizedPayload = {
             profile: primaryProfile,
             content_summary: primarySummary,
             competitors: competitorResults,
+            posts: primaryEnriched.posts,
+            format_stats: primaryEnriched.format_stats,
           };
 
           const snapshotId = await storeSnapshot({
