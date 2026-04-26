@@ -5,6 +5,8 @@ import { useReportData } from "./report-data-context";
 export function ReportKeyMetrics() {
   const reportData = useReportData();
   const m = reportData.keyMetrics;
+  const kpiSubtitle =
+    reportData.meta?.kpiSubtitle ?? "janela de 30 dias";
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
       <ReportKpiCard
@@ -24,7 +26,7 @@ export function ReportKeyMetrics() {
         tint="neutral"
         label="Publicações analisadas"
         value={m.postsAnalyzed.toString()}
-        subtitle="janela de 30 dias"
+        subtitle={kpiSubtitle}
       />
       <ReportKpiCard
         icon={Calendar}

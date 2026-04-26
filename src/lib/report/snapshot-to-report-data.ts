@@ -576,26 +576,56 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   }
   const profileWithWindow = { ...profile, windowDays };
 
-  // Competitors: the snapshot may carry competitor handles, but the current
-  // smoke test produced an empty array. Always return only the analysed
-  // profile so the locked component renders meaningfully without invented
-  // numbers. Competitor coverage is reported as `empty`.
-  const competitors: ReportData["competitors"] = [
-    {
-      username: profile.username,
-      label: "Perfil analisado",
-      engagement: keyMetrics.engagementRate,
-      followers: profile.followers,
-      isOwn: true,
-      avatarGradient: AVATAR_GRADIENT,
-    },
-  ];
+  // Competitors: only emit a row when the snapshot carries real competitor
+  // data. Otherwise return an empty array so the section can show its empty
+  // state (or be hidden in admin preview). We deliberately do NOT echo the
+  // analysed profile alone — that would look like a degenerate competitor
+  // chart.
+  const rawCompetitors = Array.isArray(payload.competitors)
+    ? payload.competitors
+    : [];
+  const competitors: ReportData["competitors"] =
+    rawCompetitors.length > 0
+      ? [
+          {
+            username: profile.username,
+            label: "Perfil analisado",
+            engagement: keyMetrics.engagementRate,
+            followers: profile.followers,
+            isOwn: true,
+            avatarGradient: AVATAR_GRADIENT,
+          },
+        ]
+      : [];
 
   // AI insights: not generated in this step. Keep an empty array; the
   // `hasAiInsights` flag drives any UI that needs to hide the section.
   const aiInsights: ReportData["aiInsights"] = [];
 
+  // Editorial meta — overrides the mock defaults when the real sample is
+  // smaller than 30 days, so the report stops promising "30 dias" when only
+  // a 12-post sample is available.
+  const sampleSize = posts.length;
+  const isSmallSample = windowDays > 0 && (windowDays < 7 || sampleSize < 20);
+  const windowLabel = isSmallSample
+    ? "amostra recente"
+    : windowDays > 0
+      ? `últimos ${windowDays} dias`
+      : "amostra recente";
+  const windowShortLabel =
+    windowDays > 0 ? `${windowDays} dias` : "amostra";
+  const kpiSubtitle =
+    windowDays > 0
+      ? `amostra de ${sampleSize} publicações · ${windowDays} dias`
+      : `amostra de ${sampleSize} publicações`;
+
   const data: ReportData = {
+    meta: {
+      windowLabel,
+      windowShortLabel,
+      kpiSubtitle,
+      isAdminPreview: true,
+    },
     profile: profileWithWindow,
     keyMetrics,
     temporalSeries,
@@ -630,7 +660,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     temporalSeries: temporalSeries.length > 0 ? "partial" : "empty",
     benchmark: benchmarkCoverage,
     formatBreakdown: payload.format_stats ? "partial" : "empty",
-    competitors: "empty",
+    competitors: competitors.length > 0 ? "partial" : "empty",
     topPosts: topPosts.length > 0 ? "real" : "empty",
     postingHeatmap: posts.length > 0 ? "partial" : "empty",
     bestDays: posts.length > 0 ? "partial" : "empty",

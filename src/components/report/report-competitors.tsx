@@ -4,17 +4,46 @@ import { cn } from "@/lib/utils";
 
 export function ReportCompetitors() {
   const reportData = useReportData();
-  const max = Math.max(...reportData.competitors.map((c) => c.engagement)) * 1.4;
+  const competitors = reportData.competitors;
+  const isAdminPreview = reportData.meta?.isAdminPreview ?? false;
+  const windowLabel = reportData.meta?.windowLabel ?? "últimos 30 dias";
+
+  // No competitor data and we're in admin preview → hide entirely.
+  if (competitors.length === 0 && isAdminPreview) {
+    return null;
+  }
+
+  // No competitor data outside admin preview → render an editorial empty
+  // state so the layout flow is preserved (defensive; the mock always has
+  // competitors so this only triggers in custom embeddings).
+  if (competitors.length === 0) {
+    return (
+      <ReportSection
+        label="Comparação com concorrentes"
+        title="Desempenho vs. concorrência direta"
+        subtitle={`Envolvimento médio dos ${windowLabel} por perfil.`}
+      >
+        <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6 md:p-8">
+          <p className="text-sm text-content-secondary leading-relaxed">
+            Sem concorrentes recolhidos para este snapshot.
+          </p>
+        </div>
+      </ReportSection>
+    );
+  }
+
+  const max = Math.max(...competitors.map((c) => c.engagement)) * 1.4;
+  const hasMultipleCompetitors = competitors.length > 1;
 
   return (
     <ReportSection
       label="Comparação com concorrentes"
       title="Desempenho vs. concorrência direta"
-      subtitle="Envolvimento médio dos últimos 30 dias por perfil."
+      subtitle={`Envolvimento médio dos ${windowLabel} por perfil.`}
     >
       <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6 md:p-8">
         <div className="space-y-5">
-          {reportData.competitors.map((c) => {
+          {competitors.map((c) => {
             const pct = (c.engagement / max) * 100;
             return (
               <div
@@ -68,12 +97,19 @@ export function ReportCompetitors() {
           })}
         </div>
 
-        <p className="text-sm text-content-secondary leading-relaxed pt-6 mt-6 border-t border-border-subtle/30">
-          O perfil analisado lidera o grupo de comparação em envolvimento, mas
-          a vantagem é estreita. A diferença para o segundo concorrente é de
-          apenas 0,18 pontos percentuais — um cenário sensível a variações
-          mensais.
-        </p>
+        {hasMultipleCompetitors ? (
+          <p className="text-sm text-content-secondary leading-relaxed pt-6 mt-6 border-t border-border-subtle/30">
+            O perfil analisado lidera o grupo de comparação em envolvimento, mas
+            a vantagem é estreita. A diferença para o segundo concorrente é de
+            apenas 0,18 pontos percentuais — um cenário sensível a variações
+            mensais.
+          </p>
+        ) : (
+          <p className="text-sm text-content-secondary leading-relaxed pt-6 mt-6 border-t border-border-subtle/30">
+            Apenas o perfil analisado está incluído neste snapshot. Adicione
+            concorrentes para uma leitura comparativa.
+          </p>
+        )}
       </div>
     </ReportSection>
   );

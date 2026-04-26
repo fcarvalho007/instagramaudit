@@ -330,22 +330,38 @@ function AdminBanner({ username, load, onLogout }: ChromeProps) {
 function CoverageNotice({ load }: { load: Extract<LoadState, { kind: "ready" }> }) {
   const c = load.result.coverage;
   const lines: string[] = [];
+  lines.push(
+    c.windowDays > 0
+      ? `Amostra real: ${c.postsAvailable} publicações · janela aproximada de ${c.windowDays} dias.`
+      : `Amostra real: ${c.postsAvailable} publicações.`,
+  );
   if (c.postsAvailable < 30) {
     lines.push(
-      `Apenas ${c.postsAvailable} publicações disponíveis (janela de ${c.windowDays} dias). Heatmap, evolução temporal e dias da semana são derivados desta amostra reduzida.`,
+      "Heatmap, evolução temporal e dias da semana derivam desta amostra reduzida — leitura indicativa, não estatística.",
     );
   }
   if (c.benchmark === "placeholder") {
     lines.push(
-      "Benchmarks por escalão e por formato ainda não estão ligados — os marcadores aparecem a 0%.",
+      "Benchmarks por escalão e por formato sem dados — marcadores aparecem a 0%.",
+    );
+  } else if (c.benchmark === "partial") {
+    lines.push(
+      "Benchmarks parcialmente ligados — alguns formatos podem aparecer sem referência.",
     );
   }
   if (c.competitors === "empty") {
-    lines.push("Concorrentes não recolhidos neste snapshot — só o perfil analisado é mostrado.");
+    lines.push(
+      "Concorrentes não recolhidos — secção ocultada nesta pré-visualização.",
+    );
   }
   if (!c.hasAiInsights) {
-    lines.push("Insights de IA ainda não gerados para este snapshot.");
+    lines.push(
+      "Insights de IA ainda não gerados — a secção mostra estado vazio.",
+    );
   }
+  lines.push(
+    "Miniaturas e avatar usam gradientes editoriais — não há proxy de imagens do Instagram.",
+  );
   if (lines.length === 0) return null;
   return (
     <div className="mx-auto max-w-7xl px-6 pb-10">

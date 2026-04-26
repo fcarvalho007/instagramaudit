@@ -28,6 +28,7 @@ const SERIES: Array<{
 
 export function ReportTemporalChart() {
   const reportData = useReportData();
+  const windowLabel = reportData.meta?.windowLabel ?? "últimos 30 dias";
   const [active, setActive] = useState<Record<SeriesKey, boolean>>({
     likes: true,
     comments: true,
@@ -62,7 +63,7 @@ export function ReportTemporalChart() {
 
   return (
     <ReportSection
-      label="Evolução temporal · últimos 30 dias"
+      label={`Evolução temporal · ${windowLabel}`}
       title="Gostos, comentários e visualizações ao longo do tempo"
       subtitle="Soma diária dos sinais de envolvimento por publicação ativa."
       action={chips}
