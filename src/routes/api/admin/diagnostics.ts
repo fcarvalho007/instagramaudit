@@ -23,6 +23,7 @@ import {
   isTestingModeActive,
 } from "@/lib/security/apify-allowlist";
 import { getCostRates } from "@/lib/analysis/cost";
+import { getAlertThresholds } from "@/lib/admin/alerts";
 
 interface SnapshotsBlock {
   total: number | null;
@@ -533,6 +534,7 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
         ]);
 
         const costRates = getCostRates();
+        const alertThresholds = getAlertThresholds();
 
         const body = {
           secrets: {
@@ -556,6 +558,7 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
           recent_events: recentEvents,
           recent_provider_calls: recentProviderCalls,
           alerts,
+          alert_thresholds: alertThresholds,
           generated_at: new Date().toISOString(),
         };
 

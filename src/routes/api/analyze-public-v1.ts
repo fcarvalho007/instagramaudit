@@ -42,6 +42,7 @@ import {
   type AnalysisDataSource,
   type AnalysisOutcome,
 } from "@/lib/analysis/events";
+import { evaluateAlertsForEvent } from "@/lib/admin/alerts";
 import {
   getAllowlist,
   isAllowed,
@@ -251,7 +252,18 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               durationMs: Date.now() - startedAt,
               requestIpHash,
               userAgentFamily,
-            }),
+            }).then(() =>
+              // Evaluate cheap inline alerts after the event is persisted.
+              // Skipped for the synthetic "(invalid)" handle to avoid noise.
+              overrides.handle === "(invalid)"
+                ? null
+                : evaluateAlertsForEvent({
+                    handle: overrides.handle,
+                    requestIpHash,
+                    dataSource: overrides.dataSource,
+                    outcome: overrides.outcome,
+                  }),
+            ),
           );
         };
 
