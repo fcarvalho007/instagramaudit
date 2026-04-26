@@ -15,6 +15,12 @@ export function AdminGate() {
           typeof window !== "undefined"
             ? `${window.location.origin}/admin`
             : undefined,
+        extraParams: {
+          // Força o seletor de contas Google em cada login para que, após um
+          // bloqueio "Acesso restrito", o utilizador possa escolher uma conta
+          // diferente sem ficar preso à última conta usada no browser.
+          prompt: "select_account",
+        },
       });
 
       if (result.error) {

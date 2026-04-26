@@ -9,7 +9,7 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { AdminGate } from "@/components/admin/admin-gate";
@@ -31,11 +31,16 @@ type AuthState = "checking" | "signed_out" | "denied" | "in";
 function AdminPage() {
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
+  // Evita correr `evaluate()` duas vezes para o mesmo token quando
+  // `getSession()` e `onAuthStateChange()` disparam quase em simultâneo.
+  const lastEvaluatedTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function evaluate(token: string | null) {
+      if (lastEvaluatedTokenRef.current === token) return;
+      lastEvaluatedTokenRef.current = token;
       if (!token) {
         if (!cancelled) {
           setAuthState("signed_out");
@@ -83,6 +88,7 @@ function AdminPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut().catch(() => null);
+    lastEvaluatedTokenRef.current = null;
     setAuthState("signed_out");
     setDeniedEmail(null);
   }
@@ -126,7 +132,10 @@ function AdminPage() {
             <Button
               type="button"
               className="w-full"
-              onClick={() => setAuthState("signed_out")}
+              onClick={() => {
+                lastEvaluatedTokenRef.current = null;
+                setAuthState("signed_out");
+              }}
             >
               Entrar com outra conta
             </Button>
