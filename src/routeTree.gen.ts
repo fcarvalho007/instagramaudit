@@ -25,6 +25,7 @@ import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/rese
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
 import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
+import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 
 const TermosRoute = TermosRouteImport.update({
@@ -107,6 +108,12 @@ const ApiAdminDiagnosticsRoute = ApiAdminDiagnosticsRouteImport.update({
   path: '/api/admin/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminSnapshotUsernameRoute =
+  ApiAdminSnapshotUsernameRouteImport.update({
+    id: '/api/admin/snapshot/$username',
+    path: '/api/admin/snapshot/$username',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminReportRequestsIdRoute =
   ApiAdminReportRequestsIdRouteImport.update({
     id: '/$id',
@@ -132,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
+  '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
+  '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -171,6 +180,7 @@ export interface FileRoutesById {
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
+  '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
     | '/api/admin/report-requests/$id'
+    | '/api/admin/snapshot/$username'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
     | '/api/admin/report-requests/$id'
+    | '/api/admin/snapshot/$username'
   id:
     | '__root__'
     | '/'
@@ -230,6 +242,7 @@ export interface FileRouteTypes {
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
     | '/api/admin/report-requests/$id'
+    | '/api/admin/snapshot/$username'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -249,6 +262,7 @@ export interface RootRouteChildren {
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
+  ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -365,6 +379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminDiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/snapshot/$username': {
+      id: '/api/admin/snapshot/$username'
+      path: '/api/admin/snapshot/$username'
+      fullPath: '/api/admin/snapshot/$username'
+      preLoaderRoute: typeof ApiAdminSnapshotUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/report-requests/$id': {
       id: '/api/admin/report-requests/$id'
       path: '/$id'
@@ -406,6 +427,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
+  ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
