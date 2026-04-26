@@ -32,6 +32,17 @@ import {
   normalizeProfile,
 } from "@/lib/analysis/normalize";
 import {
+  estimateApifyCost,
+  hashRequestIp,
+  parseUserAgentFamily,
+} from "@/lib/analysis/cost";
+import {
+  recordAnalysisEvent,
+  recordProviderCall,
+  type AnalysisDataSource,
+  type AnalysisOutcome,
+} from "@/lib/analysis/events";
+import {
   getAllowlist,
   isAllowed,
   isApifyEnabled,
