@@ -163,6 +163,61 @@ async function fetchProfileWithPosts(
   return rows[0] ?? null;
 }
 
+/**
+ * Wraps `fetchProfileWithPosts` to emit one `provider_call_logs` row per
+ * handle (success, http_error, timeout, config_error, network_error). Never
+ * throws — returns the row, the originating error if any, and the new log id.
+ */
+async function fetchProfileWithPostsLogged(username: string): Promise<{
+  row: Record<string, unknown> | null;
+  error: unknown | null;
+  providerCallLogId: string | null;
+}> {
+  const startedAt = Date.now();
+  try {
+    const row = await fetchProfileWithPosts(username);
+    const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
+      ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
+      : 0;
+    const profilesReturned = row ? 1 : 0;
+    const estimatedCostUsd = estimateApifyCost({
+      profilesReturned,
+      postsReturned: posts,
+    });
+    const providerCallLogId = await recordProviderCall({
+      actor: UNIFIED_ACTOR,
+      handle: username,
+      status: "success",
+      durationMs: Date.now() - startedAt,
+      postsReturned: posts,
+      estimatedCostUsd,
+      httpStatus: 200,
+    });
+    return { row, error: null, providerCallLogId };
+  } catch (err) {
+    let status: "timeout" | "http_error" | "config_error" | "network_error" =
+      "network_error";
+    let httpStatus: number | null = null;
+    if (err instanceof ApifyConfigError) {
+      status = "config_error";
+    } else if (err instanceof ApifyUpstreamError) {
+      httpStatus = err.status;
+      status = err.status === 504 ? "timeout" : "http_error";
+    }
+    const providerCallLogId = await recordProviderCall({
+      actor: UNIFIED_ACTOR,
+      handle: username,
+      status,
+      durationMs: Date.now() - startedAt,
+      postsReturned: 0,
+      estimatedCostUsd: 0,
+      httpStatus,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    return { row: null, error: err, providerCallLogId };
+  }
+}
+
 export const Route = createFileRoute("/api/analyze-public-v1")({
   server: {
     handlers: {
