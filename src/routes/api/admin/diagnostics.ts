@@ -536,6 +536,46 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
         const costRates = getCostRates();
         const alertThresholds = getAlertThresholds();
 
+        // Bloco "Estado para smoke test" — verificação inequívoca da config
+        // Apify no runtime publicado. Apenas booleanos derivados; nunca expõe
+        // valores de segredos.
+        const TEST_HANDLE = "frederico.m.carvalho" as const;
+        const apifyTokenPresent = hasSecret("APIFY_TOKEN");
+        const apifyEnabledRawIsTrue = process.env.APIFY_ENABLED === "true";
+        const testingActive = isTestingModeActive();
+        const allowlist = getAllowlist();
+        const allowlistIncludesTestHandle = allowlist.includes(TEST_HANDLE);
+        const readyForSmokeTest =
+          apifyTokenPresent &&
+          apifyEnabledRawIsTrue &&
+          testingActive &&
+          allowlistIncludesTestHandle;
+        let blockingReason: string | null = null;
+        if (!apifyTokenPresent) {
+          blockingReason = "APIFY_TOKEN em falta nos Secrets.";
+        } else if (!apifyEnabledRawIsTrue) {
+          blockingReason =
+            'APIFY_ENABLED não é exatamente "true" no runtime publicado. Republica após corrigir o valor.';
+        } else if (!testingActive) {
+          blockingReason =
+            "APIFY_TESTING_MODE inativo — sem allowlist, qualquer handle dispararia o provedor.";
+        } else if (!allowlistIncludesTestHandle) {
+          blockingReason = "@frederico.m.carvalho não está na APIFY_ALLOWLIST.";
+        }
+        const apifyRuntimeCheck = {
+          apify_token_present: apifyTokenPresent,
+          apify_enabled_raw_is_true: apifyEnabledRawIsTrue,
+          apify_enabled_state_label: apifyEnabledRawIsTrue
+            ? ("Ligado · chamadas reais" as const)
+            : ("Desligado · sem chamadas" as const),
+          testing_mode_active: testingActive,
+          allowlist_count: allowlist.length,
+          allowlist_includes_test_handle: allowlistIncludesTestHandle,
+          test_handle: TEST_HANDLE,
+          ready_for_smoke_test: readyForSmokeTest,
+          blocking_reason: blockingReason,
+        };
+
         const body = {
           secrets: {
             APIFY_TOKEN: hasSecret("APIFY_TOKEN"),
@@ -559,6 +599,7 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
           recent_provider_calls: recentProviderCalls,
           alerts,
           alert_thresholds: alertThresholds,
+          apify_runtime_check: apifyRuntimeCheck,
           generated_at: new Date().toISOString(),
         };
 
