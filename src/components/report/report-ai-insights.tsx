@@ -1,6 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { ReportSection } from "./report-section";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 
 export function ReportAiInsights() {
   return (

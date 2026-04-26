@@ -1,5 +1,5 @@
 import { ReportSection } from "./report-section";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 import { cn } from "@/lib/utils";
 
 function intensityClass(v: number): string {

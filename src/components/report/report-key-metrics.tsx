@@ -1,6 +1,6 @@
 import { SmilePlus, LayoutGrid, Calendar, Film } from "lucide-react";
 import { ReportKpiCard } from "./report-kpi-card";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 
 export function ReportKeyMetrics() {
   const m = reportData.keyMetrics;

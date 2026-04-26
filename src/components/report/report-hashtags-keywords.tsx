@@ -1,5 +1,5 @@
 import { ReportSection } from "./report-section";
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 
 export function ReportHashtagsKeywords() {
   const maxHashtagUses = Math.max(

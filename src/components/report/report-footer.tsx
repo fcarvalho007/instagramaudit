@@ -1,4 +1,4 @@
-import { reportData } from "./report-mock-data";
+import { useReportData } from "./report-data-context";
 
 export function ReportFooter() {
   return (
