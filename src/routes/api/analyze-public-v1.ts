@@ -89,7 +89,7 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   PROFILE_NOT_ALLOWED:
     "A análise automática está em validação. Para já, este teste está limitado aos perfis definidos.",
   PROVIDER_DISABLED:
-    "A análise automática está temporariamente desativada. Tentar novamente mais tarde.",
+    "A análise automática ainda não está ativa. O sistema está preparado, mas a ligação ao fornecedor de dados está desligada.",
   UPSTREAM_UNAVAILABLE:
     "Serviço de análise temporariamente indisponível. Tentar novamente dentro de instantes.",
   UPSTREAM_FAILED:
