@@ -3,6 +3,7 @@
  */
 
 import { Badge } from "@/components/ui/badge";
+import { Users } from "lucide-react";
 
 import { DataSourceBadge, OutcomeBadge } from "../cockpit-badges";
 import {
@@ -81,12 +82,13 @@ export function ProfilesPanel({ data }: Props) {
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
         <h3 className="font-display text-base text-content-primary">Top 10 perfis</h3>
-        <p className="text-xs text-content-tertiary">
-          Ordenados por nº total de análises. Handles com ≥ {repeatedThreshold} análises são marcados como
-          "Repetido" (sinal informativo, não bloqueia ninguém).
+        <p className="text-sm text-content-secondary">
+          Ordenados por nº total de análises. Handles com ≥ {repeatedThreshold}{" "}
+          análises são marcados como "Repetido" — sinal informativo, não bloqueia
+          ninguém.
         </p>
       </div>
       {data.top_profiles.error ? (
@@ -100,8 +102,10 @@ export function ProfilesPanel({ data }: Props) {
           rowKey={(r) => `${r.network}:${r.handle}`}
           empty={
             <EmptyState
+              icon={<Users className="size-4" />}
+              tone="ok"
               title="Sem perfis ainda."
-              description="Após a primeira análise o handle aparece aqui."
+              description="Os perfis aparecem aqui assim que o primeiro evento de análise for registado. Cada handle gera uma linha agregada com totais e fonte da última análise."
             />
           }
         />
