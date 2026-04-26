@@ -170,15 +170,59 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         new Response(null, { status: 204, headers: corsHeaders }),
 
       POST: async ({ request }) => {
+        const startedAt = Date.now();
+        const userAgentFamily = parseUserAgentFamily(request);
+        // IP hash kicked off in parallel — awaited only when we actually log.
+        const ipHashPromise = hashRequestIp(request);
+        const logEvent = (overrides: {
+          handle: string;
+          competitorHandles?: string[];
+          cacheKey: string | null;
+          dataSource: AnalysisDataSource;
+          outcome: AnalysisOutcome;
+          errorCode?: string | null;
+          analysisSnapshotId?: string | null;
+          providerCallLogId?: string | null;
+          postsReturned?: number | null;
+          profilesReturned?: number | null;
+          estimatedCostUsd?: number | null;
+          displayName?: string | null;
+          followersLastSeen?: number | null;
+        }) => {
+          // Fire-and-forget: never block the user response on analytics.
+          void ipHashPromise.then((requestIpHash) =>
+            recordAnalysisEvent({
+              ...overrides,
+              durationMs: Date.now() - startedAt,
+              requestIpHash,
+              userAgentFamily,
+            }),
+          );
+        };
+
         let raw: unknown;
         try {
           raw = await request.json();
         } catch {
+          logEvent({
+            handle: "(invalid)",
+            cacheKey: null,
+            dataSource: "none",
+            outcome: "invalid_input",
+            errorCode: "INVALID_USERNAME",
+          });
           return failure("INVALID_USERNAME");
         }
 
         const parsed = PayloadSchema.safeParse(raw);
         if (!parsed.success) {
+          logEvent({
+            handle: "(invalid)",
+            cacheKey: null,
+            dataSource: "none",
+            outcome: "invalid_input",
+            errorCode: "INVALID_USERNAME",
+          });
           return failure("INVALID_USERNAME");
         }
         const primary = parsed.data.instagram_username;
