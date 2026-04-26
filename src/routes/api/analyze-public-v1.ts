@@ -32,6 +32,17 @@ import {
   normalizeProfile,
 } from "@/lib/analysis/normalize";
 import {
+  estimateApifyCost,
+  hashRequestIp,
+  parseUserAgentFamily,
+} from "@/lib/analysis/cost";
+import {
+  recordAnalysisEvent,
+  recordProviderCall,
+  type AnalysisDataSource,
+  type AnalysisOutcome,
+} from "@/lib/analysis/events";
+import {
   getAllowlist,
   isAllowed,
   isApifyEnabled,
@@ -152,6 +163,61 @@ async function fetchProfileWithPosts(
   return rows[0] ?? null;
 }
 
+/**
+ * Wraps `fetchProfileWithPosts` to emit one `provider_call_logs` row per
+ * handle (success, http_error, timeout, config_error, network_error). Never
+ * throws — returns the row, the originating error if any, and the new log id.
+ */
+async function fetchProfileWithPostsLogged(username: string): Promise<{
+  row: Record<string, unknown> | null;
+  error: unknown | null;
+  providerCallLogId: string | null;
+}> {
+  const startedAt = Date.now();
+  try {
+    const row = await fetchProfileWithPosts(username);
+    const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
+      ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
+      : 0;
+    const profilesReturned = row ? 1 : 0;
+    const estimatedCostUsd = estimateApifyCost({
+      profilesReturned,
+      postsReturned: posts,
+    });
+    const providerCallLogId = await recordProviderCall({
+      actor: UNIFIED_ACTOR,
+      handle: username,
+      status: "success",
+      durationMs: Date.now() - startedAt,
+      postsReturned: posts,
+      estimatedCostUsd,
+      httpStatus: 200,
+    });
+    return { row, error: null, providerCallLogId };
+  } catch (err) {
+    let status: "timeout" | "http_error" | "config_error" | "network_error" =
+      "network_error";
+    let httpStatus: number | null = null;
+    if (err instanceof ApifyConfigError) {
+      status = "config_error";
+    } else if (err instanceof ApifyUpstreamError) {
+      httpStatus = err.status;
+      status = err.status === 504 ? "timeout" : "http_error";
+    }
+    const providerCallLogId = await recordProviderCall({
+      actor: UNIFIED_ACTOR,
+      handle: username,
+      status,
+      durationMs: Date.now() - startedAt,
+      postsReturned: 0,
+      estimatedCostUsd: 0,
+      httpStatus,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    return { row: null, error: err, providerCallLogId };
+  }
+}
+
 export const Route = createFileRoute("/api/analyze-public-v1")({
   server: {
     handlers: {
@@ -159,15 +225,59 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         new Response(null, { status: 204, headers: corsHeaders }),
 
       POST: async ({ request }) => {
+        const startedAt = Date.now();
+        const userAgentFamily = parseUserAgentFamily(request);
+        // IP hash kicked off in parallel — awaited only when we actually log.
+        const ipHashPromise = hashRequestIp(request);
+        const logEvent = (overrides: {
+          handle: string;
+          competitorHandles?: string[];
+          cacheKey: string | null;
+          dataSource: AnalysisDataSource;
+          outcome: AnalysisOutcome;
+          errorCode?: string | null;
+          analysisSnapshotId?: string | null;
+          providerCallLogId?: string | null;
+          postsReturned?: number | null;
+          profilesReturned?: number | null;
+          estimatedCostUsd?: number | null;
+          displayName?: string | null;
+          followersLastSeen?: number | null;
+        }) => {
+          // Fire-and-forget: never block the user response on analytics.
+          void ipHashPromise.then((requestIpHash) =>
+            recordAnalysisEvent({
+              ...overrides,
+              durationMs: Date.now() - startedAt,
+              requestIpHash,
+              userAgentFamily,
+            }),
+          );
+        };
+
         let raw: unknown;
         try {
           raw = await request.json();
         } catch {
+          logEvent({
+            handle: "(invalid)",
+            cacheKey: null,
+            dataSource: "none",
+            outcome: "invalid_input",
+            errorCode: "INVALID_USERNAME",
+          });
           return failure("INVALID_USERNAME");
         }
 
         const parsed = PayloadSchema.safeParse(raw);
         if (!parsed.success) {
+          logEvent({
+            handle: "(invalid)",
+            cacheKey: null,
+            dataSource: "none",
+            outcome: "invalid_input",
+            errorCode: "INVALID_USERNAME",
+          });
           return failure("INVALID_USERNAME");
         }
         const primary = parsed.data.instagram_username;
@@ -197,6 +307,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "allowlist:",
               getAllowlist().join(","),
             );
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey: null,
+              dataSource: "none",
+              outcome: "blocked_allowlist",
+              errorCode: "PROFILE_NOT_ALLOWED",
+            });
             return failure("PROFILE_NOT_ALLOWED");
           }
           const allowedCompetitors = competitors.filter((c) => isAllowed(c));
@@ -240,6 +358,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // 1) Cache lookup. A non-expired snapshot short-circuits the provider.
         const existing = await lookupSnapshot(cacheKey);
         if (existing && !forceRefresh && isFresh(existing)) {
+          const cachedPayload = existing.normalized_payload as unknown as {
+            profile?: { display_name?: string; followers_count?: number };
+          };
+          logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "cache",
+            outcome: "success",
+            analysisSnapshotId: existing.id,
+            displayName: cachedPayload.profile?.display_name ?? null,
+            followersLastSeen: cachedPayload.profile?.followers_count ?? null,
+          });
           return jsonResponse(
             buildCachedResponse(existing, "cache", benchmarkData),
             200,
@@ -256,6 +387,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "[analyze-public-v1] APIFY_ENABLED!=true — serving stale snapshot",
               cacheKey,
             );
+            const stalePayload = existing.normalized_payload as unknown as {
+              profile?: { display_name?: string; followers_count?: number };
+            };
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "stale",
+              outcome: "success",
+              analysisSnapshotId: existing.id,
+              displayName: stalePayload.profile?.display_name ?? null,
+              followersLastSeen: stalePayload.profile?.followers_count ?? null,
+            });
             return jsonResponse(
               buildCachedResponse(existing, "stale", benchmarkData),
               200,
@@ -265,30 +409,62 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             "[analyze-public-v1] APIFY_ENABLED!=true — refusing provider call",
             primary,
           );
+          logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "none",
+            outcome: "provider_disabled",
+            errorCode: "PROVIDER_DISABLED",
+          });
           return failure("PROVIDER_DISABLED");
         }
 
         try {
           // 3) One unified call per handle, in parallel. Each call returns
           // the profile details with `latestPosts[]` embedded, so there is
-          // no separate posts fetch and no cross-handle merge step.
-          const primaryRowP = fetchProfileWithPosts(primary);
+          // no separate posts fetch and no cross-handle merge step. Per-call
+          // results (status + duration + posts returned) are written to
+          // `provider_call_logs` so the admin sees the real Apify ledger.
+          const providerCallIds: string[] = [];
+          const callPrimary = fetchProfileWithPostsLogged(primary).then(
+            (r) => {
+              if (r.providerCallLogId) providerCallIds.push(r.providerCallLogId);
+              if (r.error) throw r.error;
+              return r.row;
+            },
+          );
           const competitorRowsP = competitors.map((handle) =>
-            fetchProfileWithPosts(handle).catch((err: unknown) => {
-              console.error(
-                "[analyze-public-v1] competitor fetch failed",
-                handle,
-                err,
-              );
-              return err instanceof ApifyUpstreamError && err.status === 404
-                ? ({ __notFound: true } as const)
-                : ({ __failed: true } as const);
+            fetchProfileWithPostsLogged(handle).then((r) => {
+              if (r.providerCallLogId)
+                providerCallIds.push(r.providerCallLogId);
+              if (r.error) {
+                console.error(
+                  "[analyze-public-v1] competitor fetch failed",
+                  handle,
+                  r.error,
+                );
+                return r.error instanceof ApifyUpstreamError &&
+                  r.error.status === 404
+                  ? ({ __notFound: true } as const)
+                  : ({ __failed: true } as const);
+              }
+              return r.row;
             }),
           );
 
-          const primaryRow = await primaryRowP;
+          const primaryRow = await callPrimary;
           const primaryProfile = primaryRow ? normalizeProfile(primaryRow) : null;
           if (!primaryProfile) {
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "not_found",
+              errorCode: "PROFILE_NOT_FOUND",
+              providerCallLogId: providerCallIds[0] ?? null,
+            });
             return failure("PROFILE_NOT_FOUND");
           }
 
@@ -382,6 +558,39 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             },
             benchmark_positioning: benchmarkPositioning,
           };
+
+          // Aggregate counts + estimated cost across all successful handles
+          // (primary + competitors). Failed competitor calls already emitted
+          // their own provider_call_logs row with status=http_error/timeout.
+          const successfulCompetitors = competitorResults.filter(
+            (c): c is Extract<CompetitorAnalysis, { success: true }> =>
+              c.success,
+          );
+          const totalProfiles = 1 + successfulCompetitors.length;
+          const totalPosts =
+            primaryPosts.length +
+            successfulCompetitors.reduce(
+              (sum, c) => sum + c.content_summary.posts_analyzed,
+              0,
+            );
+          const estimatedCost = estimateApifyCost({
+            profilesReturned: totalProfiles,
+            postsReturned: totalPosts,
+          });
+          logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "fresh",
+            outcome: "success",
+            analysisSnapshotId: snapshotId ?? null,
+            providerCallLogId: providerCallIds[0] ?? null,
+            postsReturned: totalPosts,
+            profilesReturned: totalProfiles,
+            estimatedCostUsd: estimatedCost,
+            displayName: primaryProfile.display_name,
+            followersLastSeen: primaryProfile.followers_count,
+          });
           return jsonResponse(response, 200);
         } catch (err) {
           // 5) Stale-while-error: if provider failed but we have a recent
@@ -391,6 +600,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "[analyze-public-v1] serving stale snapshot after provider failure",
               cacheKey,
             );
+            const stalePayload = existing.normalized_payload as unknown as {
+              profile?: { display_name?: string; followers_count?: number };
+            };
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "stale",
+              outcome: "success",
+              analysisSnapshotId: existing.id,
+              displayName: stalePayload.profile?.display_name ?? null,
+              followersLastSeen: stalePayload.profile?.followers_count ?? null,
+            });
             return jsonResponse(
               buildCachedResponse(existing, "stale", benchmarkData),
               200,
@@ -399,6 +621,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
           if (err instanceof ApifyConfigError) {
             console.error("[analyze-public-v1] missing config", err.message);
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "provider_error",
+              errorCode: "UPSTREAM_UNAVAILABLE",
+            });
             return failure("UPSTREAM_UNAVAILABLE");
           }
           if (err instanceof ApifyUpstreamError) {
@@ -407,10 +637,36 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               err.status,
               err.message,
             );
-            if (err.status === 404) return failure("PROFILE_NOT_FOUND");
+            if (err.status === 404) {
+              logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "fresh",
+                outcome: "not_found",
+                errorCode: "PROFILE_NOT_FOUND",
+              });
+              return failure("PROFILE_NOT_FOUND");
+            }
+            logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "provider_error",
+              errorCode: "UPSTREAM_FAILED",
+            });
             return failure("UPSTREAM_FAILED");
           }
           console.error("[analyze-public-v1] unexpected", err);
+          logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "fresh",
+            outcome: "provider_error",
+            errorCode: "UPSTREAM_FAILED",
+          });
           return failure("UPSTREAM_FAILED");
         }
       },
