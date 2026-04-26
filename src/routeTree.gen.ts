@@ -14,18 +14,26 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ReportExampleRouteImport } from './routes/report.example'
 import { Route as ApiSendReportEmailRouteImport } from './routes/api/send-report-email'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
 import { Route as ApiGenerateReportPdfRouteImport } from './routes/api/generate-report-pdf'
 import { Route as ApiAnalyzePublicV1RouteImport } from './routes/api/analyze-public-v1'
 import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
+import { Route as AdminVisaoGeralRouteImport } from './routes/admin.visao-geral'
+import { Route as AdminSistemaRouteImport } from './routes/admin.sistema'
+import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
+import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
+import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
+import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
 import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
 import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
+import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api/admin/snapshot-by-id.$snapshotId'
@@ -58,6 +66,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ReportExampleRoute = ReportExampleRouteImport.update({
   id: '/report/example',
   path: '/report/example',
@@ -87,6 +100,36 @@ const AnalyzeUsernameRoute = AnalyzeUsernameRouteImport.update({
   id: '/analyze/$username',
   path: '/analyze/$username',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminVisaoGeralRoute = AdminVisaoGeralRouteImport.update({
+  id: '/visao-geral',
+  path: '/visao-geral',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSistemaRoute = AdminSistemaRouteImport.update({
+  id: '/sistema',
+  path: '/sistema',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRelatoriosRoute = AdminRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReceitaRoute = AdminReceitaRouteImport.update({
+  id: '/receita',
+  path: '/receita',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPerfisRoute = AdminPerfisRouteImport.update({
+  id: '/perfis',
+  path: '/perfis',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminClientesRoute = AdminClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ApiAdminWhoamiRoute = ApiAdminWhoamiRouteImport.update({
   id: '/api/admin/whoami',
@@ -118,6 +161,12 @@ const ApiAdminDiagnosticsRoute = ApiAdminDiagnosticsRouteImport.update({
   path: '/api/admin/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSistemaCockpitLegadoRoute =
+  AdminSistemaCockpitLegadoRouteImport.update({
+    id: '/cockpit-legado',
+    path: '/cockpit-legado',
+    getParentRoute: () => AdminSistemaRoute,
+  } as any)
 const AdminReportPreviewUsernameRoute =
   AdminReportPreviewUsernameRouteImport.update({
     id: '/report-preview/$username',
@@ -161,13 +210,21 @@ export interface FileRoutesByFullPath {
   '/design-system': typeof DesignSystemRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/admin/clientes': typeof AdminClientesRoute
+  '/admin/perfis': typeof AdminPerfisRoute
+  '/admin/receita': typeof AdminReceitaRoute
+  '/admin/relatorios': typeof AdminRelatoriosRoute
+  '/admin/sistema': typeof AdminSistemaRouteWithChildren
+  '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
+  '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
+  '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -182,17 +239,24 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/admin/clientes': typeof AdminClientesRoute
+  '/admin/perfis': typeof AdminPerfisRoute
+  '/admin/receita': typeof AdminReceitaRoute
+  '/admin/relatorios': typeof AdminRelatoriosRoute
+  '/admin/sistema': typeof AdminSistemaRouteWithChildren
+  '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
+  '/admin': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
+  '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -212,13 +276,21 @@ export interface FileRoutesById {
   '/design-system': typeof DesignSystemRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/admin/clientes': typeof AdminClientesRoute
+  '/admin/perfis': typeof AdminPerfisRoute
+  '/admin/receita': typeof AdminReceitaRoute
+  '/admin/relatorios': typeof AdminRelatoriosRoute
+  '/admin/sistema': typeof AdminSistemaRouteWithChildren
+  '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
+  '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
+  '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -239,13 +311,21 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/privacidade'
     | '/termos'
+    | '/admin/clientes'
+    | '/admin/perfis'
+    | '/admin/receita'
+    | '/admin/relatorios'
+    | '/admin/sistema'
+    | '/admin/visao-geral'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
+    | '/admin/'
     | '/admin/report-preview/$username'
+    | '/admin/sistema/cockpit-legado'
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -260,17 +340,24 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/design-system'
     | '/privacidade'
     | '/termos'
+    | '/admin/clientes'
+    | '/admin/perfis'
+    | '/admin/receita'
+    | '/admin/relatorios'
+    | '/admin/sistema'
+    | '/admin/visao-geral'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
+    | '/admin'
     | '/admin/report-preview/$username'
+    | '/admin/sistema/cockpit-legado'
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -289,13 +376,21 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/privacidade'
     | '/termos'
+    | '/admin/clientes'
+    | '/admin/perfis'
+    | '/admin/receita'
+    | '/admin/relatorios'
+    | '/admin/sistema'
+    | '/admin/visao-geral'
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
+    | '/admin/'
     | '/admin/report-preview/$username'
+    | '/admin/sistema/cockpit-legado'
     | '/api/admin/diagnostics'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -368,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/report/example': {
       id: '/report/example'
       path: '/report/example'
@@ -410,6 +512,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyzeUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/visao-geral': {
+      id: '/admin/visao-geral'
+      path: '/visao-geral'
+      fullPath: '/admin/visao-geral'
+      preLoaderRoute: typeof AdminVisaoGeralRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sistema': {
+      id: '/admin/sistema'
+      path: '/sistema'
+      fullPath: '/admin/sistema'
+      preLoaderRoute: typeof AdminSistemaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/relatorios': {
+      id: '/admin/relatorios'
+      path: '/relatorios'
+      fullPath: '/admin/relatorios'
+      preLoaderRoute: typeof AdminRelatoriosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/receita': {
+      id: '/admin/receita'
+      path: '/receita'
+      fullPath: '/admin/receita'
+      preLoaderRoute: typeof AdminReceitaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/perfis': {
+      id: '/admin/perfis'
+      path: '/perfis'
+      fullPath: '/admin/perfis'
+      preLoaderRoute: typeof AdminPerfisRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/clientes': {
+      id: '/admin/clientes'
+      path: '/clientes'
+      fullPath: '/admin/clientes'
+      preLoaderRoute: typeof AdminClientesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/admin/whoami': {
       id: '/api/admin/whoami'
       path: '/api/admin/whoami'
@@ -451,6 +595,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/admin/diagnostics'
       preLoaderRoute: typeof ApiAdminDiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/sistema/cockpit-legado': {
+      id: '/admin/sistema/cockpit-legado'
+      path: '/cockpit-legado'
+      fullPath: '/admin/sistema/cockpit-legado'
+      preLoaderRoute: typeof AdminSistemaCockpitLegadoRouteImport
+      parentRoute: typeof AdminSistemaRoute
     }
     '/admin/report-preview/$username': {
       id: '/admin/report-preview/$username'
@@ -497,12 +648,38 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminSistemaRouteChildren {
+  AdminSistemaCockpitLegadoRoute: typeof AdminSistemaCockpitLegadoRoute
+}
+
+const AdminSistemaRouteChildren: AdminSistemaRouteChildren = {
+  AdminSistemaCockpitLegadoRoute: AdminSistemaCockpitLegadoRoute,
+}
+
+const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
+  AdminSistemaRouteChildren,
+)
+
 interface AdminRouteChildren {
+  AdminClientesRoute: typeof AdminClientesRoute
+  AdminPerfisRoute: typeof AdminPerfisRoute
+  AdminReceitaRoute: typeof AdminReceitaRoute
+  AdminRelatoriosRoute: typeof AdminRelatoriosRoute
+  AdminSistemaRoute: typeof AdminSistemaRouteWithChildren
+  AdminVisaoGeralRoute: typeof AdminVisaoGeralRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   AdminReportPreviewUsernameRoute: typeof AdminReportPreviewUsernameRoute
   AdminReportPreviewSnapshotSnapshotIdRoute: typeof AdminReportPreviewSnapshotSnapshotIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminClientesRoute: AdminClientesRoute,
+  AdminPerfisRoute: AdminPerfisRoute,
+  AdminReceitaRoute: AdminReceitaRoute,
+  AdminRelatoriosRoute: AdminRelatoriosRoute,
+  AdminSistemaRoute: AdminSistemaRouteWithChildren,
+  AdminVisaoGeralRoute: AdminVisaoGeralRoute,
+  AdminIndexRoute: AdminIndexRoute,
   AdminReportPreviewUsernameRoute: AdminReportPreviewUsernameRoute,
   AdminReportPreviewSnapshotSnapshotIdRoute:
     AdminReportPreviewSnapshotSnapshotIdRoute,
