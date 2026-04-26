@@ -164,6 +164,7 @@ function AdminSnapshotPreviewPage() {
         const result = snapshotToReportData({
           payload: body.snapshot.payload ?? {},
           meta: body.snapshot.meta ?? undefined,
+          benchmark: body.snapshot.benchmark,
         });
         setLoad({
           kind: "ready",
