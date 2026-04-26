@@ -28,12 +28,19 @@ export const Route = createFileRoute("/admin")({
 
 type AuthState = "checking" | "signed_out" | "denied" | "in";
 
+// Sentinela para distinguir "ainda não avaliado" de "avaliado com token null".
+// Usar `null` como valor inicial colide com `token === null` (sem sessão) e
+// faz o early-return de `evaluate()` engolir a primeira chamada, deixando o
+// estado preso em "checking".
+const UNSET: unique symbol = Symbol("unset");
+type EvaluatedToken = string | null | typeof UNSET;
+
 function AdminPage() {
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
   // Evita correr `evaluate()` duas vezes para o mesmo token quando
   // `getSession()` e `onAuthStateChange()` disparam quase em simultâneo.
-  const lastEvaluatedTokenRef = useRef<string | null>(null);
+  const lastEvaluatedTokenRef = useRef<EvaluatedToken>(UNSET);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +95,7 @@ function AdminPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut().catch(() => null);
-    lastEvaluatedTokenRef.current = null;
+    lastEvaluatedTokenRef.current = UNSET;
     setAuthState("signed_out");
     setDeniedEmail(null);
   }
@@ -133,7 +140,7 @@ function AdminPage() {
               type="button"
               className="w-full"
               onClick={() => {
-                lastEvaluatedTokenRef.current = null;
+                lastEvaluatedTokenRef.current = UNSET;
                 setAuthState("signed_out");
               }}
             >
