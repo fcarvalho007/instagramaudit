@@ -4,6 +4,8 @@
  */
 
 import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, AlertTriangle, ShieldAlert } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import {
   DataSourceBadge,
@@ -47,6 +49,8 @@ export function DiagnosticsPanel({ data }: Props) {
 
   return (
     <div className="space-y-6">
+      <ReadinessCard data={data} />
+
       <Section title="Segredos" description="Apenas estado. Os valores nunca são expostos.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {SECRET_LABELS.map((s) => (
@@ -112,7 +116,11 @@ export function DiagnosticsPanel({ data }: Props) {
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-xs text-content-tertiary">Allowlist vazia.</p>
+            <div className="mt-3">
+              <Badge variant="warning" dot>
+                Allowlist vazia — nenhuma análise vai disparar Apify
+              </Badge>
+            </div>
           )}
         </div>
       </Section>
@@ -211,5 +219,195 @@ function PanelSkeleton() {
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * ReadinessCard — leitura imediata de "posso ativar o Apify agora?".
+ *
+ * Estados:
+ *   ready    — APIFY_TOKEN + INTERNAL_API_TOKEN presentes, modo de teste ativo
+ *              com allowlist não vazia. Seguro para o smoke test.
+ *   warning  — falta token, allowlist vazia, ou modo de teste inativo (mas
+ *              APIFY_ENABLED também desligado, por isso não há gasto real).
+ *   critical — APIFY_ENABLED=true E modo de teste inativo (chamadas reais sem
+ *              allowlist → potencial gasto descontrolado).
+ */
+
+type ReadinessTone = "ready" | "warning" | "critical";
+
+interface ChecklistItem {
+  ok: boolean;
+  label: string;
+  hint?: string;
+}
+
+function buildChecklist(data: CockpitData): ChecklistItem[] {
+  const allowlistSize = data.testing_mode.allowlist.length;
+  return [
+    {
+      ok: data.secrets.APIFY_TOKEN,
+      label: "APIFY_TOKEN configurado",
+      hint: data.secrets.APIFY_TOKEN
+        ? undefined
+        : "Define o token nos Secrets antes de ativar o provedor.",
+    },
+    {
+      ok: data.secrets.INTERNAL_API_TOKEN,
+      label: "INTERNAL_API_TOKEN configurado",
+      hint: data.secrets.INTERNAL_API_TOKEN
+        ? undefined
+        : "Necessário para o gate de refresh forçado (?refresh=1).",
+    },
+    {
+      ok: data.secrets.RESEND_API_KEY,
+      label: "RESEND_API_KEY configurado",
+      hint: data.secrets.RESEND_API_KEY
+        ? undefined
+        : "Sem isto, o envio de relatórios por email falha.",
+    },
+    {
+      ok: data.testing_mode.active && allowlistSize > 0,
+      label:
+        data.testing_mode.active && allowlistSize > 0
+          ? `Modo de teste ativo (allowlist com ${allowlistSize} handle${allowlistSize === 1 ? "" : "s"})`
+          : data.testing_mode.active
+            ? "Modo de teste ativo, mas allowlist vazia"
+            : "Modo de teste inativo",
+      hint: !data.testing_mode.active
+        ? "Sem allowlist, qualquer username dispara Apify quando ativado."
+        : allowlistSize === 0
+          ? "Adiciona pelo menos um handle (ex.: frederico.m.carvalho)."
+          : undefined,
+    },
+  ];
+}
+
+function readinessTone(data: CockpitData, items: ChecklistItem[]): ReadinessTone {
+  const apifyOnWithoutAllowlist =
+    data.apify.enabled && !data.testing_mode.active;
+  if (apifyOnWithoutAllowlist) return "critical";
+  const allOk = items.every((i) => i.ok);
+  return allOk ? "ready" : "warning";
+}
+
+function ReadinessCard({ data }: { data: CockpitData }) {
+  const items = buildChecklist(data);
+  const tone = readinessTone(data, items);
+
+  const meta: Record<
+    ReadinessTone,
+    {
+      title: string;
+      kicker: string;
+      description: string;
+      Icon: typeof CheckCircle2;
+      iconClass: string;
+      badgeVariant: "success" | "warning" | "danger";
+      borderClass: string;
+    }
+  > = {
+    ready: {
+      title: "Pronto para ativar Apify",
+      kicker: "Configuração segura",
+      description:
+        "Quando ligares APIFY_ENABLED, só os handles na allowlist disparam chamadas reais.",
+      Icon: CheckCircle2,
+      iconClass: "text-signal-success",
+      badgeVariant: "success",
+      borderClass: "border-signal-success/30",
+    },
+    warning: {
+      title: "Configuração incompleta",
+      kicker: "Atenção",
+      description: data.apify.enabled
+        ? "APIFY está ligado — verifica abaixo o que ainda precisa de ser corrigido."
+        : "APIFY ainda está desligado, por isso não há gasto. Resolve os pontos abaixo antes de ativar.",
+      Icon: AlertTriangle,
+      iconClass: "text-signal-warning",
+      badgeVariant: "warning",
+      borderClass: "border-signal-warning/30",
+    },
+    critical: {
+      title: "Risco de gasto descontrolado",
+      kicker: "Crítico",
+      description:
+        "APIFY_ENABLED está ligado SEM modo de teste. Qualquer username submetido vai disparar Apify. Desliga ou ativa a allowlist imediatamente.",
+      Icon: ShieldAlert,
+      iconClass: "text-signal-danger",
+      badgeVariant: "danger",
+      borderClass: "border-signal-danger/40",
+    },
+  };
+
+  const m = meta[tone];
+
+  return (
+    <section
+      className={cn(
+        "rounded-xl border bg-surface-elevated p-5 sm:p-6",
+        m.borderClass,
+      )}
+      aria-label="Estado de prontidão para Apify"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <m.Icon className={cn("mt-0.5 size-6 shrink-0", m.iconClass)} aria-hidden="true" />
+          <div className="space-y-1">
+            <p className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+              {m.kicker}
+            </p>
+            <h3 className="font-display text-lg text-content-primary">{m.title}</h3>
+            <p className="max-w-2xl text-sm text-content-secondary">{m.description}</p>
+          </div>
+        </div>
+        <Badge variant={m.badgeVariant} dot pulse={tone === "critical"}>
+          {tone === "ready"
+            ? "Pronto"
+            : tone === "warning"
+              ? "Atenção"
+              : "Crítico"}
+        </Badge>
+      </div>
+
+      <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {items.map((item) => (
+          <li
+            key={item.label}
+            className="flex items-start gap-2.5 rounded-md border border-border-subtle bg-surface-base px-3 py-2.5"
+          >
+            {item.ok ? (
+              <CheckCircle2
+                className="mt-0.5 size-4 shrink-0 text-signal-success"
+                aria-label="OK"
+              />
+            ) : (
+              <AlertTriangle
+                className="mt-0.5 size-4 shrink-0 text-signal-warning"
+                aria-label="Por resolver"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-sm text-content-primary">{item.label}</p>
+              {!item.ok && item.hint ? (
+                <p className="mt-0.5 text-xs text-content-tertiary">{item.hint}</p>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border-subtle/60 pt-3 text-xs text-content-tertiary">
+        <span className="font-mono uppercase tracking-[0.18em]">APIFY_ENABLED</span>
+        <Badge variant={data.apify.enabled ? "success" : "default"} dot>
+          {data.apify.enabled ? "Ligado" : "Desligado"}
+        </Badge>
+        <span aria-hidden="true">·</span>
+        <span className="font-mono uppercase tracking-[0.18em]">Modo de teste</span>
+        <Badge variant={data.testing_mode.active ? "accent" : "default"} dot>
+          {data.testing_mode.active ? "Ativo" : "Inativo"}
+        </Badge>
+      </div>
+    </section>
   );
 }
