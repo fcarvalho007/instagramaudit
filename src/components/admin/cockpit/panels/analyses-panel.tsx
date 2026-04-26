@@ -2,6 +2,8 @@
  * Análises — histórico recente de eventos e janelas 24h / 7d.
  */
 
+import { Activity } from "lucide-react";
+
 import { DataSourceBadge, OutcomeBadge } from "../cockpit-badges";
 import {
   formatCost,
@@ -71,7 +73,7 @@ export function AnalysesPanel({ data }: Props) {
       <section className="space-y-3">
         <div>
           <h3 className="font-display text-base text-content-primary">Últimos 20 eventos</h3>
-          <p className="text-xs text-content-tertiary">
+          <p className="text-sm text-content-secondary">
             Cada análise registada gera um evento — fresh, cache, stale ou falha.
           </p>
         </div>
@@ -86,8 +88,10 @@ export function AnalysesPanel({ data }: Props) {
             rowKey={(r) => r.id}
             empty={
               <EmptyState
+                icon={<Activity className="size-4" />}
+                tone="ok"
                 title="Sem eventos ainda."
-                description="Corra uma análise em /analyze/<handle> para começar a popular este histórico."
+                description="Os eventos aparecem aqui após a primeira tentativa de análise — quer seja servida pela cache, pelo provedor, ou bloqueada pela allowlist."
               />
             }
           />
