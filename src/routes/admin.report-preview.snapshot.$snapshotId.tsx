@@ -287,6 +287,7 @@ function AdminPreviewChrome({ snapshotId, load, onLogout }: ChromeProps) {
         />
       ) : (
         <>
+          <CoverageStrip load={load} />
           <ReportPage data={load.result.data} />
           <CoverageNotice load={load} />
         </>
@@ -361,6 +362,7 @@ function AdminBanner({ snapshotId, load, onLogout }: ChromeProps) {
 
 function CoverageNotice({ load }: { load: Extract<LoadState, { kind: "ready" }> }) {
   const c = load.result.coverage;
+  const meta = load.result.data.meta;
   const lines: string[] = [];
   // Always-on: amostra real (publicações + janela aproximada).
   lines.push(
@@ -373,7 +375,14 @@ function CoverageNotice({ load }: { load: Extract<LoadState, { kind: "ready" }> 
       "Heatmap, evolução temporal e dias da semana derivam desta amostra reduzida — leitura indicativa, não estatística.",
     );
   }
-  if (c.benchmark === "placeholder") {
+  if (c.benchmark === "real") {
+    const v = meta?.benchmarkDatasetVersion;
+    lines.push(
+      v
+        ? `Benchmarks reais ligados (dataset ${v}) — leitura comparável com o escalão.`
+        : "Benchmarks reais ligados — leitura comparável com o escalão.",
+    );
+  } else if (c.benchmark === "placeholder") {
     lines.push(
       "Benchmarks por escalão e por formato sem dados — marcadores aparecem a 0%.",
     );
@@ -390,6 +399,11 @@ function CoverageNotice({ load }: { load: Extract<LoadState, { kind: "ready" }> 
   if (!c.hasAiInsights) {
     lines.push(
       "Insights de IA ainda não gerados — a secção mostra estado vazio.",
+    );
+  }
+  if (meta?.viewsAvailable === false) {
+    lines.push(
+      "Sem visualizações de Reels neste snapshot — série ocultada no gráfico temporal.",
     );
   }
   lines.push(
@@ -409,6 +423,77 @@ function CoverageNotice({ load }: { load: Extract<LoadState, { kind: "ready" }> 
         </ul>
       </div>
     </div>
+  );
+}
+
+/**
+ * Compact coverage strip rendered above the report itself. Five chips give
+ * the admin an at-a-glance read of what's real vs partial vs missing before
+ * scrolling through the report body.
+ */
+function CoverageStrip({ load }: { load: Extract<LoadState, { kind: "ready" }> }) {
+  const c = load.result.coverage;
+  const benchmarkChip =
+    c.benchmark === "real"
+      ? { tone: "success" as const, value: "Reais" }
+      : c.benchmark === "partial"
+        ? { tone: "warning" as const, value: "Parciais" }
+        : { tone: "neutral" as const, value: "Indisponíveis" };
+  const competitorsChip =
+    c.competitors === "empty"
+      ? { tone: "neutral" as const, value: "Em falta" }
+      : { tone: "success" as const, value: "Presentes" };
+  const aiChip = c.hasAiInsights
+    ? { tone: "success" as const, value: "Gerados" }
+    : { tone: "neutral" as const, value: "Por gerar" };
+  const windowValue = c.windowDays > 0 ? `${c.windowDays} dias` : "amostra";
+  const sampleCaption = load.result.data.meta?.sampleCaption;
+
+  return (
+    <div className="mx-auto max-w-7xl px-6 pt-6">
+      <div className="rounded-xl border border-border-default/40 bg-surface-secondary p-4 shadow-card">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+          Cobertura deste snapshot
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <CoverageChip label="Publicações" value={String(c.postsAvailable)} tone="neutral" />
+          <CoverageChip label="Janela observada" value={windowValue} tone="neutral" />
+          <CoverageChip label="Benchmarks" value={benchmarkChip.value} tone={benchmarkChip.tone} />
+          <CoverageChip label="Concorrentes" value={competitorsChip.value} tone={competitorsChip.tone} />
+          <CoverageChip label="Insights IA" value={aiChip.value} tone={aiChip.tone} />
+        </div>
+        {sampleCaption ? (
+          <p className="mt-3 text-xs text-content-secondary">{sampleCaption}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CoverageChip({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "success" | "warning" | "neutral";
+}) {
+  const toneClasses =
+    tone === "success"
+      ? "border-signal-success/30 bg-tint-success text-signal-success"
+      : tone === "warning"
+        ? "border-signal-warning/30 bg-tint-warning text-signal-warning"
+        : "border-border-default/40 bg-surface-base text-content-secondary";
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 ${toneClasses}`}
+    >
+      <span className="font-mono text-[10px] uppercase tracking-wider opacity-70">
+        {label}
+      </span>
+      <span className="font-mono text-xs font-semibold">{value}</span>
+    </span>
   );
 }
 
