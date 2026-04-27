@@ -147,7 +147,8 @@ export async function callDataForSeo<T = unknown>(
     if (!res.ok || !envelope) {
       await logCall({
         endpoint,
-        handle: gateValue,
+        handle: ownerHandle,
+        actor: actorLabel,
         status: "error",
         httpStatus: res.status,
         durationMs,
@@ -168,7 +169,8 @@ export async function callDataForSeo<T = unknown>(
     if (envelope.status_code !== 20000) {
       await logCall({
         endpoint,
-        handle: gateValue,
+        handle: ownerHandle,
+        actor: actorLabel,
         status: "error",
         httpStatus: res.status,
         durationMs,
@@ -186,7 +188,8 @@ export async function callDataForSeo<T = unknown>(
 
     await logCall({
       endpoint,
-      handle: gateValue,
+      handle: ownerHandle,
+      actor: actorLabel,
       status: "success",
       httpStatus: res.status,
       durationMs,
@@ -203,7 +206,8 @@ export async function callDataForSeo<T = unknown>(
     const message = err instanceof Error ? err.message : "unknown_error";
     await logCall({
       endpoint,
-      handle: gateValue,
+      handle: ownerHandle,
+      actor: actorLabel,
       status: "error",
       httpStatus: null,
       durationMs: Date.now() - startedAt,
@@ -224,6 +228,7 @@ export async function callDataForSeo<T = unknown>(
 interface LogInput {
   endpoint: DataForSeoEndpoint;
   handle: string;
+  actor: string;
   status: "success" | "error" | "blocked";
   httpStatus: number | null;
   durationMs: number;
@@ -236,7 +241,7 @@ async function logCall(input: LogInput): Promise<void> {
   try {
     await supabaseAdmin.from("provider_call_logs").insert({
       provider: "dataforseo",
-      actor: input.endpoint,
+      actor: input.actor,
       network: "google",
       handle: input.handle,
       status: input.status,
