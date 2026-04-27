@@ -10,6 +10,8 @@ import { callDataForSeo } from "../client";
 import type { DataForSeoEnvelope } from "../types";
 
 export interface SerpOrganicInput {
+  /** Instagram report owner — the only value matched against the allowlist. */
+  ownerHandle: string;
   keyword: string;
   location_name?: string;
   language_code?: string;
@@ -51,6 +53,9 @@ export async function fetchSerpOrganic(
   if (!keyword) {
     throw new Error("serp-organic: keyword required");
   }
+  if (!input.ownerHandle?.trim()) {
+    throw new Error("serp-organic: ownerHandle required");
+  }
   const depth = Math.min(Math.max(input.depth ?? 10, 1), 30);
   return callDataForSeo<SerpOrganicResult>(
     "serp_google_organic",
@@ -61,6 +66,6 @@ export async function fetchSerpOrganic(
       depth,
       device: input.device ?? "desktop",
     },
-    { gateValue: keyword },
+    { ownerHandle: input.ownerHandle, queryLabel: keyword },
   );
 }

@@ -6,6 +6,8 @@ import { callDataForSeo } from "../client";
 import type { DataForSeoEnvelope } from "../types";
 
 export interface GoogleTrendsInput {
+  /** Instagram report owner — the only value matched against the allowlist. */
+  ownerHandle: string;
   keywords: string[];                 // up to 5
   location_name?: string;             // e.g. "Portugal"
   language_code?: string;             // e.g. "pt"
@@ -42,7 +44,10 @@ export async function fetchGoogleTrends(
   if (!input.keywords?.length || input.keywords.length > 5) {
     throw new Error("google-trends: 1..5 keywords required");
   }
-  const gateValue = input.keywords[0];
+  if (!input.ownerHandle?.trim()) {
+    throw new Error("google-trends: ownerHandle required");
+  }
+  const queryLabel = input.keywords.join(",");
   return callDataForSeo<GoogleTrendsResult>(
     "google_trends_explore",
     {
@@ -53,6 +58,6 @@ export async function fetchGoogleTrends(
       category_code: input.category_code,
       type: input.type ?? "web",
     },
-    { gateValue },
+    { ownerHandle: input.ownerHandle, queryLabel },
   );
 }

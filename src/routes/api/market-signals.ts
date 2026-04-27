@@ -107,6 +107,7 @@ export const Route = createFileRoute("/api/market-signals")({
         // 5. Orquestrar (com timeout duro de 60s).
         const payload = (data.normalized_payload ?? {}) as SnapshotPayload;
         const result = await buildMarketSignals(payload, {
+          ownerHandle: handle,
           plan,
           totalTimeoutMs: 60_000,
         });
