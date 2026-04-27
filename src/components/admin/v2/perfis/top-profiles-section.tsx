@@ -161,6 +161,7 @@ function CategoryColumn() {
               innerRadius={60}
               outerRadius={90}
               paddingAngle={2}
+              cornerRadius={3}
               stroke="rgb(var(--admin-surface-rgb))"
               strokeWidth={1.5}
             >
@@ -186,18 +187,18 @@ function CategoryColumn() {
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className="font-mono font-medium tracking-tight text-admin-text-primary"
-            style={{ fontSize: "2rem", lineHeight: 1 }}
+            className="font-mono font-medium tabular-nums text-admin-text-primary"
+            style={{ fontSize: "1.875rem", lineHeight: 1, letterSpacing: "-0.02em" }}
           >
             {TOTAL_PROFILES}
           </span>
-          <span className="mt-1 text-[11px] text-admin-text-tertiary">
+          <span className="mt-1 text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
             perfis
           </span>
         </div>
       </div>
 
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+      <ul className="m-0 flex list-none flex-col gap-2 border-t border-admin-border p-0 pt-4">
         {MOCK_PROFILES_BY_CATEGORY.map((c) => (
           <li
             key={c.category}
@@ -211,10 +212,10 @@ function CategoryColumn() {
             <span className="flex-1 text-[12px] text-admin-text-primary">
               {c.category}
             </span>
-            <span className="font-mono text-[12px] text-admin-text-primary">
+            <span className="w-10 text-right font-mono text-[12px] tabular-nums text-admin-text-primary">
               {c.pct}%
             </span>
-            <span className="w-10 text-right font-mono text-[11px] text-admin-text-tertiary">
+            <span className="w-10 text-right font-mono text-[11px] tabular-nums text-admin-text-tertiary">
               {c.count}
             </span>
           </li>
