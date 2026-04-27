@@ -57,7 +57,7 @@ function PerfisPage() {
           </>
         }
       />
-      <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-14">
         <MetricsSection />
         <TopProfilesSection />
         <IntentOpportunitiesSection />
