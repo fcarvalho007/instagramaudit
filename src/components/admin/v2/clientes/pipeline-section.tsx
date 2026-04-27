@@ -46,6 +46,7 @@ export function PipelineSection() {
         title="Pipeline"
         subtitle="movimento entre estados nos últimos 30 dias"
         accent="leads"
+        info="Movimento dos clientes entre os 4 estados do funil nos últimos 30 dias. Os números entre cartões mostram quantos transitaram para o estado seguinte."
       />
       <AdminCard className="!px-7 !py-6">
         <div
