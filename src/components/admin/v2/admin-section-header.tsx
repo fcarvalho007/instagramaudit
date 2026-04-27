@@ -7,17 +7,21 @@
 
 import { type ReactNode } from "react";
 import { ACCENT_500, type AdminAccent } from "./admin-tokens";
+import { AdminInfoTooltip } from "./admin-info-tooltip";
 
 interface AdminSectionHeaderProps {
   title: string;
   subtitle?: ReactNode;
   accent: AdminAccent;
+  /** Texto explicativo opcional, exposto via tooltip "i" ao lado do título. */
+  info?: string;
 }
 
 export function AdminSectionHeader({
   title,
   subtitle,
   accent,
+  info,
 }: AdminSectionHeaderProps) {
   return (
     <div className="mb-3.5 flex items-center gap-3">
@@ -34,6 +38,7 @@ export function AdminSectionHeader({
           </span>
         ) : null}
       </h2>
+      {info ? <AdminInfoTooltip label={info} /> : null}
     </div>
   );
 }
