@@ -110,10 +110,10 @@ function FunnelDiagram() {
         />
 
         {/* Layer 3: clientes */}
-        <polygon points="220,196 580,196 500,260 300,260" fill={ADMIN_LITERAL.funnelBase} />
+        <polygon points="180,196 620,196 540,260 260,260" fill={ADMIN_LITERAL.funnelBase} />
         <FunnelText
-          x={320}
-          rightX={480}
+          x={280}
+          rightX={520}
           y={218}
           left={MOCK_FUNNEL.customers}
           right={MOCK_FUNNEL.leadToCustomer}
