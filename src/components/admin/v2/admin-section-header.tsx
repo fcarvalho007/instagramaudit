@@ -6,7 +6,7 @@
  */
 
 import { type ReactNode } from "react";
-import { ACCENT_500, type AdminAccent } from "./admin-tokens";
+import { type AdminAccent } from "./admin-tokens";
 import { AdminInfoTooltip } from "./admin-info-tooltip";
 
 interface AdminSectionHeaderProps {
@@ -17,6 +17,18 @@ interface AdminSectionHeaderProps {
   info?: string;
 }
 
+/** Hex literais — duplicam ACCENT_500 sem depender de var(--admin-*). */
+const ACCENT_HEX: Record<AdminAccent, string> = {
+  revenue: "#1D9E75",
+  "revenue-alt": "#97C459",
+  leads: "#534AB7",
+  expense: "#BA7517",
+  signal: "#D85A30",
+  danger: "#E24B4A",
+  info: "#378ADD",
+  neutral: "#888780",
+};
+
 export function AdminSectionHeader({
   title,
   subtitle,
@@ -24,16 +36,42 @@ export function AdminSectionHeader({
   info,
 }: AdminSectionHeaderProps) {
   return (
-    <div className="mb-3.5 flex items-center gap-3">
+    <div
+      className="flex items-center"
+      style={{ marginBottom: 14, gap: 12 }}
+    >
       <span
         aria-hidden="true"
-        className="block w-[3px] h-4 rounded-sm shrink-0"
-        style={{ backgroundColor: ACCENT_500[accent] }}
+        style={{
+          display: "block",
+          width: 3,
+          height: 16,
+          borderRadius: 2,
+          flexShrink: 0,
+          backgroundColor: ACCENT_HEX[accent],
+        }}
       />
-      <h2 className="m-0 text-[13px] font-medium uppercase tracking-[0.06em] text-admin-text-primary">
+      <h2
+        style={{
+          margin: 0,
+          fontSize: 13,
+          fontWeight: 500,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: "#2C2C2A",
+        }}
+      >
         {title}
         {subtitle ? (
-          <span className="ml-2 font-normal normal-case tracking-normal text-admin-text-tertiary">
+          <span
+            style={{
+              marginLeft: 8,
+              fontWeight: 400,
+              textTransform: "none",
+              letterSpacing: "normal",
+              color: "#888780",
+            }}
+          >
             · {subtitle}
           </span>
         ) : null}

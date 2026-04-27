@@ -1,69 +1,105 @@
-# Correções visuais finais — /admin v2
+Plano de correção de emergência para as caixas brancas do `/admin`
 
-## Diagnóstico (após inspeção em viewport real)
+Objetivo: eliminar a dependência de tokens Tailwind/CSS nos componentes críticos do admin v2 e forçar renderização visual inequívoca com `style={{ ... }}` e hex literais diretos.
 
-Após auditoria com browser e leitura do código:
+Escopo aprovado pelo teu pedido:
+- `AdminCard`
+- `AdminPageHeader`
+- `AdminSectionHeader`
+- `AdminInfoTooltip`
+- validação visual por screenshot real da `/admin/visao-geral`
 
-1. **Os AdminCard ESTÃO no código** — todas as 5 secções de `visao-geral` (e idem nas outras tabs) estão envolvidas em `<AdminCard>`. O DOM está correcto.
-2. **O problema é puramente visual**: o `AdminCard` actual é **imperceptível** sobre o canvas creme:
-   - `bg: #ffffff` sobre canvas `#F1EFE8` → contraste mínimo
-   - `border: rgb(44 44 42 / 0.08)` → 8% sobre creme = praticamente invisível
-   - **Sem `box-shadow`** → não há elevação que separe o cartão do fundo
-3. **Overlap de texto** no último trapézio do funil: as labels "CONVERSÃO LEAD → CLIENTE" e "MARGEM CLIENTE" sobrepõem-se aos valores `125` / `40.1%`.
-4. O **banner amarelo TEMP_AUTH_BYPASS** está activo desde a inspeção anterior — precisa de ser revertido no fim.
+Notas importantes:
+- O anexo `EMERGENCY-fix-cards.md` não está disponível no ambiente de ficheiros; só aparecem outros anexos. Vou aplicar literalmente a estratégia descrita na tua mensagem.
+- Isto contraria a regra normal do projeto de não hardcodar cores, mas é uma correção de emergência explicitamente pedida para remover a dependência de tokens.
+- Não vou tocar nos ficheiros locked (`src/styles.css`, `src/styles/tokens.css`, `LOCKED_FILES.md`, etc.).
 
-Por isso, ao utilizador parece que "não foram criados cartões". Estão lá, mas não se vêem.
+Implementação técnica
 
-## Alterações propostas (3 ficheiros)
+1. Refazer `src/components/admin/v2/admin-card.tsx`
+- Remover dependência visual de classes como `bg-admin-surface`, `border-admin-border`, `text-admin-text-primary` e `shadow-[var(--shadow-admin-card)]`.
+- Manter a API atual (`variant`, `accent`, `className`, `style`, `children`, `as`) para não partir chamadas existentes.
+- Aplicar inline styles base:
+  - `backgroundColor: "#FFFFFF"`
+  - `border: "1px solid #D3D1C7"`
+  - `borderRadius: "16px"`
+  - `boxShadow: "0 1px 2px rgba(44,44,42,0.06), 0 8px 24px rgba(44,44,42,0.08)"`
+  - `color: "#2C2C2A"`
+  - `padding: "24px"` por defeito
+- Preservar variantes:
+  - `flush`: `padding: 0`
+  - `accent-left`: `borderLeft: "3px solid ..."`
+  - `hero`: fundo claro explícito com gradiente inline, sem tokens Tailwind
+- Preservar `style` externo no fim para permitir overrides intencionais existentes.
 
-### 1. `src/styles/admin-tokens.css` — reforçar token de borda + adicionar shadow
+2. Refazer `src/components/admin/v2/admin-page-header.tsx`
+- Substituir texto, linha inferior e espaçamentos principais por inline styles com hex diretos.
+- Manter classes apenas para layout utilitário quando não afetam cor/fundo/borda crítica.
+- Cores propostas:
+  - título: `#2C2C2A`
+  - subtítulo/eyebrow: `#5F5E5A`
+  - linha inferior: `linear-gradient(to right, rgba(44,44,42,0.18), transparent)`
 
-Aumentar a opacidade da borda padrão e adicionar um token de sombra subtil para os cartões.
+3. Refazer `src/components/admin/v2/admin-section-header.tsx`
+- Remover dependência de `text-admin-*` no título e subtítulo.
+- Usar inline styles para:
+  - barra temática
+  - título uppercase
+  - subtítulo secundário
+- Manter `ACCENT_500` se já resolve para hex/valores estáveis; se necessário, substituir por mapa local de hex literais.
 
-```diff
-- --color-admin-border: rgb(var(--admin-border-rgb) / 0.08);
-- --color-admin-border-strong: rgb(var(--admin-border-rgb) / 0.14);
-+ --color-admin-border: rgb(var(--admin-border-rgb) / 0.14);
-+ --color-admin-border-strong: rgb(var(--admin-border-rgb) / 0.22);
-+ --shadow-admin-card: 0 1px 2px rgb(var(--admin-border-rgb) / 0.04),
-+                      0 4px 12px rgb(var(--admin-border-rgb) / 0.05);
-```
+4. Refazer `src/components/admin/v2/admin-info-tooltip.tsx`
+- Remover dependência de classes `border-admin-*`, `text-admin-*`, `bg-admin-*`, `ring-admin-*` no trigger/conteúdo.
+- Aplicar inline styles no botão:
+  - fundo branco
+  - borda cinzenta visível
+  - texto cinzento
+  - tamanho 16x16
+- Aplicar inline styles no tooltip content:
+  - fundo `#2C2C2A`
+  - texto `#FFFFFF`
+  - sombra explícita
 
-### 2. `src/components/admin/v2/admin-card.tsx` — aplicar sombra + surface ligeiramente off-white nos cartões "default"
+5. Garantir canvas e espaçamento da `/admin/visao-geral`
+- Confirmar que o wrapper `.admin-v2` continua a dar canvas creme.
+- Se o screenshot ainda não mostrar contraste suficiente, ajustar só o wrapper da rota/admin layout com inline `backgroundColor: "#F1EFE8"`, sem mexer em tokens locked.
+- O espaçamento de 56px já aparece como `gap-14` nas páginas; se Tailwind falhar nessa classe, trocar nos wrappers principais por `style={{ gap: 56 }}` apenas nas rotas/admin afetadas.
 
-```diff
-  const base =
--   "rounded-xl border border-admin-border bg-admin-surface text-admin-text-primary";
-+   "rounded-xl border border-admin-border bg-admin-surface text-admin-text-primary shadow-[var(--shadow-admin-card)]";
-```
+Validação obrigatória
 
-A combinação `shadow + border 14%` torna o cartão claramente visível sem ser ruidoso. Mantém a estética editorial (sem o efeito "Material Design pesado").
+1. Correr build/typecheck ou comando equivalente disponível para apanhar erros de JSX/TypeScript.
+2. Abrir a preview na rota `/admin/visao-geral`.
+3. Fazer login se o gate aparecer e a sessão não estiver ativa.
+4. Tirar screenshot real.
+5. Critério visual de aceitação:
+   - caixas brancas claramente visíveis
+   - bordas cinzentas visíveis
+   - secções envolvidas por cartões
+   - canvas creme visível entre cartões
+   - 56px de espaço vertical entre secções principais
+6. Se falhar:
+   - inspecionar um `<AdminCard>` no DOM
+   - recolher `computed background-color`, `border-color`, `box-shadow`, `padding`, `display`, `opacity`
+   - reportar esses valores antes de novas alterações.
 
-### 3. `src/components/admin/v2/visao-geral/funnel-section.tsx` — corrigir overlap do último trapézio
+Ficheiros a editar
+- `src/components/admin/v2/admin-card.tsx`
+- `src/components/admin/v2/admin-page-header.tsx`
+- `src/components/admin/v2/admin-section-header.tsx`
+- `src/components/admin/v2/admin-info-tooltip.tsx`
+- opcional, só se necessário após screenshot: `src/routes/admin.tsx` ou rotas admin específicas para forçar canvas/gap inline
 
-Reposicionar as labels do 3.º trapézio (lead → cliente) de forma equivalente aos restantes — afastar `x` das duas colunas para que não se cruzem. Provável causa: as duas labels têm coordenadas demasiado próximas dentro do trapézio mais estreito.
+Ficheiros a não editar
+- `src/styles.css`
+- `src/styles/tokens.css`
+- `LOCKED_FILES.md`
+- ficheiros de relatório locked
+- pipeline Apify/DataForSEO
 
-(Ler o `<svg>` completo e ajustar `x` de `MARGEM CLIENTE` ou reduzir `font-size` apenas neste trapézio.)
-
-### 4. `src/routes/admin.tsx` — restaurar auth
-
-No fim, descomentar o bloco `AdminAuthShell`, remover o banner amarelo `TEMP_AUTH_BYPASS` e o estado `logout`. Foi pedido apenas para esta sessão de inspeção visual.
-
-## O que NÃO vou tocar
-
-- Nenhum dos ficheiros `LOCKED_FILES.md`
-- Nenhuma das 24 secções com `AdminCard` — a correção é em **um sítio só** (token + componente)
-- `src/styles/tokens.css` ou `src/styles.css` (locked)
-- A página `/report.example`
-
-## Checkpoint
-
-- ☐ `--color-admin-border` aumentado para 14%
-- ☐ `--shadow-admin-card` definido em `admin-tokens.css`
-- ☐ `AdminCard` aplica `shadow-[var(--shadow-admin-card)]`
-- ☐ Cartões agora visíveis sobre o canvas em todas as 6 tabs
-- ☐ Overlap do último trapézio do funil corrigido
-- ☐ Auth do `/admin` restaurada e banner amarelo removido
-- ☐ Verificação visual em `/admin/visao-geral`, `/admin/clientes` e `/admin/sistema` antes de fechar
-
-Após aprovação executo as 4 alterações de uma vez (são pequenas e independentes entre si).
+Checkpoint
+☐ Refazer componentes críticos com inline styles e hex literais
+☐ Preservar API pública dos componentes para não partir o admin
+☐ Confirmar build/typecheck
+☐ Abrir `/admin/visao-geral` na preview
+☐ Tirar screenshot real de validação
+☐ Se falhar, recolher computed styles do `<AdminCard>`

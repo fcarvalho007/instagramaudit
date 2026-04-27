@@ -26,8 +26,19 @@ export function AdminInfoTooltip({ label, side = "top" }: AdminInfoTooltipProps)
           <button
             type="button"
             aria-label={label}
-            className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-admin-border-strong text-[10px] leading-none text-admin-text-tertiary transition-colors hover:border-admin-text-primary hover:text-admin-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-revenue-500 cursor-help"
-            style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}
+            className="inline-flex items-center justify-center cursor-help"
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: 9999,
+              border: "1px solid #B4B2A9",
+              backgroundColor: "#FFFFFF",
+              color: "#5F5E5A",
+              fontSize: 10,
+              lineHeight: 1,
+              fontFamily: "Georgia, serif",
+              fontStyle: "italic",
+            }}
           >
             i
           </button>
@@ -35,7 +46,16 @@ export function AdminInfoTooltip({ label, side = "top" }: AdminInfoTooltipProps)
         <TooltipContent
           side={side}
           sideOffset={8}
-          className="max-w-[280px] bg-admin-neutral-900 px-3 py-2 text-[11px] leading-relaxed text-white shadow-lg"
+          style={{
+            maxWidth: 280,
+            backgroundColor: "#2C2C2A",
+            color: "#FFFFFF",
+            padding: "8px 12px",
+            fontSize: 11,
+            lineHeight: 1.5,
+            borderRadius: 6,
+            boxShadow: "0 8px 20px rgba(0,0,0,0.18)",
+          }}
         >
           {label}
         </TooltipContent>
