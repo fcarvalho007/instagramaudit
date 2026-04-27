@@ -1,98 +1,123 @@
 ## Objectivo
 
-Substituir o stub de `/admin/relatorios` por uma tab completa que unifica "Análises" e "Pedidos" do cockpit legado num **pipeline operacional** (Pedido → Análise Apify → PDF → Email), com métricas, gráficos e tabela de relatórios.
+Substituir o stub de `/admin/perfis` por uma tab completa que responde a 3 perguntas: quais os perfis mais analisados, quais convertem em receita, e onde estão os sinais de oportunidade (pesquisas repetidas sem report).
 
-Sem novas funcionalidades de backend. Sem mexer no cockpit legado nem em `/report.example`. Reutiliza todos os primitivos partilhados.
+Sem novas funcionalidades de backend. Reutiliza todos os primitivos partilhados.
 
 ---
 
 ## Estrutura
 
 ```text
-AdminPageHeader (Relatórios + PeriodSelect + ExportCsvButton)
+AdminPageHeader (Perfis + AdminSearchInput + PeriodSelect + ExportCsvButton)
 
-Section 1 · Pipeline operacional       (accent: signal/coral)
-Section 2 · Métricas operacionais      (accent: revenue/verde)
-Section 3 · Volume e timing diário     (accent: signal/coral)
-Section 4 · Tabela de relatórios       (accent: revenue/verde)
+Section 1 · Visão de perfis              (accent: expense / âmbar)
+Section 2 · Top perfis                   (accent: signal / coral)
+Section 3 · Oportunidades de conversão   (accent: signal / coral)
+Section 4 · Tabela de perfis             (accent: expense / âmbar)
 ```
 
-Espaçamento entre secções: `gap-7` (alinhado às restantes tabs já implementadas — usa o mesmo padrão de `admin.receita.tsx`).
+Espaçamento entre secções: `gap-7` (igual a Receita / Relatórios).
+
+---
+
+## Pré-requisito · estender `AdminSectionHeader`
+
+Adicionar prop opcional `info?: string` ao `AdminSectionHeader` que renderiza um `<AdminInfoTooltip>` ao lado do título (ícone `i`). Backwards-compatible — todas as instâncias actuais continuam a funcionar sem mudança.
+
+```tsx
+interface AdminSectionHeaderProps {
+  title: string;
+  subtitle?: ReactNode;
+  accent: AdminAccent;
+  info?: string; // NEW
+}
+```
 
 ---
 
 ## Ficheiros a criar
 
-### 1. `src/components/admin/v2/relatorios/pipeline-section.tsx`
+### 1. `src/components/admin/v2/perfis/metrics-section.tsx`
 
-`AdminCard padding="loose"` único.
+`AdminSectionHeader title="Visão de perfis" subtitle="últimos 30 dias" accent="expense" info="..."` + grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3` com 4 KPIs `accent-left` (size lg) com tooltip `i` em todos. Reutiliza o componente local `ReportKpi` como referência mas exposto inline (composição idêntica à de `relatorios/metrics-section.tsx`).
 
-**Topo · 4 fases** (`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4`):
-
-Cada fase é um cartão interno com:
-- `background: var(--admin-bg-subtle)`
-- `border-left: 4px solid {accent}`
-- `border-radius: 0 12px 12px 0`
-- `padding: 20px 24px`
-- Eyebrow mono 10px uppercase letter-spacing `0.08em`
-- Label 13px secondary
-- Valor mono 32px weight 500 letter-spacing `-0.02em` (classe `admin-num`)
-- Sub 12px tertiary
-- Indicador de saúde no canto inferior direito: `<HealthDot health="ok|warn|critical" />` — círculo 8px com pulse animation suave (`@keyframes admin-pulse` via style inline, ou `animate-pulse` do Tailwind com tonalidade reduzida)
-
-Cores das fases (literais, adicionadas a `ADMIN_LITERAL` para evitar hex soltos):
-- `pipelineRequest: #534AB7`
-- `pipelineAnalysis: #BA7517`
-- `pipelinePdf: #185FA5`
-- `pipelineEmail: #1D9E75`
-
-**Rodapé · 4 stats agregados** (`border-top` `--color-admin-border`, `pt-6 mt-6`):
-
-`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` com **divisores verticais** entre colunas (border-left a partir da 2ª, escondida em mobile). Cada stat:
-- Eyebrow mono 10px
-- Valor mono 22px (cor semântica: verde para successRate, vermelho se failuresToRecover > 0)
-- Sub 11px tertiary
-
-Sem `<AdminStat>` aqui porque queremos o tratamento de divisor + cor condicional. Mantém o estilo do rodapé `expense-section.tsx`.
-
-### 2. `src/components/admin/v2/relatorios/metrics-section.tsx`
-
-`AdminSectionHeader title="Métricas operacionais" subtitle="últimos 30 dias" accent="revenue"` + grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3` com **4 `KPICard size="lg"`**, todos com `info` (tooltip).
-
-| KPI | accent | delta | info |
+| KPI | accent | delta | tooltip |
 |---|---|---|---|
-| Relatórios entregues · 30d | revenue | up +18% | "Total entregue por email com sucesso nos últimos 30 dias." |
-| Tempo médio · entrega | info | — | "Tempo médio entre pedido e email entregue. P95 = percentil 95." |
-| Taxa de sucesso | revenue | up +0.4 p.p. | "% de relatórios entregues sem intervenção manual." |
-| Custo médio · por relatório | revenue-alt | down -$0.04 (verde, despesa a baixar) | "Apify (scraping) + OpenAI (análise) por relatório." |
+| Perfis únicos · 30d | expense | up +47 novos | "Perfis Instagram diferentes que foram pesquisados ou geraram relatórios pagos." |
+| Repetidos · 2+ análises | signal | — | "Perfis pesquisados múltiplas vezes pelo mesmo utilizador. Sinal forte de intenção de compra." |
+| Conversão · pesquisa → report | revenue | up +2.1 p.p. | "Percentagem de perfis pesquisados que geraram pelo menos um relatório pago." |
+| Receita média · por perfil | revenue-alt | — | "Receita total dividida pelo número de perfis únicos analisados." |
 
-O KPI de custo com delta `down` mas semanticamente positivo: usar prop existente do `KPICard` se houver `deltaTone` ou senão passar `direction: "down"` e confiar na cor. Verificar o primitivo durante implementação — se necessário, adicionar prop `deltaIntent: "good" | "bad"` ao `AdminStat`/`KPICard` para inverter cor (mudança mínima, opt-in).
+### 2. `src/components/admin/v2/perfis/top-profiles-section.tsx`
 
-### 3. `src/components/admin/v2/relatorios/charts-section.tsx`
+`AdminSectionHeader accent="signal" title="Top perfis" subtitle="ranking por volume" info="..."` + `AdminCard` com grid `grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12`.
 
-`AdminSectionHeader title="Volume e timing diário" subtitle="distribuição e SLA" accent="signal"` + `AdminCard` com 2 gráficos lado a lado (`grid grid-cols-1 lg:grid-cols-2 gap-6`).
+**Esquerda — Ranking top 10**:
+- Lista vertical `gap-3.5`. Cada item:
+  - Posição mono 11px tertiary (largura fixa `w-6` para alinhar)
+  - `<AdminAvatar size={32}>` com inicial + cor variando por categoria (mapping local: marca→expense, retalho→leads, influencer→revenue, desporto→info, outros→neutral)
+  - Bloco texto + barras (`flex-1 min-w-0`):
+    - Linha 1: `@handle` 13px medium primary + `categoria · sub` 11px tertiary
+    - Linha 2: barra horizontal 6px cinza `#888780` largura proporcional ao valor relativo a max(análises)
+    - Linha 3: barra horizontal 6px coral `#D85A30` largura proporcional ao mesmo max
+  - Stats à direita (text-right, mono 12px): `47 análises` primary + `12 reports` em coral
+- Fonte: `MOCK_TOP_PROFILES` com 10 perfis listados no spec.
 
-**Esquerda · BarChart empilhado (30d)** — séries `delivered` (verde `#1D9E75`), `failed` (vermelho `#E24B4A`), `queued` (cinza `#888780`). Header com título 16px medium + subtítulo 12px + legenda inline (3 swatches). XAxis dia, YAxis mono.
+**Direita — Donut por categoria**:
+- Header: "Por categoria" + "Distribuição de perfis analisados"
+- `<ResponsiveContainer h=200>` com `<PieChart>`+`<Pie data={MOCK_PROFILES_BY_CATEGORY} dataKey="count" innerRadius={60} outerRadius={90} paddingAngle={2}>` + `<Cell>` por entrada usando `entry.color`.
+- Centro do donut: posicionamento absoluto com `font-mono text-3xl` "284" + label "perfis" 11px tertiary.
+- Legenda em baixo (lista vertical 5 items): swatch 10×10 + categoria primary + pct mono primary + count tertiary.
+- Tooltip Recharts inline (mesmo padrão das outras tabs).
 
-**Direita · LineChart (30d)** — 1 linha coral `#D85A30` + `<ReferenceLine y={300} stroke="#888780" strokeDasharray="4 4" label={{ value: "SLA · 5min", position: "insideTopRight" }} />`. Tooltip formata segundos → `Xm Ys`.
+Cores das categorias adicionadas a `ADMIN_LITERAL`:
+```ts
+categoryBrand: "#BA7517",
+categoryRetail: "#534AB7",
+categoryInfluencer: "#1D9E75",
+categorySport: "#185FA5",
+categoryOther: "#888780",
+```
 
-Tooltip dark cinematográfico inline (não há `chart-tooltip.tsx` partilhado — replica o padrão usado em `revenue-section.tsx` e `expense-section.tsx`, que definem o `<Tooltip content={...} />` localmente).
+### 3. `src/components/admin/v2/perfis/intent-opportunities-section.tsx`
 
-Adicionar literais `chartDelivered`, `chartFailed`, `chartQueued`, `chartTiming`, `slaLine` a `ADMIN_LITERAL`.
+`AdminSectionHeader accent="signal" title="Oportunidades de conversão" info="..."` + grid `grid-cols-1 lg:grid-cols-2 gap-4`.
 
-### 4. `src/components/admin/v2/relatorios/reports-table-section.tsx`
+**Esquerdo — Pesquisas repetidas** (`AdminCard`):
+- Header interno: "Pesquisas repetidas" + "Mesmo perfil pesquisado por mesmo utilizador"
+- Lista de 6 itens (`MOCK_REPEATED_SEARCHES`), cada um:
+  - `bg-admin-canvas` + `rounded-lg` + `px-3.5 py-3` + `flex items-center justify-between`
+  - Esquerda: `@handle` 13px primary + `por <strong>Nome</strong>` 11px secondary (em duas linhas)
+  - Direita: contador mono coral `7×` (16px medium) + janela `48h` 10px tertiary
+- Botão no fim: `<AdminActionButton size="sm">Ver oportunidades completas →</AdminActionButton>`
 
-`AdminSectionHeader title="Relatórios" subtitle="histórico, estado e custo por pedido" accent="revenue"` com **filtros pill** no slot direito do header (4 botões: Todos · 147 / Entregues · 144 / Em curso · 5 / Falhados · 2) — estado local `useState<ReportFilter>`.
+**Direito — Funil por perfil** (`AdminCard`):
+- Header interno: "Funil por perfil" + "Análise grátis → relatório pago, top 5 perfis"
+- Lista de 5 perfis (`MOCK_PROFILE_FUNNELS`), cada um:
+  - Linha header: `@handle` 13px primary à esquerda + `25.5%` mono coral à direita
+  - Barra cinza `#B4B2A9` h-1.5 width 100% + label `47 análises grátis` 11px tertiary
+  - Barra coral `#D85A30` h-1.5 width % proporcional + label `12 reports pagos` 11px tertiary
+  - Espaço entre perfis `pb-3` + `border-b border-admin-border` excepto o último
 
-Os pills usam `AdminBadge` envolvido em `<button>` com aria-pressed; o seleccionado fica em `revenue` solid, os outros em `neutral` ghost. Como `AdminBadge` actual é só visual, criar componente local `<FilterPill>` no ficheiro (não merece primitivo partilhado ainda — ficaria genérico demais a este ponto).
+### 4. `src/components/admin/v2/perfis/profiles-table-section.tsx`
 
-Tabela `AdminCard className="!px-6 !py-5"` com 8 colunas conforme spec. Cada `<tr>` com `hover:bg-[var(--admin-bg-subtle)]`, `cursor-pointer`, `border-t border-admin-border`.
+Header com `AdminSectionHeader title="Tabela de perfis" accent="expense" info="..."` + filtros pill no slot direito (igual padrão de `reports-table-section`):
+- Todos · 284 / Com reports · 87 / Repetidos · 62 / Sem conversão · 197
 
-Coluna de acções usa `AdminActionButton` em variante "icon-only" (verificar se existe — senão usar `<button>` com `aria-label` + Radix Tooltip envolvendo cada ícone Lucide 16px). Ícones: `RotateCw` (re-enviar), `RefreshCw` (re-gerar), `Eye` (ver), `AlertCircle` (investigar — só falhados).
+Tabela 8 colunas:
+- **Perfil**: `<AdminAvatar size={32}>` + `@handle` primary + categoria secondary
+- **Tipo**: `<AdminBadge variant>` por tipo (expense/leads/revenue/neutral)
+- **Análises**: número mono + mini-barra coral inline 4px (largura proporcional ao max)
+- **Reports**: mono coral se >0, tertiary se 0
+- **Conversão**: percentagem mono semaforizada (>30% verde / 15-30% âmbar / <15% vermelho)
+- **Receita**: mono `€XXX` ou `—`
+- **Última**: tempo relativo 12px tertiary
+- **Acção**: ícones com Radix Tooltip (`BarChart3`, `Send`, `ExternalLink` da lucide-react). Linha sem reports omite o `Send`.
 
-Estado da linha "a processar" inclui `<Loader2 className="animate-spin" size={10} />` inline antes do texto.
+Linhas: `border-t border-admin-border`, `hover:bg-[var(--color-admin-surface-muted)]`, `cursor-pointer`. 10 linhas mock.
 
-Rodapé: `pt-3.5 border-t border-admin-border` com texto à esquerda (11px tertiary) + dois botões `←` `→` à direita (`AdminActionButton` icon-only).
+Rodapé: "A mostrar 10 de 284 · ordenado por análises" + paginação `←` `→`.
 
 ---
 
@@ -100,71 +125,72 @@ Rodapé: `pt-3.5 border-t border-admin-border` com texto à esquerda (11px terti
 
 ### `src/lib/admin/mock-data.ts`
 
-Adicionar no fim do ficheiro (sem mexer nos exports existentes):
-
+Adicionar no fim:
 ```ts
-export const MOCK_PIPELINE_PHASES = [...]   // 4 fases
-export const MOCK_PIPELINE_AGGREGATES = {...}
-export const MOCK_REPORT_METRICS = {...}    // 4 KPIs
-export const MOCK_DAILY_VOLUME = [...]      // 30d × {date, delivered, failed, queued}
-export const MOCK_DAILY_TIMING = [...]      // 30d × {date, avgSeconds}
-export const MOCK_REPORTS_LIST = [...]      // 8 linhas conforme tabela do brief
-export type ReportStatus = 'delivered' | 'processing' | 'queued' | 'failed'
-export type ReportOrigin = 'subscription' | 'one_off'
-```
+export type ProfileCategory = "brand" | "retail" | "influencer" | "sport" | "other";
 
-Volume e timing gerados em loop determinístico (seed-like com índice) para parecerem realistas sem aleatoriedade que mude em cada render.
+export const MOCK_PROFILES_METRICS = { uniqueProfiles, repeated, conversion, avgRevenuePerProfile };
+export const MOCK_TOP_PROFILES = [...10 perfis];
+export const MOCK_PROFILES_BY_CATEGORY = [...5 categorias];
+export const MOCK_REPEATED_SEARCHES = [...6 entradas];
+export const MOCK_PROFILE_FUNNELS = [...5 perfis];
+export const MOCK_PROFILES_LIST = [...10 perfis para tabela];
+export const MOCK_PROFILES_COUNTS = { all: 284, withReports: 87, repeated: 62, noConversion: 197 };
+```
 
 ### `src/components/admin/v2/admin-tokens.ts`
 
-Acrescentar ao `ADMIN_LITERAL`:
+Acrescentar a `ADMIN_LITERAL`:
 ```ts
-pipelineRequest: "#534AB7",
-pipelineAnalysis: "#BA7517",
-pipelinePdf: "#185FA5",
-pipelineEmail: "#1D9E75",
-chartDelivered: "#1D9E75",
-chartFailed: "#E24B4A",
-chartQueued: "#888780",
-chartTiming: "#D85A30",
-slaLine: "#888780",
-healthOk: "#1D9E75",
-healthWarn: "#EF9F27",
-healthCritical: "#A32D2D",
+categoryBrand: "#BA7517",
+categoryRetail: "#534AB7",
+categoryInfluencer: "#1D9E75",
+categorySport: "#185FA5",
+categoryOther: "#888780",
+profileBarAnalyses: "#888780",
+profileBarReports: "#D85A30",
+profileFunnelBase: "#B4B2A9",
 ```
 
-### `src/styles/admin-tokens.css`
+### `src/components/admin/v2/admin-section-header.tsx`
 
-Adicionar `@keyframes admin-pulse-soft` + classe `.admin-pulse-dot` (2s ease-in-out infinite, opacity 1 ↔ 0.45). Usado pelo health dot. Mais sóbrio do que `animate-pulse` do Tailwind que oscila demasiado.
+Adicionar prop `info?: string` (ver pré-requisito acima). Backwards-compatible.
 
-### `src/routes/admin.relatorios.tsx`
+### `src/routes/admin.perfis.tsx`
 
-Substituir stub completo por composição igual ao padrão de `admin.receita.tsx`:
+Substituir stub por composição igual ao padrão de `admin.relatorios.tsx`:
 
 ```tsx
+const [period, setPeriod] = useState<AdminPeriod>("30d");
+const [search, setSearch] = useState("");
+
 <AdminPageHeader
-  title="Relatórios"
-  subtitle="Pipeline operacional desde o pedido até à entrega"
-  actions={<><PeriodSelect .../><ExportCsvButton .../></>}
+  title="Perfis"
+  subtitle="Perfis Instagram analisados, repetições e conversão em relatórios"
+  actions={
+    <>
+      <AdminSearchInput placeholder="Pesquisar perfil..." value={search} onChange={setSearch} />
+      <PeriodSelect value={period} onChange={setPeriod} />
+      <ExportCsvButton onExport={...} />
+    </>
+  }
 />
 <div className="flex flex-col gap-7">
-  <PipelineSection />
   <MetricsSection />
-  <ChartsSection />
-  <ReportsTableSection />
+  <TopProfilesSection />
+  <IntentOpportunitiesSection />
+  <ProfilesTableSection />
 </div>
 ```
-
-`useState<AdminPeriod>("30d")` no topo; export `console.info` mock.
 
 ---
 
 ## Não tocar
 
-- `/admin/sistema/cockpit-legado/*`
+- Cockpit legado (`/admin/sistema/cockpit-legado/*`)
 - `/report/example`
-- `src/components/admin/v2/admin-card.tsx`, `kpi-card.tsx`, `admin-stat.tsx` (excepto se for preciso adicionar `deltaIntent` opt-in para o KPI de custo — só nesse caso, com default backwards-compatible)
 - Outras tabs já implementadas
+- `KPICard`, `AdminCard`, `AdminBadge`, `AdminAvatar` (excepto `AdminSectionHeader`, mudança aditiva acima)
 
 ---
 
@@ -175,21 +201,21 @@ bunx tsc --noEmit
 bun run build
 ```
 
-E checagem visual rápida via `code--view` dos ficheiros novos.
+Inspecção visual via `code--view` dos ficheiros novos.
 
 ---
 
 ## Checklist de aceitação
 
-- ☐ `/admin/relatorios` deixa de ser stub
-- ☐ Pipeline 4 fases com border-left colorido + valor mono 32px + health dot pulsante
-- ☐ Rodapé do pipeline com 4 stats agregados e divisores verticais
-- ☐ 4 `KPICard size="lg"` com tooltip "i" em todos
-- ☐ BarChart empilhado (delivered/failed/queued) + LineChart com `ReferenceLine` SLA 5min
-- ☐ Tabela 8 colunas, 8 linhas mock, hover warm, ícones de acção com tooltip
-- ☐ Filtros pill (Todos/Entregues/Em curso/Falhados) com estado local
-- ☐ Estado "a processar" com `Loader2` em spin
-- ☐ Reutilização de `AdminPageHeader`, `AdminSectionHeader`, `AdminCard`, `KPICard`, `AdminBadge`, `PeriodSelect`, `ExportCsvButton`, `AdminActionButton`, `AdminInfoTooltip`
+- ☐ `/admin/perfis` deixa de ser stub
+- ☐ 4 KPICards com tooltip "i" em todos
+- ☐ Top 10 perfis com avatares 32px, posição mono, barras duplas (cinza análises + coral reports)
+- ☐ Donut Recharts com 5 categorias e número 284 centrado
+- ☐ Pesquisas repetidas: 6 itens com bg subtil + contador mono coral
+- ☐ Funil por perfil: 5 perfis com 2 mini-barras empilhadas + percentagem
+- ☐ Tabela 8 colunas com 10 linhas, filtros pill funcionais, conversão semaforizada
+- ☐ Reutiliza `AdminPageHeader`, `AdminSectionHeader`, `AdminCard`, `AdminAvatar`, `AdminBadge`, `AdminActionButton`, `AdminSearchInput`, `PeriodSelect`, `ExportCsvButton`, `AdminInfoTooltip`
 - ☐ Sem hex hardcoded fora de `ADMIN_LITERAL`
+- ☐ Sublinhado da tab activa em neutral-900 (já é regra do `AdminTabsNav`)
 - ☐ `bunx tsc --noEmit` ✓
 - ☐ `bun run build` ✓
