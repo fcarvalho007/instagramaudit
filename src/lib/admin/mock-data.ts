@@ -666,14 +666,30 @@ export const MOCK_SELECTED_CUSTOMER = {
   planLabel: "Pro · €18/mês",
   since: "desde 12 Jan 2026",
   kpis: [
-    { eyebrow: "Receita gerada", value: "€144", sub: "8 meses como sub" },
-    { eyebrow: "Reports gerados", value: "4", sub: "média 0.5/mês" },
-    { eyebrow: "LTV projectado", value: "€692", sub: "a 38 meses" },
+    {
+      eyebrow: "Receita gerada",
+      value: "€144",
+      sub: "8 meses como sub",
+      info: "Soma de todos os pagamentos confirmados deste cliente desde o início da subscrição.",
+    },
+    {
+      eyebrow: "Reports gerados",
+      value: "4",
+      sub: "média 0.5/mês",
+      info: "Número total de reports premium gerados para este cliente; média mensal calculada sobre o tempo de vida activo.",
+    },
+    {
+      eyebrow: "LTV projectado",
+      value: "€692",
+      sub: "a 38 meses",
+      info: "Lifetime Value projectado: receita mensal × tempo médio de retenção esperado para o plano actual.",
+    },
     {
       eyebrow: "Saúde",
       value: "8.4",
       sub: "activa, paga em dia",
       bars: { filled: 4, total: 5 },
+      info: "Health score 0-10 combinando frequência de uso, pontualidade de pagamento e sinais de churn.",
     },
   ],
 } as const;
