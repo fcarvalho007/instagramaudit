@@ -92,6 +92,7 @@ export function WaterfallSection() {
         title="Anatomia do MRR"
         subtitle="como €612 se tornaram €684"
         accent="leads"
+        info="Decomposição do crescimento do MRR: novos subscritores, expansões (upgrades), contracções (downgrades) e churn."
       />
 
       <AdminCard className="!px-7 !py-6">
@@ -120,21 +121,18 @@ export function WaterfallSection() {
               />
               <YAxis
                 domain={[0, 800]}
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                tick={{
+                  fontSize: 10,
+                  fill: "#888780",
+                  fontFamily: "JetBrains Mono, monospace",
+                }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `€${v}`}
                 width={44}
               />
               <Tooltip
-                cursor={{ fill: "rgba(136,135,128,0.06)" }}
-                contentStyle={{
-                  border: "1px solid rgb(44 44 42 / 0.14)",
-                  borderRadius: 8,
-                  fontSize: 11,
-                  padding: "6px 10px",
-                  boxShadow: "none",
-                }}
+                cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
                 content={({ active, payload }) => {
                   if (!active || !payload || !payload.length) return null;
                   const p = payload[0]?.payload as (typeof data)[number] | undefined;
@@ -147,7 +145,15 @@ export function WaterfallSection() {
                     line = `${p.label}: ${sign}€${Math.abs(p.value)}`;
                   }
                   return (
-                    <div className="rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-1.5 text-[11px] text-admin-text-primary shadow-none">
+                    <div
+                      className="rounded-lg px-3.5 py-2.5 text-[11px]"
+                      style={{
+                        background: "#1F1E1B",
+                        color: "#FAF9F5",
+                        fontFamily: "JetBrains Mono, monospace",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      }}
+                    >
                       {line}
                     </div>
                   );
