@@ -1231,6 +1231,10 @@ export const MOCK_SECRETS: MockSecret[] = [
   { name: "RESEND_API_KEY",     configured: true },
   { name: "INTERNAL_API_TOKEN", configured: true },
   { name: "OPENAI_API_KEY",     configured: true },
+  { name: "DATAFORSEO_LOGIN",     configured: true },
+  { name: "DATAFORSEO_PASSWORD",  configured: true },
+  { name: "DATAFORSEO_ENABLED",   configured: true },
+  { name: "DATAFORSEO_ALLOWLIST", configured: true },
 ];
 
 export const MOCK_APIFY_CONFIG: MockApifyConfig = {
