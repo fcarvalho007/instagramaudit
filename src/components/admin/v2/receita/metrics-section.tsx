@@ -1,0 +1,82 @@
+/**
+ * Receita · Secção 1 — Métricas principais.
+ *
+ * Linha 1 (size md): MRR (hero) · ARR · ARPU · Churn.
+ * Linha 2 (size sm): LTV · Receita avulsa · Receita total · Mix subscrição.
+ */
+
+import { AdminSectionHeader } from "../admin-section-header";
+import { KPICard } from "../kpi-card";
+import { MOCK_MRR_METRICS } from "@/lib/admin/mock-data";
+
+export function MetricsSection() {
+  const m = MOCK_MRR_METRICS;
+
+  return (
+    <section>
+      <AdminSectionHeader title="Métricas principais" accent="revenue" />
+
+      {/* Linha 1 */}
+      <div className="mb-3 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <KPICard
+          variant="hero"
+          eyebrow={m.mrr.eyebrow}
+          value={m.mrr.value}
+          delta={{ text: m.mrr.deltaText, direction: m.mrr.deltaDirection }}
+          sub={m.mrr.sub}
+        />
+        <KPICard
+          eyebrow={m.arr.eyebrow}
+          value={m.arr.value}
+          sub={m.arr.sub}
+        />
+        <KPICard
+          eyebrow={m.arpu.eyebrow}
+          value={m.arpu.value}
+          sub={m.arpu.sub}
+        />
+        <KPICard
+          eyebrow={m.churn.eyebrow}
+          value={
+            <span className="inline-flex items-baseline gap-2">
+              {m.churn.value}
+              <span className="font-sans text-[11px] font-normal text-admin-danger-700">
+                {m.churn.suffix}
+              </span>
+            </span>
+          }
+          sub={m.churn.sub}
+        />
+      </div>
+
+      {/* Linha 2 — métricas mais pequenas */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <KPICard
+          size="sm"
+          eyebrow={m.ltv.eyebrow}
+          value={m.ltv.value}
+          sub={m.ltv.sub}
+        />
+        <KPICard
+          size="sm"
+          eyebrow={m.oneOff.eyebrow}
+          value={m.oneOff.value}
+          sub={m.oneOff.sub}
+        />
+        <KPICard
+          size="sm"
+          eyebrow={m.total.eyebrow}
+          value={m.total.value}
+          delta={{ text: m.total.deltaText, direction: m.total.deltaDirection }}
+          sub={m.total.sub}
+        />
+        <KPICard
+          size="sm"
+          eyebrow={m.mix.eyebrow}
+          value={m.mix.value}
+          sub={m.mix.sub}
+        />
+      </div>
+    </section>
+  );
+}
