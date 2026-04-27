@@ -29,7 +29,7 @@ export function LegacyAccessSection() {
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center gap-4 px-6 py-5 text-left transition-colors hover:bg-admin-surface-muted/60"
+          className="flex w-full items-center gap-4 px-6 py-5 text-left transition-colors hover:bg-admin-surface-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-leads-500"
         >
           <div className="flex-1">
             <p className="m-0 text-[14px] font-medium text-admin-text-primary">
@@ -40,9 +40,14 @@ export function LegacyAccessSection() {
               Acesso temporário durante a transição.
             </p>
           </div>
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary sm:inline">
+            {open ? "Recolher" : "Expandir"}
+          </span>
           <ChevronRight
             size={18}
-            className="shrink-0 text-admin-text-tertiary transition-transform"
+            className={`shrink-0 transition-transform ${
+              open ? "text-admin-text-secondary" : "text-admin-text-tertiary"
+            }`}
             style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
           />
         </button>
