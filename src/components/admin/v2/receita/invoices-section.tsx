@@ -16,6 +16,7 @@ export function InvoicesSection() {
         title="Últimas faturas"
         subtitle="fluxo financeiro recente"
         accent="revenue"
+        info="Movimentos financeiros recentes (subscrições renovadas + reports avulsos vendidos)."
       />
 
       <AdminCard className="!px-5 !py-4">
@@ -35,28 +36,34 @@ export function InvoicesSection() {
               {MOCK_INVOICES.map((row, i) => (
                 <tr
                   key={i}
-                  className="border-t border-admin-border transition-colors hover:bg-[var(--admin-bg-subtle)]"
+                  className="border-t border-admin-border-soft transition-colors hover:bg-admin-bg-subtle"
                 >
-                  <td className="py-2.5 pr-3 font-mono text-admin-text-secondary whitespace-nowrap">
+                  <td
+                    className="py-3.5 pr-3 font-mono text-admin-text-secondary whitespace-nowrap"
+                    style={{ fontFeatureSettings: "'tnum'" }}
+                  >
                     {row.date}
                   </td>
-                  <td className="py-2.5 px-3 text-admin-text-primary whitespace-nowrap">
+                  <td className="py-3.5 px-3 text-admin-text-primary whitespace-nowrap">
                     {row.customer}
                   </td>
-                  <td className="py-2.5 px-3 whitespace-nowrap">
+                  <td className="py-3.5 px-3 whitespace-nowrap">
                     <AdminBadge
                       variant={row.type === "subscrição" ? "revenue" : "expense"}
                     >
                       {row.type}
                     </AdminBadge>
                   </td>
-                  <td className="py-2.5 px-3 text-admin-text-secondary">
+                  <td className="py-3.5 px-3 text-admin-text-secondary">
                     {row.item}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-medium text-admin-text-primary whitespace-nowrap">
+                  <td
+                    className="py-3.5 px-3 text-right font-mono font-medium text-admin-text-primary whitespace-nowrap"
+                    style={{ fontFeatureSettings: "'tnum'" }}
+                  >
                     {row.amount}
                   </td>
-                  <td className="py-2.5 pl-3 whitespace-nowrap">
+                  <td className="py-3.5 pl-3 whitespace-nowrap">
                     <AdminBadge
                       variant={row.status === "paga" ? "revenue" : "danger"}
                     >
