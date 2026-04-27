@@ -56,13 +56,13 @@ function RankingColumn() {
     <div>
       <header className="mb-4">
         <h3 className="m-0 text-[16px] font-medium text-admin-text-primary">
-          Ranking top 10
+          Volume vs reports pagos
         </h3>
         <p className="mt-1 text-[12px] text-admin-text-tertiary">
-          Volume vs relatórios pagos por perfil
+          Top 10 perfis · barra cinza = análises totais, fill coral = reports pagos
         </p>
       </header>
-      <ul className="m-0 flex list-none flex-col gap-3.5 p-0">
+      <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {MOCK_TOP_PROFILES.map((p) => (
           <li key={p.handle}>
             <RankingRow profile={p} />
