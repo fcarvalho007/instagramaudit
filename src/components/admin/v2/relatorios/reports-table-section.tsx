@@ -88,6 +88,7 @@ export function ReportsTableSection() {
             title="Relatórios"
             subtitle="histórico, estado e custo por pedido"
             accent="revenue"
+            info="Histórico completo de relatórios pedidos com estado actual, duração e custo por execução. Filtros pill no topo direito."
           />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
