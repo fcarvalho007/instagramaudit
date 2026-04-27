@@ -28,6 +28,7 @@ export function MetricsSection() {
         title="Métricas operacionais"
         subtitle="últimos 30 dias"
         accent="revenue"
+        info="Volume e desempenho do pipeline de relatórios nos últimos 30 dias."
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

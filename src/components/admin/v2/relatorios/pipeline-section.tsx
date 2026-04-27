@@ -40,6 +40,7 @@ export function PipelineSection() {
         title="Pipeline operacional"
         subtitle="do pedido à entrega"
         accent="signal"
+        info="Cada relatório passa por 4 fases: pedido recebido → análise Apify → PDF gerado → email entregue. Fases bloqueadas indicam intervenção manual necessária."
       />
 
       <AdminCard className="!p-7">
