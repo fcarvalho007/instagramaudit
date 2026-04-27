@@ -1,105 +1,76 @@
-Plano de correção de emergência para as caixas brancas do `/admin`
+Plano de remate da emergência das caixas brancas do `/admin`
 
-Objetivo: eliminar a dependência de tokens Tailwind/CSS nos componentes críticos do admin v2 e forçar renderização visual inequívoca com `style={{ ... }}` e hex literais diretos.
+Contexto verificado agora
 
-Escopo aprovado pelo teu pedido:
-- `AdminCard`
-- `AdminPageHeader`
-- `AdminSectionHeader`
-- `AdminInfoTooltip`
-- validação visual por screenshot real da `/admin/visao-geral`
+Os componentes críticos já foram refeitos com inline styles + hex literais no turno anterior:
 
-Notas importantes:
-- O anexo `EMERGENCY-fix-cards.md` não está disponível no ambiente de ficheiros; só aparecem outros anexos. Vou aplicar literalmente a estratégia descrita na tua mensagem.
-- Isto contraria a regra normal do projeto de não hardcodar cores, mas é uma correção de emergência explicitamente pedida para remover a dependência de tokens.
-- Não vou tocar nos ficheiros locked (`src/styles.css`, `src/styles/tokens.css`, `LOCKED_FILES.md`, etc.).
+- `src/components/admin/v2/admin-card.tsx` — `#FFFFFF`, borda `#D3D1C7`, radius 16, sombra dupla, variantes `default`, `flush`, `accent-left`, `hero` (gradiente esmeralda)
+- `src/components/admin/v2/admin-page-header.tsx` — H1 36px `#2C2C2A`, eyebrow mono `#5F5E5A`, linha gradiente
+- `src/components/admin/v2/admin-section-header.tsx` — barra temática + título uppercase, hex de accent local
+- `src/components/admin/v2/admin-info-tooltip.tsx` — botão "i" inline + tooltip Radix dark
+- Variants `hero` confirmadas em `revenue-section.tsx` e `metrics-section.tsx` (cartão MRR)
+
+Falta cumprir três pedidos do prompt de emergência:
+
+1. canvas creme inequívoco
+2. gap 56px inline em todas as 6 rotas (em vez de `gap-14`)
+3. validação visual real
 
 Implementação técnica
 
-1. Refazer `src/components/admin/v2/admin-card.tsx`
-- Remover dependência visual de classes como `bg-admin-surface`, `border-admin-border`, `text-admin-text-primary` e `shadow-[var(--shadow-admin-card)]`.
-- Manter a API atual (`variant`, `accent`, `className`, `style`, `children`, `as`) para não partir chamadas existentes.
-- Aplicar inline styles base:
-  - `backgroundColor: "#FFFFFF"`
-  - `border: "1px solid #D3D1C7"`
-  - `borderRadius: "16px"`
-  - `boxShadow: "0 1px 2px rgba(44,44,42,0.06), 0 8px 24px rgba(44,44,42,0.08)"`
-  - `color: "#2C2C2A"`
-  - `padding: "24px"` por defeito
-- Preservar variantes:
-  - `flush`: `padding: 0`
-  - `accent-left`: `borderLeft: "3px solid ..."`
-  - `hero`: fundo claro explícito com gradiente inline, sem tokens Tailwind
-- Preservar `style` externo no fim para permitir overrides intencionais existentes.
+1. Forçar canvas creme `#FAF9F5` no layout `/admin`
+- Editar `src/routes/admin.tsx`.
+- Adicionar `style={{ backgroundColor: "#FAF9F5", minHeight: "100vh" }}` ao wrapper `<div className="admin-v2 min-h-screen">` para garantir contraste com cartões brancos, mesmo se o token `--admin-neutral-50` falhar.
+- Manter classe `.admin-v2` para tipografia.
 
-2. Refazer `src/components/admin/v2/admin-page-header.tsx`
-- Substituir texto, linha inferior e espaçamentos principais por inline styles com hex diretos.
-- Manter classes apenas para layout utilitário quando não afetam cor/fundo/borda crítica.
-- Cores propostas:
-  - título: `#2C2C2A`
-  - subtítulo/eyebrow: `#5F5E5A`
-  - linha inferior: `linear-gradient(to right, rgba(44,44,42,0.18), transparent)`
+2. Substituir `gap-14` por inline `gap: 56` nas 6 rotas
+- Ficheiros:
+  - `src/routes/admin.visao-geral.tsx` (linha 36)
+  - `src/routes/admin.receita.tsx` (linha 48)
+  - `src/routes/admin.clientes.tsx` (linha 34)
+  - `src/routes/admin.relatorios.tsx` (linha 51)
+  - `src/routes/admin.perfis.tsx` (linha 60)
+  - `src/routes/admin.sistema.tsx` (linha 61)
+- Mudança em cada: `<div className="flex flex-col gap-14">` → `<div className="flex flex-col" style={{ gap: 56 }}>`.
 
-3. Refazer `src/components/admin/v2/admin-section-header.tsx`
-- Remover dependência de `text-admin-*` no título e subtítulo.
-- Usar inline styles para:
-  - barra temática
-  - título uppercase
-  - subtítulo secundário
-- Manter `ACCENT_500` se já resolve para hex/valores estáveis; se necessário, substituir por mapa local de hex literais.
-
-4. Refazer `src/components/admin/v2/admin-info-tooltip.tsx`
-- Remover dependência de classes `border-admin-*`, `text-admin-*`, `bg-admin-*`, `ring-admin-*` no trigger/conteúdo.
-- Aplicar inline styles no botão:
-  - fundo branco
-  - borda cinzenta visível
-  - texto cinzento
-  - tamanho 16x16
-- Aplicar inline styles no tooltip content:
-  - fundo `#2C2C2A`
-  - texto `#FFFFFF`
-  - sombra explícita
-
-5. Garantir canvas e espaçamento da `/admin/visao-geral`
-- Confirmar que o wrapper `.admin-v2` continua a dar canvas creme.
-- Se o screenshot ainda não mostrar contraste suficiente, ajustar só o wrapper da rota/admin layout com inline `backgroundColor: "#F1EFE8"`, sem mexer em tokens locked.
-- O espaçamento de 56px já aparece como `gap-14` nas páginas; se Tailwind falhar nessa classe, trocar nos wrappers principais por `style={{ gap: 56 }}` apenas nas rotas/admin afetadas.
-
-Validação obrigatória
-
-1. Correr build/typecheck ou comando equivalente disponível para apanhar erros de JSX/TypeScript.
-2. Abrir a preview na rota `/admin/visao-geral`.
-3. Fazer login se o gate aparecer e a sessão não estiver ativa.
-4. Tirar screenshot real.
-5. Critério visual de aceitação:
-   - caixas brancas claramente visíveis
-   - bordas cinzentas visíveis
-   - secções envolvidas por cartões
-   - canvas creme visível entre cartões
-   - 56px de espaço vertical entre secções principais
-6. Se falhar:
-   - inspecionar um `<AdminCard>` no DOM
-   - recolher `computed background-color`, `border-color`, `box-shadow`, `padding`, `display`, `opacity`
-   - reportar esses valores antes de novas alterações.
+3. Validação obrigatória
+- Correr `bunx tsc --noEmit`.
+- Abrir preview em `/admin/visao-geral` via browser tool.
+- Login Google (utilizador faz se gate aparecer) — alternativa: confirmar visualmente apenas após sessão activa.
+- Tirar screenshot e validar os 7 pontos do critério:
+  1. canvas `#FAF9F5`
+  2. H1 36px com linha divisora
+  3. cada secção em caixa branca distinta com borda `#D3D1C7` e radius 16
+  4. ~56px entre caixas
+  5. cartão MRR com gradiente verde-claro
+  6. tooltips "i" visíveis
+  7. sombra subtil
+- Se algum cartão ainda parecer flat, inspeccionar `<div>` raiz do `AdminCard` no DOM e capturar `computed background-color`, `border`, `box-shadow`, `opacity`, `display`, e qualquer regra a sobrepor com `!important`.
 
 Ficheiros a editar
-- `src/components/admin/v2/admin-card.tsx`
-- `src/components/admin/v2/admin-page-header.tsx`
-- `src/components/admin/v2/admin-section-header.tsx`
-- `src/components/admin/v2/admin-info-tooltip.tsx`
-- opcional, só se necessário após screenshot: `src/routes/admin.tsx` ou rotas admin específicas para forçar canvas/gap inline
+- `src/routes/admin.tsx`
+- `src/routes/admin.visao-geral.tsx`
+- `src/routes/admin.receita.tsx`
+- `src/routes/admin.clientes.tsx`
+- `src/routes/admin.relatorios.tsx`
+- `src/routes/admin.perfis.tsx`
+- `src/routes/admin.sistema.tsx`
 
-Ficheiros a não editar
-- `src/styles.css`
-- `src/styles/tokens.css`
-- `LOCKED_FILES.md`
-- ficheiros de relatório locked
-- pipeline Apify/DataForSEO
+Ficheiros a NÃO editar (locked ou fora de escopo)
+- `src/styles.css`, `src/styles/tokens.css`, `LOCKED_FILES.md`
+- componentes `/report/example`
+- cockpit legado
+- conteúdo das tabs (texto, mock data, gráficos)
+
+Notas
+- Componentes `AdminCard`, `AdminPageHeader`, `AdminSectionHeader`, `AdminInfoTooltip` já estão à prova de tokens — não vão ser tocados de novo.
+- Não vou instalar `@radix-ui/react-tooltip` directamente: o `AdminInfoTooltip` usa o wrapper shadcn já existente em `@/components/ui/tooltip` (que por baixo é Radix). Funciona igual.
+- O ponto 7 do prompt original ("não fazer") fica respeitado.
 
 Checkpoint
-☐ Refazer componentes críticos com inline styles e hex literais
-☐ Preservar API pública dos componentes para não partir o admin
-☐ Confirmar build/typecheck
-☐ Abrir `/admin/visao-geral` na preview
-☐ Tirar screenshot real de validação
-☐ Se falhar, recolher computed styles do `<AdminCard>`
+☐ Forçar canvas `#FAF9F5` inline em `admin.tsx`
+☐ Trocar `gap-14` por `gap: 56` inline em 6 rotas
+☐ Correr `bunx tsc --noEmit`
+☐ Abrir `/admin/visao-geral` na preview e tirar screenshot
+☐ Validar os 7 pontos do critério visual
+☐ Se falhar, recolher computed styles do `AdminCard` no DOM
