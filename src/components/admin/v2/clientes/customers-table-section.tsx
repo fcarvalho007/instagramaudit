@@ -41,15 +41,11 @@ export function CustomersTableSection() {
   return (
     <section>
       <div className="mb-3.5 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="block w-[3px] h-4 rounded-sm shrink-0 bg-admin-revenue-500"
-          />
-          <h2 className="m-0 text-[13px] font-medium uppercase tracking-[0.06em] text-admin-text-primary">
-            Lista de clientes
-          </h2>
-        </div>
+        <AdminSectionHeader
+          title="Lista de clientes"
+          accent="revenue"
+          info="Todos os clientes ordenados por última actividade. Os filtros pill permitem ver subscritores, avulsos ou contas em risco."
+        />
         <div
           className="ml-auto flex items-center gap-1.5"
           role="group"
@@ -126,20 +122,22 @@ export function CustomersTableSection() {
                   <AdminBadge variant={c.badgeVariant}>{c.badgeLabel}</AdminBadge>
                 </td>
                 <td
-                  className={`py-3 pr-3 text-right font-medium ${
+                  className={`py-3 pr-3 text-right font-mono font-medium ${
                     c.ltv === "—"
                       ? "text-admin-text-tertiary"
                       : "text-admin-text-primary"
                   }`}
+                  style={{ fontFeatureSettings: '"tnum"' }}
                 >
                   {c.ltv}
                 </td>
                 <td
-                  className={`py-3 pr-3 text-right ${
+                  className={`py-3 pr-3 text-right font-mono ${
                     c.reportsMuted
                       ? "text-admin-text-secondary"
                       : "text-admin-text-primary"
                   }`}
+                  style={{ fontFeatureSettings: '"tnum"' }}
                 >
                   {c.reports}
                 </td>

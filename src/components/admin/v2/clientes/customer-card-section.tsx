@@ -77,6 +77,7 @@ export function CustomerCardSection() {
         title={`Ficha · ${c.name}`}
         subtitle="selecionada na tabela acima"
         accent="leads"
+        info="Vista detalhada do cliente seleccionado: KPIs de saúde, timeline de actividade, perfis analisados e notas internas."
       />
       <AdminCard className="!px-8 !py-7">
         {/* Header da ficha */}
