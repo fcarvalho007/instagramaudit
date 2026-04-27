@@ -190,3 +190,17 @@
 .admin-cockpit-legacy > div > div:first-child > .space-y-1 {
   display: none;
 }
+
+/**
+ * Pulse suave para indicadores de saúde (ex.: dot de operacional/warn/critical
+ * no topo do pipeline da tab Relatórios).
+ * Mais sóbrio do que `animate-pulse` padrão do Tailwind.
+ */
+@keyframes admin-pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.92); }
+}
+
+.admin-pulse-dot {
+  animation: admin-pulse-soft 2s ease-in-out infinite;
+}
