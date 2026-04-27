@@ -1,76 +1,95 @@
-Plano de remate da emergência das caixas brancas do `/admin`
+Plano · Vista pública de relatório real para o `/analyze/$username`
 
-Contexto verificado agora
+Conclusão da inspecção
+- A funcionalidade pedida **já está implementada** no estado actual do projecto:
+  - `src/routes/analyze.$username.tsx` chama `fetchPublicAnalysis` (que aciona `/api/analyze-public-v1`), em seguida lê `/api/public/analysis-snapshot/{username}`, corre `snapshotToReportData` e renderiza `ReportThemeWrapper + ReportPage` com os dados reais.
+  - O `ReportPage` (locked) já aceita `data?` opcional via `ReportDataProvider`. Sem necessidade de tocar no ficheiro locked.
+  - Existe já um `CoverageStrip` no topo com publicações, janela em dias, dataset de benchmark e estado de concorrentes.
+  - Os componentes "premium-locked / dashboard dark" (`PublicAnalysisDashboard`, `PremiumLockedSection`, `ReportGateModal`) **já não são usados** por nenhuma rota — são código morto.
+  - O `/admin/report-preview/snapshot/$snapshotId` continua intacto e usa o mesmo adaptador.
+  - `/report/example` mantém-se isolado com o `report-mock-data.ts`.
 
-Os componentes críticos já foram refeitos com inline styles + hex literais no turno anterior:
+Diferenças residuais face ao pedido
+1. **AI insights vazios**: `ReportAiInsights` mostra um cartão com mensagem placeholder em vez de **esconder** a secção quando `aiInsights.length === 0` e `coverage.aiInsights === "empty"`. O pedido é explícito: "Hide AI insights if aiInsights is empty".
+2. **Nota de origem dos dados**: o `CoverageStrip` actual não inclui a frase "relatório baseado em dados públicos do Instagram".
+3. **Limpeza opcional**: `public-analysis-dashboard.tsx`, `premium-locked-section.tsx`, `report-gate-modal.tsx` são código morto; podem ficar como estão (não interferem) ou ser removidos.
 
-- `src/components/admin/v2/admin-card.tsx` — `#FFFFFF`, borda `#D3D1C7`, radius 16, sombra dupla, variantes `default`, `flush`, `accent-left`, `hero` (gradiente esmeralda)
-- `src/components/admin/v2/admin-page-header.tsx` — H1 36px `#2C2C2A`, eyebrow mono `#5F5E5A`, linha gradiente
-- `src/components/admin/v2/admin-section-header.tsx` — barra temática + título uppercase, hex de accent local
-- `src/components/admin/v2/admin-info-tooltip.tsx` — botão "i" inline + tooltip Radix dark
-- Variants `hero` confirmadas em `revenue-section.tsx` e `metrics-section.tsx` (cartão MRR)
-
-Falta cumprir três pedidos do prompt de emergência:
-
-1. canvas creme inequívoco
-2. gap 56px inline em todas as 6 rotas (em vez de `gap-14`)
-3. validação visual real
-
-Implementação técnica
-
-1. Forçar canvas creme `#FAF9F5` no layout `/admin`
-- Editar `src/routes/admin.tsx`.
-- Adicionar `style={{ backgroundColor: "#FAF9F5", minHeight: "100vh" }}` ao wrapper `<div className="admin-v2 min-h-screen">` para garantir contraste com cartões brancos, mesmo se o token `--admin-neutral-50` falhar.
-- Manter classe `.admin-v2` para tipografia.
-
-2. Substituir `gap-14` por inline `gap: 56` nas 6 rotas
-- Ficheiros:
-  - `src/routes/admin.visao-geral.tsx` (linha 36)
-  - `src/routes/admin.receita.tsx` (linha 48)
-  - `src/routes/admin.clientes.tsx` (linha 34)
-  - `src/routes/admin.relatorios.tsx` (linha 51)
-  - `src/routes/admin.perfis.tsx` (linha 60)
-  - `src/routes/admin.sistema.tsx` (linha 61)
-- Mudança em cada: `<div className="flex flex-col gap-14">` → `<div className="flex flex-col" style={{ gap: 56 }}>`.
-
-3. Validação obrigatória
-- Correr `bunx tsc --noEmit`.
-- Abrir preview em `/admin/visao-geral` via browser tool.
-- Login Google (utilizador faz se gate aparecer) — alternativa: confirmar visualmente apenas após sessão activa.
-- Tirar screenshot e validar os 7 pontos do critério:
-  1. canvas `#FAF9F5`
-  2. H1 36px com linha divisora
-  3. cada secção em caixa branca distinta com borda `#D3D1C7` e radius 16
-  4. ~56px entre caixas
-  5. cartão MRR com gradiente verde-claro
-  6. tooltips "i" visíveis
-  7. sombra subtil
-- Se algum cartão ainda parecer flat, inspeccionar `<div>` raiz do `AdminCard` no DOM e capturar `computed background-color`, `border`, `box-shadow`, `opacity`, `display`, e qualquer regra a sobrepor com `!important`.
+Ficheiros a inspeccionar (referência rápida)
+- `src/routes/analyze.$username.tsx` — rota actual (já correcta)
+- `src/components/report/report-page.tsx` (locked, não tocar)
+- `src/components/report/report-ai-insights.tsx` — alvo da única alteração
+- `src/components/report/report-data-context.tsx`
+- `src/lib/report/snapshot-to-report-data.ts`
+- `src/lib/analysis/client.ts`
+- `src/routes/api/analyze-public-v1.ts`
+- `src/routes/api/public/analysis-snapshot.$username.ts`
+- `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` (validação de regressão)
 
 Ficheiros a editar
-- `src/routes/admin.tsx`
-- `src/routes/admin.visao-geral.tsx`
-- `src/routes/admin.receita.tsx`
-- `src/routes/admin.clientes.tsx`
-- `src/routes/admin.relatorios.tsx`
-- `src/routes/admin.perfis.tsx`
-- `src/routes/admin.sistema.tsx`
+- `src/routes/analyze.$username.tsx` — adicionar uma linha textual no `CoverageStrip` com a nota "Dados públicos do Instagram · amostra recolhida via Apify".
+- `src/components/report/report-ai-insights.tsx` — quando `insights.length === 0`, devolver `null` (esconde a secção). Mantém o branch real intacto.
 
-Ficheiros a NÃO editar (locked ou fora de escopo)
-- `src/styles.css`, `src/styles/tokens.css`, `LOCKED_FILES.md`
-- componentes `/report/example`
-- cockpit legado
-- conteúdo das tabs (texto, mock data, gráficos)
+Ficheiros a NÃO editar
+- `src/components/report/report-page.tsx` (locked)
+- Qualquer ficheiro em `src/components/report/` listado em `LOCKED_FILES.md`
+- `src/routes/report.example.tsx`
+- `src/routes/api/analyze-public-v1.ts` (lógica Apify)
+- `src/lib/apify/*`, kill-switch, allowlist, cache
+- Schema Supabase
+- PDF, email, billing, DataForSEO, payments, landing
 
-Notas
-- Componentes `AdminCard`, `AdminPageHeader`, `AdminSectionHeader`, `AdminInfoTooltip` já estão à prova de tokens — não vão ser tocados de novo.
-- Não vou instalar `@radix-ui/react-tooltip` directamente: o `AdminInfoTooltip` usa o wrapper shadcn já existente em `@/components/ui/tooltip` (que por baixo é Radix). Funciona igual.
-- O ponto 7 do prompt original ("não fazer") fica respeitado.
+Justificação para ignorar `report-page.tsx` apesar de locked
+- Não precisa de ser editado: já recebe `data?` e usa `ReportDataProvider`. A vista pública já o renderiza directamente. Sem violação da regra de locked files.
 
-Checkpoint
-☐ Forçar canvas `#FAF9F5` inline em `admin.tsx`
-☐ Trocar `gap-14` por `gap: 56` inline em 6 rotas
-☐ Correr `bunx tsc --noEmit`
-☐ Abrir `/admin/visao-geral` na preview e tirar screenshot
-☐ Validar os 7 pontos do critério visual
-☐ Se falhar, recolher computed styles do `AdminCard` no DOM
+Fluxo de dados (já existente, mantido)
+```text
+Browser /analyze/@handle
+    │
+    ▼
+fetchPublicAnalysis(handle, competitors)
+    │  POST /api/analyze-public-v1
+    ▼
+api/analyze-public-v1.ts
+    │  Apify (com kill-switch, allowlist, cache)
+    │  ↳ persiste em analysis_snapshots
+    ▼
+GET /api/public/analysis-snapshot/{handle}
+    │  → { payload, meta, benchmark } (benchmark resolvido via benchmark_references)
+    ▼
+snapshotToReportData({ payload, meta, benchmark, isAdminPreview: false })
+    │  → { data: ReportData, coverage }
+    ▼
+<ReportThemeWrapper>
+  <CoverageStrip result/>     ← publicações · janela · benchmark · concorrentes · nota fonte
+  <ReportPage data={result.data}/>
+       ├─ Header, KPIs, Temporal, Benchmark, Formatos
+       ├─ Competidores, Top posts, Heatmap, Best days, Hashtags
+       ├─ AiInsights → null se vazio    ← única mudança real
+       └─ Footer
+</ReportThemeWrapper>
+```
+
+Cópia em pt-PT do micro-acrescento ao `CoverageStrip`
+- Linha discreta abaixo dos chips: "Relatório baseado em dados públicos do Instagram." ou equivalente sóbrio. Sem promessas exageradas.
+
+Avaliação de risco
+- **Baixo**: a alteração ao `ReportAiInsights` é isolada e devolve `null` num único caminho — sem efeitos cruzados nos outros componentes do relatório.
+- **Baixo**: a linha de nota no `CoverageStrip` é apenas markup adicional dentro da rota.
+- **Nenhum risco** para `/admin/report-preview/snapshot/$snapshotId`: o admin preview também usa o mesmo `ReportPage` e o mesmo adaptador. Esconder AI insights vazios beneficia ambos.
+- **Nenhum risco** para `/report/example`: o mock tem `aiInsights` populados, portanto a secção continua visível.
+- **Nenhum risco** para o pipeline Apify, schema ou rotas de API.
+- Código morto (`PublicAnalysisDashboard`, etc.) fica para um eventual ciclo de limpeza separado.
+
+Checklist de validação
+☐ `/analyze/@frederico.m.carvalho` carrega e mostra: skeleton → relatório real
+☐ `CoverageStrip` exibe contagens reais e a nota de fonte
+☐ Quando `aiInsights` está vazio, a secção deixa de ser renderizada
+☐ Quando `aiInsights` tem itens (mock do `/report/example`), a secção continua a aparecer
+☐ `/report/example` mantém-se idêntico
+☐ `/admin/report-preview/snapshot/$snapshotId` continua a renderizar correctamente, com a secção de AI insights escondida nos snapshots reais e visível quando houver insights
+☐ `/admin/report-preview/$username` (preview por handle) mantém comportamento
+☐ `bunx tsc --noEmit` passa sem erros
+☐ Sem novas dependências, sem mexer em LOCKED_FILES, sem alterações de schema
+
+Resposta às perguntas explícitas do pedido
+- **Pode ser feito sem tocar em `/report/example`?** Sim. As alterações ficam confinadas a `analyze.$username.tsx` e `report-ai-insights.tsx`. O `/report/example` continua a usar `report-mock-data.ts` sem qualquer modificação.

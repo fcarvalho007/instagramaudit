@@ -35,10 +35,7 @@ function AdminLayout() {
 
   return (
     <AdminAuthShell onLogoutReady={(handler) => setLogout(() => handler)}>
-      <div
-        className="admin-v2"
-        style={{ backgroundColor: "#FAF9F5", minHeight: "100vh" }}
-      >
+      <div className="admin-v2 min-h-screen">
         <main
           style={{
             maxWidth: 1280,
