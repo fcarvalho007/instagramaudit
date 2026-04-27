@@ -27,11 +27,15 @@ export function CohortSection() {
         title="Cohort de retenção"
         subtitle="% de subscritores que se mantêm activos"
         accent="leads"
+        info="Percentagem de subscritores que se mantêm activos após o registo, agrupados por mês de entrada."
       />
 
       <AdminCard className="!px-6 !py-5">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12px]">
+          <table
+            className="w-full text-[12px]"
+            style={{ borderCollapse: "separate", borderSpacing: "4px" }}
+          >
             <thead>
               <tr>
                 <th className="admin-eyebrow text-left pb-2 pr-3 font-normal">Cohort</th>
@@ -48,18 +52,18 @@ export function CohortSection() {
             </thead>
             <tbody>
               {MOCK_COHORTS.map((row) => (
-                <tr
-                  key={row.cohort}
-                  className="border-t border-admin-border"
-                >
+                <tr key={row.cohort}>
                   <td className="py-2 pr-3 text-admin-text-primary font-medium">
                     {row.cohort}
                   </td>
-                  <td className="py-2 px-3 text-right font-mono text-admin-text-secondary">
+                  <td
+                    className="py-2 px-3 text-right font-mono text-admin-text-secondary"
+                    style={{ fontFeatureSettings: "'tnum'" }}
+                  >
                     {row.start}
                   </td>
                   {row.retention.map((pct, i) => (
-                    <td key={i} className="py-1 px-1 text-center">
+                    <td key={i} className="text-center">
                       {pct === null ? (
                         <span className="text-admin-text-tertiary">—</span>
                       ) : (
@@ -68,7 +72,9 @@ export function CohortSection() {
                           style={{
                             backgroundColor: retentionStyle(pct).bg,
                             color: retentionStyle(pct).fg,
-                            padding: "6px 4px",
+                            padding: "8px 6px",
+                            borderRadius: "6px",
+                            fontFeatureSettings: "'tnum'",
                           }}
                           aria-label={`Retenção mês ${i + 1}: ${pct}%`}
                         >
