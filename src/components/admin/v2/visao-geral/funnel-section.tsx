@@ -12,32 +12,57 @@
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { AdminStat } from "../admin-stat";
+import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { MOCK_FUNNEL } from "@/lib/admin/mock-data";
 
+const FUNNEL_TOTALS_INFO: Record<string, string> = {
+  "Conversão total":
+    "Percentagem de visitantes anónimos que se tornam clientes pagantes.",
+  "Receita por lead":
+    "Receita total dividida pelo número de leads. Mede o valor médio gerado por cada registo.",
+  "Valor médio cliente":
+    "Receita média gerada por cada cliente pagante nos últimos 30 dias.",
+};
+
 export function FunnelSection() {
   return (
-    <section>
+    <section className="flex flex-col gap-4">
       <AdminSectionHeader
         title="Funil de conversão"
         subtitle="últimos 30 dias"
         accent="leads"
+        info="Mostra o percurso desde visitante anónimo até cliente pagante. As percentagens indicam a conversão entre cada etapa."
       />
 
-      <AdminCard>
+      <AdminCard className="!p-10">
         <FunnelDiagram />
+      </AdminCard>
 
-        <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-admin-border bg-admin-border sm:grid-cols-3">
-          {MOCK_FUNNEL.totals.map((cell) => (
-            <div key={cell.eyebrow} className="bg-admin-surface p-4">
-              <AdminStat
-                eyebrow={cell.eyebrow}
-                value={cell.value}
-                size="md"
-                sub={cell.sub}
-              />
-            </div>
-          ))}
+      <AdminCard>
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-admin-border bg-admin-border sm:grid-cols-3">
+          {MOCK_FUNNEL.totals.map((cell) => {
+            const info = FUNNEL_TOTALS_INFO[cell.eyebrow];
+            return (
+              <div key={cell.eyebrow} className="bg-admin-surface p-4">
+                <AdminStat
+                  eyebrow={
+                    info ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        {cell.eyebrow}
+                        <AdminInfoTooltip label={info} />
+                      </span>
+                    ) : (
+                      cell.eyebrow
+                    )
+                  }
+                  value={cell.value}
+                  size="md"
+                  sub={cell.sub}
+                />
+              </div>
+            );
+          })}
         </div>
       </AdminCard>
     </section>
