@@ -2,6 +2,8 @@ import { Sparkles } from "lucide-react";
 import { ReportSection } from "./report-section";
 import { useReportData } from "./report-data-context";
 
+// Sparkles continua a ser usado no cabeçalho do bloco com insights reais.
+
 export function ReportAiInsights() {
   const reportData = useReportData();
   const insights = reportData.aiInsights;
