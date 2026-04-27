@@ -197,10 +197,31 @@
  * Mais sóbrio do que `animate-pulse` padrão do Tailwind.
  */
 @keyframes admin-pulse-soft {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.45; transform: scale(0.92); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .admin-pulse-dot {
+  position: relative;
   animation: admin-pulse-soft 2s ease-in-out infinite;
+}
+
+/**
+ * Halo expansivo: pseudo-elemento que pulsa em escala sob o dot.
+ * Mais cinematográfico que escalar o dot inteiro (que pixelava em 8px).
+ */
+.admin-pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background-color: inherit;
+  opacity: 0.45;
+  animation: admin-pulse-halo 2s ease-out infinite;
+  z-index: -1;
+}
+
+@keyframes admin-pulse-halo {
+  0% { transform: scale(1); opacity: 0.45; }
+  100% { transform: scale(2.4); opacity: 0; }
 }
