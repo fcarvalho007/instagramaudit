@@ -9,12 +9,13 @@
 import { type ReactNode } from "react";
 import { ACCENT_TEXT, type AdminAccent } from "./admin-tokens";
 
-type StatSize = "sm" | "md" | "lg";
+type StatSize = "sm" | "md" | "lg" | "hero";
 
 const VALUE_CLS: Record<StatSize, string> = {
   sm: "text-lg",
   md: "text-[1.625rem] leading-tight",
   lg: "text-4xl leading-tight",
+  hero: "text-[56px] leading-[1] tracking-[-0.04em]",
 };
 
 interface AdminStatProps {
