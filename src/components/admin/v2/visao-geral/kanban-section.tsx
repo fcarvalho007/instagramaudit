@@ -1,16 +1,14 @@
 /**
  * Secção 4 — Clientes kanban.
  *
- * Grelha 4 colunas. Cada coluna é um cartão branco com border-top 2px
- * colorida + radius só nos cantos inferiores. Header com título + subtítulo
- * + AdminBadge (contador). 3 cartões mock por coluna em fundo neutro.
+ * 4 colunas. Cada coluna tem border-top colorida (única portadora de
+ * cor temática) + lista semântica `<ul>/<li>`.
  */
 
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminBadge } from "../admin-badge";
 import {
   ACCENT_500,
-  ADMIN_BORDER,
   type AdminAccent,
 } from "../admin-tokens";
 import { MOCK_KANBAN } from "@/lib/admin/mock-data";
@@ -24,13 +22,7 @@ export function KanbanSection() {
         accent="leads"
       />
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 10,
-        }}
-      >
+      <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {MOCK_KANBAN.map((col) => (
           <KanbanColumn key={col.id} col={col} />
         ))}
@@ -39,85 +31,40 @@ export function KanbanSection() {
   );
 }
 
-function KanbanColumn({
-  col,
-}: {
-  col: (typeof MOCK_KANBAN)[number];
-}) {
+function KanbanColumn({ col }: { col: (typeof MOCK_KANBAN)[number] }) {
   const accent = col.accent as AdminAccent;
   return (
-    <div
-      style={{
-        backgroundColor: "#ffffff",
-        border: ADMIN_BORDER,
-        borderTop: `2px solid ${ACCENT_500[accent]}`,
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        borderBottomLeftRadius: 12,
-        borderBottomRightRadius: 12,
-        padding: 12,
-      }}
+    <article
+      className="rounded-b-xl border border-t-0 border-admin-border bg-admin-surface p-3"
+      style={{ borderTop: `2px solid ${ACCENT_500[accent]}` }}
     >
-      <div
-        className="flex items-start justify-between gap-2"
-        style={{ marginBottom: 12 }}
-      >
+      <header className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <p
-            style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: "rgb(var(--admin-neutral-900))",
-              margin: 0,
-            }}
-          >
+          <p className="m-0 text-[13px] font-medium text-admin-text-primary">
             {col.title}
           </p>
-          <p
-            style={{
-              fontSize: 11,
-              color: "rgb(var(--admin-neutral-400))",
-              marginTop: 2,
-            }}
-          >
+          <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
             {col.subtitle}
           </p>
         </div>
         <AdminBadge variant={accent}>{col.count}</AdminBadge>
-      </div>
+      </header>
 
-      <div className="flex flex-col gap-1.5">
+      <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
         {col.items.map((item) => (
-          <div
+          <li
             key={item.name}
-            style={{
-              backgroundColor: "rgb(var(--admin-neutral-50))",
-              borderRadius: 6,
-              padding: "8px 10px",
-            }}
+            className="rounded-md bg-admin-neutral-50 px-2.5 py-2"
           >
-            <p
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: "rgb(var(--admin-neutral-900))",
-                margin: 0,
-              }}
-            >
+            <p className="m-0 text-xs font-medium text-admin-text-primary">
               {item.name}
             </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: "rgb(var(--admin-neutral-600))",
-                marginTop: 1,
-              }}
-            >
+            <p className="mt-px text-[11px] text-admin-text-secondary">
               {item.meta}
             </p>
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </article>
   );
 }
