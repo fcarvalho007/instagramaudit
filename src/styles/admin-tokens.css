@@ -181,10 +181,12 @@
 
 /**
  * Limpa o título interno duplicado do `CockpitShell` quando renderizado
- * dentro do wrapper `.admin-cockpit-legacy` na rota `/admin/sistema/cockpit-legado`.
- * O `CockpitShell` traz o seu próprio `<header>` com h2; o admin v2 já tem
- * `AdminPageHeader` por cima.
+ * dentro do wrapper `.admin-cockpit-legacy`.
+ * O `CockpitShell` começa com `<div class="space-y-6"> > <div class="flex...">`
+ * que contém o eyebrow "Cockpit" + h2 "Operação · Custos · Sinais".
+ * O admin v2 já mostra o cabeçalho via `AdminPageHeader`, por isso esconde-se
+ * apenas a coluna de texto à esquerda (mantendo o botão "Atualizar" à direita).
  */
-.admin-cockpit-legacy > div > header:first-of-type {
+.admin-cockpit-legacy > div > div:first-child > .space-y-1 {
   display: none;
 }
