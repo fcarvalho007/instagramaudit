@@ -37,7 +37,8 @@ export function ProgressBar(props: ProgressBarProps) {
     return (
       <div
         role="progressbar"
-        className={`flex h-2 w-full overflow-hidden rounded bg-admin-neutral-100 ${props.className ?? ""}`.trim()}
+        className={`flex h-2 w-full overflow-hidden rounded ${props.className ?? ""}`.trim()}
+        style={{ backgroundColor: "var(--admin-border-subtle)" }}
       >
         {props.segments.map((seg, i) => (
           <div

@@ -45,7 +45,7 @@ function ReceitaPage() {
           </>
         }
       />
-      <div className="flex flex-col gap-7">
+      <div className="flex flex-col" style={{ gap: 56 }}>
         <MetricsSection />
         <WaterfallSection />
         <PlansSection />

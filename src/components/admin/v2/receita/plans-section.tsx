@@ -18,7 +18,11 @@ import {
 export function PlansSection() {
   return (
     <section>
-      <AdminSectionHeader title="MRR por plano" accent="revenue" />
+      <AdminSectionHeader
+        title="MRR por plano"
+        accent="revenue"
+        info="Distribuição da receita recorrente pelos diferentes planos disponíveis."
+      />
 
       <div className="grid gap-3.5 lg:grid-cols-[1.4fr_1fr]">
         {/* — Distribuição — */}

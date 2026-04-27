@@ -18,6 +18,7 @@ export function IntentSection() {
         title="Sinais de intenção"
         subtitle="oportunidades quentes"
         accent="signal"
+        info="Sinais comportamentais que indicam intenção de compra elevada. Pesquisas repetidas são leads quentes."
       />
 
       <div className="grid gap-3.5 grid-cols-1 lg:grid-cols-2">

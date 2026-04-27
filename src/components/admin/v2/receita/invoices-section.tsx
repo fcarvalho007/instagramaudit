@@ -16,6 +16,7 @@ export function InvoicesSection() {
         title="Últimas faturas"
         subtitle="fluxo financeiro recente"
         accent="revenue"
+        info="Movimentos financeiros recentes (subscrições renovadas + reports avulsos vendidos)."
       />
 
       <AdminCard className="!px-5 !py-4">

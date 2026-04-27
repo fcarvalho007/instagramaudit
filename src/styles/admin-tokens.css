@@ -74,6 +74,34 @@
 
   /* === Bordas (1px com baixa opacidade — sempre visíveis em 1x DPR) === */
   --admin-border-rgb: 44 44 42;
+
+  /* ===========================================================
+   * Refinamentos cinematográficos (prompt 4)
+   * ===========================================================
+   * Surfaces, bordas explícitas, escala tipográfica e shadow.
+   * Os tokens antigos (`--admin-border-rgb`, `--admin-neutral-*`)
+   * mantêm-se para retrocompatibilidade.
+   */
+  --admin-bg-canvas: #FAF9F5;
+  --admin-bg-surface: #FFFFFF;
+  --admin-bg-elevated: #FFFFFF;
+  --admin-bg-subtle: #F5F4EE;
+
+  --admin-border-soft: #E8E5DA;
+  --admin-border-strong: #D3D1C7;
+  --admin-border-subtle: #F1EFE8;
+
+  --admin-text-h1: 36px;
+  --admin-text-h2: 20px;
+  --admin-text-h3: 16px;
+  --admin-text-body: 13px;
+  --admin-text-small: 12px;
+  --admin-text-eyebrow: 10px;
+  --admin-text-kpi-hero: 56px;
+  --admin-text-kpi-large: 36px;
+  --admin-text-kpi-medium: 28px;
+
+  --admin-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.02), 0 0 0 1px rgba(0, 0, 0, 0.01);
 }
 
 /**
@@ -83,18 +111,20 @@
  */
 @theme inline {
   /* Surfaces */
-  --color-admin-canvas: rgb(var(--admin-neutral-50));
-  --color-admin-surface: #ffffff;
-  --color-admin-surface-muted: rgb(var(--admin-neutral-50));
+  --color-admin-canvas: var(--admin-bg-canvas);
+  --color-admin-surface: var(--admin-bg-surface);
+  --color-admin-surface-muted: var(--admin-bg-subtle);
+  --color-admin-bg-subtle: var(--admin-bg-subtle);
 
   /* Text */
   --color-admin-text-primary: rgb(var(--admin-neutral-900));
   --color-admin-text-secondary: rgb(var(--admin-neutral-600));
   --color-admin-text-tertiary: rgb(var(--admin-neutral-400));
 
-  /* Border (1px com 8% / 14% opacidade) */
-  --color-admin-border: rgb(var(--admin-border-rgb) / 0.08);
-  --color-admin-border-strong: rgb(var(--admin-border-rgb) / 0.14);
+  /* Border — passa a usar tons sólidos (mais visíveis em fundo claro). */
+  --color-admin-border: var(--admin-border-soft);
+  --color-admin-border-strong: var(--admin-border-strong);
+  --color-admin-border-subtle: var(--admin-border-subtle);
 
   /* Accents — receita (esmeralda) */
   --color-admin-revenue-50: rgb(var(--admin-revenue-50));
@@ -160,23 +190,33 @@
  */
 .admin-v2 {
   color-scheme: light;
-  background-color: rgb(var(--admin-neutral-50));
+  background-color: var(--admin-bg-canvas);
   color: rgb(var(--admin-neutral-900));
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "ss01", "cv11";
+  font-feature-settings: "ss01", "cv11", "tnum";
 }
 
 .admin-v2 .admin-eyebrow {
   font-family: "JetBrains Mono", Menlo, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 400;
+  font-size: var(--admin-text-eyebrow);
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   color: rgb(var(--admin-neutral-600));
   line-height: 1;
   margin: 0;
+}
+
+/**
+ * Utility de números tabulares — usa nos elementos com KPIs em mono
+ * para garantir alinhamento óptico em colunas verticais.
+ */
+.admin-v2 .admin-num {
+  font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
 
 /**

@@ -27,6 +27,7 @@ export function CohortSection() {
         title="Cohort de retenção"
         subtitle="% de subscritores que se mantêm activos"
         accent="leads"
+        info="Percentagem de subscritores que se mantêm activos após o registo, agrupados por mês de entrada."
       />
 
       <AdminCard className="!px-6 !py-5">
