@@ -23,7 +23,7 @@ function VisaoGeralPage() {
         title="Visão geral"
         subtitle="Receita, conversão e sinais de intenção · últimos 30 dias."
       />
-      <div className="flex flex-col" style={{ gap: 56 }}>
+      <div className="flex flex-col gap-7">
         <FunnelSection />
         <RevenueSection />
         <ExpenseSection />

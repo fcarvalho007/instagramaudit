@@ -1,199 +1,120 @@
 ## Objectivo
 
-Elevar a camada visual das 3 tabs do `/admin` (Visão Geral, Receita, Clientes) para um nível cinematográfico/editorial, mantendo a lógica e a arquitectura intactas. **Sem novas funcionalidades** — só polimento.
+Fechar as últimas pendências do Prompt 4 identificadas na avaliação:
+1. Alinhar a **Ficha do Cliente** (`customer-card-section.tsx`) ao spec literal
+2. Trocar o **hover das tabelas** para o token warm `--admin-bg-subtle`
+3. Correr `bun run build` para validar bundle de produção
+
+Sem novas funcionalidades. Sem mudanças de dados. Apenas refinamento visual + validação.
 
 ---
 
-## 1. Tokens de design (`src/styles/admin-tokens.css`)
+## 1. Ficha do Cliente · `src/components/admin/v2/clientes/customer-card-section.tsx`
 
-Acrescentar à camada `:root` e ao `@theme inline`:
+### Header (avatar + nome)
+- Avatar: `size={56}` → **`64`**
+- Nome: `text-[18px]` → **22px** weight 500, `letter-spacing: -0.01em`, `line-height: 1.2`
+- Padding do cartão: `!px-7 !py-6` → **`!px-8 !py-7`**
+- Gap header: `gap-4` → `gap-5`; chips em `gap-3`
+- Data "desde" passa a 12px (era 11px)
 
-- **Backgrounds**: `--admin-bg-canvas` `#FAF9F5`, `--admin-bg-surface` `#FFFFFF`, `--admin-bg-elevated` `#FFFFFF`, `--admin-bg-subtle` `#F5F4EE`.
-- **Bordas**: `--admin-border-soft` `#E8E5DA`, `--admin-border-strong` `#D3D1C7`, `--admin-border-subtle` `#F1EFE8`. Aliases existentes (`--color-admin-border`, `--color-admin-border-strong`) passam a apontar para `soft`/`strong`.
-- **Tipografia (custom properties)**: `--admin-text-h1: 36px`, `h2: 20px`, `h3: 16px`, `body: 13px`, `small: 12px`, `eyebrow: 10px`, `kpi-hero: 56px`, `kpi-large: 36px`, `kpi-medium: 28px`.
-- **Sombra**: `--admin-shadow-card: 0 1px 2px rgba(0,0,0,0.02), 0 0 0 1px rgba(0,0,0,0.01)`.
+### Health Bars (componente interno)
+- Dimensões: `width: 14, height: 4` → **`width: 16, height: 5`**
+- Gap entre barras: `2` → **`3`**
+- Cor "vazia": `--admin-neutral-50` → `--admin-neutral-200` (mais legível)
 
-Actualizar `.admin-v2`:
-- `background-color: var(--admin-bg-canvas)`.
-- `font-feature-settings: "ss01", "cv11", "tnum"` (números tabulares globais).
+### Grid de 4 KPIs internos
+Substituir o grid ad-hoc (gap-px + cartões manuais) por **`KPICard size="md"`** (primitivo partilhado), mantendo as health bars dentro do `value` quando aplicável:
 
-Actualizar `.admin-eyebrow`:
-- 10px, weight 500, `letter-spacing: 0.12em`, cor `--admin-neutral-600`.
+```tsx
+<div className="mb-7 grid gap-3 grid-cols-2 lg:grid-cols-4">
+  {c.kpis.map((k) => {
+    const hasBars = "bars" in k && k.bars;
+    return (
+      <KPICard
+        key={k.eyebrow}
+        size="md"
+        eyebrow={k.eyebrow}
+        value={
+          hasBars ? (
+            <span className="inline-flex items-center gap-2.5">
+              <span>{k.value}</span>
+              <HealthBars filled={k.bars!.filled} total={k.bars!.total} />
+            </span>
+          ) : k.value
+        }
+        sub={k.sub}
+      />
+    );
+  })}
+</div>
+```
 
-Aplicar `padding: 40px 32px` ao container principal e `gap: 56px` entre secções (em `admin.tsx` + cada tab).
+Benefícios: tipografia mono consistente (28px com `tnum`), padding alinhado, `admin-num` automático, menos código próprio.
 
----
+### Timeline
+- `paddingLeft`: 20 → **22**
+- Pontos: 11×11 → **13×13** (cumpre spec)
+- Borda do ponto: `2px solid white` → **`box-shadow: 0 0 0 2px var(--admin-bg-canvas)`** (encaixa no canvas warm em vez de branco puro)
+- Linha vertical: `rgb(var(--admin-border-rgb) / 0.14)` → **`var(--color-admin-border)`** (mais visível e usa token oficial)
+- Título de evento: 12px → **13px**; detalhe ganha `mt-0.5`
 
-## 2. Primitivos partilhados — refinamento
+### Perfis analisados
+- Padding por linha: `10px 12px` → **`12px 14px`**
+- Background: `bg-admin-neutral-50` → **`var(--admin-bg-subtle)`** (warm)
+- Tipografia: handle 12→13px, classification 10→11px com `mt-0.5`, count em `admin-num` 13px
 
-### `AdminPageHeader`
-- H1 → 36px / weight 500 / `letter-spacing: -0.02em`.
-- Margem inferior: 40px; `padding-bottom: 28px`; divisora `1px solid var(--color-admin-border)` (linha sólida, sem gradiente).
-- Subtítulo: 14px `--admin-text-secondary`.
-
-### `AdminSectionHeader`
-- Barra vertical: **4×22px** com radius 2px.
-- H2: **20px / weight 500 / sentence case** + `letter-spacing: -0.01em` (deixa de ser uppercase).
-- Nova prop opcional `info?: string` — renderiza `<AdminInfoTooltip>` à direita do H2.
-- Subtítulo após `·` em 13px tertiary.
-
-### `AdminTabsNav`
-- `gap: 28px` entre tabs, `padding: 12px 0`.
-- Sublinhado activo: 2px `--admin-text-primary` (já é neutral).
-- `border-bottom: 1px solid var(--color-admin-border)`; margem inferior 28px.
-
-### `AdminCard`
-- Nova API:
-  ```ts
-  variant?: 'default' | 'hero' | 'subtle' | 'accent-left'
-  padding?: 'compact' | 'default' | 'loose' | 'flush'
-  ```
-- `default`: bg branco, `border: 1px solid var(--color-admin-border)`, `border-radius: 14px`, `box-shadow: var(--admin-shadow-card)`.
-- `hero`: gradient `linear-gradient(135deg, #ECF7F1 0%, #F0F4E5 100%)`, border `1px solid #5DCAA5`.
-- `subtle`: bg `--admin-bg-subtle`, sem border.
-- `accent-left`: mantém-se (compat).
-- Padding: `compact 20px 24px`, `default 28px 32px`, `loose 40px 48px`, `flush 0`.
-- Manter `accent-left` para retrocompatibilidade. Variant antiga `flush` mapeia para `padding: 'flush'`.
-
-### `AdminStat` + `KPICard`
-- Nova prop `size`: `'sm' | 'md' | 'lg' | 'hero'`.
-  - `hero` → 56px, `-0.04em`, padding cartão `28px 32px`.
-  - `lg` → 36px, `-0.03em`, padding `24px 28px`.
-  - `md` → 28px, `-0.02em`, padding `20px 24px`.
-  - `sm` → 22px, `-0.01em`, padding `16px 20px`.
-- Todos os valores: `font-family: 'JetBrains Mono'`, `font-feature-settings: 'tnum'`, weight 500.
-- Nova prop `info?: string` no `KPICard` → tooltip "i" ao lado do eyebrow.
-- **Delta como pill** (substituir setas inline):
-  - Up: bg `rgba(15,110,86,0.10)`, color `#0F6E56`, `▲ +x`, mono 12px, `padding 3px 10px`, radius 12px, weight 500.
-  - Down: bg `rgba(163,45,45,0.08)`, color `#A32D2D`, `▼ −x`.
-
-### `AdminBadge`
-- Texto 11px → 12px mono opcional; manter API. Apenas garantir que não conflita com novo delta-pill.
-
-### `ProgressBar`
-- Altura passa para 8px (já é `h-2`); confirmar.
-- Cor de fundo via `--admin-border-subtle` para harmonia.
-
-### Novo: `AdminInfoTooltip`
-- Ficheiro: `src/components/admin/v2/admin-info-tooltip.tsx`.
-- Wrap sobre `@/components/ui/tooltip` (Radix já instalado).
-- Gatilho: `<button>` 16×16, border `1px solid var(--color-admin-border-strong)`, `border-radius: 50%`, letra `i` Georgia italic 10px weight 500, cor tertiary, `cursor: help`, hover → border + texto `--admin-text-primary`.
-- Conteúdo: bg `#1F1E1B`, color `#FAF9F5`, Inter 11px, `padding 10px 14px`, radius 8px, `max-width: 240px`, `line-height: 1.45`, shadow `0 4px 12px rgba(0,0,0,0.15)`, seta 4px.
-- Props: `text: string`, `side?: 'top'|'right'|'bottom'|'left'` (default `top`), `delayDuration: 200`.
+### Notas internas
+- Padding: `10px 12px` → **`14px 16px`** (cumpre spec)
+- Título: 11→12px
+- Corpo: 11→12px com `leading-relaxed`
 
 ---
 
-## 3. Refinamentos por tab
+## 2. Hover warm nas tabelas
 
-### Visão Geral
+### `src/components/admin/v2/receita/invoices-section.tsx`
+Adicionar `transition-colors hover:bg-[var(--admin-bg-subtle)]` à `<tr>`.
 
-- **`FunnelSection`**: refazer em 2 colunas grid `1.2fr 1fr`, gap 48px.
-  - Esquerda: SVG `viewBox="0 0 400 280"` com 3 trapézios (`#EEEDFE`, `#AFA9EC`, `#534AB7`) e `<text>` mono 22px com 1.847 / 312 / 125 (este último branco).
-  - Direita: 3 stages com marker vertical 6×36 da família roxa, label primary 13px + valor mono 28px, badge conversão `↓ 16.9%` em pill cinza claro mono 12px (excepto 1ª).
-- **Cartão linha-resumo** (Conversão total / Receita por lead / Valor médio cliente): `border-right: 1px var(--color-admin-border)` entre células, padding `0 24px`, valores 28px mono `-0.02em`, eyebrow + tooltip "i".
-- **`RevenueSection`**: 1º cartão (MRR) passa a `KPICard size="hero" variant="hero"` com €684, delta pill +€72 (12%), sub "38 subscritores activos · ARPU €18". Outros 2 KPIs em `size="lg"`.
-- **`ExpenseSection`**: 3 colunas separadas por `border-right` em vez de gap, valores 36px mono, padding `0 28px` por coluna, label "CAP" mono 8px `letter-spacing 0.1em` acima da linha vermelha.
+### `src/components/admin/v2/clientes/customers-table-section.tsx`
+Substituir `hover:bg-admin-neutral-50` e `bg-admin-neutral-50` (linha selecionada) por `hover:bg-[var(--admin-bg-subtle)]` e `bg-[var(--admin-bg-subtle)]`.
 
-### Receita
-
-- **`MetricsSection`**: 1ª linha — MRR `size="hero" variant="hero"`, ARR/ARPU/Churn em `size="lg"` com `info` tooltips. 2ª linha mantém `size="sm"`.
-- **`WaterfallSection`**: altura 240px, negativo passa para `#E24B4A`, eixo Y JetBrains Mono 10px, tooltip dark.
-- **`CohortSection`**: `border-collapse: separate; border-spacing: 4px`, células com radius 6px, padding `8px 6px`, header mono 10px tracking, % em mono.
-- **`InvoicesSection`**: `padding: 14px 0` por linha, hover `bg-admin-bg-subtle`, valores em mono medium.
-
-### Clientes
-
-- **`PipelineSection`**: cartões padding `18px 20px`, valores mono 28px `-0.02em`. Setas SVG 24×16. Quantidade entre conectores em pill verde `bg rgba(29,158,117,0.1) color #0F6E56`, mono 11px, `padding 2px 8px`, radius 10px.
-- **`CustomersTableSection`**: `padding: 14px 0` por linha, hover `bg-admin-bg-subtle`, LTV mono 13px medium.
-- **`CustomerCardSection`**: avatar 64px, h3 nome 22px weight 500, 4 KPIs internos com `KPICard size="md"`. Health bars 16×5 gap 3. Timeline pontos 13×13. Notas padding `14px 16px`.
+Razão: o canvas é `#FAF9F5` (warm) e `neutral-50` é cinzento frio — quebra a coerência cromática do design noir editorial.
 
 ---
 
-## 4. Recharts — tooltips e eixos cinematográficos
+## 3. Validação
 
-Helper partilhado novo: `src/components/admin/v2/charts/chart-tooltip.tsx` exportando `<DarkTooltip>` configurado:
-- `contentStyle`: bg `#1F1E1B`, color `#FAF9F5`, border `none`, radius 8px, padding `10px 14px`, shadow `0 4px 12px rgba(0,0,0,0.15)`, font Inter 11px.
-- `labelStyle`: cor `#888780` mono 10px tracking.
-- `itemStyle`: cor `#FAF9F5` mono 12px.
+```bash
+bunx tsc --noEmit
+bun run build
+```
 
-Em todos os Recharts (`RevenueSection`, `ExpenseSection`, `WaterfallSection`):
-- Substituir `<Tooltip>` por `<Tooltip {...DarkTooltip} />`.
-- `<XAxis tick={{ fontSize: 10, fontFamily: 'JetBrains Mono', fill: '#888780' }} stroke="#E8E5DA" />`.
-- `<YAxis tick={...same} axisLine={false} tickLine={false} />`.
-- `<CartesianGrid stroke="#F1EFE8" vertical={false} />`.
-- `<Bar radius={3} ... />`.
-- Custos: `<ReferenceLine stroke="#A32D2D" strokeDasharray="3 3" label={{ value: 'CAP', position: 'right', fill: '#A32D2D', fontSize: 8, fontFamily: 'JetBrains Mono', letterSpacing: '0.1em' }} />`.
+Se o build falhar, corrigir os erros e re-correr até passar.
 
 ---
 
-## 5. Tooltips a aplicar (texto exacto)
+## Ficheiros afectados
 
-Aplicar em cada secção/KPI nas 3 tabs conforme tabela do prompt (Funil / Conversão total / Receita por lead / Valor médio cliente / MRR / Receita total / Avulso / Apify / OpenAI / Despesa total / Kanban / Sinais de intenção / Métricas principais / ARR / ARPU / Churn / LTV / Mix subscrição / Anatomia do MRR / MRR por plano / Concentração / Cohort de retenção / Últimas faturas / Pipeline / Lista de clientes / Ficha do cliente). Usar exactamente o texto fornecido em pt-PT.
-
----
-
-## 6. Layout global
-
-Em `src/routes/admin.tsx`:
-- `padding: '40px 32px'`.
-- `max-width: 1280` (mantém).
-
-Em cada tab (`admin.visao-geral.tsx`, `admin.receita.tsx`, `admin.clientes.tsx`):
-- Substituir `gap-7` por `gap-14` (56px) entre secções.
-
----
-
-## 7. Detalhes técnicos
-
-- **Tooltip**: usar `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` de `@/components/ui/tooltip`. Wrappar `__root.tsx`/admin layout num `<TooltipProvider delayDuration={200}>` se ainda não existir, para evitar provider em cada uso.
-- **Mono tabular**: aplicar `font-feature-settings: 'tnum'` via classe utility `.admin-num` definida em `admin-tokens.css` para reaproveitar.
-- **Compatibilidade**: `KPICard` mantém props existentes (`variant`, `accent`); novas props `size="hero"` e `info` são aditivas.
-- **Build hygiene**: `bunx tsc --noEmit` + `bun run build` no fim.
-
----
-
-## 8. Ficheiros afectados
-
-**Editados:**
-- `src/styles/admin-tokens.css`
-- `src/components/admin/v2/admin-page-header.tsx`
-- `src/components/admin/v2/admin-section-header.tsx`
-- `src/components/admin/v2/admin-tabs-nav.tsx`
-- `src/components/admin/v2/admin-card.tsx`
-- `src/components/admin/v2/admin-stat.tsx`
-- `src/components/admin/v2/kpi-card.tsx`
-- `src/components/admin/v2/admin-badge.tsx`
-- `src/components/admin/v2/progress-bar.tsx`
-- `src/routes/admin.tsx` + 3 routes das tabs (gap-14)
-- Todas as secções `visao-geral/*`, `receita/*`, `clientes/*` (tipografia + tooltips + Recharts darks)
-
-**Novos:**
-- `src/components/admin/v2/admin-info-tooltip.tsx`
-- `src/components/admin/v2/charts/chart-tooltip.tsx`
+**Editados (3):**
+- `src/components/admin/v2/clientes/customer-card-section.tsx`
+- `src/components/admin/v2/receita/invoices-section.tsx`
+- `src/components/admin/v2/clientes/customers-table-section.tsx`
 
 **Intocados:**
-- `src/integrations/supabase/*` (locked)
-- `src/components/admin/cockpit/*` (legado)
-- `/report.example`, `/report/example`
-- `mock-data.ts` (estrutura)
-- Stubs das tabs Relatórios/Perfis/Sistema
+- Mock data, primitivos, restantes secções, stubs das tabs por implementar
 
 ---
 
 ## Checklist de aceitação
 
-- ☐ Tokens novos disponíveis (`--admin-bg-*`, `--admin-border-*`, `--admin-text-*`, `--admin-shadow-card`)
-- ☐ Background do admin passa a `#FAF9F5`
-- ☐ H1 36px, H2 20px sentence case, eyebrows 10px mono
-- ☐ Todos os KPIs em JetBrains Mono com `tnum` + letter-spacing negativo
-- ☐ `KPICard size="hero"` funcional + MRR é hero na Visão Geral E Receita
-- ☐ `AdminInfoTooltip` (Radix) com letra "i" Georgia italic, tooltip dark
-- ☐ Tooltips aplicados em todas as secções e KPIs (texto exacto pt-PT)
-- ☐ Funil refeito em 2 colunas (SVG + lista)
-- ☐ Despesa em 3 colunas com bordas verticais e label "CAP" mono 8px
-- ☐ Recharts dark tooltips + eixos mono + grid subtil + bars radius 3
-- ☐ Pipeline cartões 18×20 + quantidades em pill verde
-- ☐ Health score 5 barras 16×5
-- ☐ Spacing entre secções 56px nas 3 tabs
-- ☐ `bunx tsc --noEmit` ✓ + `bun run build` ✓
+- ☐ Avatar da ficha 64px
+- ☐ Nome do cliente 22px / weight 500 / `-0.01em`
+- ☐ Health bars 16×5 com gap 3
+- ☐ 4 KPIs internos usam `KPICard size="md"`
+- ☐ Timeline com pontos 13×13 e linha visível
+- ☐ Perfis e notas com padding alinhado ao spec
+- ☐ Hover das tabelas (faturas + clientes) usa `--admin-bg-subtle`
+- ☐ `bunx tsc --noEmit` ✓
+- ☐ `bun run build` ✓
 - ☐ Cockpit legado e `/report.example` intactos

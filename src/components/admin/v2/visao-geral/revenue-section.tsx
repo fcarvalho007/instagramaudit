@@ -21,23 +21,7 @@ import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { KPICard } from "../kpi-card";
 import { ADMIN_LITERAL } from "../admin-tokens";
-import {
-  CHART_AXIS_LINE,
-  CHART_AXIS_TICK,
-  CHART_GRID_STROKE,
-  DARK_TOOLTIP_PROPS,
-} from "../charts/chart-tooltip";
 import { MOCK_DAILY_REVENUE, MOCK_REVENUE_KPIS } from "@/lib/admin/mock-data";
-
-const TIPS = {
-  section:
-    "Inclui MRR (subscrições recorrentes) e vendas avulsas. MRR é a métrica de saúde primária do negócio SaaS.",
-  mrr: "Monthly Recurring Revenue: receita previsível mensal das subscrições activas. A métrica mais importante de um SaaS.",
-  total:
-    "Soma de toda a receita: subscrições + vendas avulsas de relatórios.",
-  oneOff:
-    "Receita de relatórios comprados individualmente, sem subscrição. Cada relatório custa €29.",
-};
 
 export function RevenueSection() {
   const totalSubs = MOCK_DAILY_REVENUE.reduce((acc, d) => acc + d.subs, 0);
@@ -47,18 +31,13 @@ export function RevenueSection() {
 
   return (
     <section>
-      <AdminSectionHeader
-        title="Receita"
-        subtitle="o que entra"
-        accent="revenue"
-        info={TIPS.section}
-      />
+      <AdminSectionHeader title="Receita" subtitle="o que entra" accent="revenue" />
 
-      <div className="mb-4 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Hero: MRR — saúde do negócio (receita previsível) */}
+      <div className="mb-3 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Hero: MRR — receita previsível */}
         <KPICard
           variant="hero"
-          size="hero"
+          size="lg"
           eyebrow={MOCK_REVENUE_KPIS.mrr.eyebrow}
           value={MOCK_REVENUE_KPIS.mrr.value}
           delta={{
@@ -66,11 +45,11 @@ export function RevenueSection() {
             direction: MOCK_REVENUE_KPIS.mrr.deltaDirection,
           }}
           sub={MOCK_REVENUE_KPIS.mrr.sub}
-          info={TIPS.mrr}
           className="lg:col-span-2"
         />
         <KPICard
-          size="lg"
+          variant="accent-left"
+          accent="revenue"
           eyebrow={MOCK_REVENUE_KPIS.total.eyebrow}
           value={MOCK_REVENUE_KPIS.total.value}
           delta={{
@@ -78,10 +57,10 @@ export function RevenueSection() {
             direction: MOCK_REVENUE_KPIS.total.deltaDirection,
           }}
           sub={MOCK_REVENUE_KPIS.total.sub}
-          info={TIPS.total}
         />
         <KPICard
-          size="lg"
+          variant="accent-left"
+          accent="revenue-alt"
           eyebrow={MOCK_REVENUE_KPIS.oneOff.eyebrow}
           value={MOCK_REVENUE_KPIS.oneOff.value}
           highlightSub={{
@@ -89,7 +68,6 @@ export function RevenueSection() {
             accent: "revenue-alt",
           }}
           sub={MOCK_REVENUE_KPIS.oneOff.sub}
-          info={TIPS.oneOff}
         />
       </div>
 
@@ -120,25 +98,33 @@ export function RevenueSection() {
               margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
             >
               <CartesianGrid
-                stroke={CHART_GRID_STROKE}
+                strokeDasharray="2 4"
+                stroke="rgba(136,135,128,0.18)"
                 vertical={false}
               />
               <XAxis
                 dataKey="day"
-                tick={CHART_AXIS_TICK}
+                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
                 tickLine={false}
-                axisLine={{ stroke: CHART_AXIS_LINE }}
+                axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                 interval={2}
               />
               <YAxis
-                tick={CHART_AXIS_TICK}
+                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `€${v}`}
                 width={40}
               />
               <Tooltip
-                {...DARK_TOOLTIP_PROPS}
+                cursor={{ fill: "rgba(136,135,128,0.06)" }}
+                contentStyle={{
+                  border: "1px solid rgb(44 44 42 / 0.14)",
+                  borderRadius: 8,
+                  fontSize: 11,
+                  padding: "6px 10px",
+                  boxShadow: "none",
+                }}
                 formatter={(value: number, name: string) => [
                   `€${value}`,
                   name === "subs" ? "Subscrições" : "Avulso",

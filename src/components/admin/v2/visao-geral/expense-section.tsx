@@ -23,28 +23,10 @@ import { AdminCard } from "../admin-card";
 import { ProgressBar } from "../progress-bar";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import {
-  CHART_AXIS_LINE,
-  CHART_AXIS_TICK,
-  CHART_GRID_STROKE,
-  DARK_TOOLTIP_PROPS,
-} from "../charts/chart-tooltip";
-import { AdminInfoTooltip } from "../admin-info-tooltip";
-import {
   DAILY_COST_LIMIT,
   MOCK_DAILY_COSTS,
   MOCK_EXPENSE,
 } from "@/lib/admin/mock-data";
-
-const TIPS = {
-  section:
-    "Custos operacionais com o Apify (scraping de Instagram) e OpenAI (análises com IA). Limites mensais visíveis.",
-  apify:
-    "Plataforma de scraping que recolhe dados públicos do Instagram. Cap mensal de $29.",
-  openai:
-    "Análises com IA dos relatórios. Soft cap mensal definido em $25.",
-  total:
-    "Soma das duas despesas operacionais. Comparada com a receita, indica a margem real do negócio.",
-};
 
 export function ExpenseSection() {
   const t = MOCK_EXPENSE;
@@ -52,19 +34,11 @@ export function ExpenseSection() {
 
   return (
     <section>
-      <AdminSectionHeader
-        title="Despesa"
-        subtitle="o que sai"
-        accent="expense"
-        info={TIPS.section}
-      />
+      <AdminSectionHeader title="Despesa" subtitle="o que sai" accent="expense" />
 
       <AdminCard variant="flush" className="overflow-hidden">
-        {/* Zona superior: 3 colunas com border-right */}
-        <div
-          className="grid grid-cols-1 md:grid-cols-3"
-          style={{ padding: "28px 0" }}
-        >
+        {/* Zona superior: 3 colunas */}
+        <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-3 md:gap-0">
           {/* Apify */}
           <ExpenseColumn
             colorVar="rgb(var(--admin-expense-500))"
@@ -73,7 +47,6 @@ export function ExpenseSection() {
             value={`$${t.apify.spent.toFixed(2)}`}
             cap={`de $${t.apify.cap.toFixed(2)}`}
             note={`63% do limite · projecção $${t.apify.projection.toFixed(2)}`}
-            tip={TIPS.apify}
             borderRight
           >
             <ProgressBar
@@ -92,7 +65,6 @@ export function ExpenseSection() {
             value={`$${t.openai.spent.toFixed(2)}`}
             cap={`de $${t.openai.cap.toFixed(2)} · soft cap`}
             note={`39% do limite · projecção $${t.openai.projection.toFixed(2)}`}
-            tip={TIPS.openai}
             borderRight
           >
             <ProgressBar
@@ -110,7 +82,6 @@ export function ExpenseSection() {
             value={`$${t.total.spent.toFixed(2)}`}
             cap={`${t.total.revenuePct}% da receita`}
             note={`margem operacional ${t.total.operatingMarginPct}%`}
-            tip={TIPS.total}
           >
             <ProgressBar
               segments={[
@@ -125,7 +96,7 @@ export function ExpenseSection() {
         <div className="border-t border-admin-border" />
 
         {/* Zona inferior: gráfico de custos */}
-        <div style={{ padding: "28px 32px" }}>
+        <div className="p-6">
           <div className="mb-3">
             <p className="m-0 text-sm font-medium text-admin-text-primary">
               Custos diários · últimos 30 dias
@@ -147,25 +118,33 @@ export function ExpenseSection() {
                 margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
               >
                 <CartesianGrid
-                  stroke={CHART_GRID_STROKE}
+                  strokeDasharray="2 4"
+                  stroke="rgba(136,135,128,0.18)"
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={CHART_AXIS_TICK}
+                  tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
                   tickLine={false}
-                  axisLine={{ stroke: CHART_AXIS_LINE }}
+                  axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                   interval={2}
                 />
                 <YAxis
-                  tick={CHART_AXIS_TICK}
+                  tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v) => `$${(v as number).toFixed(2)}`}
                   width={50}
                 />
                 <Tooltip
-                  {...DARK_TOOLTIP_PROPS}
+                  cursor={{ fill: "rgba(136,135,128,0.06)" }}
+                  contentStyle={{
+                    border: "1px solid rgb(44 44 42 / 0.14)",
+                    borderRadius: 8,
+                    fontSize: 11,
+                    padding: "6px 10px",
+                    boxShadow: "none",
+                  }}
                   formatter={(value: number, name: string) => [
                     `$${value.toFixed(2)}`,
                     name === "apify" ? "Apify" : "OpenAI",
@@ -176,7 +155,6 @@ export function ExpenseSection() {
                   dataKey="apify"
                   stackId="c"
                   fill={ADMIN_LITERAL.expenseChartApify}
-                  radius={3}
                 />
                 <Bar
                   dataKey="openai"
@@ -190,12 +168,10 @@ export function ExpenseSection() {
                   strokeDasharray="5 4"
                   strokeWidth={1.2}
                   label={{
-                    value: "CAP",
-                    position: "right",
+                    value: `limite diário · $${DAILY_COST_LIMIT.toFixed(2)}`,
+                    position: "insideTopRight",
                     fill: ADMIN_LITERAL.capLine,
-                    fontSize: 8,
-                    fontFamily: "JetBrains Mono, monospace",
-                    letterSpacing: "0.1em",
+                    fontSize: 10,
                   }}
                 />
               </BarChart>
@@ -214,7 +190,6 @@ function ExpenseColumn({
   value,
   cap,
   note,
-  tip,
   children,
   borderRight,
 }: {
@@ -224,20 +199,18 @@ function ExpenseColumn({
   value: string;
   cap: string;
   note: string;
-  tip?: string;
   children: React.ReactNode;
   borderRight?: boolean;
 }) {
-  // import dentro da função para evitar ciclo de imports
-  // (preferível a top-level porque AdminInfoTooltip é componente isolado)
   return (
     <div
       className={
-        borderRight ? "md:border-r md:border-admin-border" : ""
+        borderRight
+          ? "md:pr-6 md:mr-0 md:border-r md:border-admin-border"
+          : "md:pl-6"
       }
-      style={{ padding: "0 28px" }}
     >
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2.5 flex items-center gap-2">
         <span
           aria-hidden="true"
           className="block h-2 w-2 rounded-sm"
@@ -246,22 +219,15 @@ function ExpenseColumn({
         <span className="admin-eyebrow" style={{ color: colorTextVar }}>
           {label}
         </span>
-        {tip ? <AdminInfoTooltip text={tip} /> : null}
       </div>
-      <div className="mb-3 flex items-baseline gap-2">
-        <span
-          className="admin-num font-medium text-admin-text-primary"
-          style={{ fontSize: 36, letterSpacing: "-0.03em", lineHeight: 1.05 }}
-        >
+      <div className="mb-2.5 flex items-baseline gap-2">
+        <span className="font-mono text-[1.375rem] font-medium tracking-tight leading-tight text-admin-text-primary">
           {value}
         </span>
-        <span className="text-[12px] text-admin-text-tertiary">{cap}</span>
+        <span className="text-[11px] text-admin-text-tertiary">{cap}</span>
       </div>
       {children}
-      <p
-        className="mt-2.5"
-        style={{ color: colorTextVar, fontSize: 12 }}
-      >
+      <p className="mt-2 text-[11px]" style={{ color: colorTextVar }}>
         {note}
       </p>
     </div>

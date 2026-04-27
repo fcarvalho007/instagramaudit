@@ -20,7 +20,6 @@ export function KanbanSection() {
         title="Clientes — kanban"
         subtitle="pipeline de relação"
         accent="leads"
-        info="Pipeline de relação com cada utilizador. Move-se da esquerda (lead) para a direita (subscritor)."
       />
 
       <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">

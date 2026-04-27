@@ -1,11 +1,8 @@
 /**
  * AdminPageHeader — cabeçalho de cada tab.
  *
- * Refinamentos prompt 4:
- *   - h1 36px / weight 500 / -0.02em
- *   - subtítulo 14px secondary
- *   - margem inferior 40px, padding-bottom 28px
- *   - divisora linha sólida 1px `--color-admin-border` (sem gradiente)
+ * Estrutura: eyebrow mono + h1 + subtítulo opcional + slot de acções.
+ * Separador inferior em gradient subtil (linha 1px que esmorece à direita).
  */
 
 import { type ReactNode } from "react";
@@ -23,38 +20,26 @@ export function AdminPageHeader({
 }: AdminPageHeaderProps) {
   return (
     <header
+      className="mb-7 pb-5 bg-no-repeat bg-left-bottom"
       style={{
-        marginBottom: 40,
-        paddingBottom: 28,
-        borderBottom: "1px solid var(--color-admin-border)",
+        backgroundImage:
+          "linear-gradient(to right, rgb(var(--admin-border-rgb) / 0.14), transparent)",
+        backgroundSize: "100% 1px",
       }}
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
           <p className="admin-eyebrow">InstaBench · Admin</p>
-          <h1
-            className="m-0 text-admin-text-primary"
-            style={{
-              fontSize: 36,
-              fontWeight: 500,
-              letterSpacing: "-0.02em",
-              lineHeight: 1.1,
-            }}
-          >
+          <h1 className="text-[28px] font-medium tracking-tight leading-[1.1] text-admin-text-primary m-0">
             {title}
           </h1>
           {subtitle ? (
-            <p
-              className="m-0 text-admin-text-secondary"
-              style={{ fontSize: 14, lineHeight: 1.4 }}
-            >
+            <p className="text-[13px] text-admin-text-secondary m-0">
               {subtitle}
             </p>
           ) : null}
         </div>
-        {actions ? (
-          <div className="flex items-center gap-2">{actions}</div>
-        ) : null}
+        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       </div>
     </header>
   );

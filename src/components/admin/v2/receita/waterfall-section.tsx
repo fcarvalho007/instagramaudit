@@ -21,11 +21,6 @@ import {
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import {
-  CHART_AXIS_LINE,
-  CHART_AXIS_TICK,
-  CHART_GRID_STROKE,
-} from "../charts/chart-tooltip";
-import {
   MOCK_MRR_WATERFALL,
   MOCK_MRR_WATERFALL_DETAIL,
 } from "@/lib/admin/mock-data";
@@ -97,7 +92,6 @@ export function WaterfallSection() {
         title="Anatomia do MRR"
         subtitle="como €612 se tornaram €684"
         accent="leads"
-        info="Decomposição do crescimento do MRR: novos subscritores, expansões (upgrades), contracções (downgrades) e churn."
       />
 
       <AdminCard className="!px-7 !py-6">
@@ -113,26 +107,34 @@ export function WaterfallSection() {
               barCategoryGap="20%"
             >
               <CartesianGrid
-                stroke={CHART_GRID_STROKE}
+                strokeDasharray="2 4"
+                stroke="rgba(136,135,128,0.18)"
                 vertical={false}
               />
               <XAxis
                 dataKey="label"
-                tick={CHART_AXIS_TICK}
+                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-600))" }}
                 tickLine={false}
-                axisLine={{ stroke: CHART_AXIS_LINE }}
+                axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                 interval={0}
               />
               <YAxis
                 domain={[0, 800]}
-                tick={CHART_AXIS_TICK}
+                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `€${v}`}
                 width={44}
               />
               <Tooltip
-                cursor={{ fill: "rgba(31,30,27,0.06)" }}
+                cursor={{ fill: "rgba(136,135,128,0.06)" }}
+                contentStyle={{
+                  border: "1px solid rgb(44 44 42 / 0.14)",
+                  borderRadius: 8,
+                  fontSize: 11,
+                  padding: "6px 10px",
+                  boxShadow: "none",
+                }}
                 content={({ active, payload }) => {
                   if (!active || !payload || !payload.length) return null;
                   const p = payload[0]?.payload as (typeof data)[number] | undefined;
@@ -145,17 +147,7 @@ export function WaterfallSection() {
                     line = `${p.label}: ${sign}€${Math.abs(p.value)}`;
                   }
                   return (
-                    <div
-                      style={{
-                        backgroundColor: "#1F1E1B",
-                        color: "#FAF9F5",
-                        fontFamily: "JetBrains Mono, Menlo, monospace",
-                        fontSize: 12,
-                        padding: "10px 14px",
-                        borderRadius: 8,
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                      }}
-                    >
+                    <div className="rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-1.5 text-[11px] text-admin-text-primary shadow-none">
                       {line}
                     </div>
                   );

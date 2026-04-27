@@ -27,23 +27,19 @@ export function CohortSection() {
         title="Cohort de retenção"
         subtitle="% de subscritores que se mantêm activos"
         accent="leads"
-        info="Percentagem de subscritores que se mantêm activos após o registo, agrupados por mês de entrada."
       />
 
       <AdminCard className="!px-6 !py-5">
         <div className="overflow-x-auto">
-          <table
-            className="w-full text-[12px]"
-            style={{ borderCollapse: "separate", borderSpacing: "4px 4px" }}
-          >
+          <table className="w-full border-collapse text-[12px]">
             <thead>
               <tr>
-                <th className="admin-eyebrow text-left pb-1 pr-3 font-normal">Cohort</th>
-                <th className="admin-eyebrow text-right pb-1 px-3 font-normal">Início</th>
+                <th className="admin-eyebrow text-left pb-2 pr-3 font-normal">Cohort</th>
+                <th className="admin-eyebrow text-right pb-2 px-3 font-normal">Início</th>
                 {[1, 2, 3, 4, 5, 6].map((m) => (
                   <th
                     key={m}
-                    className="admin-eyebrow pb-1 px-1 font-normal text-center"
+                    className="admin-eyebrow pb-2 px-2 font-normal text-center"
                   >
                     M{m}
                   </th>
@@ -52,25 +48,27 @@ export function CohortSection() {
             </thead>
             <tbody>
               {MOCK_COHORTS.map((row) => (
-                <tr key={row.cohort}>
-                  <td className="py-1 pr-3 text-admin-text-primary font-medium whitespace-nowrap">
+                <tr
+                  key={row.cohort}
+                  className="border-t border-admin-border"
+                >
+                  <td className="py-2 pr-3 text-admin-text-primary font-medium">
                     {row.cohort}
                   </td>
-                  <td className="py-1 px-3 text-right font-mono text-admin-text-secondary whitespace-nowrap">
+                  <td className="py-2 px-3 text-right font-mono text-admin-text-secondary">
                     {row.start}
                   </td>
                   {row.retention.map((pct, i) => (
-                    <td key={i} className="text-center p-0">
+                    <td key={i} className="py-1 px-1 text-center">
                       {pct === null ? (
                         <span className="text-admin-text-tertiary">—</span>
                       ) : (
                         <span
-                          className="inline-block w-full min-w-[44px] font-mono font-medium"
+                          className="inline-block min-w-[40px] rounded font-mono font-medium"
                           style={{
                             backgroundColor: retentionStyle(pct).bg,
                             color: retentionStyle(pct).fg,
-                            padding: "8px 6px",
-                            borderRadius: "6px",
+                            padding: "6px 4px",
                           }}
                           aria-label={`Retenção mês ${i + 1}: ${pct}%`}
                         >

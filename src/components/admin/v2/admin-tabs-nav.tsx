@@ -29,36 +29,22 @@ const TABS: TabDef[] = [
 ];
 
 const TAB_BASE =
-  "inline-block no-underline transition-colors hover:text-admin-text-primary -mb-px border-b-2 border-transparent";
-
-const TAB_STYLE: React.CSSProperties = {
-  padding: "12px 0",
-  fontSize: 13,
-  fontWeight: 400,
-};
-
-const TAB_ACTIVE_STYLE: React.CSSProperties = {
-  ...TAB_STYLE,
-  fontWeight: 500,
-};
+  "inline-block py-2.5 text-[13px] no-underline transition-colors hover:text-admin-text-primary -mb-px border-b-2 border-transparent";
 
 export function AdminTabsNav() {
   return (
     <nav
       aria-label="Secções do admin"
-      className="border-b border-admin-border"
-      style={{ marginBottom: 28 }}
+      className="mb-7 border-b border-admin-border"
     >
-      <ul className="m-0 flex flex-wrap list-none p-0" style={{ gap: 28 }}>
+      <ul className="m-0 flex flex-wrap gap-6 list-none p-0">
         {TABS.map((tab) => (
           <li key={tab.to}>
             <Link
               to={tab.to}
               className={`${TAB_BASE} text-admin-text-secondary`}
-              style={TAB_STYLE}
               activeProps={{
-                className: `${TAB_BASE} text-admin-text-primary !border-admin-text-primary`,
-                style: TAB_ACTIVE_STYLE,
+                className: `${TAB_BASE} font-medium text-admin-text-primary !border-admin-text-primary`,
               }}
             >
               {tab.label}
