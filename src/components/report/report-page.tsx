@@ -14,23 +14,7 @@ import { ReportFooter } from "./report-footer";
 import { ReportDataProvider } from "./report-data-context";
 import type { ReportData } from "./report-mock-data";
 
-interface ReportPageProps {
-  data?: ReportData;
-  /**
-   * When true, the AI insights section is hidden if `aiInsights` is empty
-   * instead of showing the editorial empty-state. Used by the public
-   * `/analyze/$username` flow to keep the layout clean while the AI engine
-   * is not yet generating real insights.
-   */
-  hideEmptyAiInsights?: boolean;
-}
-
-export function ReportPage({
-  data,
-  hideEmptyAiInsights = false,
-}: ReportPageProps = {}) {
-  const aiInsights = data?.aiInsights ?? [];
-  const showAi = !(hideEmptyAiInsights && aiInsights.length === 0);
+export function ReportPage({ data }: { data?: ReportData } = {}) {
   const content = (
     <div className="bg-surface-base min-h-screen">
       <Container size="xl">
@@ -45,7 +29,7 @@ export function ReportPage({
           <ReportPostingHeatmap />
           <ReportBestDays />
           <ReportHashtagsKeywords />
-          {showAi ? <ReportAiInsights /> : null}
+          <ReportAiInsights />
           <ReportFooter />
         </div>
       </Container>
