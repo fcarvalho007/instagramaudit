@@ -756,3 +756,230 @@ export const MOCK_CUSTOMER_NOTES = [
     body: "Cliente-âncora · contactar antes de qualquer mudança de pricing.",
   },
 ] as const;
+
+/* ============================================================
+ * MOCK DATA — tab Relatórios
+ * ============================================================ */
+
+export type ReportPipelineHealth = "ok" | "warn" | "critical";
+
+export const MOCK_PIPELINE_PHASES: ReadonlyArray<{
+  id: "request" | "analysis" | "pdf" | "email";
+  eyebrow: string;
+  label: string;
+  value: number;
+  sub: string;
+  /** Literal para `border-left` — fica em `ADMIN_LITERAL.pipeline*`. */
+  accentKey: "pipelineRequest" | "pipelineAnalysis" | "pipelinePdf" | "pipelineEmail";
+  health: ReportPipelineHealth;
+}> = [
+  {
+    id: "request",
+    eyebrow: "PEDIDO",
+    label: "recebido",
+    value: 12,
+    sub: "em fila",
+    accentKey: "pipelineRequest",
+    health: "ok",
+  },
+  {
+    id: "analysis",
+    eyebrow: "ANÁLISE",
+    label: "Apify",
+    value: 3,
+    sub: "a correr",
+    accentKey: "pipelineAnalysis",
+    health: "ok",
+  },
+  {
+    id: "pdf",
+    eyebrow: "PDF",
+    label: "gerado",
+    value: 2,
+    sub: "a renderizar",
+    accentKey: "pipelinePdf",
+    health: "ok",
+  },
+  {
+    id: "email",
+    eyebrow: "EMAIL",
+    label: "entregue",
+    value: 147,
+    sub: "entregues hoje",
+    accentKey: "pipelineEmail",
+    health: "ok",
+  },
+];
+
+export const MOCK_PIPELINE_AGGREGATES = {
+  avgTotalTime: { eyebrow: "TEMPO MÉDIO TOTAL", value: "4m 12s", sub: "do pedido ao email" },
+  successRate: { eyebrow: "TAXA DE ENTREGA", value: "98.6%", sub: "últimas 24h" },
+  failuresToRecover: { eyebrow: "FALHAS A RECUPERAR", value: 2, sub: "intervenção manual" },
+  avgCost: { eyebrow: "CUSTO MÉDIO", value: "$0.34", sub: "Apify + OpenAI" },
+} as const;
+
+export const MOCK_REPORT_METRICS = {
+  delivered: {
+    eyebrow: "Relatórios entregues · 30d",
+    value: 147,
+    delta: { text: "+18% vs mês anterior", direction: "up" as const },
+    sub: "ritmo de 4.9/dia",
+    info: "Total de relatórios entregues por email com sucesso nos últimos 30 dias.",
+  },
+  avgTime: {
+    eyebrow: "Tempo médio · entrega",
+    value: "4m 12s",
+    sub: "P95: 8m 31s",
+    info: "Tempo médio entre pedido e email entregue. P95 indica o percentil 95 — 95% dos relatórios são mais rápidos que este valor.",
+  },
+  successRate: {
+    eyebrow: "Taxa de sucesso",
+    value: "98.6%",
+    delta: { text: "+0.4 p.p.", direction: "up" as const },
+    sub: "2 falhas em 147",
+    info: "Percentagem de relatórios entregues com sucesso (sem necessidade de intervenção manual).",
+  },
+  avgCost: {
+    eyebrow: "Custo médio · por relatório",
+    value: "$0.34",
+    /** down semanticamente positivo — despesa a baixar. Renderizado verde. */
+    delta: { text: "−$0.04", direction: "down-good" as const },
+    sub: "$0.21 Apify + $0.13 OpenAI",
+    info: "Custo combinado de Apify (scraping) e OpenAI (análise IA) dividido pelo número de relatórios.",
+  },
+} as const;
+
+/** Volume diário (30d). Determinístico: variação por índice em vez de Math.random. */
+export const MOCK_DAILY_VOLUME: ReadonlyArray<{
+  day: number;
+  delivered: number;
+  failed: number;
+  queued: number;
+}> = Array.from({ length: 30 }, (_, i) => {
+  const day = i + 1;
+  // Padrão: subida ao longo do mês com pequena variação cíclica.
+  const base = 3 + Math.round(2 + Math.sin(i / 2.4) * 1.6 + i * 0.05);
+  const delivered = Math.max(2, base);
+  const failed = i % 9 === 0 ? 1 : 0;
+  const queued = i === 29 ? 2 : i % 5 === 0 ? 1 : 0;
+  return { day, delivered, failed, queued };
+});
+
+/** Tempo médio diário em segundos (30d), oscilando à volta de 4m. */
+export const MOCK_DAILY_TIMING: ReadonlyArray<{
+  day: number;
+  avgSeconds: number;
+}> = Array.from({ length: 30 }, (_, i) => {
+  const day = i + 1;
+  const base = 240; // 4 minutos
+  const wave = Math.round(Math.sin(i / 3) * 35 + Math.cos(i / 5) * 18);
+  const drift = i > 24 ? 30 : 0; // pequeno aumento na última semana (perto do SLA)
+  return { day, avgSeconds: base + wave + drift };
+});
+
+/** SLA-alvo em segundos (5 minutos). */
+export const REPORT_SLA_SECONDS = 300;
+
+export type ReportStatus = "delivered" | "processing" | "queued" | "failed";
+export type ReportOrigin = "subscription" | "one_off";
+
+export interface MockReport {
+  id: string;
+  customer: string;
+  profile: string;
+  origin: ReportOrigin;
+  status: ReportStatus;
+  startedAt: string; // pré-formatado dd/MM HH:mm
+  duration: string | null; // "4m 12s" | "em curso" | null se em fila
+  cost: string | null; // "$0.34" | null se ainda não calculado
+}
+
+export const MOCK_REPORTS_LIST: ReadonlyArray<MockReport> = [
+  {
+    id: "R-2847",
+    customer: "Ana Marques",
+    profile: "@nikeportugal",
+    origin: "subscription",
+    status: "delivered",
+    startedAt: "26/04 21:02",
+    duration: "3m 48s",
+    cost: "$0.31",
+  },
+  {
+    id: "R-2846",
+    customer: "João Pereira",
+    profile: "@galpenergia",
+    origin: "one_off",
+    status: "delivered",
+    startedAt: "26/04 19:34",
+    duration: "4m 22s",
+    cost: "$0.36",
+  },
+  {
+    id: "R-2845",
+    customer: "Sofia Almeida",
+    profile: "@worten",
+    origin: "one_off",
+    status: "processing",
+    startedAt: "26/04 21:14",
+    duration: "em curso",
+    cost: null,
+  },
+  {
+    id: "R-2844",
+    customer: "Pedro Silva",
+    profile: "@continente",
+    origin: "subscription",
+    status: "delivered",
+    startedAt: "26/04 14:02",
+    duration: "4m 02s",
+    cost: "$0.33",
+  },
+  {
+    id: "R-2843",
+    customer: "Inês Costa",
+    profile: "@sportzone",
+    origin: "one_off",
+    status: "processing",
+    startedAt: "26/04 21:08",
+    duration: "em curso",
+    cost: null,
+  },
+  {
+    id: "R-2842",
+    customer: "Tiago Ribeiro",
+    profile: "@meo",
+    origin: "one_off",
+    status: "failed",
+    startedAt: "25/04 22:41",
+    duration: "1m 12s",
+    cost: "$0.04",
+  },
+  {
+    id: "R-2841",
+    customer: "Marta Lopes",
+    profile: "@adidasportugal",
+    origin: "one_off",
+    status: "queued",
+    startedAt: "26/04 21:18",
+    duration: null,
+    cost: null,
+  },
+  {
+    id: "R-2840",
+    customer: "Rui Tavares",
+    profile: "@decathlon",
+    origin: "subscription",
+    status: "delivered",
+    startedAt: "25/04 18:08",
+    duration: "3m 56s",
+    cost: "$0.31",
+  },
+];
+
+export const MOCK_REPORTS_COUNTS = {
+  all: 147,
+  delivered: 144,
+  inProgress: 5,
+  failed: 2,
+} as const;

@@ -78,4 +78,19 @@ export const ADMIN_LITERAL = {
   heroGradientEyebrow: "#085041",
   heroGradientValue: "#04342C",
   heroGradientDelta: "#0F6E56",
+  // ===== Relatórios · pipeline =====
+  pipelineRequest: "#534AB7",
+  pipelineAnalysis: "#BA7517",
+  pipelinePdf: "#185FA5",
+  pipelineEmail: "#1D9E75",
+  // ===== Relatórios · gráficos =====
+  chartDelivered: "#1D9E75",
+  chartFailed: "#E24B4A",
+  chartQueued: "#888780",
+  chartTiming: "#D85A30",
+  slaLine: "#888780",
+  // ===== Saúde / pulse =====
+  healthOk: "#1D9E75",
+  healthWarn: "#EF9F27",
+  healthCritical: "#A32D2D",
 } as const;
