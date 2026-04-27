@@ -28,6 +28,7 @@ import {
   CHART_GRID_STROKE,
   DARK_TOOLTIP_PROPS,
 } from "../charts/chart-tooltip";
+import { AdminInfoTooltip } from "../admin-info-tooltip";
 import {
   DAILY_COST_LIMIT,
   MOCK_DAILY_COSTS,
@@ -245,7 +246,7 @@ function ExpenseColumn({
         <span className="admin-eyebrow" style={{ color: colorTextVar }}>
           {label}
         </span>
-        {tip ? <ExpenseTooltip text={tip} /> : null}
+        {tip ? <AdminInfoTooltip text={tip} /> : null}
       </div>
       <div className="mb-3 flex items-baseline gap-2">
         <span
@@ -266,12 +267,3 @@ function ExpenseColumn({
     </div>
   );
 }
-
-// Lazy import equivalent — placed at bottom to keep the patch focused.
-function ExpenseTooltip({ text }: { text: string }) {
-  // re-uso do AdminInfoTooltip; import dinâmico não é necessário em runtime,
-  // mas mantemos o uso central via wrapper para clareza de leitura.
-  return <AdminInfoTooltipInline text={text} />;
-}
-
-import { AdminInfoTooltip as AdminInfoTooltipInline } from "../admin-info-tooltip";
