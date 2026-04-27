@@ -111,7 +111,7 @@ export function ExpenseSection() {
               Custos diários · últimos 30 dias
             </p>
             <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
-              Stack Apify + OpenAI · linha tracejada = limite diário equivalente
+              Stack Apify + OpenAI · linha tracejada vermelha = limite diário equivalente
               {" "}${DAILY_COST_LIMIT.toFixed(2)}
             </p>
           </div>
@@ -196,6 +196,7 @@ function ExpenseColumn({
   colorVar,
   colorTextVar,
   label,
+  info,
   value,
   cap,
   note,
@@ -205,6 +206,7 @@ function ExpenseColumn({
   colorVar: string;
   colorTextVar: string;
   label: string;
+  info?: string;
   value: string;
   cap: string;
   note: string;
@@ -228,14 +230,26 @@ function ExpenseColumn({
         <span className="admin-eyebrow" style={{ color: colorTextVar }}>
           {label}
         </span>
+        {info ? <AdminInfoTooltip label={info} /> : null}
       </div>
       <div className="mb-2.5 flex items-baseline gap-2">
-        <span className="font-mono text-[1.375rem] font-medium tracking-tight leading-tight text-admin-text-primary">
+        <span className="font-mono text-[2.25rem] font-medium tracking-[-0.03em] leading-none text-admin-text-primary">
           {value}
         </span>
         <span className="text-[11px] text-admin-text-tertiary">{cap}</span>
       </div>
-      {children}
+      <div className="relative">
+        {children}
+        {/* Label "CAP" acima do marcador vermelho da progress bar (apenas em barras com showCap = Apify) */}
+        {label === "APIFY" ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-3 right-0 -translate-x-[2px] font-mono text-[8px] font-medium tracking-[0.1em] text-admin-danger-700"
+          >
+            CAP
+          </span>
+        ) : null}
+      </div>
       <p className="mt-2 text-[11px]" style={{ color: colorTextVar }}>
         {note}
       </p>
