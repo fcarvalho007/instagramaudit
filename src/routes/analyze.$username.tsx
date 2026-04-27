@@ -5,6 +5,8 @@ import { AnalysisErrorState } from "@/components/product/analysis-error-state";
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
 import { ReportPage } from "@/components/report/report-page";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
+import { TierStrip } from "@/components/report-tier/tier-strip";
+import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-block";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
   snapshotToReportData,
@@ -159,7 +161,9 @@ function AnalyzePage() {
     <ReportThemeWrapper>
       <div className="bg-surface-base min-h-screen">
         <CoverageStrip result={state.result} />
+        <TierStrip />
         <ReportPage data={state.result.data} />
+        <TierComparisonBlock />
       </div>
     </ReportThemeWrapper>
   );
