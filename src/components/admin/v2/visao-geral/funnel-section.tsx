@@ -1,14 +1,18 @@
 /**
  * Secção 1 — Funil de conversão.
  *
- * SVG inline 600×200 com 3 polígonos trapezoidais. Texto sobreposto
- * absoluto em cada camada com flex space-between.
- * Grelha 3-col abaixo (Conversão total, Receita por lead, Valor médio
- * cliente) com 1px gap entre células para efeito separador.
+ * SVG 800×280 com 3 trapézios. Todos os labels (eyebrows + valores)
+ * estão dentro do `<svg>` como `<text>` posicionados em coordenadas
+ * relativas ao viewBox — escala correctamente em qualquer largura sem
+ * distorção e sem overflow (preserveAspectRatio default = xMidYMid meet).
+ *
+ * Grelha 3-col abaixo com hairlines de 1px entre células.
  */
 
 import { AdminSectionHeader } from "../admin-section-header";
-import { ADMIN_BORDER, ADMIN_LITERAL } from "../admin-tokens";
+import { AdminCard } from "../admin-card";
+import { AdminStat } from "../admin-stat";
+import { ADMIN_LITERAL } from "../admin-tokens";
 import { MOCK_FUNNEL } from "@/lib/admin/mock-data";
 
 export function FunnelSection() {
@@ -20,209 +24,145 @@ export function FunnelSection() {
         accent="leads"
       />
 
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          border: ADMIN_BORDER,
-          borderRadius: 12,
-          padding: "1.5rem 1.75rem",
-        }}
-      >
+      <AdminCard>
         <FunnelDiagram />
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 1,
-            marginTop: 24,
-            backgroundColor: "rgb(var(--admin-neutral-100))",
-            borderRadius: 8,
-            overflow: "hidden",
-            border: ADMIN_BORDER,
-          }}
-        >
+        <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-admin-border bg-admin-border sm:grid-cols-3">
           {MOCK_FUNNEL.totals.map((cell) => (
-            <div
-              key={cell.eyebrow}
-              style={{
-                backgroundColor: "#ffffff",
-                padding: "14px 16px",
-              }}
-            >
-              <p className="admin-eyebrow" style={{ marginBottom: 6 }}>
-                {cell.eyebrow}
-              </p>
-              <p
-                style={{
-                  fontSize: 22,
-                  fontWeight: 500,
-                  letterSpacing: "-0.01em",
-                  color: "rgb(var(--admin-neutral-900))",
-                  margin: 0,
-                  lineHeight: 1.1,
-                }}
-              >
-                {cell.value}
-              </p>
-              <p
-                style={{
-                  marginTop: 4,
-                  fontSize: 11,
-                  color: "rgb(var(--admin-neutral-400))",
-                }}
-              >
-                {cell.sub}
-              </p>
+            <div key={cell.eyebrow} className="bg-admin-surface p-4">
+              <AdminStat
+                eyebrow={cell.eyebrow}
+                value={cell.value}
+                size="md"
+                sub={cell.sub}
+              />
             </div>
           ))}
         </div>
-      </div>
+      </AdminCard>
     </section>
   );
 }
 
+/**
+ * SVG funnel — viewBox 800×280, 3 layers de 70px cada, gaps de 14px.
+ * Textos dentro do SVG em coordenadas absolutas; escalam com o viewBox.
+ */
 function FunnelDiagram() {
   return (
     <div
       role="img"
-      aria-label={`Funil de conversão: ${MOCK_FUNNEL.visitors.value} visitantes, ${MOCK_FUNNEL.leads.value} leads, ${MOCK_FUNNEL.customers.value} clientes`}
-      style={{ position: "relative", width: "100%", height: 200 }}
+      aria-label={`Funil: ${MOCK_FUNNEL.visitors.value} visitantes → ${MOCK_FUNNEL.leads.value} leads → ${MOCK_FUNNEL.customers.value} clientes`}
+      className="w-full"
     >
       <svg
-        viewBox="0 0 600 200"
-        preserveAspectRatio="none"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        viewBox="0 0 800 280"
+        className="block w-full h-auto max-h-[260px]"
         aria-hidden="true"
       >
-        <polygon
-          points="0,30 600,30 540,80 60,80"
-          fill={ADMIN_LITERAL.funnelTop}
+        {/* Layer 1: visitantes */}
+        <polygon points="40,20 760,20 680,90 120,90" fill={ADMIN_LITERAL.funnelTop} />
+        <FunnelText
+          x={140}
+          rightX={660}
+          y={42}
+          left={MOCK_FUNNEL.visitors}
+          right={MOCK_FUNNEL.freeAnalyses}
+          eyebrowFill={ADMIN_LITERAL.funnelEyebrow}
+          textFill={ADMIN_LITERAL.funnelBaseText}
         />
-        <polygon
-          points="60,90 540,90 460,140 140,140"
-          fill={ADMIN_LITERAL.funnelMid}
+
+        {/* Layer 2: leads */}
+        <polygon points="120,108 680,108 580,178 220,178" fill={ADMIN_LITERAL.funnelMid} />
+        <FunnelText
+          x={240}
+          rightX={560}
+          y={130}
+          left={MOCK_FUNNEL.leads}
+          right={MOCK_FUNNEL.visitorToLead}
+          eyebrowFill={ADMIN_LITERAL.funnelEyebrow}
+          textFill={ADMIN_LITERAL.funnelBaseText}
         />
-        <polygon
-          points="140,150 460,150 400,195 200,195"
-          fill={ADMIN_LITERAL.funnelBase}
+
+        {/* Layer 3: clientes */}
+        <polygon points="220,196 580,196 500,260 300,260" fill={ADMIN_LITERAL.funnelBase} />
+        <FunnelText
+          x={320}
+          rightX={480}
+          y={218}
+          left={MOCK_FUNNEL.customers}
+          right={MOCK_FUNNEL.leadToCustomer}
+          eyebrowFill={ADMIN_LITERAL.funnelLightEyebrow}
+          textFill="#FFFFFF"
         />
       </svg>
-
-      <FunnelLayerLabel
-        top="30px"
-        height="50px"
-        left={MOCK_FUNNEL.visitors}
-        right={MOCK_FUNNEL.freeAnalyses}
-        textColor={ADMIN_LITERAL.funnelBaseText}
-        eyebrowColor={ADMIN_LITERAL.funnelEyebrow}
-        paddingX="60px"
-      />
-      <FunnelLayerLabel
-        top="90px"
-        height="50px"
-        left={MOCK_FUNNEL.leads}
-        right={MOCK_FUNNEL.visitorToLead}
-        textColor={ADMIN_LITERAL.funnelBaseText}
-        eyebrowColor={ADMIN_LITERAL.funnelEyebrow}
-        paddingX="160px"
-      />
-      <FunnelLayerLabel
-        top="150px"
-        height="45px"
-        left={MOCK_FUNNEL.customers}
-        right={MOCK_FUNNEL.leadToCustomer}
-        textColor="#FFFFFF"
-        eyebrowColor={ADMIN_LITERAL.funnelLightEyebrow}
-        paddingX="220px"
-      />
     </div>
   );
 }
 
-function FunnelLayerLabel({
-  top,
-  height,
+function FunnelText({
+  x,
+  rightX,
+  y,
   left,
   right,
-  textColor,
-  eyebrowColor,
-  paddingX,
+  eyebrowFill,
+  textFill,
 }: {
-  top: string;
-  height: string;
+  x: number;
+  rightX: number;
+  y: number;
   left: { eyebrow: string; value: string };
   right: { eyebrow: string; value: string };
-  textColor: string;
-  eyebrowColor: string;
-  paddingX: string;
+  eyebrowFill: string;
+  textFill: string;
 }) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        top,
-        left: 0,
-        right: 0,
-        height,
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingLeft: paddingX,
-        paddingRight: paddingX,
-        pointerEvents: "none",
-      }}
-    >
-      <div>
-        <p
-          style={{
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 9,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            color: eyebrowColor,
-            margin: 0,
-          }}
-        >
-          {left.eyebrow}
-        </p>
-        <p
-          style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: textColor,
-            margin: 0,
-            lineHeight: 1.2,
-          }}
-        >
-          {left.value}
-        </p>
-      </div>
-      <div style={{ textAlign: "right" }}>
-        <p
-          style={{
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 9,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            color: eyebrowColor,
-            margin: 0,
-          }}
-        >
-          {right.eyebrow}
-        </p>
-        <p
-          style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: textColor,
-            margin: 0,
-            lineHeight: 1.2,
-          }}
-        >
-          {right.value}
-        </p>
-      </div>
-    </div>
+    <>
+      <text
+        x={x}
+        y={y}
+        fill={eyebrowFill}
+        fontFamily="JetBrains Mono, monospace"
+        fontSize={10}
+        letterSpacing="0.08em"
+        style={{ textTransform: "uppercase" }}
+      >
+        {left.eyebrow.toUpperCase()}
+      </text>
+      <text
+        x={x}
+        y={y + 18}
+        fill={textFill}
+        fontFamily="Inter, sans-serif"
+        fontSize={16}
+        fontWeight={500}
+      >
+        {left.value}
+      </text>
+
+      <text
+        x={rightX}
+        y={y}
+        fill={eyebrowFill}
+        fontFamily="JetBrains Mono, monospace"
+        fontSize={10}
+        letterSpacing="0.08em"
+        textAnchor="end"
+      >
+        {right.eyebrow.toUpperCase()}
+      </text>
+      <text
+        x={rightX}
+        y={y + 18}
+        fill={textFill}
+        fontFamily="Inter, sans-serif"
+        fontSize={16}
+        fontWeight={500}
+        textAnchor="end"
+      >
+        {right.value}
+      </text>
+    </>
   );
 }

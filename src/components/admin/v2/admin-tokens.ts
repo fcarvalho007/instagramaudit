@@ -53,8 +53,12 @@ export const ACCENT_BG_50: Record<AdminAccent, string> = {
   neutral: "rgb(var(--admin-neutral-50))",
 };
 
-/** Border subtle padrão do admin v2. */
-export const ADMIN_BORDER = "0.5px solid rgb(var(--admin-neutral-100))";
+/**
+ * Border subtle padrão do admin v2 (mantido por compatibilidade durante a
+ * migração — preferir a classe Tailwind `border-admin-border` em código novo).
+ */
+export const ADMIN_BORDER =
+  "1px solid rgb(var(--admin-border-rgb) / 0.08)";
 
 /** Cor literal usada no plugin SVG do funil + ReferenceLine. */
 export const ADMIN_LITERAL = {

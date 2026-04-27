@@ -71,6 +71,86 @@
   --admin-neutral-600: 95 94 90;
   --admin-neutral-800: 68 68 65;
   --admin-neutral-900: 44 44 42;
+
+  /* === Bordas (1px com baixa opacidade — sempre visíveis em 1x DPR) === */
+  --admin-border-rgb: 44 44 42;
+}
+
+/**
+ * Tailwind v4 theme extension — expõe tokens admin como utilities.
+ * Permite usar `bg-admin-canvas`, `text-admin-revenue-500`, `border-admin`,
+ * etc., em vez de classes arbitrárias `bg-[rgb(var(--admin-...))]`.
+ */
+@theme inline {
+  /* Surfaces */
+  --color-admin-canvas: rgb(var(--admin-neutral-50));
+  --color-admin-surface: #ffffff;
+  --color-admin-surface-muted: rgb(var(--admin-neutral-50));
+
+  /* Text */
+  --color-admin-text-primary: rgb(var(--admin-neutral-900));
+  --color-admin-text-secondary: rgb(var(--admin-neutral-600));
+  --color-admin-text-tertiary: rgb(var(--admin-neutral-400));
+
+  /* Border (1px com 8% / 14% opacidade) */
+  --color-admin-border: rgb(var(--admin-border-rgb) / 0.08);
+  --color-admin-border-strong: rgb(var(--admin-border-rgb) / 0.14);
+
+  /* Accents — receita (esmeralda) */
+  --color-admin-revenue-50: rgb(var(--admin-revenue-50));
+  --color-admin-revenue-100: rgb(var(--admin-revenue-100));
+  --color-admin-revenue-400: rgb(var(--admin-revenue-400));
+  --color-admin-revenue-500: rgb(var(--admin-revenue-500));
+  --color-admin-revenue-700: rgb(var(--admin-revenue-700));
+  --color-admin-revenue-800: rgb(var(--admin-revenue-800));
+  --color-admin-revenue-900: rgb(var(--admin-revenue-900));
+
+  /* Accents — leads (roxo) */
+  --color-admin-leads-50: rgb(var(--admin-leads-50));
+  --color-admin-leads-100: rgb(var(--admin-leads-100));
+  --color-admin-leads-400: rgb(var(--admin-leads-400));
+  --color-admin-leads-500: rgb(var(--admin-leads-500));
+  --color-admin-leads-700: rgb(var(--admin-leads-700));
+  --color-admin-leads-900: rgb(var(--admin-leads-900));
+
+  /* Accents — expense (âmbar) */
+  --color-admin-expense-50: rgb(var(--admin-expense-50));
+  --color-admin-expense-100: rgb(var(--admin-expense-100));
+  --color-admin-expense-400: rgb(var(--admin-expense-400));
+  --color-admin-expense-500: rgb(var(--admin-expense-500));
+  --color-admin-expense-700: rgb(var(--admin-expense-700));
+
+  /* Accents — signal (coral) */
+  --color-admin-signal-50: rgb(var(--admin-signal-50));
+  --color-admin-signal-400: rgb(var(--admin-signal-400));
+  --color-admin-signal-500: rgb(var(--admin-signal-500));
+  --color-admin-signal-700: rgb(var(--admin-signal-700));
+
+  /* Accents — danger (vermelho) */
+  --color-admin-danger-50: rgb(var(--admin-danger-50));
+  --color-admin-danger-400: rgb(var(--admin-danger-400));
+  --color-admin-danger-500: rgb(var(--admin-danger-500));
+  --color-admin-danger-700: rgb(var(--admin-danger-700));
+
+  /* Accents — info (azul / OpenAI) */
+  --color-admin-info-50: rgb(var(--admin-info-50));
+  --color-admin-info-400: rgb(var(--admin-info-400));
+  --color-admin-info-500: rgb(var(--admin-info-500));
+  --color-admin-info-700: rgb(var(--admin-info-700));
+
+  /* Accents — revenue alt (verde claro) */
+  --color-admin-revenue-alt-100: rgb(var(--admin-revenue-alt-100));
+  --color-admin-revenue-alt-400: rgb(var(--admin-revenue-alt-400));
+  --color-admin-revenue-alt-700: rgb(var(--admin-revenue-alt-700));
+
+  /* Neutros */
+  --color-admin-neutral-50: rgb(var(--admin-neutral-50));
+  --color-admin-neutral-100: rgb(var(--admin-neutral-100));
+  --color-admin-neutral-200: rgb(var(--admin-neutral-200));
+  --color-admin-neutral-400: rgb(var(--admin-neutral-400));
+  --color-admin-neutral-600: rgb(var(--admin-neutral-600));
+  --color-admin-neutral-800: rgb(var(--admin-neutral-800));
+  --color-admin-neutral-900: rgb(var(--admin-neutral-900));
 }
 
 /**
@@ -93,6 +173,20 @@
   font-size: 11px;
   font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: rgb(var(--admin-neutral-600));
+  line-height: 1;
+  margin: 0;
+}
+
+/**
+ * Limpa o título interno duplicado do `CockpitShell` quando renderizado
+ * dentro do wrapper `.admin-cockpit-legacy`.
+ * O `CockpitShell` começa com `<div class="space-y-6"> > <div class="flex...">`
+ * que contém o eyebrow "Cockpit" + h2 "Operação · Custos · Sinais".
+ * O admin v2 já mostra o cabeçalho via `AdminPageHeader`, por isso esconde-se
+ * apenas a coluna de texto à esquerda (mantendo o botão "Atualizar" à direita).
+ */
+.admin-cockpit-legacy > div > div:first-child > .space-y-1 {
+  display: none;
 }

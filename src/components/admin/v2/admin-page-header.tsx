@@ -1,8 +1,8 @@
 /**
  * AdminPageHeader — cabeçalho de cada tab.
  *
- * eyebrow uppercase + h1 28px + subtítulo + slot de acções.
- * Linha-gradient sutil em baixo a separar do conteúdo.
+ * Estrutura: eyebrow mono + h1 + subtítulo opcional + slot de acções.
+ * Separador inferior em gradient subtil (linha 1px que esmorece à direita).
  */
 
 import { type ReactNode } from "react";
@@ -20,39 +20,21 @@ export function AdminPageHeader({
 }: AdminPageHeaderProps) {
   return (
     <header
+      className="mb-7 pb-5 bg-no-repeat bg-left-bottom"
       style={{
-        paddingBottom: 20,
-        marginBottom: 28,
         backgroundImage:
-          "linear-gradient(to right, rgb(var(--admin-neutral-100)), transparent)",
+          "linear-gradient(to right, rgb(var(--admin-border-rgb) / 0.14), transparent)",
         backgroundSize: "100% 1px",
-        backgroundPosition: "bottom left",
-        backgroundRepeat: "no-repeat",
       }}
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
           <p className="admin-eyebrow">InstaBench · Admin</p>
-          <h1
-            style={{
-              fontSize: 28,
-              fontWeight: 500,
-              letterSpacing: "-0.01em",
-              color: "rgb(var(--admin-neutral-900))",
-              lineHeight: 1.1,
-              margin: 0,
-            }}
-          >
+          <h1 className="text-[28px] font-medium tracking-tight leading-[1.1] text-admin-text-primary m-0">
             {title}
           </h1>
           {subtitle ? (
-            <p
-              style={{
-                fontSize: 13,
-                color: "rgb(var(--admin-neutral-600))",
-                margin: 0,
-              }}
-            >
+            <p className="text-[13px] text-admin-text-secondary m-0">
               {subtitle}
             </p>
           ) : null}

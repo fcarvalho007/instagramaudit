@@ -1,25 +1,19 @@
 /**
  * KPICard — cartão métrico do admin v2.
  *
- * 3 variantes:
- *   - default      → fundo branco, borda 0.5px
- *   - highlighted  → gradiente esmeralda + borda verde 400 (cartão herói)
- *   - accent-left  → border-left 3px com cor da família
- *
- * Estrutura:
- *   eyebrow (12px secondary) → valor (26px/500) → delta opcional → subtexto (11px tertiary)
+ * Fino wrapper sobre `AdminCard` + `AdminStat`. Toda a estilização vem
+ * dos componentes partilhados. Variantes:
+ *   - default      → cartão branco
+ *   - hero         → gradient esmeralda (cartão dominante de receita)
+ *   - accent-left  → borda esquerda 3px com cor da família
  */
 
-import { type ReactNode, type CSSProperties } from "react";
-import {
-  ACCENT_500,
-  ACCENT_TEXT,
-  ADMIN_BORDER,
-  ADMIN_LITERAL,
-  type AdminAccent,
-} from "./admin-tokens";
+import { type ReactNode } from "react";
+import { AdminCard } from "./admin-card";
+import { AdminStat } from "./admin-stat";
+import { type AdminAccent } from "./admin-tokens";
 
-type KPIVariant = "default" | "highlighted" | "accent-left";
+type KPIVariant = "default" | "hero" | "accent-left";
 
 interface KPICardProps {
   eyebrow: string;
@@ -28,8 +22,8 @@ interface KPICardProps {
   accent?: AdminAccent;
   delta?: { text: string; direction: "up" | "down" };
   sub?: ReactNode;
-  /** Texto destacado entre o valor e o subtexto, em cor accent (ex.: "87 reports"). */
   highlightSub?: { text: string; accent: AdminAccent };
+  size?: "md" | "lg";
   className?: string;
 }
 
@@ -41,92 +35,35 @@ export function KPICard({
   delta,
   sub,
   highlightSub,
-  className = "",
+  size = "md",
+  className,
 }: KPICardProps) {
-  const isHero = variant === "highlighted";
+  const cardVariant = variant === "hero" ? "hero" : variant === "accent-left" ? "accent-left" : "default";
 
-  const baseStyle: CSSProperties = {
-    border: ADMIN_BORDER,
-    borderRadius: 12,
-    padding: "14px 16px",
-    backgroundColor: "#ffffff",
-  };
-
-  if (variant === "accent-left") {
-    baseStyle.borderLeft = `3px solid ${ACCENT_500[accent]}`;
-  }
-
-  if (isHero) {
-    baseStyle.background = ADMIN_LITERAL.heroGradient;
-    baseStyle.border = `0.5px solid ${ADMIN_LITERAL.heroGradientBorder}`;
-  }
-
-  const eyebrowColor = isHero
-    ? ADMIN_LITERAL.heroGradientEyebrow
-    : "rgb(var(--admin-neutral-600))";
-  const valueColor = isHero
-    ? ADMIN_LITERAL.heroGradientValue
-    : "rgb(var(--admin-neutral-900))";
-  const subColor = isHero
-    ? ADMIN_LITERAL.heroGradientDelta
-    : "rgb(var(--admin-neutral-400))";
-
-  const deltaColor = delta
-    ? delta.direction === "up"
-      ? isHero
-        ? ADMIN_LITERAL.heroGradientDelta
-        : "rgb(var(--admin-revenue-700))"
-      : "rgb(var(--admin-danger-500))"
-    : undefined;
+  const isHero = variant === "hero";
+  const valueClass = isHero
+    ? "text-admin-revenue-900"
+    : "text-admin-text-primary";
+  const eyebrowClass = isHero ? "text-admin-revenue-800" : undefined;
+  const subClass = isHero ? "text-admin-revenue-700" : "text-admin-text-tertiary";
 
   return (
-    <div className={className} style={baseStyle}>
-      <p
-        className="admin-eyebrow"
-        style={{ color: eyebrowColor, marginBottom: 8 }}
-      >
-        {eyebrow}
-      </p>
-      <div className="flex items-baseline gap-2">
-        <span
-          style={{
-            fontSize: 26,
-            fontWeight: 500,
-            letterSpacing: "-0.01em",
-            color: valueColor,
-            lineHeight: 1.1,
-          }}
-        >
-          {value}
-        </span>
-        {delta ? (
-          <span style={{ fontSize: 12, color: deltaColor }}>
-            {delta.direction === "up" ? "▲" : "▼"} {delta.text}
-          </span>
-        ) : null}
-      </div>
-      {highlightSub ? (
-        <p
-          style={{
-            marginTop: 6,
-            fontSize: 12,
-            color: ACCENT_TEXT[highlightSub.accent],
-          }}
-        >
-          {highlightSub.text}
-        </p>
-      ) : null}
-      {sub ? (
-        <p
-          style={{
-            marginTop: highlightSub ? 2 : 6,
-            fontSize: 11,
-            color: subColor,
-          }}
-        >
-          {sub}
-        </p>
-      ) : null}
-    </div>
+    <AdminCard
+      variant={cardVariant}
+      accent={accent}
+      className={`!p-4 ${className ?? ""}`.trim()}
+    >
+      <AdminStat
+        eyebrow={eyebrow}
+        value={value}
+        size={size}
+        delta={delta}
+        sub={sub}
+        highlightSub={highlightSub}
+        valueClassName={valueClass}
+        eyebrowClassName={eyebrowClass}
+        subClassName={subClass}
+      />
+    </AdminCard>
   );
 }

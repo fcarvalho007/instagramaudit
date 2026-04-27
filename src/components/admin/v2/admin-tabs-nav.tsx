@@ -1,73 +1,50 @@
 /**
  * AdminTabsNav — navegação principal das 6 tabs do admin v2.
  *
- * Cada tab é um `<Link>` TanStack com `activeProps` que aplica peso 500,
- * cor primária e sublinhado 2px na cor temática da tab. A baseline da nav
- * é uma linha 0.5px; o sublinhado activo encavala-a com `margin-bottom: -0.5px`.
+ * Mono: o sublinhado da tab activa é sempre `text-primary`, sem cores
+ * temáticas (a cor temática vive dentro da tab, na barra do
+ * `AdminSectionHeader`). Reduz ruído visual e foco no que importa.
  */
 
 import { Link } from "@tanstack/react-router";
-import { ACCENT_500, type AdminAccent } from "./admin-tokens";
 
 interface TabDef {
-  to: "/admin/visao-geral" | "/admin/receita" | "/admin/clientes" | "/admin/relatorios" | "/admin/perfis" | "/admin/sistema";
+  to:
+    | "/admin/visao-geral"
+    | "/admin/receita"
+    | "/admin/clientes"
+    | "/admin/relatorios"
+    | "/admin/perfis"
+    | "/admin/sistema";
   label: string;
-  accent: AdminAccent;
 }
 
 const TABS: TabDef[] = [
-  { to: "/admin/visao-geral", label: "Visão geral", accent: "leads" },
-  { to: "/admin/receita", label: "Receita", accent: "revenue" },
-  { to: "/admin/clientes", label: "Clientes", accent: "leads" },
-  { to: "/admin/relatorios", label: "Relatórios", accent: "signal" },
-  { to: "/admin/perfis", label: "Perfis", accent: "expense" },
-  { to: "/admin/sistema", label: "Sistema", accent: "neutral" },
+  { to: "/admin/visao-geral", label: "Visão geral" },
+  { to: "/admin/receita", label: "Receita" },
+  { to: "/admin/clientes", label: "Clientes" },
+  { to: "/admin/relatorios", label: "Relatórios" },
+  { to: "/admin/perfis", label: "Perfis" },
+  { to: "/admin/sistema", label: "Sistema" },
 ];
+
+const TAB_BASE =
+  "inline-block py-2.5 text-[13px] no-underline transition-colors hover:text-admin-text-primary -mb-px border-b-2 border-transparent";
 
 export function AdminTabsNav() {
   return (
     <nav
       aria-label="Secções do admin"
-      style={{
-        borderBottom: "0.5px solid rgb(var(--admin-neutral-100))",
-        marginBottom: 28,
-      }}
+      className="mb-7 border-b border-admin-border"
     >
-      <ul
-        style={{
-          display: "flex",
-          gap: 24,
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          flexWrap: "wrap",
-        }}
-      >
+      <ul className="m-0 flex flex-wrap gap-6 list-none p-0">
         {TABS.map((tab) => (
           <li key={tab.to}>
             <Link
               to={tab.to}
-              style={{
-                display: "inline-block",
-                padding: "10px 0",
-                fontSize: 13,
-                color: "rgb(var(--admin-neutral-600))",
-                textDecoration: "none",
-                marginBottom: "-0.5px",
-                borderBottom: "2px solid transparent",
-                transition: "color 120ms ease",
-              }}
+              className={`${TAB_BASE} text-admin-text-secondary`}
               activeProps={{
-                style: {
-                  display: "inline-block",
-                  padding: "10px 0",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: "rgb(var(--admin-neutral-900))",
-                  textDecoration: "none",
-                  marginBottom: "-0.5px",
-                  borderBottom: `2px solid ${ACCENT_500[tab.accent]}`,
-                },
+                className: `${TAB_BASE} font-medium text-admin-text-primary !border-admin-text-primary`,
               }}
             >
               {tab.label}

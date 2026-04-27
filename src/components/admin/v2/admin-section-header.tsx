@@ -1,8 +1,8 @@
 /**
  * AdminSectionHeader — header de cada secção dentro de uma tab.
  *
- * Barra vertical 3×16px à esquerda com cor temática + h2 13px uppercase
- * + subtítulo opcional após "·".
+ * Barra vertical 3×16px com cor temática + h2 uppercase + subtítulo opcional.
+ * Esta barra é o único portador da cor temática agora que as tabs são mono.
  */
 
 import { type ReactNode } from "react";
@@ -20,41 +20,16 @@ export function AdminSectionHeader({
   accent,
 }: AdminSectionHeaderProps) {
   return (
-    <div
-      className="flex items-center gap-3"
-      style={{ marginBottom: 14 }}
-    >
+    <div className="mb-3.5 flex items-center gap-3">
       <span
         aria-hidden="true"
-        style={{
-          width: 3,
-          height: 16,
-          backgroundColor: ACCENT_500[accent],
-          borderRadius: 1.5,
-          flexShrink: 0,
-        }}
+        className="block w-[3px] h-4 rounded-sm shrink-0"
+        style={{ backgroundColor: ACCENT_500[accent] }}
       />
-      <h2
-        style={{
-          fontSize: 13,
-          fontWeight: 500,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          color: "rgb(var(--admin-neutral-900))",
-          margin: 0,
-        }}
-      >
+      <h2 className="m-0 text-[13px] font-medium uppercase tracking-[0.06em] text-admin-text-primary">
         {title}
         {subtitle ? (
-          <span
-            style={{
-              marginLeft: 8,
-              fontWeight: 400,
-              letterSpacing: 0,
-              textTransform: "none",
-              color: "rgb(var(--admin-neutral-400))",
-            }}
-          >
+          <span className="ml-2 font-normal normal-case tracking-normal text-admin-text-tertiary">
             · {subtitle}
           </span>
         ) : null}

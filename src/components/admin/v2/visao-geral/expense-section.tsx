@@ -19,8 +19,9 @@ import {
 } from "recharts";
 
 import { AdminSectionHeader } from "../admin-section-header";
+import { AdminCard } from "../admin-card";
 import { ProgressBar } from "../progress-bar";
-import { ADMIN_BORDER, ADMIN_LITERAL } from "../admin-tokens";
+import { ADMIN_LITERAL } from "../admin-tokens";
 import {
   DAILY_COST_LIMIT,
   MOCK_DAILY_COSTS,
@@ -29,27 +30,15 @@ import {
 
 export function ExpenseSection() {
   const t = MOCK_EXPENSE;
+  const chartData = MOCK_DAILY_COSTS.map((d) => ({ ...d }));
 
   return (
     <section>
       <AdminSectionHeader title="Despesa" subtitle="o que sai" accent="expense" />
 
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          border: ADMIN_BORDER,
-          borderRadius: 12,
-          overflow: "hidden",
-        }}
-      >
+      <AdminCard variant="flush" className="overflow-hidden">
         {/* Zona superior: 3 colunas */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            padding: "1.25rem 1.5rem",
-          }}
-        >
+        <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-3 md:gap-0">
           {/* Apify */}
           <ExpenseColumn
             colorVar="rgb(var(--admin-expense-500))"
@@ -104,46 +93,28 @@ export function ExpenseSection() {
         </div>
 
         {/* Linha separadora */}
-        <div
-          style={{
-            height: 0,
-            borderTop: ADMIN_BORDER,
-          }}
-        />
+        <div className="border-t border-admin-border" />
 
         {/* Zona inferior: gráfico de custos */}
-        <div style={{ padding: "1.25rem 1.5rem" }}>
-          <div style={{ marginBottom: 12 }}>
-            <p
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: "rgb(var(--admin-neutral-900))",
-                margin: 0,
-              }}
-            >
-              Custos diários
+        <div className="p-6">
+          <div className="mb-3">
+            <p className="m-0 text-sm font-medium text-admin-text-primary">
+              Custos diários · últimos 30 dias
             </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: "rgb(var(--admin-neutral-400))",
-                marginTop: 2,
-              }}
-            >
+            <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
               Stack Apify + OpenAI · linha tracejada = limite diário equivalente
-              ${DAILY_COST_LIMIT.toFixed(2)}
+              {" "}${DAILY_COST_LIMIT.toFixed(2)}
             </p>
           </div>
 
           <div
             role="img"
             aria-label={`Custos diários por fornecedor, com limite de $${DAILY_COST_LIMIT.toFixed(2)} por dia.`}
-            style={{ position: "relative", width: "100%", height: 180 }}
+            className="relative w-full h-44"
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={MOCK_DAILY_COSTS}
+                data={chartData}
                 margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
               >
                 <CartesianGrid
@@ -168,7 +139,7 @@ export function ExpenseSection() {
                 <Tooltip
                   cursor={{ fill: "rgba(136,135,128,0.06)" }}
                   contentStyle={{
-                    border: "0.5px solid rgb(211,209,199)",
+                    border: "1px solid rgb(44 44 42 / 0.14)",
                     borderRadius: 8,
                     fontSize: 11,
                     padding: "6px 10px",
@@ -207,7 +178,7 @@ export function ExpenseSection() {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
+      </AdminCard>
     </section>
   );
 }
@@ -233,65 +204,30 @@ function ExpenseColumn({
 }) {
   return (
     <div
-      style={{
-        paddingRight: borderRight ? 20 : 0,
-        paddingLeft: 0,
-        marginRight: borderRight ? 20 : 0,
-        borderRight: borderRight ? ADMIN_BORDER : "none",
-      }}
+      className={
+        borderRight
+          ? "md:pr-6 md:mr-0 md:border-r md:border-admin-border"
+          : "md:pl-6"
+      }
     >
-      <div
-        className="flex items-center gap-2"
-        style={{ marginBottom: 10 }}
-      >
+      <div className="mb-2.5 flex items-center gap-2">
         <span
           aria-hidden="true"
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: 2,
-            backgroundColor: colorVar,
-          }}
+          className="block h-2 w-2 rounded-sm"
+          style={{ backgroundColor: colorVar }}
         />
-        <span
-          className="admin-eyebrow"
-          style={{ color: colorTextVar }}
-        >
+        <span className="admin-eyebrow" style={{ color: colorTextVar }}>
           {label}
         </span>
       </div>
-      <div
-        className="flex items-baseline gap-2"
-        style={{ marginBottom: 10 }}
-      >
-        <span
-          style={{
-            fontSize: 22,
-            fontWeight: 500,
-            letterSpacing: "-0.01em",
-            color: "rgb(var(--admin-neutral-900))",
-            lineHeight: 1.1,
-          }}
-        >
+      <div className="mb-2.5 flex items-baseline gap-2">
+        <span className="font-mono text-[1.375rem] font-medium tracking-tight leading-tight text-admin-text-primary">
           {value}
         </span>
-        <span
-          style={{
-            fontSize: 11,
-            color: "rgb(var(--admin-neutral-400))",
-          }}
-        >
-          {cap}
-        </span>
+        <span className="text-[11px] text-admin-text-tertiary">{cap}</span>
       </div>
       {children}
-      <p
-        style={{
-          marginTop: 8,
-          fontSize: 11,
-          color: colorTextVar,
-        }}
-      >
+      <p className="mt-2 text-[11px]" style={{ color: colorTextVar }}>
         {note}
       </p>
     </div>
