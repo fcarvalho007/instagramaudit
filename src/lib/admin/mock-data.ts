@@ -983,3 +983,159 @@ export const MOCK_REPORTS_COUNTS = {
   inProgress: 5,
   failed: 2,
 } as const;
+
+/* =====================================================================
+ * Tab Perfis — datasets
+ * ===================================================================== */
+
+export type ProfileCategory =
+  | "brand"
+  | "retail"
+  | "influencer"
+  | "sport"
+  | "other";
+
+/** Mapa categoria → variante visual reutilizada em badges, avatares e barras. */
+export const PROFILE_CATEGORY_META: Record<
+  ProfileCategory,
+  { label: string; badge: AdminAccent; avatar: AdminAccent }
+> = {
+  brand: { label: "marca", badge: "expense", avatar: "expense" },
+  retail: { label: "retalho", badge: "leads", avatar: "leads" },
+  influencer: { label: "influencer", badge: "revenue", avatar: "revenue" },
+  sport: { label: "desporto", badge: "info", avatar: "info" },
+  other: { label: "outros", badge: "neutral", avatar: "neutral" },
+};
+
+export const MOCK_PROFILES_METRICS = {
+  uniqueProfiles: {
+    eyebrow: "Perfis únicos · 30d",
+    value: "284",
+    delta: { text: "+47 novos", direction: "up" as const },
+    sub: "238 análises grátis · 87 reports",
+    info:
+      "Perfis Instagram diferentes que foram pesquisados ou geraram relatórios pagos.",
+  },
+  repeated: {
+    eyebrow: "Repetidos · 2+ análises",
+    value: "62",
+    sub: "21.8% do total · sinal de intenção",
+    info:
+      "Perfis pesquisados múltiplas vezes pelo mesmo utilizador. Sinal forte de intenção de compra.",
+  },
+  conversion: {
+    eyebrow: "Conversão · pesquisa → report",
+    value: "30.6%",
+    delta: { text: "+2.1 p.p.", direction: "up" as const },
+    sub: "87 reports de 284 perfis",
+    info:
+      "Percentagem de perfis pesquisados que geraram pelo menos um relatório pago.",
+  },
+  avgRevenuePerProfile: {
+    eyebrow: "Receita média · por perfil",
+    value: "€10.02",
+    sub: "€2.847 ÷ 284 perfis",
+    info:
+      "Receita total dividida pelo número de perfis únicos analisados.",
+  },
+} as const;
+
+export interface MockTopProfile {
+  rank: number;
+  handle: string;
+  category: ProfileCategory;
+  /** Sub-categoria editorial (ex.: "supermercado", "energia"). */
+  sub: string;
+  analyses: number;
+  reports: number;
+}
+
+export const MOCK_TOP_PROFILES: ReadonlyArray<MockTopProfile> = [
+  { rank: 1,  handle: "@nikeportugal",    category: "brand",   sub: "desporto",      analyses: 47, reports: 12 },
+  { rank: 2,  handle: "@continente",      category: "retail",  sub: "supermercado",  analyses: 38, reports:  8 },
+  { rank: 3,  handle: "@galpenergia",     category: "brand",   sub: "energia",       analyses: 34, reports: 11 },
+  { rank: 4,  handle: "@worten",          category: "retail",  sub: "electrónica",   analyses: 29, reports:  7 },
+  { rank: 5,  handle: "@sportzone",       category: "retail",  sub: "desporto",      analyses: 24, reports:  5 },
+  { rank: 6,  handle: "@meo",             category: "brand",   sub: "telecom",       analyses: 22, reports:  6 },
+  { rank: 7,  handle: "@adidasportugal",  category: "brand",   sub: "desporto",      analyses: 19, reports:  4 },
+  { rank: 8,  handle: "@decathlon",       category: "retail",  sub: "desporto",      analyses: 17, reports:  4 },
+  { rank: 9,  handle: "@pumaportugal",    category: "brand",   sub: "desporto",      analyses: 15, reports:  3 },
+  { rank: 10, handle: "@glovoapp",        category: "brand",   sub: "delivery",      analyses: 14, reports:  3 },
+];
+
+export interface MockProfileCategorySlice {
+  category: string;
+  count: number;
+  pct: number;
+  color: string;
+}
+
+export const MOCK_PROFILES_BY_CATEGORY: ReadonlyArray<MockProfileCategorySlice> = [
+  { category: "Marcas",          count: 108, pct: 38, color: "#BA7517" },
+  { category: "Retalho",         count:  68, pct: 24, color: "#534AB7" },
+  { category: "Influenciadores", count:  51, pct: 18, color: "#1D9E75" },
+  { category: "Desporto",        count:  34, pct: 12, color: "#185FA5" },
+  { category: "Outros",          count:  23, pct:  8, color: "#888780" },
+];
+
+export interface MockRepeatedSearch {
+  profile: string;
+  user: string;
+  count: string;
+  window: string;
+}
+
+export const MOCK_REPEATED_SEARCHES: ReadonlyArray<MockRepeatedSearch> = [
+  { profile: "@nikeportugal",   user: "Carla Mendes",   count: "7×", window: "48h" },
+  { profile: "@continente",     user: "Bruno Faria",    count: "5×", window: "72h" },
+  { profile: "@galpenergia",    user: "Sofia Almeida",  count: "4×", window: "24h" },
+  { profile: "@worten",         user: "Helena Vaz",     count: "3×", window: "96h" },
+  { profile: "@adidasportugal", user: "Tiago Ribeiro",  count: "3×", window: "24h" },
+  { profile: "@meo",            user: "Filipa Santos",  count: "3×", window: "5d"  },
+];
+
+export interface MockProfileFunnel {
+  handle: string;
+  analyses: number;
+  reports: number;
+  conversionPct: string;
+}
+
+export const MOCK_PROFILE_FUNNELS: ReadonlyArray<MockProfileFunnel> = [
+  { handle: "@nikeportugal", analyses: 47, reports: 12, conversionPct: "25.5%" },
+  { handle: "@continente",   analyses: 38, reports:  8, conversionPct: "21.1%" },
+  { handle: "@galpenergia",  analyses: 34, reports: 11, conversionPct: "32.4%" },
+  { handle: "@worten",       analyses: 29, reports:  7, conversionPct: "24.1%" },
+  { handle: "@sportzone",    analyses: 24, reports:  5, conversionPct: "20.8%" },
+];
+
+export interface MockProfileRow {
+  handle: string;
+  category: ProfileCategory;
+  sub: string;
+  analyses: number;
+  reports: number;
+  conversionPct: number; // numérico para semáforo
+  revenue: string | null;
+  lastActivity: string;
+}
+
+export const MOCK_PROFILES_LIST: ReadonlyArray<MockProfileRow> = [
+  { handle: "@nikeportugal",     category: "brand",      sub: "desporto",     analyses: 47, reports: 12, conversionPct: 25.5, revenue: "€348", lastActivity: "há 12 min" },
+  { handle: "@continente",       category: "retail",     sub: "supermercado", analyses: 38, reports:  8, conversionPct: 21.1, revenue: "€232", lastActivity: "há 38 min" },
+  { handle: "@galpenergia",      category: "brand",      sub: "energia",      analyses: 34, reports: 11, conversionPct: 32.4, revenue: "€319", lastActivity: "há 2h"     },
+  { handle: "@worten",           category: "retail",     sub: "electrónica",  analyses: 29, reports:  7, conversionPct: 24.1, revenue: "€203", lastActivity: "há 1h"     },
+  { handle: "@sportzone",        category: "retail",     sub: "desporto",     analyses: 24, reports:  5, conversionPct: 20.8, revenue: "€145", lastActivity: "há 3h"     },
+  { handle: "@meo",              category: "brand",      sub: "telecom",      analyses: 22, reports:  6, conversionPct: 27.3, revenue: "€174", lastActivity: "há 5h"     },
+  { handle: "@adidasportugal",   category: "brand",      sub: "desporto",     analyses: 19, reports:  4, conversionPct: 21.1, revenue: "€116", lastActivity: "há 8h"     },
+  { handle: "@cristianoronaldo", category: "influencer", sub: "pessoa",       analyses: 18, reports:  0, conversionPct:  0,   revenue: null,   lastActivity: "há 1d"     },
+  { handle: "@decathlon",        category: "retail",     sub: "desporto",     analyses: 17, reports:  4, conversionPct: 23.5, revenue: "€116", lastActivity: "há 6h"     },
+  { handle: "@pumaportugal",     category: "brand",      sub: "desporto",     analyses: 15, reports:  3, conversionPct: 20.0, revenue:  "€87", lastActivity: "há 12h"    },
+];
+
+export const MOCK_PROFILES_COUNTS = {
+  all: 284,
+  withReports: 87,
+  repeated: 62,
+  noConversion: 197,
+} as const;

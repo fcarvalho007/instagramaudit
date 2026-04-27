@@ -93,4 +93,14 @@ export const ADMIN_LITERAL = {
   healthOk: "#1D9E75",
   healthWarn: "#EF9F27",
   healthCritical: "#A32D2D",
+  // ===== Perfis · categorias =====
+  categoryBrand: "#BA7517",
+  categoryRetail: "#534AB7",
+  categoryInfluencer: "#1D9E75",
+  categorySport: "#185FA5",
+  categoryOther: "#888780",
+  // ===== Perfis · barras =====
+  profileBarAnalyses: "#888780",
+  profileBarReports: "#D85A30",
+  profileFunnelBase: "#B4B2A9",
 } as const;
