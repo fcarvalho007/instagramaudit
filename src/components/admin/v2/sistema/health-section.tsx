@@ -7,7 +7,7 @@
  * vem dos tokens admin existentes.
  */
 
-import { Check } from "lucide-react";
+import { AlertTriangle, Check, XCircle } from "lucide-react";
 
 import { AdminCard } from "@/components/admin/v2/admin-card";
 import { AdminBadge } from "@/components/admin/v2/admin-badge";
@@ -27,37 +27,56 @@ const STATUS_DOT: Record<MockHealthStatus, string> = {
   critical: ADMIN_LITERAL.healthCritical,
 };
 
+type SmokeStatus = MockSmokeCheck["status"];
+
+const SMOKE_TONE: Record<
+  SmokeStatus,
+  { textClass: string; Icon: typeof Check }
+> = {
+  ok: { textClass: "text-admin-revenue-700", Icon: Check },
+  warn: { textClass: "text-admin-expense-700", Icon: AlertTriangle },
+  fail: { textClass: "text-admin-danger-700", Icon: XCircle },
+};
+
 function ReadinessChip({ chip }: { chip: MockSystemHealthChip }) {
+  const dotColor = STATUS_DOT[chip.status];
   return (
     <div className="bg-admin-surface px-5 py-4">
       <div className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="block h-2 w-2 rounded-full shrink-0"
-          style={{ backgroundColor: STATUS_DOT[chip.status] }}
+          className="block h-[9px] w-[9px] rounded-full shrink-0"
+          style={{
+            backgroundColor: dotColor,
+            boxShadow: `0 0 0 3px ${dotColor}26`,
+          }}
         />
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
           {chip.service}
         </span>
       </div>
-      <p className="mt-1.5 text-[13px] text-admin-text-primary m-0">
+      <p className="mt-1.5 text-[13px] tabular-nums text-admin-text-primary m-0">
         {chip.detail}
       </p>
     </div>
   );
 }
 
-function SmokeRow({ check, last }: { check: MockSmokeCheck; last: boolean }) {
+function SmokeRow({ check, first }: { check: MockSmokeCheck; first: boolean }) {
+  const tone = SMOKE_TONE[check.status] ?? SMOKE_TONE.ok;
+  const Icon = tone.Icon;
   return (
     <li
       className={`flex items-center justify-between py-3 px-4 ${
-        last ? "" : "border-b border-admin-border"
+        first ? "" : "border-t border-admin-border"
       }`}
     >
       <span className="text-[13px] text-admin-text-primary">{check.name}</span>
-      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-admin-revenue-700">
+      <span
+        className={`inline-flex items-center gap-1.5 text-[12px] font-medium ${tone.textClass}`}
+      >
         {check.detail}
-        <Check size={14} strokeWidth={2.25} />
+        <Icon size={14} strokeWidth={2.25} />
       </span>
     </li>
   );
@@ -78,10 +97,10 @@ export function HealthSection() {
           ))}
         </div>
 
-        <div className="border-t border-admin-border px-6 pt-6 pb-2">
+        <div className="border-t border-admin-border px-6 pt-6 pb-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h3 className="m-0 text-[16px] font-medium text-admin-text-primary">
+              <h3 className="m-0 text-[15px] font-medium text-admin-text-primary">
                 Verificações de runtime
               </h3>
               <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
@@ -95,7 +114,7 @@ export function HealthSection() {
               <SmokeRow
                 key={check.name}
                 check={check}
-                last={idx === MOCK_SMOKE_CHECKS.length - 1}
+                first={idx === 0}
               />
             ))}
           </ul>

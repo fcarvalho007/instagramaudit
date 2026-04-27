@@ -22,12 +22,13 @@ interface ConfigCell {
   eyebrow: string;
   value: string;
   sub: string;
+  tone?: "default" | "positive" | "negative";
 }
 
 function CardHeader({ title, info }: { title: string; info: string }) {
   return (
     <div className="mb-4 flex items-center gap-2">
-      <h3 className="m-0 text-[16px] font-medium text-admin-text-primary">
+      <h3 className="m-0 text-[15px] font-medium text-admin-text-primary">
         {title}
       </h3>
       <AdminInfoTooltip label={info} />
@@ -36,12 +37,18 @@ function CardHeader({ title, info }: { title: string; info: string }) {
 }
 
 function ConfigGridCell({ cell }: { cell: ConfigCell }) {
+  const valueClass =
+    cell.tone === "positive"
+      ? "text-admin-revenue-700"
+      : cell.tone === "negative"
+        ? "text-admin-danger-700"
+        : "text-admin-text-primary";
   return (
     <div className="bg-admin-surface px-4 py-3.5">
       <p className="m-0 font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
         {cell.eyebrow}
       </p>
-      <p className="m-0 mt-1 font-mono text-[14px] text-admin-text-primary">
+      <p className={`m-0 mt-1 font-mono text-[14px] ${valueClass}`}>
         {cell.value}
       </p>
       <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">
@@ -52,9 +59,11 @@ function ConfigGridCell({ cell }: { cell: ConfigCell }) {
 }
 
 export function SecretsConfigSection() {
+  const isApifyOn = /lig|on|true|activ/i.test(MOCK_APIFY_CONFIG.enabled.value);
+  const isTestModeOn = /activ|on|lig|true/i.test(MOCK_APIFY_CONFIG.mode.value);
   const apifyCells: ConfigCell[] = [
-    { eyebrow: "APIFY_ENABLED",  value: MOCK_APIFY_CONFIG.enabled.value,        sub: MOCK_APIFY_CONFIG.enabled.sub        },
-    { eyebrow: "MODO TESTE",     value: MOCK_APIFY_CONFIG.mode.value,           sub: MOCK_APIFY_CONFIG.mode.sub           },
+    { eyebrow: "APIFY_ENABLED",  value: MOCK_APIFY_CONFIG.enabled.value,        sub: MOCK_APIFY_CONFIG.enabled.sub,        tone: isApifyOn ? "positive" : "default" },
+    { eyebrow: "MODO TESTE",     value: MOCK_APIFY_CONFIG.mode.value,           sub: MOCK_APIFY_CONFIG.mode.sub,           tone: isTestModeOn ? "positive" : "default" },
     { eyebrow: "CUSTO/PERFIL",   value: MOCK_APIFY_CONFIG.costPerProfile.value, sub: MOCK_APIFY_CONFIG.costPerProfile.sub },
     { eyebrow: "CUSTO/POST",     value: MOCK_APIFY_CONFIG.costPerPost.value,    sub: MOCK_APIFY_CONFIG.costPerPost.sub    },
   ];
@@ -109,16 +118,16 @@ export function SecretsConfigSection() {
 
       {/* Sub-cartão modo teste / allowlist */}
       <AdminCard className="mt-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="max-w-xl">
+        <div className="max-w-xl">
+          <div className="flex items-center gap-2">
             <h3 className="m-0 text-[14px] font-medium text-admin-text-primary">
               Modo de teste
             </h3>
-            <p className="m-0 mt-1 text-[12px] text-admin-text-secondary">
-              Quando activo, só os handles na allowlist disparam chamadas reais ao provider.
-            </p>
+            <AdminBadge variant="revenue">Activo</AdminBadge>
           </div>
-          <AdminBadge variant="revenue">Activo</AdminBadge>
+          <p className="m-0 mt-1 text-[12px] text-admin-text-secondary">
+            Quando activo, só os handles na allowlist disparam chamadas reais ao provider.
+          </p>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -132,7 +141,7 @@ export function SecretsConfigSection() {
           ))}
           <button
             type="button"
-            className="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-admin-info-700 hover:underline"
+            className="ml-auto mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-admin-info-700 hover:underline sm:mt-0"
           >
             Editar allowlist
             <ArrowRight size={12} />
