@@ -68,26 +68,26 @@ export function CustomersTableSection() {
         </div>
       </div>
 
-      <AdminCard className="!px-5 !py-4">
+      <AdminCard className="!px-6 !py-5">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr>
-              <th className="py-2 text-left text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2.5 text-left text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Cliente
               </th>
-              <th className="py-2 text-left text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2.5 text-left text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Estado
               </th>
-              <th className="py-2 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2.5 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 LTV
               </th>
-              <th className="py-2 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2.5 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Reports
               </th>
-              <th className="py-2 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2.5 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Última actividade
               </th>
-              <th className="py-2 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2.5 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Sinal
               </th>
             </tr>
@@ -100,7 +100,7 @@ export function CustomersTableSection() {
                   c.selected ? "bg-admin-neutral-50" : ""
                 }`}
               >
-                <td className="py-3 pr-3">
+                <td className="py-3.5 pr-3">
                   <div className="flex items-center gap-2.5">
                     <AdminAvatar
                       initials={c.initials}
@@ -122,11 +122,11 @@ export function CustomersTableSection() {
                     </div>
                   </div>
                 </td>
-                <td className="py-3 pr-3">
+                <td className="py-3.5 pr-3">
                   <AdminBadge variant={c.badgeVariant}>{c.badgeLabel}</AdminBadge>
                 </td>
                 <td
-                  className={`py-3 pr-3 text-right font-medium ${
+                  className={`py-3.5 pr-3 text-right admin-num font-medium ${
                     c.ltv === "—"
                       ? "text-admin-text-tertiary"
                       : "text-admin-text-primary"
@@ -135,7 +135,7 @@ export function CustomersTableSection() {
                   {c.ltv}
                 </td>
                 <td
-                  className={`py-3 pr-3 text-right ${
+                  className={`py-3.5 pr-3 text-right admin-num ${
                     c.reportsMuted
                       ? "text-admin-text-secondary"
                       : "text-admin-text-primary"
@@ -143,10 +143,10 @@ export function CustomersTableSection() {
                 >
                   {c.reports}
                 </td>
-                <td className="py-3 pr-3 text-right text-[12px] text-admin-text-secondary">
+                <td className="py-3.5 pr-3 text-right text-[12px] text-admin-text-secondary">
                   {c.lastActivity}
                 </td>
-                <td className="py-3 text-right">
+                <td className="py-3.5 text-right">
                   <SignalCell signal={c.signal} />
                 </td>
               </tr>

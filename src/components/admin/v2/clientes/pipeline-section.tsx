@@ -15,19 +15,19 @@ function PipelineConnector({ qty }: { qty: number }) {
   return (
     <div
       aria-hidden="true"
-      className="flex flex-col items-center justify-center gap-[2px]"
+      className="flex flex-col items-center justify-center gap-1"
     >
       <span
-        className="text-[10px] font-medium leading-none"
-        style={{ color: "#3B6D11" }}
+        className="admin-num text-[10px] font-medium leading-none tabular-nums"
+        style={{ color: "#1D9E75" }}
       >
-        {qty}
+        +{qty}
       </span>
-      <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+      <svg width="22" height="14" viewBox="0 0 22 14" fill="none">
         <path
-          d="M0 7H17M17 7L11 1M17 7L11 13"
+          d="M0 7H19M19 7L13 1M19 7L13 13"
           stroke="#1D9E75"
-          strokeWidth="1.5"
+          strokeWidth="1.25"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -48,22 +48,22 @@ export function PipelineSection() {
         accent="leads"
         info="Movimento de utilizadores entre estados nos últimos 30 dias. Cada seta indica conversões reais."
       />
-      <AdminCard className="!px-7 !py-6">
+      <AdminCard className="!px-7 !py-7">
         <div
           className="grid items-stretch"
           style={{
-            gridTemplateColumns: "1fr 30px 1fr 30px 1fr 30px 1fr",
+            gridTemplateColumns: "1fr 36px 1fr 36px 1fr 36px 1fr",
             columnGap: 0,
           }}
         >
           {states.map((s, i) => (
             <Fragment key={s.key}>
               <div
-                className="rounded-r-lg"
+                className="rounded-md"
                 style={{
                   borderLeft: `3px solid ${s.borderColor}`,
                   backgroundColor: s.bg,
-                  padding: "14px 16px",
+                  padding: "16px 18px",
                 }}
               >
                 <p
@@ -73,13 +73,13 @@ export function PipelineSection() {
                   {s.eyebrow}
                 </p>
                 <p
-                  className="mt-1 mb-0 font-mono font-medium leading-tight"
-                  style={{ color: s.valueColor, fontSize: 24 }}
+                  className="mt-1.5 mb-0 admin-num font-medium leading-none tabular-nums"
+                  style={{ color: s.valueColor, fontSize: 28 }}
                 >
                   {s.value}
                 </p>
                 <p
-                  className="mt-1 mb-0 text-[11px]"
+                  className="mt-1.5 mb-0 text-[11px]"
                   style={{ color: s.subColor }}
                 >
                   {s.sub}
