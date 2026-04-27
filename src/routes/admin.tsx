@@ -7,13 +7,23 @@
  * `/admin/sistema/cockpit-legado`.
  *
  * Acesso via Google Sign-in (Lovable Cloud) com allowlist de emails.
+ *
+ * ============================================================================
+ * ⚠️  TEMPORÁRIO — AUTH GATE DESACTIVADO PARA REFINAMENTOS VISUAIS
+ * ============================================================================
+ * O gate `AdminAuthShell` está comentado para permitir acesso directo ao
+ * agente / equipa visual sem login Google. ANTES DE PUBLICAR, descomentar
+ * o bloco marcado com "RESTAURAR AUTH" e remover o banner amarelo.
+ * Pesquisar por TEMP_AUTH_BYPASS para encontrar todos os pontos a reverter.
+ * ============================================================================
  */
 
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { useState } from "react";
+// TEMP_AUTH_BYPASS — re-importar quando restaurar:
+// import { useState } from "react";
+// import { Button } from "@/components/ui/button";
+// import { AdminAuthShell } from "@/components/admin/v2/admin-auth-shell";
 import { Toaster } from "@/components/ui/sonner";
-import { Button } from "@/components/ui/button";
-import { AdminAuthShell } from "@/components/admin/v2/admin-auth-shell";
 import { AdminTabsNav } from "@/components/admin/v2/admin-tabs-nav";
 
 // Side-effect import: garante que os tokens v2 estão disponíveis em todas as
@@ -31,36 +41,45 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminLayout() {
-  const [logout, setLogout] = useState<(() => Promise<void>) | null>(null);
+  // TEMP_AUTH_BYPASS — RESTAURAR AUTH:
+  // const [logout, setLogout] = useState<(() => Promise<void>) | null>(null);
+  // Envolver o <div className="admin-v2 ..."> abaixo em:
+  //   <AdminAuthShell onLogoutReady={(handler) => setLogout(() => handler)}>
+  //     ...
+  //   </AdminAuthShell>
+  // E restaurar o botão "Terminar sessão" que estava no header.
 
   return (
-    <AdminAuthShell onLogoutReady={(handler) => setLogout(() => handler)}>
-      <div className="admin-v2 min-h-screen">
-        <main
-          style={{
-            maxWidth: 1280,
-            margin: "0 auto",
-            padding: "1.75rem",
-          }}
-        >
-          <div
-            className="flex items-center justify-end"
-            style={{ marginBottom: 16 }}
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void logout?.()}
-              disabled={!logout}
-            >
-              Terminar sessão
-            </Button>
-          </div>
-          <AdminTabsNav />
-          <Outlet />
-        </main>
-        <Toaster />
+    <div className="admin-v2 min-h-screen">
+      {/* TEMP_AUTH_BYPASS — REMOVER ESTE BANNER AO RESTAURAR AUTH */}
+      <div
+        role="status"
+        style={{
+          backgroundColor: "#FEF3C7",
+          color: "#78350F",
+          borderBottom: "1px solid #F59E0B",
+          padding: "8px 16px",
+          fontSize: 12,
+          fontFamily:
+            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+          textAlign: "center",
+          letterSpacing: "0.04em",
+        }}
+      >
+        ⚠️ MODO TEMPORÁRIO · Login do /admin desactivado para refinamentos
+        visuais · NÃO PUBLICAR neste estado
       </div>
-    </AdminAuthShell>
+      <main
+        style={{
+          maxWidth: 1280,
+          margin: "0 auto",
+          padding: "1.75rem",
+        }}
+      >
+        <AdminTabsNav />
+        <Outlet />
+      </main>
+      <Toaster />
+    </div>
   );
 }
