@@ -58,7 +58,7 @@ function SistemaPage() {
           </>
         }
       />
-      <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-14">
         <HealthSection />
         <SecretsConfigSection />
         <CostsDetailSection />

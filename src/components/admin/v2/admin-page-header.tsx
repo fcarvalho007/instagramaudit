@@ -30,7 +30,7 @@ export function AdminPageHeader({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
           <p className="admin-eyebrow">InstaBench · Admin</p>
-          <h1 className="text-[28px] font-medium tracking-tight leading-[1.1] text-admin-text-primary m-0">
+          <h1 className="text-[36px] font-medium tracking-[-0.02em] leading-[1.05] text-admin-text-primary m-0">
             {title}
           </h1>
           {subtitle ? (
