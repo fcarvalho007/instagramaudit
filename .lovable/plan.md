@@ -1,73 +1,69 @@
-# Auditoria DataForSEO Allowlist — correcção
 
-## Comportamento actual (BUG confirmado)
+## Estado actual — auditoria dos 5 ficheiros
 
-A allowlist está a ser comparada com a **keyword derivada**, não com o **owner do relatório**. Linha por linha:
+Reli os ficheiros e confirmo que **toda a correção pedida já está em vigor no código actual** (foi aplicada na ronda anterior aprovada com `context: 6951EAA2-...`):
 
-| Ficheiro | Linha | `gateValue` enviado para `isAllowed()` |
-|---|---|---|
-| `src/lib/dataforseo/endpoints/google-trends.ts` | 45 | `input.keywords[0]` (keyword) |
-| `src/lib/dataforseo/endpoints/keyword-ideas.ts` | 54 | `seeds[0]` (keyword) |
-| `src/lib/dataforseo/endpoints/serp-organic.ts` | 64 | `keyword` (query) |
-| `src/lib/dataforseo/client.ts` | 53–87 | recebe `gateValue` e bate em `isAllowed(gateValue)` |
-| `src/lib/security/dataforseo-allowlist.ts` | 34 | função genérica — apenas faz match contra a CSV |
+### 1. `src/lib/dataforseo/client.ts`
+- `CallOptions` já usa `{ ownerHandle, queryLabel, skipAllowlist?, timeoutMs? }` — `gateValue` foi removido.
+- A allowlist é validada **apenas** em `ownerHandle` (linha 86: `isAllowed(ownerHandle)`).
+- `provider_call_logs.handle` recebe sempre o owner Instagram normalizado (lowercase, sem `@`).
+- `provider_call_logs.actor` recebe `${endpoint}:${queryLabel}` truncado a 200 chars (ex. `serp_google_organic:marketing digital`).
+- Kill-switch `DATAFORSEO_ENABLED` continua a ser a primeira verificação.
+- Credenciais lidas só de `process.env` (server-side).
 
-`market-signals.ts` **nunca passa o owner** aos endpoints — o orquestrador só conhece keywords derivadas do snapshot.
+### 2. `src/lib/dataforseo/endpoints/google-trends.ts`
+- `GoogleTrendsInput` exige `ownerHandle`.
+- `queryLabel = keywords.join(",")`.
+- Propaga `{ ownerHandle, queryLabel }` ao cliente.
 
-`/api/market-signals.ts` (linhas 96–105) já valida o owner contra a allowlist na entrada — boa defesa em camada de rota — mas o cliente, a um nível mais baixo, vai falhar pelo motivo errado se algum dia for chamado directamente, e regista no `provider_call_logs.handle` a keyword em vez do handle do perfil. Isto polui auditoria e mede mal as métricas por handle.
+### 3. `src/lib/dataforseo/endpoints/keyword-ideas.ts`
+- `KeywordIdeasInput` exige `ownerHandle`.
+- `queryLabel = seeds[0]`.
+- Caps defensivos mantidos (20 seeds, limit 1..100).
 
-`provider_call_logs.actor` está a guardar apenas o nome do endpoint (ex. `serp_google_organic`), perdendo a query usada na chamada.
+### 4. `src/lib/dataforseo/endpoints/serp-organic.ts`
+- `SerpOrganicInput` exige `ownerHandle`.
+- `queryLabel = keyword`.
+- Cap `depth` 1..30 mantido.
 
-**Resultado:** com `DATAFORSEO_ALLOWLIST=frederico.m.carvalho`, qualquer chamada real seria bloqueada pelo cliente porque é `marketing` ou `#seo` que está a ser comparado com `frederico.m.carvalho`.
+### 5. `src/lib/security/dataforseo-allowlist.ts`
+- `isAllowed(value)` faz match case-insensitive sobre o valor passado. O cliente passa-lhe sempre o `ownerHandle` — nunca a keyword.
+- `isDataForSeoEnabled()` continua a exigir o literal `"true"`.
 
-## Correcção mínima
+### 6. `src/lib/dataforseo/market-signals.ts` e `src/routes/api/market-signals.ts`
+- Ambos propagam `ownerHandle` extraído de `analysis_snapshots.instagram_username` até aos três endpoints.
+- O endpoint HTTP já aplica também a verificação de allowlist sobre o handle antes de orquestrar (defesa em profundidade).
 
-1. **`client.ts`** — substituir o campo `gateValue` em `CallOptions` por dois campos explícitos:
-   - `ownerHandle: string` (obrigatório) → único valor que entra em `isAllowed()`
-   - `queryLabel: string` (obrigatório) → guardado em `provider_call_logs.actor` como `"<endpoint>:<query>"` para audit
-   - `provider_call_logs.handle` passa a guardar sempre o `ownerHandle` (consistente com Apify)
+## Conclusão
 
-2. **`endpoints/google-trends.ts`** — adicionar `ownerHandle` obrigatório a `GoogleTrendsInput`. `queryLabel` derivado de `keywords.join(",")`.
+Não é preciso alterar código. Os 12 pontos da aprovação estão já satisfeitos pelo estado actual do repositório.
 
-3. **`endpoints/keyword-ideas.ts`** — adicionar `ownerHandle` obrigatório a `KeywordIdeasInput`. `queryLabel = seeds[0]`.
+## Acções a executar (depois de aprovares)
 
-4. **`endpoints/serp-organic.ts`** — adicionar `ownerHandle` obrigatório a `SerpOrganicInput`. `queryLabel = keyword`.
+1. `bunx tsc --noEmit` — confirmar tipos.
+2. `bun run build` — confirmar que o bundle de produção compila.
+3. **Não** chamar DataForSEO. **Não** chamar Apify. **Não** criar migrations. **Não** alterar UI pública.
 
-5. **`market-signals.ts`** — `buildMarketSignals` e `buildSignalsInner` recebem `ownerHandle` e propagam-no às 3 famílias de chamadas.
+## Output que vou devolver
 
-6. **`/api/market-signals.ts`** — extrair o `ownerHandle` do `analysis_snapshots.instagram_username` (já lê) e passar a `buildMarketSignals({ ownerHandle, plan, ... })`. A allowlist gate na rota mantém-se exactamente igual.
+- Confirmação ficheiro-a-ficheiro de que a allowlist valida `ownerHandle` e que a query fica só em `actor` para auditoria.
+- Resultado de `tsc` e `build` (stdout/stderr relevante).
+- Confirmação explícita de que nenhuma chamada a DataForSEO ou Apify foi feita durante a validação (são apenas comandos locais de typecheck e bundling).
 
-7. **`security/dataforseo-allowlist.ts`** — **inalterado**. A função é agnóstica; só muda o que lhe é passado.
+## Próximo passo (fora deste plano)
 
-## Garantias preservadas
+Smoke test único ao DataForSEO, **só depois** de confirmares no painel de secrets:
 
-- `DATAFORSEO_ENABLED` continua a ser kill-switch absoluto (1.ª verificação no cliente).
-- `DATAFORSEO_ALLOWLIST` continua a ser CSV de handles Instagram. Só muda o que comparamos com ela.
-- `DATAFORSEO_MAX_QUERIES_FREE/PAID` controlam **número de keywords** por relatório — não muda.
-- `Promise.race` 60 s mantém-se.
-- Credenciais nunca expostas (Basic Auth runtime no cliente).
-- Sem nova migration: usamos colunas `handle` e `actor` que já existem em `provider_call_logs`.
+```
+DATAFORSEO_ENABLED=true
+DATAFORSEO_ALLOWLIST=frederico.m.carvalho
+DATAFORSEO_MAX_QUERIES_FREE=1
+DATAFORSEO_MAX_QUERIES_PAID=5
+```
 
-## Ficheiros editados (5)
+## Checkpoint
 
-- `src/lib/dataforseo/client.ts`
-- `src/lib/dataforseo/endpoints/google-trends.ts`
-- `src/lib/dataforseo/endpoints/keyword-ideas.ts`
-- `src/lib/dataforseo/endpoints/serp-organic.ts`
-- `src/lib/dataforseo/market-signals.ts`
-- `src/routes/api/market-signals.ts`
-
-(Total = 6 ficheiros editados, 0 criados, 0 apagados.)
-
-## Validação
-
-- `bunx tsc --noEmit` ✅ obrigatório
-- `bun run build` ✅ obrigatório
-- Sem chamada DataForSEO
-- Sem chamada Apify
-- Sem teste real
-
-## Confirmações antes de avançar
-
-1. Aprovas a refactorização de `gateValue` → `{ ownerHandle, queryLabel }` no `client.ts`?
-2. Confirmas que `provider_call_logs.handle` passa a guardar **sempre** o owner Instagram (e a coluna `actor` passa a guardar `<endpoint>:<query>`) — isto altera ligeiramente como o `dataforseo-diagnostics` agrupa, mas alinha com o Apify?
+- ☐ Aprovar este plano de validação
+- ☐ Correr `bunx tsc --noEmit`
+- ☐ Correr `bun run build`
+- ☐ Reportar resultados sem fazer qualquer chamada externa
