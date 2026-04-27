@@ -187,6 +187,9 @@ function CoverageStrip({ result }: { result: AdapterResult }) {
         <CoverageItem label="benchmark" value={benchmarkValue} />
         <CoverageItem label="concorrentes" value={competitorsValue} />
       </div>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary pt-3">
+        Relatório baseado em dados públicos do Instagram · amostra recolhida automaticamente.
+      </p>
     </div>
   );
 }
