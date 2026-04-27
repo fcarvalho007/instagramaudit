@@ -23,7 +23,7 @@ interface KPICardProps {
   delta?: { text: string; direction: "up" | "down" };
   sub?: ReactNode;
   highlightSub?: { text: string; accent: AdminAccent };
-  size?: "md" | "lg";
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
 
