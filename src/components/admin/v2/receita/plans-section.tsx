@@ -7,6 +7,7 @@
 
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
+import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ProgressBar } from "../progress-bar";
 import { ACCENT_500 } from "../admin-tokens";
 import {
@@ -18,14 +19,21 @@ import {
 export function PlansSection() {
   return (
     <section>
-      <AdminSectionHeader title="MRR por plano" accent="revenue" />
+      <AdminSectionHeader
+        title="MRR por plano"
+        accent="revenue"
+        info="Distribuição da receita recorrente pelos diferentes planos disponíveis."
+      />
 
       <div className="grid gap-3.5 lg:grid-cols-[1.4fr_1fr]">
         {/* — Distribuição — */}
         <AdminCard>
-          <h3 className="m-0 text-sm font-medium text-admin-text-primary">
-            Distribuição
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="m-0 text-[15px] font-medium text-admin-text-primary">
+              Distribuição
+            </h3>
+            <AdminInfoTooltip label="Repartição do MRR pelos três planos: Starter, Pro e Agency. Mostra o peso real de cada plano na receita recorrente." />
+          </div>
 
           <ul className="mt-4 space-y-3.5">
             {MOCK_PLAN_DISTRIBUTION.map((plan) => {
@@ -115,9 +123,12 @@ export function PlansSection() {
 
         {/* — Concentração — */}
         <AdminCard>
-          <h3 className="m-0 text-sm font-medium text-admin-text-primary">
-            Concentração
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="m-0 text-[15px] font-medium text-admin-text-primary">
+              Concentração
+            </h3>
+            <AdminInfoTooltip label="Concentração de receita em escalões de clientes. Permite identificar dependência de poucos clientes grandes." />
+          </div>
           <p className="mt-1 text-[11px] text-admin-text-tertiary">
             Receita por escalão de cliente
           </p>
