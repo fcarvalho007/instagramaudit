@@ -35,6 +35,7 @@ import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/re
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
+import { Route as ApiPublicAnalysisSnapshotUsernameRouteImport } from './routes/api/public/analysis-snapshot.$username'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api/admin/snapshot-by-id.$snapshotId'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
@@ -173,6 +174,12 @@ const AdminReportPreviewUsernameRoute =
     path: '/report-preview/$username',
     getParentRoute: () => AdminRoute,
   } as any)
+const ApiPublicAnalysisSnapshotUsernameRoute =
+  ApiPublicAnalysisSnapshotUsernameRouteImport.update({
+    id: '/api/public/analysis-snapshot/$username',
+    path: '/api/public/analysis-snapshot/$username',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminSnapshotUsernameRoute =
   ApiAdminSnapshotUsernameRouteImport.update({
     id: '/api/admin/snapshot/$username',
@@ -236,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
+  '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -268,6 +276,7 @@ export interface FileRoutesByTo {
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
+  '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -302,6 +311,7 @@ export interface FileRoutesById {
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
+  '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
+    | '/api/public/analysis-snapshot/$username'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
+    | '/api/public/analysis-snapshot/$username'
   id:
     | '__root__'
     | '/'
@@ -402,6 +414,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
+    | '/api/public/analysis-snapshot/$username'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -424,6 +437,7 @@ export interface RootRouteChildren {
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
+  ApiPublicAnalysisSnapshotUsernameRoute: typeof ApiPublicAnalysisSnapshotUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -610,6 +624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReportPreviewUsernameRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/analysis-snapshot/$username': {
+      id: '/api/public/analysis-snapshot/$username'
+      path: '/api/public/analysis-snapshot/$username'
+      fullPath: '/api/public/analysis-snapshot/$username'
+      preLoaderRoute: typeof ApiPublicAnalysisSnapshotUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/snapshot/$username': {
       id: '/api/admin/snapshot/$username'
       path: '/api/admin/snapshot/$username'
@@ -733,6 +754,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiAdminSnapshotByIdSnapshotIdRoute: ApiAdminSnapshotByIdSnapshotIdRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
+  ApiPublicAnalysisSnapshotUsernameRoute:
+    ApiPublicAnalysisSnapshotUsernameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
