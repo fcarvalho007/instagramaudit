@@ -10,6 +10,8 @@ import { callDataForSeo } from "../client";
 import type { DataForSeoEnvelope } from "../types";
 
 export interface KeywordIdeasInput {
+  /** Instagram report owner — the only value matched against the allowlist. */
+  ownerHandle: string;
   keywords: string[];
   location_name?: string;       // default "Portugal"
   language_code?: string;       // default "pt"
@@ -49,9 +51,12 @@ export async function fetchKeywordIdeas(
   if (!input.keywords?.length) {
     throw new Error("keyword-ideas: at least 1 seed keyword required");
   }
+  if (!input.ownerHandle?.trim()) {
+    throw new Error("keyword-ideas: ownerHandle required");
+  }
   const seeds = input.keywords.slice(0, 20);
   const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
-  const gateValue = seeds[0];
+  const queryLabel = seeds[0];
   return callDataForSeo<KeywordIdeasResult>(
     "labs_keyword_ideas",
     {
@@ -62,6 +67,6 @@ export async function fetchKeywordIdeas(
       include_seed_keyword: input.include_seed_keyword ?? true,
       include_serp_info: input.include_serp_info ?? false,
     },
-    { gateValue },
+    { ownerHandle: input.ownerHandle, queryLabel },
   );
 }
