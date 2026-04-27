@@ -31,7 +31,7 @@ function ClientesPage() {
           </>
         }
       />
-      <div className="flex flex-col gap-14">
+      <div className="flex flex-col" style={{ gap: 56 }}>
         <PipelineSection />
         <CustomersTableSection />
         <CustomerCardSection />
