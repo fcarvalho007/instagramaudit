@@ -35,12 +35,13 @@ export const MOCK_FUNNEL = {
 } as const;
 
 export const MOCK_REVENUE_KPIS = {
+  /** Métrica herói — saúde do negócio (receita previsível). */
   mrr: {
     eyebrow: "MRR · subscrições",
     value: "€684",
     deltaText: "+12%",
     deltaDirection: "up" as const,
-    sub: "38 subscritores activos",
+    sub: "38 subscritores activos · ARPU €18",
   },
   oneOff: {
     eyebrow: "Avulso · 30 dias",
@@ -55,19 +56,49 @@ export const MOCK_REVENUE_KPIS = {
     deltaDirection: "up" as const,
     sub: "€94.90 média diária",
   },
+  arpu: {
+    eyebrow: "ARPU · 30 dias",
+    value: "€22.78",
+    sub: "€2.847 ÷ 125 clientes",
+  },
 } as const;
 
 /**
- * Evolução diária (mês corrente em curso) — 26 dias.
- * subscrições constante a €22, avulso crescente.
+ * Evolução diária da receita — 30 dias.
+ * Σ subs = €684 (= MRR), Σ avulso = €2.163, Σ total = €2.847.
  */
-export const MOCK_DAILY_REVENUE = Array.from({ length: 26 }, (_, i) => {
-  const day = i + 1;
-  const subs = 22;
-  // Curva crescente suave com algum ruído determinístico
-  const oneOff = Math.round(35 + i * 2.4 + ((i * 7) % 11));
-  return { day: String(day).padStart(2, "0"), subs, oneOff };
-});
+export const MOCK_DAILY_REVENUE = [
+  { day: "01", subs: 22, oneOff: 23 },
+  { day: "02", subs: 22, oneOff: 36 },
+  { day: "03", subs: 22, oneOff: 36 },
+  { day: "04", subs: 32, oneOff: 36 },
+  { day: "05", subs: 22, oneOff: 36 },
+  { day: "06", subs: 24, oneOff: 50 },
+  { day: "07", subs: 22, oneOff: 50 },
+  { day: "08", subs: 22, oneOff: 50 },
+  { day: "09", subs: 22, oneOff: 50 },
+  { day: "10", subs: 22, oneOff: 50 },
+  { day: "11", subs: 24, oneOff: 63 },
+  { day: "12", subs: 24, oneOff: 63 },
+  { day: "13", subs: 24, oneOff: 63 },
+  { day: "14", subs: 22, oneOff: 63 },
+  { day: "15", subs: 24, oneOff: 77 },
+  { day: "16", subs: 24, oneOff: 77 },
+  { day: "17", subs: 22, oneOff: 77 },
+  { day: "18", subs: 22, oneOff: 77 },
+  { day: "19", subs: 22, oneOff: 77 },
+  { day: "20", subs: 24, oneOff: 90 },
+  { day: "21", subs: 22, oneOff: 90 },
+  { day: "22", subs: 22, oneOff: 90 },
+  { day: "23", subs: 22, oneOff: 90 },
+  { day: "24", subs: 22, oneOff: 104 },
+  { day: "25", subs: 22, oneOff: 104 },
+  { day: "26", subs: 22, oneOff: 104 },
+  { day: "27", subs: 22, oneOff: 104 },
+  { day: "28", subs: 22, oneOff: 104 },
+  { day: "29", subs: 22, oneOff: 117 },
+  { day: "30", subs: 22, oneOff: 112 },
+] as const;
 
 export const MOCK_EXPENSE = {
   apify: {
@@ -93,15 +124,42 @@ export const MOCK_EXPENSE = {
 } as const;
 
 /**
- * Custos diários (26 dias) — Apify + OpenAI empilhados.
- * Soma média ≈ $1.10/dia, abaixo do limite $0.97 nalguns dias.
+ * Custos diários (30 dias) — Apify + OpenAI empilhados.
+ * Σ Apify = $18.42, Σ OpenAI = $9.87, Σ total = $28.29.
+ * 27/30 dias abaixo do limite diário ($0.97), 3 picos por análises pesadas.
  */
-export const MOCK_DAILY_COSTS = Array.from({ length: 26 }, (_, i) => {
-  const day = i + 1;
-  const apify = Number((0.45 + ((i * 13) % 9) * 0.05).toFixed(2));
-  const openai = Number((0.25 + ((i * 7) % 6) * 0.04).toFixed(2));
-  return { day: String(day).padStart(2, "0"), apify, openai };
-});
+export const MOCK_DAILY_COSTS = [
+  { day: "01", apify: 0.53, openai: 0.30 },
+  { day: "02", apify: 0.62, openai: 0.29 },
+  { day: "03", apify: 0.52, openai: 0.31 },
+  { day: "04", apify: 0.56, openai: 0.25 },
+  { day: "05", apify: 0.44, openai: 0.35 },
+  { day: "06", apify: 0.54, openai: 0.30 },
+  { day: "07", apify: 0.58, openai: 0.32 },
+  { day: "08", apify: 0.63, openai: 0.24 },
+  { day: "09", apify: 0.42, openai: 0.30 },
+  { day: "10", apify: 0.47, openai: 0.24 },
+  { day: "11", apify: 0.41, openai: 0.31 },
+  { day: "12", apify: 1.39, openai: 0.79 },
+  { day: "13", apify: 0.58, openai: 0.22 },
+  { day: "14", apify: 0.57, openai: 0.28 },
+  { day: "15", apify: 0.52, openai: 0.33 },
+  { day: "16", apify: 0.61, openai: 0.32 },
+  { day: "17", apify: 1.32, openai: 0.85 },
+  { day: "18", apify: 0.57, openai: 0.22 },
+  { day: "19", apify: 0.54, openai: 0.23 },
+  { day: "20", apify: 0.40, openai: 0.22 },
+  { day: "21", apify: 1.21, openai: 0.84 },
+  { day: "22", apify: 0.57, openai: 0.22 },
+  { day: "23", apify: 0.62, openai: 0.30 },
+  { day: "24", apify: 0.48, openai: 0.30 },
+  { day: "25", apify: 0.56, openai: 0.25 },
+  { day: "26", apify: 0.54, openai: 0.25 },
+  { day: "27", apify: 0.58, openai: 0.26 },
+  { day: "28", apify: 0.53, openai: 0.22 },
+  { day: "29", apify: 0.59, openai: 0.23 },
+  { day: "30", apify: 0.52, openai: 0.33 },
+] as const;
 
 export const DAILY_COST_LIMIT = 29 / 30; // $0.97
 
