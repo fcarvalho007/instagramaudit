@@ -7,7 +7,7 @@
  *   2. Que perfis estão a gerar receita? (conversão pesquisa → report)
  *   3. Onde estão as oportunidades? (perfis pesquisados várias vezes sem report)
  *
- * Estrutura: 4 secções verticais com `gap-7`, mesmas convenções de Receita
+ * Estrutura: 4 secções verticais com `gap-14` (56px), mesmas convenções de Receita
  * e Relatórios.
  */
 
