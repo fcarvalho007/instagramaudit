@@ -46,6 +46,7 @@ export function PipelineSection() {
         title="Pipeline"
         subtitle="movimento entre estados nos últimos 30 dias"
         accent="leads"
+        info="Movimento de utilizadores entre estados nos últimos 30 dias. Cada seta indica conversões reais."
       />
       <AdminCard className="!px-7 !py-6">
         <div

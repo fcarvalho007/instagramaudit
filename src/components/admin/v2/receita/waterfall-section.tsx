@@ -92,6 +92,7 @@ export function WaterfallSection() {
         title="Anatomia do MRR"
         subtitle="como €612 se tornaram €684"
         accent="leads"
+        info="Decomposição do crescimento do MRR: novos subscritores, expansões (upgrades), contracções (downgrades) e churn."
       />
 
       <AdminCard className="!px-7 !py-6">
