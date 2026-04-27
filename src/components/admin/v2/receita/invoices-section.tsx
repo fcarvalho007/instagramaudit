@@ -33,7 +33,10 @@ export function InvoicesSection() {
             </thead>
             <tbody>
               {MOCK_INVOICES.map((row, i) => (
-                <tr key={i} className="border-t border-admin-border">
+                <tr
+                  key={i}
+                  className="border-t border-admin-border transition-colors hover:bg-[var(--admin-bg-subtle)]"
+                >
                   <td className="py-2.5 pr-3 font-mono text-admin-text-secondary whitespace-nowrap">
                     {row.date}
                   </td>
