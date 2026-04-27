@@ -96,8 +96,8 @@ export function CustomersTableSection() {
             {MOCK_CUSTOMERS_LIST.map((c) => (
               <tr
                 key={c.id}
-                className={`cursor-pointer border-t border-admin-border-strong transition-colors hover:bg-admin-neutral-50 ${
-                  c.selected ? "bg-admin-neutral-50" : ""
+                className={`cursor-pointer border-t border-admin-border-strong transition-colors hover:bg-[var(--admin-bg-subtle)] ${
+                  c.selected ? "bg-[var(--admin-bg-subtle)]" : ""
                 }`}
               >
                 <td className="py-3 pr-3">
