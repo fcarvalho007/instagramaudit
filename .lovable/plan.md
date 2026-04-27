@@ -1,93 +1,204 @@
-## Refinamentos da tab Perfis
+## Tab Sistema do Admin
 
-Após avaliar o resultado actual, identifiquei melhorias semânticas e visuais que aumentam a leitura editorial sem alterar a estrutura aprovada. Sem novas secções, sem novos componentes — apenas polimento.
+Última tab do redesign. Substitui o stub em `/admin/sistema` por uma vista operacional/técnica completa: estado, segredos, custos detalhados, alertas, e acesso ao cockpit legado.
+
+Mantém as convenções já consolidadas das 5 tabs anteriores: `AdminPageHeader` no topo, secções verticais com `gap-7`, `AdminSectionHeader` com barra colorida + tooltip "i", reutilização total dos componentes partilhados.
 
 ---
 
-## 1 · Top perfis · barra "stacked" em vez de barra dupla
+## Estrutura
 
-**Problema:** Cada linha do ranking mostra hoje 2 barras horizontais separadas (cinza para análises, coral para reports), ambas relativas ao mesmo eixo (max das análises). Lê-se como duas séries paralelas quando na realidade reports são um subconjunto das análises.
-
-**Solução:** Uma barra única — track cinza com largura proporcional às análises, com fill coral interno proporcional aos reports / análises desse perfil. Lê-se imediatamente como "deste volume, isto converteu".
-
-**Ficheiro:** `src/components/admin/v2/perfis/top-profiles-section.tsx` · função `RankingRow`.
-
-```tsx
-// Em vez de 2 <div> stacked:
-<div
-  className="mt-2 h-1.5 overflow-hidden rounded-full"
-  style={{ width: `${analysesPct}%`, backgroundColor: profileBarAnalyses }}
->
-  <div
-    className="h-full rounded-full"
-    style={{ width: `${reportsFillPct}%`, backgroundColor: profileBarReports }}
-  />
-</div>
+```text
+┌─ AdminPageHeader (Sistema · acções: Smoke test, Atualizar) ─┐
+├─ Secção 1 · Estado do sistema (cinza) ──────────────────────┤
+│   Cartão único:                                             │
+│   ├ Readiness strip — 5 chips com semáforo                  │
+│   └ Smoke test — 5 verificações em lista vertical           │
+├─ Secção 2 · Segredos e configuração (cinza) ────────────────┤
+│   ├ Cartão Segredos (4 chips mono)                          │
+│   ├ Cartão Apify config (grid 2×2)                          │
+│   └ Sub-cartão Allowlist (badge + chips)                    │
+├─ Secção 3 · Custos detalhados (âmbar/expense) ──────────────┤
+│   ├ 4 KPICard size lg                                       │
+│   ├ Cartão Últimas chamadas (tabela 8 colunas, 10 linhas)   │
+│   └ Cartão Alertas (2 alertas + ver todos)                  │
+└─ Secção 4 · Cockpit legado (cinza, accordion) ──────────────┘
+    Header colapsável → link "Abrir em nova aba ↗"
 ```
 
-Onde `reportsFillPct = round((reports / analyses) * 100)` (relativo, dentro da própria barra).
+---
 
-Adicional:
-- Posição mono → `text-right` + `tabular-nums` para alinhar `01`–`10`.
-- Stats à direita → `tabular-nums` para alinhar dígitos.
-- Header da coluna esquerda passa de `Ranking top 10` (redundante com título da secção) para `Volume vs reports pagos` + sub `Top 10 perfis · barra cinza = análises totais, fill coral = reports pagos`.
-- Gap entre linhas reduz de `gap-3.5` para `gap-3` (barra única ocupa menos altura vertical).
+## Secção 1 · Estado do sistema
+
+`accent="neutral"`, info tooltip a explicar semântica das cores.
+
+**Cartão único** (`AdminCard`):
+
+**Readiness strip** — `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-admin-border-soft rounded-lg overflow-hidden`. Cada chip:
+- Header: dot 8px (verde/âmbar/vermelho via `healthOk`/`healthWarn`/`healthCritical`) + eyebrow uppercase mono 10px tertiary
+- Valor: 13px primary
+
+5 chips: APIFY · RESEND · OPENAI · MODO TESTE · ALLOWLIST.
+
+**Smoke test** — separado por `border-t border-admin-border mt-7 pt-6`:
+- Header: "Verificações de runtime" 16px medium + sub 12px tertiary + `<AdminBadge variant="revenue">Pronto</AdminBadge>` à direita
+- Lista de 5 linhas (não tabela), cada uma `flex justify-between py-3 border-b border-admin-border` (excepto última)
+- Esquerda: nome 13px primary; direita: detalhe 12px com `text-admin-revenue-700` + `<Check size={14}>`
 
 ---
 
-## 2 · Donut · número central mais limpo + separador visual
+## Secção 2 · Segredos e configuração
 
-**Problema:** O `284` no centro do donut está em `text-3xl`/`2rem` sem `tabular-nums` e o label `perfis` está em sentence-case 11px. A legenda imediatamente abaixo cola-se ao donut sem separador.
+`accent="neutral"`, grid 2 colunas (`lg:grid-cols-2 gap-4`).
 
-**Solução:**
-- Número central: `1.875rem`, `tabular-nums`, `letterSpacing -0.02em`.
-- Label central: `10px` uppercase com `tracking 0.08em` (eyebrow editorial).
-- Pie: adicionar `cornerRadius={3}` para fatias com cantos suaves.
-- Legenda: `border-t border-admin-border` + `pt-4` para separar do donut.
-- Legenda: colunas `pct` e `count` com largura fixa `w-10` + `tabular-nums` (alinha verticalmente).
+**Cartão Segredos** (esquerdo):
+- Header com tooltip "Apenas estado de presença. Os valores nunca são expostos no admin."
+- Lista de 4 chips em `flex flex-col gap-2`:
+  - `bg-admin-bg-subtle rounded-lg px-3.5 py-3 flex items-center justify-between`
+  - Esquerda: nome em mono 12px primary
+  - Direita: `<AdminBadge variant="revenue">Configurado</AdminBadge>` ou `variant="danger">Em falta`
 
-**Ficheiro:** mesmo, função `CategoryColumn`.
+**Cartão Apify config** (direito):
+- Header com tooltip
+- Grid 2×2 (`grid grid-cols-2 gap-px bg-admin-border-soft rounded-lg overflow-hidden`):
+  - APIFY_ENABLED · MODO TESTE · CUSTO/PERFIL · CUSTO/POST
+  - Cada cell: eyebrow uppercase mono 10px + valor mono 14px + sub 11px tertiary
 
----
-
-## 3 · Tabela · cor da mini-barra "Análises" deve ser cinza, não coral
-
-**Problema:** Na coluna "Análises" da tabela, a mini-barra usa `profileBarReports` (coral) — confunde semanticamente porque coral é a cor dos reports.
-
-**Solução:**
-- Track da mini-barra: `profileFunnelBase` (cinza claro).
-- Fill: `profileBarAnalyses` (cinza médio) — não coral.
-- Adicionar `tabular-nums` a todas as colunas mono (Análises, Reports, Conversão, Receita) para alinhamento profissional dos dígitos.
-
-**Ficheiro:** `src/components/admin/v2/perfis/profiles-table-section.tsx` · `ProfileRow`.
+**Sub-cartão Modo de teste** (full-width, `mt-4`, `AdminCard` ou box dentro da secção):
+- Header 14px medium + texto 12px secondary
+- Linha: `<AdminBadge variant="revenue">Activo</AdminBadge>` + chips mono dos handles + botão pequeno "Editar allowlist →" (mock)
 
 ---
 
-## 4 · Tabela · `0.0%` para perfis sem reports → `—`
+## Secção 3 · Custos detalhados
 
-**Problema:** `@cristianoronaldo` (18 análises, 0 reports) mostra `0.0%` em vermelho. Tecnicamente correcto, mas visualmente ruidoso e nada accionável — aparece igual a falha. Mais elegante: `—` em tertiary.
+`accent="expense"`, info tooltip a deixar claro que é estimativa interna, não fatura.
 
-**Solução:** Quando `reports === 0`, mostrar `—` na coluna Conversão com `text-admin-text-tertiary` (ignorar semáforo). Mantém o vermelho semafórico só para casos com reports e taxa baixa.
+**4 KPICard size="lg"** num `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4`:
+1. Custo Apify · 24h → `$1.42` / 12 chamadas
+2. Custo OpenAI · 24h → `$0.87` / 8 análises IA
+3. Cache hits · 24h → `15` / 61% das pesquisas
+4. Poupança · cache → `$0.82` / vs sem cache
 
-**Ficheiro:** mesmo, célula da conversão.
+**Cartão "Últimas chamadas ao provedor"**:
+- Header dentro do cartão: 16px medium + sub
+- Tabela 8 colunas: Quando · Provedor · Actor/Modelo · Handle · Estado · HTTP · Duração · Custo
+- 10 linhas, padding `py-3`, border-top entre linhas, hover bg subtle
+- Provedor: `AdminBadge` âmbar (`expense`) para Apify, azul (`info`) para OpenAI
+- Estado: `revenue` Sucesso · `expense` Cache · `danger` Falha
+- Restantes colunas: mono 12px com `tabular-nums`
+
+**Cartão "Alertas"**:
+- Header: "Alertas" 16px medium + `<AdminBadge variant="expense">2 abertos</AdminBadge>`
+- Lista de 2 cards `border-l-[3px]` + bg suave usando `ACCENT_BG_50`:
+  - **Aviso** (`signal` → âmbar): eyebrow mono uppercase + título 13px + detalhe 12px secondary + tempo
+  - **Crítico** (`danger` → vermelho): mesma estrutura
+- Botão rodapé: "Ver todos os alertas →" (mock)
 
 ---
 
-## 5 · Funil por perfil · legenda abaixo da barra (não ao lado)
+## Secção 4 · Cockpit legado (accordion)
 
-**Problema:** As mini-barras com label inline (`<barra> 47 análises grátis`) ficam apertadas para perfis com 100% do eixo, e a label corta ou empurra para fora. Lê-se mal.
+`accent="neutral"`, info tooltip a explicar transição.
 
-**Solução:** Layout column — barra em cima ocupando largura proporcional, label `tabular-nums` 11px tertiary imediatamente abaixo. Cria 2 "blocos" por perfil em vez de 2 linhas inline-flex.
+Cartão único com Radix `Collapsible` (já disponível via shadcn). Header sempre visível:
+- Título 14px medium "Cockpit técnico legado"
+- Sub 12px tertiary
+- `<ChevronRight>` à direita que roda 90° quando aberto (CSS transition)
+- Cursor pointer + hover bg subtle
 
-Adicional: Indicador de conversão à direita do header passa de `25.5%` solto para `conv. 25.5%` com eyebrow uppercase 10px à esquerda do número (mais legível como métrica).
+Conteúdo expandido (`border-t mt-4 pt-4`):
+- Link explícito em vez de iframe (decisão: evita duplo header e estilos colidirem):
 
-Adicional: barra com `minWidth: 4` para perfis com `0` reports não desaparecerem completamente.
+```tsx
+<a
+  href="/admin/sistema/cockpit-legado"
+  target="_blank"
+  rel="noopener"
+  className="inline-flex items-center gap-2 text-[13px] text-admin-info-700 hover:underline"
+>
+  Abrir cockpit legado em nova aba <ExternalLink size={14} />
+</a>
+```
 
-**Ficheiro:** `src/components/admin/v2/perfis/intent-opportunities-section.tsx` · `FunnelRow` (extracção de subcomponente `FunnelBar`).
+Verificar se `@radix-ui/react-collapsible` já está nas deps (shadcn instala-o via `accordion`/`collapsible`). Se não estiver, adicionar com `bun add @radix-ui/react-collapsible` antes de criar o ficheiro.
 
 ---
 
-## 6 · Validação
+## Mock data — adicionar a `src/lib/admin/mock-data.ts`
+
+```ts
+export type MockHealthStatus = 'operational' | 'attention' | 'critical';
+
+export interface MockSystemHealthChip { service: string; status: MockHealthStatus; detail: string; }
+export interface MockSmokeCheck { name: string; status: 'ok' | 'warn' | 'fail'; detail: string; }
+export interface MockSecret { name: string; configured: boolean; }
+export interface MockProviderCall {
+  when: string;          // "26/04 21:14"
+  provider: 'Apify' | 'OpenAI';
+  model: string;         // "apify/instagram-scraper" | "gpt-4o"
+  handle: string;        // "@nikeportugal" ou "analysis #2843"
+  status: 'success' | 'cache' | 'failure';
+  http: number;          // 200 / 429 / 500
+  duration: string;      // "6.4s" / "184ms"
+  cost: string | null;   // "$0.011" ou null → "—"
+}
+export interface MockAlert {
+  severity: 'warning' | 'critical' | 'info';
+  title: string;
+  detail: string;
+  when: string;
+}
+```
+
+Constantes: `MOCK_SYSTEM_HEALTH`, `MOCK_SMOKE_CHECKS`, `MOCK_SECRETS`, `MOCK_APIFY_CONFIG`, `MOCK_COST_METRICS`, `MOCK_PROVIDER_CALLS` (10 entradas conforme tabela), `MOCK_ALERTS` (2 entradas).
+
+Sem dados sensíveis, sem secrets reais — só nomes de variáveis e estado boolean. `secrets--fetch_secrets` não é necessário porque tudo é mock; o admin nunca expõe valores.
+
+---
+
+## Ficheiros
+
+**Criar:**
+- `src/components/admin/v2/sistema/health-section.tsx`
+- `src/components/admin/v2/sistema/secrets-config-section.tsx`
+- `src/components/admin/v2/sistema/costs-detail-section.tsx`
+- `src/components/admin/v2/sistema/legacy-access-section.tsx`
+
+**Editar:**
+- `src/routes/admin.sistema.tsx` — substituir stub pela página completa (mesmo padrão das outras tabs: `AdminPageHeader` + 4 secções verticais)
+- `src/lib/admin/mock-data.ts` — adicionar tipos e constantes
+
+**Não tocar:**
+- `src/routes/admin.sistema.cockpit-legado.tsx` (acessível via link da secção 4)
+- `/report/example`
+- Lógica de routing existente
+
+---
+
+## Reutilização (zero duplicação)
+
+- `AdminPageHeader` · `AdminSectionHeader` (com `info`) · `AdminCard` (variant default + flush)
+- `AdminBadge` (variants `revenue`, `expense`, `danger`, `info`, `signal`)
+- `KPICard size="lg"` para a strip de custos
+- `AdminActionButton` para "Smoke test" e "Atualizar" no header
+- `AdminInfoTooltip` (vem do `info` prop do header)
+- Tokens: `ADMIN_LITERAL.healthOk/Warn/Critical` para os dots, `ACCENT_BG_50` para o background dos alertas
+- Sem novos componentes partilhados — só componentes locais à secção (chip, smoke row, secret row, provider row, alert card, accordion header)
+
+---
+
+## Detalhes técnicos
+
+- **Recharts**: não necessário nesta tab (não há gráficos, só tabela e KPIs).
+- **Estado local**: o accordion da secção 4 usa `useState<boolean>` simples. Sem persistência (reset por navegação é aceitável).
+- **Acessibilidade**: o accordion deve ser `<button aria-expanded aria-controls>` com painel `<div id role="region">`. Se Radix Collapsible já estiver disponível, preferir.
+- **Mobile**: readiness strip cai para `grid-cols-2` em sm e `grid-cols-1` em mobile; tabela de chamadas mantém scroll horizontal via `overflow-x-auto` (já é o padrão das outras tabelas).
+- **Nav**: a tab activa em `/admin/sistema` continua a usar a regra do nav (sublinhado neutral-900) — não requer alteração.
+
+---
+
+## Validação
 
 ```bash
 bunx tsc --noEmit
@@ -96,26 +207,18 @@ bun run build
 
 ---
 
-## Não alterado
-
-- Estrutura das 4 secções (mesma ordem, mesmos accents)
-- Mock data (`mock-data.ts`)
-- Componentes partilhados (`AdminCard`, `AdminBadge`, `AdminAvatar`, `AdminInfoTooltip`, etc.)
-- KPIs da secção 1 (já refinados)
-- Pesquisas repetidas (já com layout limpo)
-
----
-
 ## Checklist
 
-- ☐ Ranking: barra única stacked (cinza track + coral fill interno)
-- ☐ Posição e stats com `tabular-nums`
-- ☐ Header da coluna esquerda renomeado
-- ☐ Donut: `cornerRadius=3`, número central refinado, legenda separada por border-top
-- ☐ Tabela: mini-barra "Análises" em cinza
-- ☐ Tabela: `tabular-nums` em todas as colunas mono
-- ☐ Tabela: `—` em vez de `0.0%` quando 0 reports
-- ☐ Funil: legenda abaixo da barra + eyebrow `conv.`
-- ☐ Funil: `minWidth: 4` para barras vazias
+- ☐ Tab Sistema acessível em `/admin/sistema` (substitui stub)
+- ☐ Readiness strip de 5 chips com cores semânticas
+- ☐ Smoke test com 5 verificações em lista vertical
+- ☐ Secção segredos com 4 chips mono e badges de estado
+- ☐ Apify config em grid 2×2
+- ☐ Sub-cartão modo teste com handles em chips mono
+- ☐ 4 KPICards lg de custos com tooltips
+- ☐ Tabela "Últimas chamadas" com 10 linhas e 8 colunas, badges semânticas
+- ☐ Cartão alertas com 2 itens (aviso âmbar + crítico vermelho) e border-left
+- ☐ Cockpit legado em accordion com link "Abrir em nova aba ↗" (não iframe)
+- ☐ Reutiliza todos os componentes partilhados, zero duplicação
 - ☐ `bunx tsc --noEmit` ✓
 - ☐ `bun run build` ✓

@@ -1139,3 +1139,128 @@ export const MOCK_PROFILES_COUNTS = {
   repeated: 62,
   noConversion: 197,
 } as const;
+
+// ============================================================================
+// MOCK DATA — tab Sistema
+// ============================================================================
+
+export type MockHealthStatus = "operational" | "attention" | "critical";
+
+export interface MockSystemHealthChip {
+  service: string;
+  status: MockHealthStatus;
+  detail: string;
+}
+
+export interface MockSmokeCheck {
+  name: string;
+  status: "ok" | "warn" | "fail";
+  detail: string;
+}
+
+export interface MockSecret {
+  name: string;
+  configured: boolean;
+}
+
+export interface MockApifyConfig {
+  enabled: { value: string; sub: string };
+  mode: { value: string; sub: string };
+  costPerProfile: { value: string; sub: string };
+  costPerPost: { value: string; sub: string };
+  allowlist: string[];
+}
+
+export interface MockCostKPI {
+  value: string;
+  sub: string;
+}
+
+export interface MockProviderCall {
+  when: string;
+  provider: "Apify" | "OpenAI";
+  model: string;
+  handle: string;
+  status: "success" | "cache" | "failure";
+  http: number;
+  duration: string;
+  cost: string | null;
+}
+
+export interface MockAlert {
+  severity: "warning" | "critical" | "info";
+  title: string;
+  detail: string;
+  when: string;
+}
+
+export const MOCK_SYSTEM_HEALTH: MockSystemHealthChip[] = [
+  { service: "Apify",       status: "operational", detail: "Operacional"      },
+  { service: "Resend",      status: "operational", detail: "Operacional"      },
+  { service: "OpenAI",      status: "operational", detail: "Operacional"      },
+  { service: "Modo teste",  status: "operational", detail: "Allowlist activa" },
+  { service: "Allowlist",   status: "operational", detail: "1 handle"         },
+];
+
+export const MOCK_SMOKE_CHECKS: MockSmokeCheck[] = [
+  { name: "Token Apify",     status: "ok", detail: "Configurado"                       },
+  { name: "APIFY_ENABLED",   status: "ok", detail: "Ligado · chamadas reais"           },
+  { name: "Modo de teste",   status: "ok", detail: "Allowlist activa"                  },
+  { name: "Perfil de teste", status: "ok", detail: "@frederico.m.carvalho permitido"   },
+  { name: "Estado final",    status: "ok", detail: "Pronto para smoke"                 },
+];
+
+export const MOCK_SECRETS: MockSecret[] = [
+  { name: "APIFY_TOKEN",        configured: true },
+  { name: "RESEND_API_KEY",     configured: true },
+  { name: "INTERNAL_API_TOKEN", configured: true },
+  { name: "OPENAI_API_KEY",     configured: true },
+];
+
+export const MOCK_APIFY_CONFIG: MockApifyConfig = {
+  enabled:        { value: "Ligado", sub: "chamadas reais"  },
+  mode:           { value: "Activo", sub: "allowlist"        },
+  costPerProfile: { value: "$0.005", sub: "por perfil"       },
+  costPerPost:    { value: "$0.0005", sub: "por post"        },
+  allowlist:      ["@frederico.m.carvalho"],
+};
+
+export const MOCK_COST_METRICS: {
+  apify24h: MockCostKPI;
+  openai24h: MockCostKPI;
+  cacheHits: MockCostKPI;
+  cacheSavings: MockCostKPI;
+} = {
+  apify24h:     { value: "$1.42", sub: "12 chamadas"        },
+  openai24h:    { value: "$0.87", sub: "8 análises IA"      },
+  cacheHits:    { value: "15",    sub: "61% das pesquisas"  },
+  cacheSavings: { value: "$0.82", sub: "vs sem cache"        },
+};
+
+export const MOCK_PROVIDER_CALLS: MockProviderCall[] = [
+  { when: "26/04 21:14", provider: "Apify",  model: "apify/instagram-scraper", handle: "@sofia.almeida",   status: "success", http: 200, duration: "6.4s",   cost: "$0.011" },
+  { when: "26/04 21:08", provider: "OpenAI", model: "gpt-4o",                  handle: "analysis #2843",   status: "success", http: 200, duration: "4.2s",   cost: "$0.13"  },
+  { when: "26/04 21:02", provider: "Apify",  model: "apify/instagram-scraper", handle: "@nikeportugal",    status: "cache",   http: 200, duration: "184ms",  cost: null     },
+  { when: "26/04 19:34", provider: "Apify",  model: "apify/instagram-scraper", handle: "@galpenergia",     status: "success", http: 200, duration: "7.1s",   cost: "$0.011" },
+  { when: "26/04 19:30", provider: "OpenAI", model: "gpt-4o",                  handle: "analysis #2846",   status: "success", http: 200, duration: "5.8s",   cost: "$0.14"  },
+  { when: "26/04 18:47", provider: "Apify",  model: "apify/instagram-scraper", handle: "@worten",          status: "success", http: 200, duration: "5.9s",   cost: "$0.011" },
+  { when: "26/04 16:18", provider: "Apify",  model: "apify/instagram-scraper", handle: "@worten",          status: "cache",   http: 200, duration: "124ms",  cost: null     },
+  { when: "26/04 16:05", provider: "Apify",  model: "apify/instagram-scraper", handle: "@sportzone",       status: "success", http: 200, duration: "6.8s",   cost: "$0.011" },
+  { when: "26/04 14:30", provider: "OpenAI", model: "gpt-4o",                  handle: "analysis #2842",   status: "failure", http: 500, duration: "12.4s",  cost: null     },
+  { when: "25/04 22:41", provider: "Apify",  model: "apify/instagram-scraper", handle: "@sportzone",       status: "failure", http: 429, duration: "1.2s",   cost: "$0.004" },
+];
+
+export const MOCK_ALERTS: MockAlert[] = [
+  {
+    severity: "warning",
+    title: "Pico de chamadas em curto período",
+    detail: "@sportzone · 8 análises em 30min · limite 5/30min",
+    when: "há 2h",
+  },
+  {
+    severity: "critical",
+    title: "Apify devolveu 429 (rate limit) repetidamente",
+    detail: "@meo · 3 falhas consecutivas · investigar token",
+    when: "há 12h",
+  },
+];
