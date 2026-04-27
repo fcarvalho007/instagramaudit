@@ -11,7 +11,7 @@
  *   - flush        → sem padding (para cartões que dividem zonas internas)
  */
 
-import { type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { ACCENT_500, type AdminAccent } from "./admin-tokens";
 
 type AdminCardVariant = "default" | "accent-left" | "hero" | "flush";
@@ -20,6 +20,7 @@ interface AdminCardProps {
   variant?: AdminCardVariant;
   accent?: AdminAccent;
   className?: string;
+  style?: CSSProperties;
   children: ReactNode;
   /** Override do role semântico para a11y. */
   as?: "div" | "section" | "article" | "li";
@@ -29,6 +30,7 @@ export function AdminCard({
   variant = "default",
   accent = "neutral",
   className = "",
+  style,
   children,
   as: Tag = "div",
 }: AdminCardProps) {
@@ -47,7 +49,7 @@ export function AdminCard({
   return (
     <Tag
       className={`${base} ${padded} ${heroStyles} ${className}`.trim()}
-      style={accentLeftStyle}
+      style={{ ...accentLeftStyle, ...style }}
     >
       {children}
     </Tag>
