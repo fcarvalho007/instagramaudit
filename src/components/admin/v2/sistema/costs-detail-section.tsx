@@ -48,6 +48,18 @@ const ALERT_EYEBROW: Record<MockAlert["severity"], string> = {
   info: "INFO",
 };
 
+function httpToneClass(http: string | number | null | undefined): string {
+  if (http === null || http === undefined || http === "") {
+    return "text-admin-text-secondary";
+  }
+  const code = typeof http === "number" ? http : parseInt(String(http), 10);
+  if (!Number.isFinite(code)) return "text-admin-text-secondary";
+  if (code >= 500) return "text-admin-danger-700";
+  if (code >= 400) return "text-admin-expense-700";
+  if (code >= 200 && code < 300) return "text-admin-revenue-700";
+  return "text-admin-text-secondary";
+}
+
 function ProviderCallRow({ call, first }: { call: MockProviderCall; first: boolean }) {
   return (
     <tr
@@ -70,7 +82,7 @@ function ProviderCallRow({ call, first }: { call: MockProviderCall; first: boole
           {STATUS_BADGE[call.status].label}
         </AdminBadge>
       </td>
-      <td className="py-3 pr-4 font-mono text-[12px] tabular-nums text-admin-text-secondary">
+      <td className={`py-3 pr-4 font-mono text-[12px] tabular-nums ${httpToneClass(call.http)}`}>
         {call.http}
       </td>
       <td className="py-3 pr-4 text-right font-mono text-[12px] tabular-nums text-admin-text-secondary">
@@ -149,7 +161,7 @@ export function CostsDetailSection() {
       {/* Últimas chamadas ao provedor */}
       <AdminCard className="mt-4">
         <div className="mb-4">
-          <h3 className="m-0 text-[16px] font-medium text-admin-text-primary">
+          <h3 className="m-0 text-[15px] font-medium text-admin-text-primary">
             Últimas chamadas ao provedor
           </h3>
           <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
@@ -198,10 +210,18 @@ export function CostsDetailSection() {
       {/* Alertas */}
       <AdminCard className="mt-4">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="m-0 text-[16px] font-medium text-admin-text-primary">
+          <h3 className="m-0 text-[15px] font-medium text-admin-text-primary">
             Alertas
           </h3>
-          <AdminBadge variant="expense">{MOCK_ALERTS.length} abertos</AdminBadge>
+          <AdminBadge
+            variant={
+              MOCK_ALERTS.some((a) => a.severity === "critical")
+                ? "danger"
+                : "expense"
+            }
+          >
+            {MOCK_ALERTS.length} abertos
+          </AdminBadge>
         </div>
         <div className="flex flex-col gap-3">
           {MOCK_ALERTS.map((alert, idx) => (
