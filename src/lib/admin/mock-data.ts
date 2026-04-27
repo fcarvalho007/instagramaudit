@@ -329,11 +329,24 @@ export const MOCK_MRR_WATERFALL_DETAIL = [
  * Distribuição por plano — barra horizontal por plano.
  * `pct` é proporção do MRR total reportada na descrição (não soma 100% por design).
  */
-export const MOCK_PLAN_DISTRIBUTION = [
-  { name: "Starter", price: "€9/mês",  subs: 9,  mrr: 81,  pct: 12, accent: "revenue-alt" as const },
-  { name: "Pro",     price: "€18/mês", subs: 23, mrr: 414, pct: 60, accent: "revenue" as const },
-  { name: "Agency",  price: "€49/mês", subs: 6,  mrr: 294, pct: 43, accent: "revenue" as const, dark: true },
-] as const;
+import type { AdminAccent } from "@/components/admin/v2/admin-tokens";
+
+export interface PlanDistribution {
+  name: string;
+  price: string;
+  subs: number;
+  mrr: number;
+  pct: number;
+  accent: AdminAccent;
+  /** Quando true, usa o tom 800 do esmeralda (Agency). */
+  dark?: boolean;
+}
+
+export const MOCK_PLAN_DISTRIBUTION: PlanDistribution[] = [
+  { name: "Starter", price: "€9/mês",  subs: 9,  mrr: 81,  pct: 12, accent: "revenue-alt" },
+  { name: "Pro",     price: "€18/mês", subs: 23, mrr: 414, pct: 60, accent: "revenue" },
+  { name: "Agency",  price: "€49/mês", subs: 6,  mrr: 294, pct: 43, accent: "revenue", dark: true },
+];
 
 export const MOCK_PLAN_TOTALS = {
   mrr: "€789",
