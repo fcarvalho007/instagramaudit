@@ -101,6 +101,13 @@ export interface SnapshotInput {
    * marks coverage accordingly.
    */
   benchmark?: ReportBenchmarkInput;
+  /**
+   * Marks the resulting report as an admin preview. Drives slightly different
+   * editorial copy in empty-state sections (e.g. "snapshot" vs "perfil").
+   * Defaults to `true` to preserve historical behaviour for the admin route;
+   * the public `/analyze` flow passes `false` so the layout stays neutral.
+   */
+  isAdminPreview?: boolean;
 }
 
 /**
@@ -658,7 +665,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       windowLabel,
       windowShortLabel,
       kpiSubtitle,
-      isAdminPreview: true,
+      isAdminPreview: input.isAdminPreview ?? true,
       sampleCaption,
       temporalLabel,
       topPostsSubtitle,
