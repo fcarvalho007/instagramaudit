@@ -18,6 +18,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ReportExampleRouteImport } from './routes/report.example'
 import { Route as ApiSendReportEmailRouteImport } from './routes/api/send-report-email'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
+import { Route as ApiMarketSignalsRouteImport } from './routes/api/market-signals'
 import { Route as ApiGenerateReportPdfRouteImport } from './routes/api/generate-report-pdf'
 import { Route as ApiAnalyzePublicV1RouteImport } from './routes/api/analyze-public-v1'
 import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
@@ -86,6 +87,11 @@ const ApiSendReportEmailRoute = ApiSendReportEmailRouteImport.update({
 const ApiRequestFullReportRoute = ApiRequestFullReportRouteImport.update({
   id: '/api/request-full-report',
   path: '/api/request-full-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMarketSignalsRoute = ApiMarketSignalsRouteImport.update({
+  id: '/api/market-signals',
+  path: '/api/market-signals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateReportPdfRoute = ApiGenerateReportPdfRouteImport.update({
@@ -233,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
+  '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
+  '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   '/analyze/$username': typeof AnalyzeUsernameRoute
   '/api/analyze-public-v1': typeof ApiAnalyzePublicV1Route
   '/api/generate-report-pdf': typeof ApiGenerateReportPdfRoute
+  '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/report/example': typeof ReportExampleRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
+    | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
@@ -374,6 +384,7 @@ export interface FileRouteTypes {
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
+    | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
@@ -409,6 +420,7 @@ export interface FileRouteTypes {
     | '/analyze/$username'
     | '/api/analyze-public-v1'
     | '/api/generate-report-pdf'
+    | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
     | '/report/example'
@@ -439,6 +451,7 @@ export interface RootRouteChildren {
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
   ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
   ApiGenerateReportPdfRoute: typeof ApiGenerateReportPdfRoute
+  ApiMarketSignalsRoute: typeof ApiMarketSignalsRoute
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
   ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
   ReportExampleRoute: typeof ReportExampleRoute
@@ -517,6 +530,13 @@ declare module '@tanstack/react-router' {
       path: '/api/request-full-report'
       fullPath: '/api/request-full-report'
       preLoaderRoute: typeof ApiRequestFullReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/market-signals': {
+      id: '/api/market-signals'
+      path: '/api/market-signals'
+      fullPath: '/api/market-signals'
+      preLoaderRoute: typeof ApiMarketSignalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate-report-pdf': {
@@ -764,6 +784,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
   ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,
   ApiGenerateReportPdfRoute: ApiGenerateReportPdfRoute,
+  ApiMarketSignalsRoute: ApiMarketSignalsRoute,
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
   ApiSendReportEmailRoute: ApiSendReportEmailRoute,
   ReportExampleRoute: ReportExampleRoute,
