@@ -19,7 +19,7 @@ interface AdminInfoTooltipProps {
   size?: number;
 }
 
-export function AdminInfoTooltip({ label, size = 12 }: AdminInfoTooltipProps) {
+export function AdminInfoTooltip({ label, size = 13 }: AdminInfoTooltipProps) {
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip>
@@ -27,14 +27,14 @@ export function AdminInfoTooltip({ label, size = 12 }: AdminInfoTooltipProps) {
           <button
             type="button"
             aria-label={label}
-            className="inline-flex items-center justify-center rounded-full text-admin-text-tertiary transition-colors hover:text-admin-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-revenue-500"
+            className="inline-flex items-center justify-center rounded-full text-admin-text-tertiary transition-colors hover:text-admin-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-revenue-500"
           >
             <Info size={size} strokeWidth={1.75} />
           </button>
         </TooltipTrigger>
         <TooltipContent
           side="top"
-          className="max-w-[260px] bg-admin-neutral-900 text-[11px] leading-snug text-white"
+          className="max-w-[280px] bg-admin-neutral-900 px-3 py-2 text-[11px] leading-relaxed text-white shadow-lg"
         >
           {label}
         </TooltipContent>

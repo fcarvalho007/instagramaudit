@@ -78,12 +78,18 @@ export function ReportsTableSection() {
 
   return (
     <section>
-      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
-        <AdminSectionHeader
-          title="Relatórios"
-          subtitle="histórico, estado e custo por pedido"
-          accent="revenue"
-        />
+      <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
+        <div className="-mb-3.5">
+          {/*
+           * `AdminSectionHeader` traz `mb-3.5` interno; compensamos para
+           * evitar dupla margem quando o header está num wrapper flex.
+           */}
+          <AdminSectionHeader
+            title="Relatórios"
+            subtitle="histórico, estado e custo por pedido"
+            accent="revenue"
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {(Object.keys(FILTER_LABELS) as ReportFilter[]).map((f) => (
             <FilterPill
@@ -166,7 +172,16 @@ function FilterPill({
       onClick={onClick}
       aria-pressed={active}
     >
-      {label} <span className="ml-1 text-admin-text-tertiary">· {count}</span>
+      {label}{" "}
+      <span
+        className={
+          active
+            ? "ml-1 text-admin-text-secondary"
+            : "ml-1 text-admin-text-tertiary"
+        }
+      >
+        · {count}
+      </span>
     </AdminActionButton>
   );
 }
@@ -240,8 +255,8 @@ function StatusBadge({ status }: { status: ReportStatus }) {
   }
   if (status === "processing") {
     return (
-      <AdminBadge variant="signal">
-        <Loader2 size={10} strokeWidth={2} className="mr-1 animate-spin" />
+      <AdminBadge variant="signal" className="gap-1">
+        <Loader2 size={10} strokeWidth={2.25} className="animate-spin" />
         a processar
       </AdminBadge>
     );
