@@ -3,12 +3,10 @@
  *
  * - Fundo: cor temática a 12% opacidade.
  * - Preenchimento: cor temática sólida.
- * - `showCap`: marcador vertical vermelho (1px, danger 700) na posição 100%.
- * - `segments`: array de blocos coloridos contíguos em vez de preenchimento simples
- *   (usado na barra "Despesa total" — Apify + OpenAI lado-a-lado).
+ * - `showCap`: marcador vertical vermelho (1px) na posição 100%.
+ * - `segments`: blocos coloridos contíguos (usado na "Despesa total").
  */
 
-import { type CSSProperties } from "react";
 import { ACCENT_500, type AdminAccent } from "./admin-tokens";
 
 interface ProgressBarSimpleProps {
@@ -36,23 +34,18 @@ export function ProgressBar(props: ProgressBarProps) {
   if ("segments" in props && props.segments) {
     const total =
       props.max ?? props.segments.reduce((acc, s) => acc + s.value, 0);
-    const trackStyle: CSSProperties = {
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: "rgb(var(--admin-neutral-100))",
-      overflow: "hidden",
-      display: "flex",
-      width: "100%",
-    };
     return (
-      <div className={props.className} style={trackStyle} role="progressbar">
+      <div
+        role="progressbar"
+        className={`flex h-2 w-full overflow-hidden rounded bg-admin-neutral-100 ${props.className ?? ""}`.trim()}
+      >
         {props.segments.map((seg, i) => (
           <div
             key={i}
+            className="h-full"
             style={{
               width: `${(seg.value / total) * 100}%`,
               backgroundColor: ACCENT_500[seg.color],
-              height: "100%",
             }}
           />
         ))}
@@ -66,39 +59,26 @@ export function ProgressBar(props: ProgressBarProps) {
 
   return (
     <div
-      className={className}
-      style={{
-        position: "relative",
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: `color-mix(in oklab, ${accent} 12%, transparent)`,
-        overflow: "visible",
-      }}
       role="progressbar"
       aria-valuenow={value}
       aria-valuemin={0}
       aria-valuemax={max}
+      className={`relative h-2 rounded ${className ?? ""}`.trim()}
+      style={{
+        backgroundColor: `color-mix(in oklab, ${accent} 12%, transparent)`,
+      }}
     >
       <div
+        className="absolute inset-0 rounded"
         style={{
-          position: "absolute",
-          inset: 0,
           width: `${pct}%`,
-          borderRadius: 4,
           backgroundColor: accent,
         }}
       />
       {showCap ? (
         <div
           aria-hidden="true"
-          style={{
-            position: "absolute",
-            top: -2,
-            bottom: -2,
-            right: 0,
-            width: 1,
-            backgroundColor: "rgb(var(--admin-danger-700))",
-          }}
+          className="absolute right-0 -top-0.5 -bottom-0.5 w-px bg-admin-danger-700"
         />
       ) : null}
     </div>

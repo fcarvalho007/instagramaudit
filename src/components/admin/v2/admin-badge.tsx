@@ -1,8 +1,6 @@
 /**
- * AdminBadge — badge inline para o admin v2.
- *
- * Pill com fundo suave (tom 50/100 da família) e texto em tom 800/900.
- * Não substitui o `<Badge>` do shadcn em outras áreas — só usado no admin novo.
+ * AdminBadge — pill inline para o admin v2.
+ * Fundo suave (tom 50/100) + texto em tom 700/800.
  */
 
 import { type ReactNode } from "react";
@@ -21,7 +19,7 @@ export function AdminBadge({
 }: AdminBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-lg px-2 py-[3px] text-[11px] font-normal leading-none ${className}`}
+      className={`inline-flex items-center rounded-lg px-2 py-[3px] text-[11px] font-normal leading-none ${className}`.trim()}
       style={{
         backgroundColor: ACCENT_BG_50[variant],
         color: ACCENT_TEXT[variant],
