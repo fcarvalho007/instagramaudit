@@ -1,109 +1,120 @@
-## Tab Clientes · `/admin/clientes`
+## Objectivo
 
-Substitui o stub actual e implementa as 3 secções (Pipeline · Lista · Ficha) reutilizando integralmente o sistema de design já criado nas tabs Visão Geral e Receita.
+Fechar as últimas pendências do Prompt 4 identificadas na avaliação:
+1. Alinhar a **Ficha do Cliente** (`customer-card-section.tsx`) ao spec literal
+2. Trocar o **hover das tabelas** para o token warm `--admin-bg-subtle`
+3. Correr `bun run build` para validar bundle de produção
+
+Sem novas funcionalidades. Sem mudanças de dados. Apenas refinamento visual + validação.
 
 ---
 
-### 1 · Mock data (`src/lib/admin/mock-data.ts`)
+## 1. Ficha do Cliente · `src/components/admin/v2/clientes/customer-card-section.tsx`
 
-Adicionar **no topo** um bloco de comentário JSDoc com o modelo `Customer` / `CustomerNote` / `CustomerActivity` (futura migração Supabase).
+### Header (avatar + nome)
+- Avatar: `size={56}` → **`64`**
+- Nome: `text-[18px]` → **22px** weight 500, `letter-spacing: -0.01em`, `line-height: 1.2`
+- Padding do cartão: `!px-7 !py-6` → **`!px-8 !py-7`**
+- Gap header: `gap-4` → `gap-5`; chips em `gap-3`
+- Data "desde" passa a 12px (era 11px)
 
-Adicionar exports tipados no final do ficheiro:
+### Health Bars (componente interno)
+- Dimensões: `width: 14, height: 4` → **`width: 16, height: 5`**
+- Gap entre barras: `2` → **`3`**
+- Cor "vazia": `--admin-neutral-50` → `--admin-neutral-200` (mais legível)
 
-- `MOCK_PIPELINE` — 4 estados com `count`, `eyebrow`, `sub`, `accent` e 3 transições (`from → to`, qty)
-- `MOCK_PIPELINE_FOOTER` — taxas de conversão + churn
-- `MOCK_CUSTOMERS_LIST` — 7 clientes (Pedro, Ana, Inês, Joana, João, Carla, Rui) com campos: `id`, `initials`, `name`, `email`, `state`, `badge` (`{label, variant}`), `avatarColor` (`'revenue'|'leads'|'neutral'`), `ltv`, `reports` (string ou number), `lastActivity`, `signal` (`{kind, label?}`)
-- `MOCK_CUSTOMERS_TOTALS` — para os 4 botões pill (Todos · Subscritores · Avulso · Em risco)
-- `MOCK_SELECTED_CUSTOMER` — Ana Marques completa: nome, email, location, plano, mensalidade, desde, kpis (4 cells), health bars
-- `MOCK_CUSTOMER_ACTIVITY` — 6 eventos com `type` (`payment|report|free_analysis|subscription_started`), título, detalhe, tempo
-- `MOCK_CUSTOMER_PROFILES` — 3 perfis analisados pela Ana
-- `MOCK_CUSTOMER_NOTES` — nota interna Nike
-
-### 2 · Componentes partilhados (novos · reutilizáveis para futuras tabs)
-
-**`src/components/admin/v2/admin-search-input.tsx`** — input com `<Search>` à esquerda, 220px, estilo coerente com `PeriodSelect` (border, radius lg, focus ring `admin-leads-500`).
-
-**`src/components/admin/v2/admin-action-button.tsx`** — botão genérico mono (default 32px, `size="sm"` 28px). Usado em "Exportar", "Enviar email", "Oferecer upgrade", filtros pill e paginação. Suporta `variant="default" | "active"` para o filtro pill activo.
-
-**`src/components/admin/v2/admin-avatar.tsx`** — avatar circular com iniciais. Props: `initials`, `variant: AdminAccent`, `size: 32 | 56`. Usa `ACCENT_500` para fundo, texto branco.
-
-### 3 · Secções da tab (`src/components/admin/v2/clientes/`)
-
-**`pipeline-section.tsx`**
-- `<AdminSectionHeader accent="leads" title="Pipeline" subtitle="movimento entre estados nos últimos 30 dias" />`
-- `<AdminCard className="!px-7 !py-6">` com grid `[1fr_30px_1fr_30px_1fr_30px_1fr]`
-- 4 mini-cards (border-left 3px da accent + fundo tom 50, padding 14×16, radius `0 .5rem .5rem 0`) — usa cores literais do prompt para garantir coerência exacta
-- 3 conectores SVG centrados (qty verde + arrow); SVG inline com `currentColor` ou hex literal
-- Footer flex com taxas de conversão e churn
-
-**`customers-table-section.tsx`**
-- `<AdminSectionHeader accent="revenue" title="Lista de clientes">` com 4 botões pill alinhados via `ml-auto` (slot novo no header **OU** wrapper externo `<div className="flex items-center mb-3.5">` colocando header + filtros lado a lado — vou usar **wrapper externo** para não tocar no `AdminSectionHeader`)
-- `<AdminCard className="!px-5 !py-4">` com `<table>` semântica
-- Linhas com `border-t-[0.5px] border-admin-border-strong cursor-pointer hover:bg-admin-neutral-50`; linha Ana com `bg-admin-neutral-50`
-- Avatar via `<AdminAvatar size={32} />`
-- Estado via `<AdminBadge variant="..." />`
-- Sinal: lógica condicional → `"activo"` em texto verde, ou `<AdminBadge>` (signal/danger/expense), ou `"—"`
-- Footer com texto + 2 botões `<` `>` via `AdminActionButton size="sm"`
-
-**`customer-card-section.tsx`**
-- `<AdminSectionHeader accent="leads" title="Ficha · Ana Marques" subtitle="selecionada na tabela acima" />`
-- `<AdminCard className="!px-7 !py-6">`:
-  - Header flex: `<AdminAvatar size={56} variant="leads" initials="AM" />` + bloco central (h3 + Badge revenue + tertiary "desde …" + linha email/cidade) + 2 `AdminActionButton`
-  - Grelha 4 KPIs: implementada como `<div className="grid grid-cols-4 gap-px rounded-md overflow-hidden bg-admin-border-strong mb-6">` com cells brancas (truque das bordas via gap+fundo). Última cell tem 5 barras 14×4px (4 verdes + 1 cinza)
-  - Grid 2 colunas `[1.3fr_1fr] gap-6`:
-    - Esquerda: timeline com `position: relative; pl-5` + linha vertical absoluta + 6 itens com ponto colorido por tipo (helper `dotColor(type)`)
-    - Direita: bloco "Perfis analisados" (3 items pill cinza claro) + bloco "Notas internas" (cartão rosa-coral com border-left `#D4537E`, fundo `#FBEAF0`, textos `#72243E` / `#4B1528`)
-
-### 4 · Rota (`src/routes/admin.clientes.tsx`)
-
-Substitui o `StubTab` por:
+### Grid de 4 KPIs internos
+Substituir o grid ad-hoc (gap-px + cartões manuais) por **`KPICard size="md"`** (primitivo partilhado), mantendo as health bars dentro do `value` quando aplicável:
 
 ```tsx
-<AdminPageHeader
-  title="Clientes"
-  subtitle="312 leads · 125 clientes · 38 subscritores activos"
-  actions={
-    <>
-      <AdminSearchInput placeholder="Pesquisar cliente..." />
-      <AdminActionButton>Exportar</AdminActionButton>
-    </>
-  }
-/>
-<div className="flex flex-col gap-7">
-  <PipelineSection />
-  <CustomersTableSection />
-  <CustomerCardSection />
+<div className="mb-7 grid gap-3 grid-cols-2 lg:grid-cols-4">
+  {c.kpis.map((k) => {
+    const hasBars = "bars" in k && k.bars;
+    return (
+      <KPICard
+        key={k.eyebrow}
+        size="md"
+        eyebrow={k.eyebrow}
+        value={
+          hasBars ? (
+            <span className="inline-flex items-center gap-2.5">
+              <span>{k.value}</span>
+              <HealthBars filled={k.bars!.filled} total={k.bars!.total} />
+            </span>
+          ) : k.value
+        }
+        sub={k.sub}
+      />
+    );
+  })}
 </div>
 ```
 
-### Notas técnicas
+Benefícios: tipografia mono consistente (28px com `tnum`), padding alinhado, `admin-num` automático, menos código próprio.
 
-- **Cores literais do prompt** (border-left e fundos dos 4 cartões do pipeline, cor do verde `#3B6D11` dos conectores, rosa `#D4537E`/`#FBEAF0`/`#72243E`/`#4B1528` da nota): mantidas como hex inline para fidelidade exacta. Os tokens `admin-leads-*`, `admin-revenue-*`, `admin-expense-*` cobrem o resto.
-- **Linha 0.5px**: usar `border-t border-admin-border-strong` (já validado nas outras tabs em 1× DPR).
-- **AdminBadge**: já suporta `revenue | leads | expense | neutral | danger | signal`. Para o sinal "candidato sub" uso `signal` (coral); para "7× repetiu" e "em risco" uso `danger`.
-- **Paginação e filtros**: apenas visuais (sem estado funcional) — coerente com `PeriodSelect`/`ExportCsvButton` da Receita.
-- **Acessibilidade**: tabela usa `<thead>`/`<tbody>`, botões pill recebem `aria-pressed`, avatares têm `aria-label` com nome completo.
+### Timeline
+- `paddingLeft`: 20 → **22**
+- Pontos: 11×11 → **13×13** (cumpre spec)
+- Borda do ponto: `2px solid white` → **`box-shadow: 0 0 0 2px var(--admin-bg-canvas)`** (encaixa no canvas warm em vez de branco puro)
+- Linha vertical: `rgb(var(--admin-border-rgb) / 0.14)` → **`var(--color-admin-border)`** (mais visível e usa token oficial)
+- Título de evento: 12px → **13px**; detalhe ganha `mt-0.5`
 
-### Ficheiros tocados
+### Perfis analisados
+- Padding por linha: `10px 12px` → **`12px 14px`**
+- Background: `bg-admin-neutral-50` → **`var(--admin-bg-subtle)`** (warm)
+- Tipografia: handle 12→13px, classification 10→11px com `mt-0.5`, count em `admin-num` 13px
 
-**Novos:**
-- `src/components/admin/v2/admin-search-input.tsx`
-- `src/components/admin/v2/admin-action-button.tsx`
-- `src/components/admin/v2/admin-avatar.tsx`
-- `src/components/admin/v2/clientes/pipeline-section.tsx`
-- `src/components/admin/v2/clientes/customers-table-section.tsx`
+### Notas internas
+- Padding: `10px 12px` → **`14px 16px`** (cumpre spec)
+- Título: 11→12px
+- Corpo: 11→12px com `leading-relaxed`
+
+---
+
+## 2. Hover warm nas tabelas
+
+### `src/components/admin/v2/receita/invoices-section.tsx`
+Adicionar `transition-colors hover:bg-[var(--admin-bg-subtle)]` à `<tr>`.
+
+### `src/components/admin/v2/clientes/customers-table-section.tsx`
+Substituir `hover:bg-admin-neutral-50` e `bg-admin-neutral-50` (linha selecionada) por `hover:bg-[var(--admin-bg-subtle)]` e `bg-[var(--admin-bg-subtle)]`.
+
+Razão: o canvas é `#FAF9F5` (warm) e `neutral-50` é cinzento frio — quebra a coerência cromática do design noir editorial.
+
+---
+
+## 3. Validação
+
+```bash
+bunx tsc --noEmit
+bun run build
+```
+
+Se o build falhar, corrigir os erros e re-correr até passar.
+
+---
+
+## Ficheiros afectados
+
+**Editados (3):**
 - `src/components/admin/v2/clientes/customer-card-section.tsx`
+- `src/components/admin/v2/receita/invoices-section.tsx`
+- `src/components/admin/v2/clientes/customers-table-section.tsx`
 
-**Editados:**
-- `src/routes/admin.clientes.tsx` (substitui stub)
-- `src/lib/admin/mock-data.ts` (adiciona blocos no fim + comentário modelo no topo)
+**Intocados:**
+- Mock data, primitivos, restantes secções, stubs das tabs por implementar
 
-### Checkpoint
+---
 
-- ☐ Pipeline horizontal renderiza 4 cards + 3 conectores SVG verdes
-- ☐ Tabela de 7 clientes com avatares coloridos por estado e linha Ana destacada
-- ☐ Filtros pill no header da secção 2 (Todos activo)
-- ☐ Ficha com header + 4 KPIs (saúde com 4/5 barras) + timeline 6 eventos + perfis + nota Nike rosa
-- ☐ Comentário do modelo `Customer/Note/Activity` no topo de `mock-data.ts`
-- ☐ Reutiliza `AdminPageHeader`, `AdminSectionHeader`, `AdminCard`, `AdminBadge`, `KPICard` (não cria duplicatas)
-- ☐ `tsc --noEmit` + `bun run build` passam
+## Checklist de aceitação
+
+- ☐ Avatar da ficha 64px
+- ☐ Nome do cliente 22px / weight 500 / `-0.01em`
+- ☐ Health bars 16×5 com gap 3
+- ☐ 4 KPIs internos usam `KPICard size="md"`
+- ☐ Timeline com pontos 13×13 e linha visível
+- ☐ Perfis e notas com padding alinhado ao spec
+- ☐ Hover das tabelas (faturas + clientes) usa `--admin-bg-subtle`
+- ☐ `bunx tsc --noEmit` ✓
+- ☐ `bun run build` ✓
+- ☐ Cockpit legado e `/report.example` intactos
