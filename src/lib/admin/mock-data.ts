@@ -8,6 +8,51 @@
  * Não usar estas constantes em rotas públicas (`/`, `/analyze`, `/report/*`).
  */
 
+/**
+ * MODELO DE DADOS — tab Clientes (futura migração Supabase).
+ *
+ * Documentado aqui para referência. Não criar tabelas ainda; usar apenas os
+ * mocks abaixo (`MOCK_PIPELINE`, `MOCK_CUSTOMERS_LIST`, `MOCK_SELECTED_CUSTOMER`,
+ * `MOCK_CUSTOMER_ACTIVITY`, `MOCK_CUSTOMER_PROFILES`, `MOCK_CUSTOMER_NOTES`).
+ *
+ * ```ts
+ * type Customer = {
+ *   id: string;
+ *   name: string;
+ *   email: string;
+ *   location?: string;
+ *   state: 'lead' | 'one_time' | 'recurring' | 'subscription' | 'churned';
+ *   plan?: 'starter' | 'pro' | 'agency';
+ *   monthly_value?: number;
+ *   total_spent: number;          // LTV realizado
+ *   reports_count: number;
+ *   free_analyses_count: number;
+ *   signed_up_at: Date;
+ *   last_activity_at: Date;
+ *   health_score?: number;        // 0-10
+ *   signal?: 'active' | 'sub_candidate' | 'repeated_search' | 'at_risk' | null;
+ * };
+ *
+ * type CustomerNote = {
+ *   id: string;
+ *   customer_id: string;
+ *   title: string;
+ *   body: string;
+ *   created_at: Date;
+ * };
+ *
+ * type CustomerActivity = {
+ *   id: string;
+ *   customer_id: string;
+ *   type: 'payment' | 'report_generated' | 'free_analysis'
+ *       | 'subscription_started' | 'subscription_changed';
+ *   description: string;
+ *   occurred_at: Date;
+ *   metadata?: Record<string, unknown>;
+ * };
+ * ```
+ */
+
 export const MOCK_FUNNEL = {
   visitors: { eyebrow: "Visitantes anónimos", value: "1.847" },
   freeAnalyses: { eyebrow: "Análises grátis feitas", value: "2.314" },
