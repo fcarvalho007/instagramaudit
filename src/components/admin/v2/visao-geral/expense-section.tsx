@@ -21,6 +21,7 @@ import {
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { ProgressBar } from "../progress-bar";
+import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import {
   DAILY_COST_LIMIT,
@@ -34,7 +35,12 @@ export function ExpenseSection() {
 
   return (
     <section>
-      <AdminSectionHeader title="Despesa" subtitle="o que sai" accent="expense" />
+      <AdminSectionHeader
+        title="Despesa"
+        subtitle="o que sai"
+        accent="expense"
+        info="Custos operacionais com o Apify (scraping de Instagram) e OpenAI (análises com IA). Limites mensais visíveis."
+      />
 
       <AdminCard variant="flush" className="overflow-hidden">
         {/* Zona superior: 3 colunas */}
@@ -44,6 +50,7 @@ export function ExpenseSection() {
             colorVar="rgb(var(--admin-expense-500))"
             colorTextVar="rgb(var(--admin-expense-700))"
             label={t.apify.label}
+            info="Plataforma de scraping que recolhe dados públicos do Instagram. Cap mensal de $29."
             value={`$${t.apify.spent.toFixed(2)}`}
             cap={`de $${t.apify.cap.toFixed(2)}`}
             note={`63% do limite · projecção $${t.apify.projection.toFixed(2)}`}
@@ -62,6 +69,7 @@ export function ExpenseSection() {
             colorVar="rgb(var(--admin-info-500))"
             colorTextVar="rgb(var(--admin-info-700))"
             label={t.openai.label}
+            info="Análises com IA dos relatórios. Soft cap mensal definido em $25."
             value={`$${t.openai.spent.toFixed(2)}`}
             cap={`de $${t.openai.cap.toFixed(2)} · soft cap`}
             note={`39% do limite · projecção $${t.openai.projection.toFixed(2)}`}
@@ -79,6 +87,7 @@ export function ExpenseSection() {
             colorVar="rgb(var(--admin-neutral-600))"
             colorTextVar="rgb(var(--admin-revenue-700))"
             label="DESPESA TOTAL"
+            info="Soma das duas despesas operacionais. Comparada com a receita, indica a margem real do negócio."
             value={`$${t.total.spent.toFixed(2)}`}
             cap={`${t.total.revenuePct}% da receita`}
             note={`margem operacional ${t.total.operatingMarginPct}%`}
@@ -102,7 +111,7 @@ export function ExpenseSection() {
               Custos diários · últimos 30 dias
             </p>
             <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
-              Stack Apify + OpenAI · linha tracejada = limite diário equivalente
+              Stack Apify + OpenAI · linha tracejada vermelha = limite diário equivalente
               {" "}${DAILY_COST_LIMIT.toFixed(2)}
             </p>
           </div>
@@ -187,6 +196,7 @@ function ExpenseColumn({
   colorVar,
   colorTextVar,
   label,
+  info,
   value,
   cap,
   note,
@@ -196,6 +206,7 @@ function ExpenseColumn({
   colorVar: string;
   colorTextVar: string;
   label: string;
+  info?: string;
   value: string;
   cap: string;
   note: string;
@@ -219,14 +230,26 @@ function ExpenseColumn({
         <span className="admin-eyebrow" style={{ color: colorTextVar }}>
           {label}
         </span>
+        {info ? <AdminInfoTooltip label={info} /> : null}
       </div>
       <div className="mb-2.5 flex items-baseline gap-2">
-        <span className="font-mono text-[1.375rem] font-medium tracking-tight leading-tight text-admin-text-primary">
+        <span className="font-mono text-[2.25rem] font-medium tracking-[-0.03em] leading-none text-admin-text-primary">
           {value}
         </span>
         <span className="text-[11px] text-admin-text-tertiary">{cap}</span>
       </div>
-      {children}
+      <div className="relative">
+        {children}
+        {/* Label "CAP" acima do marcador vermelho da progress bar (apenas em barras com showCap = Apify) */}
+        {label === "APIFY" ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-3 right-0 -translate-x-[2px] font-mono text-[8px] font-medium tracking-[0.1em] text-admin-danger-700"
+          >
+            CAP
+          </span>
+        ) : null}
+      </div>
       <p className="mt-2 text-[11px]" style={{ color: colorTextVar }}>
         {note}
       </p>

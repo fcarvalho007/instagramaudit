@@ -30,27 +30,34 @@ export function RevenueSection() {
   const chartData = MOCK_DAILY_REVENUE.map((d) => ({ ...d }));
 
   return (
-    <section>
-      <AdminSectionHeader title="Receita" subtitle="o que entra" accent="revenue" />
+    <section className="flex flex-col gap-4">
+      <AdminSectionHeader
+        title="Receita"
+        subtitle="o que entra"
+        accent="revenue"
+        info="Inclui MRR (subscrições recorrentes) e vendas avulsas. MRR é a métrica de saúde primária do negócio SaaS."
+      />
 
-      <div className="mb-3 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Hero: MRR — receita previsível */}
+      <div className="grid gap-3 grid-cols-1 lg:grid-cols-[1.4fr_1fr_1fr]">
+        {/* Hero: MRR — receita previsível, mono 56px */}
         <KPICard
           variant="hero"
-          size="lg"
+          size="hero"
           eyebrow={MOCK_REVENUE_KPIS.mrr.eyebrow}
+          info="Monthly Recurring Revenue: receita previsível mensal das subscrições activas. A métrica mais importante de um SaaS."
           value={MOCK_REVENUE_KPIS.mrr.value}
           delta={{
             text: MOCK_REVENUE_KPIS.mrr.deltaText,
             direction: MOCK_REVENUE_KPIS.mrr.deltaDirection,
           }}
           sub={MOCK_REVENUE_KPIS.mrr.sub}
-          className="lg:col-span-2"
         />
         <KPICard
           variant="accent-left"
           accent="revenue"
+          size="lg"
           eyebrow={MOCK_REVENUE_KPIS.total.eyebrow}
+          info="Soma de toda a receita: subscrições + vendas avulsas de relatórios."
           value={MOCK_REVENUE_KPIS.total.value}
           delta={{
             text: MOCK_REVENUE_KPIS.total.deltaText,
@@ -61,7 +68,9 @@ export function RevenueSection() {
         <KPICard
           variant="accent-left"
           accent="revenue-alt"
+          size="lg"
           eyebrow={MOCK_REVENUE_KPIS.oneOff.eyebrow}
+          info="Receita de relatórios comprados individualmente, sem subscrição. Cada relatório custa €29."
           value={MOCK_REVENUE_KPIS.oneOff.value}
           highlightSub={{
             text: MOCK_REVENUE_KPIS.oneOff.highlightText,

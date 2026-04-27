@@ -6,6 +6,7 @@
  */
 
 import { AdminSectionHeader } from "../admin-section-header";
+import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import {
   ACCENT_500,
@@ -20,6 +21,7 @@ export function KanbanSection() {
         title="Clientes — kanban"
         subtitle="pipeline de relação"
         accent="leads"
+        info="Pipeline de relação com cada utilizador. Move-se da esquerda (lead) para a direita (subscritor)."
       />
 
       <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -34,8 +36,9 @@ export function KanbanSection() {
 function KanbanColumn({ col }: { col: (typeof MOCK_KANBAN)[number] }) {
   const accent = col.accent as AdminAccent;
   return (
-    <article
-      className="rounded-b-xl border border-t-0 border-admin-border bg-admin-surface p-3"
+    <AdminCard
+      as="article"
+      className="!p-3"
       style={{ borderTop: `2px solid ${ACCENT_500[accent]}` }}
     >
       <header className="mb-3 flex items-start justify-between gap-2">
@@ -65,6 +68,6 @@ function KanbanColumn({ col }: { col: (typeof MOCK_KANBAN)[number] }) {
           </li>
         ))}
       </ul>
-    </article>
+    </AdminCard>
   );
 }
