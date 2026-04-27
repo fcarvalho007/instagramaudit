@@ -56,13 +56,13 @@ function RankingColumn() {
     <div>
       <header className="mb-4">
         <h3 className="m-0 text-[16px] font-medium text-admin-text-primary">
-          Ranking top 10
+          Volume vs reports pagos
         </h3>
         <p className="mt-1 text-[12px] text-admin-text-tertiary">
-          Volume vs relatórios pagos por perfil
+          Top 10 perfis · barra cinza = análises totais, fill coral = reports pagos
         </p>
       </header>
-      <ul className="m-0 flex list-none flex-col gap-3.5 p-0">
+      <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {MOCK_TOP_PROFILES.map((p) => (
           <li key={p.handle}>
             <RankingRow profile={p} />
@@ -77,11 +77,15 @@ function RankingRow({ profile }: { profile: MockTopProfile }) {
   const initial = profile.handle.replace("@", "").charAt(0).toUpperCase();
   const meta = PROFILE_CATEGORY_META[profile.category];
   const analysesPct = Math.round((profile.analyses / MAX_ANALYSES) * 100);
-  const reportsPct = Math.round((profile.reports / MAX_ANALYSES) * 100);
+  // Reports renderizam como fill DENTRO da barra de análises (mesmo eixo).
+  const reportsFillPct =
+    profile.analyses > 0
+      ? Math.round((profile.reports / profile.analyses) * 100)
+      : 0;
 
   return (
     <div className="flex items-center gap-3">
-      <span className="w-6 shrink-0 font-mono text-[11px] tracking-[0.04em] text-admin-text-tertiary">
+      <span className="w-6 shrink-0 text-right font-mono text-[11px] tabular-nums tracking-[0.04em] text-admin-text-tertiary">
         {String(profile.rank).padStart(2, "0")}
       </span>
       <AdminAvatar
@@ -99,24 +103,28 @@ function RankingRow({ profile }: { profile: MockTopProfile }) {
             {meta.label} · {profile.sub}
           </span>
         </p>
-        <div className="mt-1.5 space-y-1">
+        {/*
+         * Barra única "stacked": track cinza com largura proporcional às
+         * análises e fill coral interno proporcional aos reports / análises.
+         * Lê-se como "deste volume, isto converteu".
+         */}
+        <div
+          className="mt-2 h-1.5 overflow-hidden rounded-full"
+          style={{
+            width: `${analysesPct}%`,
+            backgroundColor: ADMIN_LITERAL.profileBarAnalyses,
+          }}
+        >
           <div
-            className="h-1.5 rounded-full"
+            className="h-full rounded-full"
             style={{
-              width: `${analysesPct}%`,
-              backgroundColor: ADMIN_LITERAL.profileBarAnalyses,
-            }}
-          />
-          <div
-            className="h-1.5 rounded-full"
-            style={{
-              width: `${reportsPct}%`,
+              width: `${reportsFillPct}%`,
               backgroundColor: ADMIN_LITERAL.profileBarReports,
             }}
           />
         </div>
       </div>
-      <div className="shrink-0 text-right">
+      <div className="shrink-0 text-right tabular-nums">
         <p className="m-0 font-mono text-[12px] text-admin-text-primary">
           {profile.analyses} análises
         </p>
@@ -153,6 +161,7 @@ function CategoryColumn() {
               innerRadius={60}
               outerRadius={90}
               paddingAngle={2}
+              cornerRadius={3}
               stroke="rgb(var(--admin-surface-rgb))"
               strokeWidth={1.5}
             >
@@ -178,18 +187,18 @@ function CategoryColumn() {
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className="font-mono font-medium tracking-tight text-admin-text-primary"
-            style={{ fontSize: "2rem", lineHeight: 1 }}
+            className="font-mono font-medium tabular-nums text-admin-text-primary"
+            style={{ fontSize: "1.875rem", lineHeight: 1, letterSpacing: "-0.02em" }}
           >
             {TOTAL_PROFILES}
           </span>
-          <span className="mt-1 text-[11px] text-admin-text-tertiary">
+          <span className="mt-1 text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
             perfis
           </span>
         </div>
       </div>
 
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+      <ul className="m-0 flex list-none flex-col gap-2 border-t border-admin-border p-0 pt-4">
         {MOCK_PROFILES_BY_CATEGORY.map((c) => (
           <li
             key={c.category}
@@ -203,10 +212,10 @@ function CategoryColumn() {
             <span className="flex-1 text-[12px] text-admin-text-primary">
               {c.category}
             </span>
-            <span className="font-mono text-[12px] text-admin-text-primary">
+            <span className="w-10 text-right font-mono text-[12px] tabular-nums text-admin-text-primary">
               {c.pct}%
             </span>
-            <span className="w-10 text-right font-mono text-[11px] text-admin-text-tertiary">
+            <span className="w-10 text-right font-mono text-[11px] tabular-nums text-admin-text-tertiary">
               {c.count}
             </span>
           </li>

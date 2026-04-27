@@ -240,28 +240,28 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
       </td>
       <td className="px-6 py-3.5 align-middle">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[12px] text-admin-text-primary">
+          <span className="font-mono text-[12px] tabular-nums text-admin-text-primary">
             {row.analyses}
           </span>
           <span
             aria-hidden="true"
             className="block h-1 w-16 rounded-full"
             style={{
-              backgroundColor: "rgb(var(--admin-border-rgb) / 0.18)",
+              backgroundColor: ADMIN_LITERAL.profileFunnelBase,
             }}
           >
             <span
               className="block h-1 rounded-full"
               style={{
                 width: `${analysesPct}%`,
-                backgroundColor: ADMIN_LITERAL.profileBarReports,
+                backgroundColor: ADMIN_LITERAL.profileBarAnalyses,
               }}
             />
           </span>
         </div>
       </td>
       <td
-        className={`px-6 py-3.5 text-right align-middle font-mono text-[12px] ${
+        className={`px-6 py-3.5 text-right align-middle font-mono text-[12px] tabular-nums ${
           row.reports > 0
             ? ""
             : "text-admin-text-tertiary"
@@ -275,11 +275,13 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
         {row.reports}
       </td>
       <td
-        className={`px-6 py-3.5 text-right align-middle font-mono text-[12px] ${convCls}`}
+        className={`px-6 py-3.5 text-right align-middle font-mono text-[12px] tabular-nums ${
+          row.reports === 0 ? "text-admin-text-tertiary" : convCls
+        }`}
       >
-        {row.conversionPct.toFixed(1)}%
+        {row.reports === 0 ? "—" : `${row.conversionPct.toFixed(1)}%`}
       </td>
-      <td className="px-6 py-3.5 text-right align-middle font-mono text-[12px] text-admin-text-primary">
+      <td className="px-6 py-3.5 text-right align-middle font-mono text-[12px] tabular-nums text-admin-text-primary">
         {row.revenue ?? "—"}
       </td>
       <td className="px-6 py-3.5 align-middle text-[12px] text-admin-text-secondary">

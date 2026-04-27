@@ -142,39 +142,57 @@ function FunnelRow({
         <span className="text-[13px] text-admin-text-primary">
           {funnel.handle}
         </span>
-        <span
-          className="font-mono text-[12px]"
-          style={{ color: ADMIN_LITERAL.profileBarReports }}
-        >
-          {funnel.conversionPct}
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-[10px] uppercase tracking-[0.06em] text-admin-text-tertiary">
+            conv.
+          </span>
+          <span
+            className="font-mono text-[12px] tabular-nums"
+            style={{ color: ADMIN_LITERAL.profileBarReports }}
+          >
+            {funnel.conversionPct}
+          </span>
         </span>
       </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <div
-            className="h-1.5 rounded-full"
-            style={{
-              width: `${analysesPct}%`,
-              backgroundColor: ADMIN_LITERAL.profileFunnelBase,
-            }}
-          />
-          <span className="text-[11px] text-admin-text-tertiary">
-            {funnel.analyses} análises grátis
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="h-1.5 rounded-full"
-            style={{
-              width: `${reportsPct}%`,
-              backgroundColor: ADMIN_LITERAL.profileBarReports,
-            }}
-          />
-          <span className="text-[11px] text-admin-text-tertiary">
-            {funnel.reports} reports pagos
-          </span>
-        </div>
+      {/*
+       * Layout column: barra ocupa largura proporcional (full bleed) e a
+       * label fica logo abaixo. Evita que legendas longas sejam empurradas
+       * para fora em perfis com 100% do eixo.
+       */}
+      <div className="space-y-2.5">
+        <FunnelBar
+          pct={analysesPct}
+          color={ADMIN_LITERAL.profileFunnelBase}
+          label={`${funnel.analyses} análises grátis`}
+        />
+        <FunnelBar
+          pct={reportsPct}
+          color={ADMIN_LITERAL.profileBarReports}
+          label={`${funnel.reports} reports pagos`}
+        />
       </div>
+    </div>
+  );
+}
+
+function FunnelBar({
+  pct,
+  color,
+  label,
+}: {
+  pct: number;
+  color: string;
+  label: string;
+}) {
+  return (
+    <div>
+      <div
+        className="h-1.5 rounded-full"
+        style={{ width: `${pct}%`, backgroundColor: color, minWidth: 4 }}
+      />
+      <p className="m-0 mt-1 text-[11px] tabular-nums text-admin-text-tertiary">
+        {label}
+      </p>
     </div>
   );
 }
