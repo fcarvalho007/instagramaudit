@@ -92,9 +92,14 @@
   --color-admin-text-secondary: rgb(var(--admin-neutral-600));
   --color-admin-text-tertiary: rgb(var(--admin-neutral-400));
 
-  /* Border (1px com 8% / 14% opacidade) */
-  --color-admin-border: rgb(var(--admin-border-rgb) / 0.08);
-  --color-admin-border-strong: rgb(var(--admin-border-rgb) / 0.14);
+  /* Border (1px com 14% / 22% opacidade — visível sobre canvas creme) */
+  --color-admin-border: rgb(var(--admin-border-rgb) / 0.14);
+  --color-admin-border-strong: rgb(var(--admin-border-rgb) / 0.22);
+
+  /* Sombra subtil dos cartões — duas camadas para dar profundidade editorial */
+  --shadow-admin-card:
+    0 1px 2px rgb(var(--admin-border-rgb) / 0.04),
+    0 4px 12px rgb(var(--admin-border-rgb) / 0.05);
 
   /* Accents — receita (esmeralda) */
   --color-admin-revenue-50: rgb(var(--admin-revenue-50));

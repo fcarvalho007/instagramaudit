@@ -35,7 +35,7 @@ export function AdminCard({
   as: Tag = "div",
 }: AdminCardProps) {
   const base =
-    "rounded-xl border border-admin-border bg-admin-surface text-admin-text-primary";
+    "rounded-xl border border-admin-border bg-admin-surface text-admin-text-primary shadow-[var(--shadow-admin-card)]";
   const padded = variant === "flush" ? "" : "p-6";
   const heroStyles =
     variant === "hero"
