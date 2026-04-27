@@ -62,6 +62,12 @@ export interface MarketSignalsFail {
 export type MarketSignalsResult = MarketSignalsOk | MarketSignalsFail;
 
 export interface BuildMarketSignalsOptions {
+  /**
+   * Instagram report owner. Propagated to every DataForSEO call as the
+   * single value matched against `DATAFORSEO_ALLOWLIST`. Derived keywords
+   * are NEVER used as a gate.
+   */
+  ownerHandle: string;
   plan: MarketSignalsPlan;
   /** Hard cap for the whole orchestration. Default 60_000 ms. */
   totalTimeoutMs?: number;
@@ -88,6 +94,7 @@ function firstResultOrNull<T>(envelope: { tasks?: Array<{ result: T[] | null }> 
 async function buildSignalsInner(
   payload: SnapshotPayload,
   plan: MarketSignalsPlan,
+  ownerHandle: string,
 ): Promise<MarketSignalsResult> {
   const cap = maxQueriesFor(plan);
   if (cap <= 0) {
@@ -111,7 +118,10 @@ async function buildSignalsInner(
   if (used < cap) {
     used += 1;
     try {
-      const env = await fetchGoogleTrends({ keywords: keywords.slice(0, 5) });
+      const env = await fetchGoogleTrends({
+        ownerHandle,
+        keywords: keywords.slice(0, 5),
+      });
       trends = firstResultOrNull<GoogleTrendsResult>(env);
     } catch (err) {
       errors.push({
@@ -139,6 +149,7 @@ async function buildSignalsInner(
     used += 1;
     try {
       const env = await fetchKeywordIdeas({
+        ownerHandle,
         keywords: [keywords[0]],
         limit: 50,
       });
@@ -157,7 +168,11 @@ async function buildSignalsInner(
     if (used >= cap) break;
     used += 1;
     try {
-      const env = await fetchSerpOrganic({ keyword: kw, depth: 10 });
+      const env = await fetchSerpOrganic({
+        ownerHandle,
+        keyword: kw,
+        depth: 10,
+      });
       serp.push({ keyword: kw, result: firstResultOrNull<SerpOrganicResult>(env) });
     } catch (err) {
       serp.push({ keyword: kw, result: null });
@@ -192,8 +207,20 @@ export async function buildMarketSignals(
 ): Promise<MarketSignalsResult> {
   const plan = options.plan;
   const total = options.totalTimeoutMs ?? 60_000;
+  const ownerHandle = options.ownerHandle.trim().toLowerCase().replace(/^@/, "");
+  if (!ownerHandle) {
+    return {
+      status: "error",
+      plan,
+      message: "ownerHandle obrigatório.",
+    };
+  }
 
-  const work: Promise<MarketSignalsResult> = buildSignalsInner(payload, plan).catch(
+  const work: Promise<MarketSignalsResult> = buildSignalsInner(
+    payload,
+    plan,
+    ownerHandle,
+  ).catch(
     (err): MarketSignalsFail => ({
       status: "error",
       plan,
