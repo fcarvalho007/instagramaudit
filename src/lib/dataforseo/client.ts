@@ -32,8 +32,17 @@ const ENDPOINT_PATHS: Record<DataForSeoEndpoint, string> = {
 };
 
 interface CallOptions {
-  /** Logical handle/keyword used for allowlist + audit (lowercase). */
-  gateValue: string;
+  /**
+   * Instagram report owner / handle that authorised this enrichment.
+   * This — and ONLY this — is matched against `DATAFORSEO_ALLOWLIST`.
+   * The derived search keyword is NEVER used as a gate.
+   */
+  ownerHandle: string;
+  /**
+   * Human-readable label for the query/keyword being sent to DataForSEO.
+   * Stored in `provider_call_logs.actor` for audit; never used as gate.
+   */
+  queryLabel: string;
   /** Skip the allowlist check (NOT the kill-switch). Default false. */
   skipAllowlist?: boolean;
   /** Override fetch timeout. */
@@ -50,13 +59,16 @@ export async function callDataForSeo<T = unknown>(
   options: CallOptions,
 ): Promise<DataForSeoEnvelope<T>> {
   const startedAt = Date.now();
-  const gateValue = options.gateValue.toLowerCase();
+  const ownerHandle = options.ownerHandle.trim().toLowerCase().replace(/^@/, "");
+  const queryLabel = options.queryLabel.trim().slice(0, 120);
+  const actorLabel = `${endpoint}:${queryLabel}`.slice(0, 200);
 
   // 1. Kill-switch
   if (!isDataForSeoEnabled()) {
     await logCall({
       endpoint,
-      handle: gateValue,
+      handle: ownerHandle,
+      actor: actorLabel,
       status: "blocked",
       httpStatus: null,
       durationMs: Date.now() - startedAt,
@@ -70,11 +82,12 @@ export async function callDataForSeo<T = unknown>(
     );
   }
 
-  // 2. Allowlist
-  if (!options.skipAllowlist && !isAllowed(gateValue)) {
+  // 2. Allowlist — enforced on the REPORT OWNER, never on the keyword.
+  if (!options.skipAllowlist && !isAllowed(ownerHandle)) {
     await logCall({
       endpoint,
-      handle: gateValue,
+      handle: ownerHandle,
+      actor: actorLabel,
       status: "blocked",
       httpStatus: null,
       durationMs: Date.now() - startedAt,
@@ -84,7 +97,7 @@ export async function callDataForSeo<T = unknown>(
     });
     throw new DataForSeoBlockedError(
       "allowlist",
-      `Value "${gateValue}" is not in DATAFORSEO_ALLOWLIST.`,
+      `Owner handle "${ownerHandle}" is not in DATAFORSEO_ALLOWLIST.`,
     );
   }
 
