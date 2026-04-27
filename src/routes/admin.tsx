@@ -40,7 +40,7 @@ function AdminLayout() {
           style={{
             maxWidth: 1280,
             margin: "0 auto",
-            padding: "1.75rem",
+            padding: "40px 32px",
           }}
         >
           <div
