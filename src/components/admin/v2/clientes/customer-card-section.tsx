@@ -119,11 +119,13 @@ export function CustomerCardSection() {
         <div className="mb-7 grid gap-3 grid-cols-2 lg:grid-cols-4">
           {c.kpis.map((k) => {
             const hasBars = "bars" in k && k.bars;
+            const info = "info" in k ? (k as { info?: string }).info : undefined;
             return (
               <KPICard
                 key={k.eyebrow}
                 size="md"
                 eyebrow={k.eyebrow}
+                info={info}
                 value={
                   hasBars ? (
                     <span className="inline-flex items-center gap-2.5">
