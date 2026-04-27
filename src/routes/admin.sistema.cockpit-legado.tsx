@@ -19,14 +19,7 @@ function LegacyCockpit() {
         title="Cockpit legado"
         subtitle="Vista operacional original · será reorganizada pelas novas tabs."
       />
-      <div
-        style={{
-          padding: "1.5rem",
-          border: "0.5px solid rgb(var(--admin-neutral-100))",
-          borderRadius: 12,
-          backgroundColor: "#ffffff",
-        }}
-      >
+      <div className="admin-cockpit-legacy rounded-xl border border-admin-border bg-admin-surface p-6">
         <CockpitShell />
       </div>
     </>
