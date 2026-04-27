@@ -9,6 +9,7 @@
 import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
 import { MOCK_PIPELINE, MOCK_PIPELINE_FOOTER } from "@/lib/admin/mock-data";
+import { Fragment } from "react";
 
 function PipelineConnector({ qty }: { qty: number }) {
   return (
@@ -55,9 +56,8 @@ export function PipelineSection() {
           }}
         >
           {states.map((s, i) => (
-            <>
+            <Fragment key={s.key}>
               <div
-                key={s.key}
                 className="rounded-r-lg"
                 style={{
                   borderLeft: `3px solid ${s.borderColor}`,
@@ -87,7 +87,7 @@ export function PipelineSection() {
               {i < states.length - 1 ? (
                 <PipelineConnector qty={transitions[i]!.qty} />
               ) : null}
-            </>
+            </Fragment>
           ))}
         </div>
 
