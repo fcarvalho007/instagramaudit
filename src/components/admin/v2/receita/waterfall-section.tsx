@@ -21,6 +21,11 @@ import {
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import {
+  CHART_AXIS_LINE,
+  CHART_AXIS_TICK,
+  CHART_GRID_STROKE,
+} from "../charts/chart-tooltip";
+import {
   MOCK_MRR_WATERFALL,
   MOCK_MRR_WATERFALL_DETAIL,
 } from "@/lib/admin/mock-data";
@@ -108,34 +113,26 @@ export function WaterfallSection() {
               barCategoryGap="20%"
             >
               <CartesianGrid
-                strokeDasharray="2 4"
-                stroke="rgba(136,135,128,0.18)"
+                stroke={CHART_GRID_STROKE}
                 vertical={false}
               />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-600))" }}
+                tick={CHART_AXIS_TICK}
                 tickLine={false}
-                axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
+                axisLine={{ stroke: CHART_AXIS_LINE }}
                 interval={0}
               />
               <YAxis
                 domain={[0, 800]}
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                tick={CHART_AXIS_TICK}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `€${v}`}
                 width={44}
               />
               <Tooltip
-                cursor={{ fill: "rgba(136,135,128,0.06)" }}
-                contentStyle={{
-                  border: "1px solid rgb(44 44 42 / 0.14)",
-                  borderRadius: 8,
-                  fontSize: 11,
-                  padding: "6px 10px",
-                  boxShadow: "none",
-                }}
+                cursor={{ fill: "rgba(31,30,27,0.06)" }}
                 content={({ active, payload }) => {
                   if (!active || !payload || !payload.length) return null;
                   const p = payload[0]?.payload as (typeof data)[number] | undefined;
@@ -148,7 +145,17 @@ export function WaterfallSection() {
                     line = `${p.label}: ${sign}€${Math.abs(p.value)}`;
                   }
                   return (
-                    <div className="rounded-lg border border-admin-border-strong bg-admin-surface px-2.5 py-1.5 text-[11px] text-admin-text-primary shadow-none">
+                    <div
+                      style={{
+                        backgroundColor: "#1F1E1B",
+                        color: "#FAF9F5",
+                        fontFamily: "JetBrains Mono, Menlo, monospace",
+                        fontSize: 12,
+                        padding: "10px 14px",
+                        borderRadius: 8,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      }}
+                    >
                       {line}
                     </div>
                   );
