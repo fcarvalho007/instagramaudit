@@ -1,75 +1,78 @@
-# Abrir análise pública a qualquer perfil Instagram
+# Alinhar OpenAI Insights para `gpt-5.4-nano`
 
-## Diagnóstico
+## Correcção do meu erro anterior
 
-A mensagem "Análise indisponível — este teste está limitado aos perfis definidos" vem de `/api/public/analyze-public-v1` quando o handle não está na allowlist do **Apify** (não do OpenAI). Confirmado em:
+Confirmei na página oficial da OpenAI que o modelo `gpt-5.4-nano` existe — está descrito em [developers.openai.com/api/docs/models](https://developers.openai.com/api/docs/models) como variante low-latency/low-cost da família GPT-5.4. Estava errado a sugerir `gpt-4.1-mini` como única opção válida. Avançamos com `gpt-5.4-nano`.
 
-- `src/routes/api/analyze-public-v1.ts:94` — texto da mensagem (`PROFILE_NOT_ALLOWED`).
-- `src/routes/api/analyze-public-v1.ts:355-373` — gate que rejeita o pedido antes de qualquer chamada ao provider.
-- `src/lib/security/apify-allowlist.ts:27-29` — `isTestingModeActive()` devolve `true` por defeito (`APIFY_TESTING_MODE !== "false"`).
+## Estado actual
 
-O secret `APIFY_ALLOWLIST` actualmente só inclui `frederico.m.carvalho`, por isso qualquer outro username é bloqueado em modo "testing".
+`OPENAI_API_KEY` já está configurado (verificado em `secrets--fetch_secrets` no prompt anterior). Os 5 secrets de configuração também já existem (`OPENAI_ENABLED`, `OPENAI_TESTING_MODE`, `OPENAI_ALLOWLIST`, `OPENAI_INSIGHTS_MODEL`, `OPENAI_DAILY_CAP_USD`) — estão à espera dos valores finais que vais aplicar tu manualmente em Project Settings → Secrets.
 
-## Implicações de abrir a qualquer perfil
-
-Tirar a allowlist significa que **qualquer visitante anónimo** que entre em `/` e escreva um username vai disparar uma chamada paga ao Apify. Antes de fazer o flip, há três salvaguardas a confirmar:
-
-1. **Custo por análise**: cada run do `apify/instagram-scraper` com `POSTS_LIMIT=12` para 1 perfil + até 2 concorrentes custa tipicamente entre $0.01–$0.05 (estimativa registada em `provider_call_logs.estimated_cost_usd`).
-2. **Cache**: snapshots frescos são reutilizados durante o TTL — pedidos repetidos do mesmo handle não voltam a custar.
-3. **Kill-switch**: `APIFY_ENABLED` continua a controlar tudo. Em qualquer momento podes pôr `APIFY_ENABLED=false` e o sistema serve só cache/stale.
-
-O que **não** existe ainda: rate-limit por IP, captcha, ou cap diário de gastos do Apify. O modo "testing" era exactamente esse cap. Tirá-lo é uma decisão consciente.
+`src/lib/insights/cost.ts` actualmente:
+- `DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"`
+- `FALLBACK_MODEL = "gpt-4.1-mini"`
+- Tabela: `gpt-4.1-mini` ($0.40/$1.60), `gpt-5-mini` ($0.25/$2.00)
 
 ## O que este prompt vai fazer
 
-### 1. Flip do secret `APIFY_TESTING_MODE` para `false`
+### 1. Editar `src/lib/insights/cost.ts`
 
-Vou pedir-te via `update_secret` para mudar `APIFY_TESTING_MODE` para o valor literal `false`.
+- Adicionar entrada `gpt-5.4-nano`: `inputPerMillion: 0.20`, `outputPerMillion: 1.25`.
+- **Manter** as duas entradas existentes (`gpt-4.1-mini`, `gpt-5-mini`) intactas.
+- Mudar `DEFAULT_OPENAI_MODEL` para `"gpt-5.4-nano"`.
+- Mudar `FALLBACK_MODEL` para `"gpt-5.4-nano"` (ficando alinhado com o default — qualquer modelo desconhecido cai para o nano, que é o mais barato dos três e o que tens activo).
+- Sem outras alterações ao módulo: continua puro, sem I/O.
 
-Resultado: `isTestingModeActive()` passa a devolver `false`, o gate de allowlist é saltado para o handle primário **e** para concorrentes, e qualquer username Instagram válido (`/^[A-Za-z0-9._]{1,30}$/`) é aceite.
+### 2. Não tocar em mais nada de código
 
-### 2. Manter o OpenAI travado à allowlist
+- `src/lib/insights/openai-insights.server.ts` já lê `OPENAI_INSIGHTS_MODEL` do env (linha 135) e cai para `DEFAULT_OPENAI_MODEL` se vazio. Vai herdar `gpt-5.4-nano` automaticamente.
+- `src/lib/security/openai-allowlist.ts` continua igual.
+- `src/routes/api/analyze-public-v1.ts` não muda.
+- Sem alterações de UI, sem alterações em `/report.example`, sem tocar em `LOCKED_FILES.md`.
 
-Decisão importante: o OpenAI continua restrito a `frederico.m.carvalho` via `OPENAI_TESTING_MODE=true` + `OPENAI_ALLOWLIST`. Razões:
+### 3. Sem chamadas a providers
 
-- OpenAI é mais caro por chamada que o Apify (~$0.005–$0.02 por análise com `gpt-4.1-mini`).
-- Os insights ainda não foram validados em volume — abrir agora arrisca alucinações em produtos reais sem revisão humana.
-- O kill-switch `OPENAI_ENABLED` continua em `false` até decidirmos o smoke test.
+- Sem chamadas a OpenAI, Apify, DataForSEO ou Resend.
+- Apenas edição local do ficheiro `cost.ts`, typecheck e build.
 
-A consequência é que perfis novos vão ter:
-- Análise Instagram completa (Apify) ✅
-- Benchmarks e recomendações deterministas ✅
-- Sem secção "Leitura estratégica" gerada por OpenAI (cai para o fallback existente)
+### 4. Validação
 
-### 3. Sem alterações de código
+- `bunx tsc --noEmit` (deve passar — só mudei strings literais e adicionei uma entrada num Record).
+- `bun run build` (idem).
+- `grep` rápido para confirmar que nenhum outro ficheiro tinha `"gpt-4.1-mini"` hardcoded fora de `cost.ts`. Se tiver, deixo nota mas **não** mudo (`cost.ts` é o single source of truth, mas posso ter de atualizar testes ou docs).
 
-A allowlist do Apify é um simples `if (!isAllowed(primary))`. Quando `APIFY_TESTING_MODE=false`, `isAllowed()` devolve `true` para tudo. **Não é preciso mudar nem uma linha.**
+## Acção tua, manual (não posso fazer eu)
 
-### 4. Validação manual
+Os tools de write de secrets não estão disponíveis neste turno. Tens de aplicar tu, em **Project Settings → Secrets**, os valores finais:
 
-Depois do flip, podes testar imediatamente em `/` com qualquer username (ex.: `cristiano`, `nasa`, `nike`). Se quiseres, posso fazer eu o smoke test invocando `POST /api/public/analyze-public-v1` com um handle real e mostrar a resposta + custo registado em `provider_call_logs`.
+| Secret | Valor |
+|---|---|
+| `OPENAI_ENABLED` | `true` |
+| `OPENAI_TESTING_MODE` | `true` |
+| `OPENAI_ALLOWLIST` | `frederico.m.carvalho` |
+| `OPENAI_INSIGHTS_MODEL` | `gpt-5.4-nano` |
+| `OPENAI_DAILY_CAP_USD` | `5` |
+| `OPENAI_API_KEY` | já configurado ✅ |
+
+`APIFY_TESTING_MODE=false` mantém-se (já configurado) — qualquer perfil Instagram público é analisável.
 
 ## O que NÃO vai fazer
 
-- Alterar `APIFY_ENABLED` (já está `true` se quiseste analisar mais perfis — vou confirmar).
-- Mexer em `APIFY_ALLOWLIST` (irrelevante quando testing mode está desligado).
-- Tocar no OpenAI (allowlist e kill-switch ficam exactamente como estão).
-- Adicionar rate-limit ou CAP de custo (proponho como follow-up, não inclui aqui).
+- Não corre smoke test (passo 4 explicitamente: "Do not call OpenAI yet").
+- Não muda UI.
+- Não toca em `/report.example` nem em ficheiros listados em `LOCKED_FILES.md`.
+- Não altera o pipeline de `analyze-public-v1` nem o gate de allowlist Apify.
 
-## Follow-ups recomendados (próximos prompts, não agora)
+## Validação esperada
 
-1. **Cap diário Apify**: copiar a lógica que já existe para o OpenAI (`OPENAI_DAILY_CAP_USD`) e criar `APIFY_DAILY_CAP_USD`. Quando o ledger acumulado nas últimas 24h ultrapassar o cap, recusar pedidos novos com `PROVIDER_DISABLED`.
-2. **Rate-limit por IP** (`request_ip_hash` já é registado em `analysis_events`): bloquear >5 análises distintas/hora do mesmo hash.
-3. **Detecção de abuso no admin**: alertas quando o mesmo perfil é analisado >10x/dia (sintoma de scraping ou loop).
-
-## Validação
-
-- Secret `APIFY_TESTING_MODE` actualizado para `false`.
-- `bunx tsc --noEmit` (não há código novo, só por hábito).
-- Smoke test opcional via `invoke-server-function` num handle público (ex.: `nasa`) para confirmar 200 + snapshot + custo registado.
+- `bunx tsc --noEmit`: passa.
+- `bun run build`: passa.
+- `grep "gpt-4.1-mini\|gpt-5-mini\|gpt-5.4-nano" src/lib/insights/cost.ts`: 3 entradas distintas presentes.
+- Confirmação de que nenhuma chamada a provider foi feita (não há código novo que invoque `fetch` para OpenAI; `cost.ts` é puro).
 
 ## Returns
 
-- Confirmação de que era a allowlist do Apify, não a do OpenAI, que estava a bloquear.
-- Único passo operacional: actualizar 1 secret.
-- Próximo passo sugerido: ligar cap diário Apify antes de divulgar publicamente.
+- Diff do `cost.ts`.
+- Output do typecheck e build.
+- Lista de secrets que ainda precisas de configurar manualmente.
+- Próximo passo único quando os secrets estiverem todos: aprovar smoke test em `frederico.m.carvalho`.

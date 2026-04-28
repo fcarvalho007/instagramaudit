@@ -10,10 +10,10 @@
  */
 
 /** Default model used when caller does not pass an explicit override. */
-export const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
+export const DEFAULT_OPENAI_MODEL = "gpt-5.4-nano";
 
 /** Conservative fallback used when an unknown model id is encountered. */
-export const FALLBACK_MODEL = "gpt-4.1-mini";
+export const FALLBACK_MODEL = "gpt-5.4-nano";
 
 interface ModelPrice {
   /** USD per 1,000,000 input tokens. */
@@ -30,6 +30,7 @@ interface ModelPrice {
 const PRICING: Record<string, ModelPrice> = {
   "gpt-4.1-mini": { inputPerMillion: 0.4, outputPerMillion: 1.6 },
   "gpt-5-mini": { inputPerMillion: 0.25, outputPerMillion: 2.0 },
+  "gpt-5.4-nano": { inputPerMillion: 0.2, outputPerMillion: 1.25 },
 };
 
 /** Resolve a model id to a price entry, falling back when unknown. */
