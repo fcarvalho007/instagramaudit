@@ -1,111 +1,158 @@
-# Auditoria — Prontidão para os passos 4 a 9
+# Auditoria de atribuição de custos por provider
 
-Objectivo: avaliar se os passos 1–3 estão suficientemente sólidos para avançar, e em que ordem fazer 4–9 sem acumular dívida.
-
-Esta auditoria é **só leitura**. Não altera código.
+Modo: read-only + plano de implementação. Sem chamadas a Apify / DataForSEO / OpenAI. Sem alterações de UI, ficheiros locked ou `/report/example`.
 
 ---
 
-## 1. Estado actual (o que já está entregue)
+## 1. Estado actual por provider
 
-### Endpoint público de PDF — sólido
-- `POST /api/public/public-report-pdf`
-- TTL 600s, `cached: true|false`, `pdf_status: "ready"`
-- Path determinístico: `reports/snapshots/YYYY/MM/{snapshot_id}.pdf`
-- Bucket `report-pdfs` continua privado, signed URL curto
-- Logging em `analysis_events` com `data_source: cache|fresh`
-- Sem chamadas a Apify / DataForSEO / OpenAI
-- Fluxo email-gated (`/api/generate-report-pdf`, `report_requests`) intocado
+### Apify (`src/lib/analysis/apify-client.ts` + `src/routes/api/analyze-public-v1.ts`)
 
-### Botão "Pedir versão PDF" — funcional, hierarquia fraca
-- `ReportShareActions` recebe `snapshotId`, faz POST, abre signed URL em nova aba
-- Estados `idle | loading`, toast diferenciado para `cached`
-- Renderizado **duas vezes** (compact no topo + default no fundo)
-- Sem indicador visual persistente de "PDF pronto" — cada clique parece igual
+- Endpoint usado: `acts/{id}/run-sync-get-dataset-items`. Devolve **só os itens do dataset** — não devolve nem `runId`, nem `usageTotalUsd`, nem qualquer custo.
+- `recordProviderCall` é chamado com `estimatedCostUsd` calculado por `estimateApifyCost` (heurística €/perfil + €/post).
+- `apify_run_id` é sempre `null` (verificado em DB: 2 linhas Apify recentes, `apify_run_id IS NULL`, `actual_cost_usd IS NULL`).
+- Conclusão: **custo Apify é apenas estimado**. O comentário em `src/lib/analysis/cost.ts:7` reconhece-o explicitamente ("reserved for a later pass that fetches Apify's real `usageTotalUsd` per run").
 
-### Página Recommendations no PDF — sólido
-- Engine determinística pura (`src/lib/pdf/recommendations.ts`)
-- 4–6 recomendações em pt-PT, ordem `priority desc, id asc`
-- Fallbacks `consistency_baseline` / `analytics_loop` para snapshots magros
-- Renderiza condicionalmente após Top Posts
+### DataForSEO (`src/lib/dataforseo/client.ts` + `src/lib/dataforseo/cost.ts`)
 
-### Market Signals — entregue mas isolado
-- `ReportMarketSignals` consome `/api/market-signals` no cliente
-- Esconde-se silenciosamente em `disabled | blocked | error | timeout | no_keywords`
-- **Não está ligado ao PDF** — o PDF não tem secção de Sinais de Mercado
+- `extractActualCost(envelope)` lê `envelope.cost` (ou soma `tasks[].cost`).
+- `logCall` escreve **ambos**: `estimated_cost_usd` (tabela fixa por endpoint) e `actual_cost_usd` (do envelope).
+- DB confirma: 5 linhas DataForSEO recentes têm `actual_cost_usd` populado (ex.: `0.00900`).
+- Conclusão: **custo DataForSEO já é provider-reported**. Está correcto.
 
-### Hierarquia da página `/analyze/$username` — frágil
-Auditoria anterior identificou ~23 cards sequenciais com mensagens repetidas:
-`CoverageStrip → TierStrip → BetaStrip → ShareActions(compact) → EnrichedBio → ReportPage → EnrichedBenchmarkSource → EnrichedTopLinks → EnrichedMentions → CompetitorsCta? → MarketSignals → TierComparisonBlock → ShareActions(default) → BetaFeedbackBlock`
+### PDF público (`src/routes/api/public/public-report-pdf.ts`)
 
-Quatro tiras de "meta" no topo, dois ShareActions, dois blocos de Tier (TierStrip + TierComparisonBlock), Beta duplicado.
+- Não escreve em `provider_call_logs`. Só escreve em `analysis_events` com `estimated_cost_usd: 0`. Correcto — render local não tem custo de provider.
 
----
+### OpenAI
 
-## 2. Veredicto por passo
+- Sem fluxo activo. `report-cost-summary.server.ts` já tem a `branch` `provider === "openai" && totalEstimated > 0 → "calculated"` preparada (token-based). Aguarda escritor real.
 
-| Passo | Pode avançar? | Bloqueador |
-|-------|---------------|-----------|
-| **4. Market Signals → PDF** | Sim, com ressalva | É mecânico. Precisa só de decidir: incluir sempre ou só quando `status === ready`. PDF é cacheado por `snapshot_id`, logo se Market Signals chegar tarde, o cache fica "incompleto" para sempre. **Tem de ser invalidado por versionamento de path** (ex.: `…/{snapshot_id}.v2.pdf`) ou aceitar que o primeiro render fixa o conteúdo. |
-| **5. Botão PDF "pronto/cache"** | Sim | Só requer estado local persistido (URL + expiração) e badge visual. Endpoint já devolve `cached`. |
-| **6. Página pública de partilha estável** | **Adiar** | `/analyze/$username` já é a página pública. Criar `/r/{snapshot_id}` ou `/share/{slug}` só faz sentido **depois** de fechar a hierarquia (passo 7) e de ter OG image. Hoje seria duplicação. |
-| **7. Animações subtis** | **Não, ainda** | Hierarquia não está fechada. Animar 23 cards repetidos amplifica o ruído. Tem de vir **depois** de uma consolidação editorial (merge de TierStrip+TierComparisonBlock, merge dos dois ShareActions, fusão dos blocos Beta). |
-| **8. OpenAI para insights reais** | Sim, isolado | Já existe engine determinística em `recommendations.ts` — bom baseline. OpenAI deve ser **camada opcional** que substitui ou complementa, com fallback determinístico se a API falhar. Risco: custo por análise. Precisa kill-switch tipo `OPENAI_ENABLED`, allowlist e cache no `analysis_snapshots` para não regenerar a cada PDF. |
-| **9. Free vs Pro com gating fino** | **Adiar para o fim** | Sem este gating o produto funciona; com ele introduzido cedo cria-se complexidade prematura. Já existe `TierStrip` e `plan: "free"` propagado — base suficiente para já. |
+### Classificador (`src/lib/admin/report-cost-summary.server.ts`)
+
+- Já distingue: `provider_reported`, `estimated`, `calculated`, `cache_hit`, `not_used`.
+- Lógica:
+  - `totalActual > 0` → `provider_reported`
+  - OpenAI com estimated > 0 → `calculated`
+  - resto → `estimated`
+  - sem rows → `cache_hit` (se esperado) ou `not_used`
+  - tudo blocked/zero → `cache_hit`
 
 ---
 
-## 3. Dívida técnica identificada
+## 2. Lacunas identificadas
 
-1. **Cache do PDF não tem versionamento.** Se o conteúdo da página mudar (Market Signals adicionado, OpenAI insights ligados), os PDFs antigos em cache continuam servidos. Precisa de `pdf_version` no path ou hash do payload+features.
-2. **Dois `ReportShareActions` no DOM.** Estado de "PDF pronto" teria de ser sincronizado entre eles ou movido para um contexto/store. Resolver fundindo num único bloco antes do passo 5.
-3. **`TierStrip` + `TierComparisonBlock` + `BetaStrip` + `BetaFeedbackBlock`** dizem variações da mesma coisa ("isto é beta / vais ter Pro"). Quatro componentes, uma mensagem.
-4. **`CoverageStrip`** e **`ReportEnrichedBenchmarkSource`** sobrepõem-se conceptualmente (ambos descrevem proveniência dos dados).
-5. **`/api/market-signals`** é chamado no cliente mas o PDF (server) não tem acesso ao resultado sem chamar de novo — duplica custo DataForSEO se ligado ingenuamente.
-
----
-
-## 4. Ordem recomendada (revisão à proposta)
-
-A tua ordem (4 → 5 → 6 → 7 → 8 → 9) tem dois problemas: o passo 7 vem cedo demais e o passo 6 vem antes de fechar hierarquia. Proponho:
-
-```text
-A. Consolidação editorial da página /analyze/$username  (pré-requisito)
-   - fundir TierStrip + TierComparisonBlock
-   - fundir BetaStrip + BetaFeedbackBlock
-   - manter UM ReportShareActions
-   - decidir destino de EnrichedTopLinks / EnrichedMentions
-
-B. Passo 5 — Botão PDF com estado "pronto / em cache"
-   - mais barato e desbloqueia UX antes de mexer no PDF
-
-C. Passo 4 — Market Signals no PDF
-   - introduzir versionamento do path do PDF em simultâneo
-   - reutilizar resultado já obtido no cliente (passar via POST body) ou
-     refetch server-side com cache curta
-
-D. Passo 8 — OpenAI insights
-   - como camada opcional, fallback para engine determinística
-   - persistir resultado no snapshot, não regenerar por PDF
-
-E. Passo 7 — Animações subtis
-   - só agora, sobre uma hierarquia consolidada
-
-F. Passo 6 — Página pública estável /r/{slug}
-   - quando há OG image dinâmica e hierarquia fechada
-
-G. Passo 9 — Free vs Pro gating fino
-   - último, com base de utilização real
-```
+| # | Lacuna | Severidade |
+|---|---|---|
+| L1 | Apify `actual_cost_usd` nunca é capturado | **Alta** — sem isto, todo o custo Apify é heurístico |
+| L2 | `apify_run_id` nunca é persistido (impossível auditar runs no painel Apify) | Média |
+| L3 | Fonte de custo (`provider_reported` vs `estimated` etc.) é **derivada** ad-hoc no classificador. Não existe coluna `cost_source` em `provider_call_logs` | Baixa — derivação funciona, mas torna queries diretas frágeis |
+| L4 | `RecordProviderCallInput` não tem `actualCostUsd` nem `apifyRunId` na assinatura usada pelo fluxo Apify (DataForSEO contorna escrevendo direto na tabela) | Média |
 
 ---
 
-## 5. Conclusão
+## 3. Patch proposto (mínimo, seguro, sem providers)
 
-**Podemos avançar**, mas não pela ordem proposta. O que está em produção (passos 1–3) é sólido tecnicamente; a fragilidade é editorial/UX. Recomendo intercalar uma fase **A (consolidação)** antes do passo 5, e mover o passo 7 para depois do 8.
+Estratégia: capturar custo real **sem** mudar para o fluxo runs/datasets em duas etapas. Mantém-se `run-sync-get-dataset-items`, mas:
+
+- Pede-se ao Apify para devolver headers extra. O endpoint sync-get-dataset-items **não** devolve custo no body, mas o header `x-apify-pay-per-event-pricing-info` e `x-apify-actor-run-id` (ou `x-apify-request-id`) estão disponíveis nas respostas de actors pay-per-event. Para actors clássicos, o run id volta no header `x-apify-actor-run-id`.
+- Com o `runId` em mão, **opcionalmente** faz-se uma chamada GET `/v2/actor-runs/{runId}` (custo zero, contagem de leitura) **só quando o run termina**, para ler `usageTotalUsd`. Esta chamada é leve, não é "uso de Apify scraping" e é o método oficial documentado.
+- Se o `runId` não vier no header (actor antigo), persistimos só o `estimated`.
+
+Por ser potencialmente intrusivo, o plano divide-se em **duas fases**:
+
+### Fase 3A — Capturar `apify_run_id` (custo zero, sem segunda chamada)
+
+1. **`src/lib/analysis/apify-client.ts`**
+   - Mudar a assinatura para devolver também os headers relevantes:
+     ```ts
+     return { items: data, runId, requestId };
+     ```
+   - Ler `res.headers.get("x-apify-actor-run-id")`.
+   - Não muda o sucesso/erro.
+
+2. **`src/routes/api/analyze-public-v1.ts` (`fetchProfileWithPostsLogged`)**
+   - Receber o `runId` do client.
+   - Passá-lo a `recordProviderCall({ apifyRunId: runId })`.
+
+3. **`src/lib/analysis/events.ts`**
+   - Já aceita `apifyRunId` — não muda a assinatura.
+
+### Fase 3B — Capturar `actual_cost_usd` via Apify Run API
+
+1. **Novo helper `fetchApifyRunCost(runId)`** em `src/lib/analysis/apify-client.ts`:
+   - GET `https://api.apify.com/v2/actor-runs/{runId}` com `Authorization: Bearer ${APIFY_TOKEN}`.
+   - Lê `data.usageTotalUsd` (campo oficial).
+   - Timeout curto (3 s). Em erro → devolve `null`. Nunca lança.
+
+2. **`fetchProfileWithPostsLogged`**:
+   - Após sucesso e ter `runId`, chamar `fetchApifyRunCost(runId)` com `await`.
+   - Passar a `recordProviderCall({ estimatedCostUsd, actualCostUsd })`.
+   - `estimated` continua a ser persistido como fallback/sanity check.
+
+3. **`RecordProviderCallInput`** (`src/lib/analysis/events.ts`)
+   - Acrescentar `actualCostUsd?: number | null`.
+   - No insert: `actual_cost_usd: input.actualCostUsd ?? null`.
+
+### O que NÃO muda
+
+- Schema de `provider_call_logs` — colunas `actual_cost_usd`, `estimated_cost_usd`, `apify_run_id` já existem.
+- Classificador `report-cost-summary.server.ts` — já lida com `actual > 0` → `provider_reported`. Vai automaticamente "subir" a confiança do Apify de `estimated` para `provider_reported` assim que houver dados.
+- DataForSEO — já correcto.
+- UI admin — sem mudanças. Os labels `provider_reported / estimated / calculated / cache_hit / not_used` já existem em `src/lib/admin/cost-source-labels.ts`.
+- Fluxo PDF — sem mudanças.
+
+---
+
+## 4. Ficheiros a editar
+
+Fase 3A (mínimo):
+- `src/lib/analysis/apify-client.ts` — devolver `{ items, runId }`.
+- `src/routes/api/analyze-public-v1.ts` — propagar `runId` para `recordProviderCall`.
+
+Fase 3B (custo real):
+- `src/lib/analysis/apify-client.ts` — adicionar `fetchApifyRunCost(runId)`.
+- `src/routes/api/analyze-public-v1.ts` — chamar fetcher e passar `actualCostUsd`.
+- `src/lib/analysis/events.ts` — adicionar `actualCostUsd` à interface e ao insert.
+
+Total: 3 ficheiros, mudanças cirúrgicas. Zero migrações de DB.
+
+---
+
+## 5. Riscos
+
+| Risco | Mitigação |
+|---|---|
+| Header `x-apify-actor-run-id` ausente em actors legados | Se faltar, persiste só o estimated — comportamento actual. Sem regressão. |
+| `fetchApifyRunCost` falha ou demora | Timeout 3s, try/catch a devolver `null`, `actual_cost_usd` fica `NULL` e classificador cai em `estimated`. |
+| Race: run ainda não fechou quando consultamos `usageTotalUsd` | Como usamos `run-sync-get-dataset-items`, o run **já terminou** quando a resposta chega. Não há race. |
+| Custo da chamada extra ao Apify Run API | A API de leitura de runs não conta como uso de scraping (não consome compute units). Custo efectivo: zero. |
+| Mudança de assinatura do `apify-client.runActor` partir outros call-sites | Verificar com `rg "runActor\("` antes de implementar. Provavelmente único call-site é `fetchProfileWithPosts`. |
+
+---
+
+## 6. Checklist de validação
+
+- ☐ Fase 3A: novo run em `/analyze/<allowlisted>` cria linha em `provider_call_logs` com `apify_run_id NOT NULL`.
+- ☐ Fase 3B: mesma linha tem `actual_cost_usd > 0` e bate com o run no painel Apify (tolerância ±10% por arredondamentos).
+- ☐ `estimated_cost_usd` continua presente como sanity check.
+- ☐ `report-cost-summary` mostra `provider_reported` em vez de `estimated` para o Apify.
+- ☐ Cache hit (segunda chamada) continua a não criar nova linha em `provider_call_logs`.
+- ☐ DataForSEO inalterado: `actual_cost_usd` continua igual a `envelope.cost`.
+- ☐ PDF público inalterado: sem novas linhas em `provider_call_logs`.
+- ☐ `bunx tsc --noEmit` passa.
+- ☐ Sem chamadas a Apify durante validação inicial — usar dados existentes em DB para confirmar classificador. Validação real só com 1 run autorizado a `frederico.m.carvalho`.
+
+---
+
+## Decisões que preciso de ti
+
+1. Aprovas implementar **3A + 3B juntos** ou só **3A** primeiro (capturar `runId` sem ainda buscar custo real)?
+2. Aprovas que a Fase 3B faça uma chamada extra GET `/v2/actor-runs/{runId}` ao Apify por análise fresca? (custo zero, latência +200–600ms)
+3. Mantemos `estimated_cost_usd` para sempre como fallback ou eventualmente removemos quando `actual` ficar estável?
 
 ## Checkpoint
 
-- ☐ Aprovas a reordenação (A → 5 → 4 → 8 → 7 → 6 → 9)?
-- ☐ Ou preferes manter a ordem original e aceitar que animações vão ficar sobre a hierarquia actual?
-- ☐ Confirmas que podemos introduzir versionamento no path do PDF (`…/{snapshot_id}.v{n}.pdf`) quando o passo 4 entrar?
+- ☐ Decisão sobre escopo (3A / 3A+3B)
+- ☐ Aprovação da chamada extra à Apify Run API
+- ☐ Confirmação de que sem mudanças de schema, sem migrações, sem alterações de UI
