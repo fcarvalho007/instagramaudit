@@ -1,36 +1,13 @@
-import { useEffect, useState } from "react";
 import { BETA_COPY } from "./beta-copy";
-
-interface BetaFeedbackBlockProps {
-  /**
-   * URL do relatório a partilhar. Se omitida, é resolvida em runtime via
-   * `window.location.href` (esta rota é `ssr: false`).
-   */
-  reportUrl?: string;
-}
 
 /**
  * Bloco final de feedback/conversão suave para a fase beta. Renderizado em
  * `/analyze/$username` depois do `TierComparisonBlock`. Sem billing, sem
- * paywall — apenas três acções e uma nota editorial.
+ * paywall — acções de feedback e interesse Pro. As acções de partilha
+ * (copiar link, LinkedIn, PDF) vivem em `ReportShareActions`.
  */
-export function BetaFeedbackBlock({ reportUrl }: BetaFeedbackBlockProps) {
+export function BetaFeedbackBlock() {
   const { feedback } = BETA_COPY;
-  const [resolvedUrl, setResolvedUrl] = useState<string>(reportUrl ?? "");
-
-  useEffect(() => {
-    if (reportUrl) {
-      setResolvedUrl(reportUrl);
-      return;
-    }
-    if (typeof window !== "undefined") {
-      setResolvedUrl(window.location.href);
-    }
-  }, [reportUrl]);
-
-  const linkedInHref = resolvedUrl
-    ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(resolvedUrl)}`
-    : "https://www.linkedin.com/sharing/share-offsite/";
 
   return (
     <section
@@ -61,15 +38,6 @@ export function BetaFeedbackBlock({ reportUrl }: BetaFeedbackBlockProps) {
           >
             {feedback.actions.pro.label}
             <span aria-hidden="true">→</span>
-          </a>
-          <a
-            href={linkedInHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] px-4 py-2.5 rounded-full border border-border-subtle/60 text-content-secondary hover:text-content-primary hover:border-border-subtle transition-colors"
-          >
-            {feedback.actions.share.label}
-            <span aria-hidden="true">↗</span>
           </a>
         </div>
 
