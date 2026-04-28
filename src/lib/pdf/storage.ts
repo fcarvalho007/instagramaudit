@@ -41,8 +41,7 @@ export async function uploadReportPdf(
 /**
  * Build the deterministic storage path for the snapshot-keyed public PDF flow.
  *
- * Lives under a dedicated `public/snapshots/...` prefix so that it never
- * collides with the email-gated flow (`reports/...`). Year/month are derived
+ * Lives under a dedicated `reports/snapshots/...` prefix. Year/month are derived
  * from the snapshot's own `created_at`, so the path is idempotent regardless
  * of when the user clicks "download".
  */
@@ -53,7 +52,7 @@ export function buildPublicSnapshotPdfPath(args: {
   const created = new Date(args.createdAtIso);
   const year = String(created.getUTCFullYear());
   const month = String(created.getUTCMonth() + 1).padStart(2, "0");
-  return `public/snapshots/${year}/${month}/${args.snapshotId}.pdf`;
+  return `reports/snapshots/${year}/${month}/${args.snapshotId}.pdf`;
 }
 
 /**
