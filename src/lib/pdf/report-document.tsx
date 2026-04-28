@@ -25,6 +25,7 @@ import {
   PDF_COLORS,
   styles,
 } from "./styles";
+import type { PdfRecommendation } from "./recommendations";
 import {
   deriveInitials,
   formatCount,
@@ -62,6 +63,11 @@ export interface ReportDocumentInput {
   avatarDataUrl?: string;
   /** Up to 3 top posts ranked by engagement_pct. Empty list = page omitted. */
   topPosts?: TopPostForPdf[];
+  /**
+   * 4–6 deterministic recommendations derived from snapshot data.
+   * When fewer than 4 are available the page is omitted.
+   */
+  recommendations?: PdfRecommendation[];
   /** ISO timestamp of the underlying analysis snapshot. */
   analyzedAt: string;
   /** ISO timestamp of when the PDF itself is generated. */
@@ -494,6 +500,55 @@ function TopPostsPage({
 }
 
 export function ReportDocument(input: ReportDocumentInput) {
+  return _ReportDocumentImpl(input);
+}
+
+function RecommendationsPage({
+  profile,
+  recommendations,
+  generatedAt,
+}: {
+  profile: PublicAnalysisProfile;
+  recommendations: PdfRecommendation[];
+  generatedAt: string;
+}) {
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader kicker={`@${profile.username}`} />
+
+      <Text style={styles.sectionTitle}>Recomendações</Text>
+      <Text style={styles.sectionHeading}>Próximos passos prioritários</Text>
+      <Text style={styles.sectionLead}>
+        Sugestões editoriais derivadas dos dados deste relatório, ordenadas
+        por impacto esperado. Cada recomendação resulta de heurísticas
+        aplicadas ao próprio snapshot, sem chamadas externas.
+      </Text>
+
+      {recommendations.map((reco, idx) => {
+        const isLast = idx === recommendations.length - 1;
+        return (
+          <View
+            key={reco.id}
+            style={[styles.recoCard, isLast ? styles.recoCardLast : {}]}
+            wrap={false}
+          >
+            <View style={styles.recoHeaderRow}>
+              <Text style={styles.recoNumber}>
+                {String(idx + 1).padStart(2, "0")}
+              </Text>
+              <Text style={styles.recoTitle}>{reco.title}</Text>
+            </View>
+            <Text style={styles.recoBody}>{reco.body}</Text>
+          </View>
+        );
+      })}
+
+      <PageFooter generatedAt={generatedAt} />
+    </Page>
+  );
+}
+
+function _ReportDocumentImpl(input: ReportDocumentInput) {
   const {
     profile,
     contentSummary,
@@ -501,6 +556,7 @@ export function ReportDocument(input: ReportDocumentInput) {
     benchmark,
     avatarDataUrl,
     topPosts,
+    recommendations,
     analyzedAt,
     generatedAt,
   } = input;
@@ -542,6 +598,13 @@ export function ReportDocument(input: ReportDocumentInput) {
         <TopPostsPage
           profile={profile}
           topPosts={topPosts}
+          generatedAt={generatedAt}
+        />
+      ) : null}
+      {recommendations && recommendations.length >= 4 ? (
+        <RecommendationsPage
+          profile={profile}
+          recommendations={recommendations}
           generatedAt={generatedAt}
         />
       ) : null}

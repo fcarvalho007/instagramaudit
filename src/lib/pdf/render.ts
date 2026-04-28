@@ -22,6 +22,10 @@ import type {
 } from "@/lib/analysis/types";
 
 import { ReportDocument, type TopPostForPdf } from "./report-document";
+import {
+  buildRecommendations,
+  type RecommendationInput,
+} from "./recommendations";
 
 /**
  * Loose typing for raw posts coming from `analysis_snapshots.normalized_payload.posts[]`.
@@ -38,6 +42,7 @@ interface SnapshotPostLoose {
   likes?: number | null;
   comments?: number | null;
   engagement_pct?: number | null;
+  hashtags?: string[] | null;
 }
 
 interface NormalizedSnapshotPayload {
@@ -46,6 +51,19 @@ interface NormalizedSnapshotPayload {
   competitors: CompetitorAnalysis[];
   /** Optional — present in real Apify snapshots, absent in legacy ones. */
   posts?: SnapshotPostLoose[] | null;
+  /**
+   * Optional per-format aggregates keyed by raw snapshot label
+   * (e.g. "Reels", "Carrosséis", "Imagens"). Used by the recommendations
+   * engine; absent in legacy snapshots.
+   */
+  format_stats?: Record<
+    string,
+    {
+      count?: number | null;
+      share_pct?: number | null;
+      avg_engagement_pct?: number | null;
+    }
+  > | null;
 }
 
 interface RenderArgs {
@@ -133,6 +151,106 @@ function deriveTopPosts(
   });
 }
 
+/**
+ * Map raw snapshot format label to canonical recommendation engine label.
+ * Matches the convention used by `snapshot-to-report-data.ts` but with the
+ * pt-PT label set the rest of the codebase uses ("Carrosséis").
+ */
+function canonicalFormat(
+  raw: string | null | undefined,
+): "Reels" | "Carrosséis" | "Imagens" {
+  const s = (raw ?? "").toLowerCase();
+  if (s.startsWith("reel")) return "Reels";
+  if (s.startsWith("carro") || s.startsWith("carou")) return "Carrosséis";
+  return "Imagens";
+}
+
+function deriveRecommendationInput(
+  payload: NormalizedSnapshotPayload,
+  benchmark: import("@/lib/benchmark/types").BenchmarkPositioning | undefined,
+): RecommendationInput {
+  const cs = payload.content_summary;
+  const stats = payload.format_stats ?? {};
+
+  // Collapse raw stat keys onto canonical labels (first occurrence wins).
+  const formats: RecommendationInput["formats"] = {
+    Reels: { sharePct: 0, avgEngagementPct: 0 },
+    Carrosséis: { sharePct: 0, avgEngagementPct: 0 },
+    Imagens: { sharePct: 0, avgEngagementPct: 0 },
+  };
+  const seen = new Set<string>();
+  for (const [key, value] of Object.entries(stats)) {
+    const canon = canonicalFormat(key);
+    if (seen.has(canon)) continue;
+    seen.add(canon);
+    formats[canon] = {
+      sharePct: num(value?.share_pct, 0),
+      avgEngagementPct: num(value?.avg_engagement_pct, 0),
+    };
+  }
+
+  // Top posts (already used for the Top Posts page) — narrow to the engine shape.
+  const posts = Array.isArray(payload.posts) ? payload.posts : [];
+  const sortedPosts = [...posts].sort(
+    (a, b) => num(b?.engagement_pct, 0) - num(a?.engagement_pct, 0),
+  );
+  const topPosts = sortedPosts.slice(0, 3).map((p) => ({
+    format: canonicalFormat(p.format),
+    captionLength: typeof p.caption === "string" ? p.caption.trim().length : 0,
+  }));
+
+  // Hashtag aggregates across all analysed posts.
+  let total = 0;
+  const uniqueSet = new Set<string>();
+  let postCount = 0;
+  for (const p of posts) {
+    if (!p) continue;
+    postCount += 1;
+    const tags = Array.isArray(p.hashtags) ? p.hashtags : [];
+    for (const t of tags) {
+      if (typeof t !== "string") continue;
+      const norm = t.trim().toLowerCase();
+      if (norm.length === 0) continue;
+      total += 1;
+      uniqueSet.add(norm);
+    }
+  }
+
+  // Competitor median engagement (successful only).
+  const successfulEng: number[] = [];
+  for (const c of payload.competitors) {
+    if (c && (c as { success?: boolean }).success === true) {
+      const e = num(
+        (c as { content_summary?: { average_engagement_rate?: number } })
+          .content_summary?.average_engagement_rate,
+        NaN,
+      );
+      if (Number.isFinite(e)) successfulEng.push(e);
+    }
+  }
+  successfulEng.sort((a, b) => a - b);
+  let median: number | null = null;
+  if (successfulEng.length > 0) {
+    const mid = Math.floor(successfulEng.length / 2);
+    median =
+      successfulEng.length % 2 === 0
+        ? (successfulEng[mid - 1] + successfulEng[mid]) / 2
+        : successfulEng[mid];
+  }
+
+  return {
+    engagementPct: num(cs.average_engagement_rate, 0),
+    postsPerWeek: num(cs.estimated_posts_per_week, 0),
+    dominantFormat: canonicalFormat(cs.dominant_format),
+    formats,
+    topPosts,
+    hashtags: { total, unique: uniqueSet.size, postCount },
+    competitorMedianEngagementPct: median,
+    benchmark,
+    bio: typeof payload.profile.bio === "string" ? payload.profile.bio : "",
+  };
+}
+
 export async function renderReportPdf({
   payload,
   analyzedAt,
@@ -158,6 +276,12 @@ export async function renderReportPdf({
   // No provider call, no thumbnail fetch — Instagram CDN URLs expire.
   const topPosts = deriveTopPosts(payload.posts);
 
+  // Recommendations: pure heuristic engine over snapshot data only.
+  // No OpenAI / Apify / DataForSEO call.
+  const recommendations = buildRecommendations(
+    deriveRecommendationInput(payload, benchmark),
+  );
+
   const generatedAt = new Date().toISOString();
 
   const doc = createElement(ReportDocument, {
@@ -167,6 +291,7 @@ export async function renderReportPdf({
     benchmark,
     avatarDataUrl,
     topPosts,
+    recommendations,
     analyzedAt,
     generatedAt,
   });
