@@ -1,147 +1,122 @@
 ## Goal
 
-Stop paying DataForSEO twice for the same snapshot. Cache the Free market signals envelope inside `analysis_snapshots.normalized_payload.market_signals_free` with a 24 h TTL, plus a 10 min negative cache for transient failures. No schema migration, no UI change, no provider call during implementation.
+Make `/admin` financially honest. Per snapshot, show what each provider really cost (Apify, DataForSEO, OpenAI), with a clear cost-source label so estimated values are never presented as confirmed.
+
+No provider is called. No schema migration. No /report/example or public report design changes.
 
 ## Files
 
 **Create**
-- `src/lib/market-signals/cache.ts` — pure helpers: TTL constants, type for the persisted summary, read/write helpers, "should bypass cache" decision for hard-error codes, and a builder that converts a `MarketSignalsResult` (+ provider cost + log id) into the persisted summary.
+- `src/lib/admin/report-cost-summary.server.ts` — server-only aggregator. Pure logic + a Supabase reader. Three exports:
+  - `classifyCostSource(...)` — pure, returns `"provider_reported" | "estimated" | "calculated" | "cache_hit" | "not_used"`.
+  - `summarizeCallLogs(rows)` — pure, groups raw `provider_call_logs` rows by provider, totals, classifies, and produces a per-provider summary + a single overall confidence (`"confirmado" | "parcial" | "estimado" | "sem_custos"`).
+  - `fetchReportCostSummary({ snapshotId, instagramUsername, snapshotCreatedAt, snapshotUpdatedAt })` — queries `provider_call_logs` for that handle inside the snapshot's time window (created_at − 60s ≤ row.created_at ≤ updated_at + 60s) and runs `summarizeCallLogs`.
+
+- `src/lib/admin/cost-source-labels.ts` — pt-PT labels for cost-source and confidence. Pure, client-safe.
 
 **Edit**
-- `src/lib/dataforseo/market-signals.ts` — extend the orchestrator to also return:
-  - `provider_cost_usd` (sum from envelope `cost` aggregated through a new optional accumulator)
-  - `provider_call_log_ids` (collected from a new client-side return)
-  
-  Minimal, additive change: do not break the existing public type. Easiest path → keep `buildMarketSignals` signature, but add an internal `runWithMetrics` wrapper that captures these via a new optional callback returned alongside the result. To stay surgical, attach them as optional fields on `MarketSignalsOk` / `MarketSignalsFail` (`provider_cost_usd?`, `provider_call_log_ids?`).
+- `src/routes/api/admin/reports.ts`
+  - For each active snapshot, fetch a single grouped `provider_call_logs` query for all returned handles in the same time window (one query, not N), then attach a compact `cost_summary` per row.
+  - The new field is added to `ReportRow` shape:
+    ```ts
+    cost_summary: {
+      apify:      { actual_usd: number|null; estimated_usd: number; source: CostSource; calls: number; }
+      dataforseo: { actual_usd: number|null; estimated_usd: number; source: CostSource; calls: number; }
+      openai:     { actual_usd: number|null; estimated_usd: number; source: CostSource; calls: number; }
+      total_actual_usd: number;     // sum of *known* actual values (provider_reported only)
+      total_estimated_usd: number;  // sum across providers
+      confidence: "confirmado" | "parcial" | "estimado" | "sem_custos";
+    }
+    ```
 
-- `src/lib/dataforseo/client.ts` — return the inserted `provider_call_logs.id` from `logCall` so the orchestrator can collect it. Currently `insert(...)` is fire-and-forget; switch to `.insert(...).select("id").single()` and return the id (still swallow failures).
+- `src/routes/api/admin/snapshot-by-id.$snapshotId.ts`
+  - Add `cost_summary` (same shape as above) plus a `provider_calls` array with the raw rows the preview needs:
+    ```ts
+    provider_calls: Array<{
+      id: string; provider: string; actor: string; handle: string;
+      status: string; http_status: number|null;
+      actual_cost_usd: number|null; estimated_cost_usd: number|null;
+      cost_source: CostSource;
+      duration_ms: number|null; created_at: string;
+    }>
+    ```
+  - Limit to last 100 rows for that snapshot's window. Sorted DESC by `created_at`.
 
-- `src/routes/api/market-signals.ts` — full new flow (see below). All response envelopes get `cache_status`, `cost_usd`, `cost_source`.
+- `src/components/admin/cockpit/panels/reports-panel.tsx`
+  - Add 2 columns to the table:
+    - **Custo (real)** — `formatCost(total_actual_usd)`; em mono.
+    - **Confiança** — badge with one of `Confirmado / Parcial / Estimado / Sem custos externos`.
+  - Type `ReportRow` extended with `cost_summary`.
+  - For OpenAI source `not_used`, the per-row total simply omits OpenAI from the display; total_actual stays accurate.
+
+- `src/routes/admin.report-preview.snapshot.$snapshotId.tsx`
+  - Add a new section between `CoverageNotice` and `AdminFooterNotice`:
+    - `<CostBreakdownPanel summary={…} calls={…} />` — server data already arrives in `body.snapshot`.
+  - Extend `SnapshotResponse` with `cost_summary` + `provider_calls` (typed inline; no shared type leak across server boundary).
+
+**Create**
+- `src/components/admin/cockpit/parts/cost-breakdown-panel.tsx` — client component. Two parts:
+  1. Small grid of provider cards (Apify, DataForSEO, OpenAI) with actual/estimated and source badge.
+  2. `DataTable` of provider calls (operação=actor, estado, custo real, custo estimado, fonte, duração, criado).
+  Reuses `formatCost`, `formatDate`, `formatDuration`, `providerStatusLabel`. No new design tokens.
 
 **Untouched**
-- `/report/example`, all report visual components, Apify pipeline, Supabase schema, billing, PDF, email, OpenAI.
+- `/report/example`, all public report visuals, `provider_call_logs` schema, `analysis_events` schema, `analysis_snapshots` schema, billing.
 
-## Persisted shape
+## Cost classification rules (single source of truth in `classifyCostSource`)
 
-Stored at `analysis_snapshots.normalized_payload.market_signals_free` (and later `…_paid`):
+For one provider's set of rows that match the snapshot window:
 
-```ts
-interface PersistedMarketSignals {
-  status: "ready" | "partial" | "error" | "timeout" | "no_keywords";
-  plan: "free" | "paid";
-  generated_at: string;       // ISO
-  expires_at: string;         // ISO
-  keywords: string[];
-  trends_usable_keywords: string[];
-  trends_dropped_keywords: string[];
-  trends: GoogleTrendsResult | null;     // raw result needed by the chart
-  queries_used: number;
-  queries_cap: number;
-  errors: ClassifiedError[];
-  provider_cost_usd: number;
-  provider_cost_source: "provider_reported";
-  provider_call_log_ids: string[];
-}
-```
+| Condition | source | actual_usd | estimated_usd |
+|---|---|---|---|
+| 0 rows AND provider expected for this snapshot | `cache_hit` | null | 0 |
+| 0 rows AND provider not part of pipeline (e.g. OpenAI today) | `not_used` | null | 0 |
+| ≥1 row, all blocked / 0 cost (`status='blocked'` or all `actual_cost_usd=0` AND `estimated_cost_usd=0`) | `cache_hit` | null | 0 |
+| ≥1 row with `actual_cost_usd > 0` | `provider_reported` | sum(actual) | sum(estimated) |
+| ≥1 row, no `actual_cost_usd > 0`, but ≥1 `estimated_cost_usd > 0` | `estimated` | null | sum(estimated) |
+| Provider is OpenAI AND any token-based metric exists | `calculated` | sum | sum estimated |  *(future-ready; currently unreachable since OpenAI rows don't exist yet)*
 
-## TTL constants (in `src/lib/market-signals/cache.ts`)
+"Provider expected" rule v1:
+- `apify` → always expected (every snapshot was created from Apify or its cache).
+- `dataforseo` → expected only when `normalized_payload.market_signals_free` exists OR `market_signals_paid` exists. Otherwise → `not_used`.
+- `openai` → currently always `not_used` (no logs ever written for OpenAI today).
 
-```ts
-export const MARKET_SIGNALS_TTL = {
-  free_ready_seconds: 24 * 60 * 60,   // 24h success cache
-  partial_seconds:   24 * 60 * 60,   // partial = same as ready (we have data)
-  soft_error_seconds: 10 * 60,       // 10 min negative cache for timeout/rate-limit
-} as const;
-```
+Rule for `apify` cache hits: today the analyze-public-v1 pipeline does NOT write a `provider_call_logs` row for cache reads, so a snapshot served from cache will see 0 Apify rows in its narrow window. We label these `cache_hit` rather than `not_used` because the provider IS part of this report.
 
-Hard-error codes that **must NOT be cached at all** (forces immediate retry, not a burn loop because next call still fails fast at the provider):
-- `ACCOUNT_NOT_VERIFIED`
-- `AUTH_FAILED`
-- `DISABLED`
-- `BLOCKED`
+## Confidence aggregation (single overall badge)
 
-Soft-error codes cached for 10 min:
-- `TIMEOUT`, `RATE_LIMITED`, `UNKNOWN`
+Across providers that are not `not_used`:
+- All sources are `provider_reported` → `confirmado`.
+- All non-`not_used` are `cache_hit` → `sem_custos` (sem custos externos nesta análise).
+- Mix that includes at least one `provider_reported` and at least one `estimated`/`cache_hit` → `parcial`.
+- Only `estimated` (no `provider_reported`, no `cache_hit`) → `estimado`.
 
-`status === "no_keywords"` → cache for 24 h (deterministic from snapshot).
+## Aggregation query
 
-## /api/market-signals new flow
-
-1. Parse + validate body (unchanged).
-2. Kill-switch (`isDataForSeoEnabled`). If off → return `{ status: "disabled", cache_status: "disabled", cost_usd: 0, cost_source: "none", … }`. **No DB read.**
-3. Load snapshot row (`id, instagram_username, normalized_payload`).
-4. Allowlist check on owner handle. If blocked → `{ status: "blocked", cache_status: "blocked", cost_usd: 0, cost_source: "none" }`. **No provider call.**
-5. **Cache lookup**: read `normalized_payload.market_signals_free`. If present and `expires_at > now()` → return cached envelope as-is plus `cache_status: "hit"`, `cost_usd: cached.provider_cost_usd`, `cost_source: "cache"`. **No provider call.**
-6. **Cache miss / expired** → call `buildMarketSignals(...)` once.
-7. Decide TTL based on status / dominant error code:
-   - `ready` / `partial` / `no_keywords` → 24 h
-   - `error|timeout` with only soft codes → 10 min
-   - `error` with any hard code → **do not persist**
-8. If TTL applies, merge persisted summary into `normalized_payload.market_signals_free` and write back via:
-   ```ts
-   supabaseAdmin
-     .from("analysis_snapshots")
-     .update({
-       normalized_payload: { ...current, market_signals_free: persisted }
-     })
-     .eq("id", snapshotId);
-   ```
-   Best-effort: failure to persist is logged but does not fail the response.
-9. Return live envelope with `cache_status: "miss"`, `cost_usd: persisted.provider_cost_usd ?? 0`, `cost_source: "provider_reported" | "none"`.
-
-## Cost capture
-
-`buildMarketSignals` currently discards the per-call envelope cost. Smallest change:
-
-- In `client.ts`, `callDataForSeo` already extracts `actualCostUsd` for logging via `extractActualCost(envelope)`. Have it also return `{ envelope, costUsd, providerCallLogId }` from a new sibling helper, OR (simpler) attach `cost` and `__provider_call_log_id` as non-enumerable fields on the returned envelope — rejected, that's leaky.
-- Cleaner: add an internal `callDataForSeoWithMeta()` that wraps `callDataForSeo` and reads `extractActualCost(envelope)` plus the log id. Endpoint helpers (`fetchGoogleTrends`, etc.) stay unchanged for callers.
-
-After consideration: simplest non-breaking option is to **keep `callDataForSeo`'s signature** and instead let the orchestrator compute cost from the envelope it already receives via `firstResultOrNull`/the full envelope. We already throw away the envelope's top-level `cost` — capture it by changing `firstResultOrNull` callsites to first stash `envelope.cost` and the `tasks[0].id`-style metadata. Concretely:
-
-- Add a `runCall<T>(label, fn)` helper inside `buildSignalsInner` that awaits `fn()`, on success records `envelope.cost`, returns the parsed first result.
-- For the log id: insert returns it from the new `client.ts` change. The orchestrator can't see it directly, so instead the **route handler** collects log ids by querying `provider_call_logs` for rows created during this request window (handle + actor LIKE `<endpoint>:%` + created_at > startedAt). This avoids changes to the client. Picked: this query approach.
-
-Final orchestrator addition: aggregate `envelope.cost` (top-level) into a `total_cost_usd` field returned on `MarketSignalsResult`.
-
-## Public response shape
-
-All envelopes (live, cached, blocked, disabled) gain three top-level fields:
+In `fetchReportCostSummary`, single query per call:
 
 ```ts
-{
-  ...existing fields,
-  cache_status: "hit" | "miss" | "disabled" | "blocked",
-  cost_usd: number,                                // 0 when cache_status ∈ {disabled, blocked, miss-without-cost}
-  cost_source: "provider_reported" | "cache" | "none",
-}
+supabaseAdmin
+  .from("provider_call_logs")
+  .select("id, provider, actor, handle, status, http_status, actual_cost_usd, estimated_cost_usd, duration_ms, created_at")
+  .eq("handle", instagramUsername.toLowerCase())
+  .gte("created_at", new Date(createdAtMs - 60_000).toISOString())
+  .lte("created_at", new Date(updatedAtMs + 60_000).toISOString())
+  .order("created_at", { ascending: false })
+  .limit(200);
 ```
 
-Backwards-compatible: existing UI ignores unknown fields.
-
-## Exactly when DataForSEO IS called
-
-Only if **all** are true:
-- `DATAFORSEO_ENABLED` evaluates true (case/whitespace tolerant)
-- Snapshot exists in `analysis_snapshots`
-- Owner handle passes the allowlist
-- `normalized_payload.market_signals_free` is missing OR `expires_at <= now()`
-
-## Exactly when DataForSEO IS NOT called
-
-- Kill-switch off → `disabled`
-- Snapshot id missing → `error` (404)
-- Owner not allowlisted → `blocked`
-- Cached entry valid → `hit` (any status that was cached, including `no_keywords` and soft errors)
+For `/api/admin/reports` (list endpoint), batch this with one IN-handle query covering all returned rows, then group in JS to avoid N+1.
 
 ## Validation
 
 1. `bunx tsc --noEmit`
-2. `bun run build` (harness handles)
-3. No DataForSEO / Apify / OpenAI calls during implementation. Verified by absence of fetch invocations in helpers.
-4. No SQL migration. JSONB write uses existing `update()` on `analysis_snapshots`.
+2. `bun run build` (harness)
+3. No provider call: only DB reads to `provider_call_logs` and existing `analysis_snapshots` queries.
+4. No DELETE / UPDATE on logs or events.
 
-## Out of scope
+## Reported cost confidence today (informational)
 
-- Paid plan caching (`market_signals_paid`) — type hooks ready, write path identical when needed.
-- Cache invalidation when underlying snapshot changes — current snapshot id is immutable per analysis run, so a new analysis = new snapshot id = automatic miss.
-- Admin UI for cache stats.
+- **Apify** → most snapshots will surface as `estimated` (Apify rows write `estimated_cost_usd` from the heuristic, but `actual_cost_usd` is not yet wired to Apify's `usageTotalUsd`). Cache-served snapshots → `cache_hit` (no row in window).
+- **DataForSEO** → snapshots that triggered Sinais de Mercado will surface as `provider_reported` (envelope `cost` is captured into `actual_cost_usd`). Snapshots without market signals → `not_used`.
+- **OpenAI** → always `not_used` for now; placeholder is in place to display `calculated` once token-based logging lands.
