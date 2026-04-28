@@ -8,6 +8,8 @@ import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { TierStrip } from "@/components/report-tier/tier-strip";
 import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-block";
 import { ReportMarketSignals } from "@/components/report-market-signals/report-market-signals";
+import { BetaStrip } from "@/components/report-beta/beta-strip";
+import { BetaFeedbackBlock } from "@/components/report-beta/beta-feedback-block";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
   snapshotToReportData,
@@ -163,9 +165,11 @@ function AnalyzePage() {
       <div className="bg-surface-base min-h-screen">
         <CoverageStrip result={state.result} />
         <TierStrip />
+        <BetaStrip />
         <ReportPage data={state.result.data} />
         <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
         <TierComparisonBlock />
+        <BetaFeedbackBlock />
       </div>
     </ReportThemeWrapper>
   );
