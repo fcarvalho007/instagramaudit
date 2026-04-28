@@ -10,6 +10,11 @@ import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-bl
 import { ReportMarketSignals } from "@/components/report-market-signals/report-market-signals";
 import { BetaStrip } from "@/components/report-beta/beta-strip";
 import { BetaFeedbackBlock } from "@/components/report-beta/beta-feedback-block";
+import { ReportEnrichedBio } from "@/components/report-enriched/report-enriched-bio";
+import { ReportEnrichedBenchmarkSource } from "@/components/report-enriched/report-enriched-benchmark-source";
+import { ReportEnrichedTopLinks } from "@/components/report-enriched/report-enriched-top-links";
+import { ReportEnrichedMentions } from "@/components/report-enriched/report-enriched-mentions";
+import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/report-enriched-competitors-cta";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
   snapshotToReportData,
@@ -166,7 +171,17 @@ function AnalyzePage() {
         <CoverageStrip result={state.result} />
         <TierStrip />
         <BetaStrip />
+        <ReportEnrichedBio
+          enriched={state.result.enriched}
+          username={state.result.data.profile.username}
+        />
         <ReportPage data={state.result.data} />
+        <ReportEnrichedBenchmarkSource enriched={state.result.enriched} />
+        <ReportEnrichedTopLinks enriched={state.result.enriched} />
+        <ReportEnrichedMentions enriched={state.result.enriched} />
+        {state.result.coverage.competitors === "empty" ? (
+          <ReportEnrichedCompetitorsCta />
+        ) : null}
         <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
         <TierComparisonBlock />
         <BetaFeedbackBlock />

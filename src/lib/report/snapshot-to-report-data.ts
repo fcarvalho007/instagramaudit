@@ -156,6 +156,37 @@ export interface ReportCoverage {
 export interface AdapterResult {
   data: ReportData;
   coverage: ReportCoverage;
+  enriched: ReportEnriched;
+}
+
+/**
+ * Bloco enriquecido com dados já presentes no snapshot que não cabem no
+ * contrato locked `ReportData`. Consumido por componentes companion em
+ * `/analyze/$username` (nunca em `/report/example`).
+ */
+export interface ReportEnriched {
+  profile: {
+    bio: string | null;
+    avatarUrl: string | null;
+    profileUrl: string;
+  };
+  topPosts: Array<{
+    id: string;
+    permalink: string | null;
+    shortcode: string | null;
+    caption: string;
+    format: "Reel" | "Carousel" | "Imagem";
+    likes: number;
+    comments: number;
+    engagementPct: number;
+    date: string;
+    mentions: string[];
+  }>;
+  mentionsSummary: Array<{ handle: string; count: number }>;
+  benchmarkSource: {
+    datasetVersion: string | null;
+    note: string;
+  };
 }
 
 // ============================================================================
@@ -660,6 +691,98 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         ? "partial"
         : "placeholder";
 
+  // ----------------------------------------------------------------------
+  // Bloco enriquecido (companion sections — não toca em locked components)
+  // ----------------------------------------------------------------------
+  const enrichedProfileBio = (() => {
+    const raw = payload.profile?.bio;
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  })();
+  const enrichedAvatarUrl = (() => {
+    const raw = payload.profile?.avatar_url;
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  })();
+  const enrichedProfileUrl = `https://www.instagram.com/${profile.username}/`;
+
+  // Top posts enriquecidos: preserva permalink/shortcode/mentions e mantém a
+  // mesma ordenação por engagement do `topPosts` editorial.
+  const enrichedTopPosts: ReportEnriched["topPosts"] = [...posts]
+    .sort((a, b) => num(b.engagement_pct, 0) - num(a.engagement_pct, 0))
+    .slice(0, 5)
+    .map((p, idx) => {
+      const shortcode =
+        typeof p.shortcode === "string" && p.shortcode.trim().length > 0
+          ? p.shortcode.trim()
+          : null;
+      const permalinkRaw =
+        typeof p.permalink === "string" && p.permalink.trim().length > 0
+          ? p.permalink.trim()
+          : null;
+      const permalink =
+        permalinkRaw ??
+        (shortcode ? `https://www.instagram.com/p/${shortcode}/` : null);
+      const mentionsRaw = Array.isArray(p.mentions) ? p.mentions : [];
+      const mentions = Array.from(
+        new Set(
+          mentionsRaw
+            .map((m) =>
+              typeof m === "string"
+                ? m.trim().replace(/^@/, "").toLowerCase()
+                : "",
+            )
+            .filter((m) => m.length > 0),
+        ),
+      ).slice(0, 5);
+      return {
+        id: p.id ?? `post-${idx}`,
+        permalink,
+        shortcode,
+        caption: (p.caption ?? "").slice(0, 200),
+        format: formatLabelForCard(p.format),
+        likes: num(p.likes, 0),
+        comments: num(p.comments, 0),
+        engagementPct: round2(num(p.engagement_pct, 0)),
+        date: formatPtDateShort(p.taken_at_iso ?? null),
+        mentions,
+      };
+    });
+
+  // Resumo global de mentions (todos os posts, top 8).
+  const mentionsCounter = new Map<string, number>();
+  for (const p of posts) {
+    const list = Array.isArray(p.mentions) ? p.mentions : [];
+    for (const raw of list) {
+      if (typeof raw !== "string") continue;
+      const handle = raw.trim().replace(/^@/, "").toLowerCase();
+      if (!handle) continue;
+      mentionsCounter.set(handle, (mentionsCounter.get(handle) ?? 0) + 1);
+    }
+  }
+  const mentionsSummary: ReportEnriched["mentionsSummary"] = Array.from(
+    mentionsCounter.entries(),
+  )
+    .map(([handle, count]) => ({ handle, count }))
+    .sort((a, b) => b.count - a.count || a.handle.localeCompare(b.handle))
+    .slice(0, 8);
+
+  const enriched: ReportEnriched = {
+    profile: {
+      bio: enrichedProfileBio,
+      avatarUrl: enrichedAvatarUrl,
+      profileUrl: enrichedProfileUrl,
+    },
+    topPosts: enrichedTopPosts,
+    mentionsSummary,
+    benchmarkSource: {
+      datasetVersion: input.benchmark?.datasetVersion ?? null,
+      note: "Benchmark editorial baseado em referências públicas de mercado e dataset interno versionado. A leitura deve ser interpretada como referência comparativa, não como média estatística absoluta.",
+    },
+  };
+
   const data: ReportData = {
     meta: {
       windowLabel,
@@ -704,5 +827,5 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     windowDays,
   };
 
-  return { data, coverage };
+  return { data, coverage, enriched };
 }
