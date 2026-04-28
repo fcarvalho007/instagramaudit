@@ -23,6 +23,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import {
+  detectProviderPresence,
+  fetchReportCostSummariesBatch,
+  type CostSummary,
+} from "@/lib/admin/report-cost-summary.server";
 
 const RETENTION_DAYS = 5;
 const EXPIRING_THRESHOLD_DAYS = 4;
@@ -54,6 +59,7 @@ interface ReportRow {
   retention_expires_at: string;
   retention_status: RetentionStatus;
   age_days: number;
+  cost_summary: CostSummary;
 }
 
 interface ExpiredSummary {
@@ -139,7 +145,9 @@ export const Route = createFileRoute("/api/admin/reports")({
         // Query principal: snapshots activos (updated_at >= now() - 5d)
         const activeRes = await supabaseAdmin
           .from("analysis_snapshots")
-          .select("id, instagram_username, normalized_payload, created_at, updated_at")
+          .select(
+            "id, instagram_username, normalized_payload, created_at, updated_at",
+          )
           .gte("updated_at", cutoffIso)
           .order("updated_at", { ascending: false })
           .limit(200);
@@ -155,16 +163,58 @@ export const Route = createFileRoute("/api/admin/reports")({
           );
         }
 
-        const reports: ReportRow[] = (activeRes.data ?? []).map((row) => {
+        const rawRows = activeRes.data ?? [];
+
+        // Single batched read of provider_call_logs across all returned
+        // snapshots so the table renders without N round-trips.
+        const costInputs = rawRows.map((row) => ({
+          snapshotId: row.id as string,
+          instagramUsername: row.instagram_username as string,
+          snapshotCreatedAt: row.created_at as string,
+          snapshotUpdatedAt: row.updated_at as string,
+          presence: detectProviderPresence(row.normalized_payload),
+        }));
+        const costMap = await fetchReportCostSummariesBatch(costInputs);
+
+        const reports: ReportRow[] = rawRows.map((row) => {
           const metrics = extractRowMetrics(row.normalized_payload);
           const retention = computeRetention(row.updated_at as string, nowMs);
+          const id = row.id as string;
+          const presence = detectProviderPresence(row.normalized_payload);
+          const cost_summary =
+            costMap.get(id) ??
+            // Defensive fallback: empty summary using detected presence.
+            {
+              apify: {
+                actual_usd: null,
+                estimated_usd: 0,
+                source: presence.apify ? "cache_hit" : "not_used",
+                calls: 0,
+              },
+              dataforseo: {
+                actual_usd: null,
+                estimated_usd: 0,
+                source: presence.dataforseo ? "cache_hit" : "not_used",
+                calls: 0,
+              },
+              openai: {
+                actual_usd: null,
+                estimated_usd: 0,
+                source: presence.openai ? "cache_hit" : "not_used",
+                calls: 0,
+              },
+              total_actual_usd: 0,
+              total_estimated_usd: 0,
+              confidence: "sem_custos",
+            };
           return {
-            id: row.id as string,
+            id,
             instagram_username: row.instagram_username as string,
             ...metrics,
             created_at: row.created_at as string,
             updated_at: row.updated_at as string,
             ...retention,
+            cost_summary,
           };
         });
 

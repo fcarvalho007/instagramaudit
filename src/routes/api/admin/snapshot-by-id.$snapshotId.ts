@@ -15,6 +15,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { buildReportBenchmarkInput } from "@/lib/report/benchmark-input.server";
 import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
+import {
+  detectProviderPresence,
+  fetchReportCostSummary,
+} from "@/lib/admin/report-cost-summary.server";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -79,6 +83,15 @@ export const Route = createFileRoute(
         const payload = (data.normalized_payload ?? {}) as SnapshotPayload;
         const benchmark = await buildReportBenchmarkInput(payload);
 
+        const presence = detectProviderPresence(payload);
+        const { summary: cost_summary, calls: provider_calls } =
+          await fetchReportCostSummary({
+            instagramUsername: data.instagram_username as string,
+            snapshotCreatedAt: data.created_at as string,
+            snapshotUpdatedAt: data.updated_at as string,
+            presence,
+          });
+
         return json({
           success: true,
           snapshot: {
@@ -93,6 +106,8 @@ export const Route = createFileRoute(
             updated_at: data.updated_at,
             expires_at: data.expires_at,
             benchmark,
+            cost_summary,
+            provider_calls,
           },
         });
       },

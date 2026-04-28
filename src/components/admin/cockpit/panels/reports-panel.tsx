@@ -32,17 +32,39 @@ import {
 import { adminFetch } from "@/lib/admin/fetch";
 import {
   formatCompact,
+  formatCost,
   formatDate,
   formatNumber,
 } from "../cockpit-formatters";
 import { DataTable, type DataTableColumn } from "../parts/data-table";
 import { EmptyState } from "../parts/empty-state";
+import {
+  costConfidenceLabel,
+  type CostConfidence,
+  type CostSource,
+} from "@/lib/admin/cost-source-labels";
 
 // ---------------------------------------------------------------------------
 // Tipos espelhados do endpoint GET /api/admin/reports
 // ---------------------------------------------------------------------------
 
 type RetentionStatus = "active" | "expiring" | "expired";
+
+interface CostBucket {
+  actual_usd: number | null;
+  estimated_usd: number;
+  source: CostSource;
+  calls: number;
+}
+
+interface CostSummary {
+  apify: CostBucket;
+  dataforseo: CostBucket;
+  openai: CostBucket;
+  total_actual_usd: number;
+  total_estimated_usd: number;
+  confidence: CostConfidence;
+}
 
 interface ReportRow {
   id: string;
@@ -58,6 +80,7 @@ interface ReportRow {
   retention_expires_at: string;
   retention_status: RetentionStatus;
   age_days: number;
+  cost_summary: CostSummary;
 }
 
 interface ExpiredSummary {
@@ -103,6 +126,19 @@ function RetentionBadge({ status }: { status: RetentionStatus }) {
       Expirado
     </Badge>
   );
+}
+
+function ConfidenceBadge({ value }: { value: CostConfidence }) {
+  if (value === "confirmado") {
+    return <Badge variant="success">{costConfidenceLabel(value)}</Badge>;
+  }
+  if (value === "parcial") {
+    return <Badge variant="warning">{costConfidenceLabel(value)}</Badge>;
+  }
+  if (value === "estimado") {
+    return <Badge variant="warning">{costConfidenceLabel(value)}</Badge>;
+  }
+  return <Badge variant="default">{costConfidenceLabel(value)}</Badge>;
 }
 
 export function ReportsPanel() {
@@ -239,6 +275,23 @@ export function ReportsPanel() {
       key: "status",
       header: "Estado",
       render: (r) => <RetentionBadge status={r.retention_status} />,
+    },
+    {
+      key: "cost_actual",
+      header: "Custo (real)",
+      align: "right",
+      render: (r) => (
+        <span className="font-mono text-xs">
+          {r.cost_summary.total_actual_usd > 0
+            ? formatCost(r.cost_summary.total_actual_usd)
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "cost_confidence",
+      header: "Confiança",
+      render: (r) => <ConfidenceBadge value={r.cost_summary.confidence} />,
     },
     {
       key: "preview",
