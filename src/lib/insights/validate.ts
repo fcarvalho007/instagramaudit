@@ -54,6 +54,44 @@ const PTBR_TOKENS: RegExp[] = [
   /\btime\b/i, // ambiguous, but rarely used in pt-PT
 ];
 
+/**
+ * Deterministic alias map: short evidence keys the model sometimes emits,
+ * pointing at the canonical JSON-pointer-ish path used by the prompt.
+ * Lookup is O(1). Aliases are only accepted when the canonical path is
+ * present in `available_signals` for the current context.
+ */
+const EVIDENCE_ALIASES: Record<string, string> = {
+  average_comments: "content_summary.average_comments",
+  average_likes: "content_summary.average_likes",
+  average_engagement_rate: "content_summary.average_engagement_rate",
+  engagement_rate: "content_summary.average_engagement_rate",
+  posts_per_week: "content_summary.estimated_posts_per_week",
+  estimated_posts_per_week: "content_summary.estimated_posts_per_week",
+  followers: "profile.followers_count",
+  followers_count: "profile.followers_count",
+  posts_count: "profile.posts_count",
+  dominant_format: "content_summary.dominant_format",
+};
+
+/**
+ * Normalize an `evidence` string to its canonical path when a known alias
+ * is detected. Pure and idempotent. If the input is already canonical
+ * (present in `allowed`), it is returned unchanged. If it is an alias
+ * whose canonical form is in `allowed`, the canonical form is returned.
+ * Otherwise the input is returned unchanged so the validator can reject
+ * it with `EVIDENCE_INVALID`.
+ */
+export function normalizeEvidencePath(
+  path: string,
+  allowed: ReadonlySet<string>,
+): string {
+  const trimmed = path.trim();
+  if (allowed.has(trimmed)) return trimmed;
+  const canonical = EVIDENCE_ALIASES[trimmed];
+  if (canonical && allowed.has(canonical)) return canonical;
+  return trimmed;
+}
+
 /** Maximum allowed body length (characters). */
 export const INSIGHT_BODY_MAX = 280;
 /** Minimum number of insights expected from the model. */
@@ -131,6 +169,13 @@ export function validateInsights(
     if (item.evidence.length === 0) {
       return fail("EVIDENCE_EMPTY", `id=${item.id}`);
     }
+    // Normalize aliases (e.g. `average_comments` →
+    // `content_summary.average_comments`) before checking the allow-list,
+    // and persist the canonical form back onto the item so downstream
+    // consumers store canonical paths, not model aliases.
+    item.evidence = item.evidence.map((ev) =>
+      normalizeEvidencePath(ev, allowedEvidence),
+    );
     for (const ev of item.evidence) {
       if (!allowedEvidence.has(ev)) {
         return fail("EVIDENCE_INVALID", `id=${item.id} evidence=${ev}`);
