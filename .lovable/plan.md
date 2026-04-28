@@ -1,78 +1,52 @@
-# Alinhar OpenAI Insights para `gpt-5.4-nano`
+## Situação
 
-## Correcção do meu erro anterior
+Verifiquei o estado actual antes de disparar o smoke test:
 
-Confirmei na página oficial da OpenAI que o modelo `gpt-5.4-nano` existe — está descrito em [developers.openai.com/api/docs/models](https://developers.openai.com/api/docs/models) como variante low-latency/low-cost da família GPT-5.4. Estava errado a sugerir `gpt-4.1-mini` como única opção válida. Avançamos com `gpt-5.4-nano`.
+- Snapshot `311067c4-7de3-44e0-b0ee-d20c3a2d5004` para `frederico.m.carvalho` **continua em cache** (válido até `2026-04-29 09:58 UTC`).
+- `normalized_payload.ai_insights_v1` **não existe** neste snapshot (`has_ai_insights = false`, `insights_count = 0`).
+- A migration de invalidação anterior (`20260428190000`) foi aprovada, mas o snapshot voltou a aparecer — provavelmente uma chamada posterior recriou a linha com o mesmo `id`/cache_key.
 
-## Estado actual
+Se chamasse `/api/analyze-public-v1` agora, o route ia devolver `data_source=cache` e **não** chamar a OpenAI. Isso queimava a regra "uma única tentativa" sem produzir o resultado pretendido. Por isso parei e estou a pedir aprovação antes de continuar.
 
-`OPENAI_API_KEY` já está configurado (verificado em `secrets--fetch_secrets` no prompt anterior). Os 5 secrets de configuração também já existem (`OPENAI_ENABLED`, `OPENAI_TESTING_MODE`, `OPENAI_ALLOWLIST`, `OPENAI_INSIGHTS_MODEL`, `OPENAI_DAILY_CAP_USD`) — estão à espera dos valores finais que vais aplicar tu manualmente em Project Settings → Secrets.
+## Plano (uma única passagem)
 
-`src/lib/insights/cost.ts` actualmente:
-- `DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"`
-- `FALLBACK_MODEL = "gpt-4.1-mini"`
-- Tabela: `gpt-4.1-mini` ($0.40/$1.60), `gpt-5-mini` ($0.25/$2.00)
+1. **Nova migration de invalidação** (`supabase/migrations/<timestamp>_reinvalidate_smoke_test_snapshot.sql`):
+   ```sql
+   DELETE FROM public.analysis_snapshots
+   WHERE instagram_username = 'frederico.m.carvalho';
+   ```
+   Uso `WHERE instagram_username = ...` em vez do `id` fixo, para garantir que apanha qualquer linha actual independentemente do `id` regenerado.
 
-## O que este prompt vai fazer
+2. **Confirmação pós-migration** via `supabase--read_query`:
+   `SELECT count(*) FROM analysis_snapshots WHERE instagram_username = 'frederico.m.carvalho';` → tem de devolver `0`.
 
-### 1. Editar `src/lib/insights/cost.ts`
+3. **Uma única chamada fresh** via `stack_modern--invoke-server-function`:
+   `GET /api/analyze-public-v1?instagram_username=frederico.m.carvalho`
+   - Sem retries.
+   - Se falhar ou devolver `data_source != 'fresh'`, **paro e reporto**, não tento segunda vez.
 
-- Adicionar entrada `gpt-5.4-nano`: `inputPerMillion: 0.20`, `outputPerMillion: 1.25`.
-- **Manter** as duas entradas existentes (`gpt-4.1-mini`, `gpt-5-mini`) intactas.
-- Mudar `DEFAULT_OPENAI_MODEL` para `"gpt-5.4-nano"`.
-- Mudar `FALLBACK_MODEL` para `"gpt-5.4-nano"` (ficando alinhado com o default — qualquer modelo desconhecido cai para o nano, que é o mais barato dos três e o que tens activo).
-- Sem outras alterações ao módulo: continua puro, sem I/O.
+4. **Inspecção do resultado** (apenas leitura):
+   - `analysis_snapshots`: novo `id`, `has_ai_insights`, `insights_count`, `meta` (model, generated_at).
+   - `provider_call_logs` (último registo OpenAI): `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `estimated_cost_usd`, `duration_ms`, `status`, `http_status`.
+   - `analysis_events` (último registo): `data_source`, `outcome`, `duration_ms`, `estimated_cost_usd`.
 
-### 2. Não tocar em mais nada de código
+5. **Relatório final** com o checklist exigido:
+   - snapshot id
+   - resumo do `ai_insights_v1` (nº de insights, modelo, generated_at)
+   - linha do `provider_call_logs` (model + tokens + custo + latência)
+   - latência total da análise
+   - recomendação final: safe / not safe para renderizar no relatório web
 
-- `src/lib/insights/openai-insights.server.ts` já lê `OPENAI_INSIGHTS_MODEL` do env (linha 135) e cai para `DEFAULT_OPENAI_MODEL` se vazio. Vai herdar `gpt-5.4-nano` automaticamente.
-- `src/lib/security/openai-allowlist.ts` continua igual.
-- `src/routes/api/analyze-public-v1.ts` não muda.
-- Sem alterações de UI, sem alterações em `/report.example`, sem tocar em `LOCKED_FILES.md`.
+## Garantias
 
-### 3. Sem chamadas a providers
+- Zero chamadas a Apify/DataForSEO/OpenAI fora do passo 3.
+- Sem segunda tentativa em caso de falha — paro e peço nova aprovação.
+- Nenhum secret será impresso, registado ou exposto.
+- Sem alterações em `LOCKED_FILES.md`, `/report/example`, ou no `ReportPage` bloqueado.
 
-- Sem chamadas a OpenAI, Apify, DataForSEO ou Resend.
-- Apenas edição local do ficheiro `cost.ts`, typecheck e build.
+## Ficheiros tocados
 
-### 4. Validação
+- **Criar**: `supabase/migrations/<timestamp>_reinvalidate_smoke_test_snapshot.sql` (uma única instrução `DELETE`).
+- Nenhuma outra alteração de código.
 
-- `bunx tsc --noEmit` (deve passar — só mudei strings literais e adicionei uma entrada num Record).
-- `bun run build` (idem).
-- `grep` rápido para confirmar que nenhum outro ficheiro tinha `"gpt-4.1-mini"` hardcoded fora de `cost.ts`. Se tiver, deixo nota mas **não** mudo (`cost.ts` é o single source of truth, mas posso ter de atualizar testes ou docs).
-
-## Acção tua, manual (não posso fazer eu)
-
-Os tools de write de secrets não estão disponíveis neste turno. Tens de aplicar tu, em **Project Settings → Secrets**, os valores finais:
-
-| Secret | Valor |
-|---|---|
-| `OPENAI_ENABLED` | `true` |
-| `OPENAI_TESTING_MODE` | `true` |
-| `OPENAI_ALLOWLIST` | `frederico.m.carvalho` |
-| `OPENAI_INSIGHTS_MODEL` | `gpt-5.4-nano` |
-| `OPENAI_DAILY_CAP_USD` | `5` |
-| `OPENAI_API_KEY` | já configurado ✅ |
-
-`APIFY_TESTING_MODE=false` mantém-se (já configurado) — qualquer perfil Instagram público é analisável.
-
-## O que NÃO vai fazer
-
-- Não corre smoke test (passo 4 explicitamente: "Do not call OpenAI yet").
-- Não muda UI.
-- Não toca em `/report.example` nem em ficheiros listados em `LOCKED_FILES.md`.
-- Não altera o pipeline de `analyze-public-v1` nem o gate de allowlist Apify.
-
-## Validação esperada
-
-- `bunx tsc --noEmit`: passa.
-- `bun run build`: passa.
-- `grep "gpt-4.1-mini\|gpt-5-mini\|gpt-5.4-nano" src/lib/insights/cost.ts`: 3 entradas distintas presentes.
-- Confirmação de que nenhuma chamada a provider foi feita (não há código novo que invoque `fetch` para OpenAI; `cost.ts` é puro).
-
-## Returns
-
-- Diff do `cost.ts`.
-- Output do typecheck e build.
-- Lista de secrets que ainda precisas de configurar manualmente.
-- Próximo passo único quando os secrets estiverem todos: aprovar smoke test em `frederico.m.carvalho`.
+Diz **"avança"** para eu aplicar a migration e disparar a única chamada fresh.
