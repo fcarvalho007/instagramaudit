@@ -1,158 +1,232 @@
-# Auditoria de atribuição de custos por provider
+# Apify payload completeness audit + Report v2 data coverage
 
-Modo: read-only + plano de implementação. Sem chamadas a Apify / DataForSEO / OpenAI. Sem alterações de UI, ficheiros locked ou `/report/example`.
-
----
-
-## 1. Estado actual por provider
-
-### Apify (`src/lib/analysis/apify-client.ts` + `src/routes/api/analyze-public-v1.ts`)
-
-- Endpoint usado: `acts/{id}/run-sync-get-dataset-items`. Devolve **só os itens do dataset** — não devolve nem `runId`, nem `usageTotalUsd`, nem qualquer custo.
-- `recordProviderCall` é chamado com `estimatedCostUsd` calculado por `estimateApifyCost` (heurística €/perfil + €/post).
-- `apify_run_id` é sempre `null` (verificado em DB: 2 linhas Apify recentes, `apify_run_id IS NULL`, `actual_cost_usd IS NULL`).
-- Conclusão: **custo Apify é apenas estimado**. O comentário em `src/lib/analysis/cost.ts:7` reconhece-o explicitamente ("reserved for a later pass that fetches Apify's real `usageTotalUsd` per run").
-
-### DataForSEO (`src/lib/dataforseo/client.ts` + `src/lib/dataforseo/cost.ts`)
-
-- `extractActualCost(envelope)` lê `envelope.cost` (ou soma `tasks[].cost`).
-- `logCall` escreve **ambos**: `estimated_cost_usd` (tabela fixa por endpoint) e `actual_cost_usd` (do envelope).
-- DB confirma: 5 linhas DataForSEO recentes têm `actual_cost_usd` populado (ex.: `0.00900`).
-- Conclusão: **custo DataForSEO já é provider-reported**. Está correcto.
-
-### PDF público (`src/routes/api/public/public-report-pdf.ts`)
-
-- Não escreve em `provider_call_logs`. Só escreve em `analysis_events` com `estimated_cost_usd: 0`. Correcto — render local não tem custo de provider.
-
-### OpenAI
-
-- Sem fluxo activo. `report-cost-summary.server.ts` já tem a `branch` `provider === "openai" && totalEstimated > 0 → "calculated"` preparada (token-based). Aguarda escritor real.
-
-### Classificador (`src/lib/admin/report-cost-summary.server.ts`)
-
-- Já distingue: `provider_reported`, `estimated`, `calculated`, `cache_hit`, `not_used`.
-- Lógica:
-  - `totalActual > 0` → `provider_reported`
-  - OpenAI com estimated > 0 → `calculated`
-  - resto → `estimated`
-  - sem rows → `cache_hit` (se esperado) ou `not_used`
-  - tudo blocked/zero → `cache_hit`
+Modo: read-only + plano. Sem chamadas a Apify. Sem alterações ao /report/example, ficheiros locked ou UI.
 
 ---
 
-## 2. Lacunas identificadas
+## 1. Estado actual da integração Apify
 
-| # | Lacuna | Severidade |
+- **Actor**: `apify/instagram-scraper` (unified, em `analyze-public-v1.ts:67`).
+- **Input**: `{ directUrls, resultsType: "details", resultsLimit: 12, addParentData: false }`. Cost guards: `maxItems: 1`, `maxTotalChargeUsd: 0.10`, `apifyTimeoutSecs: 55`.
+- **Output**: `Record<string, unknown>` por handle, com `latestPosts[]` embebido.
+- **Pipeline**: `runActor` → `normalizeProfile` + `enrichPosts` + `computeContentSummary` → `analysis_snapshots.normalized_payload`.
+- **Top-level persistido**: `profile`, `posts`, `competitors`, `format_stats`, `content_summary`, `market_signals_free`.
+- **Snapshot real (`frederico.m.carvalho`)**: 12 posts, `comments_max=3`, 1 post com comments>0 → **`comments=0` é maioritariamente real**, não bug do normalizador.
+
+---
+
+## 2. Matriz de cobertura de campos
+
+Legenda: ✅ persistido · ➖ normalizado mas não persistido · ❌ não capturado · ❓ desconhecido até nova run
+
+### Profile (12 campos pedidos)
+
+| Campo | Pedido a Apify | Normalizado | Persistido | Web | PDF |
+|---|---|---|---|---|---|
+| username | ✅ | ✅ | ✅ | ✅ | ✅ |
+| full_name / display_name | ✅ | ✅ | ✅ | ✅ | ✅ |
+| biography | ✅ | ✅ | ✅ | ✅ | ✅ |
+| profile_pic_url / HD | ✅ | ✅ (avatar_url) | ✅ | ✅ | ✅ |
+| followers_count | ✅ | ✅ | ✅ | ✅ | ✅ |
+| following_count | ✅ | ✅ | ✅ | ✅ | ✅ |
+| posts_count | ✅ | ✅ | ✅ | ✅ | ✅ |
+| is_verified | ✅ | ✅ | ✅ | parcial | ✅ |
+| **is_business_account** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **business_category / category** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **external_url** (link na bio) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **highlight_reels_count** | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+### Post (24 campos pedidos)
+
+| Campo | Pedido | Normalizado | Persistido | Web | PDF |
+|---|---|---|---|---|---|
+| id / pk | ✅ | ✅ | ✅ | parcial | parcial |
+| shortcode | ✅ | ✅ | ✅ (null em alguns Reels) | ✅ | parcial |
+| permalink | ✅ | ✅ (fallback `/p/{shortcode}/`) | ✅ | ✅ | ✅ |
+| caption | ✅ | ✅ (truncado a 500) | ✅ | ✅ | ✅ |
+| hashtags | (extraído) | ✅ | ✅ | parcial | parcial |
+| mentions | (extraído) | ✅ | ✅ | parcial | parcial |
+| likes | ✅ | ✅ | ✅ | ✅ | ✅ |
+| comments | ✅ | ✅ | ✅ (real, não bug) | ✅ | ✅ |
+| video_views | ✅ | ✅ | ✅ | ✅ | parcial |
+| thumbnail_url | ✅ | ✅ | ✅ (URL CDN expira) | ✅ | parcial |
+| taken_at / iso | ✅ | ✅ | ✅ | ✅ | ✅ |
+| weekday / hour_local | (derivado UTC) | ✅ | ✅ | ✅ | ✅ |
+| is_video / format | ✅ | ✅ | ✅ | ✅ | ✅ |
+| engagement_pct | (derivado) | ✅ | ✅ | ✅ | ✅ |
+| **video_duration** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
+| **carousel child_count** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
+| **tagged_users** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
+| **coauthors / collab** | ❓ | ❌ | ❌ | ❌ | ❌ |
+| **location (id + name)** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
+| **music / audio (title, artist)** | ✅ Reels | ❌ | ❌ | ❌ | ❌ |
+| **alt_text / accessibility_caption** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
+| **product_type** (clips/feed/igtv) | ✅ | usado em `classifyFormat` | ❌ persistido cru | ❌ | ❌ |
+| **caption_full (sem truncate)** | ✅ | ❌ (cortado a 500) | parcial | ❌ | ❌ |
+| **comments_disabled flag** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
+
+### Lacunas por categoria
+
+- **Hashtags/mentions**: extraídos só da caption por regex → perde-se o que vier em campos próprios (`hashtags[]` directo do actor).
+- **Comments**: confirmado real. 11/12 posts a 0 não é bug — é Reels novos sem comentários ainda.
+- **Verified**: persistido mas o report web não mostra badge.
+
+---
+
+## 3. Campos high-value para Report v2
+
+Ordenados por impacto editorial × custo de implementação:
+
+| # | Campo | Valor para o report | Custo |
+|---|---|---|---|
+| 1 | **video_duration** | Permite calcular "retention proxy" (views/duração) e separar Reels curtos vs longos | Baixo — só normalizar |
+| 2 | **product_type** persistido | Distinguir Reels editorial vs Clips vs IGTV no PDF | Baixo |
+| 3 | **carousel child_count** | "Carrosséis longos têm 28% mais engagement" — narrativa concreta | Baixo |
+| 4 | **tagged_users** | Detectar collabs, parcerias, marcas → secção "Rede de colaboração" | Médio (precisa UI) |
+| 5 | **location** | Mostrar "65% dos teus posts são em Lisboa" | Médio |
+| 6 | **music/audio** | Reels: identificar trending sounds reutilizados | Médio |
+| 7 | **business_category + external_url** | Hero do report: "Categoria oficial Instagram + link na bio" | Baixo |
+| 8 | **caption_full** | Necessário para análise de tom OpenAI (passo 8) — truncate a 500 mata-o | Baixo (subir para 2000) |
+| 9 | **alt_text** | Acessibilidade do report + base para análise visual sem chamar Vision API | Baixo |
+| 10 | **coauthors** | Detectar collab posts (forma diferente de `tagged_users`) | Baixo se existir |
+
+---
+
+## 4. Storage: o que precisa de Supabase Storage
+
+URLs Apify CDN (`scontent-*.cdninstagram.com`) **expiram** (`oe=...` no URL). Para PDF e share OG images precisam de re-host.
+
+| Asset | Expira? | Estratégia |
 |---|---|---|
-| L1 | Apify `actual_cost_usd` nunca é capturado | **Alta** — sem isto, todo o custo Apify é heurístico |
-| L2 | `apify_run_id` nunca é persistido (impossível auditar runs no painel Apify) | Média |
-| L3 | Fonte de custo (`provider_reported` vs `estimated` etc.) é **derivada** ad-hoc no classificador. Não existe coluna `cost_source` em `provider_call_logs` | Baixa — derivação funciona, mas torna queries diretas frágeis |
-| L4 | `RecordProviderCallInput` não tem `actualCostUsd` nem `apifyRunId` na assinatura usada pelo fluxo Apify (DataForSEO contorna escrevendo direto na tabela) | Média |
+| `profile.avatar_url` | Sim (poucas horas) | Re-host em `report-pdfs` (ou novo bucket `profile-assets`) na primeira run, persistir URL estável |
+| `post.thumbnail_url` | Sim | Re-host só no momento da geração do PDF (12 thumbnails × snapshot) |
+| `external_url` (bio link) | Não | Persistir directo |
+
+Importante: **não fazer re-host upfront** para todas as analises — só quando o PDF é pedido. Caso contrário pagamos storage para snapshots que ninguém pediu PDF.
 
 ---
 
-## 3. Patch proposto (mínimo, seguro, sem providers)
+## 5. Patch proposto: `raw_field_inventory` (mínimo, seguro)
 
-Estratégia: capturar custo real **sem** mudar para o fluxo runs/datasets em duas etapas. Mantém-se `run-sync-get-dataset-items`, mas:
+Objectivo: **descobrir** que campos o actor está realmente a devolver — **sem** persistir os valores (privacidade, tamanho, e ruído).
 
-- Pede-se ao Apify para devolver headers extra. O endpoint sync-get-dataset-items **não** devolve custo no body, mas o header `x-apify-pay-per-event-pricing-info` e `x-apify-actor-run-id` (ou `x-apify-request-id`) estão disponíveis nas respostas de actors pay-per-event. Para actors clássicos, o run id volta no header `x-apify-actor-run-id`.
-- Com o `runId` em mão, **opcionalmente** faz-se uma chamada GET `/v2/actor-runs/{runId}` (custo zero, contagem de leitura) **só quando o run termina**, para ler `usageTotalUsd`. Esta chamada é leve, não é "uso de Apify scraping" e é o método oficial documentado.
-- Se o `runId` não vier no header (actor antigo), persistimos só o `estimated`.
+### Schema
 
-Por ser potencialmente intrusivo, o plano divide-se em **duas fases**:
+Acrescentar uma 7ª chave top-level a `normalized_payload`:
 
-### Fase 3A — Capturar `apify_run_id` (custo zero, sem segunda chamada)
+```jsonc
+"raw_field_inventory": {
+  "captured_at": "2026-04-28T17:00:00Z",
+  "actor": "apify/instagram-scraper",
+  "actor_input_hash": "sha256:abc123",
+  "profile_keys": ["username", "fullName", "biography", ...],
+  "post_keys_union": ["id", "shortcode", "caption", "videoDuration", ...],
+  "post_keys_per_index": [
+    ["id", "shortcode", ...],   // post 0
+    ["id", "shortcode", ...]    // post 1
+  ]
+}
+```
 
-1. **`src/lib/analysis/apify-client.ts`**
-   - Mudar a assinatura para devolver também os headers relevantes:
-     ```ts
-     return { items: data, runId, requestId };
-     ```
-   - Ler `res.headers.get("x-apify-actor-run-id")`.
-   - Não muda o sucesso/erro.
+Só **nomes de chaves**, nunca valores. Para arrays/objetos aninhados regista `key.subkey` até profundidade 2.
 
-2. **`src/routes/api/analyze-public-v1.ts` (`fetchProfileWithPostsLogged`)**
-   - Receber o `runId` do client.
-   - Passá-lo a `recordProviderCall({ apifyRunId: runId })`.
+### Helper: `src/lib/analysis/raw-inventory.ts` (novo, puro)
 
-3. **`src/lib/analysis/events.ts`**
-   - Já aceita `apifyRunId` — não muda a assinatura.
+```ts
+export function buildRawInventory(actor: string, input: unknown, raw: Record<string, unknown>): RawFieldInventory
+```
 
-### Fase 3B — Capturar `actual_cost_usd` via Apify Run API
+### Wire-up: `analyze-public-v1.ts`
 
-1. **Novo helper `fetchApifyRunCost(runId)`** em `src/lib/analysis/apify-client.ts`:
-   - GET `https://api.apify.com/v2/actor-runs/{runId}` com `Authorization: Bearer ${APIFY_TOKEN}`.
-   - Lê `data.usageTotalUsd` (campo oficial).
-   - Timeout curto (3 s). Em erro → devolve `null`. Nunca lança.
+Após `runActor` devolver o row cru, antes de o passar a `normalizeProfile`/`enrichPosts`:
 
-2. **`fetchProfileWithPostsLogged`**:
-   - Após sucesso e ter `runId`, chamar `fetchApifyRunCost(runId)` com `await`.
-   - Passar a `recordProviderCall({ estimatedCostUsd, actualCostUsd })`.
-   - `estimated` continua a ser persistido como fallback/sanity check.
+```ts
+const inventory = buildRawInventory(UNIFIED_ACTOR, actorInput, row);
+// ...
+storeSnapshot({ ...payload, raw_field_inventory: inventory })
+```
 
-3. **`RecordProviderCallInput`** (`src/lib/analysis/events.ts`)
-   - Acrescentar `actualCostUsd?: number | null`.
-   - No insert: `actual_cost_usd: input.actualCostUsd ?? null`.
-
-### O que NÃO muda
-
-- Schema de `provider_call_logs` — colunas `actual_cost_usd`, `estimated_cost_usd`, `apify_run_id` já existem.
-- Classificador `report-cost-summary.server.ts` — já lida com `actual > 0` → `provider_reported`. Vai automaticamente "subir" a confiança do Apify de `estimated` para `provider_reported` assim que houver dados.
-- DataForSEO — já correcto.
-- UI admin — sem mudanças. Os labels `provider_reported / estimated / calculated / cache_hit / not_used` já existem em `src/lib/admin/cost-source-labels.ts`.
-- Fluxo PDF — sem mudanças.
+Zero impacto no report actual (componentes ignoram chaves desconhecidas).
 
 ---
 
-## 4. Ficheiros a editar
+## 6. Run controlada (uma vez, com aprovação explícita)
 
-Fase 3A (mínimo):
-- `src/lib/analysis/apify-client.ts` — devolver `{ items, runId }`.
-- `src/routes/api/analyze-public-v1.ts` — propagar `runId` para `recordProviderCall`.
+**Não** corre nesta sessão. Plano para quando aprovado:
 
-Fase 3B (custo real):
-- `src/lib/analysis/apify-client.ts` — adicionar `fetchApifyRunCost(runId)`.
-- `src/routes/api/analyze-public-v1.ts` — chamar fetcher e passar `actualCostUsd`.
-- `src/lib/analysis/events.ts` — adicionar `actualCostUsd` à interface e ao insert.
-
-Total: 3 ficheiros, mudanças cirúrgicas. Zero migrações de DB.
-
----
-
-## 5. Riscos
-
-| Risco | Mitigação |
-|---|---|
-| Header `x-apify-actor-run-id` ausente em actors legados | Se faltar, persiste só o estimated — comportamento actual. Sem regressão. |
-| `fetchApifyRunCost` falha ou demora | Timeout 3s, try/catch a devolver `null`, `actual_cost_usd` fica `NULL` e classificador cai em `estimated`. |
-| Race: run ainda não fechou quando consultamos `usageTotalUsd` | Como usamos `run-sync-get-dataset-items`, o run **já terminou** quando a resposta chega. Não há race. |
-| Custo da chamada extra ao Apify Run API | A API de leitura de runs não conta como uso de scraping (não consome compute units). Custo efectivo: zero. |
-| Mudança de assinatura do `apify-client.runActor` partir outros call-sites | Verificar com `rg "runActor\("` antes de implementar. Provavelmente único call-site é `fetchProfileWithPosts`. |
+1. Implementar `buildRawInventory` + wire-up + cache versioning.
+2. Forçar refresh único: chamar `/api/analyze-public-v1` com `frederico.m.carvalho` após invalidar cache (ou usar parâmetro `force=true` se existir; senão `DELETE` linha do cache).
+3. Inspeccionar via `supabase--read_query`:
+   ```sql
+   SELECT normalized_payload->'raw_field_inventory' FROM analysis_snapshots
+   WHERE instagram_username = 'frederico.m.carvalho'
+   ORDER BY created_at DESC LIMIT 1;
+   ```
+4. Confirmar:
+   - Que campos como `videoDuration`, `childPosts`, `taggedUsers`, `locationName`, `musicInfo` aparecem na lista.
+   - Que `commentsCount` está nas keys de **todos** os posts (confirma que o `0` é real, não missing).
+5. Custo: 1 chamada Apify ≈ $0.011 (igual às runs actuais).
 
 ---
 
-## 6. Checklist de validação
+## 7. Plano de implementação em prompts pequenos
 
-- ☐ Fase 3A: novo run em `/analyze/<allowlisted>` cria linha em `provider_call_logs` com `apify_run_id NOT NULL`.
-- ☐ Fase 3B: mesma linha tem `actual_cost_usd > 0` e bate com o run no painel Apify (tolerância ±10% por arredondamentos).
-- ☐ `estimated_cost_usd` continua presente como sanity check.
-- ☐ `report-cost-summary` mostra `provider_reported` em vez de `estimated` para o Apify.
-- ☐ Cache hit (segunda chamada) continua a não criar nova linha em `provider_call_logs`.
-- ☐ DataForSEO inalterado: `actual_cost_usd` continua igual a `envelope.cost`.
-- ☐ PDF público inalterado: sem novas linhas em `provider_call_logs`.
-- ☐ `bunx tsc --noEmit` passa.
-- ☐ Sem chamadas a Apify durante validação inicial — usar dados existentes em DB para confirmar classificador. Validação real só com 1 run autorizado a `frederico.m.carvalho`.
+### Prompt A — Inventário cru (foundation)
+- Criar `src/lib/analysis/raw-inventory.ts`.
+- Tipo `RawFieldInventory` em `types.ts`.
+- Wire-up em `analyze-public-v1.ts` (uma linha antes de `storeSnapshot`).
+- Test deterministico (puro).
+- ☐ `bunx tsc --noEmit`
+
+### Prompt B — Cache versioning + refresh controlado
+- Adicionar `payload_schema_version: "v2"` ao snapshot.
+- Quando lookup encontra `v1`, tratar como cache miss → força nova run (apenas para handles allowlisted).
+- Necessário antes do Prompt C para garantir que campos novos chegam aos snapshots existentes.
+
+### Prompt C — Run controlada + leitura do inventory
+- Apenas após aprovação explícita.
+- Uma chamada a Apify para `frederico.m.carvalho`.
+- Output: lista exacta de campos disponíveis.
+
+### Prompt D — Normalizar campos high-value (1-3)
+- Adicionar a `EnrichedPost`: `video_duration_secs`, `product_type`, `carousel_child_count`.
+- Adicionar a `PublicAnalysisProfile`: `business_category`, `external_url`, `is_business_account`.
+- Subir `CAPTION_MAX_LENGTH` para 2000.
+
+### Prompt E — Normalizar campos relacionais (4-6)
+- `tagged_users`, `location`, `music_info`. Só os que o Prompt C confirmou existir.
+
+### Prompt F — Asset re-hosting (PDF only)
+- Helper `rehostInstagramAsset(url, snapshotId)` no fluxo PDF.
+- Chamado só dentro de `public-report-pdf.ts` para avatar + 12 thumbnails.
+- Bucket: re-usar `report-pdfs` ou criar `report-assets`.
+
+### Prompt G — Surfacing no web report (sem mudar layout)
+- Apenas a partir daqui se mexe na UI, e mesmo assim só dentro dos componentes não-locked.
+- Badge verified, categoria, link bio, child_count nos cards de carousel.
+
+---
+
+## Sumário executivo
+
+- **8 campos profile** já capturados, **4 em falta** (business_category, external_url, is_business_account, highlight_reels_count).
+- **14 campos post** capturados (incluindo hashtags, mentions, video_views, thumbnail), **10 em falta** com alto valor (video_duration, child_count, location, music, tagged_users, product_type cru, caption_full, alt_text, coauthors, comments_disabled).
+- **`comments=0` confirmado real** no snapshot existente — não é bug.
+- **Avatar e thumbnails têm URLs que expiram** — re-host só quando o PDF é gerado, não upfront.
+- **Próximo passo recomendado**: Prompt A (inventário cru) — zero risco, zero custo extra Apify, dá-nos visibilidade definitiva.
 
 ---
 
 ## Decisões que preciso de ti
 
-1. Aprovas implementar **3A + 3B juntos** ou só **3A** primeiro (capturar `runId` sem ainda buscar custo real)?
-2. Aprovas que a Fase 3B faça uma chamada extra GET `/v2/actor-runs/{runId}` ao Apify por análise fresca? (custo zero, latência +200–600ms)
-3. Mantemos `estimated_cost_usd` para sempre como fallback ou eventualmente removemos quando `actual` ficar estável?
+1. Aprovas começar pelo **Prompt A** (inventário cru, sem chamar Apify)?
+2. Confirmas o re-host de assets **só no momento de gerar PDF** (não upfront)?
+3. Aprovas subir `CAPTION_MAX_LENGTH` de 500 → 2000 no Prompt D? (necessário para OpenAI no passo 8)
+4. Para a Run controlada do Prompt C, aprovas o custo de **1 análise fresca a `frederico.m.carvalho`** (~$0.011)?
 
 ## Checkpoint
 
-- ☐ Decisão sobre escopo (3A / 3A+3B)
-- ☐ Aprovação da chamada extra à Apify Run API
-- ☐ Confirmação de que sem mudanças de schema, sem migrações, sem alterações de UI
+- ☐ Decisão sobre Prompt A / B / C
+- ☐ Aprovação de re-host on-demand vs upfront
+- ☐ Aprovação CAPTION_MAX_LENGTH 500 → 2000
+- ☐ Aprovação 1 run Apify fresca
