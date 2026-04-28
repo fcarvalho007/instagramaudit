@@ -81,6 +81,24 @@ export interface SnapshotPayload {
   format_stats?: Record<string, SnapshotFormatStat> | null;
   posts?: SnapshotPost[] | null;
   competitors?: unknown[] | null;
+  /**
+   * Optional AI insights block written by the analyze route when the OpenAI
+   * insights flow is allowed for this handle. Loose typing on purpose —
+   * the adapter validates each item before mapping it into ReportData.
+   */
+  ai_insights_v1?: {
+    schema_version?: number | null;
+    generated_at?: string | null;
+    model?: string | null;
+    insights?: Array<{
+      id?: string | null;
+      title?: string | null;
+      body?: string | null;
+      evidence?: string[] | null;
+      confidence?: string | null;
+      priority?: number | null;
+    }> | null;
+  } | null;
 }
 
 export interface SnapshotMetadata {
@@ -187,6 +205,24 @@ export interface ReportEnriched {
     datasetVersion: string | null;
     note: string;
   };
+  /**
+   * Companion metadata for the AI insights section. Only populated when the
+   * snapshot carries `ai_insights_v1`. Mirrors the items rendered by the
+   * locked `ReportAiInsights` component, plus fields the locked component
+   * cannot show today (`confidence`, `evidenceSummary`). Consumed by an
+   * optional companion in `/analyze/$username`; never by `/report/example`.
+   */
+  aiInsights: {
+    generatedAt: string | null;
+    model: string | null;
+    items: Array<{
+      number: string;
+      title: string;
+      body: string;
+      confidence: "baseado em dados observados" | "sinal parcial";
+      evidenceSummary: string;
+    }>;
+  } | null;
 }
 
 // ============================================================================
@@ -636,9 +672,72 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         ]
       : [];
 
-  // AI insights: not generated in this step. Keep an empty array; the
-  // `hasAiInsights` flag drives any UI that needs to hide the section.
-  const aiInsights: ReportData["aiInsights"] = [];
+  // ----------------------------------------------------------------------
+  // AI insights — map persisted `ai_insights_v1` (when present) into the
+  // locked `ReportData.aiInsights` shape `{ number, label, text }`. The
+  // locked `ReportAiInsights` component already hides itself when the
+  // array is empty, so a missing/invalid block keeps the section hidden
+  // (no placeholder is ever shown).
+  //
+  // The locked shape cannot carry `confidence` or `evidence`, so those
+  // fields are forwarded via the companion `ReportEnriched.aiInsights`
+  // block for an optional non-locked render in `/analyze/$username`.
+  // ----------------------------------------------------------------------
+  const rawAi = payload.ai_insights_v1;
+  const validConfidences = new Set([
+    "baseado em dados observados",
+    "sinal parcial",
+  ]);
+  const aiItems = Array.isArray(rawAi?.insights)
+    ? rawAi!.insights!.filter(
+        (i) =>
+          i &&
+          typeof i.title === "string" &&
+          i.title.trim().length > 0 &&
+          typeof i.body === "string" &&
+          i.body.trim().length > 0,
+      )
+    : [];
+  // Items already arrive sorted by priority desc from the validator; we
+  // re-sort defensively in case an older snapshot was written before the
+  // ordering guarantee landed.
+  const aiItemsSorted = [...aiItems].sort(
+    (a, b) => num(b?.priority, 0) - num(a?.priority, 0),
+  );
+  const aiInsights: ReportData["aiInsights"] = aiItemsSorted.map((i, idx) => ({
+    number: String(idx + 1).padStart(2, "0"),
+    label: i!.title!.trim(),
+    text: i!.body!.trim(),
+  }));
+  const enrichedAiInsights: ReportEnriched["aiInsights"] =
+    aiItemsSorted.length > 0
+      ? {
+          generatedAt:
+            typeof rawAi?.generated_at === "string"
+              ? rawAi!.generated_at
+              : null,
+          model:
+            typeof rawAi?.model === "string" && rawAi!.model!.length > 0
+              ? rawAi!.model
+              : null,
+          items: aiItemsSorted.map((i, idx) => {
+            const confidence =
+              typeof i?.confidence === "string" &&
+              validConfidences.has(i.confidence)
+                ? (i.confidence as "baseado em dados observados" | "sinal parcial")
+                : "sinal parcial";
+            const ev = Array.isArray(i?.evidence) ? i!.evidence! : [];
+            return {
+              number: String(idx + 1).padStart(2, "0"),
+              title: i!.title!.trim(),
+              body: i!.body!.trim(),
+              confidence,
+              evidenceSummary:
+                ev.length > 0 ? ev.slice(0, 3).join(" · ") : "—",
+            };
+          }),
+        }
+      : null;
 
   // Editorial meta — overrides the mock defaults when the real sample is
   // smaller than 30 days, so the report stops promising "30 dias" when only
@@ -781,6 +880,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       datasetVersion: input.benchmark?.datasetVersion ?? null,
       note: "Benchmark editorial baseado em referências públicas de mercado e dataset interno versionado. A leitura deve ser interpretada como referência comparativa, não como média estatística absoluta.",
     },
+    aiInsights: enrichedAiInsights,
   };
 
   const data: ReportData = {
@@ -821,8 +921,8 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     bestDays: posts.length > 0 ? "partial" : "empty",
     topHashtags: topHashtags.length > 0 ? "real" : "empty",
     topKeywords: topKeywords.length > 0 ? "real" : "empty",
-    aiInsights: "empty",
-    hasAiInsights: false,
+    aiInsights: aiInsights.length > 0 ? "real" : "empty",
+    hasAiInsights: aiInsights.length > 0,
     postsAvailable: posts.length,
     windowDays,
   };
