@@ -33,4 +33,14 @@ export const ENRICHED_COPY = {
       "A comparação com perfis concorrentes mostra contraste de envolvimento, formato dominante e ritmo de publicação. Adiciona até 2 concorrentes para ativar esta secção.",
     cta: "Adicionar concorrentes",
   },
+  aiInsights: {
+    eyebrow: "Detalhe da leitura por IA",
+    title: "Sinais citados e nível de confiança",
+    subtitle:
+      "Para cada insight, o modelo declara os sinais do snapshot que utilizou e o respetivo nível de confiança. Útil para auditar a leitura editorial.",
+    confidenceLabel: "Confiança",
+    evidenceLabel: "Sinais",
+    modelPrefix: "Modelo",
+    generatedPrefix: "Gerado em",
+  },
 } as const;

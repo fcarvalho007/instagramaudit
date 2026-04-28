@@ -13,6 +13,7 @@ import { ReportEnrichedBenchmarkSource } from "@/components/report-enriched/repo
 import { ReportEnrichedTopLinks } from "@/components/report-enriched/report-enriched-top-links";
 import { ReportEnrichedMentions } from "@/components/report-enriched/report-enriched-mentions";
 import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/report-enriched-competitors-cta";
+import { ReportEnrichedAiInsights } from "@/components/report-enriched/report-enriched-ai-insights";
 import { ReportFinalBlock } from "@/components/report-share/report-final-block";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
@@ -175,6 +176,9 @@ function AnalyzePage() {
         />
         <CoverageStrip result={state.result} />
         <ReportPage data={state.result.data} />
+
+        {/* Companion ao ReportAiInsights locked: confidence + evidence + meta. */}
+        <ReportEnrichedAiInsights enriched={state.result.enriched} />
 
         {/* 2. Camadas enriquecidas */}
         <ReportEnrichedBenchmarkSource enriched={state.result.enriched} />
