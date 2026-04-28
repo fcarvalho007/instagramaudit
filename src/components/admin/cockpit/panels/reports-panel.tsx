@@ -277,6 +277,23 @@ export function ReportsPanel() {
       render: (r) => <RetentionBadge status={r.retention_status} />,
     },
     {
+      key: "cost_actual",
+      header: "Custo (real)",
+      align: "right",
+      render: (r) => (
+        <span className="font-mono text-xs">
+          {r.cost_summary.total_actual_usd > 0
+            ? formatCost(r.cost_summary.total_actual_usd)
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "cost_confidence",
+      header: "Confiança",
+      render: (r) => <ConfidenceBadge value={r.cost_summary.confidence} />,
+    },
+    {
       key: "preview",
       header: "Relatório",
       render: (r) => (
