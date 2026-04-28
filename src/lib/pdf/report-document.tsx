@@ -54,6 +54,22 @@ export interface TopPostForPdf {
   permalink: string | null;
 }
 
+
+/**
+ * Pre-derived AI insight for the PDF. Resolved upstream in `render.ts`
+ * from the persisted `ai_insights_v1` block — no OpenAI call here.
+ */
+export interface AiInsightForPdf {
+  /** Stable id from the OpenAI response (used as React key). */
+  id: string;
+  /** Editorial title in pt-PT. */
+  title: string;
+  /** Body copy in pt-PT, already trimmed. */
+  body: string;
+  /** "baseado em dados observados" or "sinal parcial". */
+  confidence: "baseado em dados observados" | "sinal parcial";
+}
+
 export interface ReportDocumentInput {
   profile: PublicAnalysisProfile;
   contentSummary: PublicAnalysisContentSummary;
@@ -68,6 +84,18 @@ export interface ReportDocumentInput {
    * When fewer than 4 are available the page is omitted.
    */
   recommendations?: PdfRecommendation[];
+  /**
+   * Optional persisted OpenAI insights from
+   * `analysis_snapshots.normalized_payload.ai_insights_v1`. Already
+   * validated upstream — the PDF only renders, NEVER calls OpenAI.
+   * When present (>=1 item) the "Leitura estratégica" page is added
+   * before the deterministic recommendations.
+   */
+  aiInsights?: AiInsightForPdf[];
+  /** Model id of the OpenAI run, surfaced as a discreet source note. */
+  aiInsightsModel?: string | null;
+  /** ISO timestamp of when the OpenAI insights were generated. */
+  aiInsightsGeneratedAt?: string | null;
   /** ISO timestamp of the underlying analysis snapshot. */
   analyzedAt: string;
   /** ISO timestamp of when the PDF itself is generated. */
@@ -503,21 +531,98 @@ export function ReportDocument(input: ReportDocumentInput) {
   return _ReportDocumentImpl(input);
 }
 
-function RecommendationsPage({
+function AiInsightsPage({
   profile,
-  recommendations,
+  insights,
+  model,
   generatedAt,
+  insightsGeneratedAt,
 }: {
   profile: PublicAnalysisProfile;
-  recommendations: PdfRecommendation[];
+  insights: AiInsightForPdf[];
+  model: string | null;
   generatedAt: string;
+  insightsGeneratedAt: string | null;
 }) {
+  const sourceLine = (() => {
+    const parts: string[] = [];
+    if (model) parts.push(`Modelo: ${model}`);
+    if (insightsGeneratedAt) {
+      parts.push(`Gerado a ${formatLongDate(insightsGeneratedAt)}`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : null;
+  })();
+
   return (
     <Page size="A4" style={styles.page}>
       <PageHeader kicker={`@${profile.username}`} />
 
-      <Text style={styles.sectionTitle}>Recomendações</Text>
-      <Text style={styles.sectionHeading}>Próximos passos prioritários</Text>
+      <Text style={styles.sectionTitle}>Leitura estratégica</Text>
+      <Text style={styles.sectionHeading}>
+        Insights gerados sobre os dados deste relatório
+      </Text>
+      <Text style={styles.sectionLead}>
+        Análise editorial em pt-PT a partir das métricas, dos posts de maior
+        impacto e da posição face ao tier de referência. Cada item cita os
+        sinais que sustentam a leitura.
+      </Text>
+      {sourceLine ? (
+        <Text style={styles.aiSourceNote}>{sourceLine}</Text>
+      ) : null}
+
+      {insights.map((item, idx) => {
+        const isLast = idx === insights.length - 1;
+        return (
+          <View
+            key={item.id}
+            style={[styles.aiInsightCard, isLast ? styles.aiInsightCardLast : {}]}
+            wrap={false}
+          >
+            <View style={styles.aiInsightHeaderRow}>
+              <Text style={styles.aiInsightNumber}>
+                {String(idx + 1).padStart(2, "0")}
+              </Text>
+              <Text style={styles.aiInsightTitle}>{item.title}</Text>
+            </View>
+            <Text style={styles.aiInsightBody}>{item.body}</Text>
+            <Text style={styles.aiInsightConfidence}>
+              Confiança: {item.confidence}
+            </Text>
+          </View>
+        );
+      })}
+
+      <PageFooter generatedAt={generatedAt} />
+    </Page>
+  );
+}
+
+function RecommendationsPage({
+  profile,
+  recommendations,
+  generatedAt,
+  hasAiInsights = false,
+}: {
+  profile: PublicAnalysisProfile;
+  recommendations: PdfRecommendation[];
+  generatedAt: string;
+  hasAiInsights?: boolean;
+}) {
+  // When the AI "Leitura estratégica" page is present, demote the
+  // deterministic page to a complementary checklist so the two sections
+  // do not compete for the same editorial weight.
+  const sectionTitle = hasAiInsights
+    ? "Próximos passos"
+    : "Recomendações";
+  const sectionHeading = hasAiInsights
+    ? "Checklist editorial complementar"
+    : "Próximos passos prioritários";
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader kicker={`@${profile.username}`} />
+
+      <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+      <Text style={styles.sectionHeading}>{sectionHeading}</Text>
       <Text style={styles.sectionLead}>
         Sugestões editoriais derivadas dos dados deste relatório, ordenadas
         por impacto esperado. Cada recomendação resulta de heurísticas
@@ -557,9 +662,13 @@ function _ReportDocumentImpl(input: ReportDocumentInput) {
     avatarDataUrl,
     topPosts,
     recommendations,
+    aiInsights,
+    aiInsightsModel,
+    aiInsightsGeneratedAt,
     analyzedAt,
     generatedAt,
   } = input;
+  const hasAiInsights = Array.isArray(aiInsights) && aiInsights.length > 0;
 
   return (
     <Document
@@ -601,11 +710,21 @@ function _ReportDocumentImpl(input: ReportDocumentInput) {
           generatedAt={generatedAt}
         />
       ) : null}
+      {hasAiInsights ? (
+        <AiInsightsPage
+          profile={profile}
+          insights={aiInsights!}
+          model={aiInsightsModel ?? null}
+          insightsGeneratedAt={aiInsightsGeneratedAt ?? null}
+          generatedAt={generatedAt}
+        />
+      ) : null}
       {recommendations && recommendations.length >= 4 ? (
         <RecommendationsPage
           profile={profile}
           recommendations={recommendations}
           generatedAt={generatedAt}
+          hasAiInsights={hasAiInsights}
         />
       ) : null}
     </Document>
