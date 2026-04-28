@@ -1,86 +1,122 @@
-# Endurecer a leitura de DATAFORSEO_ENABLED e DATAFORSEO_TESTING_MODE
+## Goal
 
-## Objetivo
+Make `/api/market-signals` return accurate, UI-safe status semantics so the public report can decide whether to render or hide the "Sinais de Mercado" section. No provider calls, no schema changes, no UI changes.
 
-Eliminar a fragilidade da comparação literal `=== "true"` que está a fazer com que o runtime devolva `status: "disabled"` mesmo quando o secret `DATAFORSEO_ENABLED` está definido. Mantém-se a semântica: continua a ser preciso um valor explícito `true` para ativar, mas passa a tolerar espaços acidentais e variações de maiúsculas/minúsculas.
+## Files to modify
 
-A mesma normalização defensiva é aplicada a `DATAFORSEO_TESTING_MODE`, que continua ON por omissão e só fica OFF quando o valor (após `trim().toLowerCase()`) for exatamente `"false"`.
+1. `src/lib/dataforseo/market-signals.ts` — orchestration + status derivation + error classification
+2. `src/lib/dataforseo/types.ts` — extend `MarketSignalsResult` shape (add `partial`, structured errors, `queries_cap`, `message` on partial/error)
+3. `src/routes/api/market-signals.ts` — no logic changes (already returns whatever the orchestrator produces); only ensure `disabled`/`blocked` envelopes include the same shape (`plan`, `message`)
 
-## Ficheiro alterado (único)
+No DB migrations. No UI. No secret changes. No call to DataForSEO or Apify.
 
-- `src/lib/security/dataforseo-allowlist.ts`
+## Final status rules
 
-Nenhum outro ficheiro é tocado: nem o endpoint `market-signals`, nem código Apify, nem UI do report, nem schema de BD, nem secrets, nem billing, nem PDF/email.
+| Condition | status |
+|---|---|
+| `DATAFORSEO_ENABLED` is not `true` | `disabled` |
+| Owner not in allowlist | `blocked` |
+| No keywords could be derived | `no_keywords` |
+| Hard timeout (60s) | `timeout` |
+| At least one provider call returned a usable result, no errors | `ready` |
+| At least one usable result AND at least one error | `partial` |
+| All provider calls failed, no usable result | `error` |
 
-## Alterações exatas
+"Usable result" definition: the parsed result object is non-null AND (for `trends`: `items` array has length > 0; for `keyword_ideas`: result object exists; for `serp`: at least one entry with non-null `result`).
 
-### 1. `isDataForSeoEnabled()`
+## Error classification
 
-Antes:
+In `buildSignalsInner`, every `catch` will normalise the error via a new helper `classifyError(source, err)` returning:
 
 ```ts
-export function isDataForSeoEnabled(): boolean {
-  return process.env.DATAFORSEO_ENABLED === "true";
+{ source: string; code: string; message: string; httpStatus?: number; apiStatusCode?: number }
+```
+
+Mapping rules (using `DataForSeoUpstreamError` fields already populated by the client):
+- `apiStatusCode === 40104` OR (`httpStatus === 403` AND message matches `/verify your account/i`) → `code: "ACCOUNT_NOT_VERIFIED"`, `message: "A conta DataForSEO ainda não está verificada."`
+- `httpStatus === 401` OR `apiStatusCode === 40101` → `code: "AUTH_FAILED"`, `message: "Credenciais DataForSEO inválidas."`
+- `httpStatus === 429` OR `apiStatusCode === 40202` → `code: "RATE_LIMITED"`, `message: "Limite de pedidos DataForSEO atingido."`
+- `DataForSeoBlockedError` with `reason: "kill_switch"` → `code: "DISABLED"`
+- `DataForSeoBlockedError` with `reason: "allowlist"` → `code: "BLOCKED"`
+- timeout / abort → `code: "TIMEOUT"`
+- anything else → `code: "UNKNOWN"`, message = original error message
+
+`source` will be the call name (`"dataforseo:google_trends"`, `"dataforseo:keyword_ideas"`, `"dataforseo:serp_organic:<keyword>"`).
+
+## Status derivation
+
+After running all attempted calls, count:
+- `usable` = number of non-null results that pass the "usable" check above
+- `attempted` = number of calls actually issued (`used`)
+- `failed` = `errors.length`
+
+Rules:
+- `attempted === 0` → keep current behaviour (`no_keywords` already short-circuits earlier; otherwise treat as `error`)
+- `usable === 0 && failed > 0` → `error` with `message: "Não foi possível obter sinais de mercado nesta tentativa."`
+- `usable > 0 && failed === 0` → `ready`
+- `usable > 0 && failed > 0` → `partial` with `message: "Sinais de mercado parciais — algumas fontes falharam."`
+
+## Type changes (`src/lib/dataforseo/market-signals.ts`)
+
+Replace `MarketSignalsOk` with two-shape envelope:
+
+```ts
+export interface ClassifiedError {
+  source: string;
+  code: "ACCOUNT_NOT_VERIFIED" | "AUTH_FAILED" | "RATE_LIMITED"
+      | "DISABLED" | "BLOCKED" | "TIMEOUT" | "UNKNOWN";
+  message: string;
+  httpStatus?: number;
+  apiStatusCode?: number;
+}
+
+export interface MarketSignalsReady {
+  status: "ready" | "partial";
+  plan: MarketSignalsPlan;
+  keywords: string[];
+  trends?: GoogleTrendsResult | null;
+  keyword_ideas?: KeywordIdeasResult | null;
+  serp?: Array<{ keyword: string; result: SerpOrganicResult | null }>;
+  queries_used: number;
+  queries_cap: number;
+  errors: ClassifiedError[];
+  message?: string;
+}
+
+export interface MarketSignalsFail {
+  status: "disabled" | "blocked" | "no_keywords" | "timeout" | "error";
+  plan: MarketSignalsPlan;
+  message: string;
+  queries_used?: number;
+  queries_cap?: number;
+  errors?: ClassifiedError[];
 }
 ```
 
-Depois:
+The `error` envelope (only emitted when all calls failed) will include `errors`, `queries_used`, `queries_cap`, `plan`, and the required `message`.
 
-```ts
-export function isDataForSeoEnabled(): boolean {
-  return (process.env.DATAFORSEO_ENABLED ?? "").trim().toLowerCase() === "true";
-}
-```
+## Endpoint envelope alignment
 
-### 2. `isTestingModeActive()`
+In `src/routes/api/market-signals.ts`, the `disabled` and `blocked` short-circuit responses already include `status`, `plan`, `message` — keep as-is. No code change there.
 
-Antes:
+## Validation
 
-```ts
-export function isTestingModeActive(): boolean {
-  // Default ON. Operator must explicitly set "false" to disable.
-  return process.env.DATAFORSEO_TESTING_MODE !== "false";
-}
-```
+1. `bunx tsc --noEmit`
+2. `bun run build`
+3. No fetch to DataForSEO or Apify; verified by inspecting diff.
+4. No SQL / migration / secret changes.
 
-Depois:
+## Out of scope (explicit)
 
-```ts
-export function isTestingModeActive(): boolean {
-  // Default ON. Operator must explicitly set "false" (case-insensitive,
-  // tolerant to surrounding whitespace) to disable.
-  return (process.env.DATAFORSEO_TESTING_MODE ?? "").trim().toLowerCase() !== "false";
-}
-```
+- UI rendering of the new statuses (will be handled in a follow-up).
+- Caching layer.
+- `/report/example`, Apify pipeline, secrets, billing.
 
-O comentário de cabeçalho do ficheiro (linha 8) é atualizado para refletir a nova tolerância:
+## Summary of behaviour after fix
 
-> `Hard kill-switch: DATAFORSEO_ENABLED (must equal "true", case-insensitive, whitespace-tolerant).`
-
-## O que NÃO muda
-
-- `parseAllowlist()`, `getAllowlist()`, `isAllowed()` ficam exatamente iguais.
-- Semântica do `DATAFORSEO_ALLOWLIST`: inalterada.
-- `DATAFORSEO_LOGIN` / `DATAFORSEO_PASSWORD`: não tocados.
-- Endpoint `/api/market-signals`: não tocado.
-- Código Apify, UI do report, schema, secrets, billing, PDF, email: não tocados.
-
-## Validação
-
-1. `bunx tsc --noEmit` — confirmar que tipos continuam válidos.
-2. `bun run build` — confirmar que build passa (executado automaticamente pela harness).
-3. Sem chamadas a DataForSEO.
-4. Sem chamadas a Apify.
-5. Sem inserts/updates em `provider_call_logs`.
-
-## Checkpoint
-
-- ☐ `src/lib/security/dataforseo-allowlist.ts` editado (apenas as 2 funções + comentário de cabeçalho).
-- ☐ `bunx tsc --noEmit` ok.
-- ☐ Build ok.
-- ☐ Nenhuma chamada a provider feita.
-- ☐ Reportar ao utilizador: ficheiros alterados, diff exato, e confirmação de zero chamadas a providers.
-
-## Próximo passo (após aprovação)
-
-Aplicar a alteração e correr a validação. Depois disso, o utilizador pode pedir novamente o smoke test single-shot do `/api/market-signals` para confirmar que o kill-switch deixa de devolver `disabled` por causa de whitespace/casing no secret.
+For the current failing scenario (DataForSEO 403 / `40104`, no usable trend data):
+- response `status` = `"error"`
+- `errors[0]` = `{ source: "dataforseo:google_trends", code: "ACCOUNT_NOT_VERIFIED", message: "A conta DataForSEO ainda não está verificada.", httpStatus: 403, apiStatusCode: 40104 }`
+- `message` = `"Não foi possível obter sinais de mercado nesta tentativa."`
+- `queries_used`, `queries_cap`, `plan` included
+- Public UI can safely hide the section on `disabled | blocked | error | timeout | no_keywords`.
