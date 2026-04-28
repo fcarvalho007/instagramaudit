@@ -156,6 +156,37 @@ export interface ReportCoverage {
 export interface AdapterResult {
   data: ReportData;
   coverage: ReportCoverage;
+  enriched: ReportEnriched;
+}
+
+/**
+ * Bloco enriquecido com dados já presentes no snapshot que não cabem no
+ * contrato locked `ReportData`. Consumido por componentes companion em
+ * `/analyze/$username` (nunca em `/report/example`).
+ */
+export interface ReportEnriched {
+  profile: {
+    bio: string | null;
+    avatarUrl: string | null;
+    profileUrl: string;
+  };
+  topPosts: Array<{
+    id: string;
+    permalink: string | null;
+    shortcode: string | null;
+    caption: string;
+    format: "Reel" | "Carousel" | "Imagem";
+    likes: number;
+    comments: number;
+    engagementPct: number;
+    date: string;
+    mentions: string[];
+  }>;
+  mentionsSummary: Array<{ handle: string; count: number }>;
+  benchmarkSource: {
+    datasetVersion: string | null;
+    note: string;
+  };
 }
 
 // ============================================================================
