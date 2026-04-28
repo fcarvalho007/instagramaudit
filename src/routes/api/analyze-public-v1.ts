@@ -61,6 +61,9 @@ import { computeBenchmarkPositioning } from "@/lib/benchmark/engine";
 import type { BenchmarkData } from "@/lib/benchmark/reference-data";
 import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
+import { generateInsights } from "@/lib/insights/openai-insights.server";
+import type { AiInsightsV1, InsightsContext } from "@/lib/insights/types";
+import { isOpenAiAllowed } from "@/lib/security/openai-allowlist";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -578,12 +581,96 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             primaryPosts,
             primaryProfile.followers_count,
           );
+
+          // Compute benchmark positioning early so it can be embedded both
+          // in the AI insights context (when we call OpenAI) and in the
+          // public response below. Same dataset, single source of truth.
+          const benchmarkPositioningEarly: BenchmarkPositioning =
+            computeBenchmarkPositioning(
+              {
+                followers: primaryProfile.followers_count,
+                engagement: primarySummary.average_engagement_rate,
+                dominantFormat: primarySummary.dominant_format,
+              },
+              benchmarkData,
+            );
+
+          // ─── OpenAI insights (gated, fresh-only, best-effort) ─────────
+          // Triple-gated inside `generateInsights`: OPENAI_ENABLED kill
+          // switch + testing-mode allowlist + OPENAI_API_KEY presence.
+          // We pre-check `isOpenAiAllowed` here purely to skip the work of
+          // building the InsightsContext when the call would be refused.
+          // Cache hits never reach this block — they return early above.
+          let aiInsights: AiInsightsV1 | null = null;
+          if (isOpenAiAllowed(primaryProfile.username)) {
+            try {
+              const successfulCompetitorsForAi = competitorResults.filter(
+                (c): c is Extract<CompetitorAnalysis, { success: true }> =>
+                  c.success,
+              );
+              const competitorEngagements = successfulCompetitorsForAi
+                .map((c) => c.content_summary.average_engagement_rate)
+                .filter((n) => Number.isFinite(n) && n > 0);
+              const medianEngagement =
+                competitorEngagements.length > 0
+                  ? (() => {
+                      const sorted = [...competitorEngagements].sort(
+                        (a, b) => a - b,
+                      );
+                      const mid = Math.floor(sorted.length / 2);
+                      return sorted.length % 2 === 0
+                        ? (sorted[mid - 1] + sorted[mid]) / 2
+                        : sorted[mid];
+                    })()
+                  : null;
+              const topPostsForAi = [...primaryEnriched.posts]
+                .sort((a, b) => b.engagement_pct - a.engagement_pct)
+                .slice(0, 3)
+                .map((p) => ({
+                  format: p.format,
+                  likes: p.likes,
+                  comments: p.comments,
+                  engagement_pct: p.engagement_pct,
+                  caption_excerpt: p.caption ?? "",
+                }));
+              const ctx: InsightsContext = {
+                profile: primaryProfile,
+                content_summary: primarySummary,
+                top_posts: topPostsForAi,
+                benchmark: benchmarkPositioningEarly,
+                competitors_summary: {
+                  count: successfulCompetitorsForAi.length,
+                  median_engagement_pct: medianEngagement,
+                },
+                // Market signals (free / paid SERP) are not yet wired into
+                // the analyze flow — flagged false until that pipeline
+                // lands. The schema reserves these fields so we can flip
+                // them on without re-shaping `ai_insights_v1`.
+                market_signals: { has_free: false, has_paid: false },
+              };
+              const result = await generateInsights(ctx);
+              if (result.ok && result.insights) {
+                aiInsights = result.insights;
+              } else if (result.reason && result.reason !== "DISABLED" && result.reason !== "NOT_ALLOWED") {
+                console.warn(
+                  "[analyze-public-v1] generateInsights soft-failed",
+                  result.reason,
+                  result.detail ?? "",
+                );
+              }
+            } catch (err) {
+              // Hard guarantee: AI insights never break the analysis.
+              console.error("[analyze-public-v1] generateInsights threw", err);
+            }
+          }
+
           const normalizedPayload = {
             profile: primaryProfile,
             content_summary: primarySummary,
             competitors: competitorResults,
             posts: primaryEnriched.posts,
             format_stats: primaryEnriched.format_stats,
+            ...(aiInsights ? { ai_insights_v1: aiInsights } : {}),
           };
 
           const snapshotId = await storeSnapshot({
@@ -596,18 +683,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             >,
           });
 
-          // Compute benchmark positioning server-side using the cloud
-          // dataset, so the dashboard renders the same numbers regardless
-          // of where it runs (browser, future PDF, future email).
-          const benchmarkPositioning: BenchmarkPositioning =
-            computeBenchmarkPositioning(
-              {
-                followers: primaryProfile.followers_count,
-                engagement: primarySummary.average_engagement_rate,
-                dominantFormat: primarySummary.dominant_format,
-              },
-              benchmarkData,
-            );
+          // Reuse the positioning already computed above for the AI
+          // context — single source of truth, no duplicate dataset reads.
+          const benchmarkPositioning: BenchmarkPositioning = benchmarkPositioningEarly;
 
           const response: PublicAnalysisSuccess = {
             success: true,
