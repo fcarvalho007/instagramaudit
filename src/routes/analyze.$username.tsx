@@ -173,7 +173,7 @@ function AnalyzePage() {
         <CoverageStrip result={state.result} />
         <TierStrip />
         <BetaStrip />
-        <ReportShareActions variant="compact" />
+        <ReportShareActions variant="compact" snapshotId={state.snapshotId} />
         <ReportEnrichedBio
           enriched={state.result.enriched}
           username={state.result.data.profile.username}
@@ -187,7 +187,7 @@ function AnalyzePage() {
         ) : null}
         <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
         <TierComparisonBlock />
-        <ReportShareActions variant="default" />
+        <ReportShareActions variant="default" snapshotId={state.snapshotId} />
         <BetaFeedbackBlock />
       </div>
       <Toaster />
