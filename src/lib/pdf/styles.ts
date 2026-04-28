@@ -398,6 +398,46 @@ export const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  // Recommendations cards
+  recoCard: {
+    borderWidth: 1,
+    borderColor: PDF_COLORS.divider,
+    borderLeftWidth: 3,
+    borderLeftColor: PDF_COLORS.accent,
+    borderRadius: 4,
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingLeft: 14,
+    paddingRight: 14,
+    marginBottom: 10,
+  },
+  recoCardLast: {
+    marginBottom: 0,
+  },
+  recoHeaderRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 10,
+    marginBottom: 6,
+  },
+  recoNumber: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    letterSpacing: 1,
+    color: PDF_COLORS.accent,
+  },
+  recoTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12,
+    color: PDF_COLORS.ink,
+    flex: 1,
+  },
+  recoBody: {
+    fontSize: 10,
+    lineHeight: 1.5,
+    color: PDF_COLORS.inkSoft,
+  },
+
   // Footer (fixed)
   footer: {
     position: "absolute",
