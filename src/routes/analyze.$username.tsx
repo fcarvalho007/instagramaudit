@@ -5,17 +5,15 @@ import { AnalysisErrorState } from "@/components/product/analysis-error-state";
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
 import { ReportPage } from "@/components/report/report-page";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { TierStrip } from "@/components/report-tier/tier-strip";
+import { ScopeStrip } from "@/components/report-tier/scope-strip";
 import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-block";
 import { ReportMarketSignals } from "@/components/report-market-signals/report-market-signals";
-import { BetaStrip } from "@/components/report-beta/beta-strip";
-import { BetaFeedbackBlock } from "@/components/report-beta/beta-feedback-block";
 import { ReportEnrichedBio } from "@/components/report-enriched/report-enriched-bio";
 import { ReportEnrichedBenchmarkSource } from "@/components/report-enriched/report-enriched-benchmark-source";
 import { ReportEnrichedTopLinks } from "@/components/report-enriched/report-enriched-top-links";
 import { ReportEnrichedMentions } from "@/components/report-enriched/report-enriched-mentions";
 import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/report-enriched-competitors-cta";
-import { ReportShareActions } from "@/components/report-share/report-share-actions";
+import { ReportFinalBlock } from "@/components/report-share/report-final-block";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
@@ -170,15 +168,15 @@ function AnalyzePage() {
   return (
     <ReportThemeWrapper>
       <div className="bg-surface-base min-h-screen">
-        <CoverageStrip result={state.result} />
-        <TierStrip />
-        <BetaStrip />
-        <ReportShareActions variant="compact" snapshotId={state.snapshotId} />
+        {/* 1. Perfil + métricas primeiro — utilizador chega depressa aos dados */}
         <ReportEnrichedBio
           enriched={state.result.enriched}
           username={state.result.data.profile.username}
         />
+        <CoverageStrip result={state.result} />
         <ReportPage data={state.result.data} />
+
+        {/* 2. Camadas enriquecidas */}
         <ReportEnrichedBenchmarkSource enriched={state.result.enriched} />
         <ReportEnrichedTopLinks enriched={state.result.enriched} />
         <ReportEnrichedMentions enriched={state.result.enriched} />
@@ -186,9 +184,13 @@ function AnalyzePage() {
           <ReportEnrichedCompetitorsCta />
         ) : null}
         <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
+
+        {/* 3. Posicionamento + comparação Free vs Pro */}
+        <ScopeStrip />
         <TierComparisonBlock />
-        <ReportShareActions variant="default" snapshotId={state.snapshotId} />
-        <BetaFeedbackBlock />
+
+        {/* 4. Bloco final único: PDF como deliverable + partilha + feedback */}
+        <ReportFinalBlock snapshotId={state.snapshotId} />
       </div>
       <Toaster />
     </ReportThemeWrapper>
