@@ -126,14 +126,15 @@ export function ReportFinalBlock({
 
       // Tentamos sempre fazer parse do JSON — o endpoint devolve
       // `error_code` em pt-PT mesmo nas respostas 4xx/5xx.
-      let body: {
+      type PdfResponseBody = {
         success?: boolean;
         signed_url?: string;
         cached?: boolean;
         error_code?: string;
-      } | null = null;
+      };
+      let body: PdfResponseBody | null = null;
       try {
-        body = (await res.json()) as typeof body;
+        body = (await res.json()) as PdfResponseBody;
       } catch {
         body = null;
       }
