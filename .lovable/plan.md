@@ -1,83 +1,42 @@
-# Ações de partilha do relatório público
+# Plan — Consolidate sharing actions on `/analyze/$username`
 
-Adicionar um grupo compacto de ações de partilha em `/analyze/$username`, presente no topo (logo abaixo da `BetaStrip`) e no fim (junto ao `BetaFeedbackBlock`). Sem billing, sem PDF real, sem providers.
+## Context
 
-## Nota sobre ficheiros locked
+The auditing in the previous turn confirmed that the share actions feature is already fully implemented and integrated:
 
-`__root.tsx` e `app-shell.tsx` estão **locked**, portanto o `<Toaster />` da Sonner **não pode ser montado globalmente**. Solução: montar o `<Toaster />` localmente dentro de `/analyze/$username` (rota não locked). Os toasts ficam disponíveis apenas nesta rota — exatamente onde precisamos.
+- `src/components/report-share/share-copy.ts` ✔ exists with the exact pt-PT copy specified.
+- `src/components/report-share/report-share-actions.tsx` ✔ exists with Copy / LinkedIn / disabled PDF + sonner toasts.
+- `src/routes/analyze.$username.tsx` ✔ already mounts `<Toaster />` and renders `ReportShareActions` in `compact` (after BetaStrip) and `default` (before BetaFeedbackBlock) variants.
 
-## Ficheiros a criar
+The only outstanding requirement from this prompt is **point 8 — avoid duplicated LinkedIn CTAs**. The audit identified that `BetaFeedbackBlock` still renders its own "Partilhar no LinkedIn" button, which appears immediately below the new `ReportShareActions variant="default"` block, creating two visible LinkedIn buttons within ~1 viewport.
 
-### `src/components/report-share/share-copy.ts`
-Copy pt-PT centralizado:
+## Change
 
-```ts
-export const SHARE_COPY = {
-  eyebrow: "Partilhar relatório",
-  actions: {
-    copy: { label: "Copiar link", labelDone: "Link copiado" },
-    linkedin: { label: "Partilhar no LinkedIn" },
-    pdf: { label: "Pedir versão PDF", note: "Em breve" },
-  },
-  toast: {
-    success: "Link copiado para a área de transferência.",
-    error: "Não foi possível copiar o link. Copia manualmente da barra do navegador.",
-  },
-} as const;
-```
+**Single file edit:** `src/components/report-beta/beta-feedback-block.tsx`
 
-### `src/components/report-share/report-share-actions.tsx`
-Componente reutilizável com três botões em linha (mobile-first stack vertical em `<sm`):
+Remove the LinkedIn `<a>` action from the actions row, leaving only:
 
-- **Copiar link** — chama `navigator.clipboard.writeText(url)`. Em sucesso, mostra `toast.success(SHARE_COPY.toast.success)` + flip temporário do label para "Link copiado" durante 2s. Em falha (HTTPS/permissão), `toast.error(...)`.
-- **Partilhar no LinkedIn** — `<a target="_blank" rel="noopener noreferrer">` para `https://www.linkedin.com/sharing/share-offsite/?url={encoded}`.
-- **Pedir versão PDF** — `<button disabled>` com badge "Em breve" e cursor `not-allowed`. Não chama nada.
+- "Dar feedback"
+- "Quero acesso Pro"
 
-Props: `{ variant?: "compact" | "default" }` para permitir versão mais densa no topo (sem eyebrow visível ou só com texto inline) e completa no fim. URL resolvida em runtime via `window.location.href` (rota é `ssr: false`).
+Also remove the now-unused `resolvedUrl` / `linkedInHref` runtime resolution and the `useEffect` + `useState` imports, since they only existed to power that LinkedIn button. The `reportUrl` prop becomes unused — remove it from the component signature and from the route call site (no current caller passes it, so this is purely cleanup).
 
-Visual: pills com `border-border-subtle/60` para o secundário, `border-accent-primary/40 text-accent-primary` para o primário (Copiar). Tokens existentes apenas. Ícones `lucide-react` (`Link2`, `Linkedin`, `FileDown`, `Check`).
+The `BETA_COPY.feedback.actions.share` entry in `src/components/report-beta/beta-copy.ts` becomes orphaned. Leave it in place to keep the copy file as a single source of truth (zero runtime cost), or remove it — implementer's choice. Default: leave it, since other beta copy lives there.
 
-## Ficheiro a editar
+## Why this approach
 
-### `src/routes/analyze.$username.tsx`
-- Importar `Toaster` de `@/components/ui/sonner` e montá-lo dentro do `<ReportThemeWrapper>` (uma só vez, no fundo da árvore para não interferir com layout).
-- Importar `ReportShareActions` e inserir:
-  - **Topo**: imediatamente após `<BetaStrip />` e antes do `<ReportEnrichedBio />`, variant `compact`.
-  - **Fim**: imediatamente após `<TierComparisonBlock />` e antes do `<BetaFeedbackBlock />`, variant `default`.
+- Keeps `ReportShareActions` as the single canonical share surface (top + bottom of the report).
+- `BetaFeedbackBlock` reverts to its true purpose: feedback + Pro interest signal.
+- No new components, no token changes, no provider calls, no schema changes.
+- `/report/example` and all locked files untouched.
 
-## Fora de âmbito (intocado)
+## Files
 
-- `/report/example` e todos os componentes locked.
-- `__root.tsx`, `app-shell.tsx` (Toaster montado localmente).
-- `BetaFeedbackBlock` mantém o seu próprio botão LinkedIn — não duplico nem removo. As novas ações são uma camada paralela, mais explícita.
-- Providers (Apify, DataForSEO, OpenAI), cache, custos, admin.
-- PDF real, email, billing.
+- **Edit:** `src/components/report-beta/beta-feedback-block.tsx` — remove LinkedIn button, simplify component (drop `useState`/`useEffect`/`reportUrl` prop).
 
-## Decisão sobre PDF (para a próxima task)
-
-Concordo com a tua sugestão: **versão própria para A4** (`@react-pdf/renderer` ou similar via edge function), não exportação do layout web. O layout actual usa charts SVG, gradientes, sticky headers e larguras fluídas que não traduzem bem para A4 portrait. Quando avançarmos com PDF, proponho:
-
-- Documento A4 em 3-4 páginas: capa (perfil + KPIs), benchmark + format breakdown, top posts + heatmap, recomendações.
-- Tipografia Fraunces/Inter embebida.
-- Sem charts interativos — gráficos renderizados como SVG estático.
-- Cache no Storage por `snapshotId` (igual à lógica do market-signals).
-
-## Validação
+## Validation
 
 - `bunx tsc --noEmit`
 - `bun run build`
-- "Copiar link" copia e dispara toast.
-- "Partilhar no LinkedIn" abre o share intent correto numa nova janela.
-- `/report/example` continua intocado.
-- Sem chamadas a Apify, DataForSEO, OpenAI, PDF ou email.
-
-## Checkpoint
-
-- ☐ `src/components/report-share/share-copy.ts` criado (pt-PT)
-- ☐ `src/components/report-share/report-share-actions.tsx` criado, copy + LinkedIn + PDF disabled
-- ☐ `<Toaster />` montado localmente em `analyze.$username.tsx`
-- ☐ `ReportShareActions` inserido no topo (compact) e no fim (default)
-- ☐ `bunx tsc --noEmit` passa
-- ☐ `bun run build` passa
-- ☐ `/report/example` inalterado
-- ☐ Sem chamadas a providers
+- Visual: load `/analyze/<any>` → exactly one "Partilhar no LinkedIn" button visible (inside `ReportShareActions default`), and `BetaFeedbackBlock` shows only Feedback + Pro actions.
+- No provider calls (Apify/DataForSEO/OpenAI/PDF/email) introduced or removed by this change.
