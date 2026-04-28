@@ -7,6 +7,7 @@ import { ReportPage } from "@/components/report/report-page";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { TierStrip } from "@/components/report-tier/tier-strip";
 import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-block";
+import { ReportMarketSignals } from "@/components/report-market-signals/report-market-signals";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
   snapshotToReportData,
@@ -76,7 +77,7 @@ interface SnapshotResponse {
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; result: AdapterResult };
+  | { status: "ready"; result: AdapterResult; snapshotId: string };
 
 function AnalyzePage() {
   const { username } = Route.useParams();
@@ -130,7 +131,7 @@ function AnalyzePage() {
         benchmark: body.snapshot.benchmark,
         isAdminPreview: false,
       });
-      setState({ status: "ready", result });
+      setState({ status: "ready", result, snapshotId: body.snapshot.id });
     } catch {
       setState({
         status: "error",
@@ -163,6 +164,7 @@ function AnalyzePage() {
         <CoverageStrip result={state.result} />
         <TierStrip />
         <ReportPage data={state.result.data} />
+        <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
         <TierComparisonBlock />
       </div>
     </ReportThemeWrapper>
