@@ -22,6 +22,10 @@ import type {
 } from "@/lib/analysis/types";
 
 import { ReportDocument, type TopPostForPdf } from "./report-document";
+import {
+  buildRecommendations,
+  type RecommendationInput,
+} from "./recommendations";
 
 /**
  * Loose typing for raw posts coming from `analysis_snapshots.normalized_payload.posts[]`.
@@ -38,6 +42,7 @@ interface SnapshotPostLoose {
   likes?: number | null;
   comments?: number | null;
   engagement_pct?: number | null;
+  hashtags?: string[] | null;
 }
 
 interface NormalizedSnapshotPayload {
@@ -46,6 +51,19 @@ interface NormalizedSnapshotPayload {
   competitors: CompetitorAnalysis[];
   /** Optional — present in real Apify snapshots, absent in legacy ones. */
   posts?: SnapshotPostLoose[] | null;
+  /**
+   * Optional per-format aggregates keyed by raw snapshot label
+   * (e.g. "Reels", "Carrosséis", "Imagens"). Used by the recommendations
+   * engine; absent in legacy snapshots.
+   */
+  format_stats?: Record<
+    string,
+    {
+      count?: number | null;
+      share_pct?: number | null;
+      avg_engagement_pct?: number | null;
+    }
+  > | null;
 }
 
 interface RenderArgs {
