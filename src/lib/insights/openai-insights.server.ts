@@ -200,7 +200,9 @@ export async function generateInsights(
       body: JSON.stringify({
         model,
         temperature: TEMPERATURE,
-        max_tokens: MAX_OUTPUT_TOKENS,
+        // GPT-5 family (incl. gpt-5.4-nano) only accepts max_completion_tokens.
+        // Older 4.x models also accept this name, so it is safe across the board.
+        max_completion_tokens: MAX_OUTPUT_TOKENS,
         response_format: { type: "json_schema", json_schema: RESPONSE_JSON_SCHEMA },
         messages: [
           { role: "system", content: INSIGHTS_SYSTEM_PROMPT },

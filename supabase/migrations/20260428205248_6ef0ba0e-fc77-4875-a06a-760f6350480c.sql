@@ -1,0 +1,1 @@
+DELETE FROM public.analysis_snapshots WHERE instagram_username = 'frederico.m.carvalho';
