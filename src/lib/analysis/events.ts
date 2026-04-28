@@ -108,6 +108,7 @@ export interface RecordProviderCallInput {
   durationMs?: number | null;
   postsReturned?: number;
   estimatedCostUsd?: number | null;
+  actualCostUsd?: number | null;
   apifyRunId?: string | null;
   errorMessage?: string | null;
 }
@@ -132,6 +133,7 @@ export async function recordProviderCall(
         duration_ms: input.durationMs ?? null,
         posts_returned: input.postsReturned ?? 0,
         estimated_cost_usd: input.estimatedCostUsd ?? null,
+        actual_cost_usd: input.actualCostUsd ?? null,
         apify_run_id: input.apifyRunId ?? null,
         error_excerpt: input.errorMessage
           ? sanitizeErrorExcerpt(input.errorMessage)

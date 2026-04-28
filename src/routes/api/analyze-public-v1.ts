@@ -17,7 +17,7 @@ import { z } from "zod";
 import {
   ApifyConfigError,
   ApifyUpstreamError,
-  runActor,
+  runActorWithMetadata,
 } from "@/lib/analysis/apify-client";
 import {
   buildCacheKey,
@@ -151,8 +151,12 @@ function competitorFailure(
  */
 async function fetchProfileWithPosts(
   username: string,
-): Promise<Record<string, unknown> | null> {
-  const rows = await runActor<Record<string, unknown>>(
+): Promise<{
+  row: Record<string, unknown> | null;
+  runId: string | null;
+  actualCostUsd: number | null;
+}> {
+  const result = await runActorWithMetadata<Record<string, unknown>>(
     UNIFIED_ACTOR,
     {
       directUrls: [`https://www.instagram.com/${username}/`],
@@ -170,7 +174,11 @@ async function fetchProfileWithPosts(
       maxTotalChargeUsd: 0.10,
     },
   );
-  return rows[0] ?? null;
+  return {
+    row: result.items[0] ?? null,
+    runId: result.runId,
+    actualCostUsd: result.actualCostUsd,
+  };
 }
 
 /**
@@ -185,7 +193,7 @@ async function fetchProfileWithPostsLogged(username: string): Promise<{
 }> {
   const startedAt = Date.now();
   try {
-    const row = await fetchProfileWithPosts(username);
+    const { row, runId, actualCostUsd } = await fetchProfileWithPosts(username);
     const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
       ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
       : 0;
@@ -201,6 +209,8 @@ async function fetchProfileWithPostsLogged(username: string): Promise<{
       durationMs: Date.now() - startedAt,
       postsReturned: posts,
       estimatedCostUsd,
+      actualCostUsd,
+      apifyRunId: runId,
       httpStatus: 200,
     });
     return { row, error: null, providerCallLogId };
@@ -214,6 +224,12 @@ async function fetchProfileWithPostsLogged(username: string): Promise<{
       httpStatus = err.status;
       status = err.status === 504 ? "timeout" : "http_error";
     }
+    // If the run was started but failed mid-flight, the thrown error carries
+    // the partial runId / actualCostUsd so we still log the real Apify run.
+    const partial = err as ApifyUpstreamError & {
+      runId?: string;
+      actualCostUsd?: number;
+    };
     const providerCallLogId = await recordProviderCall({
       actor: UNIFIED_ACTOR,
       handle: username,
@@ -221,6 +237,11 @@ async function fetchProfileWithPostsLogged(username: string): Promise<{
       durationMs: Date.now() - startedAt,
       postsReturned: 0,
       estimatedCostUsd: 0,
+      actualCostUsd:
+        typeof partial.actualCostUsd === "number"
+          ? partial.actualCostUsd
+          : null,
+      apifyRunId: partial.runId ?? null,
       httpStatus,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
