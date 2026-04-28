@@ -1,114 +1,75 @@
-# Pré-smoke OpenAI — alinhamento e secrets
+# Abrir análise pública a qualquer perfil Instagram
 
-## Auditoria do estado actual
+## Diagnóstico
 
-Verifiquei os 4 pontos que levantaste contra o código e a base de dados.
+A mensagem "Análise indisponível — este teste está limitado aos perfis definidos" vem de `/api/public/analyze-public-v1` quando o handle não está na allowlist do **Apify** (não do OpenAI). Confirmado em:
 
-### 1. Migração `provider_call_logs` — JÁ APLICADA ✅
+- `src/routes/api/analyze-public-v1.ts:94` — texto da mensagem (`PROFILE_NOT_ALLOWED`).
+- `src/routes/api/analyze-public-v1.ts:355-373` — gate que rejeita o pedido antes de qualquer chamada ao provider.
+- `src/lib/security/apify-allowlist.ts:27-29` — `isTestingModeActive()` devolve `true` por defeito (`APIFY_TESTING_MODE !== "false"`).
 
-```sql
-SELECT column_name FROM information_schema.columns
-WHERE table_name='provider_call_logs'
-  AND column_name IN ('model','prompt_tokens','completion_tokens','total_tokens');
-```
+O secret `APIFY_ALLOWLIST` actualmente só inclui `frederico.m.carvalho`, por isso qualquer outro username é bloqueado em modo "testing".
 
-Resultado:
+## Implicações de abrir a qualquer perfil
 
-```text
-completion_tokens | integer
-model             | text
-prompt_tokens     | integer
-total_tokens      | integer
-```
+Tirar a allowlist significa que **qualquer visitante anónimo** que entre em `/` e escreva um username vai disparar uma chamada paga ao Apify. Antes de fazer o flip, há três salvaguardas a confirmar:
 
-Foi aplicada no prompt anterior (`20260428174855_…sql`). **Nenhuma migração nova é necessária.** O log de custo está pronto a receber dados quando o OpenAI for ligado.
+1. **Custo por análise**: cada run do `apify/instagram-scraper` com `POSTS_LIMIT=12` para 1 perfil + até 2 concorrentes custa tipicamente entre $0.01–$0.05 (estimativa registada em `provider_call_logs.estimated_cost_usd`).
+2. **Cache**: snapshots frescos são reutilizados durante o TTL — pedidos repetidos do mesmo handle não voltam a custar.
+3. **Kill-switch**: `APIFY_ENABLED` continua a controlar tudo. Em qualquer momento podes pôr `APIFY_ENABLED=false` e o sistema serve só cache/stale.
 
-### 2. Nome do secret — JÁ CORRECTO no código ✅
-
-`rg "OPENAI_MODEL" src/` confirma que **não existe nenhuma referência a `OPENAI_MODEL`**. O código lê:
-
-- `OPENAI_INSIGHTS_MODEL` — em `src/lib/insights/openai-insights.server.ts:135`
-- `OPENAI_ENABLED` / `OPENAI_TESTING_MODE` / `OPENAI_ALLOWLIST` — em `src/lib/security/openai-allowlist.ts`
-- `OPENAI_DAILY_CAP_USD` — em `src/lib/insights/openai-insights.server.ts:52`
-
-O default em `cost.ts` é `gpt-4.1-mini`, alinhado com a tua proposta.
-
-### 3. Tabela de preços `cost.ts`
-
-Anotado como follow-up de revisão pré-produção. Para a fase actual de allowlist controlada com `frederico.m.carvalho` o valor estimado é aceitável. Vai ficar marcado como TODO no admin cockpit, sem alteração agora.
-
-### 4. Mapping para o report web e PDF — JÁ FEITO ✅
-
-- Web: `src/lib/report/snapshot-to-report-data.ts` lê `normalized_payload.ai_insights_v1` (prompt 4).
-- PDF: `src/lib/pdf/render.ts` + `report-document.tsx` adicionam a página "Leitura estratégica" (prompt 5).
-
-Quando o snapshot tiver `ai_insights_v1`, ambas as superfícies activam-se automaticamente. Sem ele, comportamento actual mantém-se.
-
-## Sequência ainda pendente
-
-Dos 8 passos que listaste:
-
-| # | Passo | Estado |
-|---|-------|--------|
-| 1 | Esperar prompt actual | feito |
-| 2 | Validar typecheck/build | a correr neste prompt |
-| 3 | Migração provider_call_logs | **já aplicada** |
-| 4 | Configurar secrets | **pendente — acção do utilizador** |
-| 5 | Smoke test controlado | depois de (4) |
-| 6 | Confirmar `ai_insights_v1` no snapshot | depois de (5) |
-| 7 | Confirmar `provider_call_logs` com tokens/custo | depois de (5) |
-| 8 | Ligar ao report web | **já mapeado**, activa automaticamente |
+O que **não** existe ainda: rate-limit por IP, captcha, ou cap diário de gastos do Apify. O modo "testing" era exactamente esse cap. Tirá-lo é uma decisão consciente.
 
 ## O que este prompt vai fazer
 
-### A. Validação de tipos e build (passo 2)
+### 1. Flip do secret `APIFY_TESTING_MODE` para `false`
 
-```bash
-bunx tsc --noEmit
-```
+Vou pedir-te via `update_secret` para mudar `APIFY_TESTING_MODE` para o valor literal `false`.
 
-Sem alterações de código. Só uma confirmação de que tudo o que foi acumulado nos prompts 1–6 compila limpo.
+Resultado: `isTestingModeActive()` passa a devolver `false`, o gate de allowlist é saltado para o handle primário **e** para concorrentes, e qualquer username Instagram válido (`/^[A-Za-z0-9._]{1,30}$/`) é aceite.
 
-### B. Pedido controlado dos secrets em falta (passo 4)
+### 2. Manter o OpenAI travado à allowlist
 
-Já configurado no projecto: `OPENAI_API_KEY` ✅.
+Decisão importante: o OpenAI continua restrito a `frederico.m.carvalho` via `OPENAI_TESTING_MODE=true` + `OPENAI_ALLOWLIST`. Razões:
 
-Ainda não configurados (todos com kill-switch a "false" por segurança):
+- OpenAI é mais caro por chamada que o Apify (~$0.005–$0.02 por análise com `gpt-4.1-mini`).
+- Os insights ainda não foram validados em volume — abrir agora arrisca alucinações em produtos reais sem revisão humana.
+- O kill-switch `OPENAI_ENABLED` continua em `false` até decidirmos o smoke test.
 
-| Secret | Valor recomendado | Função |
-|---|---|---|
-| `OPENAI_ENABLED` | `false` | Kill-switch hard. Mantém-se em `false` até o smoke test. |
-| `OPENAI_TESTING_MODE` | `true` | Restringe à allowlist. |
-| `OPENAI_ALLOWLIST` | `frederico.m.carvalho` | Único handle autorizado durante a fase beta. |
-| `OPENAI_INSIGHTS_MODEL` | `gpt-4.1-mini` | Modelo. Default do código já é este, mas explícito é melhor. |
-| `OPENAI_DAILY_CAP_USD` | `5` | Tecto de gasto diário (default do código também é 5). |
+A consequência é que perfis novos vão ter:
+- Análise Instagram completa (Apify) ✅
+- Benchmarks e recomendações deterministas ✅
+- Sem secção "Leitura estratégica" gerada por OpenAI (cai para o fallback existente)
 
-**Importante**: vou pedi-los **um a um** com o `add_secret` para garantir que o utilizador valida cada valor. `OPENAI_ENABLED` fica em `false` neste prompt — só é flipado para `true` no prompt seguinte, imediatamente antes do smoke test.
+### 3. Sem alterações de código
 
-### C. Sem migrações, sem código novo, sem chamadas a providers
+A allowlist do Apify é um simples `if (!isAllowed(primary))`. Quando `APIFY_TESTING_MODE=false`, `isAllowed()` devolve `true` para tudo. **Não é preciso mudar nem uma linha.**
 
-Nada de Apify, DataForSEO ou OpenAI durante este prompt. Apenas:
-- typecheck;
-- pedido de secrets via `add_secret`;
-- relatório de o que está pronto e o que falta.
+### 4. Validação manual
 
-## O que NÃO vai fazer (próximo prompt)
+Depois do flip, podes testar imediatamente em `/` com qualquer username (ex.: `cristiano`, `nasa`, `nike`). Se quiseres, posso fazer eu o smoke test invocando `POST /api/public/analyze-public-v1` com um handle real e mostrar a resposta + custo registado em `provider_call_logs`.
 
-- Flip do `OPENAI_ENABLED=true` (depende de aprovação explícita).
-- Smoke test em `frederico.m.carvalho` (passos 5–7).
-- Verificação SQL pós-run em `analysis_snapshots.normalized_payload->'ai_insights_v1'` e `provider_call_logs`.
-- Revisão da tabela de preços `cost.ts` para produção (marcado como TODO admin).
+## O que NÃO vai fazer
+
+- Alterar `APIFY_ENABLED` (já está `true` se quiseste analisar mais perfis — vou confirmar).
+- Mexer em `APIFY_ALLOWLIST` (irrelevante quando testing mode está desligado).
+- Tocar no OpenAI (allowlist e kill-switch ficam exactamente como estão).
+- Adicionar rate-limit ou CAP de custo (proponho como follow-up, não inclui aqui).
+
+## Follow-ups recomendados (próximos prompts, não agora)
+
+1. **Cap diário Apify**: copiar a lógica que já existe para o OpenAI (`OPENAI_DAILY_CAP_USD`) e criar `APIFY_DAILY_CAP_USD`. Quando o ledger acumulado nas últimas 24h ultrapassar o cap, recusar pedidos novos com `PROVIDER_DISABLED`.
+2. **Rate-limit por IP** (`request_ip_hash` já é registado em `analysis_events`): bloquear >5 análises distintas/hora do mesmo hash.
+3. **Detecção de abuso no admin**: alertas quando o mesmo perfil é analisado >10x/dia (sintoma de scraping ou loop).
 
 ## Validação
 
-- `bunx tsc --noEmit` passa.
-- Secrets pedidos via `add_secret`, um a um.
-- Estado final: tudo pronto para correr o smoke test no próximo prompt, basta flipar `OPENAI_ENABLED=true`.
+- Secret `APIFY_TESTING_MODE` actualizado para `false`.
+- `bunx tsc --noEmit` (não há código novo, só por hábito).
+- Smoke test opcional via `invoke-server-function` num handle público (ex.: `nasa`) para confirmar 200 + snapshot + custo registado.
 
 ## Returns
 
-- Confirmação que migração provider_call_logs **já foi aplicada** no prompt anterior.
-- Confirmação que código já usa `OPENAI_INSIGHTS_MODEL`, não `OPENAI_MODEL`.
-- Confirmação que mapping web e PDF já estão prontos.
-- Lista de secrets em falta + pedidos via `add_secret`.
-- Próximo passo único: flip de `OPENAI_ENABLED` para `true` + smoke test.
+- Confirmação de que era a allowlist do Apify, não a do OpenAI, que estava a bloquear.
+- Único passo operacional: actualizar 1 secret.
+- Próximo passo sugerido: ligar cap diário Apify antes de divulgar publicamente.
