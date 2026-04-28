@@ -7,10 +7,10 @@
  * - Loads the snapshot (read-only) from `analysis_snapshots`.
  * - Reuses `renderReportPdf` (same renderer as the email-gated flow).
  * - Caches the resulting PDF inside the existing private `report-pdfs`
- *   bucket under `public/snapshots/<YYYY>/<MM>/<snapshot_id>.pdf` —
+ *   bucket under `reports/snapshots/<YYYY>/<MM>/<snapshot_id>.pdf` —
  *   distinct from the `reports/<YYYY>/<MM>/<report_request_id>.pdf`
  *   layout used by the email-gated flow, so the two flows never collide.
- * - Returns a short-lived signed URL (300s). Bucket stays private.
+ * - Returns a short-lived signed URL (600s / 10 min). Bucket stays private.
  * - Logs the call into `analysis_events` via `record_analysis_event`
  *   so the admin cockpit reflects public PDF usage.
  *
@@ -31,7 +31,7 @@ import {
   uploadReportPdf,
 } from "@/lib/pdf/storage";
 
-const SIGNED_URL_TTL_SECONDS = 300;
+const SIGNED_URL_TTL_SECONDS = 600;
 
 const PayloadSchema = z.object({
   snapshot_id: z.string().uuid(),
@@ -43,7 +43,7 @@ type SuccessBody = {
   pdf_status: "ready";
   signed_url: string;
   expires_in: number;
-  regenerated: boolean;
+  cached: boolean;
 };
 
 type FailureBody = {
@@ -283,7 +283,7 @@ export const Route = createFileRoute("/api/public/public-report-pdf")({
             pdf_status: "ready",
             signed_url: signed.url,
             expires_in: SIGNED_URL_TTL_SECONDS,
-            regenerated: !cached,
+            cached,
           },
           200,
         );
