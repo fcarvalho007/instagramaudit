@@ -325,6 +325,79 @@ export const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
+  // Top posts cards
+  postCard: {
+    borderWidth: 1,
+    borderColor: PDF_COLORS.divider,
+    borderRadius: 6,
+    padding: 14,
+    marginBottom: 12,
+  },
+  postCardLast: {
+    marginBottom: 0,
+  },
+  postMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  postFormatBadge: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: PDF_COLORS.accent,
+    backgroundColor: PDF_COLORS.accentSoft,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 3,
+  },
+  postDate: {
+    fontSize: 9,
+    color: PDF_COLORS.inkMuted,
+    letterSpacing: 0.4,
+  },
+  postCaption: {
+    fontSize: 10,
+    color: PDF_COLORS.inkSoft,
+    lineHeight: 1.5,
+    marginBottom: 10,
+  },
+  postStatsRow: {
+    flexDirection: "row",
+    gap: 16,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: PDF_COLORS.divider,
+  },
+  postStatCell: {
+    flexDirection: "column",
+  },
+  postStatLabel: {
+    fontSize: 7.5,
+    letterSpacing: 1,
+    color: PDF_COLORS.inkMuted,
+    textTransform: "uppercase",
+  },
+  postStatValue: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12,
+    color: PDF_COLORS.ink,
+    marginTop: 2,
+  },
+  postPermalink: {
+    fontSize: 8.5,
+    color: PDF_COLORS.accent,
+    marginTop: 8,
+  },
+  postPermalinkMissing: {
+    fontSize: 8.5,
+    color: PDF_COLORS.inkMuted,
+    fontStyle: "italic",
+    marginTop: 8,
+  },
+
   // Footer (fixed)
   footer: {
     position: "absolute",
