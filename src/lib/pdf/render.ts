@@ -21,12 +21,31 @@ import type {
   PublicAnalysisProfile,
 } from "@/lib/analysis/types";
 
-import { ReportDocument } from "./report-document";
+import { ReportDocument, type TopPostForPdf } from "./report-document";
+
+/**
+ * Loose typing for raw posts coming from `analysis_snapshots.normalized_payload.posts[]`.
+ * The snapshot writer guarantees richer fields, but the PDF only needs the
+ * subset below and defends every access — never throws on missing data.
+ */
+interface SnapshotPostLoose {
+  id?: string | null;
+  shortcode?: string | null;
+  permalink?: string | null;
+  format?: string | null;
+  caption?: string | null;
+  taken_at_iso?: string | null;
+  likes?: number | null;
+  comments?: number | null;
+  engagement_pct?: number | null;
+}
 
 interface NormalizedSnapshotPayload {
   profile: PublicAnalysisProfile;
   content_summary: PublicAnalysisContentSummary;
   competitors: CompetitorAnalysis[];
+  /** Optional — present in real Apify snapshots, absent in legacy ones. */
+  posts?: SnapshotPostLoose[] | null;
 }
 
 interface RenderArgs {
@@ -77,6 +96,43 @@ async function fetchAvatarDataUrl(url: string | null): Promise<string | undefine
   }
 }
 
+function num(v: unknown, fallback: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+
+function deriveTopPosts(
+  posts: SnapshotPostLoose[] | null | undefined,
+): TopPostForPdf[] {
+  if (!Array.isArray(posts) || posts.length === 0) return [];
+  const sorted = [...posts].sort(
+    (a, b) => num(b?.engagement_pct, 0) - num(a?.engagement_pct, 0),
+  );
+  return sorted.slice(0, 3).map((p, idx) => {
+    const shortcode =
+      typeof p.shortcode === "string" && p.shortcode.trim().length > 0
+        ? p.shortcode.trim()
+        : null;
+    const permalinkRaw =
+      typeof p.permalink === "string" && p.permalink.trim().length > 0
+        ? p.permalink.trim()
+        : null;
+    const permalink =
+      permalinkRaw ??
+      (shortcode ? `https://www.instagram.com/p/${shortcode}/` : null);
+    const captionRaw = typeof p.caption === "string" ? p.caption : "";
+    return {
+      id: typeof p.id === "string" && p.id.length > 0 ? p.id : `post-${idx}`,
+      format: typeof p.format === "string" && p.format.length > 0 ? p.format : "—",
+      takenAtIso: typeof p.taken_at_iso === "string" ? p.taken_at_iso : null,
+      likes: num(p.likes, 0),
+      comments: num(p.comments, 0),
+      engagementPct: num(p.engagement_pct, 0),
+      caption: captionRaw.trim().slice(0, 180),
+      permalink,
+    };
+  });
+}
+
 export async function renderReportPdf({
   payload,
   analyzedAt,
@@ -98,6 +154,10 @@ export async function renderReportPdf({
 
   const avatarDataUrl = await fetchAvatarDataUrl(profile.avatar_url);
 
+  // Top posts: pure derivation from the snapshot's raw posts array.
+  // No provider call, no thumbnail fetch — Instagram CDN URLs expire.
+  const topPosts = deriveTopPosts(payload.posts);
+
   const generatedAt = new Date().toISOString();
 
   const doc = createElement(ReportDocument, {
@@ -106,6 +166,7 @@ export async function renderReportPdf({
     competitors,
     benchmark,
     avatarDataUrl,
+    topPosts,
     analyzedAt,
     generatedAt,
   });
