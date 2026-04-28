@@ -500,6 +500,55 @@ function TopPostsPage({
 }
 
 export function ReportDocument(input: ReportDocumentInput) {
+  return _ReportDocumentImpl(input);
+}
+
+function RecommendationsPage({
+  profile,
+  recommendations,
+  generatedAt,
+}: {
+  profile: PublicAnalysisProfile;
+  recommendations: PdfRecommendation[];
+  generatedAt: string;
+}) {
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader kicker={`@${profile.username}`} />
+
+      <Text style={styles.sectionTitle}>Recomendações</Text>
+      <Text style={styles.sectionHeading}>Próximos passos prioritários</Text>
+      <Text style={styles.sectionLead}>
+        Sugestões editoriais derivadas dos dados deste relatório, ordenadas
+        por impacto esperado. Cada recomendação resulta de heurísticas
+        aplicadas ao próprio snapshot, sem chamadas externas.
+      </Text>
+
+      {recommendations.map((reco, idx) => {
+        const isLast = idx === recommendations.length - 1;
+        return (
+          <View
+            key={reco.id}
+            style={[styles.recoCard, isLast ? styles.recoCardLast : {}]}
+            wrap={false}
+          >
+            <View style={styles.recoHeaderRow}>
+              <Text style={styles.recoNumber}>
+                {String(idx + 1).padStart(2, "0")}
+              </Text>
+              <Text style={styles.recoTitle}>{reco.title}</Text>
+            </View>
+            <Text style={styles.recoBody}>{reco.body}</Text>
+          </View>
+        );
+      })}
+
+      <PageFooter generatedAt={generatedAt} />
+    </Page>
+  );
+}
+
+function _ReportDocumentImpl(input: ReportDocumentInput) {
   const {
     profile,
     contentSummary,
