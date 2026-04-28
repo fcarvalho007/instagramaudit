@@ -10,12 +10,33 @@ export const SHARE_COPY = {
       labelLoading: "A preparar PDF…",
       labelDisabled: "PDF disponível após análise",
     },
+    pdfFallback: {
+      label: "Abrir PDF numa nova aba",
+      blockedHint:
+        "O navegador bloqueou a nova aba. Usa o botão acima para abrir o PDF manualmente.",
+    },
   },
   toast: {
     success: "Link copiado para a área de transferência.",
     error: "Não foi possível copiar o link. Copia manualmente da barra do navegador.",
-    pdfReady: "PDF pronto. A abrir numa nova aba.",
-    pdfCached: "PDF carregado da cache. A abrir numa nova aba.",
-    pdfError: "Não foi possível gerar o PDF. Tenta novamente em alguns segundos.",
+    pdfReady: "PDF pronto.",
+    pdfCached: "PDF carregado da cache.",
+    pdfPopupBlocked:
+      "PDF pronto, mas o navegador bloqueou a nova aba. Usa o botão de fallback abaixo.",
+    pdfErrors: {
+      INVALID_PAYLOAD: "Pedido inválido. Recarrega a página e tenta novamente.",
+      SNAPSHOT_NOT_FOUND:
+        "Este relatório já não está disponível. Faz nova análise.",
+      MALFORMED_SNAPSHOT:
+        "Os dados deste relatório estão incompletos. Faz nova análise.",
+      RENDER_FAILED:
+        "Falha ao gerar o PDF. Tenta novamente dentro de instantes.",
+      UPLOAD_FAILED:
+        "Falha ao guardar o PDF. Tenta novamente dentro de instantes.",
+      SIGN_FAILED:
+        "Falha a assinar o PDF. Tenta novamente dentro de instantes.",
+      DEFAULT:
+        "Não foi possível gerar o PDF. Tenta novamente em alguns segundos.",
+    },
   },
 } as const;

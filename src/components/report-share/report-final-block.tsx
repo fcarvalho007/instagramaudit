@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Check, FileDown, Link2, Linkedin, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ExternalLink, FileDown, Link2, Linkedin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { BETA_COPY } from "@/components/report-beta/beta-copy";
@@ -13,6 +13,13 @@ interface ReportFinalBlockProps {
   reportUrl?: string;
 }
 
+type PdfErrorCode = keyof typeof SHARE_COPY.toast.pdfErrors;
+
+interface PdfFallback {
+  url: string;
+  blocked: boolean;
+}
+
 /**
  * Bloco final único do relatório público em `/analyze/$username`.
  *
@@ -21,6 +28,15 @@ interface ReportFinalBlockProps {
  * Aqui o PDF é destacado como **deliverable principal**, partilha (link e
  * LinkedIn) fica como apoio secundário e o feedback beta aparece numa
  * linha discreta no fim.
+ *
+ * Estratégia de abertura do PDF:
+ * `window.open("about:blank", "_blank")` é invocado **dentro** do click
+ * handler, antes do `await fetch(...)`, para preservar o user-gesture e
+ * não ser bloqueado por popup blockers (Chrome, Safari, Firefox). Quando
+ * a resposta chega, atribuímos `popup.location.href` ao signed URL. Se o
+ * navegador devolver `null` (popup blocker activo), guardamos o URL em
+ * estado e revelamos um botão de fallback clicável que o utilizador pode
+ * accionar manualmente — esse clique é, ele próprio, um novo user gesture.
  */
 export function ReportFinalBlock({
   snapshotId,
@@ -29,6 +45,10 @@ export function ReportFinalBlock({
   const [resolvedUrl, setResolvedUrl] = useState<string>(reportUrl ?? "");
   const [copied, setCopied] = useState(false);
   const [pdfStatus, setPdfStatus] = useState<"idle" | "loading">("idle");
+  const [pdfFallback, setPdfFallback] = useState<PdfFallback | null>(null);
+  // Guarda referência ao popup aberto sincronamente para que possamos
+  // atribuir-lhe a URL final (ou fechá-lo em caso de erro).
+  const pendingPopupRef = useRef<Window | null>(null);
 
   useEffect(() => {
     if (reportUrl) {
@@ -48,7 +68,7 @@ export function ReportFinalBlock({
 
   const linkedinHref = resolvedUrl
     ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(resolvedUrl)}`
-    : "#";
+    : "";
 
   async function handleCopy() {
     if (!resolvedUrl) return;
@@ -81,17 +101,21 @@ export function ReportFinalBlock({
     }
   }
 
-  /**
-   * Solicita o PDF público e navega para o signed URL.
-   *
-   * IMPORTANTE: o `await fetch(...)` quebra a cadeia de "user gesture", pelo
-   * que `window.open(..., "_blank")` é bloqueado por popup blockers em
-   * Chrome, Safari iOS e Firefox. Por isso navegamos na **mesma aba** com
-   * `location.assign`. O PDF é servido inline pelo bucket privado da
-   * Supabase e o utilizador volta com o botão "back".
-   */
   async function handlePdf() {
     if (!snapshotId || pdfStatus === "loading") return;
+
+    // Limpa fallback anterior — nova tentativa, nova oportunidade.
+    setPdfFallback(null);
+
+    // Abrimos o popup ANTES do await para preservar o user gesture.
+    // Se o navegador bloquear, `popup` será null e cairemos no
+    // fallback clicável após a resposta chegar.
+    let popup: Window | null = null;
+    if (typeof window !== "undefined") {
+      popup = window.open("about:blank", "_blank", "noopener,noreferrer");
+    }
+    pendingPopupRef.current = popup;
+
     setPdfStatus("loading");
     try {
       const res = await fetch("/api/public/public-report-pdf", {
@@ -99,26 +123,50 @@ export function ReportFinalBlock({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ snapshot_id: snapshotId }),
       });
-      if (!res.ok) throw new Error(`http_${res.status}`);
-      const body = (await res.json()) as {
+
+      // Tentamos sempre fazer parse do JSON — o endpoint devolve
+      // `error_code` em pt-PT mesmo nas respostas 4xx/5xx.
+      let body: {
         success?: boolean;
         signed_url?: string;
         cached?: boolean;
-      };
-      if (!body.success || !body.signed_url) throw new Error("invalid_response");
-      toast.success(
-        body.cached ? SHARE_COPY.toast.pdfCached : SHARE_COPY.toast.pdfReady,
-      );
-      if (typeof window !== "undefined") {
-        // Pequeno delay para o toast renderizar antes da navegação.
-        const target = body.signed_url;
-        window.setTimeout(() => {
-          window.location.assign(target);
-        }, 250);
+        error_code?: string;
+      } | null = null;
+      try {
+        body = (await res.json()) as typeof body;
+      } catch {
+        body = null;
+      }
+
+      if (!res.ok || !body?.success || !body.signed_url) {
+        if (popup && !popup.closed) popup.close();
+        const code = (body?.error_code ?? "DEFAULT") as PdfErrorCode;
+        const message =
+          SHARE_COPY.toast.pdfErrors[code] ??
+          SHARE_COPY.toast.pdfErrors.DEFAULT;
+        toast.error(message);
+        return;
+      }
+
+      const signedUrl = body.signed_url;
+
+      if (popup && !popup.closed) {
+        // Popup sobreviveu — entregamos o URL final e nada mais é preciso.
+        popup.location.href = signedUrl;
+        toast.success(
+          body.cached ? SHARE_COPY.toast.pdfCached : SHARE_COPY.toast.pdfReady,
+        );
+      } else {
+        // Popup blocker activo: guardamos o URL para o utilizador clicar
+        // manualmente e mostramos um toast a explicar.
+        setPdfFallback({ url: signedUrl, blocked: true });
+        toast.warning(SHARE_COPY.toast.pdfPopupBlocked);
       }
     } catch {
-      toast.error(SHARE_COPY.toast.pdfError);
+      if (popup && !popup.closed) popup.close();
+      toast.error(SHARE_COPY.toast.pdfErrors.DEFAULT);
     } finally {
+      pendingPopupRef.current = null;
       setPdfStatus("idle");
     }
   }
@@ -151,24 +199,46 @@ export function ReportFinalBlock({
             </p>
           </header>
 
-          <button
-            type="button"
-            onClick={handlePdf}
-            disabled={pdfDisabled}
-            aria-disabled={pdfDisabled}
-            aria-busy={pdfStatus === "loading"}
-            title={
-              !snapshotId ? SHARE_COPY.actions.pdf.labelDisabled : undefined
-            }
-            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-full border border-accent-primary bg-accent-primary px-6 py-3 text-sm font-semibold text-surface-base transition-colors duration-200 hover:bg-accent-luminous hover:border-accent-luminous disabled:cursor-not-allowed disabled:border-border-subtle/40 disabled:bg-transparent disabled:text-text-muted disabled:opacity-70"
-          >
-            {pdfStatus === "loading" ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <FileDown className="h-4 w-4" aria-hidden="true" />
-            )}
-            <span>{pdfLabel}</span>
-          </button>
+          <div className="flex flex-col items-stretch gap-2 md:items-end">
+            <button
+              type="button"
+              onClick={handlePdf}
+              disabled={pdfDisabled}
+              aria-disabled={pdfDisabled}
+              aria-busy={pdfStatus === "loading"}
+              title={
+                !snapshotId ? SHARE_COPY.actions.pdf.labelDisabled : undefined
+              }
+              className="shrink-0 inline-flex items-center justify-center gap-2 rounded-full border border-accent-primary bg-accent-primary px-6 py-3 text-sm font-semibold text-surface-base transition-colors duration-200 hover:bg-accent-luminous hover:border-accent-luminous disabled:cursor-not-allowed disabled:border-border-subtle/40 disabled:bg-transparent disabled:text-text-muted disabled:opacity-70"
+            >
+              {pdfStatus === "loading" ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FileDown className="h-4 w-4" aria-hidden="true" />
+              )}
+              <span>{pdfLabel}</span>
+            </button>
+
+            {/* Fallback: o popup foi bloqueado, mostramos um link directo
+                que o utilizador pode clicar (esse clique é, ele próprio,
+                um novo user gesture e não é bloqueado). */}
+            {pdfFallback ? (
+              <div className="flex flex-col items-stretch gap-1 md:items-end">
+                <a
+                  href={pdfFallback.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-accent-primary/60 bg-transparent px-5 py-2 text-sm font-medium text-accent-primary transition-colors duration-200 hover:bg-accent-primary/10"
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  <span>{SHARE_COPY.actions.pdfFallback.label}</span>
+                </a>
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary md:text-right">
+                  {SHARE_COPY.actions.pdfFallback.blockedHint}
+                </p>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {/* Acções secundárias: partilha discreta */}
@@ -194,21 +264,25 @@ export function ReportFinalBlock({
             </span>
           </button>
 
-          <a
-            href={resolvedUrl ? linkedinHref : undefined}
-            target={resolvedUrl ? "_blank" : undefined}
-            rel={resolvedUrl ? "noopener noreferrer" : undefined}
-            aria-disabled={!resolvedUrl}
-            tabIndex={resolvedUrl ? 0 : -1}
-            className={
-              resolvedUrl
-                ? "inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary transition-colors duration-200 hover:border-accent-primary/50 hover:text-accent-primary"
-                : "inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary opacity-50 pointer-events-none"
-            }
-          >
-            <Linkedin className="h-4 w-4" aria-hidden="true" />
-            <span>{SHARE_COPY.actions.linkedin.label}</span>
-          </a>
+          {resolvedUrl ? (
+            <a
+              href={linkedinHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary transition-colors duration-200 hover:border-accent-primary/50 hover:text-accent-primary"
+            >
+              <Linkedin className="h-4 w-4" aria-hidden="true" />
+              <span>{SHARE_COPY.actions.linkedin.label}</span>
+            </a>
+          ) : (
+            <span
+              aria-disabled="true"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary opacity-50 pointer-events-none"
+            >
+              <Linkedin className="h-4 w-4" aria-hidden="true" />
+              <span>{SHARE_COPY.actions.linkedin.label}</span>
+            </span>
+          )}
         </div>
 
         {/* Feedback beta: linha discreta no fim */}
