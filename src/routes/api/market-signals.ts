@@ -146,7 +146,7 @@ export const Route = createFileRoute("/api/market-signals")({
         >;
         const cached = readCachedSummary(normalized, plan);
         if (cached) {
-          const envelope = summaryToPublicEnvelope(cached) as Record<
+          const envelope = summaryToPublicEnvelope(cached) as unknown as Record<
             string,
             unknown
           >;
@@ -210,7 +210,11 @@ export const Route = createFileRoute("/api/market-signals")({
           try {
             const key =
               plan === "free" ? "market_signals_free" : "market_signals_paid";
-            const nextPayload = { ...normalized, [key]: summary };
+            // JSON round-trip: forces the value to plain Json so the typed
+            // Supabase client accepts it on `normalized_payload` (jsonb).
+            const nextPayload = JSON.parse(
+              JSON.stringify({ ...normalized, [key]: summary }),
+            );
             const { error: writeErr } = await supabaseAdmin
               .from("analysis_snapshots")
               .update({ normalized_payload: nextPayload })
