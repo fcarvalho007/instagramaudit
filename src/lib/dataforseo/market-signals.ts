@@ -36,6 +36,7 @@ import {
   DataForSeoBlockedError,
   DataForSeoUpstreamError,
 } from "./types";
+import { splitTrendsKeywords } from "./normalize-trends";
 
 export type MarketSignalsStatus =
   | "ready"
@@ -74,6 +75,8 @@ export interface MarketSignalsOk {
   queries_cap: number;
   errors: ClassifiedError[];
   message?: string;
+  trends_usable_keywords?: string[];
+  trends_dropped_keywords?: string[];
 }
 
 export interface MarketSignalsFail {
@@ -83,6 +86,8 @@ export interface MarketSignalsFail {
   queries_used?: number;
   queries_cap?: number;
   errors?: ClassifiedError[];
+  trends_usable_keywords?: string[];
+  trends_dropped_keywords?: string[];
 }
 
 export type MarketSignalsResult = MarketSignalsOk | MarketSignalsFail;
@@ -182,7 +187,8 @@ function classifyError(source: string, err: unknown): ClassifiedError {
 }
 
 function isUsableTrends(t: GoogleTrendsResult | null | undefined): boolean {
-  return !!t && Array.isArray(t.items) && t.items.length > 0;
+  if (!t || !Array.isArray(t.items) || t.items.length === 0) return false;
+  return splitTrendsKeywords(t).usable_keywords.length > 0;
 }
 function isUsableKeywordIdeas(k: KeywordIdeasResult | null | undefined): boolean {
   return !!k;
@@ -305,6 +311,7 @@ interface FinalizeInput {
  * "Usable" = at least one provider call returned a non-empty payload.
  */
 function finalize(input: FinalizeInput): MarketSignalsResult {
+  const trendsSplit = splitTrendsKeywords(input.trends);
   const usableCount =
     (isUsableTrends(input.trends) ? 1 : 0) +
     (isUsableKeywordIdeas(input.keyword_ideas) ? 1 : 0) +
@@ -319,6 +326,8 @@ function finalize(input: FinalizeInput): MarketSignalsResult {
       queries_used: input.used,
       queries_cap: input.cap,
       errors: input.errors,
+      trends_usable_keywords: trendsSplit.usable_keywords,
+      trends_dropped_keywords: trendsSplit.dropped_keywords,
     };
   }
 
@@ -337,6 +346,8 @@ function finalize(input: FinalizeInput): MarketSignalsResult {
       status === "partial"
         ? "Sinais de mercado parciais — algumas fontes falharam."
         : undefined,
+    trends_usable_keywords: trendsSplit.usable_keywords,
+    trends_dropped_keywords: trendsSplit.dropped_keywords,
   };
 }
 
