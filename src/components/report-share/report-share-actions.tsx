@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, FileDown, Link2, Linkedin } from "lucide-react";
+import { Check, FileDown, Link2, Linkedin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { SHARE_COPY } from "./share-copy";
@@ -9,19 +9,27 @@ interface ReportShareActionsProps {
   reportUrl?: string;
   /** `compact` para o topo (sem eyebrow/descrição), `default` para o fim. */
   variant?: "compact" | "default";
+  /**
+   * UUID do `analysis_snapshots` actual. Quando presente, o botão "Pedir
+   * versão PDF" fica activo e chama `/api/public/public-report-pdf`. Sem ele,
+   * o botão fica desactivado em modo de placeholder.
+   */
+  snapshotId?: string;
 }
 
 /**
  * Grupo de ações de partilha do relatório público (fase beta). Não chama
- * providers, não gera PDF — apenas copia o link e abre o share intent do
- * LinkedIn. O botão de PDF está intencionalmente desativado.
+ * providers de análise (Apify/DataForSEO/OpenAI). O botão de PDF chama o
+ * endpoint público snapshot-keyed quando `snapshotId` está disponível.
  */
 export function ReportShareActions({
   reportUrl,
   variant = "default",
+  snapshotId,
 }: ReportShareActionsProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string>(reportUrl ?? "");
   const [copied, setCopied] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState<"idle" | "loading">("idle");
 
   useEffect(() => {
     if (reportUrl) {
@@ -58,7 +66,41 @@ export function ReportShareActions({
     }
   }
 
+  async function handlePdf() {
+    if (!snapshotId || pdfStatus === "loading") return;
+    setPdfStatus("loading");
+    try {
+      const res = await fetch("/api/public/public-report-pdf", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ snapshot_id: snapshotId }),
+      });
+      if (!res.ok) throw new Error(`http_${res.status}`);
+      const body = (await res.json()) as {
+        success?: boolean;
+        signed_url?: string;
+        cached?: boolean;
+      };
+      if (!body.success || !body.signed_url) throw new Error("invalid_response");
+      if (typeof window !== "undefined") {
+        window.open(body.signed_url, "_blank", "noopener,noreferrer");
+      }
+      toast.success(
+        body.cached ? SHARE_COPY.toast.pdfCached : SHARE_COPY.toast.pdfReady,
+      );
+    } catch {
+      toast.error(SHARE_COPY.toast.pdfError);
+    } finally {
+      setPdfStatus("idle");
+    }
+  }
+
   const isCompact = variant === "compact";
+  const pdfDisabled = !snapshotId || pdfStatus === "loading";
+  const pdfLabel =
+    pdfStatus === "loading"
+      ? SHARE_COPY.actions.pdf.labelLoading
+      : SHARE_COPY.actions.pdf.label;
 
   return (
     <section
@@ -123,16 +165,21 @@ export function ReportShareActions({
 
           <button
             type="button"
-            disabled
-            aria-disabled="true"
-            title={SHARE_COPY.actions.pdf.note}
-            className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-full border border-border-subtle/40 bg-transparent px-4 py-2 text-sm font-medium text-text-muted opacity-70"
+            onClick={handlePdf}
+            disabled={pdfDisabled}
+            aria-disabled={pdfDisabled}
+            aria-busy={pdfStatus === "loading"}
+            title={
+              !snapshotId ? SHARE_COPY.actions.pdf.labelDisabled : undefined
+            }
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-accent-primary/40 bg-accent-primary/5 px-4 py-2 text-sm font-medium text-accent-primary transition-colors duration-200 hover:bg-accent-primary/10 disabled:cursor-not-allowed disabled:border-border-subtle/40 disabled:bg-transparent disabled:text-text-muted disabled:opacity-70 disabled:hover:bg-transparent"
           >
-            <FileDown className="h-4 w-4" aria-hidden="true" />
-            <span>{SHARE_COPY.actions.pdf.label}</span>
-            <span className="ml-1 rounded-full border border-border-subtle/50 px-2 py-[1px] font-mono text-[0.6rem] uppercase tracking-[0.14em]">
-              {SHARE_COPY.actions.pdf.note}
-            </span>
+            {pdfStatus === "loading" ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <FileDown className="h-4 w-4" aria-hidden="true" />
+            )}
+            <span>{pdfLabel}</span>
           </button>
         </div>
       </div>
