@@ -301,6 +301,12 @@ function AdminPreviewChrome({ snapshotId, load, onLogout }: ChromeProps) {
           <CoverageStrip load={load} />
           <ReportPage data={load.result.data} />
           <CoverageNotice load={load} />
+          {load.costSummary ? (
+            <CostBreakdownPanel
+              summary={load.costSummary}
+              calls={load.providerCalls}
+            />
+          ) : null}
         </>
       )}
       <AdminFooterNotice />
