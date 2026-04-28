@@ -28,6 +28,7 @@ import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
+import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
 import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
@@ -139,6 +140,12 @@ const AdminClientesRoute = AdminClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicPublicReportPdfRoute =
+  ApiPublicPublicReportPdfRouteImport.update({
+    id: '/api/public/public-report-pdf',
+    path: '/api/public/public-report-pdf',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminWhoamiRoute = ApiAdminWhoamiRouteImport.update({
   id: '/api/admin/whoami',
   path: '/api/admin/whoami',
@@ -253,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
@@ -288,6 +296,7 @@ export interface FileRoutesByTo {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
@@ -325,6 +334,7 @@ export interface FileRoutesById {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
@@ -434,6 +446,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
@@ -462,6 +475,7 @@ export interface RootRouteChildren {
   ApiAdminReportsRoute: typeof ApiAdminReportsRouteWithChildren
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
+  ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
   ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
   ApiPublicAnalysisSnapshotUsernameRoute: typeof ApiPublicAnalysisSnapshotUsernameRoute
@@ -601,6 +615,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/clientes'
       preLoaderRoute: typeof AdminClientesRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/public/public-report-pdf': {
+      id: '/api/public/public-report-pdf'
+      path: '/api/public/public-report-pdf'
+      fullPath: '/api/public/public-report-pdf'
+      preLoaderRoute: typeof ApiPublicPublicReportPdfRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/admin/whoami': {
       id: '/api/admin/whoami'
@@ -795,6 +816,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminReportsRoute: ApiAdminReportsRouteWithChildren,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
+  ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
   ApiAdminSnapshotByIdSnapshotIdRoute: ApiAdminSnapshotByIdSnapshotIdRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
   ApiPublicAnalysisSnapshotUsernameRoute:

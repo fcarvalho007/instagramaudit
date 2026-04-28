@@ -83,15 +83,15 @@ async function logEvent(args: {
       p_cache_key: `public_pdf:${args.snapshotId}`,
       p_data_source: args.dataSource,
       p_outcome: args.outcome,
-      p_error_code: args.errorCode,
+      p_error_code: args.errorCode as string,
       p_analysis_snapshot_id: args.snapshotId,
-      p_provider_call_log_id: null,
+      p_provider_call_log_id: null as unknown as string,
       p_posts_returned: 0,
       p_profiles_returned: 0,
       p_estimated_cost_usd: 0,
       p_duration_ms: args.durationMs,
-      p_request_ip_hash: null,
-      p_user_agent_family: null,
+      p_request_ip_hash: null as unknown as string,
+      p_user_agent_family: null as unknown as string,
     });
   } catch (err) {
     // Logging must never break the user-facing flow.
