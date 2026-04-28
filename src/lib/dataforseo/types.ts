@@ -63,7 +63,7 @@ export class DataForSeoUpstreamError extends Error {
 
 /** Default static cost estimate (USD) per request — refined over time. */
 export const ESTIMATED_COST_USD: Record<DataForSeoEndpoint, number> = {
-  google_trends_explore: 0.0006,
+  google_trends_explore: 0.009,
   labs_keyword_ideas: 0.01,
   serp_google_organic: 0.002,
 };
