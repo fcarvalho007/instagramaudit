@@ -1,89 +1,96 @@
-# Plano — Gerador isolado de insights OpenAI
 
-Criar a camada que, no futuro, vai gerar `ai_insights_v1` via OpenAI directo. Nesta fase **nada é ligado** ao `analyze-public-v1`, **nenhuma chamada** é feita, **nenhum UI** muda.
+# Avaliação — OpenAI Insights (Prompts 1 → 4)
 
-Os tipos (`AiInsightsV1`, `InsightsContext`, `AiInsightItem`), o cálculo de custo (`calculateOpenAiCost`), os gates (`isOpenAiAllowed`) e o logging (`recordProviderCall` com tokens) já existem da fase A — vamos reutilizá-los.
+## Resumo
 
-## Ficheiros a criar
+A implementação está sólida e segura. **Há 1 item por concluir do Prompt 1** (migração SQL nunca foi criada) e 2 melhorias menores opcionais. Tudo o resto está conforme o spec.
 
-### 1. `src/lib/insights/prompt.ts` (puro)
-- `INSIGHTS_SYSTEM_PROMPT` — string determinística em pt-PT (AO90, impessoal, sem pt-BR), com regras explícitas:
-  - Português de Portugal, sem formas brasileiras (lista negativa: "você", "tela", "celular", "usuário", "arquivo", etc.).
-  - Não inventar métricas nem benchmarks. Só usar números presentes no payload.
-  - Produzir 3 a 5 insights.
-  - Cada insight: `id` SCREAMING_SNAKE estável, `title` curto, `body` ≤ 280 chars, terminar com acção concreta.
-  - Cada insight deve citar pelo menos um `evidence` que corresponde a um caminho do payload (ex: `content_summary.average_engagement_rate`, `benchmark.tier_label`, `top_posts[0].engagement_pct`).
-  - `confidence` ∈ {`"baseado em dados observados"`, `"sinal parcial"`}. Usar "sinal parcial" quando algum sinal citado vier ausente/null.
-  - Acção concreta no fim do `body` (verbo no infinitivo impessoal: "Publicar", "Testar", "Reduzir").
-- `buildInsightsUserPayload(ctx: InsightsContext)` → objecto JSON-safe minimal: `profile` (handle, followers, posts), `content_summary` (engagement, formatos), `top_posts` (cap a 3, caption ≤ 240 chars), `benchmark` (tier label/range/position) ou null, `competitors_summary`, `market_signals` flags, e um array `available_signals: string[]` enumerando os caminhos não-null para o validator e o modelo saberem o que existe.
-- `hashInsightsPrompt(systemPrompt, userPayload)` → SHA-256 hex (16 chars) sobre `systemPrompt + "\n" + JSON.stringify(userPayload)` usando `crypto` (Worker-safe). Determinístico — mesma entrada, mesmo hash. Usado em `source_signals.inputs_hash` para drift detection.
+---
 
-### 2. `src/lib/insights/validate.ts` (puro)
-- Schema Zod `aiInsightItemSchema` + `aiInsightsResponseSchema` para o JSON cru do modelo (3–5 insights).
-- `validateInsights(raw: unknown, ctx: InsightsContext): { ok: true, insights: AiInsightItem[] } | { ok: false, reason: string, detail: string }`:
-  - Falha se array vazio, < 3, > 5.
-  - Falha se algum `title` ou `body` vazio/whitespace.
-  - Falha se `body.length > 280`.
-  - Falha se `confidence` não está nos dois valores permitidos.
-  - Falha se `evidence` vazio.
-  - Falha se algum `evidence` citado não está em `available_signals` derivado do `ctx`.
-  - Heurística anti-genérico: rejeita insight cujo `body` não contém pelo menos um marker numérico/quantitativo (regex `/\d/` OU menção a um campo de `evidence` por nome). Devolve `reason: "GENERIC_OUTPUT"`.
-  - Detecta tokens pt-BR óbvios (lista curta) → `reason: "PTBR_LEAK"`.
-  - Ordena por `priority` desc antes de devolver.
+## Estado por Prompt
 
-### 3. `src/lib/insights/openai-insights.server.ts` (server-only)
-- `export async function generateInsights(ctx: InsightsContext): Promise<InsightsGenerationResult>`.
-- Fluxo:
-  1. `isOpenAiAllowed(ctx.profile.handle)` → se não, devolver `{ ok: false, reason: "DISABLED" | "NOT_ALLOWED" }` sem chamar nada.
-  2. `process.env.OPENAI_API_KEY` em falta → `{ ok: false, reason: "CONFIG_ERROR" }`.
-  3. Resolver modelo: `process.env.OPENAI_INSIGHTS_MODEL ?? "gpt-4.1-mini"`.
-  4. Construir `userPayload = buildInsightsUserPayload(ctx)` e `inputsHash = hashInsightsPrompt(SYSTEM, userPayload)`.
-  5. `fetch("https://api.openai.com/v1/chat/completions", …)` com:
-     - `Authorization: Bearer ${OPENAI_API_KEY}`,
-     - `model`,
-     - `messages: [{role:"system", …}, {role:"user", content: JSON.stringify(userPayload)}]`,
-     - `response_format: { type: "json_schema", json_schema: { name: "ai_insights_v1", strict: true, schema: { … } } }`,
-     - `temperature: 0.4`,
-     - `max_tokens: 1200`,
-     - `AbortController` com timeout 25s.
-  6. `await res.json()`, extrair `choices[0].message.content`, `JSON.parse`.
-  7. `validateInsights(parsed, ctx)` → se falhar, `recordProviderCall({ provider:"openai", actor:"insights", status:"http_error" or "config_error", model, promptTokens, completionTokens, totalTokens, estimatedCostUsd })` mesmo assim e devolver `{ ok: false, reason }`.
-  8. `calculateOpenAiCost({ model, promptTokens, completionTokens })` a partir de `response.usage`.
-  9. `recordProviderCall({ provider:"openai", actor:"insights:" + model, handle: ctx.profile.handle, status:"success", durationMs, model, promptTokens, completionTokens, totalTokens, estimatedCostUsd })`.
-  10. Devolver `AiInsightsV1` completo:
-      - `schema_version: 1`, `generated_at: new Date().toISOString()`, `model`, `source_signals: { inputs_hash, has_market_signals, has_dataforseo_paid }`, `insights`, `cost`.
-- Tudo dentro de `try/catch` — qualquer erro vira `{ ok: false, reason: "OPENAI_ERROR" | "TIMEOUT" | "SCHEMA_INVALID", detail }` e nunca propaga. Mensagens de erro são sanitizadas (sem token).
-- **Importante:** este ficheiro **não é importado** em lado nenhum nesta fase. Existe pronto para o Prompt B.
+### Prompt 1 — Foundation
+| Item | Estado |
+|---|---|
+| `src/lib/insights/cost.ts` | OK |
+| `src/lib/insights/types.ts` | OK |
+| `src/lib/security/openai-allowlist.ts` (3 gates) | OK |
+| Edição `src/lib/analysis/events.ts` (campos `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`) | OK no TS |
+| **Migração para adicionar as 4 colunas em `provider_call_logs`** | **EM FALTA** |
 
-## Restrições de segurança
-- Server-only (`*.server.ts`); proibido importar de cliente.
-- Triple gate (`OPENAI_ENABLED` + `OPENAI_TESTING_MODE` + `OPENAI_ALLOWLIST`) verificado antes do `fetch`.
-- Sem `OPENAI_API_KEY` → falha silenciosa, sem chamada.
-- Timeout 25s + `AbortController`.
-- `recordProviderCall` em todos os caminhos (success, falha de schema, falha HTTP) para a ledger nunca perder uma chamada paga.
-- Validator rejeita output genérico, pt-BR, evidence inventado, body > 280, confidence inválido.
+Verificado via `\d provider_call_logs`: a tabela só tem `estimated_cost_usd`, `actual_cost_usd`, `posts_returned`. Não existem `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`.
 
-## Cálculo de custo
-Reutiliza `calculateOpenAiCost` (já existe). Lê `usage.prompt_tokens` e `usage.completion_tokens` da resposta OpenAI; tabela em `cost.ts` cobre `gpt-4.1-mini` (0.4/1.6 USD/M) e `gpt-5-mini`. Modelo desconhecido → fallback conservador. Persistido em `cost.estimated_cost_usd` no `AiInsightsV1` e em `provider_call_logs.estimated_cost_usd` + tokens.
+O writer em `events.ts` foi escrito defensivamente (só envia esses campos quando não nulos), por isso **não rebenta nada hoje**. Mas significa que **todas as métricas de tokens e modelo estão a ser silenciosamente descartadas** quando uma chamada OpenAI for feita. O admin nunca vai conseguir mostrar custo real, nem auditar tokens.
 
-## Validação
-- `bunx tsc --noEmit`
-- `bun run build`
-- Sem testes (o projecto não tem framework de testes instalado — não introduzir).
-- Confirmar via `rg "openai-insights"` que nenhum outro ficheiro o importa.
+### Prompt 2 — Isolated Generator
+| Item | Estado |
+|---|---|
+| `prompt.ts` (system + payload + hash) | OK |
+| `validate.ts` (Zod, anti-pt-BR, evidence guard) | OK |
+| `openai-insights.server.ts` (fetch direto, json_schema strict, timeout 25s) | OK |
+| Triple gate aplicado | OK |
+| Modelo configurável `OPENAI_INSIGHTS_MODEL`, default `gpt-4.1-mini` | OK |
+| Logging via `recordProviderCall` | OK (ver Prompt 1 — colunas em falta) |
 
-## Fora de âmbito
-- `analyze-public-v1.ts` — não tocar.
-- `report.example.tsx` e qualquer UI — não tocar.
-- PDF — não tocar.
-- LOCKED_FILES — nenhum dos ficheiros a criar é locked.
+### Prompt 3 — Wiring no analyze-public-v1
+| Item | Estado |
+|---|---|
+| Chamado só em fresh, nunca em cache hit | OK |
+| Persistido em `normalized_payload.ai_insights_v1` | OK |
+| `try/catch` isola falhas do fluxo Apify/DataForSEO | OK |
+| Pre-check `isOpenAiAllowed` para evitar trabalho desnecessário | OK |
+| Sem regeneração automática de snapshots antigos | OK |
 
-## Checkpoint final
-- ☐ `src/lib/insights/prompt.ts` criado (system prompt pt-PT + builder + hash)
-- ☐ `src/lib/insights/validate.ts` criado (Zod + regras editoriais)
-- ☐ `src/lib/insights/openai-insights.server.ts` criado (gates + fetch + log)
-- ☐ `tsc --noEmit` ok
-- ☐ build ok
-- ☐ Zero chamadas OpenAI/Apify/DataForSEO durante a implementação
-- ☐ Zero alterações a UI ou `/report/example`
-- ☐ Próximo passo proposto: **Prompt C — wiring controlado em `analyze-public-v1` apenas para `frederico.m.carvalho` em runs fresh**
+### Prompt 4 — Render no Web Report
+| Item | Estado |
+|---|---|
+| Map para `ReportData.aiInsights` `{number,label,text}` | OK |
+| Ordenação por `priority` desc | OK |
+| `number` zero-padded ("01", "02", ...) | OK |
+| Hide quando `ai_insights_v1` ausente | OK |
+| Sem placeholders | OK |
+| Ficheiros locked não tocados | OK |
+| `confidence` + `evidence` preservados em `ReportEnriched.aiInsights` | OK (companion, ainda não renderizado em UI) |
+| `/report/example` intacto | OK |
+
+---
+
+## Itens por Concluir
+
+### 1. CRÍTICO — Criar migração para colunas de tokens em `provider_call_logs`
+
+```sql
+ALTER TABLE public.provider_call_logs
+  ADD COLUMN IF NOT EXISTS model text,
+  ADD COLUMN IF NOT EXISTS prompt_tokens integer,
+  ADD COLUMN IF NOT EXISTS completion_tokens integer,
+  ADD COLUMN IF NOT EXISTS total_tokens integer;
+
+CREATE INDEX IF NOT EXISTS idx_provider_call_logs_openai
+  ON public.provider_call_logs (created_at DESC)
+  WHERE provider = 'openai';
+```
+
+Sem isto, qualquer chamada OpenAI bem-sucedida grava a linha mas **perde model + tokens silenciosamente**, impedindo cost tracking real e auditoria.
+
+### 2. Menor — Substituição AI vs determinísticas no report
+
+Decisão #10 do spec: *"Quando ai_insights_v1 existir, os insights AI substituem as recomendações determinísticas no report principal; as determinísticas ficam como fallback."*
+
+Atualmente ambos podem coexistir consoante o componente locked. Convém confirmar no `snapshot-to-report-data.ts` se as recomendações determinísticas (`recommendations` / `priorityActions` / equivalente) são limpas/substituídas quando `aiInsights.length > 0`. Não verifiquei esta secção em detalhe — vale uma passagem.
+
+### 3. Opcional — Companion section para `confidence` + `evidence`
+
+`ReportEnriched.aiInsights` já carrega `confidence` e `evidenceSummary` mas nada os renderiza. Como os componentes principais estão locked, faz sentido (no futuro) um pequeno bloco em `/analyze/$username` (não em locked) a mostrar essa transparência. Não é bloqueante para MVP.
+
+---
+
+## Próximo Passo Recomendado
+
+Aprovar este plano para eu:
+1. Criar a migração SQL acima (item 1).
+2. Verificar e, se necessário, ajustar a substituição AI/determinístico (item 2).
+
+Depois, num prompt separado, podemos:
+- Definir secrets reais (`OPENAI_ENABLED=true`, `OPENAI_ALLOWLIST=frederico.m.carvalho`) e correr o smoke test controlado.
+- (Mais tarde) Adicionar o companion de confidence/evidence e o painel admin de custos OpenAI.
