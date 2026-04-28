@@ -53,10 +53,26 @@ export function ReportFinalBlock({
   async function handleCopy() {
     if (!resolvedUrl) return;
     try {
-      if (navigator.clipboard?.writeText) {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard?.writeText &&
+        window.isSecureContext !== false
+      ) {
         await navigator.clipboard.writeText(resolvedUrl);
       } else {
-        throw new Error("clipboard-unavailable");
+        // Fallback para browsers/contextos sem Clipboard API
+        // (Safari WebView, http localhost, iframes sem permissão).
+        const ta = document.createElement("textarea");
+        ta.value = resolvedUrl;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.top = "-1000px";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        if (!ok) throw new Error("execCommand-failed");
       }
       setCopied(true);
       toast.success(SHARE_COPY.toast.success);
@@ -65,6 +81,15 @@ export function ReportFinalBlock({
     }
   }
 
+  /**
+   * Solicita o PDF público e navega para o signed URL.
+   *
+   * IMPORTANTE: o `await fetch(...)` quebra a cadeia de "user gesture", pelo
+   * que `window.open(..., "_blank")` é bloqueado por popup blockers em
+   * Chrome, Safari iOS e Firefox. Por isso navegamos na **mesma aba** com
+   * `location.assign`. O PDF é servido inline pelo bucket privado da
+   * Supabase e o utilizador volta com o botão "back".
+   */
   async function handlePdf() {
     if (!snapshotId || pdfStatus === "loading") return;
     setPdfStatus("loading");
@@ -81,12 +106,16 @@ export function ReportFinalBlock({
         cached?: boolean;
       };
       if (!body.success || !body.signed_url) throw new Error("invalid_response");
-      if (typeof window !== "undefined") {
-        window.open(body.signed_url, "_blank", "noopener,noreferrer");
-      }
       toast.success(
         body.cached ? SHARE_COPY.toast.pdfCached : SHARE_COPY.toast.pdfReady,
       );
+      if (typeof window !== "undefined") {
+        // Pequeno delay para o toast renderizar antes da navegação.
+        const target = body.signed_url;
+        window.setTimeout(() => {
+          window.location.assign(target);
+        }, 250);
+      }
     } catch {
       toast.error(SHARE_COPY.toast.pdfError);
     } finally {
@@ -166,11 +195,16 @@ export function ReportFinalBlock({
           </button>
 
           <a
-            href={linkedinHref}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={resolvedUrl ? linkedinHref : undefined}
+            target={resolvedUrl ? "_blank" : undefined}
+            rel={resolvedUrl ? "noopener noreferrer" : undefined}
             aria-disabled={!resolvedUrl}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary transition-colors duration-200 hover:border-accent-primary/50 hover:text-accent-primary"
+            tabIndex={resolvedUrl ? 0 : -1}
+            className={
+              resolvedUrl
+                ? "inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary transition-colors duration-200 hover:border-accent-primary/50 hover:text-accent-primary"
+                : "inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary opacity-50 pointer-events-none"
+            }
           >
             <Linkedin className="h-4 w-4" aria-hidden="true" />
             <span>{SHARE_COPY.actions.linkedin.label}</span>
