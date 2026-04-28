@@ -21,7 +21,11 @@ import type {
   PublicAnalysisProfile,
 } from "@/lib/analysis/types";
 
-import { ReportDocument, type TopPostForPdf } from "./report-document";
+import {
+  ReportDocument,
+  type AiInsightForPdf,
+  type TopPostForPdf,
+} from "./report-document";
 import {
   buildRecommendations,
   type RecommendationInput,
@@ -64,6 +68,23 @@ interface NormalizedSnapshotPayload {
       avg_engagement_pct?: number | null;
     }
   > | null;
+  /**
+   * Optional persisted OpenAI insights. Loose typing — every field is
+   * defended at the mapping site. The PDF NEVER calls OpenAI; this block
+   * is purely the result of an earlier `analyze-public-v1` fresh run.
+   */
+  ai_insights_v1?: {
+    schema_version?: number | null;
+    generated_at?: string | null;
+    model?: string | null;
+    insights?: Array<{
+      id?: string | null;
+      title?: string | null;
+      body?: string | null;
+      confidence?: string | null;
+      priority?: number | null;
+    }> | null;
+  } | null;
 }
 
 interface RenderArgs {
@@ -251,6 +272,43 @@ function deriveRecommendationInput(
   };
 }
 
+
+/**
+ * Map persisted `ai_insights_v1.insights[]` into the PDF-ready shape.
+ * Defends every field, drops invalid items, and sorts by `priority` desc
+ * so the PDF mirrors the web report ordering. Pure — no I/O.
+ */
+function deriveAiInsights(
+  raw: NormalizedSnapshotPayload["ai_insights_v1"],
+): AiInsightForPdf[] {
+  if (!raw || !Array.isArray(raw.insights)) return [];
+  const validConfidences = new Set([
+    "baseado em dados observados",
+    "sinal parcial",
+  ]);
+  const items: Array<AiInsightForPdf & { _priority: number }> = [];
+  for (const i of raw.insights) {
+    if (!i) continue;
+    const id = typeof i.id === "string" && i.id.trim().length > 0 ? i.id.trim() : null;
+    const title = typeof i.title === "string" ? i.title.trim() : "";
+    const body = typeof i.body === "string" ? i.body.trim() : "";
+    if (!id || !title || !body) continue;
+    const confidence =
+      typeof i.confidence === "string" && validConfidences.has(i.confidence)
+        ? (i.confidence as AiInsightForPdf["confidence"])
+        : "sinal parcial";
+    items.push({
+      id,
+      title,
+      body,
+      confidence,
+      _priority: num(i.priority, 0),
+    });
+  }
+  items.sort((a, b) => b._priority - a._priority);
+  return items.map(({ _priority: _ignored, ...rest }) => rest);
+}
+
 export async function renderReportPdf({
   payload,
   analyzedAt,
@@ -284,6 +342,19 @@ export async function renderReportPdf({
 
   const generatedAt = new Date().toISOString();
 
+  // Persisted OpenAI insights (when present in this snapshot). Pure
+  // mapping — the PDF NEVER calls OpenAI. Missing/invalid block produces
+  // an empty array and the AI page is omitted.
+  const aiInsights = deriveAiInsights(payload.ai_insights_v1);
+  const aiInsightsModel =
+    typeof payload.ai_insights_v1?.model === "string"
+      ? payload.ai_insights_v1.model
+      : null;
+  const aiInsightsGeneratedAt =
+    typeof payload.ai_insights_v1?.generated_at === "string"
+      ? payload.ai_insights_v1.generated_at
+      : null;
+
   const doc = createElement(ReportDocument, {
     profile,
     contentSummary: content_summary,
@@ -292,6 +363,9 @@ export async function renderReportPdf({
     avatarDataUrl,
     topPosts,
     recommendations,
+    aiInsights,
+    aiInsightsModel,
+    aiInsightsGeneratedAt,
     analyzedAt,
     generatedAt,
   });
