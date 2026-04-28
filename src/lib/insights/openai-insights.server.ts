@@ -20,6 +20,7 @@
 import { isOpenAiAllowed, isOpenAiEnabled } from "@/lib/security/openai-allowlist";
 
 import { recordProviderCall } from "@/lib/analysis/events";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { calculateOpenAiCost, DEFAULT_OPENAI_MODEL } from "./cost";
 import {
@@ -38,6 +39,55 @@ const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const REQUEST_TIMEOUT_MS = 25_000;
 const MAX_OUTPUT_TOKENS = 1200;
 const TEMPERATURE = 0.4;
+
+/**
+ * Default daily spending cap (USD) for OpenAI insights calls. Acts as a
+ * dynamic kill-switch on top of the binary `OPENAI_ENABLED` flag — even
+ * with the flag on, no new call is made once successful spend in the
+ * trailing 24h exceeds this cap. Override with `OPENAI_DAILY_CAP_USD`.
+ */
+const DEFAULT_DAILY_CAP_USD = 5;
+
+function resolveDailyCapUsd(): number {
+  const raw = process.env.OPENAI_DAILY_CAP_USD;
+  if (!raw) return DEFAULT_DAILY_CAP_USD;
+  const n = Number.parseFloat(raw);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_DAILY_CAP_USD;
+  return n;
+}
+
+/**
+ * Sums `estimated_cost_usd` across the trailing 24h of successful OpenAI
+ * calls. Best-effort: a query failure returns 0 (fails open) rather than
+ * blocking insights generation on a transient DB hiccup. Logs the error
+ * so the admin can see it.
+ */
+async function getOpenAiSpendLast24hUsd(): Promise<number> {
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabaseAdmin
+      .from("provider_call_logs")
+      .select("estimated_cost_usd")
+      .eq("provider", "openai")
+      .eq("status", "success")
+      .gte("created_at", since);
+    if (error) {
+      console.error("[insights] daily-cap query failed", error.message);
+      return 0;
+    }
+    let total = 0;
+    for (const row of data ?? []) {
+      const v = (row as { estimated_cost_usd: number | string | null })
+        .estimated_cost_usd;
+      const n = typeof v === "string" ? Number.parseFloat(v) : (v ?? 0);
+      if (Number.isFinite(n)) total += n;
+    }
+    return total;
+  } catch (err) {
+    console.error("[insights] daily-cap query threw", err);
+    return 0;
+  }
+}
 
 /**
  * JSON schema sent to OpenAI via `response_format`. `strict: true` means
@@ -114,6 +164,19 @@ export async function generateInsights(
     return failResult("CONFIG_ERROR", "OPENAI_API_KEY missing");
   }
 
+  // 3. Gate: daily spend cap. Independent of OPENAI_ENABLED; protects
+  // against runaway costs from a bug or a fan-out loop. Failing open on
+  // a query error is intentional — infra hiccups must not silently
+  // disable the feature without a visible signal in the logs above.
+  const cap = resolveDailyCapUsd();
+  const spent = await getOpenAiSpendLast24hUsd();
+  if (spent >= cap) {
+    return failResult(
+      "DAILY_CAP_REACHED",
+      `spent_usd=${spent.toFixed(4)} cap_usd=${cap.toFixed(2)}`,
+    );
+  }
+
   const model = resolveModel();
   const userPayload = buildInsightsUserPayload(ctx);
   const inputsHash = hashInsightsPrompt(INSIGHTS_SYSTEM_PROMPT, userPayload);
@@ -150,6 +213,7 @@ export async function generateInsights(
 
     if (!res.ok) {
       const errText = await safeText(res);
+      const parsed = parseOpenAiError(errText);
       const cost = calculateOpenAiCost({ model, promptTokens: 0, completionTokens: 0 });
       await logCall({
         handle,
@@ -158,9 +222,12 @@ export async function generateInsights(
         httpStatus,
         durationMs: Date.now() - startedAt,
         cost,
-        errorMessage: errText.slice(0, 500),
+        errorMessage: parsed.summary.slice(0, 500),
       });
-      return failResult("OPENAI_ERROR", `HTTP ${httpStatus}`);
+      return failResult(
+        "OPENAI_ERROR",
+        `HTTP ${httpStatus}${parsed.code ? ` ${parsed.code}` : ""}`,
+      );
     }
 
     const json = (await res.json()) as OpenAiChatResponse;
@@ -275,6 +342,35 @@ async function safeText(res: Response): Promise<string> {
   } catch {
     return "";
   }
+}
+
+/**
+ * OpenAI error responses are JSON of the shape
+ * `{ error: { message, type, code, param } }`. When parseable we keep
+ * `code`/`type` separately so the admin ledger does not have to grep raw
+ * payloads; otherwise we fall back to the raw text.
+ */
+function parseOpenAiError(raw: string): { summary: string; code: string | null } {
+  if (!raw) return { summary: "", code: null };
+  try {
+    const json = JSON.parse(raw) as {
+      error?: { message?: string; type?: string; code?: string };
+    };
+    const err = json.error;
+    if (err && (err.message || err.code || err.type)) {
+      const parts: string[] = [];
+      if (err.code) parts.push(`code=${err.code}`);
+      if (err.type) parts.push(`type=${err.type}`);
+      if (err.message) parts.push(err.message);
+      return {
+        summary: parts.join(" · "),
+        code: err.code ?? err.type ?? null,
+      };
+    }
+  } catch {
+    // not JSON — fall through
+  }
+  return { summary: raw, code: null };
 }
 
 interface LogCallInput {
