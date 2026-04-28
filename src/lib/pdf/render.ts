@@ -276,6 +276,12 @@ export async function renderReportPdf({
   // No provider call, no thumbnail fetch — Instagram CDN URLs expire.
   const topPosts = deriveTopPosts(payload.posts);
 
+  // Recommendations: pure heuristic engine over snapshot data only.
+  // No OpenAI / Apify / DataForSEO call.
+  const recommendations = buildRecommendations(
+    deriveRecommendationInput(payload, benchmark),
+  );
+
   const generatedAt = new Date().toISOString();
 
   const doc = createElement(ReportDocument, {
@@ -285,6 +291,7 @@ export async function renderReportPdf({
     benchmark,
     avatarDataUrl,
     topPosts,
+    recommendations,
     analyzedAt,
     generatedAt,
   });
