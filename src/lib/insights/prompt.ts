@@ -49,6 +49,7 @@ Regras de conteúdo (obrigatórias):
 - Usar apenas números e factos presentes no payload. Não inventar métricas, percentagens, médias do mercado, benchmarks ou nomes de concorrentes.
 - Se o payload não contém "benchmark", não citar comparação com tier nem mediana de mercado.
 - Cada insight deve citar pelo menos um sinal do payload no campo "evidence". Os valores válidos para "evidence" estão listados em "available_signals" do payload do utilizador.
+- Cada item de "evidence" DEVE ser uma string copiada exactamente, carácter a carácter, de "available_signals" (também repetido em "allowed_evidence_paths"). Do not invent, shorten, abbreviate or paraphrase evidence paths. Use the exact strings from available_signals. Não usar aliases curtos como "average_comments"; usar sempre o caminho canónico completo, por exemplo "content_summary.average_comments".
 - "confidence" deve ser exactamente uma destas duas strings:
   - "baseado em dados observados" — quando todos os sinais citados existem e têm valor não-nulo no payload.
   - "sinal parcial" — quando algum sinal citado está em falta, é estimativa ou tem volume reduzido.
@@ -113,6 +114,11 @@ export interface InsightsUserPayload {
    * rejected. Keep paths short and JSON-pointer-ish.
    */
   available_signals: string[];
+  /**
+   * Mirror of `available_signals`, surfaced under a more explicit name so
+   * the model treats it as a hard allow-list. Same array, same order.
+   */
+  allowed_evidence_paths: string[];
 }
 
 function truncateCaption(raw: string | null | undefined): string {
@@ -176,6 +182,7 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
 export function buildInsightsUserPayload(
   ctx: InsightsContext,
 ): InsightsUserPayload {
+  const signals = computeAvailableSignals(ctx);
   const benchmark =
     ctx.benchmark && ctx.benchmark.status === "available"
       ? {
@@ -228,7 +235,8 @@ export function buildInsightsUserPayload(
       has_free: ctx.market_signals.has_free,
       has_paid: ctx.market_signals.has_paid,
     },
-    available_signals: computeAvailableSignals(ctx),
+    available_signals: signals,
+    allowed_evidence_paths: signals,
   };
 }
 

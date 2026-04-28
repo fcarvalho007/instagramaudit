@@ -1,52 +1,78 @@
-## Situação
+## Objetivo
 
-Verifiquei o estado actual antes de disparar o smoke test:
+Eliminar rejeições `EVIDENCE_INVALID` causadas por aliases curtos (ex.: `average_comments`) que o modelo devolve em vez do caminho canónico (`content_summary.average_comments`), combinando duas defesas: prompt mais explícito + normalizador determinístico no validador. Sem nova chamada OpenAI/Apify/DataForSEO nesta fase.
 
-- Snapshot `311067c4-7de3-44e0-b0ee-d20c3a2d5004` para `frederico.m.carvalho` **continua em cache** (válido até `2026-04-29 09:58 UTC`).
-- `normalized_payload.ai_insights_v1` **não existe** neste snapshot (`has_ai_insights = false`, `insights_count = 0`).
-- A migration de invalidação anterior (`20260428190000`) foi aprovada, mas o snapshot voltou a aparecer — provavelmente uma chamada posterior recriou a linha com o mesmo `id`/cache_key.
+## Alterações
 
-Se chamasse `/api/analyze-public-v1` agora, o route ia devolver `data_source=cache` e **não** chamar a OpenAI. Isso queimava a regra "uma única tentativa" sem produzir o resultado pretendido. Por isso parei e estou a pedir aprovação antes de continuar.
+### A) `src/lib/insights/prompt.ts`
 
-## Plano (uma única passagem)
+1. **Reforço no `INSIGHTS_SYSTEM_PROMPT`** — substituir a linha atual sobre `evidence` por um bloco mais firme:
+   - "Cada item de `evidence` DEVE ser uma string copiada exatamente, carácter a carácter, de `available_signals` (também repetido em `allowed_evidence_paths`)."
+   - "Do not invent, shorten, abbreviate or paraphrase evidence paths. Use the exact strings from available_signals."
+   - "Não usar aliases curtos como `average_comments`; usar o caminho canónico `content_summary.average_comments`."
 
-1. **Nova migration de invalidação** (`supabase/migrations/<timestamp>_reinvalidate_smoke_test_snapshot.sql`):
-   ```sql
-   DELETE FROM public.analysis_snapshots
-   WHERE instagram_username = 'frederico.m.carvalho';
+2. **Duplicar a lista no payload do utilizador** — adicionar campo `allowed_evidence_paths: string[]` ao `InsightsUserPayload`, espelhando exatamente `available_signals`. Mantém compatibilidade (apenas adição) e reforça visualmente a regra. Atualizar `buildInsightsUserPayload` para emitir ambos os campos com o mesmo array.
+
+   Nota: o hash de drift (`hashInsightsPrompt`) muda por inclusão do novo campo e pelo system prompt revisto — comportamento esperado, marca a nova versão do contrato.
+
+### B) `src/lib/insights/validate.ts`
+
+1. **Mapa estático de aliases → caminhos canónicos** (constante module-level):
    ```
-   Uso `WHERE instagram_username = ...` em vez do `id` fixo, para garantir que apanha qualquer linha actual independentemente do `id` regenerado.
+   average_comments          → content_summary.average_comments
+   average_likes             → content_summary.average_likes
+   average_engagement_rate   → content_summary.average_engagement_rate
+   engagement_rate           → content_summary.average_engagement_rate
+   posts_per_week            → content_summary.estimated_posts_per_week
+   estimated_posts_per_week  → content_summary.estimated_posts_per_week
+   followers                 → profile.followers_count
+   followers_count           → profile.followers_count
+   posts_count               → profile.posts_count
+   dominant_format           → content_summary.dominant_format
+   ```
 
-2. **Confirmação pós-migration** via `supabase--read_query`:
-   `SELECT count(*) FROM analysis_snapshots WHERE instagram_username = 'frederico.m.carvalho';` → tem de devolver `0`.
+2. **Função `normalizeEvidencePath(path: string): string`** — pura, determinística:
+   - Trim.
+   - Se já corresponde a um caminho canónico em `allowedEvidence`, devolve tal e qual.
+   - Caso contrário consulta o mapa de aliases; se houver match e o canónico estiver em `allowedEvidence`, devolve o canónico.
+   - Caso contrário devolve o input original (deixa o validador rejeitar com `EVIDENCE_INVALID` como hoje).
 
-3. **Uma única chamada fresh** via `stack_modern--invoke-server-function`:
-   `GET /api/analyze-public-v1?instagram_username=frederico.m.carvalho`
-   - Sem retries.
-   - Se falhar ou devolver `data_source != 'fresh'`, **paro e reporto**, não tento segunda vez.
+3. **Aplicar antes da validação** dentro de `validateInsights`:
+   - Para cada `item.evidence`, mapear cada string via `normalizeEvidencePath(ev, allowedEvidence)`.
+   - Substituir o array em memória pelo array normalizado **antes** da verificação contra `allowedEvidence`.
+   - O array final guardado em `sorted[i].evidence` usa os caminhos canónicos normalizados — assim persiste o canónico, não o alias.
 
-4. **Inspecção do resultado** (apenas leitura):
-   - `analysis_snapshots`: novo `id`, `has_ai_insights`, `insights_count`, `meta` (model, generated_at).
-   - `provider_call_logs` (último registo OpenAI): `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `estimated_cost_usd`, `duration_ms`, `status`, `http_status`.
-   - `analysis_events` (último registo): `data_source`, `outcome`, `duration_ms`, `estimated_cost_usd`.
+4. **Guardrails inalterados**: contagem 3–5, `body ≤ 280`, `evidence.length > 0`, marcador quantitativo, deteção pt-BR, schema Zod, confidence enum.
 
-5. **Relatório final** com o checklist exigido:
-   - snapshot id
-   - resumo do `ai_insights_v1` (nº de insights, modelo, generated_at)
-   - linha do `provider_call_logs` (model + tokens + custo + latência)
-   - latência total da análise
-   - recomendação final: safe / not safe para renderizar no relatório web
+### C) Validação local
 
-## Garantias
+- `bunx tsc --noEmit`
+- `bun run build`
+- Inspeção: confirmar que `normalizeEvidencePath("average_comments")` devolve `content_summary.average_comments` (assumindo que esse sinal está em `allowedEvidence`, o que é verdade para o snapshot do `frederico.m.carvalho` onde `cs.average_comments > 0`).
 
-- Zero chamadas a Apify/DataForSEO/OpenAI fora do passo 3.
-- Sem segunda tentativa em caso de falha — paro e peço nova aprovação.
-- Nenhum secret será impresso, registado ou exposto.
-- Sem alterações em `LOCKED_FILES.md`, `/report/example`, ou no `ReportPage` bloqueado.
+### D) Fora de âmbito (explícito)
 
-## Ficheiros tocados
+- Sem chamada OpenAI.
+- Sem Apify, sem DataForSEO.
+- Sem invalidação de cache, sem migração SQL.
+- Sem alterações de UI.
+- Validação fresh fica para aprovação separada num próximo prompt.
 
-- **Criar**: `supabase/migrations/<timestamp>_reinvalidate_smoke_test_snapshot.sql` (uma única instrução `DELETE`).
-- Nenhuma outra alteração de código.
+## Detalhes técnicos
 
-Diz **"avança"** para eu aplicar a migration e disparar a única chamada fresh.
+- O mapa de aliases é uma const `Record<string, string>` no topo do `validate.ts`; não há regex nem heurística — apenas lookup O(1).
+- A normalização é idempotente: aplicar duas vezes dá o mesmo resultado.
+- O `available_signals` continua a ser a fonte de verdade reconstruída via `buildInsightsUserPayload(ctx)` dentro do validador (não confiamos no echo do modelo).
+- Se um alias mapear para um canónico que não esteja presente no contexto atual (ex.: modelo cita `followers` mas perfil tem 0 seguidores), o canónico não está em `allowedEvidence` e a rejeição ocorre — comportamento correto.
+
+## Checkpoint
+
+- ☐ `INSIGHTS_SYSTEM_PROMPT` atualizado com regra explícita "exact strings from available_signals"
+- ☐ `InsightsUserPayload` ganha `allowed_evidence_paths` espelhando `available_signals`
+- ☐ Mapa de aliases adicionado a `validate.ts`
+- ☐ `normalizeEvidencePath` implementada e aplicada em `validateInsights`
+- ☐ Caminhos canónicos persistidos no resultado (`sorted[i].evidence`)
+- ☐ Guardrails (count, length, pt-BR, generic, schema) preservados
+- ☐ `bunx tsc --noEmit` limpo
+- ☐ `bun run build` limpo
+- ☐ Sem chamadas a OpenAI/Apify/DataForSEO nesta fase
