@@ -197,6 +197,7 @@ export type Database = {
           actual_cost_usd: number | null
           analysis_event_id: string | null
           apify_run_id: string | null
+          completion_tokens: number | null
           created_at: string
           duration_ms: number | null
           error_excerpt: string | null
@@ -204,16 +205,20 @@ export type Database = {
           handle: string
           http_status: number | null
           id: string
+          model: string | null
           network: string
           posts_returned: number
+          prompt_tokens: number | null
           provider: string
           status: string
+          total_tokens: number | null
         }
         Insert: {
           actor: string
           actual_cost_usd?: number | null
           analysis_event_id?: string | null
           apify_run_id?: string | null
+          completion_tokens?: number | null
           created_at?: string
           duration_ms?: number | null
           error_excerpt?: string | null
@@ -221,16 +226,20 @@ export type Database = {
           handle: string
           http_status?: number | null
           id?: string
+          model?: string | null
           network: string
           posts_returned?: number
+          prompt_tokens?: number | null
           provider?: string
           status: string
+          total_tokens?: number | null
         }
         Update: {
           actor?: string
           actual_cost_usd?: number | null
           analysis_event_id?: string | null
           apify_run_id?: string | null
+          completion_tokens?: number | null
           created_at?: string
           duration_ms?: number | null
           error_excerpt?: string | null
@@ -238,10 +247,13 @@ export type Database = {
           handle?: string
           http_status?: number | null
           id?: string
+          model?: string | null
           network?: string
           posts_returned?: number
+          prompt_tokens?: number | null
           provider?: string
           status?: string
+          total_tokens?: number | null
         }
         Relationships: []
       }
