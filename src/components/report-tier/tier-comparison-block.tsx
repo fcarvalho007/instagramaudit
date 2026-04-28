@@ -44,19 +44,10 @@ export function TierComparisonBlock() {
           />
         </div>
 
-        <div className="border-t border-border-subtle/30 pt-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="border-t border-border-subtle/30 pt-6">
           <p className="font-display text-base md:text-lg italic text-content-primary/90 leading-snug max-w-2xl">
             “{comparison.closing}”
           </p>
-          <a
-            href={comparison.ctaHref}
-            aria-disabled={comparison.ctaPending ? "true" : undefined}
-            data-pending={comparison.ctaPending ? "true" : undefined}
-            className="shrink-0 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] px-4 py-2.5 rounded-full border border-accent-primary/40 text-accent-primary hover:text-accent-luminous hover:border-accent-luminous/60 transition-colors self-start md:self-auto"
-          >
-            {comparison.cta}
-            <span aria-hidden="true">→</span>
-          </a>
         </div>
       </div>
     </section>

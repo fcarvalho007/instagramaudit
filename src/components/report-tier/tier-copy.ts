@@ -7,11 +7,10 @@
  */
 
 export const TIER_COPY = {
-  strip: {
-    eyebrow: "Visão essencial · relatório gratuito",
-    body: "Este relatório combina dados públicos do Instagram, sinais de pesquisa e leitura assistida por IA. A versão completa aprofunda concorrentes, oportunidades de conteúdo, presença no Google e recomendações prioritárias.",
-    cta: "Ver leitura completa",
-    ctaHref: "#leitura-completa",
+  scope: {
+    eyebrow: "Acesso beta · visão essencial",
+    title: "Relatório gratuito durante a fase beta",
+    body: "Este relatório combina dados públicos do Instagram, sinais de pesquisa e leitura assistida por IA. Durante o lançamento, mostramos uma leitura alargada sem pagamento. A versão Pro aprofundará concorrentes, pesquisa e plano de ação.",
   },
   comparison: {
     eyebrow: "Próximo nível",
@@ -44,9 +43,6 @@ export const TIER_COPY = {
     },
     closing:
       "O gratuito mostra o que está a acontecer. O completo mostra porquê, contra quem e o que fazer a seguir.",
-    cta: "Pedir relatório completo",
-    ctaHref: "#",
-    ctaPending: true,
   },
   tag: {
     essential: "Visão essencial",
