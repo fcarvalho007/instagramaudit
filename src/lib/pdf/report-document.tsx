@@ -25,6 +25,7 @@ import {
   PDF_COLORS,
   styles,
 } from "./styles";
+import type { PdfRecommendation } from "./recommendations";
 import {
   deriveInitials,
   formatCount,
@@ -62,6 +63,11 @@ export interface ReportDocumentInput {
   avatarDataUrl?: string;
   /** Up to 3 top posts ranked by engagement_pct. Empty list = page omitted. */
   topPosts?: TopPostForPdf[];
+  /**
+   * 4–6 deterministic recommendations derived from snapshot data.
+   * When fewer than 4 are available the page is omitted.
+   */
+  recommendations?: PdfRecommendation[];
   /** ISO timestamp of the underlying analysis snapshot. */
   analyzedAt: string;
   /** ISO timestamp of when the PDF itself is generated. */
