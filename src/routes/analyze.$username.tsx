@@ -15,6 +15,8 @@ import { ReportEnrichedBenchmarkSource } from "@/components/report-enriched/repo
 import { ReportEnrichedTopLinks } from "@/components/report-enriched/report-enriched-top-links";
 import { ReportEnrichedMentions } from "@/components/report-enriched/report-enriched-mentions";
 import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/report-enriched-competitors-cta";
+import { ReportShareActions } from "@/components/report-share/report-share-actions";
+import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
   snapshotToReportData,
@@ -171,6 +173,7 @@ function AnalyzePage() {
         <CoverageStrip result={state.result} />
         <TierStrip />
         <BetaStrip />
+        <ReportShareActions variant="compact" />
         <ReportEnrichedBio
           enriched={state.result.enriched}
           username={state.result.data.profile.username}
@@ -184,8 +187,10 @@ function AnalyzePage() {
         ) : null}
         <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
         <TierComparisonBlock />
+        <ReportShareActions variant="default" />
         <BetaFeedbackBlock />
       </div>
+      <Toaster />
     </ReportThemeWrapper>
   );
 }
