@@ -100,7 +100,7 @@ export type ProviderCallStatus =
 
 export interface RecordProviderCallInput {
   network?: string;
-  provider?: string;
+  provider?: "apify" | "dataforseo" | "openai" | string;
   actor: string;
   handle: string;
   status: ProviderCallStatus;
@@ -110,6 +110,14 @@ export interface RecordProviderCallInput {
   estimatedCostUsd?: number | null;
   actualCostUsd?: number | null;
   apifyRunId?: string | null;
+  // Token-bearing providers (currently OpenAI). Optional so non-AI calls
+  // stay null. The DB columns may not yet exist in every environment —
+  // the writer below only sends these fields when they are non-null, so a
+  // missing column produces no insert error for Apify/DataForSEO rows.
+  model?: string | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  totalTokens?: number | null;
   errorMessage?: string | null;
 }
 
@@ -121,24 +129,34 @@ export async function recordProviderCall(
   input: RecordProviderCallInput,
 ): Promise<string | null> {
   try {
+    // Build the insert payload conditionally: token columns are only added
+    // to the row when the caller actually supplies them. This keeps the
+    // writer compatible with environments where the migration adding
+    // `model` / `*_tokens` has not yet been applied.
+    const row: Record<string, unknown> = {
+      network: input.network ?? "instagram",
+      provider: input.provider ?? "apify",
+      actor: input.actor,
+      handle: input.handle.toLowerCase(),
+      status: input.status,
+      http_status: input.httpStatus ?? null,
+      duration_ms: input.durationMs ?? null,
+      posts_returned: input.postsReturned ?? 0,
+      estimated_cost_usd: input.estimatedCostUsd ?? null,
+      actual_cost_usd: input.actualCostUsd ?? null,
+      apify_run_id: input.apifyRunId ?? null,
+      error_excerpt: input.errorMessage
+        ? sanitizeErrorExcerpt(input.errorMessage)
+        : null,
+    };
+    if (input.model != null) row.model = input.model;
+    if (input.promptTokens != null) row.prompt_tokens = input.promptTokens;
+    if (input.completionTokens != null) row.completion_tokens = input.completionTokens;
+    if (input.totalTokens != null) row.total_tokens = input.totalTokens;
+
     const { data, error } = await supabaseAdmin
       .from("provider_call_logs")
-      .insert({
-        network: input.network ?? "instagram",
-        provider: input.provider ?? "apify",
-        actor: input.actor,
-        handle: input.handle.toLowerCase(),
-        status: input.status,
-        http_status: input.httpStatus ?? null,
-        duration_ms: input.durationMs ?? null,
-        posts_returned: input.postsReturned ?? 0,
-        estimated_cost_usd: input.estimatedCostUsd ?? null,
-        actual_cost_usd: input.actualCostUsd ?? null,
-        apify_run_id: input.apifyRunId ?? null,
-        error_excerpt: input.errorMessage
-          ? sanitizeErrorExcerpt(input.errorMessage)
-          : null,
-      })
+      .insert(row as never)
       .select("id")
       .single();
     if (error) {
