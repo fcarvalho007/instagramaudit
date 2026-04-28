@@ -1,232 +1,367 @@
-# Apify payload completeness audit + Report v2 data coverage
+# OpenAI Insights — camada cacheada, opcional e cost-logged
 
-Modo: read-only + plano. Sem chamadas a Apify. Sem alterações ao /report/example, ficheiros locked ou UI.
-
----
-
-## 1. Estado actual da integração Apify
-
-- **Actor**: `apify/instagram-scraper` (unified, em `analyze-public-v1.ts:67`).
-- **Input**: `{ directUrls, resultsType: "details", resultsLimit: 12, addParentData: false }`. Cost guards: `maxItems: 1`, `maxTotalChargeUsd: 0.10`, `apifyTimeoutSecs: 55`.
-- **Output**: `Record<string, unknown>` por handle, com `latestPosts[]` embebido.
-- **Pipeline**: `runActor` → `normalizeProfile` + `enrichPosts` + `computeContentSummary` → `analysis_snapshots.normalized_payload`.
-- **Top-level persistido**: `profile`, `posts`, `competitors`, `format_stats`, `content_summary`, `market_signals_free`.
-- **Snapshot real (`frederico.m.carvalho`)**: 12 posts, `comments_max=3`, 1 post com comments>0 → **`comments=0` é maioritariamente real**, não bug do normalizador.
+Modo: plano. Sem chamadas a OpenAI. Sem alterações a billing nem componentes locked.
 
 ---
 
-## 2. Matriz de cobertura de campos
+## 1. Princípios não-negociáveis
 
-Legenda: ✅ persistido · ➖ normalizado mas não persistido · ❌ não capturado · ❓ desconhecido até nova run
-
-### Profile (12 campos pedidos)
-
-| Campo | Pedido a Apify | Normalizado | Persistido | Web | PDF |
-|---|---|---|---|---|---|
-| username | ✅ | ✅ | ✅ | ✅ | ✅ |
-| full_name / display_name | ✅ | ✅ | ✅ | ✅ | ✅ |
-| biography | ✅ | ✅ | ✅ | ✅ | ✅ |
-| profile_pic_url / HD | ✅ | ✅ (avatar_url) | ✅ | ✅ | ✅ |
-| followers_count | ✅ | ✅ | ✅ | ✅ | ✅ |
-| following_count | ✅ | ✅ | ✅ | ✅ | ✅ |
-| posts_count | ✅ | ✅ | ✅ | ✅ | ✅ |
-| is_verified | ✅ | ✅ | ✅ | parcial | ✅ |
-| **is_business_account** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **business_category / category** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **external_url** (link na bio) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **highlight_reels_count** | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-### Post (24 campos pedidos)
-
-| Campo | Pedido | Normalizado | Persistido | Web | PDF |
-|---|---|---|---|---|---|
-| id / pk | ✅ | ✅ | ✅ | parcial | parcial |
-| shortcode | ✅ | ✅ | ✅ (null em alguns Reels) | ✅ | parcial |
-| permalink | ✅ | ✅ (fallback `/p/{shortcode}/`) | ✅ | ✅ | ✅ |
-| caption | ✅ | ✅ (truncado a 500) | ✅ | ✅ | ✅ |
-| hashtags | (extraído) | ✅ | ✅ | parcial | parcial |
-| mentions | (extraído) | ✅ | ✅ | parcial | parcial |
-| likes | ✅ | ✅ | ✅ | ✅ | ✅ |
-| comments | ✅ | ✅ | ✅ (real, não bug) | ✅ | ✅ |
-| video_views | ✅ | ✅ | ✅ | ✅ | parcial |
-| thumbnail_url | ✅ | ✅ | ✅ (URL CDN expira) | ✅ | parcial |
-| taken_at / iso | ✅ | ✅ | ✅ | ✅ | ✅ |
-| weekday / hour_local | (derivado UTC) | ✅ | ✅ | ✅ | ✅ |
-| is_video / format | ✅ | ✅ | ✅ | ✅ | ✅ |
-| engagement_pct | (derivado) | ✅ | ✅ | ✅ | ✅ |
-| **video_duration** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
-| **carousel child_count** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
-| **tagged_users** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
-| **coauthors / collab** | ❓ | ❌ | ❌ | ❌ | ❌ |
-| **location (id + name)** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
-| **music / audio (title, artist)** | ✅ Reels | ❌ | ❌ | ❌ | ❌ |
-| **alt_text / accessibility_caption** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
-| **product_type** (clips/feed/igtv) | ✅ | usado em `classifyFormat` | ❌ persistido cru | ❌ | ❌ |
-| **caption_full (sem truncate)** | ✅ | ❌ (cortado a 500) | parcial | ❌ | ❌ |
-| **comments_disabled flag** | ✅ provável | ❌ | ❌ | ❌ | ❌ |
-
-### Lacunas por categoria
-
-- **Hashtags/mentions**: extraídos só da caption por regex → perde-se o que vier em campos próprios (`hashtags[]` directo do actor).
-- **Comments**: confirmado real. 11/12 posts a 0 não é bug — é Reels novos sem comentários ainda.
-- **Verified**: persistido mas o report web não mostra badge.
+| Princípio | Como é garantido |
+|---|---|
+| OpenAI **não cria métricas** | Prompt recebe só números já computados pelo snapshot |
+| OpenAI **só interpreta** | Saída é texto/insights, nunca números recalculados |
+| **Persistência única** por snapshot | Insights vivem em `normalized_payload.ai_insights_v1` |
+| **Sem repetir chamadas** | Cache hit no snapshot bypassa OpenAI; lock por `snapshot_id` |
+| **Logging completo** | Nova linha em `provider_call_logs` por chamada |
+| **Kill-switch** | `OPENAI_ENABLED=false` desliga tudo, sem deploy |
+| **Fallback sempre** | Falha OpenAI → recomendações determinísticas continuam |
+| **Sem chamada no PDF** | PDF lê só do snapshot; nunca trigga geração |
+| **Sem chamada por page load** | Geração só acontece no momento da análise fresca |
 
 ---
 
-## 3. Campos high-value para Report v2
+## 2. Arquitectura do endpoint
 
-Ordenados por impacto editorial × custo de implementação:
+### 2.1 Onde injectar
 
-| # | Campo | Valor para o report | Custo |
-|---|---|---|---|
-| 1 | **video_duration** | Permite calcular "retention proxy" (views/duração) e separar Reels curtos vs longos | Baixo — só normalizar |
-| 2 | **product_type** persistido | Distinguir Reels editorial vs Clips vs IGTV no PDF | Baixo |
-| 3 | **carousel child_count** | "Carrosséis longos têm 28% mais engagement" — narrativa concreta | Baixo |
-| 4 | **tagged_users** | Detectar collabs, parcerias, marcas → secção "Rede de colaboração" | Médio (precisa UI) |
-| 5 | **location** | Mostrar "65% dos teus posts são em Lisboa" | Médio |
-| 6 | **music/audio** | Reels: identificar trending sounds reutilizados | Médio |
-| 7 | **business_category + external_url** | Hero do report: "Categoria oficial Instagram + link na bio" | Baixo |
-| 8 | **caption_full** | Necessário para análise de tom OpenAI (passo 8) — truncate a 500 mata-o | Baixo (subir para 2000) |
-| 9 | **alt_text** | Acessibilidade do report + base para análise visual sem chamar Vision API | Baixo |
-| 10 | **coauthors** | Detectar collab posts (forma diferente de `tagged_users`) | Baixo se existir |
+Não é um endpoint próprio. É um **passo opcional** dentro do fluxo existente em `src/routes/api/analyze-public-v1.ts`, **depois** de `enrichPosts` + `computeBenchmarkPositioning` + `market_signals_free` ficarem prontos, e **antes** de `storeSnapshot`.
+
+```text
+[Apify run] → normalizeProfile + enrichPosts → benchmark engine
+   → market_signals_free (DataForSEO) → ai_insights (OpenAI, opcional)
+   → storeSnapshot
+```
+
+### 2.2 Helper isolado
+
+Novo ficheiro `src/lib/insights/openai-insights.server.ts`:
+
+```ts
+export interface InsightsContext {
+  handle: string;
+  profile: PublicAnalysisProfile;
+  enriched: EnrichedPosts;
+  benchmark: BenchmarkPositioning | undefined;
+  marketSignals?: MarketSignalsFree | null;
+  competitorMedianEngagementPct: number | null;
+}
+
+export interface AiInsightsV1 {
+  schema_version: "v1";
+  generated_at: string;
+  model: string;
+  insights: Array<{
+    number: 1 | 2 | 3 | 4 | 5;
+    label: string;        // ex: "Cadência editorial"
+    text: string;         // 2-3 frases pt-PT
+    signal_ref: string;   // "engagement_pct=4.2; benchmark_p50=2.1"
+    confidence: "baseado em dados observados" | "sinal parcial";
+  }>;
+  fallback_used: boolean;
+  prompt_hash: string;    // sha256 do prompt para cache de versionamento
+}
+
+export async function generateInsights(ctx: InsightsContext): Promise<AiInsightsV1 | null>
+```
+
+Função:
+1. Se `!isOpenAiEnabled() || !isAllowed(handle)` → return `null` (caller usa determinístico).
+2. Constrói prompt determinístico a partir do `ctx`.
+3. Calcula `prompt_hash` (sha256 do prompt).
+4. Faz call OpenAI **com tool calling** para garantir output estruturado.
+5. Loga em `provider_call_logs` (provider="openai") com tokens + cost.
+6. Devolve `AiInsightsV1` ou `null` em caso de erro (caller continua com determinístico).
+
+### 2.3 Kill-switch + allowlist
+
+Novo ficheiro `src/lib/security/openai-allowlist.ts` (cópia adaptada de `apify-allowlist.ts`):
+
+```ts
+export function isOpenAiEnabled(): boolean {
+  return process.env.OPENAI_ENABLED === "true";
+}
+export function isOpenAiTestingModeActive(): boolean {
+  return process.env.OPENAI_TESTING_MODE !== "false";
+}
+export function getOpenAiAllowlist(): string[] { /* parse OPENAI_ALLOWLIST */ }
+export function isOpenAiAllowed(handle: string): boolean { /* ... */ }
+```
+
+Defaults: `OPENAI_ENABLED` ausente → OFF. `OPENAI_TESTING_MODE` ausente → ON (restritivo).
 
 ---
 
-## 4. Storage: o que precisa de Supabase Storage
+## 3. Prompt template
 
-URLs Apify CDN (`scontent-*.cdninstagram.com`) **expiram** (`oe=...` no URL). Para PDF e share OG images precisam de re-host.
+### 3.1 Sistema (constante, versionada)
 
-| Asset | Expira? | Estratégia |
-|---|---|---|
-| `profile.avatar_url` | Sim (poucas horas) | Re-host em `report-pdfs` (ou novo bucket `profile-assets`) na primeira run, persistir URL estável |
-| `post.thumbnail_url` | Sim | Re-host só no momento da geração do PDF (12 thumbnails × snapshot) |
-| `external_url` (bio link) | Não | Persistir directo |
+```
+És analista de marketing digital sénior em Portugal. Escreves em português europeu (Acordo 1990, sem brasileirismos, sem "você"). Tom: pragmático, editorial, sem exageros.
 
-Importante: **não fazer re-host upfront** para todas as analises — só quando o PDF é pedido. Caso contrário pagamos storage para snapshots que ninguém pediu PDF.
+Recebes métricas JÁ CALCULADAS de um perfil de Instagram. NUNCA inventes números. NUNCA cites benchmarks que não estejam no input. NUNCA uses palavras como "viral", "explosivo", "incrível".
 
----
+Devolves 3 a 5 insights ESTRATÉGICOS. Cada insight DEVE:
+- referenciar UM signal específico do input (ex: "engagement_pct=4.2 vs benchmark_p50=2.1")
+- ter 2-3 frases, máximo 280 caracteres
+- terminar com acção concreta
+- marcar confidence="sinal parcial" se basear-se em <5 posts ou métricas null
 
-## 5. Patch proposto: `raw_field_inventory` (mínimo, seguro)
+Devolves via tool call `submit_insights`.
+```
 
-Objectivo: **descobrir** que campos o actor está realmente a devolver — **sem** persistir os valores (privacidade, tamanho, e ruído).
+### 3.2 User (gerado por handle)
 
-### Schema
+JSON compacto com **só** os campos necessários:
 
-Acrescentar uma 7ª chave top-level a `normalized_payload`:
-
-```jsonc
-"raw_field_inventory": {
-  "captured_at": "2026-04-28T17:00:00Z",
-  "actor": "apify/instagram-scraper",
-  "actor_input_hash": "sha256:abc123",
-  "profile_keys": ["username", "fullName", "biography", ...],
-  "post_keys_union": ["id", "shortcode", "caption", "videoDuration", ...],
-  "post_keys_per_index": [
-    ["id", "shortcode", ...],   // post 0
-    ["id", "shortcode", ...]    // post 1
-  ]
+```json
+{
+  "handle": "frederico.m.carvalho",
+  "profile": { "followers": 9457, "is_verified": true, "posts_count": 2616 },
+  "engagement": { "avg_pct": 4.2, "avg_likes": 380, "avg_comments": 5 },
+  "format_mix": { "Reels": { "share_pct": 75, "avg_eng_pct": 5.1 }, ... },
+  "cadence": { "posts_per_week": 3.2 },
+  "benchmark": { "tier": "10k", "p50": 2.1, "p75": 3.8, "user_position": "p90" },
+  "competitor_median_eng_pct": 1.8,
+  "top_post": { "format": "Reels", "engagement_pct": 8.4, "weekday": 1, "hour": 14 },
+  "market_signals": { "top_keyword": "marketing digital", "top_volume": 14800 } | null
 }
 ```
 
-Só **nomes de chaves**, nunca valores. Para arrays/objetos aninhados regista `key.subkey` até profundidade 2.
+### 3.3 Tool schema (forçar estrutura)
 
-### Helper: `src/lib/analysis/raw-inventory.ts` (novo, puro)
-
-```ts
-export function buildRawInventory(actor: string, input: unknown, raw: Record<string, unknown>): RawFieldInventory
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "submit_insights",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "insights": {
+          "type": "array", "minItems": 3, "maxItems": 5,
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "maxLength": 40 },
+              "text": { "type": "string", "maxLength": 280 },
+              "signal_ref": { "type": "string", "maxLength": 120 },
+              "confidence": { "type": "string", "enum": ["baseado em dados observados", "sinal parcial"] }
+            },
+            "required": ["label", "text", "signal_ref", "confidence"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["insights"], "additionalProperties": false
+    }
+  }
+}
 ```
 
-### Wire-up: `analyze-public-v1.ts`
+### 3.4 Modelo
 
-Após `runActor` devolver o row cru, antes de o passar a `normalizeProfile`/`enrichPosts`:
-
-```ts
-const inventory = buildRawInventory(UNIFIED_ACTOR, actorInput, row);
-// ...
-storeSnapshot({ ...payload, raw_field_inventory: inventory })
-```
-
-Zero impacto no report actual (componentes ignoram chaves desconhecidas).
+`google/gemini-3-flash-preview` via Lovable AI Gateway (default workspace, mais barato; já temos `LOVABLE_API_KEY`). Mantemos o nome `OPENAI_*` nas env vars por consistência com o pedido do utilizador, mas o gateway é Lovable AI. **Decisão pendente** — ver questões no fim.
 
 ---
 
-## 6. Run controlada (uma vez, com aprovação explícita)
+## 4. Estratégia de cache
 
-**Não** corre nesta sessão. Plano para quando aprovado:
+### 4.1 Camadas
 
-1. Implementar `buildRawInventory` + wire-up + cache versioning.
-2. Forçar refresh único: chamar `/api/analyze-public-v1` com `frederico.m.carvalho` após invalidar cache (ou usar parâmetro `force=true` se existir; senão `DELETE` linha do cache).
-3. Inspeccionar via `supabase--read_query`:
-   ```sql
-   SELECT normalized_payload->'raw_field_inventory' FROM analysis_snapshots
-   WHERE instagram_username = 'frederico.m.carvalho'
-   ORDER BY created_at DESC LIMIT 1;
-   ```
-4. Confirmar:
-   - Que campos como `videoDuration`, `childPosts`, `taggedUsers`, `locationName`, `musicInfo` aparecem na lista.
-   - Que `commentsCount` está nas keys de **todos** os posts (confirma que o `0` é real, não missing).
-5. Custo: 1 chamada Apify ≈ $0.011 (igual às runs actuais).
+```text
+1. Snapshot cache hit  → ai_insights_v1 já lá → ZERO calls
+2. Snapshot fresh      → tenta gerar → persiste no payload
+3. Geração falhou      → fallback determinístico, NÃO persiste insights
+4. Re-geração manual   → admin action (botão "regenerar insights")
+```
+
+### 4.2 Versionamento
+
+- `schema_version: "v1"` no payload.
+- `prompt_hash` permite invalidar quando o prompt sistema mudar (re-deploy).
+- Quando `lookupSnapshot` devolve hit mas `ai_insights_v1.prompt_hash !== currentPromptHash`, **não** regenera automaticamente (custo). Marca como stale e admin decide.
+
+### 4.3 Concorrência
+
+Risco: dois pedidos fresh para o mesmo handle ao mesmo tempo → 2 calls OpenAI.
+
+Mitigação: o `analyze-public-v1` já tem cache lookup pré-Apify. A janela de race é estreita (1 análise/handle/segundo na prática). Aceitamos o risco no MVP. Se virar problema, adicionar advisory lock `pg_try_advisory_xact_lock(handle_hash)`.
 
 ---
 
-## 7. Plano de implementação em prompts pequenos
+## 5. Provider cost logging
 
-### Prompt A — Inventário cru (foundation)
-- Criar `src/lib/analysis/raw-inventory.ts`.
-- Tipo `RawFieldInventory` em `types.ts`.
-- Wire-up em `analyze-public-v1.ts` (uma linha antes de `storeSnapshot`).
-- Test deterministico (puro).
+Reutilizar `recordProviderCall` com extensão mínima ao tipo:
+
+```ts
+// src/lib/analysis/events.ts
+export interface RecordProviderCallInput {
+  // ... existente ...
+  provider?: "apify" | "dataforseo" | "openai";
+  model?: string | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  totalTokens?: number | null;
+  actualCostUsd?: number | null;  // já vai entrar pelo plano Apify cost
+}
+```
+
+### 5.1 Migração `provider_call_logs`
+
+```sql
+ALTER TABLE provider_call_logs
+  ADD COLUMN model text,
+  ADD COLUMN prompt_tokens integer,
+  ADD COLUMN completion_tokens integer,
+  ADD COLUMN total_tokens integer;
+-- actual_cost_usd já existe
+```
+
+### 5.2 Cost calculator
+
+```ts
+// src/lib/insights/cost.ts
+const PRICING = {
+  "google/gemini-3-flash-preview": { input: 0.0000003, output: 0.0000025 }, // $/token
+  "openai/gpt-5-mini": { input: 0.000001, output: 0.000004 },
+};
+export function calcOpenAiCost(model: string, p: number, c: number): number {
+  const r = PRICING[model] ?? PRICING["google/gemini-3-flash-preview"];
+  return Number((p * r.input + c * r.output).toFixed(6));
+}
+```
+
+`estimated_cost_usd` é o cálculo acima (sempre presente). `actual_cost_usd` é o mesmo (Lovable AI gateway não devolve cost discreto por chamada, é "calculated"). No admin marca-se como `cost_source: "calculated"`.
+
+---
+
+## 6. Visibilidade no admin
+
+`/admin` já mostra cost breakdown por provider via `report-cost-summary.server.ts`. Adicionar:
+
+- Card novo: **"AI Insights · OpenAI"** com `analyses_with_insights`, `total_tokens_30d`, `total_cost_30d`, `failure_rate`.
+- Filtro no log table por `provider=openai`.
+- Por snapshot, mostrar `ai_insights_v1.fallback_used` para perceber quando determinístico foi usado.
+- Botão "Regenerar insights" (Prompt H opcional) — admin-only, com confirmação de custo.
+
+---
+
+## 7. Estratégia de rendering
+
+### 7.1 Web report (`/analyze/$username`)
+
+- `snapshotToReportData` lê `payload.ai_insights_v1.insights` e mapeia para `reportData.aiInsights`.
+- Quando `ai_insights_v1` não existe ou `insights.length === 0` → `reportData.aiInsights = []` → componente `ReportAiInsights` retorna `null` (já é o comportamento actual, linha 13-15).
+- Adicionar pequeno chip de confidence dentro do componente:
+  - "baseado em dados observados" → chip cyan
+  - "sinal parcial" → chip amber
+- **Não** mexer em mais nada do `ReportAiInsights` (não está locked, mas fica intacto editorialmente).
+
+### 7.2 Recomendações determinísticas vs IA
+
+| Estado | Web report | PDF |
+|---|---|---|
+| `ai_insights_v1` presente | Mostra IA + esconde determinísticas | PDF mostra IA |
+| `ai_insights_v1` ausente | Mostra determinísticas (já hoje) | PDF mostra determinísticas |
+| `ai_insights_v1.fallback_used: true` | (caso edge) Mostra determinísticas | PDF mostra determinísticas |
+
+### 7.3 PDF strategy
+
+- `src/lib/pdf/render.ts` lê `payload.ai_insights_v1` se presente.
+- Se presente: nova secção "Leitura estratégica" no PDF (após benchmarks, antes das recomendações). Recomendações determinísticas continuam **escondidas** ou viram secção secundária "Sugestões adicionais".
+- Se ausente: comportamento actual (recomendações determinísticas).
+- **PDF nunca trigga geração**. Nunca chama OpenAI. Lê só do JSON.
+
+---
+
+## 8. Plano de implementação em prompts pequenos
+
+### Prompt A — Foundation (kill-switch + cost columns)
+- Criar `src/lib/security/openai-allowlist.ts`.
+- Migração SQL: `ALTER TABLE provider_call_logs ADD COLUMN model, prompt_tokens, completion_tokens, total_tokens`.
+- Pedir secrets `OPENAI_ENABLED=false`, `OPENAI_TESTING_MODE=true`, `OPENAI_ALLOWLIST=frederico.m.carvalho`.
+- Estender `RecordProviderCallInput` (events.ts) com novos campos opcionais.
 - ☐ `bunx tsc --noEmit`
 
-### Prompt B — Cache versioning + refresh controlado
-- Adicionar `payload_schema_version: "v2"` ao snapshot.
-- Quando lookup encontra `v1`, tratar como cache miss → força nova run (apenas para handles allowlisted).
-- Necessário antes do Prompt C para garantir que campos novos chegam aos snapshots existentes.
+### Prompt B — Helper isolado (sem wire-up ainda)
+- Criar `src/lib/insights/types.ts` (`AiInsightsV1`, `InsightsContext`).
+- Criar `src/lib/insights/cost.ts` (calculator).
+- Criar `src/lib/insights/prompt.ts` (system prompt + builder de user payload, puro).
+- Criar `src/lib/insights/openai-insights.server.ts` (fetch + tool call + log).
+- Tests deterministicos para `prompt.ts` e `cost.ts`.
 
-### Prompt C — Run controlada + leitura do inventory
-- Apenas após aprovação explícita.
-- Uma chamada a Apify para `frederico.m.carvalho`.
-- Output: lista exacta de campos disponíveis.
+### Prompt C — Wire-up no analyze flow
+- Em `analyze-public-v1.ts`, após `marketSignalsFree` ficar pronto e antes de `storeSnapshot`:
+  ```ts
+  const aiInsights = await generateInsights({ handle, profile, enriched: primaryEnriched, benchmark, marketSignals, competitorMedianEngagementPct });
+  storeSnapshot({ ...payload, ai_insights_v1: aiInsights ?? undefined });
+  ```
+- Try/catch silencioso — falha nunca quebra o fluxo.
 
-### Prompt D — Normalizar campos high-value (1-3)
-- Adicionar a `EnrichedPost`: `video_duration_secs`, `product_type`, `carousel_child_count`.
-- Adicionar a `PublicAnalysisProfile`: `business_category`, `external_url`, `is_business_account`.
-- Subir `CAPTION_MAX_LENGTH` para 2000.
+### Prompt D — Web rendering
+- Estender `snapshot-to-report-data.ts` para mapear `payload.ai_insights_v1.insights` → `reportData.aiInsights`.
+- Adicionar campo `confidence` ao tipo `AiInsight` consumido pelo componente.
+- Pequeno chip de confidence no `ReportAiInsights`.
 
-### Prompt E — Normalizar campos relacionais (4-6)
-- `tagged_users`, `location`, `music_info`. Só os que o Prompt C confirmou existir.
+### Prompt E — PDF rendering
+- `src/lib/pdf/render.ts` lê `ai_insights_v1`.
+- Se presente: nova secção; recomendações determinísticas viram colapsadas ou removidas.
+- Se ausente: nada muda.
 
-### Prompt F — Asset re-hosting (PDF only)
-- Helper `rehostInstagramAsset(url, snapshotId)` no fluxo PDF.
-- Chamado só dentro de `public-report-pdf.ts` para avatar + 12 thumbnails.
-- Bucket: re-usar `report-pdfs` ou criar `report-assets`.
+### Prompt F — Admin visibility
+- Card "AI Insights" no `/admin/v2/visao-geral`.
+- Filtro provider="openai" no log table.
 
-### Prompt G — Surfacing no web report (sem mudar layout)
-- Apenas a partir daqui se mexe na UI, e mesmo assim só dentro dos componentes não-locked.
-- Badge verified, categoria, link bio, child_count nos cards de carousel.
+### Prompt G — Run controlada (após aprovação explícita)
+- Activar `OPENAI_ENABLED=true` por 1 análise.
+- Forçar refresh de `frederico.m.carvalho`.
+- Validar payload, custo, latência.
+- Decidir se mantém activo no allowlist.
+
+### Prompt H — Opcional: regeneração admin-only
+- Botão "Regenerar insights" no admin.
+- Endpoint `POST /api/admin/regenerate-insights` com auth admin.
 
 ---
 
-## Sumário executivo
+## 9. Custos esperados
 
-- **8 campos profile** já capturados, **4 em falta** (business_category, external_url, is_business_account, highlight_reels_count).
-- **14 campos post** capturados (incluindo hashtags, mentions, video_views, thumbnail), **10 em falta** com alto valor (video_duration, child_count, location, music, tagged_users, product_type cru, caption_full, alt_text, coauthors, comments_disabled).
-- **`comments=0` confirmado real** no snapshot existente — não é bug.
-- **Avatar e thumbnails têm URLs que expiram** — re-host só quando o PDF é gerado, não upfront.
-- **Próximo passo recomendado**: Prompt A (inventário cru) — zero risco, zero custo extra Apify, dá-nos visibilidade definitiva.
+Por análise: ~1.500 prompt tokens + ~600 completion tokens.
+
+| Modelo | Custo/análise | Mensal (100 análises) |
+|---|---|---|
+| google/gemini-3-flash-preview | ~$0.0020 | $0.20 |
+| openai/gpt-5-mini | ~$0.0040 | $0.40 |
+| openai/gpt-5 | ~$0.0240 | $2.40 |
+
+Comparar com Apify (~$0.011/análise): IA é **5× mais barata** com Flash, similar com mini. Decisão obvia: **Flash** para v1.
+
+---
+
+## 10. Riscos e mitigações
+
+| Risco | Mitigação |
+|---|---|
+| Hallucination de números | Tool schema sem campos numéricos; só strings |
+| Insight genérico ("aposta em Reels") | Validador pós-resposta: rejeita se `signal_ref` não contém `=` ou `:` |
+| Drift de tom (brasileirismos) | System prompt explícito; spot-check no Prompt G |
+| Custo inesperado | `OPENAI_TESTING_MODE=true` + allowlist por defeito |
+| Latência (+1-3s) | Acontece só em análises fresh, que já levam 8-15s. Aceitável |
+| Rate limit Lovable AI | Try/catch silencioso → fallback determinístico |
 
 ---
 
 ## Decisões que preciso de ti
 
-1. Aprovas começar pelo **Prompt A** (inventário cru, sem chamar Apify)?
-2. Confirmas o re-host de assets **só no momento de gerar PDF** (não upfront)?
-3. Aprovas subir `CAPTION_MAX_LENGTH` de 500 → 2000 no Prompt D? (necessário para OpenAI no passo 8)
-4. Para a Run controlada do Prompt C, aprovas o custo de **1 análise fresca a `frederico.m.carvalho`** (~$0.011)?
+1. **Modelo**: `google/gemini-3-flash-preview` via Lovable AI (mais barato, sem secret extra) ou `openai/gpt-5-mini` (necessita `OPENAI_API_KEY`, que já existe nos secrets)? Recomendação: **Flash via Lovable AI**.
+2. **Quando o snapshot tem `ai_insights_v1`**, escondemos as recomendações determinísticas no web report ou mantemos ambas como secções distintas?
+3. **Prompt mudou**: regeneração automática de todos os snapshots stale (caro) ou só on-demand via admin (barato)? Recomendação: **on-demand**.
+4. **Regenerar via admin** (Prompt H) entra no MVP ou fica para depois?
 
 ## Checkpoint
 
-- ☐ Decisão sobre Prompt A / B / C
-- ☐ Aprovação de re-host on-demand vs upfront
-- ☐ Aprovação CAPTION_MAX_LENGTH 500 → 2000
-- ☐ Aprovação 1 run Apify fresca
+- ☐ Decisão modelo (Flash Lovable AI vs OpenAI direto)
+- ☐ Decisão coexistência determinísticas vs IA
+- ☐ Decisão regeneração on-demand vs auto
+- ☐ Decisão Prompt H (admin regen) entra ou não no MVP
+- ☐ Aprovação para Prompt A começar
