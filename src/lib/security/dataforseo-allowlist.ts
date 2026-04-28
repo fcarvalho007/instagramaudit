@@ -5,7 +5,8 @@
  * `DATAFORSEO_TESTING_MODE !== "false"`, only handles listed in
  * `DATAFORSEO_ALLOWLIST` (CSV, lowercase) may trigger a provider call.
  *
- * Hard kill-switch: `DATAFORSEO_ENABLED` (must equal the literal "true").
+ * Hard kill-switch: `DATAFORSEO_ENABLED` (must equal "true",
+ * case-insensitive, whitespace-tolerant).
  * Defaults to OFF so a misconfigured environment never burns credits.
  */
 function parseAllowlist(raw: string | undefined): string[] {
@@ -18,8 +19,9 @@ function parseAllowlist(raw: string | undefined): string[] {
 
 /** True when the testing-mode allowlist is currently being enforced. */
 export function isTestingModeActive(): boolean {
-  // Default ON. Operator must explicitly set "false" to disable.
-  return process.env.DATAFORSEO_TESTING_MODE !== "false";
+  // Default ON. Operator must explicitly set "false" (case-insensitive,
+  // tolerant to surrounding whitespace) to disable.
+  return (process.env.DATAFORSEO_TESTING_MODE ?? "").trim().toLowerCase() !== "false";
 }
 
 /** Returns the active allowlist (always lowercase, may be empty). */
@@ -42,5 +44,5 @@ export function isAllowed(value: string): boolean {
  * Returns true ONLY when `DATAFORSEO_ENABLED` is the literal string "true".
  */
 export function isDataForSeoEnabled(): boolean {
-  return process.env.DATAFORSEO_ENABLED === "true";
+  return (process.env.DATAFORSEO_ENABLED ?? "").trim().toLowerCase() === "true";
 }
