@@ -32,17 +32,39 @@ import {
   type SerpOrganicResult,
 } from "./endpoints/serp-organic";
 import { maxQueriesFor, type MarketSignalsPlan } from "./plan-limits";
+import {
+  DataForSeoBlockedError,
+  DataForSeoUpstreamError,
+} from "./types";
 
 export type MarketSignalsStatus =
   | "ready"
+  | "partial"
   | "disabled"
   | "blocked"
   | "no_keywords"
   | "timeout"
   | "error";
 
+export type ClassifiedErrorCode =
+  | "ACCOUNT_NOT_VERIFIED"
+  | "AUTH_FAILED"
+  | "RATE_LIMITED"
+  | "DISABLED"
+  | "BLOCKED"
+  | "TIMEOUT"
+  | "UNKNOWN";
+
+export interface ClassifiedError {
+  source: string;
+  code: ClassifiedErrorCode;
+  message: string;
+  httpStatus?: number;
+  apiStatusCode?: number;
+}
+
 export interface MarketSignalsOk {
-  status: "ready";
+  status: "ready" | "partial";
   plan: MarketSignalsPlan;
   keywords: string[];
   trends?: GoogleTrendsResult | null;
@@ -50,13 +72,17 @@ export interface MarketSignalsOk {
   serp?: Array<{ keyword: string; result: SerpOrganicResult | null }>;
   queries_used: number;
   queries_cap: number;
-  errors: Array<{ source: string; message: string }>;
+  errors: ClassifiedError[];
+  message?: string;
 }
 
 export interface MarketSignalsFail {
   status: Exclude<MarketSignalsStatus, "ready">;
   plan: MarketSignalsPlan;
   message: string;
+  queries_used?: number;
+  queries_cap?: number;
+  errors?: ClassifiedError[];
 }
 
 export type MarketSignalsResult = MarketSignalsOk | MarketSignalsFail;
@@ -91,6 +117,82 @@ function firstResultOrNull<T>(envelope: { tasks?: Array<{ result: T[] | null }> 
   return null;
 }
 
+/**
+ * Normalises any error thrown by a DataForSEO call into a stable, UI-safe
+ * envelope. Maps known HTTP/API status codes (e.g. 40104 = account not
+ * verified) to a typed `code` so the public report can show actionable
+ * messages without parsing free-form strings.
+ */
+function classifyError(source: string, err: unknown): ClassifiedError {
+  if (err instanceof DataForSeoUpstreamError) {
+    const httpStatus = err.status;
+    const apiStatusCode = err.apiStatusCode;
+    const rawMsg = err.message ?? "";
+
+    if (
+      apiStatusCode === 40104 ||
+      (httpStatus === 403 && /verify your account/i.test(rawMsg))
+    ) {
+      return {
+        source,
+        code: "ACCOUNT_NOT_VERIFIED",
+        message: "A conta DataForSEO ainda não está verificada.",
+        httpStatus,
+        apiStatusCode,
+      };
+    }
+    if (httpStatus === 401 || apiStatusCode === 40101) {
+      return {
+        source,
+        code: "AUTH_FAILED",
+        message: "Credenciais DataForSEO inválidas.",
+        httpStatus,
+        apiStatusCode,
+      };
+    }
+    if (httpStatus === 429 || apiStatusCode === 40202) {
+      return {
+        source,
+        code: "RATE_LIMITED",
+        message: "Limite de pedidos DataForSEO atingido.",
+        httpStatus,
+        apiStatusCode,
+      };
+    }
+    return {
+      source,
+      code: "UNKNOWN",
+      message: rawMsg || "Erro desconhecido do DataForSEO.",
+      httpStatus,
+      apiStatusCode,
+    };
+  }
+  if (err instanceof DataForSeoBlockedError) {
+    return {
+      source,
+      code: err.reason === "kill_switch" ? "DISABLED" : "BLOCKED",
+      message: err.message,
+    };
+  }
+  const message = err instanceof Error ? err.message : "unknown";
+  if (/abort|timeout/i.test(message)) {
+    return { source, code: "TIMEOUT", message };
+  }
+  return { source, code: "UNKNOWN", message };
+}
+
+function isUsableTrends(t: GoogleTrendsResult | null | undefined): boolean {
+  return !!t && Array.isArray(t.items) && t.items.length > 0;
+}
+function isUsableKeywordIdeas(k: KeywordIdeasResult | null | undefined): boolean {
+  return !!k;
+}
+function isUsableSerp(
+  s: Array<{ keyword: string; result: SerpOrganicResult | null }> | undefined,
+): boolean {
+  return !!s && s.some((entry) => entry.result !== null);
+}
+
 async function buildSignalsInner(
   payload: SnapshotPayload,
   plan: MarketSignalsPlan,
@@ -110,7 +212,7 @@ async function buildSignalsInner(
     };
   }
 
-  const errors: Array<{ source: string; message: string }> = [];
+  const errors: ClassifiedError[] = [];
   let used = 0;
 
   // 1. Google Trends — always first (free + paid).
@@ -124,23 +226,21 @@ async function buildSignalsInner(
       });
       trends = firstResultOrNull<GoogleTrendsResult>(env);
     } catch (err) {
-      errors.push({
-        source: "google_trends",
-        message: err instanceof Error ? err.message : "unknown",
-      });
+      errors.push(classifyError("dataforseo:google_trends", err));
     }
   }
 
   if (plan !== "paid") {
-    return {
-      status: "ready",
+    return finalize({
       plan,
       keywords,
       trends,
-      queries_used: used,
-      queries_cap: cap,
+      keyword_ideas: undefined,
+      serp: undefined,
+      used,
+      cap,
       errors,
-    };
+    });
   }
 
   // 2. Keyword Ideas (paid).
@@ -155,10 +255,7 @@ async function buildSignalsInner(
       });
       keyword_ideas = firstResultOrNull<KeywordIdeasResult>(env);
     } catch (err) {
-      errors.push({
-        source: "keyword_ideas",
-        message: err instanceof Error ? err.message : "unknown",
-      });
+      errors.push(classifyError("dataforseo:keyword_ideas", err));
     }
   }
 
@@ -176,23 +273,70 @@ async function buildSignalsInner(
       serp.push({ keyword: kw, result: firstResultOrNull<SerpOrganicResult>(env) });
     } catch (err) {
       serp.push({ keyword: kw, result: null });
-      errors.push({
-        source: `serp_organic:${kw}`,
-        message: err instanceof Error ? err.message : "unknown",
-      });
+      errors.push(classifyError(`dataforseo:serp_organic:${kw}`, err));
     }
   }
 
-  return {
-    status: "ready",
+  return finalize({
     plan,
     keywords,
     trends,
     keyword_ideas,
     serp,
-    queries_used: used,
-    queries_cap: cap,
+    used,
+    cap,
     errors,
+  });
+}
+
+interface FinalizeInput {
+  plan: MarketSignalsPlan;
+  keywords: string[];
+  trends: GoogleTrendsResult | null;
+  keyword_ideas: KeywordIdeasResult | null | undefined;
+  serp: Array<{ keyword: string; result: SerpOrganicResult | null }> | undefined;
+  used: number;
+  cap: number;
+  errors: ClassifiedError[];
+}
+
+/**
+ * Derives the final status envelope from accumulated results + errors.
+ * "Usable" = at least one provider call returned a non-empty payload.
+ */
+function finalize(input: FinalizeInput): MarketSignalsResult {
+  const usableCount =
+    (isUsableTrends(input.trends) ? 1 : 0) +
+    (isUsableKeywordIdeas(input.keyword_ideas) ? 1 : 0) +
+    (isUsableSerp(input.serp) ? 1 : 0);
+  const failed = input.errors.length;
+
+  if (usableCount === 0) {
+    return {
+      status: "error",
+      plan: input.plan,
+      message: "Não foi possível obter sinais de mercado nesta tentativa.",
+      queries_used: input.used,
+      queries_cap: input.cap,
+      errors: input.errors,
+    };
+  }
+
+  const status: "ready" | "partial" = failed > 0 ? "partial" : "ready";
+  return {
+    status,
+    plan: input.plan,
+    keywords: input.keywords,
+    trends: input.trends,
+    keyword_ideas: input.keyword_ideas ?? null,
+    serp: input.serp,
+    queries_used: input.used,
+    queries_cap: input.cap,
+    errors: input.errors,
+    message:
+      status === "partial"
+        ? "Sinais de mercado parciais — algumas fontes falharam."
+        : undefined,
   };
 }
 
