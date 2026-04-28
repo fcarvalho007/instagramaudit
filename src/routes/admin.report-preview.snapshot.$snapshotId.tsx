@@ -28,6 +28,11 @@ import {
   type SnapshotMetadata,
   type ReportBenchmarkInput,
 } from "@/lib/report/snapshot-to-report-data";
+import {
+  CostBreakdownPanel,
+  type CostSummaryView,
+  type ProviderCallView,
+} from "@/components/admin/cockpit/parts/cost-breakdown-panel";
 
 export const Route = createFileRoute(
   "/admin/report-preview/snapshot/$snapshotId",
@@ -61,6 +66,8 @@ interface SnapshotResponse {
     updated_at: string;
     expires_at: string | null;
     benchmark?: ReportBenchmarkInput;
+    cost_summary?: CostSummaryView;
+    provider_calls?: ProviderCallView[];
   } | null;
   error_code?: string;
   message?: string;
@@ -80,6 +87,8 @@ type LoadState =
         created_at: string;
         updated_at: string;
       };
+      costSummary: CostSummaryView | null;
+      providerCalls: ProviderCallView[];
     };
 
 function AdminSnapshotPreviewPage() {
@@ -175,6 +184,8 @@ function AdminSnapshotPreviewPage() {
             created_at: body.snapshot.created_at,
             updated_at: body.snapshot.updated_at,
           },
+          costSummary: body.snapshot.cost_summary ?? null,
+          providerCalls: body.snapshot.provider_calls ?? [],
         });
       } catch (e) {
         if (cancelled) return;
