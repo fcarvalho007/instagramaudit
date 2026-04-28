@@ -747,6 +747,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         comments: num(p.comments, 0),
         engagementPct: round2(num(p.engagement_pct, 0)),
         date: formatPtDateShort(p.taken_at_iso ?? null),
+        mentions,
       };
     });
 
