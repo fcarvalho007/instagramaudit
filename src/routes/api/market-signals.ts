@@ -226,13 +226,13 @@ export const Route = createFileRoute("/api/market-signals")({
           }
         }
 
-        return json(
-          withMeta(result as unknown as Record<string, unknown>, {
-            cache_status: "miss",
-            cost_usd: providerCostUsd,
-            cost_source: persistedCostSource,
-          }),
-        );
+          return json(
+            withMeta(result as unknown as Record<string, unknown>, {
+              cache_status: "miss",
+              cost_usd: providerCostUsd,
+              cost_source: persistedCostSource,
+            }),
+          );
       },
     },
   },
