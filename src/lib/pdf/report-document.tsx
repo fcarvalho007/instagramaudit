@@ -35,6 +35,24 @@ import {
   formatSignedPercent,
 } from "./format";
 
+/**
+ * Pre-derived top post for the PDF. Resolved upstream in `render.ts` from the
+ * snapshot's raw posts array — no Instagram CDN fetch, no thumbnail.
+ */
+export interface TopPostForPdf {
+  id: string;
+  format: string;
+  /** ISO timestamp of the post (UTC). May be null for legacy snapshots. */
+  takenAtIso: string | null;
+  likes: number;
+  comments: number;
+  engagementPct: number;
+  /** Caption excerpt, already trimmed and capped to ~180 chars upstream. */
+  caption: string;
+  /** Public permalink. May be null when neither permalink nor shortcode exists. */
+  permalink: string | null;
+}
+
 export interface ReportDocumentInput {
   profile: PublicAnalysisProfile;
   contentSummary: PublicAnalysisContentSummary;
@@ -42,6 +60,8 @@ export interface ReportDocumentInput {
   benchmark?: BenchmarkPositioning;
   /** Pre-fetched avatar bytes encoded as a data URL. Optional. */
   avatarDataUrl?: string;
+  /** Up to 3 top posts ranked by engagement_pct. Empty list = page omitted. */
+  topPosts?: TopPostForPdf[];
   /** ISO timestamp of the underlying analysis snapshot. */
   analyzedAt: string;
   /** ISO timestamp of when the PDF itself is generated. */
@@ -393,6 +413,86 @@ function CompetitorsPage({
   );
 }
 
+function TopPostsPage({
+  profile,
+  topPosts,
+  generatedAt,
+}: {
+  profile: PublicAnalysisProfile;
+  topPosts: TopPostForPdf[];
+  generatedAt: string;
+}) {
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader kicker={`@${profile.username}`} />
+
+      <Text style={styles.sectionTitle}>Conteúdo de maior impacto</Text>
+      <Text style={styles.sectionHeading}>Publicações com maior envolvimento</Text>
+      <Text style={styles.sectionLead}>
+        Selecção das três publicações com taxa de envolvimento mais elevada
+        no período analisado. As miniaturas não são incluídas porque os
+        endereços da Instagram expiram; usa o link para abrir cada post.
+      </Text>
+
+      {topPosts.map((post, idx) => {
+        const isLast = idx === topPosts.length - 1;
+        return (
+          <View
+            key={post.id}
+            style={[styles.postCard, isLast ? styles.postCardLast : {}]}
+            wrap={false}
+          >
+            <View style={styles.postMetaRow}>
+              <Text style={styles.postFormatBadge}>{post.format}</Text>
+              <Text style={styles.postDate}>
+                {post.takenAtIso ? formatShortDate(post.takenAtIso) : "—"}
+              </Text>
+            </View>
+
+            {post.caption ? (
+              <Text style={styles.postCaption}>
+                {post.caption}
+                {post.caption.length >= 180 ? "…" : ""}
+              </Text>
+            ) : null}
+
+            <View style={styles.postStatsRow}>
+              <View style={styles.postStatCell}>
+                <Text style={styles.postStatLabel}>Envolvimento</Text>
+                <Text style={styles.postStatValue}>
+                  {formatPercent(post.engagementPct)}
+                </Text>
+              </View>
+              <View style={styles.postStatCell}>
+                <Text style={styles.postStatLabel}>Gostos</Text>
+                <Text style={styles.postStatValue}>
+                  {formatCount(post.likes)}
+                </Text>
+              </View>
+              <View style={styles.postStatCell}>
+                <Text style={styles.postStatLabel}>Comentários</Text>
+                <Text style={styles.postStatValue}>
+                  {formatCount(post.comments)}
+                </Text>
+              </View>
+            </View>
+
+            {post.permalink ? (
+              <Text style={styles.postPermalink}>{post.permalink}</Text>
+            ) : (
+              <Text style={styles.postPermalinkMissing}>
+                Link público indisponível
+              </Text>
+            )}
+          </View>
+        );
+      })}
+
+      <PageFooter generatedAt={generatedAt} />
+    </Page>
+  );
+}
+
 export function ReportDocument(input: ReportDocumentInput) {
   const {
     profile,
@@ -400,6 +500,7 @@ export function ReportDocument(input: ReportDocumentInput) {
     competitors,
     benchmark,
     avatarDataUrl,
+    topPosts,
     analyzedAt,
     generatedAt,
   } = input;
@@ -434,6 +535,13 @@ export function ReportDocument(input: ReportDocumentInput) {
         <CompetitorsPage
           profile={profile}
           competitors={competitors}
+          generatedAt={generatedAt}
+        />
+      ) : null}
+      {topPosts && topPosts.length > 0 ? (
+        <TopPostsPage
+          profile={profile}
+          topPosts={topPosts}
           generatedAt={generatedAt}
         />
       ) : null}
