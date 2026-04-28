@@ -1,96 +1,100 @@
 
-# Avaliação — OpenAI Insights (Prompts 1 → 4)
+# Refinamentos OpenAI Insights — pós-MVP
 
-## Resumo
-
-A implementação está sólida e segura. **Há 1 item por concluir do Prompt 1** (migração SQL nunca foi criada) e 2 melhorias menores opcionais. Tudo o resto está conforme o spec.
+Avaliação completa após Prompts 1-4 + migração de tokens. Implementação está sólida; estes são os refinamentos com **impacto real**, ordenados por prioridade.
 
 ---
 
-## Estado por Prompt
+## Tier 1 — Antes do primeiro smoke test (recomendado)
 
-### Prompt 1 — Foundation
-| Item | Estado |
-|---|---|
-| `src/lib/insights/cost.ts` | OK |
-| `src/lib/insights/types.ts` | OK |
-| `src/lib/security/openai-allowlist.ts` (3 gates) | OK |
-| Edição `src/lib/analysis/events.ts` (campos `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`) | OK no TS |
-| **Migração para adicionar as 4 colunas em `provider_call_logs`** | **EM FALTA** |
+### R1. Persistir `inputs_hash` separado para detecção de drift
 
-Verificado via `\d provider_call_logs`: a tabela só tem `estimated_cost_usd`, `actual_cost_usd`, `posts_returned`. Não existem `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`.
+`AiInsightsV1.source_signals.inputs_hash` já é calculado mas serve só como metadata. Para **decidir quando regenerar**, precisamos compará-lo com o hash do snapshot atual. Adicionar um helper no adapter:
 
-O writer em `events.ts` foi escrito defensivamente (só envia esses campos quando não nulos), por isso **não rebenta nada hoje**. Mas significa que **todas as métricas de tokens e modelo estão a ser silenciosamente descartadas** quando uma chamada OpenAI for feita. O admin nunca vai conseguir mostrar custo real, nem auditar tokens.
-
-### Prompt 2 — Isolated Generator
-| Item | Estado |
-|---|---|
-| `prompt.ts` (system + payload + hash) | OK |
-| `validate.ts` (Zod, anti-pt-BR, evidence guard) | OK |
-| `openai-insights.server.ts` (fetch direto, json_schema strict, timeout 25s) | OK |
-| Triple gate aplicado | OK |
-| Modelo configurável `OPENAI_INSIGHTS_MODEL`, default `gpt-4.1-mini` | OK |
-| Logging via `recordProviderCall` | OK (ver Prompt 1 — colunas em falta) |
-
-### Prompt 3 — Wiring no analyze-public-v1
-| Item | Estado |
-|---|---|
-| Chamado só em fresh, nunca em cache hit | OK |
-| Persistido em `normalized_payload.ai_insights_v1` | OK |
-| `try/catch` isola falhas do fluxo Apify/DataForSEO | OK |
-| Pre-check `isOpenAiAllowed` para evitar trabalho desnecessário | OK |
-| Sem regeneração automática de snapshots antigos | OK |
-
-### Prompt 4 — Render no Web Report
-| Item | Estado |
-|---|---|
-| Map para `ReportData.aiInsights` `{number,label,text}` | OK |
-| Ordenação por `priority` desc | OK |
-| `number` zero-padded ("01", "02", ...) | OK |
-| Hide quando `ai_insights_v1` ausente | OK |
-| Sem placeholders | OK |
-| Ficheiros locked não tocados | OK |
-| `confidence` + `evidence` preservados em `ReportEnriched.aiInsights` | OK (companion, ainda não renderizado em UI) |
-| `/report/example` intacto | OK |
-
----
-
-## Itens por Concluir
-
-### 1. CRÍTICO — Criar migração para colunas de tokens em `provider_call_logs`
-
-```sql
-ALTER TABLE public.provider_call_logs
-  ADD COLUMN IF NOT EXISTS model text,
-  ADD COLUMN IF NOT EXISTS prompt_tokens integer,
-  ADD COLUMN IF NOT EXISTS completion_tokens integer,
-  ADD COLUMN IF NOT EXISTS total_tokens integer;
-
-CREATE INDEX IF NOT EXISTS idx_provider_call_logs_openai
-  ON public.provider_call_logs (created_at DESC)
-  WHERE provider = 'openai';
+```ts
+// snapshot-to-report-data.ts
+hasStaleAiInsights(payload): boolean // compara hash atual vs persistido
 ```
 
-Sem isto, qualquer chamada OpenAI bem-sucedida grava a linha mas **perde model + tokens silenciosamente**, impedindo cost tracking real e auditoria.
+Sem isto, o admin nunca sabe se um `ai_insights_v1` antigo ainda corresponde aos dados base. Útil quando o botão de regeneração admin chegar.
 
-### 2. Menor — Substituição AI vs determinísticas no report
+### R2. Cap de custo total diário (kill-switch dinâmico)
 
-Decisão #10 do spec: *"Quando ai_insights_v1 existir, os insights AI substituem as recomendações determinísticas no report principal; as determinísticas ficam como fallback."*
+Atualmente só temos `OPENAI_ENABLED` (binário). Falta um teto operacional. Adicionar em `openai-insights.server.ts`, antes de chamar OpenAI:
 
-Atualmente ambos podem coexistir consoante o componente locked. Convém confirmar no `snapshot-to-report-data.ts` se as recomendações determinísticas (`recommendations` / `priorityActions` / equivalente) são limpas/substituídas quando `aiInsights.length > 0`. Não verifiquei esta secção em detalhe — vale uma passagem.
+- Query `provider_call_logs` últimas 24h, `provider='openai'`, `status='success'`
+- Soma `estimated_cost_usd`
+- Se > `OPENAI_DAILY_CAP_USD` (default $5), retorna `failResult("DAILY_CAP_REACHED")`
 
-### 3. Opcional — Companion section para `confidence` + `evidence`
+Uma query rápida (< 50ms) que evita um runaway de custos por bug ou loop. Cap pode ser env var.
 
-`ReportEnriched.aiInsights` já carrega `confidence` e `evidenceSummary` mas nada os renderiza. Como os componentes principais estão locked, faz sentido (no futuro) um pequeno bloco em `/analyze/$username` (não em locked) a mostrar essa transparência. Não é bloqueante para MVP.
+### R3. `safeText` para erros HTTP devolve mais sinal
+
+Em `openai-insights.server.ts:152` quando OpenAI devolve erro, gravamos só os primeiros 500 chars do texto. Para erros típicos (429 rate limit, 401 invalid key, 400 schema rejection) é suficiente, mas convém **parsear o JSON de erro** quando vier para extrair `error.code` e `error.type` em vez de truncar texto bruto. Melhora muito o debugging no admin.
+
+---
+
+## Tier 2 — Admin observability (depois do primeiro smoke test)
+
+### R4. Card OpenAI no cost-breakdown-panel já está mockado
+
+`src/components/admin/cockpit/parts/cost-breakdown-panel.tsx:228` já tem `<ProviderCard provider="openai" bucket={summary.openai} />`, e a query em `diagnostics.ts` já lista `provider_call_logs`. **Falta verificar** que a agregação por provider inclui `openai` no bucket — possivelmente já filtra, possivelmente está hard-coded para Apify/DataForSEO. Inspecionar e ajustar.
+
+### R5. Coluna `model` + tokens visíveis na tabela de chamadas
+
+A migração adicionou as colunas mas a query `diagnostics.ts:292` seleciona só `id, created_at, actor, handle, status, http_status, duration_ms, posts_returned, estimated_cost_usd`. Adicionar `model, prompt_tokens, completion_tokens, total_tokens` ao select e mostrar na tabela admin.
+
+### R6. Painel V2 de despesa (`expense-section.tsx`) usa MOCK
+
+Os componentes em `src/components/admin/v2/` mostram custos OpenAI **mock**. Quando o smoke test correr, ligar à query real (similar à existente) ou marcar claramente como "mock" no UI até estar wired.
+
+---
+
+## Tier 3 — Qualidade dos insights (após observar primeiras gerações)
+
+### R7. Glossário pt-PT mais defensivo
+
+`PTBR_TOKENS` em `validate.ts:45` tem 9 tokens. Faltam alguns frequentes que o GPT pode escapar:
+
+- `gerenciar` → "gerir"
+- `acessar` → "aceder"
+- `cadastr[oa]` → "registo"
+- `relatório de mídia` → "relatório editorial"
+- `time` (já listado mas comentado como "ambíguo") → manter, vale a regra
+
+Adicionar quando vir leaks reais nas primeiras execuções, não preventivamente.
+
+### R8. Limite de `body` (280 chars) pode ser apertado
+
+280 chars é compatível com tweet-length mas o `ReportAiInsights` locked usa cards verticais. Ver no preview se 280 quebra o layout — se sim, baixar para 220.
+
+### R9. Fallback para evidence cross-check com paths "similares"
+
+Em `validate.ts:135`, se o modelo escrever `content_summary.engagement_rate` em vez de `content_summary.average_engagement_rate`, falhamos com `EVIDENCE_INVALID`. Para reduzir rejeições legítimas, fazer match por sufixo ou Levenshtein distance ≤ 3. Trade-off: relaxa o guard. **Só fazer se virmos rejeições falsas em produção.**
+
+---
+
+## Tier 4 — Não fazer agora (anti-scope creep)
+
+- ❌ Botão admin de regeneração — combinado fica para depois do MVP
+- ❌ Companion section visual com `confidence` + `evidence` — após validação editorial humana
+- ❌ Re-geração automática de snapshots antigos — política definida: nunca
+- ❌ Suporte a múltiplos modelos em A/B — prematuro
+- ❌ Streaming de tokens — não traz valor a um job batch de 25s
 
 ---
 
 ## Próximo Passo Recomendado
 
-Aprovar este plano para eu:
-1. Criar a migração SQL acima (item 1).
-2. Verificar e, se necessário, ajustar a substituição AI/determinístico (item 2).
+Começar por **R1, R2 e R3** (Tier 1) — todos baixo-risco, todos protegem custo ou debugging antes de a primeira chamada real correr.
 
-Depois, num prompt separado, podemos:
-- Definir secrets reais (`OPENAI_ENABLED=true`, `OPENAI_ALLOWLIST=frederico.m.carvalho`) e correr o smoke test controlado.
-- (Mais tarde) Adicionar o companion de confidence/evidence e o painel admin de custos OpenAI.
+Depois, **smoke test controlado** com `frederico.m.carvalho`:
+1. Setar `OPENAI_ENABLED=true` e `OPENAI_ALLOWLIST=frederico.m.carvalho`
+2. POST a `analyze-public-v1` com `?refresh=1`
+3. Verificar `provider_call_logs` para a linha OpenAI com `model`, tokens e custo
+4. Verificar `analysis_snapshots.normalized_payload.ai_insights_v1`
+5. Ver `/analyze/frederico.m.carvalho` — secção "Insights estratégicos" deve renderizar
+
+Só **depois** do smoke test, atacar Tier 2 (admin) com dados reais para olhar.
+
+Aprovas avançar com **R1 + R2 + R3** num único prompt?

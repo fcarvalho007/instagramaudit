@@ -90,6 +90,11 @@ export interface SnapshotPayload {
     schema_version?: number | null;
     generated_at?: string | null;
     model?: string | null;
+    source_signals?: {
+      inputs_hash?: string | null;
+      has_market_signals?: boolean | null;
+      has_dataforseo_paid?: boolean | null;
+    } | null;
     insights?: Array<{
       id?: string | null;
       title?: string | null;
