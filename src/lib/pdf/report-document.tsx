@@ -507,6 +507,7 @@ export function ReportDocument(input: ReportDocumentInput) {
     benchmark,
     avatarDataUrl,
     topPosts,
+    recommendations,
     analyzedAt,
     generatedAt,
   } = input;
@@ -548,6 +549,13 @@ export function ReportDocument(input: ReportDocumentInput) {
         <TopPostsPage
           profile={profile}
           topPosts={topPosts}
+          generatedAt={generatedAt}
+        />
+      ) : null}
+      {recommendations && recommendations.length >= 4 ? (
+        <RecommendationsPage
+          profile={profile}
+          recommendations={recommendations}
           generatedAt={generatedAt}
         />
       ) : null}
