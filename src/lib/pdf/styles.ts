@@ -21,6 +21,7 @@ export const PDF_COLORS = {
   positive: "#0F766E",
   negative: "#B91C1C",
   warning: "#B45309",
+  gold: "#B68A3E",
 } as const;
 
 export const styles = StyleSheet.create({
@@ -436,6 +437,64 @@ export const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 1.5,
     color: PDF_COLORS.inkSoft,
+  },
+
+
+  // AI insights cards (distinct from deterministic recommendations).
+  // Same skeleton as recoCard, but the left border uses the gold accent and
+  // a small confidence chip is rendered under the body to flag editorial
+  // weight of each item.
+  aiInsightCard: {
+    borderWidth: 1,
+    borderColor: PDF_COLORS.divider,
+    borderLeftWidth: 3,
+    borderLeftColor: PDF_COLORS.gold,
+    borderRadius: 4,
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingLeft: 14,
+    paddingRight: 14,
+    marginBottom: 10,
+  },
+  aiInsightCardLast: {
+    marginBottom: 0,
+  },
+  aiInsightHeaderRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 10,
+    marginBottom: 6,
+  },
+  aiInsightNumber: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    letterSpacing: 1,
+    color: PDF_COLORS.gold,
+  },
+  aiInsightTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12,
+    color: PDF_COLORS.ink,
+    flex: 1,
+  },
+  aiInsightBody: {
+    fontSize: 10,
+    lineHeight: 1.5,
+    color: PDF_COLORS.inkSoft,
+    marginBottom: 6,
+  },
+  aiInsightConfidence: {
+    fontSize: 8,
+    color: PDF_COLORS.inkMuted,
+    fontStyle: "italic",
+    letterSpacing: 0.3,
+  },
+  aiSourceNote: {
+    fontSize: 8.5,
+    color: PDF_COLORS.inkMuted,
+    fontStyle: "italic",
+    marginTop: 8,
+    marginBottom: 4,
   },
 
   // Footer (fixed)
