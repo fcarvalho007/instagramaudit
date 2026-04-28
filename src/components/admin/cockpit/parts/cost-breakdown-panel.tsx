@@ -58,7 +58,7 @@ export interface ProviderCallView {
 
 function sourceBadgeVariant(
   source: CostSource,
-): "success" | "warning" | "neutral" | "danger" {
+): "success" | "warning" | "default" | "danger" {
   switch (source) {
     case "provider_reported":
       return "success";
@@ -67,9 +67,9 @@ function sourceBadgeVariant(
     case "estimated":
       return "warning";
     case "cache_hit":
-      return "neutral";
+      return "default";
     case "not_used":
-      return "neutral";
+      return "default";
   }
 }
 
