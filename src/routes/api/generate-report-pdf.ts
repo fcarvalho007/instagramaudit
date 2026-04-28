@@ -14,12 +14,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type {
-  CompetitorAnalysis,
-  PublicAnalysisContentSummary,
-  PublicAnalysisProfile,
-} from "@/lib/analysis/types";
 import { renderReportPdf } from "@/lib/pdf/render";
+import { isNormalizedPayload } from "@/lib/pdf/payload-guard";
 import { buildReportPath, uploadReportPdf } from "@/lib/pdf/storage";
 
 const PayloadSchema = z.object({
@@ -55,28 +51,6 @@ const json = (body: SuccessBody | FailureBody, status: number) =>
     status,
     headers: { "Content-Type": "application/json" },
   });
-
-interface NormalizedSnapshotPayload {
-  profile: PublicAnalysisProfile;
-  content_summary: PublicAnalysisContentSummary;
-  competitors: CompetitorAnalysis[];
-}
-
-/**
- * Defensive shape check on the JSONB normalized_payload column.
- * The snapshot writer guarantees this shape; we only validate the
- * minimum surface needed by the PDF renderer.
- */
-function isNormalizedPayload(value: unknown): value is NormalizedSnapshotPayload {
-  if (!value || typeof value !== "object") return false;
-  const obj = value as Record<string, unknown>;
-  if (!obj.profile || typeof obj.profile !== "object") return false;
-  if (!obj.content_summary || typeof obj.content_summary !== "object") return false;
-  if (!Array.isArray(obj.competitors)) return false;
-  const profile = obj.profile as Record<string, unknown>;
-  if (typeof profile.username !== "string") return false;
-  return true;
-}
 
 async function markStatus(
   reportRequestId: string,
