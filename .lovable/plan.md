@@ -1,174 +1,134 @@
-# Plan — PDF export of the public InstaBench report (architecture)
+## Recommendations Page — Deterministic, Snapshot-Only
 
-## State of play (read-only audit)
+Add a 5th A4 page to the existing PDF report containing 4–6 strategic recommendations in European Portuguese. Recommendations are produced by a pure heuristic engine that reads only the snapshot payload already passed to `renderReportPdf`. Zero provider calls (OpenAI, Apify, DataForSEO).
 
-The PDF pipeline already exists end-to-end and is **server-side**:
+### Approach
 
-| Concern | File | Status |
-|---|---|---|
-| Renderer | `src/lib/pdf/render.ts` | ✔ `@react-pdf/renderer` v4, server-only, avatar prefetch with timeout/cap |
-| Document | `src/lib/pdf/report-document.tsx` (442 lines) | ✔ Cover, Profile+KPIs, Benchmark, Competitors. ✘ Missing Top Posts, Market Signals, Recommendations |
-| A4 styles | `src/lib/pdf/styles.ts`, `format.ts` | ✔ Tokens-mirrored palette + pt-PT formatters |
-| Storage | `src/lib/pdf/storage.ts` | ✔ Bucket `report-pdfs` (private), deterministic path `reports/YYYY/MM/{report_request_id}.pdf` |
-| Generate endpoint | `src/routes/api/generate-report-pdf.ts` | ✔ POST, idempotent, `force=true`, no provider re-fetch (snapshot-only) |
-| Admin regenerate | `src/routes/api/admin/regenerate-pdf.ts` | ✔ Wraps generate with `force=true` |
-| Email delivery | `src/routes/api/send-report-email.ts` | ✔ Reads PDF from storage |
-| Lead-gated entry | `src/routes/api/request-full-report.ts` + orchestrator | ✔ Lead → snapshot link → background pipeline |
-| Bucket migration | `supabase/migrations/20260417103703_*.sql` | ✔ Bucket created, public=false |
+A new pure module `src/lib/pdf/recommendations.ts` exposes `buildRecommendations(input)` which returns a ranked list of typed recommendation objects. Each recommendation has a stable `id`, an editorial `title`, a `body` paragraph, and a `priority` score for ordering. The PDF document component renders them as numbered editorial cards.
 
-The frontend "Pedir versão PDF" button in `ReportShareActions` is currently disabled (Em breve) and **not wired**. There is no UX path from `/analyze/$username` to the existing pipeline.
+The engine is fully deterministic: same snapshot ⇒ same output. No randomness, no `Date.now()`, no I/O.
 
-## 1. Server-side vs client-side
+### Heuristic catalogue
 
-**Server-side. Keep `@react-pdf/renderer` on the Worker SSR runtime as already implemented.**
+Each rule fires only when its preconditions are met. The engine collects every fired rule, sorts by priority desc, and returns the top 6 (minimum 4 when possible — see fallback rules at the bottom).
 
-Reasons:
-- Pipeline is already built, tested, and emitting cleanly through nodejs_compat (see `render.ts` comment block).
-- Client-side PDF would require shipping `@react-pdf/renderer` (~1MB+ gzipped) or html2canvas/jsPDF (poor type rendering, heavy CPU on mobile) to every visitor.
-- Avatar prefetch + benchmark recompute (`loadBenchmarkReferences`) only work server-side without leaking the service role.
-- Same code path serves email-attached PDF and on-demand download — single source of truth.
+| id | Trigger condition | Priority | Editorial intent |
+|---|---|---|---|
+| `engagement_below_benchmark` | `benchmark.status==='available'` and `differencePercent < -10` | 90 | Reforçar ganchos criativos e CTAs claros nos primeiros 3 segundos. |
+| `engagement_above_benchmark` | `benchmark.status==='available'` and `differencePercent > 10` | 60 | Capitalizar a vantagem: documentar o que funciona e duplicar a frequência do formato dominante. |
+| `engagement_aligned` | benchmark available and `|delta| <= 10` | 40 | Procurar o próximo salto: testar formatos secundários para sair do plateau. |
+| `format_concentration_high` | dominant format `share_pct >= 70` | 80 | Recomendar testar o formato com 2.ª maior `avg_engagement_pct` (escolhido determ.). |
+| `format_underused_high_perf` | um formato não-dominante tem `avg_engagement_pct` ≥ 1.3× do dominante e `share_pct < 25` | 75 | Realocar parte do calendário para esse formato. |
+| `cadence_low` | `estimated_posts_per_week < 2` | 70 | Estabelecer ritmo semanal mínimo de 3 publicações. |
+| `cadence_high_low_engagement` | `posts_per_week > 5` e engagement abaixo do benchmark | 55 | Reduzir volume e investir em qualidade narrativa. |
+| `top_posts_format_pillar` | top 3 posts partilham o mesmo `format` | 65 | Expandir esse pilar editorial; sugerir 3 ângulos derivados. |
+| `top_posts_caption_signal` | top 3 posts têm caption média > 120 chars | 50 | Validar que captions longas geram envolvimento — manter narrativa estendida. |
+| `hashtags_sparse` | `posts.length > 0` e `avg_hashtags_per_post < 3` | 55 | Introduzir clusters de 5–8 hashtags estruturados (marca / tema / nicho). |
+| `hashtags_repetitive` | conjunto único de hashtags / total < 0.4 | 50 | Diversificar a rotação para alcançar novas audiências. |
+| `competitors_outperform` | mediana do `engagement` dos concorrentes com sucesso > engagement do perfil + 25% relativo | 70 | Estudar formatos e cadência dos concorrentes; replicar mecânicas-chave. |
+| `bio_weak` | `bio` ausente ou < 40 chars | 35 | Reescrever bio com proposta de valor, prova social e CTA. |
 
-Do **not** screenshot the web layout (puppeteer/playwright). Worker SSR cannot run them, and "Browser PDF" of a scroll-first dashboard always breaks page boundaries.
+Fallback (sempre presentes para garantir mínimo de 4):
+- `consistency_baseline` (priority 25): manter publicação consistente e medir mensalmente.
+- `analytics_loop` (priority 20): registar variações de envolvimento por formato a cada 30 dias.
 
-## 2. Storage
+The catalogue gives a comfortable margin — a typical real snapshot fires 6–10 rules; we cap output at 6 and the list is sliced after sorting.
 
-**Reuse `report-pdfs` bucket (private)** with the existing path scheme:
-`reports/{YYYY}/{MM}/{report_request_id}.pdf`
+### Data plumbing
 
-Access for the user is via short-lived signed URLs minted server-side
-(`supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60 * 10)` —
-10 min). Never expose the bucket publicly. The bucket is already
-service-role-only.
+Today `renderReportPdf` already receives the full `normalized_payload`. The recommendations engine needs:
 
-## 3. Cache policy by `snapshotId`
+- `content_summary` (engagement, dominant_format, posts_per_week)
+- `format_stats` (per-format share + avg engagement)
+- `posts[]` (top posts theme detection, hashtags counts, caption length)
+- `competitors[]` (median engagement comparison)
+- `benchmark` positioning (already computed in `render.ts`)
+- `profile.bio`
 
-The current path keys by `report_request_id`, not snapshot. This is correct for the gated/email flow (one PDF per request row, audit-friendly). For the **public on-demand PDF** triggered from `/analyze/$username` we need a different keying because there is no `report_request` row yet.
+All of these are already in scope inside `render.ts`. The engine receives a single typed input object built locally — no new fetches.
 
-Recommendation — introduce a parallel snapshot-keyed path **without changing the existing one**:
+### Files to create
 
-`reports/snapshots/{YYYY}/{MM}/{analysis_snapshot_id}.pdf`
+- `src/lib/pdf/recommendations.ts` — pure engine
+  - `interface RecommendationInput` (typed, narrow shape derived from snapshot)
+  - `interface PdfRecommendation { id, title, body, priority }`
+  - `function buildRecommendations(input): PdfRecommendation[]` — returns 4–6 items
+  - All copy in European Portuguese (pt-PT, AO90), no Brazilian forms
+  - No `Date.now()`, no `Math.random()`, no async
 
-- Idempotent: same snapshot → same path → upsert is safe.
-- Cache hit check: `HEAD` on storage path. If exists and snapshot `expires_at` not crossed, return signed URL directly (no re-render).
-- Invalidation: when a new snapshot is written for the same handle, the old PDF naturally falls out of reach (different snapshot ID); a daily cron can sweep snapshots whose `expires_at < now() - 7d`.
-- No new DB table required. Optional later: a `pdf_artifacts` table to track render counts per snapshot for cost telemetry.
+- (optional) `src/lib/pdf/sections/recommendations-page.tsx` — extracted component if it grows past ~80 lines. For initial implementation we'll inline `RecommendationsPage` in `report-document.tsx` like the other pages, keeping the project's current convention. The optional file stays a future refactor.
 
-## 4. A4 structure
+### Files to edit
 
-Page-by-page, A4 portrait, 36–48pt margins, fixed header/footer (already implemented for first three sections). New pages flagged ➕:
+- `src/lib/pdf/render.ts`
+  - Add a `deriveRecommendationInput(payload, benchmark)` helper next to `deriveTopPosts`
+  - Pass `recommendations: buildRecommendations(...)` into `ReportDocument`
+  - No new I/O
 
-1. **Cover** — InstaBench mark, "Relatório de análise editorial", `@handle`, generated date, snapshot date, beta tag. *(exists)*
-2. **Perfil & KPIs** — Avatar, display name, bio (NEW — wire from snapshot), followers / posts / avg engagement / dominant format, signal interpretation note. *(exists, add bio)*
-3. **Benchmark & formatos** — Tier label, gauge value, format breakdown table (Reels/Carrossel/Imagem) with engagement vs benchmark. *(exists)*
-4. **Concorrentes** — Comparative table (handle, followers, ER%, delta). *(exists)*
-5. ➕ **Top posts** — 3–5 cards: thumbnail (best-effort prefetch with same timeout pattern as avatar), permalink as printed URL, format, ER%, likes, comments, short caption excerpt.
-6. ➕ **Sinais de mercado** — DataForSEO-cached signals already in snapshot/cache (do **not** call DataForSEO during render). Branded SERP, related queries, share-of-voice gauge. Render only when signals exist; otherwise omit the page.
-7. ➕ **Recomendações & próximos passos** — Editorial bullets derived from existing snapshot heuristics (no AI call): cadence, dominant-format reinforcement, format gap, posting heatmap insight. Closing CTA "Quero acesso Pro" as a printed URL.
-8. **Metodologia & footer** — Benchmark source disclaimer (existing copy: *"Benchmark editorial baseado em referências públicas de mercado e dataset interno versionado..."*), snapshot timestamp, dataset version, link to `instagrambench.lovable.app`.
+- `src/lib/pdf/report-document.tsx`
+  - Add `PdfRecommendation` to `ReportDocumentInput` (`recommendations?: PdfRecommendation[]`)
+  - Add inline `RecommendationsPage({ profile, recommendations, generatedAt })` component
+  - Mount after `TopPostsPage` (only when `recommendations.length >= 4`)
 
-Page header + footer (`fixed`) already paginate correctly; reuse them on new pages.
+- `src/lib/pdf/styles.ts`
+  - Add `recoCard`, `recoNumber`, `recoTitle`, `recoBody` styles
+  - Reuse existing `PDF_COLORS` palette (cyan accent + ink), no new colours
+  - A4-safe layout: vertical stack of cards with `wrap={false}` per card to avoid mid-card breaks
 
-## 5. Free PDF vs future Paid (Pro) PDF
+### Page layout (A4, react-pdf primitives only)
 
-| Section | Free PDF | Pro PDF (future) |
-|---|---|---|
-| Cover | ✔ | ✔ (no "beta" tag) |
-| Perfil & KPIs | ✔ | ✔ |
-| Benchmark | ✔ basic gauge | ✔ + percentile vs cohort |
-| Top posts | top 3 | top 10 + caption analysis |
-| Concorrentes | up to 2 | up to 5 + delta heatmap |
-| Sinais de mercado | branded SERP only | + related queries, SoV chart |
-| Recomendações | 4 editorial bullets | full strategic playbook (12+) |
-| Heatmap & melhores horas | ✘ | ✔ |
-| Hashtags & keywords | ✘ | ✔ |
-| AI insights | ✘ | ✔ (Lovable AI Gateway) |
-| Watermark | "Versão beta — InstaBench" footer | Clean footer + client name |
+```text
+┌─────────────────────────────────────────────────────┐
+│  INSTABENCH         · @username (header, fixed)     │
+├─────────────────────────────────────────────────────┤
+│  RECOMENDAÇÕES                                      │
+│  Próximos passos prioritários                       │
+│  Sugestões editoriais derivadas dos dados…         │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ 01  Reforçar ganchos nos primeiros 3 seg   │   │
+│  │     Body paragraph (3-4 lines, pt-PT)…     │   │
+│  └─────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ 02  Testar formato Carousels                │   │
+│  └─────────────────────────────────────────────┘   │
+│  … (4–6 cards total)                                │
+├─────────────────────────────────────────────────────┤
+│  InstaBench · DD/MM/YYYY      Página N de M (fixed) │
+└─────────────────────────────────────────────────────┘
+```
 
-Free PDF must never call OpenAI / Lovable AI. Pro PDF can, but must be precomputed and persisted into the snapshot, not invoked at render time (see §7).
+Each card is `wrap={false}` so it never splits across pages. Six average-length cards comfortably fit one A4 page (≈720pt usable height, ≈90pt per card).
 
-## 6. Cost logging
+### Determinism guarantees
 
-PDF generation cost ≈ Worker CPU + Storage egress; no provider call. Still worth logging for capacity planning.
+- All ordering uses stable sort keys (priority then id).
+- Format selection in `format_concentration_high` uses snapshot data only (the second-highest `avg_engagement_pct`, ties broken by canonical name order Reels > Carrosséis > Imagens).
+- No locale-sensitive formatting that depends on env (`Intl` is allowed; same Worker locale per render).
+- Same payload ⇒ identical PDF bytes (modulo react-pdf object id sequence, which is stable per document).
 
-Recommendation:
-- Insert a row into `analysis_events` with a new `data_source = 'pdf'` value and `outcome = 'success' | 'render_failed' | 'cache_hit'` per generation.
-  - `estimated_cost_usd` = small constant (≈ $0.0005 placeholder per PDF — Worker CPU-seconds estimate; revisit when CF billing data arrives).
-  - `duration_ms` from server timing.
-  - `analysis_snapshot_id` set so admin can join.
-- Surface in `/admin` cockpit: "PDFs geradas (mês)", "Cache hits PDF", "Render failures PDF", "Custo estimado PDF".
-- Do **not** create a new table — `analysis_events` is the canonical event log and already supports nullable `provider_call_log_id`. Future migration could add `pdf_render_logs` if granularity demands it.
+### Constraints respected
 
-## 7. Provider calls during PDF generation
+- No OpenAI / Apify / DataForSEO call introduced.
+- No new public endpoint. The `/api/generate-report-pdf` route stays admin-only.
+- `/report/example` and all components in `LOCKED_FILES.md` untouched.
+- No billing, no email, no schema migration.
+- Built-in Helvetica font kept — no font embedding regression.
 
-**Strict rule: no DataForSEO, no OpenAI, no Apify call during PDF render.**
+### Risks / notes
 
-The PDF must be a pure function of:
-- `analysis_snapshots.normalized_payload` (Apify-derived)
-- `loadBenchmarkReferences()` (Supabase-cached benchmark dataset)
-- Avatar bytes (best-effort 3s fetch, optional)
-- Top-post thumbnails (best-effort 3s fetch each, optional, aggregate cap)
+- **Caption-derived rules**: when a snapshot has `posts.length === 0` (legacy), all post-based rules are skipped and the engine falls back to baseline rules. The page still renders ≥4 cards.
+- **Hashtag heuristics**: rely on `posts[i].hashtags[]` which is present in enriched snapshots; legacy snapshots without hashtags simply skip those two rules — no error.
+- **Editorial tone**: copy will be reviewed for pt-PT correctness (impersonal voice, AO90, no "você"). Examples: "Recomenda-se testar…", "Vale a pena reforçar…".
+- **Page overflow**: capped at 6 cards × ~90pt = 540pt → fits A4 with margins. If a card body grows past 4 lines we trim copy at the source; we do not enable `wrap` on cards.
 
-Reasons:
-- Cost transparency: PDF must be free of unbounded provider spend.
-- Latency: each provider call adds 1–10s and risks Worker subrequest limits (50/req).
-- Determinism: re-rendering the same snapshot must yield identical content.
+### Validation checklist
 
-If market signals are needed but missing from the snapshot, the PDF omits that page rather than fetching. Background population of signals is the responsibility of the `analyze` pipeline, not the PDF route.
-
-## 8. Files likely created or edited
-
-### Created
-- `src/routes/api/public-report-pdf.ts` — new POST endpoint, `{ snapshot_id }` body, returns `{ signed_url, cached: boolean, expires_at }`. Public route (rate-limited by IP-hash + snapshot binding). **Does NOT touch `report_requests`.**
-- `src/lib/pdf/snapshot-cache.ts` — snapshot-keyed path builder + signed-URL helper.
-- `src/lib/pdf/sections/top-posts-page.tsx` — new A4 page component.
-- `src/lib/pdf/sections/market-signals-page.tsx` — new A4 page component.
-- `src/lib/pdf/sections/recommendations-page.tsx` — new A4 page component.
-- `src/lib/pdf/recommendations.ts` — pure function: snapshot → editorial bullets (no AI).
-- `supabase/migrations/{ts}_pdf_event_source.sql` — extend `analysis_events.data_source` allowed values to include `'pdf'` (if any check exists; currently it's free text, so likely a no-op — verify before writing).
-
-### Edited
-- `src/lib/pdf/report-document.tsx` — register the three new pages, add bio to ProfileMetricsPage. **Currently NOT in `LOCKED_FILES.md`, safe to edit.**
-- `src/lib/pdf/styles.ts` — add styles for new sections. **Not locked.**
-- `src/lib/pdf/render.ts` — extend `RenderArgs` with optional `marketSignals` and `topPosts` (already partly in payload), best-effort thumbnail prefetch with the existing avatar pattern.
-- `src/components/report-share/report-share-actions.tsx` — wire "Pedir versão PDF" to the new public endpoint, replace disabled state with loading → download.
-- `src/components/report-share/share-copy.ts` — strings for "A gerar PDF…", "PDF pronto", "Falhou — tenta novamente".
-- `src/lib/orchestration/run-report-pipeline.ts` — already calls `generate-report-pdf`; no change unless we share the snapshot-cache helper.
-
-### Explicitly NOT touched (locked or out of scope)
-- `LOCKED_FILES.md` and everything listed there (notably `/src/routes/report.example.tsx` and all `src/components/report/*`).
-- `src/integrations/supabase/types.ts`, `client.ts`, `client.server.ts`.
-- `src/routeTree.gen.ts`.
-- `src/routes/api/generate-report-pdf.ts` (works for the gated email flow; leave it alone).
-- `src/routes/api/send-report-email.ts`, `src/routes/api/request-full-report.ts`.
-
-## 9. Risks
-
-| Risk | Mitigation |
-|---|---|
-| **Font rendering** — `@react-pdf` ships only Helvetica/Times/Courier by default; project fonts are Fraunces/Inter/JetBrains Mono. | Existing `styles.ts` already handles this. For new sections, stick to the registered families. Do NOT introduce subscript/superscript Unicode (renders as boxes). |
-| **Chart rendering** — Recharts is canvas/SVG-DOM, incompatible with react-pdf. | Avoid charts. Use `<View>` + bars composed from rectangles (existing benchmark gauge pattern). Top posts: text + thin row separators, no plots. |
-| **Instagram CDN expiry** — `cdninstagram.com` URLs expire (~24h). Avatars and thumbnails will 404 in stale snapshots. | Best-effort fetch with 3s timeout + graceful initials/placeholder fallback (already implemented for avatar). Apply the same pattern to thumbnails. Never block render on image failure. |
-| **Long PDF generation in Worker runtime** — CF Workers cap at 30s CPU + 50 subrequests. 5 thumbnail fetches + render is borderline. | Hard cap thumbnail fetches: 3 parallel, 3s each, total ≤6s. If a fetch slot exceeds budget, drop it. Measure render duration in `analysis_events.duration_ms` and alert if p95 > 15s. |
-| **Cost transparency** — silent re-renders inflate cost without trace. | Always log to `analysis_events` with `data_source='pdf'` and `outcome` field. Never re-render when snapshot path exists in storage. Cron sweep of orphan snapshot PDFs > 30 days. |
-| **Quota abuse from public endpoint** — anon visitor could spam PDF generation. | Rate-limit by IP-hash + snapshot_id (e.g. 3 PDFs / IP / hour, 1 PDF / snapshot / IP / day). Use existing `request_ip_hash` pattern from `analysis_events`. Cache hits do not count toward limit. |
-| **Worker module bundling** — `@react-pdf/renderer` already works, but section additions could pull in node-only deps. | Keep all new section files pure presentational (`<Document>` primitives only). No `fs`, no `Buffer`, no native deps. |
-
-## 10. First implementation prompt (after this plan is approved)
-
-> **"Add Top Posts page to the existing PDF document."**
->
-> Scope: edit `src/lib/pdf/report-document.tsx` and `src/lib/pdf/styles.ts` to add a new `TopPostsPage` after `CompetitorsPage`. Render up to 3 posts from `content_summary.top_posts` (verify field name from `PublicAnalysisContentSummary`). For each post: thumbnail (best-effort prefetch with same 3s/1.5MB pattern as avatar, parallel cap=3, fallback to a tinted placeholder rectangle), format badge, ER%, likes, comments, 140-char caption excerpt, and the permalink as visible printed text. Reuse `PageHeader`/`PageFooter`. No new endpoints, no provider calls, no schema changes. Verify with `bunx tsc --noEmit` and a one-shot local render against the existing test snapshot.
->
-> Out of scope: public download endpoint, snapshot-keyed cache, market signals page, recommendations page, share-actions wiring. Those follow in subsequent prompts.
-
-This first prompt extends the existing render path without touching API routes, locked files, or storage — lowest-risk way to validate the data shape and Worker render budget before exposing the public endpoint.
-
-## Summary
-
-The PDF stack already exists and is server-side, snapshot-pure, and admin-wired. The work is **not** "build PDF export"; it is:
-1. **Extend** the document with 3 missing pages (Top Posts, Market Signals, Recommendations).
-2. **Add** a snapshot-keyed public endpoint + signed URL flow so `/analyze/$username` can offer on-demand download without going through the email-gated `report_requests` flow.
-3. **Wire** the existing "Pedir versão PDF" button.
-4. **Log** each render in `analysis_events` for cost visibility.
-
-No locked files modified. No provider calls during render. No migration required for v1 (snapshot-keyed path lives in the existing private bucket).
+- ☐ `bunx tsc --noEmit` passes (harness)
+- ☐ `bun run build` passes (harness)
+- ☐ Recommendations page mounted in `ReportDocument` after Top Posts when `recommendations.length >= 4`
+- ☐ No new imports of `openai`, `apify`, `dataforseo` clients in `pdf/*`
+- ☐ No new route file under `src/routes/api/public/`
+- ☐ Engine is a pure function with no async / no I/O
+- ☐ Copy is European Portuguese (AO90), no Brazilian forms
+- ☐ Six rules minimum across the catalogue can fire without any provider data
