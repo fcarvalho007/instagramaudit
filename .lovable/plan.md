@@ -1,100 +1,97 @@
+# Audit + correções — `/analyze/$username`
 
-# Refinamentos OpenAI Insights — pós-MVP
+## Diagnóstico
 
-Avaliação completa após Prompts 1-4 + migração de tokens. Implementação está sólida; estes são os refinamentos com **impacto real**, ordenados por prioridade.
+Boa notícia: a **consolidação visual já está feita** num commit anterior. O ficheiro `src/routes/analyze.$username.tsx` já:
 
----
+- não monta nenhum `ReportShareActions` no topo (a busca por `ReportShareActions` em `src/` só devolve uma menção em comentário JSDoc);
+- tem **um único bloco final** — `<ReportFinalBlock>` — com PDF como acção primária e Copy/LinkedIn como secundárias;
+- usa um `<ScopeStrip>` único (substituiu o par antigo `TierStrip + BetaStrip`);
+- não tem nenhum `href="#"` em todo o `src/` (verificado com `rg`);
+- mantém `/report/example` intocado.
 
-## Tier 1 — Antes do primeiro smoke test (recomendado)
+A falha real é **runtime**, não estrutural. Há três bugs concretos no `ReportFinalBlock`:
 
-### R1. Persistir `inputs_hash` separado para detecção de drift
-
-`AiInsightsV1.source_signals.inputs_hash` já é calculado mas serve só como metadata. Para **decidir quando regenerar**, precisamos compará-lo com o hash do snapshot atual. Adicionar um helper no adapter:
+### Causa-raiz 1 — `window.open` bloqueado pelo browser (PDF)
 
 ```ts
-// snapshot-to-report-data.ts
-hasStaleAiInsights(payload): boolean // compara hash atual vs persistido
+async function handlePdf() {
+  setPdfStatus("loading");
+  const res = await fetch("/api/public/public-report-pdf", { ... });   // ← await
+  const body = await res.json();
+  window.open(body.signed_url, "_blank", "noopener,noreferrer");        // ← bloqueado
+}
 ```
 
-Sem isto, o admin nunca sabe se um `ai_insights_v1` antigo ainda corresponde aos dados base. Útil quando o botão de regeneração admin chegar.
+Depois de um `await`, o browser deixa de considerar a chamada como gesto do utilizador e o Chrome/Safari/Firefox bloqueiam o `window.open` em popup. O endpoint responde 200 mas o utilizador não vê o PDF — só o toast. **É esta a queixa "PDF não funciona".**
 
-### R2. Cap de custo total diário (kill-switch dinâmico)
+**Correção:** abrir o PDF na **mesma aba** com `window.location.assign(signed_url)`. O ficheiro tem `Content-Disposition: inline` no bucket privado da Supabase e o utilizador volta com o botão "back". Alternativa equivalente é injectar um `<a download>` clicado programaticamente, mas em mobile abrir na mesma aba é mais previsível. Fica documentado em comentário JSDoc.
 
-Atualmente só temos `OPENAI_ENABLED` (binário). Falta um teto operacional. Adicionar em `openai-insights.server.ts`, antes de chamar OpenAI:
+### Causa-raiz 2 — `navigator.clipboard` indisponível em contextos não-seguros (Copiar link)
 
-- Query `provider_call_logs` últimas 24h, `provider='openai'`, `status='success'`
-- Soma `estimated_cost_usd`
-- Se > `OPENAI_DAILY_CAP_USD` (default $5), retorna `failResult("DAILY_CAP_REACHED")`
+O `try/catch` actual lança no fallback (`throw new Error("clipboard-unavailable")`) e mostra erro. Em iOS Safari embedded views, em http localhost ou em iframes de preview sem permissão, o clipboard API não existe e o utilizador vê só erro.
 
-Uma query rápida (< 50ms) que evita um runaway de custos por bug ou loop. Cap pode ser env var.
+**Correção:** acrescentar fallback com `document.execCommand("copy")` sobre um `<textarea>` temporário. Funciona em todos os browsers como último recurso e elimina falsos negativos.
 
-### R3. `safeText` para erros HTTP devolve mais sinal
+### Causa-raiz 3 — LinkedIn intent fica `href="#"` no primeiro paint
 
-Em `openai-insights.server.ts:152` quando OpenAI devolve erro, gravamos só os primeiros 500 chars do texto. Para erros típicos (429 rate limit, 401 invalid key, 400 schema rejection) é suficiente, mas convém **parsear o JSON de erro** quando vier para extrair `error.code` e `error.type` em vez de truncar texto bruto. Melhora muito o debugging no admin.
+Enquanto `resolvedUrl` está vazio (antes do `useEffect` correr), o `linkedinHref` cai para `"#"`. Não é um CTA morto permanente, mas se o utilizador clicar antes da hidratação completar, a página faz scroll para o topo e nada acontece. Em mobile lento isto chega a ser visível.
 
----
+**Correção:** desactivar visualmente o link (atributo `aria-disabled` + `pointer-events: none` via classe condicional) enquanto `resolvedUrl` não estiver pronto, e remover o `target="_blank"` no estado vazio.
 
-## Tier 2 — Admin observability (depois do primeiro smoke test)
+### Não-causas (verificadas)
 
-### R4. Card OpenAI no cost-breakdown-panel já está mockado
+- **Toaster mounting** — está montado dentro do `ReportThemeWrapper` no estado `ready`. O `toast()` só é chamado a partir de cliques que acontecem depois do mount. OK.
+- **`snapshotId` propagação** — passa de `analyze.$username.tsx` (state.snapshotId) directo para o componente. Verificado.
+- **Endpoint `/api/public/public-report-pdf`** — devolve `{ success, signed_url, cached }`. Parsing actual está correcto.
+- **CORS** — endpoint tem OPTIONS handler e o frontend está na mesma origem, sem problema.
 
-`src/components/admin/cockpit/parts/cost-breakdown-panel.tsx:228` já tem `<ProviderCard provider="openai" bucket={summary.openai} />`, e a query em `diagnostics.ts` já lista `provider_call_logs`. **Falta verificar** que a agregação por provider inclui `openai` no bucket — possivelmente já filtra, possivelmente está hard-coded para Apify/DataForSEO. Inspecionar e ajustar.
+## Mudanças
 
-### R5. Coluna `model` + tokens visíveis na tabela de chamadas
+### Ficheiro único: `src/components/report-share/report-final-block.tsx`
 
-A migração adicionou as colunas mas a query `diagnostics.ts:292` seleciona só `id, created_at, actor, handle, status, http_status, duration_ms, posts_returned, estimated_cost_usd`. Adicionar `model, prompt_tokens, completion_tokens, total_tokens` ao select e mostrar na tabela admin.
+1. **`handlePdf`** — substituir `window.open(...)` por `window.location.assign(signed_url)`. Manter toast de "A abrir…" e o estado de loading.
+2. **`handleCopy`** — adicionar fallback `document.execCommand("copy")` antes de cair no `toast.error`.
+3. **LinkedIn anchor** — quando `resolvedUrl` vazio: aplicar `pointer-events-none opacity-50` e `tabIndex={-1}`; quando preenchido, comportamento actual.
+4. Comentário JSDoc no `handlePdf` a explicar porque é que abre na mesma aba (popup blocking pós-await).
 
-### R6. Painel V2 de despesa (`expense-section.tsx`) usa MOCK
+### Sem mudanças noutros ficheiros
 
-Os componentes em `src/components/admin/v2/` mostram custos OpenAI **mock**. Quando o smoke test correr, ligar à query real (similar à existente) ou marcar claramente como "mock" no UI até estar wired.
+- `src/routes/analyze.$username.tsx` — estrutura já correcta, layout já mobile-first (375px), `<Toaster />` já presente.
+- `src/routes/api/public/public-report-pdf.ts` — endpoint correcto.
+- `LOCKED_FILES.md` — não toca em nada bloqueado.
+- `/report/example` — intocado.
 
----
+## Ordem final das secções (já em vigor, confirmada)
 
-## Tier 3 — Qualidade dos insights (após observar primeiras gerações)
+```text
+1. ReportEnrichedBio              ← perfil primeiro (mobile rápido)
+2. CoverageStrip                  ← cobertura editorial
+3. ReportPage                     ← métricas, benchmark, posts
+4. ReportEnrichedBenchmarkSource
+5. ReportEnrichedTopLinks
+6. ReportEnrichedMentions
+7. ReportEnrichedCompetitorsCta   ← condicional
+8. ReportMarketSignals
+9. ScopeStrip                     ← tira única âmbito + beta
+10. TierComparisonBlock           ← Free vs Pro
+11. ReportFinalBlock              ← BLOCO FINAL ÚNICO: PDF + share + feedback
+12. <Toaster />
+```
 
-### R7. Glossário pt-PT mais defensivo
+## Validação
 
-`PTBR_TOKENS` em `validate.ts:45` tem 9 tokens. Faltam alguns frequentes que o GPT pode escapar:
+- `bunx tsc --noEmit` — corre depois das alterações.
+- `bun run build` — corre depois das alterações.
+- Smoke manual em `/analyze/frederico.m.carvalho`:
+  - Copiar link → toast verde + URL na clipboard (testado em desktop e mobile).
+  - LinkedIn → abre nova aba com `linkedin.com/sharing/share-offsite/?url=...`.
+  - Pedir versão PDF → estado loading visível, navega para o signed URL na mesma aba, PDF inline.
+  - 375px → primeiro scroll mostra header + bio sem necessidade de mais que um swipe.
 
-- `gerenciar` → "gerir"
-- `acessar` → "aceder"
-- `cadastr[oa]` → "registo"
-- `relatório de mídia` → "relatório editorial"
-- `time` (já listado mas comentado como "ambíguo") → manter, vale a regra
+## Fora deste prompt
 
-Adicionar quando vir leaks reais nas primeiras execuções, não preventivamente.
-
-### R8. Limite de `body` (280 chars) pode ser apertado
-
-280 chars é compatível com tweet-length mas o `ReportAiInsights` locked usa cards verticais. Ver no preview se 280 quebra o layout — se sim, baixar para 220.
-
-### R9. Fallback para evidence cross-check com paths "similares"
-
-Em `validate.ts:135`, se o modelo escrever `content_summary.engagement_rate` em vez de `content_summary.average_engagement_rate`, falhamos com `EVIDENCE_INVALID`. Para reduzir rejeições legítimas, fazer match por sufixo ou Levenshtein distance ≤ 3. Trade-off: relaxa o guard. **Só fazer se virmos rejeições falsas em produção.**
-
----
-
-## Tier 4 — Não fazer agora (anti-scope creep)
-
-- ❌ Botão admin de regeneração — combinado fica para depois do MVP
-- ❌ Companion section visual com `confidence` + `evidence` — após validação editorial humana
-- ❌ Re-geração automática de snapshots antigos — política definida: nunca
-- ❌ Suporte a múltiplos modelos em A/B — prematuro
-- ❌ Streaming de tokens — não traz valor a um job batch de 25s
-
----
-
-## Próximo Passo Recomendado
-
-Começar por **R1, R2 e R3** (Tier 1) — todos baixo-risco, todos protegem custo ou debugging antes de a primeira chamada real correr.
-
-Depois, **smoke test controlado** com `frederico.m.carvalho`:
-1. Setar `OPENAI_ENABLED=true` e `OPENAI_ALLOWLIST=frederico.m.carvalho`
-2. POST a `analyze-public-v1` com `?refresh=1`
-3. Verificar `provider_call_logs` para a linha OpenAI com `model`, tokens e custo
-4. Verificar `analysis_snapshots.normalized_payload.ai_insights_v1`
-5. Ver `/analyze/frederico.m.carvalho` — secção "Insights estratégicos" deve renderizar
-
-Só **depois** do smoke test, atacar Tier 2 (admin) com dados reais para olhar.
-
-Aprovas avançar com **R1 + R2 + R3** num único prompt?
+- Não chama OpenAI, Apify, DataForSEO.
+- Não toca em `/report/example`.
+- Não cria nem modifica ficheiros bloqueados.
+- Não adiciona nova camada de inteligência (próximo prompt).
