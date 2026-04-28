@@ -182,6 +182,7 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
 export function buildInsightsUserPayload(
   ctx: InsightsContext,
 ): InsightsUserPayload {
+  const signals = computeAvailableSignals(ctx);
   const benchmark =
     ctx.benchmark && ctx.benchmark.status === "available"
       ? {
