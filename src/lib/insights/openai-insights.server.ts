@@ -30,10 +30,25 @@ import {
 } from "./prompt";
 import type {
   AiInsightsV1,
+  AiInsightsV2,
   InsightsContext,
   InsightsGenerationResult,
+  InsightsV2GenerationResult,
 } from "./types";
 import { validateInsights } from "./validate";
+import {
+  buildInsightsV2UserPayload,
+  buildSystemPromptV2,
+  computeKbVersion,
+  hashInsightsV2Prompt,
+  RESPONSE_JSON_SCHEMA_V2,
+} from "./prompt-v2";
+import { validateInsightsV2 } from "./validate-v2";
+import { getKnowledgeContext } from "@/lib/knowledge/context.server";
+import type {
+  BenchmarkFormat,
+  BenchmarkTier,
+} from "@/lib/knowledge/types";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const REQUEST_TIMEOUT_MS = 25_000;
