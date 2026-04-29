@@ -1,58 +1,65 @@
-## Smoke test controlado — chamada fresh única
+## Fix evidence allowlist for `top_posts` — sem chamadas a providers
 
-### Objetivo
-Validar end-to-end que o pipeline OpenAI insights persiste `ai_insights_v1` após as correções de prompt + validador (alias `average_comments` → `content_summary.average_comments`).
+### Diagnóstico
+O modelo cita `top_posts[0].comments`, `top_posts[0].likes` e `top_posts[0].caption_excerpt` porque vê esses campos no payload, mas `computeAvailableSignals` em `src/lib/insights/prompt.ts` (linhas 153-156) só expõe `format` e `engagement_pct` por post. O validador rejeita correctamente (`EVIDENCE_INVALID`).
 
-### Pré-condições verificadas
-- Snapshot atual em DB: `386a3dbe-c7f5-4775-8daf-a5ccc947e3a6` (sem `ai_insights_v1`).
-- Correções já aplicadas em `src/lib/insights/prompt.ts` e `src/lib/insights/validate.ts`.
-- Modelo configurado via secret `OPENAI_INSIGHTS_MODEL` (`gpt-5.4-nano`).
+A correcção é apenas alinhar o allowlist com os campos efectivamente visíveis no payload.
 
-### Passos (ordem estrita, sem retry)
+### Alterações
 
-1. **Invalidar snapshot único** via migration:
-   ```sql
-   DELETE FROM public.analysis_snapshots
-   WHERE instagram_username = 'frederico.m.carvalho';
-   ```
-   Confirma que apenas 1 linha foi removida antes de avançar.
+**1. `src/lib/insights/prompt.ts` — `computeAvailableSignals` (linhas 153-156)**
 
-2. **Confirmar limpeza** com `supabase--read_query`:
-   ```sql
-   SELECT count(*) FROM analysis_snapshots
-   WHERE instagram_username = 'frederico.m.carvalho';
-   ```
-   Tem de devolver `0`.
+Substituir o loop actual por uma versão que adiciona, por post incluído (cap=3, ordem preservada), o caminho canónico para cada campo presente. Ordem determinística dentro de cada post: `format`, `engagement_pct`, `likes`, `comments`, `caption_excerpt`.
 
-3. **Chamada fresh única** via `stack_modern--invoke-server-function`:
-   - `POST /api/analyze-public-v1`
-   - Body: `{"username":"frederico.m.carvalho"}`
-   - Sem retry. Se falhar, paro e reporto.
+```ts
+const cappedTopPosts = ctx.top_posts.slice(0, PROMPT_TOP_POSTS_CAP);
+cappedTopPosts.forEach((post, idx) => {
+  // `format` and `engagement_pct` are always serialised by the payload
+  // builder below, so they are always citable when a post exists.
+  signals.push(`top_posts[${idx}].format`);
+  signals.push(`top_posts[${idx}].engagement_pct`);
+  // The remaining fields are only citable when present in the source
+  // post — keeps the allowlist aligned with what the model actually
+  // sees and prevents citing zero/empty values as evidence.
+  if (Number.isFinite(post.likes) && post.likes > 0) {
+    signals.push(`top_posts[${idx}].likes`);
+  }
+  if (Number.isFinite(post.comments) && post.comments > 0) {
+    signals.push(`top_posts[${idx}].comments`);
+  }
+  const caption = (post.caption_excerpt ?? "").trim();
+  if (caption.length > 0) {
+    signals.push(`top_posts[${idx}].caption_excerpt`);
+  }
+});
+```
 
-4. **Recolha do relatório** via `supabase--read_query` (uma única bateria de SELECTs):
-   - Novo snapshot id + `normalized_payload->'ai_insights_v1'` (existência, model, contagem de insights, evidence paths, source_signals, cost block).
-   - Linha em `provider_call_logs` com `provider='openai'` mais recente: status, model, prompt_tokens, completion_tokens, total_tokens, estimated_cost_usd.
-   - Linha Apify mais recente: `apify_run_id`, `actual_cost_usd`, `status`.
-   - DataForSEO: contagem de calls associadas (esperado 0 ou cache).
+Notas:
+- Cap de 3 mantido.
+- Ordem determinística dentro de cada post e ao longo do array.
+- Só adiciona o caminho quando o campo está realmente presente no source — não polui o allowlist com paths cujo valor seria vazio/zero.
 
-5. **Verificação dos evidence paths**:
-   - Inspeciono cada `evidence[]` no payload persistido.
-   - Confirmo que aliases curtos (ex.: `average_comments`) foram normalizados para canónicos (`content_summary.average_comments`).
+**2. `src/lib/insights/prompt.ts` — `INSIGHTS_SYSTEM_PROMPT` (linha 52)**
 
-### Relatório final (formato fixo)
-- `ai_insights_v1` persistido: ✅/❌
-- número de insights: N
-- model: string
-- prompt_tokens / completion_tokens / total_tokens
-- estimated_cost_usd
-- provider_call_logs status: ok/error
-- evidence paths normalizados: ✅/❌ (com lista das paths observadas)
-- Apify: `apify_run_id` + `actual_cost_usd`
-- DataForSEO: 0 calls / cache / N calls
-- Recomendação final: SAFE / NOT SAFE para abrir a análise a qualquer perfil
+Acrescentar uma frase explícita de fecho na regra de evidence, em pt-PT + reforço em inglês (já é o padrão da linha 52):
+
+> "Se um campo aparece no payload mas não consta de `allowed_evidence_paths`, NÃO o citar como evidence. Evidence paths must be copied exactly from `allowed_evidence_paths`. If a field is visible in the payload but not listed in `allowed_evidence_paths`, do not cite it as evidence."
+
+**3. `src/lib/insights/validate.ts`**
+
+Sem alterações. O validador já faz lookup contra o `Set` derivado de `available_signals` via `buildInsightsUserPayload(ctx)`, portanto absorve automaticamente as novas paths. Continua a rejeitar qualquer `top_posts[i].<outro_campo>`.
+
+**4. (Opcional) Comentário curto**
+
+Acrescentar nota acima do bloco a confirmar que `top_posts[0].comments` passa a ser aceite quando `comments > 0` no source post.
+
+### Validação (sem providers)
+- `bunx tsc --noEmit`
+- `bun run build`
+- Inspecção manual: confirmar que `top_posts[0].comments` aparece em `available_signals` apenas quando o post tem `comments > 0`; e que paths como `top_posts[0].likes` continuam fora do allowlist quando o post tem `likes = 0`.
 
 ### Garantias
-- Apenas **uma** chamada a `/api/analyze-public-v1`.
-- Sem retry automático. Se o validador rejeitar de novo, paro e reporto a causa exata sem nova chamada.
-- Sem exposição de secrets ou valores sensíveis nos logs.
-- Sem alterações ao código nesta fase — apenas DELETE + invocação + leituras.
+- Sem chamadas a OpenAI / Apify / DataForSEO.
+- Sem invalidação de snapshots.
+- Sem alterações a UI, `/report.example`, PDF, admin, ou ficheiros locked.
+- Sem nova smoke test — aguarda autorização explícita.

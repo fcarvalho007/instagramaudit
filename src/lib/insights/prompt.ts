@@ -50,6 +50,7 @@ Regras de conteúdo (obrigatórias):
 - Se o payload não contém "benchmark", não citar comparação com tier nem mediana de mercado.
 - Cada insight deve citar pelo menos um sinal do payload no campo "evidence". Os valores válidos para "evidence" estão listados em "available_signals" do payload do utilizador.
 - Cada item de "evidence" DEVE ser uma string copiada exactamente, carácter a carácter, de "available_signals" (também repetido em "allowed_evidence_paths"). Do not invent, shorten, abbreviate or paraphrase evidence paths. Use the exact strings from available_signals. Não usar aliases curtos como "average_comments"; usar sempre o caminho canónico completo, por exemplo "content_summary.average_comments".
+- Se um campo aparece no payload mas não consta de "allowed_evidence_paths", NÃO o citar como evidence. Evidence paths must be copied exactly from "allowed_evidence_paths". If a field is visible in the payload but not listed in "allowed_evidence_paths", do not cite it as evidence.
 - "confidence" deve ser exactamente uma destas duas strings:
   - "baseado em dados observados" — quando todos os sinais citados existem e têm valor não-nulo no payload.
   - "sinal parcial" — quando algum sinal citado está em falta, é estimativa ou tem volume reduzido.
@@ -150,9 +151,27 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   if (cs.estimated_posts_per_week > 0)
     signals.push("content_summary.estimated_posts_per_week");
 
-  ctx.top_posts.slice(0, PROMPT_TOP_POSTS_CAP).forEach((_post, idx) => {
+  // Per-post allow-list. Mirrors the trimmed `top_posts` array sent in
+  // `buildInsightsUserPayload` (cap = PROMPT_TOP_POSTS_CAP). Order is
+  // deterministic both across posts (index order) and within a post
+  // (format → engagement_pct → likes → comments → caption_excerpt). A
+  // path is only added when the underlying source field is present and
+  // meaningful, so e.g. `top_posts[0].comments` becomes a valid evidence
+  // path the moment the source post has `comments > 0`.
+  const cappedTopPosts = ctx.top_posts.slice(0, PROMPT_TOP_POSTS_CAP);
+  cappedTopPosts.forEach((post, idx) => {
     signals.push(`top_posts[${idx}].format`);
     signals.push(`top_posts[${idx}].engagement_pct`);
+    if (Number.isFinite(post.likes) && post.likes > 0) {
+      signals.push(`top_posts[${idx}].likes`);
+    }
+    if (Number.isFinite(post.comments) && post.comments > 0) {
+      signals.push(`top_posts[${idx}].comments`);
+    }
+    const caption = (post.caption_excerpt ?? "").trim();
+    if (caption.length > 0) {
+      signals.push(`top_posts[${idx}].caption_excerpt`);
+    }
   });
 
   if (ctx.benchmark && ctx.benchmark.status === "available") {
