@@ -32,7 +32,7 @@ export const REDESIGN_TOKENS = {
 
   // ── Tipografia ──────────────────────────────────────────────────────
   h1Hero:
-    "font-display text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-[1.05]",
+    "font-display text-[1.75rem] sm:text-[2rem] md:text-4xl lg:text-5xl font-semibold tracking-[-0.02em] text-slate-900 leading-[1.05] [overflow-wrap:anywhere]",
   h2Section:
     "font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-slate-900 leading-tight",
   eyebrow:
