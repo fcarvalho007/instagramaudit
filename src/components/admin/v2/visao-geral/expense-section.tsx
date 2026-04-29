@@ -109,6 +109,18 @@ export function ExpenseSection() {
   const openaiProj = project(data.openai_total);
   const dfsProj = project(data.dataforseo_total);
 
+  // Reconciliação Apify: o custo agregado a partir de provider_call_logs
+  // pode divergir da fatura real da Apify (cobra runs falhados, runs em
+  // background, etc.). Quando o sync já correu, mostramos a diferença.
+  const apifyBilled = data.apify_billed_total_30d;
+  const apifyDelta =
+    apifyBilled != null ? apifyBilled - data.apify_total : null;
+  const apifyDivergent =
+    apifyDelta != null &&
+    Math.abs(apifyDelta) > 0.01 &&
+    data.apify_total > 0 &&
+    Math.abs(apifyDelta / data.apify_total) > 0.05;
+
   return (
     <section>
       <AdminSectionHeader
@@ -129,7 +141,11 @@ export function ExpenseSection() {
             info={`Plataforma de scraping que recolhe dados públicos do Instagram. Cap mensal de $${c.apify}.`}
             value={`$${data.apify_total.toFixed(2)}`}
             cap={`de $${c.apify.toFixed(2)}`}
-            note={`${Math.round((data.apify_total / c.apify) * 100)}% do limite · projecção $${apifyProj.toFixed(2)}`}
+            note={
+              apifyDivergent
+                ? `${Math.round((data.apify_total / c.apify) * 100)}% do limite · Apify faturou $${apifyBilled!.toFixed(2)} (Δ $${apifyDelta!.toFixed(2)})`
+                : `${Math.round((data.apify_total / c.apify) * 100)}% do limite · projecção $${apifyProj.toFixed(2)}`
+            }
             borderRight
           >
             <ProgressBar

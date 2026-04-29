@@ -99,7 +99,7 @@ export function CostsDetailSection() {
       <AdminSectionHeader
         accent="expense"
         title="Custos detalhados"
-        info="Custos reais agregados de provider_call_logs e cost_daily."
+        info="Custos reais agregados de provider_call_logs nas últimas 24h. Mesma fonte e regra que a secção Despesa da Visão Geral (apenas a janela difere: 24h aqui vs 30d na Visão Geral)."
       />
 
       {/* KPIs */}
@@ -141,6 +141,12 @@ export function CostsDetailSection() {
           />
         </div>
       )}
+
+      {!metrics.isLoading && !metrics.error ? (
+        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
+          Janela: últimas 24h · fonte: provider_call_logs · status: success + cache · custo: actual_cost_usd ?? estimated_cost_usd
+        </p>
+      ) : null}
 
       {/* Últimas chamadas */}
       <AdminCard className="mt-4">

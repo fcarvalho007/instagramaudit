@@ -1,82 +1,84 @@
-## Objetivo
+## Diagnóstico — porque é que os números não batem
 
-Remover o login Google do `/admin` e substituir por um gate trivial: o utilizador escreve um email, e se for `fredericodigital@gmail.com` entra. Sem password, sem magic link, sem 2FA, sem Supabase Auth.
+Confirmei o problema com queries diretas à BD. Hoje existem **três sítios** no /admin onde aparecem custos, e cada um lê de uma fonte/janela diferente:
 
-> Aviso explícito: este modo deixa o `/admin` aberto a qualquer pessoa que escreva o teu email. O backoffice expõe custos, perfis analisados, snapshots, KB, alertas, secrets-status e ações de regenerar PDF/reenviar email. Confirmaste que aceitas este risco. Vou registar isto na security memory.
+| Local | Fonte | Janela | Apify | OpenAI | DFS |
+|---|---|---|---|---|---|
+| `/admin/sistema` › Custos detalhados | `provider_call_logs` (`actual ?? estimated`, **inclui falhas**) | últimas 24h | $0,000 | $0,035 | $0,045 |
+| `/admin/visao-geral` › Despesa | `cost_daily` (agregado pelo cron de sync) | últimos 30 dias | $0,021 | $0,011 | $0,054 |
+| `/admin/receita` › Faturas | `MOCK_INVOICES` (mock visível com banner "demo only") | — | — | — | — |
 
-## Como vai funcionar
+Causas concretas:
 
-1. Em `/admin` aparece um único input "Email" + botão "Entrar".
-2. Se o email (case-insensitive, trim) bater certo com a allowlist `ADMIN_ALLOWED_EMAILS` (já contém `fredericodigital@gmail.com`), gravamos uma flag em `localStorage` (`admin.simple-gate.v1` = email).
-3. Todas as sub-rotas `/admin/*` e chamadas a `/api/admin/*` passam a aceitar essa flag — sem JWT, sem Bearer token.
-4. Botão "Terminar sessão" limpa a flag.
+1. **Fontes diferentes**. `cost_daily` é alimentada por jobs de sync (`syncApifyCosts`, `syncOpenAiCosts`, `syncDataForSeoCosts`) e pode não ter corrido — daí Apify 24h em provider_call_logs ($0,022 nos últimos 30d) não aparecer no `cost_daily` para o dia de hoje.
+2. **Janelas diferentes**. 24h vs 30d — comparação direta é impossível.
+3. **Regras de fallback diferentes**. Sistema soma `actual_cost_usd ?? estimated_cost_usd ?? 0` para **todas** as linhas (success/cache/failure). O sync OpenAI/DFS só agrega `status='success'`. Apify cost_daily vem da própria API da Apify (monthly usage), que pode não ter ainda os runs de hoje.
+4. **Receita › Faturas** não é discrepância — é mock declarado.
+
+## Princípio de correção
+
+Uma única fonte de verdade: **`provider_call_logs`** (é a única tabela escrita em runtime, no momento exato da chamada, com `actual_cost_usd` quando disponível). Tudo o resto deriva dela. `cost_daily` continua a existir, mas só como **cache materializado** alimentado por `provider_call_logs` — nunca como fonte primária.
+
+Regras uniformes em todos os ecrãs:
+- Custo por linha = `COALESCE(actual_cost_usd, estimated_cost_usd, 0)`
+- Apenas `status IN ('success','cache')` conta como custo realizado (falhas com 0$ não inflam, falhas com custo cobrado pela API ficam de fora — ver nota abaixo).
+- Janelas explícitas no UI (24h, 30d) e calculadas a partir do mesmo dataset.
+
+Nota Apify: a Apify cobra por run mesmo em runs falhados que consumiram compute. Para não perder isso, mantemos o **sync da Apify monthly usage** apenas para **reconciliação mensal** (mostrado como "valor faturado pela Apify este mês" num KPI separado), mas o gráfico diário e o total 30d passam a vir de `provider_call_logs`. Quando a fatura da Apify chegar e divergir, vê-se a diferença num único KPI.
 
 ## Alterações
 
-### Frontend
+### 1. `src/lib/admin/system-queries.server.ts`
 
-- **`src/components/admin/v2/admin-auth-shell.tsx`** — reescrever:
-  - Remover toda a lógica Supabase (`onAuthStateChange`, `getSession`, cache de whoami, spinner de "A verificar sessão").
-  - Estado local: `email | null` lido de `localStorage.getItem("admin.simple-gate.v1")` no mount.
-  - Se vazio → render `<SimpleEmailGate onSubmit={…}/>` (input + botão).
-  - Submit faz `POST /api/admin/simple-login` com `{ email }`. Se 200 → grava no localStorage e entra. Se 403 → mostra "Email não autorizado".
-  - Handler de logout limpa `localStorage` e volta ao gate.
+- **Nova função** `aggregateCostsFromLogs(sinceIso, untilIso?)` — agrega `provider_call_logs` por `provider` e por dia, aplicando as regras uniformes acima. Devolve `{ apify, openai, dataforseo, daily[] }`.
+- `fetchCostMetrics24h()` — passa a usar `aggregateCostsFromLogs(now-24h)`. Mantém `cache_hits` e `cache_savings_usd` como já estão.
+- `fetchExpense30d()` — reescrita para usar `aggregateCostsFromLogs(now-30d)` em vez de `cost_daily`. Mantém `dataforseo_balance` (continua a vir de `cost_daily.details.balance_at_snapshot` se existir; senão null).
+- **Novo campo opcional** em `Expense30d`: `apify_billed_total_30d` (lido de `cost_daily` da Apify, para mostrar reconciliação com a fatura). Se ausente, UI esconde.
 
-- **`src/components/admin/admin-gate.tsx`** — apagar (já não é usado).
+### 2. `src/components/admin/v2/visao-geral/expense-section.tsx`
 
-- **`src/integrations/lovable/index.ts`** — manter intacto (auto-gerado; deixar de ser importado pelo admin já basta).
+- Adicionar nota pequena por baixo do KPI Apify quando `apify_billed_total_30d` existir e divergir >5% do `apify_total`: "Apify faturou $X · diferença Y" (em tom info, não alarme).
+- Mantém UI/cores/grid intactos.
 
-- **`src/lib/admin/fetch.ts`** — alterar:
-  - Remover dependência de `supabase.auth.getSession()`.
-  - Ler email de `localStorage.getItem("admin.simple-gate.v1")` e enviar em header `X-Admin-Email`.
-  - Em 401/403 → limpar localStorage e `window.location.reload()` (volta ao gate).
+### 3. `src/components/admin/v2/sistema/costs-detail-section.tsx`
 
-### Backend
+- Adicionar legenda explícita por baixo dos KPIs: "Janela: últimas 24h · fonte: provider_call_logs (success + cache)". Para o utilizador perceber porque é diferente do 30d da Visão Geral.
+- Sem alterações de layout.
 
-- **Novo: `src/routes/api/admin/simple-login.ts`** — `POST` com `{ email }`. Valida contra `getAdminAllowlist()`. Devolve `{ ok: true }` ou 403. Sem cookies, sem sessão server-side — é apenas a verificação inicial; o cliente é que persiste a flag.
+### 4. `src/lib/admin/cost-sync.server.ts`
 
-- **`src/lib/admin/session.ts`** — substituir `requireAdminSession()`:
-  - Lê `X-Admin-Email` (header) em vez de `Authorization: Bearer`.
-  - Valida com `isAdminEmailAllowed(email)`.
-  - Mantém a mesma assinatura `Promise<AdminUser>` para não tocar nos ~30 handlers `/api/admin/*` que a usam.
-  - Apaga referência a `supabaseAdmin.auth.getUser`.
+- Mantém-se intacto. `cost_daily` continua a ser populado, mas agora apenas para:
+  - reconciliação Apify (faturação mensal real)
+  - registo de saldo DataForSEO
+  - histórico que sobrevive a purge de logs antigos
 
-- **`src/routes/api/admin/whoami.ts`** — simplificar: lê `X-Admin-Email`, devolve `{ allowed, email }`. (Mantém-se por compatibilidade; o gate novo nem precisa de chamar.)
+### 5. Documentação
 
-### Limpeza
+- Atualizar `mem://design/report-light-tokens`? Não — isto é regra de dados, não design. Criar `mem://features/cost-source-of-truth` com a regra: "provider_call_logs é a fonte única; cost_daily é cache de reconciliação".
 
-- **Remover do `admin.tsx`**: import de `AdminGate` (já não existe).
-- **Não tocar** em `LOCKED_FILES.md`, `/report.example`, tokens, design system, `src/integrations/supabase/client.ts`.
-
-## Implicações de segurança (registadas)
-
-- Vou atualizar o `@security-memory` a documentar que o `/admin` está intencionalmente sem autenticação real durante a fase de testes privados, a pedido explícito do owner.
-- Os scanners vão flaggar isto; vamos marcar como "risco aceite — testing mode".
-- **Recomendação que fica em aberto**: quando publicares de novo o produto ou abrires acesso a outros, voltar para email + password ou Google + allowlist (15 minutos de trabalho).
-
-## Validação
+### 6. Validação
 
 - `bunx tsc --noEmit`
-- Manual: abrir `/admin` → escrever `fredericodigital@gmail.com` → entrar → navegar tabs (Visão Geral, Sistema, Perfis, Conhecimento) → carregar KPIs / snapshots → terminar sessão → confirmar que volta ao gate.
-- Confirmar que escrever outro email → "Email não autorizado".
+- `bunx vitest run`
+- Query manual de verificação:
+  ```sql
+  SELECT provider, SUM(COALESCE(actual_cost_usd, estimated_cost_usd, 0))
+  FROM provider_call_logs
+  WHERE created_at >= now() - INTERVAL '24 hours'
+    AND status IN ('success','cache')
+  GROUP BY provider;
+  ```
+  Confirmar que bate exatamente com o que o `/admin/sistema` mostra.
+- Mesma query com `30 days` deve bater com `/admin/visao-geral › Despesa`.
 
-## Ficheiros a alterar
+## O que NÃO muda
 
-1. `src/components/admin/v2/admin-auth-shell.tsx` — reescrita completa (gate simples).
-2. `src/lib/admin/fetch.ts` — header `X-Admin-Email` em vez de Bearer.
-3. `src/lib/admin/session.ts` — `requireAdminSession()` lê `X-Admin-Email`.
-4. `src/routes/api/admin/whoami.ts` — simplificar.
-5. `src/routes/api/admin/simple-login.ts` — criar.
-6. `src/routes/admin.tsx` — remover import órfão se houver.
-7. `src/components/admin/admin-gate.tsx` — apagar.
-8. Security memory — atualizar.
+- Schema da BD (zero migrações).
+- `provider_call_logs` continua a ser escrita pelo flow real de análise.
+- Sem chamadas a Apify/OpenAI/DataForSEO/Supabase em runtime do refactor.
+- `Receita › Faturas` continua mock (já declarado como demo).
+- UI das secções não é redesenhada — só legenda/nota informativa.
 
-## Checkpoint
+## Resultado esperado
 
-- ☐ `AdminAuthShell` mostra apenas input email + botão Entrar
-- ☐ Email correto entra; email errado mostra "Não autorizado"
-- ☐ Todas as chamadas `/api/admin/*` continuam a funcionar via `X-Admin-Email`
-- ☐ Botão "Terminar sessão" limpa estado
-- ☐ Sem dependências de `lovable.auth` / Supabase Auth no fluxo admin
-- ☐ `bunx tsc --noEmit` limpo
-- ☐ Security memory atualizada com o risco aceite
+Os mesmos números agregados em todos os ecrãs, com janelas declaradas. Discrepância Apify (faturação real vs custo estimado por log) fica visível como **um único KPI de reconciliação**, não como divergência silenciosa entre páginas.

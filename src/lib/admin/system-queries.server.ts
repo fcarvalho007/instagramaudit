@@ -76,6 +76,13 @@ export interface Expense30d {
   dataforseo_calls: number;
   dataforseo_balance: number | null;
   daily: ExpenseDailyPoint[];
+  /**
+   * Apify monthly billed amount (últimos 30 dias) lido de `cost_daily`,
+   * que é populado pelo sync da Apify monthly usage API. Usado apenas
+   * para reconciliação visual com a fatura — pode ser null se o sync
+   * ainda não correu.
+   */
+  apify_billed_total_30d: number | null;
 }
 
 export interface CostCaps {
@@ -277,33 +284,74 @@ export function fetchRuntimeChecks(): RuntimeCheck[] {
 
 /* ===================================================== Cost metrics 24h -- */
 
-export async function fetchCostMetrics24h(): Promise<Cost24hMetrics> {
-  const since = isoSinceHours(24);
+/**
+ * Fonte única de verdade para custos: `provider_call_logs`.
+ *
+ * Regras uniformes (aplicadas por todos os ecrãs do /admin que mostram custos):
+ *   - custo por linha = COALESCE(actual_cost_usd, estimated_cost_usd, 0)
+ *   - apenas linhas com status IN ('success','cache') contam como custo realizado
+ *   - janelas declaradas no UI; ambos os ecrãs (Sistema 24h e Visão Geral 30d)
+ *     chamam esta função, garantindo que os números batem certo entre páginas
+ *
+ * `cost_daily` deixou de ser fonte primária — só é usada para reconciliação
+ * Apify (faturação mensal real) e saldo DataForSEO.
+ * Ver mem://features/cost-source-of-truth.
+ */
+export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
+  totals: Record<
+    "apify" | "openai" | "dataforseo",
+    { amount_usd: number; calls: number }
+  >;
+  daily: ExpenseDailyPoint[];
+  apifyFreshSum: number;
+  apifyFreshCount: number;
+}> {
   const { data: logs } = await supabaseAdmin
     .from("provider_call_logs")
-    .select("provider, actual_cost_usd, estimated_cost_usd, status")
-    .gte("created_at", since);
+    .select("provider, actual_cost_usd, estimated_cost_usd, status, created_at")
+    .gte("created_at", sinceIso);
 
-  const acc = {
+  const totals = {
     apify: { amount_usd: 0, calls: 0 },
     openai: { amount_usd: 0, calls: 0 },
     dataforseo: { amount_usd: 0, calls: 0 },
   };
+  const dayMap = new Map<string, ExpenseDailyPoint>();
   let apifyFreshSum = 0;
   let apifyFreshCount = 0;
 
   for (const row of logs ?? []) {
+    const provider = String(row.provider) as keyof typeof totals;
+    if (!(provider in totals)) continue;
+    const status = String(row.status);
+    if (status !== "success" && status !== "cache") continue;
+
     const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
-    const provider = String(row.provider) as keyof typeof acc;
-    if (provider in acc) {
-      acc[provider].amount_usd += cost;
-      acc[provider].calls += 1;
-      if (provider === "apify" && row.status === "success") {
-        apifyFreshSum += cost;
-        apifyFreshCount += 1;
-      }
+    totals[provider].amount_usd += cost;
+    totals[provider].calls += 1;
+
+    const day = String(row.created_at).slice(0, 10);
+    const point = dayMap.get(day) ?? { day, apify: 0, openai: 0, dataforseo: 0 };
+    point[provider] = Number((point[provider] + cost).toFixed(6));
+    dayMap.set(day, point);
+
+    if (provider === "apify" && status === "success") {
+      apifyFreshSum += cost;
+      apifyFreshCount += 1;
     }
   }
+
+  const daily = Array.from(dayMap.values()).sort((a, b) =>
+    a.day.localeCompare(b.day),
+  );
+
+  return { totals, daily, apifyFreshSum, apifyFreshCount };
+}
+
+export async function fetchCostMetrics24h(): Promise<Cost24hMetrics> {
+  const since = isoSinceHours(24);
+  const { totals: acc, apifyFreshSum, apifyFreshCount } =
+    await aggregateCostsFromLogs(since);
 
   const { count: cacheHits } = await supabaseAdmin
     .from("analysis_events")
@@ -411,54 +459,54 @@ export async function ackAlert(id: string): Promise<void> {
 /* =================================================== Expense 30d -- */
 
 export async function fetchExpense30d(): Promise<Expense30d> {
-  const start = dayKey(new Date(Date.now() - 30 * DAY_MS));
-  const { data: rows } = await supabaseAdmin
+  // Fonte primária: provider_call_logs (mesma regra que /admin/sistema 24h),
+  // garantindo que os totais batem certo entre páginas para a mesma janela.
+  const sinceIso = new Date(Date.now() - 30 * DAY_MS).toISOString();
+  const { totals, daily } = await aggregateCostsFromLogs(sinceIso);
+
+  // cost_daily continua a existir só para extras de reconciliação:
+  // saldo DataForSEO e faturação real Apify (monthly usage API).
+  const startDay = dayKey(new Date(Date.now() - 30 * DAY_MS));
+  const { data: dailyRows } = await supabaseAdmin
     .from("cost_daily")
-    .select("provider, day, amount_usd, call_count, details")
-    .gte("day", start)
-    .order("day", { ascending: true });
+    .select("provider, day, amount_usd, details")
+    .gte("day", startDay);
 
-  const totals = { apify: 0, openai: 0, dataforseo: 0 };
-  const calls = { apify: 0, openai: 0, dataforseo: 0 };
-  const dayMap = new Map<string, ExpenseDailyPoint>();
   let dataforseoBalance: number | null = null;
-
-  for (const r of rows ?? []) {
-    const provider = String(r.provider) as keyof typeof totals;
-    if (!(provider in totals)) continue;
-    const amount = Number(r.amount_usd ?? 0);
-    totals[provider] += amount;
-    calls[provider] += Number(r.call_count ?? 0);
-    const day = String(r.day);
-    const point = dayMap.get(day) ?? {
-      day,
-      apify: 0,
-      openai: 0,
-      dataforseo: 0,
-    };
-    point[provider] = Number((point[provider] + amount).toFixed(4));
-    dayMap.set(day, point);
+  let apifyBilled = 0;
+  let apifyHasBilled = false;
+  for (const r of dailyRows ?? []) {
+    const provider = String(r.provider);
     if (provider === "dataforseo") {
       const bal = (r.details as { balance_at_snapshot?: number } | null)
         ?.balance_at_snapshot;
       if (typeof bal === "number") dataforseoBalance = bal;
     }
+    if (provider === "apify") {
+      apifyBilled += Number(r.amount_usd ?? 0);
+      apifyHasBilled = true;
+    }
   }
 
-  const daily = Array.from(dayMap.values()).sort((a, b) =>
-    a.day.localeCompare(b.day),
-  );
-
   return {
-    apify_total: Number(totals.apify.toFixed(4)),
-    openai_total: Number(totals.openai.toFixed(4)),
-    dataforseo_total: Number(totals.dataforseo.toFixed(4)),
-    total: Number((totals.apify + totals.openai + totals.dataforseo).toFixed(4)),
-    apify_calls: calls.apify,
-    openai_calls: calls.openai,
-    dataforseo_calls: calls.dataforseo,
+    apify_total: Number(totals.apify.amount_usd.toFixed(4)),
+    openai_total: Number(totals.openai.amount_usd.toFixed(4)),
+    dataforseo_total: Number(totals.dataforseo.amount_usd.toFixed(4)),
+    total: Number(
+      (
+        totals.apify.amount_usd +
+        totals.openai.amount_usd +
+        totals.dataforseo.amount_usd
+      ).toFixed(4),
+    ),
+    apify_calls: totals.apify.calls,
+    openai_calls: totals.openai.calls,
+    dataforseo_calls: totals.dataforseo.calls,
     dataforseo_balance: dataforseoBalance,
     daily,
+    apify_billed_total_30d: apifyHasBilled
+      ? Number(apifyBilled.toFixed(4))
+      : null,
   };
 }
 
