@@ -463,6 +463,19 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
     const thumbnailUrl = rawThumb
       ? `/api/public/ig-thumb?url=${encodeURIComponent(rawThumb)}`
       : undefined;
+    // Permalink real para tornar o card clicável. Quando o snapshot só
+    // traz o shortcode, derivamos o URL canónico do Instagram.
+    const permalinkRaw =
+      typeof p.permalink === "string" && p.permalink.trim().length > 0
+        ? p.permalink.trim()
+        : null;
+    const shortcode =
+      typeof p.shortcode === "string" && p.shortcode.trim().length > 0
+        ? p.shortcode.trim()
+        : null;
+    const permalink =
+      permalinkRaw ??
+      (shortcode ? `https://www.instagram.com/p/${shortcode}/` : null);
     const base = {
       id: p.id ?? `post-${idx}`,
       date: formatPtDateShort(p.taken_at_iso ?? null),
@@ -472,6 +485,7 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
       comments: num(p.comments, 0),
       engagementPct: round2(num(p.engagement_pct, 0)),
       caption: (p.caption ?? "").slice(0, 200),
+      permalink,
     };
     // Cast: `thumbnailUrl` will be added to the locked `ReportData` topPosts
     // type once the unlock for `report-mock-data.ts` is granted. Emitting it
