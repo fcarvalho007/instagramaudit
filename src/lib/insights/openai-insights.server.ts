@@ -200,7 +200,7 @@ export async function generateInsights(
       body: JSON.stringify({
         model,
         temperature: TEMPERATURE,
-        // GPT-5 family (incl. gpt-5.4-nano) only accepts max_completion_tokens.
+        // GPT-5 family only accepts max_completion_tokens.
         // Older 4.x models also accept this name, so it is safe across the board.
         max_completion_tokens: MAX_OUTPUT_TOKENS,
         response_format: { type: "json_schema", json_schema: RESPONSE_JSON_SCHEMA },
@@ -235,7 +235,13 @@ export async function generateInsights(
     const json = (await res.json()) as OpenAiChatResponse;
     promptTokens = json.usage?.prompt_tokens ?? 0;
     completionTokens = json.usage?.completion_tokens ?? 0;
-    const cost = calculateOpenAiCost({ model, promptTokens, completionTokens });
+    const cachedTokens = json.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+    const cost = calculateOpenAiCost({
+      model,
+      promptTokens,
+      completionTokens,
+      cachedTokens,
+    });
 
     const content = json.choices?.[0]?.message?.content;
     if (!content) {
@@ -335,6 +341,9 @@ interface OpenAiChatResponse {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
+    prompt_tokens_details?: {
+      cached_tokens?: number;
+    };
   };
 }
 
