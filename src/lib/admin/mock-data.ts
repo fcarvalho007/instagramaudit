@@ -131,8 +131,6 @@ export const ZERO_REVENUE_KPIS = {
   mrr: {
     eyebrow: "MRR · subscrições",
     value: "€0",
-    deltaText: "—",
-    deltaDirection: "flat" as const,
     sub: "0 subscritores · checkout por ligar",
   },
   oneOff: {
@@ -144,8 +142,6 @@ export const ZERO_REVENUE_KPIS = {
   total: {
     eyebrow: "Receita total · 30 dias",
     value: "€0",
-    deltaText: "—",
-    deltaDirection: "flat" as const,
     sub: "—",
   },
   arpu: {
