@@ -76,7 +76,6 @@ import {
   isDataForSeoEnabled,
 } from "@/lib/security/dataforseo-allowlist";
 import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
-import { buildEditorialPatterns, buildEditorialPatternsForInsights } from "@/lib/report/editorial-patterns";
 import { buildInsightsCtx } from "@/lib/insights/build-context";
 import {
   buildPersistedSummary,
