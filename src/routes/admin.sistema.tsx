@@ -14,8 +14,11 @@
  * ficam para uma fase seguinte do projecto.
  */
 
-import { RotateCw, PlayCircle } from "lucide-react";
+import { RotateCw } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
 import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
@@ -29,6 +32,38 @@ export const Route = createFileRoute("/admin/sistema")({
 });
 
 function SistemaPage() {
+  const qc = useQueryClient();
+  const [syncing, setSyncing] = useState(false);
+
+  const onSyncNow = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/admin/sistema/sync-now", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as Record<
+        "apify" | "openai" | "dataforseo",
+        { ok: boolean; message?: string }
+      >;
+      const failed = (Object.entries(json) as [string, { ok: boolean; message?: string }][])
+        .filter(([, v]) => !v.ok)
+        .map(([k]) => k);
+      if (failed.length === 0) {
+        toast.success("Sincronização concluída.");
+      } else {
+        toast.warning(`Falhou: ${failed.join(", ")}.`);
+      }
+      qc.invalidateQueries({ queryKey: ["admin", "sistema"] });
+    } catch (err) {
+      toast.error(`Erro a sincronizar: ${(err as Error).message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <>
       <AdminPageHeader
@@ -37,23 +72,12 @@ function SistemaPage() {
         actions={
           <>
             <AdminActionButton
-              onClick={() => {
-                // Mock por agora — endpoint smoke-test virá numa próxima iteração.
-                // eslint-disable-next-line no-console
-                console.info("[admin/sistema] smoke test");
-              }}
+              onClick={onSyncNow}
+              disabled={syncing}
+              aria-busy={syncing}
             >
-              <PlayCircle size={14} />
-              Smoke test
-            </AdminActionButton>
-            <AdminActionButton
-              onClick={() => {
-                // eslint-disable-next-line no-console
-                console.info("[admin/sistema] refresh");
-              }}
-            >
-              <RotateCw size={14} />
-              Atualizar
+              <RotateCw size={14} className={syncing ? "animate-spin" : ""} />
+              {syncing ? "A sincronizar…" : "Sincronizar agora"}
             </AdminActionButton>
           </>
         }
