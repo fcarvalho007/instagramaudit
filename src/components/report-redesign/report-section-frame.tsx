@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
 
+import { REDESIGN_TOKENS } from "./report-tokens";
+
 interface ReportSectionFrameProps {
   /** Eyebrow curto em mono — ex.: "02 · Resposta da audiência". */
   eyebrow: string;
@@ -11,7 +13,7 @@ interface ReportSectionFrameProps {
   action?: React.ReactNode;
   children: React.ReactNode;
   /** Tom de fundo da secção. */
-  tone?: "calm" | "soft-cyan" | "soft-violet" | "plain";
+  tone?: "plain" | "white" | "soft-blue" | "calm" | "soft-cyan" | "soft-violet";
   /** Espaçamento vertical entre secções. */
   spacing?: "default" | "tight";
   /** ID âncora opcional. */
@@ -19,15 +21,17 @@ interface ReportSectionFrameProps {
   /** Aria-label opcional, fallback ao title. */
   ariaLabel?: string;
   className?: string;
+  /**
+   * Se `true`, o conteúdo é envolvido num card branco elevado.
+   * Usado para todas as secções analíticas L2 do redesign Iconosquare.
+   */
+  framed?: boolean;
 }
 
 /**
  * Frame editorial reutilizável usado pelo redesign de
  * `/analyze/$username`. Garante hierarquia tipográfica consistente
- * (eyebrow mono · título Fraunces · subtítulo) e fundos diferenciados
- * para criar ritmo entre secções (calmas vs hero-soft).
- *
- * Não toca em componentes locked — apenas envolve.
+ * (eyebrow mono · h2 display · subtítulo) e fundos diferenciados.
  */
 export function ReportSectionFrame({
   eyebrow,
@@ -40,17 +44,20 @@ export function ReportSectionFrame({
   id,
   ariaLabel,
   className,
+  framed = false,
 }: ReportSectionFrameProps) {
   const toneClass =
-    tone === "soft-cyan"
-      ? "bg-[radial-gradient(ellipse_at_top_left,rgba(6,182,212,0.08),transparent_60%)]"
-      : tone === "soft-violet"
-        ? "bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.08),transparent_60%)]"
-        : tone === "calm"
-          ? "bg-surface-secondary/25"
-          : "";
+    tone === "white"
+      ? REDESIGN_TOKENS.bandWhite
+      : tone === "soft-blue" || tone === "soft-cyan"
+        ? REDESIGN_TOKENS.bandSoftBlue
+        : tone === "soft-violet"
+          ? REDESIGN_TOKENS.bandSoftBlue
+          : tone === "calm"
+            ? REDESIGN_TOKENS.bandSoftBlue
+            : REDESIGN_TOKENS.bandCanvas;
   const verticalPad =
-    spacing === "tight" ? "py-8 md:py-10" : "py-12 md:py-16";
+    spacing === "tight" ? "py-8 md:py-10" : "py-10 md:py-14";
 
   return (
     <section
@@ -59,23 +66,25 @@ export function ReportSectionFrame({
       className={cn("w-full", toneClass, verticalPad, className)}
     >
       <div className="mx-auto max-w-7xl px-5 md:px-6">
-        <header className="mb-6 md:mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <header className="mb-6 md:mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2 max-w-2xl min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-content-tertiary">
-              {eyebrow}
-            </p>
-            <h2 className="font-display text-2xl md:text-[2rem] font-medium tracking-tight text-content-primary leading-[1.15]">
-              {title}
-            </h2>
+            <p className={REDESIGN_TOKENS.eyebrowAccent}>{eyebrow}</p>
+            <h2 className={REDESIGN_TOKENS.h2Section}>{title}</h2>
             {subtitle ? (
-              <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed">
-                {subtitle}
-              </p>
+              <p className={REDESIGN_TOKENS.subtitle}>{subtitle}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
         </header>
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0">
+          {framed ? (
+            <div className={cn(REDESIGN_TOKENS.card, "p-5 md:p-8")}>
+              {children}
+            </div>
+          ) : (
+            children
+          )}
+        </div>
       </div>
     </section>
   );
