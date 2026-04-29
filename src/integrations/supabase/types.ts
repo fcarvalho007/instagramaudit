@@ -209,6 +209,214 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_benchmarks: {
+        Row: {
+          created_at: string
+          created_by_email: string | null
+          engagement_pct: number
+          format: string
+          id: string
+          notes: string | null
+          origin: string
+          sample_size: number
+          source_id: string | null
+          tier: string
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by_email?: string | null
+          engagement_pct: number
+          format: string
+          id?: string
+          notes?: string | null
+          origin: string
+          sample_size: number
+          source_id?: string | null
+          tier: string
+          updated_at?: string
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by_email?: string | null
+          engagement_pct?: number
+          format?: string
+          id?: string
+          notes?: string | null
+          origin?: string
+          sample_size?: number
+          source_id?: string | null
+          tier?: string
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_benchmarks_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_history: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by_email: string | null
+          diff: Json | null
+          entity_id: string
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by_email?: string | null
+          diff?: Json | null
+          entity_id: string
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by_email?: string | null
+          diff?: Json | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      knowledge_notes: {
+        Row: {
+          archived: boolean
+          body: string
+          category: string
+          created_at: string
+          created_by_email: string | null
+          id: string
+          source_id: string | null
+          title: string
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+          vertical: string | null
+        }
+        Insert: {
+          archived?: boolean
+          body: string
+          category: string
+          created_at?: string
+          created_by_email?: string | null
+          id?: string
+          source_id?: string | null
+          title: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          vertical?: string | null
+        }
+        Update: {
+          archived?: boolean
+          body?: string
+          category?: string
+          created_at?: string
+          created_by_email?: string | null
+          id?: string
+          source_id?: string | null
+          title?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          vertical?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_notes_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_sources: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          published_at: string | null
+          sample_size: number | null
+          type: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          published_at?: string | null
+          sample_size?: number | null
+          type?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          published_at?: string | null
+          sample_size?: number | null
+          type?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
+      knowledge_suggestions: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by_email: string | null
+          status: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload: Json
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by_email?: string | null
+          status?: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by_email?: string | null
+          status?: string
+          type?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           company: string | null
@@ -511,6 +719,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_knowledge_context: {
+        Args: { p_format: string; p_tier: string; p_vertical?: string }
+        Returns: Json
+      }
       record_analysis_event: {
         Args: {
           p_analysis_snapshot_id: string
