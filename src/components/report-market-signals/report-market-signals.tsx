@@ -411,7 +411,7 @@ export function ReportMarketSignals({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <MetricCard
           eyebrow={marketSignalsCopy.cards.strongest}
-          value={<span className="text-accent-primary">{strongest}</span>}
+          value={<span className="text-blue-700">{strongest}</span>}
           hint="Tema com maior volume de pesquisa pública entre os detetados."
         />
         <MetricCard
@@ -438,7 +438,7 @@ export function ReportMarketSignals({
         <MetricCard
           eyebrow={marketSignalsCopy.cards.suggestion}
           value={
-            <span className="text-[15px] md:text-base font-sans font-normal leading-relaxed text-content-primary">
+            <span className="text-[15px] md:text-base font-sans font-normal leading-relaxed text-slate-700">
               {composeSuggestion(strongest, trend)}
             </span>
           }
