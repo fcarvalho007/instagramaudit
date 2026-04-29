@@ -25,13 +25,14 @@ import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { SectionError, SectionSkeleton } from "../section-state";
 import { DAILY_COST_LIMIT } from "@/lib/admin/mock-data";
+import { adminFetch } from "@/lib/admin/fetch";
 import type {
   CostCaps,
   Expense30d,
 } from "@/lib/admin/system-queries.server";
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "include" });
+  const res = await adminFetch(url);
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return (await res.json()) as T;
 }

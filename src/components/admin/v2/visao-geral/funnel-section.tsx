@@ -13,8 +13,10 @@ import { AdminCard } from "../admin-card";
 import { AdminStat } from "../admin-stat";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ADMIN_LITERAL } from "../admin-tokens";
-import { DemoOnlySection } from "../demo-only-section";
-import { MOCK_FUNNEL } from "@/lib/admin/mock-data";
+import { AdminSectionHeader } from "../admin-section-header";
+import { PaymentsPendingBanner } from "../payments-pending-banner";
+import { useDemoMode } from "@/lib/admin/demo-mode";
+import { MOCK_FUNNEL, ZERO_FUNNEL } from "@/lib/admin/mock-data";
 
 const FUNNEL_TOTALS_INFO: Record<string, string> = {
   "Conversão total":
@@ -26,22 +28,28 @@ const FUNNEL_TOTALS_INFO: Record<string, string> = {
 };
 
 export function FunnelSection() {
+  const { enabled: demo } = useDemoMode();
+  const data = demo ? MOCK_FUNNEL : ZERO_FUNNEL;
   return (
-    <DemoOnlySection
-      title="Funil de conversão"
-      subtitle="últimos 30 dias"
-      accent="leads"
-      info="Mostra o percurso desde visitante anónimo até cliente pagante. As percentagens indicam a conversão entre cada etapa."
-      pendingReason="O funil de conversão visitante → cliente exige tracking de eventos web (visitas anónimas) e ciclo de checkout integrado. Será ligado a dados reais quando a integração de pagamentos estiver no sítio."
-    >
     <section className="flex flex-col gap-4">
+      <AdminSectionHeader
+        title="Funil de conversão"
+        subtitle="últimos 30 dias"
+        accent="leads"
+        info="Mostra o percurso desde visitante anónimo até cliente pagante. As percentagens indicam a conversão entre cada etapa."
+      />
+      {!demo && (
+        <PaymentsPendingBanner
+          reason="O funil mostra-se a zero porque ainda não existem visitantes registados nem checkout ligado. Liga EuPago/Stripe para passar a contabilizar leads → clientes em tempo real."
+        />
+      )}
       <AdminCard className="!p-10">
-        <FunnelDiagram />
+        <FunnelDiagram data={data} />
       </AdminCard>
 
       <AdminCard>
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-admin-border bg-admin-border sm:grid-cols-3">
-          {MOCK_FUNNEL.totals.map((cell) => {
+          {data.totals.map((cell) => {
             const info = FUNNEL_TOTALS_INFO[cell.eyebrow];
             return (
               <div key={cell.eyebrow} className="bg-admin-surface p-4">
@@ -66,7 +74,6 @@ export function FunnelSection() {
         </div>
       </AdminCard>
     </section>
-    </DemoOnlySection>
   );
 }
 
@@ -74,11 +81,11 @@ export function FunnelSection() {
  * SVG funnel — viewBox 800×280, 3 layers de 70px cada, gaps de 14px.
  * Textos dentro do SVG em coordenadas absolutas; escalam com o viewBox.
  */
-function FunnelDiagram() {
+function FunnelDiagram({ data }: { data: typeof MOCK_FUNNEL | typeof ZERO_FUNNEL }) {
   return (
     <div
       role="img"
-      aria-label={`Funil: ${MOCK_FUNNEL.visitors.value} visitantes → ${MOCK_FUNNEL.leads.value} leads → ${MOCK_FUNNEL.customers.value} clientes`}
+      aria-label={`Funil: ${data.visitors.value} visitantes → ${data.leads.value} leads → ${data.customers.value} clientes`}
       className="w-full"
     >
       <svg
@@ -92,8 +99,8 @@ function FunnelDiagram() {
           x={140}
           rightX={660}
           y={42}
-          left={MOCK_FUNNEL.visitors}
-          right={MOCK_FUNNEL.freeAnalyses}
+          left={data.visitors}
+          right={data.freeAnalyses}
           eyebrowFill={ADMIN_LITERAL.funnelEyebrow}
           textFill={ADMIN_LITERAL.funnelBaseText}
         />
@@ -104,8 +111,8 @@ function FunnelDiagram() {
           x={240}
           rightX={560}
           y={130}
-          left={MOCK_FUNNEL.leads}
-          right={MOCK_FUNNEL.visitorToLead}
+          left={data.leads}
+          right={data.visitorToLead}
           eyebrowFill={ADMIN_LITERAL.funnelEyebrow}
           textFill={ADMIN_LITERAL.funnelBaseText}
         />
@@ -116,8 +123,8 @@ function FunnelDiagram() {
           x={280}
           rightX={520}
           y={218}
-          left={MOCK_FUNNEL.customers}
-          right={MOCK_FUNNEL.leadToCustomer}
+          left={data.customers}
+          right={data.leadToCustomer}
           eyebrowFill={ADMIN_LITERAL.funnelLightEyebrow}
           textFill="#FFFFFF"
         />

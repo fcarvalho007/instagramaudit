@@ -26,6 +26,7 @@ import { HealthSection } from "@/components/admin/v2/sistema/health-section";
 import { SecretsConfigSection } from "@/components/admin/v2/sistema/secrets-config-section";
 import { CostsDetailSection } from "@/components/admin/v2/sistema/costs-detail-section";
 import { LegacyAccessSection } from "@/components/admin/v2/sistema/legacy-access-section";
+import { adminFetch } from "@/lib/admin/fetch";
 
 export const Route = createFileRoute("/admin/sistema")({
   component: SistemaPage,
@@ -39,9 +40,8 @@ function SistemaPage() {
     if (syncing) return;
     setSyncing(true);
     try {
-      const res = await fetch("/api/admin/sistema/sync-now", {
+      const res = await adminFetch("/api/admin/sistema/sync-now", {
         method: "POST",
-        credentials: "include",
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as Record<
@@ -75,9 +75,10 @@ function SistemaPage() {
               onClick={onSyncNow}
               disabled={syncing}
               aria-busy={syncing}
+              title="Os custos atualizam-se automaticamente a cada 60 segundos. Este botão força a sincronização imediata com Apify, OpenAI e DataForSEO."
             >
               <RotateCw size={14} className={syncing ? "animate-spin" : ""} />
-              {syncing ? "A sincronizar…" : "Sincronizar agora"}
+              {syncing ? "A sincronizar…" : "Forçar sync provedores"}
             </AdminActionButton>
           </>
         }

@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { adminFetch } from "@/lib/admin/fetch";
 import type { CostCaps } from "@/lib/admin/system-queries.server";
 
 interface CostCapsModalProps {
@@ -28,9 +29,8 @@ interface CostCapsModalProps {
 }
 
 async function patchCaps(payload: Partial<CostCaps>): Promise<CostCaps> {
-  const res = await fetch("/api/admin/sistema/caps", {
+  const res = await adminFetch("/api/admin/sistema/caps", {
     method: "PATCH",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });

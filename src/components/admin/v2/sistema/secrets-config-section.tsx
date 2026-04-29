@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/v2/section-state";
 import { CostCapsModal } from "@/components/admin/v2/sistema/cost-caps-modal";
 import { Button } from "@/components/ui/button";
+import { adminFetch } from "@/lib/admin/fetch";
 import type {
   CostCaps,
   RuntimeCheck,
@@ -22,7 +23,7 @@ import type {
 } from "@/lib/admin/system-queries.server";
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "include" });
+  const res = await adminFetch(url);
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return (await res.json()) as T;
 }
