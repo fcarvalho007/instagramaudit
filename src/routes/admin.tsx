@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { AdminAuthShell } from "@/components/admin/v2/admin-auth-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminTabsNav } from "@/components/admin/v2/admin-tabs-nav";
+import { DemoModeSwitch } from "@/components/admin/v2/demo-mode-switch";
+import { useDemoMode } from "@/lib/admin/demo-mode";
 
 // Side-effect import: garante que os tokens v2 estão disponíveis em todas as
 // sub-rotas sem tocar em `src/styles.css` (locked).
@@ -32,10 +34,11 @@ export const Route = createFileRoute("/admin")({
 
 function AdminLayout() {
   const [logout, setLogout] = useState<(() => Promise<void>) | null>(null);
+  const { enabled: demoOn } = useDemoMode();
 
   return (
     <AdminAuthShell onLogoutReady={(handler) => setLogout(() => handler)}>
-      <div className="admin-v2 min-h-screen">
+      <div className="admin-v2 min-h-screen" data-demo={demoOn ? "on" : "off"}>
         <main
           style={{
             maxWidth: 1280,
@@ -43,7 +46,8 @@ function AdminLayout() {
             padding: "1.75rem",
           }}
         >
-          <div className="flex justify-end mb-2">
+          <div className="flex justify-end items-center gap-2 mb-2">
+            <DemoModeSwitch />
             {logout && (
               <Button
                 variant="ghost"
@@ -56,6 +60,22 @@ function AdminLayout() {
             )}
           </div>
           <AdminTabsNav />
+          {demoOn ? (
+            <div
+              role="note"
+              className="mb-4 mt-2 rounded-md border px-3 py-2 text-[11px]"
+              style={{
+                borderColor: "rgba(6,182,212,0.35)",
+                background: "rgba(6,182,212,0.06)",
+                color: "rgb(8 145 178)",
+              }}
+            >
+              <strong className="font-medium">Modo demonstração ativo</strong> —
+              {" "}secções sem integração real (Receita, Clientes, Pipeline) mostram
+              {" "}dados fictícios para visualizar o layout. Despesa, perfis analisados
+              {" "}e métricas operacionais continuam reais.
+            </div>
+          ) : null}
           <Outlet />
         </main>
         <Toaster />
