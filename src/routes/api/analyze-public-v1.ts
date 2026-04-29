@@ -64,6 +64,20 @@ import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 import { generateInsights } from "@/lib/insights/openai-insights.server";
 import type { AiInsightsV1, InsightsContext } from "@/lib/insights/types";
 import { isOpenAiAllowed } from "@/lib/security/openai-allowlist";
+import {
+  isAllowed as isDfsAllowed,
+  isDataForSeoEnabled,
+} from "@/lib/security/dataforseo-allowlist";
+import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
+import {
+  buildPersistedSummary,
+  decideCacheTtlSeconds,
+  readCachedSummary,
+  type PersistedMarketSignals,
+} from "@/lib/market-signals/cache";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
+import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
