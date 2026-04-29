@@ -27,6 +27,7 @@ import { ReportSectionFrame } from "./report-section-frame";
 import { ReportAiReading } from "./report-ai-reading";
 import { ReportMethodology } from "./report-methodology";
 import { ReportTierTeaser } from "./report-tier-teaser";
+import { REDESIGN_TOKENS } from "./report-tokens";
 
 interface ReportShellProps {
   result: AdapterResult;
@@ -49,11 +50,11 @@ interface ReportShellProps {
 export function ReportShell({ result, snapshotId, actions, payload }: ReportShellProps) {
   return (
     <ReportDataProvider data={result.data}>
-      <div className="bg-surface-base min-h-screen">
+      <div className={`${REDESIGN_TOKENS.pageCanvas} min-h-screen`}>
         {/* 1. Hero premium */}
         <ReportHero result={result} actions={actions} />
 
-        {/* 2. Executive summary */}
+        {/* 2. KPI grid (5 cards) */}
         <ReportExecutiveSummary result={result} />
 
         {/* 3. Strategic AI reading */}
@@ -73,6 +74,7 @@ export function ReportShell({ result, snapshotId, actions, payload }: ReportShel
           title="Como o envolvimento evoluiu"
           subtitle="Curvas de likes, comentários e engagement na janela analisada."
           tone="plain"
+          framed
         >
           <ReportTemporalChart />
         </ReportSectionFrame>
@@ -82,7 +84,8 @@ export function ReportShell({ result, snapshotId, actions, payload }: ReportShel
           eyebrow="Benchmark · referência de mercado"
           title="Diferença face à referência"
           subtitle="Onde o perfil se posiciona em relação a perfis pares e como cada formato contribui para o envolvimento."
-          tone="calm"
+          tone="soft-blue"
+          framed
         >
           <div className="space-y-10 md:space-y-12">
             <ReportBenchmarkGauge />
@@ -91,7 +94,12 @@ export function ReportShell({ result, snapshotId, actions, payload }: ReportShel
         </ReportSectionFrame>
 
         {/* 7. Concorrentes */}
-        <ReportSectionFrame eyebrow="Concorrentes" title="Comparação com perfis pares" tone="plain">
+        <ReportSectionFrame
+          eyebrow="Concorrentes"
+          title="Comparação com perfis pares"
+          tone="plain"
+          framed
+        >
           <ReportCompetitors />
           {result.coverage.competitors === "empty" ? (
             <div className="mt-6">
@@ -105,7 +113,8 @@ export function ReportShell({ result, snapshotId, actions, payload }: ReportShel
           eyebrow="Top publicações"
           title="As publicações com maior envolvimento"
           subtitle="Cada card abre o conteúdo original no Instagram numa nova aba."
-          tone="calm"
+          tone="soft-blue"
+          framed
         >
           <ReportTopPosts />
           <div className="mt-6">
@@ -119,6 +128,7 @@ export function ReportShell({ result, snapshotId, actions, payload }: ReportShel
           title="Quando a audiência mais responde"
           subtitle="Padrão de horário e dia da semana, com base na amostra observada."
           tone="plain"
+          framed
         >
           <div className="space-y-10 md:space-y-12">
             <ReportPostingHeatmap />
@@ -131,7 +141,8 @@ export function ReportShell({ result, snapshotId, actions, payload }: ReportShel
           eyebrow="Linguagem"
           title="Hashtags, palavras-chave e contas mencionadas"
           subtitle="O que o perfil diz e a quem se refere com mais frequência."
-          tone="calm"
+          tone="soft-blue"
+          framed
         >
           <div className="space-y-10 md:space-y-12">
             <ReportHashtagsKeywords />
