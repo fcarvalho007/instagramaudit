@@ -10,7 +10,7 @@
  *   < 15% → vermelho
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   ChevronLeft,
@@ -28,7 +28,6 @@ import { FilterPills, type FilterOption } from "../filter-pills";
 import { AdminSearchInput, type AdminSearchInputHandle } from "../admin-search-input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCmdK } from "@/hooks/use-cmd-k";
-import { useRef } from "react";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import {
   Tooltip,
