@@ -10,7 +10,7 @@
  *   5. Acções — re-enviar email / re-gerar PDF / abrir report / investigar
  *   6. Snapshot — JSON colapsado (preview do `normalized_payload`)
  *
- * Acções operacionais usam stubs em `report-actions.client.ts` (UI honesta:
+ * Acções operacionais usam stubs em `report-actions.ts` (UI honesta:
  * confirmação + spinner + toast) — quando os endpoints reais existirem,
  * basta trocar os stubs.
  */
@@ -48,7 +48,7 @@ import {
   regenerateReportPdf,
   resendReportEmail,
   retryReportFull,
-} from "@/lib/admin/report-actions.client";
+} from "@/lib/admin/report-actions";
 
 interface ReportDrawerProps {
   open: boolean;
