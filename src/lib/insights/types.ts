@@ -137,3 +137,80 @@ export interface InsightsGenerationResult {
   /** Optional human-readable detail. Sanitised, never raw provider output. */
   detail?: string | null;
 }
+
+/* ===========================================================================
+ * v2 — Insights inline por secção (R3)
+ * ---------------------------------------------------------------------------
+ * O report redesenhado tem 9 zonas que beneficiam de uma leitura curta
+ * (1-2 frases) ao lado dos números. Esta v2 alimenta esses InsightBoxes
+ * com texto editorial gerado pelo modelo, fundamentado em sinais reais do
+ * snapshot e em entradas verificadas da Knowledge Base.
+ *
+ * v1 e v2 coexistem: v1 continua a alimentar o bloco "Leitura estratégica"
+ * (3-5 cartões longos); v2 alimenta as caixas inline curtas.
+ * ========================================================================= */
+
+/** As 9 secções do relatório que recebem insight inline. */
+export type AiInsightV2Section =
+  | "hero"
+  | "marketSignals"
+  | "evolutionChart"
+  | "benchmark"
+  | "formats"
+  | "topPosts"
+  | "heatmap"
+  | "daysOfWeek"
+  | "language";
+
+/** Lista canónica das 9 secções, na ordem usada pelo prompt. */
+export const AI_INSIGHT_V2_SECTIONS: readonly AiInsightV2Section[] = [
+  "hero",
+  "marketSignals",
+  "evolutionChart",
+  "benchmark",
+  "formats",
+  "topPosts",
+  "heatmap",
+  "daysOfWeek",
+  "language",
+] as const;
+
+/** Tons editoriais aceites pelo InsightBox no report light. */
+export type AiInsightV2Emphasis = "positive" | "negative" | "default" | "neutral";
+
+/** Item curto inline para uma secção. */
+export interface AiInsightV2Item {
+  emphasis: AiInsightV2Emphasis;
+  /** Texto editorial pt-PT (AO90), 1-2 frases, ≤ 240 caracteres. */
+  text: string;
+}
+
+/** Payload persistido em `analysis_snapshots.normalized_payload.ai_insights_v2`. */
+export interface AiInsightsV2 {
+  schema_version: 2;
+  generated_at: string;
+  model: string;
+  source_signals: {
+    /** Hash dos inputs do prompt v2 (system + payload). */
+    inputs_hash: string;
+    /** Hash curto da KB (deriva de `metadata.last_updated`). */
+    kb_version: string;
+    has_market_signals: boolean;
+  };
+  cost: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    estimated_cost_usd: number;
+  };
+  /** Mapa secção → insight curto. Todas as 9 chaves obrigatórias. */
+  sections: Record<AiInsightV2Section, AiInsightV2Item>;
+}
+
+/** Resultado tipado do gerador v2. Mesmo padrão do `InsightsGenerationResult`. */
+export interface InsightsV2GenerationResult {
+  ok: boolean;
+  insights: AiInsightsV2 | null;
+  reason: string | null;
+  detail?: string | null;
+}
