@@ -64,11 +64,22 @@ export function ReportShell({
   analyzedAtIso,
 }: ReportShellProps) {
   const hasAiInsights = result.data.aiInsights.length > 0;
+  const v2 = result.enriched.aiInsightsV2;
+  const renderInsight = (key: AiInsightV2Section) => {
+    const item = v2?.sections[key];
+    if (!item) return null;
+    return (
+      <div className="mx-auto max-w-7xl px-5 md:px-6 mt-4">
+        <AIInsightBox insight={item.text} emphasis={item.emphasis} />
+      </div>
+    );
+  };
   return (
     <ReportDataProvider data={result.data}>
       <div className={`${REDESIGN_TOKENS.pageCanvas} min-h-screen overflow-x-hidden`}>
         {/* 1. Hero premium */}
         <ReportHero result={result} actions={actions} />
+        {renderInsight("hero")}
 
         {/* 2. KPI grid (5 cards) */}
         <ReportExecutiveSummary result={result} />
@@ -87,17 +98,21 @@ export function ReportShell({
           plan="free"
           cachedSummary={payload?.market_signals_free}
         />
+        {renderInsight("marketSignals")}
 
         {/* 5. Performance ao longo do tempo */}
         <ReportFramedBlock tone="canvas" ariaLabel="Performance ao longo do tempo">
           <ReportTemporalChart />
+          {renderInsight("evolutionChart")}
         </ReportFramedBlock>
 
         {/* 6. Benchmark + formatos */}
         <ReportFramedBlock tone="soft-blue" ariaLabel="Benchmark e formatos">
           <div className="space-y-10 md:space-y-12">
             <ReportBenchmarkGauge />
+            {renderInsight("benchmark")}
             <ReportFormatBreakdown />
+            {renderInsight("formats")}
           </div>
         </ReportFramedBlock>
 
@@ -114,6 +129,7 @@ export function ReportShell({
         {/* 8. Top posts */}
         <ReportFramedBlock tone="soft-blue" ariaLabel="Top publicações">
           <ReportTopPosts />
+          {renderInsight("topPosts")}
           <div className="mt-6">
             <ReportEnrichedTopLinks enriched={result.enriched} />
           </div>
@@ -123,7 +139,9 @@ export function ReportShell({
         <ReportFramedBlock tone="canvas" ariaLabel="Resposta da audiência">
           <div className="space-y-10 md:space-y-12">
             <ReportPostingHeatmap />
+            {renderInsight("heatmap")}
             <ReportBestDays />
+            {renderInsight("daysOfWeek")}
           </div>
         </ReportFramedBlock>
 
@@ -131,6 +149,7 @@ export function ReportShell({
         <ReportFramedBlock tone="soft-blue" ariaLabel="Hashtags, palavras-chave e menções">
           <div className="space-y-10 md:space-y-12">
             <ReportHashtagsKeywords />
+            {renderInsight("language")}
             <ReportEnrichedMentions enriched={result.enriched} />
           </div>
         </ReportFramedBlock>
