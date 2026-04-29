@@ -682,6 +682,52 @@ function buildBestDays(posts: SnapshotPost[]): ReportData["bestDays"] {
 // ============================================================================
 
 /**
+ * Valida e mapeia o bloco `ai_insights_v2` persistido para a forma
+ * tipada consumida por `ReportEnriched.aiInsightsV2`. Defensivo contra
+ * snapshots antigos ou parciais — devolve `null` se não houver pelo
+ * menos uma secção válida.
+ */
+const VALID_V2_EMPHASIS = new Set([
+  "positive",
+  "negative",
+  "default",
+  "neutral",
+]);
+
+function buildAiInsightsV2(
+  raw: SnapshotPayload["ai_insights_v2"] | undefined | null,
+): ReportEnriched["aiInsightsV2"] {
+  if (!raw || typeof raw !== "object") return null;
+  const sectionsRaw = raw.sections ?? null;
+  if (!sectionsRaw || typeof sectionsRaw !== "object") return null;
+
+  const out: Partial<Record<AiInsightV2Section, AiInsightV2Item>> = {};
+  let count = 0;
+  for (const key of AI_INSIGHT_V2_SECTIONS) {
+    const item = sectionsRaw[key];
+    if (!item || typeof item !== "object") continue;
+    const text =
+      typeof item.text === "string" ? item.text.trim() : "";
+    if (!text) continue;
+    const emphasis =
+      typeof item.emphasis === "string" &&
+      VALID_V2_EMPHASIS.has(item.emphasis)
+        ? (item.emphasis as AiInsightV2Item["emphasis"])
+        : "default";
+    out[key] = { emphasis, text };
+    count += 1;
+  }
+  if (count === 0) return null;
+  return {
+    generatedAt:
+      typeof raw.generated_at === "string" ? raw.generated_at : null,
+    model:
+      typeof raw.model === "string" && raw.model.length > 0 ? raw.model : null,
+    sections: out,
+  };
+}
+
+/**
  * Build a `{ data, coverage }` object from a snapshot payload.
  *
  * - `payload`: `analysis_snapshots.normalized_payload` parsed.
