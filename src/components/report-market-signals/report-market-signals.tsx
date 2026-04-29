@@ -446,8 +446,8 @@ export function ReportMarketSignals({
       </div>
 
       {showChart ? (
-        <div className="rounded-2xl border border-border-subtle/40 bg-surface-elevated/60 p-5 md:p-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary mb-3">
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-3">
             Evolução do interesse de pesquisa
           </p>
           <MarketSignalsChart trends={trends} usableKeywords={usable} />
@@ -456,14 +456,14 @@ export function ReportMarketSignals({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2 min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
             {marketSignalsCopy.chipsUsableLabel}
           </p>
           <div className="flex flex-wrap gap-2">
             {usable.map((kw) => (
               <span
                 key={kw}
-                className="inline-flex items-center rounded-full border border-accent-primary/30 bg-accent-primary/10 px-3 py-1 text-xs font-mono text-accent-primary"
+                className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-mono text-blue-700"
               >
                 {kw}
               </span>
@@ -472,14 +472,14 @@ export function ReportMarketSignals({
         </div>
         {dropped.length > 0 ? (
           <div className="space-y-2 min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
               {marketSignalsCopy.chipsDroppedLabel}
             </p>
             <div className="flex flex-wrap gap-2">
               {dropped.map((kw) => (
                 <span
                   key={kw}
-                  className="inline-flex items-center rounded-full border border-border-subtle/40 bg-surface-secondary/40 px-3 py-1 text-xs font-mono text-content-tertiary"
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-mono text-slate-500"
                 >
                   {kw}
                 </span>
@@ -490,7 +490,7 @@ export function ReportMarketSignals({
       </div>
 
       {cap > 0 ? (
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
           {used}/{cap} {quotaWord}
         </p>
       ) : null}
