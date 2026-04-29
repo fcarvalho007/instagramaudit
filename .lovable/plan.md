@@ -1,81 +1,108 @@
-## Estado actual do R2
+# R1.1 — Polimento mínimo do /report
 
-**Feito (Fases A + B)**
-- BD: 5 tabelas `knowledge_*`, trigger de auditoria, RPC `get_knowledge_context`, RPC `set_admin_email_session`.
-- `src/lib/knowledge/`: `types.ts`, `queries.server.ts` (overview, list/upsert/archive de benchmarks/sources/notes, history, exportDataset), `context.server.ts` (consumido pelo R3).
+Pequenos refinamentos cirúrgicos ao `/analyze/$username` após o smoke test do `frederico.m.carvalho` que validou a persistência resiliente do snapshot. Sem mudar a arquitectura, sem tocar no `/report.example`, sem visual QA pesado.
 
-**Por fazer** — Fases C (endpoints) + D (UI) + E (smoke).
+## Diagnóstico do estado actual
 
----
+O smoke test confirmou que:
+1. O snapshot base persiste antes do OpenAI (resiliência OK).
+2. O `ReportAiReading` esconde-se silenciosamente quando `ai_insights_v1` está ausente.
+3. O `humanize()` já neutraliza tokens técnicos no render.
+4. Existe pré-hidratação do tema light antes do primeiro paint.
 
-## Fase C — 7 endpoints `/api/admin/knowledge.*`
+Pontos identificados que merecem polimento mínimo (todos pequenos, todos não-arquitecturais):
 
-Padrão idêntico a `sistema.caps.ts`: `requireAdminSession()` → Zod → chama helper de `queries.server.ts`. Todos em `src/routes/api/admin/`:
+| # | Issue | Localização | Severidade |
+|---|---|---|---|
+| 1 | Badge "IA editorial · empty" mostra-se igual a um ausente sem distinguir "snapshot recente sem IA ainda" de "IA falhou" | `report-hero.tsx:101-104` | Médio |
+| 2 | `humanize()` não cobre todos os tokens vistos em snapshots reais (`avg_engagement`, `posts_per_week`, `reach_rate`, `bench_vs_market`) | `report-ai-reading.tsx:17-25` | Médio |
+| 3 | `AnalysisErrorState` mostra a mesma copy genérica para todos os erros — não distingue "perfil privado/inexistente" de "falha temporária" | `analysis-error-state.tsx` | Baixo |
+| 4 | Mensagem de erro propagada do snapshot (`body.message`) pode conter strings técnicas (codes Apify/DataForSEO) — risco de leak editorial | `analyze.$username.tsx:122-129` | Médio |
+| 5 | Quando OpenAI falha, não há nenhum sinal subtil ao leitor de que a leitura editorial está pendente — apenas desaparece. Para o admin é OK; para o utilizador final fica estranho | `report-shell.tsx:62` | Baixo |
 
-| Ficheiro | Métodos | Helper |
-|---|---|---|
-| `knowledge.overview.ts` | GET | `getOverview()` |
-| `knowledge.benchmarks.ts` | GET, POST (upsert) | `listBenchmarks()`, `upsertBenchmark()` |
-| `knowledge.benchmarks.$id.ts` | DELETE (arquiva via `valid_to`) | `archiveBenchmark()` |
-| `knowledge.sources.ts` | GET, POST | `listSources()`, `createSource()` |
-| `knowledge.notes.ts` | GET, POST (upsert) | `listNotes()`, `upsertNote()` |
-| `knowledge.notes.$id.ts` | DELETE (archived=true) | `archiveNote()` |
-| `knowledge.export.ts` | GET (devolve JSON com `Content-Disposition: attachment`) | `exportDataset()` |
+## Mudanças propostas (todas pequenas)
 
-Schemas Zod: `tier ∈ {nano,micro,mid,macro}`, `format ∈ {reels,carousels,images}`, `engagement_pct ≥ 0`, `sample_size ≥ 1`, datas ISO `YYYY-MM-DD`, `category ∈ {trend,format,algorithm,vertical,tool}`.
+### 1. Distinguir estados do badge "IA editorial"
+**Ficheiro:** `src/components/report-redesign/report-hero.tsx`
 
----
+Ao invés de `status={enriched.aiInsights ? "real" : "empty"}`, esconder o badge por completo quando não existe leitura. Razão: mostrar "IA editorial · vazio" no Hero é ruído — a secção `ReportAiReading` já se esconde a si própria, o badge deve seguir o mesmo princípio.
 
-## Fase D — UI tab "Conhecimento"
+```tsx
+{enriched.aiInsights ? (
+  <CoverageBadge label="IA editorial" status="real" />
+) : null}
+```
 
-**1. Adicionar tab à nav** — `src/components/admin/v2/admin-tabs-nav.tsx`: incluir `{ to: "/admin/conhecimento", label: "Conhecimento" }` na lista (entre "Perfis" e "Sistema").
+### 2. Estender `TECH_REPLACEMENTS` no `humanize()`
+**Ficheiro:** `src/components/report-redesign/report-ai-reading.tsx`
 
-**2. Rota** — `src/routes/admin.conhecimento.tsx`: shell com `AdminPageHeader` ("Knowledge Base · contexto editorial da IA") + 4 secções verticais. Botão de acção no header: "Exportar dataset" (link para `/api/admin/knowledge/export`).
+Adicionar mapeamentos para tokens vistos em snapshots reais:
+- `avg_engagement` → "envolvimento médio"
+- `posts_per_week` → "ritmo de publicação"
+- `reach_rate` → "alcance médio"
+- `bench_vs_market` → "comparação com o mercado"
+- `format_mix` → "mistura de formatos"
+- `top_format` → "formato com mais retorno"
 
-**3. Componentes** em `src/components/admin/v2/conhecimento/`:
+Mantém-se a regra: substituições só na camada de apresentação, sem mutar dados.
 
-| Ficheiro | Função |
+### 3. Sanitizar mensagens de erro propagadas
+**Ficheiro:** `src/routes/analyze.$username.tsx`
+
+Criar um pequeno mapeador na função `load()` que converte `error_code` conhecidos em copy editorial pt-PT:
+
+| `error_code` | Copy editorial |
 |---|---|
-| `overview-section.tsx` | 4 KPIs: total entradas, manual/sistema, cobertura tiers (`X de 4`), última actualização (relativa + autor), sugestões pendentes. Usa `KPICard` existente. |
-| `benchmarks-section.tsx` | Tabela com 12 linhas (4 tiers × 3 formatos). Colunas: Tier, Formato, Engagement %, n=, Fonte, Origem (badge), Última actualização. Linhas vazias mostram CTA "Adicionar". Click → `BenchmarkDrawer`. Filtro por formato no topo. |
-| `benchmark-drawer.tsx` | Drawer lateral com formulário (engagement_pct, sample_size, source_id select, notes, valid_from, valid_to) + lista do histórico (`getEntityHistory`). Reusa `Sheet` do shadcn. |
-| `sources-section.tsx` | Tabela de fontes (Nome, Tipo, URL, Publicado em, n amostra, Citações). Botão "+ Nova fonte". |
-| `source-create-dialog.tsx` | Dialog simples para criar fonte. |
-| `notes-section.tsx` | Grid de cartões (3 col desktop, 1 col mobile). Cada cartão: badge categoria, título, body truncado, fonte, validade. Botão "+ Nova nota". |
-| `note-create-dialog.tsx` | Dialog com category/vertical/title/body/source. |
+| `profile_not_found` | "Não encontrámos este perfil no Instagram. Confirma o nome de utilizador." |
+| `profile_private` | "Este perfil é privado. Só conseguimos analisar perfis públicos." |
+| `apify_disabled` / `not_allowlisted` | "Análise temporariamente indisponível. Tenta dentro de instantes." |
+| `upstream_error` / outros | mensagem actual genérica |
 
-Padrão de styling: `AdminCard`, `AdminBadge`, `AdminSectionHeader`, tokens `admin-text-*`, `admin-border`. Mono na nav (acento azul só na barra do `AdminSectionHeader`).
+Nunca propagar `body.message` cru se `error_code` for desconhecido — usar fallback editorial.
 
-**Data fetching**: `useQuery` com `queryKey: ["admin","knowledge","overview"|"benchmarks"|...]` e `adminFetch()`. Mutations com `useMutation` + `qc.invalidateQueries`.
+### 4. Sinal subtil de "leitura pendente" (opcional, gated)
+**Ficheiro:** `src/components/report-redesign/report-shell.tsx`
 
-**Estados**: loading (skeleton via `SectionState`), erro (mensagem + retry), vazio (CTA "Adicionar primeiro benchmark").
+Quando `result.data.aiInsights.length === 0` mas o snapshot é recente (< 5 min), mostrar um pequeno aviso editorial entre o KPI grid e o Market Signals:
 
----
+```
+"A leitura editorial deste perfil está a ser preparada. Volta em alguns
+minutos para a versão completa."
+```
 
-## Fase E — Smoke test
+Quando o snapshot é antigo (> 5 min) sem insights, esconder por completo (estado actual).
 
-1. Abrir `/admin/conhecimento` autenticado; confirmar 4 KPIs (`0 / 0-de-4 / —— / 0` em projecto vazio, ou seed real se já existir).
-2. Adicionar 1 benchmark via drawer → ver linha preenchida + entrada em `knowledge_history` via `select * from knowledge_history`.
-3. Criar 1 fonte e 1 nota; confirmar que aparece e é citada na contagem.
-4. GET `/api/admin/knowledge/export` devolve JSON com 3 arrays.
-5. Verificar `select * from knowledge_history order by changed_at desc limit 5` — auditoria a registar autor.
+Implementação: comparar `result.profile.analyzedAt` com `Date.now()`.
 
----
+### 5. (Não fazer agora) — adiar
+- Refactor maior do `AnalysisErrorState` com ilustrações distintas por tipo de erro → R1.2
+- Telemetria de "leitura editorial pendente vs falhada" no /admin → R3
+- Substituir copy mock por leitura KB-aware → R3 (já planeado)
 
-## Notas técnicas
+## Checkpoint (☐)
 
-- `adminFetch` injecta `Authorization: Bearer <jwt>` automaticamente (já usado em todas as outras secções).
-- O drawer usa `Sheet` do shadcn já presente no projecto (sem deps novas).
-- Sem alteração a `LOCKED_FILES.md`, `src/styles.css`, `routeTree.gen.ts` (auto-gerado), nem a `src/lib/knowledge/*` (Fase B já validada).
-- Cores: tab "Conhecimento" usa o mesmo padrão mono das outras 6; o acento cyan aparece apenas na barra do `AdminSectionHeader` de cada secção (igual a Sistema).
+- ☐ Badge "IA editorial" no Hero esconde-se quando ausente (não mostra "empty")
+- ☐ `humanize()` cobre os 6 novos tokens
+- ☐ `analyze.$username.tsx` usa mapa de `error_code` → copy editorial pt-PT
+- ☐ `body.message` nunca é mostrado cru ao utilizador
+- ☐ Aviso "leitura a ser preparada" aparece apenas para snapshots recentes (< 5 min) sem insights
+- ☐ `/report.example` continua intacto
+- ☐ Tokens de design respeitados (sem cores hardcoded)
+- ☐ Copy 100% pt-PT, Acordo Ortográfico, sem "você"
 
----
+## Ficheiros tocados (5)
 
-## Checkpoint final
+1. `src/components/report-redesign/report-hero.tsx` — badge condicional
+2. `src/components/report-redesign/report-ai-reading.tsx` — humanize estendido
+3. `src/routes/analyze.$username.tsx` — mapa de error_code
+4. `src/components/report-redesign/report-shell.tsx` — aviso de leitura pendente
+5. (eventual) `src/components/report-redesign/report-pending-ai-notice.tsx` — novo componente pequeno para o aviso
 
-- [ ] 7 endpoints criados e a responder 200/401 conforme sessão admin
-- [ ] Tab "Conhecimento" visível em `AdminTabsNav` (7 tabs no total)
-- [ ] `/admin/conhecimento` renderiza 4 secções (overview, benchmarks, fontes, notas)
-- [ ] Drawer de benchmark abre, grava e mostra histórico
-- [ ] Export devolve JSON com benchmarks/sources/notes
-- [ ] `knowledge_history` regista autor em cada update
+## Fora de âmbito
+
+- BD, RLS, edge functions
+- `/admin` (qualquer tab)
+- `/report.example`
+- Smoke tests adicionais a perfis novos
+- Visual QA de PDFs
+- Componentes locked listados em `LOCKED_FILES.md`
