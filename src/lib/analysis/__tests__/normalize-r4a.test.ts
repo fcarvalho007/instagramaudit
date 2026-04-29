@@ -96,7 +96,7 @@ assert.deepEqual(
 assert.equal(a.location_name, "Lisboa, Portugal", "location_name must round-trip");
 assert.equal(
   a.music_title,
-  "Track Name — Some Artist",
+  "Track Name · Some Artist",
   "music_title must concatenate song + artist",
 );
 assert.equal(
