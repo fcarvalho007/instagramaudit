@@ -17,6 +17,8 @@ import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-bl
 import { ReportFinalBlock } from "@/components/report-share/report-final-block";
 import type { ReportPageActions } from "@/components/report/report-page";
 import { BETA_COPY } from "@/components/report-beta/beta-copy";
+import { AIInsightBox } from "@/components/report/ai-insight-box";
+import type { AiInsightV2Section } from "@/lib/insights/types";
 
 import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 
