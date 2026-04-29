@@ -24,6 +24,7 @@ import type {
 import {
   ReportDocument,
   type AiInsightForPdf,
+  type MarketSignalsForPdf,
   type TopPostForPdf,
 } from "./report-document";
 import {
@@ -85,6 +86,12 @@ interface NormalizedSnapshotPayload {
       priority?: number | null;
     }> | null;
   } | null;
+  /**
+   * Optional persisted DataForSEO market signals. Loose typing — every
+   * field is defended at the mapping site. The PDF NEVER calls DataForSEO;
+   * this block is purely the result of an earlier cached run.
+   */
+  market_signals_free?: unknown;
 }
 
 interface RenderArgs {
