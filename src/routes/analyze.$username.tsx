@@ -117,6 +117,7 @@ type LoadState =
       result: AdapterResult;
       snapshotId: string;
       payload: SnapshotPayload;
+      analyzedAtIso: string | null;
     };
 
 function AnalyzePage() {
@@ -178,6 +179,8 @@ function AnalyzePage() {
         result,
         snapshotId: body.snapshot.id,
         payload,
+        analyzedAtIso:
+          body.snapshot.meta?.generated_at ?? body.snapshot.updated_at ?? null,
       });
     } catch {
       setState({
@@ -210,6 +213,7 @@ function AnalyzePage() {
       result={state.result}
       snapshotId={state.snapshotId}
       payload={state.payload}
+      analyzedAtIso={state.analyzedAtIso}
     />
   );
 }
@@ -218,10 +222,12 @@ function AnalyzeReady({
   result,
   snapshotId,
   payload,
+  analyzedAtIso,
 }: {
   result: AdapterResult;
   snapshotId: string;
   payload: SnapshotPayload;
+  analyzedAtIso: string | null;
 }) {
   const shareActions = useReportShareActions({ snapshotId });
   return (
@@ -230,6 +236,7 @@ function AnalyzeReady({
         result={result}
         snapshotId={snapshotId}
         payload={payload}
+        analyzedAtIso={analyzedAtIso}
         actions={{
           onExportPdf: () => void shareActions.exportPdf(),
           onShare: () => void shareActions.share(),
