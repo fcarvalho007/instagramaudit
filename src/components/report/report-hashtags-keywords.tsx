@@ -18,7 +18,7 @@ export function ReportHashtagsKeywords() {
         title="Que etiquetas estão a ser usadas"
         subtitle="Frequência de uso e envolvimento médio associado."
       >
-        <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6">
+        <div className="bg-surface-secondary border border-border-default rounded-2xl shadow-card p-6">
           <ul className="space-y-4">
             {reportData.topHashtags.map((h) => {
               const pct = (h.uses / maxHashtagUses) * 100;
@@ -42,7 +42,7 @@ export function ReportHashtagsKeywords() {
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-surface-muted overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-blue-500"
+                      className="h-full rounded-full bg-accent-primary"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -59,14 +59,14 @@ export function ReportHashtagsKeywords() {
         title="O que está a ser dito nas captions"
         subtitle="Termos mais frequentes ao longo das publicações analisadas."
       >
-        <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6">
+        <div className="bg-surface-secondary border border-border-default rounded-2xl shadow-card p-6">
           <ul className="space-y-4">
             {reportData.topKeywords.map((k) => {
               const pct = (k.count / maxKeywordCount) * 100;
               return (
                 <li key={k.word} className="space-y-1.5">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="font-display text-base font-medium text-content-primary">
+                    <span className="font-sans text-[15px] font-medium text-content-primary">
                       {k.word}
                     </span>
                     <span className="font-mono text-xs text-content-tertiary">
@@ -75,7 +75,7 @@ export function ReportHashtagsKeywords() {
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-surface-muted overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500"
+                      className="h-full rounded-full bg-accent-primary"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
