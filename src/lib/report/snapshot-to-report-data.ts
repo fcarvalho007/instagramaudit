@@ -256,6 +256,17 @@ export interface ReportEnriched {
       evidenceSummary: string;
     }>;
   } | null;
+  /**
+   * Insights v2 inline por secção (R3.1). Quando presente, cada uma das
+   * 9 chaves traz um item curto pronto a renderizar via `<AIInsightBox>`.
+   * Null quando o snapshot não tem v2 persistida — nesse caso a UI faz
+   * fallback para v1 (bloco "Leitura estratégica") ou esconde a caixa.
+   */
+  aiInsightsV2: {
+    generatedAt: string | null;
+    model: string | null;
+    sections: Partial<Record<AiInsightV2Section, AiInsightV2Item>>;
+  } | null;
 }
 
 // ============================================================================
