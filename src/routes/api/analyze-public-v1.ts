@@ -64,6 +64,20 @@ import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 import { generateInsights } from "@/lib/insights/openai-insights.server";
 import type { AiInsightsV1, InsightsContext } from "@/lib/insights/types";
 import { isOpenAiAllowed } from "@/lib/security/openai-allowlist";
+import {
+  isAllowed as isDfsAllowed,
+  isDataForSeoEnabled,
+} from "@/lib/security/dataforseo-allowlist";
+import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
+import {
+  buildPersistedSummary,
+  decideCacheTtlSeconds,
+  readCachedSummary,
+  type PersistedMarketSignals,
+} from "@/lib/market-signals/cache";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
+import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -145,6 +159,94 @@ function competitorFailure(
     username,
     error_code: code,
     message: messages[code],
+  };
+}
+
+/**
+ * Derive the compact `market_signals` summary the OpenAI prompt expects
+ * from the persisted DataForSEO Trends envelope. Pure: no IO. When the
+ * envelope is null or non-usable, returns the disabled shape so the
+ * model is instructed to ignore the market-signals axis entirely.
+ */
+function summarizeMarketSignalsForInsights(
+  ms: PersistedMarketSignals | null,
+): InsightsContext["market_signals"] {
+  if (!ms) return { has_free: false, has_paid: false };
+  const usable = ms.status === "ready" || ms.status === "partial";
+  if (!usable) return { has_free: false, has_paid: false };
+
+  const topKeywords = (ms.trends_usable_keywords ?? []).slice(0, 5);
+  const dropped = (ms.trends_dropped_keywords ?? []).slice(0, 5);
+
+  // Pick the keyword with the highest mean Trends value across the series.
+  const trends = ms.trends as GoogleTrendsResult | null;
+  let strongest: string | null = topKeywords[0] ?? null;
+  let direction: "up" | "flat" | "down" | null = null;
+
+  const graph = trends?.items?.find(
+    (it) => Array.isArray(it.keywords) && Array.isArray(it.data),
+  );
+  if (graph?.keywords && graph.data) {
+    const kws = graph.keywords;
+    const sums = new Array<number>(kws.length).fill(0);
+    const counts = new Array<number>(kws.length).fill(0);
+    for (const row of graph.data) {
+      const values = Array.isArray(row.values) ? row.values : [];
+      for (let i = 0; i < kws.length; i += 1) {
+        const v = values[i];
+        if (typeof v === "number" && Number.isFinite(v)) {
+          sums[i] += v;
+          counts[i] += 1;
+        }
+      }
+    }
+    let bestIdx = -1;
+    let bestMean = -Infinity;
+    for (let i = 0; i < kws.length; i += 1) {
+      if (counts[i] === 0) continue;
+      if (!topKeywords.includes(kws[i])) continue;
+      const mean = sums[i] / counts[i];
+      if (mean > bestMean) {
+        bestMean = mean;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0) {
+      strongest = kws[bestIdx];
+      // Trend direction: compare mean of first quartile vs last quartile of
+      // non-null values for the strongest keyword.
+      const series: number[] = [];
+      for (const row of graph.data) {
+        const v = row.values?.[bestIdx];
+        if (typeof v === "number" && Number.isFinite(v)) series.push(v);
+      }
+      if (series.length >= 8) {
+        const window = Math.max(4, Math.floor(series.length / 4));
+        const head = series.slice(0, window);
+        const tail = series.slice(-window);
+        const headMean = head.reduce((a, b) => a + b, 0) / head.length;
+        const tailMean = tail.reduce((a, b) => a + b, 0) / tail.length;
+        if (headMean > 0) {
+          const delta = (tailMean - headMean) / headMean;
+          if (delta > 0.05) direction = "up";
+          else if (delta < -0.05) direction = "down";
+          else direction = "flat";
+        } else if (tailMean > 0) {
+          direction = "up";
+        } else {
+          direction = "flat";
+        }
+      }
+    }
+  }
+
+  return {
+    has_free: true,
+    has_paid: false,
+    top_keywords: topKeywords,
+    strongest_keyword: strongest,
+    trend_direction: direction,
+    dropped_keywords: dropped,
   };
 }
 
@@ -582,6 +684,98 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             primaryProfile.followers_count,
           );
 
+          // ─── Market signals (free DataForSEO Trends) ────────────────
+          // Inline as part of the snapshot so the report, OpenAI insights
+          // and PDF all read from the same persisted source of truth.
+          // Triple-gated: cache → kill-switch → allowlist. NEVER throws —
+          // failure here must not break the Instagram analysis.
+          let marketSignalsFree: PersistedMarketSignals | null = null;
+
+          // 1. Reuse cached summary from the previous snapshot if still
+          //    valid. Avoids any DataForSEO call (and any new
+          //    provider_call_logs row) when the same handle is re-analysed
+          //    within TTL — for example via ?refresh=1.
+          if (existing) {
+            const cached = readCachedSummary(existing.normalized_payload, "free");
+            if (cached) marketSignalsFree = cached;
+          }
+
+          // 2. Cache miss → attempt one orchestration if both gates pass.
+          if (
+            !marketSignalsFree &&
+            isDataForSeoEnabled() &&
+            isDfsAllowed(primaryProfile.username)
+          ) {
+            const dfsStartedAt = new Date();
+            const tentativeSnapshot = {
+              profile: primaryProfile,
+              content_summary: primarySummary,
+              competitors: competitorResults,
+              posts: primaryEnriched.posts,
+              format_stats: primaryEnriched.format_stats,
+            } as unknown as SnapshotPayload;
+            try {
+              const result = await buildMarketSignals(tentativeSnapshot, {
+                ownerHandle: primaryProfile.username,
+                plan: "free",
+                totalTimeoutMs: 20_000,
+              });
+              // Collect provider cost + log ids written during this call.
+              let providerCostUsd = 0;
+              let providerCallLogIds: string[] = [];
+              try {
+                const { data: logs } = await supabaseAdmin
+                  .from("provider_call_logs")
+                  .select("id, actual_cost_usd")
+                  .eq("provider", "dataforseo")
+                  .eq("handle", primaryProfile.username.toLowerCase())
+                  .gte("created_at", dfsStartedAt.toISOString());
+                if (Array.isArray(logs)) {
+                  providerCallLogIds = logs.map((l) => l.id as string);
+                  providerCostUsd = logs.reduce(
+                    (sum, l) =>
+                      sum +
+                      (typeof l.actual_cost_usd === "number"
+                        ? l.actual_cost_usd
+                        : 0),
+                    0,
+                  );
+                }
+              } catch (err) {
+                console.warn(
+                  "[analyze-public-v1] failed to read dataforseo provider_call_logs",
+                  err,
+                );
+              }
+              const ttl = decideCacheTtlSeconds(result);
+              if (ttl !== null) {
+                marketSignalsFree = buildPersistedSummary({
+                  result,
+                  plan: "free",
+                  ttlSeconds: ttl,
+                  providerCostUsd,
+                  providerCallLogIds,
+                  now: dfsStartedAt,
+                });
+              }
+            } catch (err) {
+              // Defence in depth — buildMarketSignals already swallows.
+              console.warn(
+                "[analyze-public-v1] inline market signals threw",
+                err,
+              );
+            }
+          } else if (!isDataForSeoEnabled()) {
+            console.info(
+              "[analyze-public-v1] DataForSEO disabled — skipping market signals",
+            );
+          } else if (!marketSignalsFree) {
+            console.info(
+              "[analyze-public-v1] handle not on DataForSEO allowlist — skipping market signals",
+              primaryProfile.username,
+            );
+          }
+
           // Compute benchmark positioning early so it can be embedded both
           // in the AI insights context (when we call OpenAI) and in the
           // public response below. Same dataset, single source of truth.
@@ -642,11 +836,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   count: successfulCompetitorsForAi.length,
                   median_engagement_pct: medianEngagement,
                 },
-                // Market signals (free / paid SERP) are not yet wired into
-                // the analyze flow — flagged false until that pipeline
-                // lands. The schema reserves these fields so we can flip
-                // them on without re-shaping `ai_insights_v1`.
-                market_signals: { has_free: false, has_paid: false },
+                // Free market signals are now fetched inline above. Paid
+                // tier remains out of scope for the public flow.
+                market_signals: summarizeMarketSignalsForInsights(
+                  marketSignalsFree,
+                ),
               };
               const result = await generateInsights(ctx);
               if (result.ok && result.insights) {
@@ -671,6 +865,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             posts: primaryEnriched.posts,
             format_stats: primaryEnriched.format_stats,
             ...(aiInsights ? { ai_insights_v1: aiInsights } : {}),
+            ...(marketSignalsFree
+              ? { market_signals_free: marketSignalsFree }
+              : {}),
           };
 
           const snapshotId = await storeSnapshot({

@@ -61,6 +61,11 @@ Regras de conteúdo (obrigatórias):
 - "priority" é um inteiro entre 1 e 100. Maior = mais urgente.
 - Não duplicar insights. Cada insight cobre um ângulo diferente (ritmo, formato, envolvimento, posicionamento, conteúdo top).
 
+Sinais de mercado (DataForSEO):
+- Quando "market_signals.has_free" é true, é OBRIGATÓRIO produzir pelo menos um insight que cruze o desempenho do perfil com a procura de mercado, citando "market_signals.strongest_keyword" e/ou "market_signals.trend_direction" no array "evidence" (cumulativamente com outros sinais relevantes do perfil, se aplicável).
+- Quando "market_signals.has_free" é false, NÃO referir procura de mercado, keywords de pesquisa, Google Trends nem tendências de procura no title ou body. Ignorar completamente este eixo.
+- O title e o body continuam em pt-PT natural — citar a keyword entre aspas (ex.: "fotografia Lisboa") e descrever a tendência como "procura em alta", "procura estável" ou "procura em queda", nunca como "trend_direction up".
+
 Linguagem do título e do body (obrigatório):
 - O array "evidence" é apenas para auditoria interna. NUNCA escrever caminhos técnicos no "title" ou no "body".
 - Proibido em "title" e "body":
@@ -130,6 +135,10 @@ export interface InsightsUserPayload {
   market_signals: {
     has_free: boolean;
     has_paid: boolean;
+    top_keywords?: string[];
+    strongest_keyword?: string | null;
+    trend_direction?: "up" | "flat" | "down" | null;
+    dropped_keywords?: string[];
   };
   /**
    * The flat list of `evidence` strings the model is allowed to cite.
@@ -213,6 +222,33 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   if (ctx.market_signals.has_free) signals.push("market_signals.has_free");
   if (ctx.market_signals.has_paid) signals.push("market_signals.has_paid");
 
+  if (ctx.market_signals.has_free) {
+    if (
+      ctx.market_signals.strongest_keyword &&
+      ctx.market_signals.strongest_keyword.trim().length > 0
+    ) {
+      signals.push("market_signals.strongest_keyword");
+    }
+    if (
+      Array.isArray(ctx.market_signals.top_keywords) &&
+      ctx.market_signals.top_keywords.length > 0
+    ) {
+      signals.push("market_signals.top_keywords");
+    }
+    if (
+      ctx.market_signals.trend_direction &&
+      ["up", "flat", "down"].includes(ctx.market_signals.trend_direction)
+    ) {
+      signals.push("market_signals.trend_direction");
+    }
+    if (
+      Array.isArray(ctx.market_signals.dropped_keywords) &&
+      ctx.market_signals.dropped_keywords.length > 0
+    ) {
+      signals.push("market_signals.dropped_keywords");
+    }
+  }
+
   return signals;
 }
 
@@ -275,6 +311,23 @@ export function buildInsightsUserPayload(
     market_signals: {
       has_free: ctx.market_signals.has_free,
       has_paid: ctx.market_signals.has_paid,
+      ...(ctx.market_signals.has_free &&
+      ctx.market_signals.strongest_keyword
+        ? { strongest_keyword: ctx.market_signals.strongest_keyword }
+        : {}),
+      ...(ctx.market_signals.has_free &&
+      Array.isArray(ctx.market_signals.top_keywords) &&
+      ctx.market_signals.top_keywords.length > 0
+        ? { top_keywords: ctx.market_signals.top_keywords }
+        : {}),
+      ...(ctx.market_signals.has_free && ctx.market_signals.trend_direction
+        ? { trend_direction: ctx.market_signals.trend_direction }
+        : {}),
+      ...(ctx.market_signals.has_free &&
+      Array.isArray(ctx.market_signals.dropped_keywords) &&
+      ctx.market_signals.dropped_keywords.length > 0
+        ? { dropped_keywords: ctx.market_signals.dropped_keywords }
+        : {}),
     },
     available_signals: signals,
     allowed_evidence_paths: signals,
