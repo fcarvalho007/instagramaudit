@@ -22,6 +22,12 @@ const TECH_REPLACEMENTS: Array<[RegExp, string]> = [
   [/position\s+below/gi, "abaixo da referência"],
   [/position\s+above/gi, "acima da referência"],
   [/dominant_format/gi, "formato dominante"],
+  [/avg_engagement/gi, "envolvimento médio"],
+  [/posts_per_week/gi, "ritmo de publicação"],
+  [/reach_rate/gi, "alcance médio"],
+  [/bench_vs_market/gi, "comparação com o mercado"],
+  [/format_mix/gi, "mistura de formatos"],
+  [/top_format/gi, "formato com mais retorno"],
 ];
 function humanize(text: string): string {
   return TECH_REPLACEMENTS.reduce((acc, [re, sub]) => acc.replace(re, sub), text);
