@@ -415,6 +415,45 @@ function pickVideoViews(raw: RawPostExtended): number | null {
   );
 }
 
+function extractHandleList(
+  arr: Array<{ username?: string } | string> | undefined,
+): string[] {
+  if (!Array.isArray(arr)) return [];
+  const out = new Set<string>();
+  for (const item of arr) {
+    const u =
+      typeof item === "string"
+        ? item
+        : item && typeof item === "object"
+          ? pickString(item.username)
+          : null;
+    if (u) out.add(u.replace(/^@/, "").toLowerCase());
+  }
+  return Array.from(out);
+}
+
+function pickLocationName(raw: RawPostExtended): string | null {
+  if (typeof raw.locationName === "string" && raw.locationName.trim().length > 0) {
+    return raw.locationName.trim();
+  }
+  if (raw.location && typeof raw.location === "object") {
+    const n = pickString(raw.location.name);
+    if (n) return n;
+  }
+  if (typeof raw.location === "string" && raw.location.trim().length > 0) {
+    return raw.location.trim();
+  }
+  return null;
+}
+
+function pickMusicTitle(raw: RawPostExtended): string | null {
+  if (!raw.musicInfo || typeof raw.musicInfo !== "object") return null;
+  const song = pickString(raw.musicInfo.song_name);
+  const artist = pickString(raw.musicInfo.artist_name);
+  if (song && artist) return `${song} · ${artist}`;
+  return song ?? artist ?? null;
+}
+
 /**
  * Extract the last non-empty path segment of a permalink (e.g.
  * `https://www.instagram.com/p/ABC123/?utm=...` → `ABC123`). Used as a
