@@ -17,6 +17,8 @@ import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-bl
 import { ReportFinalBlock } from "@/components/report-share/report-final-block";
 import type { ReportPageActions } from "@/components/report/report-page";
 import { BETA_COPY } from "@/components/report-beta/beta-copy";
+import { AIInsightBox } from "@/components/report/ai-insight-box";
+import type { AiInsightV2Section } from "@/lib/insights/types";
 
 import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 
@@ -62,11 +64,33 @@ export function ReportShell({
   analyzedAtIso,
 }: ReportShellProps) {
   const hasAiInsights = result.data.aiInsights.length > 0;
+  const v2 = result.enriched.aiInsightsV2;
+  /** Caixa de insight em secção full-bleed (hero, market signals). */
+  const renderInsightOuter = (key: AiInsightV2Section) => {
+    const item = v2?.sections[key];
+    if (!item) return null;
+    return (
+      <div className="mx-auto max-w-7xl px-5 md:px-6 mt-4">
+        <AIInsightBox insight={item.text} emphasis={item.emphasis} />
+      </div>
+    );
+  };
+  /** Caixa de insight dentro de um `ReportFramedBlock` (já em container). */
+  const renderInsightInner = (key: AiInsightV2Section) => {
+    const item = v2?.sections[key];
+    if (!item) return null;
+    return (
+      <div className="mt-4">
+        <AIInsightBox insight={item.text} emphasis={item.emphasis} />
+      </div>
+    );
+  };
   return (
     <ReportDataProvider data={result.data}>
       <div className={`${REDESIGN_TOKENS.pageCanvas} min-h-screen overflow-x-hidden`}>
         {/* 1. Hero premium */}
         <ReportHero result={result} actions={actions} />
+        {renderInsightOuter("hero")}
 
         {/* 2. KPI grid (5 cards) */}
         <ReportExecutiveSummary result={result} />
@@ -85,17 +109,21 @@ export function ReportShell({
           plan="free"
           cachedSummary={payload?.market_signals_free}
         />
+        {renderInsightOuter("marketSignals")}
 
         {/* 5. Performance ao longo do tempo */}
         <ReportFramedBlock tone="canvas" ariaLabel="Performance ao longo do tempo">
           <ReportTemporalChart />
+          {renderInsightInner("evolutionChart")}
         </ReportFramedBlock>
 
         {/* 6. Benchmark + formatos */}
         <ReportFramedBlock tone="soft-blue" ariaLabel="Benchmark e formatos">
           <div className="space-y-10 md:space-y-12">
             <ReportBenchmarkGauge />
+            {renderInsightInner("benchmark")}
             <ReportFormatBreakdown />
+            {renderInsightInner("formats")}
           </div>
         </ReportFramedBlock>
 
@@ -112,6 +140,7 @@ export function ReportShell({
         {/* 8. Top posts */}
         <ReportFramedBlock tone="soft-blue" ariaLabel="Top publicações">
           <ReportTopPosts />
+          {renderInsightInner("topPosts")}
           <div className="mt-6">
             <ReportEnrichedTopLinks enriched={result.enriched} />
           </div>
@@ -121,7 +150,9 @@ export function ReportShell({
         <ReportFramedBlock tone="canvas" ariaLabel="Resposta da audiência">
           <div className="space-y-10 md:space-y-12">
             <ReportPostingHeatmap />
+            {renderInsightInner("heatmap")}
             <ReportBestDays />
+            {renderInsightInner("daysOfWeek")}
           </div>
         </ReportFramedBlock>
 
@@ -129,6 +160,7 @@ export function ReportShell({
         <ReportFramedBlock tone="soft-blue" ariaLabel="Hashtags, palavras-chave e menções">
           <div className="space-y-10 md:space-y-12">
             <ReportHashtagsKeywords />
+            {renderInsightInner("language")}
             <ReportEnrichedMentions enriched={result.enriched} />
           </div>
         </ReportFramedBlock>

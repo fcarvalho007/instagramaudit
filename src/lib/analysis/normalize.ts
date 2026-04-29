@@ -28,6 +28,16 @@ type RawProfile = {
   posts?: number;
   verified?: boolean;
   isVerified?: boolean;
+  category?: string;
+  categoryName?: string;
+  businessCategoryName?: string;
+  externalUrl?: string;
+  external_url?: string;
+  externalUrls?: Array<{ url?: string; title?: string } | string>;
+  highlightReelCount?: number;
+  hasChannel?: boolean;
+  isBusinessAccount?: boolean;
+  isProfessionalAccount?: boolean;
 };
 
 type RawPost = {
@@ -67,6 +77,21 @@ export function normalizeProfile(raw: RawProfile): PublicAnalysisProfile | null 
     pickString(raw.fullName, raw.full_name) ??
     username.charAt(0).toUpperCase() + username.slice(1).replace(/[._-]/g, " ");
 
+  const externalUrls: string[] = [];
+  const single = pickString(raw.externalUrl, raw.external_url);
+  if (single) externalUrls.push(single);
+  if (Array.isArray(raw.externalUrls)) {
+    for (const item of raw.externalUrls) {
+      if (typeof item === "string") {
+        const s = item.trim();
+        if (s.length > 0 && !externalUrls.includes(s)) externalUrls.push(s);
+      } else if (item && typeof item === "object") {
+        const u = pickString(item.url);
+        if (u && !externalUrls.includes(u)) externalUrls.push(u);
+      }
+    }
+  }
+
   return {
     username,
     display_name: display,
@@ -80,6 +105,15 @@ export function normalizeProfile(raw: RawProfile): PublicAnalysisProfile | null 
     following_count: pickNumber(raw.followsCount, raw.following),
     posts_count: pickNumber(raw.postsCount, raw.posts),
     is_verified: Boolean(raw.verified ?? raw.isVerified ?? false),
+    category: pickString(
+      raw.businessCategoryName,
+      raw.categoryName,
+      raw.category,
+    ),
+    external_urls: externalUrls,
+    highlight_reel_count: pickNumber(raw.highlightReelCount),
+    has_channel: Boolean(raw.hasChannel ?? false),
+    is_business: Boolean(raw.isBusinessAccount ?? raw.isProfessionalAccount ?? false),
   };
 }
 
@@ -245,6 +279,22 @@ export interface EnrichedPost {
   is_video: boolean;
   /** (likes + comments) / followers * 100, rounded to 2 decimals. 0 if no followers. */
   engagement_pct: number;
+  /** Video duration in seconds (Reels only). null when unknown. */
+  video_duration?: number | null;
+  /** Apify productType ("clips", "feed", "igtv"…) when available. */
+  product_type?: string | null;
+  /** Whether the post is pinned to the profile grid. */
+  is_pinned?: boolean;
+  /** Co-author handles (collaborations). */
+  coauthors?: string[];
+  /** Tagged user handles. */
+  tagged_users?: string[];
+  /** Caption character length (0 when no caption). */
+  caption_length?: number;
+  /** Geolocation name (when tagged). */
+  location_name?: string | null;
+  /** Music track title (Reels with music). */
+  music_title?: string | null;
 }
 
 export interface FormatStat {
@@ -285,6 +335,15 @@ type RawPostExtended = RawPost & {
   imageUrl?: string;
   thumbnailUrl?: string;
   thumbnail_url?: string;
+  videoDuration?: number;
+  video_duration?: number;
+  isPinned?: boolean;
+  is_pinned?: boolean;
+  coauthorProducers?: Array<{ username?: string } | string>;
+  taggedUsers?: Array<{ username?: string } | string>;
+  locationName?: string;
+  location?: { name?: string } | string;
+  musicInfo?: { song_name?: string; artist_name?: string } | null;
 };
 
 const HASHTAG_RE = /#([\p{L}\p{N}_]+)/gu;
@@ -354,6 +413,45 @@ function pickVideoViews(raw: RawPostExtended): number | null {
     raw.video_views,
     raw.views,
   );
+}
+
+function extractHandleList(
+  arr: Array<{ username?: string } | string> | undefined,
+): string[] {
+  if (!Array.isArray(arr)) return [];
+  const out = new Set<string>();
+  for (const item of arr) {
+    const u =
+      typeof item === "string"
+        ? item
+        : item && typeof item === "object"
+          ? pickString(item.username)
+          : null;
+    if (u) out.add(u.replace(/^@/, "").toLowerCase());
+  }
+  return Array.from(out);
+}
+
+function pickLocationName(raw: RawPostExtended): string | null {
+  if (typeof raw.locationName === "string" && raw.locationName.trim().length > 0) {
+    return raw.locationName.trim();
+  }
+  if (raw.location && typeof raw.location === "object") {
+    const n = pickString(raw.location.name);
+    if (n) return n;
+  }
+  if (typeof raw.location === "string" && raw.location.trim().length > 0) {
+    return raw.location.trim();
+  }
+  return null;
+}
+
+function pickMusicTitle(raw: RawPostExtended): string | null {
+  if (!raw.musicInfo || typeof raw.musicInfo !== "object") return null;
+  const song = pickString(raw.musicInfo.song_name);
+  const artist = pickString(raw.musicInfo.artist_name);
+  if (song && artist) return `${song} · ${artist}`;
+  return song ?? artist ?? null;
 }
 
 /**
@@ -464,6 +562,14 @@ export function enrichPosts(
       thumbnail_url: pickThumbnail(raw),
       is_video: isVideo,
       engagement_pct: engagementPct,
+      video_duration: pickNumber(raw.videoDuration, raw.video_duration),
+      product_type: pickString(raw.productType),
+      is_pinned: Boolean(raw.isPinned ?? raw.is_pinned ?? false),
+      coauthors: extractHandleList(raw.coauthorProducers),
+      tagged_users: extractHandleList(raw.taggedUsers),
+      caption_length: caption ? caption.length : 0,
+      location_name: pickLocationName(raw),
+      music_title: pickMusicTitle(raw),
     };
   });
 

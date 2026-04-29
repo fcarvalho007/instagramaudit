@@ -15,6 +15,11 @@
 
 import type { ReportData } from "@/components/report/report-mock-data";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
+import type {
+  AiInsightV2Item,
+  AiInsightV2Section,
+} from "@/lib/insights/types";
+import { AI_INSIGHT_V2_SECTIONS } from "@/lib/insights/types";
 
 import { resolveReportTier } from "./tiers";
 import {
@@ -73,6 +78,15 @@ export interface SnapshotPost {
   thumbnail_url?: string | null;
   is_video?: boolean | null;
   engagement_pct?: number | null;
+  // Optional richer signals (R4-A). Always defensive in the adapter.
+  video_duration?: number | null;
+  product_type?: string | null;
+  is_pinned?: boolean | null;
+  coauthors?: string[] | null;
+  tagged_users?: string[] | null;
+  caption_length?: number | null;
+  location_name?: string | null;
+  music_title?: string | null;
 }
 
 export interface SnapshotPayload {
@@ -112,6 +126,21 @@ export interface SnapshotPayload {
    */
   market_signals_free?: unknown;
   market_signals_paid?: unknown;
+  /**
+   * Insights v2 inline por secção (R3). Loose-typed; o adapter valida
+   * cada secção antes de expor em `ReportEnriched.aiInsightsV2`.
+   */
+  ai_insights_v2?: {
+    schema_version?: number | null;
+    generated_at?: string | null;
+    model?: string | null;
+    sections?: Partial<
+      Record<
+        string,
+        { emphasis?: string | null; text?: string | null } | null
+      >
+    > | null;
+  } | null;
 }
 
 export interface SnapshotMetadata {
@@ -235,6 +264,17 @@ export interface ReportEnriched {
       confidence: "baseado em dados observados" | "sinal parcial";
       evidenceSummary: string;
     }>;
+  } | null;
+  /**
+   * Insights v2 inline por secção (R3.1). Quando presente, cada uma das
+   * 9 chaves traz um item curto pronto a renderizar via `<AIInsightBox>`.
+   * Null quando o snapshot não tem v2 persistida — nesse caso a UI faz
+   * fallback para v1 (bloco "Leitura estratégica") ou esconde a caixa.
+   */
+  aiInsightsV2: {
+    generatedAt: string | null;
+    model: string | null;
+    sections: Partial<Record<AiInsightV2Section, AiInsightV2Item>>;
   } | null;
 }
 
@@ -651,6 +691,52 @@ function buildBestDays(posts: SnapshotPost[]): ReportData["bestDays"] {
 // ============================================================================
 
 /**
+ * Valida e mapeia o bloco `ai_insights_v2` persistido para a forma
+ * tipada consumida por `ReportEnriched.aiInsightsV2`. Defensivo contra
+ * snapshots antigos ou parciais — devolve `null` se não houver pelo
+ * menos uma secção válida.
+ */
+const VALID_V2_EMPHASIS = new Set([
+  "positive",
+  "negative",
+  "default",
+  "neutral",
+]);
+
+function buildAiInsightsV2(
+  raw: SnapshotPayload["ai_insights_v2"] | undefined | null,
+): ReportEnriched["aiInsightsV2"] {
+  if (!raw || typeof raw !== "object") return null;
+  const sectionsRaw = raw.sections ?? null;
+  if (!sectionsRaw || typeof sectionsRaw !== "object") return null;
+
+  const out: Partial<Record<AiInsightV2Section, AiInsightV2Item>> = {};
+  let count = 0;
+  for (const key of AI_INSIGHT_V2_SECTIONS) {
+    const item = sectionsRaw[key];
+    if (!item || typeof item !== "object") continue;
+    const text =
+      typeof item.text === "string" ? item.text.trim() : "";
+    if (!text) continue;
+    const emphasis =
+      typeof item.emphasis === "string" &&
+      VALID_V2_EMPHASIS.has(item.emphasis)
+        ? (item.emphasis as AiInsightV2Item["emphasis"])
+        : "default";
+    out[key] = { emphasis, text };
+    count += 1;
+  }
+  if (count === 0) return null;
+  return {
+    generatedAt:
+      typeof raw.generated_at === "string" ? raw.generated_at : null,
+    model:
+      typeof raw.model === "string" && raw.model.length > 0 ? raw.model : null,
+    sections: out,
+  };
+}
+
+/**
  * Build a `{ data, coverage }` object from a snapshot payload.
  *
  * - `payload`: `analysis_snapshots.normalized_payload` parsed.
@@ -929,6 +1015,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       note: "Benchmark editorial baseado em referências públicas de mercado e dataset interno versionado. A leitura deve ser interpretada como referência comparativa, não como média estatística absoluta.",
     },
     aiInsights: enrichedAiInsights,
+    aiInsightsV2: buildAiInsightsV2(payload.ai_insights_v2),
   };
 
   const data: ReportData = {
