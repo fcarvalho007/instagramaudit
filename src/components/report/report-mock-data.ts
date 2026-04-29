@@ -287,6 +287,23 @@ export const reportData = {
     { day: "Dom", fullDay: "Domingo", avgEngagement: 0.38, isLeader: false },
   ],
 
+  // Mini-trend (last 15 days) drawn next to each hero KPI value.
+  // The "Estado do benchmark" card omits a sparkline and uses a badge.
+  heroSparklines: {
+    engagementRate: [
+      0.08, 0.09, 0.11, 0.1, 0.12, 0.09, 0.11, 0.1, 0.13, 0.1, 0.11, 0.09,
+      0.12, 0.11, 0.11,
+    ],
+    postsAnalyzed: [0, 1, 1, 2, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1],
+    postingFrequencyWeekly: [
+      5.5, 5.8, 6.0, 5.9, 6.0, 6.1, 6.0, 6.0, 5.9, 6.0, 6.0, 6.1, 6.0, 6.0,
+      6.0,
+    ],
+    dominantFormatShare: [
+      62, 64, 65, 67, 68, 69, 70, 71, 72, 71, 72, 73, 74, 74, 75,
+    ],
+  },
+
   aiInsights: [
     {
       number: "01",
