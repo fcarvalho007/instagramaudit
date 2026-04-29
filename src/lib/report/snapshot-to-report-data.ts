@@ -960,6 +960,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       note: "Benchmark editorial baseado em referências públicas de mercado e dataset interno versionado. A leitura deve ser interpretada como referência comparativa, não como média estatística absoluta.",
     },
     aiInsights: enrichedAiInsights,
+    aiInsightsV2: buildAiInsightsV2(payload.ai_insights_v2),
   };
 
   const data: ReportData = {
