@@ -173,7 +173,6 @@ export function RevenueSection() {
         </div>
       </AdminCard>
     </section>
-    </DemoOnlySection>
   );
 }
 
