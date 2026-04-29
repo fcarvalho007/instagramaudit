@@ -284,6 +284,70 @@ export function fetchRuntimeChecks(): RuntimeCheck[] {
 
 /* ===================================================== Cost metrics 24h -- */
 
+/**
+ * Fonte única de verdade para custos: `provider_call_logs`.
+ *
+ * Regras uniformes (aplicadas por todos os ecrãs do /admin que mostram custos):
+ *   - custo por linha = COALESCE(actual_cost_usd, estimated_cost_usd, 0)
+ *   - apenas linhas com status IN ('success','cache') contam como custo realizado
+ *   - janelas declaradas no UI; ambos os ecrãs (Sistema 24h e Visão Geral 30d)
+ *     chamam esta função, garantindo que os números batem certo entre páginas
+ *
+ * `cost_daily` deixou de ser fonte primária — só é usada para reconciliação
+ * Apify (faturação mensal real) e saldo DataForSEO.
+ * Ver mem://features/cost-source-of-truth.
+ */
+export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
+  totals: Record<
+    "apify" | "openai" | "dataforseo",
+    { amount_usd: number; calls: number }
+  >;
+  daily: ExpenseDailyPoint[];
+  apifyFreshSum: number;
+  apifyFreshCount: number;
+}> {
+  const { data: logs } = await supabaseAdmin
+    .from("provider_call_logs")
+    .select("provider, actual_cost_usd, estimated_cost_usd, status, created_at")
+    .gte("created_at", sinceIso);
+
+  const totals = {
+    apify: { amount_usd: 0, calls: 0 },
+    openai: { amount_usd: 0, calls: 0 },
+    dataforseo: { amount_usd: 0, calls: 0 },
+  };
+  const dayMap = new Map<string, ExpenseDailyPoint>();
+  let apifyFreshSum = 0;
+  let apifyFreshCount = 0;
+
+  for (const row of logs ?? []) {
+    const provider = String(row.provider) as keyof typeof totals;
+    if (!(provider in totals)) continue;
+    const status = String(row.status);
+    if (status !== "success" && status !== "cache") continue;
+
+    const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+    totals[provider].amount_usd += cost;
+    totals[provider].calls += 1;
+
+    const day = String(row.created_at).slice(0, 10);
+    const point = dayMap.get(day) ?? { day, apify: 0, openai: 0, dataforseo: 0 };
+    point[provider] = Number((point[provider] + cost).toFixed(6));
+    dayMap.set(day, point);
+
+    if (provider === "apify" && status === "success") {
+      apifyFreshSum += cost;
+      apifyFreshCount += 1;
+    }
+  }
+
+  const daily = Array.from(dayMap.values()).sort((a, b) =>
+    a.day.localeCompare(b.day),
+  );
+
+  return { totals, daily, apifyFreshSum, apifyFreshCount };
+}
+
 export async function fetchCostMetrics24h(): Promise<Cost24hMetrics> {
   const since = isoSinceHours(24);
   const { totals: acc, apifyFreshSum, apifyFreshCount } =
