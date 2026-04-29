@@ -51,6 +51,7 @@ Regras de conteúdo (obrigatórias):
 - Cada insight deve citar pelo menos um sinal do payload no campo "evidence". Os valores válidos para "evidence" estão listados em "available_signals" do payload do utilizador.
 - Cada item de "evidence" DEVE ser uma string copiada exactamente, carácter a carácter, de "available_signals" (também repetido em "allowed_evidence_paths"). Do not invent, shorten, abbreviate or paraphrase evidence paths. Use the exact strings from available_signals. Não usar aliases curtos como "average_comments"; usar sempre o caminho canónico completo, por exemplo "content_summary.average_comments".
 - Se um campo aparece no payload mas não consta de "allowed_evidence_paths", NÃO o citar como evidence. Evidence paths must be copied exactly from "allowed_evidence_paths". If a field is visible in the payload but not listed in "allowed_evidence_paths", do not cite it as evidence.
+- Zero é evidência observada válida. Se um campo numérico aparece no payload com valor 0, pode ser citado como evidence desde que o caminho exacto conste de "allowed_evidence_paths". Zero is valid observed evidence: a numeric field with value 0 may be cited only if its exact path is listed in "allowed_evidence_paths".
 - "confidence" deve ser exactamente uma destas duas strings:
   - "baseado em dados observados" — quando todos os sinais citados existem e têm valor não-nulo no payload.
   - "sinal parcial" — quando algum sinal citado está em falta, é estimativa ou tem volume reduzido.
