@@ -1,8 +1,11 @@
 /**
- * NoteCreateDialog — criar uma nova nota editorial.
+ * NoteCreateDialog — criar ou editar uma nota editorial.
+ *
+ * Quando recebe `note`, comporta-se como editor (faz UPDATE no upsert do
+ * endpoint POST `/notes` passando `id`). Sem `note`, cria uma nova.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -27,6 +30,7 @@ import {
 import { adminFetch } from "@/lib/admin/fetch";
 import {
   NOTE_CATEGORY_LABEL,
+  type KnowledgeNote,
   type KnowledgeSource,
   type NoteCategory,
 } from "@/lib/knowledge/types";
@@ -34,17 +38,39 @@ import {
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** Quando presente, o dialog edita esta nota. */
+  note?: KnowledgeNote | null;
 }
 
 const CATEGORIES: NoteCategory[] = ["trend", "format", "algorithm", "vertical", "tool"];
 
-export function NoteCreateDialog({ open, onClose }: Props) {
+export function NoteCreateDialog({ open, onClose, note }: Props) {
   const qc = useQueryClient();
+  const isEdit = Boolean(note?.id);
+
   const [category, setCategory] = useState<NoteCategory>("trend");
   const [vertical, setVertical] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [sourceId, setSourceId] = useState<string>("none");
+
+  // Sincroniza o estado quando o dialog abre ou muda de nota.
+  useEffect(() => {
+    if (!open) return;
+    if (note) {
+      setCategory(note.category);
+      setVertical(note.vertical ?? "");
+      setTitle(note.title);
+      setBody(note.body);
+      setSourceId(note.source_id ?? "none");
+    } else {
+      setCategory("trend");
+      setVertical("");
+      setTitle("");
+      setBody("");
+      setSourceId("none");
+    }
+  }, [open, note]);
 
   const sourcesQuery = useQuery({
     queryKey: ["admin", "knowledge", "sources"],
@@ -57,9 +83,10 @@ export function NoteCreateDialog({ open, onClose }: Props) {
     refetchOnWindowFocus: false,
   });
 
-  const create = useMutation({
+  const upsert = useMutation({
     mutationFn: async () => {
       const payload = {
+        id: note?.id,
         category,
         vertical: category === "vertical" ? vertical.trim() || null : null,
         title: title.trim(),
@@ -77,9 +104,8 @@ export function NoteCreateDialog({ open, onClose }: Props) {
       }
     },
     onSuccess: () => {
-      toast.success("Nota criada.");
+      toast.success(isEdit ? "Nota atualizada." : "Nota criada.");
       qc.invalidateQueries({ queryKey: ["admin", "knowledge"] });
-      setTitle(""); setBody(""); setVertical(""); setSourceId("none");
       onClose();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
@@ -89,7 +115,7 @@ export function NoteCreateDialog({ open, onClose }: Props) {
     <Dialog open={open} onOpenChange={(v) => (!v ? onClose() : null)}>
       <DialogContent className="max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Nova nota editorial</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar nota editorial" : "Nova nota editorial"}</DialogTitle>
           <DialogDescription>
             Capture um padrão, tendência ou particularidade que a IA deve considerar.
           </DialogDescription>
@@ -138,10 +164,10 @@ export function NoteCreateDialog({ open, onClose }: Props) {
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button
-            onClick={() => create.mutate()}
-            disabled={create.isPending || title.trim().length < 2 || body.trim().length < 2}
+            onClick={() => upsert.mutate()}
+            disabled={upsert.isPending || title.trim().length < 2 || body.trim().length < 2}
           >
-            Criar
+            {isEdit ? "Guardar alterações" : "Criar"}
           </Button>
         </DialogFooter>
       </DialogContent>

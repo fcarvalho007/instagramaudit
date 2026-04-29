@@ -57,12 +57,14 @@ import { Route as ApiAdminSistemaCapsRouteImport } from './routes/api/admin/sist
 import { Route as ApiAdminSistemaAlertsRouteImport } from './routes/api/admin/sistema.alerts'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
+import { Route as ApiAdminKnowledgeSuggestionsRouteImport } from './routes/api/admin/knowledge.suggestions'
 import { Route as ApiAdminKnowledgeSourcesRouteImport } from './routes/api/admin/knowledge.sources'
 import { Route as ApiAdminKnowledgeOverviewRouteImport } from './routes/api/admin/knowledge.overview'
 import { Route as ApiAdminKnowledgeNotesRouteImport } from './routes/api/admin/knowledge.notes'
 import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/knowledge.export'
 import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
+import { Route as ApiAdminKnowledgeSuggestionsIdRouteImport } from './routes/api/admin/knowledge.suggestions.$id'
 import { Route as ApiAdminKnowledgeNotesIdRouteImport } from './routes/api/admin/knowledge.notes.$id'
 import { Route as ApiAdminKnowledgeBenchmarksIdRouteImport } from './routes/api/admin/knowledge.benchmarks.$id'
 import { Route as ApiAdminSistemaAlertsIdAckRouteImport } from './routes/api/admin/sistema.alerts.$id.ack'
@@ -324,6 +326,12 @@ const ApiAdminReportRequestsIdRoute =
     path: '/$id',
     getParentRoute: () => ApiAdminReportRequestsRoute,
   } as any)
+const ApiAdminKnowledgeSuggestionsRoute =
+  ApiAdminKnowledgeSuggestionsRouteImport.update({
+    id: '/api/admin/knowledge/suggestions',
+    path: '/api/admin/knowledge/suggestions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminKnowledgeSourcesRoute =
   ApiAdminKnowledgeSourcesRouteImport.update({
     id: '/api/admin/knowledge/sources',
@@ -357,6 +365,12 @@ const AdminReportPreviewSnapshotSnapshotIdRoute =
     id: '/report-preview/snapshot/$snapshotId',
     path: '/report-preview/snapshot/$snapshotId',
     getParentRoute: () => AdminRoute,
+  } as any)
+const ApiAdminKnowledgeSuggestionsIdRoute =
+  ApiAdminKnowledgeSuggestionsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => ApiAdminKnowledgeSuggestionsRoute,
   } as any)
 const ApiAdminKnowledgeNotesIdRoute =
   ApiAdminKnowledgeNotesIdRouteImport.update({
@@ -421,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
+  '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -440,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
+  '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -480,6 +496,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
+  '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -499,6 +516,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
+  '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -541,6 +559,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
+  '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -560,6 +579,7 @@ export interface FileRoutesById {
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
+  '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -603,6 +623,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/notes'
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
+    | '/api/admin/knowledge/suggestions'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -622,6 +643,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-openai-costs'
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
+    | '/api/admin/knowledge/suggestions/$id'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesByTo: FileRoutesByTo
@@ -662,6 +684,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/notes'
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
+    | '/api/admin/knowledge/suggestions'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -681,6 +704,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-openai-costs'
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
+    | '/api/admin/knowledge/suggestions/$id'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   id:
@@ -722,6 +746,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/notes'
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
+    | '/api/admin/knowledge/suggestions'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -741,6 +766,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-openai-costs'
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
+    | '/api/admin/knowledge/suggestions/$id'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesById: FileRoutesById
@@ -772,6 +798,7 @@ export interface RootRouteChildren {
   ApiAdminKnowledgeNotesRoute: typeof ApiAdminKnowledgeNotesRouteWithChildren
   ApiAdminKnowledgeOverviewRoute: typeof ApiAdminKnowledgeOverviewRoute
   ApiAdminKnowledgeSourcesRoute: typeof ApiAdminKnowledgeSourcesRoute
+  ApiAdminKnowledgeSuggestionsRoute: typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   ApiAdminSistemaAlertsRoute: typeof ApiAdminSistemaAlertsRouteWithChildren
   ApiAdminSistemaCapsRoute: typeof ApiAdminSistemaCapsRoute
   ApiAdminSistemaCostMetrics24hRoute: typeof ApiAdminSistemaCostMetrics24hRoute
@@ -1128,6 +1155,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminReportRequestsIdRouteImport
       parentRoute: typeof ApiAdminReportRequestsRoute
     }
+    '/api/admin/knowledge/suggestions': {
+      id: '/api/admin/knowledge/suggestions'
+      path: '/api/admin/knowledge/suggestions'
+      fullPath: '/api/admin/knowledge/suggestions'
+      preLoaderRoute: typeof ApiAdminKnowledgeSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/knowledge/sources': {
       id: '/api/admin/knowledge/sources'
       path: '/api/admin/knowledge/sources'
@@ -1169,6 +1203,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/report-preview/snapshot/$snapshotId'
       preLoaderRoute: typeof AdminReportPreviewSnapshotSnapshotIdRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/admin/knowledge/suggestions/$id': {
+      id: '/api/admin/knowledge/suggestions/$id'
+      path: '/$id'
+      fullPath: '/api/admin/knowledge/suggestions/$id'
+      preLoaderRoute: typeof ApiAdminKnowledgeSuggestionsIdRouteImport
+      parentRoute: typeof ApiAdminKnowledgeSuggestionsRoute
     }
     '/api/admin/knowledge/notes/$id': {
       id: '/api/admin/knowledge/notes/$id'
@@ -1296,6 +1337,20 @@ const ApiAdminKnowledgeNotesRouteWithChildren =
     ApiAdminKnowledgeNotesRouteChildren,
   )
 
+interface ApiAdminKnowledgeSuggestionsRouteChildren {
+  ApiAdminKnowledgeSuggestionsIdRoute: typeof ApiAdminKnowledgeSuggestionsIdRoute
+}
+
+const ApiAdminKnowledgeSuggestionsRouteChildren: ApiAdminKnowledgeSuggestionsRouteChildren =
+  {
+    ApiAdminKnowledgeSuggestionsIdRoute: ApiAdminKnowledgeSuggestionsIdRoute,
+  }
+
+const ApiAdminKnowledgeSuggestionsRouteWithChildren =
+  ApiAdminKnowledgeSuggestionsRoute._addFileChildren(
+    ApiAdminKnowledgeSuggestionsRouteChildren,
+  )
+
 interface ApiAdminSistemaAlertsRouteChildren {
   ApiAdminSistemaAlertsIdAckRoute: typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -1337,6 +1392,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminKnowledgeNotesRoute: ApiAdminKnowledgeNotesRouteWithChildren,
   ApiAdminKnowledgeOverviewRoute: ApiAdminKnowledgeOverviewRoute,
   ApiAdminKnowledgeSourcesRoute: ApiAdminKnowledgeSourcesRoute,
+  ApiAdminKnowledgeSuggestionsRoute:
+    ApiAdminKnowledgeSuggestionsRouteWithChildren,
   ApiAdminSistemaAlertsRoute: ApiAdminSistemaAlertsRouteWithChildren,
   ApiAdminSistemaCapsRoute: ApiAdminSistemaCapsRoute,
   ApiAdminSistemaCostMetrics24hRoute: ApiAdminSistemaCostMetrics24hRoute,
