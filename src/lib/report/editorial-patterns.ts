@@ -420,3 +420,201 @@ export function buildEditorialPatterns(
     marketDemandContentFit: deriveMarketDemandContentFit(posts, payload),
   };
 }
+// ─────────────────────────────────────────────────────────────────────────
+// Compact summary for the OpenAI insights pipeline (R5)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Shape forwarded to the model under `editorial_patterns`. Mirror of the
+ * type in `lib/insights/types.ts` (kept duplicated on purpose so this
+ * module has zero `lib/insights/*` imports — avoids cycles and keeps
+ * `editorial-patterns.ts` pure and reusable).
+ *
+ * Sub-blocks are omitted when the underlying pattern has `available:false`
+ * OR when the data is too noisy to be useful. The model never sees
+ * availability flags.
+ */
+export interface EditorialPatternsForInsights {
+  engagement_trend?: {
+    direction: "up" | "flat" | "down";
+    confidence: "alta" | "média" | "baixa";
+    sample_size: number;
+  };
+  caption_length?: {
+    best_bucket: string;
+    best_avg_engagement_pct: number;
+    sample_size: number;
+  };
+  hashtag_count?: {
+    best_bucket: string;
+    best_avg_engagement_pct: number;
+    sample_size: number;
+  };
+  collaboration_lift?: {
+    delta_pct: number;
+    with_count: number;
+    without_count: number;
+  };
+  comments_to_likes_ratio?: {
+    ratio_pct: number;
+    sample_size: number;
+  };
+  market_demand_content_fit?: {
+    coverage_pct: number;
+    matched_keywords: number;
+    missing_keywords: string[];
+    total_keywords: number;
+  };
+  format_vs_competitors?: {
+    dominant_format: "Reels" | "Carrosséis" | "Imagens";
+    profile_avg_engagement_pct: number;
+    competitors_median_engagement_pct: number;
+    delta_pct: number;
+  };
+}
+
+interface PostLike {
+  likes?: number | null;
+  comments?: number | null;
+}
+
+interface BuildOptions {
+  /** Posts used to derive comments-to-likes ratio (any post with both). */
+  posts?: ReadonlyArray<PostLike>;
+  /** Profile dominant format + ER, used for format_vs_competitors. */
+  profile?: {
+    dominant_format?: "Reels" | "Carrosséis" | "Imagens" | null;
+    average_engagement_rate?: number | null;
+  };
+  /** Competitors median ER, used for format_vs_competitors. */
+  competitors?: { median_engagement_pct?: number | null };
+}
+
+function pickNum(n: unknown): number | null {
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
+}
+
+function round2N(n: number): number {
+  return Number(n.toFixed(2));
+}
+
+/**
+ * Convert a full `EditorialPatterns` block into the compact, model-safe
+ * shape. Only includes sub-blocks that are `available` AND non-degenerate
+ * (e.g. zero sample sizes filtered out). Pure.
+ */
+export function buildEditorialPatternsForInsights(
+  patterns: EditorialPatterns,
+  opts: BuildOptions = {},
+): EditorialPatternsForInsights | undefined {
+  const out: EditorialPatternsForInsights = {};
+
+  // engagement_trend
+  if (
+    patterns.engagementTrend.available &&
+    patterns.engagementTrend.direction &&
+    patterns.engagementTrend.confidence
+  ) {
+    out.engagement_trend = {
+      direction: patterns.engagementTrend.direction,
+      confidence: patterns.engagementTrend.confidence,
+      sample_size: patterns.engagementTrend.sampleSize,
+    };
+  }
+
+  // caption_length
+  if (patterns.captionLengthBuckets.available && patterns.captionLengthBuckets.bestBucket) {
+    const best = patterns.captionLengthBuckets.buckets.find(
+      (b) => b.label === patterns.captionLengthBuckets.bestBucket,
+    );
+    if (best && best.count > 0) {
+      out.caption_length = {
+        best_bucket: best.label,
+        best_avg_engagement_pct: round2N(best.avgEngagementPct),
+        sample_size: best.count,
+      };
+    }
+  }
+
+  // hashtag_count
+  if (patterns.hashtagSweetSpot.available && patterns.hashtagSweetSpot.bestBucket) {
+    const best = patterns.hashtagSweetSpot.buckets.find(
+      (b) => b.label === patterns.hashtagSweetSpot.bestBucket,
+    );
+    if (best && best.count > 0) {
+      out.hashtag_count = {
+        best_bucket: best.label,
+        best_avg_engagement_pct: round2N(best.avgEngagementPct),
+        sample_size: best.count,
+      };
+    }
+  }
+
+  // collaboration_lift — convert `lift` (ratio) to `delta_pct` (relative).
+  // delta_pct = (lift - 1) * 100, rounded to integer for editorial clarity.
+  if (
+    patterns.mentionsCollabsLift.available &&
+    typeof patterns.mentionsCollabsLift.lift === "number"
+  ) {
+    out.collaboration_lift = {
+      delta_pct: Math.round((patterns.mentionsCollabsLift.lift - 1) * 100),
+      with_count: patterns.mentionsCollabsLift.withCount,
+      without_count: patterns.mentionsCollabsLift.withoutCount,
+    };
+  }
+
+  // comments_to_likes_ratio — derived here from raw posts (always available
+  // when at least one post has likes>0). NOT part of EditorialPatterns
+  // because it is a single scalar, not a cross-tab.
+  if (Array.isArray(opts.posts) && opts.posts.length > 0) {
+    const valid = opts.posts.filter(
+      (p) => pickNum(p.likes) !== null && pickNum(p.comments) !== null && (p.likes ?? 0) > 0,
+    );
+    if (valid.length > 0) {
+      const totals = valid.reduce(
+        (acc, p) => {
+          acc.likes += p.likes ?? 0;
+          acc.comments += p.comments ?? 0;
+          return acc;
+        },
+        { likes: 0, comments: 0 },
+      );
+      if (totals.likes > 0) {
+        out.comments_to_likes_ratio = {
+          ratio_pct: round2N((totals.comments / totals.likes) * 100),
+          sample_size: valid.length,
+        };
+      }
+    }
+  }
+
+  // market_demand_content_fit
+  if (
+    patterns.marketDemandContentFit.available &&
+    patterns.marketDemandContentFit.coverage !== null &&
+    patterns.marketDemandContentFit.marketKeywordsTotal > 0
+  ) {
+    out.market_demand_content_fit = {
+      coverage_pct: Math.round(patterns.marketDemandContentFit.coverage * 100),
+      matched_keywords: patterns.marketDemandContentFit.matchedKeywords,
+      missing_keywords: patterns.marketDemandContentFit.missingTop,
+      total_keywords: patterns.marketDemandContentFit.marketKeywordsTotal,
+    };
+  }
+
+  // format_vs_competitors — derived from caller-supplied profile +
+  // competitors. Only present when both numbers exist and are non-zero.
+  const dominant = opts.profile?.dominant_format ?? null;
+  const profileEr = pickNum(opts.profile?.average_engagement_rate);
+  const compMedian = pickNum(opts.competitors?.median_engagement_pct);
+  if (dominant && profileEr !== null && compMedian !== null && compMedian > 0) {
+    out.format_vs_competitors = {
+      dominant_format: dominant,
+      profile_avg_engagement_pct: round2N(profileEr),
+      competitors_median_engagement_pct: round2N(compMedian),
+      delta_pct: Math.round(((profileEr - compMedian) / compMedian) * 100),
+    };
+  }
+
+  return Object.keys(out).length > 0 ? out : undefined;
+}
