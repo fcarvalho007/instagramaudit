@@ -1,118 +1,82 @@
-## Estado atual (auditoria)
+## Objetivo
 
-Os ficheiros indicados no prompt (`src/lib/{analysis,insights}/tests/...`) **não existem**. Os equivalentes vivem em `__tests__/`:
+Remover o login Google do `/admin` e substituir por um gate trivial: o utilizador escreve um email, e se for `fredericodigital@gmail.com` entra. Sem password, sem magic link, sem 2FA, sem Supabase Auth.
 
-- `src/lib/analysis/__tests__/normalize-r4a.test.ts`
-- `src/lib/insights/__tests__/validate-editorial.test.ts`
-- `src/lib/insights/__tests__/validate-market.test.ts`
+> Aviso explícito: este modo deixa o `/admin` aberto a qualquer pessoa que escreva o teu email. O backoffice expõe custos, perfis analisados, snapshots, KB, alertas, secrets-status e ações de regenerar PDF/reenviar email. Confirmaste que aceitas este risco. Vou registar isto na security memory.
 
-São scripts standalone Node (`assert/strict` + `process.exit(1)` + `console.log`). **Não há `describe`/`it`/`expect`**, e **Vitest não está instalado** no `package.json`. Não há `vitest.config.*` nem script `"test"`. Por isso o runner nunca os executou — exatamente o gap apontado pela auditoria.
+## Como vai funcionar
 
-Não existem pares duplicados: cada teste vive num único sítio (`__tests__/`).
+1. Em `/admin` aparece um único input "Email" + botão "Entrar".
+2. Se o email (case-insensitive, trim) bater certo com a allowlist `ADMIN_ALLOWED_EMAILS` (já contém `fredericodigital@gmail.com`), gravamos uma flag em `localStorage` (`admin.simple-gate.v1` = email).
+3. Todas as sub-rotas `/admin/*` e chamadas a `/api/admin/*` passam a aceitar essa flag — sem JWT, sem Bearer token.
+4. Botão "Terminar sessão" limpa a flag.
 
-## Plano
+## Alterações
 
-### 1. Instalar Vitest (devDependency)
+### Frontend
 
-```
-bun add -d vitest @vitest/ui
-```
+- **`src/components/admin/v2/admin-auth-shell.tsx`** — reescrever:
+  - Remover toda a lógica Supabase (`onAuthStateChange`, `getSession`, cache de whoami, spinner de "A verificar sessão").
+  - Estado local: `email | null` lido de `localStorage.getItem("admin.simple-gate.v1")` no mount.
+  - Se vazio → render `<SimpleEmailGate onSubmit={…}/>` (input + botão).
+  - Submit faz `POST /api/admin/simple-login` com `{ email }`. Se 200 → grava no localStorage e entra. Se 403 → mostra "Email não autorizado".
+  - Handler de logout limpa `localStorage` e volta ao gate.
 
-Sem provider, sem rede, sem alterações de schema. Vitest tem suporte nativo a TS/ESM e respeita o `tsconfig.json` (paths `@/...` continuam a funcionar via `vite-tsconfig-paths`, que já está instalado).
+- **`src/components/admin/admin-gate.tsx`** — apagar (já não é usado).
 
-### 2. Adicionar script de teste ao `package.json`
+- **`src/integrations/lovable/index.ts`** — manter intacto (auto-gerado; deixar de ser importado pelo admin já basta).
 
-Acrescentar em `"scripts"`:
+- **`src/lib/admin/fetch.ts`** — alterar:
+  - Remover dependência de `supabase.auth.getSession()`.
+  - Ler email de `localStorage.getItem("admin.simple-gate.v1")` e enviar em header `X-Admin-Email`.
+  - Em 401/403 → limpar localStorage e `window.location.reload()` (volta ao gate).
 
-```
-"test": "vitest run",
-"test:watch": "vitest"
-```
+### Backend
 
-### 3. Criar `vitest.config.ts` mínimo
+- **Novo: `src/routes/api/admin/simple-login.ts`** — `POST` com `{ email }`. Valida contra `getAdminAllowlist()`. Devolve `{ ok: true }` ou 403. Sem cookies, sem sessão server-side — é apenas a verificação inicial; o cliente é que persiste a flag.
 
-```ts
-import { defineConfig } from "vitest/config";
-import tsconfigPaths from "vite-tsconfig-paths";
+- **`src/lib/admin/session.ts`** — substituir `requireAdminSession()`:
+  - Lê `X-Admin-Email` (header) em vez de `Authorization: Bearer`.
+  - Valida com `isAdminEmailAllowed(email)`.
+  - Mantém a mesma assinatura `Promise<AdminUser>` para não tocar nos ~30 handlers `/api/admin/*` que a usam.
+  - Apaga referência a `supabaseAdmin.auth.getUser`.
 
-export default defineConfig({
-  plugins: [tsconfigPaths()],
-  test: {
-    environment: "node",
-    include: ["src/**/__tests__/**/*.test.ts"],
-    globals: false,
-  },
-});
-```
+- **`src/routes/api/admin/whoami.ts`** — simplificar: lê `X-Admin-Email`, devolve `{ allowed, email }`. (Mantém-se por compatibilidade; o gate novo nem precisa de chamar.)
 
-Razão: ambiente `node` (puros, sem DOM), include limitado a `__tests__/` para evitar varrer o repo todo.
+### Limpeza
 
-### 4. Converter os três ficheiros para Vitest
+- **Remover do `admin.tsx`**: import de `AdminGate` (já não existe).
+- **Não tocar** em `LOCKED_FILES.md`, `/report.example`, tokens, design system, `src/integrations/supabase/client.ts`.
 
-Manter localização canónica em `__tests__/` (a que o projeto já usa). Substituir o cabeçalho `import assert from "node:assert/strict"` por `import { describe, it, expect } from "vitest"`, eliminar o runner ad-hoc (`run(...)`, `failed`, `process.exit`, `console.log`) e mapear as asserções:
+## Implicações de segurança (registadas)
 
-- `assert.equal(a, b)` → `expect(a).toBe(b)`
-- `assert.deepEqual(a, b)` → `expect(a).toEqual(b)`
-- `assert.ok(x)` → `expect(x).toBeTruthy()`
+- Vou atualizar o `@security-memory` a documentar que o `/admin` está intencionalmente sem autenticação real durante a fase de testes privados, a pedido explícito do owner.
+- Os scanners vão flaggar isto; vamos marcar como "risco aceite — testing mode".
+- **Recomendação que fica em aberto**: quando publicares de novo o produto ou abrires acesso a outros, voltar para email + password ou Google + allowlist (15 minutos de trabalho).
 
-#### 4a. `normalize-r4a.test.ts`
+## Validação
 
-Um `describe("enrichPosts — R4-A signals")` com `it(...)` por caso, preservando integralmente os fixtures e asserções existentes:
-
-- `it("maps full Apify Reel with all R4-A fields")` — formato Reels, `video_duration`, `product_type`, `is_pinned`, `coauthors`, `tagged_users` (objeto + string), `location_name`, `music_title` (concat song · artist), `caption_length`.
-- `it("normalizes legacy minimal image post defensively")` — `format=Imagens`, `video_duration=null`, `is_pinned=false`, `coauthors=[]`, `tagged_users=[]`, `location_name=null`, `music_title=null`, `caption_length` derivado do caption.
-- `it("normalizes hybrid carousel with partial fields")` — `format=Carrosséis`, `product_type=feed`, `tagged_users=["convidado"]`, restantes nulos/vazios.
-
-Nota sobre `schema_version`: não é responsabilidade de `enrichPosts` (vive na camada do snapshot), por isso permanece coberto onde já está e não é forçado neste teste — alinhado com a regra de não inflacionar âmbito.
-
-#### 4b. `validate-editorial.test.ts`
-
-`describe("validateInsights — editorial_patterns")` com:
-
-- `it("payload exposes editorial_patterns and new evidence paths")` — `buildInsightsUserPayload(ctx)` inclui `collaboration_lift.delta_pct=42` e `available_signals` contém `editorial_patterns.collaboration_lift.delta_pct` e `editorial_patterns.engagement_trend.direction`.
-- `it("accepts a correct editorial_patterns insight")` — `validateInsights(passingResponse(), ctx).ok === true`.
-- `it("rejects technical-token leak in body with TECHNICAL_LEAK")` — body com `editorial_patterns.collaboration_lift.delta_pct` literal.
-- `it("rejects generic recommendation without numeric grounding with GENERIC_OUTPUT")`.
-
-#### 4c. `validate-market.test.ts`
-
-`describe("validateInsights — market_signals")` com:
-
-- `it("payload exposes numeric market signals")` — `strongest_score=65`, `trend_delta_pct=22`, `usable_keyword_count=1`, `top_keywords=["ia"]`, `zero_signal_keywords=["marketingdigital"]`, e os respetivos paths em `available_signals`.
-- `it("accepts a correct market insight with numeric grounding")`.
-- `it("rejects generic market body without numeric grounding with GENERIC_OUTPUT")`.
-- `it("rejects zero-signal keyword cited as strong opportunity")` — aceita `GENERIC_OUTPUT` ou `EVIDENCE_INVALID`, preservando o comentário existente que explica porquê.
-
-### 5. Validação
-
-```
-bunx tsc --noEmit
-bunx vitest run src/lib/analysis/__tests__/normalize-r4a.test.ts \
-                src/lib/insights/__tests__/validate-editorial.test.ts \
-                src/lib/insights/__tests__/validate-market.test.ts
-```
-
-(Path real em `__tests__/`, conforme nota da regra 5 do prompt: "se o projeto usa pasta canónica diferente, executar o equivalente e reportar".)
-
-## Garantias
-
-- Sem chamadas a Apify, DataForSEO, OpenAI, Supabase ou qualquer rede.
-- Sem alterações de runtime: apenas testes, `vitest.config.ts`, `package.json` (scripts + devDeps).
-- Sem alterações em ficheiros locked, UI, report, PDF, `/report/example`.
-- Determinístico: fixtures inline, sem datas dinâmicas além das já usadas (timestamps fixos).
+- `bunx tsc --noEmit`
+- Manual: abrir `/admin` → escrever `fredericodigital@gmail.com` → entrar → navegar tabs (Visão Geral, Sistema, Perfis, Conhecimento) → carregar KPIs / snapshots → terminar sessão → confirmar que volta ao gate.
+- Confirmar que escrever outro email → "Email não autorizado".
 
 ## Ficheiros a alterar
 
-1. `package.json` — adicionar Vitest às devDeps + scripts `test` / `test:watch`.
-2. `vitest.config.ts` — criar.
-3. `src/lib/analysis/__tests__/normalize-r4a.test.ts` — reescrever em Vitest.
-4. `src/lib/insights/__tests__/validate-editorial.test.ts` — reescrever em Vitest.
-5. `src/lib/insights/__tests__/validate-market.test.ts` — reescrever em Vitest.
+1. `src/components/admin/v2/admin-auth-shell.tsx` — reescrita completa (gate simples).
+2. `src/lib/admin/fetch.ts` — header `X-Admin-Email` em vez de Bearer.
+3. `src/lib/admin/session.ts` — `requireAdminSession()` lê `X-Admin-Email`.
+4. `src/routes/api/admin/whoami.ts` — simplificar.
+5. `src/routes/api/admin/simple-login.ts` — criar.
+6. `src/routes/admin.tsx` — remover import órfão se houver.
+7. `src/components/admin/admin-gate.tsx` — apagar.
+8. Security memory — atualizar.
 
 ## Checkpoint
 
-- ☐ Vitest instalado e configurado
-- ☐ 3 ficheiros convertidos para `describe/it/expect`
+- ☐ `AdminAuthShell` mostra apenas input email + botão Entrar
+- ☐ Email correto entra; email errado mostra "Não autorizado"
+- ☐ Todas as chamadas `/api/admin/*` continuam a funcionar via `X-Admin-Email`
+- ☐ Botão "Terminar sessão" limpa estado
+- ☐ Sem dependências de `lovable.auth` / Supabase Auth no fluxo admin
 - ☐ `bunx tsc --noEmit` limpo
-- ☐ `bunx vitest run` verde com contagem reportada
-- ☐ Sem providers chamados, sem mudanças de runtime/UI
+- ☐ Security memory atualizada com o risco aceite
