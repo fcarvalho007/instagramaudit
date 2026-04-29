@@ -106,7 +106,7 @@ function PostCardShell({
   children: ReactNode;
 }) {
   const baseClass =
-    "group bg-surface-secondary border border-border-default/40 rounded-xl shadow-card overflow-hidden flex flex-col";
+    "group bg-surface-secondary border border-border-default rounded-2xl shadow-card overflow-hidden flex flex-col";
   if (permalink) {
     return (
       <a
