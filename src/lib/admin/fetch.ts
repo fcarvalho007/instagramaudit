@@ -1,28 +1,26 @@
 /**
  * Helper para chamadas client-side a /api/admin/*.
  *
- * Lê o JWT da sessão Supabase atual e injeta-o no header
- * `Authorization: Bearer <token>` antes de cada pedido. Os handlers
- * server-side validam o JWT + a allowlist em `requireAdminSession()`.
+ * Lê o email do admin guardado em localStorage (gate simples) e injeta-o
+ * no header `X-Admin-Email`. Os handlers server-side validam contra a
+ * allowlist em `requireAdminSession()`.
  */
 
-import { supabase } from "@/integrations/supabase/client";
+import { ADMIN_GATE_STORAGE_KEY, clearAdminEmail, readAdminEmail } from "./simple-gate";
+
+export { ADMIN_GATE_STORAGE_KEY };
 
 /**
- * Quando um pedido admin devolve 401, a sessão Supabase está expirada ou
- * inválida. Disparamos signOut() para que o gate em /admin volte ao estado
- * "signed_out" e mostre o botão "Entrar com Google" em vez de "Erro 401".
+ * Em 401/403 o email guardado já não é válido — limpamos e recarregamos
+ * para que o gate apareça outra vez.
  */
-let signingOut = false;
-async function handleUnauthorized(): Promise<void> {
-  if (signingOut) return;
-  signingOut = true;
-  try {
-    await supabase.auth.signOut();
-  } catch {
-    // ignorar — o listener onAuthStateChange tratará do reset de UI
-  } finally {
-    signingOut = false;
+let resetting = false;
+function handleUnauthorized(): void {
+  if (resetting) return;
+  resetting = true;
+  clearAdminEmail();
+  if (typeof window !== "undefined") {
+    window.location.reload();
   }
 }
 
@@ -30,17 +28,15 @@ export async function adminFetch(
   input: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-
+  const email = readAdminEmail();
   const headers = new Headers(init.headers);
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  if (email) {
+    headers.set("X-Admin-Email", email);
   }
 
   const res = await fetch(input, { ...init, headers });
-  if (res.status === 401) {
-    void handleUnauthorized();
+  if (res.status === 401 || res.status === 403) {
+    handleUnauthorized();
   }
   return res;
 }
