@@ -32,8 +32,11 @@ export function LegacyAccessSection() {
           className="flex w-full items-center gap-4 px-6 py-5 text-left transition-colors hover:bg-admin-surface-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-leads-500"
         >
           <div className="flex-1">
-            <p className="m-0 text-[14px] font-medium text-admin-text-primary">
-              Cockpit técnico legado
+            <p className="m-0 flex items-center gap-2 text-[14px] font-medium text-admin-text-primary">
+              <span className="inline-flex items-center rounded border border-admin-border px-1.5 py-0.5 font-mono text-[10px] font-normal uppercase tracking-[0.08em] text-admin-text-tertiary">
+                Legado
+              </span>
+              Cockpit técnico
             </p>
             <p className="m-0 mt-1 text-[12px] text-admin-text-tertiary">
               Diagnóstico, análises, perfis, custos, alertas e pedidos no design antigo.
