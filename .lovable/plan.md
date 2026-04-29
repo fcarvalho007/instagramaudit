@@ -1,138 +1,142 @@
-# Plano · Exportar PDF e Partilhar do Relatório
+## Objetivo
 
-Dois problemas distintos no bloco final de `/analyze/$username`. Trato cada um numa secção.
+Tornar `market_signals_free` parte da geração primária do snapshot em `/api/analyze-public-v1` para que report, OpenAI e PDF leiam todos a mesma fonte de verdade, sem depender da segunda chamada client-side a `/api/market-signals`.
 
----
+## Ficheiros a modificar
 
-## a) "Exportar PDF" abre aba vazia
+1. `src/routes/api/analyze-public-v1.ts` — passo inline DataForSEO + summary para OpenAI.
+2. `src/lib/insights/types.ts` — alargar `InsightsContext.market_signals` com campos opcionais.
+3. `src/lib/insights/prompt.ts` — incluir novos campos no payload do utilizador, registar paths em `available_signals`, reforçar regra editorial.
+4. `src/lib/insights/validate.ts` — aceitar novos paths (já cobertos automaticamente porque a allow-list é derivada do `ctx`, mas confirmar e adicionar testes mentais).
 
-### Diagnóstico
+Nada mais é tocado. `/report/example`, ficheiros locked, PDF, UI, esquema Supabase, modelo OpenAI, Apify client, admin UI ficam intactos.
 
-O endpoint `/api/public/public-report-pdf` está completo e funcional (carrega snapshot → `renderReportPdf` → upload no bucket `report-pdfs` → devolve `signed_url` válido por 600s). Logo, o PDF **é gerado**.
+## Mudança em `analyze-public-v1.ts`
 
-O problema está no fluxo de abertura no cliente (`use-report-share-actions.ts` + `report-final-block.tsx`):
+Local: imediatamente após `primaryEnriched` ser calculado e antes da construção do `ctx: InsightsContext`.
 
-1. Ao clicar, abrimos sincronamente `window.open("about:blank", "_blank")` para sobreviver a popup blockers.
-2. Aguardamos o `fetch` (pode demorar 5–20s a renderizar a primeira vez).
-3. Quando a resposta chega, fazemos `popup.location.href = signedUrl`.
-
-O navegador do utilizador (Chrome/Brave/Safari modernos) trata uma `about:blank` aberta sem user-gesture imediato e que demora >N segundos a navegar como popup suspeito → fecha-a ou bloqueia a navegação. Daí o toast "PDF pronto, mas o navegador bloqueou a nova aba" e a aba aparecer **vazia**.
-
-A "fallback link" funciona porque o clique no link é, ele próprio, um novo user-gesture limpo.
-
-### Correção
-
-Mudar a estratégia de entrega do PDF para **não depender de popup pré-aberto**:
-
-1. **Eliminar `window.open("about:blank")` antecipado.**
-2. Depois do `fetch` devolver `signed_url`, criar um `<a href={signedUrl} download="...pdf" target="_blank" rel="noopener">` em memória, anexá-lo ao DOM e disparar `.click()` programaticamente. O navegador trata isto como download/abertura iniciada pelo gesto original do clique no botão, mesmo após `await`, porque o handler ainda está na mesma tarefa de evento (em Chrome/Edge funciona; no Safari força download).
-3. Em paralelo, **pré-gerar o PDF em background** quando o snapshot fica pronto (chamada `fetch` opcional após o report montar). Assim, no segundo clique do utilizador, o endpoint devolve `cached: true` em <500ms e a navegação é instantânea.
-4. Manter o botão "Abrir PDF numa nova aba" como fallback visível **sempre** (não só quando o popup é bloqueado), porque permite ao utilizador re-clicar caso o navegador tenha intercept.
-5. Renomear o toast bloqueado para algo construtivo ("PDF pronto. Abre na nova aba ou usa o botão abaixo.") em vez de mensagem de erro.
-
-### Verificação
-
-- Abrir `/analyze/<user>` em Chrome incógnito (popup blocker activo) e Safari.
-- Confirmar que, ao clicar "Exportar PDF", o PDF abre numa nova aba **com o conteúdo**.
-- Em segundo clique, deve ser instantâneo (cache).
-
----
-
-## b) Partilhar muito básico — adicionar menu de canais com teaser
-
-### Diagnóstico
-
-Hoje:
-- Botão "Copiar link" no hero → só copia URL.
-- Bloco final tem "Copiar link" + "Partilhar no LinkedIn" como links separados.
-- Não há WhatsApp, email, nem texto de teaser.
-
-### Solução
-
-Criar um **popover de partilha** unificado, accionado pelo botão "Partilhar" no hero e por um botão "Partilhar relatório" no bloco final.
-
-#### Estrutura do popover
+Pseudo-fluxo:
 
 ```text
-┌─ Partilhar este relatório ──────────────┐
-│ "Análise de @handle: 4.2% engagement,   │
-│  acima da mediana do setor (top 30%)."  │
-│  [editar mensagem ▾]                    │
-│ ─────────────────────────────────────── │
-│ [WhatsApp] [LinkedIn] [Email] [Copiar]  │
-└─────────────────────────────────────────┘
+let marketSignalsFree: PersistedMarketSignals | null = null;
+
+const tentativeNormalized = {
+  profile, content_summary, competitors, posts, format_stats
+} as Record<string, unknown>;
+
+// 1. Cache: se snapshot existing já tinha market_signals_free válido,
+//    reaproveitar (evita chamada duplicada quando refresh=1 sem TTL expirado).
+if (existing) {
+  const cached = readCachedSummary(existing.normalized_payload, "free");
+  if (cached) marketSignalsFree = cached;
+}
+
+// 2. Gates: kill-switch + allowlist (testing mode). Sem chamada se bloqueado.
+if (!marketSignalsFree && isDataForSeoEnabled() && isAllowed(primaryProfile.username)) {
+  try {
+    const result = await buildMarketSignals(tentativeNormalized as SnapshotPayload, {
+      ownerHandle: primaryProfile.username,
+      plan: "free",
+      totalTimeoutMs: 20_000, // mais curto que o cap externo de 60s
+    });
+
+    // Recolher provider_call_logs criados nesta janela (para custo + ids).
+    // Igual ao padrão de /api/market-signals.
+
+    const ttl = decideCacheTtlSeconds(result);
+    if (ttl !== null) {
+      marketSignalsFree = buildPersistedSummary({
+        result, plan: "free", ttlSeconds: ttl,
+        providerCostUsd, providerCallLogIds, now: new Date(),
+      });
+    }
+  } catch (err) {
+    console.warn("[analyze-public-v1] market signals failed", err);
+  }
+}
 ```
 
-#### Teaser dinâmico (pt-PT, determinístico)
+Garantias:
+- `buildMarketSignals` nunca atira; o `try/catch` é apenas defesa em profundidade.
+- Cache hit (cached !== null) NÃO chama `buildMarketSignals` → não cria novos `provider_call_logs`.
+- Kill-switch off → log info, sem chamada, sem persistência (estado "disabled" não é cacheável).
+- Allowlist bloqueia → sem chamada, sem persistência.
+- Erros soft (timeout / unknown) cacheados 10 min via `decideCacheTtlSeconds`, igual ao endpoint atual.
+- Erros hard (auth / blocked / disabled) não cacheados.
 
-Construído a partir de `result.data.keyMetrics` e `result.data.benchmark.positioning`:
+Persistência: `normalizedPayload` ganha `market_signals_free` quando existe, antes de `storeSnapshot`. Mantém compatibilidade — campo opcional.
 
-- **Engagement**: `engagementRate` formatado a 2 casas + comparação `engagementDeltaPct` ("acima/abaixo da mediana do setor").
-- **Posicionamento**: `positioning.tierLabel` quando `status === "available"` (ex: "top 30%", "mediana", "top 10%").
-- **Cadência**: `estimated_posts_per_week` se relevante.
+## Mudança em `insights/types.ts`
 
-Exemplos:
+```ts
+market_signals: {
+  has_free: boolean;
+  has_paid: boolean;
+  top_keywords?: string[];
+  strongest_keyword?: string | null;
+  trend_direction?: "up" | "flat" | "down" | null;
+  dropped_keywords?: string[];
+};
+```
 
-- "Análise pública de @frederico.m.carvalho: 4.2% engagement (top 30% do setor) e 3 posts/semana. Vê o relatório completo:"
-- "Análise pública de @marca: 1.8% engagement, abaixo da mediana do setor. Diagnóstico completo:"
+Todos os novos campos opcionais → snapshots existentes continuam válidos.
 
-Texto fica num helper puro `buildShareMessage(result)` em `src/components/report-share/share-message.ts` para ser testável e reutilizado pelos 4 canais.
+## Mudança em `analyze-public-v1.ts` — derivação do summary
 
-#### Canais e URLs
+Helper local `summarizeMarketSignals(ms: PersistedMarketSignals | null)`:
+- `has_free` = `ms?.status === "ready" || ms?.status === "partial"`.
+- `top_keywords` = `ms.trends_usable_keywords.slice(0, 5)`.
+- `strongest_keyword` = primeiro de `top_keywords` ordenado pela média de valores nas séries do Trends (fallback: primeiro item).
+- `trend_direction` = comparar média das primeiras 4 semanas vs últimas 4 do `strongest_keyword`:
+  - `> +5%` → `"up"`, `< -5%` → `"down"`, caso contrário `"flat"`. `null` se sem dados suficientes.
+- `dropped_keywords` = `ms.trends_dropped_keywords.slice(0, 5)`.
 
-| Canal | URL |
-|---|---|
-| WhatsApp | `https://wa.me/?text=${encodeURIComponent(message + " " + url)}` |
-| LinkedIn | `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` (LinkedIn ignora texto custom; o teaser fica em OG meta) |
-| Email | `mailto:?subject=...&body=${encodeURIComponent(message + "\n\n" + url)}` |
-| Copiar | escreve `message + "\n" + url` no clipboard |
+Passar para `ctx.market_signals`. Se `marketSignalsFree` é `null`, manter `{ has_free: false, has_paid: false }`.
 
-Cada canal abre via `<a href>` (gesto limpo, sem `window.open`). LinkedIn vai depender dos OG tags do `/analyze/$username` — o head() actual já tem og:title e og:description; ficam suficientes na fase beta.
+## Mudança em `insights/prompt.ts`
 
-#### Componentes
+`computeAvailableSignals`:
+- Quando `ctx.market_signals.has_free`, adicionar:
+  - `market_signals.strongest_keyword` (se não-null)
+  - `market_signals.top_keywords` (se array não vazio)
+  - `market_signals.trend_direction` (se não-null)
+  - `market_signals.dropped_keywords` (se array não vazio)
 
-- **Novo**: `src/components/report-share/share-popover.tsx` — usa `Popover` do shadcn (já no projeto), 4 botões com ícones (`MessageCircle` para WhatsApp, `Linkedin`, `Mail`, `Link2`), bloco com a mensagem e indicador "Copiado ✓" inline.
-- **Novo**: `src/components/report-share/share-message.ts` — helper puro `buildShareMessage({ result, url })`.
-- **Editar**: `src/components/report-redesign/report-hero.tsx` — substituir o botão "Copiar" actual por trigger do popover.
-- **Editar**: `src/components/report-share/report-final-block.tsx` — substituir os dois botões de copy/LinkedIn pelo mesmo popover (passar `result` por prop nova).
-- **Editar**: `src/components/report-redesign/report-shell.tsx` — passar `result` ao `ReportFinalBlock`.
-- **Editar**: `src/components/report-share/share-copy.ts` — adicionar copy pt-PT para os novos canais e o cabeçalho do popover.
+`InsightsUserPayload.market_signals` ganha os mesmos campos opcionais.
 
-#### Acessibilidade
+`buildInsightsUserPayload` propaga os campos quando presentes.
 
-- Popover com `aria-label="Partilhar relatório"`, focus trap nativo do Radix.
-- Cada canal é um `<a>` semântico (não `button`) → funciona com middle-click e "abrir em nova aba".
-- Mensagem de teaser visível e seleccionável (utilizador pode copiar manualmente partes).
+`INSIGHTS_SYSTEM_PROMPT`: acrescentar 1 parágrafo:
 
----
+> "Quando `market_signals.has_free` é `true`, é OBRIGATÓRIO produzir pelo menos um insight que cruze o desempenho do perfil com a procura de mercado, citando `market_signals.strongest_keyword` e/ou `market_signals.trend_direction` em `evidence`. Quando `has_free` é `false`, NÃO referir procura de mercado, keywords nem tendências de pesquisa."
 
-## Fora do âmbito
+## Mudança em `insights/validate.ts`
 
-- Não tocar em `/report/example`.
-- Não mudar `src/lib/pdf/*` (o PDF em si está correcto).
-- Não tocar no endpoint `/api/public/public-report-pdf`.
-- Não criar dependências novas (usar `Popover` shadcn já instalado e ícones de `lucide-react`).
-- Não tocar em ficheiros em `LOCKED_FILES.md`.
+A allow-list de evidence é derivada de `buildInsightsUserPayload(ctx)` → `computeAvailableSignals(ctx)`, logo os novos paths são automaticamente aceites quando presentes. Apenas alargar `TECHNICAL_LEAK_PATTERNS` se necessário — neste caso o regex já cobre `market_signals.…` como caminho técnico proibido em title/body, o que continua correcto (o modelo cita em `evidence` mas escreve em pt-PT no body, ex.: "tendência de procura em alta para 'fotografia lisboa'").
+
+Sem alteração funcional ao validador além de confirmação de cobertura.
+
+## Comportamento — checklist requerido antes de smoke-test
+
+- `market_signals_free` será tentado inline: SIM, após `primaryEnriched` e antes do bloco OpenAI.
+- DataForSEO desativado (`DATAFORSEO_ENABLED!=true`): sem chamada, sem persistência, snapshot continua, OpenAI recebe `has_free=false`.
+- Allowlist bloqueia o handle: sem chamada, sem persistência, mesmo comportamento.
+- Cache hit: usa `readCachedSummary` no `existing.normalized_payload`; nenhum novo `provider_call_logs`.
+- Falha do DataForSEO (timeout/erro): `buildMarketSignals` devolve envelope; se `decideCacheTtlSeconds` autorizar, persiste estado negativo curto (10 min); snapshot Instagram nunca quebra.
 
 ## Validação
 
-- `bunx tsc --noEmit`.
-- QA manual em Chrome desktop, Safari iOS e Android Chrome:
-  - PDF abre com conteúdo no 1º clique.
-  - Popover de partilha mostra mensagem dinâmica correcta.
-  - WhatsApp abre app/web com texto + URL.
-  - Email abre cliente com subject + body.
-  - LinkedIn abre share dialog.
-  - Copiar coloca `mensagem + URL` no clipboard.
+- `bunx tsc --noEmit`
+- `bun run build`
+- Smoke-test só após aprovação explícita do utilizador.
 
-## Checklist
+## Checkpoint
 
-- ☐ Reescrever fluxo de abertura do PDF (sem `window.open` antecipado, com `<a download>` programático após resposta).
-- ☐ Pré-fetch opcional do PDF após o snapshot carregar (warm cache).
-- ☐ Criar `share-message.ts` (helper puro pt-PT).
-- ☐ Criar `share-popover.tsx` com 4 canais.
-- ☐ Integrar popover no `report-hero.tsx` e `report-final-block.tsx`.
-- ☐ Passar `result` ao `ReportFinalBlock` via `report-shell.tsx`.
-- ☐ Atualizar `share-copy.ts`.
-- ☐ `bunx tsc --noEmit` verde.
-- ☐ QA manual nos 3 navegadores.
+- ☐ `market_signals_free` adicionado a snapshots novos quando DataForSEO ativo + allowlisted
+- ☐ Snapshot Instagram nunca falha por causa do DataForSEO
+- ☐ OpenAI recebe `top_keywords`, `strongest_keyword`, `trend_direction`, `dropped_keywords` quando disponíveis
+- ☐ Prompt instrui cruzamento desempenho × procura só quando `has_free===true`
+- ☐ Cache hit não gera novos `provider_call_logs`
+- ☐ `/report/example` e ficheiros locked intactos
+- ☐ `bunx tsc --noEmit` verde
+- ☐ `bun run build` verde
