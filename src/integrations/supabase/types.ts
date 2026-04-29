@@ -116,6 +116,27 @@ export type Database = {
         }
         Relationships: []
       }
+      app_config: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       benchmark_references: {
         Row: {
           created_at: string
@@ -155,6 +176,36 @@ export type Database = {
           tier_max_followers?: number | null
           tier_min_followers?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      cost_daily: {
+        Row: {
+          amount_usd: number
+          call_count: number
+          collected_at: string
+          day: string
+          details: Json | null
+          id: string
+          provider: string
+        }
+        Insert: {
+          amount_usd?: number
+          call_count?: number
+          collected_at?: string
+          day: string
+          details?: Json | null
+          id?: string
+          provider: string
+        }
+        Update: {
+          amount_usd?: number
+          call_count?: number
+          collected_at?: string
+          day?: string
+          details?: Json | null
+          id?: string
+          provider?: string
         }
         Relationships: []
       }

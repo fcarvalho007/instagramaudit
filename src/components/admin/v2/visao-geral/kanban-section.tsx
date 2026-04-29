@@ -12,6 +12,7 @@ import {
   ACCENT_500,
   type AdminAccent,
 } from "../admin-tokens";
+import { MockDataBanner } from "../mock-data-banner";
 import { MOCK_KANBAN } from "@/lib/admin/mock-data";
 
 export function KanbanSection() {
@@ -23,6 +24,7 @@ export function KanbanSection() {
         accent="leads"
         info="Pipeline de relação com cada utilizador. Move-se da esquerda (lead) para a direita (subscritor)."
       />
+      <MockDataBanner reason="Pipeline de clientes requer tabela de subscrições e ciclo de vida (próxima fase)." />
 
       <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {MOCK_KANBAN.map((col) => (

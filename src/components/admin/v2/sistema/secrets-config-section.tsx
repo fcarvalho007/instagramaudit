@@ -1,28 +1,27 @@
 /**
- * Segredos e configuração — 2 cartões lado a lado:
- *   - Esquerdo: lista de segredos (nome mono + badge de presença)
- *   - Direito: configuração Apify em grid 2×2
- *
- * Sub-cartão final (full-width) descreve o modo de teste e mostra os handles
- * autorizados na allowlist.
+ * Segredos e configuração — dados reais via API.
  */
 
-import { ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { AdminCard } from "@/components/admin/v2/admin-card";
 import { AdminBadge } from "@/components/admin/v2/admin-badge";
 import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
 import { AdminInfoTooltip } from "@/components/admin/v2/admin-info-tooltip";
 import {
-  MOCK_APIFY_CONFIG,
-  MOCK_SECRETS,
-} from "@/lib/admin/mock-data";
+  SectionError,
+  SectionSkeleton,
+} from "@/components/admin/v2/section-state";
+import type {
+  CostCaps,
+  RuntimeCheck,
+  SecretPresence,
+} from "@/lib/admin/system-queries.server";
 
-interface ConfigCell {
-  eyebrow: string;
-  value: string;
-  sub: string;
-  tone?: "default" | "positive" | "negative";
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+  return (await res.json()) as T;
 }
 
 function CardHeader({ title, info }: { title: string; info: string }) {
@@ -36,118 +35,157 @@ function CardHeader({ title, info }: { title: string; info: string }) {
   );
 }
 
-function ConfigGridCell({ cell }: { cell: ConfigCell }) {
-  const valueClass =
-    cell.tone === "positive"
-      ? "text-admin-revenue-700"
-      : cell.tone === "negative"
-        ? "text-admin-danger-700"
-        : "text-admin-text-primary";
-  return (
-    <div className="bg-admin-surface px-4 py-3.5">
-      <p className="m-0 font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
-        {cell.eyebrow}
-      </p>
-      <p className={`m-0 mt-1 font-mono text-[14px] ${valueClass}`}>
-        {cell.value}
-      </p>
-      <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">
-        {cell.sub}
-      </p>
-    </div>
-  );
-}
-
 export function SecretsConfigSection() {
-  const isApifyOn = /lig|on|true|activ/i.test(MOCK_APIFY_CONFIG.enabled.value);
-  const isTestModeOn = /activ|on|lig|true/i.test(MOCK_APIFY_CONFIG.mode.value);
-  const apifyCells: ConfigCell[] = [
-    { eyebrow: "APIFY_ENABLED",  value: MOCK_APIFY_CONFIG.enabled.value,        sub: MOCK_APIFY_CONFIG.enabled.sub,        tone: isApifyOn ? "positive" : "default" },
-    { eyebrow: "MODO TESTE",     value: MOCK_APIFY_CONFIG.mode.value,           sub: MOCK_APIFY_CONFIG.mode.sub,           tone: isTestModeOn ? "positive" : "default" },
-    { eyebrow: "CUSTO/PERFIL",   value: MOCK_APIFY_CONFIG.costPerProfile.value, sub: MOCK_APIFY_CONFIG.costPerProfile.sub },
-    { eyebrow: "CUSTO/POST",     value: MOCK_APIFY_CONFIG.costPerPost.value,    sub: MOCK_APIFY_CONFIG.costPerPost.sub    },
-  ];
+  const secrets = useQuery({
+    queryKey: ["admin", "sistema", "secrets"],
+    queryFn: () => fetchJson<SecretPresence[]>("/api/admin/sistema/secrets"),
+    refetchInterval: 60_000,
+  });
+  const checks = useQuery({
+    queryKey: ["admin", "sistema", "runtime-checks"],
+    queryFn: () =>
+      fetchJson<RuntimeCheck[]>("/api/admin/sistema/runtime-checks"),
+    refetchInterval: 60_000,
+  });
+  const caps = useQuery({
+    queryKey: ["admin", "sistema", "caps"],
+    queryFn: () => fetchJson<CostCaps>("/api/admin/sistema/caps"),
+  });
+
+  const apifyEnabled = checks.data?.find((c) => c.name === "APIFY_ENABLED");
+  const dfsEnabled = checks.data?.find(
+    (c) => c.name === "DATAFORSEO_ENABLED",
+  );
+  const apifyTestMode = checks.data?.find(
+    (c) => c.name === "Modo de teste Apify",
+  );
+  const allowlist = (process.env.NEXT_PUBLIC_NOOP || "")
+    ? []
+    : []; // placeholder; allowlist real virá em runtime-checks (detail)
 
   return (
     <section>
       <AdminSectionHeader
         accent="neutral"
         title="Segredos e configuração"
-        info="Estado dos segredos configurados (apenas presença, nunca o valor) e parâmetros operacionais do Apify."
+        info="Estado dos segredos configurados (apenas presença, nunca o valor) e parâmetros operacionais."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Cartão Segredos */}
         <AdminCard>
           <CardHeader
             title="Segredos"
-            info="Apenas estado de presença. Os valores nunca são expostos no admin."
+            info="Apenas estado de presença. Os valores nunca são expostos."
           />
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {MOCK_SECRETS.map((secret) => (
-              <li
-                key={secret.name}
-                className="flex items-center justify-between rounded-lg bg-admin-surface-muted px-3.5 py-3"
-              >
-                <span className="font-mono text-[12px] text-admin-text-primary">
-                  {secret.name}
-                </span>
-                {secret.configured ? (
-                  <AdminBadge variant="revenue">Configurado</AdminBadge>
-                ) : (
-                  <AdminBadge variant="danger">Em falta</AdminBadge>
-                )}
-              </li>
-            ))}
-          </ul>
+          {secrets.isLoading ? (
+            <SectionSkeleton rows={6} rowHeight={32} />
+          ) : secrets.error ? (
+            <SectionError
+              error={secrets.error}
+              onRetry={() => secrets.refetch()}
+            />
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-2 p-0">
+              {(secrets.data ?? []).map((s) => (
+                <li
+                  key={s.name}
+                  className="flex items-center justify-between rounded-lg bg-admin-surface-muted px-3.5 py-3"
+                >
+                  <span className="font-mono text-[12px] text-admin-text-primary">
+                    {s.name}
+                  </span>
+                  {s.configured ? (
+                    <AdminBadge variant="revenue">Configurado</AdminBadge>
+                  ) : (
+                    <AdminBadge variant="danger">Em falta</AdminBadge>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </AdminCard>
 
-        {/* Cartão Apify config */}
         <AdminCard>
           <CardHeader
-            title="Configuração Apify"
-            info="Estado do provedor e tarifas usadas para estimar o custo de cada chamada."
+            title="Configuração de custos"
+            info="Estado dos provedores e caps mensais configurados em app_config."
           />
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-admin-border">
-            {apifyCells.map((cell) => (
-              <ConfigGridCell key={cell.eyebrow} cell={cell} />
-            ))}
-          </div>
+          {checks.isLoading || caps.isLoading ? (
+            <SectionSkeleton rows={4} rowHeight={48} />
+          ) : checks.error || caps.error ? (
+            <SectionError
+              error={checks.error ?? caps.error}
+              onRetry={() => {
+                checks.refetch();
+                caps.refetch();
+              }}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-admin-border">
+              <ConfigCell
+                eyebrow="APIFY_ENABLED"
+                value={apifyEnabled?.detail ?? "—"}
+                sub={`Cap $${caps.data?.apify ?? "—"}`}
+                tone={apifyEnabled?.status === "ok" ? "positive" : "default"}
+              />
+              <ConfigCell
+                eyebrow="DATAFORSEO_ENABLED"
+                value={dfsEnabled?.detail ?? "—"}
+                sub={`Cap $${caps.data?.dataforseo ?? "—"}`}
+                tone={dfsEnabled?.status === "ok" ? "positive" : "default"}
+              />
+              <ConfigCell
+                eyebrow="OPENAI"
+                value="API key configurada"
+                sub={`Cap $${caps.data?.openai ?? "—"}`}
+                tone={
+                  checks.data?.find((c) => c.name === "OpenAI API Key")
+                    ?.status === "ok"
+                    ? "positive"
+                    : "default"
+                }
+              />
+              <ConfigCell
+                eyebrow="MODO TESTE APIFY"
+                value={apifyTestMode?.detail ?? "—"}
+                sub="só handles na allowlist"
+                tone={apifyTestMode?.status === "ok" ? "positive" : "default"}
+              />
+            </div>
+          )}
+          <p className="mt-3 text-[11px] text-admin-text-tertiary">
+            Caps são configuráveis em <code>app_config</code> (cost_cap_*_usd).
+          </p>
         </AdminCard>
       </div>
-
-      {/* Sub-cartão modo teste / allowlist */}
-      <AdminCard className="mt-4">
-        <div className="max-w-xl">
-          <div className="flex items-center gap-2">
-            <h3 className="m-0 text-[14px] font-medium text-admin-text-primary">
-              Modo de teste
-            </h3>
-            <AdminBadge variant="revenue">Activo</AdminBadge>
-          </div>
-          <p className="m-0 mt-1 text-[12px] text-admin-text-secondary">
-            Quando activo, só os handles na allowlist disparam chamadas reais ao provider.
-          </p>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {MOCK_APIFY_CONFIG.allowlist.map((handle) => (
-            <span
-              key={handle}
-              className="inline-flex items-center rounded-md bg-admin-surface-muted px-2.5 py-1 font-mono text-[12px] text-admin-text-primary"
-            >
-              {handle}
-            </span>
-          ))}
-          <button
-            type="button"
-            className="ml-auto mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-admin-info-700 hover:underline sm:mt-0"
-          >
-            Editar allowlist
-            <ArrowRight size={12} />
-          </button>
-        </div>
-      </AdminCard>
     </section>
+  );
+}
+
+function ConfigCell({
+  eyebrow,
+  value,
+  sub,
+  tone,
+}: {
+  eyebrow: string;
+  value: string;
+  sub: string;
+  tone?: "default" | "positive" | "negative";
+}) {
+  const valueClass =
+    tone === "positive"
+      ? "text-admin-revenue-700"
+      : tone === "negative"
+        ? "text-admin-danger-700"
+        : "text-admin-text-primary";
+  return (
+    <div className="bg-admin-surface px-4 py-3.5">
+      <p className="m-0 font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
+        {eyebrow}
+      </p>
+      <p className={`m-0 mt-1 font-mono text-[14px] ${valueClass}`}>{value}</p>
+      <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">{sub}</p>
+    </div>
   );
 }
