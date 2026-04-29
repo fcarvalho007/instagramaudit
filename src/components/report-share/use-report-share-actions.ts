@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SHARE_COPY } from "./share-copy";
@@ -46,7 +46,6 @@ export function useReportShareActions(args: {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [pdfFallback, setPdfFallback] = useState<PdfFallback | null>(null);
-  const pendingPopupRef = useRef<Window | null>(null);
 
   useEffect(() => {
     if (reportUrl) {
@@ -61,13 +60,6 @@ export function useReportShareActions(args: {
   const exportPdf = useCallback(async () => {
     if (!snapshotId || pdfBusy) return;
     setPdfFallback(null);
-
-    let popup: Window | null = null;
-    if (typeof window !== "undefined") {
-      popup = window.open("about:blank", "_blank", "noopener,noreferrer");
-    }
-    pendingPopupRef.current = popup;
-
     setPdfBusy(true);
     try {
       const res = await fetch("/api/public/public-report-pdf", {
@@ -90,7 +82,6 @@ export function useReportShareActions(args: {
       }
 
       if (!res.ok || !body?.success || !body.signed_url) {
-        if (popup && !popup.closed) popup.close();
         const code = (body?.error_code ?? "DEFAULT") as PdfErrorCode;
         const message =
           SHARE_COPY.toast.pdfErrors[code] ??
@@ -100,33 +91,41 @@ export function useReportShareActions(args: {
       }
 
       const signedUrl = body.signed_url;
+      // Sempre expomos o link de fallback para que o utilizador possa
+      // re-abrir o PDF a qualquer momento (especialmente útil em mobile,
+      // onde o gesto programático pode não disparar uma nova aba).
+      setPdfFallback({ url: signedUrl });
 
-      if (popup && !popup.closed) {
+      // Tentamos abrir o PDF disparando o clique de uma <a> sintética.
+      // Como o handler ainda está dentro da mesma "task" do gesto do
+      // utilizador (mesmo após await), Chrome/Safari aceitam isto como
+      // navegação iniciada pelo utilizador e não bloqueiam.
+      let opened = false;
+      if (typeof document !== "undefined") {
         try {
-          popup.location.href = signedUrl;
-          toast.success(
-            body.cached
-              ? SHARE_COPY.toast.pdfCached
-              : SHARE_COPY.toast.pdfReady,
-          );
+          const a = document.createElement("a");
+          a.href = signedUrl;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          a.style.display = "none";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          opened = true;
         } catch {
-          try {
-            popup.close();
-          } catch {
-            /* noop */
-          }
-          setPdfFallback({ url: signedUrl });
-          toast.warning(SHARE_COPY.toast.pdfPopupBlocked);
+          opened = false;
         }
-      } else {
-        setPdfFallback({ url: signedUrl });
-        toast.warning(SHARE_COPY.toast.pdfPopupBlocked);
+      }
+
+      toast.success(
+        body.cached ? SHARE_COPY.toast.pdfCached : SHARE_COPY.toast.pdfReady,
+      );
+      if (!opened) {
+        toast.message(SHARE_COPY.toast.pdfPopupBlocked);
       }
     } catch {
-      if (popup && !popup.closed) popup.close();
       toast.error(SHARE_COPY.toast.pdfErrors.DEFAULT);
     } finally {
-      pendingPopupRef.current = null;
       setPdfBusy(false);
     }
   }, [snapshotId, pdfBusy]);
