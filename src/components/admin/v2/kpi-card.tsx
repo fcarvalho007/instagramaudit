@@ -17,6 +17,13 @@ import { type AdminAccent } from "./admin-tokens";
 type KPIVariant = "default" | "hero" | "accent-left";
 type KPISize = "sm" | "md" | "lg" | "hero";
 
+const SIZE_GAP: Record<KPISize, number> = {
+  sm: 8,
+  md: 12,
+  lg: 14,
+  hero: 18,
+};
+
 interface KPICardProps {
   eyebrow: string;
   value: ReactNode;
@@ -81,6 +88,7 @@ export function KPICard({
         valueClassName={valueClass}
         eyebrowClassName={eyebrowClass}
         subClassName={subClass}
+        gap={SIZE_GAP[size]}
       />
     </AdminCard>
   );
