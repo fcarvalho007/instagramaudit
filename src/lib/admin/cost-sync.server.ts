@@ -36,6 +36,7 @@ interface ApifyDailyUsageItem {
   day?: string;
   usageUsd?: number;
   totalUsd?: number;
+  totalUsageCreditsUsd?: number;
   runCount?: number;
 }
 
@@ -75,16 +76,34 @@ export async function syncApifyCosts(): Promise<SyncSummary> {
     const daily =
       json.data?.dailyUsages ?? json.data?.dailyServiceUsages ?? [];
 
+    // Fonte fiável de contagem de chamadas: provider_call_logs (a Apify
+    // monthly usage API não devolve runCount fiável por dia).
+    const since = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: apifyLogs } = await supabaseAdmin
+      .from("provider_call_logs")
+      .select("created_at, status")
+      .eq("provider", "apify")
+      .gte("created_at", since);
+    const callsPerDay = new Map<string, number>();
+    for (const row of apifyLogs ?? []) {
+      if (row.status !== "success") continue;
+      const day = String(row.created_at).slice(0, 10);
+      callsPerDay.set(day, (callsPerDay.get(day) ?? 0) + 1);
+    }
+
     let upserted = 0;
     for (const day of daily) {
       const dayKey = day.date ?? day.day;
       if (!dayKey) continue;
-      const amount = Number(day.usageUsd ?? day.totalUsd ?? 0);
-      const calls = Number(day.runCount ?? 0);
+      const amount = Number(
+        day.totalUsageCreditsUsd ?? day.usageUsd ?? day.totalUsd ?? 0,
+      );
+      const dayKeyShort = dayKey.slice(0, 10);
+      const calls = Number(day.runCount ?? callsPerDay.get(dayKeyShort) ?? 0);
       const row = {
         provider: "apify",
-        day: dayKey.slice(0, 10),
-        amount_usd: amount,
+        day: dayKeyShort,
+        amount_usd: Number(amount.toFixed(6)),
         call_count: calls,
         details: day as unknown as Json,
         collected_at: new Date().toISOString(),

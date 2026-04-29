@@ -1,62 +1,69 @@
-## Goal
+## Diagnóstico
 
-Make exactly one OpenAI call against `gpt-5.4-mini` using snapshot `b2d453cd-c269-407b-8a83-720e4f2baa50` (`frederico.m.carvalho`), validate the resulting `ai_insights_v1`, and report. No Apify, no DataForSEO, no `/api/analyze-public-v1`, no snapshot mutation, no production code changes.
+Verifiquei a base de dados e o código real. A tab **Despesa** (em `/admin/visao-geral`) lê de `cost_daily` — e essa tabela está mesmo a zero para Apify e DataForSEO, apesar de já existir despesa real:
 
-## Preconditions (already verified)
+- `provider_call_logs` mostra **9 chamadas Apify com sucesso** ($0,099 estimado), **6 DataForSEO com sucesso** ($0,054 reais), 3 OpenAI ($0,010).
+- `cost_daily` para Apify e DataForSEO tem `amount_usd = 0` em todos os dias, embora os `details` JSON contenham os valores reais.
 
-- Snapshot `b2d453cd-c269-407b-8a83-720e4f2baa50` exists, handle = `frederico.m.carvalho`.
-- Has `profile`, `content_summary`, 12 `posts`, `market_signals_free` with `status = ready`, no `ai_insights_v1`.
-- `DEFAULT_OPENAI_MODEL = "gpt-5.4-mini"`, `FALLBACK_MODEL = "gpt-5.4-mini"`.
-- Pricing entry present for `gpt-5.4-mini` (input 0.75 / cached 0.075 / output 4.5 per 1M).
-- No `gpt-5.4-nano` references in `src/lib/insights/` (verified previous turn).
+Encontrei três bugs e uma omissão de UI. Não é preciso pedir ao utilizador para clicar em nada — a sincronização tem de ficar automática e correta. Após o fix, o próximo cron (ou o primeiro `Forçar sync`) preenche tudo retroactivamente.
 
-## Steps
+### Bug 1 — Apify: campos errados na resposta da API
 
-1. Run `bun run scripts/check-openai-insights-config.ts` and assert:
-   - `resolved_model === "gpt-5.4-mini"`
-   - `default_model === "gpt-5.4-mini"`
-   - `fallback_model === "gpt-5.4-mini"`
-   - Re-confirm `rg "gpt-5\.4-nano" src/lib/insights/` returns nothing.
-   - Stop immediately if any check fails.
+`syncApifyCosts` lê `usageUsd`/`totalUsd`/`runCount`, mas a API real devolve `totalUsageCreditsUsd` e não traz contagem de runs no item diário. Resultado: 0 USD e 0 calls em todos os dias, embora o JSON guardado em `details` mostre `totalUsageCreditsUsd: 0.00925` etc.
 
-2. Create temporary script `/tmp/run-openai-validation.ts` (outside `src/`) that:
-   - Uses `supabaseAdmin` to fetch the snapshot row by id.
-   - Reads `normalized_payload` and rebuilds `InsightsContext`:
-     - `profile`: from `normalized_payload.profile`.
-     - `content_summary`: from `normalized_payload.content_summary`.
-     - `top_posts`: top 3 by `engagement_pct` from `normalized_payload.posts`, mapped to `{ format, likes, comments, engagement_pct, caption_excerpt }`.
-     - `benchmark`: computed via existing `computeBenchmarkPositioning` helper using `benchmark_references` rows + profile followers + content_summary engagement (read-only).
-     - `competitors_summary`: derived from `normalized_payload.competitors` (count + median engagement_pct, or `{count:0, median_engagement_pct:null}` if absent).
-     - `market_signals`: summary built from `normalized_payload.market_signals_free` (`has_free=true`, `has_paid=false`, top_keywords, strongest_keyword, trend_direction, dropped_keywords, strongest_score, trend_delta_pct, usable_keyword_count, zero_signal_keywords).
-   - Calls `generateInsights(ctx)` exactly once.
-   - Does NOT update `analysis_snapshots`.
-   - Prints a single JSON report with all required fields.
-   - Queries `provider_call_logs` after the call to fetch the row id created during this run (latest row for this handle/provider=openai within last 60s).
+**Fix:** ler `totalUsageCreditsUsd` (com fallback para `usageUsd`/`totalUsd`) e contar Apify runs do dia a partir de `provider_call_logs` em vez do `runCount` (que vem vazio).
 
-3. Execute the script with `bun run /tmp/run-openai-validation.ts`.
+### Bug 2 — DataForSEO: `money.spent` vem 0
 
-4. Capture and report:
-   - snapshot used
-   - OpenAI-only call made: yes/no
-   - resolved model
-   - model returned by provider (`json.model`)
-   - provider_call_logs id
-   - validator result (ok / reason)
-   - number of insights, insight titles
-   - market evidence used: yes/no
-   - evidence paths used (union of `evidence[]` across insights)
-   - prompt_tokens, cached_tokens, completion_tokens, total_tokens
-   - estimated_cost_usd
-   - technical token leakage in title/body: yes/no (regex scan for `engagement_pct`, `tier_label`, `cache_key`, `normalized_payload`, etc.)
-   - snapshot modified: no
-   - ready for full fresh smoke test: yes/no
+`appendix/user_data` devolve `money.spent = 0` na conta atual ($50,95 saldo). O delta diário é sempre 0. Os custos reais que pagamos estão em `provider_call_logs.actual_cost_usd` (gravado no momento de cada chamada DataForSEO — fonte de verdade).
 
-5. Delete `/tmp/run-openai-validation.ts`.
+**Fix:** mudar `syncDataForSeoCosts` para o mesmo padrão do OpenAI (agregar `provider_call_logs` por dia, com `provider='dataforseo'`). Manter a chamada `appendix/user_data` apenas para guardar o `balance_at_snapshot` no `details` da linha de hoje (mostra "saldo $X" no cartão).
 
-## Guardrails
+### Bug 3 — KPI DataForSEO em falta no `Custos detalhados`
 
-- The temp script imports only `generateInsights`, `supabaseAdmin`, `computeBenchmarkPositioning`, and types. It never calls `/api/analyze-public-v1`, never invokes Apify or DataForSEO modules, and never writes to `analysis_snapshots`.
-- No production source files under `src/` are edited.
-- Exactly one OpenAI fetch will occur (inside `generateInsights`), which produces exactly one row in `provider_call_logs`.
-- If the diagnostic shows the resolved model is not exactly `gpt-5.4-mini`, the script is not executed.
-- After the run completes (success or failure), the temp script is removed and no second run is performed without explicit approval.
+`fetchCostMetrics24h` já calcula `dataforseo: { amount_usd, calls }` mas o componente `CostsDetailSection` só renderiza 4 cartões: Apify · OpenAI · Cache hits · Poupança. Falta o cartão DataForSEO — daí a percepção de "caixa em falta".
+
+**Fix:** ajustar a grid para 5 colunas em `xl` (4 em `lg`, 2 em `sm`) e inserir KPI DataForSEO entre OpenAI e Cache hits.
+
+### Melhoria — Tooltip do botão "Forçar sync provedores"
+
+O texto atual está bem ("Os custos atualizam-se automaticamente a cada 60 segundos. Este botão força a sincronização imediata"), mas a frase "primeira sincronização decorre à meia-noite UTC" no `ExpenseSection` é falsa quando o cron já passou e a tabela ainda não recebe Apify/DFS por causa dos bugs acima. Após o fix, esta mensagem deixa de ser frequente.
+
+## Alterações
+
+1. `src/lib/admin/cost-sync.server.ts`
+   - **Apify:** ler `totalUsageCreditsUsd`; depois do upsert, fazer uma query a `provider_call_logs` (provider=apify, status=success) agrupada por dia para preencher `call_count` real.
+   - **DataForSEO:** substituir lógica de delta por agregação de `provider_call_logs.actual_cost_usd ?? estimated_cost_usd` por dia (últimos 30d). Continuar a fazer 1 chamada a `appendix/user_data` apenas para gravar `balance_at_snapshot` no `details` do dia de hoje.
+   - **OpenAI:** sem alterações funcionais (já correcto). Acrescentar fallback de `actual_cost_usd → estimated_cost_usd` (já existe).
+
+2. `src/components/admin/v2/sistema/costs-detail-section.tsx`
+   - Mudar grid de KPIs para `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5`.
+   - Inserir `KPICard` para DataForSEO com `metrics.data!.dataforseo.amount_usd` e `calls`.
+
+3. (Opcional, baixo risco) `src/components/admin/v2/visao-geral/expense-section.tsx`
+   - Tornar o texto de empty-state menos alarmista quando `chartData` estiver vazio mas o cron já tiver corrido. Ler `data.dataforseo_balance` ou `daily.length` para decidir a frase.
+
+## Validação
+
+Depois das mudanças (build automático):
+
+1. `psql` para invocar manualmente o sync:
+   ```
+   POST /api/admin/sistema/sync-now
+   ```
+   Confirmar `cost_daily` para `apify` e `dataforseo` passa a ter `amount_usd > 0` nos dias com `provider_call_logs` reais.
+
+2. Abrir `/admin/visao-geral` → secção **Despesa** deve mostrar:
+   - Apify > $0
+   - OpenAI > $0
+   - DataForSEO > $0 (com saldo $50,95 em "saldo")
+   - Total > $0 e gráfico empilhado preenchido
+
+3. Abrir `/admin/sistema` → secção **Custos detalhados** deve mostrar **5 KPIs** (Apify · OpenAI · DataForSEO · Cache hits · Poupança).
+
+4. Sem chamadas a OpenAI, Apify ou DataForSEO durante a validação visual (apenas o `sync-now` que já é seguro — só lê custos, não consome tokens).
+
+## Fora de alcance
+
+- Não tocar em `/report.example`, `/api/analyze-public-v1`, snapshots, prompts, ou esquema da BD.
+- Não mexer no botão "Forçar sync provedores" (continua a funcionar e a ser útil para forçar refresh manual).
