@@ -76,6 +76,7 @@ import {
   isDataForSeoEnabled,
 } from "@/lib/security/dataforseo-allowlist";
 import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
+import { buildEditorialPatterns, buildEditorialPatternsForInsights } from "@/lib/report/editorial-patterns";
 import {
   buildPersistedSummary,
   decideCacheTtlSeconds,
@@ -943,6 +944,29 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   engagement_pct: p.engagement_pct,
                   caption_excerpt: p.caption ?? "",
                 }));
+              // R5: derive editorial_patterns once and pass into the
+              // OpenAI ctx so insights can explain WHY, not just WHAT.
+              // Defensive: helper returns undefined when nothing useful.
+              const editorialPatternsForAi = buildEditorialPatternsForInsights(
+                buildEditorialPatterns({
+                  profile: primaryProfile,
+                  content_summary: primarySummary,
+                  posts: primaryEnriched.posts,
+                  format_stats: primaryEnriched.format_stats,
+                  ...(marketSignalsFree
+                    ? { market_signals_free: marketSignalsFree }
+                    : {}),
+                } as unknown as Parameters<typeof buildEditorialPatterns>[0]),
+                {
+                  posts: primaryEnriched.posts,
+                  profile: {
+                    dominant_format: primarySummary.dominant_format,
+                    average_engagement_rate:
+                      primarySummary.average_engagement_rate,
+                  },
+                  competitors: { median_engagement_pct: medianEngagement },
+                },
+              );
               const ctx: InsightsContext = {
                 profile: primaryProfile,
                 content_summary: primarySummary,
@@ -957,6 +981,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 market_signals: summarizeMarketSignalsForInsights(
                   marketSignalsFree,
                 ),
+                ...(editorialPatternsForAi
+                  ? { editorial_patterns: editorialPatternsForAi }
+                  : {}),
               };
               const result = await generateInsights(ctx);
               if (result.ok && result.insights) {
@@ -1014,6 +1041,26 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   engagement_pct: p.engagement_pct,
                   caption_excerpt: p.caption ?? "",
                 }));
+              const editorialPatternsForAiV2 = buildEditorialPatternsForInsights(
+                buildEditorialPatterns({
+                  profile: primaryProfile,
+                  content_summary: primarySummary,
+                  posts: primaryEnriched.posts,
+                  format_stats: primaryEnriched.format_stats,
+                  ...(marketSignalsFree
+                    ? { market_signals_free: marketSignalsFree }
+                    : {}),
+                } as unknown as Parameters<typeof buildEditorialPatterns>[0]),
+                {
+                  posts: primaryEnriched.posts,
+                  profile: {
+                    dominant_format: primarySummary.dominant_format,
+                    average_engagement_rate:
+                      primarySummary.average_engagement_rate,
+                  },
+                  competitors: { median_engagement_pct: medianEngagementV2 },
+                },
+              );
               const ctxV2: InsightsContext = {
                 profile: primaryProfile,
                 content_summary: primarySummary,
@@ -1026,6 +1073,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 market_signals: summarizeMarketSignalsForInsights(
                   marketSignalsFree,
                 ),
+                ...(editorialPatternsForAiV2
+                  ? { editorial_patterns: editorialPatternsForAiV2 }
+                  : {}),
               };
               const resultV2 = await generateInsightsV2(ctxV2, {
                 previous: previousV2,
