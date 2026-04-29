@@ -47,7 +47,7 @@ export function IntentSection() {
             eyebrowRight="leads quentes"
             subtitle="Mesmo perfil pesquisado várias vezes — sinal forte de intenção."
           />
-          <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+          <ul className="m-0 mt-4 flex list-none flex-col gap-1.5 p-0">
             {MOCK_INTENT_REPEATED.map((row) => (
               <Row key={row.profile}>
                 <div>
