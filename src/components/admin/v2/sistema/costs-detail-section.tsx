@@ -18,6 +18,7 @@ import {
   SectionError,
   SectionSkeleton,
 } from "@/components/admin/v2/section-state";
+import { adminFetch } from "@/lib/admin/fetch";
 import type {
   AlertRow,
   Cost24hMetrics,
@@ -25,7 +26,7 @@ import type {
 } from "@/lib/admin/system-queries.server";
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "include" });
+  const res = await adminFetch(url);
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return (await res.json()) as T;
 }
@@ -85,9 +86,8 @@ export function CostsDetailSection() {
   });
   const ackMut = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/admin/sistema/alerts/${id}/ack`, {
+      const res = await adminFetch(`/api/admin/sistema/alerts/${id}/ack`, {
         method: "POST",
-        credentials: "include",
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     },

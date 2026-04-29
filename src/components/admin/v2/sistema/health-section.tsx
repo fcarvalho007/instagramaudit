@@ -14,6 +14,7 @@ import {
   SectionError,
   SectionSkeleton,
 } from "@/components/admin/v2/section-state";
+import { adminFetch } from "@/lib/admin/fetch";
 import type {
   HealthChip,
   HealthStatus,
@@ -36,7 +37,7 @@ const SMOKE_TONE: Record<
 };
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "include" });
+  const res = await adminFetch(url);
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return (await res.json()) as T;
 }
