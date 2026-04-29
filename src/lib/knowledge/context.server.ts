@@ -35,7 +35,7 @@ export async function getKnowledgeContext(
     const { data, error } = await supabaseAdmin.rpc("get_knowledge_context", {
       p_tier: input.tier,
       p_format: input.format,
-      p_vertical: input.vertical ?? null,
+      p_vertical: input.vertical ?? undefined,
     });
     if (error) {
       console.error("[knowledge] get_knowledge_context failed", error.message);
