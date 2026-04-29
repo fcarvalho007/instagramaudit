@@ -241,9 +241,9 @@ function MetricCard({
 }) {
   const accentDot =
     accent === "positive"
-      ? "bg-accent-success"
+      ? "bg-signal-success"
       : accent === "warning"
-        ? "bg-accent-warning"
+        ? "bg-signal-warning"
         : "bg-content-tertiary/60";
   return (
     <div className="rounded-2xl border border-border-subtle/40 bg-surface-elevated/60 p-5 md:p-6 min-w-0">
