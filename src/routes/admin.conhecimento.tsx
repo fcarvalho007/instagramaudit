@@ -14,7 +14,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
-import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
 import { OverviewSection } from "@/components/admin/v2/conhecimento/overview-section";
 import { BenchmarksSection } from "@/components/admin/v2/conhecimento/benchmarks-section";
 import { SourcesSection } from "@/components/admin/v2/conhecimento/sources-section";
@@ -31,13 +30,12 @@ function ConhecimentoPage() {
         title="Knowledge Base"
         subtitle="Contexto editorial verificado que alimenta os insights da IA. Benchmarks de referência, fontes documentadas e notas estratégicas — tudo auditável."
         actions={
-          <AdminActionButton
-            as="a"
+          <a
             href="/api/admin/knowledge/export"
-            variant="default"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-[12px] font-medium text-admin-text-primary no-underline transition-colors hover:bg-admin-bg-hover"
           >
             Exportar dataset
-          </AdminActionButton>
+          </a>
         }
       />
 
