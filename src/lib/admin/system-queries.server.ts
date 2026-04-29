@@ -286,31 +286,8 @@ export function fetchRuntimeChecks(): RuntimeCheck[] {
 
 export async function fetchCostMetrics24h(): Promise<Cost24hMetrics> {
   const since = isoSinceHours(24);
-  const { data: logs } = await supabaseAdmin
-    .from("provider_call_logs")
-    .select("provider, actual_cost_usd, estimated_cost_usd, status")
-    .gte("created_at", since);
-
-  const acc = {
-    apify: { amount_usd: 0, calls: 0 },
-    openai: { amount_usd: 0, calls: 0 },
-    dataforseo: { amount_usd: 0, calls: 0 },
-  };
-  let apifyFreshSum = 0;
-  let apifyFreshCount = 0;
-
-  for (const row of logs ?? []) {
-    const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
-    const provider = String(row.provider) as keyof typeof acc;
-    if (provider in acc) {
-      acc[provider].amount_usd += cost;
-      acc[provider].calls += 1;
-      if (provider === "apify" && row.status === "success") {
-        apifyFreshSum += cost;
-        apifyFreshCount += 1;
-      }
-    }
-  }
+  const { totals: acc, apifyFreshSum, apifyFreshCount } =
+    await aggregateCostsFromLogs(since);
 
   const { count: cacheHits } = await supabaseAdmin
     .from("analysis_events")
