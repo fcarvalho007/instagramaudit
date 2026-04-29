@@ -70,6 +70,24 @@ export interface AiInsightForPdf {
   confidence: "baseado em dados observados" | "sinal parcial";
 }
 
+/**
+ * Pre-derived market signals for the PDF. Resolved upstream in `render.ts`
+ * from `normalized_payload.market_signals_free` — the PDF NEVER calls
+ * DataForSEO. When null upstream, the page is omitted.
+ */
+export interface MarketSignalsForPdf {
+  /** Strongest keyword by mean of usable trends series. */
+  strongest: string;
+  /** Direction of the strongest series. */
+  trend: "up" | "flat" | "down";
+  /** Keywords with usable signal — rendered as accent chips. */
+  usableKeywords: string[];
+  /** Keywords without volume — rendered as muted chips. */
+  droppedKeywords: string[];
+  /** Number of valid points in the strongest series (for the hint line). */
+  pointCount: number;
+}
+
 export interface ReportDocumentInput {
   profile: PublicAnalysisProfile;
   contentSummary: PublicAnalysisContentSummary;
@@ -96,6 +114,12 @@ export interface ReportDocumentInput {
   aiInsightsModel?: string | null;
   /** ISO timestamp of when the OpenAI insights were generated. */
   aiInsightsGeneratedAt?: string | null;
+  /**
+   * Optional persisted DataForSEO market signals already derived upstream.
+   * When null/undefined the "Sinais de mercado" page is omitted. The PDF
+   * NEVER calls DataForSEO — this is a pure read of the snapshot.
+   */
+  marketSignals?: MarketSignalsForPdf | null;
   /** ISO timestamp of the underlying analysis snapshot. */
   analyzedAt: string;
   /** ISO timestamp of when the PDF itself is generated. */
