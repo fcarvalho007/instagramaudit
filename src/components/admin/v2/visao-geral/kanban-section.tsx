@@ -5,33 +5,32 @@
  * cor temática) + lista semântica `<ul>/<li>`.
  */
 
-import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import {
   ACCENT_500,
   type AdminAccent,
 } from "../admin-tokens";
-import { MockDataBanner } from "../mock-data-banner";
+import { DemoOnlySection } from "../demo-only-section";
 import { MOCK_KANBAN } from "@/lib/admin/mock-data";
 
 export function KanbanSection() {
   return (
-    <section>
-      <AdminSectionHeader
-        title="Clientes — kanban"
-        subtitle="pipeline de relação"
-        accent="leads"
-        info="Pipeline de relação com cada utilizador. Move-se da esquerda (lead) para a direita (subscritor)."
-      />
-      <MockDataBanner reason="Pipeline de clientes requer tabela de subscrições e ciclo de vida (próxima fase)." />
-
-      <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {MOCK_KANBAN.map((col) => (
-          <KanbanColumn key={col.id} col={col} />
-        ))}
-      </div>
-    </section>
+    <DemoOnlySection
+      title="Clientes — kanban"
+      subtitle="pipeline de relação"
+      accent="leads"
+      info="Pipeline de relação com cada utilizador. Move-se da esquerda (lead) para a direita (subscritor)."
+      pendingReason="O kanban de clientes depende de subscrições e ciclo de vida (lead → trial → cliente → churn). Será ligado quando a integração de pagamentos estiver no sítio."
+    >
+      <section>
+        <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          {MOCK_KANBAN.map((col) => (
+            <KanbanColumn key={col.id} col={col} />
+          ))}
+        </div>
+      </section>
+    </DemoOnlySection>
   );
 }
 

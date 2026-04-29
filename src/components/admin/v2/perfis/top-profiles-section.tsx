@@ -9,7 +9,7 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip } from "recharts";
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminAvatar } from "../admin-avatar";
 import { ADMIN_LITERAL } from "../admin-tokens";
@@ -33,14 +33,14 @@ const MAX_ANALYSES = MOCK_TOP_PROFILES.reduce(
 
 export function TopProfilesSection() {
   return (
-    <section>
-      <AdminSectionHeader
-        title="Top perfis"
-        subtitle="ranking por volume"
-        accent="signal"
-        info="Perfis com maior volume de análises e relatórios. As barras horizontais comparam volume de pesquisa (cinza) com relatórios pagos gerados (coral)."
-      />
-
+    <DemoOnlySection
+      title="Top perfis"
+      subtitle="ranking por volume"
+      accent="signal"
+      info={"Perfis com maior volume de análises e relatórios. As barras horizontais comparam volume de pesquisa (cinza) com relatórios pagos gerados (coral)."}
+      pendingReason={"Ranking de perfis mais analisados será ligado a `social_profiles.analyses_total`. Requer pequena agregação adicional (próxima iteração)."}
+    >
+      <section>
       <AdminCard className="!p-7">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[2fr_1fr]">
           <RankingColumn />
@@ -48,6 +48,7 @@ export function TopProfilesSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }
 

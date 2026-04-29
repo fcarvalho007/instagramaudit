@@ -9,7 +9,7 @@
  */
 
 import { type ReactNode } from "react";
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { type AdminAccent, ACCENT_500 } from "../admin-tokens";
@@ -21,14 +21,14 @@ export function MetricsSection() {
   const m = MOCK_PROFILES_METRICS;
 
   return (
-    <section>
-      <AdminSectionHeader
-        title="Visão de perfis"
-        subtitle="últimos 30 dias"
-        accent="expense"
-        info="Agregação de todos os perfis Instagram analisados pela ferramenta nos últimos 30 dias."
-      />
-
+    <DemoOnlySection
+      title="Visão de perfis"
+      subtitle="últimos 30 dias"
+      accent="expense"
+      info={"Agregação de todos os perfis Instagram analisados pela ferramenta nos últimos 30 dias."}
+      pendingReason={"Métricas agregadas de perfis serão ligadas a `social_profiles` e `analysis_events` numa próxima iteração. Até lá, ativa Modo demonstração para ver o layout."}
+    >
+      <section>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ProfileKpi
           accent="expense"
@@ -62,6 +62,7 @@ export function MetricsSection() {
         />
       </div>
     </section>
+    </DemoOnlySection>
   );
 }
 

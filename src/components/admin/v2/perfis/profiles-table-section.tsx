@@ -19,7 +19,7 @@ import {
   Send,
 } from "lucide-react";
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import { AdminAvatar } from "../admin-avatar";
@@ -93,15 +93,16 @@ export function ProfilesTableSection() {
   ];
 
   return (
-    <section>
+    <DemoOnlySection
+      title="Tabela de perfis"
+      subtitle="284 perfis · 30 dias"
+      accent="expense"
+      info={"Lista completa de perfis Instagram analisados. Usa os filtros para isolar perfis que já converteram, repetidos sem report ou outros segmentos."}
+      pendingReason={"Tabela detalhada de perfis com filtros e ordenação será ligada a `social_profiles`. Entretanto, a tab Sistema mostra perfis analisados via logs reais."}
+    >
+      <section>
       <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
         <div className="-mb-3.5">
-          <AdminSectionHeader
-            title="Tabela de perfis"
-            subtitle="284 perfis · 30 dias"
-            accent="expense"
-            info="Lista completa de perfis Instagram analisados. Usa os filtros para isolar perfis que já converteram, repetidos sem report ou outros segmentos."
-          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <AdminSearchInput
@@ -182,6 +183,7 @@ export function ProfilesTableSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }
 

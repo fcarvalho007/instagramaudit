@@ -9,7 +9,7 @@
  * de saúde pulsante no canto inferior direito.
  */
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import {
@@ -35,14 +35,14 @@ export function PipelineSection() {
   const failuresCritical = aggregates.failuresToRecover.value > 0;
 
   return (
-    <section>
-      <AdminSectionHeader
-        title="Pipeline operacional"
-        subtitle="do pedido à entrega"
-        accent="signal"
-        info="Cada relatório passa por 4 fases: pedido recebido → análise Apify → PDF gerado → email entregue. Fases bloqueadas indicam intervenção manual necessária."
-      />
-
+    <DemoOnlySection
+      title="Pipeline operacional"
+      subtitle="do pedido à entrega"
+      accent="signal"
+      info={"Cada relatório passa por 4 fases: pedido recebido → análise Apify → PDF gerado → email entregue. Fases bloqueadas indicam intervenção manual necessária."}
+      pendingReason={"O pipeline operacional (Pedido → Análise → PDF → Email) tem zero pedidos por enquanto. Será preenchido com dados reais à medida que existam relatórios pagos."}
+    >
+      <section>
       <AdminCard className="!p-7">
         {/* Fases */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -91,6 +91,7 @@ export function PipelineSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }
 

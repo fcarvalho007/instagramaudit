@@ -9,7 +9,7 @@
 
 import { ArrowRight } from "lucide-react";
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminActionButton } from "../admin-action-button";
 import { ADMIN_LITERAL } from "../admin-tokens";
@@ -22,18 +22,19 @@ import {
 
 export function IntentOpportunitiesSection() {
   return (
-    <section>
-      <AdminSectionHeader
-        title="Oportunidades de conversão"
-        accent="signal"
-        info="Perfis pesquisados várias vezes pelos mesmos utilizadores que ainda não geraram relatório pago. Cada repetição é um sinal forte de intenção."
-      />
-
+    <DemoOnlySection
+      title="Oportunidades de conversão"
+      accent="signal"
+      info={"Perfis pesquisados várias vezes pelos mesmos utilizadores que ainda não geraram relatório pago. Cada repetição é um sinal forte de intenção."}
+      pendingReason={"Oportunidades = perfis pesquisados ≥2 vezes sem relatório comprado. Requer dedup de pesquisas anónimas (próxima fase) — entretanto a tab Perfis lista os perfis já analisados."}
+    >
+      <section>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RepeatedSearchesCard />
         <PerProfileFunnelCard />
       </div>
     </section>
+    </DemoOnlySection>
   );
 }
 

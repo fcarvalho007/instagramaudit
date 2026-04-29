@@ -5,10 +5,10 @@
 
 import { useState } from "react";
 
-import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import { ReportDrawer } from "../report-drawer";
+import { DemoOnlySection } from "../demo-only-section";
 import {
   MOCK_INTENT_REPEATED,
   MOCK_REPORTS_LIST,
@@ -31,14 +31,14 @@ export function IntentSection() {
   }
 
   return (
+    <DemoOnlySection
+      title="Sinais de intenção"
+      subtitle="oportunidades quentes"
+      accent="signal"
+      info="Sinais comportamentais que indicam intenção de compra elevada. Pesquisas repetidas são leads quentes."
+      pendingReason="Pesquisas repetidas e relatórios pagos requerem dedup de pesquisas anónimas e ciclo de checkout. A versão real chega na próxima fase — entretanto a tab Perfis já mostra perfis analisados reais."
+    >
     <section>
-      <AdminSectionHeader
-        title="Sinais de intenção"
-        subtitle="oportunidades quentes"
-        accent="signal"
-        info="Sinais comportamentais que indicam intenção de compra elevada. Pesquisas repetidas são leads quentes."
-      />
-
       <div className="grid gap-3.5 grid-cols-1 lg:grid-cols-2">
         {/* Pesquisas repetidas */}
         <AdminCard>
@@ -130,6 +130,7 @@ export function IntentSection() {
         reportId={selectedReportId}
       />
     </section>
+    </DemoOnlySection>
   );
 }
 

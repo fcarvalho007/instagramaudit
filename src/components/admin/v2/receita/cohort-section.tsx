@@ -5,7 +5,7 @@
  * Valores `null` no array de retenções renderizam como `—` (futuro).
  */
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { MOCK_COHORTS } from "@/lib/admin/mock-data";
 
@@ -22,14 +22,14 @@ const SCALE_LEGEND = [10, 50, 65, 75, 85, 95]; // pontos representativos para os
 
 export function CohortSection() {
   return (
-    <section>
-      <AdminSectionHeader
-        title="Cohort de retenção"
-        subtitle="% de subscritores que se mantêm activos"
-        accent="leads"
-        info="Percentagem de subscritores que se mantêm activos após o registo, agrupados por mês de entrada."
-      />
-
+    <DemoOnlySection
+      title="Cohort de retenção"
+      subtitle="% de subscritores que se mantêm activos"
+      accent="leads"
+      info={"Percentagem de subscritores que se mantêm activos após o registo, agrupados por mês de entrada."}
+      pendingReason={"A análise de cohort retention exige um histórico de subscrições (tabela `subscriptions` com mês de aquisição e estado activo). Será calculado quando o checkout estiver no sítio."}
+    >
+      <section>
       <AdminCard className="!px-6 !py-5">
         <div className="overflow-x-auto">
           <table
@@ -109,5 +109,6 @@ export function CohortSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }

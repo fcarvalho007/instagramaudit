@@ -8,7 +8,7 @@
 import { useState } from "react";
 
 import { AdminCard } from "../admin-card";
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminBadge } from "../admin-badge";
 import { AdminAvatar } from "../admin-avatar";
 import { AdminActionButton } from "../admin-action-button";
@@ -85,13 +85,14 @@ export function CustomerCardSection() {
   }
 
   return (
-    <section>
-      <AdminSectionHeader
-        title={`Ficha · ${c.name}`}
-        subtitle="selecionada na tabela acima"
-        accent="leads"
-        info="Vista detalhada do cliente seleccionado: KPIs de saúde, timeline de actividade, perfis analisados e notas internas."
-      />
+    <DemoOnlySection
+      title="selecionada na tabela acima"
+      subtitle="selecionada na tabela acima"
+      accent="leads"
+      info={"Vista detalhada do cliente seleccionado: KPIs de saúde, timeline de actividade, perfis analisados e notas internas."}
+      pendingReason={"A ficha de cliente agrega subscrições, faturas, perfis pesquisados e atividade. Requer tabela `customers` ligada a leads + subscrições."}
+    >
+      <section>
       <AdminCard className="!px-8 !py-7">
         {/* Header da ficha */}
         <div className="mb-7 flex flex-wrap items-center gap-5">
@@ -306,5 +307,6 @@ export function CustomerCardSection() {
         reportId={selectedReportId}
       />
     </section>
+    </DemoOnlySection>
   );
 }

@@ -18,7 +18,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import {
   MOCK_MRR_WATERFALL,
@@ -87,14 +87,14 @@ export function WaterfallSection() {
   const data = buildChartData();
 
   return (
-    <section>
-      <AdminSectionHeader
-        title="Anatomia do MRR"
-        subtitle="como €612 se tornaram €684"
-        accent="leads"
-        info="Decomposição do crescimento do MRR: novos subscritores, expansões (upgrades), contracções (downgrades) e churn."
-      />
-
+    <DemoOnlySection
+      title="Anatomia do MRR"
+      subtitle="como €612 se tornaram €684"
+      accent="leads"
+      info={"Decomposição do crescimento do MRR: novos subscritores, expansões (upgrades), contracções (downgrades) e churn."}
+      pendingReason={"O waterfall MRR (new + expansion - contraction - churn) só faz sentido com histórico mensal de subscrições. Disponível após integração de checkout."}
+    >
+      <section>
       <AdminCard className="!px-7 !py-6">
         <div
           role="img"
@@ -200,5 +200,6 @@ export function WaterfallSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }

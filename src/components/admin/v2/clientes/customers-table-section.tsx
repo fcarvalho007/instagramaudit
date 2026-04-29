@@ -9,7 +9,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { AdminCard } from "../admin-card";
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminBadge } from "../admin-badge";
 import { AdminAvatar } from "../admin-avatar";
 import { AdminActionButton } from "../admin-action-button";
@@ -92,13 +92,14 @@ export function CustomersTableSection() {
   }, [filter, debouncedQuery]);
 
   return (
-    <section>
+    <DemoOnlySection
+      title="Lista de clientes"
+      accent="revenue"
+      info={"Todos os clientes ordenados por última actividade. Os filtros pill permitem ver subscritores, avulsos ou contas em risco."}
+      pendingReason={"A lista unificada de clientes (free, trial, ativo, churned) depende do ciclo de vida de subscrições. Para já só temos leads — vê a tab Perfis para perfis analisados reais."}
+    >
+      <section>
       <div className="mb-3.5 flex flex-wrap items-center gap-3">
-        <AdminSectionHeader
-          title="Lista de clientes"
-          accent="revenue"
-          info="Todos os clientes ordenados por última actividade. Os filtros pill permitem ver subscritores, avulsos ou contas em risco."
-        />
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <AdminSearchInput
             ref={searchRef}
@@ -240,5 +241,6 @@ export function CustomersTableSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }
