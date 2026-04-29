@@ -18,6 +18,16 @@ export interface PublicAnalysisProfile {
   following_count: number | null;
   posts_count: number | null;
   is_verified: boolean;
+  /** IG business category (when available). Optional for back-compat. */
+  category?: string | null;
+  /** External links from the bio. Optional. */
+  external_urls?: string[];
+  /** Highlight reel count. Optional. */
+  highlight_reel_count?: number | null;
+  /** Whether the profile has an IG video channel. Optional. */
+  has_channel?: boolean;
+  /** Business / professional account flag. Optional. */
+  is_business?: boolean;
 }
 
 export interface PublicAnalysisContentSummary {
