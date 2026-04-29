@@ -276,6 +276,13 @@ export interface ReportEnriched {
     model: string | null;
     sections: Partial<Record<AiInsightV2Section, AiInsightV2Item>>;
   } | null;
+  /**
+   * Editorial crossovers (R4-B). Derived from posts + market signals to
+   * explain WHY the profile performs the way it does. All fields are
+   * defensive — each pattern carries its own `available` flag and reason
+   * so the UI can render empty states gracefully on legacy snapshots.
+   */
+  editorialPatterns: EditorialPatterns;
 }
 
 // ============================================================================
