@@ -37,7 +37,7 @@ export function ReportTopPosts() {
                 {post.thumbnailUrl ? (
                   <img
                     src={post.thumbnailUrl}
-                    alt={altText}
+                    alt=""
                     loading="lazy"
                     decoding="async"
                     referrerPolicy="no-referrer"
