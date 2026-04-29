@@ -25,6 +25,7 @@ type BenchTone = "positive" | "warning" | "neutral";
 export function ReportKpiGrid({ result }: Props) {
   const k = result.data.keyMetrics;
   const meta = result.data.meta;
+  const windowDays = result.coverage.windowDays;
 
   const benchmarkLabel =
     meta.benchmarkStatus === "real"
@@ -58,8 +59,8 @@ export function ReportKpiGrid({ result }: Props) {
             label="Publicações analisadas"
             value={String(k.postsAnalyzed)}
             help={
-              meta.windowDays > 0
-                ? `nos últimos ${meta.windowDays} dias`
+              windowDays > 0
+                ? `nos últimos ${windowDays} dias`
                 : undefined
             }
           />
