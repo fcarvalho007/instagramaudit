@@ -14,12 +14,26 @@ import { ReportFooter } from "./report-footer";
 import { ReportDataProvider } from "./report-data-context";
 import type { ReportData } from "./report-mock-data";
 
-export function ReportPage({ data }: { data?: ReportData } = {}) {
+export interface ReportPageActions {
+  onExportPdf?: () => void;
+  onShare?: () => void;
+  pdfBusy?: boolean;
+  pdfDisabled?: boolean;
+  shareBusy?: boolean;
+}
+
+export function ReportPage({
+  data,
+  actions,
+}: {
+  data?: ReportData;
+  actions?: ReportPageActions;
+} = {}) {
   const content = (
     <div className="bg-surface-base min-h-screen">
       <Container size="xl">
         <div className="py-8 md:py-12 space-y-10 md:space-y-12">
-          <ReportHeader />
+          <ReportHeader actions={actions} />
           <ReportKeyMetrics />
           <ReportTemporalChart />
           <ReportBenchmarkGauge />
