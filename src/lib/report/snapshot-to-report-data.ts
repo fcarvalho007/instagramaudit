@@ -453,10 +453,16 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
     // Real Instagram CDN URL when present in the snapshot. The card layout
     // (locked) keeps the gradient as a guaranteed fallback; the image, when
     // wired in, sits above it and falls back via `onError` on failure.
-    const thumbnailUrl =
+    // O Instagram CDN bloqueia pedidos cross-origin do browser, por isso
+    // encaminhamos via proxy server-side (`/api/public/ig-thumb`). O proxy
+    // faz o fetch com cabeçalhos credíveis e cache no edge.
+    const rawThumb =
       typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
         ? p.thumbnail_url
         : undefined;
+    const thumbnailUrl = rawThumb
+      ? `/api/public/ig-thumb?url=${encodeURIComponent(rawThumb)}`
+      : undefined;
     const base = {
       id: p.id ?? `post-${idx}`,
       date: formatPtDateShort(p.taken_at_iso ?? null),
