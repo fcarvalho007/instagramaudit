@@ -1,84 +1,145 @@
-## Diagnóstico — porque é que os números não batem
+# R6 — Product QA Audit: /analyze/$username
 
-Confirmei o problema com queries diretas à BD. Hoje existem **três sítios** no /admin onde aparecem custos, e cada um lê de uma fonte/janela diferente:
+## Snapshot auditado
+- ID: `683e4c21-60e0-4045-b43a-dfcd85fe9896` — frederico.m.carvalho
+- 12 posts · `analysis_status: ready`
+- `ai_insights_v1`: 5 insights (priority 95→72) com números reais, custo $0,0047 (gpt-5.4-mini)
+- `ai_insights_v2`: 9 secções (hero, formats, heatmap, language, topPosts, benchmark, daysOfWeek, marketSignals, evolutionChart) com tonalidade adequada (negative/positive/neutral)
+- `market_signals_free`: ready (keyword "ia" +67%)
+- `editorial_patterns` no payload: ausente — derivado em runtime via `buildEditorialPatterns(payload)` no adapter (3 cards visíveis: tendência, comprimento, volume hashtags)
+- `aiInsights` flag: presente; LEITURA IA renderizou no hero
 
-| Local | Fonte | Janela | Apify | OpenAI | DFS |
-|---|---|---|---|---|---|
-| `/admin/sistema` › Custos detalhados | `provider_call_logs` (`actual ?? estimated`, **inclui falhas**) | últimas 24h | $0,000 | $0,035 | $0,045 |
-| `/admin/visao-geral` › Despesa | `cost_daily` (agregado pelo cron de sync) | últimos 30 dias | $0,021 | $0,011 | $0,054 |
-| `/admin/receita` › Faturas | `MOCK_INVOICES` (mock visível com banner "demo only") | — | — | — | — |
+QA visual feito a 1366×768 e 375×812. Estrutura confirmada por `extract` — todas as secções esperadas estão presentes na ordem correcta.
 
-Causas concretas:
+---
 
-1. **Fontes diferentes**. `cost_daily` é alimentada por jobs de sync (`syncApifyCosts`, `syncOpenAiCosts`, `syncDataForSeoCosts`) e pode não ter corrido — daí Apify 24h em provider_call_logs ($0,022 nos últimos 30d) não aparecer no `cost_daily` para o dia de hoje.
-2. **Janelas diferentes**. 24h vs 30d — comparação direta é impossível.
-3. **Regras de fallback diferentes**. Sistema soma `actual_cost_usd ?? estimated_cost_usd ?? 0` para **todas** as linhas (success/cache/failure). O sync OpenAI/DFS só agrega `status='success'`. Apify cost_daily vem da própria API da Apify (monthly usage), que pode não ter ainda os runs de hoje.
-4. **Receita › Faturas** não é discrepância — é mock declarado.
+## 1. Product clarity — FORTE
 
-## Princípio de correção
+Um marketer percebe imediatamente:
+- **O quê** foi analisado: 12 publicações em 15 dias, com badges de cobertura (Dados públicos, IA editorial, Benchmark, Pesquisa).
+- **O que importa**: o `AIInsightBox` no hero entrega o veredito macro em 1 frase ("0,11% vs 4,2% Nano").
+- **Acima/abaixo do benchmark**: Reading IA + Gauge dão a leitura em duas camadas.
+- **Que acções tomar**: 5 insights v1 com priority + body accionável (carrosséis, perguntas no fecho, IA como tema).
 
-Uma única fonte de verdade: **`provider_call_logs`** (é a única tabela escrita em runtime, no momento exato da chamada, com `actual_cost_usd` quando disponível). Tudo o resto deriva dela. `cost_daily` continua a existir, mas só como **cache materializado** alimentado por `provider_call_logs` — nunca como fonte primária.
+Pequena fricção: o **tier "Nano"** aparece sem explicação no hero — utilizador novo não sabe o que significa.
 
-Regras uniformes em todos os ecrãs:
-- Custo por linha = `COALESCE(actual_cost_usd, estimated_cost_usd, 0)`
-- Apenas `status IN ('success','cache')` conta como custo realizado (falhas com 0$ não inflam, falhas com custo cobrado pela API ficam de fora — ver nota abaixo).
-- Janelas explícitas no UI (24h, 30d) e calculadas a partir do mesmo dataset.
+## 2. Information architecture — BOA, com 1 ajuste
 
-Nota Apify: a Apify cobra por run mesmo em runs falhados que consumiram compute. Para não perder isso, mantemos o **sync da Apify monthly usage** apenas para **reconciliação mensal** (mostrado como "valor faturado pela Apify este mês" num KPI separado), mas o gráfico diário e o total 30d passam a vir de `provider_call_logs`. Quando a fatura da Apify chegar e divergir, vê-se a diferença num único KPI.
+Ordem renderizada (confirmada via DOM):
 
-## Alterações
+```
+Hero → Insight hero → KPI grid → AI Reading (5 insights) → Market Signals
+→ Editorial Patterns (3 cards) → Performance temporal → Benchmark + Formatos
+→ Concorrentes → Top Posts → Heatmap + Best Days → Hashtags + Mentions
+→ Methodology → Tier Teaser → TierComparisonBlock → Final Block → Beta Banner
+```
 
-### 1. `src/lib/admin/system-queries.server.ts`
+- Sem duplicação de secções.
+- **Editorial Patterns vem antes de Performance temporal** — bom (explica o porquê antes do gráfico).
+- **`ReportTierTeaser` + `TierComparisonBlock` lado a lado** = duas camadas de upsell consecutivas. Provoca "duplo CTA Free vs Pro".
+- **`ReportFinalBlock` + `BetaFeedbackBanner`** consecutivos no fim = três blocos de chamada à acção empilhados. Cansa.
 
-- **Nova função** `aggregateCostsFromLogs(sinceIso, untilIso?)` — agrega `provider_call_logs` por `provider` e por dia, aplicando as regras uniformes acima. Devolve `{ apify, openai, dataforseo, daily[] }`.
-- `fetchCostMetrics24h()` — passa a usar `aggregateCostsFromLogs(now-24h)`. Mantém `cache_hits` e `cache_savings_usd` como já estão.
-- `fetchExpense30d()` — reescrita para usar `aggregateCostsFromLogs(now-30d)` em vez de `cost_daily`. Mantém `dataforseo_balance` (continua a vir de `cost_daily.details.balance_at_snapshot` se existir; senão null).
-- **Novo campo opcional** em `Expense30d`: `apify_billed_total_30d` (lido de `cost_daily` da Apify, para mostrar reconciliação com a fatura). Se ausente, UI esconde.
+## 3. Insight quality (v1 + v2) — MUITO FORTE
 
-### 2. `src/components/admin/v2/visao-geral/expense-section.tsx`
+Avaliados os 5 insights v1 e as 9 secções v2:
+- **Específicos**: sim — citam 0,11%, 4,2%, +67%, 28 gostos, 12 publicações.
+- **Sem genéricos**: nenhum insight é "publica mais e melhor".
+- **Accionáveis**: cada body tem verbo + alvo concreto ("incluir perguntas directas no fecho dos carrosséis").
+- **Sem tokens técnicos**: nenhum `evidence` exposto na UI.
+- **pt-PT natural**: "envolvimento", "ritmo", "directas", "carrosséis". Sem leaks pt-BR.
 
-- Adicionar nota pequena por baixo do KPI Apify quando `apify_billed_total_30d` existir e divergir >5% do `apify_total`: "Apify faturou $X · diferença Y" (em tom info, não alarme).
-- Mantém UI/cores/grid intactos.
+Único risco: o insight `ENGAGEMENT_GAP` reporta "-97,38 pp" — formato confuso (é -97,38% relativo, não pp absoluto). Numericamente correcto mas a unidade pode induzir em erro.
 
-### 3. `src/components/admin/v2/sistema/costs-detail-section.tsx`
+## 4. Editorial Patterns — SÓLIDO mas inconsistente em snapshots pequenos
 
-- Adicionar legenda explícita por baixo dos KPIs: "Janela: últimas 24h · fonte: provider_call_logs (success + cache)". Para o utilizador perceber porque é diferente do 30d da Visão Geral.
-- Sem alterações de layout.
+Cards renderizados para este snapshot: **3 de 6** possíveis (Tendência, Comprimento de legenda, Volume de hashtags). Os outros 3 (Menções, Reels, Market fit) ficaram suprimidos por `available:false` — comportamento defensivo correcto.
 
-### 4. `src/lib/admin/cost-sync.server.ts`
+Observações:
+- Cards têm valor real ("ER 0,11% em 12 publicações"), não são placeholders.
+- **Risco de leitura**: 3 cards parecem "subdimensionados" face à promessa "6 cruzamentos". Sem aviso de que mais cards aparecem com mais dados.
+- Card "Tendência de engagement" mostra "Confiança — · amostra de 12" quando confidence é null — o "—" parece um erro.
 
-- Mantém-se intacto. `cost_daily` continua a ser populado, mas agora apenas para:
-  - reconciliação Apify (faturação mensal real)
-  - registo de saldo DataForSEO
-  - histórico que sobrevive a purge de logs antigos
+## 5. Visual QA
 
-### 5. Documentação
+**1366×768 (desktop)**:
+- Hero limpo, banda azul-claro, CTAs alinhados.
+- Header global do site (`InstaBench` navbar) **mantém-se em dark theme** sobre o report light → leve dissonância na barra de topo.
+- **Flicker dark→light confirmado**: o skeleton (`AnalysisSkeleton`) renderiza em **dark** durante ~12s, depois a página comuta para light. O script `data-theme="light"` injectado no head só corre depois do skeleton.
+- Beta banner usa CTA cinzento-900 sobre canvas — coerente mas paleta diferente do hero azul.
 
-- Atualizar `mem://design/report-light-tokens`? Não — isto é regra de dados, não design. Criar `mem://features/cost-source-of-truth` com a regra: "provider_call_logs é a fonte única; cost_daily é cache de reconciliação".
+**375×812 (mobile)**:
+- Sem overflow horizontal.
+- `@frederico.m.carvalho` quebra em 2 linhas no h1 display — aceitável.
+- CTAs Exportar PDF + Partilhar empilhados full-width — correcto.
 
-### 6. Validação
+**768×1024**: não testado mas componentes usam `sm:` breakpoints adequados; risco baixo.
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Query manual de verificação:
-  ```sql
-  SELECT provider, SUM(COALESCE(actual_cost_usd, estimated_cost_usd, 0))
-  FROM provider_call_logs
-  WHERE created_at >= now() - INTERVAL '24 hours'
-    AND status IN ('success','cache')
-  GROUP BY provider;
-  ```
-  Confirmar que bate exatamente com o que o `/admin/sistema` mostra.
-- Mesma query com `30 days` deve bater com `/admin/visao-geral › Despesa`.
+## 6. Commercial readiness
 
-## O que NÃO muda
+| Caso | Estado |
+|---|---|
+| Free preview | OK — coverage badges + tier teaser sinalizam claramente o que é free. |
+| Paid PDF | Botão "Exportar PDF" funcional, mas existem **2 CTAs PDF** (hero + Final Block "Pedir versão PDF") com copy diferente — sinal misto. |
+| Subscription upsell | Presente via `TierComparisonBlock`. Forte. |
+| Agency use | Razoável — relatório partilhável, mas sem branding white-label nem export por email. |
+| Client presentation | Editorial e legível, mas o flicker dark→light e a navbar dark por cima quebram a "polidez de cliente". |
 
-- Schema da BD (zero migrações).
-- `provider_call_logs` continua a ser escrita pelo flow real de análise.
-- Sem chamadas a Apify/OpenAI/DataForSEO/Supabase em runtime do refactor.
-- `Receita › Faturas` continua mock (já declarado como demo).
-- UI das secções não é redesenhada — só legenda/nota informativa.
+## 7. Gaps prioritizados
 
-## Resultado esperado
+### Bloqueadores críticos
+Nenhum. O report entrega valor real e estável.
 
-Os mesmos números agregados em todos os ecrãs, com janelas declaradas. Discrepância Apify (faturação real vs custo estimado por log) fica visível como **um único KPI de reconciliação**, não como divergência silenciosa entre páginas.
+### Médios (afectam percepção de qualidade)
+1. **Skeleton dark sobre report light** — flicker desagradável de ~12s na primeira carga. O script `data-theme="light"` corre só no `head`, mas o skeleton importa o `ReportThemeWrapper` apenas depois de `state === "ready"`.
+2. **Header `InstaBench` global em dark** sobre o report light — dissonância visual.
+3. **Duplo CTA PDF** ("Exportar PDF" + "Pedir versão PDF") com copy diferente — inconsistência.
+4. **Tier "Nano" sem tooltip** — utilizador novo não sabe o que é.
+5. **TierTeaser + TierComparisonBlock + FinalBlock + BetaBanner** = 4 CTAs empilhados no fim. Sobrecarrega.
+6. **Insight ENGAGEMENT_GAP** com unidade ambígua ("-97,38 pp" quando é variação relativa).
+
+### Polimento minor
+- Editorial Patterns: quando `confidence === null`, esconder o "Confiança —" em vez de mostrar dash.
+- Editorial Patterns: header poderia indicar "3 de 6 padrões disponíveis nesta amostra" para quadrar a expectativa.
+- Beta banner no fundo poderia ficar dentro do tier light theme (cinzento-900 destoa).
+
+### O que já está forte
+- Insights v1 e v2 muito acima da média (números, accionáveis, pt-PT impecável).
+- Adapter resiliente (editorial_patterns derivado em runtime, sem precisar de re-snapshot).
+- Cobertura de coverage badges é honesta.
+- Mobile-first correctamente implementado.
+- Defensivos: pending notice para snapshots <5min sem v1, cards omitidos quando dados insuficientes.
+
+---
+
+## Verdict
+
+**SAFE WITH FIXES**
+
+O report transforma dados em informação e em conhecimento accionável. Os blockers são todos cosméticos/UX — nenhum compromete a integridade dos números nem a credibilidade editorial.
+
+---
+
+## Próximo prompt prioritário (R7)
+
+**R7 — Polish UX + coerência editorial do /analyze/$username**
+
+Goal: eliminar fricções cosméticas que comprometem a percepção premium do report sem alterar pipeline, payload ou IA.
+
+Tasks (uma única tarefa, não cumular features):
+1. **Eliminar flicker dark→light**:
+   - `AnalysisSkeleton` deve renderizar dentro do `ReportThemeWrapper` (light theme) para herdar a paleta correcta.
+   - Confirmar que o script `data-theme="light"` corre antes do primeiro paint mesmo em SSR-off.
+2. **Harmonizar header**: detectar rota `/analyze/$username` e aplicar variante light ao `InstaBench` navbar (ou esconder navbar global e mostrar barra mínima própria do report).
+3. **Resolver duplo CTA PDF**: alinhar copy ("Exportar PDF" em ambos) ou diferenciar semanticamente (hero = "Exportar agora", final = "Receber por email").
+4. **Reduzir empilhamento de CTAs no fim**: fundir `TierTeaser` no header do `TierComparisonBlock` ou colapsar `BetaBanner` numa faixa menor.
+5. **Tooltip explicativo no tier "Nano"** no hero (popover discreto: "Tier baseado em followers e formato dominante").
+6. **Editorial Patterns**: ocultar "Confiança —" quando null; adicionar contagem honesta "3 de 6 padrões disponíveis com esta amostra".
+7. **Insight ENGAGEMENT_GAP**: corrigir unidade no template do insights generator para evitar "pp" quando é variação relativa.
+
+Rules:
+- Read-only sobre `/report/example`, snapshots, schema, providers.
+- Sem chamadas Apify/DataForSEO/OpenAI/Supabase mutations.
+- Validar: `bunx tsc --noEmit` + `bunx vitest run`.
+- Mobile-first (375 + 768 + 1366).
+
+Expected outcome: SAFE TO CONTINUE TO MONETIZAÇÃO.
