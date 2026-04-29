@@ -459,54 +459,54 @@ export async function ackAlert(id: string): Promise<void> {
 /* =================================================== Expense 30d -- */
 
 export async function fetchExpense30d(): Promise<Expense30d> {
-  const start = dayKey(new Date(Date.now() - 30 * DAY_MS));
-  const { data: rows } = await supabaseAdmin
+  // Fonte primária: provider_call_logs (mesma regra que /admin/sistema 24h),
+  // garantindo que os totais batem certo entre páginas para a mesma janela.
+  const sinceIso = new Date(Date.now() - 30 * DAY_MS).toISOString();
+  const { totals, daily } = await aggregateCostsFromLogs(sinceIso);
+
+  // cost_daily continua a existir só para extras de reconciliação:
+  // saldo DataForSEO e faturação real Apify (monthly usage API).
+  const startDay = dayKey(new Date(Date.now() - 30 * DAY_MS));
+  const { data: dailyRows } = await supabaseAdmin
     .from("cost_daily")
-    .select("provider, day, amount_usd, call_count, details")
-    .gte("day", start)
-    .order("day", { ascending: true });
+    .select("provider, day, amount_usd, details")
+    .gte("day", startDay);
 
-  const totals = { apify: 0, openai: 0, dataforseo: 0 };
-  const calls = { apify: 0, openai: 0, dataforseo: 0 };
-  const dayMap = new Map<string, ExpenseDailyPoint>();
   let dataforseoBalance: number | null = null;
-
-  for (const r of rows ?? []) {
-    const provider = String(r.provider) as keyof typeof totals;
-    if (!(provider in totals)) continue;
-    const amount = Number(r.amount_usd ?? 0);
-    totals[provider] += amount;
-    calls[provider] += Number(r.call_count ?? 0);
-    const day = String(r.day);
-    const point = dayMap.get(day) ?? {
-      day,
-      apify: 0,
-      openai: 0,
-      dataforseo: 0,
-    };
-    point[provider] = Number((point[provider] + amount).toFixed(4));
-    dayMap.set(day, point);
+  let apifyBilled = 0;
+  let apifyHasBilled = false;
+  for (const r of dailyRows ?? []) {
+    const provider = String(r.provider);
     if (provider === "dataforseo") {
       const bal = (r.details as { balance_at_snapshot?: number } | null)
         ?.balance_at_snapshot;
       if (typeof bal === "number") dataforseoBalance = bal;
     }
+    if (provider === "apify") {
+      apifyBilled += Number(r.amount_usd ?? 0);
+      apifyHasBilled = true;
+    }
   }
 
-  const daily = Array.from(dayMap.values()).sort((a, b) =>
-    a.day.localeCompare(b.day),
-  );
-
   return {
-    apify_total: Number(totals.apify.toFixed(4)),
-    openai_total: Number(totals.openai.toFixed(4)),
-    dataforseo_total: Number(totals.dataforseo.toFixed(4)),
-    total: Number((totals.apify + totals.openai + totals.dataforseo).toFixed(4)),
-    apify_calls: calls.apify,
-    openai_calls: calls.openai,
-    dataforseo_calls: calls.dataforseo,
+    apify_total: Number(totals.apify.amount_usd.toFixed(4)),
+    openai_total: Number(totals.openai.amount_usd.toFixed(4)),
+    dataforseo_total: Number(totals.dataforseo.amount_usd.toFixed(4)),
+    total: Number(
+      (
+        totals.apify.amount_usd +
+        totals.openai.amount_usd +
+        totals.dataforseo.amount_usd
+      ).toFixed(4),
+    ),
+    apify_calls: totals.apify.calls,
+    openai_calls: totals.openai.calls,
+    dataforseo_calls: totals.dataforseo.calls,
     dataforseo_balance: dataforseoBalance,
     daily,
+    apify_billed_total_30d: apifyHasBilled
+      ? Number(apifyBilled.toFixed(4))
+      : null,
   };
 }
 
