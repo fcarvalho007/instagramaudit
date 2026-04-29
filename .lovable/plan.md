@@ -1,108 +1,112 @@
-# R1.1 — Polimento mínimo do /report
+## R3 · Reforço gráfico, KB nos insights e refinamentos finais do report
 
-Pequenos refinamentos cirúrgicos ao `/analyze/$username` após o smoke test do `frederico.m.carvalho` que validou a persistência resiliente do snapshot. Sem mudar a arquitectura, sem tocar no `/report.example`, sem visual QA pesado.
+Três frentes em paralelo. Tudo aplicado a `/analyze/$username` (ReportShell real). O `/report/example` fica intacto.
 
-## Diagnóstico do estado actual
+---
 
-O smoke test confirmou que:
-1. O snapshot base persiste antes do OpenAI (resiliência OK).
-2. O `ReportAiReading` esconde-se silenciosamente quando `ai_insights_v1` está ausente.
-3. O `humanize()` já neutraliza tokens técnicos no render.
-4. Existe pré-hidratação do tema light antes do primeiro paint.
+### Parte 1 — Insights v2 chaveados por secção, alimentados pela KB
 
-Pontos identificados que merecem polimento mínimo (todos pequenos, todos não-arquitecturais):
+**Schema novo** (`ai_insights_v2`), coexiste com `v1` para snapshots antigos.
 
-| # | Issue | Localização | Severidade |
-|---|---|---|---|
-| 1 | Badge "IA editorial · empty" mostra-se igual a um ausente sem distinguir "snapshot recente sem IA ainda" de "IA falhou" | `report-hero.tsx:101-104` | Médio |
-| 2 | `humanize()` não cobre todos os tokens vistos em snapshots reais (`avg_engagement`, `posts_per_week`, `reach_rate`, `bench_vs_market`) | `report-ai-reading.tsx:17-25` | Médio |
-| 3 | `AnalysisErrorState` mostra a mesma copy genérica para todos os erros — não distingue "perfil privado/inexistente" de "falha temporária" | `analysis-error-state.tsx` | Baixo |
-| 4 | Mensagem de erro propagada do snapshot (`body.message`) pode conter strings técnicas (codes Apify/DataForSEO) — risco de leak editorial | `analyze.$username.tsx:122-129` | Médio |
-| 5 | Quando OpenAI falha, não há nenhum sinal subtil ao leitor de que a leitura editorial está pendente — apenas desaparece. Para o admin é OK; para o utilizador final fica estranho | `report-shell.tsx:62` | Baixo |
-
-## Mudanças propostas (todas pequenas)
-
-### 1. Distinguir estados do badge "IA editorial"
-**Ficheiro:** `src/components/report-redesign/report-hero.tsx`
-
-Ao invés de `status={enriched.aiInsights ? "real" : "empty"}`, esconder o badge por completo quando não existe leitura. Razão: mostrar "IA editorial · vazio" no Hero é ruído — a secção `ReportAiReading` já se esconde a si própria, o badge deve seguir o mesmo princípio.
-
-```tsx
-{enriched.aiInsights ? (
-  <CoverageBadge label="IA editorial" status="real" />
-) : null}
+`src/lib/insights/types.ts` ganha:
+```
+interface AiInsightV2Item { emphasis: 'positive'|'negative'|'default'|'neutral'; text: string }
+interface AiInsightsV2 {
+  schema_version: 2; generated_at: string; model: string;
+  source_signals: { inputs_hash: string; kb_version: string; has_market_signals: boolean };
+  cost: { prompt_tokens; completion_tokens; total_tokens; estimated_cost_usd };
+  sections: Record<'hero'|'marketSignals'|'evolutionChart'|'benchmark'|'formats'|'topPosts'|'heatmap'|'daysOfWeek'|'language', AiInsightV2Item>;
+}
 ```
 
-### 2. Estender `TECH_REPLACEMENTS` no `humanize()`
-**Ficheiro:** `src/components/report-redesign/report-ai-reading.tsx`
+**Pipeline** (estende `generateInsights` em vez de criar edge function — alinhado com a arquitectura TanStack Start, evita duplicar gates de OPENAI_ALLOWLIST/cap diário/recordProviderCall):
 
-Adicionar mapeamentos para tokens vistos em snapshots reais:
-- `avg_engagement` → "envolvimento médio"
-- `posts_per_week` → "ritmo de publicação"
-- `reach_rate` → "alcance médio"
-- `bench_vs_market` → "comparação com o mercado"
-- `format_mix` → "mistura de formatos"
-- `top_format` → "formato com mais retorno"
+1. `generateInsights(ctx, { mode: 'v2' })` aceita modo, carrega `getKnowledgeContext({ tier, format, vertical })` da KB (helper já existente).
+2. Novo prompt em `src/lib/insights/prompt-v2.ts`: regras pt-PT já endurecidas + bloco `{kb_context_inject}` via `formatKnowledgeContextForPrompt(ctx)`.
+3. Modelo: continua a ler `OPENAI_INSIGHTS_MODEL` (secret existente). Sem hardcode.
+4. Output via `response_format: json_schema` com 9 chaves obrigatórias.
+5. Validador novo `validate-v2.ts`: aplica `detectTechnicalLeak` (extraído de `validate.ts` para função reutilizável) + lista PT-BR + tradução de jargão a cada `text`.
+6. `kb_version` = SHA-1 curto do `metadata.last_updated` da KB. Permite invalidação futura.
 
-Mantém-se a regra: substituições só na camada de apresentação, sem mutar dados.
+**Persistência e cache** (em `analyze-public-v1.ts`):
+- Após snapshot base, gera v2 e persiste em `normalized_payload.ai_insights_v2`.
+- v1 mantém-se para o bloco "Leitura estratégica" existente — não tocar.
+- Regeneração só quando `inputs_hash` muda (snapshot novo) OU `kb_version` muda. Cache hits usam o v2 já guardado.
 
-### 3. Sanitizar mensagens de erro propagadas
-**Ficheiro:** `src/routes/analyze.$username.tsx`
+**Render**:
+- `src/lib/report/snapshot-to-report-data.ts` mapeia `ai_insights_v2.sections` para o `reportData`.
+- 9 secções-alvo passam a aceitar prop opcional `aiInsight?: { emphasis, text }` e renderizam um `InsightBox` compacto inline com a variante de cor já existente nos tokens light (`positive` → verde, `negative` → vermelho, `default` → azul, `neutral` → cinzento).
 
-Criar um pequeno mapeador na função `load()` que converte `error_code` conhecidos em copy editorial pt-PT:
+---
 
-| `error_code` | Copy editorial |
-|---|---|
-| `profile_not_found` | "Não encontrámos este perfil no Instagram. Confirma o nome de utilizador." |
-| `profile_private` | "Este perfil é privado. Só conseguimos analisar perfis públicos." |
-| `apify_disabled` / `not_allowlisted` | "Análise temporariamente indisponível. Tenta dentro de instantes." |
-| `upstream_error` / outros | mensagem actual genérica |
+### Parte 2 — Reforço gráfico em 4 secções
 
-Nunca propagar `body.message` cru se `error_code` for desconhecido — usar fallback editorial.
+**2.1 — Posicionamento (gauge + mini-histórico)**
+- Nova server function `getProfileEngagementHistory({ handle, limit: 4 })` em `src/server/profile-history.functions.ts`. Lê `analysis_snapshots` ordenado por `created_at desc`, devolve `[{ analyzedAt, engagementPct, benchmarkPct }]`.
+- `report-benchmark-gauge.tsx` recebe `history` opcional. Abaixo da gauge: 4 mini-barras horizontais empilhadas em mono pequeno + delta de tendência.
+- Vazio (1ª análise): mensagem subtil "Histórico aparecerá após próximas análises".
 
-### 4. Sinal subtil de "leitura pendente" (opcional, gated)
-**Ficheiro:** `src/components/report-redesign/report-shell.tsx`
+**2.2 — Formato (barras duplas)**
+- `report-format-breakdown.tsx`: substitui a barra única por par `Actual` vs `Bench.` empilhado. Cor adaptativa: actual abaixo → `#A32D2D`, acima → `#0F6E56`. Bench → `#B5D4F4`. Tudo via tokens em `tokens-light.css` (sem hardcode hex no JSX).
 
-Quando `result.data.aiInsights.length === 0` mas o snapshot é recente (< 5 min), mostrar um pequeno aviso editorial entre o KPI grid e o Market Signals:
+**2.3 — Hashtags & Captions**
+- `report-hashtags-keywords.tsx`: cor única `accent-primary` (já é `#2563D9`, próximo de `#185FA5` — usar token existente, não introduzir nova cor).
+- Largura proporcional ao **engagement**, não às frequências.
+- Ordenação por `avgEngagement desc`.
+- Linha mostra `5 usos · 0,15%` em mono pequeno.
 
-```
-"A leitura editorial deste perfil está a ser preparada. Volta em alguns
-minutos para a versão completa."
-```
+**2.4 — Sparklines KPI hero**
+- Não tocar — confirmado correcto no R1.
 
-Quando o snapshot é antigo (> 5 min) sem insights, esconder por completo (estado actual).
+---
 
-Implementação: comparar `result.profile.analyzedAt` com `Date.now()`.
+### Parte 3 — 5 refinamentos visuais
 
-### 5. (Não fazer agora) — adiar
-- Refactor maior do `AnalysisErrorState` com ilustrações distintas por tipo de erro → R1.2
-- Telemetria de "leitura editorial pendente vs falhada" no /admin → R3
-- Substituir copy mock por leitura KB-aware → R3 (já planeado)
+**A. Procura de mercado** — substituir grid 2x2 dos 4 cartões por uma `MarketStatsStrip` horizontal com 4 mini-stats separados por bordas verticais subtis. Componente novo em `src/components/report-market-signals/market-stats-strip.tsx`. Gráfico de evolução fica por baixo, com mais protagonismo.
 
-## Checkpoint (☐)
+**B. "Como este relatório foi feito"** — fundir `report-methodology.tsx` + `report-enriched-benchmark-source.tsx` num único cartão. Os 4 cartões internos passam a fundo `surface-muted` (sutil), e a linha "FONTE E METODOLOGIA · DATASET v1.0-2026-04" + texto explicativo entram como `footer-row` dentro do mesmo cartão.
 
-- ☐ Badge "IA editorial" no Hero esconde-se quando ausente (não mostra "empty")
-- ☐ `humanize()` cobre os 6 novos tokens
-- ☐ `analyze.$username.tsx` usa mapa de `error_code` → copy editorial pt-PT
-- ☐ `body.message` nunca é mostrado cru ao utilizador
-- ☐ Aviso "leitura a ser preparada" aparece apenas para snapshots recentes (< 5 min) sem insights
-- ☐ `/report.example` continua intacto
-- ☐ Tokens de design respeitados (sem cores hardcoded)
-- ☐ Copy 100% pt-PT, Acordo Ortográfico, sem "você"
+**C. "Levar este relatório"** (`report-final-block.tsx`) — simplificar:
+- Remover header duplicado "PARTILHAR COM A TUA REDE".
+- 3 botões em linha horizontal: `[Pedir versão PDF →]` `[Copiar link]` `[Partilhar no LinkedIn]`.
+- Subtítulo único: `PDF inclui todas as secções · Link público activo durante a fase beta`.
 
-## Ficheiros tocados (5)
+**D. Feedback beta** — promover de bloco interno do `ReportFinalBlock` para banner full-width acima do footer. Componente novo `src/components/report-beta/feedback-banner.tsx`. Fundo `surface-muted`, border `border-default`, badge `BETA` + CTA `Enviar email →`.
 
-1. `src/components/report-redesign/report-hero.tsx` — badge condicional
-2. `src/components/report-redesign/report-ai-reading.tsx` — humanize estendido
-3. `src/routes/analyze.$username.tsx` — mapa de error_code
-4. `src/components/report-redesign/report-shell.tsx` — aviso de leitura pendente
-5. (eventual) `src/components/report-redesign/report-pending-ai-notice.tsx` — novo componente pequeno para o aviso
+**E. Footer comercial** — eliminar o primeiro bloco "PRÓXIMO NÍVEL → O que muda no relatório completo" (com 3 bullets) e manter apenas a versão completa em 2 colunas + citação. Localizar e remover a duplicação em `src/components/report-redesign/` ou `report-share/` consoante o ficheiro real (a confirmar na implementação).
 
-## Fora de âmbito
+---
 
-- BD, RLS, edge functions
-- `/admin` (qualquer tab)
-- `/report.example`
-- Smoke tests adicionais a perfis novos
-- Visual QA de PDFs
-- Componentes locked listados em `LOCKED_FILES.md`
+### Especificações técnicas
+
+- **Tokens**: novas cores (#A32D2D, #0F6E56, #B5D4F4) entram em `src/styles/tokens-light.css` como `--bench-actual-below`, `--bench-actual-above`, `--bench-reference`. Atualizar memória `report-light-tokens`.
+- **Server function nova**: `src/server/profile-history.functions.ts` (`getProfileEngagementHistory`). Lê via `supabaseAdmin` (perfis públicos, sem RLS por user). Validação Zod no input (`handle` regex `^[a-z0-9._]{1,30}$`).
+- **Sem novas tabelas**, sem migrações. Apenas escrita adicional em `analysis_snapshots.normalized_payload.ai_insights_v2`.
+- **Cap diário OpenAI**: continua o mesmo (`OPENAI_DAILY_CAP_USD`). v2 + v1 partilham o cap — duplica chamadas, mas o gate protege contra runaway.
+
+### Ficheiros tocados
+
+Novos: `prompt-v2.ts`, `validate-v2.ts`, `profile-history.functions.ts`, `market-stats-strip.tsx`, `feedback-banner.tsx`.
+Editados: `types.ts`, `openai-insights.server.ts`, `analyze-public-v1.ts`, `snapshot-to-report-data.ts`, `report-benchmark-gauge.tsx`, `report-format-breakdown.tsx`, `report-hashtags-keywords.tsx`, `report-methodology.tsx`, `report-enriched-benchmark-source.tsx`, `report-final-block.tsx`, `report-shell.tsx`, `tokens-light.css`, `mem://design/report-light-tokens`.
+
+### Não fazer
+- Não criar Supabase Edge Function (TanStack Start usa server functions).
+- Não tocar em `/admin` (R2 completo).
+- Não tocar em `/report/example` (LOCKED).
+- Não tocar no PDF export, no header de navegação, no v1 dos insights.
+- Não introduzir cores fora da paleta R1 (excepto os 3 tokens de bench bars).
+
+### Checkpoint final
+
+- ☐ `ai_insights_v2` gerados com KB injectada
+- ☐ Cache: regeneração só por `inputs_hash` ou `kb_version`
+- ☐ 9 secções com `InsightBox` inline
+- ☐ Gauge com mini-histórico de 4 análises (real ou placeholder)
+- ☐ Cartões de formato com barras duplas Actual/Bench
+- ☐ Hashtags ordenadas por engagement, cor única
+- ☐ Procura de mercado em strip horizontal
+- ☐ "Como foi feito" em cartão único
+- ☐ "Levar este relatório" com 3 botões
+- ☐ Feedback beta como banner antes do footer
+- ☐ Footer comercial sem duplicação
+- ☐ `bunx tsc --noEmit` limpo
