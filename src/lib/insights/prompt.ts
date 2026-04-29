@@ -71,6 +71,29 @@ Sinais de mercado (DataForSEO):
 - Exemplo CORRECTO: "A procura por «ia» apresenta sinal médio de 65 e tendência em alta (+22%). Reforçar conteúdos sobre IA nas próximas 4 semanas e medir o envolvimento."
 - Exemplo PROIBIDO (genérico, sem número): "Alinhar o conteúdo com as keywords em tendência."
 
+Padrões editoriais (`editorial_patterns`) — usar para explicar PORQUÊ, não só O QUÊ:
+- Quando "editorial_patterns" está presente no payload, é OBRIGATÓRIO usar pelo menos um dos seus sinais para fundamentar pelo menos um insight. Estes padrões são cruzamentos derivados das publicações analisadas e existem precisamente para transformar números soltos em explicações.
+- Cada insight deve ter três camadas: (1) um facto observado com número, (2) uma interpretação curta do que esse facto significa, (3) uma recomendação prática no infinitivo. Exemplo: "Os Reels de 15 a 30 segundos atingem 2,8% de envolvimento médio em 6 publicações (facto), o que sugere que a audiência prefere mensagens curtas e directas (interpretação). Manter os próximos Reels abaixo dos 30 segundos durante 4 semanas e medir (recomendação)."
+- Preferir cruzamentos entre eixos diferentes em vez de insights de eixo único:
+  - formato dominante × tema da legenda
+  - comprimento de legenda × envolvimento
+  - número de hashtags × envolvimento
+  - presença de menções/colaborações × lift de envolvimento
+  - rácio comentários/gostos × comportamento da audiência
+  - procura de mercado × cobertura no conteúdo
+- "editorial_patterns.collaboration_lift.delta_pct" é uma percentagem relativa: 42 = "publicações com menções têm +42% de envolvimento face às sem menções"; -20 = "publicações com menções têm -20%". Citar sempre o sinal e a magnitude no body.
+- "editorial_patterns.comments_to_likes_ratio.ratio_pct" mede conversação. Acima de 5% = audiência conversadora; abaixo de 1% = audiência passiva. Usar para sugerir tipos de copy (perguntas, pedidos de opinião, polls).
+- "editorial_patterns.market_demand_content_fit.missing_keywords" lista temas com procura mas SEM cobertura no conteúdo do perfil. Tratar como oportunidades por explorar, NUNCA como prova de procura existente — para isso, citar antes "matched_keywords" / "total_keywords" / "coverage_pct".
+- "editorial_patterns.format_vs_competitors.delta_pct" compara o envolvimento médio do perfil com a mediana dos concorrentes para o formato dominante. Positivo = perfil acima dos pares; negativo = abaixo. Citar sempre o número e o formato em causa.
+- Os caminhos com "editorial_patterns.*" só podem aparecer em "evidence". É TERMINANTEMENTE PROIBIDO escrever "editorial_patterns", "collaboration_lift", "delta_pct", "best_bucket", "ratio_pct", "coverage_pct", "matched_keywords" ou "missing_keywords" no "title" ou no "body". Traduzir sempre para linguagem natural pt-PT:
+  - editorial_patterns.engagement_trend.direction → "tendência de envolvimento em alta/estável/em queda"
+  - editorial_patterns.caption_length.best_bucket → "legendas curtas/médias/longas"
+  - editorial_patterns.hashtag_count.best_bucket → "5 a 10 hashtags por publicação"
+  - editorial_patterns.collaboration_lift.delta_pct → "publicações com colaborações geram +X% de envolvimento"
+  - editorial_patterns.comments_to_likes_ratio.ratio_pct → "audiência conversadora" ou "rácio de X% comentários por gosto"
+  - editorial_patterns.market_demand_content_fit.coverage_pct → "Y de Z temas com procura abordados nas legendas"
+  - editorial_patterns.format_vs_competitors.delta_pct → "envolvimento +X% face aos concorrentes" / "X% abaixo dos pares"
+
 Linguagem do título e do body (obrigatório):
 - O array "evidence" é apenas para auditoria interna. NUNCA escrever caminhos técnicos no "title" ou no "body".
 - Proibido em "title" e "body":
