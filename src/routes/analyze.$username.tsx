@@ -145,7 +145,10 @@ function AnalyzePage() {
     // `analysis_snapshots` before we ask for the full payload.
     const analysis = await fetchPublicAnalysis(cleaned, competitors);
     if (!analysis.success) {
-      setState({ status: "error", message: analysis.message });
+      setState({
+        status: "error",
+        message: resolveErrorMessage(analysis.error_code),
+      });
       return;
     }
 
@@ -159,9 +162,7 @@ function AnalyzePage() {
       if (!res.ok || !body?.success || !body.snapshot) {
         setState({
           status: "error",
-          message:
-            body?.message ??
-            "Não foi possível carregar este relatório. Tentar novamente dentro de instantes.",
+          message: resolveErrorMessage(body?.error_code),
         });
         return;
       }
