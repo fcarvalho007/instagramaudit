@@ -6,16 +6,36 @@
  * actividade e sinal por linha. Linha seleccionada (Ana Marques) destacada.
  */
 
+import { useMemo, useRef, useState } from "react";
+
 import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminBadge } from "../admin-badge";
 import { AdminAvatar } from "../admin-avatar";
 import { AdminActionButton } from "../admin-action-button";
+import { FilterPills, type FilterOption } from "../filter-pills";
+import {
+  AdminSearchInput,
+  type AdminSearchInputHandle,
+} from "../admin-search-input";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useCmdK } from "@/hooks/use-cmd-k";
 import {
   MOCK_CUSTOMERS_LIST,
   MOCK_CUSTOMERS_TOTALS,
   type CustomerRow,
 } from "@/lib/admin/mock-data";
+
+type CustomerFilter = "all" | "subscribers" | "one_off" | "at_risk";
+
+function matchesCustomerFilter(filter: CustomerFilter, row: CustomerRow): boolean {
+  if (filter === "all") return true;
+  if (filter === "subscribers") return row.badgeLabel.toLowerCase().includes("pro") ||
+    row.badgeLabel.toLowerCase().includes("agency") ||
+    row.badgeLabel.toLowerCase().includes("starter");
+  if (filter === "one_off") return row.badgeLabel.toLowerCase().includes("avulso");
+  return row.signal.kind === "at_risk";
+}
 
 function SignalCell({ signal }: { signal: CustomerRow["signal"] }) {
   if (signal.kind === "active") {
@@ -38,6 +58,39 @@ function SignalCell({ signal }: { signal: CustomerRow["signal"] }) {
 }
 
 export function CustomersTableSection() {
+  const [filter, setFilter] = useState<CustomerFilter>("all");
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, 200);
+  const searchRef = useRef<AdminSearchInputHandle>(null);
+  useCmdK(() => searchRef.current?.focus());
+
+  const totalsByKey = MOCK_CUSTOMERS_TOTALS.reduce<Record<string, number>>(
+    (acc, t) => {
+      acc[t.key] = t.count;
+      return acc;
+    },
+    {},
+  );
+
+  const filterOptions: ReadonlyArray<FilterOption<CustomerFilter>> = [
+    { value: "all", label: "Todos", count: totalsByKey.all ?? MOCK_CUSTOMERS_LIST.length },
+    { value: "subscribers", label: "Subscritores", count: totalsByKey.subscribers ?? 0 },
+    { value: "one_off", label: "Avulso", count: totalsByKey.one_off ?? 0 },
+    { value: "at_risk", label: "Em risco", count: totalsByKey.at_risk ?? 0 },
+  ];
+
+  const rows = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    return MOCK_CUSTOMERS_LIST.filter((c) => {
+      if (!matchesCustomerFilter(filter, c)) return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q)
+      );
+    });
+  }, [filter, debouncedQuery]);
+
   return (
     <section>
       <div className="mb-3.5 flex flex-wrap items-center gap-3">
@@ -46,21 +99,20 @@ export function CustomersTableSection() {
           accent="revenue"
           info="Todos os clientes ordenados por última actividade. Os filtros pill permitem ver subscritores, avulsos ou contas em risco."
         />
-        <div
-          className="ml-auto flex items-center gap-1.5"
-          role="group"
-          aria-label="Filtros de cliente"
-        >
-          {MOCK_CUSTOMERS_TOTALS.map((f, i) => (
-            <AdminActionButton
-              key={f.key}
-              size="sm"
-              variant={i === 0 ? "active" : "default"}
-              aria-pressed={i === 0}
-            >
-              {f.label} · {f.count}
-            </AdminActionButton>
-          ))}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <AdminSearchInput
+            ref={searchRef}
+            value={query}
+            onChange={setQuery}
+            placeholder="Pesquisar nome ou email…"
+            ariaLabel="Pesquisar clientes"
+          />
+          <FilterPills
+            options={filterOptions}
+            value={filter}
+            onChange={setFilter}
+            ariaLabel="Filtros de cliente"
+          />
         </div>
       </div>
 
@@ -89,7 +141,7 @@ export function CustomersTableSection() {
             </tr>
           </thead>
           <tbody>
-            {MOCK_CUSTOMERS_LIST.map((c) => (
+            {rows.map((c) => (
               <tr
                 key={c.id}
                 className={`cursor-pointer border-t border-admin-border-strong transition-colors hover:bg-[var(--admin-bg-subtle)] ${
@@ -149,12 +201,33 @@ export function CustomersTableSection() {
                 </td>
               </tr>
             ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="py-8 text-center text-[12px] text-admin-text-tertiary"
+                >
+                  {debouncedQuery
+                    ? `Sem resultados para «${debouncedQuery}». `
+                    : "Sem clientes para este filtro."}
+                  {debouncedQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      className="underline underline-offset-2 hover:text-admin-text-primary"
+                    >
+                      Limpar pesquisa
+                    </button>
+                  ) : null}
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
 
         <div className="mt-3 flex items-center justify-between border-t border-admin-border-strong pt-3">
           <p className="m-0 text-[11px] text-admin-text-tertiary">
-            A mostrar 7 de 312 · ordenado por última actividade
+            A mostrar {rows.length} de {totalsByKey.all ?? MOCK_CUSTOMERS_LIST.length} · ordenado por última actividade
           </p>
           <div className="flex items-center gap-1.5">
             <AdminActionButton size="sm" aria-label="Página anterior">
