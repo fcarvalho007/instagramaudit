@@ -279,6 +279,22 @@ export interface EnrichedPost {
   is_video: boolean;
   /** (likes + comments) / followers * 100, rounded to 2 decimals. 0 if no followers. */
   engagement_pct: number;
+  /** Video duration in seconds (Reels only). null when unknown. */
+  video_duration?: number | null;
+  /** Apify productType ("clips", "feed", "igtv"…) when available. */
+  product_type?: string | null;
+  /** Whether the post is pinned to the profile grid. */
+  is_pinned?: boolean;
+  /** Co-author handles (collaborations). */
+  coauthors?: string[];
+  /** Tagged user handles. */
+  tagged_users?: string[];
+  /** Caption character length (0 when no caption). */
+  caption_length?: number;
+  /** Geolocation name (when tagged). */
+  location_name?: string | null;
+  /** Music track title (Reels with music). */
+  music_title?: string | null;
 }
 
 export interface FormatStat {
