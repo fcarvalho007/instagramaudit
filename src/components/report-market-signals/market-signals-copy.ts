@@ -6,7 +6,7 @@ export const marketSignalsCopy = {
   eyebrow: "Procura de mercado",
   title: "Procura de mercado associada ao perfil",
   subtitle:
-    "Cruza temas detetados no Instagram com sinais de pesquisa para perceber se também existe interesse fora da plataforma.",
+    "Cruza temas do Instagram com procura de pesquisa para perceber se há interesse fora da plataforma.",
   loading: "A cruzar temas do perfil com sinais de pesquisa…",
   cards: {
     strongest: "Tema com maior sinal",
