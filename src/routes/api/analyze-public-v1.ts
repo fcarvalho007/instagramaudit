@@ -61,8 +61,15 @@ import { computeBenchmarkPositioning } from "@/lib/benchmark/engine";
 import type { BenchmarkData } from "@/lib/benchmark/reference-data";
 import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
-import { generateInsights } from "@/lib/insights/openai-insights.server";
-import type { AiInsightsV1, InsightsContext } from "@/lib/insights/types";
+import {
+  generateInsights,
+  generateInsightsV2,
+} from "@/lib/insights/openai-insights.server";
+import type {
+  AiInsightsV1,
+  AiInsightsV2,
+  InsightsContext,
+} from "@/lib/insights/types";
 import { isOpenAiAllowed } from "@/lib/security/openai-allowlist";
 import {
   isAllowed as isDfsAllowed,
@@ -961,31 +968,117 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             }
           }
 
+          // ─── OpenAI insights v2 (R3): inline por secção, KB-aware ─────
+          // Geração independente da v1 (cache por inputs_hash + kb_version
+          // dentro de `generateInsightsV2`). Falha silenciosa: o report
+          // continua a renderizar mesmo se a v2 não responder.
+          let aiInsightsV2: AiInsightsV2 | null = null;
+          if (isOpenAiAllowed(primaryProfile.username)) {
+            try {
+              const previousV2 =
+                (existing?.normalized_payload as unknown as {
+                  ai_insights_v2?: AiInsightsV2 | null;
+                } | null)?.ai_insights_v2 ?? null;
+              const successfulCompetitorsForAi = competitorResults.filter(
+                (c): c is Extract<CompetitorAnalysis, { success: true }> =>
+                  c.success,
+              );
+              const competitorEngagements = successfulCompetitorsForAi
+                .map((c) => c.content_summary.average_engagement_rate)
+                .filter((n) => Number.isFinite(n) && n > 0);
+              const medianEngagementV2 =
+                competitorEngagements.length > 0
+                  ? (() => {
+                      const sorted = [...competitorEngagements].sort(
+                        (a, b) => a - b,
+                      );
+                      const mid = Math.floor(sorted.length / 2);
+                      return sorted.length % 2 === 0
+                        ? (sorted[mid - 1] + sorted[mid]) / 2
+                        : sorted[mid];
+                    })()
+                  : null;
+              const topPostsForV2 = [...primaryEnriched.posts]
+                .sort((a, b) => b.engagement_pct - a.engagement_pct)
+                .slice(0, 3)
+                .map((p) => ({
+                  format: p.format,
+                  likes: p.likes,
+                  comments: p.comments,
+                  engagement_pct: p.engagement_pct,
+                  caption_excerpt: p.caption ?? "",
+                }));
+              const ctxV2: InsightsContext = {
+                profile: primaryProfile,
+                content_summary: primarySummary,
+                top_posts: topPostsForV2,
+                benchmark: benchmarkPositioningEarly,
+                competitors_summary: {
+                  count: successfulCompetitorsForAi.length,
+                  median_engagement_pct: medianEngagementV2,
+                },
+                market_signals: summarizeMarketSignalsForInsights(
+                  marketSignalsFree,
+                ),
+              };
+              const resultV2 = await generateInsightsV2(ctxV2, {
+                previous: previousV2,
+              });
+              if (resultV2.ok && resultV2.insights) {
+                aiInsightsV2 = resultV2.insights;
+              } else if (
+                resultV2.reason &&
+                resultV2.reason !== "DISABLED" &&
+                resultV2.reason !== "NOT_ALLOWED"
+              ) {
+                console.warn(
+                  "[analyze-public-v1] generateInsightsV2 soft-failed",
+                  resultV2.reason,
+                  resultV2.detail ?? "",
+                );
+              }
+            } catch (err) {
+              console.error("[analyze-public-v1] generateInsightsV2 threw", err);
+            }
+          }
+
           // ─── Resilient persistence (Step 2: enrich snapshot) ──────────
           // Only re-write when we have AI insights to attach. The upsert
           // collapses to an UPDATE on the existing cache_key — Apify and
           // DataForSEO are NOT called again. If OpenAI failed/timed out,
           // the base snapshot from Step 1 is left intact.
-          const normalizedPayload = aiInsights
-            ? { ...baseNormalizedPayload, ai_insights_v1: aiInsights }
-            : baseNormalizedPayload;
+          let normalizedPayload: Record<string, unknown> =
+            baseNormalizedPayload as unknown as Record<string, unknown>;
           if (aiInsights) {
+            normalizedPayload = {
+              ...normalizedPayload,
+              ai_insights_v1: aiInsights,
+            };
+          }
+          if (aiInsightsV2) {
+            normalizedPayload = {
+              ...normalizedPayload,
+              ai_insights_v2: aiInsightsV2,
+            };
+          }
+          if (aiInsights || aiInsightsV2) {
             const enrichedSnapshotId = await storeSnapshot({
               cacheKey,
               instagramUsername: primaryProfile.username,
               competitorUsernames: competitors,
-              normalizedPayload: normalizedPayload as unknown as Record<
-                string,
-                unknown
-              >,
+              normalizedPayload,
             });
             console.info(
-              "[analyze-public-v1] snapshot enriched with ai_insights_v1",
+              "[analyze-public-v1] snapshot enriched",
+              {
+                v1: !!aiInsights,
+                v2: !!aiInsightsV2,
+              },
               enrichedSnapshotId ?? snapshotId ?? "(null)",
             );
           } else {
             console.info(
-              "[analyze-public-v1] snapshot kept without ai_insights_v1 (OpenAI unavailable or failed)",
+              "[analyze-public-v1] snapshot kept without ai_insights (OpenAI unavailable or failed)",
             );
           }
 
