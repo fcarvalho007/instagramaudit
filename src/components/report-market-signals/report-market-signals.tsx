@@ -9,8 +9,6 @@
  * "blocked", "error", "timeout", "no_keywords".
  */
 import { useEffect, useState } from "react";
-import { Container } from "@/components/layout/container";
-import { ReportSection } from "@/components/report/report-section";
 import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
 import { MarketSignalsChart } from "./market-signals-chart";
 import { marketSignalsCopy } from "./market-signals-copy";
@@ -43,6 +41,7 @@ interface ReportMarketSignalsProps {
 type FetchState =
   | { status: "loading" }
   | { status: "hidden" }
+  | { status: "empty"; reason: string }
   | { status: "ready"; data: MarketSignalsResponse };
 
 /**
@@ -104,16 +103,26 @@ export function ReportMarketSignals({
         )) as MarketSignalsResponse | null;
         if (cancelled) return;
         if (!body) {
-          setState({ status: "hidden" });
+          setState({
+            status: "empty",
+            reason: "Sem ligação aos sinais de pesquisa neste momento.",
+          });
           return;
         }
         if (body.status === "ready" || body.status === "partial") {
           setState({ status: "ready", data: body });
         } else {
-          setState({ status: "hidden" });
+          setState({
+            status: "empty",
+            reason: emptyReasonFor(body.status),
+          });
         }
       } catch {
-        if (!cancelled) setState({ status: "hidden" });
+        if (!cancelled)
+          setState({
+            status: "empty",
+            reason: "Sem ligação aos sinais de pesquisa neste momento.",
+          });
       }
     }
     void run();
@@ -126,24 +135,28 @@ export function ReportMarketSignals({
 
   if (state.status === "loading") {
     return (
-      <Container size="xl">
-        <div className="py-6 md:py-8">
-          <ReportSection
-            label={marketSignalsCopy.eyebrow}
-            title={marketSignalsCopy.loadingTitle}
-          >
-            <div className="flex items-center gap-3 rounded-lg border border-border-subtle/40 bg-surface-secondary/40 px-4 py-4">
-              <span
-                aria-hidden="true"
-                className="inline-block h-2 w-2 animate-pulse rounded-full bg-content-tertiary"
-              />
-              <p className="font-mono text-xs text-content-tertiary">
-                {marketSignalsCopy.loading}
-              </p>
-            </div>
-          </ReportSection>
-        </div>
-      </Container>
+      <div className="flex items-center gap-3 rounded-xl border border-border-subtle/40 bg-surface-secondary/30 px-4 py-4">
+        <span
+          aria-hidden="true"
+          className="inline-block h-2 w-2 animate-pulse rounded-full bg-content-tertiary"
+        />
+        <p className="font-mono text-xs text-content-tertiary">
+          {marketSignalsCopy.loading}
+        </p>
+      </div>
+    );
+  }
+
+  if (state.status === "empty") {
+    return (
+      <div className="rounded-xl border border-border-subtle/40 bg-surface-secondary/30 p-5 md:p-6 space-y-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+          Sem dados nesta análise
+        </p>
+        <p className="text-sm text-content-secondary leading-relaxed">
+          {state.reason}
+        </p>
+      </div>
     );
   }
 
@@ -158,55 +171,78 @@ export function ReportMarketSignals({
     used === 1 ? marketSignalsCopy.quotaLabelSingular : marketSignalsCopy.quotaLabelPlural;
 
   // Defensive: if for any reason there are no usable keywords at this point,
-  // hide instead of showing a hollow chart.
-  if (usable.length === 0 || !trends) return null;
+  // mostra um estado vazio compacto em vez de desaparecer silenciosamente.
+  if (usable.length === 0 || !trends) {
+    return (
+      <div className="rounded-xl border border-border-subtle/40 bg-surface-secondary/30 p-5 md:p-6 space-y-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+          Sem dados nesta análise
+        </p>
+        <p className="text-sm text-content-secondary leading-relaxed">
+          Os temas detectados no perfil ainda não têm volume de pesquisa
+          suficiente para uma leitura fiável.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <Container size="xl">
-      <div className="py-6 md:py-8">
-        <ReportSection
-          label={marketSignalsCopy.eyebrow}
-          title={marketSignalsCopy.title}
-          subtitle={marketSignalsCopy.intro}
-        >
-          <div className="space-y-6 rounded-xl border border-border-subtle/40 bg-surface-secondary/30 p-5 md:p-6">
-            <MarketSignalsChart trends={trends} usableKeywords={usable} />
-
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {strongest && (
-                <div className="space-y-1">
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
-                    {marketSignalsCopy.strongestLabel}
-                  </dt>
-                  <dd className="font-display text-lg text-content-primary">
-                    {strongest}
-                  </dd>
-                </div>
-              )}
-              {dropped.length > 0 && (
-                <div className="space-y-1">
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
-                    {marketSignalsCopy.droppedLabel}
-                  </dt>
-                  <dd className="text-sm text-content-secondary">
-                    {dropped.join(", ")}
-                  </dd>
-                </div>
-              )}
-            </dl>
-
-            {cap > 0 && (
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
-                {used}/{cap} {quotaWord}
-              </p>
-            )}
-          </div>
-
-          <p className="text-xs text-content-tertiary leading-relaxed">
-            {marketSignalsCopy.footer}
+    <div className="space-y-4">
+      <div className="space-y-6 rounded-2xl border border-border-subtle/40 bg-surface-base/70 p-5 md:p-6">
+        {strongest ? (
+          <p className="font-display text-xl md:text-2xl text-content-primary leading-snug tracking-tight">
+            Tema com mais procura:{" "}
+            <span className="text-accent-primary">{strongest}</span>
           </p>
-        </ReportSection>
+        ) : null}
+        <MarketSignalsChart trends={trends} usableKeywords={usable} />
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {usable.length > 0 && (
+            <div className="space-y-1 min-w-0">
+              <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+                Temas com sinal de procura
+              </dt>
+              <dd className="text-sm text-content-secondary break-words">
+                {usable.join(", ")}
+              </dd>
+            </div>
+          )}
+          {dropped.length > 0 && (
+            <div className="space-y-1 min-w-0">
+              <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+                {marketSignalsCopy.droppedLabel}
+              </dt>
+              <dd className="text-sm text-content-secondary break-words">
+                {dropped.join(", ")}
+              </dd>
+            </div>
+          )}
+        </dl>
+        {cap > 0 && (
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+            {used}/{cap} {quotaWord}
+          </p>
+        )}
       </div>
-    </Container>
+      <p className="text-xs text-content-tertiary leading-relaxed">
+        {marketSignalsCopy.footer}
+      </p>
+    </div>
   );
+}
+
+function emptyReasonFor(status: MarketSignalsResponse["status"]): string {
+  switch (status) {
+    case "no_keywords":
+      return "Não foram detectados temas com sinal de pesquisa relevante neste perfil.";
+    case "disabled":
+      return "Os sinais de pesquisa estão desactivados nesta análise.";
+    case "blocked":
+      return "Quota de sinais de pesquisa atingida para esta análise.";
+    case "timeout":
+      return "Os sinais de pesquisa demoraram demasiado a responder.";
+    case "error":
+    default:
+      return "Sem ligação aos sinais de pesquisa neste momento.";
+  }
 }

@@ -197,9 +197,10 @@ export function ReportFinalBlock({
   return (
     <section
       aria-label="Concluir relatório"
-      className="mx-auto max-w-7xl px-6 pb-16 pt-4"
+      className="w-full bg-[radial-gradient(ellipse_at_bottom_right,rgba(6,182,212,0.10),transparent_60%),radial-gradient(ellipse_at_top_left,rgba(139,92,246,0.08),transparent_60%)] border-t border-border-subtle/30"
     >
-      <div className="rounded-2xl border border-border-subtle/50 bg-surface-secondary/40 p-6 md:p-10 space-y-8">
+      <div className="mx-auto max-w-7xl px-5 md:px-6 py-12 md:py-16">
+      <div className="rounded-2xl border border-border-subtle/50 bg-surface-base/70 backdrop-blur-sm p-6 md:p-10 space-y-8">
         {/* Acção principal: PDF em destaque */}
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <header className="space-y-2 max-w-2xl">
@@ -327,6 +328,7 @@ export function ReportFinalBlock({
             <span aria-hidden="true">→</span>
           </a>
         </div>
+      </div>
       </div>
     </section>
   );
