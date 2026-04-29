@@ -124,6 +124,59 @@ export interface InsightsContext {
      */
     zero_signal_keywords?: string[];
   };
+  /**
+   * Compact, high-signal summary of editorial crossovers (R4-B / R5).
+   * Optional and defensive: each sub-block is only present when its own
+   * `available` gate is true in the source `EditorialPatterns`. The model
+   * never sees the `available`/`reason` flags — only the surviving fields.
+   */
+  editorial_patterns?: {
+    engagement_trend?: {
+      /** "up" | "flat" | "down" — already translated for the model. */
+      direction: "up" | "flat" | "down";
+      confidence: "alta" | "média" | "baixa";
+      sample_size: number;
+    };
+    caption_length?: {
+      /** Best-performing caption-length bucket label (already pt-PT). */
+      best_bucket: string;
+      best_avg_engagement_pct: number;
+      sample_size: number;
+    };
+    hashtag_count?: {
+      /** "0–4" | "5–10" | "11–20" | "21+". */
+      best_bucket: string;
+      best_avg_engagement_pct: number;
+      sample_size: number;
+    };
+    collaboration_lift?: {
+      /** Engagement delta with vs without mentions/coauthors, in % of
+       *  relative lift. e.g. delta_pct = 42 → with-mentions ER is 42%
+       *  higher than without. Negative = penalty. */
+      delta_pct: number;
+      with_count: number;
+      without_count: number;
+    };
+    comments_to_likes_ratio?: {
+      /** comments / likes * 100, rounded to 2 decimals. Higher = more
+       *  conversational audience. */
+      ratio_pct: number;
+      sample_size: number;
+    };
+    market_demand_content_fit?: {
+      /** matched_keywords / total_keywords expressed as 0..100. */
+      coverage_pct: number;
+      matched_keywords: number;
+      missing_keywords: string[];
+      total_keywords: number;
+    };
+    format_vs_competitors?: {
+      dominant_format: "Reels" | "Carrosséis" | "Imagens";
+      profile_avg_engagement_pct: number;
+      competitors_median_engagement_pct: number;
+      delta_pct: number;
+    };
+  };
 }
 
 /** Result envelope returned by the (future) generator. */
