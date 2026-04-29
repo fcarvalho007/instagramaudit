@@ -1,120 +1,142 @@
-## Diagnóstico (sem chamar OpenAI / Apify / DataForSEO)
 
-Inspeccionei a camada de configuração de OpenAI Insights. Estado actual:
+## Objetivo
 
-### Resolução do modelo
-**`src/lib/insights/openai-insights.server.ts:134-138`**
-```ts
-function resolveModel(): string {
-  const fromEnv = process.env.OPENAI_INSIGHTS_MODEL;
-  if (fromEnv && fromEnv.trim().length > 0) return fromEnv.trim();
-  return DEFAULT_OPENAI_MODEL;
-}
-```
-- Se `OPENAI_INSIGHTS_MODEL` estiver definido → runtime usa o valor exacto. ✅
-- Se ausente → cai em `DEFAULT_OPENAI_MODEL`.
-
-### Defaults / fallback
-**`src/lib/insights/cost.ts:13-16`**
-```ts
-export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
-export const FALLBACK_MODEL = "gpt-5.4-mini";
-```
-Ambos já apontam para `gpt-5.4-mini`. ✅
-
-### Secret no projecto
-`fetch_secrets` confirma que **`OPENAI_INSIGHTS_MODEL`** está configurado no Lovable Cloud (valor encriptado, não inspeccionável daqui — utilizador confirmou que vale `gpt-5.4-mini`).
-
-### Tabela de custos
-**`src/lib/insights/cost.ts:30-35`**
-```ts
-const PRICING = {
-  "gpt-4.1-mini": { inputPerMillion: 0.4,  outputPerMillion: 1.6 },
-  "gpt-5-mini":   { inputPerMillion: 0.25, outputPerMillion: 2.0 },
-  "gpt-5.4-mini": { inputPerMillion: 0.75, outputPerMillion: 4.5 },  // ✅ valores correctos
-  "gpt-5.4-nano": { inputPerMillion: 0.2,  outputPerMillion: 1.25 }, // ⚠️ entrada residual
-};
-```
-- Input/output de `gpt-5.4-mini` correspondem ao pedido ($0.75 / $4.50). ✅
-- **Falta cached input** ($0.075/1M). A interface `ModelPrice` não tem campo para tarifa cached, e o calculador não recebe `cachedTokens`. ❌
-- **`gpt-5.4-nano` continua na tabela** — não é default nem fallback, mas se um caller passar esse model id, recebe pricing. Pedido explícito: remover dependência de `gpt-5.4-nano`. ❌
-
-### Outras referências a `nano` no fluxo
-**`src/lib/insights/openai-insights.server.ts:203`** — comentário:
-```ts
-// GPT-5 family (incl. gpt-5.4-nano) only accepts max_completion_tokens.
-```
-Apenas comentário, sem efeito runtime, mas deve ser removido para zero menções de `nano` no fluxo de OpenAI Insights. ❌
-
-(As ocorrências em `src/lib/benchmark/*` referem-se ao tier de seguidores "nano/micro/mid/macro/mega" — não tem relação com modelos OpenAI; ignorar.)
-
-### Captura de cached tokens
-A resposta da OpenAI inclui `usage.prompt_tokens_details.cached_tokens`, mas o tipo `OpenAiChatResponse` (linha 331) não declara o campo e o handler (linha 236-238) só lê `prompt_tokens` e `completion_tokens`. Para a tarifa cached funcionar é preciso ler este campo e passá-lo a `calculateOpenAiCost`.
+Inverter a lógica do /admin: por defeito mostrar **dados reais** (mesmo que vazios ou parciais) e oferecer um **switcher "Modo demonstração"** global para, quando útil, sobrepor mockups e ver a página "preenchida". Os **custos (Apify · OpenAI · DataForSEO) ficam sempre reais**, nunca afetados pelo modo demo. Corrigir os bugs visíveis em /admin.
 
 ---
 
-## Plano de edits (mínimos, isolados à camada de configuração OpenAI Insights)
+## Princípios
 
-### 1. `src/lib/insights/cost.ts`
-- Estender `ModelPrice` com `cachedInputPerMillion?: number`.
-- Adicionar `cachedInputPerMillion: 0.075` à entrada `gpt-5.4-mini`.
-- **Remover entrada `gpt-5.4-nano`** da `PRICING`. Calls que passem esse id passam a cair no `FALLBACK_MODEL` (= `gpt-5.4-mini`).
-- Estender `CostInput` com `cachedTokens?: number` (clamp a `≤ promptTokens`).
-- Estender `CostBreakdown` com `cachedTokens: number`.
-- Alterar `calculateOpenAiCost` para facturar `cachedTokens × cachedInputPerMillion` e o resto a `inputPerMillion`.
-- Exportar `getPricingTable()` (read-only) para o script diagnóstico imprimir preços sem reexpor a constante mutável.
-
-### 2. `src/lib/insights/openai-insights.server.ts`
-- Linha 203: substituir comentário por `"GPT-5 family only accepts max_completion_tokens."` (sem `nano`).
-- Tipo `OpenAiChatResponse` (linha 331-339): adicionar `prompt_tokens_details?: { cached_tokens?: number }` em `usage`.
-- Linha 236-238: ler `cachedTokens = json.usage?.prompt_tokens_details?.cached_tokens ?? 0` e passar a `calculateOpenAiCost`.
-
-### 3. Script diagnóstico reusável (não toca em OpenAI)
-Criar **`scripts/check-openai-insights-config.ts`**:
-```ts
-import { DEFAULT_OPENAI_MODEL, FALLBACK_MODEL, getPricingTable, calculateOpenAiCost }
-  from "../src/lib/insights/cost";
-
-const fromEnv = process.env.OPENAI_INSIGHTS_MODEL;
-const resolved = fromEnv?.trim() || DEFAULT_OPENAI_MODEL;
-const pricing = getPricingTable();
-const sample = calculateOpenAiCost({
-  model: resolved,
-  promptTokens: 1_000_000, completionTokens: 1_000_000, cachedTokens: 0,
-});
-
-console.log(JSON.stringify({
-  env_present: !!fromEnv,
-  resolved_model: resolved,
-  default_model: DEFAULT_OPENAI_MODEL,
-  fallback_model: FALLBACK_MODEL,
-  known_models: Object.keys(pricing),
-  pricing_for_resolved: pricing[resolved] ?? null,
-  sample_cost_1M_in_1M_out_usd: sample.estimatedCostUsd,
-}, null, 2));
-console.log("[diagnostic] no provider call performed.");
-```
-Este script é executado localmente com `bun run scripts/check-openai-insights-config.ts` para validar a resolução **sem** atingir nenhum endpoint. Fica versionado como ferramenta reusável.
-
-### 4. Validação
-- `bunx tsc --noEmit` deve passar (tipos coerentes em `cost.ts` + `openai-insights.server.ts`).
-- Correr o script diagnóstico e verificar:
-  - `resolved_model = "gpt-5.4-mini"`
-  - `default_model = "gpt-5.4-mini"`
-  - `fallback_model = "gpt-5.4-mini"`
-  - `pricing_for_resolved.cachedInputPerMillion = 0.075`
-  - `known_models` não contém `gpt-5.4-nano`.
-- Confirmar via `rg "gpt-5\.4-nano" src/lib/insights/` que não restam referências.
+1. **Real por defeito.** Toda a tab carrega dados reais à entrada.
+2. **Demo é opcional e sinalizado.** Quando ativo, cada secção que usa mock mostra um banner discreto e os números aparecem com o estilo "demo" (italic + cor neutra).
+3. **Custos são sagrados.** A secção Despesa (e qualquer KPI de custo) ignora o modo demo — é sempre real, ligada a `provider_call_logs` / `cost_daily`.
+4. **Vazio honesto.** Quando não há dados reais, mostrar empty state explícito ("Sem dados ainda — ativa Modo demonstração para ver layout preenchido"), em vez de mock implícito.
 
 ---
 
-## Ficheiros tocados
-- `src/lib/insights/cost.ts` (edits)
-- `src/lib/insights/openai-insights.server.ts` (edits — apenas comentário, tipo de resposta e captura de cached_tokens)
-- `scripts/check-openai-insights-config.ts` (novo, reusável)
+## Mudanças
 
-## Nada disto faz
-- Sem chamadas a OpenAI / Apify / DataForSEO.
-- Sem invalidar snapshots.
-- Sem tocar em UI, PDF, admin, schema, `/report/example` ou ficheiros locked (`__root.tsx`, `styles.css`, `tokens.css`, etc.).
-- Sem subir scripts temporários — o único script criado é diagnóstico reusável.
+### 1. Demo Mode global (novo)
+
+**Novo ficheiro `src/lib/admin/demo-mode.ts`**
+- Hook `useDemoMode()` com estado partilhado via `localStorage` (`admin.demo_mode.v1`) + custom event para sincronizar entre tabs/janelas.
+- API: `{ enabled: boolean, toggle(): void, set(v: boolean): void }`.
+- Default: `false` (real).
+
+**Novo `DemoModeSwitch` em `src/components/admin/v2/demo-mode-switch.tsx`**
+- Switch compacto no canto superior direito do header global do /admin (ao lado de "Terminar sessão").
+- Label: "Modo demonstração" + tooltip: "Mostra dados de exemplo nas secções ainda sem integração real (subscrições, clientes, pipeline). Custos e métricas operacionais são sempre reais."
+- Visual: cyan accent quando ativo, neutro quando desligado.
+
+**Integração no `src/routes/admin.tsx`**
+- Inserir `<DemoModeSwitch />` antes do botão "Terminar sessão".
+- Quando ativo, adicionar classe `data-demo="on"` no `<div className="admin-v2">` para permitir hooks visuais (ex.: outline cyan ténue em secções demo).
+
+### 2. Refactor das secções para suportarem `demoMode`
+
+Cada secção que hoje usa `MOCK_*` recebe a flag e decide o que renderizar:
+
+**Padrão por secção (demo-aware):**
+```
+const demo = useDemoMode().enabled;
+const real = useQuery(...);  // sempre tenta carregar real
+
+if (demo) return <DemoView mock={MOCK_X} />;       // mockup
+if (real.isLoading) return <SectionSkeleton />;
+if (real.error) return <SectionError ... />;
+if (isEmpty(real.data)) return <SectionEmpty hint="Ativa Modo demonstração para ver layout preenchido" />;
+return <RealView data={real.data} />;
+```
+
+Secções afetadas (todas mantêm o mock para o modo demo):
+- `visao-geral/revenue-section.tsx` — adicionar query real (MRR, receita avulsa) ligada a `report_requests` + futura `subscriptions`.
+- `visao-geral/funnel-section.tsx`, `kanban-section.tsx`, `intent-section.tsx` — adicionar queries a `analysis_events`, `leads`, `report_requests` para versão real; mock em demo.
+- `receita/*` (5 secções) — real: vazio/zero (não há subscrições ainda) com empty state honesto; mock só em demo.
+- `clientes/*` (3 secções) — real: leitura de `leads` + `social_profiles` agregados; mock em demo.
+- `relatorios/*` (4 secções) — pipeline e métricas já têm dados reais possíveis (ligar a `report_requests` + `analysis_events`); mock em demo.
+- `perfis/*` (4 secções) — real: já temos `social_profiles` + `analysis_events`; ligar agora; mock em demo.
+
+**Despesa (`visao-geral/expense-section.tsx`)**: **NÃO mexer** — já é 100% real. Apenas garantir que não responde ao demo mode.
+
+### 3. Endpoints reais a criar (server functions / API routes)
+
+Sob `src/routes/api/admin/` (autenticados via allowlist):
+- `analytics.funnel.ts` — agregação 30d de `analysis_events` (search → analyze → report_request → email_sent).
+- `analytics.profiles.ts` — top perfis por nº análises, conversão a relatório, oportunidades (perfis pesquisados ≥2 sem report).
+- `analytics.leads.ts` — agregação de `leads` + `report_requests` para a tab Clientes (sem subscrições ainda).
+- `analytics.reports.ts` — agregações de `report_requests` (estado, latências, falhas) para tab Relatórios.
+
+Cada um devolve JSON tipado e usa `supabaseAdmin` em `*.server.ts` helpers.
+
+### 4. Substituir banners "Dados de exemplo" pela lógica nova
+
+Remover `<MockDataBanner>` no topo das páginas `/admin/receita` e `/admin/clientes`.
+Em vez disso:
+- Quando demo mode está **off**: cada secção mostra dados reais ou empty state.
+- Quando demo mode está **on**: aparece um único banner global no topo da página ("Modo demonstração ativo — algumas secções mostram dados fictícios para visualização."), e secções que renderizam mock recebem outline cyan ténue.
+
+### 5. Bugs em /admin
+
+**5a. Erro "No QueryClient set"**
+
+Causa provável: o `defaultErrorComponent` em `src/router.tsx` é montado fora da árvore do `RootComponent` quando uma rota explode antes do `QueryClientProvider` envolver — em TanStack Start, error boundaries de routing renderizam ao nível do router, não do root component.
+
+Correção:
+- Mover o `QueryClientProvider` para `RootShell` (envolver `{children}` em `__root.tsx`), em vez de `RootComponent`. Assim qualquer rota — incluindo error boundaries — fica sempre dentro do provider.
+- Garantir que o `queryClient` é acessível: passar via `Route.useRouteContext()` no `RootShell` ou criar instância singleton client-side (memoizada) para SSR-safety.
+- Alternativa mais segura: `RootShell` cria/lê o `queryClient` do contexto e envolve `children` no provider; o `RootComponent` deixa de o fazer.
+
+**5b. "A verificar sessão…" lento**
+
+Já há cache (60s) + delay de spinner (180ms). Otimizações adicionais:
+- Pré-carregar a sessão Supabase em paralelo com o render (sem esperar pelo `INITIAL_SESSION` event): chamar `supabase.auth.getSession()` em paralelo e usar o que chegar primeiro (event ou getSession), evitando a espera de ~300-500ms do listener inicializar.
+- Reduzir `SPINNER_DELAY_MS` para `80ms` (só mostrar spinner se realmente lento).
+- Cachear o resultado de `whoami` em `localStorage` (não `sessionStorage`) para sobreviver entre tabs e refrescos rápidos.
+- Aumentar TTL para `5 min` (continua a ser revalidado em background no próximo onAuthStateChange).
+
+### 6. Pequenas limpezas
+
+- Atualizar `LOCKED_FILES.md` se necessário (a `expense-section.tsx` deve ficar marcada como sensível: "custos reais — não substituir por mock").
+- Adicionar comentário no `mock-data.ts` esclarecendo que esses dados só são usados quando `demoMode.enabled === true`.
+
+---
+
+## Detalhes técnicos
+
+```text
+src/
+├── lib/admin/
+│   └── demo-mode.ts                     [NEW] hook + storage + event bus
+├── components/admin/v2/
+│   ├── demo-mode-switch.tsx             [NEW] switch UI no header
+│   ├── mock-data-banner.tsx             [EDIT] passa a aceitar variant "global" + "section"
+│   └── (todas secções com MOCK_*)       [EDIT] passam a usar useDemoMode + query real
+├── routes/
+│   ├── __root.tsx                        [EDIT] QueryClientProvider sobe para RootShell
+│   ├── admin.tsx                         [EDIT] integra DemoModeSwitch
+│   ├── admin.receita.tsx                 [EDIT] remove banner global
+│   ├── admin.clientes.tsx                [EDIT] remove banner global
+│   └── api/admin/
+│       ├── analytics.funnel.ts           [NEW]
+│       ├── analytics.profiles.ts         [NEW]
+│       ├── analytics.leads.ts            [NEW]
+│       └── analytics.reports.ts          [NEW]
+└── router.tsx                            [EDIT] DefaultErrorComponent sem dependência de QueryClient
+```
+
+Sem novas dependências. Sem alterações de schema (lê apenas tabelas existentes: `analysis_events`, `report_requests`, `leads`, `social_profiles`, `provider_call_logs`, `cost_daily`, `app_config`).
+
+---
+
+## Checkpoint
+
+☐ Demo mode global criado (hook + switch no header) com persistência localStorage
+☐ Default = real; toggle visível e claro
+☐ Despesa permanece 100% real, ignorando o demo mode
+☐ Cada secção mock-only converte-se em real-first com fallback a empty state
+☐ Endpoints reais (`analytics.*`) criados para Funil, Perfis, Clientes, Relatórios
+☐ Banners "Dados de exemplo" removidos das páginas; substituídos por banner global só quando demo mode ativo
+☐ Erro "No QueryClient set" deixa de ocorrer (provider movido para RootShell)
+☐ "A verificar sessão…" reduzido (paralelizar getSession + onAuthStateChange, TTL maior, cache em localStorage)
+☐ Sem alterações em /report.example, sem novas dependências, sem schema changes
+☐ pt-PT, sem placeholders, dark-first
