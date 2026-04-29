@@ -77,6 +77,7 @@ import {
 } from "@/lib/security/dataforseo-allowlist";
 import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
 import { buildEditorialPatterns, buildEditorialPatternsForInsights } from "@/lib/report/editorial-patterns";
+import { buildInsightsCtx } from "@/lib/insights/build-context";
 import {
   buildPersistedSummary,
   decideCacheTtlSeconds,
@@ -915,76 +916,16 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           let aiInsights: AiInsightsV1 | null = null;
           if (isOpenAiAllowed(primaryProfile.username)) {
             try {
-              const successfulCompetitorsForAi = competitorResults.filter(
-                (c): c is Extract<CompetitorAnalysis, { success: true }> =>
-                  c.success,
-              );
-              const competitorEngagements = successfulCompetitorsForAi
-                .map((c) => c.content_summary.average_engagement_rate)
-                .filter((n) => Number.isFinite(n) && n > 0);
-              const medianEngagement =
-                competitorEngagements.length > 0
-                  ? (() => {
-                      const sorted = [...competitorEngagements].sort(
-                        (a, b) => a - b,
-                      );
-                      const mid = Math.floor(sorted.length / 2);
-                      return sorted.length % 2 === 0
-                        ? (sorted[mid - 1] + sorted[mid]) / 2
-                        : sorted[mid];
-                    })()
-                  : null;
-              const topPostsForAi = [...primaryEnriched.posts]
-                .sort((a, b) => b.engagement_pct - a.engagement_pct)
-                .slice(0, 3)
-                .map((p) => ({
-                  format: p.format,
-                  likes: p.likes,
-                  comments: p.comments,
-                  engagement_pct: p.engagement_pct,
-                  caption_excerpt: p.caption ?? "",
-                }));
-              // R5: derive editorial_patterns once and pass into the
-              // OpenAI ctx so insights can explain WHY, not just WHAT.
-              // Defensive: helper returns undefined when nothing useful.
-              const editorialPatternsForAi = buildEditorialPatternsForInsights(
-                buildEditorialPatterns({
-                  profile: primaryProfile,
-                  content_summary: primarySummary,
-                  posts: primaryEnriched.posts,
-                  format_stats: primaryEnriched.format_stats,
-                  ...(marketSignalsFree
-                    ? { market_signals_free: marketSignalsFree }
-                    : {}),
-                } as unknown as Parameters<typeof buildEditorialPatterns>[0]),
-                {
-                  posts: primaryEnriched.posts,
-                  profile: {
-                    dominant_format: primarySummary.dominant_format,
-                    average_engagement_rate:
-                      primarySummary.average_engagement_rate,
-                  },
-                  competitors: { median_engagement_pct: medianEngagement },
-                },
-              );
-              const ctx: InsightsContext = {
+              const { ctx } = buildInsightsCtx({
                 profile: primaryProfile,
-                content_summary: primarySummary,
-                top_posts: topPostsForAi,
+                summary: primarySummary,
+                posts: primaryEnriched.posts,
+                formatStats: primaryEnriched.format_stats,
+                marketSignalsFree,
+                competitorResults,
                 benchmark: benchmarkPositioningEarly,
-                competitors_summary: {
-                  count: successfulCompetitorsForAi.length,
-                  median_engagement_pct: medianEngagement,
-                },
-                // Free market signals are now fetched inline above. Paid
-                // tier remains out of scope for the public flow.
-                market_signals: summarizeMarketSignalsForInsights(
-                  marketSignalsFree,
-                ),
-                ...(editorialPatternsForAi
-                  ? { editorial_patterns: editorialPatternsForAi }
-                  : {}),
-              };
+                marketSignals: summarizeMarketSignalsForInsights(marketSignalsFree),
+              });
               const result = await generateInsights(ctx);
               if (result.ok && result.insights) {
                 aiInsights = result.insights;
@@ -1012,71 +953,16 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 (existing?.normalized_payload as unknown as {
                   ai_insights_v2?: AiInsightsV2 | null;
                 } | null)?.ai_insights_v2 ?? null;
-              const successfulCompetitorsForAi = competitorResults.filter(
-                (c): c is Extract<CompetitorAnalysis, { success: true }> =>
-                  c.success,
-              );
-              const competitorEngagements = successfulCompetitorsForAi
-                .map((c) => c.content_summary.average_engagement_rate)
-                .filter((n) => Number.isFinite(n) && n > 0);
-              const medianEngagementV2 =
-                competitorEngagements.length > 0
-                  ? (() => {
-                      const sorted = [...competitorEngagements].sort(
-                        (a, b) => a - b,
-                      );
-                      const mid = Math.floor(sorted.length / 2);
-                      return sorted.length % 2 === 0
-                        ? (sorted[mid - 1] + sorted[mid]) / 2
-                        : sorted[mid];
-                    })()
-                  : null;
-              const topPostsForV2 = [...primaryEnriched.posts]
-                .sort((a, b) => b.engagement_pct - a.engagement_pct)
-                .slice(0, 3)
-                .map((p) => ({
-                  format: p.format,
-                  likes: p.likes,
-                  comments: p.comments,
-                  engagement_pct: p.engagement_pct,
-                  caption_excerpt: p.caption ?? "",
-                }));
-              const editorialPatternsForAiV2 = buildEditorialPatternsForInsights(
-                buildEditorialPatterns({
-                  profile: primaryProfile,
-                  content_summary: primarySummary,
-                  posts: primaryEnriched.posts,
-                  format_stats: primaryEnriched.format_stats,
-                  ...(marketSignalsFree
-                    ? { market_signals_free: marketSignalsFree }
-                    : {}),
-                } as unknown as Parameters<typeof buildEditorialPatterns>[0]),
-                {
-                  posts: primaryEnriched.posts,
-                  profile: {
-                    dominant_format: primarySummary.dominant_format,
-                    average_engagement_rate:
-                      primarySummary.average_engagement_rate,
-                  },
-                  competitors: { median_engagement_pct: medianEngagementV2 },
-                },
-              );
-              const ctxV2: InsightsContext = {
+              const { ctx: ctxV2 } = buildInsightsCtx({
                 profile: primaryProfile,
-                content_summary: primarySummary,
-                top_posts: topPostsForV2,
+                summary: primarySummary,
+                posts: primaryEnriched.posts,
+                formatStats: primaryEnriched.format_stats,
+                marketSignalsFree,
+                competitorResults,
                 benchmark: benchmarkPositioningEarly,
-                competitors_summary: {
-                  count: successfulCompetitorsForAi.length,
-                  median_engagement_pct: medianEngagementV2,
-                },
-                market_signals: summarizeMarketSignalsForInsights(
-                  marketSignalsFree,
-                ),
-                ...(editorialPatternsForAiV2
-                  ? { editorial_patterns: editorialPatternsForAiV2 }
-                  : {}),
-              };
+                marketSignals: summarizeMarketSignalsForInsights(marketSignalsFree),
+              });
               const resultV2 = await generateInsightsV2(ctxV2, {
                 previous: previousV2,
               });
