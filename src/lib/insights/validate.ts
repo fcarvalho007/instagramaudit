@@ -70,11 +70,11 @@ const TECHNICAL_LEAK_PATTERNS: RegExp[] = [
   // 1. Array indexing on known technical roots: top_posts[0], top_posts [ 1 ]
   /\btop_posts\s*\[\s*\d+\s*\]/i,
   // 2. Dotted JSON-pointer-ish paths rooted at known sections.
-  /\b(content_summary|benchmark|market_signals|competitors_summary|profile|top_posts)\.[a-z_]+/i,
+  /\b(content_summary|benchmark|market_signals|competitors_summary|profile|top_posts|editorial_patterns)\.[a-z_]+/i,
   // 3. Specific English status labels we have seen leak from the model.
   /\bposition\s+(below|above|aligned)\b/i,
   // 4. Specific raw metric tokens.
-  /\b(engagement_pct|benchmark_value_pct|profile_value_pct|difference_pct|dominant_format|estimated_posts_per_week|posts_per_week|average_engagement_rate|average_likes|average_comments|followers_count|posts_count)\b/i,
+  /\b(engagement_pct|benchmark_value_pct|profile_value_pct|difference_pct|dominant_format|estimated_posts_per_week|posts_per_week|average_engagement_rate|average_likes|average_comments|followers_count|posts_count|delta_pct|ratio_pct|coverage_pct|best_bucket|matched_keywords|missing_keywords|with_count|without_count|sample_size|engagement_trend|collaboration_lift|comments_to_likes_ratio|market_demand_content_fit|format_vs_competitors|caption_length|hashtag_count)\b/i,
   // 5. Generic snake_case suffixes that mark a raw field name.
   /\b[a-z][a-z0-9]*_(pct|count|rate|per_week|summary|likes|comments)\b/i,
 ];
