@@ -349,12 +349,32 @@ export function buildInsightsUserPayload(
         ? { strongest_keyword: ctx.market_signals.strongest_keyword }
         : {}),
       ...(ctx.market_signals.has_free &&
+      typeof ctx.market_signals.strongest_score === "number" &&
+      Number.isFinite(ctx.market_signals.strongest_score)
+        ? { strongest_score: ctx.market_signals.strongest_score }
+        : {}),
+      ...(ctx.market_signals.has_free &&
       Array.isArray(ctx.market_signals.top_keywords) &&
       ctx.market_signals.top_keywords.length > 0
         ? { top_keywords: ctx.market_signals.top_keywords }
         : {}),
       ...(ctx.market_signals.has_free && ctx.market_signals.trend_direction
         ? { trend_direction: ctx.market_signals.trend_direction }
+        : {}),
+      ...(ctx.market_signals.has_free &&
+      typeof ctx.market_signals.trend_delta_pct === "number" &&
+      Number.isFinite(ctx.market_signals.trend_delta_pct)
+        ? { trend_delta_pct: ctx.market_signals.trend_delta_pct }
+        : {}),
+      ...(ctx.market_signals.has_free &&
+      typeof ctx.market_signals.usable_keyword_count === "number" &&
+      ctx.market_signals.usable_keyword_count > 0
+        ? { usable_keyword_count: ctx.market_signals.usable_keyword_count }
+        : {}),
+      ...(ctx.market_signals.has_free &&
+      Array.isArray(ctx.market_signals.zero_signal_keywords) &&
+      ctx.market_signals.zero_signal_keywords.length > 0
+        ? { zero_signal_keywords: ctx.market_signals.zero_signal_keywords }
         : {}),
       ...(ctx.market_signals.has_free &&
       Array.isArray(ctx.market_signals.dropped_keywords) &&
