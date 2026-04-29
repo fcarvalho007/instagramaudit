@@ -88,6 +88,14 @@ export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps)
   const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
   const [showSpinner, setShowSpinner] = useState(false);
   const lastEvaluatedTokenRef = useRef<EvaluatedToken>(UNSET);
+  // Mantemos a referência mais recente de `onLogoutReady` num ref para
+  // evitar que o useEffect que liga o handler dispare a cada render — o pai
+  // costuma passar uma função nova em cada render e isso provocava
+  // "Maximum update depth exceeded" (loop infinito setState ↔ render).
+  const onLogoutReadyRef = useRef(onLogoutReady);
+  useEffect(() => {
+    onLogoutReadyRef.current = onLogoutReady;
+  }, [onLogoutReady]);
 
   // Hidrata estado optimista a partir do cache local após mount.
   useEffect(() => {
@@ -198,15 +206,18 @@ export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps)
   }, [authState]);
 
   useEffect(() => {
-    if (!onLogoutReady) return;
-    onLogoutReady(async () => {
+    const handler = async () => {
       await supabase.auth.signOut().catch(() => null);
       lastEvaluatedTokenRef.current = UNSET;
       clearCache();
       setAuthState("signed_out");
       setDeniedEmail(null);
-    });
-  }, [onLogoutReady]);
+    };
+    onLogoutReadyRef.current?.(handler);
+    // Intencionalmente sem dependências — corre uma vez no mount. A ref
+    // `onLogoutReadyRef` resolve sempre o callback mais recente do pai.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (authState === "checking") {
     if (!showSpinner) {
