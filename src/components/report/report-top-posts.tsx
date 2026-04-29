@@ -27,10 +27,23 @@ export function ReportTopPosts() {
                 post.thumbnail,
               )}
             >
-              <span className="absolute top-3 right-3 px-2 py-1 rounded-md bg-white/90 backdrop-blur font-mono text-[10px] uppercase tracking-wider text-content-primary font-semibold">
+              {post.thumbnailUrl ? (
+                <img
+                  src={post.thumbnailUrl}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : null}
+              <span className="absolute top-3 right-3 z-10 px-2 py-1 rounded-md bg-white/90 backdrop-blur font-mono text-[10px] uppercase tracking-wider text-content-primary font-semibold">
                 {post.format}
               </span>
-              <ExternalLink className="absolute top-3 left-3 size-3.5 text-white/80" />
+              <ExternalLink className="absolute top-3 left-3 z-10 size-3.5 text-white/80" />
             </div>
             <div className="p-4 flex flex-col gap-3 flex-1">
               <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
