@@ -71,13 +71,21 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  // Provider colocado no shell para que QUALQUER coisa renderizada pelo router
+  // — incluindo `defaultErrorComponent` e `notFoundComponent` que ficam fora
+  // do `RootComponent` — tenha acesso ao QueryClient. Resolve o erro
+  // "No QueryClient set, use QueryClientProvider to set one" quando uma rota
+  // explode antes do RootComponent envolver a árvore.
+  const { queryClient } = Route.useRouteContext();
   return (
     <html lang="pt-PT">
       <head>
         <HeadContent />
       </head>
       <body suppressHydrationWarning>
-        {children}
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
         <Scripts />
       </body>
     </html>
@@ -85,12 +93,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppShell>
-        <Outlet />
-      </AppShell>
-    </QueryClientProvider>
+    <AppShell>
+      <Outlet />
+    </AppShell>
   );
 }
