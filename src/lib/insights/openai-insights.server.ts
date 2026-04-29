@@ -426,3 +426,250 @@ async function logCall(input: LogCallInput): Promise<void> {
     errorMessage: input.errorMessage ?? undefined,
   });
 }
+
+/* ===========================================================================
+ * v2 — Insights inline por secção (R3)
+ *
+ * Mesma arquitectura de gates do v1 (kill-switch, allowlist, API key, cap
+ * diário, abort timeout, log de provider call). Diferença: prompt
+ * enriquecido com contexto da Knowledge Base + JSON schema com 9 chaves
+ * obrigatórias.
+ *
+ * Cache hint: o caller pode passar `previous` (a v2 já guardada no
+ * snapshot). Se `previous.source_signals.inputs_hash` e `kb_version`
+ * baterem certo com o estado actual, devolvemos `{ ok: true,
+ * insights: previous, reason: "CACHE_HIT" }` SEM chamar a OpenAI.
+ * ========================================================================= */
+
+function tierFromFollowers(n: number): BenchmarkTier {
+  if (n >= 500_000) return "macro";
+  if (n >= 100_000) return "mid";
+  if (n >= 10_000) return "micro";
+  return "nano";
+}
+
+function formatToKbFormat(
+  format: "Reels" | "Carrosséis" | "Imagens",
+): BenchmarkFormat {
+  if (format === "Reels") return "reels";
+  if (format === "Carrosséis") return "carousels";
+  return "images";
+}
+
+export async function generateInsightsV2(
+  ctx: InsightsContext,
+  options?: { previous?: AiInsightsV2 | null },
+): Promise<InsightsV2GenerationResult> {
+  if (!isOpenAiEnabled()) return { ok: false, insights: null, reason: "DISABLED" };
+  if (!isOpenAiAllowed(ctx.profile.username)) {
+    return { ok: false, insights: null, reason: "NOT_ALLOWED" };
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey || apiKey.trim().length === 0) {
+    return { ok: false, insights: null, reason: "CONFIG_ERROR", detail: "OPENAI_API_KEY missing" };
+  }
+
+  // Resolver tier + formato dominante para a query da KB.
+  const tier = tierFromFollowers(ctx.profile.followers_count);
+  const format = formatToKbFormat(ctx.content_summary.dominant_format);
+
+  // Contexto verificado da KB (best-effort: helper já devolve EMPTY em erro).
+  const kb = await getKnowledgeContext({ tier, format });
+  const kbVersion = computeKbVersion(kb);
+
+  const systemPrompt = buildSystemPromptV2(kb);
+  const userPayload = buildInsightsV2UserPayload(ctx);
+  const inputsHash = hashInsightsV2Prompt(systemPrompt, userPayload);
+
+  // Cache hit: mesmos inputs + mesma KB → reutilizar.
+  const previous = options?.previous ?? null;
+  if (
+    previous &&
+    previous.schema_version === 2 &&
+    previous.source_signals.inputs_hash === inputsHash &&
+    previous.source_signals.kb_version === kbVersion
+  ) {
+    return {
+      ok: true,
+      insights: previous,
+      reason: "CACHE_HIT",
+    };
+  }
+
+  // Cap diário (partilhado com v1).
+  const cap = resolveDailyCapUsd();
+  const spent = await getOpenAiSpendLast24hUsd();
+  if (spent >= cap) {
+    return {
+      ok: false,
+      insights: null,
+      reason: "DAILY_CAP_REACHED",
+      detail: `spent_usd=${spent.toFixed(4)} cap_usd=${cap.toFixed(2)}`,
+    };
+  }
+
+  const model = resolveModel();
+  const handle = ctx.profile.username.toLowerCase();
+  const startedAt = Date.now();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let httpStatus: number | null = null;
+  let promptTokens = 0;
+  let completionTokens = 0;
+
+  try {
+    const res = await fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: TEMPERATURE,
+        max_completion_tokens: MAX_OUTPUT_TOKENS,
+        response_format: { type: "json_schema", json_schema: RESPONSE_JSON_SCHEMA_V2 },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: JSON.stringify(userPayload) },
+        ],
+      }),
+      signal: controller.signal,
+    });
+    httpStatus = res.status;
+
+    if (!res.ok) {
+      const errText = await safeText(res);
+      const parsedErr = parseOpenAiError(errText);
+      const cost = calculateOpenAiCost({ model, promptTokens: 0, completionTokens: 0 });
+      await logCall({
+        handle,
+        model,
+        status: "http_error",
+        httpStatus,
+        durationMs: Date.now() - startedAt,
+        cost,
+        errorMessage: `v2: ${parsedErr.summary.slice(0, 480)}`,
+      });
+      return {
+        ok: false,
+        insights: null,
+        reason: "OPENAI_ERROR",
+        detail: `HTTP ${httpStatus}${parsedErr.code ? ` ${parsedErr.code}` : ""}`,
+      };
+    }
+
+    const json = (await res.json()) as OpenAiChatResponse;
+    promptTokens = json.usage?.prompt_tokens ?? 0;
+    completionTokens = json.usage?.completion_tokens ?? 0;
+    const cachedTokens = json.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+    const cost = calculateOpenAiCost({
+      model,
+      promptTokens,
+      completionTokens,
+      cachedTokens,
+    });
+
+    const content = json.choices?.[0]?.message?.content;
+    if (!content) {
+      await logCall({
+        handle,
+        model,
+        status: "http_error",
+        httpStatus,
+        durationMs: Date.now() - startedAt,
+        cost,
+        errorMessage: "v2: empty completion content",
+      });
+      return { ok: false, insights: null, reason: "SCHEMA_INVALID", detail: "empty content" };
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch (err) {
+      await logCall({
+        handle,
+        model,
+        status: "http_error",
+        httpStatus,
+        durationMs: Date.now() - startedAt,
+        cost,
+        errorMessage: `v2: json parse: ${(err as Error).message}`,
+      });
+      return { ok: false, insights: null, reason: "SCHEMA_INVALID", detail: "json parse" };
+    }
+
+    const validation = validateInsightsV2(parsed);
+    if (!validation.ok) {
+      await logCall({
+        handle,
+        model,
+        status: "http_error",
+        httpStatus,
+        durationMs: Date.now() - startedAt,
+        cost,
+        errorMessage: `v2 ${validation.reason}: ${validation.detail}`,
+      });
+      return {
+        ok: false,
+        insights: null,
+        reason: "SCHEMA_INVALID",
+        detail: `${validation.reason}: ${validation.detail}`,
+      };
+    }
+
+    await logCall({
+      handle,
+      model,
+      status: "success",
+      httpStatus,
+      durationMs: Date.now() - startedAt,
+      cost,
+      errorMessage: null,
+    });
+
+    const out: AiInsightsV2 = {
+      schema_version: 2,
+      generated_at: new Date().toISOString(),
+      model: json.model ?? model,
+      source_signals: {
+        inputs_hash: inputsHash,
+        kb_version: kbVersion,
+        has_market_signals:
+          ctx.market_signals.has_free || ctx.market_signals.has_paid,
+      },
+      cost: {
+        prompt_tokens: cost.promptTokens,
+        completion_tokens: cost.completionTokens,
+        total_tokens: cost.totalTokens,
+        estimated_cost_usd: cost.estimatedCostUsd,
+      },
+      sections: validation.sections,
+    };
+    return { ok: true, insights: out, reason: null };
+  } catch (err) {
+    const isAbort = (err as { name?: string })?.name === "AbortError";
+    const cost = calculateOpenAiCost({ model, promptTokens, completionTokens });
+    await logCall({
+      handle,
+      model,
+      status: isAbort ? "timeout" : "network_error",
+      httpStatus,
+      durationMs: Date.now() - startedAt,
+      cost,
+      errorMessage: `v2: ${(err as Error)?.message ?? "unknown error"}`,
+    });
+    return {
+      ok: false,
+      insights: null,
+      reason: isAbort ? "TIMEOUT" : "OPENAI_ERROR",
+      detail: (err as Error)?.message,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
