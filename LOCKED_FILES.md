@@ -59,9 +59,18 @@ explicitly asks for a modification in a new prompt.
 - /src/routes/privacidade.tsx
 - /src/routes/termos.tsx
 
-## Report Components (unlocked for Prompt R1 — Iconosquare-pure refresh)
-> The Sprint 1 / Prompt 1.10 lock on the report block was lifted to apply the
-> unified Iconosquare-pure visual refactor. Re-lock after Prompt R2 ships.
+## Report Redesign — stable foundation (re-locked after R1/R2/R3)
+> These are the canonical chrome of the new report shell. They survived the
+> R1/R2/R3 redesign and the prompts 15–19 audit unchanged. Treat as locked.
+> `report-editorial-patterns.tsx` is intentionally NOT locked yet — it is
+> still recent and may need one more iteration after QA.
+- /src/components/report-redesign/report-shell.tsx
+- /src/components/report-redesign/report-hero.tsx
+- /src/components/report-redesign/report-kpi-grid.tsx
+- /src/components/report-redesign/report-framed-block.tsx
+- /src/components/report-redesign/report-section-frame.tsx
+- /src/components/report-redesign/report-ai-reading.tsx
+- /src/components/report-redesign/report-methodology.tsx
 
 When working on future features, always:
 1. Read this file first
