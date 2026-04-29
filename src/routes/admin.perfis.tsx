@@ -15,7 +15,6 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
-import { AdminSearchInput } from "@/components/admin/v2/admin-search-input";
 import {
   PeriodSelect,
   ExportCsvButton,
@@ -32,7 +31,6 @@ export const Route = createFileRoute("/admin/perfis")({
 
 function PerfisPage() {
   const [period, setPeriod] = useState<AdminPeriod>("30d");
-  const [search, setSearch] = useState("");
 
   return (
     <>
@@ -41,17 +39,12 @@ function PerfisPage() {
         subtitle="Perfis Instagram analisados, repetições e conversão em relatórios"
         actions={
           <>
-            <AdminSearchInput
-              placeholder="Pesquisar perfil..."
-              value={search}
-              onChange={setSearch}
-            />
             <PeriodSelect value={period} onChange={setPeriod} />
             <ExportCsvButton
               onExport={() => {
                 // Mock por agora — endpoint CSV virá numa próxima iteração.
                 // eslint-disable-next-line no-console
-                console.info("[admin/perfis] export CSV", { period, search });
+                console.info("[admin/perfis] export CSV", { period });
               }}
             />
           </>

@@ -8,7 +8,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
-import { AdminSearchInput } from "@/components/admin/v2/admin-search-input";
 import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
 import { MockDataBanner } from "@/components/admin/v2/mock-data-banner";
 import { PipelineSection } from "@/components/admin/v2/clientes/pipeline-section";
@@ -27,7 +26,6 @@ function ClientesPage() {
         subtitle="312 leads · 125 clientes · 38 subscritores activos"
         actions={
           <>
-            <AdminSearchInput placeholder="Pesquisar cliente..." />
             <AdminActionButton>Exportar</AdminActionButton>
           </>
         }
