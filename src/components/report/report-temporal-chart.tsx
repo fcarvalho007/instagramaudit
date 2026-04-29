@@ -15,15 +15,20 @@ import { cn } from "@/lib/utils";
 
 type SeriesKey = "likes" | "comments" | "views";
 
+// Semantic colour for each series. Resolves to the CSS variable defined in
+// tokens.css / tokens-light.css so the chart automatically follows the
+// active theme. Never hardcode hex literals here — extend the tokens instead.
+const seriesColor = (key: SeriesKey) => `rgb(var(--chart-${key}))`;
+
 const SERIES: Array<{
   key: SeriesKey;
   label: string;
   color: string;
   dashed?: boolean;
 }> = [
-  { key: "likes", label: "Gostos", color: "#3B82F6" },
-  { key: "comments", label: "Comentários", color: "#06B6D4" },
-  { key: "views", label: "Visualizações", color: "#6366F1", dashed: true },
+  { key: "likes", label: "Gostos", color: seriesColor("likes") },
+  { key: "comments", label: "Comentários", color: seriesColor("comments") },
+  { key: "views", label: "Visualizações", color: seriesColor("views"), dashed: true },
 ];
 
 export function ReportTemporalChart() {
@@ -85,8 +90,8 @@ export function ReportTemporalChart() {
             >
               <defs>
                 <linearGradient id="grad-likes" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.18} />
-                  <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
+                  <stop offset="0%" stopColor={seriesColor("likes")} stopOpacity={0.18} />
+                  <stop offset="100%" stopColor={seriesColor("likes")} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient
                   id="grad-comments"
@@ -95,8 +100,8 @@ export function ReportTemporalChart() {
                   x2="0"
                   y2="1"
                 >
-                  <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.14} />
-                  <stop offset="100%" stopColor="#06B6D4" stopOpacity={0} />
+                  <stop offset="0%" stopColor={seriesColor("comments")} stopOpacity={0.14} />
+                  <stop offset="100%" stopColor={seriesColor("comments")} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
@@ -126,7 +131,7 @@ export function ReportTemporalChart() {
                   type="monotone"
                   dataKey="likes"
                   name="Gostos"
-                  stroke="#3B82F6"
+                  stroke={seriesColor("likes")}
                   strokeWidth={2}
                   fill="url(#grad-likes)"
                   dot={false}
@@ -138,7 +143,7 @@ export function ReportTemporalChart() {
                   type="monotone"
                   dataKey="comments"
                   name="Comentários"
-                  stroke="#06B6D4"
+                  stroke={seriesColor("comments")}
                   strokeWidth={2}
                   fill="url(#grad-comments)"
                   dot={false}
@@ -150,7 +155,7 @@ export function ReportTemporalChart() {
                   type="monotone"
                   dataKey="views"
                   name="Visualizações"
-                  stroke="#6366F1"
+                  stroke={seriesColor("views")}
                   strokeWidth={2}
                   strokeDasharray="5 4"
                   fill="transparent"
