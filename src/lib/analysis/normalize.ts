@@ -562,6 +562,14 @@ export function enrichPosts(
       thumbnail_url: pickThumbnail(raw),
       is_video: isVideo,
       engagement_pct: engagementPct,
+      video_duration: pickNumber(raw.videoDuration, raw.video_duration),
+      product_type: pickString(raw.productType),
+      is_pinned: Boolean(raw.isPinned ?? raw.is_pinned ?? false),
+      coauthors: extractHandleList(raw.coauthorProducers),
+      tagged_users: extractHandleList(raw.taggedUsers),
+      caption_length: caption ? caption.length : 0,
+      location_name: pickLocationName(raw),
+      music_title: pickMusicTitle(raw),
     };
   });
 
