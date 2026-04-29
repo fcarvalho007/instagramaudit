@@ -75,9 +75,10 @@ function SistemaPage() {
               onClick={onSyncNow}
               disabled={syncing}
               aria-busy={syncing}
+              title="Os custos atualizam-se automaticamente a cada 60 segundos. Este botão força a sincronização imediata com Apify, OpenAI e DataForSEO."
             >
               <RotateCw size={14} className={syncing ? "animate-spin" : ""} />
-              {syncing ? "A sincronizar…" : "Sincronizar agora"}
+              {syncing ? "A sincronizar…" : "Forçar sync provedores"}
             </AdminActionButton>
           </>
         }
