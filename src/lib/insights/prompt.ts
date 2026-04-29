@@ -63,8 +63,13 @@ Regras de conteúdo (obrigatórias):
 
 Sinais de mercado (DataForSEO):
 - Quando "market_signals.has_free" é true, é OBRIGATÓRIO produzir pelo menos um insight que cruze o desempenho do perfil com a procura de mercado, citando "market_signals.strongest_keyword" e/ou "market_signals.trend_direction" no array "evidence" (cumulativamente com outros sinais relevantes do perfil, se aplicável).
+- Esse insight de mercado DEVE incluir, no body, pelo menos um valor numérico vindo do payload: "market_signals.strongest_score" (formatado como "sinal médio de 65"), "market_signals.trend_delta_pct" (ex.: "+22%") ou "market_signals.usable_keyword_count" (ex.: "2 temas com procura mensurável"). Sem número, o insight é considerado genérico e rejeitado.
+- A keyword citada no body TEM de ser "market_signals.strongest_keyword" ou um item de "market_signals.top_keywords". É PROIBIDO citar uma keyword de "market_signals.zero_signal_keywords" ou "market_signals.dropped_keywords" como procura existente — só podem ser referidas como "temas sem procura mensurável" e apenas se a acção for descartá-los.
+- Se "market_signals.usable_keyword_count" <= 1, focar o insight nessa keyword única; não inventar diversidade.
 - Quando "market_signals.has_free" é false, NÃO referir procura de mercado, keywords de pesquisa, Google Trends nem tendências de procura no title ou body. Ignorar completamente este eixo.
-- O title e o body continuam em pt-PT natural — citar a keyword entre aspas (ex.: "fotografia Lisboa") e descrever a tendência como "procura em alta", "procura estável" ou "procura em queda", nunca como "trend_direction up".
+- O title e o body continuam em pt-PT natural — citar a keyword entre aspas (ex.: «fotografia Lisboa») e traduzir "trend_direction": "up" → "tendência em alta", "flat" → "procura estável", "down" → "tendência em queda". Nunca escrever "trend_direction up".
+- Exemplo CORRECTO: "A procura por «ia» apresenta sinal médio de 65 e tendência em alta (+22%). Reforçar conteúdos sobre IA nas próximas 4 semanas e medir o envolvimento."
+- Exemplo PROIBIDO (genérico, sem número): "Alinhar o conteúdo com as keywords em tendência."
 
 Linguagem do título e do body (obrigatório):
 - O array "evidence" é apenas para auditoria interna. NUNCA escrever caminhos técnicos no "title" ou no "body".
@@ -139,6 +144,10 @@ export interface InsightsUserPayload {
     strongest_keyword?: string | null;
     trend_direction?: "up" | "flat" | "down" | null;
     dropped_keywords?: string[];
+    strongest_score?: number | null;
+    trend_delta_pct?: number | null;
+    usable_keyword_count?: number;
+    zero_signal_keywords?: string[];
   };
   /**
    * The flat list of `evidence` strings the model is allowed to cite.
@@ -230,6 +239,12 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
       signals.push("market_signals.strongest_keyword");
     }
     if (
+      typeof ctx.market_signals.strongest_score === "number" &&
+      Number.isFinite(ctx.market_signals.strongest_score)
+    ) {
+      signals.push("market_signals.strongest_score");
+    }
+    if (
       Array.isArray(ctx.market_signals.top_keywords) &&
       ctx.market_signals.top_keywords.length > 0
     ) {
@@ -240,6 +255,24 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
       ["up", "flat", "down"].includes(ctx.market_signals.trend_direction)
     ) {
       signals.push("market_signals.trend_direction");
+    }
+    if (
+      typeof ctx.market_signals.trend_delta_pct === "number" &&
+      Number.isFinite(ctx.market_signals.trend_delta_pct)
+    ) {
+      signals.push("market_signals.trend_delta_pct");
+    }
+    if (
+      typeof ctx.market_signals.usable_keyword_count === "number" &&
+      ctx.market_signals.usable_keyword_count > 0
+    ) {
+      signals.push("market_signals.usable_keyword_count");
+    }
+    if (
+      Array.isArray(ctx.market_signals.zero_signal_keywords) &&
+      ctx.market_signals.zero_signal_keywords.length > 0
+    ) {
+      signals.push("market_signals.zero_signal_keywords");
     }
     if (
       Array.isArray(ctx.market_signals.dropped_keywords) &&
@@ -316,12 +349,32 @@ export function buildInsightsUserPayload(
         ? { strongest_keyword: ctx.market_signals.strongest_keyword }
         : {}),
       ...(ctx.market_signals.has_free &&
+      typeof ctx.market_signals.strongest_score === "number" &&
+      Number.isFinite(ctx.market_signals.strongest_score)
+        ? { strongest_score: ctx.market_signals.strongest_score }
+        : {}),
+      ...(ctx.market_signals.has_free &&
       Array.isArray(ctx.market_signals.top_keywords) &&
       ctx.market_signals.top_keywords.length > 0
         ? { top_keywords: ctx.market_signals.top_keywords }
         : {}),
       ...(ctx.market_signals.has_free && ctx.market_signals.trend_direction
         ? { trend_direction: ctx.market_signals.trend_direction }
+        : {}),
+      ...(ctx.market_signals.has_free &&
+      typeof ctx.market_signals.trend_delta_pct === "number" &&
+      Number.isFinite(ctx.market_signals.trend_delta_pct)
+        ? { trend_delta_pct: ctx.market_signals.trend_delta_pct }
+        : {}),
+      ...(ctx.market_signals.has_free &&
+      typeof ctx.market_signals.usable_keyword_count === "number" &&
+      ctx.market_signals.usable_keyword_count > 0
+        ? { usable_keyword_count: ctx.market_signals.usable_keyword_count }
+        : {}),
+      ...(ctx.market_signals.has_free &&
+      Array.isArray(ctx.market_signals.zero_signal_keywords) &&
+      ctx.market_signals.zero_signal_keywords.length > 0
+        ? { zero_signal_keywords: ctx.market_signals.zero_signal_keywords }
         : {}),
       ...(ctx.market_signals.has_free &&
       Array.isArray(ctx.market_signals.dropped_keywords) &&

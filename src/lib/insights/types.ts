@@ -102,6 +102,27 @@ export interface InsightsContext {
     trend_direction?: "up" | "flat" | "down" | null;
     /** Keywords that returned no usable data in Trends. */
     dropped_keywords?: string[];
+    /**
+     * Mean Trends index (0-100) for `strongest_keyword`. Rounded integer.
+     * Present only when the strongest keyword had a measurable mean.
+     */
+    strongest_score?: number | null;
+    /**
+     * Percentage delta between the first quartile mean and the last quartile
+     * mean of the strongest keyword series. Integer (e.g. 22 = +22%).
+     * Present only when the head/tail trend calculation ran.
+     */
+    trend_delta_pct?: number | null;
+    /**
+     * Number of keywords with mean > 0 (i.e. with measurable demand).
+     * Equal to `top_keywords.length`.
+     */
+    usable_keyword_count?: number;
+    /**
+     * Keywords returned by Trends but with mean = 0 across the window.
+     * Available to the model only as absence/weakness context.
+     */
+    zero_signal_keywords?: string[];
   };
 }
 
