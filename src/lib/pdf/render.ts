@@ -24,6 +24,7 @@ import type {
 import {
   ReportDocument,
   type AiInsightForPdf,
+  type MarketSignalsForPdf,
   type TopPostForPdf,
 } from "./report-document";
 import {
@@ -85,6 +86,12 @@ interface NormalizedSnapshotPayload {
       priority?: number | null;
     }> | null;
   } | null;
+  /**
+   * Optional persisted DataForSEO market signals. Loose typing — every
+   * field is defended at the mapping site. The PDF NEVER calls DataForSEO;
+   * this block is purely the result of an earlier cached run.
+   */
+  market_signals_free?: unknown;
 }
 
 interface RenderArgs {
@@ -309,6 +316,105 @@ function deriveAiInsights(
   return items.map(({ _priority: _ignored, ...rest }) => rest);
 }
 
+/**
+ * Pure derivation of `market_signals_free` into the PDF-ready shape.
+ * Returns null when the snapshot has no usable signals — caller omits the
+ * page in that case. Mirrors the heuristics of the web component but kept
+ * local to keep `pdf/*` independent from React component code.
+ * NEVER calls DataForSEO; reads only from the snapshot payload.
+ */
+function deriveMarketSignals(raw: unknown): MarketSignalsForPdf | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as {
+    status?: unknown;
+    trends?: unknown;
+    trends_usable_keywords?: unknown;
+    trends_dropped_keywords?: unknown;
+  };
+  if (r.status !== "ready" && r.status !== "partial") return null;
+
+  const usable = Array.isArray(r.trends_usable_keywords)
+    ? r.trends_usable_keywords.filter((k): k is string => typeof k === "string")
+    : [];
+  const dropped = Array.isArray(r.trends_dropped_keywords)
+    ? r.trends_dropped_keywords.filter((k): k is string => typeof k === "string")
+    : [];
+  if (usable.length === 0) return null;
+
+  const trends = r.trends as
+    | {
+        items?: Array<{
+          keywords?: string[];
+          data?: Array<{ values?: Array<number | null> }>;
+        }>;
+      }
+    | null
+    | undefined;
+  const graph = trends?.items?.find(
+    (it) => Array.isArray(it.keywords) && Array.isArray(it.data),
+  );
+  if (!graph?.keywords || !graph.data) return null;
+
+  // Strongest keyword by mean of usable series.
+  const usableSet = new Set(usable);
+  const totals = new Map<string, { sum: number; count: number }>();
+  graph.keywords.forEach((kw) => {
+    if (usableSet.has(kw)) totals.set(kw, { sum: 0, count: 0 });
+  });
+  for (const row of graph.data) {
+    graph.keywords.forEach((kw, i) => {
+      const slot = totals.get(kw);
+      if (!slot) return;
+      const v = row.values?.[i];
+      if (typeof v === "number" && Number.isFinite(v)) {
+        slot.sum += v;
+        slot.count += 1;
+      }
+    });
+  }
+  let best: { kw: string; mean: number } | null = null;
+  for (const [kw, { sum, count }] of totals) {
+    if (count === 0) continue;
+    const mean = sum / count;
+    if (!best || mean > best.mean) best = { kw, mean };
+  }
+  if (!best) return null;
+
+  // Trend on the strongest series.
+  const idx = graph.keywords.indexOf(best.kw);
+  const values: number[] = [];
+  if (idx >= 0) {
+    for (const row of graph.data) {
+      const v = row.values?.[idx];
+      if (typeof v === "number" && Number.isFinite(v)) values.push(v);
+    }
+  }
+  let trend: "up" | "flat" | "down" = "flat";
+  if (values.length >= 4) {
+    const half = Math.floor(values.length / 2);
+    const first = values.slice(0, half);
+    const second = values.slice(values.length - half);
+    const mean = (xs: number[]) =>
+      xs.reduce((a, b) => a + b, 0) / Math.max(xs.length, 1);
+    const m1 = mean(first);
+    const m2 = mean(second);
+    if (m1 <= 0) {
+      trend = m2 > 0 ? "up" : "flat";
+    } else {
+      const ratio = (m2 - m1) / m1;
+      trend = ratio >= 0.1 ? "up" : ratio <= -0.1 ? "down" : "flat";
+    }
+  }
+
+  return {
+    strongest: best.kw,
+    trend,
+    usableKeywords: usable,
+    droppedKeywords: dropped,
+    pointCount: values.length,
+  };
+}
+
 export async function renderReportPdf({
   payload,
   analyzedAt,
@@ -355,6 +461,11 @@ export async function renderReportPdf({
       ? payload.ai_insights_v1.generated_at
       : null;
 
+  // Persisted DataForSEO market signals (when present). Pure mapping —
+  // the PDF NEVER calls DataForSEO. Missing/invalid block → null and the
+  // "Sinais de mercado" page is omitted.
+  const marketSignals = deriveMarketSignals(payload.market_signals_free);
+
   const doc = createElement(ReportDocument, {
     profile,
     contentSummary: content_summary,
@@ -366,6 +477,7 @@ export async function renderReportPdf({
     aiInsights,
     aiInsightsModel,
     aiInsightsGeneratedAt,
+    marketSignals,
     analyzedAt,
     generatedAt,
   });

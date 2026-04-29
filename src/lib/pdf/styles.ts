@@ -497,6 +497,106 @@ export const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
+  // Market signals (DataForSEO) page
+  marketHeroCard: {
+    borderWidth: 1,
+    borderColor: PDF_COLORS.divider,
+    borderLeftWidth: 3,
+    borderLeftColor: PDF_COLORS.accent,
+    borderRadius: 4,
+    padding: 16,
+    marginBottom: 12,
+  },
+  marketHeroLabel: {
+    fontSize: 8,
+    letterSpacing: 1.2,
+    color: PDF_COLORS.inkMuted,
+    textTransform: "uppercase",
+  },
+  marketHeroValue: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 22,
+    color: PDF_COLORS.accent,
+    marginTop: 6,
+  },
+  marketRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
+  },
+  marketCell: {
+    flex: 1,
+    backgroundColor: PDF_COLORS.surfaceAlt,
+    borderLeftWidth: 2,
+    borderLeftColor: PDF_COLORS.accent,
+    padding: 12,
+    borderRadius: 4,
+  },
+  marketCellLabel: {
+    fontSize: 8,
+    letterSpacing: 1.2,
+    color: PDF_COLORS.inkMuted,
+    textTransform: "uppercase",
+  },
+  marketCellValue: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 16,
+    color: PDF_COLORS.ink,
+    marginTop: 6,
+  },
+  marketCellHint: {
+    fontSize: 8.5,
+    color: PDF_COLORS.inkMuted,
+    marginTop: 4,
+  },
+  marketSuggestionCard: {
+    borderWidth: 1,
+    borderColor: PDF_COLORS.divider,
+    borderRadius: 4,
+    padding: 14,
+    marginBottom: 14,
+  },
+  marketSuggestionLabel: {
+    fontSize: 8,
+    letterSpacing: 1.2,
+    color: PDF_COLORS.inkMuted,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  marketSuggestionBody: {
+    fontSize: 11,
+    color: PDF_COLORS.ink,
+    lineHeight: 1.5,
+  },
+  marketChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 14,
+  },
+  marketChipUsable: {
+    fontSize: 9,
+    color: PDF_COLORS.accent,
+    backgroundColor: PDF_COLORS.accentSoft,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 3,
+  },
+  marketChipDropped: {
+    fontSize: 9,
+    color: PDF_COLORS.inkMuted,
+    backgroundColor: PDF_COLORS.surfaceAlt,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 3,
+  },
+  marketSourceNote: {
+    fontSize: 8.5,
+    color: PDF_COLORS.inkMuted,
+    fontStyle: "italic",
+    marginTop: 4,
+  },
+
   // Footer (fixed)
   footer: {
     position: "absolute",
