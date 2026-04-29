@@ -335,6 +335,15 @@ type RawPostExtended = RawPost & {
   imageUrl?: string;
   thumbnailUrl?: string;
   thumbnail_url?: string;
+  videoDuration?: number;
+  video_duration?: number;
+  isPinned?: boolean;
+  is_pinned?: boolean;
+  coauthorProducers?: Array<{ username?: string } | string>;
+  taggedUsers?: Array<{ username?: string } | string>;
+  locationName?: string;
+  location?: { name?: string } | string;
+  musicInfo?: { song_name?: string; artist_name?: string } | null;
 };
 
 const HASHTAG_RE = /#([\p{L}\p{N}_]+)/gu;
