@@ -124,13 +124,19 @@ function AnalyzePage() {
         });
         return;
       }
+      const payload = body.snapshot.payload ?? {};
       const result = snapshotToReportData({
-        payload: body.snapshot.payload ?? {},
+        payload,
         meta: body.snapshot.meta ?? undefined,
         benchmark: body.snapshot.benchmark,
         isAdminPreview: false,
       });
-      setState({ status: "ready", result, snapshotId: body.snapshot.id });
+      setState({
+        status: "ready",
+        result,
+        snapshotId: body.snapshot.id,
+        payload,
+      });
     } catch {
       setState({
         status: "error",
