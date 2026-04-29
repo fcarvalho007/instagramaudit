@@ -19,10 +19,10 @@ export const SHARE_COPY = {
   toast: {
     success: "Link copiado para a área de transferência.",
     error: "Não foi possível copiar o link. Copia manualmente da barra do navegador.",
-    pdfReady: "PDF pronto.",
-    pdfCached: "PDF carregado da cache.",
+    pdfReady: "PDF pronto. Abre numa nova aba.",
+    pdfCached: "PDF carregado da cache. Abre numa nova aba.",
     pdfPopupBlocked:
-      "PDF pronto, mas o navegador bloqueou a nova aba. Usa o botão de fallback abaixo.",
+      "Se a aba não abriu, usa o botão “Abrir PDF numa nova aba”.",
     pdfErrors: {
       INVALID_PAYLOAD: "Pedido inválido. Recarrega a página e tenta novamente.",
       SNAPSHOT_NOT_FOUND:
