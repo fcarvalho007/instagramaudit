@@ -156,72 +156,89 @@ export async function syncDataForSeoCosts(): Promise<SyncSummary> {
   }
 
   try {
-    const auth = Buffer.from(`${login}:${password}`).toString("base64");
-    const res = await fetch("https://api.dataforseo.com/v3/appendix/user_data", {
-      headers: { Authorization: `Basic ${auth}` },
-    });
-    if (!res.ok) {
-      return {
-        provider: "dataforseo",
-        ok: false,
-        rows_upserted: 0,
-        message: `HTTP ${res.status}`,
-        error: `http_${res.status}`,
-      };
-    }
-    const json = (await res.json()) as DfsUserDataResponse;
-    const userData = json.tasks?.[0]?.result?.[0];
-    const totalSpent = Number(userData?.money?.spent ?? 0);
-    const balance = Number(userData?.money?.balance ?? 0);
-    const calls = Number(userData?.statistics?.api?.entity_calls ?? 0);
-
-    // Snapshot do dia anterior mais recente para calcular o delta.
-    const today = todayUtc();
-    const { data: previous } = await supabaseAdmin
-      .from("cost_daily")
-      .select("amount_usd, details")
+    // Fonte de verdade do custo diário: provider_call_logs (gravado em
+    // runtime quando o nosso código chama a DataForSEO). A API
+    // `appendix/user_data` é usada apenas para anotar o saldo actual.
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: logs, error: logsError } = await supabaseAdmin
+      .from("provider_call_logs")
+      .select("created_at, actual_cost_usd, estimated_cost_usd, status")
       .eq("provider", "dataforseo")
-      .lt("day", today)
-      .order("day", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const previousTotal = Number(
-      (previous?.details as { total_spent_at_snapshot?: number } | null)
-        ?.total_spent_at_snapshot ?? 0,
-    );
-    const dailyDelta = Math.max(0, totalSpent - previousTotal);
-
-    const { error } = await supabaseAdmin.from("cost_daily").upsert(
-      {
-        provider: "dataforseo",
-        day: today,
-        amount_usd: dailyDelta,
-        call_count: calls,
-        details: {
-          total_spent_at_snapshot: totalSpent,
-          balance_at_snapshot: balance,
-          statistics: userData?.statistics,
-        },
-        collected_at: new Date().toISOString(),
-      },
-      { onConflict: "provider,day" },
-    );
-    if (error) {
+      .gte("created_at", since);
+    if (logsError) {
       return {
         provider: "dataforseo",
         ok: false,
         rows_upserted: 0,
-        message: "Erro ao gravar cost_daily",
-        error: error.message,
+        message: "Erro ao ler provider_call_logs",
+        error: logsError.message,
       };
     }
 
+    const buckets = new Map<string, { amount: number; calls: number }>();
+    for (const row of logs ?? []) {
+      if (row.status !== "success") continue;
+      const day = String(row.created_at).slice(0, 10);
+      const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+      const bucket = buckets.get(day) ?? { amount: 0, calls: 0 };
+      bucket.amount += cost;
+      bucket.calls += 1;
+      buckets.set(day, bucket);
+    }
+
+    // Tentativa best-effort de obter saldo actual. Falha não interrompe.
+    let balance: number | null = null;
+    try {
+      const auth = Buffer.from(`${login}:${password}`).toString("base64");
+      const res = await fetch(
+        "https://api.dataforseo.com/v3/appendix/user_data",
+        { headers: { Authorization: `Basic ${auth}` } },
+      );
+      if (res.ok) {
+        const json = (await res.json()) as DfsUserDataResponse;
+        const userData = json.tasks?.[0]?.result?.[0];
+        const b = Number(userData?.money?.balance ?? 0);
+        if (Number.isFinite(b)) balance = b;
+      }
+    } catch {
+      /* sem rede / API indisponível — ignoramos */
+    }
+
+    const today = todayUtc();
+    if (!buckets.has(today) && balance !== null) {
+      // Garante que o cartão de hoje aparece com o saldo, mesmo sem chamadas.
+      buckets.set(today, { amount: 0, calls: 0 });
+    }
+
+    let upserted = 0;
+    for (const [day, bucket] of buckets) {
+      const details: Record<string, unknown> = {
+        source: "provider_call_logs_aggregate",
+      };
+      if (day === today && balance !== null) {
+        details.balance_at_snapshot = balance;
+      }
+      const { error: upErr } = await supabaseAdmin.from("cost_daily").upsert(
+        {
+          provider: "dataforseo",
+          day,
+          amount_usd: Number(bucket.amount.toFixed(6)),
+          call_count: bucket.calls,
+          details: details as unknown as Json,
+          collected_at: new Date().toISOString(),
+        },
+        { onConflict: "provider,day" },
+      );
+      if (!upErr) upserted += 1;
+    }
+
+    const balanceMsg =
+      balance !== null ? ` · saldo $${balance.toFixed(2)}` : "";
     return {
       provider: "dataforseo",
       ok: true,
-      rows_upserted: 1,
-      message: `Delta hoje: $${dailyDelta.toFixed(4)} · saldo $${balance.toFixed(2)}.`,
+      rows_upserted: upserted,
+      message: `Agregados ${upserted} dias a partir de provider_call_logs${balanceMsg}.`,
     };
   } catch (err) {
     return {
