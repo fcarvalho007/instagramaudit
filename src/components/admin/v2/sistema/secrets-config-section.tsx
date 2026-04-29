@@ -3,6 +3,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { AdminCard } from "@/components/admin/v2/admin-card";
 import { AdminBadge } from "@/components/admin/v2/admin-badge";
@@ -12,6 +13,8 @@ import {
   SectionError,
   SectionSkeleton,
 } from "@/components/admin/v2/section-state";
+import { CostCapsModal } from "@/components/admin/v2/sistema/cost-caps-modal";
+import { Button } from "@/components/ui/button";
 import type {
   CostCaps,
   RuntimeCheck,
@@ -36,6 +39,7 @@ function CardHeader({ title, info }: { title: string; info: string }) {
 }
 
 export function SecretsConfigSection() {
+  const [capsOpen, setCapsOpen] = useState(false);
   const secrets = useQuery({
     queryKey: ["admin", "sistema", "secrets"],
     queryFn: () => fetchJson<SecretPresence[]>("/api/admin/sistema/secrets"),
@@ -59,9 +63,6 @@ export function SecretsConfigSection() {
   const apifyTestMode = checks.data?.find(
     (c) => c.name === "Modo de teste Apify",
   );
-  const allowlist = (process.env.NEXT_PUBLIC_NOOP || "")
-    ? []
-    : []; // placeholder; allowlist real virá em runtime-checks (detail)
 
   return (
     <section>
@@ -106,10 +107,23 @@ export function SecretsConfigSection() {
         </AdminCard>
 
         <AdminCard>
-          <CardHeader
-            title="Configuração de custos"
-            info="Estado dos provedores e caps mensais configurados em app_config."
-          />
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="m-0 text-[15px] font-medium text-admin-text-primary">
+                Configuração de custos
+              </h3>
+              <AdminInfoTooltip label="Estado dos provedores e caps mensais configurados em app_config." />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCapsOpen(true)}
+              disabled={!caps.data}
+            >
+              Editar caps
+            </Button>
+          </div>
           {checks.isLoading || caps.isLoading ? (
             <SectionSkeleton rows={4} rowHeight={48} />
           ) : checks.error || caps.error ? (
@@ -154,10 +168,18 @@ export function SecretsConfigSection() {
             </div>
           )}
           <p className="mt-3 text-[11px] text-admin-text-tertiary">
-            Caps são configuráveis em <code>app_config</code> (cost_cap_*_usd).
+            Caps guardados em <code>app_config</code>. "Editar caps" atualiza
+            os valores em tempo real.
           </p>
         </AdminCard>
       </div>
+      {caps.data ? (
+        <CostCapsModal
+          open={capsOpen}
+          onOpenChange={setCapsOpen}
+          initial={caps.data}
+        />
+      ) : null}
     </section>
   );
 }
