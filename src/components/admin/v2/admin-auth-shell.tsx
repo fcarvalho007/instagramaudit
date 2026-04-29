@@ -81,20 +81,26 @@ interface AdminAuthShellProps {
 }
 
 export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps) {
-  // Optimistic: se já temos cache fresco, arrancamos directamente em "in"
-  // (ou "denied"), evitando o flash de "A verificar sessão…". A sessão real
-  // é revalidada em paralelo via onAuthStateChange.
-  const initial = (() => {
-    const cached = typeof window !== "undefined" ? readCache() : null;
-    if (!cached) return { state: "checking" as AuthState, denied: null as string | null };
-    if (cached.allowed) return { state: "in" as AuthState, denied: null };
-    return { state: "denied" as AuthState, denied: cached.email };
-  })();
-
-  const [authState, setAuthState] = useState<AuthState>(initial.state);
-  const [deniedEmail, setDeniedEmail] = useState<string | null>(initial.denied);
+  // SSR-safe: sempre "checking" no primeiro render (server + client) para
+  // evitar hydration mismatch. Logo após mount, lemos o cache e saltamos
+  // para "in"/"denied" se possível, evitando o flash do spinner.
+  const [authState, setAuthState] = useState<AuthState>("checking");
+  const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
   const [showSpinner, setShowSpinner] = useState(false);
   const lastEvaluatedTokenRef = useRef<EvaluatedToken>(UNSET);
+
+  // Hidrata estado optimista a partir do cache local após mount.
+  useEffect(() => {
+    const cached = readCache();
+    if (!cached) return;
+    if (cached.allowed) {
+      setAuthState("in");
+      setDeniedEmail(null);
+    } else {
+      setAuthState("denied");
+      setDeniedEmail(cached.email);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

@@ -53,9 +53,15 @@ export interface DemoModeApi {
 }
 
 export function useDemoMode(): DemoModeApi {
-  const [enabled, setEnabled] = useState<boolean>(() => readStored());
+  // SSR-safe: começamos sempre em `false` para que o HTML do servidor e o
+  // primeiro render do cliente coincidam. Após hidratação, lemos o
+  // localStorage e atualizamos. Evita o "Hydration failed" warning.
+  const [enabled, setEnabled] = useState<boolean>(false);
 
   useEffect(() => {
+    // Sincroniza com o valor persistido logo após hidratação.
+    setEnabled(readStored());
+
     const onStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY) return;
       setEnabled(e.newValue === "1");
