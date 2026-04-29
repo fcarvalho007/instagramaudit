@@ -1,14 +1,17 @@
 /**
  * Admin session helpers.
  *
- * Acesso administrativo via Google Sign-in (Lovable Cloud) com allowlist de
- * emails definida em `ADMIN_ALLOWED_EMAILS` (CSV, lowercase). O JWT do
- * Supabase é lido do header `Authorization: Bearer <token>` (enviado pelos
- * fetchers do client) e validado com o admin client.
+ * Acesso administrativo simplificado (modo testes privados): o cliente
+ * envia o email do admin no header `X-Admin-Email`. Se estiver na allowlist
+ * `ADMIN_ALLOWED_EMAILS` (CSV, lowercase), o pedido é aceite. Sem JWT, sem
+ * password, sem 2FA — risco aceite pelo owner durante a fase de testes.
+ *
+ * O backoffice expõe dados sensíveis (custos, snapshots, KB). Quando o
+ * produto sair de testes privados, voltar a um esquema com password ou
+ * Google + allowlist.
  */
 
 import { getRequestHeader } from "@tanstack/react-start/server";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export interface AdminUser {
   id: string;
@@ -42,11 +45,12 @@ export function isAdminEmailAllowed(email: string | null | undefined): boolean {
   return allowlist.includes(email.toLowerCase());
 }
 
-function extractBearerToken(): string | null {
-  const auth = getRequestHeader("authorization") ?? getRequestHeader("Authorization");
-  if (!auth) return null;
-  const match = /^Bearer\s+(.+)$/i.exec(auth.trim());
-  return match ? match[1].trim() : null;
+function extractAdminEmail(): string | null {
+  const raw =
+    getRequestHeader("x-admin-email") ?? getRequestHeader("X-Admin-Email");
+  if (!raw) return null;
+  const trimmed = raw.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 /**
@@ -56,20 +60,15 @@ function extractBearerToken(): string | null {
  * Returns the authenticated admin user when authorized.
  */
 export async function requireAdminSession(): Promise<AdminUser> {
-  const token = extractBearerToken();
-  if (!token) {
-    throw jsonError(401, "UNAUTHENTICATED", "Sessão em falta. Inicia sessão com Google.");
+  const email = extractAdminEmail();
+  if (!email) {
+    throw jsonError(401, "UNAUTHENTICATED", "Sessão em falta. Inicia sessão no /admin.");
   }
-
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !data?.user) {
-    throw jsonError(401, "INVALID_SESSION", "Sessão inválida ou expirada.");
-  }
-
-  const email = data.user.email ?? null;
   if (!isAdminEmailAllowed(email)) {
     throw jsonError(403, "NOT_ALLOWED", "Email não autorizado para acesso administrativo.");
   }
-
-  return { id: data.user.id, email: email as string };
+  // Em modo simples não há `auth.users.id` — usamos o próprio email como id
+  // estável para os logs. Os handlers que registam quem fez a alteração
+  // continuam a ter um identificador.
+  return { id: email, email };
 }
