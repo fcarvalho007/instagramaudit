@@ -1,4 +1,19 @@
 /**
+ * Intentional asymmetry between AI evidence and UI rendering.
+ *
+ * `EditorialPatternsForInsights` (the compact shape forwarded to OpenAI
+ * under `editorial_patterns`) may include sub-blocks that are NOT rendered
+ * directly in the report UI — notably `comments_to_likes_ratio` and
+ * `format_vs_competitors`. This is by design: those patterns earn their
+ * keep as numeric grounding the model can cite inside other narrative
+ * insights, rather than as standalone visual cards.
+ *
+ * If you add a new pattern here, decide explicitly whether it deserves a
+ * UI card (then wire it into `report-editorial-patterns.tsx`) or whether
+ * it stays evidence-only (then leave the UI alone).
+ */
+
+/**
  * Editorial crossovers (R4-B).
  *
  * Derives explanatory patterns from the snapshot's posts + competitors +
