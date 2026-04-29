@@ -1,119 +1,176 @@
-## Audit: `/api/analyze-public-v1` orchestration
+## Refactor `/report/example` to a unified Iconosquare-pure light dashboard with AI insight boxes
 
-Read-only inspection of `src/routes/api/analyze-public-v1.ts` (1104 LOC), `src/lib/analysis/cache.ts` (`storeSnapshot`), `src/lib/insights/openai-insights.server.ts`, `src/lib/dataforseo/market-signals.ts`, and `src/lib/analysis/events.ts`.
+Decisions confirmed by user:
+1. Unlock `/src/components/report/*` and `/src/routes/report.example.tsx` for this prompt (`LOCKED_FILES.md` will be updated).
+2. Add semantic tokens to `tokens-light.css` and consume them — no hardcoded hex in components.
+3. Demote Fraunces (serif italic) to the report H1 only; all section titles become Inter 22px / weight 500. Update project memory accordingly.
 
-### 1. Current pipeline order (POST handler)
-
-```text
-1.  Parse request JSON (line 451)
-2.  Validate payload with Zod (463) → logEvent(invalid_input) on fail
-3.  Apply allowlist gate (492-520) → logEvent(blocked_allowlist) on fail
-4.  Resolve ?refresh=1 + INTERNAL_API_TOKEN (526-540)
-5.  Build cache key (542)
-6.  loadBenchmarkReferences() (547)
-7.  lookupSnapshot(cacheKey) (550) — if fresh and !forceRefresh:
-       logEvent(cache,success) and RETURN cached response
-8.  Apify kill-switch (575) — disabled → logEvent + RETURN
-9.  ───── try { ───── (614)
-10.   fetchProfileWithPostsLogged(primary)  → Apify call + provider_call_logs
-      fetchProfileWithPostsLogged(competitors[])  in parallel
-11.   normalizeProfile(primary) → if null: logEvent(not_found) + RETURN
-12.   computeContentSummary(primary)
-13.   await competitorRowsP, normalize each
-14.   enrichPosts(primaryPosts) (717-720)
-15.   Market signals (727-812):
-        - read cached summary from previous snapshot (if any)
-        - else: buildMarketSignals(20s timeout)
-        - then read provider_call_logs to attach cost/log ids
-16.   computeBenchmarkPositioning early (817-825)
-17.   OpenAI insights block (833-894):
-        - if isOpenAiAllowed(handle): build InsightsContext
-        - generateInsights(ctx) — internal 25s AbortController timeout
-        - try/catch swallows throws (892)
-18.   Build normalizedPayload (896-906) — includes ai_insights_v1 +
-        market_signals_free if present
-19.   storeSnapshot(...) (908-916) ← FIRST AND ONLY snapshot write
-20.   logEvent(fresh,success) (952-965)
-21.   return jsonResponse(response, 200)
-22. } catch (err) { (967)
-       — stale fallback OR provider_error logEvent + failure(...)
-    }
-```
-
-### 2. First `analysis_snapshots` insert/update
-
-`storeSnapshot(...)` at **lines 908–916**, inside the main `try { }` block.
-There is exactly **one** snapshot persistence point. There is no
-intermediate "base snapshot" write.
-
-### 3. Does snapshot persistence depend on OpenAI?
-
-**Effectively, yes — by ordering, not by data dependency.**
-
-- The `storeSnapshot` call is placed *after* the `await generateInsights(ctx)` block.
-- The OpenAI block has a `try/catch` (line 890) and `aiInsights` defaults to `null`, so a thrown OpenAI error does NOT block the write.
-- BUT: any `await` that **never resolves before the HTTP invoker timeout** (Cloudflare Worker wall-time / fetch deadline) means execution is killed before reaching line 908. The Worker is terminated → no `storeSnapshot`, no `logEvent(fresh,success)`.
-- `generateInsights` uses an internal 25s AbortController, but if the response is partially streamed/blocked or model is slow, total elapsed = Apify (≈8s) + DataForSEO orchestration (≤20s) + OpenAI (≤25s) = up to **~53s**, plus normalisation overhead — comfortably exceeding typical Cloudflare invoker deadlines and the user-observed `context deadline exceeded`.
-
-### 4. Are Apify/DataForSEO results lost on timeout before OpenAI completes?
-
-**Yes — completely.**
-
-- The normalised primary profile, posts, content summary, competitor results, enriched posts, and the freshly-built `marketSignalsFree` summary all live as **in-memory variables** between line 717 and line 908.
-- Nothing is persisted until `storeSnapshot` at 908. If the Worker is killed at any point between 753 (DataForSEO call) and 908 (snapshot write), all that work is discarded.
-- The `provider_call_logs` rows for Apify and DataForSEO survive (they are written inside their own helpers before the orchestrator-level await chains complete), which matches the observed symptom: provider logs present, no snapshot, no event.
-
-### 5. Is an `analysis_event` recorded for mid-pipeline aborts?
-
-**No.**
-
-- All `logEvent(fresh, success | provider_error | not_found)` calls happen either inside the success path after `storeSnapshot` (line 952) or inside the outer `catch` (lines 994–1042).
-- A Worker invoker timeout is NOT a thrown JS exception that the `catch` can intercept — the runtime simply terminates the request. So neither the success branch nor the catch branch executes, and no `analysis_events` row is written. This matches: "No recent analysis_events row was created."
-
-### 6. Root cause summary
-
-The orchestrator runs the entire chain **synchronously inside one HTTP request**:
-Apify → DataForSEO → OpenAI → `storeSnapshot` → `logEvent` → response.
-
-Snapshot persistence is **the last** step before the response, so any wall-time exhaustion at or after the OpenAI await (the slowest provider) silently drops *all* in-memory work, leaving the database in the exact state we observed.
-
-There is also a secondary risk: the `await supabaseAdmin.from("provider_call_logs").select(...)` block at lines 762-784 runs immediately after `buildMarketSignals` — adding more latency on the critical path before OpenAI even starts.
+Out of scope (do not touch): `/src/admin/*`, `/src/components/admin/*`, dark theme, `tokens.css`, header/nav, PDF export, real AI generation (Prompt R2).
 
 ---
 
-### Recommended fix (smallest safe plan)
+### 1. Tokens — `src/styles/tokens-light.css` (extend, do not replace)
 
-Persist a **base snapshot immediately after Apify + DataForSEO**, then attach
-AI insights as a guarded best-effort step that updates the same row.
-Do not change `storeSnapshot`'s signature; rely on its existing `onConflict: "cache_key"` upsert to make the second write idempotent.
+Add a "Report v2" block under the existing `[data-theme="light"]` selector with semantic names. Keep all current variables intact so nothing else breaks.
 
-#### Step-by-step changes (single file, ~30 LOC of reordering)
+New tokens (RGB triplets, consumed via `rgb(var(--name))` like the rest of the file):
 
-1. **Move `storeSnapshot` to run right after market signals** (between current line 812 and 817). Build a `baseNormalizedPayload` without `ai_insights_v1`. Call `storeSnapshot` and capture `snapshotId`.
-2. **Emit `logEvent(fresh, success)` immediately after the base write.** This guarantees that a successful Apify+DataForSEO run is always reflected in `analysis_events`, regardless of what happens to OpenAI afterwards. (Optionally tag this event with a new `outcome="success_partial"` if we want to distinguish "with AI" vs "without AI" — but reusing `success` is sufficient for v1.)
-3. **Keep the OpenAI block as best-effort.** After `generateInsights` returns (or throws), if `aiInsights` is non-null, call `storeSnapshot` a **second time** with the same `cacheKey` and the enriched payload that includes `ai_insights_v1`. The upsert collapses to an UPDATE. If OpenAI failed/timed out, the base snapshot already exists — nothing else to do.
-4. **Tighten OpenAI guardrails** so the second write actually has time to run:
-   - Lower `REQUEST_TIMEOUT_MS` in `openai-insights.server.ts` from 25s → 15s, OR
-   - Wrap the whole OpenAI block in a `Promise.race` against an outer 15s budget so the orchestrator returns even if OpenAI stalls.
-5. **Move the `provider_call_logs` post-read** (lines 760-784) off the critical path: do the read after `storeSnapshot` of the base row, not before. Better yet, return cost/log ids directly from `buildMarketSignals` so we never need that follow-up SELECT. (Optional polish — not required to fix the timeout.)
-6. **Response shape unchanged.** The HTTP response still returns the latest in-memory `normalizedPayload` (with `ai_insights_v1` if present, without if not). Clients that hit the snapshot later via cache get whichever version was last persisted.
+```text
+/* Surface + cards */
+--report-bg:               250 251 253   /* #FAFBFD page background          */
+--report-card-bg:          255 255 255   /* #FFFFFF unified card             */
+--report-card-border:      232 237 245   /* #E8EDF5 hairline                 */
 
-#### What this guarantees
+/* Text */
+--report-text-primary:      15  27  61   /* #0F1B3D editorial navy           */
+--report-text-secondary:    90 107 140   /* #5A6B8C                          */
 
-- A successful Apify + DataForSEO run **always** persists a usable snapshot and an `analysis_events` row, even if the Worker dies before OpenAI returns.
-- AI insights become a true non-blocking enrichment: present when the model responded in time, absent otherwise. The rest of the report is unaffected.
-- No new tables, no migrations, no background workers, no `EdgeRuntime.waitUntil` dependency — entirely within current TanStack Start + Cloudflare Worker constraints.
-- Idempotent: re-running the pipeline (or a future admin "re-generate AI insights" action) just upserts again on the same `cache_key`.
+/* Semantic accents */
+--report-accent-blue:       37  99 217   /* #2563D9                          */
+--report-signal-positive:   29 158 117   /* #1D9E75                          */
+--report-signal-negative:  163  45  45   /* #A32D2D                          */
+--report-signal-warning:   186 117  23   /* #BA7517                          */
 
-#### Out of scope for this fix
+/* Insight box variants — each with bg, border, icon, text */
+--insight-default-bg:      239 244 251
+--insight-default-border:  181 212 244
+--insight-default-icon:     24  95 165
+--insight-default-text:     12  68 124
 
-- True async/job-queue pattern (`202 Accepted` + background job) — overkill at v1 volume; revisit only if OpenAI latency keeps exceeding 15s budget regularly.
-- Schema changes to `analysis_snapshots` (e.g. an `ai_insights_status` column) — current `normalized_payload` JSON is sufficient.
-- Touching `/report.example` or any UI — fix is server-only.
+--insight-positive-bg:     239 248 244
+--insight-positive-border: 159 225 203
+--insight-positive-icon:    15 110  86
+--insight-positive-text:     8  80  65
 
-### Files to modify when build mode resumes
+--insight-negative-bg:     251 239 239
+--insight-negative-border: 240 149 149
+--insight-negative-icon:   163  45  45
+--insight-negative-text:   121  31  31
 
-- `src/routes/api/analyze-public-v1.ts` — reorder snapshot/event writes, second upsert after OpenAI.
-- `src/lib/insights/openai-insights.server.ts` — tighten `REQUEST_TIMEOUT_MS` (optional).
+--insight-neutral-bg:      241 239 232
+--insight-neutral-border:  211 209 199
+--insight-neutral-icon:     95  94  90
+--insight-neutral-text:     68  68  65
 
-No other files. No DB migrations. No provider config changes.
+/* Card shadow (override of --shadow-card for report only) */
+--report-card-shadow: 0 1px 3px rgb(15 27 61 / 0.04),
+                      0 4px 16px rgb(15 27 61 / 0.04);
+```
+
+Override `--surface-base` inside the same `[data-theme="light"]` block to `var(--report-bg)` so the existing `bg-surface-base` Tailwind utility (already used by `ReportPage`) automatically picks up the new background — no need to change every component's wrapper class.
+
+---
+
+### 2. Two new shared building blocks (additive files)
+
+#### `src/components/report/ai-insight-box.tsx` (new)
+
+Props: `{ insight: string; emphasis?: 'default' | 'positive' | 'negative' | 'neutral' }`.
+Renders a rounded box with: small star icon (lucide `Sparkles`), eyebrow `LEITURA IA` (mono uppercase), then the insight body. All colors via the `--insight-{variant}-*` tokens — no hex literals.
+
+#### `src/components/report/sparkline.tsx` (new)
+
+Props: `{ data: number[]; width?: number; height?: number; tone?: 'accent' | 'positive' | 'negative' }`.
+SVG with: linear gradient area fill (10% → 0% opacity) + 1.5px polyline. Uses `--report-accent-blue` (or signal tokens) — no hardcoded `#2563D9`. Renders nothing and returns `null` when `data` is empty so the KPI for "Estado do benchmark" can simply omit `sparklineData`.
+
+#### `src/lib/report/ai-insights-mock.ts` (new)
+
+Exports a typed const with the 9 hand-written Portuguese insights from the prompt, keyed by section:
+
+```text
+hero | marketSignals | temporal | benchmark | format | topPosts |
+heatmap | bestDays | hashtagsKeywords
+```
+
+Shape: `{ emphasis: AIInsightEmphasis; text: string }`. Re-exports the `AIInsightEmphasis` type so future Prompt R2 can swap the import for a server-fn fetch without touching the section components.
+
+---
+
+### 3. Section-by-section refactor
+
+Every component currently uses Tailwind classes plus `bg-surface-secondary`, `border-border-subtle`, `text-text-primary`, `font-display italic`, etc. The pattern below applies to all of them:
+
+- Wrapper: `bg-[rgb(var(--report-card-bg))] border border-[rgb(var(--report-card-border))] rounded-2xl p-7 md:p-8 shadow-[var(--report-card-shadow)]` (single utility class set, defined once via a small `cardClass` helper exported from `report-section.tsx` so it's not duplicated).
+- Section spacing: bump `space-y-10 md:space-y-12` in `report-page.tsx` to `space-y-14`.
+- Titles: replace every `font-display italic` H2/H3/H4 with `font-sans text-[22px] font-medium tracking-[-0.01em] text-[rgb(var(--report-text-primary))]`. Subtitles become `text-[13px] text-[rgb(var(--report-text-secondary))]`.
+- Eyebrows stay as mono uppercase — only swap the color token to `--report-text-secondary`.
+- Remove every nested colored panel (`bg-surface-muted` / `bg-tint-*`) inside cards. KPIs render directly on the card surface; chips become outlined pills using `border-[rgb(var(--report-card-border))]`.
+
+Per-component changes (locked files unlocked):
+
+| File | Change |
+|---|---|
+| `report-page.tsx` | Bump section spacing. Pass `data` through unchanged. Add the 9 `<AIInsightBox>` calls at the bottom of each section (see #4). |
+| `report-section.tsx` | Export a single `reportCard` className constant. Apply unified card style. Drop the optional creme variant. |
+| `report-header.tsx` | Keep `@frederico.m.carvalho` H1 as `font-display italic` — this is the one allowed serif. Demote its inner subtitle/labels to Inter. |
+| `report-key-metrics.tsx` | Re-layout the 5 hero KPIs as a 2-column grid inside each card: left = value + delta + sub, right = `<Sparkline>`. The 5th KPI ("Estado do benchmark") omits sparkline and shows a small outlined badge "Ligado". |
+| `report-kpi-card.tsx` | Add optional `sparklineData?: number[]` and `highlighted?: boolean` props. Internal layout switches to flex row when sparkline is present. Highlighted variant adds a thin top accent border in `--report-accent-blue`. |
+| `report-temporal-chart.tsx` | Remove italic title. Keep chart. Strip any nested panel backgrounds. |
+| `report-benchmark-gauge.tsx` | **Replace** the current 3-point line with a horizontal gauge: full-width track 8px tall using `linear-gradient(90deg, --signal-negative → --signal-warning → --signal-positive)` plus 2 absolute-positioned markers (Atual at `(actual/benchmark)*100%`, capped at 100; Benchmark at 100% reference). Each marker has a mono uppercase label above and the percentage below. A dashed connector + arrow shows the gap. Status badge top-right ("Abaixo do benchmark" / "No benchmark" / "Acima do benchmark") tinted by sign of gap. |
+| `report-format-breakdown.tsx` | Drop nested colored backgrounds; use outlined pills. Keep 3-card grid. |
+| `report-competitors.tsx` | Same card unification. No content change. |
+| `report-top-posts.tsx` | Top-5 cards: remove inner colored panels, use white inner with border. |
+| `report-posting-heatmap.tsx` | Strip italic title. Keep heatmap colors but remap to a single blue ramp `0 → --report-accent-blue` to match the new palette. |
+| `report-best-days.tsx` | Bars use `--report-accent-blue` solid. Title to Inter. |
+| `report-hashtags-keywords.tsx` | Card unification. Tag pills outlined. |
+| `report-ai-insights.tsx` | This existing section becomes a higher-level "Síntese IA" block. Style aligned to the new AIInsightBox visuals but at section width. (The 9 per-section AIInsightBox calls in #4 are separate inline annotations.) |
+| `report-footer.tsx` | No structural change; align typography. |
+| `report-mock-data.ts` | **Add** `heroSparklines` arrays (the 5 mock series from the prompt). No removal. |
+
+#### 4. Insertion of `<AIInsightBox>` in `report-page.tsx`
+
+After each of the 9 sections listed in the prompt, render `<AIInsightBox insight={AI_INSIGHTS_MOCK.<key>.text} emphasis={AI_INSIGHTS_MOCK.<key>.emphasis} />`. Keys map: hero → after `ReportKeyMetrics`; temporal → after `ReportTemporalChart`; benchmark → after `ReportBenchmarkGauge`; format → after `ReportFormatBreakdown`; topPosts → after `ReportTopPosts`; heatmap → after `ReportPostingHeatmap`; bestDays → after `ReportBestDays`; hashtagsKeywords → after `ReportHashtagsKeywords`. The `marketSignals` entry annotates the temporal/market block above; placement TBC at implementation if there is no dedicated market signals section in the example route — if absent, it goes right after the temporal chart, sharing real estate.
+
+---
+
+### 5. Bookkeeping
+
+- `LOCKED_FILES.md` — remove the entire "Report Components (Sprint 1, Prompt 1.10)" block AND `tokens-light.css` from the locked list, since this prompt is the redesign that supersedes the v1 lock. Add a one-line comment noting the new lock will be reapplied after Prompt R2 ships.
+- `mem://index.md` Core — replace "Fraunces display, Inter sans, JetBrains Mono mono. Cyan accent #06B6D4." with a more accurate line: "Light report theme: Inter for all titles except the H1 of the report header; Fraunces reserved for that single editorial signature. Cyan accent stays for dark surfaces (admin)."
+- Add `mem://design/report-light` describing the new `--report-*` and `--insight-*` token system, so future prompts don't reintroduce hex literals.
+
+---
+
+### 6. Verification (matches the prompt's own checks, adapted to reality)
+
+After the edits, `bunx tsc --noEmit` will be run automatically. Manual greps to confirm:
+
+```text
+# Background token reachable via existing utility
+grep -n "report-bg\|--surface-base" src/styles/tokens-light.css
+
+# AIInsightBox usage count >= 9
+grep -rn "AIInsightBox" src/components/report/ src/routes/report.example.tsx
+
+# Sparkline file present
+test -f src/components/report/sparkline.tsx
+
+# Mock present
+test -f src/lib/report/ai-insights-mock.ts
+
+# Italic remaining only in the header H1
+grep -rEn "font-display\s+italic|font-style:\s*italic" src/components/report/
+# Expected: a single occurrence in report-header.tsx
+
+# No hardcoded hex literals introduced in components
+grep -rEn "#([0-9a-fA-F]{3}){1,2}\b" src/components/report/ src/lib/report/ai-insights-mock.ts
+# Expected: empty (all colors via tokens)
+```
+
+### Files added
+- `src/components/report/ai-insight-box.tsx`
+- `src/components/report/sparkline.tsx`
+- `src/lib/report/ai-insights-mock.ts`
+
+### Files modified
+- `src/styles/tokens-light.css` (extend)
+- `src/components/report/*.tsx` (all 14 components — card unification, typography, palette)
+- `src/components/report/report-mock-data.ts` (add hero sparkline arrays)
+- `src/routes/report.example.tsx` (no logic change; only verifies it still mounts)
+- `LOCKED_FILES.md` (unlock the report block)
+- `mem://index.md` + new `mem://design/report-light`
+
+### Risks / what I'll watch for
+- Light mode is shared across the report; if any other route already mounts `<ReportPage>` in the wild it will inherit the new look. I'll grep for `ReportPage` usages before editing and flag if there are surprises.
+- The benchmark gauge currently has fixed numerical assumptions (actual/benchmark from mock data). I'll preserve the same data flow; only the visual changes.
+- `tokens-light.css` was locked specifically because tweaks here change the entire light theme. The user explicitly approved unlocking it, so this is in scope — but I will only **add** new variables and override `--surface-base`, leaving every other token untouched so the v1 visuals can be A/B'd if needed.

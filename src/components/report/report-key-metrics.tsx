@@ -1,4 +1,4 @@
-import { SmilePlus, LayoutGrid, Calendar, Film } from "lucide-react";
+import { SmilePlus, LayoutGrid, Calendar, Film, ShieldCheck } from "lucide-react";
 import { ReportKpiCard } from "./report-kpi-card";
 import { useReportData } from "./report-data-context";
 
@@ -7,6 +7,23 @@ export function ReportKeyMetrics() {
   const m = reportData.keyMetrics;
   const kpiSubtitle =
     reportData.meta?.kpiSubtitle ?? "janela de 30 dias";
+  const sparks = reportData.heroSparklines ?? {
+    engagementRate: [],
+    postsAnalyzed: [],
+    postingFrequencyWeekly: [],
+    dominantFormatShare: [],
+  };
+  const benchmarkStatus = reportData.meta?.benchmarkStatus;
+  const benchmarkLabel =
+    benchmarkStatus === "real"
+      ? "Ligado"
+      : benchmarkStatus === "partial"
+        ? "Parcial"
+        : benchmarkStatus === "placeholder"
+          ? "Pendente"
+          : "Ligado";
+  const benchmarkTone: "positive" | "neutral" =
+    benchmarkStatus === "placeholder" ? "neutral" : "positive";
 
   // Engagement KPI trend chip: derived from the actual delta sign rather than
   // hardcoded. When no benchmark is available (mostly real-data preview with
@@ -25,7 +42,7 @@ export function ReportKeyMetrics() {
     : "Sem benchmark disponível";
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-5">
       <ReportKpiCard
         icon={SmilePlus}
         tint="primary"
@@ -37,6 +54,7 @@ export function ReportKeyMetrics() {
           direction: trendDirection,
         }}
         trendVariant={trendVariant}
+        sparklineData={sparks.engagementRate}
       />
       <ReportKpiCard
         icon={LayoutGrid}
@@ -44,20 +62,31 @@ export function ReportKeyMetrics() {
         label="Publicações analisadas"
         value={m.postsAnalyzed.toString()}
         subtitle={kpiSubtitle}
+        sparklineData={sparks.postsAnalyzed}
       />
       <ReportKpiCard
         icon={Calendar}
         tint="indigo"
-        label="Frequência semanal"
+        label="Ritmo semanal"
         value={m.postingFrequencyWeekly.toString().replace(".", ",")}
-        subtitle="por semana"
+        subtitle="publicações por semana"
+        sparklineData={sparks.postingFrequencyWeekly}
       />
       <ReportKpiCard
         icon={Film}
         tint="cyan"
         label="Formato dominante"
         value={m.dominantFormat}
-        subtitle={`${m.dominantFormatShare}% do conteúdo`}
+        subtitle={`${m.dominantFormatShare}% da amostra`}
+        sparklineData={sparks.dominantFormatShare}
+      />
+      <ReportKpiCard
+        icon={ShieldCheck}
+        tint="primary"
+        label="Estado do benchmark"
+        value=""
+        badge={{ label: benchmarkLabel, tone: benchmarkTone }}
+        highlighted
       />
     </div>
   );

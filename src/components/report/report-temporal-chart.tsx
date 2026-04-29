@@ -76,7 +76,7 @@ export function ReportTemporalChart() {
       subtitle="Soma diária dos sinais de envolvimento por publicação ativa."
       action={chips}
     >
-      <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-4 md:p-6">
+      <div className="bg-surface-secondary border border-border-default rounded-2xl shadow-card p-4 md:p-6">
         <div className="h-[320px] md:h-[380px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
@@ -162,7 +162,7 @@ export function ReportTemporalChart() {
           </ResponsiveContainer>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 mt-2 border-t border-border-subtle/30">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 mt-2 border-t border-border-subtle">
           {visibleSeries.map((s) => (
             <div
               key={s.key}

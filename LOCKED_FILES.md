@@ -59,27 +59,9 @@ explicitly asks for a modification in a new prompt.
 - /src/routes/privacidade.tsx
 - /src/routes/termos.tsx
 
-## Report Components (Sprint 1, Prompt 1.10)
-- /src/styles/tokens-light.css
-- /src/components/report/report-theme-wrapper.tsx
-- /src/components/report/report-mock-data.ts
-- /src/components/report/report-page.tsx
-- /src/components/report/report-section.tsx
-- /src/components/report/report-header.tsx
-- /src/components/report/report-kpi-card.tsx
-- /src/components/report/report-key-metrics.tsx
-- /src/components/report/report-temporal-chart.tsx
-- /src/components/report/report-chart-tooltip.tsx
-- /src/components/report/report-benchmark-gauge.tsx
-- /src/components/report/report-format-breakdown.tsx
-- /src/components/report/report-competitors.tsx
-- /src/components/report/report-top-posts.tsx
-- /src/components/report/report-posting-heatmap.tsx
-- /src/components/report/report-best-days.tsx
-- /src/components/report/report-hashtags-keywords.tsx
-- /src/components/report/report-ai-insights.tsx
-- /src/components/report/report-footer.tsx
-- /src/routes/report.example.tsx
+## Report Components (unlocked for Prompt R1 — Iconosquare-pure refresh)
+> The Sprint 1 / Prompt 1.10 lock on the report block was lifted to apply the
+> unified Iconosquare-pure visual refactor. Re-lock after Prompt R2 ships.
 
 When working on future features, always:
 1. Read this file first

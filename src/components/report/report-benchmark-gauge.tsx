@@ -1,5 +1,6 @@
 import { ReportSection } from "./report-section";
 import { useReportData } from "./report-data-context";
+import { ArrowRight } from "lucide-react";
 
 export function ReportBenchmarkGauge() {
   const reportData = useReportData();
@@ -14,10 +15,14 @@ export function ReportBenchmarkGauge() {
     return null;
   }
 
-  const max = Math.max(m.engagementRate, m.engagementBenchmark) * 1.6 || 1;
-  const valuePct = (m.engagementRate / max) * 100;
-  const benchPct = (m.engagementBenchmark / max) * 100;
+  // Anchor the gauge to the benchmark (always at 100%). The actual value is
+  // a percentage of the benchmark, capped at 120% so an outlier still
+  // remains visible inside the track.
+  const benchPct = 80;
+  const ratio = m.engagementBenchmark > 0 ? m.engagementRate / m.engagementBenchmark : 0;
+  const valuePct = Math.min(Math.max(ratio * benchPct, 2), 118);
   const delta = m.engagementDeltaPct;
+  const deltaPp = m.engagementRate - m.engagementBenchmark;
 
   // Status (matches the engine's ±10% rule used elsewhere).
   const status: "acima" | "ligeiramente-acima" | "abaixo" =
@@ -25,9 +30,9 @@ export function ReportBenchmarkGauge() {
   const badgeStyles =
     status === "abaixo"
       ? {
-          wrap: "bg-tint-warning border-signal-warning/30",
-          dot: "bg-signal-warning",
-          text: "text-signal-warning",
+          wrap: "bg-tint-danger border-signal-danger/30",
+          dot: "bg-signal-danger",
+          text: "text-signal-danger",
           label: "Abaixo do benchmark",
         }
       : {
@@ -53,28 +58,11 @@ export function ReportBenchmarkGauge() {
     </span>
   );
 
-  // Editorial paragraph: dynamic for the real preview, original copy kept as
-  // fallback so /report/example pixel-matches.
-  const absDelta = Math.abs(delta).toString().replace(".", ",");
-  const tier = reportData.profile.tier;
-  const dominant = reportData.keyMetrics.dominantFormat;
-  const dynamicCopy =
-    status === "abaixo"
-      ? `O envolvimento médio do perfil situa-se ${absDelta}% abaixo do benchmark de contas ${tier} com ${dominant} como formato dominante.`
-      : `O envolvimento médio do perfil situa-se ${absDelta}% acima do benchmark de contas ${tier} com ${dominant} como formato dominante.`;
-  const fallbackCopy = (
-    <>
-      O envolvimento médio do perfil situa-se{" "}
-      <span className="text-content-primary font-medium">
-        55% abaixo do benchmark
-      </span>{" "}
-      de contas Micro com Reels como formato dominante. A causa principal
-      encontra-se na performance individual de cada Reel, detalhada na
-      secção seguinte.
-    </>
-  );
   const deltaColorClass =
     status === "abaixo" ? "text-signal-danger" : "text-signal-success";
+  const deltaSign = delta >= 0 ? "+" : "−";
+  const absDelta = Math.abs(delta).toString().replace(".", ",");
+  const absDeltaPp = Math.abs(deltaPp).toFixed(2).replace(".", ",");
 
   return (
     <ReportSection
@@ -83,58 +71,74 @@ export function ReportBenchmarkGauge() {
       subtitle="Comparação com contas do mesmo escalão e formato dominante."
       action={badge}
     >
-      <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6 md:p-8">
-        <div className="relative h-3 w-full rounded-full bg-surface-muted overflow-hidden">
+      <div className="bg-surface-secondary border border-border-default rounded-2xl shadow-card p-7 md:p-9">
+        {/* Horizontal gauge */}
+        <div className="relative pt-12 pb-14">
+          {/* Track with semantic gradient: danger → warning → success */}
           <div
-            className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-indigo-400 via-blue-500 to-cyan-400"
+            className="relative h-2 w-full rounded-full overflow-visible"
             style={{
-              width: `${valuePct}%`,
-              boxShadow: "0 0 12px rgb(59 130 246 / 0.35)",
+              background:
+                "linear-gradient(90deg, rgb(var(--signal-danger) / 0.55) 0%, rgb(var(--signal-warning) / 0.55) 50%, rgb(var(--signal-success) / 0.55) 100%)",
             }}
-          />
-          <div
-            className="absolute top-1/2 -translate-y-1/2 h-5 w-0.5 bg-content-primary rounded-full"
-            style={{ left: `calc(${benchPct}% - 1px)` }}
-            aria-label="Benchmark"
-          />
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-2">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-accent-primary" />
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+          >
+            {/* Marker — Atual */}
+            <div
+              className="absolute -top-12 -translate-x-1/2 flex flex-col items-center gap-1"
+              style={{ left: `${valuePct}%` }}
+            >
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-content-secondary whitespace-nowrap">
                 Atual
-              </p>
-              <p className="font-display text-lg text-content-primary">
+              </span>
+              <span className="block h-2.5 w-2.5 rounded-full bg-content-primary ring-4 ring-surface-secondary" />
+            </div>
+            <div
+              className="absolute top-3 -translate-x-1/2 flex flex-col items-center"
+              style={{ left: `${valuePct}%` }}
+            >
+              <span className="block h-3 w-px bg-content-primary/40" />
+              <span className="mt-1 font-sans text-[15px] font-medium text-content-primary whitespace-nowrap">
                 {m.engagementRate.toString().replace(".", ",")}%
-              </p>
+              </span>
             </div>
-          </div>
-          <div className="flex items-center gap-2 sm:justify-center">
-            <span className="h-3 w-0.5 bg-content-primary rounded-full" />
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+
+            {/* Marker — Benchmark */}
+            <div
+              className="absolute -top-12 -translate-x-1/2 flex flex-col items-center gap-1"
+              style={{ left: `${benchPct}%` }}
+            >
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-content-tertiary whitespace-nowrap">
                 Benchmark
-              </p>
-              <p className="font-display text-lg text-content-primary">
-                {m.engagementBenchmark.toString().replace(".", ",")}%
-              </p>
+              </span>
+              <span className="block h-3 w-[2px] rounded-full bg-content-tertiary" />
             </div>
-          </div>
-          <div className="sm:text-right">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
-              Δ
-            </p>
-            <p className={`font-display text-lg ${deltaColorClass}`}>
-              {m.engagementDeltaPct.toString().replace(".", ",")}%
-            </p>
+            <div
+              className="absolute top-3 -translate-x-1/2 flex flex-col items-center"
+              style={{ left: `${benchPct}%` }}
+            >
+              <span className="block h-3 w-px bg-content-tertiary/40" />
+              <span className="mt-1 font-sans text-[15px] font-medium text-content-tertiary whitespace-nowrap">
+                {m.engagementBenchmark.toString().replace(".", ",")}%
+              </span>
+            </div>
           </div>
         </div>
 
-        <p className="text-sm text-content-secondary leading-relaxed pt-6 mt-6 border-t border-border-subtle/30">
-          {isAdminPreview ? dynamicCopy : fallbackCopy}
-        </p>
+        {/* Gap summary */}
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-content-secondary">
+            Gap
+          </span>
+          <ArrowRight className="size-3.5 text-content-tertiary" />
+          <span className={`font-sans text-[15px] font-medium ${deltaColorClass}`}>
+            {deltaSign}
+            {absDeltaPp}pp
+          </span>
+          <span className="font-mono text-xs text-content-tertiary">
+            ({deltaSign}
+            {absDelta}%)
+          </span>
+        </div>
       </div>
     </ReportSection>
   );
