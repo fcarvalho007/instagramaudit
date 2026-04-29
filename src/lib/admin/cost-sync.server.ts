@@ -15,6 +15,7 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface SyncSummary {
   provider: "apify" | "openai" | "dataforseo";
@@ -80,17 +81,17 @@ export async function syncApifyCosts(): Promise<SyncSummary> {
       if (!dayKey) continue;
       const amount = Number(day.usageUsd ?? day.totalUsd ?? 0);
       const calls = Number(day.runCount ?? 0);
-      const { error } = await supabaseAdmin.from("cost_daily").upsert(
-        {
-          provider: "apify",
-          day: dayKey.slice(0, 10),
-          amount_usd: amount,
-          call_count: calls,
-          details: day,
-          collected_at: new Date().toISOString(),
-        },
-        { onConflict: "provider,day" },
-      );
+      const row = {
+        provider: "apify",
+        day: dayKey.slice(0, 10),
+        amount_usd: amount,
+        call_count: calls,
+        details: day as unknown as Json,
+        collected_at: new Date().toISOString(),
+      };
+      const { error } = await supabaseAdmin
+        .from("cost_daily")
+        .upsert(row, { onConflict: "provider,day" });
       if (!error) upserted += 1;
     }
 
