@@ -1,12 +1,11 @@
-import { Copy, FileDown, Loader2, Check } from "lucide-react";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { FileDown, Loader2 } from "lucide-react";
 
 import type {
   AdapterResult,
   ReportEnriched,
 } from "@/lib/report/snapshot-to-report-data";
 import type { ReportPageActions } from "@/components/report/report-page";
+import { ShareReportPopover } from "@/components/report-share/share-popover";
 import { cn } from "@/lib/utils";
 
 interface ReportHeroProps {
@@ -29,36 +28,6 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
   const fullName = profile.fullName?.trim() || handle;
   const bio = enriched.profile.bio;
   const avatarUrl = enriched.profile.avatarUrl;
-
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 1800);
-    return () => clearTimeout(t);
-  }, [copied]);
-
-  async function handleCopy() {
-    if (typeof window === "undefined") return;
-    const url = window.location.href;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = url;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
-      setCopied(true);
-      toast.success("Link copiado");
-    } catch {
-      toast.error("Não foi possível copiar o link");
-    }
-  }
 
   return (
     <section
@@ -126,26 +95,11 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
               )}
               <span>{actions.pdfBusy ? "A preparar PDF…" : "Exportar PDF"}</span>
             </button>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={cn(
-                "inline-flex items-center justify-center gap-2 rounded-full",
-                "bg-transparent text-content-primary",
-                "px-5 py-3 text-sm font-medium",
-                "border border-border-subtle/50",
-                "transition-colors duration-200",
-                "hover:border-accent-primary/60 hover:text-accent-primary",
-                "min-h-[44px]",
-              )}
-            >
-              {copied ? (
-                <Check className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Copy className="h-4 w-4" aria-hidden="true" />
-              )}
-              <span>{copied ? "Link copiado" : "Copiar link"}</span>
-            </button>
+            <ShareReportPopover
+              result={result}
+              variant="ghost"
+              triggerLabel="Partilhar"
+            />
           </div>
         </div>
 
