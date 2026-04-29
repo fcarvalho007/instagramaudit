@@ -1,0 +1,2 @@
+DELETE FROM public.analysis_snapshots
+WHERE lower(instagram_username) = 'frederico.m.carvalho';

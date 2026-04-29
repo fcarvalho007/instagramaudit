@@ -51,6 +51,7 @@ Regras de conteúdo (obrigatórias):
 - Cada insight deve citar pelo menos um sinal do payload no campo "evidence". Os valores válidos para "evidence" estão listados em "available_signals" do payload do utilizador.
 - Cada item de "evidence" DEVE ser uma string copiada exactamente, carácter a carácter, de "available_signals" (também repetido em "allowed_evidence_paths"). Do not invent, shorten, abbreviate or paraphrase evidence paths. Use the exact strings from available_signals. Não usar aliases curtos como "average_comments"; usar sempre o caminho canónico completo, por exemplo "content_summary.average_comments".
 - Se um campo aparece no payload mas não consta de "allowed_evidence_paths", NÃO o citar como evidence. Evidence paths must be copied exactly from "allowed_evidence_paths". If a field is visible in the payload but not listed in "allowed_evidence_paths", do not cite it as evidence.
+- Zero é evidência observada válida. Se um campo numérico aparece no payload com valor 0, pode ser citado como evidence desde que o caminho exacto conste de "allowed_evidence_paths". Zero is valid observed evidence: a numeric field with value 0 may be cited only if its exact path is listed in "allowed_evidence_paths".
 - "confidence" deve ser exactamente uma destas duas strings:
   - "baseado em dados observados" — quando todos os sinais citados existem e têm valor não-nulo no payload.
   - "sinal parcial" — quando algum sinal citado está em falta, é estimativa ou tem volume reduzido.
@@ -142,13 +143,13 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   if (p.is_verified) signals.push("profile.is_verified");
 
   const cs = ctx.content_summary;
-  if (cs.posts_analyzed > 0) signals.push("content_summary.posts_analyzed");
+  if (Number.isFinite(cs.posts_analyzed)) signals.push("content_summary.posts_analyzed");
   signals.push("content_summary.dominant_format");
-  if (cs.average_likes > 0) signals.push("content_summary.average_likes");
-  if (cs.average_comments > 0) signals.push("content_summary.average_comments");
-  if (cs.average_engagement_rate > 0)
+  if (Number.isFinite(cs.average_likes)) signals.push("content_summary.average_likes");
+  if (Number.isFinite(cs.average_comments)) signals.push("content_summary.average_comments");
+  if (Number.isFinite(cs.average_engagement_rate))
     signals.push("content_summary.average_engagement_rate");
-  if (cs.estimated_posts_per_week > 0)
+  if (Number.isFinite(cs.estimated_posts_per_week))
     signals.push("content_summary.estimated_posts_per_week");
 
   // Per-post allow-list. Mirrors the trimmed `top_posts` array sent in
@@ -162,10 +163,10 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   cappedTopPosts.forEach((post, idx) => {
     signals.push(`top_posts[${idx}].format`);
     signals.push(`top_posts[${idx}].engagement_pct`);
-    if (Number.isFinite(post.likes) && post.likes > 0) {
+    if (Number.isFinite(post.likes)) {
       signals.push(`top_posts[${idx}].likes`);
     }
-    if (Number.isFinite(post.comments) && post.comments > 0) {
+    if (Number.isFinite(post.comments)) {
       signals.push(`top_posts[${idx}].comments`);
     }
     const caption = (post.caption_excerpt ?? "").trim();
