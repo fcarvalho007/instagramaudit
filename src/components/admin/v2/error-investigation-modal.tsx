@@ -3,7 +3,7 @@
  *
  * Mostra código de erro, mensagem, stack trace e resposta HTTP do provedor.
  * Botão "Re-tentar pedido completo" delega no callback `onRetry` (stub
- * client-side enquanto o backend não existir — ver `report-actions.client.ts`).
+ * client-side enquanto o backend não existir — ver `report-actions.ts`).
  */
 
 import { Loader2 } from "lucide-react";
