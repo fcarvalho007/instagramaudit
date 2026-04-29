@@ -1,142 +1,192 @@
-# Redesign do report público `/analyze/$username` · estilo Iconosquare
+## Refinamento section-by-section · `/analyze/$username`
 
-Reformular a hierarquia visual do `ReportShell` para parecer um **dashboard analítico premium** (cards brancos, fundo azulado claro, KPIs dominantes), sem tocar em ficheiros locked nem em providers/PDF/admin.
+A fundação visual (hero + KPI grid + tokens) já está implementada. Este plano cirurgicamente refina cada secção mantendo todos os ficheiros locked intactos. Toda a alteração acontece em `src/components/report-redesign/*` (livre) ou em wrappers já não-locked (`report-market-signals/*`, `report-share/*`).
 
-## Estado actual confirmado
+### Constraints respeitados
 
-- `ReportShell` orquestra ~13 secções com peso visual igual.
-- `ReportHero` já existe e é decente (gradiente cyan/violeta, avatar, badges, CTAs) mas tem hierarquia tipográfica fraca e CTAs comprimidos.
-- `ReportExecutiveSummary` mostra os 5 KPIs como **linha com dividers** — não como cards. É exactamente o que o pedido quer mudar.
-- `ReportSectionFrame` tem `tone` (calm/soft-cyan/soft-violet/plain) mas todas as secções acabam parecidas.
-- Tema light já carregado (`tokens-light.css`): `accent-primary #3B82F6`, `tint-primary` azul-50, `tint-cyan`, shadows `card/lg/stage`. **Tudo o que preciso já existe** — não vou adicionar tokens.
-- LOCKED_FILES confirmado: ficheiros do `report-redesign/*` **não estão locked**. Componentes `report/*` (ReportTemporalChart, ReportBenchmarkGauge, etc.) estão locked e serão reutilizados intactos.
+- **Locked (não tocar):** `report-benchmark-gauge.tsx`, `report-top-posts.tsx`, `report-posting-heatmap.tsx`, `report-best-days.tsx`, `report-hashtags-keywords.tsx`, `report-ai-insights.tsx`, `report-section.tsx`, `report-page.tsx`, `report-mock-data.ts`, `report.example.tsx`, todos os ficheiros em `LOCKED_FILES.md`.
+- **Não tocar:** providers, validador OpenAI, schema Supabase, PDF backend, `/admin`.
+- **`/report/example`** continua a usar `ReportPage` locked completo — não é afectado.
 
-## Princípios visuais (Iconosquare-inspired)
+### Problema estrutural detectado
 
-1. **Canvas claro azulado**: fundo da página `bg-surface-base` (#FAFBFC) com banda hero em gradiente azul muito suave (`tint-primary` + branco).
-2. **Cards brancos verdadeiros**: `bg-white`, `border border-slate-200/70`, `shadow-card`, `rounded-2xl`, padding generoso.
-3. **3 níveis visuais**:
-   - **L1** (dominante): Hero + KPI grid + AI reading
-   - **L2** (analítico): performance, benchmark, top posts, audiência, linguagem (cards uniformes mas sem competirem com L1)
-   - **L3** (suporte): metodologia, teaser tier, bloco final (mais discretos, tipografia menor, sem cor)
-4. **Hierarquia tipográfica fixa**: hero h1 / section h2 / card label — três tamanhos, três pesos, sem variantes ad-hoc.
+Os componentes locked (`ReportBenchmarkGauge`, `ReportTopPosts`, `ReportPostingHeatmap`, `ReportBestDays`, `ReportHashtagsKeywords`) renderizam internamente o seu próprio `<ReportSection>` com label + título + subtítulo. O `ReportShell` actual envolve cada um num `ReportSectionFrame` com OUTRO eyebrow + h2 + subtítulo. Resultado: cabeçalho duplicado em 5 secções.
 
-## Alterações por ficheiro
+**Solução:** o `ReportShell` deixa de envolver estes componentes em `ReportSectionFrame`. Em vez disso, cria wrappers de framing finos (apenas card branco + alternância de banda) sem header próprio, deixando o título interno locked respirar dentro de uma moldura premium. As poucas secções sem header locked (Performance temporal, Concorrentes) continuam com `ReportSectionFrame`.
 
-### 1. `src/components/report-redesign/report-tokens.ts` (refactor)
-Substituir os tokens existentes por uma paleta Iconosquare-style:
+---
 
-```ts
-export const REDESIGN_TOKENS = {
-  // Canvas e bandas de fundo
-  pageCanvas: "bg-[linear-gradient(180deg,#F5F8FF_0%,#FAFBFC_280px,#FAFBFC_100%)]",
-  heroBand: "bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.08),transparent_60%),linear-gradient(180deg,#EEF4FF_0%,#F8FAFF_100%)]",
-  sectionAlt: "bg-white",            // L2 cards vivem dentro de banda branca
-  sectionPlain: "bg-transparent",    // herda canvas
-  // Cards
-  card: "rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]",
-  cardKpi: "rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05),0_12px_32px_-16px_rgba(15,23,42,0.10)]",
-  cardSoft: "rounded-2xl border border-blue-100 bg-blue-50/40",
-  // Tipografia
-  h1Hero: "font-display text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-[1.05]",
-  h2Section: "font-display text-2xl md:text-[1.75rem] font-semibold tracking-tight text-slate-900 leading-tight",
-  eyebrow: "font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500",
-  kpiValue: "font-display text-[2.25rem] md:text-[2.5rem] font-semibold tracking-tight text-slate-900 leading-none",
-  kpiLabel: "font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500",
-  kpiHelp: "text-xs text-slate-600 leading-snug",
-} as const;
+### 1. AI insights — Leitura estratégica
+
+Ficheiro: `src/components/report-redesign/report-ai-reading.tsx` (já existe, refinar).
+
+- Substituir `tone="soft-violet"` por moldura branca elevada coerente com o resto do redesign (`tone="plain"`, `framed=true` ou layout dedicado em card branco).
+- Trocar barra lateral colorida por **badge numerado azul** circular no topo do card, com título em Fraunces e corpo em Inter.
+- Layout 2 colunas desktop / 1 coluna mobile já está correcto — manter.
+- Indicador subtil de prioridade: ponto azul/âmbar/cinza junto ao número conforme posição.
+- `<details>` técnico: manter mas reescrever copy ("Confiança", "Evidência" em linguagem mais humana — "Base da leitura", "Sinais usados").
+- **Garantia:** `ReportAiInsights` locked NÃO é renderizado pelo shell (já confirmado linha por linha). Insights aparecem uma única vez.
+- **Sanitização de copy técnica antiga:** adicionar helper `humanizeTechnical(text)` que substitui no render `engagement_pct → envolvimento médio`, `benchmark_value_pct → referência esperada`, `profile_value_pct → valor do perfil`, `difference_pct → diferença face à referência`, `position below → abaixo da referência`, `dominant_format → formato dominante`. Aplicado tanto no `text` visível como no `evidenceSummary` do `<details>`. Não muta dados — só formatação no render.
+
+### 2. Benchmark
+
+Os componentes `ReportBenchmarkGauge` e `ReportFormatBreakdown` são locked e já trazem header próprio. Substituir o duplo-header:
+
+- Em `report-shell.tsx`, trocar o `ReportSectionFrame` da secção 6 por um novo wrapper `ReportFramedBlock` (novo ficheiro, ver técnico) que apenas aplica banda + card branco SEM eyebrow/h2/subtítulo redundantes.
+- O badge de status ("Acima/Abaixo do benchmark") já existe dentro do componente locked — fica preservado.
+- Card branco premium dado pelo wrapper já cumpre o brief de "main reading inside a strong white card".
+
+### 3. Market Signals
+
+Ficheiro: `src/components/report-market-signals/report-market-signals.tsx` (não locked).
+
+- Refinar copy do subtitle no `marketSignalsCopy` para a frase pedida: *"Cruza temas do Instagram com procura de pesquisa para perceber se há interesse fora da plataforma."*
+- Refinar `EmptyCard` com fundo branco coerente com Iconosquare (substituir `bg-surface-elevated` por moldura clara `bg-white border border-slate-200 rounded-2xl`).
+- Refinar `MetricCard`: aplicar mesmo `cardKpi` style do redesign (sombra + borda slate-200) em vez de `border-border-subtle/40 bg-surface-elevated/60` que não combina no canvas claro.
+- Manter lógica de cache-first (`cachedSummary` curto-circuita fetch — já implementado).
+- Manter silêncio em `disabled`/`blocked` (já implementado).
+
+### 4. Top posts
+
+Componente locked. Wrapper-only refinement:
+
+- Trocar `ReportSectionFrame` por novo `ReportFramedBlock` (sem header duplicado).
+- O componente locked já renderiza thumbnails reais (`post.thumbnailUrl`) com fallback gradient — funciona.
+- O `ReportEnrichedTopLinks` (não locked) por baixo continua a aparecer.
+- Não duplicar grid (resolvido ao remover header redundante; o grid 5-cols continua dentro do card branco).
+
+### 5. Heatmap + Best Days
+
+Ambos locked, com headers internos próprios. Para os agrupar visualmente sob um único título:
+
+- Criar wrapper `ReportAudienceResponse` em `src/components/report-redesign/` que renderiza um `ReportSectionFrame` (com título "Quando a audiência mais responde" + subtítulo "Ajuda a perceber quando a audiência tende a responder melhor") contendo os dois componentes locked dentro do card framed.
+- O subtítulo pedido fica no `ReportSectionFrame`.
+- Os títulos internos locked dos dois componentes vão aparecer dentro do card como sub-headings — aceitável desde que o frame externo seja o título dominante. Se ficar visualmente pesado, em alternativa cortamos o frame externo e usamos só `ReportFramedBlock` mais o subtítulo no topo.
+- Decisão final no momento da implementação após screenshot — iremos com o agrupamento sob frame único.
+
+### 6. Hashtags e palavras-chave
+
+Componente locked. Wrapper-only:
+
+- Trocar `ReportSectionFrame` actual por `ReportFramedBlock` (remove header duplicado).
+- Microcopy *"Temas e padrões recorrentes identificados nas legendas."* já idêntica ao subtítulo do header interno locked → não duplicar.
+- O `ReportEnrichedMentions` por baixo permanece.
+
+### 7. Methodology
+
+Ficheiro: `report-methodology.tsx` (já existe).
+
+- Reescrever o card actual para visual coerente com Iconosquare:
+  - Fundo branco (`REDESIGN_TOKENS.card`) em vez de `border-border-subtle bg-surface-base`.
+  - Tone do frame: `plain` (já está em `calm`/`bandSoftBlue` — manter para alternância editorial).
+  - Manter as 4 fontes (Recolha, Referência, Leitura editorial, Sinais de pesquisa).
+  - Garantir copy não-técnica (já está OK — sem "payload", "snapshot", "normalized").
+
+### 8. Final CTA block
+
+Ficheiro: `report-share/report-final-block.tsx` (não locked).
+
+- Refinar para canvas claro:
+  - Fundo da section: trocar gradient escuro `bg-[radial-gradient(...rgba(6,182,212,0.10)...)]` por `bg-white border-t border-slate-200`.
+  - Card interno: `REDESIGN_TOKENS.card` (sombra + branco) em vez de `bg-surface-base/70`.
+  - Botão PDF primário: cores azul `bg-blue-600 text-white` (consistente com hero) em vez de `bg-accent-primary text-surface-base` (que pode ficar invisível em fundo claro).
+  - Botão PDF e fallback: `w-full md:w-auto` já garante full-width mobile.
+  - Texto: trocar `text-content-secondary/tertiary` (tokens dark) por `text-slate-600/500`.
+- Auditar links: nenhum `href="#"` (confirmado: `feedback.action.href` vem de copy real).
+
+### 9. Mobile 375px
+
+- `overflow-x-hidden` já está no shell root.
+- Hero `[overflow-wrap:anywhere]` no h1 já protege username longo.
+- KPI grid 2-cols no mobile com 5º card span-2 já implementado.
+- AI cards 1-col em mobile já implementado; `<details>` colapsado por defeito (HTML nativo).
+- CTAs full-width mobile no final block (corrigido em §8).
+- Validar visualmente após implementação que nenhum chip ou métrica force overflow.
+
+---
+
+### Detalhes técnicos
+
+**Novo ficheiro:** `src/components/report-redesign/report-framed-block.tsx`
+
+```tsx
+import { cn } from "@/lib/utils";
+import { REDESIGN_TOKENS } from "./report-tokens";
+
+interface Props {
+  /** Banda alternada para ritmo visual (white | soft-blue | canvas). */
+  tone?: "white" | "soft-blue" | "canvas";
+  /** Aria-label obrigatório (a section interna locked tem o título visível). */
+  ariaLabel: string;
+  /** ID âncora opcional. */
+  id?: string;
+  children: React.ReactNode;
+  spacing?: "default" | "tight";
+}
+
+/**
+ * Wrapper de framing apenas: aplica banda + card branco elevado em
+ * volta de componentes locked que JÁ trazem o seu próprio
+ * `<ReportSection>` header. Não renderiza eyebrow/h2/subtítulo —
+ * evita duplo cabeçalho.
+ */
+export function ReportFramedBlock({ tone = "canvas", ariaLabel, id, children, spacing = "default" }: Props) {
+  const band =
+    tone === "white" ? REDESIGN_TOKENS.bandWhite
+    : tone === "soft-blue" ? REDESIGN_TOKENS.bandSoftBlue
+    : REDESIGN_TOKENS.bandCanvas;
+  const pad = spacing === "tight" ? "py-8 md:py-10" : "py-10 md:py-14";
+  return (
+    <section id={id} aria-label={ariaLabel} className={cn("w-full", band, pad)}>
+      <div className="mx-auto max-w-7xl px-5 md:px-6">
+        <div className={cn(REDESIGN_TOKENS.card, "p-5 md:p-8")}>{children}</div>
+      </div>
+    </section>
+  );
+}
 ```
 
-(Cores hardcoded **apenas** por compatibilidade com tema light; valores derivados directamente da palette `tokens-light.css` — `slate-200` = `border-subtle/40`, `blue-50/100/500` = família `accent-primary`. Justifico no PR — se preferes mapear para tokens semânticos digo na implementação.)
+**Helper humanização (em `report-ai-reading.tsx`):**
 
-### 2. `src/components/report-redesign/report-hero.tsx` (rework)
-- Substituir gradiente cyan/violeta por **azul-claro Iconosquare** (`heroBand` token).
-- H1 maior e mais editorial (`h1Hero`); display name como h2 sub-linha; bio menor.
-- Reorganizar layout: **avatar+identidade à esquerda, CTAs à direita** numa única linha em desktop; em mobile empilha mas CTAs continuam **antes do badges row**.
-- Badges com fundo `bg-blue-50` + ring `ring-1 ring-blue-200`, texto `text-blue-700`. (Iconosquare-style chips.)
-- CTA primário: botão sólido azul `bg-blue-600 hover:bg-blue-700 text-white` com sombra suave. Secundário: `bg-white border border-slate-200`.
-- Adicionar pequena linha de "coverage": `{X} publicações · {Y} dias · analisado em {data}` em mono pequeno por baixo dos badges.
+```tsx
+const TECH_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/engagement_pct/gi, "envolvimento médio"],
+  [/benchmark_value_pct/gi, "referência esperada"],
+  [/profile_value_pct/gi, "valor do perfil"],
+  [/difference_pct/gi, "diferença face à referência"],
+  [/position\s+below/gi, "abaixo da referência"],
+  [/dominant_format/gi, "formato dominante"],
+];
+function humanize(text: string): string {
+  return TECH_REPLACEMENTS.reduce((acc, [re, sub]) => acc.replace(re, sub), text);
+}
+```
 
-### 3. **NOVO** `src/components/report-redesign/report-kpi-grid.tsx`
-Componente novo para substituir o `ReportExecutiveSummary` actual:
-- 5 KPI **cards individuais** (white card pattern), **não** linha com dividers.
-- Cada card: ícone lucide pequeno em círculo `bg-blue-50 text-blue-600` (top-left) → eyebrow label → valor grande → help line opcional.
-- Ícones: `Activity` (envolvimento), `BarChart3` (publicações), `CalendarDays` (ritmo), `Image` ou `Film` (formato), `Target` (benchmark) — todos já em `lucide-react`.
-- Grid responsivo:
-  - mobile (<640): `grid-cols-2`, 5º card `col-span-2`
-  - sm/md (640–1023): `grid-cols-3`
-  - lg+ (1024+): `grid-cols-5`
-- Cor do valor neutro `text-slate-900`; help em `text-slate-500`. Para "Estado do benchmark" o valor recebe pill colorida (verde/amarelo/cinzento).
-- Sem hover effects exagerados — apenas `hover:shadow-lg transition-shadow`.
+**Mudanças em `report-shell.tsx`:**
 
-### 4. `src/components/report-redesign/report-executive-summary.tsx` (refactor → wrapper fino)
-- Reduzir a um wrapper que renderiza `<ReportKpiGrid>` numa secção branca com padding generoso, **directamente após o hero, sem header próprio** (os KPIs falam por si).
-- Ou (preferido) **eliminar** o ficheiro e substituir o uso no shell por `<ReportKpiGrid>` directamente. Vou pelo wrapper fino para manter API e evitar mexer no shell além do necessário.
+- Secção 6 (Benchmark + formatos) → `ReportFramedBlock tone="soft-blue"` envolvendo gauge + breakdown.
+- Secção 8 (Top posts) → `ReportFramedBlock tone="soft-blue"` envolvendo `ReportTopPosts` + `ReportEnrichedTopLinks`.
+- Secção 9 (Resposta da audiência) → `ReportSectionFrame` (mantém título agrupador) framed + os dois componentes locked dentro.
+- Secção 10 (Hashtags + menções) → `ReportFramedBlock tone="soft-blue"`.
+- Secções 5 (Performance temporal) e 7 (Concorrentes) → `ReportSectionFrame framed` mantém-se (estes locked têm header mas o redesign frame substitui-o de forma coerente porque o header interno desses dois é mais leve — alternativa: mudar também para `ReportFramedBlock` para uniformizar).
 
-### 5. `src/components/report-redesign/report-section-frame.tsx` (refactor mínimo)
-- Standardizar header: eyebrow `kpiLabel` token + h2 `h2Section` token + subtitle 14-15px slate-600.
-- Tons disponíveis passam a ser: `plain` (canvas), `white` (banda branca), `soft-blue` (banda azul-50). Remove cyan/violet (não combinam com a nova direcção azul).
-- Wrapper interno do conteúdo: `<div className={REDESIGN_TOKENS.card + " p-6 md:p-8"}>{children}</div>` quando `framed=true` (novo prop), para garantir que cada secção L2 vive num card branco em vez de "flutuar" sobre a banda.
+**Decisão de uniformização:** todos os blocos analíticos com componente locked-com-header-próprio passam a `ReportFramedBlock`. Apenas Hero, KPI Grid, Leitura Estratégica IA, Market Signals e Methodology usam `ReportSectionFrame` (estes não duplicam porque ou são novos ou os componentes internos não trazem header).
 
-### 6. `src/components/report-redesign/report-shell.tsx` (refactor)
-- Wrapper raiz: `<div className={REDESIGN_TOKENS.pageCanvas + " min-h-screen"}>`.
-- Estrutura nova:
-  ```
-  Hero (banda azul claro)
-  KPI Grid (banda branca, 5 cards)
-  AI Reading (banda branca alt, card único elevado)
-  Market Signals (mantém)
-  ── separador visual ──
-  Performance ao longo do tempo (framed=true)
-  Benchmark + Formatos (framed=true)
-  Concorrentes (framed=true)
-  Top posts (framed=true)
-  Resposta da audiência (framed=true)
-  Linguagem (framed=true)
-  ── L3, mais discreto ──
-  Metodologia + benchmark source (banda canvas, sem card)
-  Tier teaser + comparison
-  Final block
-  ```
-- Reduzir `tone` redundantes; aplicar ritmo **branco ↔ canvas** alternado para criar separação visual sem cores fortes.
+**Validação:**
 
-### 7. `src/components/report-redesign/report-ai-reading.tsx` (revisão visual leve)
-- Apenas garantir que vive num card grande branco com eyebrow azul, sem mexer em conteúdo/lógica. Verifico ao implementar; se já estiver bom, **não toco**.
+- `bunx tsc --noEmit`
+- `bun run build`
+- QA visual: 1366×768, 768×1024, 375×812 via `browser--navigate_to_sandbox` + `browser--screenshot`.
+- Confirmar `/report/example` inalterado (rota usa `ReportPage` locked, não toca em `ReportShell`).
 
-### 8. `src/components/report-redesign/report-methodology.tsx` (revisão visual leve)
-- Mover para nível L3: card `cardSoft` (azul-50 muito suave) ou simples `border-t border-slate-200 pt-8`, tipografia menor. Sem mexer em conteúdo.
+### Checkpoint
 
-### Não toca
-
-- `src/routes/analyze.$username.tsx` — nenhuma alteração necessária (todos os hooks/data flow ficam iguais).
-- `src/components/report-share/*` — usado tal-qual.
-- Qualquer `src/components/report/*` (locked).
-- `src/routes/report.example.tsx` (locked).
-- Providers, PDF, schema.
-
-## Validação
-
-- `bunx tsc --noEmit` e `bun run build` (corridos pelo harness).
-- QA visual com `browser--navigate_to_sandbox` em 3 viewports:
-  - 1366×768 (desktop): KPIs em linha de 5, hero com CTAs à direita.
-  - 768×1024 (tablet): KPIs em 3 cols, hero a empilhar.
-  - 375×812 (mobile): KPIs em 2 cols + 5º full-width, sem overflow horizontal.
-- Confirmar que `/report/example` continua intacto (rota locked, não tocada).
-
-## Não fazer
-
-- Não introduzir novos tokens em `tokens-light.css` (locked).
-- Não inventar dados — só `result.data`, `result.enriched`, `result.coverage`.
-- Não chamar providers durante implementação.
-- Não tocar em locked files.
-
-## Checkpoint
-
-- ☐ `report-tokens.ts` reescrito com paleta Iconosquare
-- ☐ `report-hero.tsx` rework azul-claro com hierarquia clara
-- ☐ `report-kpi-grid.tsx` novo (5 cards individuais)
-- ☐ `report-executive-summary.tsx` reduzido a wrapper de KpiGrid
-- ☐ `report-section-frame.tsx` com `framed` prop e tons azul/branco
-- ☐ `report-shell.tsx` com nova estrutura L1/L2/L3
-- ☐ QA em 1366 / 768 / 375 sem overflow
+- ☐ Novo `report-framed-block.tsx` criado
+- ☐ Shell actualizado: secções com header locked usam `ReportFramedBlock` (sem duplo header)
+- ☐ AI Reading: badge numerado azul, helper `humanize()`, `<details>` reescrito
+- ☐ Methodology: card branco coerente
+- ☐ Final block: fundo claro, botão PDF azul sólido, full-width mobile
+- ☐ Market Signals: copy actualizada + cards estilo claro coerente
+- ☐ TypeScript build limpo
+- ☐ QA visual nos 3 viewports
 - ☐ `/report/example` inalterado

@@ -1,5 +1,6 @@
 import { Database, LineChart, Sparkles, Search } from "lucide-react";
 import { ReportSectionFrame } from "./report-section-frame";
+import { REDESIGN_TOKENS } from "./report-tokens";
 
 /**
  * Metodologia humana, não-técnica. Card único com 4 fontes.
@@ -41,15 +42,15 @@ export function ReportMethodology() {
         {sources.map(({ icon: Icon, label, body }) => (
           <div
             key={label}
-            className="rounded-xl border border-border-subtle/40 bg-surface-base/60 p-4 md:p-5 space-y-2 min-w-0"
+            className={`${REDESIGN_TOKENS.card} p-4 md:p-5 space-y-2 min-w-0`}
           >
-            <div className="flex items-center gap-2 text-content-tertiary">
+            <div className="flex items-center gap-2 text-blue-600">
               <Icon className="size-4" aria-hidden="true" />
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em]">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
                 {label}
               </p>
             </div>
-            <p className="text-sm text-content-secondary leading-relaxed">
+            <p className="text-sm text-slate-600 leading-relaxed">
               {body}
             </p>
           </div>

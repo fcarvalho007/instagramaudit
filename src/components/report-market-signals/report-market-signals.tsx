@@ -241,23 +241,23 @@ function MetricCard({
 }) {
   const accentDot =
     accent === "positive"
-      ? "bg-signal-success"
+      ? "bg-emerald-500"
       : accent === "warning"
-        ? "bg-signal-warning"
-        : "bg-content-tertiary/60";
+        ? "bg-amber-500"
+        : "bg-slate-300";
   return (
-    <div className="rounded-2xl border border-border-subtle/40 bg-surface-elevated/60 p-5 md:p-6 min-w-0">
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 min-w-0 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]">
       <div className="flex items-center gap-2">
         <span aria-hidden="true" className={`inline-block h-1.5 w-1.5 rounded-full ${accentDot}`} />
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
           {eyebrow}
         </p>
       </div>
-      <div className="mt-3 font-display text-2xl md:text-[28px] leading-tight tracking-tight text-content-primary break-words">
+      <div className="mt-3 font-display text-2xl md:text-[28px] leading-tight tracking-tight text-slate-900 break-words">
         {value}
       </div>
       {hint ? (
-        <p className="mt-2 text-[13px] text-content-secondary leading-relaxed break-words">
+        <p className="mt-2 text-[13px] text-slate-600 leading-relaxed break-words">
           {hint}
         </p>
       ) : null}
@@ -272,11 +272,11 @@ function LoadingSkeleton() {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-28 rounded-2xl border border-border-subtle/30 bg-surface-secondary/30 animate-pulse"
+            className="h-28 rounded-2xl border border-slate-200/70 bg-slate-100/50 animate-pulse"
           />
         ))}
       </div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
         {marketSignalsCopy.loading}
       </p>
     </div>
@@ -285,11 +285,11 @@ function LoadingSkeleton() {
 
 function EmptyCard({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl border border-border-subtle/40 bg-[radial-gradient(ellipse_at_top_left,rgba(6,182,212,0.06),transparent_60%)] bg-surface-elevated/40 p-6 md:p-8 space-y-2">
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-6 md:p-8 space-y-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
         Sem dados nesta análise
       </p>
-      <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-2xl">
+      <p className="text-sm md:text-[15px] text-slate-600 leading-relaxed max-w-2xl">
         {message}
       </p>
     </div>
@@ -411,7 +411,7 @@ export function ReportMarketSignals({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <MetricCard
           eyebrow={marketSignalsCopy.cards.strongest}
-          value={<span className="text-accent-primary">{strongest}</span>}
+          value={<span className="text-blue-700">{strongest}</span>}
           hint="Tema com maior volume de pesquisa pública entre os detetados."
         />
         <MetricCard
@@ -438,7 +438,7 @@ export function ReportMarketSignals({
         <MetricCard
           eyebrow={marketSignalsCopy.cards.suggestion}
           value={
-            <span className="text-[15px] md:text-base font-sans font-normal leading-relaxed text-content-primary">
+            <span className="text-[15px] md:text-base font-sans font-normal leading-relaxed text-slate-700">
               {composeSuggestion(strongest, trend)}
             </span>
           }
@@ -446,8 +446,8 @@ export function ReportMarketSignals({
       </div>
 
       {showChart ? (
-        <div className="rounded-2xl border border-border-subtle/40 bg-surface-elevated/60 p-5 md:p-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary mb-3">
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-3">
             Evolução do interesse de pesquisa
           </p>
           <MarketSignalsChart trends={trends} usableKeywords={usable} />
@@ -456,14 +456,14 @@ export function ReportMarketSignals({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2 min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
             {marketSignalsCopy.chipsUsableLabel}
           </p>
           <div className="flex flex-wrap gap-2">
             {usable.map((kw) => (
               <span
                 key={kw}
-                className="inline-flex items-center rounded-full border border-accent-primary/30 bg-accent-primary/10 px-3 py-1 text-xs font-mono text-accent-primary"
+                className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-mono text-blue-700"
               >
                 {kw}
               </span>
@@ -472,14 +472,14 @@ export function ReportMarketSignals({
         </div>
         {dropped.length > 0 ? (
           <div className="space-y-2 min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
               {marketSignalsCopy.chipsDroppedLabel}
             </p>
             <div className="flex flex-wrap gap-2">
               {dropped.map((kw) => (
                 <span
                   key={kw}
-                  className="inline-flex items-center rounded-full border border-border-subtle/40 bg-surface-secondary/40 px-3 py-1 text-xs font-mono text-content-tertiary"
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-mono text-slate-500"
                 >
                   {kw}
                 </span>
@@ -490,7 +490,7 @@ export function ReportMarketSignals({
       </div>
 
       {cap > 0 ? (
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
           {used}/{cap} {quotaWord}
         </p>
       ) : null}

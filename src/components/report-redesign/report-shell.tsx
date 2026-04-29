@@ -24,6 +24,7 @@ import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-re
 import { ReportHero } from "./report-hero";
 import { ReportExecutiveSummary } from "./report-executive-summary";
 import { ReportSectionFrame } from "./report-section-frame";
+import { ReportFramedBlock } from "./report-framed-block";
 import { ReportAiReading } from "./report-ai-reading";
 import { ReportMethodology } from "./report-methodology";
 import { ReportTierTeaser } from "./report-tier-teaser";
@@ -69,86 +70,51 @@ export function ReportShell({ result, snapshotId, actions, payload }: ReportShel
         />
 
         {/* 5. Performance ao longo do tempo */}
-        <ReportSectionFrame
-          eyebrow="Performance · ao longo do tempo"
-          title="Como o envolvimento evoluiu"
-          subtitle="Curvas de likes, comentários e engagement na janela analisada."
-          tone="plain"
-          framed
-        >
+        <ReportFramedBlock tone="canvas" ariaLabel="Performance ao longo do tempo">
           <ReportTemporalChart />
-        </ReportSectionFrame>
+        </ReportFramedBlock>
 
         {/* 6. Benchmark + formatos */}
-        <ReportSectionFrame
-          eyebrow="Benchmark · referência de mercado"
-          title="Diferença face à referência"
-          subtitle="Onde o perfil se posiciona em relação a perfis pares e como cada formato contribui para o envolvimento."
-          tone="soft-blue"
-          framed
-        >
+        <ReportFramedBlock tone="soft-blue" ariaLabel="Benchmark e formatos">
           <div className="space-y-10 md:space-y-12">
             <ReportBenchmarkGauge />
             <ReportFormatBreakdown />
           </div>
-        </ReportSectionFrame>
+        </ReportFramedBlock>
 
         {/* 7. Concorrentes */}
-        <ReportSectionFrame
-          eyebrow="Concorrentes"
-          title="Comparação com perfis pares"
-          tone="plain"
-          framed
-        >
+        <ReportFramedBlock tone="canvas" ariaLabel="Comparação com perfis pares">
           <ReportCompetitors />
           {result.coverage.competitors === "empty" ? (
             <div className="mt-6">
               <ReportEnrichedCompetitorsCta />
             </div>
           ) : null}
-        </ReportSectionFrame>
+        </ReportFramedBlock>
 
         {/* 8. Top posts */}
-        <ReportSectionFrame
-          eyebrow="Top publicações"
-          title="As publicações com maior envolvimento"
-          subtitle="Cada card abre o conteúdo original no Instagram numa nova aba."
-          tone="soft-blue"
-          framed
-        >
+        <ReportFramedBlock tone="soft-blue" ariaLabel="Top publicações">
           <ReportTopPosts />
           <div className="mt-6">
             <ReportEnrichedTopLinks enriched={result.enriched} />
           </div>
-        </ReportSectionFrame>
+        </ReportFramedBlock>
 
         {/* 9. Resposta da audiência */}
-        <ReportSectionFrame
-          eyebrow="Resposta da audiência"
-          title="Quando a audiência mais responde"
-          subtitle="Padrão de horário e dia da semana, com base na amostra observada."
-          tone="plain"
-          framed
-        >
+        <ReportFramedBlock tone="canvas" ariaLabel="Resposta da audiência">
           <div className="space-y-10 md:space-y-12">
             <ReportPostingHeatmap />
             <ReportBestDays />
           </div>
-        </ReportSectionFrame>
+        </ReportFramedBlock>
 
         {/* 10. Hashtags + palavras-chave + menções */}
-        <ReportSectionFrame
-          eyebrow="Linguagem"
-          title="Hashtags, palavras-chave e contas mencionadas"
-          subtitle="O que o perfil diz e a quem se refere com mais frequência."
-          tone="soft-blue"
-          framed
-        >
+        <ReportFramedBlock tone="soft-blue" ariaLabel="Hashtags, palavras-chave e menções">
           <div className="space-y-10 md:space-y-12">
             <ReportHashtagsKeywords />
             <ReportEnrichedMentions enriched={result.enriched} />
           </div>
-        </ReportSectionFrame>
+        </ReportFramedBlock>
 
         {/* 11. Metodologia */}
         <ReportMethodology />
