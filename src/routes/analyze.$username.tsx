@@ -76,7 +76,12 @@ interface SnapshotResponse {
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; result: AdapterResult; snapshotId: string };
+  | {
+      status: "ready";
+      result: AdapterResult;
+      snapshotId: string;
+      payload: SnapshotPayload;
+    };
 
 function AnalyzePage() {
   const { username } = Route.useParams();
@@ -163,15 +168,23 @@ function AnalyzePage() {
     );
   }
 
-  return <AnalyzeReady result={state.result} snapshotId={state.snapshotId} />;
+  return (
+    <AnalyzeReady
+      result={state.result}
+      snapshotId={state.snapshotId}
+      payload={state.payload}
+    />
+  );
 }
 
 function AnalyzeReady({
   result,
   snapshotId,
+  payload,
 }: {
   result: AdapterResult;
   snapshotId: string;
+  payload: SnapshotPayload;
 }) {
   const shareActions = useReportShareActions({ snapshotId });
   return (
@@ -179,6 +192,7 @@ function AnalyzeReady({
       <ReportShell
         result={result}
         snapshotId={snapshotId}
+        payload={payload}
         actions={{
           onExportPdf: () => void shareActions.exportPdf(),
           onShare: () => void shareActions.share(),
