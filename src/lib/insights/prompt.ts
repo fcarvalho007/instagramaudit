@@ -144,6 +144,10 @@ export interface InsightsUserPayload {
     strongest_keyword?: string | null;
     trend_direction?: "up" | "flat" | "down" | null;
     dropped_keywords?: string[];
+    strongest_score?: number | null;
+    trend_delta_pct?: number | null;
+    usable_keyword_count?: number;
+    zero_signal_keywords?: string[];
   };
   /**
    * The flat list of `evidence` strings the model is allowed to cite.
