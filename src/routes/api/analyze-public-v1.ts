@@ -824,12 +824,80 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               benchmarkData,
             );
 
+          // ─── Resilient persistence (Step 1: BASE snapshot) ────────────
+          // Persist the Apify + DataForSEO result BEFORE calling OpenAI.
+          // If the Worker is killed by an invoker timeout while OpenAI is
+          // running, the report still exists and remains usable — just
+          // without the AI insights layer. The OpenAI call below upserts
+          // a second time on the same cache_key when it succeeds.
+          const baseNormalizedPayload = {
+            profile: primaryProfile,
+            content_summary: primarySummary,
+            competitors: competitorResults,
+            posts: primaryEnriched.posts,
+            format_stats: primaryEnriched.format_stats,
+            ...(marketSignalsFree
+              ? { market_signals_free: marketSignalsFree }
+              : {}),
+          };
+
+          const snapshotId = await storeSnapshot({
+            cacheKey,
+            instagramUsername: primaryProfile.username,
+            competitorUsernames: competitors,
+            normalizedPayload: baseNormalizedPayload as unknown as Record<
+              string,
+              unknown
+            >,
+          });
+          console.info(
+            "[analyze-public-v1] base snapshot persisted",
+            snapshotId ?? "(null)",
+            "ai_insights_v1=pending",
+          );
+
+          // Aggregate counts + estimated cost across all successful handles
+          // (primary + competitors). Failed competitor calls already emitted
+          // their own provider_call_logs row with status=http_error/timeout.
+          const successfulCompetitors = competitorResults.filter(
+            (c): c is Extract<CompetitorAnalysis, { success: true }> =>
+              c.success,
+          );
+          const totalProfiles = 1 + successfulCompetitors.length;
+          const totalPosts =
+            primaryPosts.length +
+            successfulCompetitors.reduce(
+              (sum, c) => sum + c.content_summary.posts_analyzed,
+              0,
+            );
+          const estimatedCost = estimateApifyCost({
+            profilesReturned: totalProfiles,
+            postsReturned: totalPosts,
+          });
+
+          // Record the success event immediately. This guarantees that a
+          // completed Apify+DataForSEO run is reflected in analysis_events
+          // even if the Worker dies before OpenAI returns.
+          await logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "fresh",
+            outcome: "success",
+            analysisSnapshotId: snapshotId ?? null,
+            providerCallLogId: providerCallIds[0] ?? null,
+            postsReturned: totalPosts,
+            profilesReturned: totalProfiles,
+            estimatedCostUsd: estimatedCost,
+            displayName: primaryProfile.display_name,
+            followersLastSeen: primaryProfile.followers_count,
+          });
+
           // ─── OpenAI insights (gated, fresh-only, best-effort) ─────────
           // Triple-gated inside `generateInsights`: OPENAI_ENABLED kill
           // switch + testing-mode allowlist + OPENAI_API_KEY presence.
-          // We pre-check `isOpenAiAllowed` here purely to skip the work of
-          // building the InsightsContext when the call would be refused.
-          // Cache hits never reach this block — they return early above.
+          // Runs AFTER the base snapshot is persisted, so any failure or
+          // timeout here cannot prevent the report from existing.
           let aiInsights: AiInsightsV1 | null = null;
           if (isOpenAiAllowed(primaryProfile.username)) {
             try {
@@ -893,27 +961,33 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             }
           }
 
-          const normalizedPayload = {
-            profile: primaryProfile,
-            content_summary: primarySummary,
-            competitors: competitorResults,
-            posts: primaryEnriched.posts,
-            format_stats: primaryEnriched.format_stats,
-            ...(aiInsights ? { ai_insights_v1: aiInsights } : {}),
-            ...(marketSignalsFree
-              ? { market_signals_free: marketSignalsFree }
-              : {}),
-          };
-
-          const snapshotId = await storeSnapshot({
-            cacheKey,
-            instagramUsername: primaryProfile.username,
-            competitorUsernames: competitors,
-            normalizedPayload: normalizedPayload as unknown as Record<
-              string,
-              unknown
-            >,
-          });
+          // ─── Resilient persistence (Step 2: enrich snapshot) ──────────
+          // Only re-write when we have AI insights to attach. The upsert
+          // collapses to an UPDATE on the existing cache_key — Apify and
+          // DataForSEO are NOT called again. If OpenAI failed/timed out,
+          // the base snapshot from Step 1 is left intact.
+          const normalizedPayload = aiInsights
+            ? { ...baseNormalizedPayload, ai_insights_v1: aiInsights }
+            : baseNormalizedPayload;
+          if (aiInsights) {
+            const enrichedSnapshotId = await storeSnapshot({
+              cacheKey,
+              instagramUsername: primaryProfile.username,
+              competitorUsernames: competitors,
+              normalizedPayload: normalizedPayload as unknown as Record<
+                string,
+                unknown
+              >,
+            });
+            console.info(
+              "[analyze-public-v1] snapshot enriched with ai_insights_v1",
+              enrichedSnapshotId ?? snapshotId ?? "(null)",
+            );
+          } else {
+            console.info(
+              "[analyze-public-v1] snapshot kept without ai_insights_v1 (OpenAI unavailable or failed)",
+            );
+          }
 
           // Reuse the positioning already computed above for the AI
           // context — single source of truth, no duplicate dataset reads.
@@ -930,39 +1004,6 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             },
             benchmark_positioning: benchmarkPositioning,
           };
-
-          // Aggregate counts + estimated cost across all successful handles
-          // (primary + competitors). Failed competitor calls already emitted
-          // their own provider_call_logs row with status=http_error/timeout.
-          const successfulCompetitors = competitorResults.filter(
-            (c): c is Extract<CompetitorAnalysis, { success: true }> =>
-              c.success,
-          );
-          const totalProfiles = 1 + successfulCompetitors.length;
-          const totalPosts =
-            primaryPosts.length +
-            successfulCompetitors.reduce(
-              (sum, c) => sum + c.content_summary.posts_analyzed,
-              0,
-            );
-          const estimatedCost = estimateApifyCost({
-            profilesReturned: totalProfiles,
-            postsReturned: totalPosts,
-          });
-          await logEvent({
-            handle: primary,
-            competitorHandles: competitors,
-            cacheKey,
-            dataSource: "fresh",
-            outcome: "success",
-            analysisSnapshotId: snapshotId ?? null,
-            providerCallLogId: providerCallIds[0] ?? null,
-            postsReturned: totalPosts,
-            profilesReturned: totalProfiles,
-            estimatedCostUsd: estimatedCost,
-            displayName: primaryProfile.display_name,
-            followersLastSeen: primaryProfile.followers_count,
-          });
           return jsonResponse(response, 200);
         } catch (err) {
           // 5) Stale-while-error: if provider failed but we have a recent
