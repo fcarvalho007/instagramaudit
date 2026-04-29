@@ -78,7 +78,7 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
           <div className="flex items-start gap-5 md:gap-6 min-w-0">
             <Avatar avatarUrl={avatarUrl} fullName={fullName} />
             <div className="space-y-2 min-w-0">
-              <h1 className="font-display text-3xl md:text-5xl font-medium tracking-tight text-content-primary leading-[1.05] break-words">
+              <h1 className="font-display text-[1.75rem] sm:text-3xl md:text-4xl lg:text-[2.75rem] font-medium tracking-tight text-content-primary leading-[1.05] break-all">
                 {handle}
               </h1>
               <p className="text-sm md:text-base text-content-secondary">
