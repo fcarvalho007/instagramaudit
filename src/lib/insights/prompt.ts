@@ -150,6 +150,13 @@ export interface InsightsUserPayload {
     zero_signal_keywords?: string[];
   };
   /**
+   * Editorial crossovers (R5). Optional — present only when the snapshot
+   * has enough material to derive at least one sub-block. The model is
+   * REQUIRED (via system prompt) to use these to answer "porquê", not just
+   * "o quê", whenever they are present.
+   */
+  editorial_patterns?: NonNullable<InsightsContext["editorial_patterns"]>;
+  /**
    * The flat list of `evidence` strings the model is allowed to cite.
    * Mirrored by `validate.ts` so any citation outside this list is
    * rejected. Keep paths short and JSON-pointer-ish.
@@ -282,6 +289,54 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
     }
   }
 
+  // Editorial patterns (R5). One canonical path per leaf field that is
+  // actually present in the trimmed sub-block. Order is deterministic so
+  // the prompt hash stays stable across runs with the same context.
+  const ep = ctx.editorial_patterns;
+  if (ep) {
+    if (ep.engagement_trend) {
+      signals.push("editorial_patterns.engagement_trend.direction");
+      signals.push("editorial_patterns.engagement_trend.confidence");
+      signals.push("editorial_patterns.engagement_trend.sample_size");
+    }
+    if (ep.caption_length) {
+      signals.push("editorial_patterns.caption_length.best_bucket");
+      signals.push("editorial_patterns.caption_length.best_avg_engagement_pct");
+      signals.push("editorial_patterns.caption_length.sample_size");
+    }
+    if (ep.hashtag_count) {
+      signals.push("editorial_patterns.hashtag_count.best_bucket");
+      signals.push("editorial_patterns.hashtag_count.best_avg_engagement_pct");
+      signals.push("editorial_patterns.hashtag_count.sample_size");
+    }
+    if (ep.collaboration_lift) {
+      signals.push("editorial_patterns.collaboration_lift.delta_pct");
+      signals.push("editorial_patterns.collaboration_lift.with_count");
+      signals.push("editorial_patterns.collaboration_lift.without_count");
+    }
+    if (ep.comments_to_likes_ratio) {
+      signals.push("editorial_patterns.comments_to_likes_ratio.ratio_pct");
+      signals.push("editorial_patterns.comments_to_likes_ratio.sample_size");
+    }
+    if (ep.market_demand_content_fit) {
+      signals.push("editorial_patterns.market_demand_content_fit.coverage_pct");
+      signals.push("editorial_patterns.market_demand_content_fit.matched_keywords");
+      signals.push("editorial_patterns.market_demand_content_fit.total_keywords");
+      // missing_keywords is exposed only as absence context — never as
+      // proof of strong demand. Listed as evidence but the prompt rules
+      // reject any insight that cites it as a reason TO act on a topic.
+      if (ep.market_demand_content_fit.missing_keywords.length > 0) {
+        signals.push("editorial_patterns.market_demand_content_fit.missing_keywords");
+      }
+    }
+    if (ep.format_vs_competitors) {
+      signals.push("editorial_patterns.format_vs_competitors.dominant_format");
+      signals.push("editorial_patterns.format_vs_competitors.profile_avg_engagement_pct");
+      signals.push("editorial_patterns.format_vs_competitors.competitors_median_engagement_pct");
+      signals.push("editorial_patterns.format_vs_competitors.delta_pct");
+    }
+  }
+
   return signals;
 }
 
@@ -382,6 +437,7 @@ export function buildInsightsUserPayload(
         ? { dropped_keywords: ctx.market_signals.dropped_keywords }
         : {}),
     },
+    ...(ctx.editorial_patterns ? { editorial_patterns: ctx.editorial_patterns } : {}),
     available_signals: signals,
     allowed_evidence_paths: signals,
   };
