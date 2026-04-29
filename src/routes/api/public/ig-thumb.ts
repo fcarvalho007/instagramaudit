@@ -71,6 +71,9 @@ export const Route = createFileRoute("/api/public/ig-thumb")({
               "Content-Type": contentType,
               "Cache-Control":
                 "public, max-age=86400, s-maxage=604800, immutable",
+              // Reforço para CDNs (Cloudflare honra CDN-Cache-Control mesmo
+              // quando o Cache-Control upstream é alterado pela plataforma).
+              "CDN-Cache-Control": "public, max-age=2592000, immutable",
               "X-Content-Type-Options": "nosniff",
             },
           });
