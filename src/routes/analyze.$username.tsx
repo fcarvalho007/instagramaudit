@@ -3,19 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
-import { ReportPage } from "@/components/report/report-page";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { ScopeStrip } from "@/components/report-tier/scope-strip";
-import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-block";
-import { ReportMarketSignals } from "@/components/report-market-signals/report-market-signals";
-import { ReportEnrichedBio } from "@/components/report-enriched/report-enriched-bio";
-import { ReportEnrichedBenchmarkSource } from "@/components/report-enriched/report-enriched-benchmark-source";
-import { ReportEnrichedTopLinks } from "@/components/report-enriched/report-enriched-top-links";
-import { ReportEnrichedMentions } from "@/components/report-enriched/report-enriched-mentions";
-import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/report-enriched-competitors-cta";
-import { ReportEnrichedAiInsights } from "@/components/report-enriched/report-enriched-ai-insights";
-import { ReportEnrichedGlossary } from "@/components/report-enriched/report-enriched-glossary";
-import { ReportFinalBlock } from "@/components/report-share/report-final-block";
+import { ReportShell } from "@/components/report-redesign/report-shell";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
@@ -181,101 +170,18 @@ function AnalyzeReady({
   const shareActions = useReportShareActions({ snapshotId });
   return (
     <ReportThemeWrapper>
-      <div className="bg-surface-base min-h-screen">
-        {/*
-          Hierarquia editorial:
-          1. Identidade + bio + cobertura + glossário (orientação rápida)
-          2. Núcleo do relatório (KPIs, gráficos, IA, benchmark, formatos…)
-          3. Companion subtil ao bloco de IA (resumo técnico colapsável)
-          4. Camadas enriquecidas (links reais, menções, concorrentes)
-          5. Sinais de mercado + metodologia
-          6. Posicionamento Free vs Pro
-          7. Bloco final único: PDF + partilha + feedback
-        */}
-
-        {/* 1. Orientação inicial — fina e tipográfica, sem cards pesados */}
-        <ReportEnrichedBio
-          enriched={result.enriched}
-          username={result.data.profile.username}
-        />
-        <CoverageStrip result={result} />
-        <ReportEnrichedGlossary />
-
-        {/* 2. Núcleo do relatório (locked) */}
-        <ReportPage
-          data={result.data}
-          actions={{
-            onExportPdf: () => void shareActions.exportPdf(),
-            onShare: () => void shareActions.share(),
-            pdfBusy: shareActions.pdfBusy,
-            shareBusy: shareActions.shareBusy,
-            pdfDisabled: shareActions.pdfDisabled,
-          }}
-        />
-
-        {/* 3. Companion subtil ao ReportAiInsights locked (não duplica
-            a leitura editorial; mostra apenas resumo técnico colapsável) */}
-        <ReportEnrichedAiInsights enriched={result.enriched} />
-
-        {/* 4. Camadas enriquecidas com tratamento visual mais leve */}
-        <ReportEnrichedTopLinks enriched={result.enriched} />
-        <ReportEnrichedMentions enriched={result.enriched} />
-        {result.coverage.competitors === "empty" ? (
-          <ReportEnrichedCompetitorsCta />
-        ) : null}
-
-        {/* 5. Sinais de mercado + metodologia (nota tipográfica fina) */}
-        <ReportMarketSignals snapshotId={snapshotId} plan="free" />
-        <ReportEnrichedBenchmarkSource enriched={result.enriched} />
-
-        {/* 6. Posicionamento Free vs Pro */}
-        <ScopeStrip />
-        <TierComparisonBlock />
-
-        {/* 7. Bloco final único: PDF como deliverable + partilha + feedback */}
-        <ReportFinalBlock snapshotId={snapshotId} />
-      </div>
+      <ReportShell
+        result={result}
+        snapshotId={snapshotId}
+        actions={{
+          onExportPdf: () => void shareActions.exportPdf(),
+          onShare: () => void shareActions.share(),
+          pdfBusy: shareActions.pdfBusy,
+          shareBusy: shareActions.shareBusy,
+          pdfDisabled: shareActions.pdfDisabled,
+        }}
+      />
       <Toaster />
     </ReportThemeWrapper>
-  );
-}
-
-function CoverageStrip({ result }: { result: AdapterResult }) {
-  const c = result.coverage;
-  const meta = result.data.meta;
-  const windowValue = c.windowDays > 0 ? `${c.windowDays} dias` : "amostra";
-  const benchmarkValue =
-    c.benchmark === "real"
-      ? meta?.benchmarkDatasetVersion
-        ? `dataset ${meta.benchmarkDatasetVersion}`
-        : "ligados"
-      : c.benchmark === "partial"
-        ? "parciais"
-        : "em afinação";
-  const competitorsValue = c.competitors === "empty" ? "ausentes" : "presentes";
-
-  return (
-    <div className="mx-auto max-w-7xl px-6 pt-8">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border-subtle/40 pb-4">
-        <CoverageItem label="publicações" value={String(c.postsAvailable)} />
-        <CoverageItem label="janela" value={windowValue} />
-        <CoverageItem label="benchmark" value={benchmarkValue} />
-        <CoverageItem label="concorrentes" value={competitorsValue} />
-      </div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary pt-3">
-        Relatório baseado em dados públicos do Instagram · amostra recolhida automaticamente.
-      </p>
-    </div>
-  );
-}
-
-function CoverageItem({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="inline-flex items-baseline gap-2">
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
-        {label}
-      </span>
-      <span className="font-mono text-xs text-content-secondary">{value}</span>
-    </span>
   );
 }
