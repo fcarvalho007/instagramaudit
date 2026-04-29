@@ -1,85 +1,163 @@
 ## Objetivo
 
-Garantir que o `title` e o `body` dos insights de IA mostrados em `/analyze/$username` nunca contêm tokens técnicos (`engagement_pct`, `top_posts[0].likes`, `benchmark_value_pct`, `position below`, `difference_pct`, `content_summary.*`, etc.). O array `evidence[]` mantém-se inalterado para auditoria interna.
+Transformar a secção **Procura de mercado associada ao perfil** num bloco premium e visível em `/analyze/$username`, sem tocar em `provider logic`, no `/report/example`, em ficheiros locked, no schema, nem chamar DataForSEO durante esta implementação.
 
-Sem chamadas a OpenAI, Apify ou DataForSEO.
+A secção passa a:
 
-## Ficheiros a editar (nenhum está locked)
+1. Usar `normalized_payload.market_signals_free` quando já existe no snapshot — sem nova chamada de rede.
+2. Cair para `/api/market-signals` apenas quando o snapshot **não** contém esse bloco, mantendo o contrato actual do endpoint (que já cacheia internamente).
+3. Mostrar estados gracejos (`loading`, `no_keywords`, `timeout`/`error`, `disabled`/`blocked` silencioso).
+4. Renderizar 4 cards premium em linguagem simples + chart só quando os dados são fortes.
 
-- `src/lib/insights/prompt.ts` — endurecer `INSIGHTS_SYSTEM_PROMPT`.
-- `src/lib/insights/validate.ts` — adicionar regra `TECHNICAL_LEAK` em `validateInsights`.
+## Ficheiros a editar
 
-## Mudanças no prompt (`INSIGHTS_SYSTEM_PROMPT`)
+- `src/components/report-market-signals/report-market-signals.tsx` — orquestração + visual premium.
+- `src/components/report-market-signals/market-signals-copy.ts` — copy nova (título, subtítulo, labels dos 4 cards).
+- `src/components/report-redesign/report-shell.tsx` — passar o payload do snapshot já existente como `cachedSummary` ao `<ReportMarketSignals>` para evitar fetch desnecessário; **manter** o `ReportSectionFrame` à volta (já existe).
+- `src/lib/report/snapshot-to-report-data.ts` — declarar de forma loose `market_signals_free?: unknown` em `SnapshotPayload` (apenas tipo, sem mexer em adapter logic) para podermos lê-lo do `result.data` sem `as any`. Alternativa: ler via `result.payload` se já estiver exposto (verificar antes de tocar).
+- `src/components/report-redesign/report-shell.tsx` — também aceitar `payload` para passar a `market_signals_free`.
 
-Acrescentar uma nova secção **"Linguagem do título e do body (obrigatório)"** com:
+Nada toca: `routes/api/market-signals.ts`, `lib/dataforseo/*`, `lib/market-signals/cache.ts`, `MarketSignalsChart` (apenas re-uso).
 
-- "evidence" é apenas para auditoria interna. NUNCA escrever no `title` nem no `body` os caminhos técnicos das evidências.
-- Proibido em `title`/`body`:
-  - Sufixos snake_case com `_pct`, `_count`, `_rate`, `_per_week`, `_summary`.
-  - Caminhos com pontos ou colchetes: `top_posts[0]…`, `content_summary.…`, `benchmark.…`, `market_signals.…`, `competitors_summary.…`, `profile.…`.
-  - Termos crus em inglês usados como rótulos: `position below`, `position above`, `position aligned`, `engagement_pct`, `benchmark_value_pct`, `profile_value_pct`, `difference_pct`, `dominant_format`.
-- Traduzir sempre para linguagem natural pt-PT:
-  - `engagement_pct` → "envolvimento médio" / "taxa de envolvimento".
-  - `benchmark_value_pct` → "referência esperada para perfis semelhantes".
-  - `profile_value_pct` → "valor actual do perfil".
-  - `difference_pct` → "diferença face à referência" (em pontos percentuais).
-  - `position below/above/aligned` → "abaixo da referência" / "acima da referência" / "alinhado com a referência".
-  - `top_posts[0].likes` → "as publicações com melhor desempenho" / "o post mais forte".
-  - `estimated_posts_per_week` → "ritmo de publicação semanal".
-  - `dominant_format` → "formato dominante".
-- Reforçar: números podem (e devem) aparecer em `body`, mas formatados em pt-PT (`-87,38 pp`, `4,2%`, `2 publicações por semana`), nunca como tokens crus.
-- Adicionar dois exemplos curtos no prompt: um BAD ("position below e difference_pct -87.38 face a benchmark_value_pct") e um GOOD ("o envolvimento médio está muito abaixo da referência…").
+## Detalhe da nova UI
 
-## Mudanças no validador (`validate.ts`)
-
-Adicionar nova função pura `detectTechnicalLeak(text: string): string | null` e nova razão de falha `TECHNICAL_LEAK`. Aplicada a `title` e `body` (nunca a `evidence`).
-
-Padrões rejeitados (regex, case-insensitive quando faz sentido):
-
-1. Sufixos snake_case técnicos: `\b\w+_(pct|count|rate|per_week|summary|likes|comments)\b`
-2. Caminhos com ponto: `\b(content_summary|benchmark|market_signals|competitors_summary|profile|top_posts)\.[a-z_]+`
-3. Indexação de array: `top_posts\s*\[\s*\d+\s*\]`
-4. Tokens em inglês usados como rótulo: `\bposition\s+(below|above|aligned)\b`, `\bdominant_format\b`, `\bbenchmark_value_pct\b`, `\bprofile_value_pct\b`, `\bdifference_pct\b`, `\bengagement_pct\b`
-5. snake_case genérico de ≥2 palavras: `\b[a-z]+_[a-z][a-z_]+\b` — devolve match exacto para o `detail`.
-
-Integração em `validateInsights`:
+Wrapper externo continua a ser o `ReportSectionFrame` que já existe no shell (eyebrow "Procura de mercado", título "Procura de mercado associada ao perfil", subtítulo "Cruza temas detetados no Instagram com sinais de pesquisa para perceber se também existe interesse fora da plataforma."). O componente interior renderiza:
 
 ```text
-// dentro do for (const item of items), após BODY_TOO_LONG e antes de hasQuantitativeMarker:
-const leakTitle = detectTechnicalLeak(item.title);
-const leakBody = detectTechnicalLeak(item.body);
-if (leakTitle || leakBody) {
-  return fail("TECHNICAL_LEAK", `id=${item.id} token=${leakTitle ?? leakBody}`);
-}
+┌─────────────────────────────────────────────────────────────┐
+│  [Card 1] Tema com maior sinal     [Card 2] Palavras-chave  │
+│           <strongestKeyword>                <count> analisadas │
+│                                                             │
+│  [Card 3] Tendência                [Card 4] O que isto sugere│
+│           <Em alta / Estável / Em queda>   <frase curta>    │
+└─────────────────────────────────────────────────────────────┘
+[Chart opcional — só se >= 6 pontos válidos numa série]
+[Chips das keywords usable]   [Chips das dropped, dim]
+[Linha pequena: "X/Y sinais usados nesta análise"]
 ```
 
-Atualizar o cabeçalho do ficheiro com a nova razão `TECHNICAL_LEAK — token técnico detectado em title/body`.
+- Grid 2×2 desktop, 1 coluna mobile.
+- Cards com `bg-surface-elevated/60`, border `border-border-subtle/40`, `rounded-2xl`, padding generoso. Eyebrow mono uppercase, valor display Fraunces grande, descrição secundária pequena.
+- Tendência derivada da série mais forte: comparar média da segunda metade vs primeira metade → "Em alta" (≥ +10%), "Em queda" (≤ -10%), "Estável" (entre os dois). Chip colorido com `accent-positive` / `accent-warning` / `content-tertiary`.
+- "O que isto sugere" é uma frase curta determinística baseada em `(strongest, trend, usable.length)`:
+  - Se `usable.length === 0` → "Os temas detetados ainda têm pouca pesquisa pública." (vai parar ao empty state, ver abaixo).
+  - Se `trend === "up"` → "Existe procura crescente por «<strongest>». Reforçar conteúdo sobre este tema."
+  - Se `trend === "down"` → "A procura por «<strongest>» tem perdido força. Avaliar diversificação de temas."
+  - Se `trend === "flat"` → "«<strongest>» mantém procura estável fora do Instagram. Consolidar autoridade no tema."
+- Chart só aparece se a série mais forte tem ≥ 6 valores válidos. Caso contrário, omite chart e mostra apenas chips + cards (requisito: "se chart data is weak, use keyword cards and directional labels instead").
 
-`evidence[]` continua intocado: aliases continuam a funcionar, `EVIDENCE_INVALID` continua a aplicar-se. A nova regra só toca em campos editoriais.
+## Estados
 
-## Auto-teste (sem rede)
+| Situação | Render |
+|---|---|
+| `cachedSummary` no snapshot | usar imediatamente, sem fetch |
+| Sem cache + fetch em curso | skeleton compacto (3 placeholders rounded com pulse) |
+| `disabled` ou `blocked` | `return null` (silencioso) |
+| `no_keywords` | card único pastel: "Os temas detetados no perfil ainda não têm volume de pesquisa fora do Instagram suficiente para análise." |
+| `timeout` ou `error` | card único pastel: "Não foi possível obter sinais de pesquisa neste momento. Voltar a tentar mais tarde." |
+| `ready` ou `partial` mas `usable.length === 0` ou `!trends` | tratar como `no_keywords` |
+| `ready`/`partial` com dados | UI premium completa |
 
-Criar `/tmp/insights-leak-check.ts` (fora do repo, descartável) que importa `detectTechnicalLeak` e corre sobre frases mock para confirmar:
+`disabled`/`blocked` ficam silenciosos para não exporem mecânica interna ao público; o `ReportSectionFrame` envolvente em `report-shell.tsx` precisa de ser **condicionalmente** renderizado para não deixar um título "Procura de mercado" pendurado sobre vazio. Solução: o componente exporta uma sub-componente `<ReportMarketSignalsSection />` que **inclui** o frame e devolve `null` quando o estado é silencioso. O shell passa a usar essa wrapper e remove o `ReportSectionFrame` manual.
 
-- Rejeita: `"Benchmark indica position below e difference_pct -87.38 face a benchmark_value_pct."`
-- Rejeita: `"top_posts[0].likes mostra baixa resposta."`
-- Rejeita: `"content_summary.average_engagement_rate está fraco."`
-- Aceita: `"O envolvimento médio está muito abaixo da referência esperada para perfis semelhantes. Rever o formato dominante e testar variações de criativo durante 4 semanas."`
-- Aceita: `"As publicações com melhor desempenho continuam a ter poucos gostos absolutos. Testar capas mais fortes e chamadas à acção no primeiro slide."`
+## Mudanças concretas
 
-Validação final: `bunx tsc --noEmit`.
+### 1. `market-signals-copy.ts`
+
+Substituir o objecto pelos novos textos:
+
+```ts
+export const marketSignalsCopy = {
+  eyebrow: "Procura de mercado",
+  title: "Procura de mercado associada ao perfil",
+  subtitle:
+    "Cruza temas detetados no Instagram com sinais de pesquisa para perceber se também existe interesse fora da plataforma.",
+  loading: "A cruzar temas do perfil com sinais de pesquisa…",
+  cards: {
+    strongest: "Tema com maior sinal",
+    keywords: "Palavras-chave analisadas",
+    trend: "Tendência",
+    suggestion: "O que isto sugere",
+  },
+  trendLabels: { up: "Em alta", down: "Em queda", flat: "Estável" },
+  empty: {
+    noKeywords:
+      "Os temas detetados no perfil ainda não têm volume de pesquisa fora do Instagram suficiente para análise.",
+    soft:
+      "Não foi possível obter sinais de pesquisa neste momento. Voltar a tentar mais tarde.",
+  },
+  quotaSingular: "sinal de mercado usado nesta análise",
+  quotaPlural: "sinais de mercado usados nesta análise",
+} as const;
+```
+
+### 2. `report-market-signals.tsx`
+
+- Aceita nova prop opcional `cachedSummary?: PersistedMarketSignals` (forma compatível com a actual `MarketSignalsResponse` via adapter local — ou um tipo loose `unknown`, validado com Zod-light dentro do componente; preferir um type-guard simples já que persistido server-side). Quando presente, salta o `useEffect` e popula directamente `state = { status: "ready", data: <converted> }`.
+- Exporta também `ReportMarketSignalsSection` que renderiza `<ReportSectionFrame ...>{<ReportMarketSignals/>}</...>` ou `null` quando o componente interno devolve null. Implementação: o componente interno pode aceitar uma callback `onResolve(visible: boolean)` ou simplesmente devolver null e o shell envolve sempre — é mais simples mover o frame **para dentro** do componente, mas isso ata-o ao tom visual. Decisão: manter o frame **fora** mas exportar um `useMarketSignalsVisibility(snapshotId, payload)` hook não é necessário — escolha pragmática: incorporar o frame dentro de `ReportMarketSignalsSection`, que é o que o shell usa.
+- Layout premium descrito acima usando tokens existentes. Sem cores hardcoded.
+- Helper puro `computeTrend(graph, keyword): "up"|"down"|"flat"` no mesmo ficheiro.
+- Helper puro `composeSuggestion(strongest, trend)` no mesmo ficheiro.
+
+### 3. `report-shell.tsx`
+
+- Aceita nova prop `payload: SnapshotPayload` (ou tira do `result` se já estiver exposto — verificar se `result.data` carrega o payload bruto; se não, adicionar passagem explícita a partir de `analyze.$username.tsx` onde o payload já é conhecido).
+- Substitui o bloco actual pelo:
+
+```tsx
+<ReportMarketSignalsSection
+  snapshotId={snapshotId}
+  plan="free"
+  cachedSummary={
+    (payload as Record<string, unknown>).market_signals_free as
+      | PersistedMarketSignals
+      | undefined
+  }
+/>
+```
+
+E remove o `ReportSectionFrame` manual desta secção.
+
+### 4. `analyze.$username.tsx`
+
+Passar `payload={body.snapshot.payload}` ao `<ReportShell>`. O payload já existe no estado, é só forwarding.
+
+### 5. `snapshot-to-report-data.ts`
+
+Adicionar um campo opcional ao tipo `SnapshotPayload`:
+
+```ts
+market_signals_free?: unknown;
+market_signals_paid?: unknown;
+```
+
+Pura mudança de tipo. Sem alterações ao adapter.
+
+## Validação
+
+- `bunx tsc --noEmit` — verde.
+- `bun run build` (corre automaticamente pelo harness).
+- QA visual local com 2 cenários:
+  1. Snapshot **com** `market_signals_free` em estado `ready` → 4 cards + chart + chips + linha de quota; **zero** chamadas a `/api/market-signals` (verificar tab Network).
+  2. Snapshot **sem** `market_signals_free` → loading skeleton → fetch ao endpoint; resposta `no_keywords` mostra card único pastel.
+- Mobile @ 375px: 1 coluna, cards legíveis, sem overflow horizontal, chart com 224px de altura ou omitido.
 
 ## Garantias
 
-- Sem alterações em UI, PDF, `/report/example`, providers ou ficheiros locked.
-- `evidence[]` persiste exactamente como hoje (auditoria interna preservada).
-- Nenhuma chamada a OpenAI, Apify ou DataForSEO.
-- Snapshots antigos não são tocados; a regra só se aplica a futuras gerações que passem por `validateInsights`.
+- Sem chamadas a DataForSEO durante esta implementação (nenhum código novo invoca o provider).
+- `/report/example` intocado.
+- Provider logic, cache, allowlist, kill-switch, schema, RLS — tudo intocado.
+- Quando o snapshot já traz cache, **zero** rede.
+- `MarketSignalsChart` reusado tal-e-qual.
+- `disabled`/`blocked` desaparecem silenciosamente (sem expor mecânica interna).
 
 ## Checkpoint
 
-- ☐ `INSIGHTS_SYSTEM_PROMPT` atualizado com regras de linguagem para `title`/`body` e exemplos BAD/GOOD.
-- ☐ `validate.ts` exporta `detectTechnicalLeak` e devolve `TECHNICAL_LEAK` quando aplicável.
-- ☐ `evidence[]` permanece inalterado e continua a aceitar caminhos canónicos + aliases.
-- ☐ Auto-teste pontual confirma rejeição/aceitação dos exemplos do brief.
-- ☐ `bunx tsc --noEmit` verde.
+- ☐ `market-signals-copy.ts` com nova copy (título, subtítulo, labels dos 4 cards, frases dos estados).
+- ☐ `report-market-signals.tsx` com 4 cards premium, chart condicional e helper puro de tendência/sugestão.
+- ☐ Suporte a `cachedSummary` que evita fetch quando o snapshot já traz `market_signals_free`.
+- ☐ Estados `loading`, `no_keywords`, `timeout`/`error` com cards pastel claros e `disabled`/`blocked` silencioso (sem frame pendurado).
+- ☐ `report-shell.tsx` passa `cachedSummary` extraído do payload e remove o frame manual.
+- ☐ `analyze.$username.tsx` propaga `payload` ao shell.
+- ☐ `SnapshotPayload` ganha `market_signals_free?: unknown` (apenas tipo).
+- ☐ `bunx tsc --noEmit` verde; QA mobile/desktop confirmado.

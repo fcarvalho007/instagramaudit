@@ -76,7 +76,12 @@ interface SnapshotResponse {
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; result: AdapterResult; snapshotId: string };
+  | {
+      status: "ready";
+      result: AdapterResult;
+      snapshotId: string;
+      payload: SnapshotPayload;
+    };
 
 function AnalyzePage() {
   const { username } = Route.useParams();
@@ -124,13 +129,19 @@ function AnalyzePage() {
         });
         return;
       }
+      const payload = body.snapshot.payload ?? {};
       const result = snapshotToReportData({
-        payload: body.snapshot.payload ?? {},
+        payload,
         meta: body.snapshot.meta ?? undefined,
         benchmark: body.snapshot.benchmark,
         isAdminPreview: false,
       });
-      setState({ status: "ready", result, snapshotId: body.snapshot.id });
+      setState({
+        status: "ready",
+        result,
+        snapshotId: body.snapshot.id,
+        payload,
+      });
     } catch {
       setState({
         status: "error",
@@ -157,15 +168,23 @@ function AnalyzePage() {
     );
   }
 
-  return <AnalyzeReady result={state.result} snapshotId={state.snapshotId} />;
+  return (
+    <AnalyzeReady
+      result={state.result}
+      snapshotId={state.snapshotId}
+      payload={state.payload}
+    />
+  );
 }
 
 function AnalyzeReady({
   result,
   snapshotId,
+  payload,
 }: {
   result: AdapterResult;
   snapshotId: string;
+  payload: SnapshotPayload;
 }) {
   const shareActions = useReportShareActions({ snapshotId });
   return (
@@ -173,6 +192,7 @@ function AnalyzeReady({
       <ReportShell
         result={result}
         snapshotId={snapshotId}
+        payload={payload}
         actions={{
           onExportPdf: () => void shareActions.exportPdf(),
           onShare: () => void shareActions.share(),

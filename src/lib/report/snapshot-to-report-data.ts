@@ -104,6 +104,14 @@ export interface SnapshotPayload {
       priority?: number | null;
     }> | null;
   } | null;
+  /**
+   * Persisted market-signals envelopes (cache layer). Loose-typed on
+   * purpose so this module stays free of dataforseo/cache imports —
+   * the consumer (`ReportMarketSignals`) validates the shape with a
+   * narrow type-guard before reading.
+   */
+  market_signals_free?: unknown;
+  market_signals_paid?: unknown;
 }
 
 export interface SnapshotMetadata {

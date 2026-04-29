@@ -14,12 +14,15 @@ import { ReportEnrichedMentions } from "@/components/report-enriched/report-enri
 import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/report-enriched-competitors-cta";
 import { ReportEnrichedBenchmarkSource } from "@/components/report-enriched/report-enriched-benchmark-source";
 
-import { ReportMarketSignals } from "@/components/report-market-signals/report-market-signals";
+import { ReportMarketSignalsSection } from "@/components/report-market-signals/report-market-signals";
 import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-block";
 import { ReportFinalBlock } from "@/components/report-share/report-final-block";
 import type { ReportPageActions } from "@/components/report/report-page";
 
-import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
+import type {
+  AdapterResult,
+  SnapshotPayload,
+} from "@/lib/report/snapshot-to-report-data";
 
 import { ReportHero } from "./report-hero";
 import { ReportExecutiveSummary } from "./report-executive-summary";
@@ -32,6 +35,12 @@ interface ReportShellProps {
   result: AdapterResult;
   snapshotId: string;
   actions: ReportPageActions;
+  /**
+   * Raw snapshot payload as returned by `/api/public/analysis-snapshot`.
+   * Used to short-circuit the market-signals fetch when a cached summary
+   * already lives at `payload.market_signals_free`.
+   */
+  payload?: SnapshotPayload;
 }
 
 /**
@@ -40,7 +49,12 @@ interface ReportShellProps {
  * componentes locked sem os modificar. `/report/example` continua a
  * usar o `ReportPage` locked completo.
  */
-export function ReportShell({ result, snapshotId, actions }: ReportShellProps) {
+export function ReportShell({
+  result,
+  snapshotId,
+  actions,
+  payload,
+}: ReportShellProps) {
   return (
     <ReportDataProvider data={result.data}>
       <div className="bg-surface-base min-h-screen">
@@ -53,16 +67,13 @@ export function ReportShell({ result, snapshotId, actions }: ReportShellProps) {
         {/* 3. Strategic AI reading */}
         <ReportAiReading data={result.data} enriched={result.enriched} />
 
-        {/* 4. Procura de mercado (Market Signals) */}
-        <ReportSectionFrame
-          eyebrow="Procura de mercado"
-          title="Procura de mercado associada ao perfil"
-          subtitle="Cruza o conteúdo do Instagram com sinais de pesquisa para perceber se os temas também despertam interesse fora da plataforma."
-          tone="soft-cyan"
-          ariaLabel="Procura de mercado associada ao perfil"
-        >
-          <ReportMarketSignals snapshotId={snapshotId} plan="free" />
-        </ReportSectionFrame>
+        {/* 4. Procura de mercado (Market Signals) — section wrapper hides
+            itself silently when the snapshot reports disabled/blocked. */}
+        <ReportMarketSignalsSection
+          snapshotId={snapshotId}
+          plan="free"
+          cachedSummary={payload?.market_signals_free}
+        />
 
         {/* 5. Performance ao longo do tempo */}
         <ReportSectionFrame
