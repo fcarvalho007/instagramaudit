@@ -66,7 +66,7 @@ export function NotesSection() {
           {active.map((n) => (
             <AdminCard key={n.id} variant="default">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <AdminBadge accent="info">
+                <AdminBadge variant="info">
                   {NOTE_CATEGORY_LABEL[n.category]}
                   {n.vertical ? ` · ${n.vertical}` : ""}
                 </AdminBadge>

@@ -141,7 +141,7 @@ export function BenchmarksSection() {
                         </td>
                         <td className="px-4 py-2.5">
                           {b ? (
-                            <AdminBadge accent={b.origin === "manual" ? "neutral" : "info"}>
+                            <AdminBadge variant={b.origin === "manual" ? "neutral" : "info"}>
                               {ORIGIN_LABEL[b.origin]}
                             </AdminBadge>
                           ) : (

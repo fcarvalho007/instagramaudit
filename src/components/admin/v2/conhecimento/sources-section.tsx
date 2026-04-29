@@ -75,7 +75,7 @@ export function SourcesSection() {
                     </td>
                     <td className="px-4 py-2.5">
                       {s.type ? (
-                        <AdminBadge accent="neutral">{SOURCE_TYPE_LABEL[s.type]}</AdminBadge>
+                        <AdminBadge variant="neutral">{SOURCE_TYPE_LABEL[s.type]}</AdminBadge>
                       ) : (
                         <span className="text-admin-text-tertiary">—</span>
                       )}
