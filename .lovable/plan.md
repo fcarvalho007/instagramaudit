@@ -1,62 +1,55 @@
-# Por que ainda não vês imagens reais
+Plano para corrigir os botões “Exportar PDF” e “Partilhar” no relatório
 
-A implementação anterior está **tecnicamente correta**:
-- O `thumbnail_url` chega ao componente.
-- O `<img>` é renderizado e o browser tenta carregar.
-- **Todas as 5 imagens falham com erro de rede** (confirmado por inspeção).
-- O `onError` esconde o `<img>` → vês o gradiente.
+Diagnóstico
+- O bloco final do relatório (`ReportFinalBlock`) já tem lógica real para gerar/abrir PDF e copiar/partilhar link.
+- Os botões visíveis no cabeçalho (`ReportHeader`) são apenas botões visuais: não têm `onClick`, não recebem `snapshotId` e não executam PDF nem partilha.
+- Na imagem enviada, os botões no topo são precisamente esses botões inativos do cabeçalho. Por isso a correção anterior no bloco final não resolve a interação que estás a testar.
 
-O Instagram CDN (`scontent-*.cdninstagram.com`) **recusa pedidos diretos do browser** vindos de outros domínios, mesmo com `referrerPolicy="no-referrer"`. Isto não se resolve no cliente — só com proxy server-side.
+Ficheiros que precisam de edição
+- `src/components/report/report-header.tsx` — locked.
+- `src/components/report/report-page.tsx` — locked.
+- `src/routes/analyze.$username.tsx` — para passar o `snapshotId` real ao relatório.
 
-## Solução: endpoint proxy `/api/public/ig-thumb`
+Como vou corrigir
+1. Criar uma pequena API interna de ações do relatório, passada por props:
+   - `onExportPdf?: () => void`
+   - `onShare?: () => void`
+   - `pdfBusy?: boolean`
+   - `pdfDisabled?: boolean`
+2. Fazer `ReportPage` aceitar essas ações e repassá-las ao `ReportHeader`.
+3. Atualizar `ReportHeader` para:
+   - Chamar `onExportPdf` no botão “Exportar PDF”.
+   - Chamar `onShare` no botão “Partilhar”.
+   - Mostrar estado de loading no PDF (“A preparar…” ou ícone de carregamento).
+   - Desativar PDF quando não há `snapshotId`.
+   - Manter `/report.example` visualmente igual: sem ações reais, ou seja, os botões continuam presentes mas sem depender de dados reais.
+4. Centralizar a lógica real em `/analyze/$username`:
+   - Usar o `snapshotId` já carregado para chamar `/api/public/public-report-pdf`.
+   - Abrir o PDF de forma fiável usando a estratégia popup-before-await já existente, mas agora acionada pelo botão do cabeçalho.
+   - Se o popup for bloqueado, mostrar um fallback clicável no bloco final ou via estado partilhado.
+   - Partilha: tentar Web Share API quando disponível; se não, copiar o link para a área de transferência com fallback para `execCommand`.
+5. Evitar duplicação perigosa:
+   - O `ReportFinalBlock` deve reutilizar a mesma lógica/actions do topo sempre que possível, para que “Exportar PDF” funcione igual no cabeçalho e no bloco final.
 
-Um endpoint server-side (Cloudflare Worker) faz o `fetch` à URL do Instagram (sem restrições CORS no servidor), faz cache, e devolve o binário ao browser.
+Critérios de validação
+- Em `/analyze/frederico.m.carvalho`:
+  - Clicar “Exportar PDF” no topo gera/abre o PDF ou apresenta link fallback se a nova aba for bloqueada.
+  - Clicar “Partilhar” no topo abre a partilha nativa quando suportada ou copia o link com toast de sucesso.
+  - O botão do bloco final continua funcional.
+  - Nenhuma chamada a OpenAI, Apify ou DataForSEO é disparada pelos cliques de PDF/partilha.
+  - Sem overflow horizontal em 375px.
+- Em `/report.example`:
+  - Layout permanece igual e não fica ligado a dados reais.
 
-```text
-Browser  →  /api/public/ig-thumb?url=...  →  cdninstagram.com
-         ←  image/jpeg + Cache-Control     ←
-```
+Notas importantes
+- `report-header.tsx` e `report-page.tsx` estão em `LOCKED_FILES.md`; como pediste “corrija” especificamente estes botões, vou considerar isto como autorização para esta alteração estreita nesses ficheiros. Não vou tocar noutros ficheiros locked além destes.
+- Não vou editar `routeTree.gen.ts`; é gerado automaticamente.
+- Não vou introduzir novas dependências.
 
-## Plano de implementação
-
-1. **Criar `src/routes/api/public/ig-thumb.ts`**
-   - GET com query `?url=<encoded>`
-   - Validar que a URL pertence ao domínio `*.cdninstagram.com` (anti-SSRF)
-   - `fetch(url, { headers: { 'User-Agent': '...', 'Referer': 'https://www.instagram.com/' } })`
-   - Reencaminhar `Content-Type` e `body`
-   - `Cache-Control: public, max-age=86400, s-maxage=604800` (1d browser, 7d edge)
-   - Devolver 404 se Instagram retornar erro (deixa o gradiente assumir)
-
-2. **Atualizar `src/lib/report/snapshot-to-report-data.ts`**
-   - Em `buildTopPosts`, em vez de devolver a URL crua, devolver `/api/public/ig-thumb?url=${encodeURIComponent(rawUrl)}`
-   - Manter o gradiente como fallback (já implementado)
-
-3. **Não tocar em `report-top-posts.tsx`**
-   - O componente já está pronto. Só muda o conteúdo de `thumbnailUrl`.
-
-## Detalhes técnicos
-
-- **Anti-SSRF**: validar `new URL(url).hostname.endsWith('.cdninstagram.com')`. Rejeitar tudo o resto com 400.
-- **Sem custos provider**: não chama Apify, OpenAI nem DataForSEO.
-- **Robustez**: se o Instagram expirar a URL (campo `oe=`), o proxy devolve 404 → o `onError` no cliente revela o gradiente. Comportamento idêntico ao atual mas com taxa de sucesso muito maior.
-- **Edge runtime safe**: usa apenas `fetch` nativo, compatível com Workers.
-
-## Validação
-
-- `bunx tsc --noEmit`
-- Visual QA em `/analyze/frederico.m.carvalho`: confirmar que pelo menos 4 das 5 imagens carregam.
-- `/report/example` permanece intacto (não usa este endpoint).
-- PDF não afetado (continua a usar URLs cruas no servidor, onde não há CORS).
-
-## Checklist
-
-- ☐ Criar `src/routes/api/public/ig-thumb.ts` com validação de hostname
-- ☐ Ajustar `buildTopPosts` para devolver URL proxy
-- ☐ Typecheck
-- ☐ QA visual em `/analyze/frederico.m.carvalho`
-- ☐ Confirmar `/report/example` inalterado
-
-## Risco residual
-
-- **Instagram pode bloquear o IP do Worker** se houver volume alto. Mitigação: cache agressiva no edge (já planeada). Para volumes maiores, futura migração para storage próprio (R2/Supabase Storage) com upload no momento do snapshot.
-- **URLs `oe=` expiram** (cerca de 30 dias). Não há solução sem rehosting. Os snapshots atuais expiram em 2026 → tempo suficiente.
+Checklist de entrega
+☐ Botão “Exportar PDF” do cabeçalho funcional.
+☐ Botão “Partilhar” do cabeçalho funcional.
+☐ Fallback para popup/clipboard bloqueado mantido.
+☐ `/report.example` preservado.
+☐ Sem chamadas a providers durante PDF/partilha.
+☐ Validação visual/responsiva no relatório real.

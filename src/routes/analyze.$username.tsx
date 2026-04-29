@@ -16,6 +16,7 @@ import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/repor
 import { ReportEnrichedAiInsights } from "@/components/report-enriched/report-enriched-ai-insights";
 import { ReportEnrichedGlossary } from "@/components/report-enriched/report-enriched-glossary";
 import { ReportFinalBlock } from "@/components/report-share/report-final-block";
+import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
@@ -167,6 +168,17 @@ function AnalyzePage() {
     );
   }
 
+  return <AnalyzeReady result={state.result} snapshotId={state.snapshotId} />;
+}
+
+function AnalyzeReady({
+  result,
+  snapshotId,
+}: {
+  result: AdapterResult;
+  snapshotId: string;
+}) {
+  const shareActions = useReportShareActions({ snapshotId });
   return (
     <ReportThemeWrapper>
       <div className="bg-surface-base min-h-screen">
@@ -183,36 +195,45 @@ function AnalyzePage() {
 
         {/* 1. Orientação inicial — fina e tipográfica, sem cards pesados */}
         <ReportEnrichedBio
-          enriched={state.result.enriched}
-          username={state.result.data.profile.username}
+          enriched={result.enriched}
+          username={result.data.profile.username}
         />
-        <CoverageStrip result={state.result} />
+        <CoverageStrip result={result} />
         <ReportEnrichedGlossary />
 
         {/* 2. Núcleo do relatório (locked) */}
-        <ReportPage data={state.result.data} />
+        <ReportPage
+          data={result.data}
+          actions={{
+            onExportPdf: () => void shareActions.exportPdf(),
+            onShare: () => void shareActions.share(),
+            pdfBusy: shareActions.pdfBusy,
+            shareBusy: shareActions.shareBusy,
+            pdfDisabled: shareActions.pdfDisabled,
+          }}
+        />
 
         {/* 3. Companion subtil ao ReportAiInsights locked (não duplica
             a leitura editorial; mostra apenas resumo técnico colapsável) */}
-        <ReportEnrichedAiInsights enriched={state.result.enriched} />
+        <ReportEnrichedAiInsights enriched={result.enriched} />
 
         {/* 4. Camadas enriquecidas com tratamento visual mais leve */}
-        <ReportEnrichedTopLinks enriched={state.result.enriched} />
-        <ReportEnrichedMentions enriched={state.result.enriched} />
-        {state.result.coverage.competitors === "empty" ? (
+        <ReportEnrichedTopLinks enriched={result.enriched} />
+        <ReportEnrichedMentions enriched={result.enriched} />
+        {result.coverage.competitors === "empty" ? (
           <ReportEnrichedCompetitorsCta />
         ) : null}
 
         {/* 5. Sinais de mercado + metodologia (nota tipográfica fina) */}
-        <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
-        <ReportEnrichedBenchmarkSource enriched={state.result.enriched} />
+        <ReportMarketSignals snapshotId={snapshotId} plan="free" />
+        <ReportEnrichedBenchmarkSource enriched={result.enriched} />
 
         {/* 6. Posicionamento Free vs Pro */}
         <ScopeStrip />
         <TierComparisonBlock />
 
         {/* 7. Bloco final único: PDF como deliverable + partilha + feedback */}
-        <ReportFinalBlock snapshotId={state.snapshotId} />
+        <ReportFinalBlock snapshotId={snapshotId} />
       </div>
       <Toaster />
     </ReportThemeWrapper>
