@@ -449,16 +449,31 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
   const sorted = [...posts].sort(
     (a, b) => num(b.engagement_pct, 0) - num(a.engagement_pct, 0),
   );
-  return sorted.slice(0, 5).map((p, idx) => ({
-    id: p.id ?? `post-${idx}`,
-    date: formatPtDateShort(p.taken_at_iso ?? null),
-    format: formatLabelForCard(p.format),
-    thumbnail: THUMB_GRADIENTS[idx % THUMB_GRADIENTS.length],
-    likes: num(p.likes, 0),
-    comments: num(p.comments, 0),
-    engagementPct: round2(num(p.engagement_pct, 0)),
-    caption: (p.caption ?? "").slice(0, 200),
-  }));
+  return sorted.slice(0, 5).map((p, idx) => {
+    // Real Instagram CDN URL when present in the snapshot. The card layout
+    // (locked) keeps the gradient as a guaranteed fallback; the image, when
+    // wired in, sits above it and falls back via `onError` on failure.
+    const thumbnailUrl =
+      typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
+        ? p.thumbnail_url
+        : undefined;
+    const base = {
+      id: p.id ?? `post-${idx}`,
+      date: formatPtDateShort(p.taken_at_iso ?? null),
+      format: formatLabelForCard(p.format),
+      thumbnail: THUMB_GRADIENTS[idx % THUMB_GRADIENTS.length],
+      likes: num(p.likes, 0),
+      comments: num(p.comments, 0),
+      engagementPct: round2(num(p.engagement_pct, 0)),
+      caption: (p.caption ?? "").slice(0, 200),
+    };
+    // Cast: `thumbnailUrl` will be added to the locked `ReportData` topPosts
+    // type once the unlock for `report-mock-data.ts` is granted. Emitting it
+    // already keeps the adapter ready and is ignored by the current layout.
+    return (thumbnailUrl
+      ? { ...base, thumbnailUrl }
+      : base) as ReportData["topPosts"][number];
+  });
 }
 
 function buildTemporalSeries(

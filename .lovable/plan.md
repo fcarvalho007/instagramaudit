@@ -1,165 +1,136 @@
 
-# Auditoria DataForSEO · Sinais de Mercado
+# Auditoria + plano: PDF e imagens dos top posts
 
-Auditoria estritamente read-only. Nenhuma chamada a DataForSEO, Apify, OpenAI ou geração de PDF foi feita.
+## A · Botão PDF — diagnóstico
 
----
+**Fluxo atual:** `ReportFinalBlock.handlePdf` abre `window.open("about:blank")` síncronamente → faz `POST /api/public/public-report-pdf` com `{ snapshot_id }` → endpoint devolve `{ success, signed_url, cached, error_code? }` → atribui `popup.location.href = signedUrl`. Se `popup` for `null` (popup blocker), guarda `pdfFallback` em estado e mostra um link clicável.
 
-## 1. Resumo do estado atual
+**O que está correto:**
+- `snapshotId` é passado pelo `analyze.$username.tsx:215` (`<ReportFinalBlock snapshotId={state.snapshotId} />`).
+- O endpoint devolve `signed_url` válido (TTL 600s).
+- O popup é aberto **antes** do `await fetch`, preservando o user-gesture.
+- Existe fallback `<a>` quando o popup é bloqueado.
+- Toasts com mensagens pt-PT por `error_code`.
 
-A camada DataForSEO **existe, está bem construída tecnicamente e tem persistência + cache + custos prontos**, mas **vive em paralelo ao relatório principal**. Hoje:
+**O que pode falhar (causas raiz prováveis):**
+1. **Popup aberto antes do guard.** Se o utilizador clicar com `pdfStatus === "loading"` ou `!snapshotId`, abrimos uma aba em branco e depois fazemos `return` — a aba fica órfã. Pequeno, mas ruidoso em dev e com double-click.
+2. **Sem feedback visual antes da resposta.** O botão muda label para "A preparar PDF…", mas não há indicador na zona do fallback. Se o popup for bloqueado silenciosamente (Brave / Safari estrito), só o toast anuncia — fácil de perder.
+3. **Toast pode ser engolido** se o utilizador faz scroll rápido ou se outro toast cobre. O fallback inline é a única garantia, mas só aparece após resposta.
 
-- O `/api/analyze-public-v1` **não chama** DataForSEO e passa `market_signals: { has_free: false, has_paid: false }` à OpenAI (`src/routes/api/analyze-public-v1.ts:649`).
-- Os Sinais de Mercado só são obtidos por uma **segunda chamada client-side** ao `/api/market-signals`, feita pelo componente `ReportMarketSignals` no `useEffect`.
-- Esse componente esconde-se silenciosamente (`status: "hidden"`) em qualquer estado que não seja `ready`/`partial` — incluindo `no_keywords`, `timeout`, `error`, `disabled`, `blocked`. O utilizador nunca percebe que existia uma camada de mercado.
-- O **PDF não inclui** nenhuma página de Sinais de Mercado.
-- A **OpenAI nunca recebe sinais reais** — apenas dois booleans codificados como `false`.
-- A **promessa de produto** ("cruzar Instagram com procura de mercado") **não está cumprida** no relatório atual.
-
----
-
-## 2. O que já está a funcionar
-
-**Fluxo da API isolado (`/api/market-signals`):**
-- Kill-switch `DATAFORSEO_ENABLED`, allowlist `DATAFORSEO_ALLOWLIST`, quotas `DATAFORSEO_MAX_QUERIES_FREE` / `..._PAID`.
-- Cliente DataForSEO com endpoints separados: `google-trends`, `keyword-ideas`, `serp-organic`.
-- Derivação determinística de keywords a partir do snapshot (`src/lib/dataforseo/derive-keywords.ts`).
-- Classificação de erros (hard vs soft) e cap por plano (`plan-limits.ts`).
-
-**Persistência + cache (`src/lib/market-signals/cache.ts`):**
-- Resultado guardado dentro de `analysis_snapshots.normalized_payload` sob a chave `market_signals_free` (e reservado `market_signals_paid`).
-- TTLs documentados:
-  - `ready` / `partial` / `no_keywords` → 24h
-  - `timeout` / `error` (soft) → 10 min
-  - Erros hard (`AUTH_FAILED`, `DISABLED`, `BLOCKED`, `ACCOUNT_NOT_VERIFIED`) → não cacheia
-- Cache key efetivo = `snapshotId + plan` (idempotente por snapshot).
-
-**Custos e logging:**
-- Cada chamada DataForSEO escreve em `provider_call_logs` com `provider = "dataforseo"`.
-- `actual_cost_usd` capturado a partir da resposta da DataForSEO (`provider_cost_source: "provider_reported"`).
-- IDs dos `provider_call_logs` ficam guardados no envelope persistido (`provider_call_log_ids[]`).
-- Cache hits **não voltam a tocar** em `provider_call_logs` → distinção implícita entre cache e chamada paga.
-- Visível no painel admin de custos (`cost-breakdown-panel.tsx`, `report-cost-summary.server.ts`).
-
-**Renderização web (companion):**
-- `ReportMarketSignals` em `/analyze/$username` (linha 207) com gráfico Google Trends, keywords mais fortes / dropped, copy pt-PT em `market-signals-copy.ts`.
-
-**Diagnóstico admin:**
-- `/api/admin/dataforseo-diagnostics` para verificar conta, quotas e estado.
+**Correções mínimas (sem mexer no endpoint nem em locked files):**
+- Mover o `snapshotId / loading` guard **antes** do `window.open`.
+- Detetar imediatamente popup bloqueado (`!popup || popup.closed`) **antes** do `await`, marcar uma flag `popupOpen` interna; se bloqueado, fazer pedido na mesma e revelar fallback assim que `signed_url` chega.
+- Após sucesso quando o popup foi bloqueado, **revelar também um aviso visual permanente no botão** (já temos `pdfFallback`, basta destacá-lo melhor — não é mudança grande).
+- Garantir que o `try` cobre o `popup.location.href = signedUrl` (alguns browsers atiram em popups cross-origin); se atirar, cair no fallback inline.
 
 ---
 
-## 3. O que está em falta
+## B · Imagens dos top posts — diagnóstico
 
-### 3.1 Snapshot não inclui sinais durante a geração
-- `analyze-public-v1` produz snapshot **sem** chamar `buildMarketSignals`.
-- A persistência só acontece se um cliente real bater no `/api/market-signals` depois — ou seja, depende do browser do utilizador.
-- Resultado: snapshot servido a PDF/OpenAI **nunca** contém `market_signals_free` na primeira passagem.
+**Confirmado por leitura direta do snapshot `4d656311-9212-482a-b843-c21fb8f50cca`:**
 
-### 3.2 OpenAI insights cegos ao mercado
-- `prompt.ts` e `openai-insights.server.ts` já têm os campos `market_signals.has_free` / `has_paid` no `InsightsContext`, mas só recebem booleans.
-- Em `analyze-public-v1.ts:649` ambos são forçados a `false`.
-- Mesmo se fossem `true`, o prompt **não recebe keywords, trends, nem termos**, apenas a flag.
-- Logo, os insights de IA não conseguem cruzar IG com procura.
+```
+posts[0].thumbnail_url = https://scontent-sjc6-1.cdninstagram.com/v/t51.71878-15/685140797_…jpg?…oe=69F7B672…
+posts[0].permalink     = https://www.instagram.com/p/DXru9YbjmYN/
+posts[1].thumbnail_url = https://scontent-sjc6-1.cdninstagram.com/v/…oe=69F79D76…
+```
 
-### 3.3 PDF sem página de mercado
-- Procura por `market_signals` em `src/lib/pdf/` → zero ocorrências.
-- `render.ts` não lê `normalized_payload.market_signals_free`; `report-document.tsx` não tem `MarketSignalsPage`.
+→ **As URLs reais existem no payload**. `oe` (expiry) está em Nov/2026: válidas por semanas.
 
-### 3.4 UX silenciosa em falhas
-- O componente faz `setState({ status: "hidden" })` em todos os erros / `no_keywords` / `timeout`.
-- Para o utilizador isto é indistinguível de "esta funcionalidade não existe". Nada explica que houve tentativa, nem que keywords foram experimentadas.
+**Bug exacto:** `buildTopPosts` em `src/lib/report/snapshot-to-report-data.ts:448-462` faz:
+```ts
+return sorted.slice(0, 5).map((p, idx) => ({
+  …
+  thumbnail: THUMB_GRADIENTS[idx % THUMB_GRADIENTS.length],
+  …
+}));
+```
+Ignora `p.thumbnail_url` e devolve sempre o gradient. O `report-top-posts.tsx` (LOCKED) renderiza apenas o gradient via `post.thumbnail`. Não importa o que o snapshot traga — nunca chega à UI.
 
-### 3.5 Acoplamento client-only
-- A renderização depende do browser executar `useEffect`. SSR, scrapers, partilhas em LinkedIn e screenshots iniciais nunca veem os sinais.
+**Conflito com locked files:** `report-top-posts.tsx` está em `LOCKED_FILES.md` (linha 76). Não podemos adicionar `<img>` lá.
+
+### Duas opções para resolver sem violar lock:
+
+**Opção 1 — Recomendada: pedir aprovação para tornar `report-top-posts.tsx` "image-aware".**
+Adicionar uma única alteração mínima ao locked file: aceitar `post.thumbnailUrl?: string` opcional; quando presente, renderizar `<img>` por cima do gradient (gradient continua como fallback de loading e via `onError`). Zero mudanças no `/report/example` porque o mock continua sem `thumbnailUrl`.
+
+Mudanças:
+- `report-mock-data.ts` (LOCKED): adicionar campo opcional `thumbnailUrl?: string` ao tipo de `topPosts`. Mock continua igual.
+- `report-top-posts.tsx` (LOCKED): se `post.thumbnailUrl` existir, renderizar `<img referrerPolicy="no-referrer" loading="lazy" onError={…}>` absolute inset-0 sobre o gradient.
+- `snapshot-to-report-data.ts`: passar `p.thumbnail_url` para `thumbnailUrl`.
+
+Vantagem: única solução que toca o componente certo e mantém a paridade visual com `/report/example`.
+Desvantagem: requer autorização explícita para 2 locked files.
+
+**Opção 2 — Sem tocar locked: companion overlay.**
+Criar `src/components/report-enriched/report-enriched-top-posts-images.tsx` que faz absolute-position de `<img>` sobre cada card do top-posts já renderizado. Posiciona via querySelector ou re-renderiza o grid em paralelo dentro de um wrapper relativo.
+
+Vantagem: zero mudanças em locked files.
+Desvantagem: frágil (depende da DOM do componente locked), duplica markup, custoso de manter, e o gradient continua a aparecer em flash. Não recomendado.
+
+### Detalhes técnicos da Opção 1
+- `referrerPolicy="no-referrer"` — Instagram CDN bloqueia requests com Referer fora do `instagram.com`. Sem isto, todas as imagens dão 403.
+- `onError` → esconde o `<img>` (`e.currentTarget.style.display = "none"`); o gradient por baixo fica visível, sem cards vazios.
+- `loading="lazy"` e `decoding="async"` — não bloqueia o LCP.
+- Sem rehosting agora. Se daqui a 4 semanas começar a haver expiries (`oe` no passado), criamos uma rota `/api/public/post-image-proxy` que faz fetch server-side e cacheia no bucket — fora deste prompt.
 
 ---
 
-## 4. A DataForSEO faz parte da promessa central do relatório hoje?
+## Plano de implementação (assume aprovação da Opção 1)
 
-**Não.** É uma camada lateral, opcional e silenciosa:
-- Não atravessa o snapshot.
-- Não atravessa o PDF.
-- Não atravessa a IA.
-- Não aparece na partilha social inicial nem na primeira renderização SSR.
-- Pode estar 100% indisponível sem que o utilizador saiba.
+### Ficheiros a editar
+1. `src/components/report-share/report-final-block.tsx`
+   - Mover guard `snapshotId / pdfStatus` para antes do `window.open`.
+   - Envolver `popup.location.href = signedUrl` em try/catch; em caso de erro, revelar `pdfFallback`.
+   - Pequeno destaque visual extra no fallback (mantém estilo actual, só adiciona `aria-live="polite"` e ícone).
 
----
+2. `src/components/report/report-mock-data.ts` ⚠️ **LOCKED — pedir confirmação**
+   - Adicionar `thumbnailUrl?: string` ao tipo dos elementos de `topPosts`. Mock continua idêntico (não definir o campo).
 
-## 5. Arquitetura recomendada (a aprovar antes de implementar)
+3. `src/components/report/report-top-posts.tsx` ⚠️ **LOCKED — pedir confirmação**
+   - Adicionar dentro do `<div className="relative aspect-square …gradient">`:
+     ```tsx
+     {post.thumbnailUrl ? (
+       <img
+         src={post.thumbnailUrl}
+         alt=""
+         loading="lazy"
+         decoding="async"
+         referrerPolicy="no-referrer"
+         onError={(e) => { e.currentTarget.style.display = "none"; }}
+         className="absolute inset-0 h-full w-full object-cover"
+       />
+     ) : null}
+     ```
+   - Garantir que o badge de formato e o ícone `ExternalLink` continuam por cima (já são `absolute top-3 …`, ficam acima do `<img>` por ordem do DOM ou um `z-10` discreto).
 
-Princípio: **DataForSEO passa a ser inline na geração do snapshot**, com fallback gracioso. O cache existente continua a proteger custo.
+4. `src/lib/report/snapshot-to-report-data.ts`
+   - Em `buildTopPosts`, adicionar `thumbnailUrl: typeof p.thumbnail_url === "string" ? p.thumbnail_url : undefined` ao objeto retornado.
+   - Manter `thumbnail` (gradient) como fallback.
 
-### Fase 1 — Snapshot-first (essencial)
-1. Em `analyze-public-v1`, **após** o snapshot Apify estar normalizado e **antes** de chamar `generateInsights`:
-   - Verificar `readCachedSummary(normalized_payload, "free")`. Se válido → usar.
-   - Caso contrário, chamar `buildMarketSignals(...)` server-side com kill-switch + allowlist + quota já existentes.
-   - Persistir o resultado dentro de `normalized_payload.market_signals_free` antes de gravar o snapshot.
-2. Atualizar o `InsightsContext` que vai para a OpenAI:
-   - `market_signals.has_free` reflete a realidade.
-   - Adicionar campos efetivos: top keywords, trend direction (rising/stable/falling) por keyword, índice médio. **Sem** dump bruto — payload reduzido e auditável.
-3. Atualizar `prompt.ts` para instruir a IA a cruzar performance IG com procura de mercado quando `has_free === true`.
-
-### Fase 2 — PDF
-4. Em `src/lib/pdf/render.ts` ler `normalized_payload.market_signals_free` (sem chamar DataForSEO).
-5. Adicionar `MarketSignalsPage` em `report-document.tsx`, montada entre `AiInsightsPage` e `RecommendationsPage` quando houver dados `ready`/`partial`.
-6. Quando ausente: omitir página silenciosamente (já existe precedente com `hasAiInsights`).
-
-### Fase 3 — UX web
-7. `ReportMarketSignals` deixa de fazer fetch quando o snapshot já traz `market_signals_free`. Lê direto via prop.
-8. Estados `no_keywords` / `timeout` / `error` deixam de ser `hidden` → passam a ser **micro-estados explicados em pt-PT** ("Não foi possível derivar keywords a partir desta bio. Próxima análise tentará novamente.").
-9. Estado `disabled` / `blocked` continua oculto (decisão operacional, não falha do utilizador).
-
-### Fase 4 — Cache, versioning e custo
-10. Manter chave `market_signals_free` dentro do snapshot (zero migrations).
-11. Adicionar `market_signals_version: 1` ao envelope persistido para futura invalidação controlada.
-12. Cache hit continua sem tocar `provider_call_logs` → admin já distingue. Adicionar contador "cache hits / fresh calls" no painel de custos (já existe a base em `cost-breakdown-panel.tsx`).
-
-### Ficheiros que serão tocados (Fase 1 + 2, mínimo viável)
-- `src/routes/api/analyze-public-v1.ts` — chamar `buildMarketSignals`, persistir, popular `InsightsContext`.
-- `src/lib/insights/types.ts` + `src/lib/insights/prompt.ts` + `src/lib/insights/openai-insights.server.ts` — receber sinais reais, não só booleans.
-- `src/lib/pdf/render.ts` — ler `market_signals_free` do snapshot.
-- `src/lib/pdf/report-document.tsx` — nova `MarketSignalsPage`.
-- `src/components/report-market-signals/report-market-signals.tsx` — passar a aceitar dados via prop, parar de esconder erros úteis.
-- `src/routes/analyze.$username.tsx` — passar `marketSignals` como prop em vez de só `snapshotId`.
-
-### Ficheiros que **não** serão tocados
-- `LOCKED_FILES.md` (todos os locked).
-- `/report.example`.
+### Não tocar
+- `/report/example` (mock continua sem URL → comportamento idêntico).
+- OpenAI / DataForSEO / Apify.
+- Schema da BD.
 - `src/integrations/supabase/*`.
-- Schema da base de dados (zero migrations).
-- `src/lib/dataforseo/*` interno (cliente, endpoints, derive-keywords) — já está sólido.
+- Endpoint do PDF — está correto.
+
+### Validação
+- `bunx tsc --noEmit`
+- `bun run build`
+- QA visual: `/analyze/frederico.m.carvalho` em desktop e 375px.
+  - Confirmar 5 imagens reais nos top posts.
+  - Confirmar que clicar "Pedir versão PDF" abre o PDF numa nova aba (Chrome) e mostra fallback (Brave com popup blocker).
+  - Confirmar `/report.example` inalterado.
+- Sem chamadas a Apify / DataForSEO / OpenAI.
+- Sem overflow horizontal a 375px.
+
+### Risco residual
+- Imagens Instagram CDN podem dar 403 em alguns browsers que ignoram `referrerPolicy`. Nesse caso o `onError` esconde a imagem e o gradient fica — visualmente igual ao actual. Sem regressão.
+- Se 4-6 semanas depois começarem a expirar URLs, próximo prompt será criar proxy server-side com cache em `report-pdfs/post-thumbs/`.
 
 ---
 
-## 6. Próximo prompt de implementação recomendado
+## Pergunta antes de avançar
 
-> **"Implementar Fase 1 — DataForSEO inline no snapshot e nos insights de IA."**
->
-> Goal: tornar `market_signals_free` obrigatoriamente persistido em `analysis_snapshots.normalized_payload` durante o `/api/analyze-public-v1`, e fazer com que a OpenAI receba sinais reais (não booleans).
->
-> Scope:
-> 1. Em `analyze-public-v1`, após normalização do snapshot Apify, tentar `readCachedSummary` → se ausente e DataForSEO ativo + na allowlist + dentro da quota, chamar `buildMarketSignals` e persistir `market_signals_free` dentro de `normalized_payload`.
-> 2. Manter cache TTL existente (24h ready/partial, 10min soft errors).
-> 3. Estender `InsightsContext.market_signals` com `top_keywords[]`, `trend_summary`, e flags reais.
-> 4. Atualizar `prompt.ts` para cruzar performance IG com procura quando `has_free === true`.
-> 5. Falhas de DataForSEO **nunca** podem partir o snapshot — soft-fail com log.
->
-> Out of scope (próximas fases): PDF, UX do componente, painel admin.
->
-> Constraints:
-> - Sem nova migration.
-> - Sem tocar em locked files nem em `/report.example`.
-> - `bunx tsc --noEmit` + `bun run build` verdes.
-> - Cache hits não devem aumentar `provider_call_logs`.
->
-> Checkpoint:
-> - ☐ snapshot novo contém `market_signals_free` quando DataForSEO está ativo
-> - ☐ snapshot continua a ser gerado mesmo se DataForSEO falhar
-> - ☐ `InsightsContext` recebe keywords/trends reais
-> - ☐ prompt instrui IA a cruzar IG × mercado
-> - ☐ cache de 24h respeitada (segunda análise não chama DataForSEO)
-> - ☐ `provider_call_logs` regista 1 entrada por chamada fresca, 0 em cache
-> - ☐ build + typecheck verdes
-> - ☐ `/report.example` intacto
-> - ☐ locked files intactos
+A Opção 1 implica editar dois ficheiros locked (`report-mock-data.ts` + `report-top-posts.tsx`) — alterações mínimas e retro-compatíveis com `/report/example`. **Confirmas autorização para os tocar?** Se preferires manter os locked intactos, implemento só o fix do PDF e adiamos as imagens para um prompt dedicado a renegociar o lock ou a Opção 2 (companion overlay).
