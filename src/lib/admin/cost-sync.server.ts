@@ -15,6 +15,7 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface SyncSummary {
   provider: "apify" | "openai" | "dataforseo";
