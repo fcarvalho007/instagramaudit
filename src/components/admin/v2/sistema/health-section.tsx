@@ -1,12 +1,9 @@
 /**
- * Estado do sistema — readiness strip (5 chips com semáforo) + smoke test
- * (5 verificações em lista vertical).
- *
- * Os dots usam directamente os literais `healthOk/Warn/Critical` definidos
- * em `admin-tokens.ts` (sem novas variáveis CSS). O resto da estilização
- * vem dos tokens admin existentes.
+ * Estado do sistema — readiness strip + verificações de runtime.
+ * Dados reais via /api/admin/sistema/health e /runtime-checks.
  */
 
+import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Check, XCircle } from "lucide-react";
 
 import { AdminCard } from "@/components/admin/v2/admin-card";
@@ -14,23 +11,23 @@ import { AdminBadge } from "@/components/admin/v2/admin-badge";
 import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
 import { ADMIN_LITERAL } from "@/components/admin/v2/admin-tokens";
 import {
-  MOCK_SMOKE_CHECKS,
-  MOCK_SYSTEM_HEALTH,
-  type MockHealthStatus,
-  type MockSmokeCheck,
-  type MockSystemHealthChip,
-} from "@/lib/admin/mock-data";
+  SectionError,
+  SectionSkeleton,
+} from "@/components/admin/v2/section-state";
+import type {
+  HealthChip,
+  HealthStatus,
+  RuntimeCheck,
+} from "@/lib/admin/system-queries.server";
 
-const STATUS_DOT: Record<MockHealthStatus, string> = {
+const STATUS_DOT: Record<HealthStatus, string> = {
   operational: ADMIN_LITERAL.healthOk,
   attention: ADMIN_LITERAL.healthWarn,
   critical: ADMIN_LITERAL.healthCritical,
 };
 
-type SmokeStatus = MockSmokeCheck["status"];
-
 const SMOKE_TONE: Record<
-  SmokeStatus,
+  RuntimeCheck["status"],
   { textClass: string; Icon: typeof Check }
 > = {
   ok: { textClass: "text-admin-revenue-700", Icon: Check },
@@ -38,7 +35,13 @@ const SMOKE_TONE: Record<
   fail: { textClass: "text-admin-danger-700", Icon: XCircle },
 };
 
-function ReadinessChip({ chip }: { chip: MockSystemHealthChip }) {
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+
+function ReadinessChip({ chip }: { chip: HealthChip }) {
   const dotColor = STATUS_DOT[chip.status];
   return (
     <div className="bg-admin-surface px-5 py-4">
@@ -62,7 +65,7 @@ function ReadinessChip({ chip }: { chip: MockSystemHealthChip }) {
   );
 }
 
-function SmokeRow({ check, first }: { check: MockSmokeCheck; first: boolean }) {
+function SmokeRow({ check, first }: { check: RuntimeCheck; first: boolean }) {
   const tone = SMOKE_TONE[check.status] ?? SMOKE_TONE.ok;
   const Icon = tone.Icon;
   return (
@@ -83,19 +86,45 @@ function SmokeRow({ check, first }: { check: MockSmokeCheck; first: boolean }) {
 }
 
 export function HealthSection() {
+  const health = useQuery({
+    queryKey: ["admin", "sistema", "health"],
+    queryFn: () => fetchJson<HealthChip[]>("/api/admin/sistema/health"),
+    refetchInterval: 60_000,
+  });
+  const checks = useQuery({
+    queryKey: ["admin", "sistema", "runtime-checks"],
+    queryFn: () =>
+      fetchJson<RuntimeCheck[]>("/api/admin/sistema/runtime-checks"),
+    refetchInterval: 60_000,
+  });
+
+  const allOk =
+    (checks.data ?? []).every((c) => c.status === "ok") &&
+    (checks.data ?? []).length > 0;
+
   return (
     <section>
       <AdminSectionHeader
         accent="neutral"
         title="Estado do sistema"
-        info="Visão consolidada da saúde técnica. Verde = operacional, âmbar = atenção, vermelho = crítico. O smoke test verifica todas as integrações."
+        info="Visão consolidada da saúde técnica. Verde = operacional, âmbar = atenção, vermelho = crítico."
       />
       <AdminCard variant="flush" className="overflow-hidden">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-admin-border">
-          {MOCK_SYSTEM_HEALTH.map((chip) => (
-            <ReadinessChip key={chip.service} chip={chip} />
-          ))}
-        </div>
+        {health.isLoading ? (
+          <div className="p-4">
+            <SectionSkeleton rows={1} rowHeight={56} />
+          </div>
+        ) : health.error ? (
+          <div className="p-4">
+            <SectionError error={health.error} onRetry={() => health.refetch()} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-admin-border">
+            {(health.data ?? []).map((chip) => (
+              <ReadinessChip key={chip.service} chip={chip} />
+            ))}
+          </div>
+        )}
 
         <div className="border-t border-admin-border px-6 pt-6 pb-4">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -104,20 +133,27 @@ export function HealthSection() {
                 Verificações de runtime
               </h3>
               <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
-                5 verificações automáticas do estado do publicado
+                Verificações automáticas do estado do publicado
               </p>
             </div>
-            <AdminBadge variant="revenue">Pronto</AdminBadge>
+            <AdminBadge variant={allOk ? "revenue" : "expense"}>
+              {allOk ? "Pronto" : "Atenção"}
+            </AdminBadge>
           </div>
-          <ul className="m-0 list-none p-0">
-            {MOCK_SMOKE_CHECKS.map((check, idx) => (
-              <SmokeRow
-                key={check.name}
-                check={check}
-                first={idx === 0}
-              />
-            ))}
-          </ul>
+          {checks.isLoading ? (
+            <SectionSkeleton rows={5} rowHeight={32} />
+          ) : checks.error ? (
+            <SectionError
+              error={checks.error}
+              onRetry={() => checks.refetch()}
+            />
+          ) : (
+            <ul className="m-0 list-none p-0">
+              {(checks.data ?? []).map((check, idx) => (
+                <SmokeRow key={check.name} check={check} first={idx === 0} />
+              ))}
+            </ul>
+          )}
         </div>
       </AdminCard>
     </section>
