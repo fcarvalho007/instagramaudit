@@ -20,63 +20,79 @@ import {
 import { AdminCard } from "../admin-card";
 import { KPICard } from "../kpi-card";
 import { ADMIN_LITERAL } from "../admin-tokens";
-import { DemoOnlySection } from "../demo-only-section";
-import { MOCK_DAILY_REVENUE, MOCK_REVENUE_KPIS } from "@/lib/admin/mock-data";
+import { AdminSectionHeader } from "../admin-section-header";
+import { PaymentsPendingBanner } from "../payments-pending-banner";
+import { useDemoMode } from "@/lib/admin/demo-mode";
+import {
+  MOCK_DAILY_REVENUE,
+  MOCK_REVENUE_KPIS,
+  ZERO_DAILY_REVENUE,
+  ZERO_REVENUE_KPIS,
+} from "@/lib/admin/mock-data";
 
 export function RevenueSection() {
-  const totalSubs = MOCK_DAILY_REVENUE.reduce((acc, d) => acc + d.subs, 0);
-  const totalOneOff = MOCK_DAILY_REVENUE.reduce((acc, d) => acc + d.oneOff, 0);
+  const { enabled: demo } = useDemoMode();
+  const kpis = demo ? MOCK_REVENUE_KPIS : ZERO_REVENUE_KPIS;
+  const daily = demo ? MOCK_DAILY_REVENUE : ZERO_DAILY_REVENUE;
+  const totalSubs = daily.reduce((acc, d) => acc + d.subs, 0);
+  const totalOneOff = daily.reduce((acc, d) => acc + d.oneOff, 0);
   // Recharts espera array mutável; o mock é `as const`.
-  const chartData = MOCK_DAILY_REVENUE.map((d) => ({ ...d }));
+  const chartData = daily.map((d) => ({ ...d }));
 
   return (
-    <DemoOnlySection
-      title="Receita"
-      subtitle="o que entra"
-      accent="revenue"
-      info="Inclui MRR (subscrições recorrentes) e vendas avulsas. MRR é a métrica de saúde primária do negócio SaaS."
-      pendingReason="Receita ainda a zero — não existem subscrições nem vendas avulsas. Esta secção será ligada automaticamente quando o checkout (EuPago/Stripe) estiver integrado."
-    >
     <section className="flex flex-col gap-4">
+      <AdminSectionHeader
+        title="Receita"
+        subtitle="o que entra"
+        accent="revenue"
+        info="Inclui MRR (subscrições recorrentes) e vendas avulsas. MRR é a métrica de saúde primária do negócio SaaS."
+      />
+      {!demo && (
+        <PaymentsPendingBanner
+          reason="Receita a zero porque o checkout (EuPago/Stripe) ainda não está ligado. MRR e vendas avulsas serão contabilizados em tempo real assim que houver pagamentos."
+        />
+      )}
       <div className="grid gap-3 grid-cols-1 lg:grid-cols-[1.4fr_1fr_1fr]">
         {/* Hero: MRR — receita previsível, mono 56px */}
         <KPICard
           variant="hero"
           size="hero"
-          eyebrow={MOCK_REVENUE_KPIS.mrr.eyebrow}
+          eyebrow={kpis.mrr.eyebrow}
           info="Monthly Recurring Revenue: receita previsível mensal das subscrições activas. A métrica mais importante de um SaaS."
-          value={MOCK_REVENUE_KPIS.mrr.value}
-          delta={{
-            text: MOCK_REVENUE_KPIS.mrr.deltaText,
-            direction: MOCK_REVENUE_KPIS.mrr.deltaDirection,
-          }}
-          sub={MOCK_REVENUE_KPIS.mrr.sub}
+          value={kpis.mrr.value}
+          delta={
+            "deltaText" in kpis.mrr && "deltaDirection" in kpis.mrr
+              ? { text: kpis.mrr.deltaText, direction: kpis.mrr.deltaDirection }
+              : undefined
+          }
+          sub={kpis.mrr.sub}
         />
         <KPICard
           variant="accent-left"
           accent="revenue"
           size="lg"
-          eyebrow={MOCK_REVENUE_KPIS.total.eyebrow}
+          eyebrow={kpis.total.eyebrow}
           info="Soma de toda a receita: subscrições + vendas avulsas de relatórios."
-          value={MOCK_REVENUE_KPIS.total.value}
-          delta={{
-            text: MOCK_REVENUE_KPIS.total.deltaText,
-            direction: MOCK_REVENUE_KPIS.total.deltaDirection,
-          }}
-          sub={MOCK_REVENUE_KPIS.total.sub}
+          value={kpis.total.value}
+          delta={
+            "deltaText" in kpis.total && "deltaDirection" in kpis.total
+              ? { text: kpis.total.deltaText, direction: kpis.total.deltaDirection }
+              : undefined
+          }
+          sub={kpis.total.sub}
         />
         <KPICard
           variant="accent-left"
           accent="revenue-alt"
           size="lg"
-          eyebrow={MOCK_REVENUE_KPIS.oneOff.eyebrow}
+          eyebrow={kpis.oneOff.eyebrow}
           info="Receita de relatórios comprados individualmente, sem subscrição. Cada relatório custa €29."
-          value={MOCK_REVENUE_KPIS.oneOff.value}
+          value={kpis.oneOff.value}
           highlightSub={{
-            text: MOCK_REVENUE_KPIS.oneOff.highlightText,
+            text: kpis.oneOff.highlightText,
             accent: "revenue-alt",
           }}
-          sub={MOCK_REVENUE_KPIS.oneOff.sub}
+          sub={kpis.oneOff.sub}
         />
       </div>
 
