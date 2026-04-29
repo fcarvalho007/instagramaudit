@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import { useDemoMode } from "@/lib/admin/demo-mode";
 import { AdminCard } from "./admin-card";
 import { AdminSectionHeader } from "./admin-section-header";
+import type { AdminAccent } from "./admin-tokens";
 
 interface DemoOnlySectionProps {
   /** Título da secção (mesmo título que o mock usa). */
@@ -23,7 +24,7 @@ interface DemoOnlySectionProps {
   /** Subtítulo/eyebrow opcional. */
   subtitle?: string;
   /** Cor de acento da secção (revenue, expense, signal, info, default). */
-  accent?: "revenue" | "expense" | "signal" | "info" | "default";
+  accent?: AdminAccent;
   /** Tooltip "i" opcional. */
   info?: string;
   /**
@@ -54,7 +55,7 @@ export function DemoOnlySection({
       <AdminSectionHeader
         title={title}
         subtitle={subtitle}
-        accent={accent}
+        accent={accent ?? "neutral"}
         info={info}
       />
       <AdminCard>
