@@ -33,11 +33,7 @@ import type {
  */
 async function tagAdmin(email: string): Promise<void> {
   try {
-    await supabaseAdmin.rpc("set_config" as never, {
-      parameter: "app.current_admin_email",
-      value: email,
-      is_local: true,
-    } as never);
+    await supabaseAdmin.rpc("set_admin_email_session", { p_email: email });
   } catch {
     // ignorar — auditoria sem autor é melhor do que falhar a operação
   }
