@@ -1088,7 +1088,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
           const response: PublicAnalysisSuccess = {
             success: true,
-            ...normalizedPayload,
+            ...(normalizedPayload as unknown as Omit<
+              PublicAnalysisSuccess,
+              "success" | "analysis_snapshot_id" | "status" | "benchmark_positioning"
+            >),
             ...(snapshotId ? { analysis_snapshot_id: snapshotId } : {}),
             status: {
               success: true,
