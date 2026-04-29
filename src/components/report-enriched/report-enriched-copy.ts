@@ -43,4 +43,31 @@ export const ENRICHED_COPY = {
     modelPrefix: "Modelo",
     generatedPrefix: "Gerado em",
   },
+  aiInsightsFooter: {
+    helpLine:
+      "Cada leitura indica o nível de certeza do modelo e os indicadores do relatório que sustentam a conclusão.",
+    summaryPrefix: "Confiança média",
+    signalsPrefix: "sinais citados",
+    detailsLabel: "Ver detalhe por insight",
+  },
+  glossary: {
+    eyebrow: "Como ler este relatório",
+    items: [
+      {
+        term: "Engajamento",
+        definition:
+          "Média de interações por publicação a dividir pelo número de seguidores.",
+      },
+      {
+        term: "Benchmark",
+        definition:
+          "Mediana do dataset comparável, com idioma e dimensão semelhantes.",
+      },
+      {
+        term: "Sinais",
+        definition:
+          "Indicadores do snapshot que sustentam cada leitura editorial gerada por IA.",
+      },
+    ] as const,
+  },
 } as const;

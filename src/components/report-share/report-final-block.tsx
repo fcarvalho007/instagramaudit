@@ -198,9 +198,13 @@ export function ReportFinalBlock({
               Exporta em PDF para guardar, enviar a um cliente ou apresentar
               numa reunião. O link público também pode ser partilhado.
             </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary pt-1">
+              O PDF inclui todas as secções deste relatório · link público
+              activo durante a fase beta
+            </p>
           </header>
 
-          <div className="flex flex-col items-stretch gap-2 md:items-end">
+          <div className="flex flex-col items-stretch gap-2 md:items-end w-full md:w-auto">
             <button
               type="button"
               onClick={handlePdf}
@@ -210,7 +214,7 @@ export function ReportFinalBlock({
               title={
                 !snapshotId ? SHARE_COPY.actions.pdf.labelDisabled : undefined
               }
-              className="shrink-0 inline-flex items-center justify-center gap-2 rounded-full border border-accent-primary bg-accent-primary px-6 py-3 text-sm font-semibold text-surface-base transition-colors duration-200 hover:bg-accent-luminous hover:border-accent-luminous disabled:cursor-not-allowed disabled:border-border-subtle/40 disabled:bg-transparent disabled:text-text-muted disabled:opacity-70"
+              className="w-full md:w-auto shrink-0 inline-flex items-center justify-center gap-2 rounded-full border border-accent-primary bg-accent-primary px-6 py-3 text-sm font-semibold text-surface-base transition-colors duration-200 hover:bg-accent-luminous hover:border-accent-luminous disabled:cursor-not-allowed disabled:border-border-subtle/40 disabled:bg-transparent disabled:text-text-muted disabled:opacity-70"
             >
               {pdfStatus === "loading" ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -224,12 +228,12 @@ export function ReportFinalBlock({
                 que o utilizador pode clicar (esse clique é, ele próprio,
                 um novo user gesture e não é bloqueado). */}
             {pdfFallback ? (
-              <div className="flex flex-col items-stretch gap-1 md:items-end">
+              <div className="flex flex-col items-stretch gap-1 md:items-end w-full md:w-auto">
                 <a
                   href={pdfFallback.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-accent-primary/60 bg-transparent px-5 py-2 text-sm font-medium text-accent-primary transition-colors duration-200 hover:bg-accent-primary/10"
+                  className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-accent-primary/60 bg-transparent px-5 py-2 text-sm font-medium text-accent-primary transition-colors duration-200 hover:bg-accent-primary/10"
                 >
                   <ExternalLink className="h-4 w-4" aria-hidden="true" />
                   <span>{SHARE_COPY.actions.pdfFallback.label}</span>
@@ -251,7 +255,7 @@ export function ReportFinalBlock({
             type="button"
             onClick={handleCopy}
             disabled={!resolvedUrl}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary transition-colors duration-200 hover:border-accent-primary/50 hover:text-accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-content-primary transition-colors duration-200 hover:border-accent-primary/50 hover:text-accent-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {copied ? (
               <Check className="h-4 w-4" aria-hidden="true" />
@@ -270,7 +274,7 @@ export function ReportFinalBlock({
               href={linkedinHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary transition-colors duration-200 hover:border-accent-primary/50 hover:text-accent-primary"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-content-primary transition-colors duration-200 hover:border-accent-primary/50 hover:text-accent-primary"
             >
               <Linkedin className="h-4 w-4" aria-hidden="true" />
               <span>{SHARE_COPY.actions.linkedin.label}</span>
@@ -278,7 +282,7 @@ export function ReportFinalBlock({
           ) : (
             <span
               aria-disabled="true"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-text-primary opacity-50 pointer-events-none"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-border-subtle/60 bg-transparent px-4 py-2 text-sm text-content-primary opacity-50 pointer-events-none"
             >
               <Linkedin className="h-4 w-4" aria-hidden="true" />
               <span>{SHARE_COPY.actions.linkedin.label}</span>

@@ -14,6 +14,7 @@ import { ReportEnrichedTopLinks } from "@/components/report-enriched/report-enri
 import { ReportEnrichedMentions } from "@/components/report-enriched/report-enriched-mentions";
 import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/report-enriched-competitors-cta";
 import { ReportEnrichedAiInsights } from "@/components/report-enriched/report-enriched-ai-insights";
+import { ReportEnrichedGlossary } from "@/components/report-enriched/report-enriched-glossary";
 import { ReportFinalBlock } from "@/components/report-share/report-final-block";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
@@ -169,31 +170,48 @@ function AnalyzePage() {
   return (
     <ReportThemeWrapper>
       <div className="bg-surface-base min-h-screen">
-        {/* 1. Perfil + métricas primeiro — utilizador chega depressa aos dados */}
+        {/*
+          Hierarquia editorial:
+          1. Identidade + bio + cobertura + glossário (orientação rápida)
+          2. Núcleo do relatório (KPIs, gráficos, IA, benchmark, formatos…)
+          3. Companion subtil ao bloco de IA (resumo técnico colapsável)
+          4. Camadas enriquecidas (links reais, menções, concorrentes)
+          5. Sinais de mercado + metodologia
+          6. Posicionamento Free vs Pro
+          7. Bloco final único: PDF + partilha + feedback
+        */}
+
+        {/* 1. Orientação inicial — fina e tipográfica, sem cards pesados */}
         <ReportEnrichedBio
           enriched={state.result.enriched}
           username={state.result.data.profile.username}
         />
         <CoverageStrip result={state.result} />
+        <ReportEnrichedGlossary />
+
+        {/* 2. Núcleo do relatório (locked) */}
         <ReportPage data={state.result.data} />
 
-        {/* Companion ao ReportAiInsights locked: confidence + evidence + meta. */}
+        {/* 3. Companion subtil ao ReportAiInsights locked (não duplica
+            a leitura editorial; mostra apenas resumo técnico colapsável) */}
         <ReportEnrichedAiInsights enriched={state.result.enriched} />
 
-        {/* 2. Camadas enriquecidas */}
-        <ReportEnrichedBenchmarkSource enriched={state.result.enriched} />
+        {/* 4. Camadas enriquecidas com tratamento visual mais leve */}
         <ReportEnrichedTopLinks enriched={state.result.enriched} />
         <ReportEnrichedMentions enriched={state.result.enriched} />
         {state.result.coverage.competitors === "empty" ? (
           <ReportEnrichedCompetitorsCta />
         ) : null}
-        <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
 
-        {/* 3. Posicionamento + comparação Free vs Pro */}
+        {/* 5. Sinais de mercado + metodologia (nota tipográfica fina) */}
+        <ReportMarketSignals snapshotId={state.snapshotId} plan="free" />
+        <ReportEnrichedBenchmarkSource enriched={state.result.enriched} />
+
+        {/* 6. Posicionamento Free vs Pro */}
         <ScopeStrip />
         <TierComparisonBlock />
 
-        {/* 4. Bloco final único: PDF como deliverable + partilha + feedback */}
+        {/* 7. Bloco final único: PDF como deliverable + partilha + feedback */}
         <ReportFinalBlock snapshotId={state.snapshotId} />
       </div>
       <Toaster />

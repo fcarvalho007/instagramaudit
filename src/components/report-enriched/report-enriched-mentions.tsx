@@ -19,7 +19,7 @@ export function ReportEnrichedMentions({ enriched }: Props) {
       aria-label="Marcas e perfis mencionados nas captions"
       className="mx-auto max-w-7xl px-6 pt-4"
     >
-      <div className="rounded-2xl border border-border-subtle/40 bg-surface-secondary/40 p-6 md:p-8 space-y-5">
+      <div className="rounded-xl border border-border-subtle/30 bg-surface-secondary/30 p-5 md:p-6 space-y-4">
         <header className="space-y-1.5 max-w-3xl">
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-content-tertiary">
             {ENRICHED_COPY.mentions.eyebrow}
