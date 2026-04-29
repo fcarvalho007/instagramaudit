@@ -50,7 +50,7 @@ interface ReportShellProps {
 export function ReportShell({ result, snapshotId, actions, payload }: ReportShellProps) {
   return (
     <ReportDataProvider data={result.data}>
-      <div className={`${REDESIGN_TOKENS.pageCanvas} min-h-screen`}>
+      <div className={`${REDESIGN_TOKENS.pageCanvas} min-h-screen overflow-x-hidden`}>
         {/* 1. Hero premium */}
         <ReportHero result={result} actions={actions} />
 
