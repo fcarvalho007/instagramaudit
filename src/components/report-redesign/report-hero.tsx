@@ -42,7 +42,7 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
           <div className="flex items-start gap-5 md:gap-6 min-w-0 flex-1">
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
             <div className="min-w-0 space-y-2">
-              <h1 className={cn(REDESIGN_TOKENS.h1Hero, "break-all")}>
+              <h1 className={REDESIGN_TOKENS.h1Hero}>
                 {handle}
               </h1>
               {fullName ? (
