@@ -1284,3 +1284,243 @@ export const MOCK_ALERTS: MockAlert[] = [
     when: "há 12h",
   },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────
+// Detalhe de report (drawer "Ver report")
+// ─────────────────────────────────────────────────────────────────────────
+
+export type ReportPhaseStatus = "done" | "running" | "failed" | "queued";
+
+export interface ReportPhase {
+  name: string;
+  status: ReportPhaseStatus;
+  timestamp: string | null;
+  durationMs: number | null;
+}
+
+export interface ReportEvent {
+  timestamp: string;
+  message: string;
+  tone: "info" | "success" | "warning" | "danger";
+}
+
+export interface MockReportDetail {
+  id: string;
+  status: ReportStatus;
+  origin: ReportOrigin;
+  customer: { name: string; email: string };
+  handle: string;
+  startedAtIso: string;
+  startedAtLabel: string;
+  deliveredAtLabel: string | null;
+  totalDurationLabel: string | null;
+  totalCost: string | null;
+  phases: ReportPhase[];
+  costs: { apify: number; openai: number; other: number };
+  events: ReportEvent[];
+  errorCode?: string;
+  errorMessage?: string;
+  errorStack?: string;
+  errorResponse?: { status: number; body: string };
+  snapshotPreview: Record<string, unknown>;
+}
+
+function inferEmail(customer: string): string {
+  const slug = customer
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.|\.$/g, "");
+  return `${slug}@example.pt`;
+}
+
+function snapshotPreview(handle: string): Record<string, unknown> {
+  return {
+    profile: {
+      username: handle.replace(/^@/, ""),
+      followers: 124_580,
+      posts_analyzed: 12,
+    },
+    content_summary: {
+      average_engagement_rate: 3.42,
+      dominant_format: "reel",
+    },
+    competitors: 2,
+    market_signals_free: { status: "ready", strongest_keyword: "ia" },
+  };
+}
+
+/**
+ * Devolve um detalhe completo de report a partir do `id`. Determinístico:
+ * para o mesmo `id` devolve sempre os mesmos dados, derivados de
+ * `MOCK_REPORTS_LIST`. Se o id não existir, devolve um fallback genérico
+ * marcado como `delivered`.
+ */
+export function getMockReportDetail(id: string): MockReportDetail {
+  const row =
+    MOCK_REPORTS_LIST.find((r) => r.id === id) ?? MOCK_REPORTS_LIST[0];
+
+  const startedHHMM = row.startedAt.split(" ")[1] ?? "00:00";
+  const [hh, mm] = startedHHMM.split(":").map((n) => Number.parseInt(n, 10));
+  const baseMinutes = hh * 60 + mm;
+
+  function tStamp(offsetSec: number): string {
+    const total = baseMinutes * 60 + offsetSec;
+    const hours = Math.floor(total / 3600) % 24;
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  const isDelivered = row.status === "delivered";
+  const isFailed = row.status === "failed";
+  const isProcessing = row.status === "processing";
+  const isQueued = row.status === "queued";
+
+  const phases: ReportPhase[] = [
+    { name: "Pedido", status: "done", timestamp: tStamp(0), durationMs: 0 },
+    {
+      name: "Análise Apify",
+      status: isQueued ? "queued" : isFailed ? "failed" : "done",
+      timestamp: isQueued ? null : tStamp(8),
+      durationMs: isQueued ? null : 6400,
+    },
+    {
+      name: "PDF",
+      status: isDelivered
+        ? "done"
+        : isProcessing
+          ? "running"
+          : isFailed
+            ? "queued"
+            : "queued",
+      timestamp: isDelivered ? tStamp(150) : null,
+      durationMs: isDelivered ? 1200 : null,
+    },
+    {
+      name: "Email",
+      status: isDelivered ? "done" : "queued",
+      timestamp: isDelivered ? tStamp(252) : null,
+      durationMs: isDelivered ? 800 : null,
+    },
+  ];
+
+  const events: ReportEvent[] = [
+    {
+      timestamp: tStamp(0),
+      message: `Pedido recebido (${row.origin === "subscription" ? "subscrição" : "avulso"} · ${row.customer})`,
+      tone: "info",
+    },
+    {
+      timestamp: tStamp(2),
+      message: "Apify scraping iniciado",
+      tone: "info",
+    },
+  ];
+
+  if (isFailed) {
+    events.push(
+      {
+        timestamp: tStamp(45),
+        message: "Apify devolveu 429 (rate limit)",
+        tone: "danger",
+      },
+      {
+        timestamp: tStamp(46),
+        message: "Pipeline abortada — sem nova tentativa automática",
+        tone: "warning",
+      },
+    );
+  } else if (isQueued) {
+    events.push({
+      timestamp: tStamp(2),
+      message: "Em fila — aguarda capacidade do worker",
+      tone: "info",
+    });
+  } else if (isProcessing) {
+    events.push(
+      {
+        timestamp: tStamp(8),
+        message: "Apify completo (200 OK, 6.4s)",
+        tone: "success",
+      },
+      {
+        timestamp: tStamp(10),
+        message: "OpenAI análise iniciada",
+        tone: "info",
+      },
+    );
+  } else {
+    events.push(
+      {
+        timestamp: tStamp(8),
+        message: "Apify completo (200 OK, 6.4s)",
+        tone: "success",
+      },
+      {
+        timestamp: tStamp(10),
+        message: "OpenAI análise iniciada",
+        tone: "info",
+      },
+      {
+        timestamp: tStamp(80),
+        message: "OpenAI completa (200 OK, 4.2s)",
+        tone: "success",
+      },
+      {
+        timestamp: tStamp(120),
+        message: "PDF render iniciado",
+        tone: "info",
+      },
+      {
+        timestamp: tStamp(150),
+        message: "PDF gerado (1.2 MB)",
+        tone: "success",
+      },
+      {
+        timestamp: tStamp(252),
+        message: "Email enviado via Resend (200 OK)",
+        tone: "success",
+      },
+    );
+  }
+
+  const detail: MockReportDetail = {
+    id: row.id,
+    status: row.status,
+    origin: row.origin,
+    customer: { name: row.customer, email: inferEmail(row.customer) },
+    handle: row.profile,
+    startedAtIso: row.startedAt,
+    startedAtLabel: row.startedAt,
+    deliveredAtLabel: isDelivered ? `${row.startedAt.split(" ")[0]} ${tStamp(252)}` : null,
+    totalDurationLabel: row.duration ?? null,
+    totalCost: row.cost,
+    phases,
+    costs: isDelivered
+      ? { apify: 0.018, openai: 0.13, other: 0.162 }
+      : isFailed
+        ? { apify: 0.004, openai: 0, other: 0 }
+        : isProcessing
+          ? { apify: 0.018, openai: 0.04, other: 0 }
+          : { apify: 0, openai: 0, other: 0 },
+    events,
+    errorCode: isFailed ? "APIFY_RATE_LIMIT_429" : undefined,
+    errorMessage: isFailed
+      ? "Apify respondeu 429 Too Many Requests após 3 tentativas em 12s."
+      : undefined,
+    errorStack: isFailed
+      ? "ApifyUpstreamError: 429 Too Many Requests\n  at runActorWithMetadata (apify-client.ts:142)\n  at fetchProfileWithPosts (analyze-public-v1.ts:298)\n  at handler (analyze-public-v1.ts:412)"
+      : undefined,
+    errorResponse: isFailed
+      ? {
+          status: 429,
+          body: '{"error":{"type":"rate-limit-exceeded","message":"You have exceeded the rate limit for this actor."}}',
+        }
+      : undefined,
+    snapshotPreview: snapshotPreview(row.profile),
+  };
+
+  return detail;
+}
