@@ -175,13 +175,24 @@ function summarizeMarketSignalsForInsights(
   const usable = ms.status === "ready" || ms.status === "partial";
   if (!usable) return { has_free: false, has_paid: false };
 
-  const topKeywords = (ms.trends_usable_keywords ?? []).slice(0, 5);
+  const usableRaw = ms.trends_usable_keywords ?? [];
   const dropped = (ms.trends_dropped_keywords ?? []).slice(0, 5);
 
-  // Pick the keyword with the highest mean Trends value across the series.
+  // Compute the per-keyword mean across the Trends series. Anything with
+  // mean > 0 is considered "usable demand"; the rest is exposed as
+  // `zero_signal_keywords` so the prompt can frame it as absence of demand
+  // instead of opportunity.
   const trends = ms.trends as GoogleTrendsResult | null;
-  let strongest: string | null = topKeywords[0] ?? null;
+  let strongest: string | null = null;
+  let strongestScore: number | null = null;
   let direction: "up" | "flat" | "down" | null = null;
+  let trendDeltaPct: number | null = null;
+
+  // Default fallback when Trends graph is missing: keep the raw usable
+  // list as `top_keywords` so we still have something to send. We will
+  // overwrite this once we can compute means.
+  let topKeywords: string[] = usableRaw.slice(0, 5);
+  let zeroSignal: string[] = [];
 
   const graph = trends?.items?.find(
     (it) => Array.isArray(it.keywords) && Array.isArray(it.data),
@@ -200,19 +211,30 @@ function summarizeMarketSignalsForInsights(
         }
       }
     }
-    let bestIdx = -1;
-    let bestMean = -Infinity;
+    // Build a {keyword, mean} table restricted to keywords originally
+    // present in the usable list.
+    const usableSet = new Set(usableRaw);
+    const table: Array<{ keyword: string; mean: number }> = [];
     for (let i = 0; i < kws.length; i += 1) {
-      if (counts[i] === 0) continue;
-      if (!topKeywords.includes(kws[i])) continue;
-      const mean = sums[i] / counts[i];
-      if (mean > bestMean) {
-        bestMean = mean;
-        bestIdx = i;
-      }
+      if (!usableSet.has(kws[i])) continue;
+      const mean = counts[i] > 0 ? sums[i] / counts[i] : 0;
+      table.push({ keyword: kws[i], mean });
     }
+    // Strong = mean > 0, ordered desc by mean (cap 5).
+    const strong = table
+      .filter((t) => t.mean > 0)
+      .sort((a, b) => b.mean - a.mean);
+    topKeywords = strong.slice(0, 5).map((t) => t.keyword);
+    zeroSignal = table
+      .filter((t) => t.mean === 0)
+      .slice(0, 5)
+      .map((t) => t.keyword);
+
+    const bestIdx =
+      strong.length > 0 ? kws.indexOf(strong[0].keyword) : -1;
     if (bestIdx >= 0) {
       strongest = kws[bestIdx];
+      strongestScore = Math.round(strong[0].mean);
       // Trend direction: compare mean of first quartile vs last quartile of
       // non-null values for the strongest keyword.
       const series: number[] = [];
@@ -228,16 +250,25 @@ function summarizeMarketSignalsForInsights(
         const tailMean = tail.reduce((a, b) => a + b, 0) / tail.length;
         if (headMean > 0) {
           const delta = (tailMean - headMean) / headMean;
+          trendDeltaPct = Math.round(delta * 100);
           if (delta > 0.05) direction = "up";
           else if (delta < -0.05) direction = "down";
           else direction = "flat";
         } else if (tailMean > 0) {
           direction = "up";
+          trendDeltaPct = 100;
         } else {
           direction = "flat";
+          trendDeltaPct = 0;
         }
       }
     }
+  }
+
+  // No measurable demand at all → disable the market-signals axis so the
+  // model is instructed to ignore it entirely (avoids pseudo-insights).
+  if (topKeywords.length === 0) {
+    return { has_free: false, has_paid: false };
   }
 
   return {
@@ -245,7 +276,11 @@ function summarizeMarketSignalsForInsights(
     has_paid: false,
     top_keywords: topKeywords,
     strongest_keyword: strongest,
+    strongest_score: strongestScore,
     trend_direction: direction,
+    trend_delta_pct: trendDeltaPct,
+    usable_keyword_count: topKeywords.length,
+    zero_signal_keywords: zeroSignal,
     dropped_keywords: dropped,
   };
 }
