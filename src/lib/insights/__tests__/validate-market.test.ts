@@ -1,22 +1,10 @@
 /**
- * Local validation harness for the market-signals insights flow.
+ * Vitest suite for the market-signals insights flow.
  *
- * Pure: builds a synthetic `InsightsContext` with a single strong keyword
- * (`ia`, score 65, trend up +22%) plus a zero-signal keyword, and feeds
- * three model-style responses through `validateInsights`:
- *
- *   1. CORRECT body cites the keyword + numeric score + trend → ok=true.
- *   2. GENERIC body without numbers → reason="GENERIC_OUTPUT".
- *   3. Cites a zero-signal keyword as if strong → reason="EVIDENCE_INVALID"
- *      (the model picked an evidence path not present in available_signals
- *      because zero-signal keywords are NOT in `top_keywords`).
- *
- * Runs with `bun src/lib/insights/__tests__/validate-market.test.ts`. No
- * external test runner needed; each case asserts via `assert` and exits
- * with code 1 on failure.
+ * Pure: no provider call, no DB.
  */
 
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 
 import { buildInsightsUserPayload } from "../prompt";
 import type { InsightsContext } from "../types";
@@ -107,88 +95,59 @@ function clone<T>(x: T): T {
   return JSON.parse(JSON.stringify(x)) as T;
 }
 
-let failed = 0;
-function run(name: string, fn: () => void) {
-  try {
-    fn();
-    console.log(`  ok  ${name}`);
-  } catch (err) {
-    failed += 1;
-    console.log(`  FAIL ${name}`);
-    console.error(err);
-  }
-}
+describe("validateInsights — market_signals", () => {
+  const ctx = makeCtx();
 
-console.log("validate-market.test.ts");
+  it("payload exposes new numeric market signals", () => {
+    const payload = buildInsightsUserPayload(ctx);
+    expect(payload.market_signals.strongest_score).toBe(65);
+    expect(payload.market_signals.trend_delta_pct).toBe(22);
+    expect(payload.market_signals.usable_keyword_count).toBe(1);
+    expect(payload.market_signals.top_keywords).toEqual(["ia"]);
+    expect(payload.market_signals.zero_signal_keywords).toEqual([
+      "marketingdigital",
+    ]);
+    expect(payload.available_signals).toContain(
+      "market_signals.strongest_score",
+    );
+    expect(payload.available_signals).toContain(
+      "market_signals.trend_delta_pct",
+    );
+    expect(payload.available_signals).toContain(
+      "market_signals.zero_signal_keywords",
+    );
+  });
 
-const ctx = makeCtx();
+  it("accepts a correct market insight with numeric grounding", () => {
+    const res = validateInsights(makePassingResponse(), ctx);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.insights[0].id).toBe("MARKET_IA_DEMAND");
+    }
+  });
 
-run("payload exposes new numeric market signals", () => {
-  const payload = buildInsightsUserPayload(ctx);
-  assert.equal(payload.market_signals.strongest_score, 65);
-  assert.equal(payload.market_signals.trend_delta_pct, 22);
-  assert.equal(payload.market_signals.usable_keyword_count, 1);
-  assert.deepEqual(payload.market_signals.top_keywords, ["ia"]);
-  assert.deepEqual(payload.market_signals.zero_signal_keywords, [
-    "marketingdigital",
-  ]);
-  assert.ok(
-    payload.available_signals.includes("market_signals.strongest_score"),
-  );
-  assert.ok(
-    payload.available_signals.includes("market_signals.trend_delta_pct"),
-  );
-  assert.ok(
-    payload.available_signals.includes("market_signals.zero_signal_keywords"),
-  );
+  it("rejects generic market body without numeric grounding with GENERIC_OUTPUT", () => {
+    const raw = clone(makePassingResponse());
+    raw.insights[0].body = "Alinhar o conteúdo com as keywords em tendência.";
+    const res = validateInsights(raw, ctx);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe("GENERIC_OUTPUT");
+    }
+  });
+
+  it("rejects zero-signal keyword cited as a strong opportunity", () => {
+    const raw = clone(makePassingResponse());
+    raw.insights[0].body =
+      "A procura por «marketingdigital» está em alta. Apostar neste tema.";
+    raw.insights[0].evidence = ["market_signals.zero_signal_keywords"];
+    const res = validateInsights(raw, ctx);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      // GENERIC_OUTPUT (no number / no token match) or EVIDENCE_INVALID
+      // (path not in available_signals) — both prove the validator
+      // catches the abuse.
+      expect(["GENERIC_OUTPUT", "EVIDENCE_INVALID"]).toContain(res.reason);
+    }
+  });
 });
-
-run("CORRECT market insight passes the validator", () => {
-  const res = validateInsights(makePassingResponse(), ctx);
-  if (!res.ok) {
-    throw new Error(`expected ok, got ${res.reason}: ${res.detail}`);
-  }
-  assert.equal(res.insights[0].id, "MARKET_IA_DEMAND");
-});
-
-run("GENERIC market body without number is rejected", () => {
-  const raw = clone(makePassingResponse());
-  raw.insights[0].body = "Alinhar o conteúdo com as keywords em tendência.";
-  const res = validateInsights(raw, ctx);
-  assert.equal(res.ok, false);
-  if (res.ok) throw new Error("unreachable");
-  assert.equal(res.reason, "GENERIC_OUTPUT");
-});
-
-run("zero-signal keyword cited as evidence is rejected", () => {
-  const raw = clone(makePassingResponse());
-  // Model claims marketingdigital is a strong demand signal — but the
-  // path it would need to cite (`market_signals.top_keywords`) does NOT
-  // contain that keyword, and there is no path that legitimises a
-  // zero-signal keyword as strong demand. The closest invalid attempt
-  // is to cite `market_signals.strongest_keyword` while writing a body
-  // about a zero-signal keyword, which still fails because the body
-  // contains no number AND no >=5-char token from evidence ("strongest"
-  // / "keyword" do not appear in pt-PT body).
-  raw.insights[0].body =
-    "A procura por «marketingdigital» está em alta. Apostar neste tema.";
-  raw.insights[0].evidence = ["market_signals.zero_signal_keywords"];
-  const res = validateInsights(raw, ctx);
-  assert.equal(res.ok, false);
-  if (res.ok) throw new Error("unreachable");
-  // Either GENERIC_OUTPUT (body has no digit + tokens don't match) or
-  // EVIDENCE_INVALID (if the path weren't in available_signals). With
-  // current ctx, `market_signals.zero_signal_keywords` IS available,
-  // so the failure mode is GENERIC_OUTPUT — proving the validator
-  // catches the abuse via lack of numeric grounding.
-  assert.ok(
-    res.reason === "GENERIC_OUTPUT" || res.reason === "EVIDENCE_INVALID",
-    `unexpected reason: ${res.reason}`,
-  );
-});
-
-if (failed > 0) {
-  console.log(`\n${failed} failure(s)`);
-  process.exit(1);
-}
-console.log("\nall passed");
