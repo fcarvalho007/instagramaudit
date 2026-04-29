@@ -9,7 +9,6 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
-import { MockDataBanner } from "@/components/admin/v2/mock-data-banner";
 import {
   PeriodSelect,
   ExportCsvButton,
@@ -46,7 +45,6 @@ function ReceitaPage() {
           </>
         }
       />
-      <MockDataBanner reason="Toda a tab Receita depende de subscrições e checkout (EuPago/Stripe). Dados reais virão quando integrado." />
       <div className="flex flex-col gap-14">
         <MetricsSection />
         <WaterfallSection />
