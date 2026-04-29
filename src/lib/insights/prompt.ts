@@ -142,13 +142,13 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   if (p.is_verified) signals.push("profile.is_verified");
 
   const cs = ctx.content_summary;
-  if (cs.posts_analyzed > 0) signals.push("content_summary.posts_analyzed");
+  if (Number.isFinite(cs.posts_analyzed)) signals.push("content_summary.posts_analyzed");
   signals.push("content_summary.dominant_format");
-  if (cs.average_likes > 0) signals.push("content_summary.average_likes");
-  if (cs.average_comments > 0) signals.push("content_summary.average_comments");
-  if (cs.average_engagement_rate > 0)
+  if (Number.isFinite(cs.average_likes)) signals.push("content_summary.average_likes");
+  if (Number.isFinite(cs.average_comments)) signals.push("content_summary.average_comments");
+  if (Number.isFinite(cs.average_engagement_rate))
     signals.push("content_summary.average_engagement_rate");
-  if (cs.estimated_posts_per_week > 0)
+  if (Number.isFinite(cs.estimated_posts_per_week))
     signals.push("content_summary.estimated_posts_per_week");
 
   // Per-post allow-list. Mirrors the trimmed `top_posts` array sent in
@@ -162,10 +162,10 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   cappedTopPosts.forEach((post, idx) => {
     signals.push(`top_posts[${idx}].format`);
     signals.push(`top_posts[${idx}].engagement_pct`);
-    if (Number.isFinite(post.likes) && post.likes > 0) {
+    if (Number.isFinite(post.likes)) {
       signals.push(`top_posts[${idx}].likes`);
     }
-    if (Number.isFinite(post.comments) && post.comments > 0) {
+    if (Number.isFinite(post.comments)) {
       signals.push(`top_posts[${idx}].comments`);
     }
     const caption = (post.caption_excerpt ?? "").trim();
