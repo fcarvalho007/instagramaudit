@@ -745,6 +745,7 @@ export type Database = {
         }
         Returns: string
       }
+      set_admin_email_session: { Args: { p_email: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
