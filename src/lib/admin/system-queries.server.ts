@@ -76,6 +76,13 @@ export interface Expense30d {
   dataforseo_calls: number;
   dataforseo_balance: number | null;
   daily: ExpenseDailyPoint[];
+  /**
+   * Apify monthly billed amount (últimos 30 dias) lido de `cost_daily`,
+   * que é populado pelo sync da Apify monthly usage API. Usado apenas
+   * para reconciliação visual com a fatura — pode ser null se o sync
+   * ainda não correu.
+   */
+  apify_billed_total_30d: number | null;
 }
 
 export interface CostCaps {
