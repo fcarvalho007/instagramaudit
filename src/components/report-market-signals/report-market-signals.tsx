@@ -241,23 +241,23 @@ function MetricCard({
 }) {
   const accentDot =
     accent === "positive"
-      ? "bg-signal-success"
+      ? "bg-emerald-500"
       : accent === "warning"
-        ? "bg-signal-warning"
-        : "bg-content-tertiary/60";
+        ? "bg-amber-500"
+        : "bg-slate-300";
   return (
-    <div className="rounded-2xl border border-border-subtle/40 bg-surface-elevated/60 p-5 md:p-6 min-w-0">
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 min-w-0 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]">
       <div className="flex items-center gap-2">
         <span aria-hidden="true" className={`inline-block h-1.5 w-1.5 rounded-full ${accentDot}`} />
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
           {eyebrow}
         </p>
       </div>
-      <div className="mt-3 font-display text-2xl md:text-[28px] leading-tight tracking-tight text-content-primary break-words">
+      <div className="mt-3 font-display text-2xl md:text-[28px] leading-tight tracking-tight text-slate-900 break-words">
         {value}
       </div>
       {hint ? (
-        <p className="mt-2 text-[13px] text-content-secondary leading-relaxed break-words">
+        <p className="mt-2 text-[13px] text-slate-600 leading-relaxed break-words">
           {hint}
         </p>
       ) : null}
@@ -272,11 +272,11 @@ function LoadingSkeleton() {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-28 rounded-2xl border border-border-subtle/30 bg-surface-secondary/30 animate-pulse"
+            className="h-28 rounded-2xl border border-slate-200/70 bg-slate-100/50 animate-pulse"
           />
         ))}
       </div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
         {marketSignalsCopy.loading}
       </p>
     </div>
@@ -285,11 +285,11 @@ function LoadingSkeleton() {
 
 function EmptyCard({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl border border-border-subtle/40 bg-[radial-gradient(ellipse_at_top_left,rgba(6,182,212,0.06),transparent_60%)] bg-surface-elevated/40 p-6 md:p-8 space-y-2">
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-6 md:p-8 space-y-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
         Sem dados nesta análise
       </p>
-      <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-2xl">
+      <p className="text-sm md:text-[15px] text-slate-600 leading-relaxed max-w-2xl">
         {message}
       </p>
     </div>
