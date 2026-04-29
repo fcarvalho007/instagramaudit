@@ -27,6 +27,7 @@ import { Route as AdminSistemaRouteImport } from './routes/admin.sistema'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
+import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
@@ -155,6 +156,11 @@ const AdminReceitaRoute = AdminReceitaRouteImport.update({
 const AdminPerfisRoute = AdminPerfisRouteImport.update({
   id: '/perfis',
   path: '/perfis',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConhecimentoRoute = AdminConhecimentoRouteImport.update({
+  id: '/conhecimento',
+  path: '/conhecimento',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminClientesRoute = AdminClientesRouteImport.update({
@@ -384,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
+  '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -442,6 +449,7 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
+  '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -502,6 +510,7 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
+  '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -563,6 +572,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
+    | '/admin/conhecimento'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -621,6 +631,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
+    | '/admin/conhecimento'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -680,6 +691,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
+    | '/admin/conhecimento'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -904,6 +916,13 @@ declare module '@tanstack/react-router' {
       path: '/perfis'
       fullPath: '/admin/perfis'
       preLoaderRoute: typeof AdminPerfisRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/conhecimento': {
+      id: '/admin/conhecimento'
+      path: '/conhecimento'
+      fullPath: '/admin/conhecimento'
+      preLoaderRoute: typeof AdminConhecimentoRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/clientes': {
@@ -1196,6 +1215,7 @@ const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminClientesRoute: typeof AdminClientesRoute
+  AdminConhecimentoRoute: typeof AdminConhecimentoRoute
   AdminPerfisRoute: typeof AdminPerfisRoute
   AdminReceitaRoute: typeof AdminReceitaRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
@@ -1208,6 +1228,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminClientesRoute: AdminClientesRoute,
+  AdminConhecimentoRoute: AdminConhecimentoRoute,
   AdminPerfisRoute: AdminPerfisRoute,
   AdminReceitaRoute: AdminReceitaRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
