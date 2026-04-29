@@ -77,6 +77,21 @@ export function normalizeProfile(raw: RawProfile): PublicAnalysisProfile | null 
     pickString(raw.fullName, raw.full_name) ??
     username.charAt(0).toUpperCase() + username.slice(1).replace(/[._-]/g, " ");
 
+  const externalUrls: string[] = [];
+  const single = pickString(raw.externalUrl, raw.external_url);
+  if (single) externalUrls.push(single);
+  if (Array.isArray(raw.externalUrls)) {
+    for (const item of raw.externalUrls) {
+      if (typeof item === "string") {
+        const s = item.trim();
+        if (s.length > 0 && !externalUrls.includes(s)) externalUrls.push(s);
+      } else if (item && typeof item === "object") {
+        const u = pickString(item.url);
+        if (u && !externalUrls.includes(u)) externalUrls.push(u);
+      }
+    }
+  }
+
   return {
     username,
     display_name: display,
@@ -90,6 +105,15 @@ export function normalizeProfile(raw: RawProfile): PublicAnalysisProfile | null 
     following_count: pickNumber(raw.followsCount, raw.following),
     posts_count: pickNumber(raw.postsCount, raw.posts),
     is_verified: Boolean(raw.verified ?? raw.isVerified ?? false),
+    category: pickString(
+      raw.businessCategoryName,
+      raw.categoryName,
+      raw.category,
+    ),
+    external_urls: externalUrls,
+    highlight_reel_count: pickNumber(raw.highlightReelCount),
+    has_channel: Boolean(raw.hasChannel ?? false),
+    is_business: Boolean(raw.isBusinessAccount ?? raw.isProfessionalAccount ?? false),
   };
 }
 
