@@ -162,7 +162,7 @@ export function ReportShell({
         <TierComparisonBlock />
 
         {/* 13. Bloco final */}
-        <ReportFinalBlock snapshotId={snapshotId} />
+        <ReportFinalBlock snapshotId={snapshotId} result={result} />
       </div>
     </ReportDataProvider>
   );

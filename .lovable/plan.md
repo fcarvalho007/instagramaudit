@@ -1,138 +1,138 @@
-## Objetivo
+# Plano · Exportar PDF e Partilhar do Relatório
 
-Adicionar uma página dedicada **"Sinais de mercado"** ao PDF público quando `normalized_payload.market_signals_free` existe e tem dados utilizáveis. Quando ausente ou não-utilizável, a página é omitida silenciosamente. **Zero** chamadas a DataForSEO, OpenAI, Apify ou Instagram durante a geração do PDF — apenas leitura do snapshot.
+Dois problemas distintos no bloco final de `/analyze/$username`. Trato cada um numa secção.
 
-## Ficheiros a editar (nenhum locked)
+---
 
-- `src/lib/pdf/render.ts` — declarar `market_signals_free?: unknown` no `NormalizedSnapshotPayload`, criar `deriveMarketSignals(...)` puro, passar resultado ao `ReportDocument`.
-- `src/lib/pdf/report-document.tsx` — novo `MarketSignalsForPdf` interface, novo componente `MarketSignalsPage`, render condicional dentro de `_ReportDocumentImpl`.
-- `src/lib/pdf/styles.ts` — adicionar estilos da nova página (cards, chip de tendência, source note).
+## a) "Exportar PDF" abre aba vazia
 
-Sem tocar em `provider logic` (`/lib/dataforseo/*`, `/lib/market-signals/cache.ts`), `/report/example`, UI, OpenAI prompt/validator ou schema.
+### Diagnóstico
 
-## Forma do dado lido (puro, defensivo)
+O endpoint `/api/public/public-report-pdf` está completo e funcional (carrega snapshot → `renderReportPdf` → upload no bucket `report-pdfs` → devolve `signed_url` válido por 600s). Logo, o PDF **é gerado**.
 
-`market_signals_free` foi persistido pelo `cache.ts` com a forma `PersistedMarketSignals`. O PDF declara o tipo de forma loose e valida com type-guards (igual ao padrão usado para `ai_insights_v1`):
+O problema está no fluxo de abertura no cliente (`use-report-share-actions.ts` + `report-final-block.tsx`):
 
-```ts
-interface MarketSignalsForPdf {
-  strongest: string;             // keyword com maior média
-  trend: "up" | "flat" | "down"; // direção da série mais forte
-  usableKeywords: string[];      // chips visíveis
-  droppedKeywords: string[];     // chips dim
-  pointCount: number;            // # pontos válidos na série forte
-}
-```
+1. Ao clicar, abrimos sincronamente `window.open("about:blank", "_blank")` para sobreviver a popup blockers.
+2. Aguardamos o `fetch` (pode demorar 5–20s a renderizar a primeira vez).
+3. Quando a resposta chega, fazemos `popup.location.href = signedUrl`.
 
-O helper `deriveMarketSignals` em `render.ts`:
+O navegador do utilizador (Chrome/Brave/Safari modernos) trata uma `about:blank` aberta sem user-gesture imediato e que demora >N segundos a navegar como popup suspeito → fecha-a ou bloqueia a navegação. Daí o toast "PDF pronto, mas o navegador bloqueou a nova aba" e a aba aparecer **vazia**.
 
-1. Devolve `null` se `raw` não é objecto, ou se `status` não é `"ready"|"partial"`, ou se não há `trends_usable_keywords`/`trends`.
-2. Escolhe `strongest` pela média mais alta entre as séries usable (mesma heurística que o componente web — duplicada localmente para manter `pdf/*` puro e independente do componente React).
-3. Calcula `trend` comparando média 1ª metade vs 2ª metade da série forte: ≥+10% → "up", ≤-10% → "down", caso contrário "flat". Se a série tem < 4 pontos válidos, devolve "flat".
-4. Devolve `null` se não conseguir um `strongest`.
+A "fallback link" funciona porque o clique no link é, ele próprio, um novo user-gesture limpo.
 
-## Página PDF
+### Correção
 
-`MarketSignalsPage` segue o padrão visual existente (header, sectionTitle, sectionHeading, sectionLead, footer fixo). Layout dentro da página:
+Mudar a estratégia de entrega do PDF para **não depender de popup pré-aberto**:
+
+1. **Eliminar `window.open("about:blank")` antecipado.**
+2. Depois do `fetch` devolver `signed_url`, criar um `<a href={signedUrl} download="...pdf" target="_blank" rel="noopener">` em memória, anexá-lo ao DOM e disparar `.click()` programaticamente. O navegador trata isto como download/abertura iniciada pelo gesto original do clique no botão, mesmo após `await`, porque o handler ainda está na mesma tarefa de evento (em Chrome/Edge funciona; no Safari força download).
+3. Em paralelo, **pré-gerar o PDF em background** quando o snapshot fica pronto (chamada `fetch` opcional após o report montar). Assim, no segundo clique do utilizador, o endpoint devolve `cached: true` em <500ms e a navegação é instantânea.
+4. Manter o botão "Abrir PDF numa nova aba" como fallback visível **sempre** (não só quando o popup é bloqueado), porque permite ao utilizador re-clicar caso o navegador tenha intercept.
+5. Renomear o toast bloqueado para algo construtivo ("PDF pronto. Abre na nova aba ou usa o botão abaixo.") em vez de mensagem de erro.
+
+### Verificação
+
+- Abrir `/analyze/<user>` em Chrome incógnito (popup blocker activo) e Safari.
+- Confirmar que, ao clicar "Exportar PDF", o PDF abre numa nova aba **com o conteúdo**.
+- Em segundo clique, deve ser instantâneo (cache).
+
+---
+
+## b) Partilhar muito básico — adicionar menu de canais com teaser
+
+### Diagnóstico
+
+Hoje:
+- Botão "Copiar link" no hero → só copia URL.
+- Bloco final tem "Copiar link" + "Partilhar no LinkedIn" como links separados.
+- Não há WhatsApp, email, nem texto de teaser.
+
+### Solução
+
+Criar um **popover de partilha** unificado, accionado pelo botão "Partilhar" no hero e por um botão "Partilhar relatório" no bloco final.
+
+#### Estrutura do popover
 
 ```text
-[ MERCADO · DATAFORSEO ]               (sectionTitle, accent)
-Sinais de mercado                      (sectionHeading)
-"Temas associados ao perfil com procura observável fora do Instagram."
-
-┌─────────────────────────────────────────────────────────────┐
-│ TEMA COM MAIOR SINAL                                         │
-│   <strongest>                                                │
-└─────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────┬──────────────────────────────────┐
-│ PALAVRAS-CHAVE ANALISADAS│ TENDÊNCIA                        │
-│ <usable.length>          │ ▲ Em alta / ● Estável / ▼ Em queda│
-│ X com sinal · Y sem volume│  (cor positiva/neutra/negativa)  │
-└──────────────────────────┴──────────────────────────────────┘
-
-O QUE ISTO SUGERE
-  <frase determinística composta a partir de strongest + trend>
-
-[Chips usable, accent]   [Chips dropped, muted]   (só se existirem)
-
-— Fonte: DataForSEO / Google Trends. Leitura editorial, não previsão.
+┌─ Partilhar este relatório ──────────────┐
+│ "Análise de @handle: 4.2% engagement,   │
+│  acima da mediana do setor (top 30%)."  │
+│  [editar mensagem ▾]                    │
+│ ─────────────────────────────────────── │
+│ [WhatsApp] [LinkedIn] [Email] [Copiar]  │
+└─────────────────────────────────────────┘
 ```
 
-Frases determinísticas (mesma lógica que o componente web):
-- `up` → `Existe procura crescente por «<strongest>». Reforçar conteúdo sobre este tema nas próximas semanas.`
-- `down` → `A procura por «<strongest>» tem perdido força. Avaliar diversificação de temas.`
-- `flat` → `«<strongest>» mantém procura estável fora do Instagram. Consolidar autoridade neste tema.`
+#### Teaser dinâmico (pt-PT, determinístico)
 
-Tendência sem ícones Unicode complicados — usar texto + cor:
-- "Em alta" → `PDF_COLORS.positive`
-- "Em queda" → `PDF_COLORS.negative`
-- "Estável" → `PDF_COLORS.inkSoft`
+Construído a partir de `result.data.keyMetrics` e `result.data.benchmark.positioning`:
 
-## Posição na ordem das páginas
+- **Engagement**: `engagementRate` formatado a 2 casas + comparação `engagementDeltaPct` ("acima/abaixo da mediana do setor").
+- **Posicionamento**: `positioning.tierLabel` quando `status === "available"` (ex: "top 30%", "mediana", "top 10%").
+- **Cadência**: `estimated_posts_per_week` se relevante.
 
-Sequência actual:
+Exemplos:
 
-1. CoverPage
-2. ProfileMetricsPage
-3. BenchmarkPage *(condicional)*
-4. CompetitorsPage *(condicional)*
-5. TopPostsPage *(condicional)*
-6. AiInsightsPage *(condicional)*
-7. RecommendationsPage *(condicional)*
+- "Análise pública de @frederico.m.carvalho: 4.2% engagement (top 30% do setor) e 3 posts/semana. Vê o relatório completo:"
+- "Análise pública de @marca: 1.8% engagement, abaixo da mediana do setor. Diagnóstico completo:"
 
-Nova posição: **entre Benchmark e Competitors** (logo após o posicionamento, antes de mergulhar em concorrentes/conteúdo). Quando `aiInsights` está presente, "Leitura estratégica" continua a vir depois de Top Posts e ainda assim referencia Market Signals via narrativa — a sequência mantém a leitura coerente: posicionamento → mercado → comparação → conteúdo → leitura editorial → próximos passos.
+Texto fica num helper puro `buildShareMessage(result)` em `src/components/report-share/share-message.ts` para ser testável e reutilizado pelos 4 canais.
 
-Sequência final:
+#### Canais e URLs
 
-1. CoverPage
-2. ProfileMetricsPage
-3. BenchmarkPage
-4. **MarketSignalsPage** *(NOVA, condicional)*
-5. CompetitorsPage
-6. TopPostsPage
-7. AiInsightsPage
-8. RecommendationsPage
+| Canal | URL |
+|---|---|
+| WhatsApp | `https://wa.me/?text=${encodeURIComponent(message + " " + url)}` |
+| LinkedIn | `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` (LinkedIn ignora texto custom; o teaser fica em OG meta) |
+| Email | `mailto:?subject=...&body=${encodeURIComponent(message + "\n\n" + url)}` |
+| Copiar | escreve `message + "\n" + url` no clipboard |
 
-## Estilos novos em `styles.ts`
+Cada canal abre via `<a href>` (gesto limpo, sem `window.open`). LinkedIn vai depender dos OG tags do `/analyze/$username` — o head() actual já tem og:title e og:description; ficam suficientes na fase beta.
 
-```ts
-marketHeroCard: { borderWidth, borderColor, borderRadius, padding, marginBottom }
-marketHeroLabel: { fontSize 8, uppercase, letterSpacing, inkMuted }
-marketHeroValue: { Helvetica-Bold, fontSize 22, accent }
-marketRow: { flexDirection: "row", gap: 12, marginBottom }
-marketCell: { flex: 1, surfaceAlt, padding, borderRadius, borderLeftWidth 2, borderLeftColor accent }
-marketCellLabel / marketCellValue / marketCellHint
-marketTrendUp / marketTrendDown / marketTrendFlat (color overrides)
-marketSuggestionLabel / marketSuggestionBody
-marketChipsRow / marketChipUsable / marketChipDropped
-marketSourceNote: { fontSize 8, italic, inkMuted, marginTop }
-```
+#### Componentes
 
-Sem ASCII de subscripts — só texto e setas Unicode básicas (▲ ▼ ●) **só** se renderizarem com Helvetica padrão; **decisão pragmática**: usar palavras (`Em alta`, `Em queda`, `Estável`) sem ícones para evitar o problema documentado dos glyphs em Helvetica embutida.
+- **Novo**: `src/components/report-share/share-popover.tsx` — usa `Popover` do shadcn (já no projeto), 4 botões com ícones (`MessageCircle` para WhatsApp, `Linkedin`, `Mail`, `Link2`), bloco com a mensagem e indicador "Copiado ✓" inline.
+- **Novo**: `src/components/report-share/share-message.ts` — helper puro `buildShareMessage({ result, url })`.
+- **Editar**: `src/components/report-redesign/report-hero.tsx` — substituir o botão "Copiar" actual por trigger do popover.
+- **Editar**: `src/components/report-share/report-final-block.tsx` — substituir os dois botões de copy/LinkedIn pelo mesmo popover (passar `result` por prop nova).
+- **Editar**: `src/components/report-redesign/report-shell.tsx` — passar `result` ao `ReportFinalBlock`.
+- **Editar**: `src/components/report-share/share-copy.ts` — adicionar copy pt-PT para os novos canais e o cabeçalho do popover.
+
+#### Acessibilidade
+
+- Popover com `aria-label="Partilhar relatório"`, focus trap nativo do Radix.
+- Cada canal é um `<a>` semântico (não `button`) → funciona com middle-click e "abrir em nova aba".
+- Mensagem de teaser visível e seleccionável (utilizador pode copiar manualmente partes).
+
+---
+
+## Fora do âmbito
+
+- Não tocar em `/report/example`.
+- Não mudar `src/lib/pdf/*` (o PDF em si está correcto).
+- Não tocar no endpoint `/api/public/public-report-pdf`.
+- Não criar dependências novas (usar `Popover` shadcn já instalado e ícones de `lucide-react`).
+- Não tocar em ficheiros em `LOCKED_FILES.md`.
 
 ## Validação
 
-- `bunx tsc --noEmit` — verde.
-- `bun run build` (corre pelo harness).
-- QA com snapshot real:
-  - **Com** `market_signals_free` no payload (handle de teste já tem cache 24h depois do prompt anterior) → gerar PDF via endpoint `/api/public/public-report-pdf` (já existente), abrir o ficheiro, confirmar a página entre Benchmark e Competitors, com strongest, contagens, tendência colorida, frase, chips e source note.
-  - **Sem** `market_signals_free` → mesmo endpoint, confirmar que o PDF não estoira e a nova página é omitida.
-- QA visual: converter PDF para imagens (`pdftoppm -jpeg -r 150`) e inspeccionar a página inteira — verificar overflow, contraste, alinhamento dos cards, ausência de glyphs partidos.
+- `bunx tsc --noEmit`.
+- QA manual em Chrome desktop, Safari iOS e Android Chrome:
+  - PDF abre com conteúdo no 1º clique.
+  - Popover de partilha mostra mensagem dinâmica correcta.
+  - WhatsApp abre app/web com texto + URL.
+  - Email abre cliente com subject + body.
+  - LinkedIn abre share dialog.
+  - Copiar coloca `mensagem + URL` no clipboard.
 
-## Garantias
+## Checklist
 
-- `renderReportPdf` continua a só ler do snapshot — nenhum import novo a `dataforseo/*` ou `market-signals/cache.ts` (o tipo é declarado loose localmente).
-- Sem chamadas a DataForSEO, OpenAI, Apify ou Instagram durante geração do PDF.
-- Quando o snapshot tem `status: "disabled"`, `"blocked"`, `"no_keywords"`, `"timeout"`, `"error"`, ou simplesmente não tem o campo, `deriveMarketSignals` devolve `null` e a página não é renderizada.
-- `/report/example` intocado.
-- Provider logic, schema, RLS, OpenAI prompt e validator intocados.
-
-## Checkpoint
-
-- ☐ `render.ts` ganha `market_signals_free?: unknown` e helper puro `deriveMarketSignals` que devolve `MarketSignalsForPdf | null`.
-- ☐ `report-document.tsx` exporta `MarketSignalsForPdf` e renderiza `MarketSignalsPage` condicionalmente entre Benchmark e Competitors.
-- ☐ `styles.ts` ganha estilos da nova página (sem hardcode de cores fora do `PDF_COLORS`).
-- ☐ Página tem título, subtítulo, strongest, contagens, tendência colorida, frase determinística, chips e source note exacta: "Fonte: DataForSEO / Google Trends. Leitura editorial, não previsão."
-- ☐ Snapshot **sem** `market_signals_free` ou com status não-utilizável → PDF gera sem erros e omite a página.
-- ☐ `bunx tsc --noEmit` verde; QA visual confirma layout limpo.
+- ☐ Reescrever fluxo de abertura do PDF (sem `window.open` antecipado, com `<a download>` programático após resposta).
+- ☐ Pré-fetch opcional do PDF após o snapshot carregar (warm cache).
+- ☐ Criar `share-message.ts` (helper puro pt-PT).
+- ☐ Criar `share-popover.tsx` com 4 canais.
+- ☐ Integrar popover no `report-hero.tsx` e `report-final-block.tsx`.
+- ☐ Passar `result` ao `ReportFinalBlock` via `report-shell.tsx`.
+- ☐ Atualizar `share-copy.ts`.
+- ☐ `bunx tsc --noEmit` verde.
+- ☐ QA manual nos 3 navegadores.
