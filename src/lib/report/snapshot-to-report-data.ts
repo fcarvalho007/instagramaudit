@@ -117,6 +117,21 @@ export interface SnapshotPayload {
    */
   market_signals_free?: unknown;
   market_signals_paid?: unknown;
+  /**
+   * Insights v2 inline por secção (R3). Loose-typed; o adapter valida
+   * cada secção antes de expor em `ReportEnriched.aiInsightsV2`.
+   */
+  ai_insights_v2?: {
+    schema_version?: number | null;
+    generated_at?: string | null;
+    model?: string | null;
+    sections?: Partial<
+      Record<
+        string,
+        { emphasis?: string | null; text?: string | null } | null
+      >
+    > | null;
+  } | null;
 }
 
 export interface SnapshotMetadata {
