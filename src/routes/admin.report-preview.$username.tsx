@@ -143,17 +143,6 @@ function AdminReportPreviewPage() {
       </>
     );
   }
-                setAuthState("signed_out");
-              }}
-            >
-              Entrar com outra conta
-            </Button>
-          </div>
-        </div>
-        <Toaster />
-      </>
-    );
-  }
 
   // ---------- Authorized: render preview ----------
   return (
