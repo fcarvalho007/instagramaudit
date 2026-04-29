@@ -21,22 +21,15 @@ export const SHARE_COPY = {
     error: "Não foi possível copiar o link. Copia manualmente da barra do navegador.",
     pdfReady: "PDF pronto. Abre numa nova aba.",
     pdfCached: "PDF carregado da cache. Abre numa nova aba.",
-    pdfPopupBlocked:
-      "Se a aba não abriu, usa o botão “Abrir PDF numa nova aba”.",
+    pdfPopupBlocked: "Se a aba não abriu, usa o botão “Abrir PDF numa nova aba”.",
     pdfErrors: {
       INVALID_PAYLOAD: "Pedido inválido. Recarrega a página e tenta novamente.",
-      SNAPSHOT_NOT_FOUND:
-        "Este relatório já não está disponível. Faz nova análise.",
-      MALFORMED_SNAPSHOT:
-        "Os dados deste relatório estão incompletos. Faz nova análise.",
-      RENDER_FAILED:
-        "Falha ao gerar o PDF. Tenta novamente dentro de instantes.",
-      UPLOAD_FAILED:
-        "Falha ao guardar o PDF. Tenta novamente dentro de instantes.",
-      SIGN_FAILED:
-        "Falha a assinar o PDF. Tenta novamente dentro de instantes.",
-      DEFAULT:
-        "Não foi possível gerar o PDF. Tenta novamente em alguns segundos.",
+      SNAPSHOT_NOT_FOUND: "Este relatório já não está disponível. Faz nova análise.",
+      MALFORMED_SNAPSHOT: "Os dados deste relatório estão incompletos. Faz nova análise.",
+      RENDER_FAILED: "Falha ao gerar o PDF. Tenta novamente dentro de instantes.",
+      UPLOAD_FAILED: "Falha ao guardar o PDF. Tenta novamente dentro de instantes.",
+      SIGN_FAILED: "Falha a assinar o PDF. Tenta novamente dentro de instantes.",
+      DEFAULT: "Não foi possível gerar o PDF. Tenta novamente em alguns segundos.",
     },
   },
 } as const;

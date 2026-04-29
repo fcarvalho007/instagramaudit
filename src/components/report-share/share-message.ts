@@ -68,9 +68,7 @@ export function buildShareMessage({ result, url }: ShareMessageInput): ShareMess
   if (cadence) parts.push(cadence);
 
   const summary = parts.join(", ");
-  const datasetTag = positioning.datasetVersion
-    ? ` (benchmark ${positioning.datasetVersion})`
-    : "";
+  const datasetTag = positioning.datasetVersion ? ` (benchmark ${positioning.datasetVersion})` : "";
 
   const text = `Análise pública de @${handle}: ${summary}${datasetTag}. Vê o relatório completo:`;
   const textWithUrl = `${text}\n${url}`;

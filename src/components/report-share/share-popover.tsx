@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Linkedin, Link2, Mail, MessageCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
@@ -129,9 +125,7 @@ export function ShareReportPopover({
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
             Partilhar este relatório
           </p>
-          <p className="text-sm text-content-secondary leading-relaxed">
-            {message.text}
-          </p>
+          <p className="text-sm text-content-secondary leading-relaxed">{message.text}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2">

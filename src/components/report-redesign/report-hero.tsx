@@ -1,9 +1,6 @@
 import { FileDown, Loader2 } from "lucide-react";
 
-import type {
-  AdapterResult,
-  ReportEnriched,
-} from "@/lib/report/snapshot-to-report-data";
+import type { AdapterResult, ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import type { ReportPageActions } from "@/components/report/report-page";
 import { ShareReportPopover } from "@/components/report-share/share-popover";
 import { cn } from "@/lib/utils";
@@ -61,9 +58,7 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary pt-2">
                 {profile.postsAnalyzed ?? 0} publicações analisadas
                 <span className="mx-2 text-content-tertiary/50">·</span>
-                {coverage.windowDays > 0
-                  ? `${coverage.windowDays} dias`
-                  : "amostra recolhida"}
+                {coverage.windowDays > 0 ? `${coverage.windowDays} dias` : "amostra recolhida"}
                 <span className="mx-2 text-content-tertiary/50">·</span>
                 {profile.analyzedAt}
               </p>
@@ -95,25 +90,15 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
               )}
               <span>{actions.pdfBusy ? "A preparar PDF…" : "Exportar PDF"}</span>
             </button>
-            <ShareReportPopover
-              result={result}
-              variant="ghost"
-              triggerLabel="Partilhar"
-            />
+            <ShareReportPopover result={result} variant="ghost" triggerLabel="Partilhar" />
           </div>
         </div>
 
         {/* Badges de cobertura */}
         <div className="mt-8 md:mt-10 flex flex-wrap items-center gap-2">
           <CoverageBadge label="Dados públicos" status="real" />
-          <CoverageBadge
-            label="IA editorial"
-            status={enriched.aiInsights ? "real" : "empty"}
-          />
-          <CoverageBadge
-            label="Benchmark"
-            status={coverage.benchmark}
-          />
+          <CoverageBadge label="IA editorial" status={enriched.aiInsights ? "real" : "empty"} />
+          <CoverageBadge label="Benchmark" status={coverage.benchmark} />
           <CoverageBadge label="Pesquisa" status="partial" />
         </div>
       </div>
@@ -121,13 +106,7 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
   );
 }
 
-function Avatar({
-  avatarUrl,
-  fullName,
-}: {
-  avatarUrl: string | null;
-  fullName: string;
-}) {
+function Avatar({ avatarUrl, fullName }: { avatarUrl: string | null; fullName: string }) {
   const initials = fullName
     .replace(/^@/, "")
     .split(/[\s.]+/)
