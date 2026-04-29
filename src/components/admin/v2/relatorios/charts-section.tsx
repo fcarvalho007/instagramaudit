@@ -22,7 +22,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import {
@@ -55,14 +55,14 @@ export function ChartsSection() {
   const timingData = MOCK_DAILY_TIMING.map((d) => ({ ...d }));
 
   return (
-    <section>
-      <AdminSectionHeader
-        title="Volume e timing diário"
-        subtitle="distribuição e SLA"
-        accent="signal"
-        info="Volume diário de relatórios e tempo médio de entrega. Picos no tempo indicam congestionamento."
-      />
-
+    <DemoOnlySection
+      title="Volume e timing diário"
+      subtitle="distribuição e SLA"
+      accent="signal"
+      info={"Volume diário de relatórios e tempo médio de entrega. Picos no tempo indicam congestionamento."}
+      pendingReason={"Os gráficos de volume diário e SLA serão gerados a partir de `report_requests` reais. Esperam a primeira geração de relatórios pagos para terem dados significativos."}
+    >
+      <section>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Volume diário (empilhado) */}
         <AdminCard>
@@ -242,6 +242,7 @@ export function ChartsSection() {
         </AdminCard>
       </div>
     </section>
+    </DemoOnlySection>
   );
 }
 

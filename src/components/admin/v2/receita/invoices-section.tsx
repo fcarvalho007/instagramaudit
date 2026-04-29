@@ -4,21 +4,21 @@
  * Tabela financeira simples — 6 movimentos recentes.
  */
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import { MOCK_INVOICES } from "@/lib/admin/mock-data";
 
 export function InvoicesSection() {
   return (
-    <section>
-      <AdminSectionHeader
-        title="Últimas faturas"
-        subtitle="fluxo financeiro recente"
-        accent="revenue"
-        info="Movimentos financeiros recentes (subscrições renovadas + reports avulsos vendidos)."
-      />
-
+    <DemoOnlySection
+      title="Últimas faturas"
+      subtitle="fluxo financeiro recente"
+      accent="revenue"
+      info={"Movimentos financeiros recentes (subscrições renovadas + reports avulsos vendidos)."}
+      pendingReason={"A lista de faturas vem da integração com o gateway de pagamento (EuPago/Stripe). Será preenchida quando houver pagamentos reais."}
+    >
+      <section>
       <AdminCard className="!px-5 !py-4">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[12px]">
@@ -77,5 +77,6 @@ export function InvoicesSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }

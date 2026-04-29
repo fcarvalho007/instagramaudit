@@ -10,7 +10,7 @@
  */
 
 import { type ReactNode } from "react";
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { type AdminAccent, ACCENT_500 } from "../admin-tokens";
@@ -23,14 +23,14 @@ export function MetricsSection() {
   const m = MOCK_REPORT_METRICS;
 
   return (
-    <section>
-      <AdminSectionHeader
-        title="Métricas operacionais"
-        subtitle="últimos 30 dias"
-        accent="revenue"
-        info="Volume e desempenho do pipeline de relatórios nos últimos 30 dias."
-      />
-
+    <DemoOnlySection
+      title="Métricas operacionais"
+      subtitle="últimos 30 dias"
+      accent="revenue"
+      info={"Volume e desempenho do pipeline de relatórios nos últimos 30 dias."}
+      pendingReason={"KPIs operacionais (latência média, % entregues, falhas) são calculados sobre `report_requests`. Activam-se assim que houver volume real."}
+    >
+      <section>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ReportKpi
           accent="revenue"
@@ -65,6 +65,7 @@ export function MetricsSection() {
         />
       </div>
     </section>
+    </DemoOnlySection>
   );
 }
 

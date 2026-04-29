@@ -7,7 +7,7 @@
  */
 
 import { AdminCard } from "../admin-card";
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { MOCK_PIPELINE, MOCK_PIPELINE_FOOTER } from "@/lib/admin/mock-data";
 import { Fragment } from "react";
 
@@ -41,13 +41,14 @@ export function PipelineSection() {
   const transitions = MOCK_PIPELINE.transitions;
 
   return (
-    <section>
-      <AdminSectionHeader
-        title="Pipeline"
-        subtitle="movimento entre estados nos últimos 30 dias"
-        accent="leads"
-        info="Movimento dos clientes entre os 4 estados do funil nos últimos 30 dias. Os números entre cartões mostram quantos transitaram para o estado seguinte."
-      />
+    <DemoOnlySection
+      title="Pipeline"
+      subtitle="movimento entre estados nos últimos 30 dias"
+      accent="leads"
+      info={"Movimento dos clientes entre os 4 estados do funil nos últimos 30 dias. Os números entre cartões mostram quantos transitaram para o estado seguinte."}
+      pendingReason={"O pipeline visitante → lead → trial → ativo requer tracking de eventos web e checkout. Será ligado em fases futuras."}
+    >
+      <section>
       <AdminCard className="!px-7 !py-6">
         <div
           className="grid items-stretch"
@@ -115,5 +116,6 @@ export function PipelineSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }

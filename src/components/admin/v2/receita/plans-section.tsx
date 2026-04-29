@@ -5,7 +5,7 @@
  * Direita: concentração (3 escalões com quadrado + texto + percentagem).
  */
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ProgressBar } from "../progress-bar";
@@ -18,13 +18,13 @@ import {
 
 export function PlansSection() {
   return (
-    <section>
-      <AdminSectionHeader
-        title="MRR por plano"
-        accent="revenue"
-        info="Distribuição da receita recorrente pelos diferentes planos disponíveis."
-      />
-
+    <DemoOnlySection
+      title="MRR por plano"
+      accent="revenue"
+      info={"Distribuição da receita recorrente pelos diferentes planos disponíveis."}
+      pendingReason={"Distribuição por plano requer subscrições activas. Esperar pela integração de pagamentos."}
+    >
+      <section>
       <div className="grid gap-3.5 lg:grid-cols-[1.4fr_1fr]">
         {/* — Distribuição — */}
         <AdminCard>
@@ -160,5 +160,6 @@ export function PlansSection() {
         </AdminCard>
       </div>
     </section>
+    </DemoOnlySection>
   );
 }

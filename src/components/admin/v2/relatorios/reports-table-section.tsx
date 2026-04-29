@@ -20,7 +20,7 @@ import {
   RotateCw,
 } from "lucide-react";
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import { AdminActionButton } from "../admin-action-button";
@@ -79,19 +79,20 @@ export function ReportsTableSection() {
   ];
 
   return (
-    <section>
+    <DemoOnlySection
+      title="Relatórios"
+      subtitle="histórico, estado e custo por pedido"
+      accent="revenue"
+      info={"Histórico completo de relatórios pedidos com estado actual, duração e custo por execução. Filtros pill no topo direito."}
+      pendingReason={"A tabela de relatórios lê `report_requests`. Está vazia até existirem pedidos reais — usa Modo demonstração para ver as colunas e ações disponíveis."}
+    >
+      <section>
       <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
         <div className="-mb-3.5">
           {/*
            * `AdminSectionHeader` traz `mb-3.5` interno; compensamos para
            * evitar dupla margem quando o header está num wrapper flex.
            */}
-          <AdminSectionHeader
-            title="Relatórios"
-            subtitle="histórico, estado e custo por pedido"
-            accent="revenue"
-            info="Histórico completo de relatórios pedidos com estado actual, duração e custo por execução. Filtros pill no topo direito."
-          />
         </div>
         <FilterPills
           options={filterOptions}
@@ -155,6 +156,7 @@ export function ReportsTableSection() {
         reportId={selectedReportId}
       />
     </section>
+    </DemoOnlySection>
   );
 }
 

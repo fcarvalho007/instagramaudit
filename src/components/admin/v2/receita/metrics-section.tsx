@@ -5,7 +5,7 @@
  * Linha 2 (size sm): LTV · Receita avulsa · Receita total · Mix subscrição.
  */
 
-import { AdminSectionHeader } from "../admin-section-header";
+import { DemoOnlySection } from "../demo-only-section";
 import { KPICard } from "../kpi-card";
 import { MOCK_MRR_METRICS } from "@/lib/admin/mock-data";
 
@@ -13,13 +13,13 @@ export function MetricsSection() {
   const m = MOCK_MRR_METRICS;
 
   return (
-    <section>
-      <AdminSectionHeader
-        title="Métricas principais"
-        accent="revenue"
-        info="Métricas financeiras principais do negócio. MRR, ARR, ARPU e churn formam o quadro de saúde recorrente."
-      />
-
+    <DemoOnlySection
+      title="Métricas principais"
+      accent="revenue"
+      info={"Métricas financeiras principais do negócio. MRR, ARR, ARPU e churn formam o quadro de saúde recorrente."}
+      pendingReason={"KPIs de receita (MRR, ARR, ARPU, churn) requerem subscrições. Estão a zero — esperam a integração de checkout."}
+    >
+      <section>
       {/* Linha 1 */}
       <div className="mb-3 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KPICard
@@ -92,5 +92,6 @@ export function MetricsSection() {
         />
       </div>
     </section>
+    </DemoOnlySection>
   );
 }
