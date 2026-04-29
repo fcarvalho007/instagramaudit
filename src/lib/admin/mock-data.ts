@@ -79,6 +79,25 @@ export const MOCK_FUNNEL = {
   ],
 } as const;
 
+/**
+ * Estado real-zero do funil: usado por defeito (sem demo mode) enquanto não
+ * existem visitantes/leads/clientes pagantes. Mantém a estrutura visual
+ * intacta — só substitui valores por "0" / "—".
+ */
+export const ZERO_FUNNEL = {
+  visitors: { eyebrow: "Visitantes anónimos", value: "0" },
+  freeAnalyses: { eyebrow: "Análises grátis feitas", value: "0" },
+  leads: { eyebrow: "Leads · registados", value: "0" },
+  visitorToLead: { eyebrow: "conversão visitante → lead", value: "—" },
+  customers: { eyebrow: "Clientes · pagaram", value: "0" },
+  leadToCustomer: { eyebrow: "conversão lead → cliente", value: "—" },
+  totals: [
+    { eyebrow: "Conversão total", value: "—", sub: "visitante → cliente" },
+    { eyebrow: "Receita por lead", value: "€0,00", sub: "sem leads ainda" },
+    { eyebrow: "Valor médio cliente", value: "€0,00", sub: "sem clientes ainda" },
+  ],
+} as const;
+
 export const MOCK_REVENUE_KPIS = {
   /** Métrica herói — saúde do negócio (receita previsível). */
   mrr: {
@@ -107,6 +126,41 @@ export const MOCK_REVENUE_KPIS = {
     sub: "€2.847 ÷ 125 clientes",
   },
 } as const;
+
+export const ZERO_REVENUE_KPIS = {
+  mrr: {
+    eyebrow: "MRR · subscrições",
+    value: "€0",
+    deltaText: "—",
+    deltaDirection: "flat" as const,
+    sub: "0 subscritores · checkout por ligar",
+  },
+  oneOff: {
+    eyebrow: "Avulso · 30 dias",
+    value: "€0",
+    highlightText: "0 reports",
+    sub: "sem vendas avulsas",
+  },
+  total: {
+    eyebrow: "Receita total · 30 dias",
+    value: "€0",
+    deltaText: "—",
+    deltaDirection: "flat" as const,
+    sub: "—",
+  },
+  arpu: {
+    eyebrow: "ARPU · 30 dias",
+    value: "€0",
+    sub: "sem clientes ainda",
+  },
+} as const;
+
+/** 30 dias de receita a zero — preserva eixo X para o gráfico não colapsar. */
+export const ZERO_DAILY_REVENUE = Array.from({ length: 30 }, (_, i) => ({
+  day: String(i + 1).padStart(2, "0"),
+  subs: 0,
+  oneOff: 0,
+}));
 
 /**
  * Evolução diária da receita — 30 dias.
