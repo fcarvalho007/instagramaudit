@@ -5,17 +5,21 @@
  * saúde) → 2 colunas (timeline + perfis/notas).
  */
 
+import { useState } from "react";
+
 import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminBadge } from "../admin-badge";
 import { AdminAvatar } from "../admin-avatar";
 import { AdminActionButton } from "../admin-action-button";
 import { KPICard } from "../kpi-card";
+import { ReportDrawer } from "../report-drawer";
 import {
   MOCK_SELECTED_CUSTOMER,
   MOCK_CUSTOMER_ACTIVITY,
   MOCK_CUSTOMER_PROFILES,
   MOCK_CUSTOMER_NOTES,
+  MOCK_REPORTS_LIST,
   type CustomerActivityType,
 } from "@/lib/admin/mock-data";
 
@@ -70,6 +74,15 @@ function HealthBars({
 
 export function CustomerCardSection() {
   const c = MOCK_SELECTED_CUSTOMER;
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const fallbackReportId = MOCK_REPORTS_LIST[0]?.id ?? null;
+
+  function openReport(id: string | null) {
+    if (!id) return;
+    setSelectedReportId(id);
+    setDrawerOpen(true);
+  }
 
   return (
     <section>
@@ -178,6 +191,7 @@ export function CustomerCardSection() {
                   borderRadius: "50%",
                   boxShadow: "0 0 0 2px var(--admin-bg-canvas)",
                 };
+                const isReport = ev.type === "report";
                 return (
                   <div
                     key={i}
@@ -188,9 +202,19 @@ export function CustomerCardSection() {
                       aria-hidden="true"
                       style={{ ...baseDot, ...dotStyle(ev.type) }}
                     />
-                    <p className="m-0 text-[13px] text-admin-text-primary">
-                      {ev.title}
-                    </p>
+                    {isReport ? (
+                      <button
+                        type="button"
+                        onClick={() => openReport(fallbackReportId)}
+                        className="m-0 cursor-pointer bg-transparent p-0 text-left text-[13px] text-admin-text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-leads-500"
+                      >
+                        {ev.title}
+                      </button>
+                    ) : (
+                      <p className="m-0 text-[13px] text-admin-text-primary">
+                        {ev.title}
+                      </p>
+                    )}
                     <p className="m-0 mt-0.5 text-[11px] text-admin-text-secondary">
                       {ev.detail}
                     </p>
@@ -275,6 +299,12 @@ export function CustomerCardSection() {
           </div>
         </div>
       </AdminCard>
+
+      <ReportDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        reportId={selectedReportId}
+      />
     </section>
   );
 }
