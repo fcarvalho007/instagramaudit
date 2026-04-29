@@ -31,6 +31,8 @@ interface AdminStatProps {
   valueClassName?: string;
   eyebrowClassName?: string;
   subClassName?: string;
+  /** Quando definido, eyebrow/value/sub usam flex-col com este gap (px) e os margins internos são neutralizados. */
+  gap?: number;
 }
 
 export function AdminStat({
@@ -43,17 +45,29 @@ export function AdminStat({
   valueClassName = "text-admin-text-primary",
   eyebrowClassName,
   subClassName = "text-admin-text-tertiary",
+  gap,
 }: AdminStatProps) {
   const deltaCls =
     delta?.direction === "up"
       ? "text-admin-revenue-700"
       : "text-admin-danger-500";
 
+  const useGap = typeof gap === "number";
+  const eyebrowMb = useGap ? "" : "mb-2";
+  const subMt = useGap ? "" : highlightSub ? "mt-0.5" : "mt-1.5";
+  const highlightMt = useGap ? "" : "mt-1.5";
+
   return (
-    <div>
+    <div
+      style={
+        useGap
+          ? { display: "flex", flexDirection: "column", gap: `${gap}px` }
+          : undefined
+      }
+    >
       {eyebrow ? (
         <p
-          className={`admin-eyebrow mb-2 ${eyebrowClassName ?? ""}`.trim()}
+          className={`admin-eyebrow ${eyebrowMb} ${eyebrowClassName ?? ""}`.trim()}
         >
           {eyebrow}
         </p>
@@ -72,14 +86,14 @@ export function AdminStat({
       </div>
       {highlightSub ? (
         <p
-          className="mt-1.5 text-xs"
+          className={`text-xs ${highlightMt}`.trim()}
           style={{ color: ACCENT_TEXT[highlightSub.accent] }}
         >
           {highlightSub.text}
         </p>
       ) : null}
       {sub ? (
-        <p className={`text-[11px] ${subClassName} ${highlightSub ? "mt-0.5" : "mt-1.5"}`}>
+        <p className={`text-[11px] ${subClassName} ${subMt}`.trim()}>
           {sub}
         </p>
       ) : null}
