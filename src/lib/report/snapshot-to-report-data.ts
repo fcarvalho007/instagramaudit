@@ -27,6 +27,10 @@ import {
   extractTopKeywords,
   type PostForText,
 } from "./text-extract";
+import {
+  buildEditorialPatterns,
+  type EditorialPatterns,
+} from "./editorial-patterns";
 
 // ============================================================================
 // Snapshot input typing — kept loose because `normalized_payload` is `Json`.
@@ -276,6 +280,13 @@ export interface ReportEnriched {
     model: string | null;
     sections: Partial<Record<AiInsightV2Section, AiInsightV2Item>>;
   } | null;
+  /**
+   * Editorial crossovers (R4-B). Derived from posts + market signals to
+   * explain WHY the profile performs the way it does. All fields are
+   * defensive — each pattern carries its own `available` flag and reason
+   * so the UI can render empty states gracefully on legacy snapshots.
+   */
+  editorialPatterns: EditorialPatterns;
 }
 
 // ============================================================================
@@ -1016,6 +1027,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     },
     aiInsights: enrichedAiInsights,
     aiInsightsV2: buildAiInsightsV2(payload.ai_insights_v2),
+    editorialPatterns: buildEditorialPatterns(payload),
   };
 
   const data: ReportData = {

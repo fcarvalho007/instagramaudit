@@ -838,6 +838,12 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // without the AI insights layer. The OpenAI call below upserts
           // a second time on the same cache_key when it succeeds.
           const baseNormalizedPayload = {
+            // R4-A.2: schema versioning. v2 marks payloads that include the
+            // R4-A enriched per-post fields (video_duration, coauthors,
+            // tagged_users, location_name, music_title, product_type,
+            // caption_length, is_pinned). Older snapshots have no version
+            // and consumers must treat absence as v1 (legacy).
+            schema_version: 2 as const,
             profile: primaryProfile,
             content_summary: primarySummary,
             competitors: competitorResults,
