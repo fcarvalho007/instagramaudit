@@ -1,55 +1,41 @@
-# Estado: fix já aplicado
+## Objective
+Apply the pending migration that invalidates only the current snapshot for `frederico.m.carvalho`, then verify `count = 0`. Stop after the verification — do NOT call `/api/analyze-public-v1`, OpenAI, Apify, or DataForSEO.
 
-Inspeccionei `src/lib/insights/prompt.ts` e **todas as alterações pedidas já estão presentes** da iteração anterior:
+## Current state (verified)
+- Migration file exists: `supabase/migrations/20260429100000_invalidate_frederico_smoke_v2.sql`
+- Content (4 lines, scoped strictly to one handle):
+  ```sql
+  DELETE FROM public.analysis_snapshots
+  WHERE instagram_username = 'frederico.m.carvalho';
+  ```
+- Live DB check: `count = 1` for that handle → migration is genuinely pending.
+- No other snapshots are touched. No schema change. No reserved schema touched.
 
-## Confirmação por inspecção
+## Steps
 
-### 1. `available_signals` aceita zero em campos numéricos serializados
-`computeAvailableSignals` (linhas 137–196):
+1. **Apply the existing migration** `20260429100000_invalidate_frederico_smoke_v2.sql` as-is. Do not create a duplicate — the existing file is correct and minimal.
 
-```ts
-if (Number.isFinite(cs.posts_analyzed)) signals.push("content_summary.posts_analyzed");
-if (Number.isFinite(cs.average_likes)) signals.push("content_summary.average_likes");
-if (Number.isFinite(cs.average_comments)) signals.push("content_summary.average_comments");
-if (Number.isFinite(cs.average_engagement_rate)) signals.push("content_summary.average_engagement_rate");
-if (Number.isFinite(cs.estimated_posts_per_week)) signals.push("content_summary.estimated_posts_per_week");
-...
-if (Number.isFinite(post.likes))    signals.push(`top_posts[${idx}].likes`);
-if (Number.isFinite(post.comments)) signals.push(`top_posts[${idx}].comments`);
-```
+2. **Verify with read-only query**:
+   ```sql
+   SELECT count(*)
+   FROM public.analysis_snapshots
+   WHERE instagram_username = 'frederico.m.carvalho';
+   ```
+   Expected: `0`.
 
-→ `0` passa em `Number.isFinite`, logo é incluído.
+3. **Stop and report** the count. Do not proceed to the smoke test.
 
-### 2. `caption_excerpt` mantém-se condicional
-```ts
-const caption = (post.caption_excerpt ?? "").trim();
-if (caption.length > 0) signals.push(`top_posts[${idx}].caption_excerpt`);
-```
+## Guarantees / Out of scope
+- No call to `/api/analyze-public-v1`.
+- No OpenAI, Apify, or DataForSEO calls.
+- No automatic retry.
+- No changes to UI, PDF, admin, `/report.example`, or locked files.
+- No other snapshots deleted (WHERE clause is exact-match on the single handle).
+- No code changes.
 
-### 3. System prompt já reforça zero
-Linha 54 de `INSIGHTS_SYSTEM_PROMPT`:
-> Zero é evidência observada válida. Se um campo numérico aparece no payload com valor 0, pode ser citado como evidence desde que o caminho exacto conste de "allowed_evidence_paths". Zero is valid observed evidence: a numeric field with value 0 may be cited only if its exact path is listed in "allowed_evidence_paths".
+## Reporting format after execution
+- Migration applied: yes/no
+- Post-migration count for `frederico.m.carvalho`: N
+- Ready for fresh smoke test: yes/no (only if count = 0)
 
-### 4. Validador não precisa de alteração
-`src/lib/insights/validate.ts` reconstrói `available_signals` via `buildInsightsUserPayload(ctx)` e rejeita qualquer caminho fora da lista. Logo:
-- `top_posts[0].comments` com `comments=0` → permitido (está em `available_signals`)
-- `top_posts[0].likes` com `likes=0` → permitido
-- `top_posts[0].shares` → rejeitado (`EVIDENCE_INVALID`)
-- Caminhos arbitrários → rejeitados
-
-## Acção a executar
-
-Como não há mudanças de código pendentes, proponho apenas correr validação para confirmar que o build actual da preview está limpo:
-
-1. `bunx tsc --noEmit`
-2. `bun run build`
-
-Sem chamadas a OpenAI, Apify ou DataForSEO. Sem invalidar snapshots. Sem smoke test.
-
-Depois disto, fica pronto para a chamada controlada quando aprovares.
-
-## Garantias
-- Sem alterações a `prompt.ts`, `validate.ts`, UI, PDF, admin, `/report.example` ou ficheiros locked.
-- Sem alterações a base de dados.
-
-**Diz "avança" para correr só typecheck + build.**
+Awaiting approval to apply the migration.
