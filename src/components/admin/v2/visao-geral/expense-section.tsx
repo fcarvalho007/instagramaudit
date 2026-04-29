@@ -175,7 +175,7 @@ export function ExpenseSection() {
             <ProgressBar
               value={data.dataforseo_total}
               max={c.dataforseo}
-              colorOverride={ADMIN_LITERAL.expenseChartDataForSeo}
+              color="signal"
             />
           </ExpenseColumn>
 
@@ -193,7 +193,7 @@ export function ExpenseSection() {
               segments={[
                 { value: apifyShare, color: "expense" },
                 { value: openaiShare, color: "info" },
-                { value: dfsShare, colorOverride: ADMIN_LITERAL.expenseChartDataForSeo },
+                { value: dfsShare, color: "signal" },
               ]}
             />
           </ExpenseColumn>
