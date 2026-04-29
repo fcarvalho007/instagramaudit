@@ -86,7 +86,7 @@ export async function syncApifyCosts(): Promise<SyncSummary> {
           day: dayKey.slice(0, 10),
           amount_usd: amount,
           call_count: calls,
-          details: day,
+          details: day as unknown as Record<string, unknown>,
           collected_at: new Date().toISOString(),
         },
         { onConflict: "provider,day" },
