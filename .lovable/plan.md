@@ -1,112 +1,147 @@
-## R3 · Reforço gráfico, KB nos insights e refinamentos finais do report
+# R3 · Conclusão (Partes 2 e 3)
 
-Três frentes em paralelo. Tudo aplicado a `/analyze/$username` (ReportShell real). O `/report/example` fica intacto.
+A Parte 1 (insights v2 alimentados pela Knowledge Base) já está em produção: tipos `AiInsightsV2` em `src/lib/insights/types.ts`, prompt v2, validador, integração no `analyze-public-v1` e cache em `normalized_payload.ai_insights_v2`. Falta:
+
+- **Parte 2** — server function nova de histórico + reforços gráficos
+- **Parte 3** — 5 refinamentos visuais no shell real
+
+Tudo mantém-se dentro de `/analyze/$username`. `/report/example` permanece intacto (LOCKED).
 
 ---
 
-### Parte 1 — Insights v2 chaveados por secção, alimentados pela KB
+## Parte 2 — Server function + reforços gráficos
 
-**Schema novo** (`ai_insights_v2`), coexiste com `v1` para snapshots antigos.
+### 2.1 Histórico de engagement (4 análises)
 
-`src/lib/insights/types.ts` ganha:
+**Novo:** `src/lib/server/profile-history.functions.ts`
+- `getProfileEngagementHistory({ handle, limit = 4 })` — `createServerFn` que consulta `analysis_snapshots` filtrando por `instagram_username`, ordenado por `created_at desc`, lê `normalized_payload.profile.engagement_pct` e `meta.generated_at`. Devolve `Array<{ analyzedAt, engagementPct }>` (apenas snapshots com valor numérico).
+- Sem RLS conflict — usa o cliente Supabase do servidor já configurado para `analyze-public-v1`.
+
+**Novo componente:** `src/components/report-redesign/report-engagement-history.tsx`
+- Recebe `handle` + valor actual. Faz fetch via server fn no `useEffect`.
+- Renderiza 4 mini-barras horizontais alinhadas (cinza claro a azul) + data abreviada (`dd MMM`). Estilo Iconosquare.
+- Estados: loading skeleton; <2 análises → `<p>` discreto "Histórico aparecerá após próximas análises".
+- Tudo com tokens light (`accent-primary`, `surface-muted`, `content-tertiary`).
+
+**Edição:** `src/components/report/report-benchmark-gauge.tsx`
+- Adiciona render do `<ReportEngagementHistory handle={...} current={m.engagementRate} />` por baixo do "Gap" (dentro do mesmo card branco).
+
+### 2.2 Cartões de formato — barras duplas (Actual vs Bench)
+
+**Edição:** `src/components/report/report-format-breakdown.tsx`
+- Substitui a única barra + tick por **duas barras paralelas** ("Atual" e "Benchmark"), cada uma com label mono à esquerda e valor à direita.
+- Cor da barra "Atual" depende da posição face ao bench:
+  - acima → `bg-signal-success`
+  - ligeiramente acima → `bg-accent-primary`
+  - abaixo → `bg-signal-danger`
+- Barra "Benchmark" sempre `bg-content-tertiary/40` (cinza neutro).
+- Mantém badge de status, ícone de formato, share %.
+
+### 2.3 Hashtags ordenadas por engagement
+
+**Edição:** `src/components/report/report-hashtags-keywords.tsx`
+- Bloco hashtags: ordenar `topHashtags` por `avgEngagement` desc (não por `uses`).
+- Largura da barra reflecte `avgEngagement / max(avgEngagement)`.
+- Badge mostra `{uses} usos` em mono pequeno (mantém o sinal de frequência mas secundário).
+- Cor única `bg-accent-primary` (já está, mas remover qualquer variação herdada).
+
+---
+
+## Parte 3 — 5 refinamentos visuais
+
+### 3.1 Market signals · Strip horizontal
+
+**Novo:** `src/components/report-market-signals/market-stats-strip.tsx`
+- Variante linear horizontal das 4 métricas (Strongest, Keywords, Trend, Suggestion). 
+- Em desktop: 4 colunas separadas por `divide-x divide-slate-200/70`. Em mobile: stack vertical compacto.
+- Mesmo conteúdo do `MetricCard` actual mas sem cards individuais — ar mais editorial.
+
+**Edição:** `src/components/report-market-signals/report-market-signals.tsx`
+- Substitui a `<div className="grid ... sm:grid-cols-2">` (linhas 411-446) pelo `<MarketStatsStrip ... />`.
+- Mantém chart, chips, footer de quota intactos.
+
+### 3.2 Methodology + dataset source unificados
+
+**Edição:** `src/components/report-redesign/report-methodology.tsx`
+- Aceita prop opcional `enriched?: ReportEnriched`.
+- Quando presente, anexa por baixo da grid de 4 cards uma linha fina com "Dataset · vXX · nota" (texto do `ReportEnrichedBenchmarkSource`), separada por `border-t border-slate-200/70 pt-4`.
+
+**Edição:** `src/components/report-redesign/report-shell.tsx`
+- Passa `enriched={result.enriched}` ao `<ReportMethodology />`.
+- Remove a chamada separada `<ReportEnrichedBenchmarkSource />` (deixa de existir como bloco autónomo).
+
+### 3.3 Bloco final · 3 botões em linha
+
+**Edição:** `src/components/report-share/report-final-block.tsx`
+- Reorganiza para `<div className="flex flex-col sm:flex-row gap-3">` com 3 botões iguais em altura: **PDF (primário azul)** · **Partilhar (ghost)** · **Link público (ghost com ícone copy)**.
+- Header simplificado: 1 eyebrow + 1 título + 1 linha de hint (remove o parágrafo grande).
+- Mantém fallback PDF e estado loading.
+
+### 3.4 Beta feedback · Banner full-width
+
+**Novo bloco:** dentro do `report-shell.tsx`, antes do `<Footer />` (após `<ReportFinalBlock />`).
+- Container `max-w-7xl` com card branco bordo subtil, padding generoso, 2 colunas: copy à esquerda + CTA à direita.
+- Reusa `BETA_COPY.feedback` já importado.
+
+**Edição:** `report-final-block.tsx`
+- Remove o bloco "feedback beta" do interior do card final (linhas 127-141). Passa a viver fora.
+
+### 3.5 Footer dedup
+
+**Edição:** `src/components/layout/footer.tsx`
+- Remover secções comerciais redundantes (CTA "Pedir relatório", "Como funciona", se duplicam navegação que já vive no header).
+- Manter: logo + tagline curta + 1 coluna de links institucionais (Privacidade, Termos, Contacto) + créditos.
+
+---
+
+## Detalhes técnicos
+
+**Server function pattern** (`profile-history.functions.ts`):
+```ts
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export const getProfileEngagementHistory = createServerFn({ method: "GET" })
+  .inputValidator((i) => z.object({ handle: z.string().min(1), limit: z.number().int().min(1).max(20).default(4) }).parse(i))
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+    const { data: rows } = await supabase
+      .from("analysis_snapshots")
+      .select("created_at, normalized_payload")
+      .eq("instagram_username", data.handle.toLowerCase())
+      .eq("analysis_status", "ready")
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+    return (rows ?? [])
+      .map((r) => ({
+        analyzedAt: r.created_at,
+        engagementPct: Number(r.normalized_payload?.profile?.engagement_pct ?? NaN),
+      }))
+      .filter((r) => Number.isFinite(r.engagementPct));
+  });
 ```
-interface AiInsightV2Item { emphasis: 'positive'|'negative'|'default'|'neutral'; text: string }
-interface AiInsightsV2 {
-  schema_version: 2; generated_at: string; model: string;
-  source_signals: { inputs_hash: string; kb_version: string; has_market_signals: boolean };
-  cost: { prompt_tokens; completion_tokens; total_tokens; estimated_cost_usd };
-  sections: Record<'hero'|'marketSignals'|'evolutionChart'|'benchmark'|'formats'|'topPosts'|'heatmap'|'daysOfWeek'|'language', AiInsightV2Item>;
-}
-```
 
-**Pipeline** (estende `generateInsights` em vez de criar edge function — alinhado com a arquitectura TanStack Start, evita duplicar gates de OPENAI_ALLOWLIST/cap diário/recordProviderCall):
+**Tokens já existentes** (verificado): `--accent-primary`, `--signal-success`, `--signal-danger` em `tokens-light.css`. Não é preciso adicionar tokens novos para as barras Actual/Bench — usamos os existentes via classes Tailwind (`bg-signal-success`, etc).
 
-1. `generateInsights(ctx, { mode: 'v2' })` aceita modo, carrega `getKnowledgeContext({ tier, format, vertical })` da KB (helper já existente).
-2. Novo prompt em `src/lib/insights/prompt-v2.ts`: regras pt-PT já endurecidas + bloco `{kb_context_inject}` via `formatKnowledgeContextForPrompt(ctx)`.
-3. Modelo: continua a ler `OPENAI_INSIGHTS_MODEL` (secret existente). Sem hardcode.
-4. Output via `response_format: json_schema` com 9 chaves obrigatórias.
-5. Validador novo `validate-v2.ts`: aplica `detectTechnicalLeak` (extraído de `validate.ts` para função reutilizável) + lista PT-BR + tradução de jargão a cada `text`.
-6. `kb_version` = SHA-1 curto do `metadata.last_updated` da KB. Permite invalidação futura.
+**Sem mudanças DB**: tudo lê do que já existe em `analysis_snapshots`.
 
-**Persistência e cache** (em `analyze-public-v1.ts`):
-- Após snapshot base, gera v2 e persiste em `normalized_payload.ai_insights_v2`.
-- v1 mantém-se para o bloco "Leitura estratégica" existente — não tocar.
-- Regeneração só quando `inputs_hash` muda (snapshot novo) OU `kb_version` muda. Cache hits usam o v2 já guardado.
-
-**Render**:
-- `src/lib/report/snapshot-to-report-data.ts` mapeia `ai_insights_v2.sections` para o `reportData`.
-- 9 secções-alvo passam a aceitar prop opcional `aiInsight?: { emphasis, text }` e renderizam um `InsightBox` compacto inline com a variante de cor já existente nos tokens light (`positive` → verde, `negative` → vermelho, `default` → azul, `neutral` → cinzento).
+**Sem novos secrets/dependências**.
 
 ---
 
-### Parte 2 — Reforço gráfico em 4 secções
+## Checklist (execução nesta ordem)
 
-**2.1 — Posicionamento (gauge + mini-histórico)**
-- Nova server function `getProfileEngagementHistory({ handle, limit: 4 })` em `src/server/profile-history.functions.ts`. Lê `analysis_snapshots` ordenado por `created_at desc`, devolve `[{ analyzedAt, engagementPct, benchmarkPct }]`.
-- `report-benchmark-gauge.tsx` recebe `history` opcional. Abaixo da gauge: 4 mini-barras horizontais empilhadas em mono pequeno + delta de tendência.
-- Vazio (1ª análise): mensagem subtil "Histórico aparecerá após próximas análises".
-
-**2.2 — Formato (barras duplas)**
-- `report-format-breakdown.tsx`: substitui a barra única por par `Actual` vs `Bench.` empilhado. Cor adaptativa: actual abaixo → `#A32D2D`, acima → `#0F6E56`. Bench → `#B5D4F4`. Tudo via tokens em `tokens-light.css` (sem hardcode hex no JSX).
-
-**2.3 — Hashtags & Captions**
-- `report-hashtags-keywords.tsx`: cor única `accent-primary` (já é `#2563D9`, próximo de `#185FA5` — usar token existente, não introduzir nova cor).
-- Largura proporcional ao **engagement**, não às frequências.
-- Ordenação por `avgEngagement desc`.
-- Linha mostra `5 usos · 0,15%` em mono pequeno.
-
-**2.4 — Sparklines KPI hero**
-- Não tocar — confirmado correcto no R1.
-
----
-
-### Parte 3 — 5 refinamentos visuais
-
-**A. Procura de mercado** — substituir grid 2x2 dos 4 cartões por uma `MarketStatsStrip` horizontal com 4 mini-stats separados por bordas verticais subtis. Componente novo em `src/components/report-market-signals/market-stats-strip.tsx`. Gráfico de evolução fica por baixo, com mais protagonismo.
-
-**B. "Como este relatório foi feito"** — fundir `report-methodology.tsx` + `report-enriched-benchmark-source.tsx` num único cartão. Os 4 cartões internos passam a fundo `surface-muted` (sutil), e a linha "FONTE E METODOLOGIA · DATASET v1.0-2026-04" + texto explicativo entram como `footer-row` dentro do mesmo cartão.
-
-**C. "Levar este relatório"** (`report-final-block.tsx`) — simplificar:
-- Remover header duplicado "PARTILHAR COM A TUA REDE".
-- 3 botões em linha horizontal: `[Pedir versão PDF →]` `[Copiar link]` `[Partilhar no LinkedIn]`.
-- Subtítulo único: `PDF inclui todas as secções · Link público activo durante a fase beta`.
-
-**D. Feedback beta** — promover de bloco interno do `ReportFinalBlock` para banner full-width acima do footer. Componente novo `src/components/report-beta/feedback-banner.tsx`. Fundo `surface-muted`, border `border-default`, badge `BETA` + CTA `Enviar email →`.
-
-**E. Footer comercial** — eliminar o primeiro bloco "PRÓXIMO NÍVEL → O que muda no relatório completo" (com 3 bullets) e manter apenas a versão completa em 2 colunas + citação. Localizar e remover a duplicação em `src/components/report-redesign/` ou `report-share/` consoante o ficheiro real (a confirmar na implementação).
-
----
-
-### Especificações técnicas
-
-- **Tokens**: novas cores (#A32D2D, #0F6E56, #B5D4F4) entram em `src/styles/tokens-light.css` como `--bench-actual-below`, `--bench-actual-above`, `--bench-reference`. Atualizar memória `report-light-tokens`.
-- **Server function nova**: `src/server/profile-history.functions.ts` (`getProfileEngagementHistory`). Lê via `supabaseAdmin` (perfis públicos, sem RLS por user). Validação Zod no input (`handle` regex `^[a-z0-9._]{1,30}$`).
-- **Sem novas tabelas**, sem migrações. Apenas escrita adicional em `analysis_snapshots.normalized_payload.ai_insights_v2`.
-- **Cap diário OpenAI**: continua o mesmo (`OPENAI_DAILY_CAP_USD`). v2 + v1 partilham o cap — duplica chamadas, mas o gate protege contra runaway.
-
-### Ficheiros tocados
-
-Novos: `prompt-v2.ts`, `validate-v2.ts`, `profile-history.functions.ts`, `market-stats-strip.tsx`, `feedback-banner.tsx`.
-Editados: `types.ts`, `openai-insights.server.ts`, `analyze-public-v1.ts`, `snapshot-to-report-data.ts`, `report-benchmark-gauge.tsx`, `report-format-breakdown.tsx`, `report-hashtags-keywords.tsx`, `report-methodology.tsx`, `report-enriched-benchmark-source.tsx`, `report-final-block.tsx`, `report-shell.tsx`, `tokens-light.css`, `mem://design/report-light-tokens`.
-
-### Não fazer
-- Não criar Supabase Edge Function (TanStack Start usa server functions).
-- Não tocar em `/admin` (R2 completo).
-- Não tocar em `/report/example` (LOCKED).
-- Não tocar no PDF export, no header de navegação, no v1 dos insights.
-- Não introduzir cores fora da paleta R1 (excepto os 3 tokens de bench bars).
-
-### Checkpoint final
-
-- ☐ `ai_insights_v2` gerados com KB injectada
-- ☐ Cache: regeneração só por `inputs_hash` ou `kb_version`
-- ☐ 9 secções com `InsightBox` inline
-- ☐ Gauge com mini-histórico de 4 análises (real ou placeholder)
-- ☐ Cartões de formato com barras duplas Actual/Bench
-- ☐ Hashtags ordenadas por engagement, cor única
-- ☐ Procura de mercado em strip horizontal
-- ☐ "Como foi feito" em cartão único
-- ☐ "Levar este relatório" com 3 botões
-- ☐ Feedback beta como banner antes do footer
-- ☐ Footer comercial sem duplicação
-- ☐ `bunx tsc --noEmit` limpo
+- ☐ Criar `src/lib/server/profile-history.functions.ts`
+- ☐ Criar `src/components/report-redesign/report-engagement-history.tsx`
+- ☐ Editar `report-benchmark-gauge.tsx` (incluir histórico)
+- ☐ Editar `report-format-breakdown.tsx` (barras duplas)
+- ☐ Editar `report-hashtags-keywords.tsx` (ordenação por engagement)
+- ☐ Criar `market-stats-strip.tsx`
+- ☐ Editar `report-market-signals.tsx` (usar strip)
+- ☐ Editar `report-methodology.tsx` (recebe enriched)
+- ☐ Editar `report-shell.tsx` (props + remover bloco redundante + adicionar banner feedback)
+- ☐ Editar `report-final-block.tsx` (3 botões + remover feedback interno)
+- ☐ Editar `layout/footer.tsx` (dedup)
+- ☐ Verificar `/analyze/frederico.m.carvalho` (preview real, dark→light no /report)
+- ☐ Confirmar que `/report/example` continua intacto (LOCKED)
