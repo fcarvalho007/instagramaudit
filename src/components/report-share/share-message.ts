@@ -4,8 +4,8 @@
  * already-derived report data — no provider calls, no async work.
  *
  * The teaser surfaces 1–3 concrete signals (engagement vs. mediana,
- * tier de benchmark, cadência) para gerar curiosidade no destinatário
- * sem expor jargão técnico.
+ * cadência) para gerar curiosidade no destinatário sem expor jargão
+ * técnico.
  */
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
@@ -35,18 +35,22 @@ function formatCadence(perWeek: number): string | null {
   if (!Number.isFinite(perWeek) || perWeek <= 0) return null;
   const rounded = Math.round(perWeek * 10) / 10;
   const display = rounded.toString().replace(".", ",");
-  return `${display} publicações/semana`;
+  // Singular vs. plural — "1 publicação/semana" mas "2,5 publicações/semana".
+  const noun = rounded === 1 ? "publicação" : "publicações";
+  return `${display} ${noun}/semana`;
 }
 
-export function buildShareMessage({ result, url }: ShareMessageInput): ShareMessage {
+export function buildShareMessage({
+  result,
+  url,
+}: ShareMessageInput): ShareMessage {
   const { data } = result;
   const handle = data.profile.username;
   const km = data.keyMetrics;
-  const positioning = result.enriched.benchmarkSource;
 
   const engagement = formatPct(km.engagementRate);
 
-  // Comparação face à mediana — só inclui se houver delta válido.
+  // Comparação face à mediana — só inclui se houver delta válido (±10%).
   let comparison: string | null = null;
   if (
     typeof km.engagementBenchmark === "number" &&
@@ -68,9 +72,8 @@ export function buildShareMessage({ result, url }: ShareMessageInput): ShareMess
   if (cadence) parts.push(cadence);
 
   const summary = parts.join(", ");
-  const datasetTag = positioning.datasetVersion ? ` (benchmark ${positioning.datasetVersion})` : "";
 
-  const text = `Análise pública de @${handle}: ${summary}${datasetTag}. Vê o relatório completo:`;
+  const text = `Análise pública de @${handle}: ${summary}. Vê o relatório completo:`;
   const textWithUrl = `${text}\n${url}`;
   const emailSubject = `Análise de @${handle} no Instagram`;
 
