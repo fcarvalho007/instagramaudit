@@ -10,6 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
 import { AdminSearchInput } from "@/components/admin/v2/admin-search-input";
 import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
+import { MockDataBanner } from "@/components/admin/v2/mock-data-banner";
 import { PipelineSection } from "@/components/admin/v2/clientes/pipeline-section";
 import { CustomersTableSection } from "@/components/admin/v2/clientes/customers-table-section";
 import { CustomerCardSection } from "@/components/admin/v2/clientes/customer-card-section";
@@ -31,6 +32,7 @@ function ClientesPage() {
           </>
         }
       />
+      <MockDataBanner reason="Pipeline de clientes, lista e fichas individuais requerem tabela `customers` e ciclo de vida de subscrições (próxima fase)." />
       <div className="flex flex-col gap-14">
         <PipelineSection />
         <CustomersTableSection />

@@ -14,6 +14,7 @@ import { AdminCard } from "../admin-card";
 import { AdminStat } from "../admin-stat";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ADMIN_LITERAL } from "../admin-tokens";
+import { MockDataBanner } from "../mock-data-banner";
 import { MOCK_FUNNEL } from "@/lib/admin/mock-data";
 
 const FUNNEL_TOTALS_INFO: Record<string, string> = {
@@ -34,6 +35,7 @@ export function FunnelSection() {
         accent="leads"
         info="Mostra o percurso desde visitante anónimo até cliente pagante. As percentagens indicam a conversão entre cada etapa."
       />
+      <MockDataBanner reason="Conversão visitante → cliente requer tracking de eventos e checkout integrados (próximas fases)." />
 
       <AdminCard className="!p-10">
         <FunnelDiagram />
