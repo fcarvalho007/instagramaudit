@@ -163,6 +163,94 @@ function competitorFailure(
 }
 
 /**
+ * Derive the compact `market_signals` summary the OpenAI prompt expects
+ * from the persisted DataForSEO Trends envelope. Pure: no IO. When the
+ * envelope is null or non-usable, returns the disabled shape so the
+ * model is instructed to ignore the market-signals axis entirely.
+ */
+function summarizeMarketSignalsForInsights(
+  ms: PersistedMarketSignals | null,
+): InsightsContext["market_signals"] {
+  if (!ms) return { has_free: false, has_paid: false };
+  const usable = ms.status === "ready" || ms.status === "partial";
+  if (!usable) return { has_free: false, has_paid: false };
+
+  const topKeywords = (ms.trends_usable_keywords ?? []).slice(0, 5);
+  const dropped = (ms.trends_dropped_keywords ?? []).slice(0, 5);
+
+  // Pick the keyword with the highest mean Trends value across the series.
+  const trends = ms.trends as GoogleTrendsResult | null;
+  let strongest: string | null = topKeywords[0] ?? null;
+  let direction: "up" | "flat" | "down" | null = null;
+
+  const graph = trends?.items?.find(
+    (it) => Array.isArray(it.keywords) && Array.isArray(it.data),
+  );
+  if (graph?.keywords && graph.data) {
+    const kws = graph.keywords;
+    const sums = new Array<number>(kws.length).fill(0);
+    const counts = new Array<number>(kws.length).fill(0);
+    for (const row of graph.data) {
+      const values = Array.isArray(row.values) ? row.values : [];
+      for (let i = 0; i < kws.length; i += 1) {
+        const v = values[i];
+        if (typeof v === "number" && Number.isFinite(v)) {
+          sums[i] += v;
+          counts[i] += 1;
+        }
+      }
+    }
+    let bestIdx = -1;
+    let bestMean = -Infinity;
+    for (let i = 0; i < kws.length; i += 1) {
+      if (counts[i] === 0) continue;
+      if (!topKeywords.includes(kws[i])) continue;
+      const mean = sums[i] / counts[i];
+      if (mean > bestMean) {
+        bestMean = mean;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0) {
+      strongest = kws[bestIdx];
+      // Trend direction: compare mean of first quartile vs last quartile of
+      // non-null values for the strongest keyword.
+      const series: number[] = [];
+      for (const row of graph.data) {
+        const v = row.values?.[bestIdx];
+        if (typeof v === "number" && Number.isFinite(v)) series.push(v);
+      }
+      if (series.length >= 8) {
+        const window = Math.max(4, Math.floor(series.length / 4));
+        const head = series.slice(0, window);
+        const tail = series.slice(-window);
+        const headMean = head.reduce((a, b) => a + b, 0) / head.length;
+        const tailMean = tail.reduce((a, b) => a + b, 0) / tail.length;
+        if (headMean > 0) {
+          const delta = (tailMean - headMean) / headMean;
+          if (delta > 0.05) direction = "up";
+          else if (delta < -0.05) direction = "down";
+          else direction = "flat";
+        } else if (tailMean > 0) {
+          direction = "up";
+        } else {
+          direction = "flat";
+        }
+      }
+    }
+  }
+
+  return {
+    has_free: true,
+    has_paid: false,
+    top_keywords: topKeywords,
+    strongest_keyword: strongest,
+    trend_direction: direction,
+    dropped_keywords: dropped,
+  };
+}
+
+/**
  * Single unified call: returns the profile details with `latestPosts[]`
  * embedded. Replaces the previous two-step (profile then posts) flow.
  */
