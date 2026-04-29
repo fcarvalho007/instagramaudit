@@ -15,6 +15,7 @@ interface TabDef {
     | "/admin/clientes"
     | "/admin/relatorios"
     | "/admin/perfis"
+    | "/admin/conhecimento"
     | "/admin/sistema";
   label: string;
 }
@@ -25,6 +26,7 @@ const TABS: TabDef[] = [
   { to: "/admin/clientes", label: "Clientes" },
   { to: "/admin/relatorios", label: "Relatórios" },
   { to: "/admin/perfis", label: "Perfis" },
+  { to: "/admin/conhecimento", label: "Conhecimento" },
   { to: "/admin/sistema", label: "Sistema" },
 ];
 
