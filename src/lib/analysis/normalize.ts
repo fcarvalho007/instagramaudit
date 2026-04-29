@@ -28,6 +28,16 @@ type RawProfile = {
   posts?: number;
   verified?: boolean;
   isVerified?: boolean;
+  category?: string;
+  categoryName?: string;
+  businessCategoryName?: string;
+  externalUrl?: string;
+  external_url?: string;
+  externalUrls?: Array<{ url?: string; title?: string } | string>;
+  highlightReelCount?: number;
+  hasChannel?: boolean;
+  isBusinessAccount?: boolean;
+  isProfessionalAccount?: boolean;
 };
 
 type RawPost = {
