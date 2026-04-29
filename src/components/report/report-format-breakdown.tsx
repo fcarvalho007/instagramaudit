@@ -25,9 +25,9 @@ const TINT = {
 };
 
 const TONE = {
-  danger: "bg-tint-danger text-signal-danger",
-  success: "bg-tint-success text-signal-success",
-  warning: "bg-tint-warning text-signal-warning",
+  danger: "border-signal-danger/30 text-signal-danger",
+  success: "border-signal-success/30 text-signal-success",
+  warning: "border-signal-warning/30 text-signal-warning",
 };
 
 export function ReportFormatBreakdown() {
@@ -50,7 +50,7 @@ export function ReportFormatBreakdown() {
           return (
             <div
               key={f.format}
-              className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6 flex flex-col gap-5"
+              className="bg-surface-secondary border border-border-default rounded-2xl shadow-card p-6 md:p-7 flex flex-col gap-5"
             >
               <div className="flex items-start justify-between">
                 <div
@@ -63,7 +63,7 @@ export function ReportFormatBreakdown() {
                 </div>
                 <span
                   className={cn(
-                    "px-2 py-1 rounded-md font-mono text-[10px] uppercase tracking-wider font-semibold",
+                    "inline-flex items-center px-2.5 py-1 rounded-full border font-mono text-[10px] uppercase tracking-[0.12em] font-semibold",
                     TONE[status.tone],
                   )}
                 >
@@ -72,10 +72,10 @@ export function ReportFormatBreakdown() {
               </div>
 
               <div>
-                <h3 className="font-display text-xl font-medium text-content-primary">
+                <h3 className="font-sans text-[18px] font-medium tracking-[-0.01em] text-content-primary">
                   {f.format}
                 </h3>
-                <p className="font-mono text-xs text-content-tertiary uppercase tracking-wide mt-1">
+                <p className="font-mono text-[10px] text-content-tertiary uppercase tracking-[0.12em] mt-1">
                   {f.sharePct}% do conteúdo
                 </p>
               </div>
@@ -83,19 +83,19 @@ export function ReportFormatBreakdown() {
               <div className="space-y-2">
                 <div className="relative h-2 w-full rounded-full bg-surface-muted overflow-hidden">
                   <div
-                    className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-indigo-400 to-blue-500"
+                    className="absolute left-0 top-0 h-full rounded-full bg-accent-primary"
                     style={{ width: `${valuePct}%` }}
                   />
                   <div
-                    className="absolute top-1/2 -translate-y-1/2 h-3 w-0.5 bg-content-primary rounded-full"
+                    className="absolute top-1/2 -translate-y-1/2 h-3 w-px bg-content-primary/60 rounded-full"
                     style={{ left: `calc(${benchPct}% - 1px)` }}
                   />
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="font-display text-2xl font-medium text-content-primary">
+                  <span className="font-sans text-[22px] font-medium tracking-[-0.01em] text-content-primary">
                     {f.engagement.toString().replace(".", ",")}%
                   </span>
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-content-tertiary">
                     bench {f.benchmark.toString().replace(".", ",")}%
                   </span>
                 </div>
