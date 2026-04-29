@@ -32,6 +32,7 @@ import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
+import { Route as ApiAdminSimpleLoginRouteImport } from './routes/api/admin/simple-login'
 import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
 import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
@@ -184,6 +185,11 @@ const ApiPublicIgThumbRoute = ApiPublicIgThumbRouteImport.update({
 const ApiAdminWhoamiRoute = ApiAdminWhoamiRouteImport.update({
   id: '/api/admin/whoami',
   path: '/api/admin/whoami',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSimpleLoginRoute = ApiAdminSimpleLoginRouteImport.update({
+  id: '/api/admin/simple-login',
+  path: '/api/admin/simple-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminResendEmailRoute = ApiAdminResendEmailRouteImport.update({
@@ -426,6 +432,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
@@ -487,6 +494,7 @@ export interface FileRoutesByTo {
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
@@ -550,6 +558,7 @@ export interface FileRoutesById {
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
@@ -614,6 +623,7 @@ export interface FileRouteTypes {
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
+    | '/api/admin/simple-login'
     | '/api/admin/whoami'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
@@ -675,6 +685,7 @@ export interface FileRouteTypes {
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
+    | '/api/admin/simple-login'
     | '/api/admin/whoami'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
@@ -737,6 +748,7 @@ export interface FileRouteTypes {
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
+    | '/api/admin/simple-login'
     | '/api/admin/whoami'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
@@ -790,6 +802,7 @@ export interface RootRouteChildren {
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
   ApiAdminReportsRoute: typeof ApiAdminReportsRouteWithChildren
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
+  ApiAdminSimpleLoginRoute: typeof ApiAdminSimpleLoginRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
@@ -978,6 +991,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/whoami'
       fullPath: '/api/admin/whoami'
       preLoaderRoute: typeof ApiAdminWhoamiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/simple-login': {
+      id: '/api/admin/simple-login'
+      path: '/api/admin/simple-login'
+      fullPath: '/api/admin/simple-login'
+      preLoaderRoute: typeof ApiAdminSimpleLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/resend-email': {
@@ -1383,6 +1403,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,
   ApiAdminReportsRoute: ApiAdminReportsRouteWithChildren,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
+  ApiAdminSimpleLoginRoute: ApiAdminSimpleLoginRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
