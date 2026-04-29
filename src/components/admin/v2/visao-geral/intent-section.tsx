@@ -3,15 +3,33 @@
  * Duas colunas: pesquisas repetidas + últimos relatórios.
  */
 
+import { useState } from "react";
+
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
+import { ReportDrawer } from "../report-drawer";
 import {
   MOCK_INTENT_REPEATED,
-  MOCK_RECENT_REPORTS,
+  MOCK_REPORTS_LIST,
 } from "@/lib/admin/mock-data";
 
+/**
+ * "Últimos relatórios" usa as primeiras 4 entradas de `MOCK_REPORTS_LIST`
+ * para que cada linha tenha um id real reconhecido por `getMockReportDetail`
+ * e permita abrir o `ReportDrawer` directamente.
+ */
+const RECENT_REPORTS = MOCK_REPORTS_LIST.slice(0, 4);
+
 export function IntentSection() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  function openReport(id: string) {
+    setSelectedReportId(id);
+    setDrawerOpen(true);
+  }
+
   return (
     <section>
       <AdminSectionHeader
@@ -58,33 +76,59 @@ export function IntentSection() {
         <AdminCard>
           <CardHeader
             title="Últimos relatórios"
-            eyebrowRight="todos ↗"
+            eyebrowRight="clica para detalhe"
             subtitle="Pedidos pagos e seu estado de entrega."
           />
           <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-            {MOCK_RECENT_REPORTS.map((row) => (
-              <Row key={row.profile}>
-                <div>
-                  <p className="m-0 text-[13px] font-medium text-admin-text-primary">
-                    {row.profile}
-                  </p>
-                  <p className="mt-px text-[11px] text-admin-text-secondary">
-                    <span className="text-admin-text-primary">
-                      {row.customer}
-                    </span>{" "}
-                    · {row.plan}
-                  </p>
-                </div>
-                <AdminBadge
-                  variant={row.status === "entregue" ? "revenue" : "expense"}
-                >
-                  {row.status}
-                </AdminBadge>
-              </Row>
-            ))}
+            {RECENT_REPORTS.map((row) => {
+              const statusLabel =
+                row.status === "delivered"
+                  ? "entregue"
+                  : row.status === "failed"
+                    ? "falhou"
+                    : row.status === "queued"
+                      ? "em fila"
+                      : "a processar";
+              const statusVariant =
+                row.status === "delivered"
+                  ? "revenue"
+                  : row.status === "failed"
+                    ? "danger"
+                    : "expense";
+              return (
+                <li key={row.id} className="list-none">
+                  <button
+                    type="button"
+                    onClick={() => openReport(row.id)}
+                    aria-label={`Ver detalhe do report ${row.id}`}
+                    className="flex w-full items-center justify-between gap-3 rounded-lg bg-admin-neutral-50 px-3 py-2.5 text-left transition-colors hover:bg-[var(--color-admin-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-leads-500"
+                  >
+                    <div className="min-w-0">
+                      <p className="m-0 truncate text-[13px] font-medium text-admin-text-primary">
+                        {row.profile}
+                      </p>
+                      <p className="mt-px truncate text-[11px] text-admin-text-secondary">
+                        <span className="text-admin-text-primary">
+                          {row.customer}
+                        </span>{" "}
+                        ·{" "}
+                        {row.origin === "subscription" ? "sub" : "avulso"}
+                      </p>
+                    </div>
+                    <AdminBadge variant={statusVariant}>{statusLabel}</AdminBadge>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </AdminCard>
       </div>
+
+      <ReportDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        reportId={selectedReportId}
+      />
     </section>
   );
 }
