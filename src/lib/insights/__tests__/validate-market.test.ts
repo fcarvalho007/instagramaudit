@@ -31,8 +31,8 @@ function makeCtx(): InsightsContext {
       posts_count: 42,
       is_verified: false,
       bio: "Marketing & IA",
-      profile_image_url: null,
-      external_url: null,
+      avatar_url: null,
+      following_count: null,
     },
     content_summary: {
       posts_analyzed: 12,
