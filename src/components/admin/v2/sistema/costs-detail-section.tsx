@@ -108,7 +108,7 @@ export function CostsDetailSection() {
       ) : metrics.error ? (
         <SectionError error={metrics.error} onRetry={() => metrics.refetch()} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <KPICard
             eyebrow="Custo Apify · 24h"
             value={`$${metrics.data!.apify.amount_usd.toFixed(2)}`}
@@ -119,6 +119,12 @@ export function CostsDetailSection() {
             eyebrow="Custo OpenAI · 24h"
             value={`$${metrics.data!.openai.amount_usd.toFixed(2)}`}
             sub={`${metrics.data!.openai.calls} chamada(s)`}
+            size="lg"
+          />
+          <KPICard
+            eyebrow="Custo DataForSEO · 24h"
+            value={`$${metrics.data!.dataforseo.amount_usd.toFixed(2)}`}
+            sub={`${metrics.data!.dataforseo.calls} chamada(s)`}
             size="lg"
           />
           <KPICard
