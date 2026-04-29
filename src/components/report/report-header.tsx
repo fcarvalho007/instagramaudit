@@ -1,11 +1,23 @@
-import { Download, Share2 } from "lucide-react";
+import { Download, Loader2, Share2 } from "lucide-react";
 import { useReportData } from "./report-data-context";
 import { cn } from "@/lib/utils";
 
-export function ReportHeader() {
+export interface ReportHeaderActions {
+  onExportPdf?: () => void;
+  onShare?: () => void;
+  pdfBusy?: boolean;
+  pdfDisabled?: boolean;
+  shareBusy?: boolean;
+}
+
+export function ReportHeader({ actions }: { actions?: ReportHeaderActions } = {}) {
   const reportData = useReportData();
   const { profile } = reportData;
   const isAdminPreview = reportData.meta?.isAdminPreview ?? false;
+  const pdfBusy = actions?.pdfBusy ?? false;
+  const pdfDisabled = (actions?.pdfDisabled ?? !actions?.onExportPdf) || pdfBusy;
+  const shareBusy = actions?.shareBusy ?? false;
+  const shareDisabled = !actions?.onShare || shareBusy;
   return (
     <div className="bg-surface-secondary border border-border-default/40 rounded-xl shadow-card p-6 md:p-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
@@ -46,14 +58,35 @@ export function ReportHeader() {
               </span>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border-default/40 hover:border-border-strong/60 text-sm font-medium text-content-primary transition-colors"
+                onClick={actions?.onExportPdf}
+                disabled={pdfDisabled}
+                aria-busy={pdfBusy}
+                title={
+                  !actions?.onExportPdf
+                    ? "Disponível na página de análise real"
+                    : pdfBusy
+                      ? "A preparar PDF…"
+                      : undefined
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border-default/40 hover:border-border-strong/60 text-sm font-medium text-content-primary transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Download className="size-4" />
-                Exportar PDF
+                {pdfBusy ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Download className="size-4" />
+                )}
+                {pdfBusy ? "A preparar…" : "Exportar PDF"}
               </button>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
+                onClick={actions?.onShare}
+                disabled={shareDisabled}
+                title={
+                  !actions?.onShare
+                    ? "Disponível na página de análise real"
+                    : undefined
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Share2 className="size-4" />
                 Partilhar
