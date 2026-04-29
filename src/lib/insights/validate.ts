@@ -16,6 +16,11 @@
  *   - "EVIDENCE_INVALID" — citation not in `available_signals`
  *   - "GENERIC_OUTPUT"  — body lacks numeric marker / signal mention
  *   - "PTBR_LEAK"       — Brazilian-Portuguese token detected
+ *   - "TECHNICAL_LEAK"  — raw technical token (snake_case path, _pct suffix,
+ *                         array indexing, English status label) detected in
+ *                         the user-facing title or body. Evidence paths are
+ *                         allowed internally but must be translated to plain
+ *                         pt-PT before reaching the report UI/PDF.
  */
 
 import { z } from "zod";
@@ -53,6 +58,40 @@ const PTBR_TOKENS: RegExp[] = [
   /\bmídia\b/i,
   /\btime\b/i, // ambiguous, but rarely used in pt-PT
 ];
+
+/**
+ * Raw technical tokens that must NEVER appear in user-facing `title` or
+ * `body`. These are valid internal evidence paths (kept verbatim in
+ * `evidence[]` for audit), but the report is read by marketers and must
+ * speak natural pt-PT. Each pattern is checked in order; the first match
+ * is reported in the validator `detail` field for debugging.
+ */
+const TECHNICAL_LEAK_PATTERNS: RegExp[] = [
+  // 1. Array indexing on known technical roots: top_posts[0], top_posts [ 1 ]
+  /\btop_posts\s*\[\s*\d+\s*\]/i,
+  // 2. Dotted JSON-pointer-ish paths rooted at known sections.
+  /\b(content_summary|benchmark|market_signals|competitors_summary|profile|top_posts)\.[a-z_]+/i,
+  // 3. Specific English status labels we have seen leak from the model.
+  /\bposition\s+(below|above|aligned)\b/i,
+  // 4. Specific raw metric tokens.
+  /\b(engagement_pct|benchmark_value_pct|profile_value_pct|difference_pct|dominant_format|estimated_posts_per_week|posts_per_week|average_engagement_rate|average_likes|average_comments|followers_count|posts_count)\b/i,
+  // 5. Generic snake_case suffixes that mark a raw field name.
+  /\b[a-z][a-z0-9]*_(pct|count|rate|per_week|summary|likes|comments)\b/i,
+];
+
+/**
+ * Returns the first technical token found in `text`, or null if the
+ * string is clean. Pure. Used by `validateInsights` against `title` and
+ * `body` only — never against `evidence[]`, which is allowed (and
+ * required) to contain canonical paths.
+ */
+export function detectTechnicalLeak(text: string): string | null {
+  for (const re of TECHNICAL_LEAK_PATTERNS) {
+    const m = re.exec(text);
+    if (m) return m[0];
+  }
+  return null;
+}
 
 /**
  * Deterministic alias map: short evidence keys the model sometimes emits,
@@ -165,6 +204,14 @@ export function validateInsights(
     }
     if (item.body.length > INSIGHT_BODY_MAX) {
       return fail("BODY_TOO_LONG", `id=${item.id} len=${item.body.length}`);
+    }
+    const leakTitle = detectTechnicalLeak(item.title);
+    const leakBody = detectTechnicalLeak(item.body);
+    if (leakTitle || leakBody) {
+      return fail(
+        "TECHNICAL_LEAK",
+        `id=${item.id} token=${leakTitle ?? leakBody}`,
+      );
     }
     if (item.evidence.length === 0) {
       return fail("EVIDENCE_EMPTY", `id=${item.id}`);
