@@ -19,12 +19,12 @@ export function PaymentsPendingBanner({
   return (
     <div
       role="status"
-      className="flex items-start gap-2.5 rounded-md border border-admin-expense-300 bg-admin-expense-50 px-3 py-2 text-[12px] leading-relaxed text-admin-expense-900"
+      className="flex items-start gap-2.5 rounded-md border border-admin-expense-500/30 bg-admin-expense-50 px-3 py-2 text-[12px] leading-relaxed text-admin-expense-900"
     >
       <AlertCircle size={14} className="mt-0.5 shrink-0 text-admin-expense-700" />
       <div className="flex flex-col gap-0.5">
         <span className="font-medium">Pagamentos por ligar</span>
-        <span className="text-admin-expense-800">{reason}</span>
+        <span className="text-admin-expense-700">{reason}</span>
       </div>
     </div>
   );
