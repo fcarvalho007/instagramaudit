@@ -16,8 +16,11 @@ const UNSET: unique symbol = Symbol("unset");
 type EvaluatedToken = string | null | typeof UNSET;
 
 const CACHE_KEY = "admin.whoami.v1";
-const CACHE_TTL_MS = 60_000;
-const SPINNER_DELAY_MS = 180;
+// 5 minutos: a sessão é revalidada na próxima alteração do auth state ou
+// num refresh/expiry; cache mais longo elimina o "A verificar sessão…" em
+// navegações entre tabs do admin.
+const CACHE_TTL_MS = 5 * 60_000;
+const SPINNER_DELAY_MS = 80;
 
 type CachedWhoami = {
   token: string;
@@ -26,10 +29,21 @@ type CachedWhoami = {
   ts: number;
 };
 
-function readCache(): CachedWhoami | null {
-  if (typeof sessionStorage === "undefined") return null;
+// localStorage sobrevive a refreshs e a abrir nova tab; sessionStorage não.
+function getStorage(): Storage | null {
+  if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function readCache(): CachedWhoami | null {
+  const storage = getStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedWhoami;
     if (!parsed || typeof parsed.token !== "string") return null;
@@ -41,18 +55,20 @@ function readCache(): CachedWhoami | null {
 }
 
 function writeCache(entry: CachedWhoami) {
-  if (typeof sessionStorage === "undefined") return;
+  const storage = getStorage();
+  if (!storage) return;
   try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+    storage.setItem(CACHE_KEY, JSON.stringify(entry));
   } catch {
     /* ignore quota errors */
   }
 }
 
 function clearCache() {
-  if (typeof sessionStorage === "undefined") return;
+  const storage = getStorage();
+  if (!storage) return;
   try {
-    sessionStorage.removeItem(CACHE_KEY);
+    storage.removeItem(CACHE_KEY);
   } catch {
     /* ignore */
   }
@@ -65,8 +81,18 @@ interface AdminAuthShellProps {
 }
 
 export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps) {
-  const [authState, setAuthState] = useState<AuthState>("checking");
-  const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
+  // Optimistic: se já temos cache fresco, arrancamos directamente em "in"
+  // (ou "denied"), evitando o flash de "A verificar sessão…". A sessão real
+  // é revalidada em paralelo via onAuthStateChange.
+  const initial = (() => {
+    const cached = typeof window !== "undefined" ? readCache() : null;
+    if (!cached) return { state: "checking" as AuthState, denied: null as string | null };
+    if (cached.allowed) return { state: "in" as AuthState, denied: null };
+    return { state: "denied" as AuthState, denied: cached.email };
+  })();
+
+  const [authState, setAuthState] = useState<AuthState>(initial.state);
+  const [deniedEmail, setDeniedEmail] = useState<string | null>(initial.denied);
   const [showSpinner, setShowSpinner] = useState(false);
   const lastEvaluatedTokenRef = useRef<EvaluatedToken>(UNSET);
 
@@ -134,9 +160,19 @@ export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps)
       void evaluate(session?.access_token ?? null);
     });
 
-    // Nota: `onAuthStateChange` dispara `INITIAL_SESSION` no arranque, por isso
-    // não precisamos de chamar `getSession()` em paralelo — evita race e segunda
-    // chamada a `/api/admin/whoami`.
+    // Em paralelo: `getSession()` resolve quase instantaneamente quando a
+    // sessão está em localStorage. `onAuthStateChange` pode demorar ~300ms a
+    // disparar `INITIAL_SESSION`; `evaluate()` deduplica via
+    // `lastEvaluatedTokenRef`, por isso não há chamada dupla a /api/admin/whoami.
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (cancelled) return;
+        void evaluate(data.session?.access_token ?? null);
+      })
+      .catch(() => {
+        /* listener trata o fallback */
+      });
 
     return () => {
       cancelled = true;
