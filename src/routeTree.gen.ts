@@ -27,6 +27,7 @@ import { Route as AdminSistemaRouteImport } from './routes/admin.sistema'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
+import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
@@ -56,8 +57,16 @@ import { Route as ApiAdminSistemaCapsRouteImport } from './routes/api/admin/sist
 import { Route as ApiAdminSistemaAlertsRouteImport } from './routes/api/admin/sistema.alerts'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
+import { Route as ApiAdminKnowledgeSourcesRouteImport } from './routes/api/admin/knowledge.sources'
+import { Route as ApiAdminKnowledgeOverviewRouteImport } from './routes/api/admin/knowledge.overview'
+import { Route as ApiAdminKnowledgeNotesRouteImport } from './routes/api/admin/knowledge.notes'
+import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/knowledge.export'
+import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
+import { Route as ApiAdminKnowledgeNotesIdRouteImport } from './routes/api/admin/knowledge.notes.$id'
+import { Route as ApiAdminKnowledgeBenchmarksIdRouteImport } from './routes/api/admin/knowledge.benchmarks.$id'
 import { Route as ApiAdminSistemaAlertsIdAckRouteImport } from './routes/api/admin/sistema.alerts.$id.ack'
+import { Route as ApiAdminKnowledgeHistoryTypeIdRouteImport } from './routes/api/admin/knowledge.history.$type.$id'
 
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
@@ -147,6 +156,11 @@ const AdminReceitaRoute = AdminReceitaRouteImport.update({
 const AdminPerfisRoute = AdminPerfisRouteImport.update({
   id: '/perfis',
   path: '/perfis',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConhecimentoRoute = AdminConhecimentoRouteImport.update({
+  id: '/conhecimento',
+  path: '/conhecimento',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminClientesRoute = AdminClientesRouteImport.update({
@@ -310,17 +324,63 @@ const ApiAdminReportRequestsIdRoute =
     path: '/$id',
     getParentRoute: () => ApiAdminReportRequestsRoute,
   } as any)
+const ApiAdminKnowledgeSourcesRoute =
+  ApiAdminKnowledgeSourcesRouteImport.update({
+    id: '/api/admin/knowledge/sources',
+    path: '/api/admin/knowledge/sources',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminKnowledgeOverviewRoute =
+  ApiAdminKnowledgeOverviewRouteImport.update({
+    id: '/api/admin/knowledge/overview',
+    path: '/api/admin/knowledge/overview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminKnowledgeNotesRoute = ApiAdminKnowledgeNotesRouteImport.update({
+  id: '/api/admin/knowledge/notes',
+  path: '/api/admin/knowledge/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminKnowledgeExportRoute = ApiAdminKnowledgeExportRouteImport.update({
+  id: '/api/admin/knowledge/export',
+  path: '/api/admin/knowledge/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminKnowledgeBenchmarksRoute =
+  ApiAdminKnowledgeBenchmarksRouteImport.update({
+    id: '/api/admin/knowledge/benchmarks',
+    path: '/api/admin/knowledge/benchmarks',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminReportPreviewSnapshotSnapshotIdRoute =
   AdminReportPreviewSnapshotSnapshotIdRouteImport.update({
     id: '/report-preview/snapshot/$snapshotId',
     path: '/report-preview/snapshot/$snapshotId',
     getParentRoute: () => AdminRoute,
   } as any)
+const ApiAdminKnowledgeNotesIdRoute =
+  ApiAdminKnowledgeNotesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => ApiAdminKnowledgeNotesRoute,
+  } as any)
+const ApiAdminKnowledgeBenchmarksIdRoute =
+  ApiAdminKnowledgeBenchmarksIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => ApiAdminKnowledgeBenchmarksRoute,
+  } as any)
 const ApiAdminSistemaAlertsIdAckRoute =
   ApiAdminSistemaAlertsIdAckRouteImport.update({
     id: '/$id/ack',
     path: '/$id/ack',
     getParentRoute: () => ApiAdminSistemaAlertsRoute,
+  } as any)
+const ApiAdminKnowledgeHistoryTypeIdRoute =
+  ApiAdminKnowledgeHistoryTypeIdRouteImport.update({
+    id: '/api/admin/knowledge/history/$type/$id',
+    path: '/api/admin/knowledge/history/$type/$id',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -330,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
+  '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -355,6 +416,11 @@ export interface FileRoutesByFullPath {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
+  '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
+  '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
+  '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
+  '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -372,6 +438,9 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
+  '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
+  '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
 export interface FileRoutesByTo {
@@ -380,6 +449,7 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
+  '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -405,6 +475,11 @@ export interface FileRoutesByTo {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
+  '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
+  '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
+  '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
+  '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -422,6 +497,9 @@ export interface FileRoutesByTo {
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
+  '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
+  '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
 export interface FileRoutesById {
@@ -432,6 +510,7 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
+  '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -457,6 +536,11 @@ export interface FileRoutesById {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
+  '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
+  '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
+  '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
+  '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -474,6 +558,9 @@ export interface FileRoutesById {
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
+  '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
+  '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
 export interface FileRouteTypes {
@@ -485,6 +572,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
+    | '/admin/conhecimento'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -510,6 +598,11 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/knowledge/benchmarks'
+    | '/api/admin/knowledge/export'
+    | '/api/admin/knowledge/notes'
+    | '/api/admin/knowledge/overview'
+    | '/api/admin/knowledge/sources'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -527,6 +620,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/knowledge/benchmarks/$id'
+    | '/api/admin/knowledge/notes/$id'
+    | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -535,6 +631,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
+    | '/admin/conhecimento'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -560,6 +657,11 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/knowledge/benchmarks'
+    | '/api/admin/knowledge/export'
+    | '/api/admin/knowledge/notes'
+    | '/api/admin/knowledge/overview'
+    | '/api/admin/knowledge/sources'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -577,6 +679,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/knowledge/benchmarks/$id'
+    | '/api/admin/knowledge/notes/$id'
+    | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   id:
     | '__root__'
@@ -586,6 +691,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
+    | '/admin/conhecimento'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -611,6 +717,11 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/knowledge/benchmarks'
+    | '/api/admin/knowledge/export'
+    | '/api/admin/knowledge/notes'
+    | '/api/admin/knowledge/overview'
+    | '/api/admin/knowledge/sources'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -628,6 +739,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/knowledge/benchmarks/$id'
+    | '/api/admin/knowledge/notes/$id'
+    | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesById: FileRoutesById
 }
@@ -653,6 +767,11 @@ export interface RootRouteChildren {
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
+  ApiAdminKnowledgeBenchmarksRoute: typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
+  ApiAdminKnowledgeExportRoute: typeof ApiAdminKnowledgeExportRoute
+  ApiAdminKnowledgeNotesRoute: typeof ApiAdminKnowledgeNotesRouteWithChildren
+  ApiAdminKnowledgeOverviewRoute: typeof ApiAdminKnowledgeOverviewRoute
+  ApiAdminKnowledgeSourcesRoute: typeof ApiAdminKnowledgeSourcesRoute
   ApiAdminSistemaAlertsRoute: typeof ApiAdminSistemaAlertsRouteWithChildren
   ApiAdminSistemaCapsRoute: typeof ApiAdminSistemaCapsRoute
   ApiAdminSistemaCostMetrics24hRoute: typeof ApiAdminSistemaCostMetrics24hRoute
@@ -668,6 +787,7 @@ export interface RootRouteChildren {
   ApiPublicHooksSyncApifyCostsRoute: typeof ApiPublicHooksSyncApifyCostsRoute
   ApiPublicHooksSyncDataforseoCostsRoute: typeof ApiPublicHooksSyncDataforseoCostsRoute
   ApiPublicHooksSyncOpenaiCostsRoute: typeof ApiPublicHooksSyncOpenaiCostsRoute
+  ApiAdminKnowledgeHistoryTypeIdRoute: typeof ApiAdminKnowledgeHistoryTypeIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -796,6 +916,13 @@ declare module '@tanstack/react-router' {
       path: '/perfis'
       fullPath: '/admin/perfis'
       preLoaderRoute: typeof AdminPerfisRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/conhecimento': {
+      id: '/admin/conhecimento'
+      path: '/conhecimento'
+      fullPath: '/admin/conhecimento'
+      preLoaderRoute: typeof AdminConhecimentoRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/clientes': {
@@ -1001,6 +1128,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminReportRequestsIdRouteImport
       parentRoute: typeof ApiAdminReportRequestsRoute
     }
+    '/api/admin/knowledge/sources': {
+      id: '/api/admin/knowledge/sources'
+      path: '/api/admin/knowledge/sources'
+      fullPath: '/api/admin/knowledge/sources'
+      preLoaderRoute: typeof ApiAdminKnowledgeSourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/knowledge/overview': {
+      id: '/api/admin/knowledge/overview'
+      path: '/api/admin/knowledge/overview'
+      fullPath: '/api/admin/knowledge/overview'
+      preLoaderRoute: typeof ApiAdminKnowledgeOverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/knowledge/notes': {
+      id: '/api/admin/knowledge/notes'
+      path: '/api/admin/knowledge/notes'
+      fullPath: '/api/admin/knowledge/notes'
+      preLoaderRoute: typeof ApiAdminKnowledgeNotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/knowledge/export': {
+      id: '/api/admin/knowledge/export'
+      path: '/api/admin/knowledge/export'
+      fullPath: '/api/admin/knowledge/export'
+      preLoaderRoute: typeof ApiAdminKnowledgeExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/knowledge/benchmarks': {
+      id: '/api/admin/knowledge/benchmarks'
+      path: '/api/admin/knowledge/benchmarks'
+      fullPath: '/api/admin/knowledge/benchmarks'
+      preLoaderRoute: typeof ApiAdminKnowledgeBenchmarksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/report-preview/snapshot/$snapshotId': {
       id: '/admin/report-preview/snapshot/$snapshotId'
       path: '/report-preview/snapshot/$snapshotId'
@@ -1008,12 +1170,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReportPreviewSnapshotSnapshotIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/admin/knowledge/notes/$id': {
+      id: '/api/admin/knowledge/notes/$id'
+      path: '/$id'
+      fullPath: '/api/admin/knowledge/notes/$id'
+      preLoaderRoute: typeof ApiAdminKnowledgeNotesIdRouteImport
+      parentRoute: typeof ApiAdminKnowledgeNotesRoute
+    }
+    '/api/admin/knowledge/benchmarks/$id': {
+      id: '/api/admin/knowledge/benchmarks/$id'
+      path: '/$id'
+      fullPath: '/api/admin/knowledge/benchmarks/$id'
+      preLoaderRoute: typeof ApiAdminKnowledgeBenchmarksIdRouteImport
+      parentRoute: typeof ApiAdminKnowledgeBenchmarksRoute
+    }
     '/api/admin/sistema/alerts/$id/ack': {
       id: '/api/admin/sistema/alerts/$id/ack'
       path: '/$id/ack'
       fullPath: '/api/admin/sistema/alerts/$id/ack'
       preLoaderRoute: typeof ApiAdminSistemaAlertsIdAckRouteImport
       parentRoute: typeof ApiAdminSistemaAlertsRoute
+    }
+    '/api/admin/knowledge/history/$type/$id': {
+      id: '/api/admin/knowledge/history/$type/$id'
+      path: '/api/admin/knowledge/history/$type/$id'
+      fullPath: '/api/admin/knowledge/history/$type/$id'
+      preLoaderRoute: typeof ApiAdminKnowledgeHistoryTypeIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -1032,6 +1215,7 @@ const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminClientesRoute: typeof AdminClientesRoute
+  AdminConhecimentoRoute: typeof AdminConhecimentoRoute
   AdminPerfisRoute: typeof AdminPerfisRoute
   AdminReceitaRoute: typeof AdminReceitaRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
@@ -1044,6 +1228,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminClientesRoute: AdminClientesRoute,
+  AdminConhecimentoRoute: AdminConhecimentoRoute,
   AdminPerfisRoute: AdminPerfisRoute,
   AdminReceitaRoute: AdminReceitaRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
@@ -1083,6 +1268,34 @@ const ApiAdminReportsRouteWithChildren = ApiAdminReportsRoute._addFileChildren(
   ApiAdminReportsRouteChildren,
 )
 
+interface ApiAdminKnowledgeBenchmarksRouteChildren {
+  ApiAdminKnowledgeBenchmarksIdRoute: typeof ApiAdminKnowledgeBenchmarksIdRoute
+}
+
+const ApiAdminKnowledgeBenchmarksRouteChildren: ApiAdminKnowledgeBenchmarksRouteChildren =
+  {
+    ApiAdminKnowledgeBenchmarksIdRoute: ApiAdminKnowledgeBenchmarksIdRoute,
+  }
+
+const ApiAdminKnowledgeBenchmarksRouteWithChildren =
+  ApiAdminKnowledgeBenchmarksRoute._addFileChildren(
+    ApiAdminKnowledgeBenchmarksRouteChildren,
+  )
+
+interface ApiAdminKnowledgeNotesRouteChildren {
+  ApiAdminKnowledgeNotesIdRoute: typeof ApiAdminKnowledgeNotesIdRoute
+}
+
+const ApiAdminKnowledgeNotesRouteChildren: ApiAdminKnowledgeNotesRouteChildren =
+  {
+    ApiAdminKnowledgeNotesIdRoute: ApiAdminKnowledgeNotesIdRoute,
+  }
+
+const ApiAdminKnowledgeNotesRouteWithChildren =
+  ApiAdminKnowledgeNotesRoute._addFileChildren(
+    ApiAdminKnowledgeNotesRouteChildren,
+  )
+
 interface ApiAdminSistemaAlertsRouteChildren {
   ApiAdminSistemaAlertsIdAckRoute: typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -1118,6 +1331,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
+  ApiAdminKnowledgeBenchmarksRoute:
+    ApiAdminKnowledgeBenchmarksRouteWithChildren,
+  ApiAdminKnowledgeExportRoute: ApiAdminKnowledgeExportRoute,
+  ApiAdminKnowledgeNotesRoute: ApiAdminKnowledgeNotesRouteWithChildren,
+  ApiAdminKnowledgeOverviewRoute: ApiAdminKnowledgeOverviewRoute,
+  ApiAdminKnowledgeSourcesRoute: ApiAdminKnowledgeSourcesRoute,
   ApiAdminSistemaAlertsRoute: ApiAdminSistemaAlertsRouteWithChildren,
   ApiAdminSistemaCapsRoute: ApiAdminSistemaCapsRoute,
   ApiAdminSistemaCostMetrics24hRoute: ApiAdminSistemaCostMetrics24hRoute,
@@ -1135,6 +1354,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksSyncDataforseoCostsRoute:
     ApiPublicHooksSyncDataforseoCostsRoute,
   ApiPublicHooksSyncOpenaiCostsRoute: ApiPublicHooksSyncOpenaiCostsRoute,
+  ApiAdminKnowledgeHistoryTypeIdRoute: ApiAdminKnowledgeHistoryTypeIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
