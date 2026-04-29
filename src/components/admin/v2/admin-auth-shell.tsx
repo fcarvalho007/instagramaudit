@@ -15,6 +15,49 @@ type AuthState = "checking" | "signed_out" | "denied" | "in";
 const UNSET: unique symbol = Symbol("unset");
 type EvaluatedToken = string | null | typeof UNSET;
 
+const CACHE_KEY = "admin.whoami.v1";
+const CACHE_TTL_MS = 60_000;
+const SPINNER_DELAY_MS = 180;
+
+type CachedWhoami = {
+  token: string;
+  allowed: boolean;
+  email: string | null;
+  ts: number;
+};
+
+function readCache(): CachedWhoami | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedWhoami;
+    if (!parsed || typeof parsed.token !== "string") return null;
+    if (Date.now() - parsed.ts > CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(entry: CachedWhoami) {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function clearCache() {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 interface AdminAuthShellProps {
   children: ReactNode;
   /** Callback opcional para o layout receber o handler de logout. */
@@ -24,6 +67,7 @@ interface AdminAuthShellProps {
 export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps) {
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
+  const [showSpinner, setShowSpinner] = useState(false);
   const lastEvaluatedTokenRef = useRef<EvaluatedToken>(UNSET);
 
   useEffect(() => {
@@ -36,9 +80,28 @@ export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps)
         if (!cancelled) {
           setAuthState("signed_out");
           setDeniedEmail(null);
+          clearCache();
         }
         return;
       }
+
+      // Optimistic: usar cache se mesmo token e ainda fresco.
+      const cached = readCache();
+      if (cached && cached.token === token) {
+        if (cached.allowed) {
+          if (!cancelled) {
+            setAuthState("in");
+            setDeniedEmail(null);
+          }
+          return;
+        }
+        if (!cancelled) {
+          setDeniedEmail(cached.email);
+          setAuthState("denied");
+        }
+        return;
+      }
+
       try {
         const res = await fetch("/api/admin/whoami", {
           headers: { Authorization: `Bearer ${token}` },
@@ -48,6 +111,12 @@ export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps)
           email?: string | null;
         };
         if (cancelled) return;
+        writeCache({
+          token,
+          allowed: !!body.allowed,
+          email: body.email ?? null,
+          ts: Date.now(),
+        });
         if (body.allowed) {
           setAuthState("in");
           setDeniedEmail(null);
@@ -65,9 +134,9 @@ export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps)
       void evaluate(session?.access_token ?? null);
     });
 
-    void supabase.auth.getSession().then(({ data }) => {
-      void evaluate(data.session?.access_token ?? null);
-    });
+    // Nota: `onAuthStateChange` dispara `INITIAL_SESSION` no arranque, por isso
+    // não precisamos de chamar `getSession()` em paralelo — evita race e segunda
+    // chamada a `/api/admin/whoami`.
 
     return () => {
       cancelled = true;
@@ -75,17 +144,32 @@ export function AdminAuthShell({ children, onLogoutReady }: AdminAuthShellProps)
     };
   }, []);
 
+  // Mostra "A verificar sessão…" só após pequeno delay, para evitar flash
+  // quando o whoami é rápido ou o cache resolve imediatamente.
+  useEffect(() => {
+    if (authState !== "checking") {
+      setShowSpinner(false);
+      return;
+    }
+    const t = setTimeout(() => setShowSpinner(true), SPINNER_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [authState]);
+
   useEffect(() => {
     if (!onLogoutReady) return;
     onLogoutReady(async () => {
       await supabase.auth.signOut().catch(() => null);
       lastEvaluatedTokenRef.current = UNSET;
+      clearCache();
       setAuthState("signed_out");
       setDeniedEmail(null);
     });
   }, [onLogoutReady]);
 
   if (authState === "checking") {
+    if (!showSpinner) {
+      return <div className="min-h-screen bg-surface-base" />;
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-base text-content-secondary">
         A verificar sessão…
