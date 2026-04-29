@@ -555,6 +555,106 @@ export function ReportDocument(input: ReportDocumentInput) {
   return _ReportDocumentImpl(input);
 }
 
+function MarketSignalsPage({
+  profile,
+  signals,
+  generatedAt,
+}: {
+  profile: PublicAnalysisProfile;
+  signals: MarketSignalsForPdf;
+  generatedAt: string;
+}) {
+  const trendLabel =
+    signals.trend === "up"
+      ? "Em alta"
+      : signals.trend === "down"
+        ? "Em queda"
+        : "Estável";
+  const trendColor =
+    signals.trend === "up"
+      ? PDF_COLORS.positive
+      : signals.trend === "down"
+        ? PDF_COLORS.negative
+        : PDF_COLORS.inkSoft;
+
+  const suggestion =
+    signals.trend === "up"
+      ? `Existe procura crescente por «${signals.strongest}». Reforçar conteúdo sobre este tema nas próximas semanas.`
+      : signals.trend === "down"
+        ? `A procura por «${signals.strongest}» tem perdido força. Avaliar diversificação de temas.`
+        : `«${signals.strongest}» mantém procura estável fora do Instagram. Consolidar autoridade neste tema.`;
+
+  const usableCount = signals.usableKeywords.length;
+  const droppedCount = signals.droppedKeywords.length;
+  const totalAnalysed = usableCount + droppedCount;
+  const hint =
+    droppedCount > 0
+      ? `${usableCount} com sinal · ${droppedCount} sem volume mensurável`
+      : `${usableCount} com sinal mensurável`;
+
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader kicker={`@${profile.username}`} />
+
+      <Text style={styles.sectionTitle}>Mercado · DataForSEO</Text>
+      <Text style={styles.sectionHeading}>Sinais de mercado</Text>
+      <Text style={styles.sectionLead}>
+        Temas associados ao perfil com procura observável fora do Instagram.
+      </Text>
+
+      <View style={styles.marketHeroCard}>
+        <Text style={styles.marketHeroLabel}>Tema com maior sinal</Text>
+        <Text style={styles.marketHeroValue}>{signals.strongest}</Text>
+      </View>
+
+      <View style={styles.marketRow}>
+        <View style={styles.marketCell}>
+          <Text style={styles.marketCellLabel}>Palavras-chave analisadas</Text>
+          <Text style={styles.marketCellValue}>{totalAnalysed}</Text>
+          <Text style={styles.marketCellHint}>{hint}</Text>
+        </View>
+        <View style={styles.marketCell}>
+          <Text style={styles.marketCellLabel}>Tendência</Text>
+          <Text style={[styles.marketCellValue, { color: trendColor }]}>
+            {trendLabel}
+          </Text>
+          <Text style={styles.marketCellHint}>
+            {signals.pointCount > 0
+              ? `Baseado em ${signals.pointCount} pontos da série mais forte`
+              : "Série curta — leitura indicativa"}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.marketSuggestionCard}>
+        <Text style={styles.marketSuggestionLabel}>O que isto sugere</Text>
+        <Text style={styles.marketSuggestionBody}>{suggestion}</Text>
+      </View>
+
+      {usableCount > 0 ? (
+        <View style={styles.marketChipsRow}>
+          {signals.usableKeywords.map((kw) => (
+            <Text key={`u-${kw}`} style={styles.marketChipUsable}>
+              {kw}
+            </Text>
+          ))}
+          {signals.droppedKeywords.map((kw) => (
+            <Text key={`d-${kw}`} style={styles.marketChipDropped}>
+              {kw}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      <Text style={styles.marketSourceNote}>
+        Fonte: DataForSEO / Google Trends. Leitura editorial, não previsão.
+      </Text>
+
+      <PageFooter generatedAt={generatedAt} />
+    </Page>
+  );
+}
+
 function AiInsightsPage({
   profile,
   insights,
