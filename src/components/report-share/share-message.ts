@@ -40,10 +40,7 @@ function formatCadence(perWeek: number): string | null {
   return `${display} ${noun}/semana`;
 }
 
-export function buildShareMessage({
-  result,
-  url,
-}: ShareMessageInput): ShareMessage {
+export function buildShareMessage({ result, url }: ShareMessageInput): ShareMessage {
   const { data } = result;
   const handle = data.profile.username;
   const km = data.keyMetrics;
