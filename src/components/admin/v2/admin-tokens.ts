@@ -86,8 +86,8 @@ export const ADMIN_LITERAL = {
   pipelineEmail: "#1D9E75",
   // ===== Relatórios · gráficos =====
   chartDelivered: "#1D9E75",
-  chartFailed: "#E24B4A",
-  chartQueued: "#888780",
+  chartFailed: "#A32D2D",
+  chartQueued: "#B4B2A9",
   chartTiming: "#D85A30",
   slaLine: "#888780",
   // ===== Saúde / pulse =====
