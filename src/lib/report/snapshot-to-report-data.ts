@@ -955,6 +955,15 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     topKeywords,
     bestDays,
     aiInsights,
+    // Real-data reports do not synthesise a fake 15-day trend per KPI.
+    // Empty arrays make <Sparkline> render nothing — the value + sub still
+    // shows. The mock /report/example provides real arrays for the demo.
+    heroSparklines: {
+      engagementRate: [],
+      postsAnalyzed: [],
+      postingFrequencyWeekly: [],
+      dominantFormatShare: [],
+    },
   };
 
   const coverage: ReportCoverage = {
