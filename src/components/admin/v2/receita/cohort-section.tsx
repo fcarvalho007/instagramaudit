@@ -9,13 +9,13 @@ import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { MOCK_COHORTS } from "@/lib/admin/mock-data";
 
-/** 5-step verde (escuro = retenção alta). */
-function retentionStyle(pct: number): { bg: string; fg: string } {
-  if (pct >= 90) return { bg: "rgb(var(--admin-revenue-800))", fg: "#FFFFFF" };
-  if (pct >= 80) return { bg: "rgb(var(--admin-revenue-700))", fg: "#FFFFFF" };
-  if (pct >= 70) return { bg: "rgb(var(--admin-revenue-500))", fg: "#FFFFFF" };
-  if (pct >= 60) return { bg: "rgb(var(--admin-revenue-400))", fg: "rgb(var(--admin-revenue-900))" };
-  return { bg: "rgb(var(--admin-revenue-100))", fg: "rgb(var(--admin-revenue-900))" };
+/** 5-step esmeralda — fundos suaves, leitura editorial (Bloomberg-like). */
+function retentionStyle(pct: number): { bg: string; fg: string; border: string } {
+  if (pct >= 90) return { bg: "#E1F5EE", fg: "#04342C", border: "#5DCAA5" };
+  if (pct >= 80) return { bg: "#E8F7EF", fg: "#085041", border: "#9FE1CB" };
+  if (pct >= 70) return { bg: "#EFF8F2", fg: "#0F6E56", border: "#C4E8D7" };
+  if (pct >= 60) return { bg: "#F4F9F4", fg: "#1D9E75", border: "#D9ECDD" };
+  return { bg: "#F7F8F4", fg: "#5F5E5A", border: "#E8E5DA" };
 }
 
 const SCALE_LEGEND = [10, 50, 65, 75, 85, 95]; // pontos representativos para os 5 steps
@@ -67,19 +67,25 @@ export function CohortSection() {
                       {pct === null ? (
                         <span className="text-admin-text-tertiary">—</span>
                       ) : (
-                        <span
-                          className="inline-block min-w-[40px] rounded font-mono font-medium"
-                          style={{
-                            backgroundColor: retentionStyle(pct).bg,
-                            color: retentionStyle(pct).fg,
-                            padding: "8px 6px",
-                            borderRadius: "6px",
-                            fontFeatureSettings: "'tnum'",
-                          }}
-                          aria-label={`Retenção mês ${i + 1}: ${pct}%`}
-                        >
-                          {pct}%
-                        </span>
+                        (() => {
+                          const s = retentionStyle(pct);
+                          return (
+                            <span
+                              className="inline-block min-w-[40px] font-mono font-medium"
+                              style={{
+                                backgroundColor: s.bg,
+                                color: s.fg,
+                                border: `1px solid ${s.border}`,
+                                padding: "7px 6px",
+                                borderRadius: "6px",
+                                fontFeatureSettings: "'tnum'",
+                              }}
+                              aria-label={`Retenção mês ${i + 1}: ${pct}%`}
+                            >
+                              {pct}%
+                            </span>
+                          );
+                        })()
                       )}
                     </td>
                   ))}

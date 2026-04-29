@@ -16,6 +16,69 @@ import {
   MOCK_PLAN_TOTALS,
 } from "@/lib/admin/mock-data";
 
+/**
+ * Mini-donut SVG (56×56) que representa proporcionalmente a percentagem
+ * de receita concentrada num escalão. Label central em mono.
+ */
+function MiniDonut({
+  pct,
+  color,
+  label,
+}: {
+  pct: number;
+  color: string;
+  label: string;
+}) {
+  const radius = 22;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - Math.max(0, Math.min(100, pct)) / 100);
+  return (
+    <span
+      aria-hidden="true"
+      className="relative inline-flex shrink-0 items-center justify-center"
+      style={{ width: 56, height: 56 }}
+    >
+      <svg width={56} height={56} viewBox="0 0 56 56">
+        <circle
+          cx={28}
+          cy={28}
+          r={radius}
+          fill="none"
+          stroke="#F0EFEA"
+          strokeWidth={5}
+        />
+        <circle
+          cx={28}
+          cy={28}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={5}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          transform="rotate(-90 28 28)"
+        />
+      </svg>
+      <span
+        className="absolute font-mono text-[11px] font-medium"
+        style={{ color }}
+      >
+        {label}
+      </span>
+    </span>
+  );
+}
+
+/** Cores por ordem dos tiers em MOCK_CONCENTRATION (Top 10% / Top 25% / Bottom 50%). */
+const TIER_DONUT_COLORS = ["#04342C", "#1D9E75", "#97C459"];
+
+/** Extrai a percentagem (0–100) do label do tier (ex.: "10%" → 10). Fallback para 0. */
+function tierPct(label: string): number {
+  const m = label.match(/(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
 export function PlansSection() {
   return (
     <DemoOnlySection
@@ -134,15 +197,13 @@ export function PlansSection() {
           </p>
 
           <ul className="mt-4 space-y-3">
-            {MOCK_CONCENTRATION.map((tier) => (
+            {MOCK_CONCENTRATION.map((tier, idx) => (
               <li key={tier.title} className="flex items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg font-mono text-[14px] font-medium"
-                  style={{ backgroundColor: tier.bg, color: tier.fg }}
-                >
-                  {tier.label}
-                </span>
+                <MiniDonut
+                  pct={tierPct(tier.label)}
+                  color={TIER_DONUT_COLORS[idx] ?? TIER_DONUT_COLORS[0]}
+                  label={tier.label}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="m-0 text-[13px] font-medium text-admin-text-primary">
                     {tier.title}

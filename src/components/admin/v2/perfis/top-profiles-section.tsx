@@ -94,6 +94,7 @@ function RankingRow({ profile }: { profile: MockTopProfile }) {
         variant={meta.avatar}
         size={32}
         ariaLabel={profile.handle}
+        seed={profile.handle}
       />
       <div className="min-w-0 flex-1">
         <p className="m-0 flex items-baseline gap-2 truncate">

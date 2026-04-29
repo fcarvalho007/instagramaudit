@@ -114,7 +114,7 @@ export function ChartsSection() {
                   allowDecimals={false}
                 />
                 <Tooltip
-                  cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
+                  cursor={{ fill: "rgba(31, 30, 27, 0.04)" }}
                   content={({ active, payload, label }) => {
                     if (!active || !payload || !payload.length) return null;
                     const labels: Record<string, string> = {

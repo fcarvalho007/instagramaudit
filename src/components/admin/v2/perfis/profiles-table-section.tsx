@@ -228,6 +228,7 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
             variant={meta.avatar}
             size={32}
             ariaLabel={row.handle}
+            seed={row.handle}
           />
           <div className="min-w-0">
             <p className="m-0 truncate text-[13px] text-admin-text-primary">
