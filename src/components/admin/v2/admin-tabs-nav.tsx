@@ -21,7 +21,7 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { to: "/admin/visao-geral", label: "Visão geral" },
-  { to: "/admin/receita", label: "Receita" },
+  { to: "/admin/receita", label: "Receita e despesas" },
   { to: "/admin/clientes", label: "Clientes" },
   { to: "/admin/relatorios", label: "Relatórios" },
   { to: "/admin/perfis", label: "Perfis" },
