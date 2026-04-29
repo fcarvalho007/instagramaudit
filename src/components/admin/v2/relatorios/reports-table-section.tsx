@@ -24,6 +24,8 @@ import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import { AdminActionButton } from "../admin-action-button";
+import { FilterPills, type FilterOption } from "../filter-pills";
+import { ReportDrawer } from "../report-drawer";
 import {
   Tooltip,
   TooltipContent,
@@ -40,13 +42,6 @@ import {
 
 type ReportFilter = "all" | "delivered" | "in_progress" | "failed";
 
-const FILTER_LABELS: Record<ReportFilter, string> = {
-  all: "Todos",
-  delivered: "Entregues",
-  in_progress: "Em curso",
-  failed: "Falhados",
-};
-
 function matchesFilter(filter: ReportFilter, status: ReportStatus): boolean {
   if (filter === "all") return true;
   if (filter === "delivered") return status === "delivered";
@@ -61,6 +56,13 @@ const ORIGIN_LABEL: Record<ReportOrigin, string> = {
 
 export function ReportsTableSection() {
   const [filter, setFilter] = useState<ReportFilter>("all");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  function openReport(id: string) {
+    setSelectedReportId(id);
+    setDrawerOpen(true);
+  }
 
   const counts = MOCK_REPORTS_COUNTS;
 
@@ -69,12 +71,12 @@ export function ReportsTableSection() {
     [filter],
   );
 
-  const filterCounts: Record<ReportFilter, number> = {
-    all: counts.all,
-    delivered: counts.delivered,
-    in_progress: counts.inProgress,
-    failed: counts.failed,
-  };
+  const filterOptions: ReadonlyArray<FilterOption<ReportFilter>> = [
+    { value: "all", label: "Todos", count: counts.all },
+    { value: "delivered", label: "Entregues", count: counts.delivered },
+    { value: "in_progress", label: "Em curso", count: counts.inProgress },
+    { value: "failed", label: "Falhados", count: counts.failed },
+  ];
 
   return (
     <section>
@@ -91,17 +93,12 @@ export function ReportsTableSection() {
             info="Histórico completo de relatórios pedidos com estado actual, duração e custo por execução. Filtros pill no topo direito."
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(Object.keys(FILTER_LABELS) as ReportFilter[]).map((f) => (
-            <FilterPill
-              key={f}
-              active={filter === f}
-              onClick={() => setFilter(f)}
-              label={FILTER_LABELS[f]}
-              count={filterCounts[f]}
-            />
-          ))}
-        </div>
+        <FilterPills
+          options={filterOptions}
+          value={filter}
+          onChange={setFilter}
+          ariaLabel="Filtros de relatório"
+        />
       </div>
 
       <AdminCard className="!p-0">
@@ -121,7 +118,7 @@ export function ReportsTableSection() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <ReportRow key={r.id} report={r} />
+                <ReportRow key={r.id} report={r} onView={() => openReport(r.id)} />
               ))}
               {rows.length === 0 ? (
                 <tr>
@@ -151,39 +148,13 @@ export function ReportsTableSection() {
           </div>
         </div>
       </AdminCard>
-    </section>
-  );
-}
 
-function FilterPill({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count: number;
-}) {
-  return (
-    <AdminActionButton
-      size="sm"
-      variant={active ? "active" : "default"}
-      onClick={onClick}
-      aria-pressed={active}
-    >
-      {label}{" "}
-      <span
-        className={
-          active
-            ? "ml-1 text-admin-text-secondary"
-            : "ml-1 text-admin-text-tertiary"
-        }
-      >
-        · {count}
-      </span>
-    </AdminActionButton>
+      <ReportDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        reportId={selectedReportId}
+      />
+    </section>
   );
 }
 
@@ -205,7 +176,7 @@ function Th({
   );
 }
 
-function ReportRow({ report }: { report: MockReport }) {
+function ReportRow({ report, onView }: { report: MockReport; onView: () => void }) {
   return (
     <tr className="border-t border-admin-border transition-colors hover:bg-[var(--color-admin-surface-muted)]">
       <td className="px-6 py-3.5 align-top">
@@ -244,7 +215,7 @@ function ReportRow({ report }: { report: MockReport }) {
         {report.cost ?? "—"}
       </td>
       <td className="px-6 py-3.5 align-top">
-        <ActionsCell status={report.status} />
+        <ActionsCell status={report.status} onView={onView} />
       </td>
     </tr>
   );
@@ -268,7 +239,7 @@ function StatusBadge({ status }: { status: ReportStatus }) {
   return <AdminBadge variant="danger">falhou</AdminBadge>;
 }
 
-function ActionsCell({ status }: { status: ReportStatus }) {
+function ActionsCell({ status, onView }: { status: ReportStatus; onView: () => void }) {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="flex items-center justify-end gap-2 text-admin-text-tertiary">
@@ -277,6 +248,7 @@ function ActionsCell({ status }: { status: ReportStatus }) {
             label="Investigar falha"
             icon={<AlertCircle size={16} strokeWidth={1.75} />}
             tone="danger"
+            onClick={onView}
           />
         ) : null}
         {status === "delivered" || status === "failed" ? (
@@ -284,11 +256,13 @@ function ActionsCell({ status }: { status: ReportStatus }) {
             <ActionIcon
               label="Re-gerar PDF"
               icon={<RefreshCw size={16} strokeWidth={1.75} />}
+              onClick={onView}
             />
             {status === "delivered" ? (
               <ActionIcon
                 label="Re-enviar email"
                 icon={<RotateCw size={16} strokeWidth={1.75} />}
+                onClick={onView}
               />
             ) : null}
           </>
@@ -296,6 +270,7 @@ function ActionsCell({ status }: { status: ReportStatus }) {
         <ActionIcon
           label="Ver detalhe"
           icon={<Eye size={16} strokeWidth={1.75} />}
+          onClick={onView}
         />
       </div>
     </TooltipProvider>
@@ -306,10 +281,12 @@ function ActionIcon({
   label,
   icon,
   tone,
+  onClick,
 }: {
   label: string;
   icon: React.ReactNode;
   tone?: "danger";
+  onClick?: () => void;
 }) {
   return (
     <Tooltip>
@@ -317,6 +294,7 @@ function ActionIcon({
         <button
           type="button"
           aria-label={label}
+          onClick={onClick}
           className={`inline-flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-[var(--color-admin-surface-muted)] hover:text-admin-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-revenue-500 ${
             tone === "danger" ? "text-admin-danger-500" : ""
           }`}
