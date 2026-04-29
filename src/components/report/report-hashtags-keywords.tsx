@@ -3,8 +3,15 @@ import { useReportData } from "./report-data-context";
 
 export function ReportHashtagsKeywords() {
   const reportData = useReportData();
-  const maxHashtagUses = Math.max(
-    ...reportData.topHashtags.map((h) => h.uses),
+  // Ordenar hashtags por envolvimento médio (sinal de qualidade), não por
+  // frequência. A largura da barra reflecte o engagement; a contagem de
+  // usos passa a ser uma etiqueta secundária.
+  const sortedHashtags = [...reportData.topHashtags].sort(
+    (a, b) => b.avgEngagement - a.avgEngagement,
+  );
+  const maxHashtagEng = Math.max(
+    ...sortedHashtags.map((h) => h.avgEngagement),
+    0.0001,
   );
   const maxKeywordCount = Math.max(
     ...reportData.topKeywords.map((k) => k.count),
@@ -16,12 +23,12 @@ export function ReportHashtagsKeywords() {
       <ReportSection
         label="Hashtags mais usadas"
         title="Que etiquetas estão a ser usadas"
-        subtitle="Frequência de uso e envolvimento médio associado."
+        subtitle="Ordenadas pelo envolvimento médio que geram, não pela frequência."
       >
         <div className="bg-surface-secondary border border-border-default rounded-2xl shadow-card p-6">
           <ul className="space-y-4">
-            {reportData.topHashtags.map((h) => {
-              const pct = (h.uses / maxHashtagUses) * 100;
+            {sortedHashtags.map((h) => {
+              const pct = (h.avgEngagement / maxHashtagEng) * 100;
               return (
                 <li key={h.tag} className="space-y-1.5">
                   <div className="flex items-center justify-between gap-3">
@@ -43,7 +50,7 @@ export function ReportHashtagsKeywords() {
                   <div className="h-1.5 w-full rounded-full bg-surface-muted overflow-hidden">
                     <div
                       className="h-full rounded-full bg-accent-primary"
-                      style={{ width: `${pct}%` }}
+                      style={{ width: `${Math.max(pct, 4)}%` }}
                     />
                   </div>
                 </li>

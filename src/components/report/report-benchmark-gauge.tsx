@@ -1,6 +1,7 @@
 import { ReportSection } from "./report-section";
 import { useReportData } from "./report-data-context";
 import { ArrowRight } from "lucide-react";
+import { ReportEngagementHistory } from "@/components/report-redesign/report-engagement-history";
 
 export function ReportBenchmarkGauge() {
   const reportData = useReportData();
@@ -139,6 +140,14 @@ export function ReportBenchmarkGauge() {
             {absDelta}%)
           </span>
         </div>
+
+        {/* Mini-histórico das últimas análises */}
+        {reportData.profile.username ? (
+          <ReportEngagementHistory
+            handle={reportData.profile.username}
+            current={m.engagementRate}
+          />
+        ) : null}
       </div>
     </ReportSection>
   );

@@ -46,6 +46,12 @@ export function ReportFormatBreakdown() {
           const max = Math.max(f.engagement, f.benchmark) * 1.5;
           const valuePct = (f.engagement / max) * 100;
           const benchPct = (f.benchmark / max) * 100;
+          const actualBarClass =
+            f.status === "abaixo"
+              ? "bg-signal-danger"
+              : f.status === "acima"
+                ? "bg-signal-success"
+                : "bg-accent-primary";
 
           return (
             <div
@@ -80,24 +86,40 @@ export function ReportFormatBreakdown() {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <div className="relative h-2 w-full rounded-full bg-surface-muted overflow-hidden">
-                  <div
-                    className="absolute left-0 top-0 h-full rounded-full bg-accent-primary"
-                    style={{ width: `${valuePct}%` }}
-                  />
-                  <div
-                    className="absolute top-1/2 -translate-y-1/2 h-3 w-px bg-content-primary/60 rounded-full"
-                    style={{ left: `calc(${benchPct}% - 1px)` }}
-                  />
+              <div className="space-y-3">
+                {/* Barra "Atual" — cor depende da posição face ao benchmark */}
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-content-secondary">
+                      Atual
+                    </span>
+                    <span className="font-sans text-[18px] font-medium tracking-[-0.01em] text-content-primary tabular-nums">
+                      {f.engagement.toString().replace(".", ",")}%
+                    </span>
+                  </div>
+                  <div className="relative h-2 w-full rounded-full bg-surface-muted overflow-hidden">
+                    <div
+                      className={cn("absolute left-0 top-0 h-full rounded-full", actualBarClass)}
+                      style={{ width: `${Math.max(valuePct, 2)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="font-sans text-[22px] font-medium tracking-[-0.01em] text-content-primary">
-                    {f.engagement.toString().replace(".", ",")}%
-                  </span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-content-tertiary">
-                    bench {f.benchmark.toString().replace(".", ",")}%
-                  </span>
+                {/* Barra "Benchmark" — sempre cinza neutro */}
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-content-tertiary">
+                      Benchmark
+                    </span>
+                    <span className="font-mono text-[13px] font-medium text-content-secondary tabular-nums">
+                      {f.benchmark.toString().replace(".", ",")}%
+                    </span>
+                  </div>
+                  <div className="relative h-2 w-full rounded-full bg-surface-muted overflow-hidden">
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full bg-content-tertiary/40"
+                      style={{ width: `${Math.max(benchPct, 2)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
