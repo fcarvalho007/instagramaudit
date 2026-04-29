@@ -26,6 +26,7 @@ import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trend
 import { ReportSectionFrame } from "@/components/report-redesign/report-section-frame";
 import { MarketSignalsChart } from "./market-signals-chart";
 import { marketSignalsCopy } from "./market-signals-copy";
+import { MarketStatsStrip, type MarketStat } from "./market-stats-strip";
 
 // ============================================================================
 // Public types
@@ -408,42 +409,42 @@ export function ReportMarketSignals({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <MetricCard
-          eyebrow={marketSignalsCopy.cards.strongest}
-          value={<span className="text-blue-700">{strongest}</span>}
-          hint="Tema com maior volume de pesquisa pública entre os detetados."
-        />
-        <MetricCard
-          eyebrow={marketSignalsCopy.cards.keywords}
-          value={`${usable.length}`}
-          hint={
-            dropped.length > 0
-              ? `${usable.length} com sinal · ${dropped.length} sem volume relevante`
-              : "Todas as palavras-chave detetadas têm volume mensurável."
-          }
-        />
-        <MetricCard
-          eyebrow={marketSignalsCopy.cards.trend}
-          value={marketSignalsCopy.trendLabels[trend]}
-          accent={trendAccent}
-          hint={
-            trend === "up"
-              ? "A procura tem aumentado nas últimas semanas."
-              : trend === "down"
-                ? "A procura tem perdido força nas últimas semanas."
-                : "A procura mantém-se equilibrada ao longo do período."
-          }
-        />
-        <MetricCard
-          eyebrow={marketSignalsCopy.cards.suggestion}
-          value={
-            <span className="text-[15px] md:text-base font-sans font-normal leading-relaxed text-slate-700">
-              {composeSuggestion(strongest, trend)}
-            </span>
-          }
-        />
-      </div>
+      <MarketStatsStrip
+        items={[
+          {
+            eyebrow: marketSignalsCopy.cards.strongest,
+            value: <span className="text-blue-700">{strongest}</span>,
+            hint: "Tema com maior volume de pesquisa pública entre os detetados.",
+          },
+          {
+            eyebrow: marketSignalsCopy.cards.keywords,
+            value: `${usable.length}`,
+            hint:
+              dropped.length > 0
+                ? `${usable.length} com sinal · ${dropped.length} sem volume relevante`
+                : "Todas as palavras-chave detetadas têm volume mensurável.",
+          },
+          {
+            eyebrow: marketSignalsCopy.cards.trend,
+            value: marketSignalsCopy.trendLabels[trend],
+            accent: trendAccent,
+            hint:
+              trend === "up"
+                ? "A procura tem aumentado nas últimas semanas."
+                : trend === "down"
+                  ? "A procura tem perdido força nas últimas semanas."
+                  : "A procura mantém-se equilibrada ao longo do período.",
+          },
+          {
+            eyebrow: marketSignalsCopy.cards.suggestion,
+            value: (
+              <span className="text-[15px] md:text-base font-sans font-normal leading-relaxed text-slate-700">
+                {composeSuggestion(strongest, trend)}
+              </span>
+            ),
+          } satisfies MarketStat,
+        ]}
+      />
 
       {showChart ? (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">

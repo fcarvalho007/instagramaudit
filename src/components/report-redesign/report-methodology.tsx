@@ -1,11 +1,18 @@
 import { Database, LineChart, Sparkles, Search } from "lucide-react";
 import { ReportSectionFrame } from "./report-section-frame";
 import { REDESIGN_TOKENS } from "./report-tokens";
+import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
+
+interface Props {
+  enriched?: ReportEnriched;
+}
 
 /**
- * Metodologia humana, não-técnica. Card único com 4 fontes.
+ * Metodologia humana, não-técnica. Grid de 4 fontes seguida (opcional)
+ * pela linha fina de proveniência do dataset de benchmark, unificando
+ * o que antes vivia em dois blocos separados.
  */
-export function ReportMethodology() {
+export function ReportMethodology({ enriched }: Props = {}) {
   const sources = [
     {
       icon: Database,
@@ -28,6 +35,8 @@ export function ReportMethodology() {
       body: "Indicadores públicos de procura associados aos temas do perfil, para perceber relevância fora da plataforma.",
     },
   ] as const;
+
+  const benchmarkSource = enriched?.benchmarkSource ?? null;
 
   return (
     <ReportSectionFrame
@@ -56,6 +65,23 @@ export function ReportMethodology() {
           </div>
         ))}
       </div>
+
+      {benchmarkSource ? (
+        <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+            Fonte do benchmark
+            {benchmarkSource.datasetVersion ? (
+              <>
+                <span className="mx-2 text-slate-400">·</span>
+                <span>dataset {benchmarkSource.datasetVersion}</span>
+              </>
+            ) : null}
+          </p>
+          <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
+            {benchmarkSource.note}
+          </p>
+        </div>
+      ) : null}
     </ReportSectionFrame>
   );
 }
