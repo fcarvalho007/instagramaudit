@@ -24,6 +24,11 @@ import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import { AdminAvatar } from "../admin-avatar";
 import { AdminActionButton } from "../admin-action-button";
+import { FilterPills, type FilterOption } from "../filter-pills";
+import { AdminSearchInput, type AdminSearchInputHandle } from "../admin-search-input";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useCmdK } from "@/hooks/use-cmd-k";
+import { useRef } from "react";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import {
   Tooltip,
@@ -40,13 +45,6 @@ import {
 
 type ProfileFilter = "all" | "with_reports" | "repeated" | "no_conversion";
 
-const FILTER_LABELS: Record<ProfileFilter, string> = {
-  all: "Todos",
-  with_reports: "Com reports",
-  repeated: "Repetidos",
-  no_conversion: "Sem conversão",
-};
-
 function matchesFilter(filter: ProfileFilter, row: MockProfileRow): boolean {
   if (filter === "all") return true;
   if (filter === "with_reports") return row.reports > 0;
@@ -62,6 +60,10 @@ const MAX_ANALYSES = MOCK_PROFILES_LIST.reduce(
 
 export function ProfilesTableSection() {
   const [filter, setFilter] = useState<ProfileFilter>("all");
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, 200);
+  const searchRef = useRef<AdminSearchInputHandle>(null);
+  useCmdK(() => searchRef.current?.focus());
 
   const counts = MOCK_PROFILES_COUNTS;
   const filterCounts: Record<ProfileFilter, number> = {
@@ -71,10 +73,25 @@ export function ProfilesTableSection() {
     no_conversion: counts.noConversion,
   };
 
-  const rows = useMemo(
-    () => MOCK_PROFILES_LIST.filter((r) => matchesFilter(filter, r)),
-    [filter],
-  );
+  const rows = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    return MOCK_PROFILES_LIST.filter((r) => {
+      if (!matchesFilter(filter, r)) return false;
+      if (!q) return true;
+      return (
+        r.handle.toLowerCase().includes(q) ||
+        r.sub.toLowerCase().includes(q) ||
+        r.category.toLowerCase().includes(q)
+      );
+    });
+  }, [filter, debouncedQuery]);
+
+  const filterOptions: ReadonlyArray<FilterOption<ProfileFilter>> = [
+    { value: "all", label: "Todos", count: filterCounts.all },
+    { value: "with_reports", label: "Com reports", count: filterCounts.with_reports },
+    { value: "repeated", label: "Repetidos", count: filterCounts.repeated },
+    { value: "no_conversion", label: "Sem conversão", count: filterCounts.no_conversion },
+  ];
 
   return (
     <section>
@@ -87,16 +104,20 @@ export function ProfilesTableSection() {
             info="Lista completa de perfis Instagram analisados. Usa os filtros para isolar perfis que já converteram, repetidos sem report ou outros segmentos."
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(Object.keys(FILTER_LABELS) as ProfileFilter[]).map((f) => (
-            <FilterPill
-              key={f}
-              active={filter === f}
-              onClick={() => setFilter(f)}
-              label={FILTER_LABELS[f]}
-              count={filterCounts[f]}
-            />
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <AdminSearchInput
+            ref={searchRef}
+            value={query}
+            onChange={setQuery}
+            placeholder="Pesquisar perfil ou categoria…"
+            ariaLabel="Pesquisar perfis"
+          />
+          <FilterPills
+            options={filterOptions}
+            value={filter}
+            onChange={setFilter}
+            ariaLabel="Filtros de perfil"
+          />
         </div>
       </div>
 
@@ -125,7 +146,21 @@ export function ProfilesTableSection() {
                     colSpan={8}
                     className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary"
                   >
-                    Sem perfis para este filtro.
+                    {debouncedQuery
+                      ? `Sem resultados para «${debouncedQuery}».`
+                      : "Sem perfis para este filtro."}
+                    {debouncedQuery ? (
+                      <>
+                        {" "}
+                        <button
+                          type="button"
+                          onClick={() => setQuery("")}
+                          className="underline underline-offset-2 hover:text-admin-text-primary"
+                        >
+                          Limpar pesquisa
+                        </button>
+                      </>
+                    ) : null}
                   </td>
                 </tr>
               ) : null}
@@ -148,38 +183,6 @@ export function ProfilesTableSection() {
         </div>
       </AdminCard>
     </section>
-  );
-}
-
-function FilterPill({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count: number;
-}) {
-  return (
-    <AdminActionButton
-      size="sm"
-      variant={active ? "active" : "default"}
-      onClick={onClick}
-      aria-pressed={active}
-    >
-      {label}{" "}
-      <span
-        className={
-          active
-            ? "ml-1 text-admin-text-secondary"
-            : "ml-1 text-admin-text-tertiary"
-        }
-      >
-        · {count}
-      </span>
-    </AdminActionButton>
   );
 }
 
