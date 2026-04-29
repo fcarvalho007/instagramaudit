@@ -1,8 +1,8 @@
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import type { ReportData } from "@/components/report/report-mock-data";
-import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReportSectionFrame } from "./report-section-frame";
+import { REDESIGN_TOKENS } from "./report-tokens";
 
 interface Props {
   data: ReportData;
@@ -10,11 +10,27 @@ interface Props {
 }
 
 /**
+ * Substituições editoriais aplicadas no render para suavizar copy
+ * técnica que possa ter sido persistida em snapshots antigos. Não
+ * mutam dados — apenas formatação na camada de apresentação.
+ */
+const TECH_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/engagement_pct/gi, "envolvimento médio"],
+  [/benchmark_value_pct/gi, "referência esperada"],
+  [/profile_value_pct/gi, "valor do perfil"],
+  [/difference_pct/gi, "diferença face à referência"],
+  [/position\s+below/gi, "abaixo da referência"],
+  [/position\s+above/gi, "acima da referência"],
+  [/dominant_format/gi, "formato dominante"],
+];
+function humanize(text: string): string {
+  return TECH_REPLACEMENTS.reduce((acc, [re, sub]) => acc.replace(re, sub), text);
+}
+
+/**
  * Leitura estratégica gerada por IA — secção premium.
- * Usa os mesmos itens persistidos em `ReportData.aiInsights` (ou em
- * `enriched.aiInsights`, mais ricos) para apresentar cards numerados
- * generosos com faixa de cor lateral. Resumo técnico recolhido em
- * `<details>` no fim para auditoria sem ruído visual.
+ * Cards brancos com badge numerado azul Iconosquare-style. Resumo
+ * técnico recolhido em `<details>` no fim para auditoria sem ruído.
  *
  * Hidden quando o snapshot não traz insights.
  */
@@ -36,51 +52,46 @@ export function ReportAiReading({ data, enriched }: Props) {
       eyebrow="Leitura estratégica · IA editorial"
       title="O que estes dados dizem sobre o perfil"
       subtitle="Síntese editorial gerada a partir das métricas observadas, do envolvimento médio e da diferença face à referência de mercado."
-      tone="soft-violet"
+      tone="white"
       ariaLabel="Leitura estratégica do relatório"
     >
-      <div className="flex items-center gap-2 mb-5">
-        <Sparkles
-          className="size-4 text-accent-violet-luminous"
-          aria-hidden="true"
-        />
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
-          {items.length} {items.length === 1 ? "insight" : "insights"}
-        </span>
-      </div>
-
       <ol className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
         {items.map((item, idx) => (
           <li
             key={item.number}
             className={cn(
-              "relative rounded-2xl border border-border-subtle/40",
-              "bg-surface-base/70 backdrop-blur-sm",
+              REDESIGN_TOKENS.card,
               "p-5 md:p-6 space-y-3 min-w-0",
-              "shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)]",
             )}
           >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "absolute left-0 top-5 bottom-5 w-1 rounded-r-full",
-                idx === 0
-                  ? "bg-accent-primary"
-                  : idx === 1
-                    ? "bg-accent-violet"
-                    : "bg-accent-gold",
-              )}
-            />
-            <div className="flex items-baseline gap-3">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "inline-flex size-8 shrink-0 items-center justify-center rounded-full",
+                  "bg-blue-50 text-blue-700 ring-1 ring-blue-100",
+                  "font-mono text-[11px] font-semibold tracking-tight",
+                )}
+              >
                 {item.number}
               </span>
-              <h3 className="font-display text-lg md:text-xl font-medium text-content-primary leading-snug tracking-tight">
-                {item.label}
-              </h3>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "size-1.5 rounded-full",
+                  idx === 0
+                    ? "bg-blue-500"
+                    : idx === 1
+                      ? "bg-amber-500"
+                      : "bg-slate-300",
+                )}
+              />
             </div>
-            <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed">
-              {item.text}
+            <h3 className="font-display text-lg md:text-xl font-medium text-slate-900 leading-snug tracking-tight">
+              {humanize(item.label)}
+            </h3>
+            <p className="text-sm md:text-[15px] text-slate-600 leading-relaxed">
+              {humanize(item.text)}
             </p>
           </li>
         ))}
@@ -88,8 +99,8 @@ export function ReportAiReading({ data, enriched }: Props) {
 
       {techMeta && techMeta.items.length > 0 ? (
         <details className="group mt-6">
-          <summary className="cursor-pointer inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-content-tertiary hover:text-accent-primary transition-colors list-none [&::-webkit-details-marker]:hidden">
-            <span>Ver detalhe técnico da leitura</span>
+          <summary className="cursor-pointer inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-slate-500 hover:text-blue-600 transition-colors list-none [&::-webkit-details-marker]:hidden">
+            <span>Ver base e sinais usados</span>
             <span
               aria-hidden="true"
               className="transition-transform group-open:rotate-90"
@@ -97,27 +108,27 @@ export function ReportAiReading({ data, enriched }: Props) {
               ›
             </span>
           </summary>
-          <div className="mt-4 space-y-3 text-xs text-content-tertiary">
+          <div className="mt-4 space-y-3 text-xs text-slate-500">
             <p>
-              Confiança e evidências usadas em cada insight. Útil para
-              auditar a leitura.
+              Para cada leitura mostramos a base (forte ou parcial) e os
+              sinais que a fundamentam. Útil para auditar a interpretação.
             </p>
             <ul className="space-y-2">
               {techMeta.items.map((it) => (
                 <li
                   key={it.number}
-                  className="border-l-2 border-border-subtle/40 pl-3"
+                  className="border-l-2 border-slate-200 pl-3"
                 >
-                  <p className="text-content-secondary">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary mr-2">
+                  <p className="text-slate-600">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 mr-2">
                       {it.number}
                     </span>
-                    {it.title}
+                    {humanize(it.title)}
                   </p>
                   <p className="mt-1">
-                    Confiança: {it.confidence}
-                    <span className="mx-2 text-content-tertiary/50">·</span>
-                    Evidência: {it.evidenceSummary}
+                    Base da leitura: {it.confidence}
+                    <span className="mx-2 text-slate-300">·</span>
+                    Sinais: {humanize(it.evidenceSummary)}
                   </p>
                 </li>
               ))}
