@@ -39,12 +39,25 @@ import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diag
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
+import { Route as ApiPublicHooksSyncOpenaiCostsRouteImport } from './routes/api/public/hooks/sync-openai-costs'
+import { Route as ApiPublicHooksSyncDataforseoCostsRouteImport } from './routes/api/public/hooks/sync-dataforseo-costs'
+import { Route as ApiPublicHooksSyncApifyCostsRouteImport } from './routes/api/public/hooks/sync-apify-costs'
 import { Route as ApiPublicAnalysisSnapshotUsernameRouteImport } from './routes/api/public/analysis-snapshot.$username'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api/admin/snapshot-by-id.$snapshotId'
+import { Route as ApiAdminSistemaSyncNowRouteImport } from './routes/api/admin/sistema.sync-now'
+import { Route as ApiAdminSistemaSecretsRouteImport } from './routes/api/admin/sistema.secrets'
+import { Route as ApiAdminSistemaRuntimeChecksRouteImport } from './routes/api/admin/sistema.runtime-checks'
+import { Route as ApiAdminSistemaProviderCallsRouteImport } from './routes/api/admin/sistema.provider-calls'
+import { Route as ApiAdminSistemaHealthRouteImport } from './routes/api/admin/sistema.health'
+import { Route as ApiAdminSistemaExpense30dRouteImport } from './routes/api/admin/sistema.expense-30d'
+import { Route as ApiAdminSistemaCostMetrics24hRouteImport } from './routes/api/admin/sistema.cost-metrics-24h'
+import { Route as ApiAdminSistemaCapsRouteImport } from './routes/api/admin/sistema.caps'
+import { Route as ApiAdminSistemaAlertsRouteImport } from './routes/api/admin/sistema.alerts'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
+import { Route as ApiAdminSistemaAlertsIdAckRouteImport } from './routes/api/admin/sistema.alerts.$id.ack'
 
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
@@ -200,6 +213,24 @@ const AdminReportPreviewUsernameRoute =
     path: '/report-preview/$username',
     getParentRoute: () => AdminRoute,
   } as any)
+const ApiPublicHooksSyncOpenaiCostsRoute =
+  ApiPublicHooksSyncOpenaiCostsRouteImport.update({
+    id: '/api/public/hooks/sync-openai-costs',
+    path: '/api/public/hooks/sync-openai-costs',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSyncDataforseoCostsRoute =
+  ApiPublicHooksSyncDataforseoCostsRouteImport.update({
+    id: '/api/public/hooks/sync-dataforseo-costs',
+    path: '/api/public/hooks/sync-dataforseo-costs',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSyncApifyCostsRoute =
+  ApiPublicHooksSyncApifyCostsRouteImport.update({
+    id: '/api/public/hooks/sync-apify-costs',
+    path: '/api/public/hooks/sync-apify-costs',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAnalysisSnapshotUsernameRoute =
   ApiPublicAnalysisSnapshotUsernameRouteImport.update({
     id: '/api/public/analysis-snapshot/$username',
@@ -218,6 +249,55 @@ const ApiAdminSnapshotByIdSnapshotIdRoute =
     path: '/api/admin/snapshot-by-id/$snapshotId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminSistemaSyncNowRoute = ApiAdminSistemaSyncNowRouteImport.update({
+  id: '/api/admin/sistema/sync-now',
+  path: '/api/admin/sistema/sync-now',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSistemaSecretsRoute = ApiAdminSistemaSecretsRouteImport.update({
+  id: '/api/admin/sistema/secrets',
+  path: '/api/admin/sistema/secrets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSistemaRuntimeChecksRoute =
+  ApiAdminSistemaRuntimeChecksRouteImport.update({
+    id: '/api/admin/sistema/runtime-checks',
+    path: '/api/admin/sistema/runtime-checks',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminSistemaProviderCallsRoute =
+  ApiAdminSistemaProviderCallsRouteImport.update({
+    id: '/api/admin/sistema/provider-calls',
+    path: '/api/admin/sistema/provider-calls',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminSistemaHealthRoute = ApiAdminSistemaHealthRouteImport.update({
+  id: '/api/admin/sistema/health',
+  path: '/api/admin/sistema/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSistemaExpense30dRoute =
+  ApiAdminSistemaExpense30dRouteImport.update({
+    id: '/api/admin/sistema/expense-30d',
+    path: '/api/admin/sistema/expense-30d',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminSistemaCostMetrics24hRoute =
+  ApiAdminSistemaCostMetrics24hRouteImport.update({
+    id: '/api/admin/sistema/cost-metrics-24h',
+    path: '/api/admin/sistema/cost-metrics-24h',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminSistemaCapsRoute = ApiAdminSistemaCapsRouteImport.update({
+  id: '/api/admin/sistema/caps',
+  path: '/api/admin/sistema/caps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSistemaAlertsRoute = ApiAdminSistemaAlertsRouteImport.update({
+  id: '/api/admin/sistema/alerts',
+  path: '/api/admin/sistema/alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminReportsCleanupExpiredRoute =
   ApiAdminReportsCleanupExpiredRouteImport.update({
     id: '/cleanup-expired',
@@ -235,6 +315,12 @@ const AdminReportPreviewSnapshotSnapshotIdRoute =
     id: '/report-preview/snapshot/$snapshotId',
     path: '/report-preview/snapshot/$snapshotId',
     getParentRoute: () => AdminRoute,
+  } as any)
+const ApiAdminSistemaAlertsIdAckRoute =
+  ApiAdminSistemaAlertsIdAckRouteImport.update({
+    id: '/$id/ack',
+    path: '/$id/ack',
+    getParentRoute: () => ApiAdminSistemaAlertsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -271,9 +357,22 @@ export interface FileRoutesByFullPath {
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
+  '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
+  '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
+  '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
+  '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
+  '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
+  '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
+  '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
+  '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
+  '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
+  '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
+  '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
+  '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -308,9 +407,22 @@ export interface FileRoutesByTo {
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
+  '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
+  '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
+  '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
+  '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
+  '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
+  '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
+  '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
+  '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
+  '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
+  '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
+  '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
+  '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -347,9 +459,22 @@ export interface FileRoutesById {
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
+  '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
+  '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
+  '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
+  '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
+  '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
+  '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
+  '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
+  '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
+  '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
+  '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
+  '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
+  '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -387,9 +512,22 @@ export interface FileRouteTypes {
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
+    | '/api/admin/sistema/alerts'
+    | '/api/admin/sistema/caps'
+    | '/api/admin/sistema/cost-metrics-24h'
+    | '/api/admin/sistema/expense-30d'
+    | '/api/admin/sistema/health'
+    | '/api/admin/sistema/provider-calls'
+    | '/api/admin/sistema/runtime-checks'
+    | '/api/admin/sistema/secrets'
+    | '/api/admin/sistema/sync-now'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
+    | '/api/public/hooks/sync-apify-costs'
+    | '/api/public/hooks/sync-dataforseo-costs'
+    | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -424,9 +562,22 @@ export interface FileRouteTypes {
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
+    | '/api/admin/sistema/alerts'
+    | '/api/admin/sistema/caps'
+    | '/api/admin/sistema/cost-metrics-24h'
+    | '/api/admin/sistema/expense-30d'
+    | '/api/admin/sistema/health'
+    | '/api/admin/sistema/provider-calls'
+    | '/api/admin/sistema/runtime-checks'
+    | '/api/admin/sistema/secrets'
+    | '/api/admin/sistema/sync-now'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
+    | '/api/public/hooks/sync-apify-costs'
+    | '/api/public/hooks/sync-dataforseo-costs'
+    | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/sistema/alerts/$id/ack'
   id:
     | '__root__'
     | '/'
@@ -462,9 +613,22 @@ export interface FileRouteTypes {
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
+    | '/api/admin/sistema/alerts'
+    | '/api/admin/sistema/caps'
+    | '/api/admin/sistema/cost-metrics-24h'
+    | '/api/admin/sistema/expense-30d'
+    | '/api/admin/sistema/health'
+    | '/api/admin/sistema/provider-calls'
+    | '/api/admin/sistema/runtime-checks'
+    | '/api/admin/sistema/secrets'
+    | '/api/admin/sistema/sync-now'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
+    | '/api/public/hooks/sync-apify-costs'
+    | '/api/public/hooks/sync-dataforseo-costs'
+    | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -489,9 +653,21 @@ export interface RootRouteChildren {
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
+  ApiAdminSistemaAlertsRoute: typeof ApiAdminSistemaAlertsRouteWithChildren
+  ApiAdminSistemaCapsRoute: typeof ApiAdminSistemaCapsRoute
+  ApiAdminSistemaCostMetrics24hRoute: typeof ApiAdminSistemaCostMetrics24hRoute
+  ApiAdminSistemaExpense30dRoute: typeof ApiAdminSistemaExpense30dRoute
+  ApiAdminSistemaHealthRoute: typeof ApiAdminSistemaHealthRoute
+  ApiAdminSistemaProviderCallsRoute: typeof ApiAdminSistemaProviderCallsRoute
+  ApiAdminSistemaRuntimeChecksRoute: typeof ApiAdminSistemaRuntimeChecksRoute
+  ApiAdminSistemaSecretsRoute: typeof ApiAdminSistemaSecretsRoute
+  ApiAdminSistemaSyncNowRoute: typeof ApiAdminSistemaSyncNowRoute
   ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
   ApiPublicAnalysisSnapshotUsernameRoute: typeof ApiPublicAnalysisSnapshotUsernameRoute
+  ApiPublicHooksSyncApifyCostsRoute: typeof ApiPublicHooksSyncApifyCostsRoute
+  ApiPublicHooksSyncDataforseoCostsRoute: typeof ApiPublicHooksSyncDataforseoCostsRoute
+  ApiPublicHooksSyncOpenaiCostsRoute: typeof ApiPublicHooksSyncOpenaiCostsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -706,6 +882,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReportPreviewUsernameRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/hooks/sync-openai-costs': {
+      id: '/api/public/hooks/sync-openai-costs'
+      path: '/api/public/hooks/sync-openai-costs'
+      fullPath: '/api/public/hooks/sync-openai-costs'
+      preLoaderRoute: typeof ApiPublicHooksSyncOpenaiCostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/sync-dataforseo-costs': {
+      id: '/api/public/hooks/sync-dataforseo-costs'
+      path: '/api/public/hooks/sync-dataforseo-costs'
+      fullPath: '/api/public/hooks/sync-dataforseo-costs'
+      preLoaderRoute: typeof ApiPublicHooksSyncDataforseoCostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/sync-apify-costs': {
+      id: '/api/public/hooks/sync-apify-costs'
+      path: '/api/public/hooks/sync-apify-costs'
+      fullPath: '/api/public/hooks/sync-apify-costs'
+      preLoaderRoute: typeof ApiPublicHooksSyncApifyCostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/analysis-snapshot/$username': {
       id: '/api/public/analysis-snapshot/$username'
       path: '/api/public/analysis-snapshot/$username'
@@ -725,6 +922,69 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/snapshot-by-id/$snapshotId'
       fullPath: '/api/admin/snapshot-by-id/$snapshotId'
       preLoaderRoute: typeof ApiAdminSnapshotByIdSnapshotIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/sync-now': {
+      id: '/api/admin/sistema/sync-now'
+      path: '/api/admin/sistema/sync-now'
+      fullPath: '/api/admin/sistema/sync-now'
+      preLoaderRoute: typeof ApiAdminSistemaSyncNowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/secrets': {
+      id: '/api/admin/sistema/secrets'
+      path: '/api/admin/sistema/secrets'
+      fullPath: '/api/admin/sistema/secrets'
+      preLoaderRoute: typeof ApiAdminSistemaSecretsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/runtime-checks': {
+      id: '/api/admin/sistema/runtime-checks'
+      path: '/api/admin/sistema/runtime-checks'
+      fullPath: '/api/admin/sistema/runtime-checks'
+      preLoaderRoute: typeof ApiAdminSistemaRuntimeChecksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/provider-calls': {
+      id: '/api/admin/sistema/provider-calls'
+      path: '/api/admin/sistema/provider-calls'
+      fullPath: '/api/admin/sistema/provider-calls'
+      preLoaderRoute: typeof ApiAdminSistemaProviderCallsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/health': {
+      id: '/api/admin/sistema/health'
+      path: '/api/admin/sistema/health'
+      fullPath: '/api/admin/sistema/health'
+      preLoaderRoute: typeof ApiAdminSistemaHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/expense-30d': {
+      id: '/api/admin/sistema/expense-30d'
+      path: '/api/admin/sistema/expense-30d'
+      fullPath: '/api/admin/sistema/expense-30d'
+      preLoaderRoute: typeof ApiAdminSistemaExpense30dRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/cost-metrics-24h': {
+      id: '/api/admin/sistema/cost-metrics-24h'
+      path: '/api/admin/sistema/cost-metrics-24h'
+      fullPath: '/api/admin/sistema/cost-metrics-24h'
+      preLoaderRoute: typeof ApiAdminSistemaCostMetrics24hRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/caps': {
+      id: '/api/admin/sistema/caps'
+      path: '/api/admin/sistema/caps'
+      fullPath: '/api/admin/sistema/caps'
+      preLoaderRoute: typeof ApiAdminSistemaCapsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/alerts': {
+      id: '/api/admin/sistema/alerts'
+      path: '/api/admin/sistema/alerts'
+      fullPath: '/api/admin/sistema/alerts'
+      preLoaderRoute: typeof ApiAdminSistemaAlertsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/reports/cleanup-expired': {
@@ -747,6 +1007,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/report-preview/snapshot/$snapshotId'
       preLoaderRoute: typeof AdminReportPreviewSnapshotSnapshotIdRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/admin/sistema/alerts/$id/ack': {
+      id: '/api/admin/sistema/alerts/$id/ack'
+      path: '/$id/ack'
+      fullPath: '/api/admin/sistema/alerts/$id/ack'
+      preLoaderRoute: typeof ApiAdminSistemaAlertsIdAckRouteImport
+      parentRoute: typeof ApiAdminSistemaAlertsRoute
     }
   }
 }
@@ -816,6 +1083,19 @@ const ApiAdminReportsRouteWithChildren = ApiAdminReportsRoute._addFileChildren(
   ApiAdminReportsRouteChildren,
 )
 
+interface ApiAdminSistemaAlertsRouteChildren {
+  ApiAdminSistemaAlertsIdAckRoute: typeof ApiAdminSistemaAlertsIdAckRoute
+}
+
+const ApiAdminSistemaAlertsRouteChildren: ApiAdminSistemaAlertsRouteChildren = {
+  ApiAdminSistemaAlertsIdAckRoute: ApiAdminSistemaAlertsIdAckRoute,
+}
+
+const ApiAdminSistemaAlertsRouteWithChildren =
+  ApiAdminSistemaAlertsRoute._addFileChildren(
+    ApiAdminSistemaAlertsRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -838,10 +1118,23 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
+  ApiAdminSistemaAlertsRoute: ApiAdminSistemaAlertsRouteWithChildren,
+  ApiAdminSistemaCapsRoute: ApiAdminSistemaCapsRoute,
+  ApiAdminSistemaCostMetrics24hRoute: ApiAdminSistemaCostMetrics24hRoute,
+  ApiAdminSistemaExpense30dRoute: ApiAdminSistemaExpense30dRoute,
+  ApiAdminSistemaHealthRoute: ApiAdminSistemaHealthRoute,
+  ApiAdminSistemaProviderCallsRoute: ApiAdminSistemaProviderCallsRoute,
+  ApiAdminSistemaRuntimeChecksRoute: ApiAdminSistemaRuntimeChecksRoute,
+  ApiAdminSistemaSecretsRoute: ApiAdminSistemaSecretsRoute,
+  ApiAdminSistemaSyncNowRoute: ApiAdminSistemaSyncNowRoute,
   ApiAdminSnapshotByIdSnapshotIdRoute: ApiAdminSnapshotByIdSnapshotIdRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
   ApiPublicAnalysisSnapshotUsernameRoute:
     ApiPublicAnalysisSnapshotUsernameRoute,
+  ApiPublicHooksSyncApifyCostsRoute: ApiPublicHooksSyncApifyCostsRoute,
+  ApiPublicHooksSyncDataforseoCostsRoute:
+    ApiPublicHooksSyncDataforseoCostsRoute,
+  ApiPublicHooksSyncOpenaiCostsRoute: ApiPublicHooksSyncOpenaiCostsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
