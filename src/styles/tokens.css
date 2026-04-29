@@ -15,6 +15,16 @@
     --accent-violet-luminous: 167 139 250;
     --accent-violet-deep: 109 40 217;
 
+    /* === COLORS — Chart series ===
+     * Semantic tokens for the temporal chart series. In dark mode they keep
+     * the original editorial palette; in light mode they collapse to the
+     * single editorial blue (see tokens-light.css). Never hardcode hex in
+     * report components — always consume these tokens.
+     */
+    --chart-likes:    59 130 246;   /* #3B82F6 */
+    --chart-comments:  6 182 212;   /* #06B6D4 */
+    --chart-views:    99 102 241;   /* #6366F1 */
+
     /* === COLORS — Light surfaces (for editorial reveal moments) === */
     --surface-light: 226 232 240;          /* slate-200 — cool editorial */
     --surface-light-elevated: 248 250 252; /* slate-50 — mockup stage */

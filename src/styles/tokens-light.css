@@ -101,6 +101,15 @@
   --insight-neutral-border:  211 209 199;
   --insight-neutral-icon:     95  94  90;
   --insight-neutral-text:     68  68  65;
+
+  /* === Chart series ===
+   * Iconosquare-pure: a single editorial blue with two luminance steps.
+   * Anything decorative is demoted to the same blue family so the temporal
+   * chart no longer mixes purple/cyan/indigo against the white card.
+   */
+  --chart-likes:    37  99 217;   /* --accent-primary */
+  --chart-comments: 59 130 246;   /* --accent-luminous */
+  --chart-views:    30  78 173;   /* --accent-violet-deep (deep blue) */
 }
 
 /* Disable cinematic noise overlay in light mode — would feel grainy */
