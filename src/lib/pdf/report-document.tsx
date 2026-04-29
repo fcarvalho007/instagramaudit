@@ -789,6 +789,7 @@ function _ReportDocumentImpl(input: ReportDocumentInput) {
     aiInsights,
     aiInsightsModel,
     aiInsightsGeneratedAt,
+    marketSignals,
     analyzedAt,
     generatedAt,
   } = input;
@@ -817,6 +818,13 @@ function _ReportDocumentImpl(input: ReportDocumentInput) {
         <BenchmarkPage
           profile={profile}
           benchmark={benchmark}
+          generatedAt={generatedAt}
+        />
+      ) : null}
+      {marketSignals ? (
+        <MarketSignalsPage
+          profile={profile}
+          signals={marketSignals}
           generatedAt={generatedAt}
         />
       ) : null}
