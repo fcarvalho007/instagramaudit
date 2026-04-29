@@ -19,9 +19,7 @@ export function ReportTopPosts() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {reportData.topPosts.map((post) => {
           const permalink =
-            "permalink" in post && typeof post.permalink === "string"
-              ? post.permalink
-              : null;
+            "permalink" in post && typeof post.permalink === "string" ? post.permalink : null;
           const altText =
             post.caption && post.caption.trim().length > 0
               ? post.caption.trim().slice(0, 80)
@@ -67,9 +65,7 @@ export function ReportTopPosts() {
                   <div className="flex items-center gap-3 text-xs text-content-secondary">
                     <span className="inline-flex items-center gap-1">
                       <Heart className="size-3.5" />
-                      <span className="font-mono">
-                        {post.likes.toLocaleString("pt-PT")}
-                      </span>
+                      <span className="font-mono">{post.likes.toLocaleString("pt-PT")}</span>
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <MessageCircle className="size-3.5" />
