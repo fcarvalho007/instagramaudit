@@ -9,12 +9,11 @@
  * Grelha 3-col abaixo com hairlines de 1px entre células.
  */
 
-import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { AdminStat } from "../admin-stat";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ADMIN_LITERAL } from "../admin-tokens";
-import { MockDataBanner } from "../mock-data-banner";
+import { DemoOnlySection } from "../demo-only-section";
 import { MOCK_FUNNEL } from "@/lib/admin/mock-data";
 
 const FUNNEL_TOTALS_INFO: Record<string, string> = {
@@ -28,15 +27,14 @@ const FUNNEL_TOTALS_INFO: Record<string, string> = {
 
 export function FunnelSection() {
   return (
+    <DemoOnlySection
+      title="Funil de conversão"
+      subtitle="últimos 30 dias"
+      accent="leads"
+      info="Mostra o percurso desde visitante anónimo até cliente pagante. As percentagens indicam a conversão entre cada etapa."
+      pendingReason="O funil de conversão visitante → cliente exige tracking de eventos web (visitas anónimas) e ciclo de checkout integrado. Será ligado a dados reais quando a integração de pagamentos estiver no sítio."
+    >
     <section className="flex flex-col gap-4">
-      <AdminSectionHeader
-        title="Funil de conversão"
-        subtitle="últimos 30 dias"
-        accent="leads"
-        info="Mostra o percurso desde visitante anónimo até cliente pagante. As percentagens indicam a conversão entre cada etapa."
-      />
-      <MockDataBanner reason="Conversão visitante → cliente requer tracking de eventos e checkout integrados (próximas fases)." />
-
       <AdminCard className="!p-10">
         <FunnelDiagram />
       </AdminCard>
@@ -68,6 +66,7 @@ export function FunnelSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }
 
