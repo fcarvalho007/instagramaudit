@@ -1,10 +1,9 @@
 /**
- * Secção 3 — Despesa.
+ * Secção 3 — Despesa (dados reais).
  *
  * Cartão único com 2 zonas separadas por linha 0.5px:
- *   1. 3 colunas: Apify (com cap), OpenAI, Total (barra segmentada)
- *   2. Gráfico Recharts barras empilhadas Apify + OpenAI com ReferenceLine
- *      tracejada vermelha em $0.97 (limite diário).
+ *   1. 4 colunas: Apify · OpenAI · DataForSEO · Total
+ *   2. Gráfico Recharts barras empilhadas Apify + OpenAI + DataForSEO
  */
 
 import {
@@ -17,21 +16,97 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useQuery } from "@tanstack/react-query";
 
 import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { ProgressBar } from "../progress-bar";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ADMIN_LITERAL } from "../admin-tokens";
-import {
-  DAILY_COST_LIMIT,
-  MOCK_DAILY_COSTS,
-  MOCK_EXPENSE,
-} from "@/lib/admin/mock-data";
+import { SectionError, SectionSkeleton } from "../section-state";
+import { DAILY_COST_LIMIT } from "@/lib/admin/mock-data";
+import type {
+  CostCaps,
+  Expense30d,
+} from "@/lib/admin/system-queries.server";
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+
+const MONTH_DAYS = 30;
 
 export function ExpenseSection() {
-  const t = MOCK_EXPENSE;
-  const chartData = MOCK_DAILY_COSTS.map((d) => ({ ...d }));
+  const expense = useQuery({
+    queryKey: ["admin", "sistema", "expense-30d"],
+    queryFn: () => fetchJson<Expense30d>("/api/admin/sistema/expense-30d"),
+    refetchInterval: 60_000,
+  });
+  const caps = useQuery({
+    queryKey: ["admin", "sistema", "caps"],
+    queryFn: () => fetchJson<CostCaps>("/api/admin/sistema/caps"),
+  });
+
+  if (expense.isLoading || caps.isLoading) {
+    return (
+      <section>
+        <AdminSectionHeader
+          title="Despesa"
+          subtitle="o que sai"
+          accent="expense"
+          info="Custos operacionais reais com Apify, OpenAI e DataForSEO."
+        />
+        <AdminCard>
+          <SectionSkeleton rows={4} rowHeight={48} />
+        </AdminCard>
+      </section>
+    );
+  }
+
+  if (expense.error || caps.error) {
+    return (
+      <section>
+        <AdminSectionHeader
+          title="Despesa"
+          subtitle="o que sai"
+          accent="expense"
+          info="Custos operacionais reais com Apify, OpenAI e DataForSEO."
+        />
+        <AdminCard>
+          <SectionError
+            error={expense.error ?? caps.error}
+            onRetry={() => {
+              expense.refetch();
+              caps.refetch();
+            }}
+          />
+        </AdminCard>
+      </section>
+    );
+  }
+
+  const data = expense.data!;
+  const c = caps.data!;
+  const chartData = data.daily.map((d) => ({
+    day: d.day.slice(8, 10), // DD
+    apify: Number(d.apify ?? 0),
+    openai: Number(d.openai ?? 0),
+    dataforseo: Number(d.dataforseo ?? 0),
+  }));
+  const hasData = chartData.length > 0;
+
+  const apifyShare = data.total > 0 ? (data.apify_total / data.total) * 100 : 0;
+  const openaiShare = data.total > 0 ? (data.openai_total / data.total) * 100 : 0;
+  const dfsShare = data.total > 0 ? (data.dataforseo_total / data.total) * 100 : 0;
+
+  // Projecção linear simples para o mês (assume ritmo constante).
+  const project = (spent: number) => (spent / Math.max(1, chartData.length)) * MONTH_DAYS;
+
+  const apifyProj = project(data.apify_total);
+  const openaiProj = project(data.openai_total);
+  const dfsProj = project(data.dataforseo_total);
 
   return (
     <section>
@@ -43,22 +118,22 @@ export function ExpenseSection() {
       />
 
       <AdminCard variant="flush" className="overflow-hidden">
-        {/* Zona superior: 3 colunas */}
-        <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-3 md:gap-0">
+        {/* Zona superior: 4 colunas */}
+        <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-4 md:gap-0">
           {/* Apify */}
           <ExpenseColumn
             colorVar="rgb(var(--admin-expense-500))"
             colorTextVar="rgb(var(--admin-expense-700))"
-            label={t.apify.label}
-            info="Plataforma de scraping que recolhe dados públicos do Instagram. Cap mensal de $29."
-            value={`$${t.apify.spent.toFixed(2)}`}
-            cap={`de $${t.apify.cap.toFixed(2)}`}
-            note={`63% do limite · projecção $${t.apify.projection.toFixed(2)}`}
+            label="APIFY"
+            info={`Plataforma de scraping que recolhe dados públicos do Instagram. Cap mensal de $${c.apify}.`}
+            value={`$${data.apify_total.toFixed(2)}`}
+            cap={`de $${c.apify.toFixed(2)}`}
+            note={`${Math.round((data.apify_total / c.apify) * 100)}% do limite · projecção $${apifyProj.toFixed(2)}`}
             borderRight
           >
             <ProgressBar
-              value={t.apify.spent}
-              max={t.apify.cap}
+              value={data.apify_total}
+              max={c.apify}
               color="expense"
               showCap
             />
@@ -68,17 +143,39 @@ export function ExpenseSection() {
           <ExpenseColumn
             colorVar="rgb(var(--admin-info-500))"
             colorTextVar="rgb(var(--admin-info-700))"
-            label={t.openai.label}
-            info="Análises com IA dos relatórios. Soft cap mensal definido em $25."
-            value={`$${t.openai.spent.toFixed(2)}`}
-            cap={`de $${t.openai.cap.toFixed(2)} · soft cap`}
-            note={`39% do limite · projecção $${t.openai.projection.toFixed(2)}`}
+            label="OPENAI"
+            info={`Análises com IA dos relatórios. Soft cap mensal de $${c.openai}.`}
+            value={`$${data.openai_total.toFixed(2)}`}
+            cap={`de $${c.openai.toFixed(2)} · soft cap`}
+            note={`${Math.round((data.openai_total / c.openai) * 100)}% do limite · projecção $${openaiProj.toFixed(2)}`}
             borderRight
           >
             <ProgressBar
-              value={t.openai.spent}
-              max={t.openai.cap}
+              value={data.openai_total}
+              max={c.openai}
               color="info"
+            />
+          </ExpenseColumn>
+
+          {/* DataForSEO */}
+          <ExpenseColumn
+            colorVar={ADMIN_LITERAL.expenseChartDataForSeo}
+            colorTextVar={ADMIN_LITERAL.expenseChartDataForSeo}
+            label="DATAFORSEO"
+            info={`Sinais de mercado e tendências (Google Trends/Keywords). Cap mensal de $${c.dataforseo}.`}
+            value={`$${data.dataforseo_total.toFixed(2)}`}
+            cap={`de $${c.dataforseo.toFixed(2)}`}
+            note={
+              data.dataforseo_balance != null
+                ? `${data.dataforseo_calls} chamadas · saldo $${data.dataforseo_balance.toFixed(2)}`
+                : `${data.dataforseo_calls} chamadas · projecção $${dfsProj.toFixed(2)}`
+            }
+            borderRight
+          >
+            <ProgressBar
+              value={data.dataforseo_total}
+              max={c.dataforseo}
+              colorOverride={ADMIN_LITERAL.expenseChartDataForSeo}
             />
           </ExpenseColumn>
 
@@ -87,15 +184,16 @@ export function ExpenseSection() {
             colorVar="rgb(var(--admin-neutral-600))"
             colorTextVar="rgb(var(--admin-revenue-700))"
             label="DESPESA TOTAL"
-            info="Soma das duas despesas operacionais. Comparada com a receita, indica a margem real do negócio."
-            value={`$${t.total.spent.toFixed(2)}`}
-            cap={`${t.total.revenuePct}% da receita`}
-            note={`margem operacional ${t.total.operatingMarginPct}%`}
+            info="Soma das três despesas operacionais (Apify + OpenAI + DataForSEO)."
+            value={`$${data.total.toFixed(2)}`}
+            cap={`últimos 30 dias`}
+            note={`Apify ${apifyShare.toFixed(0)}% · OpenAI ${openaiShare.toFixed(0)}% · DFS ${dfsShare.toFixed(0)}%`}
           >
             <ProgressBar
               segments={[
-                { value: t.total.apifyShare, color: "expense" },
-                { value: t.total.openaiShare, color: "info" },
+                { value: apifyShare, color: "expense" },
+                { value: openaiShare, color: "info" },
+                { value: dfsShare, colorOverride: ADMIN_LITERAL.expenseChartDataForSeo },
               ]}
             />
           </ExpenseColumn>
@@ -111,11 +209,17 @@ export function ExpenseSection() {
               Custos diários · últimos 30 dias
             </p>
             <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
-              Stack Apify + OpenAI · linha tracejada vermelha = limite diário equivalente
+              Stack Apify + OpenAI + DataForSEO · linha tracejada vermelha = limite diário equivalente
               {" "}${DAILY_COST_LIMIT.toFixed(2)}
             </p>
           </div>
 
+          {!hasData ? (
+            <div className="flex h-44 items-center justify-center text-center text-[13px] text-admin-text-tertiary">
+              Sem dados ainda — primeira sincronização decorre à meia-noite UTC ou usa
+              "Sincronizar agora" na tab Sistema.
+            </div>
+          ) : (
           <div
             role="img"
             aria-label={`Custos diários por fornecedor, com limite de $${DAILY_COST_LIMIT.toFixed(2)} por dia.`}
@@ -156,7 +260,11 @@ export function ExpenseSection() {
                   }}
                   formatter={(value: number, name: string) => [
                     `$${value.toFixed(2)}`,
-                    name === "apify" ? "Apify" : "OpenAI",
+                    name === "apify"
+                      ? "Apify"
+                      : name === "openai"
+                        ? "OpenAI"
+                        : "DataForSEO",
                   ]}
                   labelFormatter={(label) => `Dia ${label}`}
                 />
@@ -169,6 +277,11 @@ export function ExpenseSection() {
                   dataKey="openai"
                   stackId="c"
                   fill={ADMIN_LITERAL.expenseChartOpenAI}
+                />
+                <Bar
+                  dataKey="dataforseo"
+                  stackId="c"
+                  fill={ADMIN_LITERAL.expenseChartDataForSeo}
                   radius={[3, 3, 0, 0]}
                 />
                 <ReferenceLine
@@ -186,6 +299,7 @@ export function ExpenseSection() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
         </div>
       </AdminCard>
     </section>
