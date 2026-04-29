@@ -30,6 +30,7 @@ import { ReportAiReading } from "./report-ai-reading";
 import { ReportPendingAiNotice } from "./report-pending-ai-notice";
 import { ReportMethodology } from "./report-methodology";
 import { ReportTierTeaser } from "./report-tier-teaser";
+import { ReportEditorialPatterns } from "./report-editorial-patterns";
 import { REDESIGN_TOKENS } from "./report-tokens";
 
 interface ReportShellProps {
@@ -110,6 +111,10 @@ export function ReportShell({
           cachedSummary={payload?.market_signals_free}
         />
         {renderInsightOuter("marketSignals")}
+
+        {/* 4b. Padrões editoriais (R4-B / Prompt 18) — cruzamentos derivados
+            que explicam PORQUÊ os resultados são o que são. */}
+        <ReportEditorialPatterns patterns={result.enriched.editorialPatterns} />
 
         {/* 5. Performance ao longo do tempo */}
         <ReportFramedBlock tone="canvas" ariaLabel="Performance ao longo do tempo">
