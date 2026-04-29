@@ -83,9 +83,7 @@ export function useReportShareActions(args: {
 
       if (!res.ok || !body?.success || !body.signed_url) {
         const code = (body?.error_code ?? "DEFAULT") as PdfErrorCode;
-        const message =
-          SHARE_COPY.toast.pdfErrors[code] ??
-          SHARE_COPY.toast.pdfErrors.DEFAULT;
+        const message = SHARE_COPY.toast.pdfErrors[code] ?? SHARE_COPY.toast.pdfErrors.DEFAULT;
         toast.error(message);
         return;
       }
@@ -117,9 +115,7 @@ export function useReportShareActions(args: {
         }
       }
 
-      toast.success(
-        body.cached ? SHARE_COPY.toast.pdfCached : SHARE_COPY.toast.pdfReady,
-      );
+      toast.success(body.cached ? SHARE_COPY.toast.pdfCached : SHARE_COPY.toast.pdfReady);
       if (!opened) {
         toast.message(SHARE_COPY.toast.pdfPopupBlocked);
       }
@@ -135,10 +131,7 @@ export function useReportShareActions(args: {
     setShareBusy(true);
     try {
       // Tentar Web Share API quando disponível (mobile, Safari moderno).
-      if (
-        typeof navigator !== "undefined" &&
-        typeof navigator.share === "function"
-      ) {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
         try {
           await navigator.share({
             title: document?.title ?? "Relatório InstaBench",

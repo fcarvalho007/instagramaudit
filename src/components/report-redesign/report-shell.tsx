@@ -19,10 +19,7 @@ import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-bl
 import { ReportFinalBlock } from "@/components/report-share/report-final-block";
 import type { ReportPageActions } from "@/components/report/report-page";
 
-import type {
-  AdapterResult,
-  SnapshotPayload,
-} from "@/lib/report/snapshot-to-report-data";
+import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 
 import { ReportHero } from "./report-hero";
 import { ReportExecutiveSummary } from "./report-executive-summary";
@@ -49,12 +46,7 @@ interface ReportShellProps {
  * componentes locked sem os modificar. `/report/example` continua a
  * usar o `ReportPage` locked completo.
  */
-export function ReportShell({
-  result,
-  snapshotId,
-  actions,
-  payload,
-}: ReportShellProps) {
+export function ReportShell({ result, snapshotId, actions, payload }: ReportShellProps) {
   return (
     <ReportDataProvider data={result.data}>
       <div className="bg-surface-base min-h-screen">
@@ -99,11 +91,7 @@ export function ReportShell({
         </ReportSectionFrame>
 
         {/* 7. Concorrentes */}
-        <ReportSectionFrame
-          eyebrow="Concorrentes"
-          title="Comparação com perfis pares"
-          tone="plain"
-        >
+        <ReportSectionFrame eyebrow="Concorrentes" title="Comparação com perfis pares" tone="plain">
           <ReportCompetitors />
           {result.coverage.competitors === "empty" ? (
             <div className="mt-6">
