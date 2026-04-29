@@ -34,7 +34,7 @@ function ConhecimentoPage() {
           <AdminActionButton
             as="a"
             href="/api/admin/knowledge/export"
-            variant="ghost"
+            variant="default"
           >
             Exportar dataset
           </AdminActionButton>
