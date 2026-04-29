@@ -26,6 +26,7 @@ import { ReportExecutiveSummary } from "./report-executive-summary";
 import { ReportSectionFrame } from "./report-section-frame";
 import { ReportFramedBlock } from "./report-framed-block";
 import { ReportAiReading } from "./report-ai-reading";
+import { ReportPendingAiNotice } from "./report-pending-ai-notice";
 import { ReportMethodology } from "./report-methodology";
 import { ReportTierTeaser } from "./report-tier-teaser";
 import { REDESIGN_TOKENS } from "./report-tokens";
@@ -40,6 +41,12 @@ interface ReportShellProps {
    * already lives at `payload.market_signals_free`.
    */
   payload?: SnapshotPayload;
+  /**
+   * ISO timestamp de `meta.generated_at` — usado para mostrar o aviso
+   * "leitura editorial em preparação" apenas em snapshots recentes
+   * (< 5 min) sem `ai_insights_v1`.
+   */
+  analyzedAtIso?: string | null;
 }
 
 /**
@@ -48,7 +55,14 @@ interface ReportShellProps {
  * componentes locked sem os modificar. `/report/example` continua a
  * usar o `ReportPage` locked completo.
  */
-export function ReportShell({ result, snapshotId, actions, payload }: ReportShellProps) {
+export function ReportShell({
+  result,
+  snapshotId,
+  actions,
+  payload,
+  analyzedAtIso,
+}: ReportShellProps) {
+  const hasAiInsights = result.data.aiInsights.length > 0;
   return (
     <ReportDataProvider data={result.data}>
       <div className={`${REDESIGN_TOKENS.pageCanvas} min-h-screen overflow-x-hidden`}>
@@ -58,8 +72,12 @@ export function ReportShell({ result, snapshotId, actions, payload }: ReportShel
         {/* 2. KPI grid (5 cards) */}
         <ReportExecutiveSummary result={result} />
 
-        {/* 3. Strategic AI reading */}
-        <ReportAiReading data={result.data} enriched={result.enriched} />
+        {/* 3. Strategic AI reading — ou aviso de "a preparar" para snapshots recentes */}
+        {hasAiInsights ? (
+          <ReportAiReading data={result.data} enriched={result.enriched} />
+        ) : (
+          <ReportPendingAiNotice generatedAtIso={analyzedAtIso ?? null} />
+        )}
 
         {/* 4. Procura de mercado (Market Signals) — section wrapper hides
             itself silently when the snapshot reports disabled/blocked. */}
