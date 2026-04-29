@@ -1,4 +1,4 @@
-import { ExternalLink, FileDown, Loader2, Share2 } from "lucide-react";
+import { ExternalLink, FileDown, Loader2 } from "lucide-react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 
@@ -55,7 +55,7 @@ export function ReportFinalBlock({ snapshotId, reportUrl, result }: ReportFinalB
             </p>
           </header>
 
-          {/* 3 botões em linha */}
+          {/* Botões em linha: PDF (primário) + Partilhar (popover ghost) */}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-stretch">
             <button
               type="button"
@@ -75,24 +75,16 @@ export function ReportFinalBlock({ snapshotId, reportUrl, result }: ReportFinalB
             </button>
 
             {result ? (
-              <ShareReportPopover
-                result={result}
-                url={share.resolvedUrl}
-                variant="ghost"
-                triggerLabel="Partilhar"
-                triggerClassName="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900 min-h-[44px]"
-                triggerIcon={<Share2 className="h-4 w-4" aria-hidden="true" />}
-              />
+              <div className="flex-1 sm:flex-none">
+                <ShareReportPopover
+                  result={result}
+                  url={share.resolvedUrl}
+                  variant="ghost"
+                  triggerLabel="Partilhar (WhatsApp · LinkedIn · Email · Copiar)"
+                  className="w-full"
+                />
+              </div>
             ) : null}
-
-            <button
-              type="button"
-              onClick={() => void share.copyLink()}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900 min-h-[44px]"
-            >
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-              <span>{share.linkCopied ? "Link copiado" : "Copiar link"}</span>
-            </button>
           </div>
 
           {/* Fallback PDF (popup blockers) */}
