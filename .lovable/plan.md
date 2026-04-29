@@ -1,65 +1,55 @@
-## Fix evidence allowlist for `top_posts` — sem chamadas a providers
+# Estado: fix já aplicado
 
-### Diagnóstico
-O modelo cita `top_posts[0].comments`, `top_posts[0].likes` e `top_posts[0].caption_excerpt` porque vê esses campos no payload, mas `computeAvailableSignals` em `src/lib/insights/prompt.ts` (linhas 153-156) só expõe `format` e `engagement_pct` por post. O validador rejeita correctamente (`EVIDENCE_INVALID`).
+Inspeccionei `src/lib/insights/prompt.ts` e **todas as alterações pedidas já estão presentes** da iteração anterior:
 
-A correcção é apenas alinhar o allowlist com os campos efectivamente visíveis no payload.
+## Confirmação por inspecção
 
-### Alterações
-
-**1. `src/lib/insights/prompt.ts` — `computeAvailableSignals` (linhas 153-156)**
-
-Substituir o loop actual por uma versão que adiciona, por post incluído (cap=3, ordem preservada), o caminho canónico para cada campo presente. Ordem determinística dentro de cada post: `format`, `engagement_pct`, `likes`, `comments`, `caption_excerpt`.
+### 1. `available_signals` aceita zero em campos numéricos serializados
+`computeAvailableSignals` (linhas 137–196):
 
 ```ts
-const cappedTopPosts = ctx.top_posts.slice(0, PROMPT_TOP_POSTS_CAP);
-cappedTopPosts.forEach((post, idx) => {
-  // `format` and `engagement_pct` are always serialised by the payload
-  // builder below, so they are always citable when a post exists.
-  signals.push(`top_posts[${idx}].format`);
-  signals.push(`top_posts[${idx}].engagement_pct`);
-  // The remaining fields are only citable when present in the source
-  // post — keeps the allowlist aligned with what the model actually
-  // sees and prevents citing zero/empty values as evidence.
-  if (Number.isFinite(post.likes) && post.likes > 0) {
-    signals.push(`top_posts[${idx}].likes`);
-  }
-  if (Number.isFinite(post.comments) && post.comments > 0) {
-    signals.push(`top_posts[${idx}].comments`);
-  }
-  const caption = (post.caption_excerpt ?? "").trim();
-  if (caption.length > 0) {
-    signals.push(`top_posts[${idx}].caption_excerpt`);
-  }
-});
+if (Number.isFinite(cs.posts_analyzed)) signals.push("content_summary.posts_analyzed");
+if (Number.isFinite(cs.average_likes)) signals.push("content_summary.average_likes");
+if (Number.isFinite(cs.average_comments)) signals.push("content_summary.average_comments");
+if (Number.isFinite(cs.average_engagement_rate)) signals.push("content_summary.average_engagement_rate");
+if (Number.isFinite(cs.estimated_posts_per_week)) signals.push("content_summary.estimated_posts_per_week");
+...
+if (Number.isFinite(post.likes))    signals.push(`top_posts[${idx}].likes`);
+if (Number.isFinite(post.comments)) signals.push(`top_posts[${idx}].comments`);
 ```
 
-Notas:
-- Cap de 3 mantido.
-- Ordem determinística dentro de cada post e ao longo do array.
-- Só adiciona o caminho quando o campo está realmente presente no source — não polui o allowlist com paths cujo valor seria vazio/zero.
+→ `0` passa em `Number.isFinite`, logo é incluído.
 
-**2. `src/lib/insights/prompt.ts` — `INSIGHTS_SYSTEM_PROMPT` (linha 52)**
+### 2. `caption_excerpt` mantém-se condicional
+```ts
+const caption = (post.caption_excerpt ?? "").trim();
+if (caption.length > 0) signals.push(`top_posts[${idx}].caption_excerpt`);
+```
 
-Acrescentar uma frase explícita de fecho na regra de evidence, em pt-PT + reforço em inglês (já é o padrão da linha 52):
+### 3. System prompt já reforça zero
+Linha 54 de `INSIGHTS_SYSTEM_PROMPT`:
+> Zero é evidência observada válida. Se um campo numérico aparece no payload com valor 0, pode ser citado como evidence desde que o caminho exacto conste de "allowed_evidence_paths". Zero is valid observed evidence: a numeric field with value 0 may be cited only if its exact path is listed in "allowed_evidence_paths".
 
-> "Se um campo aparece no payload mas não consta de `allowed_evidence_paths`, NÃO o citar como evidence. Evidence paths must be copied exactly from `allowed_evidence_paths`. If a field is visible in the payload but not listed in `allowed_evidence_paths`, do not cite it as evidence."
+### 4. Validador não precisa de alteração
+`src/lib/insights/validate.ts` reconstrói `available_signals` via `buildInsightsUserPayload(ctx)` e rejeita qualquer caminho fora da lista. Logo:
+- `top_posts[0].comments` com `comments=0` → permitido (está em `available_signals`)
+- `top_posts[0].likes` com `likes=0` → permitido
+- `top_posts[0].shares` → rejeitado (`EVIDENCE_INVALID`)
+- Caminhos arbitrários → rejeitados
 
-**3. `src/lib/insights/validate.ts`**
+## Acção a executar
 
-Sem alterações. O validador já faz lookup contra o `Set` derivado de `available_signals` via `buildInsightsUserPayload(ctx)`, portanto absorve automaticamente as novas paths. Continua a rejeitar qualquer `top_posts[i].<outro_campo>`.
+Como não há mudanças de código pendentes, proponho apenas correr validação para confirmar que o build actual da preview está limpo:
 
-**4. (Opcional) Comentário curto**
+1. `bunx tsc --noEmit`
+2. `bun run build`
 
-Acrescentar nota acima do bloco a confirmar que `top_posts[0].comments` passa a ser aceite quando `comments > 0` no source post.
+Sem chamadas a OpenAI, Apify ou DataForSEO. Sem invalidar snapshots. Sem smoke test.
 
-### Validação (sem providers)
-- `bunx tsc --noEmit`
-- `bun run build`
-- Inspecção manual: confirmar que `top_posts[0].comments` aparece em `available_signals` apenas quando o post tem `comments > 0`; e que paths como `top_posts[0].likes` continuam fora do allowlist quando o post tem `likes = 0`.
+Depois disto, fica pronto para a chamada controlada quando aprovares.
 
-### Garantias
-- Sem chamadas a OpenAI / Apify / DataForSEO.
-- Sem invalidação de snapshots.
-- Sem alterações a UI, `/report.example`, PDF, admin, ou ficheiros locked.
-- Sem nova smoke test — aguarda autorização explícita.
+## Garantias
+- Sem alterações a `prompt.ts`, `validate.ts`, UI, PDF, admin, `/report.example` ou ficheiros locked.
+- Sem alterações a base de dados.
+
+**Diz "avança" para correr só typecheck + build.**
