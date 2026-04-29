@@ -17,11 +17,10 @@ import {
   YAxis,
 } from "recharts";
 
-import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { KPICard } from "../kpi-card";
 import { ADMIN_LITERAL } from "../admin-tokens";
-import { MockDataBanner } from "../mock-data-banner";
+import { DemoOnlySection } from "../demo-only-section";
 import { MOCK_DAILY_REVENUE, MOCK_REVENUE_KPIS } from "@/lib/admin/mock-data";
 
 export function RevenueSection() {
@@ -31,15 +30,14 @@ export function RevenueSection() {
   const chartData = MOCK_DAILY_REVENUE.map((d) => ({ ...d }));
 
   return (
+    <DemoOnlySection
+      title="Receita"
+      subtitle="o que entra"
+      accent="revenue"
+      info="Inclui MRR (subscrições recorrentes) e vendas avulsas. MRR é a métrica de saúde primária do negócio SaaS."
+      pendingReason="Receita ainda a zero — não existem subscrições nem vendas avulsas. Esta secção será ligada automaticamente quando o checkout (EuPago/Stripe) estiver integrado."
+    >
     <section className="flex flex-col gap-4">
-      <AdminSectionHeader
-        title="Receita"
-        subtitle="o que entra"
-        accent="revenue"
-        info="Inclui MRR (subscrições recorrentes) e vendas avulsas. MRR é a métrica de saúde primária do negócio SaaS."
-      />
-      <MockDataBanner reason="MRR, receita avulsa e total dependem de subscrições e checkout (EuPago/Stripe). Será ligado quando integrado." />
-
       <div className="grid gap-3 grid-cols-1 lg:grid-cols-[1.4fr_1fr_1fr]">
         {/* Hero: MRR — receita previsível, mono 56px */}
         <KPICard
@@ -159,6 +157,7 @@ export function RevenueSection() {
         </div>
       </AdminCard>
     </section>
+    </DemoOnlySection>
   );
 }
 
