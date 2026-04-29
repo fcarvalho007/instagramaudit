@@ -1,16 +1,10 @@
 /**
- * R5 — local validation harness for editorial_patterns in the OpenAI
- * insights flow. Three cases:
- *   1. POSITIVE: insight cites editorial_patterns evidence + numeric body → ok.
- *   2. NEGATIVE: model leaks "editorial_patterns.market_demand_content_fit"
- *      in the body → reason="TECHNICAL_LEAK".
- *   3. NEGATIVE: generic recommendation, no number → reason="GENERIC_OUTPUT".
+ * R5 — Vitest suite for editorial_patterns in the OpenAI insights flow.
  *
- * Run: `bun src/lib/insights/__tests__/validate-editorial.test.ts`.
  * Pure: no OpenAI call, no I/O.
  */
 
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 
 import { buildInsightsUserPayload } from "../prompt";
 import type { InsightsContext } from "../types";
@@ -105,72 +99,48 @@ function clone<T>(x: T): T {
   return JSON.parse(JSON.stringify(x)) as T;
 }
 
-let failed = 0;
-function run(name: string, fn: () => void) {
-  try {
-    fn();
-    console.log(`  ok  ${name}`);
-  } catch (err) {
-    failed += 1;
-    console.log(`  FAIL ${name}`);
-    console.error(err);
-  }
-}
+describe("validateInsights — editorial_patterns", () => {
+  const ctx = makeCtx();
 
-console.log("validate-editorial.test.ts");
-
-const ctx = makeCtx();
-
-run("payload exposes editorial_patterns + new evidence paths", () => {
-  const payload = buildInsightsUserPayload(ctx);
-  assert.ok(payload.editorial_patterns, "editorial_patterns must be present");
-  assert.equal(
-    payload.editorial_patterns!.collaboration_lift!.delta_pct,
-    42,
-  );
-  assert.ok(
-    payload.available_signals.includes(
+  it("payload exposes editorial_patterns and new evidence paths", () => {
+    const payload = buildInsightsUserPayload(ctx);
+    expect(payload.editorial_patterns).toBeTruthy();
+    expect(payload.editorial_patterns!.collaboration_lift!.delta_pct).toBe(42);
+    expect(payload.available_signals).toContain(
       "editorial_patterns.collaboration_lift.delta_pct",
-    ),
-  );
-  assert.ok(
-    payload.available_signals.includes(
+    );
+    expect(payload.available_signals).toContain(
       "editorial_patterns.engagement_trend.direction",
-    ),
-  );
-});
+    );
+  });
 
-run("CORRECT editorial_patterns insight passes the validator", () => {
-  const res = validateInsights(passingResponse(), ctx);
-  if (!res.ok) {
-    throw new Error(`expected ok, got ${res.reason}: ${res.detail}`);
-  }
-  assert.equal(res.insights[0].id, "COLLAB_LIFT");
-});
+  it("accepts a correct editorial_patterns insight", () => {
+    const res = validateInsights(passingResponse(), ctx);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.insights[0].id).toBe("COLLAB_LIFT");
+    }
+  });
 
-run("technical-token leak in body is rejected", () => {
-  const raw = clone(passingResponse());
-  // Model literally writes the snake_case path in the body — must fail.
-  raw.insights[0].body =
-    "O editorial_patterns.collaboration_lift.delta_pct é 42. Reforçar colaborações nas próximas 4 semanas.";
-  const res = validateInsights(raw, ctx);
-  assert.equal(res.ok, false);
-  if (res.ok) throw new Error("unreachable");
-  assert.equal(res.reason, "TECHNICAL_LEAK");
-});
+  it("rejects technical-token leak in body with TECHNICAL_LEAK", () => {
+    const raw = clone(passingResponse());
+    raw.insights[0].body =
+      "O editorial_patterns.collaboration_lift.delta_pct é 42. Reforçar colaborações nas próximas 4 semanas.";
+    const res = validateInsights(raw, ctx);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe("TECHNICAL_LEAK");
+    }
+  });
 
-run("generic recommendation without number is rejected", () => {
-  const raw = clone(passingResponse());
-  raw.insights[0].body =
-    "Apostar em mais colaborações para crescer mais depressa.";
-  const res = validateInsights(raw, ctx);
-  assert.equal(res.ok, false);
-  if (res.ok) throw new Error("unreachable");
-  assert.equal(res.reason, "GENERIC_OUTPUT");
+  it("rejects generic recommendation without numeric grounding with GENERIC_OUTPUT", () => {
+    const raw = clone(passingResponse());
+    raw.insights[0].body =
+      "Apostar em mais colaborações para crescer mais depressa.";
+    const res = validateInsights(raw, ctx);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe("GENERIC_OUTPUT");
+    }
+  });
 });
-
-if (failed > 0) {
-  console.log(`\n${failed} failure(s)`);
-  process.exit(1);
-}
-console.log("\nall passed");

@@ -1,22 +1,17 @@
 /**
- * R4-A regression harness for `enrichPosts`.
+ * R4-A regression suite for `enrichPosts` (Vitest).
  *
- * Verifies the new R4-A signals (video_duration, product_type, coauthors,
- * tagged_users, location_name, music_title, caption_length, is_pinned) are
- * mapped from the Apify shape AND that legacy/minimal posts continue to
- * normalize without throwing or producing junk.
+ * Covers the new R4-A signals (video_duration, product_type, coauthors,
+ * tagged_users, location_name, music_title, caption_length, is_pinned)
+ * plus defensive normalization of legacy/minimal posts.
  *
- * Pure: no I/O. Run with `bun src/lib/analysis/__tests__/normalize-r4a.test.ts`.
- * Each case asserts via `assert/strict`; failures exit with code 1.
+ * Pure: no I/O, no provider calls.
  */
 
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 
 import { enrichPosts } from "../normalize";
 
-// ─────────────────────────────────────────────────────────────────────────
-// Fixture A — Apify "complete" Reel: every R4-A field populated.
-// ─────────────────────────────────────────────────────────────────────────
 const fixtureFullReel = {
   shortcode: "C_full_001",
   type: "Video",
@@ -28,7 +23,7 @@ const fixtureFullReel = {
   likesCount: 320,
   commentsCount: 18,
   videoViewCount: 5400,
-  takenAtTimestamp: 1735603200, // 2024-12-31 00:00:00 UTC
+  takenAtTimestamp: 1735603200,
   displayUrl: "https://example.com/thumb.jpg",
   coauthorProducers: [{ username: "marca_x" }, { username: "creator_y" }],
   taggedUsers: [{ username: "amigo_a" }, "amigo_b"],
@@ -36,10 +31,6 @@ const fixtureFullReel = {
   musicInfo: { song_name: "Track Name", artist_name: "Some Artist" },
 };
 
-// ─────────────────────────────────────────────────────────────────────────
-// Fixture B — Apify "minimal/legacy" image post: NONE of the R4-A optional
-// fields. Must normalize defensively (defaults, null, or 0 — never throw).
-// ─────────────────────────────────────────────────────────────────────────
 const fixtureLegacyImage = {
   shortcode: "C_legacy_002",
   type: "Image",
@@ -50,10 +41,6 @@ const fixtureLegacyImage = {
   displayUrl: "https://example.com/old.jpg",
 };
 
-// ─────────────────────────────────────────────────────────────────────────
-// Fixture C — "Hybrid" carousel: has caption + tagged users but no music,
-// no location, no coauthors, no duration. Stresses partial-presence logic.
-// ─────────────────────────────────────────────────────────────────────────
 const fixtureHybridCarousel = {
   shortcode: "C_hybrid_003",
   type: "Sidecar",
@@ -66,67 +53,49 @@ const fixtureHybridCarousel = {
   taggedUsers: [{ username: "convidado" }],
 };
 
-// ─────────────────────────────────────────────────────────────────────────
-// Run cases
-// ─────────────────────────────────────────────────────────────────────────
-const followers = 10_000;
-const { posts } = enrichPosts(
-  [fixtureFullReel, fixtureLegacyImage, fixtureHybridCarousel],
-  followers,
-);
+describe("enrichPosts — R4-A signals", () => {
+  const followers = 10_000;
+  const { posts } = enrichPosts(
+    [fixtureFullReel, fixtureLegacyImage, fixtureHybridCarousel],
+    followers,
+  );
 
-assert.equal(posts.length, 3, "should normalize all 3 fixtures");
+  it("normalizes all fixtures without dropping any post", () => {
+    expect(posts.length).toBe(3);
+  });
 
-// — Case A: full reel —
-const a = posts[0];
-assert.equal(a.format, "Reels", "fixture A should classify as Reels");
-assert.equal(a.video_duration, 42.5, "video_duration must round-trip");
-assert.equal(a.product_type, "clips", "product_type must round-trip");
-assert.equal(a.is_pinned, true, "is_pinned must round-trip");
-assert.deepEqual(
-  a.coauthors,
-  ["marca_x", "creator_y"],
-  "coauthors must extract usernames",
-);
-assert.deepEqual(
-  a.tagged_users,
-  ["amigo_a", "amigo_b"],
-  "tagged_users must accept object + string entries",
-);
-assert.equal(a.location_name, "Lisboa, Portugal", "location_name must round-trip");
-assert.equal(
-  a.music_title,
-  "Track Name · Some Artist",
-  "music_title must concatenate song + artist",
-);
-assert.equal(
-  a.caption_length,
-  fixtureFullReel.caption.length,
-  "caption_length must equal caption.length",
-);
+  it("maps a full Apify Reel with every R4-A field populated", () => {
+    const a = posts[0];
+    expect(a.format).toBe("Reels");
+    expect(a.video_duration).toBe(42.5);
+    expect(a.product_type).toBe("clips");
+    expect(a.is_pinned).toBe(true);
+    expect(a.coauthors).toEqual(["marca_x", "creator_y"]);
+    expect(a.tagged_users).toEqual(["amigo_a", "amigo_b"]);
+    expect(a.location_name).toBe("Lisboa, Portugal");
+    expect(a.music_title).toBe("Track Name · Some Artist");
+    expect(a.caption_length).toBe(fixtureFullReel.caption.length);
+  });
 
-// — Case B: legacy image —
-const b = posts[1];
-assert.equal(b.format, "Imagens", "fixture B should classify as Imagens");
-assert.equal(b.video_duration ?? null, null, "legacy must have null video_duration");
-assert.equal(b.is_pinned, false, "legacy is_pinned defaults to false");
-assert.deepEqual(b.coauthors, [], "legacy coauthors defaults to []");
-assert.deepEqual(b.tagged_users, [], "legacy tagged_users defaults to []");
-assert.equal(b.location_name, null, "legacy location_name is null");
-assert.equal(b.music_title, null, "legacy music_title is null");
-assert.equal(
-  b.caption_length,
-  fixtureLegacyImage.caption.length,
-  "legacy caption_length still derived from caption",
-);
+  it("normalizes a legacy minimal image post defensively", () => {
+    const b = posts[1];
+    expect(b.format).toBe("Imagens");
+    expect(b.video_duration ?? null).toBe(null);
+    expect(b.is_pinned).toBe(false);
+    expect(b.coauthors).toEqual([]);
+    expect(b.tagged_users).toEqual([]);
+    expect(b.location_name).toBe(null);
+    expect(b.music_title).toBe(null);
+    expect(b.caption_length).toBe(fixtureLegacyImage.caption.length);
+  });
 
-// — Case C: hybrid carousel —
-const c = posts[2];
-assert.equal(c.format, "Carrosséis", "fixture C should classify as Carrosséis");
-assert.equal(c.product_type, "feed");
-assert.deepEqual(c.tagged_users, ["convidado"]);
-assert.deepEqual(c.coauthors, [], "hybrid: no coauthors");
-assert.equal(c.location_name, null, "hybrid: no location");
-assert.equal(c.music_title, null, "hybrid: no music");
-
-console.log("✓ R4-A normalize fixtures pass (3/3)");
+  it("normalizes a hybrid carousel with partial fields", () => {
+    const c = posts[2];
+    expect(c.format).toBe("Carrosséis");
+    expect(c.product_type).toBe("feed");
+    expect(c.tagged_users).toEqual(["convidado"]);
+    expect(c.coauthors).toEqual([]);
+    expect(c.location_name).toBe(null);
+    expect(c.music_title).toBe(null);
+  });
+});
