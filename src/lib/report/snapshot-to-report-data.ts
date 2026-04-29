@@ -27,6 +27,10 @@ import {
   extractTopKeywords,
   type PostForText,
 } from "./text-extract";
+import {
+  buildEditorialPatterns,
+  type EditorialPatterns,
+} from "./editorial-patterns";
 
 // ============================================================================
 // Snapshot input typing — kept loose because `normalized_payload` is `Json`.
@@ -1023,6 +1027,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     },
     aiInsights: enrichedAiInsights,
     aiInsightsV2: buildAiInsightsV2(payload.ai_insights_v2),
+    editorialPatterns: buildEditorialPatterns(payload),
   };
 
   const data: ReportData = {
