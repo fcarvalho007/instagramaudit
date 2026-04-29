@@ -1,170 +1,85 @@
-Redesign do relatório público `/analyze/$username` — premium, cinematic, analytics-first
+## Objetivo
 
-Objectivo
-Transformar o relatório de uma pilha plana de cards num documento editorial com hierarquia clara, secções diferenciadas visualmente, CTAs fortes e leitura rápida em mobile. Inspirado em Iconosquare nos princípios — não no visual nem na marca. Preserva integralmente `/report/example`, providers, schema e ficheiros locked.
+Garantir que o `title` e o `body` dos insights de IA mostrados em `/analyze/$username` nunca contêm tokens técnicos (`engagement_pct`, `top_posts[0].likes`, `benchmark_value_pct`, `position below`, `difference_pct`, `content_summary.*`, etc.). O array `evidence[]` mantém-se inalterado para auditoria interna.
 
-Princípios de design aplicados
-- 3 níveis visuais: hero / secção primária, cards analíticos, notas metodológicas.
-- Áreas com gradientes pastel suaves apenas em zonas-âncora (hero, AI reading, market signals, CTA final). Resto fica em superfícies calmas.
-- Cards brancos espaçosos sobre fundo levemente tingido — chega de “20 cards iguais”.
-- Ritmo alternado: full-bleed soft → grelha de cards densos → full-bleed soft.
-- CTAs primários com forte contraste; secundários em pílula minimal.
-- Tipografia: Fraunces para headings editoriais grandes; Inter para corpo; mono apenas em eyebrows e KPIs.
-- Mobile-first: hero compacto, KPIs em grelha 2×2, secções com mais respiração e nada de overflow horizontal a 375px.
+Sem chamadas a OpenAI, Apify ou DataForSEO.
 
-Mapa de antes → depois (hierarquia)
+## Ficheiros a editar (nenhum está locked)
 
-Antes (ordem actual)
-1. Bio enriquecida (faixa fina)
-2. CoverageStrip (4 chips)
-3. Glossário (3 termos)
-4. ReportPage locked: header com avatar, KPIs, gráfico temporal, gauge, formatos, concorrentes, top posts, heatmap, melhores dias, hashtags, AI insights, footer
-5. Companion AI insights (resumo técnico + details)
-6. Top links enriquecidos (lista)
-7. Menções enriquecidas (chips)
-8. CTA concorrentes (quando vazio)
-9. Market signals (quando ready)
-10. Fonte do benchmark (faixa fina)
-11. Scope strip
-12. Tier comparison (free vs pro)
-13. ReportFinalBlock (PDF + partilha + feedback)
+- `src/lib/insights/prompt.ts` — endurecer `INSIGHTS_SYSTEM_PROMPT`.
+- `src/lib/insights/validate.ts` — adicionar regra `TECHNICAL_LEAK` em `validateInsights`.
 
-Depois (ordem nova)
-1. Hero premium (novo wrapper editorial, sobre `ReportPage`/`ReportHeader` locked)
-   - Eyebrow “InstaBench · Relatório editorial”
-   - Avatar grande + `@username` Fraunces XL + nome real
-   - Bio truncada (1 linha em mobile, 2 em desktop)
-   - Linha de badges de cobertura: “Dados públicos”, “IA editorial”, “Benchmark”, “Pesquisa” — cada uma com cor de status (real/partial/empty)
-   - Linha meta: nº de publicações · janela · data da análise
-   - CTAs visíveis: PDF primário grande (cyan sólido) + “Copiar link” secundário em pílula
-   - Fundo com gradiente pastel cyan→violet muito suave + grão sutil (radial-gradient)
-2. Executive summary strip (faixa de 4–5 KPIs grandes)
-   - Engagement médio · Posts analisados · Frequência semanal · Formato dominante · Estado do benchmark
-   - Numero grande Fraunces, micro-caption em mono, sem cards pesados (dividers verticais)
-3. Strategic AI reading (secção premium, full-bleed leve)
-   - Reaproveita os insights persistidos via `enriched.aiInsights`
-   - Cards numerados generosos com faixa de cor lateral por prioridade
-   - Sub-linhas humanas: “envolvimento médio”, “referência de mercado”, “diferença face ao benchmark” — substitui qualquer rótulo cru
-   - Resumo técnico (confiança/modelo/data) recolhido num details discreto no fim
-4. Procura de mercado (Market Signals)
-   - Sai do meio do scroll para uma secção dedicada com fundo pastel
-   - Título: “Procura de mercado associada ao perfil”
-   - Descrição: “Cruza o conteúdo do Instagram com sinais de pesquisa para perceber se os temas também despertam interesse fora da plataforma.”
-   - Mostra: chips de keywords usáveis, palavra mais forte em destaque, gráfico, footer com fonte
-   - Estado vazio compacto e elegante (em vez de invisível) explicando porquê
-5. Performance ao longo do tempo (chart locked do `ReportPage`)
-   - Mantido, com header editorial reescrito por copy do hero (sem mudar o componente locked)
-6. Benchmark + performance por formato
-   - Gauge + format breakdown (locked) com novo enquadramento editorial
-7. Top posts (locked, já clicáveis)
-   - Mantém imagens reais e link clicável
-   - Lista de top links + menções movem para uma “Camadas extras” compacta
-8. Resposta da audiência (heatmap + melhores dias)
-9. Hashtags + palavras-chave de captions
-10. Metodologia
-    - Card único com 4 fontes (Apify · DataForSEO · OpenAI · benchmark dataset)
-    - Linguagem não-técnica
-11. Bloco final único
-    - PDF grande primário, “Copiar link” / “Partilhar” secundário, LinkedIn em pílula
-    - Feedback beta em linha discreta
-    - Tier comparison passa para um teaser compacto antes do CTA, em vez de bloco gigante a meio
+## Mudanças no prompt (`INSIGHTS_SYSTEM_PROMPT`)
 
-Como vou implementar (não-destrutivo)
+Acrescentar uma nova secção **"Linguagem do título e do body (obrigatório)"** com:
 
-Novos componentes (não-locked)
-- `src/components/report-redesign/report-hero.tsx`
-- `src/components/report-redesign/report-executive-summary.tsx`
-- `src/components/report-redesign/report-section-frame.tsx` (frame editorial reutilizável: eyebrow + título Fraunces + subtítulo + slot)
-- `src/components/report-redesign/report-ai-reading.tsx` (substitui visualmente o `ReportAiInsights` locked num envelope premium, reusando os mesmos dados de `enriched.aiInsights` que já existem; o locked dentro de `ReportPage` continua igual e é reordenado/renderizado fora — ver abaixo)
-- `src/components/report-redesign/report-methodology.tsx`
-- `src/components/report-redesign/report-tier-teaser.tsx` (versão compacta do tier comparison)
-- `src/components/report-redesign/report-shell.tsx` (orquestrador novo que compõe a nova hierarquia)
-- `src/components/report-redesign/report-tokens.ts` (gradientes pastel + utilidades de classe; sem hardcoding de cores: usa tokens existentes via `bg-[color-mix(...)]` ou utilities Tailwind)
+- "evidence" é apenas para auditoria interna. NUNCA escrever no `title` nem no `body` os caminhos técnicos das evidências.
+- Proibido em `title`/`body`:
+  - Sufixos snake_case com `_pct`, `_count`, `_rate`, `_per_week`, `_summary`.
+  - Caminhos com pontos ou colchetes: `top_posts[0]…`, `content_summary.…`, `benchmark.…`, `market_signals.…`, `competitors_summary.…`, `profile.…`.
+  - Termos crus em inglês usados como rótulos: `position below`, `position above`, `position aligned`, `engagement_pct`, `benchmark_value_pct`, `profile_value_pct`, `difference_pct`, `dominant_format`.
+- Traduzir sempre para linguagem natural pt-PT:
+  - `engagement_pct` → "envolvimento médio" / "taxa de envolvimento".
+  - `benchmark_value_pct` → "referência esperada para perfis semelhantes".
+  - `profile_value_pct` → "valor actual do perfil".
+  - `difference_pct` → "diferença face à referência" (em pontos percentuais).
+  - `position below/above/aligned` → "abaixo da referência" / "acima da referência" / "alinhado com a referência".
+  - `top_posts[0].likes` → "as publicações com melhor desempenho" / "o post mais forte".
+  - `estimated_posts_per_week` → "ritmo de publicação semanal".
+  - `dominant_format` → "formato dominante".
+- Reforçar: números podem (e devem) aparecer em `body`, mas formatados em pt-PT (`-87,38 pp`, `4,2%`, `2 publicações por semana`), nunca como tokens crus.
+- Adicionar dois exemplos curtos no prompt: um BAD ("position below e difference_pct -87.38 face a benchmark_value_pct") e um GOOD ("o envolvimento médio está muito abaixo da referência…").
 
-Reutilização de componentes locked sem os modificar
-- Posso renderizar `ReportPage` inteiro como bloco “núcleo analítico”, mas o pedido dele sai escondido se já tivermos hero novo e executive summary que duplicam o `ReportHeader` e o `ReportKeyMetrics`.
-- Estratégia limpa: extraio para `ReportShell` apenas as secções locked que continuam relevantes:
-  - `ReportTemporalChart`
-  - `ReportBenchmarkGauge`
-  - `ReportFormatBreakdown`
-  - `ReportCompetitors`
-  - `ReportTopPosts`
-  - `ReportPostingHeatmap`
-  - `ReportBestDays`
-  - `ReportHashtagsKeywords`
-  - `ReportFooter`
-- Cada uma é importada directamente (são componentes named export) e envolvida pelo novo `ReportSectionFrame`. Não toco no código locked.
-- `ReportHeader` e `ReportKeyMetrics` ficam fora do novo shell — o hero novo + summary substituem-nos visualmente. `/report/example` continua a usar `ReportPage` completo, intacto.
-- `ReportDataProvider` continua a fornecer o contexto a toda a árvore.
+## Mudanças no validador (`validate.ts`)
 
-Mudanças mínimas em ficheiros existentes
-- `src/routes/analyze.$username.tsx`: substitui o orquestrador actual por `<ReportShell …/>`. Mantém `useReportShareActions` e passa actions ao hero e ao bloco final. Mantém `Toaster`. Sem alterar a fetch logic.
-- `src/components/report-share/report-final-block.tsx`: refresh visual leve (gradiente pastel + CTA PDF maior + LinkedIn em pílula). Mantém a mesma API.
-- `src/components/report-market-signals/report-market-signals.tsx`: novo enquadramento (gradiente pastel, título em pt-PT humano, estado vazio compacto em vez de `return null`).
-- `src/components/report-enriched/report-enriched-ai-insights.tsx`: passa a ser usado como “details” técnico dentro do novo `ReportAiReading`, não como bloco autónomo.
-- `src/components/report-tier/scope-strip.tsx`: deixa de ser usado como secção full; o seu conteúdo informativo migra para o teaser compacto no fim.
-- `src/components/report-tier/tier-comparison-block.tsx`: continua a existir, mas só é renderizado se quisermos manter a versão grande; por defeito o shell usa o teaser compacto e omite o bloco grande para encurtar o relatório.
+Adicionar nova função pura `detectTechnicalLeak(text: string): string | null` e nova razão de falha `TECHNICAL_LEAK`. Aplicada a `title` e `body` (nunca a `evidence`).
 
-NÃO toco em
-- `/report.example` route
-- Qualquer ficheiro em `LOCKED_FILES.md`
-- Lógica de providers (Apify/OpenAI/DataForSEO)
-- `routeTree.gen.ts`
-- Schema Supabase / migrations
-- `report-mock-data.ts` (já modificado neste sprint apenas para campo permalink)
+Padrões rejeitados (regex, case-insensitive quando faz sentido):
 
-Copy não-técnica (substituições aplicadas no hero / executive summary / AI reading / market signals)
-- “engagement_pct”, “benchmark_value_pct”, “profile_value_pct”, “position below” → “envolvimento médio”, “referência de mercado”, “diferença face ao benchmark”, “abaixo / acima da referência”
-- “snapshot”, “payload”, “normalized” → não aparecem
-- “DataForSEO”, “Apify”, “OpenAI” aparecem só na metodologia, com explicação curta
+1. Sufixos snake_case técnicos: `\b\w+_(pct|count|rate|per_week|summary|likes|comments)\b`
+2. Caminhos com ponto: `\b(content_summary|benchmark|market_signals|competitors_summary|profile|top_posts)\.[a-z_]+`
+3. Indexação de array: `top_posts\s*\[\s*\d+\s*\]`
+4. Tokens em inglês usados como rótulo: `\bposition\s+(below|above|aligned)\b`, `\bdominant_format\b`, `\bbenchmark_value_pct\b`, `\bprofile_value_pct\b`, `\bdifference_pct\b`, `\bengagement_pct\b`
+5. snake_case genérico de ≥2 palavras: `\b[a-z]+_[a-z][a-z_]+\b` — devolve match exacto para o `detail`.
 
-Mobile (375px)
-- Hero compacto: avatar 56px, `@username` text-2xl, bio 2 linhas
-- CTAs em coluna, full-width, 44px de altura mínima
-- Executive summary: grid 2 colunas com 4–5 KPIs (5º ocupa linha inteira)
-- Section frames com `px-5` e gap vertical generoso
-- Charts/heatmap: já têm scroll interno; vou garantir `min-w-0` em todos os wrappers para impedir overflow
-- Sem `whitespace-nowrap` em headings
+Integração em `validateInsights`:
 
-Validação
-- `bunx tsc --noEmit`
-- Inspecção visual via `browser--navigate_to_sandbox` em 1366×768, 768×1024 e 375×812
-- Confirmar:
-  - PDF visível e dominante no hero e no bloco final
-  - AI reading aparece uma vez, com framing premium
-  - Market signals visível e compreensível (mesmo em estado vazio)
-  - Top posts com imagens reais ou gradiente fallback
-  - Sem overflow horizontal em 375px
-  - KPIs primários acessíveis em < 1 scroll em mobile
-  - Sem nomes técnicos crus em copy visível
-  - `/report.example` permanece exactamente como está
+```text
+// dentro do for (const item of items), após BODY_TOO_LONG e antes de hasQuantitativeMarker:
+const leakTitle = detectTechnicalLeak(item.title);
+const leakBody = detectTechnicalLeak(item.body);
+if (leakTitle || leakBody) {
+  return fail("TECHNICAL_LEAK", `id=${item.id} token=${leakTitle ?? leakBody}`);
+}
+```
 
-Riscos visuais residuais
-- O `ReportPage` locked tem espaçamento próprio (`py-8 md:py-12 space-y-10`) que vou perder ao usar componentes individuais — terei de reproduzir o ritmo no `ReportShell` para não ficar mais apertado.
-- `ReportFooter` locked pode duplicar info que o novo CTA bloco já dá; vou avaliar se o omito da nova ordem.
-- O design vai ficar visualmente distinto do `/report/example` — desejado, pois `/report/example` é referência editorial original e não deve mudar.
+Atualizar o cabeçalho do ficheiro com a nova razão `TECHNICAL_LEAK — token técnico detectado em title/body`.
 
-Ficheiros que serão criados
-- `src/components/report-redesign/report-hero.tsx`
-- `src/components/report-redesign/report-executive-summary.tsx`
-- `src/components/report-redesign/report-section-frame.tsx`
-- `src/components/report-redesign/report-ai-reading.tsx`
-- `src/components/report-redesign/report-methodology.tsx`
-- `src/components/report-redesign/report-tier-teaser.tsx`
-- `src/components/report-redesign/report-shell.tsx`
+`evidence[]` continua intocado: aliases continuam a funcionar, `EVIDENCE_INVALID` continua a aplicar-se. A nova regra só toca em campos editoriais.
 
-Ficheiros que serão editados
-- `src/routes/analyze.$username.tsx`
-- `src/components/report-share/report-final-block.tsx`
-- `src/components/report-market-signals/report-market-signals.tsx`
+## Auto-teste (sem rede)
 
-Checklist de entrega
-☐ Novo `ReportShell` com nova hierarquia ativo em `/analyze/$username`.
-☐ Hero premium com avatar, badges de cobertura e CTAs visíveis acima do fold em desktop e mobile.
-☐ Executive summary com 4–5 KPIs grandes.
-☐ AI reading premium com copy humana; resumo técnico recolhido em details.
-☐ Market signals visível, compreensível, com estado vazio elegante.
-☐ Bloco final com PDF dominante e partilha clara.
-☐ Sem overflow horizontal em 375px.
-☐ `/report.example` inalterado.
-☐ Tipagem limpa (`bunx tsc --noEmit`).
+Criar `/tmp/insights-leak-check.ts` (fora do repo, descartável) que importa `detectTechnicalLeak` e corre sobre frases mock para confirmar:
+
+- Rejeita: `"Benchmark indica position below e difference_pct -87.38 face a benchmark_value_pct."`
+- Rejeita: `"top_posts[0].likes mostra baixa resposta."`
+- Rejeita: `"content_summary.average_engagement_rate está fraco."`
+- Aceita: `"O envolvimento médio está muito abaixo da referência esperada para perfis semelhantes. Rever o formato dominante e testar variações de criativo durante 4 semanas."`
+- Aceita: `"As publicações com melhor desempenho continuam a ter poucos gostos absolutos. Testar capas mais fortes e chamadas à acção no primeiro slide."`
+
+Validação final: `bunx tsc --noEmit`.
+
+## Garantias
+
+- Sem alterações em UI, PDF, `/report/example`, providers ou ficheiros locked.
+- `evidence[]` persiste exactamente como hoje (auditoria interna preservada).
+- Nenhuma chamada a OpenAI, Apify ou DataForSEO.
+- Snapshots antigos não são tocados; a regra só se aplica a futuras gerações que passem por `validateInsights`.
+
+## Checkpoint
+
+- ☐ `INSIGHTS_SYSTEM_PROMPT` atualizado com regras de linguagem para `title`/`body` e exemplos BAD/GOOD.
+- ☐ `validate.ts` exporta `detectTechnicalLeak` e devolve `TECHNICAL_LEAK` quando aplicável.
+- ☐ `evidence[]` permanece inalterado e continua a aceitar caminhos canónicos + aliases.
+- ☐ Auto-teste pontual confirma rejeição/aceitação dos exemplos do brief.
+- ☐ `bunx tsc --noEmit` verde.

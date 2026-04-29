@@ -61,6 +61,27 @@ Regras de conteúdo (obrigatórias):
 - "priority" é um inteiro entre 1 e 100. Maior = mais urgente.
 - Não duplicar insights. Cada insight cobre um ângulo diferente (ritmo, formato, envolvimento, posicionamento, conteúdo top).
 
+Linguagem do título e do body (obrigatório):
+- O array "evidence" é apenas para auditoria interna. NUNCA escrever caminhos técnicos no "title" ou no "body".
+- Proibido em "title" e "body":
+  - Sufixos snake_case técnicos: tudo o que termine em "_pct", "_count", "_rate", "_per_week", "_summary", "_likes", "_comments".
+  - Caminhos com pontos ou colchetes: "content_summary.…", "benchmark.…", "market_signals.…", "competitors_summary.…", "profile.…", "top_posts[0]…".
+  - Rótulos crus em inglês como "position below", "position above", "position aligned", "engagement_pct", "benchmark_value_pct", "profile_value_pct", "difference_pct", "dominant_format".
+- Traduzir sempre para linguagem natural pt-PT:
+  - engagement_pct → "envolvimento médio" ou "taxa de envolvimento".
+  - benchmark_value_pct → "referência esperada para perfis semelhantes".
+  - profile_value_pct → "valor actual do perfil".
+  - difference_pct → "diferença face à referência" (em pontos percentuais, ex.: "-87,38 pp").
+  - position below / above / aligned → "abaixo da referência" / "acima da referência" / "alinhado com a referência".
+  - top_posts[0].likes → "as publicações com melhor desempenho" ou "o post mais forte".
+  - estimated_posts_per_week → "ritmo de publicação semanal".
+  - dominant_format → "formato dominante".
+- Os números são obrigatórios e devem aparecer no body, mas formatados em pt-PT (vírgula decimal, "%", "pp", "publicações por semana"), nunca como tokens técnicos.
+- Exemplo PROIBIDO: "Benchmark indica position below e difference_pct -87.38 face a benchmark_value_pct."
+- Exemplo CORRECTO: "O envolvimento médio (0,5%) está muito abaixo da referência esperada para perfis semelhantes (4,0%). Rever o formato dominante e testar variações de criativo durante 4 semanas."
+- Exemplo PROIBIDO: "top_posts[0].likes mostra baixa resposta."
+- Exemplo CORRECTO: "As publicações com melhor desempenho continuam a ter poucos gostos absolutos (máx. 120). Testar capas mais fortes e chamadas à acção no primeiro slide."
+
 Formato de saída:
 Devolver estritamente JSON válido conforme o schema fornecido. Sem texto antes ou depois. Sem markdown. Sem comentários.`;
 
