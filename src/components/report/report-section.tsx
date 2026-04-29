@@ -21,16 +21,16 @@ export function ReportSection({
     <section className={cn("space-y-6", className)}>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="space-y-2">
-          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-content-tertiary">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-content-secondary">
             {label}
           </p>
           {title && (
-            <h2 className="font-display text-2xl md:text-3xl font-medium tracking-tight text-content-primary leading-tight">
+            <h2 className="font-sans text-[22px] md:text-[24px] font-medium tracking-[-0.01em] text-content-primary leading-[1.2]">
               {title}
             </h2>
           )}
           {subtitle && (
-            <p className="text-sm text-content-secondary max-w-2xl leading-relaxed">
+            <p className="text-[13px] text-content-secondary max-w-2xl leading-[1.5]">
               {subtitle}
             </p>
           )}
