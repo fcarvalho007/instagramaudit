@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
 import {
@@ -19,6 +20,7 @@ import { WaterfallSection } from "@/components/admin/v2/receita/waterfall-sectio
 import { PlansSection } from "@/components/admin/v2/receita/plans-section";
 import { CohortSection } from "@/components/admin/v2/receita/cohort-section";
 import { InvoicesSection } from "@/components/admin/v2/receita/invoices-section";
+import { ExpenseSection } from "@/components/admin/v2/visao-geral/expense-section";
 
 export const Route = createFileRoute("/admin/receita")({
   component: ReceitaPage,
@@ -30,16 +32,14 @@ function ReceitaPage() {
   return (
     <>
       <AdminPageHeader
-        title="Receita"
-        subtitle="Subscrições, avulso, cohorts e projecções"
+        title="Receita e despesas"
+        subtitle="Subscrições, avulso e custos reais por fornecedor (Apify, OpenAI, DataForSEO)"
         actions={
           <>
             <PeriodSelect value={period} onChange={setPeriod} />
             <ExportCsvButton
               onExport={() => {
-                // Mock por agora — endpoint CSV virá numa próxima iteração.
-                // eslint-disable-next-line no-console
-                console.info("[admin/receita] export CSV", { period });
+                toast.info("Exportação CSV ainda não disponível — em breve.");
               }}
             />
           </>
@@ -48,6 +48,7 @@ function ReceitaPage() {
       <div className="flex flex-col gap-14">
         <MetricsSection />
         <WaterfallSection />
+        <ExpenseSection />
         <PlansSection />
         <CohortSection />
         <InvoicesSection />
