@@ -15,6 +15,11 @@
 
 import type { ReportData } from "@/components/report/report-mock-data";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
+import type {
+  AiInsightV2Item,
+  AiInsightV2Section,
+} from "@/lib/insights/types";
+import { AI_INSIGHT_V2_SECTIONS } from "@/lib/insights/types";
 
 import { resolveReportTier } from "./tiers";
 import {
