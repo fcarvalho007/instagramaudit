@@ -29,6 +29,7 @@ import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
+import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
 import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
@@ -146,6 +147,11 @@ const ApiPublicPublicReportPdfRoute =
     path: '/api/public/public-report-pdf',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicIgThumbRoute = ApiPublicIgThumbRouteImport.update({
+  id: '/api/public/ig-thumb',
+  path: '/api/public/ig-thumb',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminWhoamiRoute = ApiAdminWhoamiRouteImport.update({
   id: '/api/admin/whoami',
   path: '/api/admin/whoami',
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -296,6 +303,7 @@ export interface FileRoutesByTo {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -334,6 +342,7 @@ export interface FileRoutesById {
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
@@ -446,6 +457,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports'
     | '/api/admin/resend-email'
     | '/api/admin/whoami'
+    | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/report-requests/$id'
@@ -475,6 +487,7 @@ export interface RootRouteChildren {
   ApiAdminReportsRoute: typeof ApiAdminReportsRouteWithChildren
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
+  ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
   ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
@@ -621,6 +634,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/public-report-pdf'
       fullPath: '/api/public/public-report-pdf'
       preLoaderRoute: typeof ApiPublicPublicReportPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ig-thumb': {
+      id: '/api/public/ig-thumb'
+      path: '/api/public/ig-thumb'
+      fullPath: '/api/public/ig-thumb'
+      preLoaderRoute: typeof ApiPublicIgThumbRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/whoami': {
@@ -816,6 +836,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminReportsRoute: ApiAdminReportsRouteWithChildren,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
+  ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
   ApiAdminSnapshotByIdSnapshotIdRoute: ApiAdminSnapshotByIdSnapshotIdRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
