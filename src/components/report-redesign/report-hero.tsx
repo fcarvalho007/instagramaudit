@@ -98,10 +98,9 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
         <div className="mt-8 md:mt-10 flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <CoverageBadge label="Dados públicos" status="real" />
-            <CoverageBadge
-              label="IA editorial"
-              status={enriched.aiInsights ? "real" : "empty"}
-            />
+            {enriched.aiInsights ? (
+              <CoverageBadge label="IA editorial" status="real" />
+            ) : null}
             <CoverageBadge label="Benchmark" status={coverage.benchmark} />
             <CoverageBadge label="Pesquisa" status="partial" />
           </div>
