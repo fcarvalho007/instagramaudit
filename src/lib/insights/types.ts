@@ -94,6 +94,14 @@ export interface InsightsContext {
   market_signals: {
     has_free: boolean;
     has_paid: boolean;
+    /** Top usable keywords from the free DataForSEO/Trends pipeline. */
+    top_keywords?: string[];
+    /** Single keyword with the highest mean Trends value. */
+    strongest_keyword?: string | null;
+    /** Trend direction for `strongest_keyword` over the observed window. */
+    trend_direction?: "up" | "flat" | "down" | null;
+    /** Keywords that returned no usable data in Trends. */
+    dropped_keywords?: string[];
   };
 }
 
