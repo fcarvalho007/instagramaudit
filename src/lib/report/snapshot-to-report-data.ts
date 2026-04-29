@@ -78,6 +78,15 @@ export interface SnapshotPost {
   thumbnail_url?: string | null;
   is_video?: boolean | null;
   engagement_pct?: number | null;
+  // Optional richer signals (R4-A). Always defensive in the adapter.
+  video_duration?: number | null;
+  product_type?: string | null;
+  is_pinned?: boolean | null;
+  coauthors?: string[] | null;
+  tagged_users?: string[] | null;
+  caption_length?: number | null;
+  location_name?: string | null;
+  music_title?: string | null;
 }
 
 export interface SnapshotPayload {
