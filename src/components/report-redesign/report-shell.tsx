@@ -114,7 +114,10 @@ export function ReportShell({
 
         {/* 4b. Padrões editoriais (R4-B / Prompt 18) — cruzamentos derivados
             que explicam PORQUÊ os resultados são o que são. */}
-        <ReportEditorialPatterns patterns={result.enriched.editorialPatterns} />
+        <ReportEditorialPatterns
+          patterns={result.enriched.editorialPatterns}
+          keyMetrics={result.data.keyMetrics}
+        />
 
         {/* 5. Performance ao longo do tempo */}
         <ReportFramedBlock tone="canvas" ariaLabel="Performance ao longo do tempo">
