@@ -206,6 +206,10 @@ function EngagementRateCard({
         </p>
       )}
 
+      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
+        A taxa de envolvimento varia consoante a fonte, o tamanho da conta e o método de cálculo. Apresentada aqui como referência direcional.
+      </p>
+
       {hasBenchmark ? (
         <EngagementDistanceBar
           engagement={engagement}
@@ -336,6 +340,10 @@ function PostingRhythmCard({
         </p>
       ) : null}
 
+      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
+        Volume não garante desempenho — é o equilíbrio entre cadência e qualidade que sustenta o envolvimento.
+      </p>
+
       <RhythmDots weekly={weekly} tone={status.tone} />
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
         escala · 0 → 7+ por semana
@@ -439,6 +447,9 @@ function DominantFormatCard({
 
       <p className="text-[12.5px] text-slate-600 leading-relaxed">
         formato mais frequente na amostra
+      </p>
+      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
+        {formatStrategicNote(dominantLabel)}
       </p>
 
       {breakdown.length > 0 ? (
@@ -577,4 +588,17 @@ function clamp(n: number, min: number, max: number): number {
 function formatPct(n: number): string {
   if (!Number.isFinite(n)) return "0,00%";
   return `${n.toFixed(2).replace(".", ",")}%`;
+}
+
+function formatStrategicNote(label: string): string {
+  if (label === "Reels") {
+    return "Reels apoiam alcance e descoberta — não são automaticamente superiores; dependem da intenção.";
+  }
+  if (label === "Carrosséis") {
+    return "Carrosséis funcionam para conteúdo educativo, save-worthy e narrativas em camadas.";
+  }
+  if (label === "Imagens") {
+    return "Imagens estáticas sustentam presença de marca, produto e identidade visual.";
+  }
+  return "Cada formato cumpre uma função distinta — o equilíbrio depende da intenção editorial.";
 }

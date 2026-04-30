@@ -72,6 +72,9 @@ explicitly asks for a modification in a new prompt.
 - /src/components/report-redesign/report-ai-reading.tsx
 - /src/components/report-redesign/report-methodology.tsx
 
+## Knowledge Base Policy (Sprint Knowledge, R-policy)
+- /KNOWLEDGE.md
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,
