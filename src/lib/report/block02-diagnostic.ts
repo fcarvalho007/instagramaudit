@@ -10,7 +10,16 @@
 
 import type { SnapshotPost } from "./snapshot-to-report-data";
 import type { ReportData } from "@/components/report/report-mock-data";
-import type { AiInsightV2Item, AiInsightV2Section } from "./snapshot-to-report-data";
+
+/**
+ * Forma mínima da entrada `aiInsightsV2.sections.language` que este
+ * classifier consome — declarada localmente para evitar acoplamento
+ * com tipos não-exportados de `snapshot-to-report-data`.
+ */
+interface AiSectionLike {
+  text?: string | null;
+}
+type AiSectionsLike = Partial<Record<string, AiSectionLike>> | null | undefined;
 
 // ─────────────────────────────────────────────────────────────────────
 // Shared types
@@ -575,7 +584,7 @@ export interface ThemesResult {
  */
 export function inferThemesFromCaptions(args: {
   topKeywords: ReportData["topKeywords"];
-  aiSections?: Partial<Record<AiInsightV2Section, AiInsightV2Item>> | null;
+  aiSections?: AiSectionsLike;
 }): ThemesResult {
   const aiText = args.aiSections?.language?.text?.trim() ?? null;
   if (aiText && aiText.length >= 30) {
