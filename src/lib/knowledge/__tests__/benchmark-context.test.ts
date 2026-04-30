@@ -18,6 +18,25 @@ describe("benchmark-context · invariantes", () => {
     expect(names).toEqual(["Buffer", "Databox", "Hootsuite", "Socialinsider"]);
   });
 
+  it("cada fonte tem url, ano e descrição editorial", () => {
+    for (const s of INSTAGRAM_BENCHMARK_CONTEXT.sources) {
+      expect(s.url).toMatch(/^https:\/\//);
+      expect(s.publishedYear).toBeGreaterThanOrEqual(2024);
+      expect(s.shortDescription.length).toBeGreaterThan(10);
+      expect(s.shortDescription.length).toBeLessThanOrEqual(120);
+      expect(["high", "medium", "low"]).toContain(s.referenceQuality);
+    }
+  });
+
+  it("Socialinsider e Buffer têm qualidade alta; Databox baixa", () => {
+    const map = Object.fromEntries(
+      INSTAGRAM_BENCHMARK_CONTEXT.sources.map((s) => [s.name, s.referenceQuality]),
+    );
+    expect(map["Socialinsider"]).toBe("high");
+    expect(map["Buffer"]).toBe("high");
+    expect(map["Databox"]).toBe("low");
+  });
+
   it("buffer tiers cobrem 0 até 1M sem sobreposição", () => {
     const tiers = INSTAGRAM_BENCHMARK_CONTEXT.bufferFollowerTiers;
     expect(tiers[0]!.minFollowers).toBe(0);
