@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { Bot } from "lucide-react";
+import { Bot, Database, Cpu } from "lucide-react";
 import { AiBadge } from "./ai-badge";
 
 export type DiagnosticTone = "blue" | "amber" | "rose" | "emerald" | "slate";
+
+export type DiagnosticSourceKind = "extracted" | "auto" | "ai";
+
+export interface DiagnosticSourceLabel {
+  kind: DiagnosticSourceKind;
+  /** Texto curto em pt-PT, mostrado em tooltip / footer do cartão. */
+  text: string;
+}
 
 interface Props {
   /** Número visível do cartão, ex.: "01". */
@@ -28,6 +36,14 @@ interface Props {
    * quando o texto vier mesmo da OpenAI.
    */
   aiSource?: { kind: "interpretation"; text: string } | null;
+  /**
+   * Indica a natureza da evidência do cartão. Renderiza um chip discreto
+   * no header e uma linha de rodapé com o texto correspondente.
+   *   · "extracted" → DADOS EXTRAÍDOS (ícone Database, neutro)
+   *   · "auto"      → LEITURA AUTOMÁTICA (ícone Cpu, neutro)
+   *   · "ai"        → LEITURA IA (reusa AiBadge; não duplica com `aiSource`)
+   */
+  sourceLabel?: DiagnosticSourceLabel | null;
 }
 
 const TONE: Record<
@@ -79,8 +95,14 @@ export function ReportDiagnosticCard({
   body,
   tone = "blue",
   aiSource,
+  sourceLabel,
 }: Props) {
   const t = TONE[tone];
+  const showSourceChip = !!sourceLabel;
+  // Se já existe `aiSource`, evita duplicar badge IA — o badge IA é renderizado
+  // pelo bloco `aiSource` no fundo do cartão.
+  const showAiBadgeFromSourceLabel =
+    showSourceChip && sourceLabel?.kind === "ai" && !aiSource;
   return (
     <article
       className={cn(
@@ -90,13 +112,35 @@ export function ReportDiagnosticCard({
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
       )}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
           Pergunta {number}
           <span className="mx-1.5 text-slate-300">·</span>
           <span className="text-slate-500">{label}</span>
         </p>
-        {aiSource ? <AiBadge variant="inline" /> : null}
+        <div className="flex items-center gap-1.5">
+          {showSourceChip && sourceLabel?.kind === "extracted" ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-600"
+              title={sourceLabel.text}
+            >
+              <Database aria-hidden className="size-3" />
+              <span>Dados extraídos</span>
+            </span>
+          ) : null}
+          {showSourceChip && sourceLabel?.kind === "auto" ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-600"
+              title={sourceLabel.text}
+            >
+              <Cpu aria-hidden className="size-3" />
+              <span>Leitura automática</span>
+            </span>
+          ) : null}
+          {(aiSource || showAiBadgeFromSourceLabel) ? (
+            <AiBadge variant="inline" />
+          ) : null}
+        </div>
       </div>
 
       <h3
@@ -141,6 +185,12 @@ export function ReportDiagnosticCard({
             {aiSource.text}
           </p>
         </div>
+      ) : null}
+
+      {sourceLabel && !aiSource ? (
+        <p className="border-t border-slate-200/70 pt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+          {sourceLabel.text}
+        </p>
       ) : null}
     </article>
   );
