@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
+  getActiveBenchmarkSources,
   getBufferTierForFollowers,
   getSocialinsiderEngagementForFormat,
   getHootsuiteBenchmarkForIndustry,
@@ -294,5 +295,12 @@ describe("formatBenchmarkContextForPrompt", () => {
     for (const brand of ["Socialinsider", "Buffer", "Hootsuite", "Databox"]) {
       expect(out).not.toContain(brand);
     }
+  });
+});
+
+describe("getActiveBenchmarkSources", () => {
+  it("devolve apenas fontes activas, sem Databox", () => {
+    const names = getActiveBenchmarkSources().map((s) => s.name).sort();
+    expect(names).toEqual(["Buffer", "Hootsuite", "Socialinsider"]);
   });
 });
