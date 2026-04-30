@@ -1,87 +1,72 @@
-## Problemas detetados (vs. mockup)
+## Refinement pass · Bloco 02
 
-### 1. Duplicação visível no Bloco 02 — Pergunta 04 · Temas
+Cinco ajustes cirúrgicos. Sem providers, sem locked files, sem PDF, sem schema.
 
-No `renderThemesCard` (linhas 331-368 de `report-diagnostic-block.tsx`), os temas são renderizados **duas vezes**:
+### Decisões prévias
 
-- **1ª vez** dentro da caixa "Resposta dominante" como `answer`, concatenando os temas com ` · ` separador (`#ia · #inteligenciaartificial · #marketingdigital`)
-- **2ª vez** logo abaixo, no slot `children`, com a lista de barras + contagem (`6×`, `5×`, `5×`)
+- **F1 — âncora do CTA**: manter `href="#leitura-completa"` (já é a âncora real existente em `tier-comparison-block.tsx`, confirmada por `rg`). **Não** criar id `tier-comparison` adicional. Apenas atualizar o comentário em `report-diagnostic-cta.tsx` (que erradamente diz "âncora `#tier-comparison`").
+- **F2 — `analyzedAtIso`**: opção A. O componente `ReportDiagnosticBlock` nunca aceitou esta prop nem a usa. Não há nada a remover do código — é uma correção de spec apenas. Sem alteração de ficheiros para este ponto.
 
-No mockup, a caixa azul de resposta mostra **só o título da hipótese** ("Foco claro em IA") e a lista de hashtags com barras aparece **uma única vez** abaixo. Por isso parece "uma secção repetida".
+### Alterações de código
 
-### 2. Visuais que não respeitam o mockup
+**1. `src/lib/report/block02-diagnostic.ts` (F3)**
 
-| Cartão | Mockup | Implementação atual | Correção |
-|---|---|---|---|
-| **Q01 · Tipo de conteúdo** | Caixa verde com **ícone 📅** + título "Educativo", e **abaixo** uma lista vertical (`Educativo ──── 75%`, `Inspiracional ── 17%`, `Promocional ─ 8%`) | Só caixa verde com título, **sem distribuição** | Adicionar `DiagnosticDistributionBar` vertical (lista com label + barra + %) usando os scores do classifier |
-| **Q02 · Funil** | Caixa azul "Topo do funil · atrair", e **abaixo** as 4 fases em barras horizontais empilhadas (TOPO 75%, MEIO 17%, FUNDO 8%, PÓS 0%) com cores degradê azul | Só a caixa azul com label, **sem visualização das 4 fases** | Adicionar barras das 4 fases do funil com %, expor `breakdown` no `FunnelStageResult` |
-| **Q03 · Formatos** | "Carrosséis · 75% da amostra" + barra horizontal **única** + legenda compacta `● Carrosséis 9 · ● Reels 3 · ● Imagens 0` | Já está OK ✓ | Apenas garantir que a legenda mostra **contagem absoluta** em vez de % decimais |
-| **Q04 · Temas** | "Foco claro em IA" no título + 3 hashtags com barras + sufixo `6×` | **Duplicado** (ver acima) | Remover a concatenação dos temas de `answer` — manter só `r.label` (ex.: "Foco claro em IA"). A lista de hashtags fica só no `children` |
-| **Q05 · Linguagem** | "Longas e explicativas" + 3 mini-stats (`280` caracteres, `8%` perguntas, `0%` CTA) | "COM PERGUNTAS" é **inventado** (`ctaSharePct * 0.6`) | Adicionar `classifyQuestionShare(posts)` que conta `?` reais nas captions; passar valor real |
-| **Q06 · Resposta** | "Vê mas não conversa" + **strip vermelho com "15 gostos médios"** e linha discreta `0 comentários médios` | 3 mini-stats neutros (comentários médios, %, posts) | Trocar por destaque de likes médios (vermelho/rose se silenciosa) + linha discreta de comentários médios. Apresentação editorial, não 3 stats neutros |
-| **Q07 · Integração** | Checklist com pontos coloridos por estado, hint à direita (`Detetado`, `5 posts`, `Ausentes`) | Já corresponde ✓ | Pequena polish: garantir que o estado "ausente" usa o plural "Ausentes" quando aplicável |
-| **Q08 · Objetivo** | "Notoriedade · marca pessoal" + **ranking horizontal** com % à esquerda da label (`85% ─── Notoriedade de marca`, `42% ── Geração de leads`, ...) | Ranking com label à esquerda e % à direita | Inverter layout: % primeiro (mono, tabular), depois barra+label |
+- Adicionar helper exportado `classifyQuestionShare(posts: SnapshotPost[]): { available: boolean; sharePct: number; sampleSize: number }`:
+  - Disponível só quando `posts.length >= 4`
+  - Para cada caption: remover hashtags (`/#\S+/g → ""`) **antes** de procurar `?`
+  - Conta posts onde a caption (sem hashtags) contém `?`
+  - Devolve `{ available: true, sharePct: round(count/total * 100), sampleSize }`
+- Em `CaptionPatternResult`: adicionar `questionShareAvailable: boolean` ao lado do `questionSharePct` já existente
+- Em `classifyCaptionPattern`: substituir o cálculo inline `caption.includes("?")` (que usa caption crua, contando hashtags como `#?... `) pela chamada a `classifyQuestionShare(posts)`. Popular `questionSharePct` e `questionShareAvailable` consistentemente nos três returns. Quando `posts.length < 4`, `questionShareAvailable = false`.
 
-### 3. CTA aponta para âncora errada
-`report-diagnostic-cta.tsx` usa `href="#leitura-completa"` (não existe). O alvo correto é `#tier-comparison` (id real do `TierComparisonBlock`). Confirmar id e atualizar.
+**2. `src/components/report-redesign/v2/report-diagnostic-block.tsx` (F3 + F4)**
 
-### 4. Layout: cartão único ocupa só metade
-Quando um grupo tem só 1 cartão (acontece com Group A se Q01 ou Q02 forem indisponíveis), fica meia coluna vazia. No grid do `ReportDiagnosticGroup`, cartões únicos devem ter `md:col-span-2`.
+- `renderCaptionCard`: condicionar a stat "COM PERGUNTAS" — só passar o item ao `DiagnosticMiniStats` quando `r.questionShareAvailable === true`. Se < 4 posts, mostrar só 2 mini-stats (caracteres médios + CTA).
+- `buildVerdictText` (F4): reescrever os fallbacks deterministas com hedges canónicos. Linguagem proposta:
+  - Prefixo: `"Com base na amostra analisada, "`
+  - Conector forte: trocar `"com presença forte de"` por `"sinais de"`
+  - Audiência: `"sinais de audiência silenciosa — likes consistentes, conversa rara"` / `"sinais de audiência ativa"`
+  - Fallback de baixa amostra: `"Com base na amostra analisada, ainda não há sinal suficiente para um veredito editorial — a amostra é pequena ou pouco diferenciada."`
+- `renderObjectiveCard` (Q08, F4): substituir o body atual (`"Inferência por padrão de conteúdo + funil + bio + ligação entre canais. É uma hipótese de leitura — confirme com o contexto real do perfil."`) por:
+  - `"Hipótese principal derivada de sinais de conteúdo, funil, bio e ligação entre canais. Com base na amostra analisada — confirme com o contexto real do perfil."`
+- `answerLabel` da Q08 já usa "Hipótese principal" / "Hipótese (sinal parcial)" — manter.
 
----
+**3. `src/components/report-redesign/v2/report-diagnostic-cta.tsx` (F1)**
 
-## Plano de refinamento
+- Atualizar **apenas o comentário** JSDoc do componente: trocar "âncora `#tier-comparison` já existente" por "âncora `#leitura-completa` do `TierComparisonBlock`". Sem mudança de markup nem de href.
 
-### Ficheiros a editar
+**4. `src/components/report-redesign/v2/report-diagnostic-group.tsx` (R1 / F5)**
 
-**`src/lib/report/block02-diagnostic.ts`**
-- `ContentTypeResult`: expor `distribution: Array<{ label: string; sharePct: number }>` (já existe internamente, falta surface)
-- `FunnelStageResult`: expor `breakdown: Array<{ stage: "topo"|"meio"|"fundo"|"pos"; label: string; sharePct: number }>`
-- Novo helper `classifyQuestionShare(posts): { sharePct: number }` — conta `?` no fim/meio das captions
-- `CaptionPatternResult`: adicionar `questionSharePct: number` populado pelo helper acima
+- Já implementado na sessão anterior (linhas 42-50): quando `questionsCount === 1`, o filho recebe wrapper `md:col-span-2` via `Children.map`. Sem alteração — apenas confirmar.
 
-**`src/components/report-redesign/v2/report-diagnostic-block.tsx`**
-- `renderContentTypeCard`: adicionar `<DiagnosticDistributionBar>` (variante vertical) com `r.distribution`
-- `renderFunnelCard`: adicionar barras horizontais empilhadas com `r.breakdown`
-- `renderThemesCard`: **remover** a concatenação dos temas em `answer` — usar só `r.label` (ex.: "Foco claro em IA"). Eliminar duplicação.
-- `renderCaptionCard`: usar `r.questionSharePct` real em vez do cálculo inventado
-- `renderAudienceCard`: trocar 3 mini-stats por strip de likes médios + linha discreta de comentários médios
-- `renderObjectiveCard`: passar prop nova ao `DiagnosticRanking` para inverter layout (% à esquerda)
-- `renderFormatCard`: passar `count` (contagem absoluta) para a legenda
+### Ficheiros tocados (3)
 
-**`src/components/report-redesign/v2/report-diagnostic-card.tsx`**
-- `DiagnosticDistributionBar`: aceitar `variant?: "stacked" | "vertical-list"` para suportar a Q01 (lista vertical) e Q02 (stacked horizontal). Aceitar `count` opcional na legenda
-- `DiagnosticRanking`: aceitar `valuePosition?: "left" | "right"` (default `"right"`); quando `"left"`, render `% ─── label`
-- Novo helper `DiagnosticAudienceHighlight` (ou inline) para o destaque visual da Q06
-
-**`src/components/report-redesign/v2/report-diagnostic-group.tsx`**
-- Quando `questionsCount === 1`, aplicar `md:col-span-2` ao único filho (passar via `Children.map` ou via classe condicional no wrapper)
-
-**`src/components/report-redesign/v2/report-diagnostic-cta.tsx`**
-- Confirmar id real do tier-comparison (provavelmente é `#tier-comparison` no `TierComparisonBlock`); se sim, atualizar `href`
+- `src/lib/report/block02-diagnostic.ts` — novo `classifyQuestionShare` + `questionShareAvailable` em `CaptionPatternResult`
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — esconder stat se < 4 posts; reescrita do veredito determinista e do body do Q08 com hedges canónicos
+- `src/components/report-redesign/v2/report-diagnostic-cta.tsx` — apenas comentário JSDoc
 
 ### Fora do scope
-- Sem chamadas a Apify/DataForSEO/OpenAI/PDFShift/Supabase write
+
+- Sem chamadas a Apify / DataForSEO / OpenAI / PDFShift / Supabase write
 - Sem alterações a PDF, admin, `/report/example`, schema, prompts AI
 - Sem novas dependências
 - Sem regenerar relatórios
+- Sem alterações a `tier-comparison-block.tsx` (decisão F1: manter âncora existente)
 
 ### Validação
-- TypeScript verde (auto-build)
-- Vitest verde (rodar suite block02)
-- QA visual no `/analyze/frederico.m.carvalho` em viewport 375px e 1460px
 
----
+- `bunx tsc --noEmit` (auto-build do harness)
+- `bunx vitest run` (suite atual: 12 testes / 3 ficheiros — todos verdes na sessão anterior)
+- Sem QA browser
 
-## Checkpoint
+### Checkpoint
 
-☐ Surface `distribution` em `ContentTypeResult` e `breakdown` em `FunnelStageResult`
-☐ Adicionar `classifyQuestionShare` + `questionSharePct` em `CaptionPatternResult`
-☐ Remover duplicação dos temas em Q04
-☐ Adicionar visualizações em falta em Q01 e Q02 (conforme mockup)
-☐ Remover dado inventado em Q05 (perguntas reais)
-☐ Refazer Q06 com destaque editorial (likes médios + comentários médios)
-☐ Inverter layout do ranking em Q08
-☐ Cartão único ocupa `md:col-span-2`
-☐ Corrigir âncora do CTA
-☐ TypeScript + Vitest verdes
+☐ `classifyQuestionShare` criado e exportado
+☐ `CaptionPatternResult.questionShareAvailable` populado nos 3 returns de `classifyCaptionPattern`
+☐ Stat "COM PERGUNTAS" escondida quando `< 4` posts
+☐ Veredito determinista usa hedges canónicos ("Com base na amostra analisada", "sinais de")
+☐ Body do Q08 reescrito com hedges canónicos
+☐ Comentário do CTA atualizado para `#leitura-completa`
+☐ TypeScript verde
+☐ Vitest verde (12 testes)
+☐ Confirmação: zero chamadas externas
