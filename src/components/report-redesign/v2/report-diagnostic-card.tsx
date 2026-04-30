@@ -151,7 +151,7 @@ export function ReportDiagnosticCard({
       <p className="text-sm text-slate-600 leading-relaxed mt-auto">{body}</p>
 
       {aiSource ? (
-        <div className="mt-1 border-t border-slate-200/70 pt-3 space-y-1.5">
+        <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-blue-700 inline-flex items-center gap-1.5">
             <Bot aria-hidden className="size-3" />
             Leitura IA · interpretação
@@ -159,6 +159,16 @@ export function ReportDiagnosticCard({
           <p className="text-sm text-slate-700 leading-relaxed italic">
             {aiSource.text}
           </p>
+        </div>
+      ) : null}
+
+      {sourceType ? (
+        <div className="pt-3 border-t border-slate-100">
+          <ReportSourceLabel
+            type={sourceType}
+            detail={sourceDetail}
+            caution={sourceCaution}
+          />
         </div>
       ) : null}
     </article>
