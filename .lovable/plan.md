@@ -1,84 +1,116 @@
-## Refinamentos propostos à camada de Knowledge Base
+## Orquestrador OpenAI · ganho de valor com benchmark dataset
 
-Após inspeção do código atual (`benchmark-context.ts`, `sanitize-ai-copy.ts`, `context.server.ts`, `prompt-v2.ts`, `validate-v2.ts`) identifiquei **4 refinamentos úteis** — todos pequenos, todos em ficheiros que **eu próprio escrevi nas iterações anteriores** (nenhum ficheiro locked é tocado).
+### Diagnóstico
 
-Foco: corrigir uma **contradição activa de política**, fechar um **gap de cobertura** (perfis 1M+), reforçar o validador anti-invenção e ligar finalmente o `sanitizeAiCopy` ao orquestrador (modo log-only, sem schema novo).
+Hoje o `generateInsightsV2` injecta no system prompt **apenas** o contexto vindo da tabela `knowledge_benchmarks` + notas curtas (`getKnowledgeContext`). O dataset estruturado em `INSTAGRAM_BENCHMARK_CONTEXT` (Socialinsider por formato, Buffer por tier, Hootsuite por indústria) está **completo e testado** mas **nunca chega à IA**. Resultado: o modelo escreve insights sem âncoras numéricas externas e cai facilmente em generalidades.
 
----
+A IA já tem dados do perfil (`InsightsContext`); o que falta é **a vara de medir**. Dar-lhe a vara (Buffer tier ER médio, Socialinsider ER por formato, Hootsuite ER da indústria quando aplicável) muda a qualidade de cada um dos 9 micro-insights — sobretudo `hero`, `benchmark`, `formats`, `topPosts`.
 
-### R1 — Corrigir contradição de política em `context.server.ts` ⚠️
+### Princípios
 
-**Problema**: O bloco final injectado no prompt do GPT diz literalmente *"Cite fonte quando relevante"*. Isto contradiz directamente a política aprovada em `mem://features/benchmark-policy.md` e em `KNOWLEDGE.md`, que proíbem atribuição directa do tipo "segundo a Socialinsider…". O `sanitizeAiCopy` chega a marcar essa frase como violação `source_attribution` — ou seja, a IA está a ser instruída a fazer exactamente o que depois é apanhado como erro.
+1. **Compacto** — bloco ≤ ~25 linhas, formato chave-valor curto. Custo extra por chamada estimado em <300 tokens (≈ +5-8% no input). Cap diário continua a proteger.
+2. **Pré-filtrado** — entregar à IA **só o que é relevante para o perfil** (1 tier Buffer, 1 entrada Hootsuite se houver indústria, 4 linhas Socialinsider). Não despejar o dataset todo.
+3. **Coerente com a política** — usa o mesmo `formatKnowledgeContextForPrompt` reescrito; sem citações de fonte; sem reach se `hasReachData=false`; passa pelo `sanitizeAiCopy` post-validate (já ligado).
+4. **Cache-aware** — o snippet entra no `inputsHash` automaticamente (vai dentro do system prompt); `kbVersion` ganha um sufixo derivado do dataset estático para invalidar cache se o ficheiro `benchmark-context.ts` mudar.
 
-**Correcção**: Reescrever as duas linhas finais de `formatKnowledgeContextForPrompt` para:
-- Pedir interpretação fundamentada **sem** citar marcas externas
-- Reforçar linguagem de hedge ("referência direcional", "indica", "sugere")
-- Proibir explicitamente menção a alcance/saves/partilhas se `hasReachData=false` (hint passado pelo orquestrador)
+### O que vai ser feito
 
----
+#### 1. Novo serializer compacto em `benchmark-context.ts`
 
-### R2 — Cobrir perfis ≥1M no `getBenchmarkContextForProfile`
+`formatBenchmarkContextForPrompt(input)` — recebe `BenchmarkContextForProfileInput` e devolve string pronta para colar no prompt. Formato:
 
-**Problema**: `getBufferTierForFollowers(1_500_000)` devolve `null` silenciosamente. O helper de perfil propaga isso e o relatório fica sem qualquer copy de tier para macro-influencers e marcas grandes.
+```text
+REFERÊNCIAS DIRECIONAIS (uso interno, não citar fontes):
+- Tier por seguidores: 5K-10K · ER mediana ref.: 3.9% · cadência ref.: 20 posts/mês · crescimento ref.: +5.7%/mês
+- ER por formato (orgânico, contexto geral): geral 0.48% · carrossel 0.55% · reel 0.52% · imagem 0.37%
+- Indústria (se aplicável): n/a
+- Formato dominante do perfil: reel · referência geral 0.52%
+- Princípio: optimizar interacção, não apenas alcance.
+- Princípio: carrosséis fortes para autoridade e conteúdo guardável.
+```
 
-**Correcção**:
-- Adicionar fallback `bufferTier=null → internalTier="macro"` (em vez de `null`)
-- Acrescentar `copyHints.tierNote` curto em pt-PT: *"Conta com ≥1M seguidores: a referência Buffer 500K–1M é a mais próxima disponível; leitura puramente direcional."*
-- 2 testes novos: `followers=1_200_000` e `followers=0`
+Regras:
+- Se `bufferTier=null` e perfis ≥1M → linha "Tier ≥1M, sem referência directa Buffer; usar Buffer 500K-1M apenas como direccional".
+- Se `industry=null` → linha "Indústria: n/a (não fornecida pelo perfil)".
+- Se `hasReachData=false` → omitir totalmente `medianReachPerPost`.
 
----
+#### 2. Integrar no `buildSystemPromptV2`
 
-### R3 — Reforçar `sanitize-ai-copy.ts` com termos técnicos em falta
+Aceitar terceiro parâmetro `profileBenchmark?: BenchmarkContextForProfileInput`. Quando presente, juntar o snippet **depois** do bloco da KB, sob título próprio `REFERÊNCIAS DE BENCHMARK (perfil específico)`. A IA vê dois blocos distintos: KB validada (BD) + dataset estático curado (TS).
 
-**Problema**: A IA pode escapar termos como `engagement_rate`, `er_pct`, `followers_count`, `mediaType`, `playCount`, `videoViewCount` — todos snake/camel-case que aparecem regularmente em respostas brutas de scrapers Instagram. O `validate-v2.ts` já tem o `detectTechnicalLeak` mas não cobre estes específicos do domínio Apify/Instagram.
+#### 3. Derivar input no `generateInsightsV2`
 
-**Correcção**:
-- Adicionar 6 padrões à lista `TECHNICAL_TERMS`
-- Adicionar padrão para detectar índices crus tipo `posts[0]`, `data.items[3]`
-- 2 testes novos a cobrir os novos padrões
+Logo após resolver `tier` e `format`, montar:
 
----
+```ts
+const profileBenchmark = {
+  followers: ctx.profile.followers_count,
+  dominantFormat: normalizeDominantFormat(ctx.content_summary.dominant_format),
+  industry: null,                 // futuro: vem de selecção do utilizador
+  hasReachData: false,            // mesmo flag já usado no sanitize
+};
+```
 
-### R4 — Ligar `sanitizeAiCopy` ao orquestrador v2 (modo log-only)
+E passar a `buildSystemPromptV2(kb, { hasReachData, profileBenchmark })`.
 
-**Problema**: O helper está implementado e testado, mas nunca é invocado. Sem ligação, a política existe só no papel.
+#### 4. Reforço editorial mínimo no prompt base
 
-**Correcção mínima e segura** (não toca em schema, não persiste):
-- Em `src/lib/insights/openai-insights.server.ts`, dentro de `generateInsightsV2`, depois da resposta validada por `validate-v2`, percorrer os `sections` e correr `sanitizeAiCopy(item.text, { hasReachData })` em cada texto.
-- Se `ok=false`, fazer `console.warn("[knowledge.sanitize]", { section, kind, match })` por violação. **Não bloqueia render** — apenas observa, conforme a política definida.
-- `hasReachData` deriva-se do snapshot já disponível no contexto da função (sem queries novas).
+Acrescentar **uma** regra a `SYSTEM_PROMPT_BASE` (não reescreve nada existente):
 
-**Não-objectivos**:
-- ❌ Não mexer em `provider_call_logs` nem criar coluna `metadata` (fica para prompt dedicado)
-- ❌ Não bloquear/descartar texto em produção (para já só telemetria via console)
-- ❌ Não tocar em `prompt-v2.ts` para além de R1 (a serialização é feita por `formatKnowledgeContextForPrompt`)
+> *"Quando comparar valores do perfil com referências, use linguagem direccional ('aproxima-se de', 'fica abaixo de', 'em linha com'). Não atribua números a fontes externas, mesmo que apareçam no contexto. Não escreva nomes de empresas (Socialinsider, Buffer, Hootsuite, Databox)."*
 
----
+Isto fecha o ciclo: o `sanitizeAiCopy` já apanha violações, mas vale a pena pedir directamente para não acontecerem.
+
+#### 5. `kbVersion` reflecte o dataset estático
+
+Hoje `computeKbVersion` só considera linhas da BD. Adicionar `BENCHMARK_DATASET_VERSION` exportado do `benchmark-context.ts` (string curta, ex: `"2026-04-01"`) e incorporar no seed. Permite invalidar cache quando o dataset for actualizado.
+
+#### 6. Testes (vitest)
+
+- `formatBenchmarkContextForPrompt` (4 testes):
+  - Perfil micro com Reels: contém tier `5K-10K`, ER 3.9%, formato dominante
+  - Perfil ≥1M: contém marcador "≥1M"
+  - `industry: "education"`: inclui linha de indústria 5.4%
+  - `hasReachData=false`: **não** contém a palavra "reach" nem "alcance"
+- Snapshot do output completo (1 teste) para detectar drift acidental
+- `computeKbVersion` muda quando `BENCHMARK_DATASET_VERSION` muda (1 teste em `prompt-v2.test.ts` se existir, senão criar mínimo)
+
+Total esperado: **37 → 43 testes**.
+
+### Não-objectivos
+
+- ❌ Não tocar no `userPayload` — o dataset é **contexto**, não dados do perfil
+- ❌ Não introduzir indústria seleccionável pelo utilizador (fica para prompt dedicado quando o UI tiver o seletor)
+- ❌ Não persistir o snippet em BD nem em `provider_call_logs.metadata`
+- ❌ Não tocar em `analyze-public-v1` nem em ficheiros UI
+- ❌ Não tocar em ficheiros locked
 
 ### Ficheiros tocados
 
 ```text
-src/lib/knowledge/context.server.ts                          (R1)
-src/lib/knowledge/benchmark-context.ts                       (R2)
-src/lib/knowledge/sanitize-ai-copy.ts                        (R3)
-src/lib/knowledge/__tests__/benchmark-context.test.ts        (R2 +2 testes)
-src/lib/knowledge/__tests__/sanitize-ai-copy.test.ts         (R3 +2 testes)
-src/lib/insights/openai-insights.server.ts                   (R4 — bloco curto, post-validate)
+src/lib/knowledge/benchmark-context.ts                       (+ formatter, + DATASET_VERSION)
+src/lib/insights/prompt-v2.ts                                (assinatura buildSystemPromptV2, regra extra)
+src/lib/insights/openai-insights.server.ts                   (montar profileBenchmark e passar)
+src/lib/knowledge/context.server.ts                          (nada — já reescrito)
+src/lib/knowledge/__tests__/benchmark-context.test.ts        (+ ~5 testes)
 ```
 
-Nenhum ficheiro locked. Sem migrations. Sem novas dependências. Sem mudanças de schema.
+### Observabilidade
+
+Sem schema novo. Adicionar **um** `console.info("[insights.v2] benchmark-context attached", { tier, format, hasIndustry, hasReachData })` antes da chamada à OpenAI para confirmar nos logs que o snippet foi anexado.
 
 ### Validação final
-- `tsc --noEmit` deve continuar verde
-- `vitest run` deve passar 33 + 4 = **37 testes**
-- Smoke manual: gerar insights v2 para o perfil de teste e confirmar que (a) prompt não pede atribuição e (b) console regista zero ou poucas violações
 
----
+- `tsc --noEmit` verde
+- `vitest run` verde com 43 testes
+- Smoke real: gerar insights v2 para `frederico.m.carvalho` e confirmar que (a) o `system prompt` agora contém o bloco "REFERÊNCIAS DE BENCHMARK (perfil específico)", (b) o output não cita marcas, (c) `console.warn [knowledge.sanitize]` continua a 0 violações
 
 ### Checkpoint
 
-- ☐ R1 — Corrigir copy do prompt em `context.server.ts`
-- ☐ R2 — Fallback macro + `tierNote` em `benchmark-context.ts` (+2 testes)
-- ☐ R3 — Termos técnicos extra em `sanitize-ai-copy.ts` (+2 testes)
-- ☐ R4 — Ligar `sanitizeAiCopy` no `generateInsightsV2` (log-only)
-- ☐ `tsc` e `vitest` verdes (37 testes)
+- ☐ Adicionar `formatBenchmarkContextForPrompt` + `BENCHMARK_DATASET_VERSION` em `benchmark-context.ts`
+- ☐ Estender `buildSystemPromptV2` para aceitar `profileBenchmark` e juntar bloco
+- ☐ Reforço editorial (1 parágrafo) em `SYSTEM_PROMPT_BASE`
+- ☐ Montar `profileBenchmark` em `generateInsightsV2` + `console.info` de telemetria
+- ☐ Incorporar `BENCHMARK_DATASET_VERSION` no `computeKbVersion`
+- ☐ Testes (~5 novos) verdes
+- ☐ `tsc` + `vitest` verdes

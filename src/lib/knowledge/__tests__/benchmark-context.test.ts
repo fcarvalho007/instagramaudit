@@ -67,6 +67,10 @@ import {
   getBenchmarkContextForProfile,
   normalizeDominantFormat,
 } from "../benchmark-context";
+import {
+  BENCHMARK_DATASET_VERSION,
+  formatBenchmarkContextForPrompt,
+} from "../benchmark-context";
 
 describe("BUFFER_TIER_TO_INTERNAL_TIER", () => {
   it("mapeia todos os tiers Buffer para tiers internos válidos", () => {
@@ -151,5 +155,79 @@ describe("getBenchmarkContextForProfile", () => {
     expect(ctx.bufferTier?.tier).toBe("0-1K");
     expect(ctx.internalTier).toBe("nano");
     expect(ctx.copyHints.tierNote).toBe("");
+  });
+});
+
+describe("BENCHMARK_DATASET_VERSION", () => {
+  it("é uma string ISO yyyy-mm-dd", () => {
+    expect(BENCHMARK_DATASET_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("formatBenchmarkContextForPrompt", () => {
+  it("inclui tier Buffer, ER por formato e formato dominante para perfil micro com Reels", () => {
+    const out = formatBenchmarkContextForPrompt({
+      followers: 7_500,
+      dominantFormat: "reel",
+    });
+    expect(out).toContain("REFERÊNCIAS DIRECIONAIS");
+    expect(out).toContain("5-10K");
+    expect(out).toContain("3.90%"); // ER mediana 5-10K
+    expect(out).toContain("0.52%"); // ER reel
+    expect(out).toContain("Formato dominante do perfil: reel");
+    expect(out).toContain("Indústria: n/a");
+  });
+
+  it("perfis ≥1M usam linha de marcador específica e omitem tier Buffer", () => {
+    const out = formatBenchmarkContextForPrompt({
+      followers: 2_500_000,
+      dominantFormat: "carousel",
+    });
+    expect(out).toContain("≥1M");
+    expect(out).not.toContain("500K-1M ·"); // sem despejar a linha do tier directamente
+  });
+
+  it("inclui linha de indústria quando fornecida", () => {
+    const out = formatBenchmarkContextForPrompt({
+      followers: 30_000,
+      dominantFormat: "carousel",
+      industry: "education",
+    });
+    expect(out).toContain("Indústria");
+    expect(out).toContain("5.40%"); // education carousel ER
+  });
+
+  it("não revela valores de alcance/reach quando hasReachData=false (default)", () => {
+    const out = formatBenchmarkContextForPrompt({
+      followers: 25_000,
+      dominantFormat: "carousel",
+    });
+    // O princípio editorial fixo contém "não apenas alcance" — isso é
+    // aceitável. O que não pode aparecer é o número do tier nem a label
+    // específica "alcance mediano ref.:".
+    expect(out).not.toContain("alcance mediano ref.:");
+    expect(out).not.toContain("1172"); // medianReachPerPost do tier 10-50K
+  });
+
+  it("inclui alcance quando hasReachData=true", () => {
+    const out = formatBenchmarkContextForPrompt({
+      followers: 25_000,
+      dominantFormat: "carousel",
+      hasReachData: true,
+    });
+    expect(out.toLowerCase()).toContain("alcance");
+    expect(out).toContain("1172"); // medianReachPerPost do tier 10-50K
+  });
+
+  it("nunca menciona marcas das fontes editoriais", () => {
+    const out = formatBenchmarkContextForPrompt({
+      followers: 50_000,
+      dominantFormat: "reel",
+      industry: "technology",
+      hasReachData: true,
+    });
+    for (const brand of ["Socialinsider", "Buffer", "Hootsuite", "Databox"]) {
+      expect(out).not.toContain(brand);
+    }
   });
 });

@@ -46,6 +46,7 @@ import {
 import { validateInsightsV2 } from "./validate-v2";
 import { getKnowledgeContext } from "@/lib/knowledge/context.server";
 import { sanitizeAiCopy } from "@/lib/knowledge/sanitize-ai-copy";
+import { normalizeDominantFormat } from "@/lib/knowledge/benchmark-context";
 import type {
   BenchmarkFormat,
   BenchmarkTier,
@@ -482,9 +483,31 @@ export async function generateInsightsV2(
   // Snapshots de scraping público nunca trazem reach/saves/visitas reais.
   // Quando isso mudar (Instagram autenticado), passar `true` aqui.
   const hasReachData = false;
-  const systemPrompt = buildSystemPromptV2(kb, { hasReachData });
+
+  // Contexto de benchmark específico do perfil — entregue à IA como
+  // segundo bloco do system prompt, pré-filtrado por seguidores e formato.
+  const profileBenchmark = {
+    followers: ctx.profile.followers_count,
+    dominantFormat: normalizeDominantFormat(ctx.content_summary.dominant_format),
+    industry: null,
+    hasReachData,
+  };
+
+  const systemPrompt = buildSystemPromptV2(kb, {
+    hasReachData,
+    profileBenchmark,
+  });
   const userPayload = buildInsightsV2UserPayload(ctx);
   const inputsHash = hashInsightsV2Prompt(systemPrompt, userPayload);
+
+  console.info("[insights.v2] benchmark-context attached", {
+    handle: ctx.profile.username.toLowerCase(),
+    tier,
+    format,
+    dominantFormat: profileBenchmark.dominantFormat,
+    hasIndustry: profileBenchmark.industry !== null,
+    hasReachData,
+  });
 
   // Cache hit: mesmos inputs + mesma KB → reutilizar.
   const previous = options?.previous ?? null;
