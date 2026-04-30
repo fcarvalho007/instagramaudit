@@ -1,88 +1,99 @@
-# Block 01 · Overview — visual architecture fix
 
-Five focused fixes across four files. No new libraries, no new data fetches, no touches to Blocks 02–06, providers, PDF, schema, admin, `/report/example`, AI prompts or validators.
+## Block 02 · Diagnóstico — Refinamento
 
-## Files changed
+### Estado atual (verificado)
 
-- `src/components/report-redesign/v2/report-hero-v2.tsx`
-- `src/components/report-redesign/v2/report-overview-cards.tsx`
-- `src/components/report-redesign/v2/report-overview-block.tsx`
-- `src/components/report-redesign/v2/report-overview-attention-row.tsx` *(no rendering change; component left intact in case of reuse, just unmounted from Block 01)*
+Block 02 hoje renderiza, pela ordem:
+1. `ReportAiReading` (compact) — síntese editorial em 2 colunas.
+2. `ReportEditorialPatterns` — até **6** cards (tendência, legenda, hashtags, menções, duração reels, alinhamento procura), em grid `1 / 2 / 3` colunas. Quando 5 estão disponíveis surge o tal "card órfão" na 2.ª linha.
 
-The `AIInsightBox` (`src/components/report/ai-insight-box.tsx`) is **not** edited (locked-style shared component); we override its visual treatment by wrapping it in Block 01 with a calm container and forcing `emphasis="neutral"` only in this Block 01 use. The component itself keeps its semantics elsewhere.
+Problemas identificados:
+- Grid `lg:grid-cols-3` produz layout desequilibrado quando há 4–5 cards.
+- A "Tendência de envolvimento" repete o que a Leitura IA e o cartão de envolvimento do Block 01 já dizem.
+- Cards usam linguagem técnica (`ER médio 2.34%`, `lift +12%`, `keywords`), contra as regras pt-PT.
+- `ReportAiReading` está envolvido em `ReportSectionFrame` que tem o seu próprio `max-w-7xl + px-5/6` — dentro do shell isto cria uma faixa branca a sangrar para fora do ritmo dos cards.
 
-## Part A — Hero (`report-hero-v2.tsx`)
+### Bloqueio importante a confirmar
 
-Make the first fold feel like a real Instagram profile header while keeping it premium.
+`src/components/report-redesign/report-ai-reading.tsx` está em `LOCKED_FILES.md`. Para alinhar a largura da Leitura IA tenho duas opções:
 
-1. **Avatar story ring**: wrap the avatar in a subtle conic/linear gradient ring (amber→rose→fuchsia→blue) with a 2px white inset, sized so the avatar still measures 72/96px. Pure CSS via `bg-[conic-gradient(...)]` on a wrapper div + `p-[2px]` + inner white ring. Fallback initials preserved.
-2. **Verified badge**: replace the loose `BadgeCheck` Lucide icon with a small filled blue disc (`bg-blue-500`) containing a white tick (`Check` icon, 10px). Sits inline beside the handle. Only renders when `profile.verified === true`.
-3. **Identity block**:
-   - H1 keeps handle.
-   - Full name under handle (kept).
-   - Bio: keep `whitespace-pre-line` (already preserves line breaks), tighten `max-w-md`, `line-clamp-4`, `text-[13px]`.
-   - **External URL**: if `result.enriched.profile.externalUrls?.[0]` exists, render it as a small `text-[12px] text-blue-600` line below the bio (display only — no anchor navigation, since these are not whitelisted).
-4. **IG stats row**: keep exactly `publicações`, `seguidores`, `a seguir`. Already in place — keep current sizing (`text-xl md:text-2xl`).
-5. **Report metadata**: kept under hairline divider (already implemented).
-6. **Badges**: only `Dados públicos` (already correct).
-7. **Actions reduce dominance**:
-   - Move the action group below the identity column on desktop too (no longer right-aligned `lg:items-end`), or shrink to compact pill buttons (`h-9`, `text-[13px]`, secondary blue outline for Export PDF instead of solid blue). Keep solid blue for Export PDF but at smaller size.
-   - Remove the `lg:max-w-xs` right column emphasis; place actions in a small row aligned right with `mt-0` on desktop, but visually lighter.
+- **A (preferida, sem mexer no ficheiro locked)**: passar a Leitura IA dentro de um wrapper local em `report-shell-v2.tsx` que neutraliza o `max-w-7xl/px-*` do `ReportSectionFrame` (ex.: `<div className="[&_.max-w-7xl]:max-w-none [&_.max-w-7xl]:px-0">`). Não toca em `report-ai-reading.tsx`.
+- **B**: editar `report-ai-reading.tsx` para aceitar uma prop `bare` que omite o frame. **Requer aprovação explícita** porque o ficheiro está locked.
 
-## Part B — Overview cards (`report-overview-cards.tsx`)
+A plano abaixo segue **A**. Se preferires B, diz e ajusto.
 
-Asymmetric layout with engagement leading.
+### Mudanças
 
-1. **Grid**:
-   - Mobile/tablet: `grid-cols-1`, engagement first.
-   - Desktop (`lg:`): `lg:grid-cols-3` where engagement spans `lg:col-span-2` and the right column stacks rhythm + format vertically (`lg:col-span-1` containing two stacked cards via inner `flex flex-col gap-4`).
-2. **Card 1 — Taxa de envolvimento (primary)**:
-   - Larger value typography (`text-[3rem] md:text-[3.5rem]`).
-   - Helper text rewritten to: **"gostos e comentários face à dimensão do perfil"** (drop "respostas" — shares not in data per spec).
-   - Distance bar: cleaner — taller (h-2.5), softer rail (`bg-slate-100`), bar in `bg-blue-500` for neutral/good, `bg-rose-400` only when status is `bad`. Reference marker becomes a slim blue tick + small label `referência` aligned to its position.
-   - Status pill at bottom replaces tiny dot+text: small chip with tone color but muted (`bg-slate-50 text-slate-700` for neutral, `bg-rose-50 text-rose-700` only for `bad`).
-3. **Card 2 — Ritmo de publicação (secondary, compact)**:
-   - Slightly smaller value (`text-[2rem]`), reduced padding (`p-4 md:p-5`).
-   - Keep `RhythmDots` + scale label `ritmo semanal · 0 → 7+`.
-   - Drop the duplicated "Ritmo elevado/moderado/baixo" wording from the dot+interpretation footer to avoid duplication; keep only the scale label and a brief contextual line "X publicações em Y dias analisados".
-4. **Card 3 — Formato mais regular (secondary, compact)**:
-   - Same compact treatment as card 2.
-   - Percentage stays as primary, `FormatChipContextual` as secondary (already correct).
-   - `FormatStackedBar` stays but legend wraps with `min-w-0`/`break-words` to avoid overflow.
+**1. `src/components/report-redesign/report-editorial-patterns.tsx`** (não locked)
 
-## Part C — Remove attention row (`report-overview-block.tsx`)
+Restruturar para devolver no máximo **4 cards**, em grid `1 / 2 / 2`, alinhado com a estética premium do Block 01.
 
-- Delete the `<ReportOverviewAttentionRow result={result} />` render and its import.
-- Update the JSDoc top-of-file to drop the section-3 reference and note that "attention" semantics are now carried by card statuses + AI reading.
-- Component file `report-overview-attention-row.tsx` left untouched on disk (no other consumers, but kept for potential future reuse).
+Selecção dos 4 cards (na ordem de prioridade definida no spec), construída por uma função pura que escolhe os mais informativos disponíveis:
 
-## Part D — AI reading calm treatment (`report-overview-block.tsx`)
+1. **Diferença face à referência** (engagement gap vs benchmark) — usa `result.data.benchmarkComparison` / `enriched.aiInsights` já normalizados; **substitui** o card "Tendência de engagement", que é redundante com a Leitura IA. Título: `Distância face à referência`.
+2. **Procura externa pelos temas** — só aparece se `marketDemandContentFit.available` e `coverage !== null`. Título: `Há procura externa pelos temas` ou `Falta cobertura dos temas com procura`, conforme `coverage`.
+3. **Concentração de formato** — usa `enriched.formatBreakdown` (já existe, alimenta o Block 01) para detectar dominância > 60 %. Título: `O conteúdo está concentrado em [formato]`.
+4. **Sinais de conversa / resposta** — usa `mentionsCollabsLift` (proxy da existência de conversa/colaboração). Quando `lift < 0.9` ou `withCount` muito baixo: `Faltam sinais de conversa`. Caso contrário, fallback para o card de **comprimento de legenda** ou **hashtags sweet spot** — o que tiver `available:true` e ainda não tiver sido usado.
 
-The current rose look comes from `AIInsightBox` rendering `emphasis="negative"`. Block 01 should always be a calm editorial synthesis.
+Regra anti-duplicação: nunca renderizar o pattern "Tendência de envolvimento" (sai do conjunto), e o card de cadência/ritmo não entra (já está no Block 01 e na Leitura IA).
 
-- Wrap `renderInsight("hero")` output in a custom Block 01 container instead of using the raw `AIInsightBox`. Inline the editorial callout directly in `report-overview-block.tsx`:
-  - white background, soft blue ring (`ring-1 ring-blue-100`), `border-l-2 border-blue-300`, generous padding, `max-w-3xl`.
-  - small bot icon in a `bg-blue-50 text-blue-600` rounded-md container.
-  - eyebrow `Leitura IA` in mono blue.
-  - body text in `text-slate-700`, `text-[14px] md:text-[15px]`, leading-relaxed.
-- To do this without touching `AIInsightBox`, read the v2 hero insight directly from the shell. Two options:
-  - **Chosen**: read insight text via the existing `renderInsight` prop is opaque (returns ReactNode). Instead, extract the text from `result.enriched.aiInsightsV2?.sections.hero` inside `ReportOverviewBlock` (already typed in `AdapterResult`). The `renderInsight` prop is no longer used in Block 01 — it stays for compatibility but Block 01 renders its own editorial callout from the underlying string. This avoids editing the shared `AIInsightBox`.
-- Net effect: Block 01 AI reading is **always calm blue/white**, regardless of v2 emphasis.
+Copy:
+- substituir `ER médio X%` → `envolvimento médio de X %`
+- substituir `lift` → `diferença`
+- substituir `keywords` → `temas`
+- remover `sweet spot` em favor de `faixa com melhor retorno`
+- todos os títulos passam a frases humanas em pt-PT (lista no spec do utilizador)
 
-## Part E — Typography & spacing
+Visual:
+- card: `rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)] flex flex-col gap-3 h-full`
+- linha de cabeçalho: dot semântico (azul/âmbar/rosa/verde) + eyebrow mono + número `01 / 04` em mono pequeno
+- título serif (`font-display text-[1.05rem] md:text-[1.125rem] font-semibold text-slate-900 leading-snug`)
+- valor primário em display, com tom contido (rosa só quando claramente negativo)
+- corpo sans curto; sem breakdown de buckets (era ruído e fonte de números técnicos)
+- grid: `grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5` + `auto-rows-fr` para igualar alturas por linha
 
-- Card titles: `font-display` (already), tightened.
-- Labels remain mono uppercase.
-- Numbers stay `font-display tabular-nums`.
-- Drop any "Visão geral" eyebrow inside the block (none currently rendered — confirmed; no action needed).
+Header da secção (eyebrow + H2 + subtítulo) **removido** daqui — já é fornecido pelo `ReportBlockSection` do Block 02. Evita duplicação de "Análise editorial / Padrões que explicam os resultados".
 
-## Part F — Validation
+Fallback vazio: mantém a mensagem subtil quando 0 cards estão disponíveis.
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
+**2. `src/components/report-redesign/v2/report-shell-v2.tsx`**
 
-No browser QA unless asked.
+No bloco 02, envolver `ReportAiReading` num wrapper que neutraliza o `max-w-7xl + padding` do `ReportSectionFrame`, para a Leitura IA partilhar a mesma largura útil que o grid de cards. Subtítulo do `block-config.ts` para Block 02 fica como está (já é pt-PT natural).
 
-## Report back
+```tsx
+<div className="[&>section>div]:max-w-none [&>section>div]:px-0">
+  <ReportAiReading data={...} enriched={...} compact />
+</div>
+```
 
-After implementation: list of files touched, specific changes per part, attention row no longer rendered, AI reading colour change, TS + Vitest results, scope confirmation, then stop and wait for screenshots.
+(Selector específico à estrutura interna do `ReportSectionFrame` — `<section><div class="mx-auto max-w-7xl px-5 md:px-6">…</div></section>`. Não toca no ficheiro locked.)
+
+**3. `src/components/report-redesign/v2/block-config.ts`**
+
+Pequeno ajuste opcional ao `subtitle` do bloco `diagnostico` para soar mais natural em pt-PT, se necessário após reler. Sem mudar `id`/`number`/`question`.
+
+### Fora de âmbito (não tocados)
+
+- Block 01 (hero, overview cards, overview block).
+- Blocks 03–06 (componentes e secções).
+- `/report/example`, `/admin`, providers, prompts OpenAI, validators, schema Supabase, PDF.
+- `report-ai-reading.tsx` (locked).
+- `report-tokens.ts` (sem novos tokens).
+
+### Validação
+
+1. `bunx tsc --noEmit`
+2. `bunx vitest run`
+3. Verificar manualmente sem overflow horizontal a 375 / 768 / 1366.
+
+### Aceitação
+
+- Block 02 com **exactamente 4 cards** (ou menos quando data insuficiente, com mensagem subtil).
+- Sem 5.º card órfão, sem repetição da Leitura IA.
+- Leitura IA com a mesma largura útil do grid (sem faixa branca a sangrar).
+- pt-PT em todo o copy visível, sem `keyword`, `lift`, `payload`, `engagement_pct`.
+- Blocks 01 e 03–06 inalterados.
+
+### Pergunta antes de implementar
+
+Posso prosseguir com a opção **A** (wrapper sem editar o ficheiro locked)? Se preferires que eu altere `report-ai-reading.tsx` para aceitar uma prop `bare`, confirma a quebra de lock.

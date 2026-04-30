@@ -112,11 +112,20 @@ export function ReportShellV2({
               {/* 02 · Diagnóstico */}
               <ReportBlockSection block={diagnostico} tone="soft-blue">
                 {hasAiInsights ? (
-                  <ReportAiReading
-                    data={result.data}
-                    enriched={result.enriched}
-                    compact
-                  />
+                  <div
+                    className={cn(
+                      // Neutralise inner ReportSectionFrame container so the
+                      // AI reading shares the same content width as the
+                      // diagnostic card grid below.
+                      "[&>section>div]:max-w-none [&>section>div]:px-0",
+                    )}
+                  >
+                    <ReportAiReading
+                      data={result.data}
+                      enriched={result.enriched}
+                      compact
+                    />
+                  </div>
                 ) : (
                   <ReportPendingAiNotice
                     generatedAtIso={analyzedAtIso ?? null}
@@ -124,6 +133,7 @@ export function ReportShellV2({
                 )}
                 <ReportEditorialPatterns
                   patterns={result.enriched.editorialPatterns}
+                  keyMetrics={result.data.keyMetrics}
                 />
               </ReportBlockSection>
 

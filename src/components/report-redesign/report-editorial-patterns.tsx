@@ -1,298 +1,436 @@
 /**
- * Padrões editoriais (Prompt 18) — visualização dos cruzamentos derivados
- * em `editorialPatterns` (R4-B). Mostra ATÉ 6 cards explicativos com:
- * tendência de engagement, sweet spot de hashtags, comprimento de
- * legenda, lift de menções/colabs, padrão de duração de Reels e
- * alinhamento com a procura de mercado.
+ * Block 02 · Diagnóstico — grelha de até 4 cards diagnósticos.
  *
- * Defensivo: cada padrão tem `available:false` quando os dados são
- * insuficientes — esses cards são omitidos. Se TODOS estiverem
- * indisponíveis, mostra um vazio subtil. Mobile-first, sem scroll
- * horizontal a 375px, copy 100% pt-PT.
+ * O cabeçalho da secção é fornecido pelo `ReportBlockSection` no shell
+ * (`02 · DIAGNÓSTICO · O que explica estes resultados?`), por isso este
+ * componente NÃO renderiza o seu próprio header — só a grelha de cards.
+ *
+ * Selecção dos cards (regra anti-duplicação com a Leitura IA acima e
+ * com o Block 01 abaixo):
+ *
+ *   1. Distância face à referência (engagement gap vs benchmark)
+ *   2. Procura externa pelos temas (market demand / content fit)
+ *   3. Concentração de formato (dominant format > limite)
+ *   4. Sinais de conversa (mentions/collabs lift) OU fallback editorial
+ *      (comprimento de legenda / faixa de hashtags)
+ *
+ * Nunca renderiza o cartão de "Tendência de envolvimento" nem cadência
+ * — esses já vivem na Leitura IA / Block 01. Copy 100 % pt-PT, sem
+ * tokens técnicos (`keyword`, `lift`, `engagement_pct`, `payload`).
  */
 
 import {
-  TrendingUp,
   TrendingDown,
-  Minus,
-  Hash,
+  TrendingUp,
+  Search,
+  Layers,
+  MessageCircle,
   Type,
-  Users,
-  Film,
-  Target,
+  Hash,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import type { EditorialPatterns } from "@/lib/report/editorial-patterns";
+import type { ReportData } from "@/components/report/report-mock-data";
 
 import { ReportFramedBlock } from "./report-framed-block";
 import { REDESIGN_TOKENS } from "./report-tokens";
 
 interface Props {
   patterns: EditorialPatterns;
+  keyMetrics: ReportData["keyMetrics"];
 }
 
-export function ReportEditorialPatterns({ patterns }: Props) {
-  const cards: Array<ReactNode> = [];
+type SignalTone = "blue" | "amber" | "rose" | "emerald";
 
-  // 1. Tendência de engagement
-  if (patterns.engagementTrend.available) {
-    const t = patterns.engagementTrend;
-    const Icon =
-      t.direction === "up"
-        ? TrendingUp
-        : t.direction === "down"
-          ? TrendingDown
-          : Minus;
-    const tone =
-      t.direction === "up"
-        ? "text-emerald-600"
-        : t.direction === "down"
-          ? "text-rose-600"
-          : "text-slate-500";
-    const label =
-      t.direction === "up"
-        ? "A subir"
-        : t.direction === "down"
-          ? "A descer"
-          : "Estável";
-    cards.push(
-      <PatternCard
-        key="trend"
-        icon={<Icon className={cn("size-5", tone)} aria-hidden />}
-        title="Tendência de engagement"
-        eyebrow="Direção"
-        primary={label}
-        primaryTone={tone}
-        body={
-          <>
-            Confiança {t.confidence ?? "—"} · amostra de {t.sampleSize}{" "}
-            publicações.
-          </>
-        }
-      />,
-    );
-  }
+interface DiagnosticCardData {
+  key: string;
+  icon: ReactNode;
+  tone: SignalTone;
+  eyebrow: string;
+  title: string;
+  primary: string;
+  body: ReactNode;
+}
 
-  // 2. Comprimento de legenda
-  if (patterns.captionLengthBuckets.available && patterns.captionLengthBuckets.bestBucket) {
-    const b = patterns.captionLengthBuckets;
-    const best = b.buckets.find((x) => x.label === b.bestBucket);
-    cards.push(
-      <PatternCard
-        key="caption"
-        icon={<Type className="size-5 text-blue-600" aria-hidden />}
-        title="Comprimento de legenda"
-        eyebrow="Sweet spot"
-        primary={b.bestBucket ?? "—"}
-        body={
-          best
-            ? `ER médio ${best.avgEngagementPct.toFixed(2)}% em ${best.count} publicações.`
-            : "Sem leitura disponível."
-        }
-        breakdown={b.buckets}
-      />,
-    );
-  }
+const TONE_CLASSES: Record<
+  SignalTone,
+  { dot: string; iconBg: string; icon: string; primary: string }
+> = {
+  blue: {
+    dot: "bg-blue-500",
+    iconBg: "bg-blue-50 ring-blue-100",
+    icon: "text-blue-600",
+    primary: "text-slate-900",
+  },
+  amber: {
+    dot: "bg-amber-500",
+    iconBg: "bg-amber-50 ring-amber-100",
+    icon: "text-amber-600",
+    primary: "text-slate-900",
+  },
+  rose: {
+    dot: "bg-rose-500",
+    iconBg: "bg-rose-50 ring-rose-100",
+    icon: "text-rose-600",
+    primary: "text-rose-700",
+  },
+  emerald: {
+    dot: "bg-emerald-500",
+    iconBg: "bg-emerald-50 ring-emerald-100",
+    icon: "text-emerald-600",
+    primary: "text-emerald-700",
+  },
+};
 
-  // 3. Hashtags sweet spot
-  if (patterns.hashtagSweetSpot.available && patterns.hashtagSweetSpot.bestBucket) {
-    const h = patterns.hashtagSweetSpot;
-    const best = h.buckets.find((x) => x.label === h.bestBucket);
-    cards.push(
-      <PatternCard
-        key="hashtags"
-        icon={<Hash className="size-5 text-blue-600" aria-hidden />}
-        title="Volume de hashtags"
-        eyebrow="Sweet spot"
-        primary={h.bestBucket ?? "—"}
-        body={
-          best
-            ? `ER médio ${best.avgEngagementPct.toFixed(2)}% em ${best.count} publicações.`
-            : "Sem leitura disponível."
-        }
-        breakdown={h.buckets}
-      />,
-    );
-  }
-
-  // 4. Menções e colaborações
-  if (patterns.mentionsCollabsLift.available && patterns.mentionsCollabsLift.lift !== null) {
-    const m = patterns.mentionsCollabsLift;
-    const liftPct = ((m.lift! - 1) * 100).toFixed(0);
-    const direction = m.lift! >= 1 ? "+" : "";
-    cards.push(
-      <PatternCard
-        key="mentions"
-        icon={<Users className="size-5 text-blue-600" aria-hidden />}
-        title="Menções e colaborações"
-        eyebrow="Lift"
-        primary={`${direction}${liftPct}%`}
-        primaryTone={
-          m.lift! >= 1.1
-            ? "text-emerald-600"
-            : m.lift! < 0.9
-              ? "text-rose-600"
-              : "text-slate-700"
-        }
-        body={
-          <>
-            ER {m.withAvgEngagementPct?.toFixed(2)}% com menções ({m.withCount})
-            vs {m.withoutAvgEngagementPct?.toFixed(2)}% sem ({m.withoutCount}).
-          </>
-        }
-      />,
-    );
-  }
-
-  // 5. Duração de Reels
-  if (patterns.videoDurationPattern.available && patterns.videoDurationPattern.bestBucket) {
-    const v = patterns.videoDurationPattern;
-    const best = v.buckets.find((x) => x.label === v.bestBucket);
-    cards.push(
-      <PatternCard
-        key="video"
-        icon={<Film className="size-5 text-blue-600" aria-hidden />}
-        title="Duração de Reels"
-        eyebrow="Melhor faixa"
-        primary={v.bestBucket ?? "—"}
-        body={
-          best
-            ? `ER médio ${best.avgEngagementPct.toFixed(2)}% em ${best.count} Reels.`
-            : "Sem leitura disponível."
-        }
-        breakdown={v.buckets}
-      />,
-    );
-  }
-
-  // 6. Alinhamento com procura de mercado
-  if (patterns.marketDemandContentFit.available) {
-    const f = patterns.marketDemandContentFit;
-    const pct = f.coverage !== null ? `${Math.round(f.coverage * 100)}%` : "—";
-    cards.push(
-      <PatternCard
-        key="market"
-        icon={<Target className="size-5 text-blue-600" aria-hidden />}
-        title="Alinhamento com procura de mercado"
-        eyebrow="Cobertura"
-        primary={pct}
-        body={
-          <>
-            {f.matchedKeywords} de {f.marketKeywordsTotal} keywords de mercado
-            aparecem nas legendas/hashtags.
-            {f.missingTop.length > 0 ? (
-              <span className="block mt-2 text-slate-500">
-                Em falta:{" "}
-                <span className="font-mono text-[12px] text-slate-700">
-                  {f.missingTop.join(", ")}
-                </span>
-              </span>
-            ) : null}
-          </>
-        }
-      />,
-    );
-  }
+export function ReportEditorialPatterns({ patterns, keyMetrics }: Props) {
+  const cards = selectDiagnosticCards(patterns, keyMetrics).slice(0, 4);
 
   return (
     <ReportFramedBlock
       tone="canvas"
-      ariaLabel="Padrões que explicam os resultados"
+      ariaLabel="Cartões de diagnóstico"
     >
-      <header className="mb-6 md:mb-8">
-        <p className={REDESIGN_TOKENS.eyebrowAccent}>Análise editorial</p>
-        <h2 className={cn(REDESIGN_TOKENS.h2Section, "mt-2")}>
-          Padrões que explicam os resultados
-        </h2>
-        <p className={cn(REDESIGN_TOKENS.subtitle, "mt-2 max-w-3xl")}>
-          Cruzamentos derivados das publicações analisadas — não basta saber{" "}
-          <em>o quê</em>, importa perceber <em>porquê</em>.
-        </p>
-      </header>
-
       {cards.length === 0 ? (
         <p className="text-sm text-slate-500">
-          Ainda não há dados suficientes para cruzamentos avançados. A próxima
-          análise poderá revelar padrões mais sólidos.
+          Ainda não há sinais suficientes para um diagnóstico estruturado.
+          A próxima análise poderá revelar padrões mais sólidos.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-          {cards}
+        <div
+          className={cn(
+            "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5",
+            "auto-rows-fr",
+          )}
+        >
+          {cards.map((c, idx) => (
+            <DiagnosticCard key={c.key} index={idx + 1} card={c} />
+          ))}
         </div>
       )}
     </ReportFramedBlock>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Subcomponente: card individual de padrão
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// Card subcomponent
+// ─────────────────────────────────────────────────────────────────────
 
-interface PatternCardProps {
-  icon: ReactNode;
-  title: string;
-  eyebrow: string;
-  primary: string;
-  primaryTone?: string;
-  body: ReactNode;
-  breakdown?: Array<{ label: string; count: number; avgEngagementPct: number }>;
-}
-
-function PatternCard({
-  icon,
-  title,
-  eyebrow,
-  primary,
-  primaryTone = "text-slate-900",
-  body,
-  breakdown,
-}: PatternCardProps) {
+function DiagnosticCard({
+  index,
+  card,
+}: {
+  index: number;
+  card: DiagnosticCardData;
+}) {
+  const tone = TONE_CLASSES[card.tone];
   return (
     <article
       className={cn(
-        "rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6",
-        "shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
-        "flex flex-col gap-4",
+        "h-full flex flex-col gap-3",
+        "rounded-2xl border border-slate-200/70 bg-white",
+        "p-5 md:p-6",
+        "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
       )}
     >
+      <div className="flex items-center gap-2.5">
+        <span
+          aria-hidden="true"
+          className={cn("size-1.5 rounded-full shrink-0", tone.dot)}
+        />
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+          {card.eyebrow}
+        </span>
+        <span className="ml-auto font-mono text-[10px] tabular-nums text-slate-400">
+          {String(index).padStart(2, "0")} / 04
+        </span>
+      </div>
+
       <div className="flex items-start gap-3">
-        <div className="shrink-0 rounded-lg bg-blue-50 p-2">{icon}</div>
-        <div className="min-w-0">
-          <p className={REDESIGN_TOKENS.eyebrow}>{eyebrow}</p>
-          <h3 className="mt-1 text-[15px] font-semibold text-slate-900 leading-tight">
-            {title}
-          </h3>
+        <div
+          className={cn(
+            "shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg ring-1",
+            tone.iconBg,
+          )}
+        >
+          <span className={tone.icon} aria-hidden>
+            {card.icon}
+          </span>
         </div>
+        <h3
+          className={cn(
+            "font-display text-[1.05rem] md:text-[1.125rem] font-semibold leading-snug tracking-tight text-slate-900",
+            "min-w-0",
+          )}
+        >
+          {card.title}
+        </h3>
       </div>
 
       <p
         className={cn(
-          "font-display text-[1.75rem] font-semibold tracking-tight leading-none",
-          primaryTone,
+          "font-display text-[1.5rem] md:text-[1.625rem] font-semibold tracking-tight leading-none tabular-nums",
+          tone.primary,
         )}
       >
-        {primary}
+        {card.primary}
       </p>
 
-      <p className="text-sm text-slate-600 leading-relaxed">{body}</p>
-
-      {breakdown && breakdown.length > 0 ? (
-        <ul className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px]">
-          {breakdown.map((b) => (
-            <li
-              key={b.label}
-              className="flex items-baseline justify-between gap-2 text-slate-500"
-            >
-              <span className="truncate">{b.label}</span>
-              <span className="font-mono text-slate-700 tabular-nums">
-                {b.count > 0 ? `${b.avgEngagementPct.toFixed(2)}%` : "—"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <p className="text-sm text-slate-600 leading-relaxed mt-auto">
+        {card.body}
+      </p>
     </article>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Selection logic (pure)
+// ─────────────────────────────────────────────────────────────────────
+
+function selectDiagnosticCards(
+  p: EditorialPatterns,
+  km: ReportData["keyMetrics"],
+): DiagnosticCardData[] {
+  const out: DiagnosticCardData[] = [];
+
+  // 1. Distância face à referência
+  const gap = buildEngagementGapCard(km);
+  if (gap) out.push(gap);
+
+  // 2. Procura externa pelos temas
+  const market = buildMarketDemandCard(p.marketDemandContentFit);
+  if (market) out.push(market);
+
+  // 3. Concentração de formato
+  const format = buildFormatConcentrationCard(km);
+  if (format) out.push(format);
+
+  // 4. Sinais de conversa OU fallback editorial
+  const conv = buildConversationCard(p.mentionsCollabsLift);
+  if (conv) {
+    out.push(conv);
+  } else {
+    const cap = buildCaptionCard(p.captionLengthBuckets);
+    if (cap) out.push(cap);
+    else {
+      const tags = buildHashtagsCard(p.hashtagSweetSpot);
+      if (tags) out.push(tags);
+    }
+  }
+
+  return out;
+}
+
+function buildEngagementGapCard(
+  km: ReportData["keyMetrics"],
+): DiagnosticCardData | null {
+  if (!km.engagementBenchmark || km.engagementBenchmark <= 0) return null;
+
+  const delta = km.engagementDeltaPct ?? 0;
+  const above = delta >= 0;
+  const sign = above ? "+" : "−";
+  const tone: SignalTone =
+    delta <= -20 ? "rose" : delta < 0 ? "amber" : "emerald";
+  const Icon = above ? TrendingUp : TrendingDown;
+
+  const title = above
+    ? "Envolvimento acima da referência"
+    : "Envolvimento abaixo da referência";
+
+  return {
+    key: "engagement-gap",
+    icon: <Icon className="size-5" aria-hidden />,
+    tone,
+    eyebrow: "Comparação",
+    title,
+    primary: `${sign}${Math.abs(delta).toFixed(1).replace(".", ",")} %`,
+    body: (
+      <>
+        O envolvimento médio observado é {formatPct(km.engagementRate)} face à
+        referência de {formatPct(km.engagementBenchmark)} para perfis
+        comparáveis.
+      </>
+    ),
+  };
+}
+
+function buildMarketDemandCard(
+  m: EditorialPatterns["marketDemandContentFit"],
+): DiagnosticCardData | null {
+  if (!m.available || m.coverage === null) return null;
+
+  const coveragePct = Math.round(m.coverage * 100);
+  const lowCoverage = coveragePct < 40;
+  const tone: SignalTone = lowCoverage ? "blue" : "emerald";
+
+  const title = lowCoverage
+    ? "Há procura externa por temas ainda pouco cobertos"
+    : "O conteúdo cobre bem os temas com procura externa";
+
+  const missingLine =
+    lowCoverage && m.missingTop.length > 0 ? (
+      <span className="block mt-1.5 text-slate-500">
+        Por explorar: {m.missingTop.slice(0, 3).join(", ")}.
+      </span>
+    ) : null;
+
+  return {
+    key: "market-demand",
+    icon: <Search className="size-5" aria-hidden />,
+    tone,
+    eyebrow: "Procura externa",
+    title,
+    primary: `${coveragePct} %`,
+    body: (
+      <>
+        {m.matchedKeywords} de {m.marketKeywordsTotal} temas com procura
+        externa aparecem nas legendas e hashtags.
+        {missingLine}
+      </>
+    ),
+  };
+}
+
+function buildFormatConcentrationCard(
+  km: ReportData["keyMetrics"],
+): DiagnosticCardData | null {
+  const share = km.dominantFormatShare ?? 0;
+  if (!km.dominantFormat || share <= 0) return null;
+
+  const high = share >= 60;
+  const tone: SignalTone = high ? "amber" : "blue";
+  const formatLabel = humanFormatLabel(km.dominantFormat);
+
+  const title = high
+    ? `O conteúdo está concentrado em ${formatLabel.toLowerCase()}`
+    : `Formato dominante: ${formatLabel.toLowerCase()}`;
+
+  return {
+    key: "format-concentration",
+    icon: <Layers className="size-5" aria-hidden />,
+    tone,
+    eyebrow: "Mistura de formatos",
+    title,
+    primary: `${Math.round(share)} %`,
+    body: high ? (
+      <>
+        A maioria das publicações analisadas é em {formatLabel.toLowerCase()}.
+        Diversificar para outros formatos pode alargar o alcance e equilibrar
+        a leitura do perfil.
+      </>
+    ) : (
+      <>
+        {formatLabel} representa a maior fatia das publicações analisadas, sem
+        chegar a uma dependência clara de um único formato.
+      </>
+    ),
+  };
+}
+
+function buildConversationCard(
+  m: EditorialPatterns["mentionsCollabsLift"],
+): DiagnosticCardData | null {
+  if (!m.available) return null;
+
+  const total = m.withCount + m.withoutCount;
+  if (total <= 0) return null;
+
+  const sharePct = Math.round((m.withCount / total) * 100);
+  const lowConversation = sharePct < 25;
+  const tone: SignalTone = lowConversation ? "amber" : "blue";
+
+  const title = lowConversation
+    ? "Faltam sinais de conversa"
+    : "Há conversa e colaboração no perfil";
+
+  return {
+    key: "conversation",
+    icon: <MessageCircle className="size-5" aria-hidden />,
+    tone,
+    eyebrow: "Diálogo",
+    title,
+    primary: `${sharePct} %`,
+    body: lowConversation ? (
+      <>
+        Apenas {m.withCount} de {total} publicações analisadas mencionam
+        outras contas ou indicam colaborações. Mais conversa e parcerias
+        tendem a aumentar o alcance e a credibilidade percebida.
+      </>
+    ) : (
+      <>
+        {m.withCount} de {total} publicações analisadas mencionam outras
+        contas ou indicam colaborações — um sinal saudável de conversa
+        editorial.
+      </>
+    ),
+  };
+}
+
+function buildCaptionCard(
+  c: EditorialPatterns["captionLengthBuckets"],
+): DiagnosticCardData | null {
+  if (!c.available || !c.bestBucket) return null;
+  const best = c.buckets.find((x) => x.label === c.bestBucket);
+  if (!best) return null;
+  return {
+    key: "caption",
+    icon: <Type className="size-5" aria-hidden />,
+    tone: "blue",
+    eyebrow: "Linguagem",
+    title: `As legendas ${best.label.toLowerCase().replace(/\s*\(.*\)/, "")} são as que mais respondem`,
+    primary: best.label.replace(/\s*\(.*\)/, ""),
+    body: (
+      <>
+        Envolvimento médio de {formatPct(best.avgEngagementPct)} em {best.count}
+        {" "}publicações analisadas.
+      </>
+    ),
+  };
+}
+
+function buildHashtagsCard(
+  h: EditorialPatterns["hashtagSweetSpot"],
+): DiagnosticCardData | null {
+  if (!h.available || !h.bestBucket) return null;
+  const best = h.buckets.find((x) => x.label === h.bestBucket);
+  if (!best) return null;
+  return {
+    key: "hashtags",
+    icon: <Hash className="size-5" aria-hidden />,
+    tone: "blue",
+    eyebrow: "Hashtags",
+    title: `Faixa de ${best.label} hashtags é a que mais responde`,
+    primary: `${best.label}`,
+    body: (
+      <>
+        Envolvimento médio de {formatPct(best.avgEngagementPct)} em {best.count}
+        {" "}publicações analisadas.
+      </>
+    ),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────
+
+function formatPct(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toFixed(2).replace(".", ",")} %`;
+}
+
+function humanFormatLabel(raw: string): string {
+  const map: Record<string, string> = {
+    Reels: "Reels",
+    Carousels: "Carrosséis",
+    Carrosseis: "Carrosséis",
+    Carrosséis: "Carrosséis",
+    Imagens: "Imagens",
+    Image: "Imagens",
+    Photo: "Imagens",
+    Photos: "Imagens",
+    Video: "Vídeo",
+  };
+  return map[raw] ?? raw;
 }
