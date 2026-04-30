@@ -7,7 +7,7 @@
  * É esta URL que o renderer print-to-PDF externo (PDFShift) carrega.
  * Carrega o snapshot por UUID directamente — NÃO chama Apify, DataForSEO
  * ou OpenAI. Quando o relatório está totalmente pintado e os avatares
- * decodificados, marca `[data-pdf-ready]` e expõe `window.__pdfReady` para
+ * decodificados, marca `[data-pdf-ready]` e expõe `window.pdfReady` para
  * que o provider saiba que pode capturar.
  *
  * `?pdf=1` é redundante (a rota inteira é PDF mode) mas mantemos por
@@ -44,15 +44,20 @@ export const Route = createFileRoute("/report/print/$snapshotId")({
       //       evitar flash dark — defer para DOMContentLoaded porque com
       //       `ssr: false` o script corre antes do parser alcançar `<body>`.
       //
-      //   (2) `window.__pdfReady` definida JÁ — o PDFShift valida o
+      //   (2) `window.pdfReady` definida JÁ — o PDFShift valida o
       //       wait_for function ao carregar a página e rejeita com 400 se
-      //       não existir. Lê de `window.__pdfReadyState` que o React
+      //       não existir. Lê de `window.pdfReadyState` que o React
       //       comuta para `true` quando o relatório está realmente pronto.
+      //       NOTA: com `ssr: false`, este script NÃO chega ao HTML
+      //       inicial. O PDFShift recebe o mesmo bootstrap injectado via
+      //       o parâmetro `javascript` do provider (ver pdfshift.server.ts);
+      //       este bloco serve para o caso de a rota ser carregada num
+      //       browser normal (debug, devtools).
       {
         children:
           `(function(){` +
-          `window.__pdfReadyState=false;` +
-          `window.__pdfReady=function(){return window.__pdfReadyState===true};` +
+          `window.pdfReadyState=false;` +
+          `window.pdfReady=function(){return window.pdfReadyState===true};` +
           `var f=function(){if(document.body){document.body.setAttribute("data-theme","light")}};` +
           `if(document.body){f()}else{document.addEventListener("DOMContentLoaded",f)}` +
           `})()`,
@@ -231,13 +236,13 @@ function PrintReady({
   // Expose the global readiness function PDFShift polls.
   useEffect(() => {
     // The global function itself is installed synchronously by the head
-    // script (so PDFShift validates it on first load). React only needs
-    // to flip the state flag when the report is actually ready.
-    (window as unknown as { __pdfReadyState?: boolean }).__pdfReadyState =
-      ready;
+    // script + by PDFShift's `javascript` parameter (see pdfshift.server.ts).
+    // React only needs to flip the state flag when the report is actually
+    // ready.
+    (window as unknown as { pdfReadyState?: boolean }).pdfReadyState = ready;
     return () => {
       try {
-        (window as unknown as { __pdfReadyState?: boolean }).__pdfReadyState =
+        (window as unknown as { pdfReadyState?: boolean }).pdfReadyState =
           false;
       } catch {
         /* noop */
