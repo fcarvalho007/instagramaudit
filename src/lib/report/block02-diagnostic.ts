@@ -30,6 +30,8 @@ export interface ContentTypeResult {
   sharePct: number;
   sampleSize: number;
   reason?: string;
+  /** Distribuição completa por categoria (apenas as 3 com mais peso são UI-relevantes). */
+  distribution: Array<{ label: ContentTypeLabel; sharePct: number; count: number }>;
 }
 
 export type FunnelStageLabel =
@@ -45,6 +47,12 @@ export interface FunnelStageResult {
   sharePct: number;
   sampleSize: number;
   reason?: string;
+  /** Distribuição das 4 fases reais (sem "dispersa"). */
+  breakdown: Array<{
+    stage: "topo" | "meio" | "fundo" | "pos";
+    label: "TOPO · atrair" | "MEIO · educar" | "FUNDO · converter" | "PÓS · fidelizar";
+    sharePct: number;
+  }>;
 }
 
 export type CaptionPatternLabel =
@@ -59,6 +67,8 @@ export interface CaptionPatternResult {
   label: CaptionPatternLabel;
   avgLength: number;
   ctaSharePct: number;
+  /** % de posts cuja caption contém pelo menos uma pergunta real ("?"). */
+  questionSharePct: number;
   sampleSize: number;
 }
 
