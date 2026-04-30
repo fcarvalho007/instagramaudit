@@ -1,11 +1,12 @@
 ---
 name: Benchmark source policy
-description: Fontes editoriais aprovadas (Socialinsider, Buffer, Hootsuite, Databox), uso por bloco, anti-invenção de métricas, etiquetagem perfil/referência/interpretação. Versão canónica em KNOWLEDGE.md.
+description: Fontes editoriais aprovadas (Socialinsider, Buffer, Hootsuite, Databox), uso por bloco, anti-invenção de métricas, etiquetagem perfil/referência/interpretação. Dataset estruturado em src/lib/knowledge/benchmark-context.ts; canónico em KNOWLEDGE.md.
 type: feature
 ---
 
 Fontes nomeáveis (nunca com link): Socialinsider, Buffer, Hootsuite, Databox.
-Cada uma tem um papel:
+
+Cada uma com papel próprio:
 - Socialinsider → benchmarks orgânicos por formato (~0,48% médio; Reels ~0,52%; Carrosséis ~0,55%; Imagens ~0,37%) e cadência (~4,6/semana).
 - Buffer → contexto por tier de seguidores (0–1K … 500K–1M); reach só se houver dataset real.
 - Hootsuite → contexto de indústria (apenas com indústria seleccionada; senão, copy genérico direcional).
@@ -26,4 +27,7 @@ Uso por bloco do relatório:
 
 Banidos no UI: payload, engagement_pct, result.data, keyMetrics, "API response", "Segundo a X, este perfil...".
 
-Política completa: /KNOWLEDGE.md (locked) + KnowledgeNote "Política de fontes de benchmark" (categoria tool) injectada no prompt via formatKnowledgeContextForPrompt.
+Onde vive na app:
+- /KNOWLEDGE.md (locked) — versão canónica humana.
+- src/lib/knowledge/benchmark-context.ts — INSTAGRAM_BENCHMARK_CONTEXT (dados estruturados, helpers getBufferTierForFollowers, getSocialinsiderEngagementForFormat, getHootsuiteBenchmarkForIndustry, copy pt-PT em visibleCopyRulesPt).
+- KnowledgeNote "Política de fontes de benchmark" (id 5171734b-4d83-4343-9776-101f9335bf9e, categoria tool) — injectada no prompt OpenAI via formatKnowledgeContextForPrompt.
