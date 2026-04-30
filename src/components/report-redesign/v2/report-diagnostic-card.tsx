@@ -97,9 +97,9 @@ export function ReportDiagnosticCard({
   return (
     <article
       className={cn(
-        "h-full flex flex-col gap-4",
+        "h-full flex flex-col gap-5",
         "rounded-2xl border border-slate-200/70 bg-white",
-        "p-5 md:p-6",
+        "p-6 md:p-7",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
       )}
     >
@@ -133,12 +133,12 @@ export function ReportDiagnosticCard({
           t.box,
         )}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
           {answerLabel}
         </p>
         <p
           className={cn(
-            "mt-1 font-display text-[1.125rem] md:text-[1.25rem] font-semibold tracking-tight leading-tight",
+              "mt-1 font-display text-[1.125rem] md:text-[1.25rem] font-semibold tracking-tight leading-tight",
             t.answerText,
           )}
         >
@@ -332,7 +332,7 @@ export function DiagnosticMiniStats({
           key={`${it.label}-${i}`}
           className="rounded-lg border border-slate-200/70 bg-slate-50/60 px-3 py-2.5 text-center"
         >
-          <p className="font-display text-base font-semibold text-slate-900 tabular-nums leading-none">
+          <p className="font-mono text-[15px] font-semibold text-slate-900 tabular-nums leading-none">
             {it.value}
           </p>
           <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-slate-500">
@@ -483,7 +483,7 @@ export function DiagnosticAudienceHighlight({
           TONE_BG[tone],
         )}
       >
-        <span className="font-display text-base font-semibold normal-case tracking-normal">
+        <span className="font-mono text-[15px] font-semibold normal-case tracking-normal tabular-nums">
           {avgLikes.toLocaleString("pt-PT")}
         </span>{" "}
         <span className="opacity-90">gostos médios</span>
@@ -491,7 +491,7 @@ export function DiagnosticAudienceHighlight({
       <div className="flex items-center gap-2 px-1">
         <span aria-hidden className={cn("size-1.5 rounded-full", DOT[tone])} />
         <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">
-          <span className="font-display text-sm font-semibold normal-case tracking-normal text-slate-700">
+          <span className="font-mono text-[13px] font-semibold normal-case tracking-normal text-slate-700 tabular-nums">
             {avgComments.toLocaleString("pt-PT")}
           </span>{" "}
           comentários médios

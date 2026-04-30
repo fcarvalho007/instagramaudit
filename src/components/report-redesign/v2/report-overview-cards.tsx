@@ -196,7 +196,7 @@ function EngagementRateCard({
       }
     >
       <div className="flex items-end gap-3 flex-wrap">
-        <span className="font-display text-[3rem] md:text-[3.5rem] font-semibold tracking-[-0.025em] text-slate-900 leading-none tabular-nums">
+        <span className="font-mono text-[2.75rem] md:text-[3.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
           {formatPct(engagement)}
         </span>
         {hasBenchmark && deltaPct !== 0 ? (
@@ -348,7 +348,7 @@ function PostingRhythmCard({
       sourceSlot={<ReportSourceLabel type="calculation" detail="Posts ÷ janela" />}
     >
       <div className="flex items-end gap-3 flex-wrap">
-        <span className="font-display text-[2rem] md:text-[2.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+        <span className="font-mono text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
           {weekly.toFixed(1).replace(".", ",")}
         </span>
         <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-slate-500 pb-1">
@@ -478,7 +478,7 @@ function DominantFormatCard({
       }
     >
       <div className="flex items-end gap-3 flex-wrap min-w-0">
-        <span className="font-display text-[2rem] md:text-[2.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+        <span className="font-mono text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
           {dominantShare > 0 ? `${dominantShare}%` : "—"}
         </span>
         {dominantLabel ? (
