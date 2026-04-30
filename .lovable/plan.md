@@ -1,145 +1,178 @@
-# R6 — Product QA Audit: /analyze/$username
+# Fix: Export PDF — substituir @react-pdf/renderer por print-to-PDF externo
 
-## Snapshot auditado
-- ID: `683e4c21-60e0-4045-b43a-dfcd85fe9896` — frederico.m.carvalho
-- 12 posts · `analysis_status: ready`
-- `ai_insights_v1`: 5 insights (priority 95→72) com números reais, custo $0,0047 (gpt-5.4-mini)
-- `ai_insights_v2`: 9 secções (hero, formats, heatmap, language, topPosts, benchmark, daysOfWeek, marketSignals, evolutionChart) com tonalidade adequada (negative/positive/neutral)
-- `market_signals_free`: ready (keyword "ia" +67%)
-- `editorial_patterns` no payload: ausente — derivado em runtime via `buildEditorialPatterns(payload)` no adapter (3 cards visíveis: tendência, comprimento, volume hashtags)
-- `aiInsights` flag: presente; LEITURA IA renderizou no hero
-
-QA visual feito a 1366×768 e 375×812. Estrutura confirmada por `extract` — todas as secções esperadas estão presentes na ordem correcta.
-
----
-
-## 1. Product clarity — FORTE
-
-Um marketer percebe imediatamente:
-- **O quê** foi analisado: 12 publicações em 15 dias, com badges de cobertura (Dados públicos, IA editorial, Benchmark, Pesquisa).
-- **O que importa**: o `AIInsightBox` no hero entrega o veredito macro em 1 frase ("0,11% vs 4,2% Nano").
-- **Acima/abaixo do benchmark**: Reading IA + Gauge dão a leitura em duas camadas.
-- **Que acções tomar**: 5 insights v1 com priority + body accionável (carrosséis, perguntas no fecho, IA como tema).
-
-Pequena fricção: o **tier "Nano"** aparece sem explicação no hero — utilizador novo não sabe o que significa.
-
-## 2. Information architecture — BOA, com 1 ajuste
-
-Ordem renderizada (confirmada via DOM):
+## Diagnóstico (confirmado em logs de produção)
 
 ```
-Hero → Insight hero → KPI grid → AI Reading (5 insights) → Market Signals
-→ Editorial Patterns (3 cards) → Performance temporal → Benchmark + Formatos
-→ Concorrentes → Top Posts → Heatmap + Best Days → Hashtags + Mentions
-→ Methodology → Tier Teaser → TierComparisonBlock → Final Block → Beta Banner
+[error] [public-report-pdf] render failed
+RuntimeError: Aborted(CompileError: WebAssembly.instantiate():
+Wasm code generation disallowed by embedder)
 ```
 
-- Sem duplicação de secções.
-- **Editorial Patterns vem antes de Performance temporal** — bom (explica o porquê antes do gráfico).
-- **`ReportTierTeaser` + `TierComparisonBlock` lado a lado** = duas camadas de upsell consecutivas. Provoca "duplo CTA Free vs Pro".
-- **`ReportFinalBlock` + `BetaFeedbackBanner`** consecutivos no fim = três blocos de chamada à acção empilhados. Cansa.
+`@react-pdf/renderer@4.5.1` depende de `yoga-layout` (WASM). O Cloudflare Worker de produção bloqueia compilação WASM em runtime. Os 3 endpoints partilham o mesmo `renderReportPdf` → todos falham hoje.
 
-## 3. Insight quality (v1 + v2) — MUITO FORTE
+## 1. Provedor recomendado: **PDFShift**
 
-Avaliados os 5 insights v1 e as 9 secções v2:
-- **Específicos**: sim — citam 0,11%, 4,2%, +67%, 28 gostos, 12 publicações.
-- **Sem genéricos**: nenhum insight é "publica mais e melhor".
-- **Accionáveis**: cada body tem verbo + alvo concreto ("incluir perguntas directas no fecho dos carrosséis").
-- **Sem tokens técnicos**: nenhum `evidence` exposto na UI.
-- **pt-PT natural**: "envolvimento", "ritmo", "directas", "carrosséis". Sem leaks pt-BR.
+### Comparação técnica (validada nas docs reais de cada um)
 
-Único risco: o insight `ENGAGEMENT_GAP` reporta "-97,38 pp" — formato confuso (é -97,38% relativo, não pp absoluto). Numericamente correcto mas a unidade pode induzir em erro.
+| Requisito | PDFShift | MarkupGo |
+|---|---|---|
+| URL-to-PDF API | Sim (`source` aceita URL ou HTML) | Sim, mas docs públicas escassas (página `/docs/url-to-pdf` está 404) |
+| Esperar por sinal de pronto | Sim — `wait_for` (nome de **função JS global** que retorna truthy, timeout 30s) + `wait_for_network` | Não documentado publicamente |
+| A4 portrait | Sim — `format: "A4"` (default), `landscape: false` (default) | Documentado apenas via SDK Node, sem detalhe REST |
+| Margens controladas | Sim — `margin` aceita objecto/string/integer | Documentação ausente |
+| Print background | Sim — `disable_backgrounds: false` (default) | Sim no SDK Node (`printBackground: true`) |
+| Auth API key server-side | Sim — header `X-API-Key` | Sim, mas requer SDK Node ou HTTP genérico |
+| Resposta binária | Sim — bytes PDF directos no body 200 | Resposta JSON com task → fetch posterior |
+| React/Tailwind | Sim — Chromium 116/142, escolhível por `X-Processor-Version` | Chromium implícito |
+| Pricing previsível | Free 50 PDFs/mês; Lite $9/mês 500 PDFs; sandbox ilimitado | Free tier limitado; pricing menos transparente |
+| Cloudflare Worker `fetch` | Sim — basta `fetch` com `X-API-Key` + JSON body | Sim com HTTP genérico |
 
-## 4. Editorial Patterns — SÓLIDO mas inconsistente em snapshots pequenos
+### Porquê PDFShift e não MarkupGo
 
-Cards renderizados para este snapshot: **3 de 6** possíveis (Tendência, Comprimento de legenda, Volume de hashtags). Os outros 3 (Menções, Reels, Market fit) ficaram suprimidos por `available:false` — comportamento defensivo correcto.
+- **Documentação pública completa e versionada** (`docs.pdfshift.io`). MarkupGo tem links 404 nas próprias docs e o ciclo URL-to-PDF assenta em SDK Node.
+- **`wait_for` real** — confirma na doc que espera por uma função JS global retornar truthy, exactamente o que precisamos para garantir que o report está pintado antes do snapshot.
+- **Resposta binária num único request síncrono** — MarkupGo devolve `task` JSON que requer polling adicional, complicando o handler do Worker.
+- **Sandbox mode gratuito** com watermark — permite-nos iterar sem consumir o free tier.
+- **Custo previsível**: 50 PDFs grátis cobrem o estado actual; cache do bucket faz com que cada `snapshot_id` distinto consuma 1 crédito apenas.
 
-Observações:
-- Cards têm valor real ("ER 0,11% em 12 publicações"), não são placeholders.
-- **Risco de leitura**: 3 cards parecem "subdimensionados" face à promessa "6 cruzamentos". Sem aviso de que mais cards aparecem com mais dados.
-- Card "Tendência de engagement" mostra "Confiança — · amostra de 12" quando confidence é null — o "—" parece um erro.
+### Detalhe importante sobre `wait_for`
 
-## 5. Visual QA
+PDFShift `wait_for` espera por **função JS global**, não selector CSS. Adaptação no nosso lado:
 
-**1366×768 (desktop)**:
-- Hero limpo, banda azul-claro, CTAs alinhados.
-- Header global do site (`InstaBench` navbar) **mantém-se em dark theme** sobre o report light → leve dissonância na barra de topo.
-- **Flicker dark→light confirmado**: o skeleton (`AnalysisSkeleton`) renderiza em **dark** durante ~12s, depois a página comuta para light. O script `data-theme="light"` injectado no head só corre depois do skeleton.
-- Beta banner usa CTA cinzento-900 sobre canvas — coerente mas paleta diferente do hero azul.
+- O componente `/report/print/$snapshotId` define `window.__pdfReady = () => document.querySelector("[data-pdf-ready]") !== null`.
+- Pedido enviado com `wait_for: "__pdfReady"`.
+- O atributo `[data-pdf-ready]` continua a ser a marca semântica única no DOM (útil para QA visual e futura troca para MarkupGo).
 
-**375×812 (mobile)**:
-- Sem overflow horizontal.
-- `@frederico.m.carvalho` quebra em 2 linhas no h1 display — aceitável.
-- CTAs Exportar PDF + Partilhar empilhados full-width — correcto.
+## 2. Arquitectura: abstracção de provedor
 
-**768×1024**: não testado mas componentes usam `sm:` breakpoints adequados; risco baixo.
+```text
+src/lib/pdf/
+├── render-via-browser.server.ts    ← entrada única que dispatcha por env
+├── providers/
+│   ├── types.ts                     ← interface BrowserPdfProvider
+│   ├── pdfshift.server.ts           ← implementação concreta (única para já)
+│   └── (markupgo.server.ts)         ← stub deixado por escrever; criar quando necessário
+└── print-url.server.ts              ← constrói URL pública do /report/print/<snapshotId>?pdf=1
+```
 
-## 6. Commercial readiness
+Interface partilhada:
 
-| Caso | Estado |
+```ts
+export interface BrowserPdfProvider {
+  readonly name: "pdfshift" | "markupgo";
+  render(args: {
+    url: string;
+    waitForGlobalFn?: string;
+    timeoutMs?: number;
+    sandbox?: boolean;
+  }): Promise<Uint8Array>;
+}
+```
+
+`render-via-browser.server.ts` lê `process.env.PDF_RENDER_PROVIDER` **dentro** do handler. Default `"pdfshift"`. Adicionar `"markupgo"` é só registar nova entry no map.
+
+## 3. Rota dedicada `/report/print/$snapshotId`
+
+Nova rota cliente que renderiza o report a partir de `snapshot_id` (não trigga pipeline):
+
+- Loader fetcha **directamente** `/api/public/analysis-snapshot/by-id/<snapshotId>` (novo subendpoint pequeno) — nunca chama `/api/analyze-public-v1`.
+- Reusa `ReportShell` exactamente como `/analyze/$username` reusa.
+- Aplica modo PDF quando `?pdf=1`: classe `pdf-print-mode` no `<body>`, esconde:
+  - navbar global
+  - botão Exportar PDF + Partilhar do hero
+  - `BetaFeedbackBanner`
+  - `ReportFinalBlock` (o CTA empilhado no fim)
+  - footer global do site
+- Após `state === "ready"` + `requestAnimationFrame` duplo + decode dos avatares → marca `data-pdf-ready` no wrapper raiz e expõe `window.__pdfReady`.
+
+A página é pública (snapshot já é público via `/analyze`), e está no path `/report/print/...` — fora de `/api/public/*` por ser HTML, mas igualmente sem auth.
+
+## 4. Endpoints — substituição cirúrgica
+
+| Endpoint | Mudança |
 |---|---|
-| Free preview | OK — coverage badges + tier teaser sinalizam claramente o que é free. |
-| Paid PDF | Botão "Exportar PDF" funcional, mas existem **2 CTAs PDF** (hero + Final Block "Pedir versão PDF") com copy diferente — sinal misto. |
-| Subscription upsell | Presente via `TierComparisonBlock`. Forte. |
-| Agency use | Razoável — relatório partilhável, mas sem branding white-label nem export por email. |
-| Client presentation | Editorial e legível, mas o flicker dark→light e a navbar dark por cima quebram a "polidez de cliente". |
+| `src/routes/api/public/public-report-pdf.ts` | Substituir `renderReportPdf({...})` por `renderViaBrowser({ url: buildPrintUrl({snapshotId}), waitForGlobalFn: "__pdfReady" })`. Resto (cache check, upload, sign, log, error mapping) intacto. |
+| `src/routes/api/generate-report-pdf.ts` | Mesma substituição. URL construída a partir do `analysis_snapshot_id` do report request (nunca do `report_request_id`). |
+| `src/routes/api/admin/regenerate-pdf.ts` | Não muda — chama `/api/generate-report-pdf` por HTTP, herda fix automaticamente. |
+| `src/lib/orchestration/run-report-pipeline.ts` | Não muda — também passa por `/api/generate-report-pdf`. |
 
-## 7. Gaps prioritizados
+`isNormalizedPayload` continua a validar antes de chamar o renderer — protege contra snapshots malformados sem desperdiçar crédito PDFShift.
 
-### Bloqueadores críticos
-Nenhum. O report entrega valor real e estável.
+## 5. Subendpoint novo: `/api/public/analysis-snapshot/by-id/$snapshotId`
 
-### Médios (afectam percepção de qualidade)
-1. **Skeleton dark sobre report light** — flicker desagradável de ~12s na primeira carga. O script `data-theme="light"` corre só no `head`, mas o skeleton importa o `ReportThemeWrapper` apenas depois de `state === "ready"`.
-2. **Header `InstaBench` global em dark** sobre o report light — dissonância visual.
-3. **Duplo CTA PDF** ("Exportar PDF" + "Pedir versão PDF") com copy diferente — inconsistência.
-4. **Tier "Nano" sem tooltip** — utilizador novo não sabe o que é.
-5. **TierTeaser + TierComparisonBlock + FinalBlock + BetaBanner** = 4 CTAs empilhados no fim. Sobrecarrega.
-6. **Insight ENGAGEMENT_GAP** com unidade ambígua ("-97,38 pp" quando é variação relativa).
+Necessário porque o endpoint actual `/api/public/analysis-snapshot/$username` resolve por handle. A rota `/report/print/$snapshotId` precisa carregar **exactamente** o snapshot identificado por UUID (não a versão mais recente).
 
-### Polimento minor
-- Editorial Patterns: quando `confidence === null`, esconder o "Confiança —" em vez de mostrar dash.
-- Editorial Patterns: header poderia indicar "3 de 6 padrões disponíveis nesta amostra" para quadrar a expectativa.
-- Beta banner no fundo poderia ficar dentro do tier light theme (cinzento-900 destoa).
+- GET → `select id, instagram_username, normalized_payload, created_at from analysis_snapshots where id = $1`
+- Mesmo shape de resposta que o endpoint por username já usa.
+- Sem mutações. Sem chamadas a providers.
 
-### O que já está forte
-- Insights v1 e v2 muito acima da média (números, accionáveis, pt-PT impecável).
-- Adapter resiliente (editorial_patterns derivado em runtime, sem precisar de re-snapshot).
-- Cobertura de coverage badges é honesta.
-- Mobile-first correctamente implementado.
-- Defensivos: pending notice para snapshots <5min sem v1, cards omitidos quando dados insuficientes.
+## 6. Ficheiros a criar / editar
 
----
+### Criar
+- `src/lib/pdf/render-via-browser.server.ts`
+- `src/lib/pdf/providers/types.ts`
+- `src/lib/pdf/providers/pdfshift.server.ts`
+- `src/lib/pdf/print-url.server.ts`
+- `src/routes/report.print.$snapshotId.tsx`
+- `src/routes/api/public/analysis-snapshot.by-id.$snapshotId.ts`
 
-## Verdict
+### Editar (cirúrgico)
+- `src/routes/api/public/public-report-pdf.ts` — trocar 1 chamada
+- `src/routes/api/generate-report-pdf.ts` — trocar 1 chamada
+- `src/components/report-redesign/report-shell.tsx` — adicionar `data-pdf-ready` no wrapper + classe condicional `pdf-print-mode`
+- `src/styles.css` (ou tokens equivalentes) — adicionar regras `body.pdf-print-mode { ... }` que escondem navbar/footer/CTAs
 
-**SAFE WITH FIXES**
+### NÃO tocar
+- `src/lib/pdf/render.ts` (mantido para rollback rápido)
+- `src/lib/pdf/report-document.tsx` (mantido)
+- `package.json` — `@react-pdf/renderer` permanece instalado até validação real
+- `/report/example`
+- Schema BD
+- Pipeline Apify/DataForSEO/OpenAI
+- `LOCKED_FILES.md` entries
 
-O report transforma dados em informação e em conhecimento accionável. Os blockers são todos cosméticos/UX — nenhum compromete a integridade dos números nem a credibilidade editorial.
+## 7. Secrets necessários
 
----
+A pedir via `add_secret` quando o plano for aprovado:
 
-## Próximo prompt prioritário (R7)
+| Nome | Tipo | Valor sugerido | Onde se obtém |
+|---|---|---|---|
+| `PDFSHIFT_API_KEY` | runtime | sk_xxx | Dashboard PDFShift após signup gratuito em https://pdfshift.io |
+| `PDF_RENDER_PROVIDER` | runtime | `pdfshift` | hardcoded por nós; permite swap futuro |
+| `PDF_PUBLIC_BASE_URL` | runtime | `https://instagramaudit.lovable.app` | URL público estável já existente |
+| `PDF_RENDER_SANDBOX` | runtime | `true` em preview, `false` em produção | controla flag `sandbox` da PDFShift |
 
-**R7 — Polish UX + coerência editorial do /analyze/$username**
+Todas lidas com `process.env.X` **dentro** do handler/helper, nunca a nível módulo. Defaults seguros se faltarem (provider=pdfshift, sandbox=true).
 
-Goal: eliminar fricções cosméticas que comprometem a percepção premium do report sem alterar pipeline, payload ou IA.
+## 8. Avaliação de risco
 
-Tasks (uma única tarefa, não cumular features):
-1. **Eliminar flicker dark→light**:
-   - `AnalysisSkeleton` deve renderizar dentro do `ReportThemeWrapper` (light theme) para herdar a paleta correcta.
-   - Confirmar que o script `data-theme="light"` corre antes do primeiro paint mesmo em SSR-off.
-2. **Harmonizar header**: detectar rota `/analyze/$username` e aplicar variante light ao `InstaBench` navbar (ou esconder navbar global e mostrar barra mínima própria do report).
-3. **Resolver duplo CTA PDF**: alinhar copy ("Exportar PDF" em ambos) ou diferenciar semanticamente (hero = "Exportar agora", final = "Receber por email").
-4. **Reduzir empilhamento de CTAs no fim**: fundir `TierTeaser` no header do `TierComparisonBlock` ou colapsar `BetaBanner` numa faixa menor.
-5. **Tooltip explicativo no tier "Nano"** no hero (popover discreto: "Tier baseado em followers e formato dominante").
-6. **Editorial Patterns**: ocultar "Confiança —" quando null; adicionar contagem honesta "3 de 6 padrões disponíveis com esta amostra".
-7. **Insight ENGAGEMENT_GAP**: corrigir unidade no template do insights generator para evitar "pp" quando é variação relativa.
+| Risco | Mitigação |
+|---|---|
+| PDFShift demora >10s em snapshots pesados | `timeout: 60` no body + `wait_for` cap interno 30s. Se falhar, mantém-se rollback para o renderer antigo (não removido) via flag de provedor `?provider=legacy`. |
+| Quota gratuita esgotada (50/mês) | Cache no bucket por `snapshot_id` evita renders repetidos. Telemetria existente em `analysis_events` regista cada chamada. Sandbox em preview = 0 créditos consumidos. |
+| Avatares Instagram expiram → logo no PDF aparece partido | A rota de print usa `/api/public/ig-thumb` (proxy já existente, locked). Sem regressão. |
+| `/report/print/$snapshotId` indexável por motores de busca | `<meta name="robots" content="noindex,nofollow">` na head da rota. |
+| Provedor cai (downtime PDFShift) | Logs de erro existentes + `error_code: "RENDER_FAILED"` propagado intacto. UX exibe a mesma toast actual ("Falha ao gerar… Tenta novamente"). |
+| Rollback se algo correr mal em produção | `@react-pdf/renderer` continua instalado e `src/lib/pdf/render.ts` intacto. Reverter = trocar 2 linhas em 2 endpoints. |
 
-Rules:
-- Read-only sobre `/report/example`, snapshots, schema, providers.
-- Sem chamadas Apify/DataForSEO/OpenAI/Supabase mutations.
-- Validar: `bunx tsc --noEmit` + `bunx vitest run`.
-- Mobile-first (375 + 768 + 1366).
+## 9. Plano de smoke test (a executar após implementação)
 
-Expected outcome: SAFE TO CONTINUE TO MONETIZAÇÃO.
+1. **Build**: `bunx tsc --noEmit` + `bunx vitest run` → verde.
+2. **PDFShift dry-run** (sandbox): invocar `POST /api/public/public-report-pdf` com `snapshot_id=683e4c21-60e0-4045-b43a-dfcd85fe9896`. Esperar `signed_url` válido apontando para `report-pdfs/reports/snapshots/2026/04/683e4c21....pdf`.
+3. **Confirmar no signed URL**: PDF abre, capa contém `@frederico.m.carvalho` real, não placeholder.
+4. **Verificar logs**: zero chamadas a Apify/DataForSEO/OpenAI no período do teste (query a `provider_call_logs`).
+5. **Cache hit**: segundo POST com mesmo `snapshot_id` devolve `cached: true` sem novo render.
+6. **QA visual**: converter as primeiras páginas do PDF para imagens (`pdftoppm`) e inspeccionar — navbar/banner/CTAs ausentes; conteúdo editorial idêntico ao web.
+7. **Endpoint email-flow**: `POST /api/generate-report-pdf` com um `report_request_id` real → confirmar mesmo path de upload e `request_status` final correcto.
+8. **Rollback verificado**: trocar provider env, confirmar que helper consegue voltar a chamar o renderer antigo (smoke test só de tipos/wiring).
+
+## 10. Resultado esperado
+
+- Export PDF volta a funcionar em produção, com fidelidade visual ao web report.
+- Frontend não muda (mesmos endpoints, mesmas respostas).
+- Cache, telemetria, idempotência, error handling — todos preservados.
+- Provedor abstraído: trocar para MarkupGo no futuro = criar 1 ficheiro novo + mudar `PDF_RENDER_PROVIDER`.
+- Rollback de 2 minutos disponível.
+- 0 chamadas a providers de dados (Apify/DFS/OpenAI) durante o pipeline PDF.
+
+Aguardando aprovação para implementar e pedir o `PDFSHIFT_API_KEY`.
