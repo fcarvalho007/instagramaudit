@@ -395,7 +395,12 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
 
 function renderThemesCard(r: ThemesResult): ReactNode | null {
   if (!r.available) return null;
-  const isAi = r.source === "ai";
+  // Só consideramos "leitura IA" quando temos efectivamente texto da IA
+  // para mostrar — caso contrário cai para leitura automática (keyword
+  // recurrence) e o chip reflecte isso, evitando "LEITURA IA" sem bloco
+  // interpretativo abaixo.
+  const hasAiText = !!(r.aiText && r.aiText.trim().length >= 20);
+  const isAi = r.source === "ai" && hasAiText;
   const body = isAi
     ? "Esta leitura resume os assuntos recorrentes nas legendas, com base na interpretação editorial gerada pela IA."
     : "Esta leitura resume os assuntos mais frequentes nas legendas analisadas — não as hashtags utilizadas.";
