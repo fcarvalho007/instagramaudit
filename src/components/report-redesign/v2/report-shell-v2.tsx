@@ -31,7 +31,6 @@ import { ReportAiReading } from "../report-ai-reading";
 import { ReportPendingAiNotice } from "../report-pending-ai-notice";
 import { ReportMethodology } from "../report-methodology";
 import { ReportTierTeaser } from "../report-tier-teaser";
-import { ReportEditorialPatterns } from "../report-editorial-patterns";
 import { REDESIGN_TOKENS } from "../report-tokens";
 
 import { BLOCKS } from "./block-config";
@@ -42,6 +41,7 @@ import {
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
+import { ReportDiagnosticGridV2 } from "./report-diagnostic-grid-v2";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -131,9 +131,10 @@ export function ReportShellV2({
                     generatedAtIso={analyzedAtIso ?? null}
                   />
                 )}
-                <ReportEditorialPatterns
-                  patterns={result.enriched.editorialPatterns}
+                <ReportDiagnosticGridV2
                   keyMetrics={result.data.keyMetrics}
+                  posts={payload?.posts ?? []}
+                  topHashtags={result.data.topHashtags}
                 />
               </ReportBlockSection>
 
