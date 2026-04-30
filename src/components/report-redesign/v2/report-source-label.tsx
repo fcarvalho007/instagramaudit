@@ -38,25 +38,16 @@ const ICON: Record<ReportSourceType, typeof Database> = {
   external: BookOpen,
 };
 
-/** Mapeia tipo → tom visual (subtil; o azul fica reservado a interpretação/cálculo). */
-function tone(type: ReportSourceType, caution: boolean): string {
-  if (caution) {
-    return "bg-amber-50 ring-amber-200 text-amber-800";
-  }
-  switch (type) {
-    case "calculation":
-    case "ai":
-      return "bg-blue-50 ring-blue-200 text-blue-700";
-    case "external":
-      // Indigo subtil distingue "voz emprestada" da Knowledge Base
-      // dos cálculos e leituras de IA próprias da InstaBench.
-      return "bg-indigo-50 ring-indigo-200 text-indigo-700";
-    case "extracted":
-    case "automatic":
-    default:
-      return "bg-slate-50 ring-slate-200 text-slate-600";
-  }
-}
+/**
+ * Cor ÚNICA para todos os tipos. O chip vive em rodapé discreto e
+ * nunca compete com títulos. A diferenciação é feita pelo ícone +
+ * label, não pela cor. `caution` mantém-se como variante leve de aviso
+ * (apenas borda) — opcional, raramente usada.
+ */
+const NEUTRAL_TONE =
+  "bg-slate-50 ring-slate-200 text-slate-500";
+const CAUTION_TONE =
+  "bg-slate-50 ring-amber-300 text-slate-600";
 
 /**
  * Micro-rótulo de proveniência usado em todo o relatório.
@@ -68,8 +59,10 @@ function tone(type: ReportSourceType, caution: boolean): string {
  *   · ai          → texto/leitura gerado por IA
  *   · external    → referência da Knowledge Base (Buffer, Socialinsider…)
  *
- * Estilo: mono uppercase, ~10–11px, tracking largo, pill discreto.
- * Pensado para conviver com títulos de cartão sem competir.
+ * Estilo: mono uppercase, 10px, tracking largo, pill ultra-discreto
+ * em tom slate único. Pensado para viver no rodapé dos cartões, nunca
+ * a competir com títulos. O `detail` é guardado em `aria-label`/`title`
+ * mas não renderizado visualmente — o chip mostra apenas tipo + ícone.
  */
 export function ReportSourceLabel({
   type,
@@ -90,20 +83,12 @@ export function ReportSourceLabel({
         "inline-flex items-center gap-1.5 rounded-full ring-1 px-2 py-0.5",
         "font-mono text-[10px] uppercase tracking-[0.16em] leading-none",
         "max-w-full whitespace-nowrap overflow-hidden text-ellipsis",
-        tone(type, caution),
+        (caution ? CAUTION_TONE : NEUTRAL_TONE),
         className,
       )}
     >
-      <Icon aria-hidden className="size-3 shrink-0" />
-      <span className="truncate">
-        {label.toUpperCase()}
-        {detailText ? (
-          <>
-            <span className="mx-1.5 opacity-50">·</span>
-            <span>{detailText}</span>
-          </>
-        ) : null}
-      </span>
+      <Icon aria-hidden className="size-3 shrink-0 opacity-70" />
+      <span className="truncate">{label.toUpperCase()}</span>
     </span>
   );
 }
