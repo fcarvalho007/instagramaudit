@@ -589,14 +589,24 @@ const NEWSLETTER_TERMS = [
 
 export function classifyChannelIntegration(
   bio: string | null,
+  externalUrls: string[],
   posts: SnapshotPost[],
 ): IntegrationResult {
   const safeBio = bio ?? "";
   const bioNorm = normalize(safeBio);
-  const bioHasUrl = URL_RE.test(safeBio);
+  // Prioridade 1: campo `external_urls` real do Instagram (não inventa).
+  // Prioridade 2: fallback — URL escrita no texto da bio.
+  const safeUrls = Array.isArray(externalUrls) ? externalUrls : [];
+  const hasExternalUrl = safeUrls.length > 0;
+  const bioTextHasUrl = URL_RE.test(safeBio);
+  const bioHasUrl = hasExternalUrl || bioTextHasUrl;
   let bioLinkValue: string | undefined;
-  const m = safeBio.match(URL_RE);
-  if (m && m[0]) bioLinkValue = m[0];
+  if (hasExternalUrl) {
+    bioLinkValue = safeUrls[0];
+  } else {
+    const m = safeBio.match(URL_RE);
+    if (m && m[0]) bioLinkValue = m[0];
+  }
 
   let newsletterCount = 0;
   for (const p of posts) {

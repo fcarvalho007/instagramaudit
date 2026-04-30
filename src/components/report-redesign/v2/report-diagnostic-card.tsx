@@ -93,7 +93,7 @@ export function ReportDiagnosticCard({
           "min-w-0",
         )}
       >
-        “{question}”
+        {question}
       </h3>
 
       <div

@@ -47,6 +47,8 @@ export interface SnapshotProfile {
   followers_count?: number | null;
   following_count?: number | null;
   posts_count?: number | null;
+  /** Lista de URLs externas declaradas no perfil Instagram (campo `external_urls`). */
+  external_urls?: string[] | null;
 }
 
 export interface SnapshotContentSummary {
@@ -233,6 +235,12 @@ export interface ReportEnriched {
     bio: string | null;
     avatarUrl: string | null;
     profileUrl: string;
+    /**
+     * URLs externas reais que o Instagram expõe no perfil — distintas do texto
+     * da bio. Usadas pelo Bloco 02 (Q07 · Integração) para detetar "link na
+     * bio" mesmo quando a bio não inclui o URL como texto.
+     */
+    externalUrls: string[];
   };
   topPosts: Array<{
     id: string;
@@ -952,6 +960,29 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   })();
   const enrichedProfileUrl = `https://www.instagram.com/${profile.username}/`;
 
+  // External URLs reais do perfil Instagram (campo separado da bio textual).
+  // Filtramos para strings com http/https ou domínio detetável, sem inventar
+  // dados quando o array está vazio ou ausente.
+  const enrichedExternalUrls: string[] = (() => {
+    const raw = payload.profile?.external_urls;
+    if (!Array.isArray(raw)) return [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const item of raw) {
+      if (typeof item !== "string") continue;
+      const trimmed = item.trim();
+      if (trimmed.length === 0) continue;
+      const looksLikeUrl =
+        /^https?:\/\//i.test(trimmed) ||
+        /\b[a-z0-9-]+\.[a-z]{2,}\b/i.test(trimmed);
+      if (!looksLikeUrl) continue;
+      if (seen.has(trimmed)) continue;
+      seen.add(trimmed);
+      out.push(trimmed);
+    }
+    return out;
+  })();
+
   // Top posts enriquecidos: preserva permalink/shortcode/mentions e mantém a
   // mesma ordenação por engagement do `topPosts` editorial.
   const enrichedTopPosts: ReportEnriched["topPosts"] = [...posts]
@@ -1018,6 +1049,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       bio: enrichedProfileBio,
       avatarUrl: enrichedAvatarUrl,
       profileUrl: enrichedProfileUrl,
+      externalUrls: enrichedExternalUrls,
     },
     topPosts: enrichedTopPosts,
     mentionsSummary,
