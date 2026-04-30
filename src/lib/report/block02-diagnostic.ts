@@ -365,6 +365,7 @@ export function classifyCaptionPattern(
       label: "Sem dados suficientes",
       avgLength: 0,
       ctaSharePct: 0,
+      questionSharePct: 0,
       sampleSize: posts?.length ?? 0,
     };
   }
@@ -381,6 +382,13 @@ export function classifyCaptionPattern(
   }, 0);
   const ctaShare = ctaCount / posts.length;
 
+  // Conta posts cuja caption contém pelo menos uma pergunta real ("?")
+  const questionCount = posts.reduce((acc, p) => {
+    const raw = (p.caption ?? "");
+    return raw.includes("?") ? acc + 1 : acc;
+  }, 0);
+  const questionSharePct = Math.round((questionCount / posts.length) * 100);
+
   // Consistency: ≥ 60% sit in a single bucket
   const total = posts.length;
   const dominant = Math.max(short, mid, long);
@@ -390,6 +398,7 @@ export function classifyCaptionPattern(
       label: "Pouco consistentes",
       avgLength: Math.round(avg),
       ctaSharePct: Math.round(ctaShare * 100),
+      questionSharePct,
       sampleSize: total,
     };
   }
@@ -404,6 +413,7 @@ export function classifyCaptionPattern(
     label,
     avgLength: Math.round(avg),
     ctaSharePct: Math.round(ctaShare * 100),
+    questionSharePct,
     sampleSize: total,
   };
 }
