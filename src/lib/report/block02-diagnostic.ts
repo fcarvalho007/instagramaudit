@@ -565,8 +565,16 @@ export interface ThemesResult {
   source: ThemesSource | null;
   /** Texto curto pronto para o slot "Resposta dominante". */
   headline: string;
-  /** Itens determinísticos (palavras + peso). Só preenchido quando source="deterministic". */
-  items: Array<{ text: string; weight: number }>;
+  /**
+   * Top temas com evidência. Preenchido sempre que houver dados — mesmo
+   * quando há leitura IA, para o leitor ver os temas concretos.
+   */
+  items: Array<{
+    text: string;
+    weight: number;
+    postsCount: number;
+    snippets: string[];
+  }>;
   /** Texto da IA — só preenchido quando source="ai". */
   aiText: string | null;
   sampleSize: number;
@@ -590,53 +598,93 @@ const PT_THEME_STOPWORDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Cartão 05 — temas dominantes a partir das legendas.
+ * Cartão 04 — temas dominantes a partir das legendas, com evidência.
  *
- * Prioridade:
- *   1. Texto IA já validado em `aiInsightsV2.sections.language` (≥ 30 chars).
- *   2. Fallback determinístico via `topKeywords` (que vem de captions, não hashtags).
- *   3. Sem sinal → available=false (cartão escondido).
- *
- * Não chama nenhum provider. Não usa hashtags como evidência de temas.
+ * Lógica:
+ *  1. Selecciona até 3 temas (com snippets) a partir de `topThemes`.
+ *  2. Se houver leitura IA válida em `aiSections.language`, marca
+ *     `source: "ai"` e usa esse texto como headline interpretativo —
+ *     mas mantém os temas determinísticos visíveis em `items`.
+ *  3. Se não houver `topThemes` mas houver fallback via `topKeywords`,
+ *     constrói itens mínimos sem snippets.
+ *  4. Sem sinal → `available=false`.
  */
 export function inferThemesFromCaptions(args: {
+  topThemes?: ReportData["topThemes"];
   topKeywords: ReportData["topKeywords"];
   aiSections?: AiSectionsLike;
 }): ThemesResult {
   const aiText = args.aiSections?.language?.text?.trim() ?? null;
-  if (aiText && aiText.length >= 30) {
+  const aiAvailable = !!aiText && aiText.length >= 30;
+
+  // 1) Preferir topThemes (com snippets + postsCount)
+  const themes = Array.isArray(args.topThemes) ? args.topThemes : [];
+  const filteredThemes = themes.filter((t) => {
+    const w = (t.word ?? "").toLowerCase().trim();
+    if (!w) return false;
+    if (PT_THEME_STOPWORDS.has(w)) return false;
+    return true;
+  });
+
+  if (filteredThemes.length >= 1) {
+    const items = filteredThemes.slice(0, 3).map((t) => ({
+      text: t.word,
+      weight: t.count,
+      postsCount: t.postsCount,
+      snippets: Array.isArray(t.snippets) ? t.snippets.slice(0, 2) : [],
+    }));
     return {
       available: true,
-      source: "ai",
-      headline: extractAiHeadline(aiText),
-      items: [],
-      aiText,
-      sampleSize: 0,
-      derivedFrom: "ai-language",
+      source: aiAvailable ? "ai" : "deterministic",
+      headline: aiAvailable
+        ? extractAiHeadline(aiText!)
+        : deterministicHeadline(items[0]?.text ?? ""),
+      items,
+      aiText: aiAvailable ? aiText : null,
+      sampleSize: filteredThemes.length,
+      derivedFrom: aiAvailable ? "ai-language" : "captions-keywords",
     };
   }
 
+  // 2) Fallback antigo — topKeywords sem snippets
   const kws = Array.isArray(args.topKeywords) ? args.topKeywords : [];
-  // Endurece o filtro: descarta tokens 1-2 chars, só dígitos e stop-words.
-  const filtered = kws.filter((k) => {
+  const filteredKws = kws.filter((k) => {
     const w = (k.word ?? "").toLowerCase().trim();
     if (w.length < 3) return false;
     if (/^\d+$/.test(w)) return false;
     if (PT_THEME_STOPWORDS.has(w)) return false;
     return true;
   });
-  if (filtered.length >= 2) {
-    const items = filtered
-      .slice(0, 8)
-      .map((k) => ({ text: k.word, weight: k.count }));
+  if (filteredKws.length >= 2) {
+    const items = filteredKws.slice(0, 3).map((k) => ({
+      text: k.word,
+      weight: k.count,
+      postsCount: 0,
+      snippets: [],
+    }));
     return {
       available: true,
-      source: "deterministic",
-      headline: deterministicHeadline(items[0]?.text ?? ""),
+      source: aiAvailable ? "ai" : "deterministic",
+      headline: aiAvailable
+        ? extractAiHeadline(aiText!)
+        : deterministicHeadline(items[0]?.text ?? ""),
       items,
-      aiText: null,
-      sampleSize: filtered.length,
-      derivedFrom: "captions-keywords",
+      aiText: aiAvailable ? aiText : null,
+      sampleSize: filteredKws.length,
+      derivedFrom: aiAvailable ? "ai-language" : "captions-keywords",
+    };
+  }
+
+  // 3) Sem dados determinísticos — se houver pelo menos a IA, mostra-a
+  if (aiAvailable) {
+    return {
+      available: true,
+      source: "ai",
+      headline: extractAiHeadline(aiText!),
+      items: [],
+      aiText,
+      sampleSize: 0,
+      derivedFrom: "ai-language",
     };
   }
 
