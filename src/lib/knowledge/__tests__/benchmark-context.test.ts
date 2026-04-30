@@ -197,13 +197,16 @@ describe("formatBenchmarkContextForPrompt", () => {
     expect(out).toContain("5.40%"); // education carousel ER
   });
 
-  it("não menciona alcance/reach quando hasReachData=false (default)", () => {
+  it("não revela valores de alcance/reach quando hasReachData=false (default)", () => {
     const out = formatBenchmarkContextForPrompt({
       followers: 25_000,
       dominantFormat: "carousel",
     });
-    expect(out.toLowerCase()).not.toContain("alcance");
-    expect(out.toLowerCase()).not.toContain("reach");
+    // O princípio editorial fixo contém "não apenas alcance" — isso é
+    // aceitável. O que não pode aparecer é o número do tier nem a label
+    // específica "alcance mediano ref.:".
+    expect(out).not.toContain("alcance mediano ref.:");
+    expect(out).not.toContain("1172"); // medianReachPerPost do tier 10-50K
   });
 
   it("inclui alcance quando hasReachData=true", () => {
