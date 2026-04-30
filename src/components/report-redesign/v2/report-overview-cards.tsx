@@ -380,7 +380,7 @@ function computeRhythmStatus(weekly: number): {
 // ─── Card 3 — Motor de conteúdo ──────────────────────────────────────
 
 interface BreakdownItem {
-  format: "Reels" | "Carousels" | "Imagens";
+  format: string;
   sharePct: number;
 }
 
