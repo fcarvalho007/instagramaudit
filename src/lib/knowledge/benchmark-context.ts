@@ -18,13 +18,13 @@
  * pela camada de orquestração de insights como por componentes UI.
  */
 
+import type { BenchmarkTier } from "./types";
+
 export type BenchmarkSourceName =
   | "Socialinsider"
   | "Buffer"
   | "Hootsuite"
   | "Databox";
-
-import type { BenchmarkTier } from "./types";
 
 export interface BenchmarkSource {
   name: BenchmarkSourceName;
