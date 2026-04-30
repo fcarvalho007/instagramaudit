@@ -6,7 +6,7 @@ import type { AiInsightV2Section } from "@/lib/insights/types";
 import { cn } from "@/lib/utils";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
-import { ReportKpiGridV2 } from "./report-kpi-grid-v2";
+import { ReportOverviewCards } from "./report-overview-cards";
 
 interface Props {
   result: AdapterResult;
@@ -18,17 +18,17 @@ interface Props {
 }
 
 /**
- * Composição visual do Bloco 01 · Overview (Phase 1B.1D).
+ * Composição visual do Bloco 01 · Overview (Phase 1B.1F).
  *
  *  - watermark "01" decorativo (não empurra layout)
- *  - KPI grid v2 com métricas focadas no utilizador
+ *  - 3 cartões cinematográficos: Saúde do envolvimento, Ritmo, Motor
  *  - frame editorial "Leitura IA" com pista visual de IA
  */
 export function ReportOverviewBlock({ result, renderInsight }: Props) {
   const insightNode = renderInsight("hero");
 
   return (
-    <div className="relative space-y-6 md:space-y-8">
+    <div className="relative space-y-8 md:space-y-10">
       {/* Watermark "01" — decorativo, não empurra layout. */}
       <div
         aria-hidden="true"
@@ -41,7 +41,7 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
       </div>
 
       <div className="relative z-10">
-        <ReportKpiGridV2 result={result} />
+        <ReportOverviewCards result={result} />
       </div>
 
       {insightNode ? (
