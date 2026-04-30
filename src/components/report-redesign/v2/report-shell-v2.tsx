@@ -88,7 +88,7 @@ export function ReportShellV2({
       <div
         className={cn(
           REDESIGN_TOKENS.pageCanvas,
-          "min-h-screen",
+          "min-h-screen overflow-x-clip",
         )}
       >
         {/* Hero (full-bleed, fora dos 6 blocos) */}

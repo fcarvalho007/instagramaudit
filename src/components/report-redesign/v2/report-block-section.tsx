@@ -39,7 +39,7 @@ export function ReportBlockSection({ block, tone = "canvas", children }: Props) 
           <h2 className={REDESIGN_TOKENS.h2Section}>{block.question}</h2>
           <p className={REDESIGN_TOKENS.subtitle}>{block.subtitle}</p>
         </header>
-        <div className="space-y-8 md:space-y-10">{children}</div>
+        <div className="min-w-0 space-y-8 md:space-y-10">{children}</div>
       </div>
     </section>
   );
