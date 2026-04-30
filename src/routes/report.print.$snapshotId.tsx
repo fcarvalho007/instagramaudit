@@ -230,11 +230,15 @@ function PrintReady({
 
   // Expose the global readiness function PDFShift polls.
   useEffect(() => {
-    (window as unknown as { __pdfReady?: () => boolean }).__pdfReady = () =>
+    // The global function itself is installed synchronously by the head
+    // script (so PDFShift validates it on first load). React only needs
+    // to flip the state flag when the report is actually ready.
+    (window as unknown as { __pdfReadyState?: boolean }).__pdfReadyState =
       ready;
     return () => {
       try {
-        delete (window as unknown as { __pdfReady?: () => boolean }).__pdfReady;
+        (window as unknown as { __pdfReadyState?: boolean }).__pdfReadyState =
+          false;
       } catch {
         /* noop */
       }
