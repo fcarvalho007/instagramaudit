@@ -126,16 +126,13 @@ function PremiumCard({
         "flex flex-col gap-4 min-w-0 h-full",
       )}
     >
-      <header className="flex items-start justify-between gap-3">
+      <header>
         <div className="space-y-2 min-w-0">
           <span className={REDESIGN_TOKENS.kpiIconBoxV2} aria-hidden="true">
             {icon}
           </span>
           <h3 className={titleCls}>{title}</h3>
         </div>
-        {sourceSlot ? (
-          <div className="shrink-0 max-w-[55%]">{sourceSlot}</div>
-        ) : null}
       </header>
 
       <div className="flex-1 flex flex-col gap-3.5 min-w-0">{children}</div>
@@ -154,6 +151,10 @@ function PremiumCard({
           />
           <span>{interpretation}</span>
         </span>
+      ) : null}
+
+      {sourceSlot ? (
+        <div className="pt-3 mt-1 border-t border-slate-100">{sourceSlot}</div>
       ) : null}
     </article>
   );
