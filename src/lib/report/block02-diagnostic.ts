@@ -147,6 +147,7 @@ export function classifyContentType(posts: SnapshotPost[]): ContentTypeResult {
       sharePct: 0,
       sampleSize: posts?.length ?? 0,
       reason: "Amostra insuficiente.",
+      distribution: [],
     };
   }
 
@@ -189,6 +190,7 @@ export function classifyContentType(posts: SnapshotPost[]): ContentTypeResult {
       label: "Misto / pouco claro",
       sharePct: 0,
       sampleSize: posts.length,
+      distribution: buildContentDistribution(counts, posts.length),
     };
   }
 
@@ -203,6 +205,7 @@ export function classifyContentType(posts: SnapshotPost[]): ContentTypeResult {
       label: topLabel as ContentTypeLabel,
       sharePct: Math.round(share * 100),
       sampleSize: posts.length,
+      distribution: buildContentDistribution(counts, posts.length),
     };
   }
 
@@ -211,7 +214,25 @@ export function classifyContentType(posts: SnapshotPost[]): ContentTypeResult {
     label: "Misto / pouco claro",
     sharePct: Math.round(share * 100),
     sampleSize: posts.length,
+    distribution: buildContentDistribution(counts, posts.length),
   };
+}
+
+function buildContentDistribution(
+  counts: Record<string, number>,
+  total: number,
+): ContentTypeResult["distribution"] {
+  if (total <= 0) return [];
+  const entries = Object.entries(counts) as Array<[ContentTypeLabel, number]>;
+  return entries
+    .filter(([, c]) => c > 0)
+    .map(([label, c]) => ({
+      label,
+      count: c,
+      sharePct: Math.round((c / total) * 100),
+    }))
+    .sort((a, b) => b.sharePct - a.sharePct)
+    .slice(0, 4);
 }
 
 // ─────────────────────────────────────────────────────────────────────
