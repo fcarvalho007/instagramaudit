@@ -592,14 +592,9 @@ function formatPct(n: number): string {
 }
 
 function formatStrategicNote(label: string): string {
-  if (label === "Reels") {
-    return "Reels apoiam alcance e descoberta — não são automaticamente superiores; dependem da intenção.";
-  }
-  if (label === "Carrosséis") {
-    return "Carrosséis funcionam para conteúdo educativo, save-worthy e narrativas em camadas.";
-  }
-  if (label === "Imagens") {
-    return "Imagens estáticas sustentam presença de marca, produto e identidade visual.";
-  }
+  const copy = INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt;
+  if (label === "Reels") return copy.reelsExplanation;
+  if (label === "Carrosséis") return copy.carouselExplanation;
+  if (label === "Imagens") return copy.imageExplanation;
   return "Cada formato cumpre uma função distinta — o equilíbrio depende da intenção editorial.";
 }
