@@ -25,7 +25,7 @@ import type { BenchmarkTier } from "./types";
  * que `INSTAGRAM_BENCHMARK_CONTEXT` for actualizado. Entra no
  * `kbVersion` do orquestrador para invalidar cache de insights v2.
  */
-export const BENCHMARK_DATASET_VERSION = "2026-05-02" as const;
+export const BENCHMARK_DATASET_VERSION = "2026-05-08" as const;
 
 export type BenchmarkSourceName =
   | "Socialinsider"

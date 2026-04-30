@@ -258,6 +258,34 @@ export interface AiInsightsV2 {
   };
   /** Mapa secção → insight curto. Todas as 9 chaves obrigatórias. */
   sections: Record<AiInsightV2Section, AiInsightV2Item>;
+  /**
+   * Prioridades de ação editoriais (3 itens). Opcional para retrocompat
+   * com snapshots antigos — quando ausente a UI cai para o derivador
+   * determinístico em `block02-diagnostic.ts`.
+   */
+  priorities?: AiInsightsV2Priorities;
+}
+
+/** Nível editorial das prioridades de ação geradas pela IA. */
+export type AiPriorityLevel = "alta" | "media" | "oportunidade";
+
+/** Item de uma prioridade de ação produzida pelo modelo. */
+export interface AiPriorityItem {
+  level: AiPriorityLevel;
+  /** Título no infinitivo, ≤ 60 chars. */
+  title: string;
+  /** Justificação numa frase, com pelo menos um número do payload. */
+  body: string;
+  /** Que pergunta(s) do diagnóstico endereça (ex.: "Resolve a Pergunta 06"). */
+  resolves: string;
+}
+
+/** Bloco de prioridades opcional, anexado ao `AiInsightsV2`. */
+export interface AiInsightsV2Priorities {
+  /** Exatamente 3 itens quando presente. */
+  items: ReadonlyArray<AiPriorityItem>;
+  /** "ai" quando vem do modelo; reservado para futuras origens. */
+  source: "ai";
 }
 
 /** Resultado tipado do gerador v2. Mesmo padrão do `InsightsGenerationResult`. */

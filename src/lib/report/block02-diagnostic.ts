@@ -570,7 +570,24 @@ export interface ThemesResult {
   /** Texto da IA — só preenchido quando source="ai". */
   aiText: string | null;
   sampleSize: number;
+  /**
+   * Origem visível do bloco — "ai-language" quando o texto vem da IA,
+   * "captions-keywords" quando vem do extractor de keywords das captions.
+   */
+  derivedFrom: "ai-language" | "captions-keywords" | null;
 }
+
+// Stop-words frequentes em pt que aparecem nas captions e poluem a
+// extração de "temas". Mantida pequena de propósito: o `extractTopKeywords`
+// já filtra a maior parte; estes são os falsos-positivos comuns.
+const PT_THEME_STOPWORDS: ReadonlySet<string> = new Set([
+  "para", "como", "isto", "esta", "este", "essa", "esse", "uma", "uns",
+  "umas", "tudo", "nada", "muito", "muita", "pouco", "pouca", "quero",
+  "queres", "porque", "porquê", "sobre", "depois", "antes", "ainda",
+  "vamos", "vamos!", "olá", "ola", "bem", "melhor", "ser", "estar",
+  "fazer", "ter", "ano", "dia", "hoje", "agora", "instagram", "post",
+  "posts", "video", "vídeo", "reels", "story", "stories",
+]);
 
 /**
  * Cartão 05 — temas dominantes a partir das legendas.
@@ -595,19 +612,31 @@ export function inferThemesFromCaptions(args: {
       items: [],
       aiText,
       sampleSize: 0,
+      derivedFrom: "ai-language",
     };
   }
 
   const kws = Array.isArray(args.topKeywords) ? args.topKeywords : [];
-  if (kws.length >= 2) {
-    const items = kws.slice(0, 5).map((k) => ({ text: k.word, weight: k.count }));
+  // Endurece o filtro: descarta tokens 1-2 chars, só dígitos e stop-words.
+  const filtered = kws.filter((k) => {
+    const w = (k.word ?? "").toLowerCase().trim();
+    if (w.length < 3) return false;
+    if (/^\d+$/.test(w)) return false;
+    if (PT_THEME_STOPWORDS.has(w)) return false;
+    return true;
+  });
+  if (filtered.length >= 2) {
+    const items = filtered
+      .slice(0, 8)
+      .map((k) => ({ text: k.word, weight: k.count }));
     return {
       available: true,
       source: "deterministic",
       headline: deterministicHeadline(items[0]?.text ?? ""),
       items,
       aiText: null,
-      sampleSize: kws.length,
+      sampleSize: filtered.length,
+      derivedFrom: "captions-keywords",
     };
   }
 
@@ -618,6 +647,7 @@ export function inferThemesFromCaptions(args: {
     items: [],
     aiText: null,
     sampleSize: 0,
+    derivedFrom: null,
   };
 }
 

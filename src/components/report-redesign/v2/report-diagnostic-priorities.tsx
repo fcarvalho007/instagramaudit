@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
 import type { PriorityItem } from "@/lib/report/block02-diagnostic";
+import { Bot } from "lucide-react";
 
 interface Props {
   items: PriorityItem[];
+  source?: "ai" | "deterministic";
 }
 
 const STYLE = {
@@ -23,7 +25,7 @@ const STYLE = {
   },
 } as const;
 
-export function ReportDiagnosticPriorities({ items }: Props) {
+export function ReportDiagnosticPriorities({ items, source = "deterministic" }: Props) {
   if (items.length === 0) return null;
   return (
     <section aria-label="Prioridades de ação" className="space-y-4 md:space-y-5">
@@ -31,6 +33,12 @@ export function ReportDiagnosticPriorities({ items }: Props) {
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
           Prioridades de ação
         </p>
+        {source === "ai" ? (
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-blue-700 inline-flex items-center gap-1">
+            <Bot aria-hidden className="size-3" />
+            Leitura IA
+          </span>
+        ) : null}
         <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.16em] text-slate-400 tabular-nums">
           {items.length} {items.length === 1 ? "AÇÃO" : "AÇÕES"}
         </span>
@@ -43,7 +51,7 @@ export function ReportDiagnosticPriorities({ items }: Props) {
               key={`${it.title}-${i}`}
               className={cn(
                 "h-full rounded-2xl border border-slate-200/70 bg-white",
-                "p-5 flex flex-col gap-3",
+                "p-6 flex flex-col gap-3.5",
                 "shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
                 "border-l-4",
                 s.border,

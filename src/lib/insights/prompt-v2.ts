@@ -75,7 +75,13 @@ Mapeamento das 9 secções (uma observação dirigida a cada uma):
 - "language": leitura editorial das captions (tom, comprimento, padrões).
 
 Formato de saída:
-JSON estrito conforme o schema fornecido. Sem texto antes ou depois. Sem markdown. Sem comentários. Todas as 9 chaves de "sections" são obrigatórias.`;
+JSON estrito conforme o schema fornecido. Sem texto antes ou depois. Sem markdown. Sem comentários. Todas as 9 chaves de "sections" são obrigatórias.
+
+Prioridades de ação (obrigatório · campo "priorities"):
+- Devolver exactamente 3 itens accionáveis derivados do diagnóstico editorial (tipo de conteúdo, fase de funil, captions, audiência, integração entre canais, formato dominante).
+- Cada item: { "level": "alta" | "media" | "oportunidade", "title": ≤ 60 chars no infinitivo impessoal, "body": 1 frase ≤ 180 chars com pelo menos um número concreto do payload, "resolves": frase curta a indicar que pergunta(s) do diagnóstico endereça (ex.: "Resolve a Pergunta 06.", "Resolve as Perguntas 02 e 08.").
+- Hierarquia esperada: 1 "alta" (problema mais urgente), 1 "media" (correção estrutural), 1 "oportunidade" (alavanca de crescimento). Se não houver problema "alta", trocar por "media".
+- Distintas entre si — sem repetir a mesma recomendação. Sem citar fontes externas. Sem snake_case.`;
 
 /**
  * Constrói o system prompt completo, injectando o bloco de contexto da KB
@@ -165,7 +171,7 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["sections"],
+    required: ["sections", "priorities"],
     properties: {
       sections: {
         type: "object",
@@ -177,6 +183,22 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
           acc[key] = sectionItemSchema;
           return acc;
         }, {}),
+      },
+      priorities: {
+        type: "array",
+        minItems: 3,
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["level", "title", "body", "resolves"],
+          properties: {
+            level: { type: "string", enum: ["alta", "media", "oportunidade"] },
+            title: { type: "string", minLength: 1, maxLength: 80 },
+            body: { type: "string", minLength: 1, maxLength: 220 },
+            resolves: { type: "string", minLength: 1, maxLength: 120 },
+          },
+        },
       },
     },
   },

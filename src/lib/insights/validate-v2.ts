@@ -19,6 +19,7 @@ import {
   AI_INSIGHT_V2_SECTIONS,
   type AiInsightV2Item,
   type AiInsightV2Section,
+  type AiPriorityItem,
 } from "./types";
 import { INSIGHT_V2_TEXT_MAX } from "./prompt-v2";
 
@@ -38,6 +39,13 @@ const itemSchema = z.object({
   text: z.string().min(1).max(INSIGHT_V2_TEXT_MAX + 40), // tolerância para trim posterior
 });
 
+const priorityItemSchema = z.object({
+  level: z.enum(["alta", "media", "oportunidade"]),
+  title: z.string().min(1).max(80),
+  body: z.string().min(1).max(220),
+  resolves: z.string().min(1).max(120),
+});
+
 export const aiInsightsV2ResponseSchema = z.object({
   sections: z.object(
     AI_INSIGHT_V2_SECTIONS.reduce<Record<AiInsightV2Section, typeof itemSchema>>(
@@ -48,10 +56,15 @@ export const aiInsightsV2ResponseSchema = z.object({
       {} as Record<AiInsightV2Section, typeof itemSchema>,
     ),
   ),
+  priorities: z.array(priorityItemSchema).length(3).optional(),
 });
 
 export type ValidateV2Result =
-  | { ok: true; sections: Record<AiInsightV2Section, AiInsightV2Item> }
+  | {
+      ok: true;
+      sections: Record<AiInsightV2Section, AiInsightV2Item>;
+      priorities: ReadonlyArray<AiPriorityItem> | null;
+    }
   | { ok: false; reason: string; detail: string };
 
 function fail(reason: string, detail: string): ValidateV2Result {
@@ -111,5 +124,47 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
     out[key] = { emphasis: item.emphasis, text };
   }
 
-  return { ok: true, sections: out };
+  // Prioridades opcionais — quando ausentes a UI cai para o derivador
+  // determinístico em `block02-diagnostic.ts`. Quando presentes,
+  // validamos PT-BR / leak técnico em cada texto.
+  let priorities: ReadonlyArray<AiPriorityItem> | null = null;
+  if (parsed.data.priorities) {
+    const arr: AiPriorityItem[] = [];
+    for (const [i, p] of parsed.data.priorities.entries()) {
+      const title = p.title.trim();
+      const body = p.body.trim();
+      const resolves = p.resolves.trim();
+      if (!title || !body || !resolves) {
+        return fail("EMPTY_FIELD", `priority=${i}`);
+      }
+      for (const [field, txt] of [
+        ["title", title],
+        ["body", body],
+        ["resolves", resolves],
+      ] as const) {
+        const tech = detectTechnicalLeak(txt);
+        if (tech) {
+          return fail(
+            "TECHNICAL_LEAK",
+            `priority=${i} field=${field} token=${tech}`,
+          );
+        }
+        const ptbr = detectPtBrLeak(txt);
+        if (ptbr) {
+          return fail(
+            "PTBR_LEAK",
+            `priority=${i} field=${field} token=${ptbr}`,
+          );
+        }
+      }
+      // body deve conter pelo menos um número (grounding).
+      if (!/\d/.test(body)) {
+        return fail("GENERIC_OUTPUT", `priority=${i} (missing number)`);
+      }
+      arr.push({ level: p.level, title, body, resolves });
+    }
+    priorities = arr;
+  }
+
+  return { ok: true, sections: out, priorities };
 }

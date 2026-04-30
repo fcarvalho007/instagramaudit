@@ -702,6 +702,14 @@ export async function generateInsightsV2(
         estimated_cost_usd: cost.estimatedCostUsd,
       },
       sections: validation.sections,
+      ...(validation.priorities
+        ? {
+            priorities: {
+              source: "ai" as const,
+              items: validation.priorities,
+            },
+          }
+        : {}),
     };
     return { ok: true, insights: out, reason: null };
   } catch (err) {
