@@ -10,7 +10,8 @@ import {
   classifyCaptionPattern,
   classifyAudienceResponse,
   classifyChannelIntegration,
-  inferThemes,
+  classifyHashtags,
+  inferThemesFromCaptions,
   inferProbableObjective,
   derivePriorities,
   type ContentTypeResult,
@@ -19,6 +20,7 @@ import {
   type AudienceResponseResult,
   type IntegrationResult,
   type ObjectiveResult,
+  type HashtagsResult,
   type ThemesResult,
 } from "@/lib/report/block02-diagnostic";
 
@@ -61,7 +63,11 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const funnel = classifyFunnelStage(posts);
   const caption = classifyCaptionPattern(posts);
   const audience = classifyAudienceResponse(posts);
-  const themes = inferThemes(topHashtags, topKeywords);
+  const hashtags = classifyHashtags(topHashtags);
+  const themes = inferThemesFromCaptions({
+    topKeywords,
+    aiSections: result.enriched.aiInsightsV2?.sections ?? null,
+  });
   const integration = classifyChannelIntegration(bio, externalUrls, posts);
   const objective = inferProbableObjective({
     contentType,
@@ -108,6 +114,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     renderFunnelCard(funnel),
   ]);
   const groupB = compact([
+    renderHashtagsCard(hashtags),
     renderThemesCard(themes),
     renderCaptionCard(caption, aiLanguage),
     renderAudienceCard(audience),
@@ -159,7 +166,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
           A amostra de publicações é demasiado pequena para sustentar um
           diagnóstico editorial detalhado. À medida que houver mais
-          atividade, este bloco passa a abrir oito perguntas de leitura.
+          atividade, este bloco passa a abrir até oito perguntas de leitura.
         </p>
       )}
 
@@ -245,6 +252,10 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         answer="Padrão misto"
         tone="slate"
         body={body}
+        sourceLabel={{
+          kind: "auto",
+          text: "Leitura automática de legendas e hashtags.",
+        }}
       >
         {r.distribution.length >= 2 ? (
           <DiagnosticDistributionBar
@@ -275,6 +286,10 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       answer={r.label}
       tone="emerald"
       body={`Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}, com base em legendas e hashtags.`}
+      sourceLabel={{
+        kind: "auto",
+        text: "Leitura automática de legendas e hashtags.",
+      }}
     >
       {r.distribution.length >= 2 ? (
         <DiagnosticDistributionBar
@@ -323,6 +338,10 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       answer={r.label ?? "—"}
       tone={isFocused ? "blue" : "amber"}
       body={bodyByLabel[r.label ?? "Comunicação dispersa"]}
+      sourceLabel={{
+        kind: "auto",
+        text: "Leitura automática das legendas analisadas.",
+      }}
     >
       {r.breakdown.length > 0 ? (
         <DiagnosticFunnelStack
@@ -338,25 +357,26 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
   );
 }
 
-function renderThemesCard(r: ThemesResult): ReactNode | null {
+function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
   if (!r.available) return null;
-  // Resposta dominante: título editorial curto (sem listar hashtags — essas
-  // aparecem só uma vez no slot de evidência abaixo).
-  const headline = inferThemesHeadline(r);
+  const max = Math.max(1, ...r.items.map((x) => x.weight));
   return (
     <ReportDiagnosticCard
-      key="q04"
-      number="04"
-      label="Temas"
-      question="Sobre que temas o perfil fala mais?"
-      answerLabel="Foco temático"
-      answer={headline}
+      key="q03"
+      number="03"
+      label="Hashtags"
+      question="Que hashtags aparecem mais vezes?"
+      answerLabel="Hashtags mais utilizadas"
+      answer={r.items.slice(0, 2).map((it) => it.text).join(" · ")}
       tone="blue"
-      body="Estes temas voltam com frequência ao longo da amostra e descrevem o território editorial mais consistente do perfil."
+      body="As hashtags mostram como o perfil etiqueta os conteúdos e que territórios quer associar às publicações — não representam, por si só, os assuntos abordados."
+      sourceLabel={{
+        kind: "extracted",
+        text: "Baseado nas hashtags públicas das publicações analisadas.",
+      }}
     >
       <ul className="space-y-1.5">
         {r.items.map((it) => {
-          const max = Math.max(1, ...r.items.map((x) => x.weight));
           const pct = (it.weight / max) * 100;
           return (
             <li key={it.text} className="text-sm">
@@ -381,18 +401,65 @@ function renderThemesCard(r: ThemesResult): ReactNode | null {
   );
 }
 
-function inferThemesHeadline(r: ThemesResult): string {
-  const top = r.items[0];
-  if (!top) return r.label;
-  // Tira "#" e devolve a palavra principal capitalizada.
-  const raw = top.text.replace(/^#/, "");
-  // Casos especiais simples
-  const lower = raw.toLowerCase();
-  if (lower === "ia" || lower === "ai") return "Foco claro em IA";
-  if (lower.includes("inteligenciaartificial")) return "Foco claro em IA";
-  if (lower.includes("marketingdigital")) return "Foco em marketing digital";
-  // Fallback genérico: "Foco em <tema>"
-  return `Foco em ${raw}`;
+function renderThemesCard(r: ThemesResult): ReactNode | null {
+  if (!r.available) return null;
+  const isAi = r.source === "ai";
+  const sourceLabel = isAi
+    ? {
+        kind: "ai" as const,
+        text: "Leitura IA gerada a partir da amostra de publicações.",
+      }
+    : {
+        kind: "auto" as const,
+        text: "Leitura automática das legendas analisadas.",
+      };
+  const body = isAi
+    ? "Esta leitura resume os assuntos recorrentes nas legendas, com base na interpretação editorial gerada pela IA."
+    : "Esta leitura resume os assuntos mais frequentes nas legendas analisadas — não as hashtags utilizadas.";
+  return (
+    <ReportDiagnosticCard
+      key="q04"
+      number="04"
+      label="Temas"
+      question="Sobre que assuntos o perfil fala mais?"
+      answerLabel="Temas dominantes"
+      answer={r.headline}
+      tone="blue"
+      body={body}
+      sourceLabel={sourceLabel}
+      aiSource={
+        isAi && r.aiText
+          ? { kind: "interpretation", text: r.aiText }
+          : null
+      }
+    >
+      {!isAi && r.items.length > 0 ? (
+        <ul className="space-y-1.5">
+          {r.items.map((it) => {
+            const max = Math.max(1, ...r.items.map((x) => x.weight));
+            const pct = (it.weight / max) * 100;
+            return (
+              <li key={it.text} className="text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-700 truncate">{it.text}</span>
+                  <span className="font-mono text-[10px] text-slate-500 tabular-nums shrink-0">
+                    {it.weight}×
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full bg-blue-500"
+                    style={{ width: `${pct}%` }}
+                    aria-hidden
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </ReportDiagnosticCard>
+  );
 }
 
 function renderCaptionCard(
@@ -419,6 +486,17 @@ function renderCaptionCard(
       tone="blue"
       body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
       aiSource={aiSource}
+      sourceLabel={
+        aiSource
+          ? {
+              kind: "ai",
+              text: "Leitura IA gerada a partir da amostra de publicações.",
+            }
+          : {
+              kind: "auto",
+              text: "Leitura automática das legendas analisadas.",
+            }
+      }
     >
       <DiagnosticMiniStats
         items={
@@ -475,6 +553,10 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
       answer={r.label}
       tone={tone}
       body={bodyByLabel[r.label]}
+      sourceLabel={{
+        kind: "extracted",
+        text: "Baseado em gostos e comentários públicos das publicações analisadas.",
+      }}
     >
       <DiagnosticAudienceHighlight
         avgLikes={avgLikes}
@@ -503,6 +585,10 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
       answer={r.label}
       tone={tone}
       body="Há infraestrutura cross-canal quando a bio aponta para fora e as captions reforçam a saída do Instagram. Sem isso, a audiência fica presa à plataforma."
+      sourceLabel={{
+        kind: "auto",
+        text: "Leitura automática da bio, links externos e legendas.",
+      }}
     >
       <DiagnosticChecklist
         items={[
@@ -554,6 +640,10 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       answer={r.primary}
       tone="blue"
       body="Hipótese derivada dos sinais de conteúdo, funil, bio e ligação entre canais. Não substitui o objetivo real da marca ou do criador — deve ser confirmada por quem comunica."
+      sourceLabel={{
+        kind: "auto",
+        text: "Hipótese derivada dos sinais editoriais detectados nesta amostra.",
+      }}
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>

@@ -11,6 +11,16 @@
 import type { SnapshotPost } from "./snapshot-to-report-data";
 import type { ReportData } from "@/components/report/report-mock-data";
 
+/**
+ * Forma mínima da entrada `aiInsightsV2.sections.language` que este
+ * classifier consome — declarada localmente para evitar acoplamento
+ * com tipos não-exportados de `snapshot-to-report-data`.
+ */
+interface AiSectionLike {
+  text?: string | null;
+}
+type AiSectionsLike = Partial<Record<string, AiSectionLike>> | null | undefined;
+
 // ─────────────────────────────────────────────────────────────────────
 // Shared types
 // ─────────────────────────────────────────────────────────────────────
@@ -516,49 +526,116 @@ export function classifyAudienceResponse(
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Card 4 — Temas e hashtags recorrentes
+// Card 04 — Hashtags recorrentes (factual, dados extraídos)
+// Card 05 — Temas dominantes (interpretação a partir de legendas)
 // ─────────────────────────────────────────────────────────────────────
 
-export type ThemesSource = "hashtags" | "keywords";
+export interface HashtagsResult {
+  available: boolean;
+  items: Array<{ text: string; weight: number }>;
+  sampleSize: number;
+}
+
+/**
+ * Cartão 04 — apenas hashtags públicas extraídas das publicações analisadas.
+ * Sem qualquer interpretação semântica; só conta ocorrências.
+ * Disponível quando há ≥ 2 hashtags distintas no topo.
+ */
+export function classifyHashtags(
+  topHashtags: ReportData["topHashtags"],
+): HashtagsResult {
+  const tags = Array.isArray(topHashtags) ? topHashtags : [];
+  if (tags.length < 2) {
+    return { available: false, items: [], sampleSize: tags.length };
+  }
+  return {
+    available: true,
+    sampleSize: tags.length,
+    items: tags.slice(0, 5).map((t) => ({
+      text: t.tag.startsWith("#") ? t.tag : `#${t.tag}`,
+      weight: t.uses,
+    })),
+  };
+}
+
+export type ThemesSource = "ai" | "deterministic";
 
 export interface ThemesResult {
   available: boolean;
   source: ThemesSource | null;
-  label: string;
+  /** Texto curto pronto para o slot "Resposta dominante". */
+  headline: string;
+  /** Itens determinísticos (palavras + peso). Só preenchido quando source="deterministic". */
   items: Array<{ text: string; weight: number }>;
+  /** Texto da IA — só preenchido quando source="ai". */
+  aiText: string | null;
+  sampleSize: number;
 }
 
-export function inferThemes(
-  topHashtags: ReportData["topHashtags"],
-  topKeywords: ReportData["topKeywords"],
-): ThemesResult {
-  const tags = Array.isArray(topHashtags) ? topHashtags : [];
-  const kws = Array.isArray(topKeywords) ? topKeywords : [];
-  if (tags.length >= 2) {
+/**
+ * Cartão 05 — temas dominantes a partir das legendas.
+ *
+ * Prioridade:
+ *   1. Texto IA já validado em `aiInsightsV2.sections.language` (≥ 30 chars).
+ *   2. Fallback determinístico via `topKeywords` (que vem de captions, não hashtags).
+ *   3. Sem sinal → available=false (cartão escondido).
+ *
+ * Não chama nenhum provider. Não usa hashtags como evidência de temas.
+ */
+export function inferThemesFromCaptions(args: {
+  topKeywords: ReportData["topKeywords"];
+  aiSections?: AiSectionsLike;
+}): ThemesResult {
+  const aiText = args.aiSections?.language?.text?.trim() ?? null;
+  if (aiText && aiText.length >= 30) {
     return {
       available: true,
-      source: "hashtags",
-      label: "Hashtags mais recorrentes",
-      items: tags.slice(0, 3).map((t) => ({
-        text: t.tag.startsWith("#") ? t.tag : `#${t.tag}`,
-        weight: t.uses,
-      })),
+      source: "ai",
+      headline: extractAiHeadline(aiText),
+      items: [],
+      aiText,
+      sampleSize: 0,
     };
   }
+
+  const kws = Array.isArray(args.topKeywords) ? args.topKeywords : [];
   if (kws.length >= 2) {
+    const items = kws.slice(0, 5).map((k) => ({ text: k.word, weight: k.count }));
     return {
       available: true,
-      source: "keywords",
-      label: "Temas mais recorrentes",
-      items: kws.slice(0, 3).map((k) => ({ text: k.word, weight: k.count })),
+      source: "deterministic",
+      headline: deterministicHeadline(items[0]?.text ?? ""),
+      items,
+      aiText: null,
+      sampleSize: kws.length,
     };
   }
+
   return {
     available: false,
     source: null,
-    label: "Sem temas recorrentes detetados",
+    headline: "Sem temas recorrentes detetados",
     items: [],
+    aiText: null,
+    sampleSize: 0,
   };
+}
+
+function deterministicHeadline(raw: string): string {
+  if (!raw) return "Temas pouco definidos";
+  const lower = raw.toLowerCase().replace(/^#/, "");
+  if (lower === "ia" || lower === "ai") return "Foco em IA";
+  if (lower.includes("inteligenciaartificial")) return "Foco em IA";
+  if (lower.includes("marketingdigital")) return "Foco em marketing digital";
+  return `Foco em ${raw.replace(/^#/, "")}`;
+}
+
+function extractAiHeadline(aiText: string): string {
+  // Primeira frase, no máximo ~64 chars, sem ponto final.
+  const firstSentence = aiText.split(/(?<=[.!?])\s/)[0] ?? aiText;
+  const trimmed = firstSentence.trim().replace(/[.!?]+$/, "");
+  if (trimmed.length <= 64) return trimmed;
+  return trimmed.slice(0, 61).trimEnd() + "…";
 }
 
 // ─────────────────────────────────────────────────────────────────────
