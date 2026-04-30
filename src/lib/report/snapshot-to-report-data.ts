@@ -25,6 +25,7 @@ import { resolveReportTier } from "./tiers";
 import {
   extractTopHashtags,
   extractTopKeywords,
+  extractTopThemes,
   type PostForText,
 } from "./text-extract";
 import {
