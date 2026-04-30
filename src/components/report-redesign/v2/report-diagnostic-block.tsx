@@ -186,10 +186,10 @@ function buildVerdictText(args: {
     args.contentType.label &&
     args.contentType.label !== "Misto / pouco claro"
   ) {
-    parts.push(`Perfil ${args.contentType.label.toLowerCase()}`);
+    parts.push(`perfil ${args.contentType.label.toLowerCase()}`);
   }
   if (args.funnel.available && args.funnel.label && args.funnel.label !== "Comunicação dispersa") {
-    parts.push(`com presença forte de ${args.funnel.label.toLowerCase()}`);
+    parts.push(`com sinais de ${args.funnel.label.toLowerCase()}`);
   }
   if (args.dominantFormat && args.dominantFormatShare >= 50) {
     parts.push(
@@ -199,15 +199,15 @@ function buildVerdictText(args: {
     );
   }
   if (args.audience.available && args.audience.label === "Audiência silenciosa") {
-    parts.push("a audiência reage com likes mas conversa pouco");
+    parts.push("sinais de audiência silenciosa — likes consistentes, conversa rara");
   } else if (args.audience.available && args.audience.label === "Audiência ativa") {
-    parts.push("a audiência reage de forma consistente");
+    parts.push("sinais de audiência ativa");
   }
 
   if (parts.length < 2) {
-    return "Ainda não há sinal suficiente para um veredito editorial — a amostra é pequena ou pouco diferenciada.";
+    return "Com base na amostra analisada, ainda não há sinal suficiente para um veredito editorial — a amostra é pequena ou pouco diferenciada.";
   }
-  return capitalize(parts.join(", ")) + ".";
+  return "Com base na amostra analisada, " + parts.join(", ") + ".";
 }
 
 function capitalize(s: string): string {
