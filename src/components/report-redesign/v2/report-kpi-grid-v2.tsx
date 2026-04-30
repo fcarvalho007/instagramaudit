@@ -12,11 +12,21 @@ interface Props {
 
 type BenchTone = "positive" | "warning" | "neutral";
 
+const FORMAT_PT: Record<string, string> = {
+  Carousels: "Carrosséis",
+  Carousel: "Carrosséis",
+  Carrosséis: "Carrosséis",
+  Reels: "Reels",
+  Reel: "Reels",
+  Images: "Imagens",
+  Image: "Imagens",
+  Imagens: "Imagens",
+};
+
 /**
- * KPI grid v2 (Phase 1B.1) — versão evoluída do grid v1 (locked).
- * Cards maiores, mais respiração, valor display proeminente, ícone num
- * quadrado arredondado azul claro com gradient. Card de "Estado do
- * benchmark" tem tratamento visual distinto (fundo blue-50/40).
+ * KPI grid v2 (Phase 1B.1A) — cards densos premium, sem overflow
+ * a 375/768/1366. Valor display para números, escala mais sóbria
+ * para nomes de formato (categorical). Card de benchmark distinto.
  */
 export function ReportKpiGridV2({ result }: Props) {
   const k = result.data.keyMetrics;
@@ -49,9 +59,7 @@ export function ReportKpiGridV2({ result }: Props) {
         icon={<BarChart3 className="h-4 w-4" aria-hidden="true" />}
         label="Publicações analisadas"
         value={String(k.postsAnalyzed)}
-        help={
-          windowDays > 0 ? `nos últimos ${windowDays} dias` : undefined
-        }
+        help={windowDays > 0 ? `nos últimos ${windowDays} dias` : undefined}
       />
       <KpiCard
         icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
@@ -62,8 +70,9 @@ export function ReportKpiGridV2({ result }: Props) {
       <KpiCard
         icon={<Film className="h-4 w-4" aria-hidden="true" />}
         label="Formato dominante"
-        value={k.dominantFormat}
+        value={FORMAT_PT[k.dominantFormat] ?? k.dominantFormat}
         help={`${k.dominantFormatShare}% da amostra`}
+        categorical
       />
       <KpiCard
         icon={<Target className="h-4 w-4" aria-hidden="true" />}
@@ -71,7 +80,6 @@ export function ReportKpiGridV2({ result }: Props) {
         value={<BenchPill label={benchmarkLabel} tone={benchmarkTone} />}
         help="estado atual"
         isStatus
-        spanLast
       />
     </div>
   );
@@ -82,22 +90,21 @@ function KpiCard({
   label,
   value,
   help,
-  spanLast,
   isStatus,
+  categorical,
 }: {
   icon: ReactNode;
   label: string;
   value: ReactNode;
   help?: string;
-  spanLast?: boolean;
   isStatus?: boolean;
+  categorical?: boolean;
 }) {
   return (
     <div
       className={cn(
         isStatus ? REDESIGN_TOKENS.kpiCardV2Status : REDESIGN_TOKENS.kpiCardV2,
-        "p-5 md:p-6 lg:p-7 flex flex-col gap-4 min-w-0",
-        spanLast ? "col-span-2 sm:col-span-3 lg:col-span-1" : "",
+        "p-4 md:p-5 lg:p-6 flex flex-col gap-3 md:gap-4 min-w-0",
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -108,7 +115,10 @@ function KpiCard({
       <p className={REDESIGN_TOKENS.kpiLabel}>{label}</p>
       <div
         className={cn(
-          REDESIGN_TOKENS.kpiValueV2,
+          "min-w-0",
+          categorical
+            ? REDESIGN_TOKENS.kpiValueV2Categorical
+            : REDESIGN_TOKENS.kpiValueV2,
           isStatus ? "flex items-center" : "",
         )}
       >
