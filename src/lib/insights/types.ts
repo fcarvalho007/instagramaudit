@@ -258,6 +258,12 @@ export interface AiInsightsV2 {
   };
   /** Mapa secção → insight curto. Todas as 9 chaves obrigatórias. */
   sections: Record<AiInsightV2Section, AiInsightV2Item>;
+  /**
+   * Prioridades de ação editoriais (3 itens). Opcional para retrocompat
+   * com snapshots antigos — quando ausente a UI cai para o derivador
+   * determinístico em `block02-diagnostic.ts`.
+   */
+  priorities?: AiInsightsV2Priorities;
 }
 
 /** Nível editorial das prioridades de ação geradas pela IA. */
