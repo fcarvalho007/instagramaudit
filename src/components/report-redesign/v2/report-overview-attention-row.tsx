@@ -32,7 +32,6 @@ type Tone = "warn" | "bad" | "neutral";
 interface Signal {
   key: string;
   icon: LucideIcon;
-  eyebrow: string;
   title: string;
   body: string;
   tone: Tone;
@@ -87,52 +86,48 @@ function SignalCard({ signal }: { signal: Signal }) {
   const toneCls =
     signal.tone === "bad"
       ? {
-          surface: "border-rose-100 bg-rose-50/50",
-          icon: "bg-rose-100 text-rose-700 ring-rose-200",
-          eyebrow: "text-rose-700",
+          accent: "border-l-rose-300",
+          icon: "bg-rose-50 text-rose-600 ring-rose-100",
+          dot: "bg-rose-500",
         }
       : signal.tone === "warn"
         ? {
-            surface: "border-amber-100 bg-amber-50/50",
-            icon: "bg-amber-100 text-amber-700 ring-amber-200",
-            eyebrow: "text-amber-700",
+            accent: "border-l-amber-300",
+            icon: "bg-amber-50 text-amber-600 ring-amber-100",
+            dot: "bg-amber-500",
           }
         : {
-            surface: "border-slate-200 bg-white",
+            accent: "border-l-slate-200",
             icon: "bg-slate-100 text-slate-600 ring-slate-200",
-            eyebrow: "text-slate-500",
+            dot: "bg-slate-400",
           };
 
   return (
     <article
       className={cn(
-        "rounded-2xl border p-4 md:p-5 flex items-start gap-3 min-w-0",
+        "rounded-2xl border border-slate-200 border-l-2 bg-white p-3.5 md:p-4 flex items-start gap-3 min-w-0",
         "shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
-        toneCls.surface,
+        toneCls.accent,
       )}
     >
       <span
         className={cn(
-          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1",
+          "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1",
           toneCls.icon,
         )}
         aria-hidden="true"
       >
-        <Icon className="h-4 w-4" />
+        <Icon className="h-3.5 w-3.5" />
       </span>
-      <div className="min-w-0 space-y-1.5">
-        <p
-          className={cn(
-            "font-mono text-[10px] uppercase tracking-[0.16em]",
-            toneCls.eyebrow,
-          )}
-        >
-          {signal.eyebrow}
-        </p>
-        <h4 className="font-display text-[0.95rem] md:text-base font-semibold tracking-tight text-slate-900 leading-snug">
-          {signal.title}
+      <div className="min-w-0 space-y-1">
+        <h4 className="flex items-center gap-2 font-display text-[0.95rem] font-semibold tracking-tight text-slate-900 leading-snug">
+          <span
+            aria-hidden="true"
+            className={cn("size-1.5 rounded-full shrink-0", toneCls.dot)}
+          />
+          <span className="min-w-0">{signal.title}</span>
         </h4>
-        <p className="text-[13px] text-slate-600 leading-relaxed">
+        <p className="text-[12.5px] text-slate-600 leading-relaxed">
           {signal.body}
         </p>
       </div>
@@ -155,7 +150,6 @@ function computeSignals(result: AdapterResult): Signal[] {
     out.push({
       key: "engagement-gap",
       icon: TrendingDown,
-      eyebrow: "Sinal · envolvimento",
       title: "Envolvimento abaixo da referência",
       body: `O perfil está em ${formatPct(k.engagementRate)}, abaixo da referência de ${formatPct(k.engagementBenchmark)}.`,
       tone,
@@ -171,7 +165,6 @@ function computeSignals(result: AdapterResult): Signal[] {
     out.push({
       key: "cadence-vs-response",
       icon: Gauge,
-      eyebrow: "Sinal · ritmo",
       title: "Ritmo elevado, resposta baixa",
       body: `Há cerca de ${formatRhythm(k.postingFrequencyWeekly)} publicações por semana, mas a resposta média ainda é fraca.`,
       tone: "warn",
@@ -189,7 +182,6 @@ function computeSignals(result: AdapterResult): Signal[] {
     out.push({
       key: "format-concentration",
       icon: Layers,
-      eyebrow: "Sinal · formato",
       title: "Dependência de um formato",
       body: `A amostra está muito concentrada em ${formatLabel} (${k.dominantFormatShare}% das publicações analisadas).`,
       tone: "warn",
