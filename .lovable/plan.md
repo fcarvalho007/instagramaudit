@@ -1,205 +1,137 @@
-## Goal
 
-Re-shape Block 02 · Diagnóstico on `/analyze/$username` so it stops feeling like a repeat of Block 01 and the AI reading. It should become a focused **editorial diagnostic** — only lenses backed by real data, with cautious wording, and a layout that never leaves an orphan card.
+# Bloco 02 · Diagnóstico Editorial — replan + implementação
 
-This is a **read-only replan**. No code changes in this turn.
+## Objetivo
 
----
+Substituir a atual grelha fria de 6 cartões do Bloco 02 por um módulo editorial premium em que cada cartão é uma **pergunta humana com resposta sustentada nos dados já recolhidos**. Visual segue o mockup anexo: fundo claro, número grande "02", cabeçalho serif, eyebrows mono, cartões brancos, azul como cor analítica primária, âmbar só para cautela, vermelho só para alerta crítico genuíno.
 
-## 1 · Audit — what data already exists
+Tudo deriva de heurísticas deterministas sobre `payload.posts`, `result.data` e `result.enriched`. Sem provedores externos, sem schema, sem prompts OpenAI, sem PDF, sem `/report/example`, sem admin.
 
-From `SnapshotPayload` / `SnapshotPost` / `ReportData` / `ReportEnriched`:
+## Auditoria de dados disponíveis
 
-| Signal | Source | Status |
-|---|---|---|
-| Captions | `posts[].caption`, `caption_length` | ✅ available |
-| Hashtags | `posts[].hashtags` | ✅ available |
-| Mentions / coauthors | `posts[].mentions`, `coauthors`, `tagged_users` | ✅ available |
-| Likes / comments | `posts[].likes`, `posts[].comments` | ✅ available |
-| Engagement % per post | `posts[].engagement_pct` | ✅ available |
-| Post format | `posts[].format`, `keyMetrics.dominantFormat`, `dominantFormatShare` | ✅ available |
-| Posting frequency | `keyMetrics.postingFrequencyWeekly`, `windowDays` | ✅ available (already shown in Block 01 → must reinterpret, not repeat) |
-| Top hashtags (counted) | `result.data.topHashtags` (extracted by adapter) | ✅ available |
-| Top keywords | `result.data.topKeywords` (extracted by adapter) | ✅ available |
-| Mentions summary | `result.enriched.mentionsSummary` | ✅ available |
-| Top posts | `result.enriched.topPosts` | ✅ available |
-| Engagement vs benchmark | `keyMetrics.engagementBenchmark/DeltaPct` | ✅ available (already in Block 01) |
-| Bio / external link | `enriched.profile.bio`, `profileUrl` | ✅ bio available, link not currently extracted |
-| AI insights v2 | `enriched.aiInsightsV2.sections` | ✅ available; rendered above the grid as "Leitura IA" |
-| Video views | `posts[].video_views` | ⚠️ optional/sparse, often missing |
-| Content type (educativo/promocional/…) | none | ❌ **not safe** without OpenAI classification |
-| Funnel stage (TOFU/MOFU/BOFU/loyalty) | none reliable | ❌ **not safe** from current keyword heuristics |
+Confirmado em `snapshot-to-report-data.ts` e `block02-diagnostic.ts`:
 
-**Conclusion of the audit:** the heuristics currently powering "Tipo de conteúdo dominante" and "Fase do funil mais presente" in `block02-diagnostic.ts` are essentially keyword bingo. They produce false confidence on Portuguese captions (e.g. the word "como" tags everything as Educativo/MOFU) and they invent classification — which violates the spec ("Do not invent content classification").
+- Posts: `caption`, `caption_length`, `hashtags`, `mentions`, `format`, `likes`, `comments`.
+- `result.data.keyMetrics`: `dominantFormat`, `dominantFormatShare`.
+- `result.data.formatBreakdown`: distribuição com nome + share.
+- `result.data.topHashtags`, `result.data.topKeywords`.
+- `result.enriched.profile.bio`, `result.enriched.mentionsSummary`.
+- `result.enriched.editorialPatterns` (CTA density, cadência, mentions lift).
+- `result.enriched.aiInsightsV2.sections` — secções já validadas, em particular `hero` (síntese geral) e `topPosts`/`language` que podem alimentar o veredito.
 
----
+Conclusão: 8 perguntas são todas suportáveis com fallback gracioso. Nenhuma exige nova fonte de dados.
 
-## 2 · Lenses safe to render now
+## Header do bloco
 
-| # | Lens | Backed by | Rationale |
-|---|---|---|---|
-| A | **Resposta da audiência** | `posts[].likes`, `comments`, `engagement_pct`, `engagementDeltaPct` (delta vs benchmark — *interpreted*, not the raw KPI) | Real data; reframes Block 01's KPI as behaviour |
-| B | **Ritmo editorial** | `keyMetrics.postingFrequencyWeekly`, `windowDays`, `posts.length`, dispersion of `taken_at` | Real data; interpreted, not the raw "X posts/week" |
-| C | **Dependência de formato** | `keyMetrics.dominantFormat/Share` + `formatBreakdown` per-format engagement | Real data; explains *why* one format dominates |
-| D | **Padrão temático (indícios)** | `topHashtags` + `topKeywords` (already in `ReportData`) | Real data; flagged as "indícios" |
+Atualizar `BLOCKS[1]` em `block-config.ts`:
 
-## 3 · Lenses to hide (until safer signal exists)
+- `shortLabel`: `"Diagnóstico"` (mantém — usado pela sidebar).
+- `question`: `"O que explica estes resultados?"` (já está).
+- `subtitle`: passa a `"Oito perguntas que qualquer marketer faz ao olhar para um perfil — respondidas pelo cruzamento dos dados recolhidos."`
 
-| Lens | Why | When to bring back |
-|---|---|---|
-| **Tipo de conteúdo dominante** (educativo/promocional/…) | Current keyword heuristic over PT captions overfits and misclassifies. Spec forbids invented classification. | When an OpenAI content-type classifier is added to the insights pipeline. |
-| **Fase do funil** (topo/meio/fundo/fidelização) | Same problem — keyword bingo over "compra", "como", "?" produces false confidence. | When AI funnel-stage classification or a richer signal (CTA detection, link clicks) exists. |
-| **Padrão das captions** (curtas/médias/longas) | Useful internally but too thin as a standalone editorial card and mostly duplicates length info already implied by the format card. | Could return when paired with a CTA-rate signal worth surfacing. |
+O eyebrow renderizado pelo `ReportBlockSection` é derivado de `shortLabel.toUpperCase()` → mostrará `DIAGNÓSTICO`. Para alinhar com o mockup (`"DIAGNÓSTICO EDITORIAL"`), adicionamos um campo opcional `eyebrowOverride` em `BlockConfig` e usamo-lo apenas para o bloco 02 (`"DIAGNÓSTICO EDITORIAL"`). Os outros blocos continuam com o comportamento atual. Esta é a única alteração tocada fora do escopo do Bloco 02 e é puramente cosmética.
 
-These three lenses currently render in `report-diagnostic-grid-v2.tsx` and should be removed from the V2 grid. The pure helpers in `src/lib/report/block02-diagnostic.ts` may stay on disk (no harm, no callers after the swap) or be deleted — cleanup is non-blocking.
+## Componentes a criar
 
----
+Todos sob `src/components/report-redesign/v2/`:
 
-## 4 · Recommended final structure
+1. **`report-diagnostic-block.tsx`** — orquestrador. Recebe `result` + `payload` e compõe veredito → 3 grupos → prioridades → CTA. Decide quais cartões esconder por falta de dados.
+2. **`report-diagnostic-verdict.tsx`** — caixa azul/neutra com eyebrow `VEREDITO EDITORIAL · IA`, ícone `Bot` (lucide), texto. Usa `aiInsightsV2.sections.hero.text` se existir; caso contrário compõe um fallback determinista a partir de tipo de conteúdo + funil + formato dominante. Se nem o fallback tiver sinal mínimo, mostra cópia neutra: `"Ainda não há sinal suficiente para um veredito editorial — a amostra é pequena."`.
+3. **`report-diagnostic-group.tsx`** — divisor full-width: letra (A/B/C) + label esquerda, contador `"N PERGUNTAS"` à direita, linha subtil.
+4. **`report-diagnostic-card.tsx`** — cartão branco padrão: eyebrow `PERGUNTA NN · LABEL`, título serif entre aspas (a pergunta), bloco de "resposta dominante" colorido (slot configurável: barra simples, ranking, checklist, mini-stats), body interpretativo curto. Tom (`blue` neutro padrão; `amber` quando o cartão sinaliza cautela como "concentração alta num único formato"; `rose` só se houver `audiência silenciosa` real). Sem animações.
+5. **`report-diagnostic-priorities.tsx`** — 3 cartões em coluna no mobile, 3 colunas em desktop. Tags coloridas (`PRIORIDADE ALTA` rose, `PRIORIDADE MÉDIA` amber, `OPORTUNIDADE` blue). Cada cartão indica que pergunta resolve.
+6. **`report-diagnostic-cta.tsx`** — strip subtil com cópia "Quer aprofundar?…" e botão `Ver análise completa →` que aponta para a âncora `#tier-comparison` já existente (sem nova rota).
 
-Block 02 becomes:
+## Helper a estender
+
+`src/lib/report/block02-diagnostic.ts` (não locked) ganha funções puras adicionais:
+
+- `classifyChannelIntegration(enriched)` → `{ available, label, signals: { bioLink, newsletterMention, explicitCta } }`. Usa `enriched.profile.bio` (regex http/url/newsletter), `mentionsSummary`, e ratio CTA já calculado em `editorialPatterns.captionsCtaShare` (ou similar — se ausente, fallback para o cálculo já existente em `classifyCaptionPattern`).
+- `inferProbableObjective(args)` → ranking até 4 hipóteses `[Notoriedade, Geração de leads, Comunidade, Vendas online, Educação]` derivado de mistura tipo de conteúdo + funil + bio + presença de link. Devolve `{ available, primary, ranking: [{label, score}], confidence: "low"|"med" }`.
+- `inferThemes(topHashtags, topKeywords)` → label `"Hashtags mais recorrentes"` ou `"Temas mais recorrentes"` consoante a fonte com mais sinal, mais top 3.
+- `derivePriorities(allClassifiers)` → escolhe até 3 ações deterministas a partir dos sinais (ex.: dominância de formato ≥ 60% → "Diversificar formatos"; CTA share < 10% → "Adicionar perguntas no fim das captions"; tema com tração externa = oportunidade). Cada item carrega `{ priority: "alta"|"media"|"oportunidade", title, body, resolves: "Pergunta NN" }`.
+
+Tudo continua sem I/O e sem novas dependências.
+
+## Mapeamento das 8 perguntas
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ Section header                                          │
-│   02 · DIAGNÓSTICO                                      │
-│   O que explica estes resultados?                       │
-│   Cruza resposta da audiência, ritmo, formato e temas   │
-│   para perceber que padrões editoriais explicam o que   │
-│   o Bloco 01 mostrou.                                   │
-├─────────────────────────────────────────────────────────┤
-│ [Leitura IA — caixa existente, mantém-se]               │
-├─────────────────────────────────────────────────────────┤
-│ Grelha 2×2 (desktop) · 1 coluna (mobile)                │
-│ ┌─────────────┐ ┌─────────────┐                         │
-│ │ A · Resposta│ │ B · Ritmo   │                         │
-│ └─────────────┘ └─────────────┘                         │
-│ ┌─────────────┐ ┌─────────────┐                         │
-│ │ C · Formato │ │ D · Temas   │                         │
-│ └─────────────┘ └─────────────┘                         │
-└─────────────────────────────────────────────────────────┘
+A · IDENTIDADE EDITORIAL (2)
+  01 · Tipo de conteúdo  → classifyContentType(posts)
+  02 · Funil             → classifyFunnelStage(posts)
+
+B · COMO COMUNICA (4)
+  03 · Formato           → keyMetrics.dominantFormat + formatBreakdown (barra)
+  04 · Temas             → inferThemes(topHashtags, topKeywords)
+  05 · Legendas          → classifyCaptionPattern(posts) + 3 mini-stats
+  06 · Resposta público  → classifyAudienceResponse(posts)
+
+C · CONTEXTO ESTRATÉGICO (2)
+  07 · Integração canais → classifyChannelIntegration(enriched) + checklist
+  08 · Objetivo provável → inferProbableObjective(...)
 ```
 
-- **4 cards, always.** No orphan row, no 5-card layout. If a single lens has insufficient data, it renders a graceful empty state inside its own card — the grid stays 2×2.
-- **Desktop:** `grid-cols-2`. **Tablet:** `grid-cols-2`. **Mobile:** `grid-cols-1`.
-- Card chrome stays exactly as today: white surface, soft border, soft shadow, mono eyebrow, serif title, sans body, optional mono micro-line.
-- No alert-style red surfaces. Tones: blue (default), emerald (genuinely strong signal), amber (caution), rose only for genuinely weak signal.
+Regra de hide: se um classificador devolver `available:false` **e** não houver fallback útil, o cartão é escondido e o contador no divisor (`"N PERGUNTAS"`) é recalculado dinamicamente. Layout obriga a número par por linha — se ficar ímpar, o cartão restante ocupa coluna dupla no desktop para evitar órfão. Se um grupo inteiro ficar vazio, o divisor desse grupo também desaparece. Mínimo aceitável: 4 cartões totais.
 
----
+## Layout
 
-## 5 · Exact card titles, eyebrows and copy (pt-PT)
+- Container já é `max-w-7xl px-5 md:px-6` herdado do `ReportShellV2`. O conteúdo do bloco fica `min-w-0`.
+- Veredito: `max-w-none` dentro do bloco, padding interno generoso.
+- Grupos: divisor full-width; grelha `grid-cols-1 md:grid-cols-2 gap-5`.
+- Prioridades: `grid-cols-1 md:grid-cols-3 gap-4`.
+- CTA: full-width com botão à direita em desktop, full-width em mobile.
+- Sem overflow horizontal a 375px (testado mentalmente com `min-w-0` em todos os filhos do flex/grid).
 
-### Card A — Resposta da audiência
+## Integração no `ReportShellV2`
 
-- **Eyebrow:** `RESPOSTA`
-- **Title:** `A audiência está a responder?`
-- **Primary (one of):**
-  - `Resposta consistente` (delta ≥ 0, ratio comments/likes ≥ 1.5%)
-  - `Resposta moderada` (delta entre −20% e 0, ou ratio entre 0.5% e 1.5%)
-  - `Resposta tímida` (delta < −20% e ratio < 0.5%)
-  - `Sem dados suficientes` (sample < 4)
-- **Micro:** `~{avgComments} comentários · {ratio} % do total de likes`
-- **Body (factual, ≤ 2 frases):** explica em palavras o comportamento observado, sem voltar a citar a percentagem de envolvimento (essa fica no Bloco 01).
+No `report-shell-v2.tsx`, secção `02 · Diagnóstico`:
 
-### Card B — Ritmo editorial
+- Remove `ReportAiReading` (mantém-se intacto, ainda usado no shell legacy do PDF — não tocamos).
+- Remove `ReportPendingAiNotice` (idem).
+- Remove `ReportDiagnosticGridV2` da renderização do bloco 02 (componente continua a existir para não quebrar nada, mas deixa de ser importado).
+- Renderiza apenas `<ReportDiagnosticBlock result={result} payload={payload} analyzedAtIso={analyzedAtIso} />`.
 
-- **Eyebrow:** `RITMO`
-- **Title:** `O ritmo de publicação ajuda ou prejudica?`
-- **Primary (one of):**
-  - `Cadência regular`
-  - `Cadência intensa`
-  - `Cadência ocasional`
-  - `Cadência irregular`
-  - `Sem dados suficientes`
-- **Micro:** `{postingFrequencyWeekly} publicações/semana · {windowDays} dias analisados`
-- **Body:** interpreta a frequência (ex.: "Frequência elevada para o tipo de presença — convém garantir consistência editorial", ou "Cadência espaçada — cada publicação carrega mais peso na perceção do perfil"). Nunca repete o número como tagline.
+Tom da banda passa de `soft-blue` para `canvas` para combater a "duplicação visual" do mockup (fundo claro neutro). Confirmado que isto é só o Bloco 02.
 
-### Card C — Dependência de formato
+## Ficheiros tocados
 
-- **Eyebrow:** `FORMATO`
-- **Title:** `O perfil depende demasiado de um formato?`
-- **Primary:** `{Reels|Carrosséis|Imagens}`
-- **Micro:** `{share} % das publicações analisadas`
-- **Body (3 ramos):**
-  - `share ≥ 60%`: `Mais de metade das publicações analisadas é em {formato}. Diversificar pode equilibrar o alcance e a leitura editorial do perfil.` (tone: amber)
-  - `share entre 40% e 60%`: `{Formato} lidera, mas há mistura saudável com outros formatos.` (tone: blue)
-  - `< 40%`: `Mistura equilibrada de formatos — sem dependência clara de um único tipo de publicação.` (tone: emerald)
+**Criados:**
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-verdict.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-group.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-card.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-priorities.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-cta.tsx`
 
-### Card D — Padrão temático
+**Editados:**
+- `src/lib/report/block02-diagnostic.ts` (acrescenta classifiers; mantém os existentes — não quebra a `report-diagnostic-grid-v2.tsx` legada).
+- `src/components/report-redesign/v2/block-config.ts` (subtitle do bloco 02 + campo opcional `eyebrowOverride`).
+- `src/components/report-redesign/v2/report-block-section.tsx` (lê `eyebrowOverride` se existir).
+- `src/components/report-redesign/v2/report-shell-v2.tsx` (substitui o conteúdo do bloco 02; muda tom para `canvas`).
 
-- **Eyebrow:** `TEMAS`
-- **Title:** `Que temas se repetem nas publicações?`
-- **Primary:** lista das 3–4 hashtags mais recorrentes (`#tema1  #tema2  #tema3`), ou as 3 keywords se hashtags estiverem vazias.
-- **Micro:** `Indícios a partir de hashtags e palavras recorrentes`
-- **Body:** `Estes temas voltam ao longo da amostra e descrevem o território editorial mais consistente do perfil. São indícios, não uma classificação completa.`
-- **Empty state:** `Sem temas recorrentes claros — as publicações analisadas variam de tópico ou usam poucas hashtags.`
+**Não tocados (verificado contra `LOCKED_FILES.md`):**
+- Toda a foundation (`tokens.css`, `styles.css`, `__root.tsx`).
+- `report-shell.tsx` (legacy / PDF), `report-hero.tsx`, `report-kpi-grid.tsx`, `report-framed-block.tsx`, `report-section-frame.tsx`, `report-ai-reading.tsx`, `report-methodology.tsx`.
+- Qualquer ficheiro de `/report/example`, admin, PDF, providers, schema, validators, prompts.
+- `report-diagnostic-grid-v2.tsx` (não removido — fica latente para evitar regressões enquanto migramos).
 
-> Microcopy importante: o card D usa explicitamente "indícios", não "classificação". Cards A, B e C usam linguagem causal ("a audiência tende a…", "o ritmo sugere…"), não absoluta.
+## Validação
 
----
+Após implementação:
 
-## 6 · Components to reuse
+- `bunx tsc --noEmit`
+- `bunx vitest run`
 
-- `ReportFramedBlock` — wrapper visual dos cards (já em uso).
-- `ReportBlockSection` — header da secção (eyebrow `02 · DIAGNÓSTICO`, pergunta, subtítulo).
-- `ReportAiReading` (compact) — caixa de Leitura IA acima da grelha (já em uso).
-- `ReportPendingAiNotice` — fallback quando a IA ainda não correu.
-- `cn` + `REDESIGN_TOKENS` — estilo dos cards.
-- Ícones `lucide-react`: `MessageCircle` (A), `CalendarRange` (B), `Layers` (C), `Hash` (D).
+Sem QA browser automático.
 
-## 7 · New lightweight V2 components / helpers to create
+## Critérios de aceitação
 
-Ficheiros pequenos, todos pure, sem novas dependências:
-
-1. **`src/lib/report/block02-lenses.ts`** (novo) — substitui em uso o atual `block02-diagnostic.ts`. Exporta funções puras:
-   - `assessAudienceResponse(posts, keyMetrics)` → `{ available, label, ratioPct, avgComments, sampleSize, tone }`
-   - `assessEditorialRhythm(keyMetrics, postsCount, windowDays)` → `{ available, label, perWeek, windowDays, tone }`
-   - `assessFormatDependency(keyMetrics, formatBreakdown)` → `{ available, dominantLabel, sharePct, secondShare, tone }`
-   - `assessThematicSignals(topHashtags, topKeywords)` → `{ available, kind: "hashtags"|"keywords"|"mixed"|"empty", terms: string[] }`
-   - Cada função devolve discriminated union com `available: boolean` para que o card render sempre.
-2. **`src/components/report-redesign/v2/report-diagnostic-grid-v2.tsx`** — substituído (ou esvaziado e reescrito) pelo novo grid 2×2 com as 4 cards acima. Mantém o nome do ficheiro para minimizar diff no shell.
-
-Helpers existentes que já cobrem hashtags/keywords (`extractTopHashtags`, `extractTopKeywords`) **não precisam de mudança** — o adapter já popula `result.data.topHashtags` e `result.data.topKeywords`.
-
----
-
-## 8 · Files to change in the next implementation prompt
-
-- ✏️ `src/components/report-redesign/v2/report-diagnostic-grid-v2.tsx` — reescrever para 4 lenses, grid 2×2.
-- ➕ `src/lib/report/block02-lenses.ts` — novo módulo puro.
-- ✏️ `src/components/report-redesign/v2/report-shell-v2.tsx` — passar `formatBreakdown` e `topKeywords` ao grid (além do que já passa). Sem outras alterações.
-- 🗑️ (opcional, não bloqueante) `src/lib/report/block02-diagnostic.ts` — pode ficar como dead-code temporário ou ser removido depois de confirmar que não há outros consumidores.
-
-## 9 · Files that must remain untouched
-
-- `src/components/report-redesign/report-editorial-patterns.tsx` (continua a alimentar o `ReportShell` legacy do PDF).
-- `src/components/report-redesign/report-shell.tsx` (legacy, conduz o PDF).
-- `src/lib/report/snapshot-to-report-data.ts`, `editorial-patterns.ts`, `text-extract.ts`, `tiers.ts`, `benchmark-input.server.ts`.
-- Block 01 (`ReportOverviewBlock`) e Blocks 03–06 dentro de `report-shell-v2.tsx`.
-- Routes `/analyze/$username` (lógica), `/report/print/$snapshotId`, `/report/example`.
-- Admin pages, OpenAI prompts, validators, providers, schema Supabase, `LOCKED_FILES.md`.
-
----
-
-## 10 · Risks and ambiguity
-
-- **Card B may feel close to Block 01** se Block 01 já cita "{X} pub./semana" como KPI cru. Mitigação: o tagline do Card B é qualitativo ("Cadência regular"), nunca o número; o número aparece apenas no micro-label.
-- **Card D depende de hashtags/keywords não-vazias.** Em perfis muito limpos (sem hashtags) o card cai em empty state. Aceitável — mantém a grelha 2×2.
-- **Limiares são heurísticos** (ex.: `share ≥ 60%`, `ratio ≥ 1.5%`). Devem ficar isolados no helper para fácil iteração futura.
-- **Remoção dos cards de Tipo de conteúdo / Funil / Captions** muda a expectativa visual de utilizadores que já viram os 6 cards atuais. Aceitável face ao spec ("Do not invent content classification") e ao objetivo editorial.
-- **Texto pt-PT:** todos os labels e bodies seguem AO90 e nunca expõem nomes técnicos (`payload`, `engagement_pct`, etc.).
-
----
-
-## 11 · Acceptance criteria (for the future implementation)
-
-- Block 02 mostra exatamente **4 cards** numa grelha 2×2 em desktop, 1 coluna em mobile (375 px sem overflow).
-- Cards A–D respondem às perguntas humanas indicadas; nenhum repete o número-âncora do Bloco 01 (envolvimento %, posts/semana cru, formato dominante % isolado).
-- Sem repetição literal da Leitura IA — bodies dos cards são factuais, ≤ 2 frases curtas.
-- Não há `tone: "rose"` em surface — apenas dot/eyebrow quando o sinal é genuinamente fraco.
-- Empty states usam linguagem cautelosa ("Sem dados suficientes", "Indícios a partir de…") e nunca colapsam a grelha.
-- Sem novas dependências, sem chamadas a Apify/DataForSEO/OpenAI/PDFShift/Supabase.
-- PDF (`/report/print/$snapshotId`) inalterado: continua a usar o `ReportShell` legacy + `ReportEditorialPatterns` antigo.
-- `bunx tsc --noEmit` verde.
-- `bunx vitest run` verde (12/12 ou superior se forem adicionados testes ao novo helper).
-- `/report/example`, admin, schema, prompts e validators inalterados.
+- Bloco 02 segue o mockup: número grande, cabeçalho serif + eyebrow `DIAGNÓSTICO EDITORIAL`, veredito azul, 3 grupos com divisores, cartões brancos, prioridades, CTA.
+- Cada cartão é pergunta humana entre aspas + resposta dominante + suporte de dados + interpretação curta.
+- Não repete KPIs do Bloco 01.
+- Veredito nunca inventa: usa AI v2 ou fallback determinista; tem cópia segura quando vazio.
+- Cartões sem dados são escondidos sem deixar layout órfão; mínimo 4.
+- `tsc` e `vitest` passam.
+- pt-PT em toda a copy visível, sem termos técnicos (`payload`, `engagement_pct`, etc.).
+- Sem chamadas a Apify/DataForSEO/OpenAI/PDFShift/Supabase write.
+- PDF, providers, admin, schema e `/report/example` intactos.
