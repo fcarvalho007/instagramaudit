@@ -58,4 +58,22 @@ describe("sanitizeAiCopy", () => {
     // @ts-expect-error -- testing runtime resilience
     expect(sanitizeAiCopy(null).ok).toBe(true);
   });
+
+  it("apanha campos crus de Apify/Instagram (engagement_rate, mediaType, playCount)", () => {
+    const r = sanitizeAiCopy(
+      "O engagement_rate é forte; mediaType=carousel domina; playCount alto nos Reels.",
+    );
+    expect(r.ok).toBe(false);
+    const kinds = r.violations.map((v) => v.kind);
+    expect(kinds.filter((k) => k === "technical_term").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("apanha acessos crus a estruturas de dados (posts[0], items[3])", () => {
+    const r = sanitizeAiCopy(
+      "O melhor exemplo está em posts[0] e o pior em items[3].",
+    );
+    expect(r.ok).toBe(false);
+    const kinds = r.violations.map((v) => v.kind);
+    expect(kinds.filter((k) => k === "technical_term").length).toBeGreaterThanOrEqual(2);
+  });
 });
