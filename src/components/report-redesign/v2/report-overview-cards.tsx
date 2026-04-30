@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
+import { INSTAGRAM_BENCHMARK_CONTEXT } from "@/lib/knowledge/benchmark-context";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 
@@ -207,7 +208,7 @@ function EngagementRateCard({
       )}
 
       <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
-        A taxa de envolvimento varia consoante a fonte, o tamanho da conta e o método de cálculo. Apresentada aqui como referência direcional.
+        {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.engagementExplanation}
       </p>
 
       {hasBenchmark ? (
