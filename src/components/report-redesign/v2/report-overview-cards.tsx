@@ -406,11 +406,11 @@ function DominantFormatCard({
       interpretationTone={status.tone}
     >
       <div className="flex items-end gap-3 flex-wrap">
-        <FormatChipLarge label={dominantLabel} tone={tone} />
-        {dominantShare > 0 ? (
-          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-slate-500 pb-1">
-            {dominantShare}% da amostra
-          </span>
+        <span className="font-display text-[2.5rem] md:text-[2.75rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+          {dominantShare > 0 ? `${dominantShare}%` : "—"}
+        </span>
+        {dominantLabel ? (
+          <FormatChipContextual label={dominantLabel} tone={tone} />
         ) : null}
       </div>
 
@@ -508,7 +508,13 @@ function formatChipTone(label: string): FormatTone {
   return "neutral";
 }
 
-function FormatChipLarge({ label, tone }: { label: string; tone: FormatTone }) {
+function FormatChipContextual({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: FormatTone;
+}) {
   const toneCls =
     tone === "primary"
       ? "bg-blue-50 text-blue-700 ring-blue-200"
@@ -528,12 +534,12 @@ function FormatChipLarge({ label, tone }: { label: string; tone: FormatTone }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full px-4 py-2 ring-1",
-        "font-display text-[1.25rem] md:text-[1.375rem] font-semibold tracking-tight",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ring-1 mb-1.5",
+        "text-[13px] font-medium tracking-tight",
         toneCls,
       )}
     >
-      <span className={cn("h-2 w-2 rounded-full", dot)} aria-hidden="true" />
+      <span className={cn("h-1.5 w-1.5 rounded-full", dot)} aria-hidden="true" />
       {label}
     </span>
   );
