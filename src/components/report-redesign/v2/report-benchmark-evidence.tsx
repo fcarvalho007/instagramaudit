@@ -1,5 +1,11 @@
 import { cn } from "@/lib/utils";
-import type { BenchmarkSourceName } from "@/lib/knowledge/benchmark-context";
+
+/**
+ * Subset de fontes activas no relatório público. Databox fica fora deste
+ * tipo — só pode ser citado quando existirem métricas autenticadas no
+ * perfil analisado (alcance, visitas, cliques, saves).
+ */
+export type ActiveBenchmarkSourceName = "Socialinsider" | "Buffer" | "Hootsuite";
 
 interface Props {
   platform: "instagram";
@@ -7,8 +13,14 @@ interface Props {
   followerTier?: string | null;
   /** Indústria — só passar se realmente conhecida. `null` força copy genérica. */
   industry?: string | null;
-  /** Nomes de fontes a citar (1–3). Devem vir filtrados por `uiDisplayAllowed`. */
-  sourceNames: BenchmarkSourceName[];
+  /** Nomes de fontes a citar (1–3). Restrito a fontes activas. */
+  sourceNames: ActiveBenchmarkSourceName[];
+  /**
+   * Aviso curto para perfis ≥1M, fora dos escalões Buffer públicos.
+   * Quando presente, renderiza uma segunda linha discreta abaixo da
+   * proveniência. Omitido em silêncio caso não se aplique.
+   */
+  aboveBufferRangeHint?: string | null;
   className?: string;
 }
 
@@ -34,6 +46,7 @@ export function ReportBenchmarkEvidence({
   followerTier,
   industry,
   sourceNames,
+  aboveBufferRangeHint,
   className,
 }: Props) {
   const segments: string[] = ["Referência de mercado", PLATFORM_LABEL[platform]];
@@ -49,39 +62,45 @@ export function ReportBenchmarkEvidence({
   const sources = sourceNames.slice(0, 3);
 
   return (
-    <p
-      className={cn(
-        "font-mono text-[10.5px] uppercase tracking-[0.14em] leading-snug",
-        "text-slate-500",
-        className,
-      )}
-    >
-      {segments.map((s, i) => (
-        <span key={i}>
-          {i > 0 ? <span className="mx-1.5 text-slate-300">·</span> : null}
-          <span>{s}</span>
-        </span>
-      ))}
-      {sources.length > 0 ? (
-        <>
-          <span className="mx-1.5 text-slate-300">·</span>
-          <span className="text-slate-400 normal-case tracking-normal">
-            fontes:
-          </span>{" "}
-          {sources.map((name, i) => (
-            <span key={name}>
-              {i > 0 ? <span className="text-slate-300">, </span> : null}
-              <span
-                className="text-slate-600 normal-case tracking-normal"
-                title={`Fonte: ${name} — detalhes na metodologia`}
-                aria-label={`Fonte: ${name} — detalhes na metodologia`}
-              >
-                {name}
+    <div className={cn("space-y-1", className)}>
+      <p
+        className={cn(
+          "font-mono text-[10.5px] uppercase tracking-[0.14em] leading-snug",
+          "text-slate-500",
+        )}
+      >
+        {segments.map((s, i) => (
+          <span key={i}>
+            {i > 0 ? <span className="mx-1.5 text-slate-300">·</span> : null}
+            <span>{s}</span>
+          </span>
+        ))}
+        {sources.length > 0 ? (
+          <>
+            <span className="mx-1.5 text-slate-300">·</span>
+            <span className="text-slate-400 normal-case tracking-normal">
+              fontes:
+            </span>{" "}
+            {sources.map((name, i) => (
+              <span key={name}>
+                {i > 0 ? <span className="text-slate-300">, </span> : null}
+                <span
+                  className="text-slate-600 normal-case tracking-normal"
+                  title={`Fonte: ${name} — detalhes na metodologia`}
+                  aria-label={`Fonte: ${name} — detalhes na metodologia`}
+                >
+                  {name}
+                </span>
               </span>
-            </span>
-          ))}
-        </>
+            ))}
+          </>
+        ) : null}
+      </p>
+      {aboveBufferRangeHint && aboveBufferRangeHint.trim().length > 0 ? (
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] leading-snug text-slate-400">
+          {aboveBufferRangeHint}
+        </p>
       ) : null}
-    </p>
+    </div>
   );
 }

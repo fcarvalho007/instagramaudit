@@ -53,14 +53,14 @@ export function ReportMethodology({ enriched }: Props = {}) {
   ];
 
   const benchmarkSources = INSTAGRAM_BENCHMARK_CONTEXT.sources.filter(
-    (s) => s.uiDisplayAllowed,
+    (s) => s.visibility === "active",
   );
 
   return (
     <ReportSectionFrame
       eyebrow="Metodologia"
       title="Como este relatório foi feito"
-      subtitle="Quatro fontes complementam-se para dar uma leitura honesta — recolha pública, referência de mercado, leitura editorial e sinais de pesquisa."
+      subtitle="Três fontes públicas complementam a leitura — recolha pública, referência de mercado e leitura editorial — apoiadas por sinais de pesquisa."
       tone="calm"
       spacing="tight"
       ariaLabel="Metodologia e fontes de dados"
@@ -183,6 +183,9 @@ export function ReportMethodology({ enriched }: Props = {}) {
             );
           })}
         </ul>
+        <p className="mt-3 text-[11.5px] text-slate-500 leading-relaxed italic">
+          Databox fica reservado para futura ligação autenticada — métricas privadas como alcance, visitas e cliques.
+        </p>
       </div>
 
       <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">

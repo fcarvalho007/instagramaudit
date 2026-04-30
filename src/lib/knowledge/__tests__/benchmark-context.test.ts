@@ -37,6 +37,30 @@ describe("benchmark-context · invariantes", () => {
     expect(map["Databox"]).toBe("low");
   });
 
+  it("Socialinsider/Buffer/Hootsuite são activas; Databox futura", () => {
+    const visibility = Object.fromEntries(
+      INSTAGRAM_BENCHMARK_CONTEXT.sources.map((s) => [s.name, s.visibility]),
+    );
+    expect(visibility["Socialinsider"]).toBe("active");
+    expect(visibility["Buffer"]).toBe("active");
+    expect(visibility["Hootsuite"]).toBe("active");
+    expect(visibility["Databox"]).toBe("future");
+
+    const active = INSTAGRAM_BENCHMARK_CONTEXT.sources
+      .filter((s) => s.visibility === "active")
+      .map((s) => s.name)
+      .sort();
+    expect(active).toEqual(["Buffer", "Hootsuite", "Socialinsider"]);
+  });
+
+  it("sourceNote visível não contém Databox", () => {
+    const note = INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.sourceNote;
+    expect(note).not.toContain("Databox");
+    expect(note).toContain("Socialinsider");
+    expect(note).toContain("Buffer");
+    expect(note).toContain("Hootsuite");
+  });
+
   it("buffer tiers cobrem 0 até 1M sem sobreposição", () => {
     const tiers = INSTAGRAM_BENCHMARK_CONTEXT.bufferFollowerTiers;
     expect(tiers[0]!.minFollowers).toBe(0);
@@ -53,6 +77,7 @@ describe("getBufferTierForFollowers", () => {
     expect(getBufferTierForFollowers(2_500)?.tier).toBe("1-5K");
     expect(getBufferTierForFollowers(50_000)?.tier).toBe("50-100K");
     expect(getBufferTierForFollowers(750_000)?.tier).toBe("500K-1M");
+    expect(getBufferTierForFollowers(999_999)?.tier).toBe("500K-1M");
   });
 
   it("devolve null para 1M+ ou inválidos", () => {
@@ -162,8 +187,29 @@ describe("getBenchmarkContextForProfile", () => {
     });
     expect(ctx.bufferTier).toBeNull();
     expect(ctx.internalTier).toBe("macro");
-    expect(ctx.copyHints.tierNote).toContain("1M");
+    expect(ctx.copyHints.tierNote).toContain("acima dos escalões");
     expect(ctx.referenceReachPerPost).toBeNull();
+  });
+
+  it("fronteira exacta: 1 000 000 → bufferTier null + aboveBufferRangeHint", () => {
+    const ctx = getBenchmarkContextForProfile({
+      followers: 1_000_000,
+      dominantFormat: "carousel",
+    });
+    expect(ctx.bufferTier).toBeNull();
+    expect(ctx.internalTier).toBe("macro");
+    expect(ctx.copyHints.tierNote).toBe(
+      INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.aboveBufferRangeHint,
+    );
+  });
+
+  it("fronteira exacta: 999 999 → tier 500K-1M sem hint", () => {
+    const ctx = getBenchmarkContextForProfile({
+      followers: 999_999,
+      dominantFormat: "carousel",
+    });
+    expect(ctx.bufferTier?.tier).toBe("500K-1M");
+    expect(ctx.copyHints.tierNote).toBe("");
   });
 
   it("followers=0 mantém-se dentro do tier 0-1K e sem tierNote", () => {

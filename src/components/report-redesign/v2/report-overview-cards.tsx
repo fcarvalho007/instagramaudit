@@ -178,6 +178,10 @@ function EngagementRateCard({
   const followerTierLabel = bufferTier
     ? bufferTier.tier.replace("-", "–")
     : null;
+  const isAboveBufferRange = Number.isFinite(followers) && followers >= 1_000_000;
+  const aboveRangeHint = isAboveBufferRange
+    ? INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.aboveBufferRangeHint
+    : null;
 
   return (
     <PremiumCard
@@ -226,9 +230,10 @@ function EngagementRateCard({
           </p>
           <ReportBenchmarkEvidence
             platform="instagram"
-            followerTier={followerTierLabel}
+            followerTier={isAboveBufferRange ? null : followerTierLabel}
             industry={null}
             sourceNames={["Socialinsider", "Buffer"]}
+            aboveBufferRangeHint={aboveRangeHint}
           />
         </div>
       ) : (

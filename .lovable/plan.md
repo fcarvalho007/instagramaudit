@@ -1,207 +1,125 @@
+# Consolidação · Knowledge Base de benchmark e credibilidade de fontes
 
-# Plano · Camada de credibilidade dos benchmarks
+Passagem cirúrgica para alinhar política de citação, helpers e prompt da IA. Sem provedores, sem schema, sem PDF, sem admin, sem `/report/example`.
 
-## Tensão crítica a resolver primeiro
+## Ficheiros bloqueados — pedido de permissão
 
-O dataset canónico em `src/lib/knowledge/benchmark-context.ts` tem uma **regra explícita** desde a versão actual:
+Duas alterações tocam ficheiros listados em `LOCKED_FILES.md`. Antes de avançar preciso de confirmação explícita:
 
-```ts
-sources: [
-  { name: "Socialinsider", uiDisplayAllowed: true, linksAllowedInReport: false },
-  { name: "Buffer",        uiDisplayAllowed: true, linksAllowedInReport: false },
-  { name: "Hootsuite",     uiDisplayAllowed: true, linksAllowedInReport: false },
-  { name: "Databox",       uiDisplayAllowed: true, linksAllowedInReport: false },
-]
-```
+1. **`KNOWLEDGE.md`** (locked · "Knowledge Base Policy") — Tarefa 5 exige separar fontes activas (Socialinsider, Buffer, Hootsuite) de fonte futura (Databox) e clarificar a regra de citação. Sem editar este ficheiro a política canónica fica incoerente com o código.
+2. **`src/components/report-redesign/report-methodology.tsx`** (locked · "Report Redesign — stable foundation") — actualmente cita Databox como fonte visível activa e a copy interna refere "quatro fontes". Tarefa 3 pede para Databox ser interno/futuro, não visível como fonte activa.
 
-E a `KnowledgeNote` "Política de fontes de benchmark" reforça: **nomes podem aparecer, URLs nunca**.
+Se preferires manter ambos intactos, faço uma variante reduzida do plano que documenta as divergências mas não as resolve no UI/política.
 
-O teu pedido pede o oposto — referências `[1][2]` clicáveis em `target="_blank"`. Há três caminhos possíveis:
+Assumo a partir daqui que **autorizas** ambas as edições (mínimas e cirúrgicas). Se não, dizes "manter locked" e ajusto.
 
-| Opção | O que muda | Consequência |
-|---|---|---|
-| **A · Manter regra: nomes sem links** | Mostra `Referência de mercado · Instagram · contas 5K–10K · Socialinsider · Buffer` (chips de nome, sem URL clicável). Abre tooltip/popover com o nome e a função editorial da fonte. | Coerente com a regra actual. Perde-se a "prova" externa. |
-| **B · Levantar a regra: nomes + links** *(o que pedes)* | Flip `linksAllowedInReport: true`. Renderiza `[1][2]` clicáveis. URLs vivem só no dataset. Bump de `BENCHMARK_DATASET_VERSION` para `2026-04-30b` (invalida cache de insights v2). | Máxima credibilidade externa. Risco editorial: sair do relatório no momento de leitura. |
-| **C · Híbrido por contexto** | Bloco 01 mostra **só nomes** (leitura rápida). A secção `ReportMethodology` ganha um bloco "Fontes de referência" com a lista completa + URLs clicáveis (sítio único onde se pode "verificar"). | Mantém o relatório limpo, dá rastreabilidade num só sítio. |
+## O que está hoje
 
-**Recomendação:** **Opção C**. Resolve a credibilidade sem poluir cada cartão e mantém a doutrina "URLs vivem na metodologia, não no corpo".
+- `INSTAGRAM_BENCHMARK_CONTEXT.sources` lista as 4 fontes com `uiDisplayAllowed: true` para todas → Databox aparece visível em metodologia e na `sourceNote` ("Contexto de referência: Socialinsider, Buffer, Hootsuite e Databox.").
+- `report-positioning-banner.tsx` mostra essa `sourceNote` directamente → Databox visível no Bloco 01.
+- `report-benchmark-evidence.tsx` mostra apenas nomes (sem URLs) — já em conformidade com a política.
+- Não existem marcadores compactos `[1][2][3]` em lado nenhum — não há nada a desactivar; basta documentar como opção futura permitida.
+- `getBenchmarkContextForProfile` já trata 1M+ correctamente: `bufferTier=null`, `internalTier="macro"`, `tierNote` preenchido com `macroTierNote`. Os testes já cobrem 1.2M. Falta apenas o caso fronteira **999 999** e **1 000 000** explícitos.
+- `formatKnowledgeContextForPrompt` (`context.server.ts`) já proíbe atribuir benchmarks a fontes externas e proíbe URLs. **Não tem** wording "cite source when relevant" — não existe contradição directa. Apenas reforçar a regra no início do bloco para deixar claro que as fontes são contexto silencioso.
+- `prompt-v2.ts` linha 44 diz: *"Quando relevante, citar benchmarks da Knowledge Base"*. Refere citar **valores** de benchmark, não fontes — e logo a seguir (linhas 51-52) proíbe nomes de empresas. Pequena clarificação textual recomendada para eliminar ambiguidade.
+- `sanitizeAiCopy` está **já wired** em `openai-insights.server.ts:658`. Tarefa 6 reduz-se a actualizar comentário/doc.
 
-→ **Pergunta-chave antes de avançar: qual destas três opções queres?**
+## Mudanças propostas
 
-Vou assumir **C** no resto do plano. Se preferires A ou B, ajusto.
+### 1 · `src/lib/knowledge/benchmark-context.ts`
 
----
+- Mudar `Databox.uiDisplayAllowed` de `true` para `false`. Adicionar comentário JSDoc `internalOnly: true` (campo opcional novo no tipo).
+- Estender `BenchmarkSource` com:
+  - `visibility: "active" | "future"` (`Socialinsider`/`Buffer`/`Hootsuite` = `active`; `Databox` = `future`).
+- Actualizar `visibleCopyRulesPt.sourceNote` para:
+  - `"Fontes de enquadramento: Socialinsider, Buffer e Hootsuite."`
+- Adicionar `visibleCopyRulesPt.aboveBufferRangeHint`:
+  - `"Perfil acima dos escalões públicos de referência usados nesta leitura."`
+- `copyHints.tierNote` para perfis ≥1M passa a usar `aboveBufferRangeHint` (mais discreto e directo) em vez do `macroTierNote` actual. Manter `macroTierNote` como compatibilidade interna (prompt continua a recebê-lo).
+- Bump `BENCHMARK_DATASET_VERSION` para `"2026-05-02"`.
 
-## R7 · Confidence/quality nas referências
+### 2 · `src/lib/knowledge/context.server.ts`
 
-Adiciono à tua sugestão: cada `BenchmarkSource` ganha `referenceQuality: "high" | "medium" | "low"` (não `confidence`, para não confundir com a confidence dos AI insights). Critério inicial:
+Não há contradição activa, mas reforço explícito:
 
-- **high** — Socialinsider, Buffer (datasets grandes, públicos, com metodologia).
-- **medium** — Hootsuite (cross-industry, agregados, metodologia menos transparente).
-- **low** — Databox (futuro/inspiracional, hoje não usamos para valores).
+- Adicionar primeira linha ao bloco "Regras editoriais": *"As fontes editoriais (Socialinsider, Buffer, Hootsuite, Databox) são apenas contexto silencioso de mercado. NÃO atribuir o perfil analisado a estas fontes — elas não analisaram este perfil."*
+- A regra existente sobre URLs e marcas mantém-se.
 
-Isto **não muda a UI agora** mas destranca futuras leituras de "intervalo de mercado".
+### 3 · `src/lib/insights/prompt-v2.ts`
 
----
+Linha 44 — substituir:
+- antes: *"Quando relevante, citar benchmarks da Knowledge Base (ex.: 'vs 4,2% médios para o tier'). Não inventar benchmarks que não venham da KB nem do payload."*
+- depois: *"Quando relevante, citar **valores** de benchmark da Knowledge Base de forma anónima (ex.: 'vs 4,2% médios para o tier'). Nunca atribuir o perfil ou os benchmarks a fontes externas. Não inventar benchmarks que não venham da KB nem do payload."*
 
-## Arquitectura proposta
+### 4 · `src/components/report-redesign/v2/report-benchmark-evidence.tsx`
 
-### 1. Knowledge Base (sem schema novo)
+- Tipar `sourceNames` com restrição literal a `"Socialinsider" | "Buffer" | "Hootsuite"` (Databox fica fora do UI activo).
+- Adicionar prop opcional `aboveBufferRangeHint?: string` que, quando presente, renderiza uma segunda linha mono pequena com o aviso para perfis ≥1M.
 
-Tudo em **TypeScript estático** dentro do dataset canónico já existente. Sem migrações Supabase, sem writes. As tabelas `knowledge_sources` / `knowledge_benchmarks` continuam a servir o admin e o orquestrador AI; o que adicionamos é a camada **editorial** que a UI lê.
+### 5 · `src/components/report-redesign/v2/report-overview-cards.tsx`
 
-Estendo `BenchmarkSource` em `src/lib/knowledge/benchmark-context.ts`:
+- Quando `followers >= 1_000_000`, passar `aboveBufferRangeHint={...}` ao `ReportBenchmarkEvidence` e omitir `followerTier` (em vez de mostrar tier errado).
+- `sourceNames={["Socialinsider", "Buffer"]}` mantém-se (já correcto).
 
-```ts
-export interface BenchmarkSource {
-  name: BenchmarkSourceName;
-  role: string;
-  uiDisplayAllowed: boolean;
-  linksAllowedInReport: boolean;
-  // novos
-  url: string;                 // só usado em <ReportMethodology>
-  publishedYear: number;
-  shortDescription: string;    // 1 linha pt-PT — vai à metodologia
-  referenceQuality: "high" | "medium" | "low";
-}
-```
+### 6 · `src/components/report-redesign/v2/report-positioning-banner.tsx`
 
-URLs registados (já vêm do teu briefing):
+- Continua a usar `visibleCopyRulesPt.sourceNote` — sem alterações (a copy actualizada em 1 já remove Databox).
 
-- Socialinsider → `https://www.socialinsider.io/social-media-benchmarks/instagram` · 2025 · `high`
-- Buffer → `https://buffer.com/insights/instagram-benchmarks` · 2025 · `high`
-- Hootsuite → `https://blog.hootsuite.com/social-media-benchmarks/` · 2025 · `medium`
-- Databox → `https://databox.com/benchmarks/instagram-benchmarks` · 2025 · `low`
+### 7 · `src/components/report-redesign/report-methodology.tsx` *(LOCKED)*
 
-Bump de `BENCHMARK_DATASET_VERSION` → `2026-04-30b`.
+- Substituir o filtro `uiDisplayAllowed` por `s.visibility === "active"` na lista "Fontes de referência" → Databox sai automaticamente.
+- Actualizar subtítulo: "Quatro fontes complementam-se…" → "Três fontes públicas complementam a leitura — recolha pública, referência de mercado e leitura editorial."
+- Adicionar uma linha discreta em itálico no fim da secção "Fontes de referência":
+  *"Databox fica reservado para futura ligação autenticada — métricas privadas como alcance, visitas e cliques."*
 
-### 2. Componente novo · `ReportBenchmarkEvidence`
+### 8 · `KNOWLEDGE.md` *(LOCKED)*
 
-Ficheiro: `src/components/report-redesign/v2/report-benchmark-evidence.tsx`
-
-Render minimalista:
+Reorganizar o §1 "Fontes editoriais aprovadas":
 
 ```text
-Referência de mercado · Instagram · contas 5K–10K · Socialinsider · Buffer
+## 1. Fontes editoriais
+
+### 1.1 Activas no relatório público
+- Socialinsider · contexto orgânico e por formato
+- Buffer · contexto por escalão de seguidores
+- Hootsuite · contexto de indústria
+
+### 1.2 Reservada para futuro autenticado
+- Databox · métricas privadas (alcance, visitas, cliques, saves)
+  Não citar no relatório actual nem na linha de fontes visível.
 ```
 
-Sem `[1][2]` clicáveis (Opção C). Os nomes ficam como **chips mono pequenos** com `title` + `aria-label` que lêem "Fonte: Socialinsider — ver detalhes na metodologia".
+Actualizar exemplo visível para:
+> "Fontes de enquadramento: Socialinsider, Buffer e Hootsuite."
 
-Props:
+Acrescentar nota sobre marcadores `[1][2][3]`: permitidos quando claramente apresentados como referências externas, sempre com `target="_blank" rel="noopener noreferrer"` — actualmente não usados, opção futura.
 
-```ts
-type Props = {
-  platform: "instagram";
-  followerTier?: string | null;       // já formatado: "0–1K", "5–10K"...
-  industry?: string | null;           // só se realmente conhecido
-  sourceNames: BenchmarkSourceName[]; // 1 a 3 nomes
-  className?: string;
-};
-```
+### 9 · `src/lib/knowledge/sanitize-ai-copy.ts`
 
-**Regra anti-invenção:**
-- `followerTier` derivado por `getBufferTierForFollowers(followers).tier`. Se `null` → omitir o segmento.
-- `industry` só renderiza se `industry !== null` — caso contrário usa "referência geral de mercado".
-- `sourceNames` filtrados por `uiDisplayAllowed === true`.
+- Actualizar JSDoc do topo: trocar a nota "Implemented but not yet wired" para "Wired no orquestrador OpenAI v2 em `openai-insights.server.ts` (post-validation step)."
 
-### 3. `EngagementRateCard` — wire-up
+### 10 · Testes
 
-Em `src/components/report-redesign/v2/report-overview-cards.tsx`:
+`src/lib/knowledge/__tests__/benchmark-context.test.ts`:
 
-- Calcular `bufferTier` a partir de `result.data.profile.followers` (já disponível). Vem por prop nova `followers` ao `EngagementRateCard`.
-- Substituir o **chip duplo** actual (`CÁLCULO ·` + `REFERÊNCIA EXTERNA · KNOWLEDGE BASE`) por:
-  - Header: `CÁLCULO · GOSTOS + COMENTÁRIOS` (mantém-se).
-  - Junto à linha "vs. 4,20% de referência": substituir o chip de `external` pelo `<ReportBenchmarkEvidence …>`.
+- Ajustar teste "Databox baixa" → também verificar `visibility === "future"`.
+- Ajustar teste "tem as quatro fontes aprovadas" → manter os 4 nomes mas separar:
+  - `sources.filter(s => s.visibility === "active").map(...)` deve dar `["Buffer", "Hootsuite", "Socialinsider"]`.
+- Acrescentar `it("Socialinsider/Buffer/Hootsuite são activas; Databox futura")`.
+- Acrescentar `it("999 999 seguidores → tier 500K-1M")` → `expect(getBufferTierForFollowers(999_999)?.tier).toBe("500K-1M")`.
+- Manter `1_000_000 → null` (já existe). Acrescentar `it("1M+ marca aboveBufferRangeHint em copyHints")` chamando `getBenchmarkContextForProfile({ followers: 1_000_000, ... })` e verificando `copyHints.tierNote` contém "acima dos escalões".
+- Acrescentar `it("sourceNote visível não contém Databox")` → `expect(visibleCopyRulesPt.sourceNote).not.toContain("Databox")`.
 
-Resultado visual em mobile:
+## Validação
 
-```text
-vs. 4,20% de referência
-Referência de mercado · Instagram · contas 5K–10K · Socialinsider · Buffer
-```
-
-### 4. `ReportMethodology` — bloco "Fontes de referência"
-
-Em `src/components/report-redesign/report-methodology.tsx`, **abaixo** da grelha de legenda dos chips (R1 que já fizemos), adicionar:
-
-```text
-Fontes de referência                        DATASET 2026-04-30b
-[📖] Socialinsider 2025 · Estudo agregado de envolvimento e formato.   ↗
-[📖] Buffer 2025      · Benchmarks por dimensão de conta.              ↗
-[📖] Hootsuite 2025   · Contexto cross-indústria.                      ↗
-[📖] Databox 2025     · Inspiração para futura ligação autenticada.    ↗
-```
-
-Cada linha:
-- ícone `BookOpen` (mantém coerência com `external` chip)
-- nome + ano + 1 linha de `shortDescription`
-- link `↗` à direita, `target="_blank" rel="noopener noreferrer"`, `aria-label="Abrir página da Socialinsider numa nova aba"`
-- chip discreto `referenceQuality` só quando `medium`/`low` — `high` fica implícito (sem ruído).
-
-Sem URLs visíveis no texto. Só o ícone `↗` é clicável.
-
-### 5. Distinção benchmark ≠ concorrentes diretos
-
-Adicionar **um** bloco discreto, **uma única vez**, em `ReportMethodology` (não em cada cartão), logo abaixo das fontes:
-
-```text
-Comparação direta com concorrentes
-Disponível no plano Pro: adicionar perfis concorrentes para
-comparar este perfil com contas reais do mesmo mercado.
-[ Adicionar concorrente · Pro ]   ← botão ghost disabled
-```
-
-Botão `disabled` com `title="Disponível no plano Pro"` — sem onClick, sem rota, sem feature.
-
-### 6. Regra editorial reforçada
-
-Adicionar **uma frase** ao parágrafo de explicação na metodologia:
-
-> "Estas referências usam estudos públicos de mercado para dar contexto aos resultados. Quando não há setor definido, a comparação é feita por plataforma e dimensão aproximada da conta."
-
-(Substitui a frase actual que descreve só os 5 chips.)
-
----
-
-## Fora do âmbito
-
-- **Não** adicionamos `BenchmarkReference` granular por métrica/indústria/geografia (o teu type spec do briefing). O dataset actual já cobre os casos vivos (engagement, frequência, formato). Estender o modelo seria sobre-engenharia para o que a UI consome hoje — fica para o momento em que existir um segundo cartão a comparar com benchmark.
-- **Não** mexemos em `/report/example` (locked).
-- **Não** tocamos em providers, AI prompts, PDF, admin, validators.
-- **Não** criamos schema novo no Supabase.
-- **Não** adicionamos packages.
-- **Não** mudamos o `report-kpi-grid.tsx` legacy nem o `report-kpi-grid-v2.tsx` — a evidência só entra no `EngagementRateCard` cinematográfico do overview.
-
----
-
-## Detalhes técnicos
-
-**Ficheiros a editar:**
-
-- `src/lib/knowledge/benchmark-context.ts` — estender `BenchmarkSource` (url, publishedYear, shortDescription, referenceQuality), bump `BENCHMARK_DATASET_VERSION`.
-- `src/lib/knowledge/__tests__/benchmark-context.test.ts` — actualizar assertions sobre fontes; adicionar test para `referenceQuality`.
-- `src/components/report-redesign/v2/report-benchmark-evidence.tsx` — **novo**.
-- `src/components/report-redesign/v2/report-overview-cards.tsx` — passar `followers` ao `EngagementRateCard`, substituir chip `external` pelo novo componente.
-- `src/components/report-redesign/report-methodology.tsx` — bloco "Fontes de referência" + bloco "Comparação direta com concorrentes" + frase editorial.
-
-**Validação:**
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- QA visual a 375 / 768 / desktop em `/analyze/frederico.m.carvalho`
 
----
+## Relatório final entregará
 
-## Checkpoint
-
-☐ R-Decisão · Confirmar Opção C (nomes em-card + URLs só na metodologia)
-☐ KB1 · Estender `BenchmarkSource` com url + publishedYear + shortDescription + referenceQuality
-☐ KB2 · Bump `BENCHMARK_DATASET_VERSION` → `2026-04-30b`
-☐ UI1 · Criar `ReportBenchmarkEvidence`
-☐ UI2 · Wire-up no `EngagementRateCard` (passar followers, substituir chip)
-☐ UI3 · Bloco "Fontes de referência" na metodologia (com `target="_blank" rel="noopener noreferrer"` + aria-labels)
-☐ UI4 · Teaser "Comparação direta com concorrentes · Pro" (botão disabled)
-☐ UI5 · Frase editorial actualizada
-☐ Tests · `benchmark-context.test.ts` actualizado
-☐ TS pass · Vitest pass · QA 375/768/desktop
-
-**Aprovas Opção C com este plano? Se preferires A ou B, indica e ajusto antes de avançar.**
+- Ficheiros editados (incluindo confirmação dos dois locked).
+- Confirmação de que `context.server.ts` não tinha "cite source when relevant" e qual foi o reforço aplicado.
+- Wording final da linha de fontes visível.
+- Comportamento 1M+ (tier null + hint).
+- Estado Databox (interno/futuro).
+- Resultado `tsc` e `vitest`.

@@ -4,8 +4,12 @@
  *
  * Implementa a política definida em `KNOWLEDGE.md` e na nota
  * "Política de fontes de benchmark" da Knowledge Base. Não bloqueia
- * render — apenas devolve violações para serem registadas em log
- * (modo "log only" enquanto a observabilidade não estiver ligada).
+ * render — apenas devolve violações para serem registadas em log.
+ *
+ * **Wiring actual:** ligado ao orquestrador OpenAI v2 em
+ * `src/lib/insights/openai-insights.server.ts` (passo de pós-validação
+ * após o JSON estrito do modelo) — modo log-only, sem rejeitar a
+ * resposta. Ver `sanitizeAiCopy(text, { hasReachData })` no orquestrador.
  *
  * Categorias de violação:
  *  - `technical_term`     — vocabulário técnico que nunca deve aparecer

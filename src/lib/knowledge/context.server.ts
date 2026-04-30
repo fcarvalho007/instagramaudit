@@ -91,6 +91,9 @@ export function formatKnowledgeContextForPrompt(
   lines.push("");
   lines.push("Regras editoriais (obrigatórias):");
   lines.push(
+    "- As fontes editoriais (Socialinsider, Buffer, Hootsuite, Databox) são apenas contexto silencioso de mercado. NÃO atribuir o perfil analisado a estas fontes — elas não analisaram este perfil.",
+  );
+  lines.push(
     "- Use estes dados como referência direcional para fundamentar a interpretação.",
   );
   lines.push(

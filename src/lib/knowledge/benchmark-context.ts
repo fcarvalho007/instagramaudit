@@ -25,7 +25,7 @@ import type { BenchmarkTier } from "./types";
  * que `INSTAGRAM_BENCHMARK_CONTEXT` for actualizado. Entra no
  * `kbVersion` do orquestrador para invalidar cache de insights v2.
  */
-export const BENCHMARK_DATASET_VERSION = "2026-05-01" as const;
+export const BENCHMARK_DATASET_VERSION = "2026-05-02" as const;
 
 export type BenchmarkSourceName =
   | "Socialinsider"
@@ -54,6 +54,14 @@ export interface BenchmarkSource {
    * apresentada como chip discreto em `medium`/`low` na metodologia.
    */
   referenceQuality: "high" | "medium" | "low";
+  /**
+   * Visibilidade editorial da fonte no relatório actual.
+   *  - `active`: fonte aprovada para citação visível no relatório público.
+   *  - `future`: reservada para futura ligação autenticada (Databox).
+   *    NÃO citar como fonte visível enquanto não houver dados privados
+   *    (alcance, visitas, cliques, saves) no perfil analisado.
+   */
+  visibility: "active" | "future";
 }
 
 export type SocialinsiderFormat = "overall" | "carousel" | "reel" | "image";
@@ -114,6 +122,7 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       shortDescription:
         "Estudo agregado de envolvimento orgânico e desempenho por formato.",
       referenceQuality: "high",
+      visibility: "active",
     },
     {
       name: "Buffer",
@@ -125,6 +134,7 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       shortDescription:
         "Benchmarks por dimensão da conta — cadência, envolvimento e crescimento.",
       referenceQuality: "high",
+      visibility: "active",
     },
     {
       name: "Hootsuite",
@@ -136,17 +146,19 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       shortDescription:
         "Contexto cross-indústria e comparação entre plataformas.",
       referenceQuality: "medium",
+      visibility: "active",
     },
     {
       name: "Databox",
       role: "Future authenticated dashboard benchmark inspiration",
-      uiDisplayAllowed: true,
+      uiDisplayAllowed: false,
       linksAllowedInReport: false,
       url: "https://databox.com/benchmarks/instagram-benchmarks",
       publishedYear: 2025,
       shortDescription:
         "Inspiração para futura ligação autenticada — métricas privadas.",
       referenceQuality: "low",
+      visibility: "future",
     },
   ] satisfies ReadonlyArray<BenchmarkSource>,
 
@@ -235,7 +247,7 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
     benchmarkNote:
       "Os benchmarks são referências direcionais. A leitura pode variar consoante dimensão da conta, setor, período analisado e método de cálculo.",
     sourceNote:
-      "Contexto de referência: Socialinsider, Buffer, Hootsuite e Databox.",
+      "Fontes de enquadramento: Socialinsider, Buffer e Hootsuite.",
     engagementExplanation:
       "A taxa de envolvimento compara gostos e comentários com a dimensão da audiência. É útil para leitura rápida, mas deve ser interpretada como referência direcional.",
     postingFrequencyExplanation:
@@ -248,6 +260,8 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       "Imagens estáticas continuam úteis para produto, eventos, identidade visual e presença de marca, sobretudo quando fazem parte de uma narrativa consistente.",
     macroTierNote:
       "Conta com 1M ou mais seguidores: a referência Buffer 500K–1M é a mais próxima disponível, pelo que a leitura é puramente direcional.",
+    aboveBufferRangeHint:
+      "Perfil acima dos escalões públicos de referência usados nesta leitura.",
   },
 } as const;
 
@@ -422,7 +436,7 @@ export function getBenchmarkContextForProfile(
       format: formatCopy,
       benchmarkNote: copy.benchmarkNote,
       sourceNote: copy.sourceNote,
-      tierNote: isAboveBufferRange ? copy.macroTierNote : "",
+      tierNote: isAboveBufferRange ? copy.aboveBufferRangeHint : "",
     },
   };
 }
