@@ -352,7 +352,6 @@ function renderFormatCard(
   const items = breakdown.map((b, i) => ({
     label: humanFormat(b.format),
     value: b.sharePct,
-    count: typeof b.count === "number" ? b.count : undefined,
     color:
       i === 0
         ? "bg-blue-600"
