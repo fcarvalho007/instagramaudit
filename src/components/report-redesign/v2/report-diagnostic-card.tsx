@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { Bot } from "lucide-react";
+import { AiBadge } from "./ai-badge";
 
 export type DiagnosticTone = "blue" | "amber" | "rose" | "emerald" | "slate";
 
@@ -20,6 +22,12 @@ interface Props {
   /** Texto interpretativo curto. */
   body: ReactNode;
   tone?: DiagnosticTone;
+  /**
+   * Quando presente, renderiza um bloco "Leitura IA" abaixo do body,
+   * com o texto curto vindo de `aiInsightsV2.sections.*`. Só passar
+   * quando o texto vier mesmo da OpenAI.
+   */
+  aiSource?: { kind: "interpretation"; text: string } | null;
 }
 
 const TONE: Record<
@@ -70,6 +78,7 @@ export function ReportDiagnosticCard({
   children,
   body,
   tone = "blue",
+  aiSource,
 }: Props) {
   const t = TONE[tone];
   return (
@@ -81,11 +90,14 @@ export function ReportDiagnosticCard({
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
       )}
     >
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
-        Pergunta {number}
-        <span className="mx-1.5 text-slate-300">·</span>
-        <span className="text-slate-500">{label}</span>
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+          Pergunta {number}
+          <span className="mx-1.5 text-slate-300">·</span>
+          <span className="text-slate-500">{label}</span>
+        </p>
+        {aiSource ? <AiBadge variant="inline" /> : null}
+      </div>
 
       <h3
         className={cn(
@@ -118,6 +130,18 @@ export function ReportDiagnosticCard({
       {children ? <div className="min-w-0">{children}</div> : null}
 
       <p className="text-sm text-slate-600 leading-relaxed mt-auto">{body}</p>
+
+      {aiSource ? (
+        <div className="mt-1 border-t border-slate-200/70 pt-3 space-y-1.5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-blue-700 inline-flex items-center gap-1.5">
+            <Bot aria-hidden className="size-3" />
+            Leitura IA · interpretação
+          </p>
+          <p className="text-sm text-slate-700 leading-relaxed italic">
+            {aiSource.text}
+          </p>
+        </div>
+      ) : null}
     </article>
   );
 }
