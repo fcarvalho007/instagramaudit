@@ -752,13 +752,65 @@ function buildAiInsightsV2(
     count += 1;
   }
   if (count === 0) return null;
+  const priorities = extractPersistedPriorities(raw);
   return {
     generatedAt:
       typeof raw.generated_at === "string" ? raw.generated_at : null,
     model:
       typeof raw.model === "string" && raw.model.length > 0 ? raw.model : null,
     sections: out,
+    priorities,
   };
+}
+
+const VALID_PRIORITY_LEVELS = new Set(["alta", "media", "oportunidade"]);
+
+function extractPersistedPriorities(
+  raw: SnapshotPayload["ai_insights_v2"] | null | undefined,
+): NonNullable<ReportEnriched["aiInsightsV2"]>["priorities"] {
+  if (!raw || typeof raw !== "object") return null;
+  const block = (raw as { priorities?: unknown }).priorities;
+  if (!block || typeof block !== "object") return null;
+  const items = (block as { items?: unknown }).items;
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const out: Array<{
+    level: "alta" | "media" | "oportunidade";
+    title: string;
+    body: string;
+    resolves: string;
+  }> = [];
+  for (const it of items) {
+    if (!it || typeof it !== "object") continue;
+    const level = (it as { level?: unknown }).level;
+    const title =
+      typeof (it as { title?: unknown }).title === "string"
+        ? ((it as { title: string }).title.trim())
+        : "";
+    const body =
+      typeof (it as { body?: unknown }).body === "string"
+        ? ((it as { body: string }).body.trim())
+        : "";
+    const resolves =
+      typeof (it as { resolves?: unknown }).resolves === "string"
+        ? ((it as { resolves: string }).resolves.trim())
+        : "";
+    if (
+      typeof level !== "string" ||
+      !VALID_PRIORITY_LEVELS.has(level) ||
+      !title ||
+      !body ||
+      !resolves
+    ) {
+      continue;
+    }
+    out.push({
+      level: level as "alta" | "media" | "oportunidade",
+      title,
+      body,
+      resolves,
+    });
+  }
+  return out.length > 0 ? out : null;
 }
 
 /**
