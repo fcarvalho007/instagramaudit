@@ -47,6 +47,8 @@ export interface SnapshotProfile {
   followers_count?: number | null;
   following_count?: number | null;
   posts_count?: number | null;
+  /** Lista de URLs externas declaradas no perfil Instagram (campo `external_urls`). */
+  external_urls?: string[] | null;
 }
 
 export interface SnapshotContentSummary {
@@ -233,6 +235,12 @@ export interface ReportEnriched {
     bio: string | null;
     avatarUrl: string | null;
     profileUrl: string;
+    /**
+     * URLs externas reais que o Instagram expõe no perfil — distintas do texto
+     * da bio. Usadas pelo Bloco 02 (Q07 · Integração) para detetar "link na
+     * bio" mesmo quando a bio não inclui o URL como texto.
+     */
+    externalUrls: string[];
   };
   topPosts: Array<{
     id: string;
