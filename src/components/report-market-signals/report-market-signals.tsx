@@ -522,12 +522,21 @@ function shouldHideFromCache(cached: unknown): boolean {
   return status === "disabled" || status === "blocked";
 }
 
-interface ReportMarketSignalsSectionProps extends ReportMarketSignalsProps {}
+interface ReportMarketSignalsSectionProps extends ReportMarketSignalsProps {
+  /**
+   * Quando `true`, suprime o cabeçalho da `ReportSectionFrame`
+   * para evitar duplicar a pergunta editorial dominante quando
+   * a secção está aninhada num bloco do `ReportShellV2`.
+   * Default: `false` — comportamento original preservado.
+   */
+  compact?: boolean;
+}
 
 export function ReportMarketSignalsSection(
   props: ReportMarketSignalsSectionProps,
 ) {
   if (shouldHideFromCache(props.cachedSummary)) return null;
+  const { compact, ...rest } = props;
   return (
     <ReportSectionFrame
       eyebrow={marketSignalsCopy.eyebrow}
@@ -535,8 +544,9 @@ export function ReportMarketSignalsSection(
       subtitle={marketSignalsCopy.subtitle}
       tone="soft-cyan"
       ariaLabel={marketSignalsCopy.title}
+      compact={compact}
     >
-      <ReportMarketSignals {...props} />
+      <ReportMarketSignals {...rest} />
     </ReportSectionFrame>
   );
 }
