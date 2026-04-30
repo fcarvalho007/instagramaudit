@@ -38,13 +38,10 @@
  * ─────────────────────────────────────────────────────────────────────
  */
 import type { ReactNode } from "react";
-import { Bot } from "lucide-react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
-import { cn } from "@/lib/utils";
 
-import { REDESIGN_TOKENS } from "../report-tokens";
 import { ReportOverviewCards } from "./report-overview-cards";
 
 interface Props {
@@ -66,43 +63,12 @@ interface Props {
  */
 export function ReportOverviewBlock({ result, renderInsight: _renderInsight }: Props) {
   void _renderInsight;
-  const heroInsight = result.enriched.aiInsightsV2?.sections.hero ?? null;
-  const insightText = heroInsight?.text?.trim() || null;
 
   return (
     <div className="relative space-y-8 md:space-y-10">
 <div className="relative z-10">
         <ReportOverviewCards result={result} />
       </div>
-
-      {insightText ? (
-        <aside
-          role="note"
-          aria-label="Leitura IA"
-          className={cn(
-            "relative z-10 max-w-3xl",
-            "rounded-2xl bg-white border border-blue-100 ring-1 ring-blue-50",
-            "border-l-2 border-l-blue-300",
-            "px-5 py-4 md:px-6 md:py-5",
-            "shadow-[0_1px_2px_rgba(15,23,42,0.03),0_8px_24px_-16px_rgba(59,130,246,0.18)]",
-          )}
-        >
-          <div className="flex items-start gap-3 md:gap-4">
-            <span
-              aria-hidden="true"
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100"
-            >
-              <Bot className="h-3.5 w-3.5" />
-            </span>
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <p className={REDESIGN_TOKENS.eyebrowAccent}>Leitura IA</p>
-              <p className="text-[14px] md:text-[15px] leading-relaxed text-slate-700">
-                {insightText}
-              </p>
-            </div>
-          </div>
-        </aside>
-      ) : null}
     </div>
   );
 }
