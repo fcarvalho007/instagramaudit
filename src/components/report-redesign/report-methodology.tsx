@@ -82,6 +82,12 @@ export function ReportMethodology({ enriched }: Props = {}) {
           </p>
         </div>
       ) : null}
+
+      <p className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70 text-[12px] text-slate-500 leading-relaxed">
+        Como ler este relatório: os cartões distinguem dados extraídos,
+        cálculos próprios, leituras automáticas, leituras por IA e
+        referências externas de benchmark.
+      </p>
     </ReportSectionFrame>
   );
 }

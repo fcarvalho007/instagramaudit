@@ -1,18 +1,10 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { Bot, Database, Cpu } from "lucide-react";
-import { AiBadge } from "./ai-badge";
+import { Bot } from "lucide-react";
+import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
 
 export type DiagnosticTone = "blue" | "amber" | "rose" | "emerald" | "slate";
-
-export type DiagnosticSourceKind = "extracted" | "auto" | "ai";
-
-export interface DiagnosticSourceLabel {
-  kind: DiagnosticSourceKind;
-  /** Texto curto em pt-PT, mostrado em tooltip / footer do cartão. */
-  text: string;
-}
 
 interface Props {
   /** Número visível do cartão, ex.: "01". */
@@ -37,13 +29,14 @@ interface Props {
    */
   aiSource?: { kind: "interpretation"; text: string } | null;
   /**
-   * Indica a natureza da evidência do cartão. Renderiza um chip discreto
-   * no header e uma linha de rodapé com o texto correspondente.
-   *   · "extracted" → DADOS EXTRAÍDOS (ícone Database, neutro)
-   *   · "auto"      → LEITURA AUTOMÁTICA (ícone Cpu, neutro)
-   *   · "ai"        → LEITURA IA (reusa AiBadge; não duplica com `aiSource`)
+   * Tipo de evidência do cartão (ver `ReportSourceLabel`). Renderizado
+   * como chip mono no header. Quando ausente, o cartão não mostra chip.
    */
-  sourceLabel?: DiagnosticSourceLabel | null;
+  sourceType?: ReportSourceType;
+  /** Detalhe curto à direita do tipo, ex.: "GOSTOS + COMENTÁRIOS". */
+  sourceDetail?: string;
+  /** Marca o chip como `caution` (amber) — usar só em leituras automáticas que sinalizam algo a corrigir. */
+  sourceCaution?: boolean;
 }
 
 const TONE: Record<
@@ -79,11 +72,12 @@ const TONE: Record<
 
 /**
  * Cartão de pergunta do Bloco 02. Estrutura:
- *   eyebrow (PERGUNTA NN · LABEL)
+ *   eyebrow (PERGUNTA NN · LABEL) + chip de proveniência (à direita)
  *   pergunta entre aspas (serif)
  *   bloco "Resposta dominante" colorido
  *   slot livre (children) com evidência
  *   body interpretativo curto
+ *   bloco opcional "Leitura IA" (aiSource)
  */
 export function ReportDiagnosticCard({
   number,
@@ -95,14 +89,11 @@ export function ReportDiagnosticCard({
   body,
   tone = "blue",
   aiSource,
-  sourceLabel,
+  sourceType,
+  sourceDetail,
+  sourceCaution,
 }: Props) {
   const t = TONE[tone];
-  const showSourceChip = !!sourceLabel;
-  // Se já existe `aiSource`, evita duplicar badge IA — o badge IA é renderizado
-  // pelo bloco `aiSource` no fundo do cartão.
-  const showAiBadgeFromSourceLabel =
-    showSourceChip && sourceLabel?.kind === "ai" && !aiSource;
   return (
     <article
       className={cn(
@@ -113,34 +104,18 @@ export function ReportDiagnosticCard({
       )}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500 min-w-0">
           Pergunta {number}
           <span className="mx-1.5 text-slate-300">·</span>
           <span className="text-slate-500">{label}</span>
         </p>
-        <div className="flex items-center gap-1.5">
-          {showSourceChip && sourceLabel?.kind === "extracted" ? (
-            <span
-              className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-600"
-              title={sourceLabel.text}
-            >
-              <Database aria-hidden className="size-3" />
-              <span>Dados extraídos</span>
-            </span>
-          ) : null}
-          {showSourceChip && sourceLabel?.kind === "auto" ? (
-            <span
-              className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-1.5 py-0.5 ring-1 ring-slate-200 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-600"
-              title={sourceLabel.text}
-            >
-              <Cpu aria-hidden className="size-3" />
-              <span>Leitura automática</span>
-            </span>
-          ) : null}
-          {(aiSource || showAiBadgeFromSourceLabel) ? (
-            <AiBadge variant="inline" />
-          ) : null}
-        </div>
+        {sourceType ? (
+          <ReportSourceLabel
+            type={sourceType}
+            detail={sourceDetail}
+            caution={sourceCaution}
+          />
+        ) : null}
       </div>
 
       <h3
@@ -185,12 +160,6 @@ export function ReportDiagnosticCard({
             {aiSource.text}
           </p>
         </div>
-      ) : null}
-
-      {sourceLabel && !aiSource ? (
-        <p className="border-t border-slate-200/70 pt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
-          {sourceLabel.text}
-        </p>
       ) : null}
     </article>
   );

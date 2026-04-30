@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { INSTAGRAM_BENCHMARK_CONTEXT } from "@/lib/knowledge/benchmark-context";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
+import { ReportSourceLabel } from "./report-source-label";
 
 interface Props {
   result: AdapterResult;
@@ -74,6 +75,7 @@ function PremiumCard({
   interpretation,
   interpretationTone = "neutral",
   emphasis = "secondary",
+  sourceSlot,
 }: {
   title: string;
   icon: ReactNode;
@@ -81,6 +83,8 @@ function PremiumCard({
   interpretation: string | null;
   interpretationTone?: "good" | "warn" | "bad" | "neutral";
   emphasis?: "primary" | "secondary";
+  /** Chip de proveniência opcional, alinhado à direita do título. */
+  sourceSlot?: ReactNode;
 }) {
   const chipCls =
     interpretationTone === "good"
@@ -123,6 +127,9 @@ function PremiumCard({
           </span>
           <h3 className={titleCls}>{title}</h3>
         </div>
+        {sourceSlot ? (
+          <div className="shrink-0 max-w-[55%]">{sourceSlot}</div>
+        ) : null}
       </header>
 
       <div className="flex-1 flex flex-col gap-3.5 min-w-0">{children}</div>
@@ -167,6 +174,9 @@ function EngagementRateCard({
       interpretation={status.label}
       interpretationTone={status.tone}
       emphasis="primary"
+      sourceSlot={
+        <ReportSourceLabel type="calculation" detail="Gostos + comentários" />
+      }
     >
       <div className="flex items-end gap-3 flex-wrap">
         <span className="font-display text-[3rem] md:text-[3.5rem] font-semibold tracking-[-0.025em] text-slate-900 leading-none tabular-nums">
@@ -194,13 +204,20 @@ function EngagementRateCard({
       </p>
 
       {hasBenchmark ? (
-        <p className="text-[12px] text-slate-500 leading-relaxed">
-          vs.{" "}
-          <span className="font-medium text-slate-700 tabular-nums">
-            {formatPct(benchmark)}
-          </span>{" "}
-          de referência
-        </p>
+        <div className="space-y-1.5">
+          <p className="text-[12px] text-slate-500 leading-relaxed">
+            vs.{" "}
+            <span className="font-medium text-slate-700 tabular-nums">
+              {formatPct(benchmark)}
+            </span>{" "}
+            de referência
+          </p>
+          <ReportSourceLabel
+            type="external"
+            detail="Knowledge Base"
+            className="text-[9px]"
+          />
+        </div>
       ) : (
         <p className="text-[12px] text-slate-500 leading-relaxed">
           Sem referência disponível para esta categoria.
@@ -309,6 +326,7 @@ function PostingRhythmCard({
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
       interpretation={null}
       interpretationTone={status.tone}
+      sourceSlot={<ReportSourceLabel type="calculation" detail="Amostra" />}
     >
       <div className="flex items-end gap-3 flex-wrap">
         <span className="font-display text-[2rem] md:text-[2.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
@@ -436,6 +454,9 @@ function DominantFormatCard({
       icon={<Layers className="h-4 w-4" aria-hidden="true" />}
       interpretation={null}
       interpretationTone={status.tone}
+      sourceSlot={
+        <ReportSourceLabel type="calculation" detail="Posts analisados" />
+      }
     >
       <div className="flex items-end gap-3 flex-wrap min-w-0">
         <span className="font-display text-[2rem] md:text-[2.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">

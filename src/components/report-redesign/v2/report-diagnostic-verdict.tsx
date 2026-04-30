@@ -1,14 +1,14 @@
 import { Bot } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { AiBadge } from "./ai-badge";
+import { ReportSourceLabel } from "./report-source-label";
 
 interface Props {
   text: string;
   /**
    * `ai` = veredito veio de `aiInsightsV2.sections.hero` (OpenAI).
    * `fallback` = síntese determinística construída a partir dos cálculos.
-   * Determina se mostramos o badge "IA" — não dizer IA quando não é.
+   * Determina o chip de proveniência mostrado no header.
    */
   source?: "ai" | "fallback";
 }
@@ -18,6 +18,9 @@ interface Props {
  * Sem alarmes vermelhos. Ícone Bot da Lucide. A cópia é decidida
  * pelo orquestrador do bloco: AI v2 quando existe, fallback
  * determinista, ou cópia segura quando o sinal é insuficiente.
+ *
+ * O chip de proveniência distingue claramente leitura IA de leitura
+ * automática — ver `ReportSourceLabel`.
  */
 export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
   const isAi = source === "ai";
@@ -39,12 +42,15 @@ export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
         >
           <Bot className="size-4" />
         </span>
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 space-y-1.5 flex-1">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-blue-700">
-              {isAi ? "Veredito editorial" : "Veredito editorial · síntese automática"}
+              Veredito editorial
             </p>
-            {isAi ? <AiBadge variant="inline" /> : null}
+            <ReportSourceLabel
+              type={isAi ? "ai" : "automatic"}
+              detail="Veredito editorial"
+            />
           </div>
           <p className="text-[15px] md:text-base text-slate-800 leading-relaxed font-medium">
             {text}
