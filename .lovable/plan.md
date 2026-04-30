@@ -1,125 +1,162 @@
-# Consolidação · Knowledge Base de benchmark e credibilidade de fontes
 
-Passagem cirúrgica para alinhar política de citação, helpers e prompt da IA. Sem provedores, sem schema, sem PDF, sem admin, sem `/report/example`.
+## Contexto
 
-## Ficheiros bloqueados — pedido de permissão
+Cinco frentes pequenas e cirúrgicas, todas dentro do Bloco 01 / Bloco 02 do report v2, sem mexer em providers nem no esquema de dados.
 
-Duas alterações tocam ficheiros listados em `LOCKED_FILES.md`. Antes de avançar preciso de confirmação explícita:
+1. **Pergunta 04 · Temas** — atualmente lê-se apenas como uma headline curta + barras pequenas dentro do mesmo card visual das outras perguntas. Não fica claro que vem das *legendas* nem se vê bem *quais* temas são abordados.
+2. **Prioridades de ação** — hoje são derivadas por regras determinísticas (`derivePriorities`) e podem sair só 1 ou 2 itens fracos. O utilizador quer 3 prioridades robustas, com formulação assistida por IA.
+3. **Espaçamento dos cards do Bloco 02** — ar geral apertado.
+4. **Tipografia (Bloco 01 + 02)** — auditar tamanho/cor de texto.
+5. **Limite de 3 fontes na página** — confirmar que apenas Fraunces (display) + Inter (corpo) + JetBrains Mono (números/eyebrow) estão a ser usadas, e que os números grandes passam para mono nos sítios certos.
 
-1. **`KNOWLEDGE.md`** (locked · "Knowledge Base Policy") — Tarefa 5 exige separar fontes activas (Socialinsider, Buffer, Hootsuite) de fonte futura (Databox) e clarificar a regra de citação. Sem editar este ficheiro a política canónica fica incoerente com o código.
-2. **`src/components/report-redesign/report-methodology.tsx`** (locked · "Report Redesign — stable foundation") — actualmente cita Databox como fonte visível activa e a copy interna refere "quatro fontes". Tarefa 3 pede para Databox ser interno/futuro, não visível como fonte activa.
+---
 
-Se preferires manter ambos intactos, faço uma variante reduzida do plano que documenta as divergências mas não as resolve no UI/política.
+## Alterações
 
-Assumo a partir daqui que **autorizas** ambas as edições (mínimas e cirúrgicas). Se não, dizes "manter locked" e ajusto.
+### 1 · Pergunta 04 “Temas” passa a caixa destacada e isolada
 
-## O que está hoje
+Em `src/components/report-redesign/v2/report-diagnostic-block.tsx`:
 
-- `INSTAGRAM_BENCHMARK_CONTEXT.sources` lista as 4 fontes com `uiDisplayAllowed: true` para todas → Databox aparece visível em metodologia e na `sourceNote` ("Contexto de referência: Socialinsider, Buffer, Hootsuite e Databox.").
-- `report-positioning-banner.tsx` mostra essa `sourceNote` directamente → Databox visível no Bloco 01.
-- `report-benchmark-evidence.tsx` mostra apenas nomes (sem URLs) — já em conformidade com a política.
-- Não existem marcadores compactos `[1][2][3]` em lado nenhum — não há nada a desactivar; basta documentar como opção futura permitida.
-- `getBenchmarkContextForProfile` já trata 1M+ correctamente: `bufferTier=null`, `internalTier="macro"`, `tierNote` preenchido com `macroTierNote`. Os testes já cobrem 1.2M. Falta apenas o caso fronteira **999 999** e **1 000 000** explícitos.
-- `formatKnowledgeContextForPrompt` (`context.server.ts`) já proíbe atribuir benchmarks a fontes externas e proíbe URLs. **Não tem** wording "cite source when relevant" — não existe contradição directa. Apenas reforçar a regra no início do bloco para deixar claro que as fontes são contexto silencioso.
-- `prompt-v2.ts` linha 44 diz: *"Quando relevante, citar benchmarks da Knowledge Base"*. Refere citar **valores** de benchmark, não fontes — e logo a seguir (linhas 51-52) proíbe nomes de empresas. Pequena clarificação textual recomendada para eliminar ambiguidade.
-- `sanitizeAiCopy` está **já wired** em `openai-insights.server.ts:658`. Tarefa 6 reduz-se a actualizar comentário/doc.
+- Retirar `q04` (Temas) do `groupB` para que **deixe de ser um card 1/3** misturado com hashtags / linguagem / resposta.
+- Renderizar a Pergunta 04 num bloco próprio **full-width** entre o veredito e o Grupo A (ou entre Grupo B e Grupo C — ver rascunho abaixo), com chrome visualmente diferente: card largo, padding generoso, eyebrow “PERGUNTA 04 · TEMAS DAS LEGENDAS”, e gráfico maior.
 
-## Mudanças propostas
+Criar `src/components/report-redesign/v2/report-themes-feature.tsx` (novo):
+- Header com pergunta em serif + chip discreto “Baseado nas legendas analisadas” (sempre visível, não opcional).
+- Headline em serif (já vem de `themes.headline`).
+- **Gráfico diferenciador**: lista vertical estilo *bubble/word ranking* — cada tema com a palavra grande (Inter semibold), barra horizontal proporcional e contagem `12×` em mono à direita. Mostra até 6 temas em vez de 4, em duas colunas em desktop.
+- Quando `source === "ai"`: mostra a interpretação da IA num bloco lateral à direita (split 60/40 em desktop) com label “Leitura IA · interpretação” em mono pequeno + texto em itálico.
+- Quando `source === "deterministic"`: mantém só a lista (sem coluna IA).
+- Footer com micro-explicação fixa: *“Estes temas resultam da análise das palavras recorrentes nas legendas. Não correspondem necessariamente às hashtags, que vivem na Pergunta 03.”*
+- Empty-state explícito: *“A amostra ainda não tem palavras suficientes para identificar temas claros.”*
 
-### 1 · `src/lib/knowledge/benchmark-context.ts`
+Robustez do código (`src/lib/report/block02-diagnostic.ts`, `inferThemesFromCaptions`):
+- Aumentar de 5 → 8 itens devolvidos para a UI poder mostrar até 6 com folga.
+- Adicionar campo `derivedFrom: "ai-language" | "captions-keywords"` para a UI rotular sem ambiguidade a fonte.
+- Filtro determinístico extra: descartar palavras com 1–2 chars, stop-words pt e tokens só numéricos (lista curta no próprio módulo). Já existe parcial — endurecer.
 
-- Mudar `Databox.uiDisplayAllowed` de `true` para `false`. Adicionar comentário JSDoc `internalOnly: true` (campo opcional novo no tipo).
-- Estender `BenchmarkSource` com:
-  - `visibility: "active" | "future"` (`Socialinsider`/`Buffer`/`Hootsuite` = `active`; `Databox` = `future`).
-- Actualizar `visibleCopyRulesPt.sourceNote` para:
-  - `"Fontes de enquadramento: Socialinsider, Buffer e Hootsuite."`
-- Adicionar `visibleCopyRulesPt.aboveBufferRangeHint`:
-  - `"Perfil acima dos escalões públicos de referência usados nesta leitura."`
-- `copyHints.tierNote` para perfis ≥1M passa a usar `aboveBufferRangeHint` (mais discreto e directo) em vez do `macroTierNote` actual. Manter `macroTierNote` como compatibilidade interna (prompt continua a recebê-lo).
-- Bump `BENCHMARK_DATASET_VERSION` para `"2026-05-02"`.
+### 2 · Prioridades de ação assistidas pela IA (3 robustas)
 
-### 2 · `src/lib/knowledge/context.server.ts`
+A geração já chama OpenAI via `prompt-v2.ts`. Vamos adicionar uma 10ª secção opcional dedicada a prioridades, sem partir o cache antigo:
 
-Não há contradição activa, mas reforço explícito:
+- Em `src/lib/insights/types.ts`: adicionar opcionalmente `priorities` ao `AiInsightsV2.sections` como `Array<{ level: "alta"|"media"|"oportunidade"; title: string; body: string; resolves: string }>` com `length === 3`. Manter retrocompatibilidade — leitor tolera ausência.
+- Em `src/lib/insights/prompt-v2.ts`:
+  - Acrescentar instrução: *“Devolves também `priorities`: exactamente 3 itens accionáveis derivados do diagnóstico (tipo de conteúdo, funil, captions, audiência, integração, formato dominante). Cada item: `level` ∈ {alta, media, oportunidade}, `title` ≤ 60 chars no infinitivo, `body` 1 frase ≤ 180 chars com número concreto do payload, `resolves` indica que pergunta(s) (Q01–Q08) endereça.”*
+  - Adicionar `priorities` ao `RESPONSE_JSON_SCHEMA_V2` com `minItems: 3, maxItems: 3`.
+  - Aumentar levemente o payload do user prompt para incluir os classifiers do Block 02 já calculados (forma compacta, ver §Detalhes técnicos).
+- Em `src/components/report-redesign/v2/report-diagnostic-block.tsx`:
+  - `derivePriorities` continua como **fallback** quando a IA não devolver prioridades válidas (cache antigo, falha de schema, drift). Renomeá-lo internamente `derivePrioritiesFallback` para deixar a hierarquia óbvia.
+  - Passar `aiPriorities = result.enriched.aiInsightsV2?.sections.priorities ?? null` para `<ReportDiagnosticPriorities>`.
+- Em `src/components/report-redesign/v2/report-diagnostic-priorities.tsx`:
+  - Aceitar `items` vindos da IA OU do fallback.
+  - Quando vêm da IA, o cabeçalho ganha um chip mono pequeno *“Leitura IA · prioridades”* (mesmo padrão do `aiSource` dos outros cards).
+  - Garantir sempre 3 cards (a IA já devolve 3; o fallback completa até 3 com itens neutros se necessário).
 
-- Adicionar primeira linha ao bloco "Regras editoriais": *"As fontes editoriais (Socialinsider, Buffer, Hootsuite, Databox) são apenas contexto silencioso de mercado. NÃO atribuir o perfil analisado a estas fontes — elas não analisaram este perfil."*
-- A regra existente sobre URLs e marcas mantém-se.
+### 3 · Espaçamento dos cards do Bloco 02
 
-### 3 · `src/lib/insights/prompt-v2.ts`
+Apertar/respirar de forma sistemática nos cards das perguntas:
 
-Linha 44 — substituir:
-- antes: *"Quando relevante, citar benchmarks da Knowledge Base (ex.: 'vs 4,2% médios para o tier'). Não inventar benchmarks que não venham da KB nem do payload."*
-- depois: *"Quando relevante, citar **valores** de benchmark da Knowledge Base de forma anónima (ex.: 'vs 4,2% médios para o tier'). Nunca atribuir o perfil ou os benchmarks a fontes externas. Não inventar benchmarks que não venham da KB nem do payload."*
+- `report-diagnostic-card.tsx`:
+  - `p-5 md:p-6` → `p-6 md:p-7`.
+  - `gap-4` interno → `gap-5`.
+  - Espaço entre `body` e o footer com `sourceType`: trocar `pt-3 border-t border-slate-100` por `pt-4 mt-2 border-t border-slate-100`.
+- `report-diagnostic-grid-v2.tsx` (caso ainda usado por algum shell): mesmo padding.
+- `report-diagnostic-group.tsx`: aumentar gap externo entre cards `gap-4 md:gap-5` → `gap-5 md:gap-6`.
+- `report-diagnostic-block.tsx`: `space-y-8 md:space-y-10` → `space-y-10 md:space-y-12` para separar veredito → grupos → temas → prioridades → CTA.
+- `report-diagnostic-priorities.tsx`: padding interno `p-5` → `p-6`.
 
-### 4 · `src/components/report-redesign/v2/report-benchmark-evidence.tsx`
+### 4 · Tipografia — Bloco 01 + 02
 
-- Tipar `sourceNames` com restrição literal a `"Socialinsider" | "Buffer" | "Hootsuite"` (Databox fica fora do UI activo).
-- Adicionar prop opcional `aboveBufferRangeHint?: string` que, quando presente, renderiza uma segunda linha mono pequena com o aviso para perfis ≥1M.
+Auditar e harmonizar (sem inventar tokens novos):
 
-### 5 · `src/components/report-redesign/v2/report-overview-cards.tsx`
+**Bloco 01 (`report-overview-cards.tsx`)**
+- Números grandes (3rem, 2rem) → manter tamanho mas trocar `font-display` por `font-mono` com `font-medium` para ficar consistente com o admin (JetBrains Mono tabular). Hoje os “3,2 %”, “0,3” e “100%” estão em Fraunces, o que pesa demais e introduz uma 4ª intenção tipográfica face aos cabeçalhos.
+- `text-slate-500` em legendas micro: subir para `text-slate-600` quando o tamanho for ≤ 11.5px (legibilidade WCAG no fundo branco).
 
-- Quando `followers >= 1_000_000`, passar `aboveBufferRangeHint={...}` ao `ReportBenchmarkEvidence` e omitir `followerTier` (em vez de mostrar tier errado).
-- `sourceNames={["Socialinsider", "Buffer"]}` mantém-se (já correcto).
+**Bloco 02 (`report-diagnostic-card.tsx`)**
+- `answer` (a “Resposta dominante”) está em `font-display` 1.125–1.25rem — manter, é onde a serifada faz sentido (continua a ser título curto).
+- `primary` numérico das versões antigas (grid v2) — também passa para `font-mono` se for puramente numérico.
+- `body` em `text-slate-600 text-sm` → `text-[14px] text-slate-700 leading-relaxed`.
+- Eyebrow: já em mono `text-[10px]` — ok, mas uniformizar tracking para `tracking-[0.16em]` em todo o lado (hoje há 0.14, 0.16, 0.18 misturados).
 
-### 6 · `src/components/report-redesign/v2/report-positioning-banner.tsx`
+### 5 · Confirmar regra de 3 fontes na página
 
-- Continua a usar `visibleCopyRulesPt.sourceNote` — sem alterações (a copy actualizada em 1 já remove Databox).
+Já só temos 3 famílias declaradas (`Fraunces`, `Inter`, `JetBrains Mono`). Riscos detectados:
+- Nenhum import extra de Google Fonts a adicionar — confirmado em `tokens.css` / `styles.css`.
+- Garantir que nenhum componente do report usa `font-serif` cru ou `font-sans` fora dos tokens. Fazer pesquisa final e remover ocorrências inconsistentes (apenas `font-display`, `font-sans` (Inter via base), `font-mono`).
 
-### 7 · `src/components/report-redesign/report-methodology.tsx` *(LOCKED)*
+---
 
-- Substituir o filtro `uiDisplayAllowed` por `s.visibility === "active"` na lista "Fontes de referência" → Databox sai automaticamente.
-- Actualizar subtítulo: "Quatro fontes complementam-se…" → "Três fontes públicas complementam a leitura — recolha pública, referência de mercado e leitura editorial."
-- Adicionar uma linha discreta em itálico no fim da secção "Fontes de referência":
-  *"Databox fica reservado para futura ligação autenticada — métricas privadas como alcance, visitas e cliques."*
+## Detalhes técnicos
 
-### 8 · `KNOWLEDGE.md` *(LOCKED)*
-
-Reorganizar o §1 "Fontes editoriais aprovadas":
-
-```text
-## 1. Fontes editoriais
-
-### 1.1 Activas no relatório público
-- Socialinsider · contexto orgânico e por formato
-- Buffer · contexto por escalão de seguidores
-- Hootsuite · contexto de indústria
-
-### 1.2 Reservada para futuro autenticado
-- Databox · métricas privadas (alcance, visitas, cliques, saves)
-  Não citar no relatório actual nem na linha de fontes visível.
+**`AiInsightsV2.sections.priorities` no payload do user prompt**
+Em `prompt-v2.ts`, ao construir o user payload, incluir um bloco compacto:
+```json
+{
+  "block02_diagnostic": {
+    "content_type": { "label": "...", "share_pct": 42, "sample_size": 24 },
+    "funnel": { "label": "...", "share_pct": 35 },
+    "caption": { "label": "...", "avg_length": 187, "cta_share_pct": 22, "question_share_pct": 14 },
+    "audience": { "label": "...", "comments_to_likes_pct": 1.6 },
+    "integration": { "label": "...", "bio_link": true, "cta_share_pct": 22 },
+    "dominant_format": { "label": "Reels", "share_pct": 72 }
+  }
+}
 ```
+Calculado por uma helper nova `buildBlock02Snapshot(result, payload)` em `src/lib/insights/build-context.ts` reutilizando os classifiers já existentes — sem nova chamada a providers.
 
-Actualizar exemplo visível para:
-> "Fontes de enquadramento: Socialinsider, Buffer e Hootsuite."
+**Cache-bust**
+Bumpar `BENCHMARK_DATASET_VERSION` para `2026-05-08` (campo `priorities` muda o schema esperado).
 
-Acrescentar nota sobre marcadores `[1][2][3]`: permitidos quando claramente apresentados como referências externas, sempre com `target="_blank" rel="noopener noreferrer"` — actualmente não usados, opção futura.
+**Validação**
+- `src/lib/insights/validate-v2.ts`: aceitar `priorities` opcional; quando presente validar `length === 3` e `level` no enum.
+- Atualizar/adicionar testes:
+  - `src/lib/insights/__tests__/validate-v2.test.ts` (novo se não existir) — cobrir presença/ausência de `priorities`.
+  - `src/lib/report/__tests__/block02-themes.test.ts` — testar `inferThemesFromCaptions` com stop-words, tokens curtos e cap a 8.
+  - `src/components/report-redesign/v2/__tests__/report-diagnostic-priorities.test.tsx` — cobrir fallback determinístico vs origem IA.
 
-### 9 · `src/lib/knowledge/sanitize-ai-copy.ts`
+**Rollback seguro**
+Tudo aditivo: se a IA não devolver `priorities`, cai para `derivePrioritiesFallback`. Se o snapshot antigo não tiver `themes` AI, o `report-themes-feature` mostra a versão determinística.
 
-- Actualizar JSDoc do topo: trocar a nota "Implemented but not yet wired" para "Wired no orquestrador OpenAI v2 em `openai-insights.server.ts` (post-validation step)."
+---
 
-### 10 · Testes
+## Ficheiros tocados
 
-`src/lib/knowledge/__tests__/benchmark-context.test.ts`:
+Novos:
+- `src/components/report-redesign/v2/report-themes-feature.tsx`
+- `src/lib/report/__tests__/block02-themes.test.ts`
+- `src/components/report-redesign/v2/__tests__/report-diagnostic-priorities.test.tsx`
 
-- Ajustar teste "Databox baixa" → também verificar `visibility === "future"`.
-- Ajustar teste "tem as quatro fontes aprovadas" → manter os 4 nomes mas separar:
-  - `sources.filter(s => s.visibility === "active").map(...)` deve dar `["Buffer", "Hootsuite", "Socialinsider"]`.
-- Acrescentar `it("Socialinsider/Buffer/Hootsuite são activas; Databox futura")`.
-- Acrescentar `it("999 999 seguidores → tier 500K-1M")` → `expect(getBufferTierForFollowers(999_999)?.tier).toBe("500K-1M")`.
-- Manter `1_000_000 → null` (já existe). Acrescentar `it("1M+ marca aboveBufferRangeHint em copyHints")` chamando `getBenchmarkContextForProfile({ followers: 1_000_000, ... })` e verificando `copyHints.tierNote` contém "acima dos escalões".
-- Acrescentar `it("sourceNote visível não contém Databox")` → `expect(visibleCopyRulesPt.sourceNote).not.toContain("Databox")`.
+Editados:
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-card.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-group.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-priorities.tsx`
+- `src/components/report-redesign/v2/report-overview-cards.tsx`
+- `src/lib/report/block02-diagnostic.ts` (themes hardening + export do builder de snapshot)
+- `src/lib/insights/prompt-v2.ts` (instrução + schema `priorities`)
+- `src/lib/insights/types.ts` (campo `priorities` opcional)
+- `src/lib/insights/validate-v2.ts`
+- `src/lib/insights/build-context.ts` (helper `buildBlock02Snapshot`)
+- `src/lib/knowledge/benchmark-context.ts` (bump dataset version)
 
-## Validação
+---
+
+## Validação final
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
+- Verificar visualmente em `/admin/report-preview/...` que:
+  - Pergunta 04 aparece como bloco isolado, full-width, com gráfico próprio.
+  - Aparecem 3 prioridades; chip “Leitura IA · prioridades” quando vêm da IA.
+  - Cards do Bloco 02 respiram mais; números grandes em mono em ambos os blocos.
+  - Continuam só 3 famílias tipográficas em uso.
 
-## Relatório final entregará
+## Checkpoint
 
-- Ficheiros editados (incluindo confirmação dos dois locked).
-- Confirmação de que `context.server.ts` não tinha "cite source when relevant" e qual foi o reforço aplicado.
-- Wording final da linha de fontes visível.
-- Comportamento 1M+ (tier null + hint).
-- Estado Databox (interno/futuro).
-- Resultado `tsc` e `vitest`.
+- ☐ Pergunta 04 isolada num bloco próprio com gráfico diferenciador e fonte “legendas” explícita
+- ☐ `inferThemesFromCaptions` mais robusto (stop-words, comprimento, cap 8)
+- ☐ OpenAI passa a devolver 3 prioridades; fallback determinístico mantém-se
+- ☐ Espaçamento dos cards do Bloco 02 aumentado de forma consistente
+- ☐ Números grandes do Bloco 01 e 02 migrados para JetBrains Mono
+- ☐ Confirmadas apenas 3 famílias tipográficas em uso
+- ☐ tsc + vitest verdes
