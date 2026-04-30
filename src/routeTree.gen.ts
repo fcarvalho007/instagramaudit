@@ -65,6 +65,7 @@ import { Route as ApiAdminKnowledgeNotesRouteImport } from './routes/api/admin/k
 import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/knowledge.export'
 import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
+import { Route as ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/analysis-snapshot.by-id.$snapshotId'
 import { Route as ApiAdminKnowledgeSuggestionsIdRouteImport } from './routes/api/admin/knowledge.suggestions.$id'
 import { Route as ApiAdminKnowledgeNotesIdRouteImport } from './routes/api/admin/knowledge.notes.$id'
 import { Route as ApiAdminKnowledgeBenchmarksIdRouteImport } from './routes/api/admin/knowledge.benchmarks.$id'
@@ -372,6 +373,12 @@ const AdminReportPreviewSnapshotSnapshotIdRoute =
     path: '/report-preview/snapshot/$snapshotId',
     getParentRoute: () => AdminRoute,
   } as any)
+const ApiPublicAnalysisSnapshotByIdSnapshotIdRoute =
+  ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport.update({
+    id: '/api/public/analysis-snapshot/by-id/$snapshotId',
+    path: '/api/public/analysis-snapshot/by-id/$snapshotId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminKnowledgeSuggestionsIdRoute =
   ApiAdminKnowledgeSuggestionsIdRouteImport.update({
     id: '/$id',
@@ -463,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
+  '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -525,6 +533,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
+  '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -589,6 +598,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
+  '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -654,6 +664,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
+    | '/api/public/analysis-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesByTo: FileRoutesByTo
@@ -716,6 +727,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
+    | '/api/public/analysis-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   id:
@@ -779,6 +791,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
+    | '/api/public/analysis-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesById: FileRoutesById
@@ -827,6 +840,7 @@ export interface RootRouteChildren {
   ApiPublicHooksSyncApifyCostsRoute: typeof ApiPublicHooksSyncApifyCostsRoute
   ApiPublicHooksSyncDataforseoCostsRoute: typeof ApiPublicHooksSyncDataforseoCostsRoute
   ApiPublicHooksSyncOpenaiCostsRoute: typeof ApiPublicHooksSyncOpenaiCostsRoute
+  ApiPublicAnalysisSnapshotByIdSnapshotIdRoute: typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
   ApiAdminKnowledgeHistoryTypeIdRoute: typeof ApiAdminKnowledgeHistoryTypeIdRoute
 }
 
@@ -1224,6 +1238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReportPreviewSnapshotSnapshotIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/analysis-snapshot/by-id/$snapshotId': {
+      id: '/api/public/analysis-snapshot/by-id/$snapshotId'
+      path: '/api/public/analysis-snapshot/by-id/$snapshotId'
+      fullPath: '/api/public/analysis-snapshot/by-id/$snapshotId'
+      preLoaderRoute: typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/knowledge/suggestions/$id': {
       id: '/api/admin/knowledge/suggestions/$id'
       path: '/$id'
@@ -1432,6 +1453,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksSyncDataforseoCostsRoute:
     ApiPublicHooksSyncDataforseoCostsRoute,
   ApiPublicHooksSyncOpenaiCostsRoute: ApiPublicHooksSyncOpenaiCostsRoute,
+  ApiPublicAnalysisSnapshotByIdSnapshotIdRoute:
+    ApiPublicAnalysisSnapshotByIdSnapshotIdRoute,
   ApiAdminKnowledgeHistoryTypeIdRoute: ApiAdminKnowledgeHistoryTypeIdRoute,
 }
 export const routeTree = rootRouteImport
