@@ -373,7 +373,7 @@ function renderFormatCard(
           : `${label} é o formato mais usado, sem chegar a uma dependência clara — há uma mistura saudável de tipos de publicação.`
       }
     >
-      <DiagnosticDistributionBar items={items} />
+      <DiagnosticDistributionBar items={items} valueFormat="percent" />
     </ReportDiagnosticCard>
   );
 }
