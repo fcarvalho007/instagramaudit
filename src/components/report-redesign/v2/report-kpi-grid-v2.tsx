@@ -1,11 +1,4 @@
-import {
-  Activity,
-  CalendarDays,
-  Film,
-  Images as ImagesIcon,
-  Users,
-  UsersRound,
-} from "lucide-react";
+import { Activity, CalendarDays, Film } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
@@ -30,53 +23,20 @@ const FORMAT_PT: Record<string, string> = {
 };
 
 /**
- * KPI grid v2 (Phase 1B.1D) — métricas focadas no utilizador.
- * Sem cartão "Estado do benchmark" e sem delta de seguidores: apenas
- * contagem atual de seguidores + publicações totais. Format passa a
- * chip compacto; sem overflow a 375/768/1366.
+ * KPI grid v2 (Phase 1B.1E) — métricas analíticas (sem duplicação
+ * com o hero estilo perfil IG).
+ *
+ * Apenas métricas derivadas da análise: envolvimento, ritmo e formato
+ * dominante. Contagens públicas (seguidores, publicações totais,
+ * publicações analisadas) vivem agora no hero.
  */
 export function ReportKpiGridV2({ result }: Props) {
   const k = result.data.keyMetrics;
-  const profile = result.data.profile;
-  const windowDays = result.coverage.windowDays;
-
-  const followers = profile.followers ?? 0;
-  const postsCount = profile.postsCount ?? 0;
-
   const formatLabel = FORMAT_PT[k.dominantFormat] ?? k.dominantFormat;
   const formatTone = formatChipTone(formatLabel);
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
-      {followers > 0 ? (
-        <KpiCard
-          icon={<Users className="h-4 w-4" aria-hidden="true" />}
-          label="Seguidores"
-          value={formatCompact(followers)}
-          help="perfil público"
-        />
-      ) : null}
-
-      {postsCount > 0 ? (
-        <KpiCard
-          icon={<ImagesIcon className="h-4 w-4" aria-hidden="true" />}
-          label="Publicações no perfil"
-          value={formatCompact(postsCount)}
-          help="total público"
-        />
-      ) : null}
-
-      <KpiCard
-        icon={<UsersRound className="h-4 w-4" aria-hidden="true" />}
-        label="Publicações analisadas"
-        value={String(k.postsAnalyzed)}
-        help={
-          windowDays > 0
-            ? `últimos ${windowDays} dias`
-            : "amostra desta análise"
-        }
-      />
-
+    <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <KpiCard
         icon={<Activity className="h-4 w-4" aria-hidden="true" />}
         label="Envolvimento médio"
@@ -189,19 +149,4 @@ function FormatChip({ label, tone }: { label: string; tone: FormatTone }) {
       {label}
     </span>
   );
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function formatCompact(n: number): string {
-  if (!Number.isFinite(n)) return "0";
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return trimZero((n / 1_000_000).toFixed(1)) + "M";
-  if (abs >= 10_000) return trimZero((n / 1_000).toFixed(0)) + "K";
-  if (abs >= 1_000) return trimZero((n / 1_000).toFixed(1)) + "K";
-  return new Intl.NumberFormat("pt-PT").format(n);
-}
-
-function trimZero(s: string): string {
-  return s.replace(/\.0$/, "");
 }
