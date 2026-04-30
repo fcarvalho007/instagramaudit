@@ -1,50 +1,54 @@
-# Phase 1B.1D — Remove follower-growth history from Block 01
+## Refinamento do Hero v2 (Bloco 01 · primeiro fold)
 
-Focused cleanup: undo the follower-delta feature added in Phase 1B.1C. Keep current follower count (already available from the snapshot), remove all history-derived logic, and drop the unused server function.
+Alvo único: `src/components/report-redesign/v2/report-hero-v2.tsx`. Sem alterações ao `report-shell-v2.tsx`, ao `report-overview-block.tsx` ou aos blocos 02–06. Sem novas libs. `report-positioning-banner.tsx` mantém-se como está (não é renderizado pelo shell v2). Pequeno ajuste aditivo em `report-tokens.ts` se necessário para o divider entre stats IG e meta da análise.
 
-## Scope
+### Alterações de conteúdo
 
-Touch only:
-- `src/components/report-redesign/v2/report-overview-block.tsx`
-- `src/components/report-redesign/v2/report-kpi-grid-v2.tsx`
-- `src/lib/server/profile-history.functions.ts`
+1. **Badge cluster** — manter apenas `Dados públicos`. Remover renderização de `IA editorial`, `Benchmark` e `Pesquisa`.
+2. **Stats IG sob a bio** — manter os 3 stats (`publicações`, `seguidores`, `a seguir`) já presentes; reforçar a hierarquia visual com peso semibold no valor e label mono pequena, tal como no Instagram.
+3. **Meta da análise** — manter abaixo dos stats, mais pequena, em mono uppercase, separada por um divider hairline subtil (`border-t border-slate-200/60 pt-2`) em vez de simples margem, para sinalizar claramente "esta linha é metadata do relatório, não do perfil".
+4. **Sem duplicação** — o `ReportOverviewBlock` (Bloco 01 abaixo da fold) já não repete seguidores/publicações/seguir, está focado em envolvimento, ritmo e formato. Confirmado por inspeção anterior.
+5. **Sem follower growth, sem placeholder de histórico futuro.**
 
-Do NOT touch: blocks 02–06, providers, PDF, admin, `/report/example`, schema, AI prompts, validators, locked files.
+### Alterações visuais
 
-## Changes
+- Reduzir padding vertical da banda: `pt-7 md:pt-9 pb-7 md:pb-9` → `pt-6 md:pt-8 pb-6 md:pb-7` para um fold mais compacto.
+- Avatar mantém-se com ring duplo, sem alterações.
+- Botões de ação no desktop: tornar o `Exportar PDF` ligeiramente mais discreto (`bg-blue-600` mantido mas remover `-translate-y-0.5` no hover para reduzir presença) e manter `ShareReportPopover` em variant ghost — fica claro que são secundários ao identity block.
+- Mobile: ações ficam abaixo da identidade, como já estão; sem grandes alterações.
 
-### 1. `report-overview-block.tsx`
-- Remove imports: `useEffect`, `useState`, `getProfileFollowersHistory`.
-- Remove the `useFollowersDelta` hook (entire function) and its call inside `ReportOverviewBlock`.
-- Render `<ReportKpiGridV2 result={result} />` without the `followersDelta` prop.
-- Keep everything else: watermark "01", "Leitura IA" frame, `Bot` icon, insight rendering.
+### Tipografia
 
-### 2. `report-kpi-grid-v2.tsx`
-- Remove the `followersDelta?: number | null` prop from `Props`.
-- Remove the `FollowersDeltaPill` component entirely.
-- Remove the `TrendingDown`, `TrendingUp` imports (no longer used).
-- In the `Seguidores` KpiCard, remove the `footer` prop (which rendered the delta pill). Keep the rest of the card identical: gated by `followers > 0`, value = `formatCompact(followers)`, help = `"perfil público"`.
-- Keep `formatCompact` and `trimZero` helpers (still used elsewhere in the grid).
+- Handle: continua `font-display` (serif) via `h1HeroV2Compact`.
+- Nome, bio, labels: `Inter`/sans (já é o default).
+- Stats IG: valor em `font-display semibold`, label em `font-mono text-[10px] uppercase`.
+- Meta da análise: `font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500`.
 
-### 3. `profile-history.functions.ts`
-- Verify `getProfileFollowersHistory` has no other consumers via `rg "getProfileFollowersHistory" src`. After step 1, the only reference will be its own export.
-- Remove the entire "Followers history (Phase 1B.1C)" block: `FollowersInputSchema`, `ProfileFollowersHistoryItem` interface, and the `getProfileFollowersHistory` server function.
-- Leave `getProfileEngagementHistory` and its types completely untouched.
+### Copy (pt-PT)
 
-## Validation
+Mantém-se o vocabulário já implementado: `publicações`, `seguidores`, `a seguir`, `publicações analisadas`, `dias analisados`, `analisado em`. Sem alterações.
 
-After edits, run sequentially:
-1. `bunx tsc --noEmit`
-2. `bunx vitest run`
+### Acessibilidade e responsivo
 
-## Acceptance check
+- Mantém `aria-label="Cabeçalho do relatório"`, `aria-busy` no botão PDF, `aria-label` no avatar verificado.
+- Sem horizontal overflow: contêineres com `min-w-0` e `flex-wrap` já presentes nas zonas críticas; verificar a 375 / 768 / 1366 mentalmente — o grid de stats `grid-cols-3 gap-3 max-w-md` cabe a 375.
 
-- No `getProfileFollowersHistory` reference anywhere in `src/`.
-- No `FollowersDeltaPill` reference anywhere.
-- `Seguidores` card still renders (current count) when `profile.followers > 0`.
-- No "história aparecerá", "desde a última análise", trending arrows, or placeholder strings related to follower growth.
-- Blocks 02–06, `/report/example`, providers, PDF, schema untouched.
+### Validação
 
-## Report back
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Reportar apenas ficheiros alterados e resultado dos testes (sem QA visual em browser, conforme instrução).
 
-Files changed · locked files touched (no) · TS result · Vitest result · confirmation no providers/PDF/admin/report.example/schema were touched · stop for manual screenshots.
+### Ficheiros a alterar
+
+- `src/components/report-redesign/v2/report-hero-v2.tsx` — única edição funcional.
+- `src/components/report-redesign/report-tokens.ts` — opcional, apenas se for necessário um token novo para o divider/meta (provavelmente desnecessário; usar utilities Tailwind inline).
+
+### Critérios de aceitação confirmados
+
+- Apenas `Dados públicos` no cluster de badges.
+- Stats IG integrados sob a bio.
+- Meta da análise presente, secundária, separada por divider hairline.
+- Hero mais compacto verticalmente.
+- Sem duplicação de stats com o overview abaixo.
+- Blocos 02–06 intactos; sem chamadas a providers; sem schema/edge function.

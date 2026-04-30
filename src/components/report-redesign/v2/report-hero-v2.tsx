@@ -59,7 +59,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
         className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-white/70"
       />
 
-      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-7 md:pt-9 pb-7 md:pb-9">
+      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-6 md:pt-8 pb-6 md:pb-7">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
           {/* Identidade + stats */}
           <div className="flex items-start gap-4 md:gap-6 min-w-0 flex-1">
@@ -110,9 +110,10 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </ul>
               ) : null}
 
-              {/* Meta da análise */}
+              {/* Meta da análise — separada por divider hairline para
+                  sinalizar que é metadata do relatório, não do perfil. */}
               {analysisMeta.length > 0 ? (
-                <div className="!mt-3 font-mono text-[10px] md:text-[11px] uppercase tracking-[0.14em] text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <div className="!mt-4 pt-3 border-t border-slate-200/60 font-mono text-[10px] md:text-[11px] uppercase tracking-[0.14em] text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
                   {analysisMeta.map((m, i) => (
                     <span key={m} className="inline-flex items-center gap-2">
                       {i > 0 ? (
@@ -139,9 +140,9 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 className={cn(
                   "inline-flex items-center justify-center gap-2 rounded-full",
                   "bg-blue-600 text-white px-4 md:px-5 py-2.5 text-sm font-semibold",
-                  "shadow-[0_1px_2px_rgba(15,23,42,0.08),0_8px_20px_-10px_rgba(59,130,246,0.55)]",
+                  "shadow-[0_1px_2px_rgba(15,23,42,0.06)]",
                   "transition-all duration-200",
-                  "hover:bg-blue-700 hover:-translate-y-0.5",
+                  "hover:bg-blue-700",
                   "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0",
                   "min-h-[40px]",
                 )}
@@ -161,11 +162,6 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             </div>
             <div className="flex flex-wrap gap-1.5 lg:justify-end">
               <CoverageBadge label="Dados públicos" status="real" />
-              {enriched.aiInsights ? (
-                <CoverageBadge label="IA editorial" status="real" />
-              ) : null}
-              <CoverageBadge label="Benchmark" status={coverage.benchmark} />
-              <CoverageBadge label="Pesquisa" status="partial" />
             </div>
           </div>
         </div>
