@@ -1,99 +1,90 @@
+## Goal
 
-## Block 02 · Diagnóstico — Refinamento
+Replace Block 02's current 4-card "alert" grid (used inside `ReportShellV2`) with a real editorial diagnostic of the profile: 6 cards organised in a 3×2 grid that answer human questions about content type, funnel stage, formats, themes, captions and audience response. Strictly read-only over existing snapshot data, no provider calls, no schema changes.
 
-### Estado atual (verificado)
+## Approach
 
-Block 02 hoje renderiza, pela ordem:
-1. `ReportAiReading` (compact) — síntese editorial em 2 colunas.
-2. `ReportEditorialPatterns` — até **6** cards (tendência, legenda, hashtags, menções, duração reels, alinhamento procura), em grid `1 / 2 / 3` colunas. Quando 5 estão disponíveis surge o tal "card órfão" na 2.ª linha.
+The current `src/components/report-redesign/report-editorial-patterns.tsx` is shared between `ReportShellV2` (`/analyze/$username`) **and** the legacy `ReportShell` used by `/routes/report.print.$snapshotId.tsx` (PDF print). Since the brief says "do not touch PDF generation", we must NOT mutate the shared component.
 
-Problemas identificados:
-- Grid `lg:grid-cols-3` produz layout desequilibrado quando há 4–5 cards.
-- A "Tendência de envolvimento" repete o que a Leitura IA e o cartão de envolvimento do Block 01 já dizem.
-- Cards usam linguagem técnica (`ER médio 2.34%`, `lift +12%`, `keywords`), contra as regras pt-PT.
-- `ReportAiReading` está envolvido em `ReportSectionFrame` que tem o seu próprio `max-w-7xl + px-5/6` — dentro do shell isto cria uma faixa branca a sangrar para fora do ritmo dos cards.
+So we will:
 
-### Bloqueio importante a confirmar
+1. Add a new V2-only component for Block 02 cards.
+2. Add a small pure helper module with deterministic classifiers (content type, funnel stage, caption pattern, audience response).
+3. Swap the import inside `report-shell-v2.tsx` only.
+4. Leave legacy `report-editorial-patterns.tsx` untouched (PDF/print stays identical).
 
-`src/components/report-redesign/report-ai-reading.tsx` está em `LOCKED_FILES.md`. Para alinhar a largura da Leitura IA tenho duas opções:
+## Files to create
 
-- **A (preferida, sem mexer no ficheiro locked)**: passar a Leitura IA dentro de um wrapper local em `report-shell-v2.tsx` que neutraliza o `max-w-7xl/px-*` do `ReportSectionFrame` (ex.: `<div className="[&_.max-w-7xl]:max-w-none [&_.max-w-7xl]:px-0">`). Não toca em `report-ai-reading.tsx`.
-- **B**: editar `report-ai-reading.tsx` para aceitar uma prop `bare` que omite o frame. **Requer aprovação explícita** porque o ficheiro está locked.
+- **`src/lib/report/block02-diagnostic.ts`** — pure helpers (no I/O).
+  - `classifyContentType(posts)` → returns `{ label, confidence: "provavel"|"misto"|"insuficiente", evidence }`. Heuristics over caption keywords + hashtags:
+    - Educativo: presence of "como", "passo", "guia", "dica", "aprende", "tutorial", "porque", "razão", "?".
+    - Promocional: "promo", "desconto", "código", "compra", "loja", "oferta", "%", "€".
+    - Institucional: "equipa", "marca", "missão", "valores", "história", "fundador".
+    - Inspiracional: "acredita", "sonha", "motivação", "mindset", "inspira".
+    - Entretenimento: emojis density high + short captions + Reels share dominant.
+    - Prova social: "cliente", "testemunho", "review", "obrigado", "case", "antes/depois".
+    - Returns dominant bucket if its share ≥ 35% AND ≥ 2× second; otherwise "Misto / pouco claro".
+  - `classifyFunnelStage(posts)` → buckets posts into TOFU/MOFU/BOFU/Loyalty by signal lists:
+    - TOFU: questions, "sabias", "curiosidade", "?", inspirational keywords.
+    - MOFU: "como", "guia", "passo", "tutorial", "exemplo".
+    - BOFU: "compra", "agenda", "marca já", "link na bio", "WhatsApp", "DM", "€", "%", "promo".
+    - Loyalty: "obrigado", "comunidade", "cliente", "testemunho".
+    - Output `{ label, sharePct, confidence }` or "Comunicação dispersa" when no bucket ≥ 35%.
+  - `classifyCaptionPattern(posts)` → uses `caption_length` averages + question/CTA detection → one of: Curtas e diretas / Médias e explicativas / Longas e educativas / Pouco consistentes / Sem dados suficientes.
+  - `classifyAudienceResponse(posts, keyMetrics)` → comments-to-likes ratio + absolute comments avg → label "Audiência ativa" / "Resposta moderada" / "Audiência silenciosa" / "Sem dados suficientes". Returns ratio_pct + comments_avg as evidence. Avoids reusing engagement-rate copy from Block 01.
+  - Each function returns a discriminated result `{ available: boolean; ... }` so the card can render a graceful empty state.
+  - All functions are pure and unit-testable.
 
-A plano abaixo segue **A**. Se preferires B, diz e ajusto.
+- **`src/components/report-redesign/v2/report-diagnostic-grid-v2.tsx`** — the 6-card grid.
+  - Props: `{ patterns, keyMetrics, posts, topHashtags }`.
+  - Renders exactly 6 cards (always 6 — empty state with graceful copy when a card has no data, never collapses to 5).
+  - Layout: `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr`.
+  - Card: white surface, `rounded-2xl border border-slate-200/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]`, badge "01"–"06", small dot (semantic tone), serif title, sans body, optional mono micro-label only on cards with quantitative evidence (3, 4, 6).
+  - Tone palette: blue (info/analysis) default; emerald only for genuinely strong patterns; amber for caution; rose only for genuinely weak signals. No heavy red backgrounds.
 
-### Mudanças
+## Files to modify
 
-**1. `src/components/report-redesign/report-editorial-patterns.tsx`** (não locked)
+- **`src/components/report-redesign/v2/report-shell-v2.tsx`**
+  - Replace `import { ReportEditorialPatterns } from "../report-editorial-patterns"` with the new `ReportDiagnosticGridV2`.
+  - Pass `patterns`, `keyMetrics`, `posts: payload?.posts ?? []`, `topHashtags: result.data.topHashtags`.
+  - No other change in the file. The AI reading block above stays as-is.
 
-Restruturar para devolver no máximo **4 cards**, em grid `1 / 2 / 2`, alinhado com a estética premium do Block 01.
+## Files NOT changed
 
-Selecção dos 4 cards (na ordem de prioridade definida no spec), construída por uma função pura que escolhe os mais informativos disponíveis:
+- `src/components/report-redesign/report-editorial-patterns.tsx` (still used by legacy `ReportShell` → PDF print route).
+- `src/components/report-redesign/report-shell.tsx` (legacy, drives PDF).
+- `src/lib/report/editorial-patterns.ts`, `snapshot-to-report-data.ts`, all providers, validators, OpenAI prompts, Supabase schema, admin pages, `/report/example`.
+- Block 01 (`ReportOverviewBlock`) and Blocks 03–06 in `report-shell-v2.tsx`.
 
-1. **Diferença face à referência** (engagement gap vs benchmark) — usa `result.data.benchmarkComparison` / `enriched.aiInsights` já normalizados; **substitui** o card "Tendência de engagement", que é redundante com a Leitura IA. Título: `Distância face à referência`.
-2. **Procura externa pelos temas** — só aparece se `marketDemandContentFit.available` e `coverage !== null`. Título: `Há procura externa pelos temas` ou `Falta cobertura dos temas com procura`, conforme `coverage`.
-3. **Concentração de formato** — usa `enriched.formatBreakdown` (já existe, alimenta o Block 01) para detectar dominância > 60 %. Título: `O conteúdo está concentrado em [formato]`.
-4. **Sinais de conversa / resposta** — usa `mentionsCollabsLift` (proxy da existência de conversa/colaboração). Quando `lift < 0.9` ou `withCount` muito baixo: `Faltam sinais de conversa`. Caso contrário, fallback para o card de **comprimento de legenda** ou **hashtags sweet spot** — o que tiver `available:true` e ainda não tiver sido usado.
+## The 6 cards
 
-Regra anti-duplicação: nunca renderizar o pattern "Tendência de envolvimento" (sai do conjunto), e o card de cadência/ritmo não entra (já está no Block 01 e na Leitura IA).
+| # | Title | Data source | Type |
+|---|-------|-------------|------|
+| 01 | Tipo de conteúdo dominante | `posts[].caption + hashtags` via `classifyContentType` | Deterministic heuristic |
+| 02 | Fase do funil mais presente | `posts[].caption` via `classifyFunnelStage` | Deterministic heuristic |
+| 03 | Formato dominante | `keyMetrics.dominantFormat / dominantFormatShare` | Deterministic |
+| 04 | Temas e hashtags recorrentes | `result.data.topHashtags` (top 3–4 tags) | Deterministic |
+| 05 | Padrão das captions | `posts[].caption_length` + CTA detection via `classifyCaptionPattern` | Deterministic heuristic |
+| 06 | Resposta do público | `posts[].likes/comments` via `classifyAudienceResponse` | Deterministic |
 
-Copy:
-- substituir `ER médio X%` → `envolvimento médio de X %`
-- substituir `lift` → `diferença`
-- substituir `keywords` → `temas`
-- remover `sweet spot` em favor de `faixa com melhor retorno`
-- todos os títulos passam a frases humanas em pt-PT (lista no spec do utilizador)
+## AI-reading anti-duplication
 
-Visual:
-- card: `rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)] flex flex-col gap-3 h-full`
-- linha de cabeçalho: dot semântico (azul/âmbar/rosa/verde) + eyebrow mono + número `01 / 04` em mono pequeno
-- título serif (`font-display text-[1.05rem] md:text-[1.125rem] font-semibold text-slate-900 leading-snug`)
-- valor primário em display, com tom contido (rosa só quando claramente negativo)
-- corpo sans curto; sem breakdown de buckets (era ruído e fonte de números técnicos)
-- grid: `grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5` + `auto-rows-fr` para igualar alturas por linha
+- Card titles are factual labels, not narrative ("Predominância provável: Educativo", not "Este perfil aposta na educação para construir autoridade").
+- Card bodies stay ≤ 2 short sentences and reference the *evidence* (counts, %, sample size), never the strategic interpretation.
+- Card 6 explicitly avoids the engagement-rate framing used by Block 01's overview KPIs (only comments behaviour + ratio).
 
-Header da secção (eyebrow + H2 + subtítulo) **removido** daqui — já é fornecido pelo `ReportBlockSection` do Block 02. Evita duplicação de "Análise editorial / Padrões que explicam os resultados".
+## Empty/insufficient data behaviour
 
-Fallback vazio: mantém a mensagem subtil quando 0 cards estão disponíveis.
+Each card always renders. When the helper returns `available: false`, the card shows the same shell with subtle muted body text (e.g. "Amostra insuficiente para inferir um padrão.") and a neutral blue dot. No card disappears, so the 3×2 grid is always intact.
 
-**2. `src/components/report-redesign/v2/report-shell-v2.tsx`**
+## Acceptance checks (post-implementation)
 
-No bloco 02, envolver `ReportAiReading` num wrapper que neutraliza o `max-w-7xl + padding` do `ReportSectionFrame`, para a Leitura IA partilhar a mesma largura útil que o grid de cards. Subtítulo do `block-config.ts` para Block 02 fica como está (já é pt-PT natural).
+- `bunx tsc --noEmit` passes.
+- `bunx vitest run` passes.
+- Visual: 3×2 desktop, 2×3 tablet, 1×6 mobile, no horizontal overflow at 375 / 768 / 1366 px.
+- Block 01 and Blocks 03–06 untouched in `report-shell-v2.tsx`.
+- Legacy `ReportShell` (PDF) still imports the original `ReportEditorialPatterns` — PDF output is byte-identical.
 
-```tsx
-<div className="[&>section>div]:max-w-none [&>section>div]:px-0">
-  <ReportAiReading data={...} enriched={...} compact />
-</div>
-```
+## Report back
 
-(Selector específico à estrutura interna do `ReportSectionFrame` — `<section><div class="mx-auto max-w-7xl px-5 md:px-6">…</div></section>`. Não toca no ficheiro locked.)
-
-**3. `src/components/report-redesign/v2/block-config.ts`**
-
-Pequeno ajuste opcional ao `subtitle` do bloco `diagnostico` para soar mais natural em pt-PT, se necessário após reler. Sem mudar `id`/`number`/`question`.
-
-### Fora de âmbito (não tocados)
-
-- Block 01 (hero, overview cards, overview block).
-- Blocks 03–06 (componentes e secções).
-- `/report/example`, `/admin`, providers, prompts OpenAI, validators, schema Supabase, PDF.
-- `report-ai-reading.tsx` (locked).
-- `report-tokens.ts` (sem novos tokens).
-
-### Validação
-
-1. `bunx tsc --noEmit`
-2. `bunx vitest run`
-3. Verificar manualmente sem overflow horizontal a 375 / 768 / 1366.
-
-### Aceitação
-
-- Block 02 com **exactamente 4 cards** (ou menos quando data insuficiente, com mensagem subtil).
-- Sem 5.º card órfão, sem repetição da Leitura IA.
-- Leitura IA com a mesma largura útil do grid (sem faixa branca a sangrar).
-- pt-PT em todo o copy visível, sem `keyword`, `lift`, `payload`, `engagement_pct`.
-- Blocks 01 e 03–06 inalterados.
-
-### Pergunta antes de implementar
-
-Posso prosseguir com a opção **A** (wrapper sem editar o ficheiro locked)? Se preferires que eu altere `report-ai-reading.tsx` para aceitar uma prop `bare`, confirma a quebra de lock.
+After implementation: files changed, the 6 cards listed, data source per card, which use deterministic heuristics (all 6), missing fields encountered, TypeScript and Vitest results, and confirmation that Block 01 and Blocks 03–06 are unchanged.
