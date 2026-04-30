@@ -24,6 +24,8 @@ export type BenchmarkSourceName =
   | "Hootsuite"
   | "Databox";
 
+import type { BenchmarkTier } from "./types";
+
 export interface BenchmarkSource {
   name: BenchmarkSourceName;
   role: string;
