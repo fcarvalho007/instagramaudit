@@ -210,10 +210,6 @@ function buildVerdictText(args: {
   return "Com base na amostra analisada, " + parts.join(", ") + ".";
 }
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 function humanFormat(raw: string | null): string {
   if (!raw) return "—";
   const map: Record<string, string> = {
