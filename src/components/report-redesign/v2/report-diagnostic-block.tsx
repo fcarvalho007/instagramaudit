@@ -186,10 +186,10 @@ function buildVerdictText(args: {
     args.contentType.label &&
     args.contentType.label !== "Misto / pouco claro"
   ) {
-    parts.push(`Perfil ${args.contentType.label.toLowerCase()}`);
+    parts.push(`perfil ${args.contentType.label.toLowerCase()}`);
   }
   if (args.funnel.available && args.funnel.label && args.funnel.label !== "Comunicação dispersa") {
-    parts.push(`com presença forte de ${args.funnel.label.toLowerCase()}`);
+    parts.push(`com sinais de ${args.funnel.label.toLowerCase()}`);
   }
   if (args.dominantFormat && args.dominantFormatShare >= 50) {
     parts.push(
@@ -199,19 +199,15 @@ function buildVerdictText(args: {
     );
   }
   if (args.audience.available && args.audience.label === "Audiência silenciosa") {
-    parts.push("a audiência reage com likes mas conversa pouco");
+    parts.push("sinais de audiência silenciosa — likes consistentes, conversa rara");
   } else if (args.audience.available && args.audience.label === "Audiência ativa") {
-    parts.push("a audiência reage de forma consistente");
+    parts.push("sinais de audiência ativa");
   }
 
   if (parts.length < 2) {
-    return "Ainda não há sinal suficiente para um veredito editorial — a amostra é pequena ou pouco diferenciada.";
+    return "Com base na amostra analisada, ainda não há sinal suficiente para um veredito editorial — a amostra é pequena ou pouco diferenciada.";
   }
-  return capitalize(parts.join(", ")) + ".";
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return "Com base na amostra analisada, " + parts.join(", ") + ".";
 }
 
 function humanFormat(raw: string | null): string {
@@ -457,11 +453,18 @@ function renderCaptionCard(r: CaptionPatternResult): ReactNode | null {
       body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
     >
       <DiagnosticMiniStats
-        items={[
-          { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
-          { value: `${r.questionSharePct}%`, label: "COM PERGUNTAS" },
-          { value: `${r.ctaSharePct}%`, label: "COM CTA" },
-        ]}
+        items={
+          r.questionShareAvailable
+            ? [
+                { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
+                { value: `${r.questionSharePct}%`, label: "COM PERGUNTAS" },
+                { value: `${r.ctaSharePct}%`, label: "COM CTA" },
+              ]
+            : [
+                { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
+                { value: `${r.ctaSharePct}%`, label: "COM CTA" },
+              ]
+        }
       />
     </ReportDiagnosticCard>
   );
@@ -582,7 +585,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       }
       answer={r.primary}
       tone="blue"
-      body="Inferência por padrão de conteúdo + funil + bio + ligação entre canais. É uma hipótese de leitura — confirme com o contexto real do perfil."
+      body="Hipótese principal derivada de sinais de conteúdo, funil, bio e ligação entre canais. Com base na amostra analisada — confirme com o contexto real do perfil."
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>
