@@ -15,12 +15,32 @@ export function ReportBlockSidebar() {
   return (
     <nav
       aria-label="Navegação do relatório"
-      className="hidden lg:block sticky top-6 self-start w-56 shrink-0"
+      className={cn(
+        "hidden lg:block self-start shrink-0",
+        "w-60 xl:w-64",
+        // Global header is sticky h-16 md:h-20 (max 80 px). Use 96 px so
+        // the panel keeps a comfortable breathing band under the header
+        // and never feels cut off while scrolling.
+        "sticky top-24",
+        // Cap height + internal scroll if the viewport is short.
+        "max-h-[calc(100vh-7rem)] overflow-y-auto",
+        // Editorial card surface — translucent, soft border, gentle shadow.
+        "rounded-2xl border border-slate-200/70",
+        "bg-white/70 supports-[backdrop-filter]:backdrop-blur-md",
+        "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-24px_rgba(15,23,42,0.12)]",
+        "ring-1 ring-white/60",
+        "p-4 xl:p-5",
+      )}
     >
-      <p className={cn(REDESIGN_TOKENS.eyebrow, "mb-4 px-3")}>
+      <p
+        className={cn(
+          REDESIGN_TOKENS.eyebrow,
+          "mb-3 px-2 text-slate-500",
+        )}
+      >
         Secções do relatório
       </p>
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {BLOCKS.map((block) => {
           const isActive = block.id === active;
           return (
@@ -30,29 +50,51 @@ export function ReportBlockSidebar() {
                 onClick={() => scrollToBlock(block.id)}
                 aria-current={isActive ? "true" : undefined}
                 className={cn(
-                  "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left",
+                  "group relative w-full flex items-center gap-3",
+                  "rounded-lg pl-3 pr-2.5 py-2.5 text-left",
                   "transition-colors duration-150",
+                  "focus-visible:outline-none focus-visible:ring-2",
+                  "focus-visible:ring-blue-400 focus-visible:ring-offset-1",
+                  "focus-visible:ring-offset-white",
                   isActive
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                    ? "bg-blue-50/80 text-blue-700"
+                    : "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900",
                 )}
               >
+                {/* Vertical accent rail when active */}
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "size-1.5 rounded-full transition-colors",
-                    isActive ? "bg-blue-600" : "bg-slate-300",
+                    "absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full transition-colors",
+                    isActive
+                      ? "bg-blue-500"
+                      : "bg-transparent group-hover:bg-slate-200",
                   )}
                 />
                 <span
                   className={cn(
-                    "font-mono text-[10px] uppercase tracking-[0.16em]",
-                    isActive ? "text-blue-600" : "text-slate-400",
+                    "font-mono text-[10px] tabular-nums tracking-[0.16em]",
+                    isActive
+                      ? "text-blue-600"
+                      : "text-slate-400 group-hover:text-slate-500",
                   )}
                 >
                   {block.number}
                 </span>
-                <span className="text-sm font-medium">{block.shortLabel}</span>
+                <span
+                  className={cn(
+                    "text-sm",
+                    isActive ? "font-semibold" : "font-medium",
+                  )}
+                >
+                  {block.shortLabel}
+                </span>
+                {isActive ? (
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto size-1.5 rounded-full bg-blue-500"
+                  />
+                ) : null}
               </button>
             </li>
           );
