@@ -31,6 +31,17 @@ export interface KeywordRow {
   count: number;
 }
 
+export interface ThemeRow {
+  /** Palavra-âncora (ou bigrama) já em pt-PT, com acentos preservados quando possível. */
+  word: string;
+  /** Total de ocorrências em todas as legendas analisadas. */
+  count: number;
+  /** Nº de posts distintos onde o tema apareceu. */
+  postsCount: number;
+  /** Excertos curtos (≤ 90 chars) extraídos da legenda original, centrados na ocorrência. Máx 2. */
+  snippets: string[];
+}
+
 // ---------- pt-PT stop-words ----------
 // Curated short list — function words, pronouns, common verbs/auxiliaries,
 // connectors. Lowercase, accent-stripped (the tokenizer also strips accents
@@ -71,6 +82,11 @@ const STOP_WORDS_PT = new Set<string>([
   // EN noise that creeps in
   "the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "is",
   "it", "this", "that", "with", "as", "by",
+  // ruído editorial criativo recorrente em pt
+  "conteudo", "pessoas", "coisa", "coisas", "forma", "tipo", "vida",
+  "tempo", "ainda", "sempre", "nunca", "pouco", "outros", "outras",
+  "novo", "nova", "novos", "novas", "primeira", "primeiro", "alguma",
+  "obrigado", "obrigada",
 ]);
 
 // ---------- helpers ----------
@@ -172,4 +188,147 @@ export function extractTopKeywords(
   }
   rows.sort((a, b) => (b.count - a.count) || a.word.localeCompare(b.word));
   return rows.slice(0, Math.max(0, limit));
+}
+
+// ---------- temas com evidência ----------
+
+/**
+ * Bigramas conhecidos no nicho criativo/marketing pt — quando os dois
+ * tokens co-ocorrem na mesma legenda, contam como tema unificado em vez
+ * de duas palavras isoladas. A chave é a forma normalizada (sem acentos).
+ */
+const KNOWN_BIGRAMS: ReadonlyArray<{ key: string; display: string }> = [
+  { key: "marketing digital", display: "Marketing digital" },
+  { key: "inteligencia artificial", display: "Inteligência artificial" },
+  { key: "redes sociais", display: "Redes sociais" },
+  { key: "marca pessoal", display: "Marca pessoal" },
+  { key: "negocio digital", display: "Negócio digital" },
+  { key: "estrategia conteudo", display: "Estratégia de conteúdo" },
+  { key: "criacao conteudo", display: "Criação de conteúdo" },
+];
+
+/** Extrai um snippet curto (≤ 90 chars) centrado na ocorrência da palavra. */
+function buildSnippet(caption: string, needle: string): string | null {
+  const flatCap = stripAccents(caption).toLowerCase();
+  const flatNeedle = stripAccents(needle).toLowerCase();
+  const idx = flatCap.indexOf(flatNeedle);
+  if (idx < 0) return null;
+  const max = 90;
+  const half = Math.floor((max - flatNeedle.length) / 2);
+  let start = Math.max(0, idx - half);
+  let end = Math.min(caption.length, idx + flatNeedle.length + half);
+  // Snap to word boundaries when possible
+  while (start > 0 && /\S/.test(caption[start - 1] ?? "")) start -= 1;
+  while (end < caption.length && /\S/.test(caption[end] ?? "")) end += 1;
+  let slice = caption.slice(start, end).replace(/\s+/g, " ").trim();
+  // Strip leading/trailing hashtags ou pontuação solta
+  slice = slice.replace(/^[#@\W_]+/, "").replace(/[#@\W_]+$/, "").trim();
+  if (slice.length === 0) return null;
+  if (slice.length > max) slice = slice.slice(0, max - 1).trimEnd() + "…";
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < caption.length ? "…" : "";
+  return `${prefix}${slice}${suffix}`;
+}
+
+/**
+ * Extrai temas dominantes a partir das legendas, com evidência:
+ * peso, contagem de posts e até 2 excertos curtos. Inclui detecção de
+ * bigramas conhecidos do nicho criativo/marketing.
+ *
+ * O ranking final é por nº de posts distintos (desempate: contagem total,
+ * depois ordem alfabética). Privilegia temas que aparecem em vários
+ * posts em vez de uma única menção repetida.
+ */
+export function extractTopThemes(
+  posts: readonly PostForText[],
+  limit = 8,
+): ThemeRow[] {
+  type Agg = {
+    display: string;
+    count: number;
+    postIdx: Set<number>;
+    snippets: string[];
+    seenSnippetKeys: Set<string>;
+  };
+  const agg = new Map<string, Agg>();
+
+  const ensure = (key: string, display: string): Agg => {
+    let cur = agg.get(key);
+    if (!cur) {
+      cur = {
+        display,
+        count: 0,
+        postIdx: new Set(),
+        snippets: [],
+        seenSnippetKeys: new Set(),
+      };
+      agg.set(key, cur);
+    }
+    return cur;
+  };
+
+  posts.forEach((p, postIndex) => {
+    if (!p.caption) return;
+    const caption = p.caption;
+    const flat = stripAccents(caption).toLowerCase();
+
+    // 1) Bigramas conhecidos primeiro — quando matched, os tokens
+    //    individuais ainda contam (não os removemos), mas o bigrama
+    //    geralmente vai ganhar pelo postsCount.
+    for (const bg of KNOWN_BIGRAMS) {
+      if (flat.includes(bg.key)) {
+        const cur = ensure(bg.key, bg.display);
+        cur.count += 1;
+        cur.postIdx.add(postIndex);
+        const snip = buildSnippet(caption, bg.key);
+        if (snip && !cur.seenSnippetKeys.has(snip.toLowerCase())) {
+          if (cur.snippets.length < 2) cur.snippets.push(snip);
+          cur.seenSnippetKeys.add(snip.toLowerCase());
+        }
+      }
+    }
+
+    // 2) Tokens individuais
+    const tokens = tokenise(caption);
+    const seenInPost = new Set<string>();
+    for (const tok of tokens) {
+      if (STOP_WORDS_PT.has(tok)) continue;
+      if (tok.length < 5) continue; // tokens muito curtos raramente são "temas"
+      const cur = ensure(tok, tok);
+      cur.count += 1;
+      if (!seenInPost.has(tok)) {
+        cur.postIdx.add(postIndex);
+        seenInPost.add(tok);
+        const snip = buildSnippet(caption, tok);
+        if (snip && !cur.seenSnippetKeys.has(snip.toLowerCase())) {
+          if (cur.snippets.length < 2) cur.snippets.push(snip);
+          cur.seenSnippetKeys.add(snip.toLowerCase());
+        }
+      }
+    }
+  });
+
+  const rows: ThemeRow[] = [];
+  for (const [, v] of agg) {
+    rows.push({
+      word: capitaliseDisplay(v.display),
+      count: v.count,
+      postsCount: v.postIdx.size,
+      snippets: v.snippets,
+    });
+  }
+  rows.sort(
+    (a, b) =>
+      b.postsCount - a.postsCount ||
+      b.count - a.count ||
+      a.word.localeCompare(b.word),
+  );
+  return rows.slice(0, Math.max(0, limit));
+}
+
+function capitaliseDisplay(s: string): string {
+  if (!s) return s;
+  // Bigramas conhecidos já vêm com casing correcto
+  if (s.includes(" ") || s[0] === s[0].toUpperCase()) return s;
+  return s[0].toUpperCase() + s.slice(1);
 }

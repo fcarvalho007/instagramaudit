@@ -277,6 +277,37 @@ export const reportData = {
     { word: "marca", count: 12 },
   ],
 
+  // Temas com evidência — alimentam o cartão "Pergunta 04 · Temas".
+  // O adapter real preenche este campo a partir das captions; o mock
+  // existe apenas para suportar /report/example.
+  topThemes: [
+    {
+      word: "Marketing digital",
+      count: 12,
+      postsCount: 8,
+      snippets: [
+        "…como transformar a estratégia de marketing digital em rotina semanal…",
+        "…ferramentas de marketing que recomendo a quem está a começar…",
+      ],
+    },
+    {
+      word: "Clientes",
+      count: 9,
+      postsCount: 6,
+      snippets: [
+        "…o erro mais comum quando se fala em clientes recorrentes…",
+      ],
+    },
+    {
+      word: "Vendas",
+      count: 7,
+      postsCount: 5,
+      snippets: [
+        "…3 formas de aumentar vendas sem baixar preço…",
+      ],
+    },
+  ],
+
   bestDays: [
     { day: "Seg", fullDay: "Segunda", avgEngagement: 0.41, isLeader: false },
     { day: "Ter", fullDay: "Terça", avgEngagement: 0.67, isLeader: false },

@@ -57,6 +57,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const km = result.data.keyMetrics;
   const topHashtags = result.data.topHashtags ?? [];
   const topKeywords = result.data.topKeywords ?? [];
+  const topThemes = result.data.topThemes ?? [];
   const bio = result.enriched.profile.bio ?? null;
   const externalUrls = result.enriched.profile.externalUrls ?? [];
 
@@ -66,6 +67,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const audience = classifyAudienceResponse(posts);
   const hashtags = classifyHashtags(topHashtags);
   const themes = inferThemesFromCaptions({
+    topThemes,
     topKeywords,
     aiSections: result.enriched.aiInsightsV2?.sections ?? null,
   });

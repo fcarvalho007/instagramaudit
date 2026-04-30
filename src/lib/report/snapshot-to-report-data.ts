@@ -25,6 +25,7 @@ import { resolveReportTier } from "./tiers";
 import {
   extractTopHashtags,
   extractTopKeywords,
+  extractTopThemes,
   type PostForText,
 } from "./text-extract";
 import {
@@ -850,6 +851,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   }));
   const topHashtags = extractTopHashtags(postsForText, 5);
   const topKeywords = extractTopKeywords(postsForText, 5);
+  const topThemes = extractTopThemes(postsForText, 8);
 
   // Window in days = (newest - oldest) ceil to days, +1 to be inclusive.
   let windowDays = 0;
@@ -1151,6 +1153,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     postingHeatmap,
     topHashtags,
     topKeywords,
+    topThemes,
     bestDays,
     aiInsights,
     // Real-data reports do not synthesise a fake 15-day trend per KPI.
