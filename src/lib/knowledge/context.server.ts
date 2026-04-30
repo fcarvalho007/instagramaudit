@@ -28,6 +28,15 @@ export interface KnowledgeContextInput {
   vertical?: string | null;
 }
 
+export interface FormatKnowledgeContextOptions {
+  /**
+   * Quando `false` (padrão), o prompt instrui explicitamente o modelo
+   * a não mencionar alcance, saves, partilhas, impressões ou visitas
+   * ao perfil — métricas que requerem acesso autenticado.
+   */
+  hasReachData?: boolean;
+}
+
 export async function getKnowledgeContext(
   input: KnowledgeContextInput,
 ): Promise<KnowledgeContext> {
@@ -54,7 +63,10 @@ export async function getKnowledgeContext(
  * sistema do GPT. Mantém o formato curto e factual — o R3 chama isto
  * directamente quando construir o prompt enriquecido.
  */
-export function formatKnowledgeContextForPrompt(ctx: KnowledgeContext): string {
+export function formatKnowledgeContextForPrompt(
+  ctx: KnowledgeContext,
+  options: FormatKnowledgeContextOptions = {},
+): string {
   const today = new Date().toISOString().slice(0, 10);
   const lines: string[] = [
     `Contexto verificado da Knowledge Base do InstaBench (data: ${today}):`,
@@ -77,8 +89,23 @@ export function formatKnowledgeContextForPrompt(ctx: KnowledgeContext): string {
   }
 
   lines.push("");
+  lines.push("Regras editoriais (obrigatórias):");
   lines.push(
-    "Use estes dados para fundamentar as suas interpretações. Cite fonte quando relevante.",
+    "- Use estes dados como referência direcional para fundamentar a interpretação.",
   );
+  lines.push(
+    "- NÃO atribua benchmarks a fontes externas (não escreva \"segundo a Socialinsider\", \"de acordo com o Buffer\", etc.).",
+  );
+  lines.push(
+    "- NÃO inclua URLs nem nomes de domínios (socialinsider.com, buffer.com, hootsuite.com, databox.com).",
+  );
+  lines.push(
+    "- Use linguagem de hedge: \"sugere\", \"indica\", \"aponta para\", \"em termos comparativos\", \"referência direcional\".",
+  );
+  if (!options.hasReachData) {
+    lines.push(
+      "- NÃO mencione alcance, reach, saves, partilhas, impressões, visitas ao perfil ou cliques no website — não há dados reais para este perfil.",
+    );
+  }
   return lines.join("\n");
 }

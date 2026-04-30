@@ -203,6 +203,8 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       "Reels ajudam na descoberta e no alcance, mas devem ser avaliados pela qualidade da resposta gerada, não apenas pela presença no calendário.",
     imageExplanation:
       "Imagens estáticas continuam úteis para produto, eventos, identidade visual e presença de marca, sobretudo quando fazem parte de uma narrativa consistente.",
+    macroTierNote:
+      "Conta com 1M ou mais seguidores: a referência Buffer 500K–1M é a mais próxima disponível, pelo que a leitura é puramente direcional.",
   },
 } as const;
 
@@ -318,6 +320,8 @@ export interface BenchmarkContextForProfile {
     format: string;
     benchmarkNote: string;
     sourceNote: string;
+    /** Preenchido apenas para perfis ≥1M (fora dos tiers Buffer). */
+    tierNote: string;
   };
 }
 
@@ -332,7 +336,14 @@ export function getBenchmarkContextForProfile(
   const { followers, dominantFormat, industry, hasReachData = false } = input;
 
   const bufferTier = getBufferTierForFollowers(followers);
-  const internalTier = bufferTier ? BUFFER_TIER_TO_INTERNAL_TIER[bufferTier.tier] : null;
+  // Fallback macro: perfis ≥1M ficam fora dos tiers Buffer mas devem
+  // ainda mapear para o tier interno "macro" para efeitos de KB.
+  const isAboveBufferRange = Number.isFinite(followers) && followers >= 1_000_000;
+  const internalTier: BenchmarkTier | null = bufferTier
+    ? BUFFER_TIER_TO_INTERNAL_TIER[bufferTier.tier]
+    : isAboveBufferRange
+      ? "macro"
+      : null;
 
   const overall = getSocialinsiderEngagementForFormat("overall")!;
   const forFormat =
@@ -368,6 +379,7 @@ export function getBenchmarkContextForProfile(
       format: formatCopy,
       benchmarkNote: copy.benchmarkNote,
       sourceNote: copy.sourceNote,
+      tierNote: isAboveBufferRange ? copy.macroTierNote : "",
     },
   };
 }

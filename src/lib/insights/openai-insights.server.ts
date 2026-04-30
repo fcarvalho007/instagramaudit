@@ -45,6 +45,7 @@ import {
 } from "./prompt-v2";
 import { validateInsightsV2 } from "./validate-v2";
 import { getKnowledgeContext } from "@/lib/knowledge/context.server";
+import { sanitizeAiCopy } from "@/lib/knowledge/sanitize-ai-copy";
 import type {
   BenchmarkFormat,
   BenchmarkTier,
@@ -478,7 +479,10 @@ export async function generateInsightsV2(
   const kb = await getKnowledgeContext({ tier, format });
   const kbVersion = computeKbVersion(kb);
 
-  const systemPrompt = buildSystemPromptV2(kb);
+  // Snapshots de scraping público nunca trazem reach/saves/visitas reais.
+  // Quando isso mudar (Instagram autenticado), passar `true` aqui.
+  const hasReachData = false;
+  const systemPrompt = buildSystemPromptV2(kb, { hasReachData });
   const userPayload = buildInsightsV2UserPayload(ctx);
   const inputsHash = hashInsightsV2Prompt(systemPrompt, userPayload);
 
@@ -620,6 +624,32 @@ export async function generateInsightsV2(
         reason: "SCHEMA_INVALID",
         detail: `${validation.reason}: ${validation.detail}`,
       };
+    }
+
+    // Telemetria anti-invenção (log-only, não bloqueia render).
+    // Cobre cada secção do output validado contra a política da KB.
+    try {
+      for (const [section, item] of Object.entries(validation.sections)) {
+        const text = (item as { text?: string })?.text;
+        if (typeof text !== "string" || text.length === 0) continue;
+        const sanity = sanitizeAiCopy(text, { hasReachData });
+        if (!sanity.ok) {
+          for (const v of sanity.violations) {
+            console.warn("[knowledge.sanitize] v2 violation", {
+              handle,
+              section,
+              kind: v.kind,
+              match: v.match,
+            });
+          }
+        }
+      }
+    } catch (sanitizeErr) {
+      // Defensivo: telemetria nunca pode partir o pipeline.
+      console.warn(
+        "[knowledge.sanitize] failed to evaluate v2 output",
+        (sanitizeErr as Error)?.message,
+      );
     }
 
     await logCall({
