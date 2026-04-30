@@ -21,7 +21,7 @@ export function ReportDiagnosticCta() {
         captions e plano de execução a 30 dias.
       </p>
       <a
-        href="#tier-comparison"
+        href="#leitura-completa"
         className={cn(
           "shrink-0 inline-flex items-center justify-center gap-2 rounded-full",
           "bg-slate-900 px-5 py-3 text-sm font-semibold text-white",
