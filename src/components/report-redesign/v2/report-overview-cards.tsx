@@ -3,10 +3,14 @@ import type { ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
-import { INSTAGRAM_BENCHMARK_CONTEXT } from "@/lib/knowledge/benchmark-context";
+import {
+  INSTAGRAM_BENCHMARK_CONTEXT,
+  getBufferTierForFollowers,
+} from "@/lib/knowledge/benchmark-context";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 import { ReportSourceLabel } from "./report-source-label";
+import { ReportBenchmarkEvidence } from "./report-benchmark-evidence";
 
 interface Props {
   result: AdapterResult;
@@ -38,6 +42,7 @@ export function ReportOverviewCards({ result }: Props) {
   const k = result.data.keyMetrics;
   const windowDays = result.coverage.windowDays ?? 0;
   const breakdown = result.data.formatBreakdown ?? [];
+  const followers = result.data.profile.followers ?? 0;
 
   return (
     <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-3">
@@ -47,6 +52,7 @@ export function ReportOverviewCards({ result }: Props) {
           engagement={k.engagementRate}
           benchmark={k.engagementBenchmark}
           deltaPct={k.engagementDeltaPct}
+          followers={followers}
         />
       </div>
       {/* Secondary stack — rhythm + format */}
