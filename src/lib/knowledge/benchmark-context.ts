@@ -20,6 +20,13 @@
 
 import type { BenchmarkTier } from "./types";
 
+/**
+ * Versão do dataset estático. Incrementar (formato `YYYY-MM-DD`) sempre
+ * que `INSTAGRAM_BENCHMARK_CONTEXT` for actualizado. Entra no
+ * `kbVersion` do orquestrador para invalidar cache de insights v2.
+ */
+export const BENCHMARK_DATASET_VERSION = "2026-04-30" as const;
+
 export type BenchmarkSourceName =
   | "Socialinsider"
   | "Buffer"
@@ -382,4 +389,79 @@ export function getBenchmarkContextForProfile(
       tierNote: isAboveBufferRange ? copy.macroTierNote : "",
     },
   };
+}
+
+// ─── Serializer compacto para o prompt OpenAI ───────────────────────
+
+/** Formata um número com 1-2 casas decimais conforme magnitude. */
+function fmtPct(n: number): string {
+  return n >= 10 ? n.toFixed(1) : n.toFixed(2);
+}
+
+/**
+ * Serializa o contexto de benchmark do perfil para um bloco compacto
+ * pronto a colar no system prompt do OpenAI.
+ *
+ * Princípios:
+ *  - ≤ ~12 linhas; formato chave-valor curto.
+ *  - Não cita marcas (Socialinsider, Buffer, Hootsuite, Databox).
+ *  - Omite reach quando `hasReachData=false` (regra anti-invenção).
+ *  - Linguagem direccional (referência, contexto, mediano).
+ */
+export function formatBenchmarkContextForPrompt(
+  input: BenchmarkContextForProfileInput,
+): string {
+  const ctx = getBenchmarkContextForProfile(input);
+  const lines: string[] = [];
+  lines.push("REFERÊNCIAS DIRECIONAIS (uso interno, não citar fontes nem marcas):");
+
+  // Tier por seguidores
+  if (ctx.bufferTier) {
+    const t = ctx.bufferTier;
+    const reachPart =
+      input.hasReachData && t.medianReachPerPost
+        ? ` · alcance mediano ref.: ${t.medianReachPerPost}`
+        : "";
+    lines.push(
+      `- Tier por seguidores: ${t.tier} · ER mediana ref.: ${fmtPct(t.medianEngagementRatePct)}% · cadência ref.: ${t.postsPerMonth} posts/mês · crescimento ref.: ${t.monthlyFollowerGrowthPct >= 0 ? "+" : ""}${fmtPct(t.monthlyFollowerGrowthPct)}%/mês${reachPart}`,
+    );
+  } else if (input.followers >= 1_000_000) {
+    lines.push(
+      "- Tier por seguidores: ≥1M, sem referência directa; usar tier 500K-1M apenas como direccional.",
+    );
+  } else {
+    lines.push("- Tier por seguidores: indisponível para este perfil.");
+  }
+
+  // ER por formato (orgânico, contexto geral)
+  const si = INSTAGRAM_BENCHMARK_CONTEXT.socialinsider.organicEngagementRateByFormat;
+  const get = (f: SocialinsiderFormat) =>
+    si.find((e) => e.format === f)?.engagementRatePct ?? 0;
+  lines.push(
+    `- ER por formato (orgânico, contexto geral): geral ${fmtPct(get("overall"))}% · carrossel ${fmtPct(get("carousel"))}% · reel ${fmtPct(get("reel"))}% · imagem ${fmtPct(get("image"))}%`,
+  );
+
+  // Indústria
+  if (ctx.hootsuite) {
+    lines.push(
+      `- Indústria: ER carrossel ref.: ${fmtPct(ctx.hootsuite.carouselEngagementRatePct)}% · melhor formato sugerido: ${ctx.hootsuite.bestInstagramFormat}.`,
+    );
+  } else {
+    lines.push("- Indústria: n/a (não fornecida pelo perfil).");
+  }
+
+  // Formato dominante do perfil cruzado com referência
+  if (ctx.socialinsiderForFormat) {
+    lines.push(
+      `- Formato dominante do perfil: ${ctx.socialinsiderForFormat.format} · referência geral: ${fmtPct(ctx.socialinsiderForFormat.engagementRatePct)}%.`,
+    );
+  } else {
+    lines.push("- Formato dominante do perfil: indeterminado; usar referência geral.");
+  }
+
+  // 2 princípios estratégicos curtos (sempre os mesmos — neutros e seguros)
+  lines.push("- Princípio: optimizar interacção (gostos, comentários, guardados implícitos), não apenas alcance.");
+  lines.push("- Princípio: carrosséis fortes para autoridade/educação; reels para descoberta; imagens para identidade e produto.");
+
+  return lines.join("\n");
 }
