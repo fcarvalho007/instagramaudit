@@ -11,19 +11,36 @@ nunca verdade absoluta.
 
 ---
 
-## 1. Fontes editoriais aprovadas
+## 1. Fontes editoriais
 
-- Socialinsider
-- Buffer
-- Hootsuite
-- Databox
+### 1.1 Activas no relatório público
+
+- **Socialinsider** · contexto orgânico e por formato
+- **Buffer** · contexto por escalão de seguidores
+- **Hootsuite** · contexto de indústria
 
 Estas fontes podem ser **nomeadas** no relatório como referência
-editorial, sem URLs nem links clicáveis. Nunca afirmar que estas fontes
-analisaram o perfil em causa — servem apenas como contexto de mercado.
+editorial, sem URLs no corpo dos cartões. Nunca afirmar que estas
+fontes analisaram o perfil em causa — servem apenas como contexto
+silencioso de mercado.
 
-Exemplo visível:
-> "Contexto de referência: Socialinsider, Buffer, Hootsuite e Databox."
+Exemplo visível (linha de proveniência):
+> "Fontes de enquadramento: Socialinsider, Buffer e Hootsuite."
+
+Marcadores compactos `[1] [2] [3]` são permitidos quando claramente
+apresentados como referências externas e sempre com
+`target="_blank" rel="noopener noreferrer"`. Hoje não estão em uso —
+ficam disponíveis como opção futura.
+
+### 1.2 Reservada para futuro autenticado
+
+- **Databox** · métricas privadas (alcance, visitas, cliques, saves)
+
+Não citar no relatório público actual nem incluir na linha de fontes
+visível. Só pode passar a fonte activa quando o perfil analisado
+contiver dados autenticados (alcance, visitas, cliques no website,
+saves) — nessa altura, a `visibility` do registo passa a `active` em
+`benchmark-context.ts`.
 
 ---
 
