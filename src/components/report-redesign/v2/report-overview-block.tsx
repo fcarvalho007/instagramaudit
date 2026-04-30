@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 import { ReportOverviewCards } from "./report-overview-cards";
+import { ReportOverviewAttentionRow } from "./report-overview-attention-row";
 
 interface Props {
   result: AdapterResult;
@@ -42,6 +43,10 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
 
       <div className="relative z-10">
         <ReportOverviewCards result={result} />
+      </div>
+
+      <div className="relative z-10">
+        <ReportOverviewAttentionRow result={result} />
       </div>
 
       {insightNode ? (
