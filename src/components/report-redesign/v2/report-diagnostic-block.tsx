@@ -252,10 +252,8 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         answer="Padrão misto"
         tone="slate"
         body={body}
-        sourceLabel={{
-          kind: "auto",
-          text: "Leitura automática de legendas e hashtags.",
-        }}
+        sourceType="automatic"
+        sourceDetail="Legendas"
       >
         {r.distribution.length >= 2 ? (
           <DiagnosticDistributionBar
@@ -286,10 +284,8 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       answer={r.label}
       tone="emerald"
       body={`Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}, com base em legendas e hashtags.`}
-      sourceLabel={{
-        kind: "auto",
-        text: "Leitura automática de legendas e hashtags.",
-      }}
+      sourceType="automatic"
+      sourceDetail="Legendas"
     >
       {r.distribution.length >= 2 ? (
         <DiagnosticDistributionBar
@@ -338,10 +334,8 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       answer={r.label ?? "—"}
       tone={isFocused ? "blue" : "amber"}
       body={bodyByLabel[r.label ?? "Comunicação dispersa"]}
-      sourceLabel={{
-        kind: "auto",
-        text: "Leitura automática das legendas analisadas.",
-      }}
+      sourceType="automatic"
+      sourceDetail="Legendas"
     >
       {r.breakdown.length > 0 ? (
         <DiagnosticFunnelStack
@@ -370,10 +364,8 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
       answer={r.items.slice(0, 2).map((it) => it.text).join(" · ")}
       tone="blue"
       body="As hashtags mostram como o perfil etiqueta os conteúdos e que territórios quer associar às publicações — não representam, por si só, os assuntos abordados."
-      sourceLabel={{
-        kind: "extracted",
-        text: "Baseado nas hashtags públicas das publicações analisadas.",
-      }}
+      sourceType="extracted"
+      sourceDetail="Hashtags"
     >
       <ul className="space-y-1.5">
         {r.items.map((it) => {
@@ -404,15 +396,6 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
 function renderThemesCard(r: ThemesResult): ReactNode | null {
   if (!r.available) return null;
   const isAi = r.source === "ai";
-  const sourceLabel = isAi
-    ? {
-        kind: "ai" as const,
-        text: "Leitura IA gerada a partir da amostra de publicações.",
-      }
-    : {
-        kind: "auto" as const,
-        text: "Leitura automática das legendas analisadas.",
-      };
   const body = isAi
     ? "Esta leitura resume os assuntos recorrentes nas legendas, com base na interpretação editorial gerada pela IA."
     : "Esta leitura resume os assuntos mais frequentes nas legendas analisadas — não as hashtags utilizadas.";
@@ -426,7 +409,8 @@ function renderThemesCard(r: ThemesResult): ReactNode | null {
       answer={r.headline}
       tone="blue"
       body={body}
-      sourceLabel={sourceLabel}
+      sourceType={isAi ? "ai" : "automatic"}
+      sourceDetail="Legendas"
       aiSource={
         isAi && r.aiText
           ? { kind: "interpretation", text: r.aiText }
@@ -486,17 +470,8 @@ function renderCaptionCard(
       tone="blue"
       body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
       aiSource={aiSource}
-      sourceLabel={
-        aiSource
-          ? {
-              kind: "ai",
-              text: "Leitura IA gerada a partir da amostra de publicações.",
-            }
-          : {
-              kind: "auto",
-              text: "Leitura automática das legendas analisadas.",
-            }
-      }
+      sourceType={aiSource ? "ai" : "automatic"}
+      sourceDetail="Legendas"
     >
       <DiagnosticMiniStats
         items={
@@ -553,10 +528,8 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
       answer={r.label}
       tone={tone}
       body={bodyByLabel[r.label]}
-      sourceLabel={{
-        kind: "extracted",
-        text: "Baseado em gostos e comentários públicos das publicações analisadas.",
-      }}
+      sourceType="calculation"
+      sourceDetail="Gostos + comentários"
     >
       <DiagnosticAudienceHighlight
         avgLikes={avgLikes}
@@ -585,10 +558,8 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
       answer={r.label}
       tone={tone}
       body="Há infraestrutura cross-canal quando a bio aponta para fora e as captions reforçam a saída do Instagram. Sem isso, a audiência fica presa à plataforma."
-      sourceLabel={{
-        kind: "auto",
-        text: "Leitura automática da bio, links externos e legendas.",
-      }}
+      sourceType="automatic"
+      sourceDetail="Bio + legendas"
     >
       <DiagnosticChecklist
         items={[
@@ -640,10 +611,8 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       answer={r.primary}
       tone="blue"
       body="Hipótese derivada dos sinais de conteúdo, funil, bio e ligação entre canais. Não substitui o objetivo real da marca ou do criador — deve ser confirmada por quem comunica."
-      sourceLabel={{
-        kind: "auto",
-        text: "Hipótese derivada dos sinais editoriais detectados nesta amostra.",
-      }}
+      sourceType="automatic"
+      sourceDetail="Sinais cruzados"
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>
