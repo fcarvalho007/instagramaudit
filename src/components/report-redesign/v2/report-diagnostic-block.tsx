@@ -410,7 +410,7 @@ function renderThemesCard(r: ThemesResult): ReactNode | null {
       tone="blue"
       body={body}
       sourceType={isAi ? "ai" : "automatic"}
-      sourceDetail="Legendas"
+      sourceDetail="Assuntos das legendas"
       aiSource={
         isAi && r.aiText
           ? { kind: "interpretation", text: r.aiText }
@@ -471,7 +471,7 @@ function renderCaptionCard(
       body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
       aiSource={aiSource}
       sourceType={aiSource ? "ai" : "automatic"}
-      sourceDetail="Legendas"
+      sourceDetail="Estilo das legendas"
     >
       <DiagnosticMiniStats
         items={
@@ -612,7 +612,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       tone="blue"
       body="Hipótese derivada dos sinais de conteúdo, funil, bio e ligação entre canais. Não substitui o objetivo real da marca ou do criador — deve ser confirmada por quem comunica."
       sourceType="automatic"
-      sourceDetail="Sinais cruzados"
+      sourceDetail="Conteúdo + funil + bio"
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>
