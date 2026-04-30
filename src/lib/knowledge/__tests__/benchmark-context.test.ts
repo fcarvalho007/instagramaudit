@@ -131,4 +131,25 @@ describe("getBenchmarkContextForProfile", () => {
     expect(ctx.socialinsiderForFormat).toBeNull();
     expect(ctx.copyHints.format).toBe("");
   });
+
+  it("perfis ≥1M caem em fallback macro com tierNote", () => {
+    const ctx = getBenchmarkContextForProfile({
+      followers: 1_200_000,
+      dominantFormat: "carousel",
+    });
+    expect(ctx.bufferTier).toBeNull();
+    expect(ctx.internalTier).toBe("macro");
+    expect(ctx.copyHints.tierNote).toContain("1M");
+    expect(ctx.referenceReachPerPost).toBeNull();
+  });
+
+  it("followers=0 mantém-se dentro do tier 0-1K e sem tierNote", () => {
+    const ctx = getBenchmarkContextForProfile({
+      followers: 0,
+      dominantFormat: "image",
+    });
+    expect(ctx.bufferTier?.tier).toBe("0-1K");
+    expect(ctx.internalTier).toBe("nano");
+    expect(ctx.copyHints.tierNote).toBe("");
+  });
 });
