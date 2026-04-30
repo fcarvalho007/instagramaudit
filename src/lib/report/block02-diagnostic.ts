@@ -612,19 +612,31 @@ export function inferThemesFromCaptions(args: {
       items: [],
       aiText,
       sampleSize: 0,
+      derivedFrom: "ai-language",
     };
   }
 
   const kws = Array.isArray(args.topKeywords) ? args.topKeywords : [];
-  if (kws.length >= 2) {
-    const items = kws.slice(0, 5).map((k) => ({ text: k.word, weight: k.count }));
+  // Endurece o filtro: descarta tokens 1-2 chars, só dígitos e stop-words.
+  const filtered = kws.filter((k) => {
+    const w = (k.word ?? "").toLowerCase().trim();
+    if (w.length < 3) return false;
+    if (/^\d+$/.test(w)) return false;
+    if (PT_THEME_STOPWORDS.has(w)) return false;
+    return true;
+  });
+  if (filtered.length >= 2) {
+    const items = filtered
+      .slice(0, 8)
+      .map((k) => ({ text: k.word, weight: k.count }));
     return {
       available: true,
       source: "deterministic",
       headline: deterministicHeadline(items[0]?.text ?? ""),
       items,
       aiText: null,
-      sampleSize: kws.length,
+      sampleSize: filtered.length,
+      derivedFrom: "captions-keywords",
     };
   }
 
@@ -635,6 +647,7 @@ export function inferThemesFromCaptions(args: {
     items: [],
     aiText: null,
     sampleSize: 0,
+    derivedFrom: null,
   };
 }
 
