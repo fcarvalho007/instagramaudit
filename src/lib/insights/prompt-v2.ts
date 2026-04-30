@@ -41,7 +41,7 @@ Regras de conteúdo (obrigatórias):
 - Cada texto = 1 observação concreta com número + 1 recomendação prática accionável.
 - Recomendação no infinitivo impessoal ("Testar...", "Reforçar...", "Reduzir...", "Manter...").
 - Citar sempre pelo menos um valor numérico do payload (percentagem, contagem, ritmo). Sem número, o insight é genérico e rejeitado.
-- Quando relevante, citar benchmarks da Knowledge Base (ex.: "vs 4,2% médios para o tier"). Não inventar benchmarks que não venham da KB nem do payload.
+- Quando relevante, citar valores de benchmark da Knowledge Base de forma anónima (ex.: "vs 4,2% médios para o tier"). Nunca atribuir o perfil ou os benchmarks a fontes externas. Não inventar benchmarks que não venham da KB nem do payload.
 - Usar notas editoriais da KB como contexto interpretativo (algoritmo, formato, vertical), nunca como facto novo sobre o perfil.
 - Texto máximo: ${INSIGHT_V2_TEXT_MAX} caracteres.
 - Tom claro, profissional, simpático. Frases curtas. Sem jargão técnico, sem caminhos snake_case (engagement_pct, content_summary.x, etc.).

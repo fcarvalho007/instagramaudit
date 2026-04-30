@@ -436,7 +436,7 @@ export function getBenchmarkContextForProfile(
       format: formatCopy,
       benchmarkNote: copy.benchmarkNote,
       sourceNote: copy.sourceNote,
-      tierNote: isAboveBufferRange ? copy.macroTierNote : "",
+      tierNote: isAboveBufferRange ? copy.aboveBufferRangeHint : "",
     },
   };
 }
