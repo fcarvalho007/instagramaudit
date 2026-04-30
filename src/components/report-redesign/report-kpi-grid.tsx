@@ -80,6 +80,8 @@ export function ReportKpiGrid({ result }: Props) {
             icon={<Target className="h-4 w-4" aria-hidden="true" />}
             label="Estado do benchmark"
             value={<BenchPill label={benchmarkLabel} tone={benchmarkTone} />}
+            help="estado atual"
+            isStatus
             spanLast
           />
         </div>
@@ -94,6 +96,7 @@ function KpiCard({
   value,
   help,
   spanLast,
+  isStatus,
 }: {
   icon: ReactNode;
   label: string;
@@ -101,6 +104,12 @@ function KpiCard({
   help?: string;
   /** Em mobile (<640) o último card ocupa as 2 colunas. */
   spanLast?: boolean;
+  /**
+   * Quando `true`, sinaliza que o card é um estado (chip), não uma
+   * métrica numérica. Centra o chip e suaviza o ring para distinguir
+   * visualmente da grelha de KPIs sem quebrar o alinhamento.
+   */
+  isStatus?: boolean;
 }) {
   return (
     <div
@@ -108,6 +117,7 @@ function KpiCard({
         REDESIGN_TOKENS.cardKpi,
         "p-4 md:p-5 flex flex-col gap-3 min-w-0",
         spanLast ? "col-span-2 sm:col-span-3 lg:col-span-1" : "",
+        isStatus ? "ring-1 ring-blue-100/70" : "",
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -119,7 +129,15 @@ function KpiCard({
         </span>
       </div>
       <p className={REDESIGN_TOKENS.kpiLabel}>{label}</p>
-      <div className={cn(REDESIGN_TOKENS.kpiValue, "break-words")}>{value}</div>
+      <div
+        className={cn(
+          REDESIGN_TOKENS.kpiValue,
+          "break-normal [overflow-wrap:normal] [hyphens:none]",
+          isStatus ? "flex items-center" : "",
+        )}
+      >
+        {value}
+      </div>
       {help ? <p className={REDESIGN_TOKENS.kpiHelp}>{help}</p> : null}
     </div>
   );

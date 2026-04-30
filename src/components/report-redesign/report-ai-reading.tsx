@@ -7,6 +7,13 @@ import { REDESIGN_TOKENS } from "./report-tokens";
 interface Props {
   data: ReportData;
   enriched: ReportEnriched;
+  /**
+   * Quando `true`, suprime o cabeçalho da `ReportSectionFrame`
+   * para evitar duplicar a pergunta editorial dominante quando
+   * a leitura está aninhada num bloco do `ReportShellV2`.
+   * Default: `false` — comportamento original preservado.
+   */
+  compact?: boolean;
 }
 
 /**
@@ -40,7 +47,7 @@ function humanize(text: string): string {
  *
  * Hidden quando o snapshot não traz insights.
  */
-export function ReportAiReading({ data, enriched }: Props) {
+export function ReportAiReading({ data, enriched, compact = false }: Props) {
   const items = data.aiInsights ?? [];
   if (items.length === 0) return null;
 
@@ -60,6 +67,7 @@ export function ReportAiReading({ data, enriched }: Props) {
       subtitle="Síntese editorial gerada a partir das métricas observadas, do envolvimento médio e da diferença face à referência de mercado."
       tone="white"
       ariaLabel="Leitura estratégica do relatório"
+      compact={compact}
     >
       <ol className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
         {items.map((item, idx) => (
