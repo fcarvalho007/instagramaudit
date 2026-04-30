@@ -585,7 +585,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       }
       answer={r.primary}
       tone="blue"
-      body="Inferência por padrão de conteúdo + funil + bio + ligação entre canais. É uma hipótese de leitura — confirme com o contexto real do perfil."
+      body="Hipótese principal derivada de sinais de conteúdo, funil, bio e ligação entre canais. Com base na amostra analisada — confirme com o contexto real do perfil."
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>
