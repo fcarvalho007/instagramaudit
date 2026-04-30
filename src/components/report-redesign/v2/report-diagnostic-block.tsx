@@ -235,6 +235,15 @@ function humanFormat(raw: string | null): string {
 function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
   if (!r.available) return null;
   if (r.label === "Misto / pouco claro" || !r.label) {
+    // Quando há um top com share relevante mas sem distância suficiente para
+    // dominar (regra share≥35% AND top≥1.5×second), o veredito honesto é:
+    // "há sinal, mas não chega para foco editorial". A copy reflete o que
+    // a barra mostra — sem contradizer o número visível.
+    const top = r.distribution[0];
+    const hasStrongTop = !!top && top.sharePct >= 35;
+    const body = hasStrongTop && top
+      ? `Há um sinal mais forte em ${top.label.toLowerCase()} (${top.sharePct} %), mas sem distância clara para os restantes registos — ainda não chega para falar em foco editorial.`
+      : "Nenhuma natureza domina claramente — a comunicação alterna entre vários registos sem foco editorial visível.";
     return (
       <ReportDiagnosticCard
         key="q01"
@@ -243,7 +252,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         question="Que natureza de conteúdo aparece mais?"
         answer="Padrão misto"
         tone="slate"
-        body="Nenhuma natureza domina claramente — a comunicação alterna entre vários registos sem foco editorial visível."
+        body={body}
       >
         {r.distribution.length >= 2 ? (
           <DiagnosticDistributionBar
