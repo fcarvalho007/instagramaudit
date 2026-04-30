@@ -1,0 +1,55 @@
+/*
+ * Modo "print" do report — activado por `body.pdf-print-mode` (definido pela
+ * rota /report/print/$snapshotId). Todas as regras são scoped para nunca
+ * afectarem o web report regular.
+ *
+ * Objectivo: deixar o conteúdo editorial intacto e esconder a chrome que não
+ * pertence ao PDF (navbar global, footer, banner beta, CTA final, botões de
+ * exportar/partilhar do hero).
+ */
+
+body.pdf-print-mode {
+  background: #ffffff;
+}
+
+/* Header e Footer globais do AppShell */
+body.pdf-print-mode > div > header,
+body.pdf-print-mode > div > footer {
+  display: none !important;
+}
+
+/* Remove o padding vertical do <main> que o AppShell aplica para deixar o
+   relatório encostado ao topo da primeira página. */
+body.pdf-print-mode > div > main {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* CTAs do hero do report (Exportar PDF + Partilhar) — hero usa
+   aria-label="Cabeçalho do relatório"; os botões vivem todos num único
+   wrapper flex. Esconde apenas a coluna dos CTAs, preservando a identidade. */
+body.pdf-print-mode section[aria-label="Cabeçalho do relatório"] button,
+body.pdf-print-mode section[aria-label="Cabeçalho do relatório"] [role="button"] {
+  display: none !important;
+}
+
+/* Banner de feedback beta (renderizado pelo ReportShell antes do footer) */
+body.pdf-print-mode section[aria-label="Feedback durante a fase beta"] {
+  display: none !important;
+}
+
+/* Bloco final com CTA "concluir relatório" */
+body.pdf-print-mode section[aria-label="Concluir relatório"] {
+  display: none !important;
+}
+
+/* Toaster — usado apenas em interactividade web */
+body.pdf-print-mode [data-sonner-toaster] {
+  display: none !important;
+}
+
+/* Garantir que backgrounds e cores são impressos pelo motor headless */
+body.pdf-print-mode * {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}

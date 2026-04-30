@@ -14,8 +14,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { renderReportPdf } from "@/lib/pdf/render";
 import { isNormalizedPayload } from "@/lib/pdf/payload-guard";
+import { renderViaBrowser } from "@/lib/pdf/render-via-browser.server";
+import { buildSnapshotPrintUrl } from "@/lib/pdf/print-url.server";
 import { buildReportPath, uploadReportPdf } from "@/lib/pdf/storage";
 
 const PayloadSchema = z.object({
@@ -242,9 +243,10 @@ export const Route = createFileRoute("/api/generate-report-pdf")({
         // 7) Render PDF.
         let bytes: Uint8Array;
         try {
-          bytes = await renderReportPdf({
-            payload: snapRow.normalized_payload,
-            analyzedAt: snapRow.created_at,
+          bytes = await renderViaBrowser({
+            url: buildSnapshotPrintUrl(snapRow.id),
+            waitForGlobalFn: "__pdfReady",
+            timeoutSeconds: 90,
           });
         } catch (err) {
           console.error("[generate-report-pdf] render failed", err);
