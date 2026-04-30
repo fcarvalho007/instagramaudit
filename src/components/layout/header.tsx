@@ -55,7 +55,7 @@ function Header() {
               InstaBench
             </span>
             <span
-              className="hidden md:flex items-center gap-3 text-content-tertiary"
+              className="hidden lg:flex items-center gap-3 text-content-tertiary"
               aria-hidden="true"
             >
               <span className="h-5 w-px bg-border-default" />
@@ -66,7 +66,7 @@ function Header() {
           </Link>
 
           {/* Center: Nav (desktop) */}
-          <nav className="hidden md:block" aria-label="Navegação principal">
+          <nav className="hidden lg:block" aria-label="Navegação principal">
             <ul className="flex items-center gap-8">
               {NAV_ITEMS.map((item) => (
                 <li key={item.href}>
@@ -101,7 +101,7 @@ function Header() {
                 <Button
                   size="icon"
                   aria-label="Abrir menu"
-                  className="md:hidden"
+                  className="lg:hidden"
                 >
                   <Menu />
                 </Button>
