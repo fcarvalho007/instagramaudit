@@ -1,4 +1,4 @@
-import { BadgeCheck, FileDown, Loader2 } from "lucide-react";
+import { Check, FileDown, Loader2 } from "lucide-react";
 
 import type {
   AdapterResult,
@@ -69,12 +69,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               {/* Handle + verified */}
               <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <h1 className={REDESIGN_TOKENS.h1HeroV2Compact}>{handle}</h1>
-                {verified ? (
-                  <BadgeCheck
-                    className="h-5 w-5 md:h-6 md:w-6 text-blue-500 shrink-0"
-                    aria-label="Conta verificada"
-                  />
-                ) : null}
+                {verified ? <VerifiedBadge /> : null}
               </div>
 
               {/* Nome */}
@@ -129,30 +124,29 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             </div>
           </div>
 
-          {/* Ações + cobertura */}
-          <div className="flex flex-col gap-3 lg:items-end lg:shrink-0 lg:max-w-xs">
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row lg:justify-end w-full">
+          {/* Ações + cobertura — visualmente secundário */}
+          <div className="flex flex-col gap-2 lg:items-end lg:shrink-0">
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <button
                 type="button"
                 onClick={actions.onExportPdf}
                 disabled={actions.pdfDisabled || actions.pdfBusy}
                 aria-busy={actions.pdfBusy}
                 className={cn(
-                  "inline-flex items-center justify-center gap-2 rounded-full",
-                  "bg-blue-600 text-white px-4 md:px-5 py-2.5 text-sm font-semibold",
+                  "inline-flex items-center justify-center gap-1.5 rounded-full",
+                  "bg-blue-600 text-white px-3.5 py-1.5 text-[13px] font-medium",
                   "shadow-[0_1px_2px_rgba(15,23,42,0.06)]",
-                  "transition-all duration-200",
-                  "hover:bg-blue-700",
-                  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0",
-                  "min-h-[40px]",
+                  "transition-colors duration-200 hover:bg-blue-700",
+                  "disabled:cursor-not-allowed disabled:opacity-60",
+                  "h-9",
                 )}
               >
                 {actions.pdfBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                 ) : (
-                  <FileDown className="h-4 w-4" aria-hidden="true" />
+                  <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
                 )}
-                <span>{actions.pdfBusy ? "A preparar PDF…" : "Exportar PDF"}</span>
+                <span>{actions.pdfBusy ? "A preparar…" : "Exportar PDF"}</span>
               </button>
               <ShareReportPopover
                 result={result}
@@ -244,39 +238,69 @@ function Avatar({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  // Anel duplo: branco interior + halo azul exterior.
-  const ringCls =
-    "ring-4 ring-white shadow-[0_0_0_1px_rgb(191,219,254),0_8px_22px_-10px_rgba(59,130,246,0.45)]";
+  // Story ring estilo IG: gradient subtil em redor + inset branco.
+  const storyRing =
+    "p-[2.5px] rounded-full shrink-0 bg-[conic-gradient(from_180deg_at_50%_50%,#FCD34D_0deg,#F472B6_120deg,#A855F7_220deg,#3B82F6_360deg)] shadow-[0_8px_22px_-10px_rgba(59,130,246,0.35)]";
+  const innerWhite = "p-[2px] rounded-full bg-white";
+  const innerSize = "size-[68px] md:size-[92px]";
 
   if (avatarUrl) {
     return (
-      <img
-        src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
-        alt={`Avatar de ${fullName}`}
-        loading="eager"
-        decoding="async"
-        className={cn(
-          "size-[72px] md:size-24 rounded-full object-cover shrink-0 bg-white",
-          ringCls,
-        )}
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.display = "none";
-        }}
-      />
+      <div className={storyRing}>
+        <div className={innerWhite}>
+          <img
+            src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
+            alt={`Avatar de ${fullName}`}
+            loading="eager"
+            decoding="async"
+            className={cn(
+              "rounded-full object-cover bg-white",
+              innerSize,
+            )}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+      </div>
     );
   }
   return (
-    <div
-      aria-hidden="true"
+    <div className={storyRing} aria-hidden="true">
+      <div className={innerWhite}>
+        <div
+          className={cn(
+            "rounded-full flex items-center justify-center",
+            "font-display text-xl md:text-2xl font-semibold text-white",
+            "bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600",
+            innerSize,
+          )}
+        >
+          {initials}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VerifiedBadge() {
+  return (
+    <span
+      aria-label="Conta verificada"
+      title="Conta verificada"
       className={cn(
-        "size-[72px] md:size-24 rounded-full shrink-0 flex items-center justify-center",
-        "font-display text-xl md:text-2xl font-semibold text-white",
-        "bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600",
-        ringCls,
+        "inline-flex items-center justify-center shrink-0",
+        "h-[18px] w-[18px] md:h-5 md:w-5 rounded-full",
+        "bg-blue-500 text-white",
+        "shadow-[0_1px_2px_rgba(15,23,42,0.15)]",
       )}
     >
-      {initials}
-    </div>
+      <Check
+        className="h-2.5 w-2.5 md:h-3 md:w-3"
+        strokeWidth={3.5}
+        aria-hidden="true"
+      />
+    </span>
   );
 }
 
