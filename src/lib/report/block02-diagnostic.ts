@@ -30,6 +30,8 @@ export interface ContentTypeResult {
   sharePct: number;
   sampleSize: number;
   reason?: string;
+  /** Distribuição completa por categoria (apenas as 3 com mais peso são UI-relevantes). */
+  distribution: Array<{ label: ContentTypeLabel; sharePct: number; count: number }>;
 }
 
 export type FunnelStageLabel =
@@ -45,6 +47,12 @@ export interface FunnelStageResult {
   sharePct: number;
   sampleSize: number;
   reason?: string;
+  /** Distribuição das 4 fases reais (sem "dispersa"). */
+  breakdown: Array<{
+    stage: "topo" | "meio" | "fundo" | "pos";
+    label: "TOPO · atrair" | "MEIO · educar" | "FUNDO · converter" | "PÓS · fidelizar";
+    sharePct: number;
+  }>;
 }
 
 export type CaptionPatternLabel =
@@ -59,6 +67,8 @@ export interface CaptionPatternResult {
   label: CaptionPatternLabel;
   avgLength: number;
   ctaSharePct: number;
+  /** % de posts cuja caption contém pelo menos uma pergunta real ("?"). */
+  questionSharePct: number;
   sampleSize: number;
 }
 
@@ -137,6 +147,7 @@ export function classifyContentType(posts: SnapshotPost[]): ContentTypeResult {
       sharePct: 0,
       sampleSize: posts?.length ?? 0,
       reason: "Amostra insuficiente.",
+      distribution: [],
     };
   }
 
@@ -179,6 +190,7 @@ export function classifyContentType(posts: SnapshotPost[]): ContentTypeResult {
       label: "Misto / pouco claro",
       sharePct: 0,
       sampleSize: posts.length,
+      distribution: buildContentDistribution(counts, posts.length),
     };
   }
 
@@ -193,6 +205,7 @@ export function classifyContentType(posts: SnapshotPost[]): ContentTypeResult {
       label: topLabel as ContentTypeLabel,
       sharePct: Math.round(share * 100),
       sampleSize: posts.length,
+      distribution: buildContentDistribution(counts, posts.length),
     };
   }
 
@@ -201,7 +214,25 @@ export function classifyContentType(posts: SnapshotPost[]): ContentTypeResult {
     label: "Misto / pouco claro",
     sharePct: Math.round(share * 100),
     sampleSize: posts.length,
+    distribution: buildContentDistribution(counts, posts.length),
   };
+}
+
+function buildContentDistribution(
+  counts: Record<string, number>,
+  total: number,
+): ContentTypeResult["distribution"] {
+  if (total <= 0) return [];
+  const entries = Object.entries(counts) as Array<[ContentTypeLabel, number]>;
+  return entries
+    .filter(([, c]) => c > 0)
+    .map(([label, c]) => ({
+      label,
+      count: c,
+      sharePct: Math.round((c / total) * 100),
+    }))
+    .sort((a, b) => b.sharePct - a.sharePct)
+    .slice(0, 4);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -236,6 +267,7 @@ export function classifyFunnelStage(posts: SnapshotPost[]): FunnelStageResult {
       sharePct: 0,
       sampleSize: posts?.length ?? 0,
       reason: "Amostra insuficiente.",
+      breakdown: [],
     };
   }
 
@@ -265,6 +297,7 @@ export function classifyFunnelStage(posts: SnapshotPost[]): FunnelStageResult {
       label: "Comunicação dispersa",
       sharePct: 0,
       sampleSize: posts.length,
+      breakdown: buildFunnelBreakdown(counts, posts.length),
     };
   }
 
@@ -278,6 +311,7 @@ export function classifyFunnelStage(posts: SnapshotPost[]): FunnelStageResult {
       label: topLabel as FunnelStageLabel,
       sharePct: Math.round(share * 100),
       sampleSize: posts.length,
+      breakdown: buildFunnelBreakdown(counts, posts.length),
     };
   }
 
@@ -286,7 +320,30 @@ export function classifyFunnelStage(posts: SnapshotPost[]): FunnelStageResult {
     label: "Comunicação dispersa",
     sharePct: Math.round(share * 100),
     sampleSize: posts.length,
+    breakdown: buildFunnelBreakdown(counts, posts.length),
   };
+}
+
+function buildFunnelBreakdown(
+  counts: Record<string, number>,
+  total: number,
+): FunnelStageResult["breakdown"] {
+  if (total <= 0) return [];
+  const map: Array<{
+    stage: "topo" | "meio" | "fundo" | "pos";
+    label: FunnelStageResult["breakdown"][number]["label"];
+    key: string;
+  }> = [
+    { stage: "topo", label: "TOPO · atrair", key: "Topo do funil" },
+    { stage: "meio", label: "MEIO · educar", key: "Meio do funil" },
+    { stage: "fundo", label: "FUNDO · converter", key: "Fundo do funil" },
+    { stage: "pos", label: "PÓS · fidelizar", key: "Pós-venda / fidelização" },
+  ];
+  return map.map((m) => ({
+    stage: m.stage,
+    label: m.label,
+    sharePct: Math.round(((counts[m.key] ?? 0) / total) * 100),
+  }));
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -308,6 +365,7 @@ export function classifyCaptionPattern(
       label: "Sem dados suficientes",
       avgLength: 0,
       ctaSharePct: 0,
+      questionSharePct: 0,
       sampleSize: posts?.length ?? 0,
     };
   }
@@ -324,6 +382,13 @@ export function classifyCaptionPattern(
   }, 0);
   const ctaShare = ctaCount / posts.length;
 
+  // Conta posts cuja caption contém pelo menos uma pergunta real ("?")
+  const questionCount = posts.reduce((acc, p) => {
+    const raw = (p.caption ?? "");
+    return raw.includes("?") ? acc + 1 : acc;
+  }, 0);
+  const questionSharePct = Math.round((questionCount / posts.length) * 100);
+
   // Consistency: ≥ 60% sit in a single bucket
   const total = posts.length;
   const dominant = Math.max(short, mid, long);
@@ -333,6 +398,7 @@ export function classifyCaptionPattern(
       label: "Pouco consistentes",
       avgLength: Math.round(avg),
       ctaSharePct: Math.round(ctaShare * 100),
+      questionSharePct,
       sampleSize: total,
     };
   }
@@ -347,6 +413,7 @@ export function classifyCaptionPattern(
     label,
     avgLength: Math.round(avg),
     ctaSharePct: Math.round(ctaShare * 100),
+    questionSharePct,
     sampleSize: total,
   };
 }

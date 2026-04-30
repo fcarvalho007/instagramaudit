@@ -30,6 +30,8 @@ import {
   DiagnosticMiniStats,
   DiagnosticChecklist,
   DiagnosticRanking,
+  DiagnosticFunnelStack,
+  DiagnosticAudienceHighlight,
   type DiagnosticTone,
 } from "./report-diagnostic-card";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
@@ -246,9 +248,27 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         answer="Padrão misto"
         tone="slate"
         body="Nenhuma natureza domina claramente — a comunicação alterna entre vários registos sem foco editorial visível."
-      />
+      >
+        {r.distribution.length >= 2 ? (
+          <DiagnosticDistributionBar
+            variant="vertical-list"
+            items={r.distribution.map((d, i) => ({
+              label: d.label,
+              value: d.sharePct,
+              color:
+                i === 0
+                  ? "bg-slate-500"
+                  : i === 1
+                    ? "bg-slate-400"
+                    : "bg-slate-300",
+            }))}
+          />
+        ) : null}
+      </ReportDiagnosticCard>
     );
   }
+  const colorByIndex = (i: number) =>
+    i === 0 ? "bg-emerald-600" : i === 1 ? "bg-emerald-400" : "bg-slate-300";
   return (
     <ReportDiagnosticCard
       key="q01"
@@ -258,7 +278,18 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       answer={r.label}
       tone="emerald"
       body={`Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}, com base em legendas e hashtags.`}
-    />
+    >
+      {r.distribution.length >= 2 ? (
+        <DiagnosticDistributionBar
+          variant="vertical-list"
+          items={r.distribution.map((d, i) => ({
+            label: d.label,
+            value: d.sharePct,
+            color: colorByIndex(i),
+          }))}
+        />
+      ) : null}
+    </ReportDiagnosticCard>
   );
 }
 
@@ -277,6 +308,14 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       "Os sinais de atrair, educar, converter e fidelizar misturam-se sem uma fase claramente dominante.",
   };
   const isFocused = r.label !== "Comunicação dispersa";
+  const stageKeyByLabel: Record<string, "topo" | "meio" | "fundo" | "pos" | null> = {
+    "Topo do funil": "topo",
+    "Meio do funil": "meio",
+    "Fundo do funil": "fundo",
+    "Pós-venda / fidelização": "pos",
+    "Comunicação dispersa": null,
+  };
+  const dominantStage = stageKeyByLabel[r.label ?? "Comunicação dispersa"] ?? null;
   return (
     <ReportDiagnosticCard
       key="q02"
@@ -287,7 +326,18 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       answer={r.label ?? "—"}
       tone={isFocused ? "blue" : "amber"}
       body={bodyByLabel[r.label ?? "Comunicação dispersa"]}
-    />
+    >
+      {r.breakdown.length > 0 ? (
+        <DiagnosticFunnelStack
+          items={r.breakdown.map((b) => ({
+            stage: b.stage,
+            label: b.label,
+            sharePct: b.sharePct,
+            active: dominantStage === b.stage,
+          }))}
+        />
+      ) : null}
+    </ReportDiagnosticCard>
   );
 }
 
@@ -323,21 +373,24 @@ function renderFormatCard(
           : `${label} é o formato mais usado, sem chegar a uma dependência clara — há uma mistura saudável de tipos de publicação.`
       }
     >
-      <DiagnosticDistributionBar items={items} />
+      <DiagnosticDistributionBar items={items} valueFormat="percent" />
     </ReportDiagnosticCard>
   );
 }
 
 function renderThemesCard(r: ThemesResult): ReactNode | null {
   if (!r.available) return null;
+  // Resposta dominante: título editorial curto (sem listar hashtags — essas
+  // aparecem só uma vez no slot de evidência abaixo).
+  const headline = inferThemesHeadline(r);
   return (
     <ReportDiagnosticCard
       key="q04"
       number="04"
       label="Temas"
       question="Sobre que temas o perfil fala mais?"
-      answerLabel={r.label}
-      answer={r.items.map((it) => it.text).join("  ·  ")}
+      answerLabel="Foco temático"
+      answer={headline}
       tone="blue"
       body="Estes temas voltam com frequência ao longo da amostra e descrevem o território editorial mais consistente do perfil."
     >
@@ -368,6 +421,20 @@ function renderThemesCard(r: ThemesResult): ReactNode | null {
   );
 }
 
+function inferThemesHeadline(r: ThemesResult): string {
+  const top = r.items[0];
+  if (!top) return r.label;
+  // Tira "#" e devolve a palavra principal capitalizada.
+  const raw = top.text.replace(/^#/, "");
+  // Casos especiais simples
+  const lower = raw.toLowerCase();
+  if (lower === "ia" || lower === "ai") return "Foco claro em IA";
+  if (lower.includes("inteligenciaartificial")) return "Foco claro em IA";
+  if (lower.includes("marketingdigital")) return "Foco em marketing digital";
+  // Fallback genérico: "Foco em <tema>"
+  return `Foco em ${raw}`;
+}
+
 function renderCaptionCard(r: CaptionPatternResult): ReactNode | null {
   if (!r.available) return null;
   const ctaLabel =
@@ -392,11 +459,8 @@ function renderCaptionCard(r: CaptionPatternResult): ReactNode | null {
       <DiagnosticMiniStats
         items={[
           { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
+          { value: `${r.questionSharePct}%`, label: "COM PERGUNTAS" },
           { value: `${r.ctaSharePct}%`, label: "COM CTA" },
-          {
-            value: `${Math.min(100, Math.max(0, Math.round(r.ctaSharePct * 0.6)))}%`,
-            label: "COM PERGUNTAS",
-          },
         ]}
       />
     </ReportDiagnosticCard>
@@ -419,6 +483,18 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
     "Audiência silenciosa":
       "Comunicação unidirecional: o público vê o conteúdo, mas conversa pouco em público.",
   };
+  // Reconstroi avgLikes a partir do ratio: ratioPct = comments/likes * 100
+  // → likes ≈ comments / (ratio/100). Quando ratioPct = 0 fallback = 0.
+  const avgLikes =
+    r.commentsToLikesPct > 0
+      ? Math.round((r.avgComments / r.commentsToLikesPct) * 100)
+      : 0;
+  const highlightTone =
+    r.label === "Audiência ativa"
+      ? "emerald"
+      : r.label === "Resposta moderada"
+        ? "amber"
+        : "rose";
   return (
     <ReportDiagnosticCard
       key="q06"
@@ -429,12 +505,10 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
       tone={tone}
       body={bodyByLabel[r.label]}
     >
-      <DiagnosticMiniStats
-        items={[
-          { value: String(r.avgComments), label: "COMENTÁRIOS MÉDIOS" },
-          { value: `${r.commentsToLikesPct}%`, label: "COMENTÁRIOS / LIKES" },
-          { value: String(r.sampleSize), label: "POSTS" },
-        ]}
+      <DiagnosticAudienceHighlight
+        avgLikes={avgLikes}
+        avgComments={r.avgComments}
+        tone={highlightTone}
       />
     </ReportDiagnosticCard>
   );
@@ -510,7 +584,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       tone="blue"
       body="Inferência por padrão de conteúdo + funil + bio + ligação entre canais. É uma hipótese de leitura — confirme com o contexto real do perfil."
     >
-      <DiagnosticRanking items={r.ranking} />
+      <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>
   );
 }
