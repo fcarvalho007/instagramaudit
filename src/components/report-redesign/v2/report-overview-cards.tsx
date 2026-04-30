@@ -142,7 +142,7 @@ function EngagementRateCard({
 
   return (
     <PremiumCard
-      title="Taxa de engagement"
+      title="Taxa de envolvimento"
       icon={<Activity className="h-4 w-4" aria-hidden="true" />}
       interpretation={status.label}
       interpretationTone={status.tone}
@@ -159,7 +159,7 @@ function EngagementRateCard({
                 ? "text-emerald-700"
                 : status.tone === "bad"
                   ? "text-rose-700"
-                  : "text-amber-700",
+                  : "text-slate-500",
             )}
           >
             {deltaPct > 0 ? "+" : ""}
@@ -215,7 +215,7 @@ function EngagementDistanceBar({
     tone === "good"
       ? "bg-emerald-500"
       : tone === "warn"
-        ? "bg-amber-500"
+        ? "bg-slate-400"
         : tone === "bad"
           ? "bg-rose-500"
           : "bg-slate-400";
@@ -259,7 +259,7 @@ function computeEngagementStatus(
   // ±10% banda neutra (alinha com regra do motor de benchmark).
   if (deltaPct >= 10) return { label: "Acima da referência", tone: "good" };
   if (deltaPct <= -10) return { label: "Abaixo da referência", tone: "bad" };
-  return { label: "Dentro da referência", tone: "warn" };
+  return { label: "Dentro da referência", tone: "neutral" };
 }
 
 // ─── Card 2 — Ritmo de publicação ────────────────────────────────────
@@ -314,6 +314,9 @@ function PostingRhythmCard({
       ) : null}
 
       <RhythmDots weekly={weekly} tone={status.tone} />
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+        ritmo semanal · 0 → 7+
+      </p>
     </PremiumCard>
   );
 }
@@ -325,8 +328,9 @@ function RhythmDots({
   weekly: number;
   tone: "good" | "warn" | "bad" | "neutral";
 }) {
-  // Mapa: cada dot representa um dia da semana. Acende-se em proporção
-  // ao ritmo (até 7). Tons tone-coloridos para reforçar leitura.
+  // Escala visual 0 → 7+ que reflecte a intensidade do ritmo semanal.
+  // Os segmentos NÃO representam dias específicos da semana — apenas
+  // posições numa escala contínua.
   const filled = Math.round(clamp(weekly, 0, 7));
   const partial = clamp(weekly - filled, 0, 1);
   const onCls =
@@ -341,7 +345,7 @@ function RhythmDots({
     <div
       className="flex items-center gap-1.5"
       role="presentation"
-      aria-hidden="true"
+      aria-label={`Escala de ritmo semanal: ${weekly.toFixed(1).replace(".", ",")} de 7+`}
     >
       {Array.from({ length: 7 }, (_, i) => {
         const isOn = i < filled;
@@ -402,11 +406,11 @@ function DominantFormatCard({
       interpretationTone={status.tone}
     >
       <div className="flex items-end gap-3 flex-wrap">
-        <FormatChipLarge label={dominantLabel} tone={tone} />
-        {dominantShare > 0 ? (
-          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-slate-500 pb-1">
-            {dominantShare}% da amostra
-          </span>
+        <span className="font-display text-[2.5rem] md:text-[2.75rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+          {dominantShare > 0 ? `${dominantShare}%` : "—"}
+        </span>
+        {dominantLabel ? (
+          <FormatChipContextual label={dominantLabel} tone={tone} />
         ) : null}
       </div>
 
@@ -504,7 +508,13 @@ function formatChipTone(label: string): FormatTone {
   return "neutral";
 }
 
-function FormatChipLarge({ label, tone }: { label: string; tone: FormatTone }) {
+function FormatChipContextual({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: FormatTone;
+}) {
   const toneCls =
     tone === "primary"
       ? "bg-blue-50 text-blue-700 ring-blue-200"
@@ -524,12 +534,12 @@ function FormatChipLarge({ label, tone }: { label: string; tone: FormatTone }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full px-4 py-2 ring-1",
-        "font-display text-[1.25rem] md:text-[1.375rem] font-semibold tracking-tight",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ring-1 mb-1.5",
+        "text-[13px] font-medium tracking-tight",
         toneCls,
       )}
     >
-      <span className={cn("h-2 w-2 rounded-full", dot)} aria-hidden="true" />
+      <span className={cn("h-1.5 w-1.5 rounded-full", dot)} aria-hidden="true" />
       {label}
     </span>
   );

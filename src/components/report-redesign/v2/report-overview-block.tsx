@@ -106,10 +106,6 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
             </span>
             <p className={REDESIGN_TOKENS.eyebrowAccent}>Leitura IA</p>
           </div>
-          <p className="mb-3 text-[13px] md:text-sm text-slate-500 leading-relaxed">
-            Síntese gerada a partir dos dados públicos do perfil, da
-            referência de mercado e dos sinais de procura externa.
-          </p>
           <div className={REDESIGN_TOKENS.insightFrameV2}>{insightNode}</div>
         </div>
       ) : null}
