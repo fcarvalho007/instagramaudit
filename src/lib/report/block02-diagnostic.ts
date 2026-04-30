@@ -69,6 +69,8 @@ export interface CaptionPatternResult {
   ctaSharePct: number;
   /** % de posts cuja caption contém pelo menos uma pergunta real ("?"). */
   questionSharePct: number;
+  /** True quando a amostra é grande o suficiente (≥ 4 posts) para a stat. */
+  questionShareAvailable: boolean;
   sampleSize: number;
 }
 
