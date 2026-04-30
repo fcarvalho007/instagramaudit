@@ -37,14 +37,25 @@ export const Route = createFileRoute("/report/print/$snapshotId")({
       { name: "robots", content: "noindex,nofollow" },
     ],
     scripts: [
-      // Paleta clara antes do primeiro paint. Esta rota corre com `ssr: false`,
-      // pelo que o script inline pode executar em `<head>` ANTES do parser
-      // alcançar `<body>` — `document.body` seria `null` e estoura toda a
-      // árvore React. Fazemos defer para `DOMContentLoaded` quando preciso.
+      // Bootstrapping síncrono que precisa de existir ANTES da chegada do
+      // PDFShift renderer:
+      //
+      //   (1) `data-theme="light"` em `<body>` antes do primeiro paint para
+      //       evitar flash dark — defer para DOMContentLoaded porque com
+      //       `ssr: false` o script corre antes do parser alcançar `<body>`.
+      //
+      //   (2) `window.__pdfReady` definida JÁ — o PDFShift valida o
+      //       wait_for function ao carregar a página e rejeita com 400 se
+      //       não existir. Lê de `window.__pdfReadyState` que o React
+      //       comuta para `true` quando o relatório está realmente pronto.
       {
         children:
-          `(function(){var f=function(){if(document.body){document.body.setAttribute("data-theme","light")}};` +
-          `if(document.body){f()}else{document.addEventListener("DOMContentLoaded",f)}})()`,
+          `(function(){` +
+          `window.__pdfReadyState=false;` +
+          `window.__pdfReady=function(){return window.__pdfReadyState===true};` +
+          `var f=function(){if(document.body){document.body.setAttribute("data-theme","light")}};` +
+          `if(document.body){f()}else{document.addEventListener("DOMContentLoaded",f)}` +
+          `})()`,
       },
     ],
   }),
