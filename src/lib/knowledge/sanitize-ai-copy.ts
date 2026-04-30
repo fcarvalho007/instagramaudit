@@ -52,6 +52,15 @@ const TECHNICAL_TERMS = [
   /\bkeyMetrics\b/gi,
   /\bAPI response\b/gi,
   /\bscraper output\b/gi,
+  // Domínio Apify / Instagram raw fields que podem escapar para o copy.
+  /\bengagement_rate\b/gi,
+  /\ber_pct\b/gi,
+  /\bfollowers_count\b/gi,
+  /\bmediaType\b/g,
+  /\bplayCount\b/g,
+  /\bvideoViewCount\b/g,
+  // Acessos crus a estruturas de dados — sinal claro de leak técnico.
+  /\b(?:posts|items|data|results)\[\d+\]/gi,
 ] as const;
 
 // Atribuições directas em PT/EN (singular e plural, com / sem artigo).
