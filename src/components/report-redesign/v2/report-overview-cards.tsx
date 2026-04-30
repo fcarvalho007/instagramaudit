@@ -165,13 +165,19 @@ function EngagementRateCard({
   engagement,
   benchmark,
   deltaPct,
+  followers,
 }: {
   engagement: number;
   benchmark: number;
   deltaPct: number;
+  followers: number;
 }) {
   const hasBenchmark = benchmark > 0;
   const status = computeEngagementStatus(engagement, benchmark, deltaPct);
+  const bufferTier = getBufferTierForFollowers(followers);
+  const followerTierLabel = bufferTier
+    ? bufferTier.tier.replace("-", "–")
+    : null;
 
   return (
     <PremiumCard
@@ -218,7 +224,12 @@ function EngagementRateCard({
             </span>{" "}
             de referência
           </p>
-          <ReportSourceLabel type="external" detail="Knowledge Base" />
+          <ReportBenchmarkEvidence
+            platform="instagram"
+            followerTier={followerTierLabel}
+            industry={null}
+            sourceNames={["Socialinsider", "Buffer"]}
+          />
         </div>
       ) : (
         <p className="text-[12px] text-slate-500 leading-relaxed">
