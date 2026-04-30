@@ -27,8 +27,6 @@ import type {
 import { cn } from "@/lib/utils";
 
 import { ReportFramedBlock } from "../report-framed-block";
-import { ReportAiReading } from "../report-ai-reading";
-import { ReportPendingAiNotice } from "../report-pending-ai-notice";
 import { ReportMethodology } from "../report-methodology";
 import { ReportTierTeaser } from "../report-tier-teaser";
 import { REDESIGN_TOKENS } from "../report-tokens";
@@ -41,7 +39,7 @@ import {
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
-import { ReportDiagnosticGridV2 } from "./report-diagnostic-grid-v2";
+import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -69,7 +67,6 @@ export function ReportShellV2({
   payload,
   analyzedAtIso,
 }: ReportShellV2Props) {
-  const hasAiInsights = result.data.aiInsights.length > 0;
   const v2 = result.enriched.aiInsightsV2;
 
   /** Insight v2 dentro de um container já com padding (block content). */
@@ -109,33 +106,9 @@ export function ReportShellV2({
                 />
               </ReportBlockSection>
 
-              {/* 02 · Diagnóstico */}
-              <ReportBlockSection block={diagnostico} tone="soft-blue">
-                {hasAiInsights ? (
-                  <div
-                    className={cn(
-                      // Neutralise inner ReportSectionFrame container so the
-                      // AI reading shares the same content width as the
-                      // diagnostic card grid below.
-                      "[&>section>div]:max-w-none [&>section>div]:px-0",
-                    )}
-                  >
-                    <ReportAiReading
-                      data={result.data}
-                      enriched={result.enriched}
-                      compact
-                    />
-                  </div>
-                ) : (
-                  <ReportPendingAiNotice
-                    generatedAtIso={analyzedAtIso ?? null}
-                  />
-                )}
-                <ReportDiagnosticGridV2
-                  keyMetrics={result.data.keyMetrics}
-                  posts={payload?.posts ?? []}
-                  topHashtags={result.data.topHashtags}
-                />
+              {/* 02 · Diagnóstico editorial */}
+              <ReportBlockSection block={diagnostico} tone="canvas">
+                <ReportDiagnosticBlock result={result} payload={payload} />
               </ReportBlockSection>
 
               {/* 03 · Performance */}

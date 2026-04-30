@@ -9,6 +9,7 @@
  */
 
 import type { SnapshotPost } from "./snapshot-to-report-data";
+import type { ReportData } from "@/components/report/report-mock-data";
 
 // ─────────────────────────────────────────────────────────────────────
 // Shared types
@@ -404,4 +405,335 @@ export function classifyAudienceResponse(
     avgComments: Math.round(avgComments),
     sampleSize: counted,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Card 4 — Temas e hashtags recorrentes
+// ─────────────────────────────────────────────────────────────────────
+
+export type ThemesSource = "hashtags" | "keywords";
+
+export interface ThemesResult {
+  available: boolean;
+  source: ThemesSource | null;
+  label: string;
+  items: Array<{ text: string; weight: number }>;
+}
+
+export function inferThemes(
+  topHashtags: ReportData["topHashtags"],
+  topKeywords: ReportData["topKeywords"],
+): ThemesResult {
+  const tags = Array.isArray(topHashtags) ? topHashtags : [];
+  const kws = Array.isArray(topKeywords) ? topKeywords : [];
+  if (tags.length >= 2) {
+    return {
+      available: true,
+      source: "hashtags",
+      label: "Hashtags mais recorrentes",
+      items: tags.slice(0, 3).map((t) => ({
+        text: t.tag.startsWith("#") ? t.tag : `#${t.tag}`,
+        weight: t.uses,
+      })),
+    };
+  }
+  if (kws.length >= 2) {
+    return {
+      available: true,
+      source: "keywords",
+      label: "Temas mais recorrentes",
+      items: kws.slice(0, 3).map((k) => ({ text: k.word, weight: k.count })),
+    };
+  }
+  return {
+    available: false,
+    source: null,
+    label: "Sem temas recorrentes detetados",
+    items: [],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Card 7 — Integração entre canais
+// ─────────────────────────────────────────────────────────────────────
+
+export type IntegrationLabel =
+  | "Integração clara"
+  | "Integração parcial"
+  | "Pouca ligação visível"
+  | "Sem sinais suficientes";
+
+export interface IntegrationResult {
+  available: boolean;
+  label: IntegrationLabel;
+  signals: {
+    bioLink: { detected: boolean; value?: string };
+    siteOrNewsletter: { detected: boolean; count: number };
+    explicitCta: { detected: boolean; sharePct: number };
+  };
+}
+
+const URL_RE = /\b(https?:\/\/|www\.)\S+|\b[a-z0-9-]+\.(pt|com|net|io|co|app|dev|me|org)\b/i;
+const NEWSLETTER_TERMS = [
+  "newsletter", "subscreve", "subscrever", "site:", "blog", "podcast",
+  ".pt", ".com", "/loja", "youtube",
+];
+
+export function classifyChannelIntegration(
+  bio: string | null,
+  posts: SnapshotPost[],
+): IntegrationResult {
+  const safeBio = bio ?? "";
+  const bioNorm = normalize(safeBio);
+  const bioHasUrl = URL_RE.test(safeBio);
+  let bioLinkValue: string | undefined;
+  const m = safeBio.match(URL_RE);
+  if (m && m[0]) bioLinkValue = m[0];
+
+  let newsletterCount = 0;
+  for (const p of posts) {
+    const cap = normalize(p.caption ?? "");
+    if (hasAny(cap, NEWSLETTER_TERMS)) newsletterCount += 1;
+  }
+
+  const ctaCount = posts.reduce((acc, p) => {
+    const cap = normalize(p.caption ?? "");
+    return hasAny(cap, CTA_TERMS) ? acc + 1 : acc;
+  }, 0);
+  const ctaShare = posts.length > 0 ? Math.round((ctaCount / posts.length) * 100) : 0;
+  const ctaDetected = ctaShare >= 25;
+
+  const score =
+    (bioHasUrl ? 1 : 0) +
+    (newsletterCount >= 2 ? 1 : 0) +
+    (ctaDetected ? 1 : 0);
+
+  let label: IntegrationLabel;
+  if (!bioHasUrl && newsletterCount === 0 && !ctaDetected && posts.length < 4) {
+    label = "Sem sinais suficientes";
+  } else if (score >= 3) label = "Integração clara";
+  else if (score >= 1) label = "Integração parcial";
+  else label = "Pouca ligação visível";
+
+  // Hint of "newsletter" specifically
+  const newsletterHits = posts.reduce((acc, p) => {
+    const cap = normalize(p.caption ?? "");
+    return cap.includes("newsletter") ? acc + 1 : acc;
+  }, 0);
+
+  return {
+    available: true,
+    label,
+    signals: {
+      bioLink: { detected: bioHasUrl, value: bioLinkValue },
+      siteOrNewsletter: {
+        detected: newsletterCount > 0,
+        count: newsletterHits || newsletterCount,
+      },
+      explicitCta: { detected: ctaDetected, sharePct: ctaShare },
+    },
+  };
+
+  // bioNorm reserved for future signals
+  void bioNorm;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Card 8 — Objetivo provável
+// ─────────────────────────────────────────────────────────────────────
+
+export type ObjectiveLabel =
+  | "Notoriedade · marca pessoal"
+  | "Geração de leads"
+  | "Comunidade"
+  | "Vendas online"
+  | "Educação de audiência";
+
+export interface ObjectiveResult {
+  available: boolean;
+  primary: ObjectiveLabel | null;
+  ranking: Array<{ label: ObjectiveLabel; score: number }>;
+  confidence: "low" | "med";
+}
+
+export function inferProbableObjective(args: {
+  contentType: ContentTypeResult;
+  funnel: FunnelStageResult;
+  integration: IntegrationResult;
+  bio: string | null;
+  audience: AudienceResponseResult;
+}): ObjectiveResult {
+  const { contentType, funnel, integration, bio, audience } = args;
+  const scores: Record<ObjectiveLabel, number> = {
+    "Notoriedade · marca pessoal": 0,
+    "Geração de leads": 0,
+    "Comunidade": 0,
+    "Vendas online": 0,
+    "Educação de audiência": 0,
+  };
+
+  // Educativo dominante → educação + notoriedade
+  if (contentType.label === "Educativo") {
+    scores["Educação de audiência"] += 3;
+    scores["Notoriedade · marca pessoal"] += 2;
+  }
+  if (contentType.label === "Inspiracional") {
+    scores["Notoriedade · marca pessoal"] += 2;
+  }
+  if (contentType.label === "Promocional") {
+    scores["Vendas online"] += 3;
+  }
+  if (contentType.label === "Institucional") {
+    scores["Notoriedade · marca pessoal"] += 1;
+  }
+
+  if (funnel.label === "Topo do funil") {
+    scores["Notoriedade · marca pessoal"] += 2;
+  }
+  if (funnel.label === "Meio do funil") {
+    scores["Educação de audiência"] += 2;
+    scores["Geração de leads"] += 1;
+  }
+  if (funnel.label === "Fundo do funil") {
+    scores["Vendas online"] += 2;
+    scores["Geração de leads"] += 2;
+  }
+  if (funnel.label === "Pós-venda / fidelização") {
+    scores["Comunidade"] += 3;
+  }
+
+  if (integration.signals.bioLink.detected) {
+    scores["Geração de leads"] += 1;
+    const url = (integration.signals.bioLink.value ?? "").toLowerCase();
+    if (/loja|shop|store|comprar/.test(url)) scores["Vendas online"] += 2;
+  }
+  if (integration.signals.siteOrNewsletter.detected) {
+    scores["Geração de leads"] += 1;
+  }
+
+  if (audience.label === "Audiência ativa") {
+    scores["Comunidade"] += 1;
+  }
+
+  const bioNorm = normalize(bio ?? "");
+  if (/loja|shop|store/.test(bioNorm)) scores["Vendas online"] += 1;
+  if (/newsletter|subscreve/.test(bioNorm)) scores["Geração de leads"] += 1;
+  if (/comunidade|membros/.test(bioNorm)) scores["Comunidade"] += 1;
+
+  const ranking = (Object.entries(scores) as Array<[ObjectiveLabel, number]>)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, score]) => ({ label, score }));
+
+  const top = ranking[0];
+  const totalSignal = ranking.reduce((a, b) => a + b.score, 0);
+
+  if (totalSignal === 0 || !top) {
+    return {
+      available: false,
+      primary: null,
+      ranking: [],
+      confidence: "low",
+    };
+  }
+
+  const second = ranking[1]?.score ?? 0;
+  const confidence: "low" | "med" =
+    top.score >= 4 && top.score - second >= 2 ? "med" : "low";
+
+  return {
+    available: true,
+    primary: top.label,
+    ranking: ranking.filter((r) => r.score > 0).slice(0, 4),
+    confidence,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Prioridades de ação (derivadas)
+// ─────────────────────────────────────────────────────────────────────
+
+export type PriorityLevel = "alta" | "media" | "oportunidade";
+
+export interface PriorityItem {
+  level: PriorityLevel;
+  title: string;
+  body: string;
+  resolves: string;
+}
+
+export function derivePriorities(args: {
+  contentType: ContentTypeResult;
+  funnel: FunnelStageResult;
+  caption: CaptionPatternResult;
+  audience: AudienceResponseResult;
+  integration: IntegrationResult;
+  dominantFormatShare: number;
+  dominantFormatLabel: string | null;
+}): PriorityItem[] {
+  const out: PriorityItem[] = [];
+  const {
+    caption,
+    audience,
+    integration,
+    dominantFormatShare,
+    dominantFormatLabel,
+    funnel,
+  } = args;
+
+  // ALTA: público silencioso + poucas perguntas/CTAs
+  if (
+    audience.available &&
+    (audience.label === "Audiência silenciosa" ||
+      (caption.available && caption.ctaSharePct < 15))
+  ) {
+    out.push({
+      level: "alta",
+      title: "Adicionar perguntas no fim das captions",
+      body:
+        caption.available && caption.label === "Longas e educativas"
+          ? "Captions já são longas — basta acrescentar uma pergunta clara para convidar o público a conversar."
+          : "Convidar o leitor a responder ajuda a transformar consumo passivo em interação visível.",
+      resolves: "Resolve a Pergunta 06 — resposta do público.",
+    });
+  }
+
+  // MÉDIA: dependência de formato
+  if (dominantFormatShare >= 60 && dominantFormatLabel) {
+    out.push({
+      level: "media",
+      title: `Diversificar formatos além de ${dominantFormatLabel}`,
+      body: `Cerca de ${Math.round(
+        dominantFormatShare,
+      )} % das publicações são em ${dominantFormatLabel}. Testar formatos complementares pode equilibrar o alcance e a conversa.`,
+      resolves: "Resolve a Pergunta 03 — formato dominante.",
+    });
+  }
+
+  // OPORTUNIDADE: meio de funil ausente / ligação fraca
+  if (
+    funnel.available &&
+    funnel.label !== "Meio do funil" &&
+    integration.signals.explicitCta.sharePct < 30
+  ) {
+    out.push({
+      level: "oportunidade",
+      title: "Reforçar conteúdo de meio de funil",
+      body:
+        "Há margem para criar conteúdo que explica e aprofunda — peças que posicionam o perfil como referência antes de pedir ação.",
+      resolves: "Resolve as Perguntas 02 e 08 — fase do funil e objetivo.",
+    });
+  }
+
+  // Se nada disparou, fallback útil baseado em integração
+  if (out.length === 0 && integration.available) {
+    out.push({
+      level: "oportunidade",
+      title: "Tornar a ligação entre canais mais visível",
+      body:
+        "Mencionar site, newsletter ou outros canais nas captions ajuda a audiência a sair do Instagram quando faz sentido.",
+      resolves: "Resolve a Pergunta 07 — integração entre canais.",
+    });
+  }
+
+  return out.slice(0, 3);
 }

@@ -47,7 +47,7 @@ export function ReportBlockSection({ block, tone = "canvas", children }: Props) 
           </span>
           <div className="min-w-0 max-w-3xl space-y-2">
             <p className={REDESIGN_TOKENS.eyebrowAccent}>
-              {block.shortLabel.toUpperCase()}
+              {(block.eyebrowOverride ?? block.shortLabel).toUpperCase()}
             </p>
             <h2 className={REDESIGN_TOKENS.h2Section}>{block.question}</h2>
             <p className={REDESIGN_TOKENS.subtitle}>{block.subtitle}</p>
