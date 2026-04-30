@@ -52,7 +52,6 @@ interface Props {
 export function ReportDiagnosticBlock({ result, payload }: Props) {
   const posts = payload?.posts ?? [];
   const km = result.data.keyMetrics;
-  const formatBreakdown = result.data.formatBreakdown ?? [];
   const topHashtags = result.data.topHashtags ?? [];
   const topKeywords = result.data.topKeywords ?? [];
   const bio = result.enriched.profile.bio ?? null;
@@ -210,24 +209,6 @@ function buildVerdictText(args: {
   return "Com base na amostra analisada, " + parts.join(", ") + ".";
 }
 
-function humanFormat(raw: string | null): string {
-  if (!raw) return "—";
-  const map: Record<string, string> = {
-    Reels: "Reels",
-    Reel: "Reels",
-    Carousels: "Carrosséis",
-    Carrosseis: "Carrosséis",
-    Carrosséis: "Carrosséis",
-    Carousel: "Carrosséis",
-    Imagens: "Imagens",
-    Image: "Imagens",
-    Photo: "Imagens",
-    Photos: "Imagens",
-    Video: "Vídeo",
-  };
-  return map[raw] ?? raw;
-}
-
 // ─────────────────────────────────────────────────────────────────────
 // Card builders
 // ─────────────────────────────────────────────────────────────────────
@@ -342,43 +323,6 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
           }))}
         />
       ) : null}
-    </ReportDiagnosticCard>
-  );
-}
-
-function renderFormatCard(
-  km: AdapterResult["data"]["keyMetrics"],
-  breakdown: AdapterResult["data"]["formatBreakdown"],
-): ReactNode | null {
-  if (!km.dominantFormat || !breakdown || breakdown.length === 0) return null;
-  const share = km.dominantFormatShare ?? 0;
-  const label = humanFormat(km.dominantFormat);
-  const high = share >= 60;
-  const items = breakdown.map((b, i) => ({
-    label: humanFormat(b.format),
-    value: b.sharePct,
-    color:
-      i === 0
-        ? "bg-blue-600"
-        : i === 1
-          ? "bg-blue-300"
-          : "bg-slate-300",
-  }));
-  return (
-    <ReportDiagnosticCard
-      key="q03"
-      number="03"
-      label="Formatos"
-      question="Que formato domina a presença?"
-      answer={`${label} · ${Math.round(share)}% da amostra`}
-      tone={high ? "amber" : "blue"}
-      body={
-        high
-          ? `A presença concentra-se em ${label.toLowerCase()}. Diversificar pode equilibrar alcance e conversa, especialmente em formatos sub-explorados.`
-          : `${label} é o formato mais usado, sem chegar a uma dependência clara — há uma mistura saudável de tipos de publicação.`
-      }
-    >
-      <DiagnosticDistributionBar items={items} valueFormat="percent" />
     </ReportDiagnosticCard>
   );
 }
