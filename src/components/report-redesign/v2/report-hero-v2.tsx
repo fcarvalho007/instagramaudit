@@ -16,15 +16,13 @@ interface ReportHeroV2Props {
 }
 
 /**
- * Hero v2 (Phase 1B.1) — versão evoluída do hero do relatório.
- * Mantém a API e a semântica do hero v1 (locked) mas:
- *  - banda gradiente mais rica (radial duplo + vinheta inferior)
- *  - tipografia maior em desktop (até 3.25rem)
- *  - avatar com ring duplo (branco + azul-100)
- *  - cluster de cobertura coeso por baixo
- *  - meta line monolítica reposicionada por baixo dos badges
- *
- * Não substitui o hero v1 — coexistem para suportar rollback.
+ * Hero v2 compacto (Phase 1B.1A) — header inspirado em perfil
+ * Instagram, mas em linguagem editorial SaaS.
+ *  - banda gradiente mais subtil
+ *  - layout 2 colunas em desktop: identidade + ações
+ *  - stats row estilo perfil (publicações analisadas, seguidores…)
+ *  - strip de posicionamento integrada (substitui o banner standalone)
+ *  - target ~280–340px de altura em desktop
  */
 export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   const profile = result.data.profile;
@@ -36,107 +34,208 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   const bio = enriched.profile.bio;
   const avatarUrl = enriched.profile.avatarUrl;
 
+  const stats = buildStats({
+    postsAnalyzed: profile.postsAnalyzed ?? 0,
+    followers: profile.followers ?? 0,
+    following: profile.following ?? 0,
+    postsCount: profile.postsCount ?? 0,
+    windowDays: coverage.windowDays ?? 0,
+    analyzedAt: profile.analyzedAt ?? "",
+  });
+
   return (
     <section
       aria-label="Cabeçalho do relatório"
-      className={cn("relative w-full overflow-hidden", REDESIGN_TOKENS.heroBandV2)}
+      className={cn(
+        "relative w-full overflow-hidden",
+        REDESIGN_TOKENS.heroBandV2Compact,
+      )}
     >
-      {/* Vinheta inferior subtil para transição suave para a banda branca. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-white/70"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-white/70"
       />
 
-      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-12 md:pt-16 lg:pt-20 pb-12 md:pb-16">
-        <p className={cn(REDESIGN_TOKENS.eyebrowAccent, "mb-7")}>
-          InstaBench · Relatório editorial
-        </p>
-
-        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
+      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-8 md:pt-10 lg:pt-12 pb-8 md:pb-10">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
           {/* Identidade */}
-          <div className="flex items-start gap-5 md:gap-6 min-w-0 flex-1">
+          <div className="flex items-start gap-4 md:gap-5 min-w-0 flex-1">
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
-            <div className="min-w-0 space-y-2.5">
-              <h1 className={REDESIGN_TOKENS.h1HeroV2}>{handle}</h1>
-              {fullName ? (
-                <p className="text-base md:text-lg font-medium text-slate-700">
-                  {fullName}
-                </p>
-              ) : (
-                <p className="text-sm md:text-base text-slate-600">
-                  Perfil público no Instagram
-                </p>
-              )}
+            <div className="min-w-0 space-y-2 flex-1">
+              <div className="space-y-1">
+                <h1 className={REDESIGN_TOKENS.h1HeroV2Compact}>{handle}</h1>
+                {fullName ? (
+                  <p className="text-sm md:text-base font-medium text-slate-700">
+                    {fullName}
+                  </p>
+                ) : null}
+              </div>
               {bio ? (
-                <p className="text-sm md:text-[15px] text-slate-600/95 leading-relaxed line-clamp-2 max-w-2xl">
+                <p className="text-[13px] md:text-sm text-slate-600 leading-relaxed line-clamp-2 max-w-xl">
                   {bio}
                 </p>
+              ) : null}
+
+              {/* Stats row estilo perfil */}
+              {stats.length > 0 ? (
+                <ul className="!mt-4 flex flex-wrap gap-x-5 gap-y-3 md:gap-x-7">
+                  {stats.map((s) => (
+                    <li key={s.label} className={REDESIGN_TOKENS.heroStatItem}>
+                      <span className={REDESIGN_TOKENS.heroStatValue}>
+                        {s.value}
+                      </span>
+                      <span className={REDESIGN_TOKENS.heroStatLabel}>
+                        {s.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </div>
           </div>
 
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:flex-row lg:items-center lg:shrink-0">
-            <button
-              type="button"
-              onClick={actions.onExportPdf}
-              disabled={actions.pdfDisabled || actions.pdfBusy}
-              aria-busy={actions.pdfBusy}
-              className={cn(
-                "inline-flex items-center justify-center gap-2 rounded-full",
-                "bg-blue-600 text-white px-5 md:px-6 py-3 text-sm font-semibold",
-                "shadow-[0_1px_2px_rgba(15,23,42,0.08),0_10px_24px_-10px_rgba(59,130,246,0.55)]",
-                "transition-all duration-200",
-                "hover:bg-blue-700 hover:-translate-y-0.5",
-                "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0",
-                "min-h-[44px]",
-              )}
-            >
-              {actions.pdfBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <FileDown className="h-4 w-4" aria-hidden="true" />
-              )}
-              <span>{actions.pdfBusy ? "A preparar PDF…" : "Exportar PDF"}</span>
-            </button>
-            <ShareReportPopover
-              result={result}
-              variant="ghost"
-              triggerLabel="Partilhar"
-            />
+          {/* Ações + cobertura */}
+          <div className="flex flex-col gap-3 lg:items-end lg:shrink-0">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={actions.onExportPdf}
+                disabled={actions.pdfDisabled || actions.pdfBusy}
+                aria-busy={actions.pdfBusy}
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-full",
+                  "bg-blue-600 text-white px-4 md:px-5 py-2.5 text-sm font-semibold",
+                  "shadow-[0_1px_2px_rgba(15,23,42,0.08),0_8px_20px_-10px_rgba(59,130,246,0.55)]",
+                  "transition-all duration-200",
+                  "hover:bg-blue-700 hover:-translate-y-0.5",
+                  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0",
+                  "min-h-[40px]",
+                )}
+              >
+                {actions.pdfBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <FileDown className="h-4 w-4" aria-hidden="true" />
+                )}
+                <span>{actions.pdfBusy ? "A preparar PDF…" : "Exportar PDF"}</span>
+              </button>
+              <ShareReportPopover
+                result={result}
+                variant="ghost"
+                triggerLabel="Partilhar"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5 lg:justify-end">
+              <CoverageBadge label="Dados públicos" status="real" />
+              {enriched.aiInsights ? (
+                <CoverageBadge label="IA editorial" status="real" />
+              ) : null}
+              <CoverageBadge label="Benchmark" status={coverage.benchmark} />
+              <CoverageBadge label="Pesquisa" status="partial" />
+            </div>
           </div>
         </div>
 
-        {/* Cluster de cobertura + meta */}
-        <div className="mt-10 md:mt-12 flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <CoverageBadge label="Dados públicos" status="real" />
-            {enriched.aiInsights ? (
-              <CoverageBadge label="IA editorial" status="real" />
-            ) : null}
-            <CoverageBadge label="Benchmark" status={coverage.benchmark} />
-            <CoverageBadge label="Pesquisa" status="partial" />
-          </div>
-          <p
-            className={cn(
-              REDESIGN_TOKENS.kpiLabel,
-              "flex flex-wrap items-center gap-x-3 gap-y-1",
-            )}
-          >
-            <span>{profile.postsAnalyzed ?? 0} publicações analisadas</span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span>
-              {coverage.windowDays > 0
-                ? `${coverage.windowDays} dias`
-                : "amostra recolhida"}
-            </span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span>{profile.analyzedAt}</span>
+        {/* Posicionamento integrado (substitui o banner standalone) */}
+        <div className={REDESIGN_TOKENS.positioningStrip}>
+          <p className="text-[13px] md:text-sm text-slate-600 leading-relaxed max-w-2xl">
+            O <strong className="text-slate-900 font-medium">InstaBench</strong>{" "}
+            cruza o que o perfil comunica publicamente, como compara com perfis
+            semelhantes e que temas têm procura fora do Instagram.
           </p>
+          <ul className="flex flex-wrap gap-1.5 shrink-0">
+            {[
+              "Conteúdo público",
+              "Comparação com pares",
+              "Procura externa",
+            ].map((chip) => (
+              <li key={chip} className={REDESIGN_TOKENS.positioningChip}>
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-blue-500"
+                />
+                {chip}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
   );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+interface StatItem {
+  label: string;
+  value: string;
+}
+
+function buildStats(input: {
+  postsAnalyzed: number;
+  followers: number;
+  following: number;
+  postsCount: number;
+  windowDays: number;
+  analyzedAt: string;
+}): StatItem[] {
+  const items: StatItem[] = [];
+  if (input.postsAnalyzed > 0) {
+    items.push({
+      label: "publicações analisadas",
+      value: formatCompact(input.postsAnalyzed),
+    });
+  }
+  if (input.followers > 0) {
+    items.push({
+      label: "seguidores",
+      value: formatCompact(input.followers),
+    });
+  }
+  if (input.following > 0) {
+    items.push({
+      label: "a seguir",
+      value: formatCompact(input.following),
+    });
+  }
+  if (input.postsCount > 0 && input.postsCount !== input.postsAnalyzed) {
+    items.push({
+      label: "publicações totais",
+      value: formatCompact(input.postsCount),
+    });
+  }
+  if (input.windowDays > 0) {
+    items.push({
+      label: "dias analisados",
+      value: String(input.windowDays),
+    });
+  }
+  if (input.analyzedAt) {
+    items.push({
+      label: "analisado em",
+      value: input.analyzedAt,
+    });
+  }
+  return items;
+}
+
+function formatCompact(n: number): string {
+  if (!Number.isFinite(n)) return "0";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) {
+    return trimZero((n / 1_000_000).toFixed(1)) + "M";
+  }
+  if (abs >= 10_000) {
+    return trimZero((n / 1_000).toFixed(0)) + "K";
+  }
+  if (abs >= 1_000) {
+    return trimZero((n / 1_000).toFixed(1)) + "K";
+  }
+  return new Intl.NumberFormat("pt-PT").format(n);
+}
+
+function trimZero(s: string): string {
+  return s.replace(/\.0$/, "");
 }
 
 function Avatar({
@@ -155,7 +254,7 @@ function Avatar({
     .join("");
 
   const ringCls =
-    "ring-4 ring-white shadow-[0_0_0_1px_rgb(191,219,254),0_8px_24px_-12px_rgba(59,130,246,0.40)]";
+    "ring-4 ring-white shadow-[0_0_0_1px_rgb(191,219,254),0_6px_18px_-10px_rgba(59,130,246,0.40)]";
 
   if (avatarUrl) {
     return (
@@ -165,7 +264,7 @@ function Avatar({
         loading="eager"
         decoding="async"
         className={cn(
-          "size-20 md:size-24 rounded-full object-cover shrink-0 bg-white",
+          "size-16 md:size-20 rounded-full object-cover shrink-0 bg-white",
           ringCls,
         )}
         onError={(e) => {
@@ -178,8 +277,8 @@ function Avatar({
     <div
       aria-hidden="true"
       className={cn(
-        "size-20 md:size-24 rounded-full shrink-0 flex items-center justify-center",
-        "font-display text-2xl font-semibold text-white",
+        "size-16 md:size-20 rounded-full shrink-0 flex items-center justify-center",
+        "font-display text-xl md:text-2xl font-semibold text-white",
         "bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600",
         ringCls,
       )}
@@ -211,8 +310,8 @@ function CoverageBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full ring-1 px-3 py-1.5",
-        "font-mono text-[10px] uppercase tracking-[0.16em]",
+        "inline-flex items-center gap-1.5 rounded-full ring-1 px-2.5 py-1",
+        "font-mono text-[10px] uppercase tracking-[0.14em]",
         toneClass,
       )}
     >

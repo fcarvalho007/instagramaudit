@@ -31,22 +31,24 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
   const insightNode = renderInsight("hero");
 
   return (
-    <div className="space-y-8 md:space-y-10">
-      {/* Número decorativo discreto, só desktop. Não é semântico. */}
+    <div className="relative space-y-6 md:space-y-8">
+      {/* Watermark "01" — decorativo, não empurra layout. */}
       <div
         aria-hidden="true"
         className={cn(
-          "hidden md:block -mt-4 mb-2",
+          "hidden lg:block absolute -top-16 right-0 lg:right-2 z-0 select-none pointer-events-none",
           REDESIGN_TOKENS.blockNumberDecor,
         )}
       >
         01
       </div>
 
-      <ReportKpiGridV2 result={result} />
+      <div className="relative z-10">
+        <ReportKpiGridV2 result={result} />
+      </div>
 
       {insightNode ? (
-        <div className="max-w-3xl">
+        <div className="relative z-10 max-w-3xl mt-2">
           <p className={cn(REDESIGN_TOKENS.eyebrowAccent, "mb-3")}>
             Leitura principal
           </p>

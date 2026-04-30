@@ -74,4 +74,26 @@ export const REDESIGN_TOKENS = {
   /** Frame do insight principal — pull-quote editorial. */
   insightFrameV2:
     "relative pl-5 md:pl-6 border-l-2 border-blue-200",
+
+  // ── V2 compact (Phase 1B.1A — Hero compacto + stats Instagram-like) ──
+  /** Banda do hero v2 compacta — gradient ligeiramente menos saturado. */
+  heroBandV2Compact:
+    "bg-[radial-gradient(1000px_circle_at_15%_-10%,rgba(59,130,246,0.12),transparent_55%),radial-gradient(800px_circle_at_85%_0%,rgba(99,102,241,0.08),transparent_60%),linear-gradient(180deg,#EFF4FF_0%,#F7FAFF_60%,#FAFBFD_100%)]",
+  /** H1 do hero v2 compacto — escala mais discreta, mantém wrapping seguro. */
+  h1HeroV2Compact:
+    "font-display text-[1.5rem] sm:text-[1.875rem] md:text-[2.125rem] lg:text-[2.375rem] font-semibold tracking-[-0.02em] text-slate-900 leading-[1.1] break-words [word-break:normal] [hyphens:none]",
+  /** Item de stat estilo perfil Instagram — vertical compacto. */
+  heroStatItem: "flex flex-col items-start gap-0.5 min-w-0",
+  heroStatValue:
+    "font-display text-base md:text-lg font-semibold text-slate-900 tabular-nums leading-none",
+  heroStatLabel:
+    "font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500",
+  /** Strip de posicionamento integrada no hero (substitui a banda standalone). */
+  positioningStrip:
+    "mt-6 md:mt-7 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-t border-slate-200/60 pt-4 md:pt-5",
+  positioningChip:
+    "inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]",
+  /** Valor categorical do KPI (ex.: nome de formato) — escala mais sóbria. */
+  kpiValueV2Categorical:
+    "font-display text-[1.375rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-tight break-words [word-break:normal] [hyphens:none]",
 } as const;
