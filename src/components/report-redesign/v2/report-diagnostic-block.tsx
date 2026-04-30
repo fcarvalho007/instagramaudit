@@ -10,7 +10,8 @@ import {
   classifyCaptionPattern,
   classifyAudienceResponse,
   classifyChannelIntegration,
-  inferThemes,
+  classifyHashtags,
+  inferThemesFromCaptions,
   inferProbableObjective,
   derivePriorities,
   type ContentTypeResult,
@@ -19,6 +20,7 @@ import {
   type AudienceResponseResult,
   type IntegrationResult,
   type ObjectiveResult,
+  type HashtagsResult,
   type ThemesResult,
 } from "@/lib/report/block02-diagnostic";
 
@@ -61,7 +63,11 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const funnel = classifyFunnelStage(posts);
   const caption = classifyCaptionPattern(posts);
   const audience = classifyAudienceResponse(posts);
-  const themes = inferThemes(topHashtags, topKeywords);
+  const hashtags = classifyHashtags(topHashtags);
+  const themes = inferThemesFromCaptions({
+    topKeywords,
+    aiSections: result.enriched.aiInsightsV2?.sections ?? null,
+  });
   const integration = classifyChannelIntegration(bio, externalUrls, posts);
   const objective = inferProbableObjective({
     contentType,
@@ -108,6 +114,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     renderFunnelCard(funnel),
   ]);
   const groupB = compact([
+    renderHashtagsCard(hashtags),
     renderThemesCard(themes),
     renderCaptionCard(caption, aiLanguage),
     renderAudienceCard(audience),
@@ -159,7 +166,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
           A amostra de publicações é demasiado pequena para sustentar um
           diagnóstico editorial detalhado. À medida que houver mais
-          atividade, este bloco passa a abrir oito perguntas de leitura.
+          atividade, este bloco passa a abrir até oito perguntas de leitura.
         </p>
       )}
 
