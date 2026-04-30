@@ -25,7 +25,7 @@ import type { BenchmarkTier } from "./types";
  * que `INSTAGRAM_BENCHMARK_CONTEXT` for actualizado. Entra no
  * `kbVersion` do orquestrador para invalidar cache de insights v2.
  */
-export const BENCHMARK_DATASET_VERSION = "2026-04-30" as const;
+export const BENCHMARK_DATASET_VERSION = "2026-04-30b" as const;
 
 export type BenchmarkSourceName =
   | "Socialinsider"
@@ -38,6 +38,22 @@ export interface BenchmarkSource {
   role: string;
   uiDisplayAllowed: boolean;
   linksAllowedInReport: boolean;
+  /**
+   * URL canónico da fonte. Só renderizado na secção "Fontes de referência"
+   * dentro de `ReportMethodology` — nunca no corpo dos cartões. Sempre
+   * `target="_blank" rel="noopener noreferrer"`.
+   */
+  url: string;
+  /** Ano da publicação/versão de referência mais recente que usamos. */
+  publishedYear: number;
+  /** Descrição curta pt-PT (≤80 chars) para a lista da metodologia. */
+  shortDescription: string;
+  /**
+   * Qualidade editorial da referência. Usada para decidir, no futuro,
+   * intervalos de mercado ou desempate entre estudos. Hoje só é
+   * apresentada como chip discreto em `medium`/`low` na metodologia.
+   */
+  referenceQuality: "high" | "medium" | "low";
 }
 
 export type SocialinsiderFormat = "overall" | "carousel" | "reel" | "image";
@@ -93,24 +109,44 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       role: "Organic Instagram context and format-level interpretation",
       uiDisplayAllowed: true,
       linksAllowedInReport: false,
+      url: "https://www.socialinsider.io/social-media-benchmarks/instagram",
+      publishedYear: 2025,
+      shortDescription:
+        "Estudo agregado de envolvimento orgânico e desempenho por formato.",
+      referenceQuality: "high",
     },
     {
       name: "Buffer",
       role: "Follower-tier benchmark context",
       uiDisplayAllowed: true,
       linksAllowedInReport: false,
+      url: "https://buffer.com/insights/instagram-benchmarks",
+      publishedYear: 2025,
+      shortDescription:
+        "Benchmarks por dimensão da conta — cadência, envolvimento e crescimento.",
+      referenceQuality: "high",
     },
     {
       name: "Hootsuite",
       role: "Industry benchmark context and strategic interpretation",
       uiDisplayAllowed: true,
       linksAllowedInReport: false,
+      url: "https://blog.hootsuite.com/social-media-benchmarks/",
+      publishedYear: 2025,
+      shortDescription:
+        "Contexto cross-indústria e comparação entre plataformas.",
+      referenceQuality: "medium",
     },
     {
       name: "Databox",
       role: "Future authenticated dashboard benchmark inspiration",
       uiDisplayAllowed: true,
       linksAllowedInReport: false,
+      url: "https://databox.com/benchmarks/instagram-benchmarks",
+      publishedYear: 2025,
+      shortDescription:
+        "Inspiração para futura ligação autenticada — métricas privadas.",
+      referenceQuality: "low",
     },
   ] satisfies ReadonlyArray<BenchmarkSource>,
 
