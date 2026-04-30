@@ -245,7 +245,7 @@ export const Route = createFileRoute("/api/generate-report-pdf")({
         try {
           bytes = await renderViaBrowser({
             url: buildSnapshotPrintUrl(snapRow.id),
-            waitForGlobalFn: "__pdfReady",
+            waitForGlobalFn: "pdfReady",
             timeoutSeconds: 90,
           });
         } catch (err) {

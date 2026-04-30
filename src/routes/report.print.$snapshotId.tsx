@@ -7,7 +7,7 @@
  * É esta URL que o renderer print-to-PDF externo (PDFShift) carrega.
  * Carrega o snapshot por UUID directamente — NÃO chama Apify, DataForSEO
  * ou OpenAI. Quando o relatório está totalmente pintado e os avatares
- * decodificados, marca `[data-pdf-ready]` e expõe `window.__pdfReady` para
+ * decodificados, marca `[data-pdf-ready]` e expõe `window.pdfReady` para
  * que o provider saiba que pode capturar.
  *
  * `?pdf=1` é redundante (a rota inteira é PDF mode) mas mantemos por

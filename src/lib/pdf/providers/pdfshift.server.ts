@@ -40,7 +40,7 @@ export const pdfshiftProvider: BrowserPdfProvider = {
       // (account-level limit; raising it requires sales contact). We clamp to
       // that ceiling so the request is never rejected with HTTP 400. Note
       // this is the *page load* timeout, not the wait-for-readiness budget;
-      // the network is already idle by the time `wait_for: __pdfReady` polls.
+      // the network is already idle by the time `wait_for: pdfReady` polls.
       timeout: Math.max(5, Math.min(args.timeoutSeconds ?? 30, 30)),
       // Sandbox conversions don't burn credits but are watermarked.
       sandbox: args.sandbox === true,
@@ -58,13 +58,13 @@ export const pdfshiftProvider: BrowserPdfProvider = {
       // Solução: usamos o parâmetro `javascript` para injectar nós próprios
       // o bootstrap mínimo. PDFShift avalia este script no contexto da
       // página assim que o documento começa a carregar, antes de validar
-      // `wait_for`. O React, mais tarde, comuta `window.__pdfReadyState`
+      // `wait_for`. O React, mais tarde, comuta `window.pdfReadyState`
       // para `true` quando o relatório está realmente pronto.
       body.javascript =
         `(function(){` +
-        `if(typeof window.__pdfReadyState==="undefined"){window.__pdfReadyState=false;}` +
+        `if(typeof window.pdfReadyState==="undefined"){window.pdfReadyState=false;}` +
         `if(typeof window.${args.waitForGlobalFn}!=="function"){` +
-        `window.${args.waitForGlobalFn}=function(){return window.__pdfReadyState===true;};` +
+        `window.${args.waitForGlobalFn}=function(){return window.pdfReadyState===true;};` +
         `}` +
         `})();`;
     }
