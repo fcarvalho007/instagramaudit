@@ -72,8 +72,13 @@ JSON estrito conforme o schema fornecido. Sem texto antes ou depois. Sem markdow
  * imediatamente após o núcleo. A formatação está delegada ao helper da KB
  * para que o admin/UI partilhem a mesma serialização.
  */
-export function buildSystemPromptV2(kb: KnowledgeContext): string {
-  const kbBlock = formatKnowledgeContextForPrompt(kb);
+export function buildSystemPromptV2(
+  kb: KnowledgeContext,
+  options: { hasReachData?: boolean } = {},
+): string {
+  const kbBlock = formatKnowledgeContextForPrompt(kb, {
+    hasReachData: options.hasReachData,
+  });
   return `${SYSTEM_PROMPT_BASE}\n\nCONTEXTO DA KNOWLEDGE BASE\n${kbBlock}`;
 }
 
