@@ -3,8 +3,11 @@ import { REDESIGN_TOKENS } from "../report-tokens";
 
 /**
  * Banner editorial curto entre o hero e o bloco 01: explica em uma
- * frase o que o InstaBench cruza neste relatório. Mantém-se compacto
- * e não introduz cor adicional.
+ * frase o que o InstaBench cruza neste relatório, e identifica a
+ * família de fontes editoriais que serve de enquadramento (sem links).
+ *
+ * Política completa: ver `KNOWLEDGE.md` na raiz do projecto e a nota
+ * "Política de fontes de benchmark" na Knowledge Base.
  */
 export function ReportPositioningBanner() {
   return (
@@ -12,7 +15,7 @@ export function ReportPositioningBanner() {
       aria-label="O que mostra o InstaBench"
       className={cn("w-full", REDESIGN_TOKENS.bandWhite, "border-y border-slate-200/70")}
     >
-      <div className="mx-auto max-w-7xl px-5 md:px-6 py-6 md:py-7">
+      <div className="mx-auto max-w-7xl px-5 md:px-6 py-6 md:py-7 space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm md:text-[15px] text-slate-700 leading-relaxed max-w-3xl">
             O <strong className="text-slate-900">InstaBench</strong> mostra o que o perfil
@@ -40,6 +43,13 @@ export function ReportPositioningBanner() {
             )}
           </ul>
         </div>
+
+        <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-slate-500 leading-relaxed">
+          Contexto de referência editorial: Socialinsider · Buffer · Hootsuite · Databox.{" "}
+          <span className="normal-case tracking-normal font-sans text-[12px] text-slate-500">
+            As comparações usam o nosso dataset interno; estas fontes servem apenas como enquadramento.
+          </span>
+        </p>
       </div>
     </section>
   );
