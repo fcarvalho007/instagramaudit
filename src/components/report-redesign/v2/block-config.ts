@@ -10,6 +10,9 @@ export interface BlockConfig {
   shortLabel: string;
   question: string;
   subtitle: string;
+  /** Override do eyebrow renderizado no header do bloco. Quando ausente,
+   *  o `ReportBlockSection` usa `shortLabel.toUpperCase()`. */
+  eyebrowOverride?: string;
 }
 
 export const BLOCKS: readonly BlockConfig[] = [
@@ -25,9 +28,10 @@ export const BLOCKS: readonly BlockConfig[] = [
     id: "diagnostico",
     number: "02",
     shortLabel: "Diagnóstico",
+    eyebrowOverride: "Diagnóstico editorial",
     question: "O que explica estes resultados?",
     subtitle:
-      "Leitura editorial e padrões cruzados que ajudam a interpretar o desempenho observado.",
+      "Oito perguntas que qualquer marketer faz ao olhar para um perfil — respondidas pelo cruzamento dos dados recolhidos.",
   },
   {
     id: "performance",
