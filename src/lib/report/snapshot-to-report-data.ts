@@ -1153,6 +1153,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     postingHeatmap,
     topHashtags,
     topKeywords,
+    topThemes,
     bestDays,
     aiInsights,
     // Real-data reports do not synthesise a fake 15-day trend per KPI.
