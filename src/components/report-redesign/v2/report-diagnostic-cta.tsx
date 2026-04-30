@@ -2,7 +2,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Strip subtil de CTA no fim do Bloco 02. Aponta para a âncora
- * `#tier-comparison` já existente — não cria flows de pagamento.
+ * `#leitura-completa` do `TierComparisonBlock` — não cria flows
+ * de pagamento.
  */
 export function ReportDiagnosticCta() {
   return (
