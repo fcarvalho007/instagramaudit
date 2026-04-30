@@ -16,9 +16,9 @@
  *
  * 2. Três cartões de overview (`ReportOverviewCards`)
  *    Resumem o estado geral do perfil em três lentes:
- *      a) Saúde do envolvimento — ER vs. referência.
+ *      a) Taxa de engagement     — ER vs. referência.
  *      b) Ritmo de publicação    — frequência semanal e amostra.
- *      c) Motor de conteúdo      — formato dominante e mistura.
+ *      c) Formato mais regular   — formato dominante e mistura.
  *    Cada cartão tem valor grande, indicador visual e uma frase de
  *    interpretação curta. Sem tabelas, sem listas longas.
  *
