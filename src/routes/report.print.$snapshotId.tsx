@@ -37,8 +37,15 @@ export const Route = createFileRoute("/report/print/$snapshotId")({
       { name: "robots", content: "noindex,nofollow" },
     ],
     scripts: [
-      // Paleta clara antes do primeiro paint, tal como /analyze.
-      { children: `document.body.setAttribute("data-theme","light")` },
+      // Paleta clara antes do primeiro paint. Esta rota corre com `ssr: false`,
+      // pelo que o script inline pode executar em `<head>` ANTES do parser
+      // alcançar `<body>` — `document.body` seria `null` e estoura toda a
+      // árvore React. Fazemos defer para `DOMContentLoaded` quando preciso.
+      {
+        children:
+          `(function(){var f=function(){if(document.body){document.body.setAttribute("data-theme","light")}};` +
+          `if(document.body){f()}else{document.addEventListener("DOMContentLoaded",f)}})()`,
+      },
     ],
   }),
   component: PrintReportPage,

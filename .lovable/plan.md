@@ -1,178 +1,90 @@
-# Fix: Export PDF — substituir @react-pdf/renderer por print-to-PDF externo
+## Resultado do smoke test (parcial)
 
-## Diagnóstico (confirmado em logs de produção)
+Executei as verificações 1–4 e 5 ficou bloqueada por um bug crítico encontrado na verificação 3.
 
-```
-[error] [public-report-pdf] render failed
-RuntimeError: Aborted(CompileError: WebAssembly.instantiate():
-Wasm code generation disallowed by embedder)
-```
+### ✅ Check 1 — Build/deploy
+- Preview (`project--…-dev.lovable.app`) **já tem o novo build**.
+- Produção (`instagramaudit.lovable.app`) **continua no build antigo** (404 nas rotas novas após >5 minutos a fazer poll). É preciso **carregar em Publish** depois de aprovado este plano.
 
-`@react-pdf/renderer@4.5.1` depende de `yoga-layout` (WASM). O Cloudflare Worker de produção bloqueia compilação WASM em runtime. Os 3 endpoints partilham o mesmo `renderReportPdf` → todos falham hoje.
+### ✅ Check 2 — Snapshot endpoint
+`GET /api/public/analysis-snapshot/by-id/683e4c21-…` no preview devolve **HTTP 200** com payload completo de `frederico.m.carvalho`. Apenas leitura ao Postgres — nenhuma chamada a Apify/DataForSEO/OpenAI.
 
-## 1. Provedor recomendado: **PDFShift**
+### ✅ Check 4 — `buildSnapshotPrintUrl`
+Output verificado: `${base}/report/print/${encodeURIComponent(snapshotId)}?pdf=1`. O `snapshotId` está incluído. Não há regressão `/report/print/?pdf=1`.
 
-### Comparação técnica (validada nas docs reais de cada um)
+### ❌ Check 3 — Print route (BLOQUEADO)
+Ao abrir `/report/print/683e4c21-…?pdf=1` no sandbox:
 
-| Requisito | PDFShift | MarkupGo |
-|---|---|---|
-| URL-to-PDF API | Sim (`source` aceita URL ou HTML) | Sim, mas docs públicas escassas (página `/docs/url-to-pdf` está 404) |
-| Esperar por sinal de pronto | Sim — `wait_for` (nome de **função JS global** que retorna truthy, timeout 30s) + `wait_for_network` | Não documentado publicamente |
-| A4 portrait | Sim — `format: "A4"` (default), `landscape: false` (default) | Documentado apenas via SDK Node, sem detalhe REST |
-| Margens controladas | Sim — `margin` aceita objecto/string/integer | Documentação ausente |
-| Print background | Sim — `disable_backgrounds: false` (default) | Sim no SDK Node (`printBackground: true`) |
-| Auth API key server-side | Sim — header `X-API-Key` | Sim, mas requer SDK Node ou HTTP genérico |
-| Resposta binária | Sim — bytes PDF directos no body 200 | Resposta JSON com task → fetch posterior |
-| React/Tailwind | Sim — Chromium 116/142, escolhível por `X-Processor-Version` | Chromium implícito |
-| Pricing previsível | Free 50 PDFs/mês; Lite $9/mês 500 PDFs; sandbox ilimitado | Free tier limitado; pricing menos transparente |
-| Cloudflare Worker `fetch` | Sim — basta `fetch` com `X-API-Key` + JSON body | Sim com HTTP genérico |
+- **Navbar global visível** (não devia)
+- **Footer global visível** (não devia)
+- **Área central vazia** — nada do report renderiza
+- Console mostra: `TypeError: Cannot read properties of null (reading 'setAttribute')`
 
-### Porquê PDFShift e não MarkupGo
-
-- **Documentação pública completa e versionada** (`docs.pdfshift.io`). MarkupGo tem links 404 nas próprias docs e o ciclo URL-to-PDF assenta em SDK Node.
-- **`wait_for` real** — confirma na doc que espera por uma função JS global retornar truthy, exactamente o que precisamos para garantir que o report está pintado antes do snapshot.
-- **Resposta binária num único request síncrono** — MarkupGo devolve `task` JSON que requer polling adicional, complicando o handler do Worker.
-- **Sandbox mode gratuito** com watermark — permite-nos iterar sem consumir o free tier.
-- **Custo previsível**: 50 PDFs grátis cobrem o estado actual; cache do bucket faz com que cada `snapshot_id` distinto consuma 1 crédito apenas.
-
-### Detalhe importante sobre `wait_for`
-
-PDFShift `wait_for` espera por **função JS global**, não selector CSS. Adaptação no nosso lado:
-
-- O componente `/report/print/$snapshotId` define `window.__pdfReady = () => document.querySelector("[data-pdf-ready]") !== null`.
-- Pedido enviado com `wait_for: "__pdfReady"`.
-- O atributo `[data-pdf-ready]` continua a ser a marca semântica única no DOM (útil para QA visual e futura troca para MarkupGo).
-
-## 2. Arquitectura: abstracção de provedor
-
-```text
-src/lib/pdf/
-├── render-via-browser.server.ts    ← entrada única que dispatcha por env
-├── providers/
-│   ├── types.ts                     ← interface BrowserPdfProvider
-│   ├── pdfshift.server.ts           ← implementação concreta (única para já)
-│   └── (markupgo.server.ts)         ← stub deixado por escrever; criar quando necessário
-└── print-url.server.ts              ← constrói URL pública do /report/print/<snapshotId>?pdf=1
-```
-
-Interface partilhada:
-
+**Causa raiz:** o `head()` da nova rota injecta:
 ```ts
-export interface BrowserPdfProvider {
-  readonly name: "pdfshift" | "markupgo";
-  render(args: {
-    url: string;
-    waitForGlobalFn?: string;
-    timeoutMs?: number;
-    sandbox?: boolean;
-  }): Promise<Uint8Array>;
-}
+scripts: [{ children: `document.body.setAttribute("data-theme","light")` }]
 ```
+Como esta rota tem `ssr: false`, o script inline corre dentro de `<head>` **antes** do parser HTML chegar a `<body>` — logo `document.body` é `null` e o erro pára toda a árvore React. As outras rotas (`/analyze/$username`, `/report.example`) usam o mesmo padrão mas **com SSR ligado**, por isso `<body>` já existe quando o script corre.
 
-`render-via-browser.server.ts` lê `process.env.PDF_RENDER_PROVIDER` **dentro** do handler. Default `"pdfshift"`. Adicionar `"markupgo"` é só registar nova entry no map.
+### ⏸ Check 5–7 — PDFShift
+Não chamado. Sem print route a renderizar, qualquer chamada ao PDFShift produziria um PDF em branco (ou pior, com a chrome global). Preferi parar e reportar.
 
-## 3. Rota dedicada `/report/print/$snapshotId`
+---
 
-Nova rota cliente que renderiza o report a partir de `snapshot_id` (não trigga pipeline):
+## Fixes propostos (a implementar em build mode)
 
-- Loader fetcha **directamente** `/api/public/analysis-snapshot/by-id/<snapshotId>` (novo subendpoint pequeno) — nunca chama `/api/analyze-public-v1`.
-- Reusa `ReportShell` exactamente como `/analyze/$username` reusa.
-- Aplica modo PDF quando `?pdf=1`: classe `pdf-print-mode` no `<body>`, esconde:
-  - navbar global
-  - botão Exportar PDF + Partilhar do hero
-  - `BetaFeedbackBanner`
-  - `ReportFinalBlock` (o CTA empilhado no fim)
-  - footer global do site
-- Após `state === "ready"` + `requestAnimationFrame` duplo + decode dos avatares → marca `data-pdf-ready` no wrapper raiz e expõe `window.__pdfReady`.
+### 1. Eliminar o head script crashing
+Em `src/routes/report.print.$snapshotId.tsx`:
 
-A página é pública (snapshot já é público via `/analyze`), e está no path `/report/print/...` — fora de `/api/public/*` por ser HTML, mas igualmente sem auth.
+- Remover o bloco `scripts: [...]` do `head()`.
+- Manter o `ReportThemeWrapper` (que já tem `<ScriptOnce>` + `useEffect`) como única fonte do `data-theme="light"`. Para o PDFShift isso é suficiente: o `wait_for: "__pdfReady"` só dispara depois do React commit, do paint e do decode dos avatares — já há margem para o tema aplicar antes do snapshot.
+- Como reforço extra (opcional, no mesmo ficheiro), aplicar `document.body.classList.add("pdf-print-mode")` num `useEffect` cedo em `PrintReportPage` — já existe.
 
-## 4. Endpoints — substituição cirúrgica
+Alternativa mais robusta: usar um script seguro que não assume `document.body`:
+```ts
+scripts: [{
+  children: `(function(){var f=function(){document.body && document.body.setAttribute("data-theme","light")};` +
+            `if(document.body){f()}else{document.addEventListener("DOMContentLoaded",f)}})()`
+}]
+```
+Recomendo este reforço — evita um único frame de "dark flicker" antes do `ScriptOnce` correr.
 
-| Endpoint | Mudança |
-|---|---|
-| `src/routes/api/public/public-report-pdf.ts` | Substituir `renderReportPdf({...})` por `renderViaBrowser({ url: buildPrintUrl({snapshotId}), waitForGlobalFn: "__pdfReady" })`. Resto (cache check, upload, sign, log, error mapping) intacto. |
-| `src/routes/api/generate-report-pdf.ts` | Mesma substituição. URL construída a partir do `analysis_snapshot_id` do report request (nunca do `report_request_id`). |
-| `src/routes/api/admin/regenerate-pdf.ts` | Não muda — chama `/api/generate-report-pdf` por HTTP, herda fix automaticamente. |
-| `src/lib/orchestration/run-report-pipeline.ts` | Não muda — também passa por `/api/generate-report-pdf`. |
+### 2. Validar visualmente que navbar/footer ficam escondidos
+A CSS em `src/styles/pdf-print.css` usa `body.pdf-print-mode > div > header/footer`. A estrutura DOM (confirmada em `__root.tsx` + `app-shell.tsx`) é exactamente `body > div > [header, main, footer]`. Os selectors devem casar — mas não foi possível confirmar porque a página crashou. Após o fix #1, vou tirar nova screenshot para confirmar.
 
-`isNormalizedPayload` continua a validar antes de chamar o renderer — protege contra snapshots malformados sem desperdiçar crédito PDFShift.
+### 3. Garantir que o PDFShift aponta para um build que tem a rota
+A constante `DEFAULT_BASE` em `src/lib/pdf/print-url.server.ts` é `https://instagramaudit.lovable.app` (produção). Enquanto o publish não acontecer, o PDFShift carregaria a URL antiga e apanharia 404. Duas opções:
 
-## 5. Subendpoint novo: `/api/public/analysis-snapshot/by-id/$snapshotId`
+- **A (recomendada para testar agora):** definir o secret `PDF_PUBLIC_BASE_URL=https://project--b554ee82-2f67-4f5a-895d-cd69f2867df7-dev.lovable.app` temporariamente, correr o smoke test do PDFShift contra o build de preview, e depois apagar o secret quando o Publish estiver feito.
+- **B (mais simples):** o utilizador clica em **Publish** primeiro; a seguir corro o smoke test directo contra produção sem mexer no secret.
 
-Necessário porque o endpoint actual `/api/public/analysis-snapshot/$username` resolve por handle. A rota `/report/print/$snapshotId` precisa carregar **exactamente** o snapshot identificado por UUID (não a versão mais recente).
+Vou pedir a escolha entre A e B antes de continuar.
 
-- GET → `select id, instagram_username, normalized_payload, created_at from analysis_snapshots where id = $1`
-- Mesmo shape de resposta que o endpoint por username já usa.
-- Sem mutações. Sem chamadas a providers.
+### 4. Completar Checks 5–7
+Depois dos fixes acima, executar:
+- `POST /api/public/public-report-pdf` com `{ snapshot_id: "683e4c21-…" }`
+- Verificar `signed_url`, `cached: false` na 1ª chamada e `cached: true` na 2ª
+- Sacar o PDF, converter cada página em imagem e inspeccionar (sem chrome global, sem skeleton dark, sem "A analisar perfil")
+- Reportar `duration_ms`, `sandbox=true`, request status do PDFShift
 
-## 6. Ficheiros a criar / editar
+### 5. Manter `@react-pdf/renderer` como rollback
+Sem alterações — os ficheiros antigos ficam intactos até validação end-to-end.
 
-### Criar
-- `src/lib/pdf/render-via-browser.server.ts`
-- `src/lib/pdf/providers/types.ts`
-- `src/lib/pdf/providers/pdfshift.server.ts`
-- `src/lib/pdf/print-url.server.ts`
-- `src/routes/report.print.$snapshotId.tsx`
-- `src/routes/api/public/analysis-snapshot.by-id.$snapshotId.ts`
+---
 
-### Editar (cirúrgico)
-- `src/routes/api/public/public-report-pdf.ts` — trocar 1 chamada
-- `src/routes/api/generate-report-pdf.ts` — trocar 1 chamada
-- `src/components/report-redesign/report-shell.tsx` — adicionar `data-pdf-ready` no wrapper + classe condicional `pdf-print-mode`
-- `src/styles.css` (ou tokens equivalentes) — adicionar regras `body.pdf-print-mode { ... }` que escondem navbar/footer/CTAs
+## Acceptance recap após fixes
 
-### NÃO tocar
-- `src/lib/pdf/render.ts` (mantido para rollback rápido)
-- `src/lib/pdf/report-document.tsx` (mantido)
-- `package.json` — `@react-pdf/renderer` permanece instalado até validação real
-- `/report/example`
-- Schema BD
-- Pipeline Apify/DataForSEO/OpenAI
-- `LOCKED_FILES.md` entries
+- [ ] Print route renderiza com snapshot real, sem console errors
+- [ ] Navbar, footer, banner beta, CTAs hero, "Concluir relatório" todos escondidos
+- [ ] `[data-pdf-ready]` e `window.__pdfReady` ficam true após settle
+- [ ] PDFShift devolve `signed_url` em sandbox mode
+- [ ] PDF visualmente próximo do report web
+- [ ] Cache funciona (2ª chamada `cached: true`)
+- [ ] Zero chamadas a Apify/DataForSEO/OpenAI
+- [ ] `@react-pdf/renderer` mantido para rollback
 
-## 7. Secrets necessários
+## Ficheiros a tocar
 
-A pedir via `add_secret` quando o plano for aprovado:
-
-| Nome | Tipo | Valor sugerido | Onde se obtém |
-|---|---|---|---|
-| `PDFSHIFT_API_KEY` | runtime | sk_xxx | Dashboard PDFShift após signup gratuito em https://pdfshift.io |
-| `PDF_RENDER_PROVIDER` | runtime | `pdfshift` | hardcoded por nós; permite swap futuro |
-| `PDF_PUBLIC_BASE_URL` | runtime | `https://instagramaudit.lovable.app` | URL público estável já existente |
-| `PDF_RENDER_SANDBOX` | runtime | `true` em preview, `false` em produção | controla flag `sandbox` da PDFShift |
-
-Todas lidas com `process.env.X` **dentro** do handler/helper, nunca a nível módulo. Defaults seguros se faltarem (provider=pdfshift, sandbox=true).
-
-## 8. Avaliação de risco
-
-| Risco | Mitigação |
-|---|---|
-| PDFShift demora >10s em snapshots pesados | `timeout: 60` no body + `wait_for` cap interno 30s. Se falhar, mantém-se rollback para o renderer antigo (não removido) via flag de provedor `?provider=legacy`. |
-| Quota gratuita esgotada (50/mês) | Cache no bucket por `snapshot_id` evita renders repetidos. Telemetria existente em `analysis_events` regista cada chamada. Sandbox em preview = 0 créditos consumidos. |
-| Avatares Instagram expiram → logo no PDF aparece partido | A rota de print usa `/api/public/ig-thumb` (proxy já existente, locked). Sem regressão. |
-| `/report/print/$snapshotId` indexável por motores de busca | `<meta name="robots" content="noindex,nofollow">` na head da rota. |
-| Provedor cai (downtime PDFShift) | Logs de erro existentes + `error_code: "RENDER_FAILED"` propagado intacto. UX exibe a mesma toast actual ("Falha ao gerar… Tenta novamente"). |
-| Rollback se algo correr mal em produção | `@react-pdf/renderer` continua instalado e `src/lib/pdf/render.ts` intacto. Reverter = trocar 2 linhas em 2 endpoints. |
-
-## 9. Plano de smoke test (a executar após implementação)
-
-1. **Build**: `bunx tsc --noEmit` + `bunx vitest run` → verde.
-2. **PDFShift dry-run** (sandbox): invocar `POST /api/public/public-report-pdf` com `snapshot_id=683e4c21-60e0-4045-b43a-dfcd85fe9896`. Esperar `signed_url` válido apontando para `report-pdfs/reports/snapshots/2026/04/683e4c21....pdf`.
-3. **Confirmar no signed URL**: PDF abre, capa contém `@frederico.m.carvalho` real, não placeholder.
-4. **Verificar logs**: zero chamadas a Apify/DataForSEO/OpenAI no período do teste (query a `provider_call_logs`).
-5. **Cache hit**: segundo POST com mesmo `snapshot_id` devolve `cached: true` sem novo render.
-6. **QA visual**: converter as primeiras páginas do PDF para imagens (`pdftoppm`) e inspeccionar — navbar/banner/CTAs ausentes; conteúdo editorial idêntico ao web.
-7. **Endpoint email-flow**: `POST /api/generate-report-pdf` com um `report_request_id` real → confirmar mesmo path de upload e `request_status` final correcto.
-8. **Rollback verificado**: trocar provider env, confirmar que helper consegue voltar a chamar o renderer antigo (smoke test só de tipos/wiring).
-
-## 10. Resultado esperado
-
-- Export PDF volta a funcionar em produção, com fidelidade visual ao web report.
-- Frontend não muda (mesmos endpoints, mesmas respostas).
-- Cache, telemetria, idempotência, error handling — todos preservados.
-- Provedor abstraído: trocar para MarkupGo no futuro = criar 1 ficheiro novo + mudar `PDF_RENDER_PROVIDER`.
-- Rollback de 2 minutos disponível.
-- 0 chamadas a providers de dados (Apify/DFS/OpenAI) durante o pipeline PDF.
-
-Aguardando aprovação para implementar e pedir o `PDFSHIFT_API_KEY`.
+- `src/routes/report.print.$snapshotId.tsx` — remover/proteger o head script
+- (eventualmente) secret `PDF_PUBLIC_BASE_URL` se o utilizador escolher opção A
+- (zero alterações em) `src/styles/pdf-print.css`, `src/lib/pdf/*`, endpoints PDF
