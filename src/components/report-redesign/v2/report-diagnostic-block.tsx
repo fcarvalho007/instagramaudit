@@ -345,25 +345,26 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
   );
 }
 
-function renderThemesCard(r: ThemesResult): ReactNode | null {
+function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
   if (!r.available) return null;
-  // Resposta dominante: título editorial curto (sem listar hashtags — essas
-  // aparecem só uma vez no slot de evidência abaixo).
-  const headline = inferThemesHeadline(r);
+  const max = Math.max(1, ...r.items.map((x) => x.weight));
   return (
     <ReportDiagnosticCard
-      key="q04"
-      number="04"
-      label="Temas"
-      question="Sobre que temas o perfil fala mais?"
-      answerLabel="Foco temático"
-      answer={headline}
+      key="q03"
+      number="03"
+      label="Hashtags"
+      question="Que hashtags aparecem mais vezes?"
+      answerLabel="Hashtags mais utilizadas"
+      answer={r.items.slice(0, 2).map((it) => it.text).join(" · ")}
       tone="blue"
-      body="Estes temas voltam com frequência ao longo da amostra e descrevem o território editorial mais consistente do perfil."
+      body="As hashtags mostram como o perfil etiqueta os conteúdos e que territórios quer associar às publicações — não representam, por si só, os assuntos abordados."
+      sourceLabel={{
+        kind: "extracted",
+        text: "Baseado nas hashtags públicas das publicações analisadas.",
+      }}
     >
       <ul className="space-y-1.5">
         {r.items.map((it) => {
-          const max = Math.max(1, ...r.items.map((x) => x.weight));
           const pct = (it.weight / max) * 100;
           return (
             <li key={it.text} className="text-sm">
@@ -388,18 +389,65 @@ function renderThemesCard(r: ThemesResult): ReactNode | null {
   );
 }
 
-function inferThemesHeadline(r: ThemesResult): string {
-  const top = r.items[0];
-  if (!top) return r.label;
-  // Tira "#" e devolve a palavra principal capitalizada.
-  const raw = top.text.replace(/^#/, "");
-  // Casos especiais simples
-  const lower = raw.toLowerCase();
-  if (lower === "ia" || lower === "ai") return "Foco claro em IA";
-  if (lower.includes("inteligenciaartificial")) return "Foco claro em IA";
-  if (lower.includes("marketingdigital")) return "Foco em marketing digital";
-  // Fallback genérico: "Foco em <tema>"
-  return `Foco em ${raw}`;
+function renderThemesCard(r: ThemesResult): ReactNode | null {
+  if (!r.available) return null;
+  const isAi = r.source === "ai";
+  const sourceLabel = isAi
+    ? {
+        kind: "ai" as const,
+        text: "Leitura IA gerada a partir da amostra de publicações.",
+      }
+    : {
+        kind: "auto" as const,
+        text: "Leitura automática das legendas analisadas.",
+      };
+  const body = isAi
+    ? "Esta leitura resume os assuntos recorrentes nas legendas, com base na interpretação editorial gerada pela IA."
+    : "Esta leitura resume os assuntos mais frequentes nas legendas analisadas — não as hashtags utilizadas.";
+  return (
+    <ReportDiagnosticCard
+      key="q04"
+      number="04"
+      label="Temas"
+      question="Sobre que assuntos o perfil fala mais?"
+      answerLabel="Temas dominantes"
+      answer={r.headline}
+      tone="blue"
+      body={body}
+      sourceLabel={sourceLabel}
+      aiSource={
+        isAi && r.aiText
+          ? { kind: "interpretation", text: r.aiText }
+          : null
+      }
+    >
+      {!isAi && r.items.length > 0 ? (
+        <ul className="space-y-1.5">
+          {r.items.map((it) => {
+            const max = Math.max(1, ...r.items.map((x) => x.weight));
+            const pct = (it.weight / max) * 100;
+            return (
+              <li key={it.text} className="text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-700 truncate">{it.text}</span>
+                  <span className="font-mono text-[10px] text-slate-500 tabular-nums shrink-0">
+                    {it.weight}×
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full bg-blue-500"
+                    style={{ width: `${pct}%` }}
+                    aria-hidden
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </ReportDiagnosticCard>
+  );
 }
 
 function renderCaptionCard(
