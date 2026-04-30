@@ -851,6 +851,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   }));
   const topHashtags = extractTopHashtags(postsForText, 5);
   const topKeywords = extractTopKeywords(postsForText, 5);
+  const topThemes = extractTopThemes(postsForText, 8);
 
   // Window in days = (newest - oldest) ceil to days, +1 to be inclusive.
   let windowDays = 0;
