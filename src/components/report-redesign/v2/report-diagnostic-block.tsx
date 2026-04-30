@@ -56,13 +56,14 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const topHashtags = result.data.topHashtags ?? [];
   const topKeywords = result.data.topKeywords ?? [];
   const bio = result.enriched.profile.bio ?? null;
+  const externalUrls = result.enriched.profile.externalUrls ?? [];
 
   const contentType = classifyContentType(posts);
   const funnel = classifyFunnelStage(posts);
   const caption = classifyCaptionPattern(posts);
   const audience = classifyAudienceResponse(posts);
   const themes = inferThemes(topHashtags, topKeywords);
-  const integration = classifyChannelIntegration(bio, posts);
+  const integration = classifyChannelIntegration(bio, externalUrls, posts);
   const objective = inferProbableObjective({
     contentType,
     funnel,
@@ -97,7 +98,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     renderFunnelCard(funnel),
   ]);
   const groupB = compact([
-    renderFormatCard(km, formatBreakdown),
     renderThemesCard(themes),
     renderCaptionCard(caption),
     renderAudienceCard(audience),
