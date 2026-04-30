@@ -453,11 +453,18 @@ function renderCaptionCard(r: CaptionPatternResult): ReactNode | null {
       body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
     >
       <DiagnosticMiniStats
-        items={[
-          { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
-          { value: `${r.questionSharePct}%`, label: "COM PERGUNTAS" },
-          { value: `${r.ctaSharePct}%`, label: "COM CTA" },
-        ]}
+        items={
+          r.questionShareAvailable
+            ? [
+                { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
+                { value: `${r.questionSharePct}%`, label: "COM PERGUNTAS" },
+                { value: `${r.ctaSharePct}%`, label: "COM CTA" },
+              ]
+            : [
+                { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
+                { value: `${r.ctaSharePct}%`, label: "COM CTA" },
+              ]
+        }
       />
     </ReportDiagnosticCard>
   );
