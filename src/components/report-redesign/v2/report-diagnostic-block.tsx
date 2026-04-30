@@ -585,7 +585,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       }
       answer={r.primary}
       tone="blue"
-      body="Hipótese principal derivada de sinais de conteúdo, funil, bio e ligação entre canais. Com base na amostra analisada — confirme com o contexto real do perfil."
+      body="Com base na amostra analisada, esta é uma hipótese provável derivada de sinais de conteúdo, funil, bio e ligação entre canais — uma inferência provável, não uma afirmação. Deve ser confirmada pelo objetivo real da marca ou do criador."
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>

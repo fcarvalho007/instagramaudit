@@ -386,7 +386,7 @@ export function classifyCaptionPattern(
   const ctaShare = ctaCount / posts.length;
 
   const questionShare = classifyQuestionShare(posts);
-  const questionSharePct = questionShare.sharePct;
+  const questionSharePct = questionShare.questionSharePct;
   const questionShareAvailable = questionShare.available;
 
   // Consistency: ≥ 60% sit in a single bucket
@@ -424,25 +424,38 @@ export function classifyCaptionPattern(
  * Conta a percentagem de posts cuja caption (excluindo hashtags) contém
  * pelo menos uma pergunta real (`?`). Disponível só com ≥ 4 posts.
  * Usado pelo cartão 05 para evitar inventar a stat "COM PERGUNTAS".
+ *
+ * Determinístico, sem inferência por termos de CTA, sem multiplicadores.
  */
 export function classifyQuestionShare(
   posts: SnapshotPost[],
-): { available: boolean; sharePct: number; sampleSize: number } {
-  const total = Array.isArray(posts) ? posts.length : 0;
-  if (total < 4) {
-    return { available: false, sharePct: 0, sampleSize: total };
+): {
+  available: boolean;
+  questionSharePct: number;
+  questionCount: number;
+  postsCount: number;
+} {
+  const postsCount = Array.isArray(posts) ? posts.length : 0;
+  if (postsCount < 4) {
+    return {
+      available: false,
+      questionSharePct: 0,
+      questionCount: 0,
+      postsCount,
+    };
   }
-  let count = 0;
+  let questionCount = 0;
   for (const p of posts) {
     const raw = p.caption ?? "";
-    // Remove hashtags antes de procurar `?` para não contar #?-... etc.
+    // Remove hashtags antes de procurar `?` para não contar #tag? etc.
     const stripped = raw.replace(/#\S+/g, " ");
-    if (stripped.includes("?")) count += 1;
+    if (stripped.includes("?")) questionCount += 1;
   }
   return {
     available: true,
-    sharePct: Math.round((count / total) * 100),
-    sampleSize: total,
+    questionSharePct: Math.round((questionCount / postsCount) * 100),
+    questionCount,
+    postsCount,
   };
 }
 
