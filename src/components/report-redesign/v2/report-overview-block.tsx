@@ -1,3 +1,49 @@
+/**
+ * ─────────────────────────────────────────────────────────────────────
+ * Bloco 01 · Overview — papel editorial (NÃO transformar em dashboard)
+ * ─────────────────────────────────────────────────────────────────────
+ *
+ * Este ficheiro compõe o Bloco 01 do relatório `/analyze/$username`. A
+ * sua função é dar ao leitor uma leitura de SEGUNDOS sobre o estado
+ * geral do perfil, antes do diagnóstico detalhado. Toda a interpretação
+ * profunda pertence ao Bloco 02 em diante.
+ *
+ * 1. Hero (acima deste bloco — ver `ReportHeroV2`)
+ *    Mostra a identidade pública do perfil Instagram e factos públicos
+ *    básicos: avatar, handle, verified, nome, bio, publicações,
+ *    seguidores, a seguir, mais a meta da análise (publicações
+ *    analisadas, dias, data).
+ *
+ * 2. Três cartões de overview (`ReportOverviewCards`)
+ *    Resumem o estado geral do perfil em três lentes:
+ *      a) Saúde do envolvimento — ER vs. referência.
+ *      b) Ritmo de publicação    — frequência semanal e amostra.
+ *      c) Motor de conteúdo      — formato dominante e mistura.
+ *    Cada cartão tem valor grande, indicador visual e uma frase de
+ *    interpretação curta. Sem tabelas, sem listas longas.
+ *
+ * 3. Linha "O que merece atenção primeiro" (`ReportOverviewAttentionRow`)
+ *    Até 3 sinais derivados do `AdapterResult`. Aparecem só quando os
+ *    dados os suportam (sem placeholders). Servem de aperitivo do
+ *    diagnóstico — nunca o substituem.
+ *
+ * 4. NÃO pertence ao Bloco 01:
+ *      • explicações longas / diagnóstico completo
+ *      • detalhe dos top posts
+ *      • análise profunda Google / Search / procura externa
+ *      • comparação detalhada com concorrentes
+ *      • placeholders de "history will appear later" (ex.: crescimento
+ *        de seguidores)
+ *      • repetição de stats de perfil já mostradas no hero
+ *      • mais do que 3 sinais na attention row
+ *
+ * 5. Handoff
+ *    A interpretação detalhada (motivos, recomendações, sinais de
+ *    procura, comparação com pares, top posts, hashtags, melhor
+ *    horário, etc.) vive no Bloco 02 e seguintes. O Bloco 01 deve
+ *    permanecer leve, editorial e cinematográfico.
+ * ─────────────────────────────────────────────────────────────────────
+ */
 import type { ReactNode } from "react";
 import { Bot } from "lucide-react";
 
