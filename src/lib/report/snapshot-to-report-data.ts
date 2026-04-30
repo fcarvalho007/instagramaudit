@@ -146,6 +146,15 @@ export interface SnapshotPayload {
         { emphasis?: string | null; text?: string | null } | null
       >
     > | null;
+    priorities?: {
+      source?: string | null;
+      items?: ReadonlyArray<{
+        level?: string | null;
+        title?: string | null;
+        body?: string | null;
+        resolves?: string | null;
+      } | null> | null;
+    } | null;
   } | null;
 }
 
