@@ -1,125 +1,207 @@
 
-# Avaliação · Refinamentos ao sistema de transparência de fontes
+# Plano · Camada de credibilidade dos benchmarks
 
-Depois de auditar `ReportSourceLabel`, os 8 cartões do Bloco 02, os 3 cartões de overview, o veredito e a metodologia, identifiquei seis refinamentos com impacto real. Estão ordenados por valor editorial (não por esforço).
+## Tensão crítica a resolver primeiro
 
----
+O dataset canónico em `src/lib/knowledge/benchmark-context.ts` tem uma **regra explícita** desde a versão actual:
 
-## R1 · Legenda visual das 5 fontes (alta prioridade)
-
-**Problema.** A linha em `ReportMethodology` ("os cartões distinguem dados extraídos, cálculos próprios, leituras automáticas, leituras por IA e referências externas") é **só texto**. O leitor vê os chips espalhados pelo relatório sem nunca ver o **mapa visual** dos cinco tipos lado a lado.
-
-**Solução.** Substituir esse parágrafo por uma mini-grelha 5-colunas (collapse para 2 em mobile) com cada chip real renderizado + uma linha de explicação curta:
-
-```text
-[🗄 DADO EXTRAÍDO]    Recolhido directamente do Instagram.
-[🧮 CÁLCULO]          Métrica calculada pela InstaBench.
-[🤖 LEITURA AUTOM.]   Classificação por regras determinísticas.
-[🤖 LEITURA IA]       Texto interpretativo gerado por IA.
-[📖 REF. EXTERNA]     Comparação com Knowledge Base.
+```ts
+sources: [
+  { name: "Socialinsider", uiDisplayAllowed: true, linksAllowedInReport: false },
+  { name: "Buffer",        uiDisplayAllowed: true, linksAllowedInReport: false },
+  { name: "Hootsuite",     uiDisplayAllowed: true, linksAllowedInReport: false },
+  { name: "Databox",       uiDisplayAllowed: true, linksAllowedInReport: false },
+]
 ```
 
-Reutiliza `ReportSourceLabel` — sem CSS novo. É **uma única adição** de educação visual que destranca a leitura de todo o relatório.
+E a `KnowledgeNote` "Política de fontes de benchmark" reforça: **nomes podem aparecer, URLs nunca**.
 
----
+O teu pedido pede o oposto — referências `[1][2]` clicáveis em `target="_blank"`. Há três caminhos possíveis:
 
-## R2 · Detalhes inconsistentes entre cartões (média)
-
-Auditando os `sourceDetail` actuais detecto duplicações e granularidade desigual:
-
-| Cartão | `sourceDetail` actual | Problema |
+| Opção | O que muda | Consequência |
 |---|---|---|
-| Q01 Tipo | `Legendas` | OK |
-| Q02 Funil | `Legendas` | OK |
-| Q03 Hashtags | `Hashtags` | OK |
-| Q04 Temas | `Legendas` | Confunde-se com Q01/Q02 — devia dizer `Assuntos das legendas` |
-| Q05 Linguagem | `Legendas` | Idem — devia dizer `Estilo das legendas` |
-| Q06 Resposta | `Gostos + comentários` | OK |
-| Q07 Integração | `Bio + legendas` | OK |
-| Q08 Objetivo | `Sinais cruzados` | Vago — `Conteúdo + funil + bio` |
-| Engagement card | `Gostos + comentários` | OK |
-| Ritmo card | `Amostra` | Vago — `Posts ÷ janela` |
-| Formato card | `Posts analisados` | Vago — `Distribuição de formatos` |
+| **A · Manter regra: nomes sem links** | Mostra `Referência de mercado · Instagram · contas 5K–10K · Socialinsider · Buffer` (chips de nome, sem URL clicável). Abre tooltip/popover com o nome e a função editorial da fonte. | Coerente com a regra actual. Perde-se a "prova" externa. |
+| **B · Levantar a regra: nomes + links** *(o que pedes)* | Flip `linksAllowedInReport: true`. Renderiza `[1][2]` clicáveis. URLs vivem só no dataset. Bump de `BENCHMARK_DATASET_VERSION` para `2026-04-30b` (invalida cache de insights v2). | Máxima credibilidade externa. Risco editorial: sair do relatório no momento de leitura. |
+| **C · Híbrido por contexto** | Bloco 01 mostra **só nomes** (leitura rápida). A secção `ReportMethodology` ganha um bloco "Fontes de referência" com a lista completa + URLs clicáveis (sítio único onde se pode "verificar"). | Mantém o relatório limpo, dá rastreabilidade num só sítio. |
 
-**Acção.** Ajustar 5 `sourceDetail` para serem informativos sem ultrapassar ~3 palavras. Critério: o detalhe deve descrever **o input**, não o output.
+**Recomendação:** **Opção C**. Resolve a credibilidade sem poluir cada cartão e mantém a doutrina "URLs vivem na metodologia, não no corpo".
+
+→ **Pergunta-chave antes de avançar: qual destas três opções queres?**
+
+Vou assumir **C** no resto do plano. Se preferires A ou B, ajusto.
 
 ---
 
-## R3 · Veredito editorial sem chip visível (média)
+## R7 · Confidence/quality nas referências
 
-`ReportDiagnosticVerdict` recebe `source: "ai" | "fallback"` mas (segundo o histórico) renderiza um chip próprio. Devia usar `ReportSourceLabel` directamente para ficar consistente com o resto do relatório:
-- `source="ai"` → `<ReportSourceLabel type="ai" detail="Síntese editorial" />`
-- `source="fallback"` → `<ReportSourceLabel type="automatic" detail="Síntese a partir das classificações" />`
+Adiciono à tua sugestão: cada `BenchmarkSource` ganha `referenceQuality: "high" | "medium" | "low"` (não `confidence`, para não confundir com a confidence dos AI insights). Critério inicial:
 
-Verificar `report-diagnostic-verdict.tsx` e alinhar.
+- **high** — Socialinsider, Buffer (datasets grandes, públicos, com metodologia).
+- **medium** — Hootsuite (cross-industry, agregados, metodologia menos transparente).
+- **low** — Databox (futuro/inspiracional, hoje não usamos para valores).
 
----
-
-## R4 · Knowledge Base chip empilhado dentro do card de envolvimento (baixa-média)
-
-Em `EngagementRateCard` há **dois chips de fonte** no mesmo cartão:
-1. Header → `CÁLCULO · GOSTOS + COMENTÁRIOS`
-2. Junto ao "vs. X de referência" → `REFERÊNCIA EXTERNA · KNOWLEDGE BASE` (com `text-[9px]`)
-
-O segundo está visualmente apertado e usa um tamanho **fora do padrão** (9px vs 10px do componente). Duas opções:
-
-- **Opção A** (mais limpa): remover o chip secundário e mover a referência para o `header sourceSlot` como **chip duplo empilhado** (`CÁLCULO ·` em cima, `REFERÊNCIA EXTERNA ·` em baixo). Mantém o cartão a respirar.
-- **Opção B**: manter os dois chips mas remover o `text-[9px]` override e deixar o componente decidir o tamanho (fica a 10px coerente com o resto). Adicionar `mt-1` para respirar.
-
-Recomendo **B** por ser mais cirúrgica e preservar a colocação contextual da referência.
+Isto **não muda a UI agora** mas destranca futuras leituras de "intervalo de mercado".
 
 ---
 
-## R5 · Cartão de Temas sem chip quando IA disponível mas texto curto (baixa)
+## Arquitectura proposta
 
-`renderThemesCard` decide `isAi` por `r.source === "ai"`. Mas se o `aiText` existir e ainda assim for curto/genérico, o utilizador vê `LEITURA IA` sem o bloco `aiSource` (porque o componente já mostra dentro do body). Verificar se há caso em que mostramos chip IA **sem** o bloco interpretativo abaixo — se sim, downgrade para `automatic` e clarificar `body`.
+### 1. Knowledge Base (sem schema novo)
+
+Tudo em **TypeScript estático** dentro do dataset canónico já existente. Sem migrações Supabase, sem writes. As tabelas `knowledge_sources` / `knowledge_benchmarks` continuam a servir o admin e o orquestrador AI; o que adicionamos é a camada **editorial** que a UI lê.
+
+Estendo `BenchmarkSource` em `src/lib/knowledge/benchmark-context.ts`:
+
+```ts
+export interface BenchmarkSource {
+  name: BenchmarkSourceName;
+  role: string;
+  uiDisplayAllowed: boolean;
+  linksAllowedInReport: boolean;
+  // novos
+  url: string;                 // só usado em <ReportMethodology>
+  publishedYear: number;
+  shortDescription: string;    // 1 linha pt-PT — vai à metodologia
+  referenceQuality: "high" | "medium" | "low";
+}
+```
+
+URLs registados (já vêm do teu briefing):
+
+- Socialinsider → `https://www.socialinsider.io/social-media-benchmarks/instagram` · 2025 · `high`
+- Buffer → `https://buffer.com/insights/instagram-benchmarks` · 2025 · `high`
+- Hootsuite → `https://blog.hootsuite.com/social-media-benchmarks/` · 2025 · `medium`
+- Databox → `https://databox.com/benchmarks/instagram-benchmarks` · 2025 · `low`
+
+Bump de `BENCHMARK_DATASET_VERSION` → `2026-04-30b`.
+
+### 2. Componente novo · `ReportBenchmarkEvidence`
+
+Ficheiro: `src/components/report-redesign/v2/report-benchmark-evidence.tsx`
+
+Render minimalista:
+
+```text
+Referência de mercado · Instagram · contas 5K–10K · Socialinsider · Buffer
+```
+
+Sem `[1][2]` clicáveis (Opção C). Os nomes ficam como **chips mono pequenos** com `title` + `aria-label` que lêem "Fonte: Socialinsider — ver detalhes na metodologia".
+
+Props:
+
+```ts
+type Props = {
+  platform: "instagram";
+  followerTier?: string | null;       // já formatado: "0–1K", "5–10K"...
+  industry?: string | null;           // só se realmente conhecido
+  sourceNames: BenchmarkSourceName[]; // 1 a 3 nomes
+  className?: string;
+};
+```
+
+**Regra anti-invenção:**
+- `followerTier` derivado por `getBufferTierForFollowers(followers).tier`. Se `null` → omitir o segmento.
+- `industry` só renderiza se `industry !== null` — caso contrário usa "referência geral de mercado".
+- `sourceNames` filtrados por `uiDisplayAllowed === true`.
+
+### 3. `EngagementRateCard` — wire-up
+
+Em `src/components/report-redesign/v2/report-overview-cards.tsx`:
+
+- Calcular `bufferTier` a partir de `result.data.profile.followers` (já disponível). Vem por prop nova `followers` ao `EngagementRateCard`.
+- Substituir o **chip duplo** actual (`CÁLCULO ·` + `REFERÊNCIA EXTERNA · KNOWLEDGE BASE`) por:
+  - Header: `CÁLCULO · GOSTOS + COMENTÁRIOS` (mantém-se).
+  - Junto à linha "vs. 4,20% de referência": substituir o chip de `external` pelo `<ReportBenchmarkEvidence …>`.
+
+Resultado visual em mobile:
+
+```text
+vs. 4,20% de referência
+Referência de mercado · Instagram · contas 5K–10K · Socialinsider · Buffer
+```
+
+### 4. `ReportMethodology` — bloco "Fontes de referência"
+
+Em `src/components/report-redesign/report-methodology.tsx`, **abaixo** da grelha de legenda dos chips (R1 que já fizemos), adicionar:
+
+```text
+Fontes de referência                        DATASET 2026-04-30b
+[📖] Socialinsider 2025 · Estudo agregado de envolvimento e formato.   ↗
+[📖] Buffer 2025      · Benchmarks por dimensão de conta.              ↗
+[📖] Hootsuite 2025   · Contexto cross-indústria.                      ↗
+[📖] Databox 2025     · Inspiração para futura ligação autenticada.    ↗
+```
+
+Cada linha:
+- ícone `BookOpen` (mantém coerência com `external` chip)
+- nome + ano + 1 linha de `shortDescription`
+- link `↗` à direita, `target="_blank" rel="noopener noreferrer"`, `aria-label="Abrir página da Socialinsider numa nova aba"`
+- chip discreto `referenceQuality` só quando `medium`/`low` — `high` fica implícito (sem ruído).
+
+Sem URLs visíveis no texto. Só o ícone `↗` é clicável.
+
+### 5. Distinção benchmark ≠ concorrentes diretos
+
+Adicionar **um** bloco discreto, **uma única vez**, em `ReportMethodology` (não em cada cartão), logo abaixo das fontes:
+
+```text
+Comparação direta com concorrentes
+Disponível no plano Pro: adicionar perfis concorrentes para
+comparar este perfil com contas reais do mesmo mercado.
+[ Adicionar concorrente · Pro ]   ← botão ghost disabled
+```
+
+Botão `disabled` com `title="Disponível no plano Pro"` — sem onClick, sem rota, sem feature.
+
+### 6. Regra editorial reforçada
+
+Adicionar **uma frase** ao parágrafo de explicação na metodologia:
+
+> "Estas referências usam estudos públicos de mercado para dar contexto aos resultados. Quando não há setor definido, a comparação é feita por plataforma e dimensão aproximada da conta."
+
+(Substitui a frase actual que descreve só os 5 chips.)
 
 ---
 
-## R6 · Acessibilidade e responsive do chip (baixa)
+## Fora do âmbito
 
-Pequenas melhorias no `ReportSourceLabel`:
-
-1. **Tooltip nativo** (`title={a11y}`) para quem passa com o rato — útil quando o chip trunca em ecrãs estreitos.
-2. **Mobile (375px)**: em cartões com `answer` longa + chip longo, o chip pode empurrar o número. Adicionar `flex-wrap` no header dos cartões e garantir `max-w-full` no chip (já lá está, mas o pai do header às vezes força nowrap).
-3. **Cor do `external`**: actualmente partilha o azul com `calculation` e `ai`. Para diferenciar referência externa de leitura própria, usar **violet/indigo subtil** (`bg-indigo-50 ring-indigo-200 text-indigo-700`). Mantém-se discreto, mas separa "voz da Lovable" de "voz emprestada da Knowledge Base".
-
----
-
-## Fora do âmbito (deliberadamente não fazer agora)
-
-- **Não adicionar** chips a cartões fora do Bloco 02 e overview (Bloco 01, signals card, methodology) — a saturação prejudica a leitura.
-- **Não tocar** em `/report.example` (locked).
-- **Não criar** novo tipo de fonte (ex.: "estimativa") — os 5 actuais cobrem todos os casos.
-- **Não mexer** em providers, Supabase, schema.
+- **Não** adicionamos `BenchmarkReference` granular por métrica/indústria/geografia (o teu type spec do briefing). O dataset actual já cobre os casos vivos (engagement, frequência, formato). Estender o modelo seria sobre-engenharia para o que a UI consome hoje — fica para o momento em que existir um segundo cartão a comparar com benchmark.
+- **Não** mexemos em `/report/example` (locked).
+- **Não** tocamos em providers, AI prompts, PDF, admin, validators.
+- **Não** criamos schema novo no Supabase.
+- **Não** adicionamos packages.
+- **Não** mudamos o `report-kpi-grid.tsx` legacy nem o `report-kpi-grid-v2.tsx` — a evidência só entra no `EngagementRateCard` cinematográfico do overview.
 
 ---
 
 ## Detalhes técnicos
 
-**Ficheiros tocados:**
+**Ficheiros a editar:**
 
-- `src/components/report-redesign/report-methodology.tsx` — R1 (substituir parágrafo final por grelha visual com 5 chips reais).
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — R2 (5 ajustes de `sourceDetail`), R5 (validação Q04).
-- `src/components/report-redesign/v2/report-overview-cards.tsx` — R2 (Ritmo + Formato), R4 opção B.
-- `src/components/report-redesign/v2/report-diagnostic-verdict.tsx` — R3 (substituir chip próprio por `ReportSourceLabel`).
-- `src/components/report-redesign/v2/report-source-label.tsx` — R6 (tooltip + cor `external` indigo).
+- `src/lib/knowledge/benchmark-context.ts` — estender `BenchmarkSource` (url, publishedYear, shortDescription, referenceQuality), bump `BENCHMARK_DATASET_VERSION`.
+- `src/lib/knowledge/__tests__/benchmark-context.test.ts` — actualizar assertions sobre fontes; adicionar test para `referenceQuality`.
+- `src/components/report-redesign/v2/report-benchmark-evidence.tsx` — **novo**.
+- `src/components/report-redesign/v2/report-overview-cards.tsx` — passar `followers` ao `EngagementRateCard`, substituir chip `external` pelo novo componente.
+- `src/components/report-redesign/report-methodology.tsx` — bloco "Fontes de referência" + bloco "Comparação direta com concorrentes" + frase editorial.
 
 **Validação:**
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Inspecção visual em `/analyze/frederico.m.carvalho` a 375px / 768px / desktop.
+- QA visual a 375 / 768 / desktop em `/analyze/frederico.m.carvalho`
 
 ---
 
 ## Checkpoint
 
-☐ R1 · Grelha visual de legenda na metodologia
-☐ R2 · `sourceDetail` ajustados em 5 cartões
-☐ R3 · Veredito a usar `ReportSourceLabel`
-☐ R4 · Engagement card — chip Knowledge Base normalizado (opção B)
-☐ R5 · Q04 Temas — coerência IA chip ↔ aiSource block
-☐ R6 · Tooltip + tom indigo para `external`
-☐ TS pass · Vitest pass · QA visual 375 / 768 / desktop
+☐ R-Decisão · Confirmar Opção C (nomes em-card + URLs só na metodologia)
+☐ KB1 · Estender `BenchmarkSource` com url + publishedYear + shortDescription + referenceQuality
+☐ KB2 · Bump `BENCHMARK_DATASET_VERSION` → `2026-04-30b`
+☐ UI1 · Criar `ReportBenchmarkEvidence`
+☐ UI2 · Wire-up no `EngagementRateCard` (passar followers, substituir chip)
+☐ UI3 · Bloco "Fontes de referência" na metodologia (com `target="_blank" rel="noopener noreferrer"` + aria-labels)
+☐ UI4 · Teaser "Comparação direta com concorrentes · Pro" (botão disabled)
+☐ UI5 · Frase editorial actualizada
+☐ Tests · `benchmark-context.test.ts` actualizado
+☐ TS pass · Vitest pass · QA 375/768/desktop
 
-Aprovas avançar com **todos os seis** ou queres que deixe algum de fora?
+**Aprovas Opção C com este plano? Se preferires A ou B, indica e ajusto antes de avançar.**

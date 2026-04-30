@@ -1,8 +1,13 @@
-import { Database, LineChart, Sparkles, Search } from "lucide-react";
+import { Database, LineChart, Sparkles, Search, ExternalLink, Users } from "lucide-react";
 import { ReportSectionFrame } from "./report-section-frame";
 import { REDESIGN_TOKENS } from "./report-tokens";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { ReportSourceLabel, type ReportSourceType } from "./v2/report-source-label";
+import {
+  INSTAGRAM_BENCHMARK_CONTEXT,
+  BENCHMARK_DATASET_VERSION,
+} from "@/lib/knowledge/benchmark-context";
+import { cn } from "@/lib/utils";
 
 interface Props {
   enriched?: ReportEnriched;
@@ -46,6 +51,10 @@ export function ReportMethodology({ enriched }: Props = {}) {
     { type: "ai", explanation: "Texto interpretativo gerado por modelo de linguagem." },
     { type: "external", explanation: "Comparação com a Knowledge Base de pares e benchmarks." },
   ];
+
+  const benchmarkSources = INSTAGRAM_BENCHMARK_CONTEXT.sources.filter(
+    (s) => s.uiDisplayAllowed,
+  );
 
   return (
     <ReportSectionFrame
@@ -106,7 +115,134 @@ export function ReportMethodology({ enriched }: Props = {}) {
             </li>
           ))}
         </ul>
+        <p className="mt-4 text-[12px] text-slate-500 leading-relaxed">
+          Estas referências usam estudos públicos de mercado para dar contexto aos resultados. Quando não há setor definido, a comparação é feita por plataforma e dimensão aproximada da conta.
+        </p>
+      </div>
+
+      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
+        <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+            Fontes de referência
+          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+            Dataset {BENCHMARK_DATASET_VERSION}
+          </p>
+        </div>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {benchmarkSources.map((source) => {
+            const showQualityChip = source.referenceQuality !== "high";
+            const qualityLabel =
+              source.referenceQuality === "medium"
+                ? "Qualidade média"
+                : "Inspiração futura";
+            return (
+              <li
+                key={source.name}
+                className="flex items-start gap-3 rounded-lg border border-slate-200/70 bg-white px-3 py-2.5 min-w-0"
+              >
+                <span
+                  aria-hidden="true"
+                  className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                >
+                  <BookOpenSmall />
+                </span>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="text-sm text-slate-800 leading-tight">
+                    <span className="font-medium">{source.name}</span>
+                    <span className="ml-1.5 font-mono text-[10px] text-slate-400 tabular-nums">
+                      {source.publishedYear}
+                    </span>
+                  </p>
+                  <p className="text-[12px] text-slate-600 leading-snug">
+                    {source.shortDescription}
+                  </p>
+                  {showQualityChip ? (
+                    <span
+                      className={cn(
+                        "mt-1 inline-block font-mono text-[9px] uppercase tracking-[0.14em] rounded-full px-1.5 py-0.5 ring-1",
+                        source.referenceQuality === "medium"
+                          ? "bg-slate-50 text-slate-500 ring-slate-200"
+                          : "bg-amber-50 text-amber-700 ring-amber-200",
+                      )}
+                    >
+                      {qualityLabel}
+                    </span>
+                  ) : null}
+                </div>
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Abrir página da ${source.name} numa nova aba`}
+                  className="shrink-0 inline-flex size-7 items-center justify-center rounded-md text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                >
+                  <ExternalLink aria-hidden="true" className="size-3.5" />
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700 ring-1 ring-blue-200"
+          >
+            <Users className="size-3.5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+              Comparação direta com concorrentes
+            </p>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              Disponível no plano Pro: adicionar perfis concorrentes para
+              comparar este perfil com contas reais do mesmo mercado. Diferente
+              da referência de mercado — passa a usar dados de perfis específicos
+              em vez de estudos agregados.
+            </p>
+            <button
+              type="button"
+              disabled
+              title="Disponível no plano Pro"
+              aria-label="Adicionar concorrente — disponível no plano Pro"
+              className={cn(
+                "mt-1 inline-flex items-center gap-2 rounded-full px-3 py-1.5",
+                "border border-slate-200 bg-white text-[12px] text-slate-500",
+                "cursor-not-allowed",
+              )}
+            >
+              <span>Adicionar concorrente</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-blue-600 bg-blue-50 ring-1 ring-blue-200 rounded-full px-1.5 py-0.5">
+                Pro
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
     </ReportSectionFrame>
+  );
+}
+
+/** Pequeno ícone livro/marca-fonte alinhado com o tom indigo de `external`. */
+function BookOpenSmall() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
   );
 }
