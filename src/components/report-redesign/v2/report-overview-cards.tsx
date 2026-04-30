@@ -39,7 +39,7 @@ export function ReportOverviewCards({ result }: Props) {
 
   return (
     <div className="grid grid-cols-1 gap-4 md:gap-5 md:grid-cols-2 lg:grid-cols-3">
-      <EngagementHealthCard
+      <EngagementRateCard
         engagement={k.engagementRate}
         benchmark={k.engagementBenchmark}
         deltaPct={k.engagementDeltaPct}
@@ -49,7 +49,7 @@ export function ReportOverviewCards({ result }: Props) {
         postsAnalyzed={k.postsAnalyzed}
         windowDays={windowDays}
       />
-      <ContentEngineCard
+      <DominantFormatCard
         dominantFormat={k.dominantFormat}
         dominantShare={k.dominantFormatShare}
         breakdown={breakdown}
@@ -61,14 +61,12 @@ export function ReportOverviewCards({ result }: Props) {
 // ─── Card primitives ─────────────────────────────────────────────────
 
 function PremiumCard({
-  eyebrow,
   title,
   icon,
   children,
   interpretation,
   interpretationTone = "neutral",
 }: {
-  eyebrow: string;
   title: string;
   icon: ReactNode;
   children: ReactNode;
@@ -100,13 +98,10 @@ function PremiumCard({
       )}
     >
       <header className="flex items-start justify-between gap-3">
-        <div className="space-y-2 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={REDESIGN_TOKENS.kpiIconBoxV2} aria-hidden="true">
-              {icon}
-            </span>
-            <p className={REDESIGN_TOKENS.eyebrow}>{eyebrow}</p>
-          </div>
+        <div className="space-y-2.5 min-w-0">
+          <span className={REDESIGN_TOKENS.kpiIconBoxV2} aria-hidden="true">
+            {icon}
+          </span>
           <h3 className="font-display text-[1.05rem] md:text-[1.15rem] font-semibold tracking-tight text-slate-900 leading-tight">
             {title}
           </h3>
@@ -131,9 +126,9 @@ function PremiumCard({
   );
 }
 
-// ─── Card 1 — Saúde do envolvimento ──────────────────────────────────
+// ─── Card 1 — Taxa de engagement ─────────────────────────────────────
 
-function EngagementHealthCard({
+function EngagementRateCard({
   engagement,
   benchmark,
   deltaPct,
@@ -147,8 +142,7 @@ function EngagementHealthCard({
 
   return (
     <PremiumCard
-      eyebrow="Visão geral"
-      title="Saúde do envolvimento"
+      title="Taxa de engagement"
       icon={<Activity className="h-4 w-4" aria-hidden="true" />}
       interpretation={status.label}
       interpretationTone={status.tone}
@@ -174,16 +168,20 @@ function EngagementHealthCard({
         ) : null}
       </div>
 
+      <p className="text-[13px] text-slate-600 leading-relaxed">
+        gostos, comentários e respostas face à dimensão do perfil
+      </p>
+
       {hasBenchmark ? (
-        <p className="text-[13px] text-slate-600 leading-relaxed">
+        <p className="text-[12px] text-slate-500 leading-relaxed">
           vs.{" "}
-          <span className="font-medium text-slate-800 tabular-nums">
+          <span className="font-medium text-slate-700 tabular-nums">
             {formatPct(benchmark)}
           </span>{" "}
           de referência
         </p>
       ) : (
-        <p className="text-[13px] text-slate-500 leading-relaxed">
+        <p className="text-[12px] text-slate-500 leading-relaxed">
           Sem referência disponível para esta categoria.
         </p>
       )}
@@ -279,7 +277,6 @@ function PostingRhythmCard({
 
   return (
     <PremiumCard
-      eyebrow="Visão geral"
       title="Ritmo de publicação"
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
       interpretation={status.label}
@@ -310,7 +307,7 @@ function PostingRhythmCard({
               <span className="font-medium text-slate-800 tabular-nums">
                 {windowDays}
               </span>{" "}
-              dias de amostra analisada
+              dias analisados
             </>
           ) : null}
         </p>
@@ -377,14 +374,14 @@ function computeRhythmStatus(weekly: number): {
   return { label: "Ritmo baixo", tone: "bad" };
 }
 
-// ─── Card 3 — Motor de conteúdo ──────────────────────────────────────
+// ─── Card 3 — Formato mais regular ───────────────────────────────────
 
 interface BreakdownItem {
   format: string;
   sharePct: number;
 }
 
-function ContentEngineCard({
+function DominantFormatCard({
   dominantFormat,
   dominantShare,
   breakdown,
@@ -399,8 +396,7 @@ function ContentEngineCard({
 
   return (
     <PremiumCard
-      eyebrow="Visão geral"
-      title="Motor de conteúdo"
+      title="Formato mais regular"
       icon={<Layers className="h-4 w-4" aria-hidden="true" />}
       interpretation={status.label}
       interpretationTone={status.tone}
@@ -415,8 +411,7 @@ function ContentEngineCard({
       </div>
 
       <p className="text-[13px] text-slate-600 leading-relaxed">
-        Formato dominante na{" "}
-        <span className="font-medium text-slate-800">amostra analisada</span>.
+        formato mais frequente na amostra analisada
       </p>
 
       {breakdown.length > 0 ? (
