@@ -38,22 +38,28 @@ export function ReportOverviewCards({ result }: Props) {
   const breakdown = result.data.formatBreakdown ?? [];
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:gap-5 md:grid-cols-2 lg:grid-cols-3">
-      <EngagementRateCard
-        engagement={k.engagementRate}
-        benchmark={k.engagementBenchmark}
-        deltaPct={k.engagementDeltaPct}
-      />
-      <PostingRhythmCard
-        weekly={k.postingFrequencyWeekly}
-        postsAnalyzed={k.postsAnalyzed}
-        windowDays={windowDays}
-      />
-      <DominantFormatCard
-        dominantFormat={k.dominantFormat}
-        dominantShare={k.dominantFormatShare}
-        breakdown={breakdown}
-      />
+    <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-3">
+      {/* Primary — engagement spans 2 cols on desktop */}
+      <div className="lg:col-span-2">
+        <EngagementRateCard
+          engagement={k.engagementRate}
+          benchmark={k.engagementBenchmark}
+          deltaPct={k.engagementDeltaPct}
+        />
+      </div>
+      {/* Secondary stack — rhythm + format */}
+      <div className="lg:col-span-1 flex flex-col gap-4 md:gap-5">
+        <PostingRhythmCard
+          weekly={k.postingFrequencyWeekly}
+          postsAnalyzed={k.postsAnalyzed}
+          windowDays={windowDays}
+        />
+        <DominantFormatCard
+          dominantFormat={k.dominantFormat}
+          dominantShare={k.dominantFormatShare}
+          breakdown={breakdown}
+        />
+      </div>
     </div>
   );
 }
@@ -66,21 +72,23 @@ function PremiumCard({
   children,
   interpretation,
   interpretationTone = "neutral",
+  emphasis = "secondary",
 }: {
   title: string;
   icon: ReactNode;
   children: ReactNode;
-  interpretation: string;
+  interpretation: string | null;
   interpretationTone?: "good" | "warn" | "bad" | "neutral";
+  emphasis?: "primary" | "secondary";
 }) {
-  const toneCls =
+  const chipCls =
     interpretationTone === "good"
-      ? "text-emerald-700"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
       : interpretationTone === "warn"
-        ? "text-amber-700"
+        ? "bg-amber-50 text-amber-700 ring-amber-100"
         : interpretationTone === "bad"
-          ? "text-rose-700"
-          : "text-slate-600";
+          ? "bg-rose-50 text-rose-700 ring-rose-100"
+          : "bg-slate-50 text-slate-700 ring-slate-200";
   const dotCls =
     interpretationTone === "good"
       ? "bg-emerald-500"
@@ -90,38 +98,49 @@ function PremiumCard({
           ? "bg-rose-500"
           : "bg-slate-400";
 
+  const padding =
+    emphasis === "primary"
+      ? "p-6 md:p-7 lg:p-8"
+      : "p-4 md:p-5";
+  const titleCls =
+    emphasis === "primary"
+      ? "font-display text-[1.15rem] md:text-[1.3rem] font-semibold tracking-tight text-slate-900 leading-tight"
+      : "font-display text-[1rem] md:text-[1.05rem] font-semibold tracking-tight text-slate-900 leading-tight";
+
   return (
     <article
       className={cn(
         REDESIGN_TOKENS.kpiCardV2,
-        "p-5 md:p-6 lg:p-7 flex flex-col gap-5 min-w-0 h-full",
+        padding,
+        "flex flex-col gap-4 min-w-0 h-full",
       )}
     >
       <header className="flex items-start justify-between gap-3">
-        <div className="space-y-2.5 min-w-0">
+        <div className="space-y-2 min-w-0">
           <span className={REDESIGN_TOKENS.kpiIconBoxV2} aria-hidden="true">
             {icon}
           </span>
-          <h3 className="font-display text-[1.05rem] md:text-[1.15rem] font-semibold tracking-tight text-slate-900 leading-tight">
-            {title}
-          </h3>
+          <h3 className={titleCls}>{title}</h3>
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col gap-4 min-w-0">{children}</div>
+      <div className="flex-1 flex flex-col gap-3.5 min-w-0">{children}</div>
 
-      <p
-        className={cn(
-          "flex items-center gap-2 text-[13px] font-medium leading-snug",
-          toneCls,
-        )}
-      >
+      {interpretation ? (
         <span
-          aria-hidden="true"
-          className={cn("size-1.5 rounded-full shrink-0", dotCls)}
-        />
-        <span>{interpretation}</span>
-      </p>
+          className={cn(
+            "self-start inline-flex items-center gap-1.5 rounded-full ring-1 px-2.5 py-1",
+            "text-[12px] font-medium",
+            chipCls,
+          )}
+        >
+          <span
+            aria-hidden="true"
+            className={cn("size-1.5 rounded-full shrink-0", dotCls)}
+          />
+          <span>{interpretation}</span>
+        </span>
+      ) : null}
     </article>
   );
 }
@@ -146,15 +165,16 @@ function EngagementRateCard({
       icon={<Activity className="h-4 w-4" aria-hidden="true" />}
       interpretation={status.label}
       interpretationTone={status.tone}
+      emphasis="primary"
     >
       <div className="flex items-end gap-3 flex-wrap">
-        <span className="font-display text-[2.5rem] md:text-[2.75rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+        <span className="font-display text-[3rem] md:text-[3.5rem] font-semibold tracking-[-0.025em] text-slate-900 leading-none tabular-nums">
           {formatPct(engagement)}
         </span>
         {hasBenchmark && deltaPct !== 0 ? (
           <span
             className={cn(
-              "font-mono text-[11px] uppercase tracking-[0.1em] pb-1",
+              "font-mono text-[11px] uppercase tracking-[0.1em] pb-1.5",
               status.tone === "good"
                 ? "text-emerald-700"
                 : status.tone === "bad"
@@ -169,7 +189,7 @@ function EngagementRateCard({
       </div>
 
       <p className="text-[13px] text-slate-600 leading-relaxed">
-        gostos, comentários e respostas face à dimensão do perfil
+        gostos e comentários face à dimensão do perfil
       </p>
 
       {hasBenchmark ? (
@@ -212,17 +232,15 @@ function EngagementDistanceBar({
   const refPct = clamp((benchmark / max) * 100, 0, 100);
 
   const barCls =
-    tone === "good"
-      ? "bg-emerald-500"
-      : tone === "warn"
-        ? "bg-slate-400"
-        : tone === "bad"
-          ? "bg-rose-500"
-          : "bg-slate-400";
+    tone === "bad"
+      ? "bg-rose-400"
+      : tone === "good"
+        ? "bg-emerald-500"
+        : "bg-blue-500";
 
   return (
     <div className="space-y-1.5" aria-hidden="true">
-      <div className="relative h-2 w-full rounded-full bg-slate-100 overflow-visible">
+      <div className="relative h-2.5 w-full rounded-full bg-slate-100 overflow-visible">
         <div
           className={cn(
             "absolute inset-y-0 left-0 rounded-full transition-all duration-500",
@@ -232,17 +250,22 @@ function EngagementDistanceBar({
         />
         {/* Marca da referência */}
         <div
-          className="absolute -top-1 -bottom-1 w-px bg-slate-400"
+          className="absolute -top-1 -bottom-1 w-px bg-blue-400"
           style={{ left: `${refPct}%` }}
         />
         <div
-          className="absolute -top-2 size-2 rounded-full bg-white ring-1 ring-slate-400"
+          className="absolute -top-2 size-2 rounded-full bg-white ring-1 ring-blue-500"
           style={{ left: `calc(${refPct}% - 4px)` }}
         />
       </div>
-      <div className="flex justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+      <div className="relative font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
         <span>0%</span>
-        <span>referência</span>
+        <span
+          className="absolute -translate-x-1/2 text-blue-600"
+          style={{ left: `${refPct}%` }}
+        >
+          referência
+        </span>
       </div>
     </div>
   );
@@ -279,20 +302,20 @@ function PostingRhythmCard({
     <PremiumCard
       title="Ritmo de publicação"
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
-      interpretation={status.label}
+      interpretation={null}
       interpretationTone={status.tone}
     >
       <div className="flex items-end gap-3 flex-wrap">
-        <span className="font-display text-[2.5rem] md:text-[2.75rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+        <span className="font-display text-[2rem] md:text-[2.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
           {weekly.toFixed(1).replace(".", ",")}
         </span>
         <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-slate-500 pb-1">
-          publicações por semana
+          /semana
         </span>
       </div>
 
       {postsAnalyzed > 0 || windowDays > 0 ? (
-        <p className="text-[13px] text-slate-600 leading-relaxed">
+        <p className="text-[12.5px] text-slate-600 leading-relaxed">
           {postsAnalyzed > 0 ? (
             <>
               <span className="font-medium text-slate-800 tabular-nums">
@@ -315,7 +338,7 @@ function PostingRhythmCard({
 
       <RhythmDots weekly={weekly} tone={status.tone} />
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
-        ritmo semanal · 0 → 7+
+        escala · 0 → 7+ por semana
       </p>
     </PremiumCard>
   );
@@ -402,11 +425,11 @@ function DominantFormatCard({
     <PremiumCard
       title="Formato mais regular"
       icon={<Layers className="h-4 w-4" aria-hidden="true" />}
-      interpretation={status.label}
+      interpretation={null}
       interpretationTone={status.tone}
     >
-      <div className="flex items-end gap-3 flex-wrap">
-        <span className="font-display text-[2.5rem] md:text-[2.75rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+      <div className="flex items-end gap-3 flex-wrap min-w-0">
+        <span className="font-display text-[2rem] md:text-[2.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
           {dominantShare > 0 ? `${dominantShare}%` : "—"}
         </span>
         {dominantLabel ? (
@@ -414,8 +437,8 @@ function DominantFormatCard({
         ) : null}
       </div>
 
-      <p className="text-[13px] text-slate-600 leading-relaxed">
-        formato mais frequente na amostra analisada
+      <p className="text-[12.5px] text-slate-600 leading-relaxed">
+        formato mais frequente na amostra
       </p>
 
       {breakdown.length > 0 ? (
