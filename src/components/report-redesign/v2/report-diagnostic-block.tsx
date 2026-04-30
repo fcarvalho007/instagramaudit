@@ -486,6 +486,17 @@ function renderCaptionCard(
       tone="blue"
       body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
       aiSource={aiSource}
+      sourceLabel={
+        aiSource
+          ? {
+              kind: "ai",
+              text: "Leitura IA gerada a partir da amostra de publicações.",
+            }
+          : {
+              kind: "auto",
+              text: "Leitura automática das legendas analisadas.",
+            }
+      }
     >
       <DiagnosticMiniStats
         items={
@@ -542,6 +553,10 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
       answer={r.label}
       tone={tone}
       body={bodyByLabel[r.label]}
+      sourceLabel={{
+        kind: "extracted",
+        text: "Baseado em gostos e comentários públicos das publicações analisadas.",
+      }}
     >
       <DiagnosticAudienceHighlight
         avgLikes={avgLikes}
@@ -570,6 +585,10 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
       answer={r.label}
       tone={tone}
       body="Há infraestrutura cross-canal quando a bio aponta para fora e as captions reforçam a saída do Instagram. Sem isso, a audiência fica presa à plataforma."
+      sourceLabel={{
+        kind: "auto",
+        text: "Leitura automática da bio, links externos e legendas.",
+      }}
     >
       <DiagnosticChecklist
         items={[
@@ -621,6 +640,10 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       answer={r.primary}
       tone="blue"
       body="Hipótese derivada dos sinais de conteúdo, funil, bio e ligação entre canais. Não substitui o objetivo real da marca ou do criador — deve ser confirmada por quem comunica."
+      sourceLabel={{
+        kind: "auto",
+        text: "Hipótese derivada dos sinais editoriais detectados nesta amostra.",
+      }}
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>
