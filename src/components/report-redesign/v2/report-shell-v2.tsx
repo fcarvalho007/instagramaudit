@@ -40,7 +40,6 @@ import {
   ReportBlockTopTabs,
 } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
-import { ReportPositioningBanner } from "./report-positioning-banner";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
 
@@ -93,9 +92,6 @@ export function ReportShellV2({
       >
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
         <ReportHeroV2 result={result} actions={actions} />
-
-        {/* Posicionamento editorial curto */}
-        <ReportPositioningBanner />
 
         {/* Tabs mobile sticky abaixo do hero/posicionamento */}
         <ReportBlockTopTabs />
