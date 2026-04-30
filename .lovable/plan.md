@@ -1,72 +1,70 @@
-## Refinement pass · Bloco 02
+## Estado atual (auditoria)
 
-Cinco ajustes cirúrgicos. Sem providers, sem locked files, sem PDF, sem schema.
+A maior parte dos FIXES já foi implementada nas passagens anteriores. Confirmado por leitura direta dos ficheiros:
 
-### Decisões prévias
+| FIX | Estado | Evidência |
+|-----|--------|-----------|
+| 1 — Substituir stat `COM PERGUNTAS` inventada | **Parcial** | `classifyQuestionShare` já existe em `block02-diagnostic.ts` (linhas 428-447) e calcula `?` real após remover hashtags com `/#\S+/g`. Card 05 já usa `r.questionShareAvailable` para esconder a stat quando `< 4 posts`. Falta apenas alinhar a **assinatura de retorno** ao contrato pedido neste prompt. |
+| 2 — Linguagem cautelosa na pergunta 08 | **Parcial** | Já usa "Hipótese principal" e "Com base na amostra analisada". Falta reforçar com "Sinais de" e "inferência provável". |
+| 3 — Card único span 2 colunas | ✅ Feito | `report-diagnostic-group.tsx` linhas 42-50 envolve filho único em `md:col-span-2`. |
+| 4 — CTA `#leitura-completa` | ✅ Feito | `report-diagnostic-cta.tsx` linha 25. |
+| 5 — Não passar `analyzedAtIso` ao `ReportDiagnosticBlock` | ✅ Feito | `report-shell-v2.tsx` linha 111: `<ReportDiagnosticBlock result={result} payload={payload} />` — sem `analyzedAtIso`. |
 
-- **F1 — âncora do CTA**: manter `href="#leitura-completa"` (já é a âncora real existente em `tier-comparison-block.tsx`, confirmada por `rg`). **Não** criar id `tier-comparison` adicional. Apenas atualizar o comentário em `report-diagnostic-cta.tsx` (que erradamente diz "âncora `#tier-comparison`").
-- **F2 — `analyzedAtIso`**: opção A. O componente `ReportDiagnosticBlock` nunca aceitou esta prop nem a usa. Não há nada a remover do código — é uma correção de spec apenas. Sem alteração de ficheiros para este ponto.
+Locked files: nenhum dos ficheiros a tocar está em `LOCKED_FILES.md`.
 
-### Alterações de código
+## Alterações a implementar (cirúrgicas)
 
-**1. `src/lib/report/block02-diagnostic.ts` (F3)**
+### 1. `src/lib/report/block02-diagnostic.ts`
 
-- Adicionar helper exportado `classifyQuestionShare(posts: SnapshotPost[]): { available: boolean; sharePct: number; sampleSize: number }`:
-  - Disponível só quando `posts.length >= 4`
-  - Para cada caption: remover hashtags (`/#\S+/g → ""`) **antes** de procurar `?`
-  - Conta posts onde a caption (sem hashtags) contém `?`
-  - Devolve `{ available: true, sharePct: round(count/total * 100), sampleSize }`
-- Em `CaptionPatternResult`: adicionar `questionShareAvailable: boolean` ao lado do `questionSharePct` já existente
-- Em `classifyCaptionPattern`: substituir o cálculo inline `caption.includes("?")` (que usa caption crua, contando hashtags como `#?... `) pela chamada a `classifyQuestionShare(posts)`. Popular `questionSharePct` e `questionShareAvailable` consistentemente nos três returns. Quando `posts.length < 4`, `questionShareAvailable = false`.
+Alinhar `classifyQuestionShare` ao contrato exato do prompt: devolver `{ available, questionSharePct, questionCount, postsCount }`.
 
-**2. `src/components/report-redesign/v2/report-diagnostic-block.tsx` (F3 + F4)**
+- Renomear `sharePct` → `questionSharePct`.
+- Renomear `sampleSize` → `postsCount`.
+- Adicionar `questionCount: number`.
+- Atualizar o tipo de retorno inline.
+- Atualizar o único call-site interno em `classifyCaptionPattern` (linhas 388-390): usar os novos nomes (`questionSharePct`, `available`).
+- Manter a lógica de cálculo intacta (já está correta: `replace(/#\S+/g, " ")` + `includes("?")`, `< 4` → `available:false`, arredondamento `Math.round((count/total)*100)`).
 
-- `renderCaptionCard`: condicionar a stat "COM PERGUNTAS" — só passar o item ao `DiagnosticMiniStats` quando `r.questionShareAvailable === true`. Se < 4 posts, mostrar só 2 mini-stats (caracteres médios + CTA).
-- `buildVerdictText` (F4): reescrever os fallbacks deterministas com hedges canónicos. Linguagem proposta:
-  - Prefixo: `"Com base na amostra analisada, "`
-  - Conector forte: trocar `"com presença forte de"` por `"sinais de"`
-  - Audiência: `"sinais de audiência silenciosa — likes consistentes, conversa rara"` / `"sinais de audiência ativa"`
-  - Fallback de baixa amostra: `"Com base na amostra analisada, ainda não há sinal suficiente para um veredito editorial — a amostra é pequena ou pouco diferenciada."`
-- `renderObjectiveCard` (Q08, F4): substituir o body atual (`"Inferência por padrão de conteúdo + funil + bio + ligação entre canais. É uma hipótese de leitura — confirme com o contexto real do perfil."`) por:
-  - `"Hipótese principal derivada de sinais de conteúdo, funil, bio e ligação entre canais. Com base na amostra analisada — confirme com o contexto real do perfil."`
-- `answerLabel` da Q08 já usa "Hipótese principal" / "Hipótese (sinal parcial)" — manter.
+`CaptionPatternResult` mantém os campos `questionSharePct` e `questionShareAvailable` que já existem (consumidos pelo card 05 sem mudança).
 
-**3. `src/components/report-redesign/v2/report-diagnostic-cta.tsx` (F1)**
+### 2. `src/components/report-redesign/v2/report-diagnostic-block.tsx`
 
-- Atualizar **apenas o comentário** JSDoc do componente: trocar "âncora `#tier-comparison` já existente" por "âncora `#leitura-completa` do `TierComparisonBlock`". Sem mudança de markup nem de href.
+Pergunta 08 (linhas 575-593) — reforçar wording cauteloso no `body`:
 
-**4. `src/components/report-redesign/v2/report-diagnostic-group.tsx` (R1 / F5)**
+Substituir o body atual:
 
-- Já implementado na sessão anterior (linhas 42-50): quando `questionsCount === 1`, o filho recebe wrapper `md:col-span-2` via `Children.map`. Sem alteração — apenas confirmar.
+> "Hipótese principal derivada de sinais de conteúdo, funil, bio e ligação entre canais. Com base na amostra analisada — confirme com o contexto real do perfil."
 
-### Ficheiros tocados (3)
+Por:
 
-- `src/lib/report/block02-diagnostic.ts` — novo `classifyQuestionShare` + `questionShareAvailable` em `CaptionPatternResult`
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — esconder stat se < 4 posts; reescrita do veredito determinista e do body do Q08 com hedges canónicos
-- `src/components/report-redesign/v2/report-diagnostic-cta.tsx` — apenas comentário JSDoc
+> "Com base na amostra analisada, esta é uma **hipótese provável** derivada de sinais de conteúdo, funil, bio e ligação entre canais — uma inferência provável, não uma afirmação. Deve ser confirmada pelo objetivo real da marca ou do criador."
 
-### Fora do scope
+Verificar que não aparecem formulações definitivas ("O objetivo é", "Serve para", "Está focado em") no card. A `question` ("Que objetivo provável serve?") já é cautelosa — manter.
 
-- Sem chamadas a Apify / DataForSEO / OpenAI / PDFShift / Supabase write
-- Sem alterações a PDF, admin, `/report/example`, schema, prompts AI
-- Sem novas dependências
-- Sem regenerar relatórios
-- Sem alterações a `tier-comparison-block.tsx` (decisão F1: manter âncora existente)
+Nenhuma mudança ao `answer` (vem de `r.primary` via classifier) nem ao `DiagnosticRanking`.
 
-### Validação
+### 3. Não tocar
 
-- `bunx tsc --noEmit` (auto-build do harness)
-- `bunx vitest run` (suite atual: 12 testes / 3 ficheiros — todos verdes na sessão anterior)
-- Sem QA browser
+- `report-diagnostic-group.tsx` — já correto.
+- `report-diagnostic-cta.tsx` — já correto.
+- `report-shell-v2.tsx` — já correto.
+- Restantes blocos (01, 03–06), PDF, admin, `/report/example`, providers, schema, AI prompts, validators, payments — intocados.
 
-### Checkpoint
+## Validação
 
-☐ `classifyQuestionShare` criado e exportado
-☐ `CaptionPatternResult.questionShareAvailable` populado nos 3 returns de `classifyCaptionPattern`
-☐ Stat "COM PERGUNTAS" escondida quando `< 4` posts
-☐ Veredito determinista usa hedges canónicos ("Com base na amostra analisada", "sinais de")
-☐ Body do Q08 reescrito com hedges canónicos
-☐ Comentário do CTA atualizado para `#leitura-completa`
-☐ TypeScript verde
-☐ Vitest verde (12 testes)
-☐ Confirmação: zero chamadas externas
+1. `bunx tsc --noEmit`
+2. `bunx vitest run`
+
+Sem QA browser, sem chamadas externas, sem migrations.
+
+## Entregáveis a reportar
+
+1. Ficheiros tocados (2: `block02-diagnostic.ts` + `report-diagnostic-block.tsx`).
+2. Confirmação de que a stat "COM PERGUNTAS" usa cálculo determinístico real (já estava — agora com o contrato exato pedido).
+3. Lógica de question share: strip `/#\S+/g` → `includes("?")` → `count/total*100` arredondado, `available:false` quando `posts.length < 4`.
+4. `#leitura-completa` mantido.
+5. `analyzedAtIso` não passado a `ReportDiagnosticBlock`.
+6. Grupos com 1 cartão ocupam 2 colunas em desktop.
+7. Resultado do TypeScript.
+8. Resultado do Vitest.
+9. Confirmação de zero toques em providers / schema / PDF / admin / `/report/example` / validators / AI prompts / locked files.
