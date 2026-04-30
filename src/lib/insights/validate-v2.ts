@@ -124,5 +124,47 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
     out[key] = { emphasis: item.emphasis, text };
   }
 
-  return { ok: true, sections: out };
+  // Prioridades opcionais — quando ausentes a UI cai para o derivador
+  // determinístico em `block02-diagnostic.ts`. Quando presentes,
+  // validamos PT-BR / leak técnico em cada texto.
+  let priorities: ReadonlyArray<AiPriorityItem> | null = null;
+  if (parsed.data.priorities) {
+    const arr: AiPriorityItem[] = [];
+    for (const [i, p] of parsed.data.priorities.entries()) {
+      const title = p.title.trim();
+      const body = p.body.trim();
+      const resolves = p.resolves.trim();
+      if (!title || !body || !resolves) {
+        return fail("EMPTY_FIELD", `priority=${i}`);
+      }
+      for (const [field, txt] of [
+        ["title", title],
+        ["body", body],
+        ["resolves", resolves],
+      ] as const) {
+        const tech = detectTechnicalLeak(txt);
+        if (tech) {
+          return fail(
+            "TECHNICAL_LEAK",
+            `priority=${i} field=${field} token=${tech}`,
+          );
+        }
+        const ptbr = detectPtBrLeak(txt);
+        if (ptbr) {
+          return fail(
+            "PTBR_LEAK",
+            `priority=${i} field=${field} token=${ptbr}`,
+          );
+        }
+      }
+      // body deve conter pelo menos um número (grounding).
+      if (!/\d/.test(body)) {
+        return fail("GENERIC_OUTPUT", `priority=${i} (missing number)`);
+      }
+      arr.push({ level: p.level, title, body, resolves });
+    }
+    priorities = arr;
+  }
+
+  return { ok: true, sections: out, priorities };
 }
