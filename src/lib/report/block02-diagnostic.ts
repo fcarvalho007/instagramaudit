@@ -267,6 +267,7 @@ export function classifyFunnelStage(posts: SnapshotPost[]): FunnelStageResult {
       sharePct: 0,
       sampleSize: posts?.length ?? 0,
       reason: "Amostra insuficiente.",
+      breakdown: [],
     };
   }
 
@@ -296,6 +297,7 @@ export function classifyFunnelStage(posts: SnapshotPost[]): FunnelStageResult {
       label: "Comunicação dispersa",
       sharePct: 0,
       sampleSize: posts.length,
+      breakdown: buildFunnelBreakdown(counts, posts.length),
     };
   }
 
@@ -309,6 +311,7 @@ export function classifyFunnelStage(posts: SnapshotPost[]): FunnelStageResult {
       label: topLabel as FunnelStageLabel,
       sharePct: Math.round(share * 100),
       sampleSize: posts.length,
+      breakdown: buildFunnelBreakdown(counts, posts.length),
     };
   }
 
@@ -317,7 +320,30 @@ export function classifyFunnelStage(posts: SnapshotPost[]): FunnelStageResult {
     label: "Comunicação dispersa",
     sharePct: Math.round(share * 100),
     sampleSize: posts.length,
+    breakdown: buildFunnelBreakdown(counts, posts.length),
   };
+}
+
+function buildFunnelBreakdown(
+  counts: Record<string, number>,
+  total: number,
+): FunnelStageResult["breakdown"] {
+  if (total <= 0) return [];
+  const map: Array<{
+    stage: "topo" | "meio" | "fundo" | "pos";
+    label: FunnelStageResult["breakdown"][number]["label"];
+    key: string;
+  }> = [
+    { stage: "topo", label: "TOPO · atrair", key: "Topo do funil" },
+    { stage: "meio", label: "MEIO · educar", key: "Meio do funil" },
+    { stage: "fundo", label: "FUNDO · converter", key: "Fundo do funil" },
+    { stage: "pos", label: "PÓS · fidelizar", key: "Pós-venda / fidelização" },
+  ];
+  return map.map((m) => ({
+    stage: m.stage,
+    label: m.label,
+    sharePct: Math.round(((counts[m.key] ?? 0) / total) * 100),
+  }));
 }
 
 // ─────────────────────────────────────────────────────────────────────
