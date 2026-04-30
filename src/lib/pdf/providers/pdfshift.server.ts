@@ -36,8 +36,12 @@ export const pdfshiftProvider: BrowserPdfProvider = {
       margin: { top: "12mm", bottom: "14mm", left: "10mm", right: "10mm" },
       // Wait for the network to be quiet AND for our explicit ready signal.
       wait_for_network: true,
-      // Hard upper bound. PDFShift caps at 900s.
-      timeout: Math.max(10, Math.min(args.timeoutSeconds ?? 60, 120)),
+      // Hard upper bound. PDFShift caps `timeout` at 30s on standard plans
+      // (account-level limit; raising it requires sales contact). We clamp to
+      // that ceiling so the request is never rejected with HTTP 400. Note
+      // this is the *page load* timeout, not the wait-for-readiness budget;
+      // the network is already idle by the time `wait_for: __pdfReady` polls.
+      timeout: Math.max(5, Math.min(args.timeoutSeconds ?? 30, 30)),
       // Sandbox conversions don't burn credits but are watermarked.
       sandbox: args.sandbox === true,
       // Latest Chromium for reliable Tailwind v4 / modern CSS rendering.
