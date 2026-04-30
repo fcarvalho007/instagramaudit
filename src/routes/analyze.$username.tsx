@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { ReportShell } from "@/components/report-redesign/report-shell";
+import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
@@ -232,7 +232,7 @@ function AnalyzeReady({
   const shareActions = useReportShareActions({ snapshotId });
   return (
     <ReportThemeWrapper>
-      <ReportShell
+      <ReportShellV2
         result={result}
         snapshotId={snapshotId}
         payload={payload}
