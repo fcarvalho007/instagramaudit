@@ -3,8 +3,6 @@ import {
   CalendarDays,
   Film,
   Images as ImagesIcon,
-  TrendingDown,
-  TrendingUp,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -17,11 +15,6 @@ import { REDESIGN_TOKENS } from "../report-tokens";
 
 interface Props {
   result: AdapterResult;
-  /**
-   * Delta de seguidores desde a última análise (snapshot anterior).
-   * `null` quando não derivável (1 só snapshot ou dados ausentes).
-   */
-  followersDelta?: number | null;
 }
 
 const FORMAT_PT: Record<string, string> = {
@@ -37,12 +30,12 @@ const FORMAT_PT: Record<string, string> = {
 };
 
 /**
- * KPI grid v2 (Phase 1B.1C) — métricas focadas no utilizador.
- * Removido o cartão "Estado do benchmark" (sem valor — já vive no
- * badge do hero). Acrescenta seguidores + publicações totais. Format
- * passa a chip compacto; sem overflow a 375/768/1366.
+ * KPI grid v2 (Phase 1B.1D) — métricas focadas no utilizador.
+ * Sem cartão "Estado do benchmark" e sem delta de seguidores: apenas
+ * contagem atual de seguidores + publicações totais. Format passa a
+ * chip compacto; sem overflow a 375/768/1366.
  */
-export function ReportKpiGridV2({ result, followersDelta }: Props) {
+export function ReportKpiGridV2({ result }: Props) {
   const k = result.data.keyMetrics;
   const profile = result.data.profile;
   const windowDays = result.coverage.windowDays;
@@ -61,11 +54,6 @@ export function ReportKpiGridV2({ result, followersDelta }: Props) {
           label="Seguidores"
           value={formatCompact(followers)}
           help="perfil público"
-          footer={
-            followersDelta !== null && followersDelta !== undefined ? (
-              <FollowersDeltaPill delta={followersDelta} />
-            ) : undefined
-          }
         />
       ) : null}
 
@@ -127,14 +115,12 @@ function KpiCard({
   label,
   value,
   help,
-  footer,
   compact,
 }: {
   icon: ReactNode;
   label: string;
   value: ReactNode;
   help?: string;
-  footer?: ReactNode;
   compact?: boolean;
 }) {
   return (
@@ -159,7 +145,6 @@ function KpiCard({
         {value}
       </div>
       {help ? <p className={REDESIGN_TOKENS.kpiHelp}>{help}</p> : null}
-      {footer ? <div className="pt-1">{footer}</div> : null}
     </div>
   );
 }
@@ -202,38 +187,6 @@ function FormatChip({ label, tone }: { label: string; tone: FormatTone }) {
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", dot)} aria-hidden="true" />
       {label}
-    </span>
-  );
-}
-
-// ─── Followers delta micro-pill ──────────────────────────────────────
-
-function FollowersDeltaPill({ delta }: { delta: number }) {
-  if (delta === 0) {
-    return (
-      <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.1em] text-slate-500">
-        sem variação desde a última análise
-      </span>
-    );
-  }
-  const positive = delta > 0;
-  const Icon = positive ? TrendingUp : TrendingDown;
-  const toneCls = positive
-    ? "text-emerald-700 bg-emerald-50 ring-emerald-200"
-    : "text-rose-700 bg-rose-50 ring-rose-200";
-  const sign = positive ? "+" : "−";
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full ring-1 px-2.5 py-1",
-        "font-mono text-[11px] uppercase tracking-[0.08em]",
-        toneCls,
-      )}
-      title="Variação face à análise anterior deste perfil"
-    >
-      <Icon className="h-3 w-3" aria-hidden="true" />
-      {sign}
-      {formatCompact(Math.abs(delta))} desde a última análise
     </span>
   );
 }
