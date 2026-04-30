@@ -171,7 +171,7 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["sections"],
+    required: ["sections", "priorities"],
     properties: {
       sections: {
         type: "object",
@@ -183,6 +183,22 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
           acc[key] = sectionItemSchema;
           return acc;
         }, {}),
+      },
+      priorities: {
+        type: "array",
+        minItems: 3,
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["level", "title", "body", "resolves"],
+          properties: {
+            level: { type: "string", enum: ["alta", "media", "oportunidade"] },
+            title: { type: "string", minLength: 1, maxLength: 80 },
+            body: { type: "string", minLength: 1, maxLength: 220 },
+            resolves: { type: "string", minLength: 1, maxLength: 120 },
+          },
+        },
       },
     },
   },
