@@ -113,7 +113,7 @@ export function ReportDiagnosticGridV2({
       <div
         className={cn(
           "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-          "gap-4 md:gap-5",
+          "gap-5 md:gap-6",
           "auto-rows-fr",
         )}
       >
@@ -176,7 +176,7 @@ function DiagnosticCard({ card }: { card: CardModel }) {
 
       <p
         className={cn(
-          "font-display text-[1.375rem] md:text-[1.5rem] font-semibold tracking-tight leading-tight",
+          "font-mono text-[1.5rem] md:text-[1.75rem] font-semibold tracking-[-0.015em] leading-tight tabular-nums",
           tone.primary,
         )}
       >

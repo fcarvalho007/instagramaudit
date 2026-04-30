@@ -35,7 +35,7 @@ export function ReportDiagnosticGroup({
       <div
         className={cn(
           "grid grid-cols-1 md:grid-cols-2",
-          "gap-4 md:gap-5",
+          "gap-5 md:gap-6",
           "auto-rows-fr",
         )}
       >
