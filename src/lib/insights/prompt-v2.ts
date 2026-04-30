@@ -18,6 +18,11 @@ import type { AiInsightV2Section, InsightsContext } from "./types";
 import { AI_INSIGHT_V2_SECTIONS } from "./types";
 import type { KnowledgeContext } from "@/lib/knowledge/types";
 import { formatKnowledgeContextForPrompt } from "@/lib/knowledge/context.server";
+import {
+  BENCHMARK_DATASET_VERSION,
+  formatBenchmarkContextForPrompt,
+  type BenchmarkContextForProfileInput,
+} from "@/lib/knowledge/benchmark-context";
 
 /** Limite editorial para cada `text` (caracteres). Espelhado no validador. */
 export const INSIGHT_V2_TEXT_MAX = 240;
@@ -40,6 +45,11 @@ Regras de conteúdo (obrigatórias):
 - Usar notas editoriais da KB como contexto interpretativo (algoritmo, formato, vertical), nunca como facto novo sobre o perfil.
 - Texto máximo: ${INSIGHT_V2_TEXT_MAX} caracteres.
 - Tom claro, profissional, simpático. Frases curtas. Sem jargão técnico, sem caminhos snake_case (engagement_pct, content_summary.x, etc.).
+
+Comparação com referências (obrigatório):
+- Quando comparar valores do perfil com referências, usar linguagem direccional ("aproxima-se de", "fica abaixo de", "em linha com", "supera ligeiramente").
+- Não atribuir números a fontes externas, mesmo que apareçam no contexto.
+- Não escrever nomes de empresas ou ferramentas (Socialinsider, Buffer, Hootsuite, Databox).
 
 Linguagem visível (proibido em "text"):
 - Sufixos snake_case: "_pct", "_count", "_rate", "_per_week".
@@ -74,12 +84,32 @@ JSON estrito conforme o schema fornecido. Sem texto antes ou depois. Sem markdow
  */
 export function buildSystemPromptV2(
   kb: KnowledgeContext,
-  options: { hasReachData?: boolean } = {},
+  options: {
+    hasReachData?: boolean;
+    profileBenchmark?: BenchmarkContextForProfileInput;
+  } = {},
 ): string {
   const kbBlock = formatKnowledgeContextForPrompt(kb, {
     hasReachData: options.hasReachData,
   });
-  return `${SYSTEM_PROMPT_BASE}\n\nCONTEXTO DA KNOWLEDGE BASE\n${kbBlock}`;
+  const parts = [
+    SYSTEM_PROMPT_BASE,
+    "",
+    "CONTEXTO DA KNOWLEDGE BASE",
+    kbBlock,
+  ];
+  if (options.profileBenchmark) {
+    parts.push("");
+    parts.push("REFERÊNCIAS DE BENCHMARK (perfil específico)");
+    parts.push(
+      formatBenchmarkContextForPrompt({
+        ...options.profileBenchmark,
+        hasReachData:
+          options.profileBenchmark.hasReachData ?? options.hasReachData ?? false,
+      }),
+    );
+  }
+  return parts.join("\n");
 }
 
 /**
@@ -87,7 +117,9 @@ export function buildSystemPromptV2(
  * snapshot quando as entradas relevantes mudam.
  */
 export function computeKbVersion(kb: KnowledgeContext): string {
-  const seed = `${kb.metadata.last_updated}|${kb.metadata.total_entries}|${kb.benchmarks.length}|${kb.notes.length}`;
+  // Inclui a versão do dataset estático para invalidar cache quando o
+  // ficheiro `benchmark-context.ts` for actualizado.
+  const seed = `${kb.metadata.last_updated}|${kb.metadata.total_entries}|${kb.benchmarks.length}|${kb.notes.length}|ds:${BENCHMARK_DATASET_VERSION}`;
   return createHash("sha1").update(seed).digest("hex").slice(0, 12);
 }
 
