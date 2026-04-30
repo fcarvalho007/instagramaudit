@@ -46,8 +46,11 @@ function tone(type: ReportSourceType, caution: boolean): string {
   switch (type) {
     case "calculation":
     case "ai":
-    case "external":
       return "bg-blue-50 ring-blue-200 text-blue-700";
+    case "external":
+      // Indigo subtil distingue "voz emprestada" da Knowledge Base
+      // dos cálculos e leituras de IA próprias da InstaBench.
+      return "bg-indigo-50 ring-indigo-200 text-indigo-700";
     case "extracted":
     case "automatic":
     default:
@@ -82,6 +85,7 @@ export function ReportSourceLabel({
     <span
       role="note"
       aria-label={a11y}
+      title={a11y}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full ring-1 px-2 py-0.5",
         "font-mono text-[10px] uppercase tracking-[0.16em] leading-none",

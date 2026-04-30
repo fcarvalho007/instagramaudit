@@ -395,7 +395,12 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
 
 function renderThemesCard(r: ThemesResult): ReactNode | null {
   if (!r.available) return null;
-  const isAi = r.source === "ai";
+  // Só consideramos "leitura IA" quando temos efectivamente texto da IA
+  // para mostrar — caso contrário cai para leitura automática (keyword
+  // recurrence) e o chip reflecte isso, evitando "LEITURA IA" sem bloco
+  // interpretativo abaixo.
+  const hasAiText = !!(r.aiText && r.aiText.trim().length >= 20);
+  const isAi = r.source === "ai" && hasAiText;
   const body = isAi
     ? "Esta leitura resume os assuntos recorrentes nas legendas, com base na interpretação editorial gerada pela IA."
     : "Esta leitura resume os assuntos mais frequentes nas legendas analisadas — não as hashtags utilizadas.";
@@ -410,7 +415,7 @@ function renderThemesCard(r: ThemesResult): ReactNode | null {
       tone="blue"
       body={body}
       sourceType={isAi ? "ai" : "automatic"}
-      sourceDetail="Legendas"
+      sourceDetail="Assuntos das legendas"
       aiSource={
         isAi && r.aiText
           ? { kind: "interpretation", text: r.aiText }
@@ -471,7 +476,7 @@ function renderCaptionCard(
       body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
       aiSource={aiSource}
       sourceType={aiSource ? "ai" : "automatic"}
-      sourceDetail="Legendas"
+      sourceDetail="Estilo das legendas"
     >
       <DiagnosticMiniStats
         items={
@@ -612,7 +617,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       tone="blue"
       body="Hipótese derivada dos sinais de conteúdo, funil, bio e ligação entre canais. Não substitui o objetivo real da marca ou do criador — deve ser confirmada por quem comunica."
       sourceType="automatic"
-      sourceDetail="Sinais cruzados"
+      sourceDetail="Conteúdo + funil + bio"
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>

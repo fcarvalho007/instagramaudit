@@ -204,7 +204,7 @@ function EngagementRateCard({
       </p>
 
       {hasBenchmark ? (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <p className="text-[12px] text-slate-500 leading-relaxed">
             vs.{" "}
             <span className="font-medium text-slate-700 tabular-nums">
@@ -212,11 +212,7 @@ function EngagementRateCard({
             </span>{" "}
             de referência
           </p>
-          <ReportSourceLabel
-            type="external"
-            detail="Knowledge Base"
-            className="text-[9px]"
-          />
+          <ReportSourceLabel type="external" detail="Knowledge Base" />
         </div>
       ) : (
         <p className="text-[12px] text-slate-500 leading-relaxed">
@@ -326,7 +322,7 @@ function PostingRhythmCard({
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
       interpretation={null}
       interpretationTone={status.tone}
-      sourceSlot={<ReportSourceLabel type="calculation" detail="Amostra" />}
+      sourceSlot={<ReportSourceLabel type="calculation" detail="Posts ÷ janela" />}
     >
       <div className="flex items-end gap-3 flex-wrap">
         <span className="font-display text-[2rem] md:text-[2.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
@@ -455,7 +451,7 @@ function DominantFormatCard({
       interpretation={null}
       interpretationTone={status.tone}
       sourceSlot={
-        <ReportSourceLabel type="calculation" detail="Posts analisados" />
+        <ReportSourceLabel type="calculation" detail="Distribuição de formatos" />
       }
     >
       <div className="flex items-end gap-3 flex-wrap min-w-0">

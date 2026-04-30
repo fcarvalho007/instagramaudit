@@ -2,6 +2,7 @@ import { Database, LineChart, Sparkles, Search } from "lucide-react";
 import { ReportSectionFrame } from "./report-section-frame";
 import { REDESIGN_TOKENS } from "./report-tokens";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
+import { ReportSourceLabel, type ReportSourceType } from "./v2/report-source-label";
 
 interface Props {
   enriched?: ReportEnriched;
@@ -37,6 +38,14 @@ export function ReportMethodology({ enriched }: Props = {}) {
   ] as const;
 
   const benchmarkSource = enriched?.benchmarkSource ?? null;
+
+  const sourceLegend: Array<{ type: ReportSourceType; explanation: string }> = [
+    { type: "extracted", explanation: "Recolhido directamente do perfil público de Instagram." },
+    { type: "calculation", explanation: "Métrica calculada pela InstaBench a partir dos dados recolhidos." },
+    { type: "automatic", explanation: "Classificação por regras determinísticas — sem IA." },
+    { type: "ai", explanation: "Texto interpretativo gerado por modelo de linguagem." },
+    { type: "external", explanation: "Comparação com a Knowledge Base de pares e benchmarks." },
+  ];
 
   return (
     <ReportSectionFrame
@@ -83,11 +92,21 @@ export function ReportMethodology({ enriched }: Props = {}) {
         </div>
       ) : null}
 
-      <p className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70 text-[12px] text-slate-500 leading-relaxed">
-        Como ler este relatório: os cartões distinguem dados extraídos,
-        cálculos próprios, leituras automáticas, leituras por IA e
-        referências externas de benchmark.
-      </p>
+      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 mb-3">
+          Como ler os cartões
+        </p>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {sourceLegend.map(({ type, explanation }) => (
+            <li key={type} className="space-y-1.5 min-w-0">
+              <ReportSourceLabel type={type} />
+              <p className="text-[12px] text-slate-600 leading-snug">
+                {explanation}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
     </ReportSectionFrame>
   );
 }
