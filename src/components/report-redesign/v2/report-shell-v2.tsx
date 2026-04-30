@@ -88,7 +88,7 @@ export function ReportShellV2({
       <div
         className={cn(
           REDESIGN_TOKENS.pageCanvas,
-          "min-h-screen overflow-x-hidden",
+          "min-h-screen",
         )}
       >
         {/* Hero (full-bleed, fora dos 6 blocos) */}
@@ -117,6 +117,7 @@ export function ReportShellV2({
                   <ReportAiReading
                     data={result.data}
                     enriched={result.enriched}
+                    compact
                   />
                 ) : (
                   <ReportPendingAiNotice
@@ -184,18 +185,18 @@ export function ReportShellV2({
               {/* 05 · Procura fora do Instagram */}
               <ReportBlockSection block={procura} tone="canvas">
                 <p className="text-sm md:text-[15px] text-slate-600 leading-relaxed max-w-3xl">
-                  O Instagram mostra como a audiência actual reage. A procura
-                  fora do Instagram ajuda a perceber se os mesmos temas também
-                  têm interesse em pesquisa.
+                  O Instagram mostra como a audiência atual reage. A procura
+                  fora da plataforma ajuda a perceber se os mesmos temas também
+                  despertam interesse em pesquisa. Os valores atuais são
+                  índices relativos do Google Trends, não volume absoluto de
+                  pesquisas.
                 </p>
                 <ReportMarketSignalsSection
                   snapshotId={snapshotId}
                   plan="free"
                   cachedSummary={payload?.market_signals_free}
+                  compact
                 />
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Índice relativo Google Trends, não volume absoluto de pesquisa.
-                </p>
                 {renderInsight("marketSignals")}
               </ReportBlockSection>
 

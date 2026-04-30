@@ -1,190 +1,134 @@
-# Phase 1 — Six-block premium report foundation
 
-Read-only plan. Reorganiza visual e estruturalmente o relatório `/analyze/$username` em 6 blocos guiados por perguntas humanas, sem reconstruir nada e sem novas dependências. Reutiliza tudo o que já funciona em `src/components/report-redesign/*`, `src/components/report/*`, `src/components/report-enriched/*`, `src/components/report-market-signals/*`, `src/components/report-share/*` e `src/components/report-tier/*`.
+# Phase 1A.1 — Stabilise the six-block report
 
-## 1. Files inspected (read-only)
+Fix-only structural pass. No new features, no provider calls, no PDF or `/report/example` changes, no new libraries. Three locked files are touched (header, report-ai-reading, report-kpi-grid) — explicitly approved by the user — with surgical edits only.
 
-- `LOCKED_FILES.md` — lista de ficheiros foundation (todos os 7 ficheiros chave do `report-redesign` estão LOCKED, excepto `report-editorial-patterns.tsx`).
-- `src/routes/analyze.$username.tsx` — composição actual: `ReportThemeWrapper > ReportShell`.
-- `src/components/report-redesign/report-shell.tsx` — orquestrador actual (LOCKED).
-- `src/components/report-redesign/report-tokens.ts` — tokens visuais (canvas, bandas, cards, tipografia).
-- `src/components/report-redesign/report-hero.tsx` — hero premium (LOCKED).
-- `src/components/report-redesign/report-kpi-grid.tsx` — 5 KPI cards (LOCKED).
-- `src/components/report-redesign/report-framed-block.tsx` — wrapper card branco (LOCKED).
-- `src/components/report-redesign/report-ai-reading.tsx` — leitura estratégica IA (LOCKED).
-- `src/components/report-redesign/report-editorial-patterns.tsx` — padrões editoriais (NÃO locked, intocado).
-- `src/components/report-redesign/report-methodology.tsx` — metodologia (LOCKED).
-- `src/components/report-market-signals/report-market-signals.tsx` — secção Procura.
-- `src/components/report/*` — temporal, benchmark, formats, competitors, top posts, heatmap, best days, hashtags-keywords.
-- `src/components/report-tier/tier-comparison-block.tsx` + `report-share/report-final-block.tsx` — bloco final.
+---
 
-## 2. Strategy: shell wrapper, not shell rewrite
+## 1. Fix sticky navigation — `report-shell-v2.tsx`
 
-`report-shell.tsx` está LOCKED. **Não vamos editá-lo.** Em vez disso:
+Root cause: the outermost wrapper has `overflow-x-hidden`, which creates a scroll containing block and breaks `position: sticky` for the desktop sidebar (`<aside class="sticky top-6">`) and the mobile tabs (`<nav class="sticky top-0">`).
 
-- Criar um NOVO orquestrador `ReportShellV2` que recebe os mesmos props (`result`, `snapshotId`, `actions`, `payload`, `analyzedAtIso`).
-- Internamente compõe os mesmos componentes locked, mas agrupados em 6 blocos com âncoras (`#overview`, `#diagnostico`, `#performance`, `#conteudo`, `#procura`, `#benchmark`).
-- Em paralelo, criar um `ReportSidebarNav` (desktop) e `ReportTopTabs` (mobile) que fazem scroll suave para as âncoras com `IntersectionObserver` para destacar o bloco activo.
-- `analyze.$username.tsx` passa a renderizar `ReportShellV2` em vez de `ReportShell`. **`ReportShell` continua a existir** intocado (rollback trivial; e continua a poder ser usado por `report.example` se aplicável — neste caso `report-example` usa o `ReportPage` antigo e não é afectado).
+Change:
+- Remove `overflow-x-hidden` from the root `<div>` of `ReportShellV2`. Page-level horizontal overflow is fixed at its real source in step 2, not masked here.
+- Keep `min-h-screen` and the page canvas class.
 
-Vantagens:
-- Zero risco para `/report/example` e para o shell antigo.
-- Rollback = 1 linha em `analyze.$username.tsx`.
-- Não toca em locked files.
+Acceptance:
+- At 1366×768, `ReportBlockSidebar` remains visible while scrolling through all six blocks.
+- At 768×1024 and 375×812, `ReportBlockTopTabs` remains stuck to the top of the viewport while scrolling.
 
-## 3. New component structure
+---
 
-```text
-src/components/report-redesign/v2/
-├── report-shell-v2.tsx              # orquestrador novo dos 6 blocos
-├── report-sidebar-nav.tsx           # nav lateral desktop (sticky)
-├── report-top-tabs.tsx              # nav segmentada mobile (sticky top)
-├── use-active-block.ts              # hook IntersectionObserver
-├── block-shell.tsx                  # wrapper de bloco: id + eyebrow nº + h2 pergunta + subtítulo
-├── block-positioning.tsx            # banner curto "O que mostra o InstaBench"
-├── block-overview.tsx               # bloco 01
-├── block-diagnostico.tsx            # bloco 02
-├── block-performance.tsx            # bloco 03
-├── block-conteudo.tsx               # bloco 04
-├── block-procura.tsx                # bloco 05 (com microcopy honesto sobre Trends)
-└── block-benchmark.tsx              # bloco 06
-```
+## 2. Fix horizontal overflow at 768px — `header.tsx` (locked, minimal)
 
-Tudo reutiliza `REDESIGN_TOKENS` já existentes — sem novos tokens globais, sem cores hardcoded.
+Root cause at 768px: at the `md` breakpoint the header simultaneously shows the brand, the "Instagram Benchmark" subtitle, the full 4-item desktop nav, the theme button **and** the "Analisar agora" CTA. The Container's content exceeds 768 − padding and pushes the document horizontally.
 
-## 4. Section order and content per block
+Minimal change (no visual loss for the typical desktop case):
+- Move the desktop nav from `md:block` to `lg:block` and the mobile drawer trigger from `md:hidden` to `lg:hidden`. Tablets (768–1023) get the drawer; ≥1024 keeps the inline nav. This is the smallest safe fix and removes the overflow without touching brand/CTA styling.
+- Keep the "Instagram Benchmark" subtitle visible from `lg` instead of `md` (`hidden md:flex` → `hidden lg:flex`) so the tablet header has breathing room.
+- "Analisar agora" stays `hidden sm:inline-flex` (unchanged).
 
-Posicionamento (entre Hero e bloco 01) — `block-positioning.tsx`:
-> "O InstaBench mostra o que o perfil comunica publicamente, como compara com perfis semelhantes e que temas têm procura fora do Instagram."
-Três chips: **Conteúdo público** · **Comparação com pares** · **Procura externa**.
+The hero already collapses correctly at 768 (`flex-col` until `lg:flex-row`); no edit needed there.
 
-**Hero** (mantém-se acima dos blocos, fora da numeração) → `<ReportHero>` locked + insight `hero` v2.
+Acceptance:
+- No horizontal scrollbar at 1366, 768 or 375.
+- Tablet header shows: brand, theme toggle, "Analisar agora", drawer trigger — no clipping.
 
-**01 · Overview — "Como está o perfil em geral?"**
-- `<ReportKpiGrid>` (locked).
-- Mini-card "Como ler este relatório" (3 bullets curtos, novo, dentro de `block-overview`).
-- Insight `hero` (se já não usado acima — caso contrário, omitir aqui para evitar duplicação).
+---
 
-**02 · Diagnóstico — "O que explica estes resultados?"**
-- `<ReportAiReading>` (locked) OU `<ReportPendingAiNotice>` quando `aiInsights` vazio.
-- `<ReportEditorialPatterns>` (existente).
+## 3. Reduce duplicated block headings
 
-**03 · Performance — "Quando e como reage o público?"**
-- `<ReportFramedBlock tone="canvas">` com `<ReportTemporalChart>` + insight `evolutionChart`.
-- `<ReportFramedBlock tone="soft-blue">` com `<ReportPostingHeatmap>` + insight `heatmap` + `<ReportBestDays>` + insight `daysOfWeek`.
+Each of the six blocks already renders one dominant serif `<h2>` from `ReportBlockSection`. Inside blocks 02 and 05, child components render a second `<h2>` via `ReportSectionFrame`, creating stacked headings.
 
-**04 · Conteúdo — "Que conteúdos têm melhor performance?"**
-- `<ReportFramedBlock>` com `<ReportTopPosts>` + insight `topPosts` + `<ReportEnrichedTopLinks>`.
-- `<ReportFramedBlock>` com `<ReportFormatBreakdown>` + insight `formats`.
-- `<ReportFramedBlock>` com `<ReportHashtagsKeywords>` + insight `language` + `<ReportEnrichedMentions>`.
+3a. `report-section-frame.tsx` (not locked): add an optional `compact?: boolean` prop. When true, the section drops the entire `<header>` (eyebrow + h2 + subtitle), tightens vertical padding to `py-6 md:py-8`, and the `aria-label` on the outer `<section>` continues to use `ariaLabel ?? title`. Default behaviour is unchanged for every existing consumer.
 
-**05 · Procura fora do Instagram — "Há procura real por estes temas fora da plataforma?"**
-- Parágrafo introdutório curto explicando porquê DataForSEO/Google aparece num relatório de Instagram.
-- `<ReportMarketSignalsSection>` (existente).
-- Insight `marketSignals` v2.
-- Microcopy honesto fixo: *"Índice relativo do Google Trends, não volume absoluto de pesquisa."* (já está parcialmente em `market-signals-copy.ts` — confirmar e reforçar no wrapper, sem editar a secção locked).
-- **Sem inventar** valores. Quando `status !== "ready"` a secção esconde-se silenciosamente — manter esse comportamento e mostrar empty-state editorial dentro do `block-procura`.
+3b. `report-ai-reading.tsx` (locked, surgical): add `compact?: boolean` to `Props` and forward it to `ReportSectionFrame`. No other change.
 
-**06 · Benchmark competitivo — "Como se compara com perfis semelhantes?"**
-- `<ReportFramedBlock tone="soft-blue">` com `<ReportBenchmarkGauge>` + insight `benchmark`.
-- `<ReportFramedBlock>` com `<ReportCompetitors>`; quando `coverage.competitors === "empty"` → `<ReportEnrichedCompetitorsCta>`.
+3c. `report-market-signals.tsx` (not locked): add `compact?: boolean` to `ReportMarketSignalsSectionProps`, forward to `ReportSectionFrame`. The cached-disabled short-circuit stays intact.
 
-**Pós-blocos (fora da numeração, mantém-se):**
-- `<ReportMethodology>` (locked).
-- `<ReportTierTeaser>` + `<TierComparisonBlock>`.
-- `<ReportFinalBlock>`.
-- `BetaFeedbackBanner` (extrair para componente partilhado ou duplicar copy — preferir extrair para `src/components/report-beta/beta-feedback-banner.tsx` para reutilizar entre `ReportShell` e `ReportShellV2` sem editar `ReportShell`; nota: extrair daqui implicaria editar `report-shell.tsx` que é LOCKED → **não extrair, duplicar componente local em V2** com o mesmo `BETA_COPY.feedback`).
+3d. `report-shell-v2.tsx`: pass `compact` to `ReportAiReading` (block 02) and `ReportMarketSignalsSection` (block 05). The block question becomes the only large serif heading in each block.
 
-## 5. Lightweight wrappers (avoid duplicated headers)
+Acceptance:
+- Each block has exactly one dominant serif H2 (the block question).
+- Other consumers of `ReportSectionFrame` and `ReportAiReading` (e.g. legacy `report-shell.tsx`, `/report/example`) render unchanged because `compact` defaults to `false`.
 
-Vários componentes já trazem o seu próprio `<ReportSection>` com eyebrow/título. Para evitar duplo cabeçalho dentro dos blocos:
+---
 
-- `block-shell.tsx` desenha **APENAS** o cabeçalho do BLOCO (eyebrow `01 / 06`, h2 com a pergunta, subtítulo curto). NÃO desenha cabeçalho por componente.
-- Continuar a usar `<ReportFramedBlock>` (locked) à volta dos componentes que já têm `<ReportSection>` interno — é exactamente o padrão actual e funciona.
-- Para componentes que NÃO têm `<ReportSection>` próprio (ex.: `ReportEnrichedTopLinks`, `ReportEnrichedMentions`), wrappar em `<ReportFramedBlock>` quando isolados ou empilhar dentro do mesmo frame que o componente principal (padrão já usado em `ReportShell`).
+## 4. Rewrite "Procura fora do Instagram" framing — `report-shell-v2.tsx`
 
-## 6. Files to be CHANGED in the implementation prompt
+In block 05, replace the current paragraph + trailing mono note with a single short framing paragraph using the user-supplied PT-PT copy:
 
-- **Created** (10 ficheiros novos, todos sob `src/components/report-redesign/v2/`):
-  - `report-shell-v2.tsx`
-  - `report-sidebar-nav.tsx`
-  - `report-top-tabs.tsx`
-  - `use-active-block.ts`
-  - `block-shell.tsx`
-  - `block-positioning.tsx`
-  - `block-overview.tsx`, `block-diagnostico.tsx`, `block-performance.tsx`, `block-conteudo.tsx`, `block-procura.tsx`, `block-benchmark.tsx`
-  - `beta-feedback-banner-v2.tsx` (cópia local, ver §4)
-- **Edited** (1 ficheiro):
-  - `src/routes/analyze.$username.tsx` — trocar `import { ReportShell }` por `ReportShellV2` em `AnalyzeReady`. Nada mais.
+> O Instagram mostra como a audiência atual reage. A procura fora da plataforma ajuda a perceber se os mesmos temas também despertam interesse em pesquisa. Os valores atuais são índices relativos do Google Trends, não volume absoluto de pesquisas.
 
-## 7. Files that MUST remain UNTOUCHED
+- The market signals component below now renders in `compact` mode (step 3) so the explanation is not repeated inside it.
+- Keep `renderInsight("marketSignals")` after the component.
+- Drop the duplicate trailing mono disclaimer line (info is now in the framing paragraph).
 
-- Todos em `LOCKED_FILES.md`, em particular:
-  - `src/components/report-redesign/report-shell.tsx`
-  - `src/components/report-redesign/report-hero.tsx`
-  - `src/components/report-redesign/report-kpi-grid.tsx`
-  - `src/components/report-redesign/report-framed-block.tsx`
-  - `src/components/report-redesign/report-section-frame.tsx`
-  - `src/components/report-redesign/report-ai-reading.tsx`
-  - `src/components/report-redesign/report-methodology.tsx`
-  - `src/styles/tokens.css`, `src/styles.css`
-- `src/routes/report.example.tsx` e `src/components/report/report-page.tsx`.
-- Todos `src/routes/admin.*` e `src/routes/api/**`.
-- `src/lib/pdf/**`, `src/lib/dataforseo/**`, `src/lib/insights/**`, `src/lib/analysis/**`, `src/integrations/supabase/**`.
-- Schema Supabase, `supabase/config.toml`.
+Acceptance:
+- One framing paragraph, no repeated explanations, no invented search volumes.
 
-## 8. Mobile and desktop acceptance criteria
+---
 
-Desktop (≥1024px):
-- Layout 2-col: sidebar `w-56` sticky à esquerda (top offset = altura do nav global), main `flex-1 max-w-5xl`.
-- Sidebar lista os 6 blocos com numeração `01–06`, label curto (Overview, Diagnóstico, Performance, Conteúdo, Procura, Benchmark) e bullet azul a marcar o bloco activo via `IntersectionObserver` (rootMargin `-30% 0px -60% 0px`).
-- Click em item → `scrollIntoView({ behavior: "smooth", block: "start" })` para a âncora correspondente.
-- Sem overflow horizontal a 1366px.
+## 5. Improve active block detection — `use-active-block.ts`
 
-Mobile (<1024px):
-- Sem sidebar. Em vez disso, `<ReportTopTabs>` sticky no topo abaixo do hero, com scroll horizontal interno (`overflow-x-auto snap-x`) e bullet activo.
-- Hero, KPI grid e blocos mantêm-se em coluna única, padding `px-5`.
-- Sem overflow horizontal a 375px (testar KPI grid 5 cards, market signals chart, top posts grid).
+Two issues today:
+- `rootMargin: "-20% 0px -60% 0px"` activates blocks too high on the page, often skipping the very first block.
+- The "best ratio wins" tiebreaker doesn't favour the topmost section.
 
-Comuns:
-- Cada bloco abre com `<block-shell>`: eyebrow mono `0X · BLOCO`, h2 serif com a pergunta humana, subtítulo curto pt-PT.
-- Skeleton claro (não dark) durante loading — `analyze.$username.tsx` já usa `<AnalysisSkeleton>`; manter, mas **confirmar tema light**. Se vier dark, ajustar dentro do skeleton (não locked).
-- Quando um sub-componente não tiver dados, esconder-se gracilmente OU mostrar empty-state editorial curto pt-PT — nunca tokens técnicos visíveis.
+Changes:
+- Tune to `rootMargin: "-10% 0px -75% 0px"` and `threshold: [0, 0.05, 0.2, 0.5, 1]`. This narrows the active band to roughly the upper third.
+- Re-derive the active id by reading each observed element's `getBoundingClientRect().top` and choosing the section whose top is the largest negative value still above a small offset (i.e. the topmost block that has crossed into the active band). Fall back to the first id when nothing has crossed yet.
+- Initialise to the first id and, on click via `scrollToBlock`, optimistically set the active id so the highlight responds immediately even before the observer fires.
 
-## 9. Visual QA checklist
+Acceptance:
+- "01 Overview" highlights at top of page.
+- Highlight transitions block-by-block in order while scrolling at 1366 and 375.
+- Clicking any nav item scrolls to and highlights the right block.
 
-- [ ] `/analyze/frederico.m.carvalho` carrega e renderiza os 6 blocos pela ordem definida.
-- [ ] Hero + posicionamento aparecem antes do bloco 01.
-- [ ] Cada bloco mostra `0X · NOME` + pergunta humana + subtítulo.
-- [ ] Sidebar desktop visível ≥1024px, sticky, marca bloco activo ao fazer scroll.
-- [ ] Tabs mobile sticky <1024px, scroll horizontal, bullet activo correcto.
-- [ ] Smooth scroll funcional ao clicar na nav.
-- [ ] Sem duplo cabeçalho dentro de blocos (verificar Top Posts, Heatmap, Hashtags).
-- [ ] Sem overflow horizontal a 375 / 768 / 1366.
-- [ ] Sem dark loading. Sem "A analisar perfil" residual.
-- [ ] Bloco 05 mostra microcopy *"Índice relativo do Google Trends, não volume absoluto de pesquisa."* visível.
-- [ ] Bloco 06 sem competidores → mostra `<ReportEnrichedCompetitorsCta>` (existente).
-- [ ] Sem tokens técnicos visíveis (`engagement_pct`, `payload`, `snapshot`, etc.) — `humanize()` já cobre o AI; revisitar empty-states novos.
-- [ ] Copy 100% pt-PT, ortografia pós-90.
-- [ ] `/report/example` continua exactamente igual.
-- [ ] Sem novas chamadas a Apify/DataForSEO/OpenAI/PDFShift no Network tab.
-- [ ] `bun run build` sem erros TypeScript.
-- [ ] `bunx vitest run` sem regressões.
+---
 
-## 10. Risks and ambiguities
+## 6. KPI grid hygiene — `report-kpi-grid.tsx` (locked, surgical)
 
-1. **Sidebar sticky vs hero altura**: o hero é alto. A sidebar deve começar APÓS o hero (não dentro dele) para não criar coluna vazia em cima. Solução: hero e posicionamento ficam full-width acima; layout 2-col arranca a partir do bloco 01.
-2. **`BetaFeedbackBanner` duplicação**: extrair para componente partilhado obrigaria a editar `ReportShell` (LOCKED). Decisão: duplicar localmente em V2 (8 linhas de JSX) reutilizando `BETA_COPY.feedback`. Aceitável e reversível.
-3. **`AnalysisSkeleton` tema**: confirmar que renderiza em fundo claro (relatório está em modo light via `ReportThemeWrapper`). Se aparecer dark, pequena correcção tópica num próximo prompt — fora do escopo desta Phase 1.
-4. **Bloco 05 quando market signals está `disabled`/`blocked`**: actualmente a secção esconde-se silenciosamente. Em V2, manter o `<block-shell>` sempre visível com um empty-state editorial curto ("Sem sinais de procura disponíveis para este perfil neste momento.") — para a numeração 1–6 não desaparecer.
-5. **Insights v2 podem repetir**: o shell actual usa `renderInsightOuter("hero")` logo após o hero, e os blocos já trazem outros insights. Em V2 colocar cada insight uma única vez no bloco mais natural (`hero`→01, `marketSignals`→05, etc.) para evitar duplicação editorial.
-6. **Sem novas dependências de animação**: nada de Framer Motion / Magic UI agora. Layout fica preparado (estrutura de cards, tokens, IDs estáveis) para futura camada de micro-interacções num prompt seguinte.
+6a. Word break on dominant format: replace `break-words` on the value container with `break-normal [overflow-wrap:normal] [hyphens:none]`. Long single words (e.g. "Carrousels") will overflow gracefully rather than break mid-word; the value cell already uses `min-w-0` and the grid auto-sizes — at 375 the value falls onto its own line as a whole word.
 
-## Implementation checkpoint (próximo prompt)
+6b. Benchmark status card (`Estado do benchmark`):
+- It already uses a chip (`BenchPill`) instead of a number, but it sits in a `KpiCard` shell that visually pretends to be a metric. Keep the same outer card structure (so the grid stays aligned), but:
+  - Remove the help line (no `help` prop) — it never had one.
+  - Add a subtle `ring-1 ring-blue-100/0` distinction by giving this single card a slightly different inner layout: the chip is centred vertically inside the value slot with `items-center` and a small explanatory line below the chip ("estado actual") rendered as `kpiHelp`. This signals "status card", not "missing metric".
+- The change is local to the JSX of the 5th `KpiCard` call site; no token or API change.
 
-☐ Criar 13 novos ficheiros sob `src/components/report-redesign/v2/`
-☐ Trocar import em `src/routes/analyze.$username.tsx` (`ReportShell` → `ReportShellV2`)
-☐ QA visual nas 3 viewports (375 / 768 / 1366)
-☐ Confirmar zero edits em locked files e em `/report/example`
-☐ Confirmar zero chamadas a providers externos no Network tab
-☐ `bun run build` e `bunx vitest run` sem erros
+Acceptance:
+- "Carrousels" / "Carrosséis" never breaks mid-word at any tested viewport.
+- The benchmark status card reads as an intentional status chip card, aligned with the other four KPI cards.
+
+---
+
+## Validation
+
+1. `bunx tsc --noEmit`
+2. `bunx vitest run`
+3. Visual QA via the browser tools at `/analyze/frederico.m.carvalho`:
+   - 1366×768 — sidebar sticky, no h-scroll, single H2 per block, KPI clean.
+   - 768×1024 — top tabs sticky, drawer in header, no h-scroll, hero readable.
+   - 375×812 — top tabs sticky, KPI grid clean, framing copy readable.
+
+Report back with: files changed, exact fixes, tsc/vitest results, viewport-by-viewport QA notes, remaining issues if any. No Phase 1B work.
+
+---
+
+## Files touched
+
+Not locked:
+- `src/components/report-redesign/v2/report-shell-v2.tsx`
+- `src/components/report-redesign/v2/use-active-block.ts`
+- `src/components/report-redesign/v2/report-block-nav.tsx` *(only if optimistic-active wiring needs it)*
+- `src/components/report-redesign/report-section-frame.tsx`
+- `src/components/report-market-signals/report-market-signals.tsx`
+
+Locked (approved, surgical):
+- `src/components/layout/header.tsx`
+- `src/components/report-redesign/report-ai-reading.tsx`
+- `src/components/report-redesign/report-kpi-grid.tsx`
+
+## Out of scope
+PDF, `/report/example`, admin, Supabase schema, providers, AI prompts, validators, new libraries, redesign of any block.
