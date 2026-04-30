@@ -49,6 +49,24 @@ export const pdfshiftProvider: BrowserPdfProvider = {
 
     if (args.waitForGlobalFn) {
       body.wait_for = args.waitForGlobalFn;
+      // CRÍTICO: a rota /report/print/$snapshotId usa `ssr: false`, por isso
+      // o `<script>` injectado via `head()` NÃO chega ao HTML inicial. O
+      // PDFShift valida `wait_for` lendo `window[fn]` durante o carregamento
+      // da página e rejeita com HTTP 400 ("wait_for function ... is not
+      // defined or invalid") se a função ainda não existir.
+      //
+      // Solução: usamos o parâmetro `javascript` para injectar nós próprios
+      // o bootstrap mínimo. PDFShift avalia este script no contexto da
+      // página assim que o documento começa a carregar, antes de validar
+      // `wait_for`. O React, mais tarde, comuta `window.__pdfReadyState`
+      // para `true` quando o relatório está realmente pronto.
+      body.javascript =
+        `(function(){` +
+        `if(typeof window.__pdfReadyState==="undefined"){window.__pdfReadyState=false;}` +
+        `if(typeof window.${args.waitForGlobalFn}!=="function"){` +
+        `window.${args.waitForGlobalFn}=function(){return window.__pdfReadyState===true;};` +
+        `}` +
+        `})();`;
     }
 
     const res = await fetch(ENDPOINT, {
