@@ -252,6 +252,10 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         answer="Padrão misto"
         tone="slate"
         body={body}
+        sourceLabel={{
+          kind: "auto",
+          text: "Leitura automática de legendas e hashtags.",
+        }}
       >
         {r.distribution.length >= 2 ? (
           <DiagnosticDistributionBar
@@ -282,6 +286,10 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       answer={r.label}
       tone="emerald"
       body={`Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}, com base em legendas e hashtags.`}
+      sourceLabel={{
+        kind: "auto",
+        text: "Leitura automática de legendas e hashtags.",
+      }}
     >
       {r.distribution.length >= 2 ? (
         <DiagnosticDistributionBar
@@ -330,6 +338,10 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       answer={r.label ?? "—"}
       tone={isFocused ? "blue" : "amber"}
       body={bodyByLabel[r.label ?? "Comunicação dispersa"]}
+      sourceLabel={{
+        kind: "auto",
+        text: "Leitura automática das legendas analisadas.",
+      }}
     >
       {r.breakdown.length > 0 ? (
         <DiagnosticFunnelStack
