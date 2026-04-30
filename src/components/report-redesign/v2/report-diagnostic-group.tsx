@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -39,7 +39,15 @@ export function ReportDiagnosticGroup({
           "auto-rows-fr",
         )}
       >
-        {children}
+        {questionsCount === 1
+          ? Children.map(children, (child) =>
+              isValidElement(child) ? (
+                <div className="md:col-span-2">{child}</div>
+              ) : (
+                child
+              ),
+            )
+          : children}
       </div>
     </div>
   );
