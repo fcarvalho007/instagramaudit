@@ -570,7 +570,24 @@ export interface ThemesResult {
   /** Texto da IA — só preenchido quando source="ai". */
   aiText: string | null;
   sampleSize: number;
+  /**
+   * Origem visível do bloco — "ai-language" quando o texto vem da IA,
+   * "captions-keywords" quando vem do extractor de keywords das captions.
+   */
+  derivedFrom: "ai-language" | "captions-keywords" | null;
 }
+
+// Stop-words frequentes em pt que aparecem nas captions e poluem a
+// extração de "temas". Mantida pequena de propósito: o `extractTopKeywords`
+// já filtra a maior parte; estes são os falsos-positivos comuns.
+const PT_THEME_STOPWORDS: ReadonlySet<string> = new Set([
+  "para", "como", "isto", "esta", "este", "essa", "esse", "uma", "uns",
+  "umas", "tudo", "nada", "muito", "muita", "pouco", "pouca", "quero",
+  "queres", "porque", "porquê", "sobre", "depois", "antes", "ainda",
+  "vamos", "vamos!", "olá", "ola", "bem", "melhor", "ser", "estar",
+  "fazer", "ter", "ano", "dia", "hoje", "agora", "instagram", "post",
+  "posts", "video", "vídeo", "reels", "story", "stories",
+]);
 
 /**
  * Cartão 05 — temas dominantes a partir das legendas.
