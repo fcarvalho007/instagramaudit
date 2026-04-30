@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { REDESIGN_TOKENS } from "../report-tokens";
+import { INSTAGRAM_BENCHMARK_CONTEXT } from "@/lib/knowledge/benchmark-context";
 
 /**
  * Banner editorial curto entre o hero e o bloco 01: explica em uma
@@ -45,9 +46,9 @@ export function ReportPositioningBanner() {
         </div>
 
         <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-slate-500 leading-relaxed">
-          Contexto de referência editorial: Socialinsider · Buffer · Hootsuite · Databox.{" "}
+          {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.sourceNote}{" "}
           <span className="normal-case tracking-normal font-sans text-[12px] text-slate-500">
-            As comparações usam o nosso dataset interno; estas fontes servem apenas como enquadramento.
+            {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.benchmarkNote}
           </span>
         </p>
       </div>

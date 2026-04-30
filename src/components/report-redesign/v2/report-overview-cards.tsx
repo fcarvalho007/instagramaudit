@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
+import { INSTAGRAM_BENCHMARK_CONTEXT } from "@/lib/knowledge/benchmark-context";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 
@@ -207,7 +208,7 @@ function EngagementRateCard({
       )}
 
       <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
-        A taxa de envolvimento varia consoante a fonte, o tamanho da conta e o método de cálculo. Apresentada aqui como referência direcional.
+        {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.engagementExplanation}
       </p>
 
       {hasBenchmark ? (
@@ -591,14 +592,9 @@ function formatPct(n: number): string {
 }
 
 function formatStrategicNote(label: string): string {
-  if (label === "Reels") {
-    return "Reels apoiam alcance e descoberta — não são automaticamente superiores; dependem da intenção.";
-  }
-  if (label === "Carrosséis") {
-    return "Carrosséis funcionam para conteúdo educativo, save-worthy e narrativas em camadas.";
-  }
-  if (label === "Imagens") {
-    return "Imagens estáticas sustentam presença de marca, produto e identidade visual.";
-  }
+  const copy = INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt;
+  if (label === "Reels") return copy.reelsExplanation;
+  if (label === "Carrosséis") return copy.carouselExplanation;
+  if (label === "Imagens") return copy.imageExplanation;
   return "Cada formato cumpre uma função distinta — o equilíbrio depende da intenção editorial.";
 }

@@ -61,3 +61,74 @@ describe("getHootsuiteBenchmarkForIndustry", () => {
     expect(e?.carouselEngagementRatePct).toBe(5.4);
   });
 });
+
+import {
+  BUFFER_TIER_TO_INTERNAL_TIER,
+  getBenchmarkContextForProfile,
+  normalizeDominantFormat,
+} from "../benchmark-context";
+
+describe("BUFFER_TIER_TO_INTERNAL_TIER", () => {
+  it("mapeia todos os tiers Buffer para tiers internos válidos", () => {
+    const internalValues = new Set(["nano", "micro", "mid", "macro"]);
+    for (const v of Object.values(BUFFER_TIER_TO_INTERNAL_TIER)) {
+      expect(internalValues.has(v)).toBe(true);
+    }
+  });
+});
+
+describe("normalizeDominantFormat", () => {
+  it("normaliza variantes PT/EN", () => {
+    expect(normalizeDominantFormat("Carrosséis")).toBe("carousel");
+    expect(normalizeDominantFormat("Carousel")).toBe("carousel");
+    expect(normalizeDominantFormat("Sidecar")).toBe("carousel");
+    expect(normalizeDominantFormat("Reels")).toBe("reel");
+    expect(normalizeDominantFormat("Imagens")).toBe("image");
+    expect(normalizeDominantFormat(null)).toBe("unknown");
+    expect(normalizeDominantFormat("")).toBe("unknown");
+  });
+});
+
+describe("getBenchmarkContextForProfile", () => {
+  it("monta contexto completo para perfil micro com Reels", () => {
+    const ctx = getBenchmarkContextForProfile({
+      followers: 7_500,
+      dominantFormat: "reel",
+    });
+    expect(ctx.bufferTier?.tier).toBe("5-10K");
+    expect(ctx.internalTier).toBe("micro");
+    expect(ctx.socialinsiderForFormat?.format).toBe("reel");
+    expect(ctx.hootsuite).toBeNull();
+    expect(ctx.referenceReachPerPost).toBeNull(); // hasReachData=false (default)
+    expect(ctx.copyHints.format).toContain("Reels");
+  });
+
+  it("expõe reach apenas com hasReachData=true", () => {
+    const ctx = getBenchmarkContextForProfile({
+      followers: 25_000,
+      dominantFormat: "carousel",
+      hasReachData: true,
+    });
+    expect(ctx.referenceReachPerPost).toBe(1172); // 10-50K tier
+  });
+
+  it("inclui hootsuite quando indústria fornecida", () => {
+    const ctx = getBenchmarkContextForProfile({
+      followers: 3_000,
+      dominantFormat: "carousel",
+      industry: "education",
+    });
+    expect(ctx.hootsuite?.industry).toBe("education");
+    expect(ctx.hootsuite?.carouselEngagementRatePct).toBe(5.4);
+  });
+
+  it("formato unknown não tira o overall", () => {
+    const ctx = getBenchmarkContextForProfile({
+      followers: 500,
+      dominantFormat: "unknown",
+    });
+    expect(ctx.socialinsiderOverall.format).toBe("overall");
+    expect(ctx.socialinsiderForFormat).toBeNull();
+    expect(ctx.copyHints.format).toBe("");
+  });
+});

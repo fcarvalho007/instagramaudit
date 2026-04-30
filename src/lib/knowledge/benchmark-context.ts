@@ -18,6 +18,8 @@
  * pela camada de orquestração de insights como por componentes UI.
  */
 
+import type { BenchmarkTier } from "./types";
+
 export type BenchmarkSourceName =
   | "Socialinsider"
   | "Buffer"
@@ -241,4 +243,131 @@ export function getHootsuiteBenchmarkForIndustry(
       (e) => e.industry === industry,
     ) ?? null
   );
+}
+
+// ─── Tier bridge ────────────────────────────────────────────────────
+
+/**
+ * Mapeia tiers Buffer (escalões editoriais por seguidores) para os tiers
+ * internos `BenchmarkTier` usados na tabela `knowledge_benchmarks`.
+ *
+ * Esta ponte garante coerência quando o relatório cruza dados Buffer
+ * (cadência, crescimento) com a referência interna de envolvimento.
+ */
+export const BUFFER_TIER_TO_INTERNAL_TIER: Record<
+  BufferFollowerTier["tier"],
+  BenchmarkTier
+> = {
+  "0-1K": "nano",
+  "1-5K": "nano",
+  "5-10K": "micro",
+  "10-50K": "micro",
+  "50-100K": "mid",
+  "100-500K": "mid",
+  "500K-1M": "macro",
+};
+
+// ─── Helper de matching automático ──────────────────────────────────
+
+/** Formato dominante reportado pelo perfil — normalizado para o vocabulário Socialinsider. */
+export type ProfileDominantFormat =
+  | "carousel"
+  | "reel"
+  | "image"
+  | "unknown";
+
+/** Normaliza qualquer rótulo de formato (PT/EN, singular/plural) para o vocabulário Socialinsider. */
+export function normalizeDominantFormat(
+  raw: string | null | undefined,
+): ProfileDominantFormat {
+  if (!raw) return "unknown";
+  const v = raw.toLowerCase().trim();
+  if (v.includes("carros") || v.includes("carousel") || v.includes("sidecar")) {
+    return "carousel";
+  }
+  if (v.includes("reel") || v.includes("video")) return "reel";
+  if (v.includes("imag") || v.includes("image") || v.includes("foto")) {
+    return "image";
+  }
+  return "unknown";
+}
+
+export interface BenchmarkContextForProfileInput {
+  followers: number;
+  dominantFormat?: ProfileDominantFormat | null;
+  industry?: HootsuiteIndustry | null;
+  /**
+   * `true` apenas se o snapshot do perfil já contiver alcance real.
+   * Quando `false` (padrão), o reach do Buffer NUNCA é exposto ao UI.
+   */
+  hasReachData?: boolean;
+}
+
+export interface BenchmarkContextForProfile {
+  bufferTier: BufferFollowerTier | null;
+  /** Mapeamento Buffer → tier interno (para cruzar com knowledge_benchmarks). */
+  internalTier: BenchmarkTier | null;
+  socialinsiderOverall: SocialinsiderEngagementEntry;
+  socialinsiderForFormat: SocialinsiderEngagementEntry | null;
+  hootsuite: HootsuiteIndustryEntry | null;
+  /** Reach de referência. `null` se `hasReachData=false` (regra anti-invenção). */
+  referenceReachPerPost: number | null;
+  copyHints: {
+    engagement: string;
+    frequency: string;
+    format: string;
+    benchmarkNote: string;
+    sourceNote: string;
+  };
+}
+
+/**
+ * Helper único de matching de contexto. Consumido pelo UI (Bloco 01 e
+ * Bloco 02) e pela camada de prompt — garante que a mesma lógica de
+ * elegibilidade é aplicada em todo o lado.
+ */
+export function getBenchmarkContextForProfile(
+  input: BenchmarkContextForProfileInput,
+): BenchmarkContextForProfile {
+  const { followers, dominantFormat, industry, hasReachData = false } = input;
+
+  const bufferTier = getBufferTierForFollowers(followers);
+  const internalTier = bufferTier ? BUFFER_TIER_TO_INTERNAL_TIER[bufferTier.tier] : null;
+
+  const overall = getSocialinsiderEngagementForFormat("overall")!;
+  const forFormat =
+    dominantFormat && dominantFormat !== "unknown"
+      ? getSocialinsiderEngagementForFormat(dominantFormat)
+      : null;
+
+  const hootsuite = getHootsuiteBenchmarkForIndustry(industry ?? null);
+
+  const referenceReachPerPost =
+    hasReachData && bufferTier ? bufferTier.medianReachPerPost : null;
+
+  const copy = INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt;
+  const formatCopy =
+    dominantFormat === "carousel"
+      ? copy.carouselExplanation
+      : dominantFormat === "reel"
+        ? copy.reelsExplanation
+        : dominantFormat === "image"
+          ? copy.imageExplanation
+          : "";
+
+  return {
+    bufferTier,
+    internalTier,
+    socialinsiderOverall: overall,
+    socialinsiderForFormat: forFormat,
+    hootsuite,
+    referenceReachPerPost,
+    copyHints: {
+      engagement: copy.engagementExplanation,
+      frequency: copy.postingFrequencyExplanation,
+      format: formatCopy,
+      benchmarkNote: copy.benchmarkNote,
+      sourceNote: copy.sourceNote,
+    },
+  };
 }

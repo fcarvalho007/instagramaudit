@@ -1,264 +1,266 @@
 
 
-# Auditoria + Plano · Contexto de benchmark editorial no relatório
+# Plano · Camada de conhecimento de benchmarks Instagram
 
-> **Modo Plano. Nenhum ficheiro foi alterado. Nenhum provider foi chamado.**
+> **Modo Plano. Nenhum ficheiro será alterado.** **Importante:** parte significativa deste plano **já existe** no projecto (sessões anteriores). Este plano consolida o estado actual e foca-se apenas no que ainda falta para fechar a camada de forma robusta.
+
+---
 
 ## 1. Entendimento do objetivo
 
-Aumentar a credibilidade interpretativa do relatório, **enquadrando** as métricas reais do perfil (envolvimento, ritmo, formato, resposta) com contexto direcional vindo de fontes reconhecidas do mercado (**Socialinsider, Buffer, Hootsuite, Databox**), sem:
+Estabelecer no InstaBench uma **camada interna e auditável de contexto de benchmark** (Socialinsider, Buffer, Hootsuite, Databox) que sirva tanto:
+- **a IA** (orquestrador de insights, para fundamentar interpretações),
+- **o UI** (para microcopy e enquadramento direcional),
+- **a governança** (uma única fonte de verdade, regras de hedging, anti-invenção).
 
-- copiar números dessas fontes,
-- chamá-las por API,
-- criar links externos,
-- inventar comparações que não existam no dataset interno.
-
-As fontes aparecem **apenas como nome de referência editorial** (texto), nunca como hyperlink. O dataset real de comparação continua a ser o `knowledge_benchmarks` interno.
-
-A **Knowledge Base** ganha uma secção formal de **política de fontes** que governa o que pode aparecer no UI, com regras de hedging e separação clara entre "dado do perfil" / "benchmark de referência" / "interpretação editorial".
-
-Esta tarefa é de **planeamento + KB**, não envolve mudanças de código nesta passagem.
+As fontes aparecem **apenas como nomes**, nunca como links, nunca atribuindo análise do perfil às fontes externas.
 
 ---
 
-## 2. Ficheiros a inspecionar antes de qualquer implementação futura
+## 2. Estado actual (o que já existe — não recriar)
 
-### 2.1 Render do relatório
-- `src/components/report-redesign/v2/report-shell-v2.tsx` — orquestrador dos 6 blocos.
-- `src/components/report-redesign/v2/block-config.ts` — perguntas e subtítulos por bloco.
-- `src/components/report-redesign/v2/report-positioning-banner.tsx` — banner editorial entre hero e Bloco 01 (candidato natural a "contexto de referência").
-- `src/components/report-redesign/report-methodology.tsx` — secção "Metodologia" no fim do relatório (já fala em "Referência de mercado" sem nomear fontes).
+| Artefacto | Localização | Estado |
+|---|---|---|
+| Política canónica humana | `KNOWLEDGE.md` (raiz) | ✓ presente, **locked** |
+| Memória de projeto | `mem://features/benchmark-policy` | ✓ presente |
+| Constante de dados estruturados | `src/lib/knowledge/benchmark-context.ts` (`INSTAGRAM_BENCHMARK_CONTEXT` + 3 helpers + tipos + 8 testes) | ✓ presente |
+| Nota canónica injectada no prompt OpenAI | `knowledge_notes` (id `5171734b-…`, categoria `tool`) | ✓ inserida; refresh expandido em migration **pendente** (`20260430145758_update_benchmark_policy_note.sql`) |
+| Microcopy "Contexto de referência" no relatório | `report-positioning-banner.tsx` | ✓ presente |
+| Microcopy editorial nos 3 cartões do Bloco 01 | `report-overview-cards.tsx` | ✓ presente (engagement / ritmo / formato) |
+| Tabela `knowledge_benchmarks` (referência interna por tier/formato) | Supabase | ✓ existe — alimentada por outra fonte |
 
-### 2.2 Bloco 01 · Overview
-- `src/components/report-redesign/v2/report-overview-block.tsx` — composição.
-- `src/components/report-redesign/v2/report-overview-cards.tsx` — Engagement / Ritmo / Formato (3 cartões).
-- `src/components/report-redesign/v2/report-kpi-grid-v2.tsx` — KPI alternativo (mostra "vs X% de referência").
-
-### 2.3 Bloco 02 · Diagnóstico
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx`
-- `src/components/report-redesign/v2/report-diagnostic-card.tsx`
-- `src/components/report-redesign/v2/report-diagnostic-verdict.tsx`
-- `src/components/report-redesign/v2/ai-badge.tsx` — padrão visual já estabelecido para sinalizar IA.
-- `src/lib/report/block02-diagnostic.ts` — classificadores deterministas.
-
-### 2.4 Bloco 03 · Performance (futuro)
-- `src/components/report/report-temporal-chart.tsx`
-- `src/components/report/report-posting-heatmap.tsx`
-- `src/components/report/report-best-days.tsx`
-
-### 2.5 Benchmark interno (lógica + tipos)
-- `src/lib/report/benchmark-input.server.ts`
-- `src/lib/report/tiers.ts`
-- `src/lib/report/snapshot-to-report-data.ts` — `engagementBenchmark`, `engagementDeltaPct`, `benchmarkSource.note`.
-
-### 2.6 Knowledge Base
-- `src/lib/knowledge/types.ts` — `KnowledgeNote.category` aceita `"trend" | "format" | "algorithm" | "vertical" | "tool"` (não há "policy" ainda).
-- `src/lib/knowledge/context.server.ts` — serializa KB para o prompt da OpenAI.
-- `src/lib/knowledge/queries.server.ts` — leitura admin.
-- `src/routes/api/admin/knowledge.notes.ts` — CRUD de notas.
-- `LOCKED_FILES.md` — verificar antes de tocar em qualquer ficheiro.
-
-### 2.7 Documentação do projecto
-- `LOCKED_FILES.md` — lista atual de protegidos.
-- `.workspace/AGENTS.md` — regras do agente.
-- **Não existe** ficheiro `KNOWLEDGE.md` ou similar no repositório. A KB é uma combinação de:
-  - tabelas Supabase (`knowledge_benchmarks`, `knowledge_notes`, `knowledge_sources`),
-  - regras editoriais codificadas em `prompt-v2.ts`,
-  - convenções escritas em comentários de cabeçalho dos ficheiros relevantes.
+**Conclusão crítica:** o pedido original deste prompt é **largamente coincidente** com o trabalho já feito. O que falta é (a) **wiring** das constantes ao UI/prompt, (b) **camada de validação/sanitização** para as regras anti-invenção, (c) **expansão futura** para indústria + autenticado.
 
 ---
 
-## 3. Knowledge Base · texto proposto
+## 3. Ficheiros a inspecionar antes de implementar (lacunas reais)
 
-### 3.1 Onde guardar
+### 3.1 Wiring IA ↔ contexto estruturado
+- `src/lib/insights/openai-insights.server.ts` — orquestrador da chamada única.
+- `src/lib/insights/prompt-v2.ts` — prompt-system actual; verificar onde injectar contexto numérico compacto.
+- `src/lib/knowledge/context.server.ts` — `formatKnowledgeContextForPrompt`; potencial extensão para emitir snippet de Buffer-tier + Socialinsider format-row específicos do perfil.
 
-Duas localizações complementares (ambas necessárias):
+### 3.2 Wiring UI ↔ contexto estruturado
+- `src/components/report-redesign/v2/report-overview-cards.tsx` — `EngagementRateCard` actualmente usa string inline; podia consumir `INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.engagementExplanation`.
+- `src/components/report-redesign/v2/report-positioning-banner.tsx` — idem para `sourceNote` + `benchmarkNote`.
+- `src/components/report-redesign/v2/report-diagnostic-card.tsx` — Q01 Tipo/Q04 Formato podem ganhar `carouselExplanation` / `reelsExplanation` / `imageExplanation` quando aplicável.
 
-**A) Como `KnowledgeNote` na BD** com `category="tool"` (categoria existente que melhor enquadra "policy editorial") — fica visível no admin, versionada, auditável, e injectada no prompt da OpenAI via `formatKnowledgeContextForPrompt`. Uma única nota com `title="Política de fontes de benchmark"` e o texto abaixo no `body`.
+### 3.3 Validação / guard-rails
+- `src/lib/insights/validate-v2.ts`, `validate-market.ts`, `validate-editorial.ts` — actualmente validam shape; precisariam de **lista de termos banidos** (regex sobre output da IA): `payload`, `engagement_pct`, `result.data`, `keyMetrics`, "according to", "segundo a Hootsuite", "alcance" / "reach" / "saves" / "shares" sem dataset.
 
-> **Decisão pendente:** se preferirmos uma categoria semântica nova `"policy"`, requer migration ao enum `note_category`. Recomendado **adiar** essa migration e usar `"tool"` por agora — sem schema change.
+### 3.4 Reach / Buffer-tier
+- `src/lib/report/snapshot-to-report-data.ts` — verificar se há campo `reach` no shape actual (não há). Para usar `medianReachPerPost` do Buffer no UI, é necessário primeiro adicionar `reach` ao snapshot quando provider o devolva. Hoje o campo deve **continuar interno**.
 
-**B) Como ficheiro `KNOWLEDGE.md` no root do repo** para servir de fonte canónica para humanos (designers, editores, futuros agentes Lovable) sem dependerem do admin.
+---
 
-### 3.2 Texto canónico — "Instagram Benchmark Context & Source Policy"
+## 4. Política canónica · "Instagram Benchmark Context & Source Policy"
 
+**Já existe e está locked em `KNOWLEDGE.md`.** O texto cobre: fontes aprovadas, regra de "nomes-only sem links", etiquetagem perfil/referência/interpretação, métricas proibidas de inventar, copy canónico de envolvimento, uso por fonte, uso por bloco.
+
+**Ação proposta neste plano:**
+
+1. **Aplicar a migration pendente** `20260430145758_update_benchmark_policy_note.sql` que sincroniza a `KnowledgeNote` na BD com a versão expandida do `KNOWLEDGE.md` (atualmente desactualizada — `body_len=1127` vs versão expandida).
+2. Sem novas adições à política — está completa.
+
+---
+
+## 5. Modelo estruturado de dados (decisão e gaps)
+
+**Decisão (já tomada e correcta):** ficheiro de constantes TypeScript em `src/lib/knowledge/benchmark-context.ts`. Justificação:
+- Imutável, versionado em git.
+- Sem schema change.
+- Importável de UI e servidor.
+- `as const` + `satisfies` ⇒ type-safety total.
+- Helpers prontos: `getBufferTierForFollowers`, `getSocialinsiderEngagementForFormat`, `getHootsuiteBenchmarkForIndustry`.
+
+**Gaps a adicionar nesta camada (quando aprovado):**
+
+### 5.1 Helper de matching automático
 ```text
-# Instagram Benchmark Context & Source Policy
-
-## Fontes aprovadas (apenas para referência editorial)
-- Socialinsider
-- Buffer
-- Hootsuite
-- Databox
-
-Estas fontes podem ser nomeadas no relatório como contexto de mercado.
-Nunca renderizar URLs nem links clicáveis para nenhuma destas fontes.
-Nunca afirmar que estas fontes analisaram o perfil em causa.
-
-## Tipos de informação (etiquetagem obrigatória)
-1. Dado do perfil — métricas calculadas a partir das publicações recolhidas.
-   Linguagem: "Este perfil regista…", "Na amostra recolhida…".
-2. Benchmark de referência — valor vindo da nossa tabela interna
-   `knowledge_benchmarks`. Linguagem: "A referência interna para este
-   tier é…", "Comparado com perfis pares…".
-3. Interpretação editorial — leitura analítica derivada dos dois
-   anteriores. Obrigatório usar hedging: "sugere", "indica", "aponta
-   para", "com a amostra atual", "sinais de".
-
-## Regras de uso
-- Os benchmarks são contexto direcional, não promessa precisa.
-- Nunca inventar crescimento de seguidores, alcance, partilhas, saves
-  ou rankings de indústria que não existam no dataset interno.
-- Nunca dizer "segundo a Socialinsider, este perfil está em X" — apenas
-  "Contexto de referência: Socialinsider, Buffer, Hootsuite, Databox.".
-- Quando o benchmark interno cobre o tier/formato, mostrar o número
-  com etiqueta clara (ex.: "referência tier micro · Reels").
-- Quando não cobre, omitir comparação e usar apenas leitura editorial
-  com hedging.
-
-## Língua e estilo
-- Português europeu (AO90).
-- Evitar nomes técnicos no UI: `payload`, `engagement_pct`, `result.data`,
-  `keyMetrics`, `benchmark.positioning` — traduzir sempre.
-- Frases curtas. Tom analítico, calmo. Sem alarmes vermelhos
-  desproporcionais.
-- Cada cartão pode mencionar fontes uma vez por bloco, no máximo;
-  evitar repetir o nome das fontes em todos os cartões.
-
-## Posicionamento estratégico de formatos (linguagem permitida)
-- Reels: úteis para alcance e descoberta. Não automaticamente
-  superiores; dependem da intenção.
-- Carrosséis: úteis para conteúdo educativo, save-worthy,
-  multi-camada e profundidade narrativa.
-- Imagens estáticas: continuam válidas para presença de marca,
-  produto, eventos e identidade visual.
-- Nunca afirmar superioridade absoluta de um formato sem evidência
-  no perfil analisado.
+getBenchmarkContextForProfile({ followers, dominantFormat, industry? })
+  → {
+      bufferTier:    BufferFollowerTier | null,
+      socialinsider: SocialinsiderEngagementEntry | null,
+      hootsuite:     HootsuiteIndustryEntry | null,
+      copyHints:     { engagement, frequency, format },
+    }
 ```
+Um único helper consumido pelo UI e pela camada de prompt — evita lógica duplicada.
+
+### 5.2 Helper anti-invenção (validador de copy IA)
+```text
+sanitizeAiCopy(text: string): { ok: boolean; violations: string[] }
+```
+- Detecta termos técnicos: `payload|engagement_pct|result\.data|keyMetrics|API`.
+- Detecta atribuição directa: `segundo a (Socialinsider|Buffer|Hootsuite|Databox)`.
+- Detecta menções a métricas inexistentes no snapshot: `alcance|reach|saves|partilhas|impressões` quando a flag `hasReachData=false`.
+- Retorna lista de violações para logging interno (não bloqueante na primeira fase, observabilidade apenas).
+
+### 5.3 Constante derivada de "tier-bridge"
+A tabela `knowledge_benchmarks` usa tiers `nano|micro|mid|macro`. A `INSTAGRAM_BENCHMARK_CONTEXT` (Buffer) usa `0-1K|1-5K|…`. Adicionar um mapa explícito:
+```text
+BUFFER_TIER_TO_INTERNAL_TIER: Record<BufferTier, BenchmarkTier>
+```
+para cruzamentos coerentes entre as duas fontes.
+
+### 5.4 Adicionar campo `internalReferenceNote` no shape
+Em `snapshot-to-report-data.ts`, quando `engagementBenchmark` é resolvido, adicionar um campo opcional `referenceFamily: "internal" | "socialinsider" | "buffer"` para que o UI saiba qual etiqueta mostrar ("referência interna · tier micro" vs "contexto Socialinsider").
 
 ---
 
-## 4. Refinamentos de UI/copy propostos (mapa)
+## 6. Uso por bloco do relatório (mapeamento concreto)
 
-### 4.1 Banner de posicionamento (uma única linha de origem)
-- Adicionar microcopy discreta, **uma vez por relatório**, no
-  `report-positioning-banner.tsx` ou no fim da `ReportMethodology`:
-  > *"Contexto de referência editorial: Socialinsider, Buffer, Hootsuite, Databox. Comparações apresentadas neste relatório usam o nosso dataset interno; as fontes acima servem apenas como enquadramento."*
-- Texto pequeno, mono, neutro. Sem links.
+### Bloco 01 · Overview
+**Já implementado** (microcopy básica).
+**Adições propostas:**
+- `EngagementRateCard` consome `visibleCopyRulesPt.engagementExplanation` em vez de string inline.
+- Quando `getBufferTierForFollowers(followers)` devolve tier, **adicionar uma linha mono opcional**: *"Tier seguidores: 5–10K · referência cadência: 20/mês"*. Sem reach.
+- Banner já mostra `sourceNote`. Manter.
 
-### 4.2 Bloco 01 · Engagement
-- No cartão `EngagementRateCard` (overview-cards), adicionar **nota explicativa colapsável ou em texto secundário** (≤ 1 linha):
-  > *"A taxa de envolvimento varia consoante a fonte, o tamanho da conta e o método de cálculo. Aqui é apresentada como referência direcional."*
-- Onde já existe `vs X% de referência`, manter; complementar com etiqueta `referência interna · tier {tier}` para distinguir do dataset interno.
+### Bloco 02 · Diagnóstico Editorial
+- **Q01 Tipo de conteúdo:** quando "Educativo", anexar `carouselExplanation` como `aiSource`-style microcopy.
+- **Q04 Formato dominante:** consumir `reelsExplanation`/`carouselExplanation`/`imageExplanation` consoante o formato dominante do perfil.
+- **Q06 Resposta da audiência:** principal local para hedging — "sinal de consumo passivo", "engagement de superfície".
+- **Não duplicar KPIs do Bloco 01.**
 
-### 4.3 Bloco 01 · Ritmo
-- Microcopy de uma linha:
-  > *"Volume não garante desempenho — é o equilíbrio entre cadência e qualidade que sustenta envolvimento."*
-- Sem comparação numérica externa.
+### Bloco 03 · Performance (futuro)
+- Local primário para `BufferFollowerTier.postsPerMonth` vs cadência real do perfil.
+- Comparação `getSocialinsiderEngagementForFormat(dominantFormat)` vs envolvimento real por formato (quando o snapshot expor split por formato).
+- Sample-confidence pill (já no plano do Bloco 03 da sessão anterior).
 
-### 4.4 Bloco 01 · Formato dominante
-- Body curto, condicional ao formato dominante (linguagem da política, secção 3.2).
-  - **Reels:** "Útil para alcance e descoberta; não automaticamente superior."
-  - **Carrosséis:** "Útil para conteúdo educativo e save-worthy."
-  - **Imagens:** "Sustentam presença de marca, produto e identidade visual."
+### Bloco 04 · Conteúdo (quando existir)
+- Princípios estratégicos do `socialinsider.strategicPrinciples` aplicados directamente.
 
-### 4.5 Bloco 02 · Onde encaixa
-- **Q01 Tipo de conteúdo:** quando o resultado é "Educativo", reforçar com "consistente com práticas que valorizam profundidade narrativa" (sem citar fonte).
-- **Q06 Resposta da audiência:** reforçar a distinção "visibilidade (gostos) vs conversa pública (comentários)" — já está parcialmente no body, dignificar.
-- **Não criar cartão novo.** Não duplicar leituras do Bloco 01. A política aplica-se à linguagem, não a novos componentes.
-
-### 4.6 Bloco 03 · Futuro
-- O lugar correto para benchmarking comparativo de **timing** e **cadência** é o Bloco 03 (já diagnosticado em sessão anterior). Quando se enriquecer esse bloco, aplicar as mesmas regras: número do perfil + número de referência interna + leitura com hedging.
-
-### 4.7 Não fazer
-- Não acrescentar "fontes" como secção visual nova em cada bloco.
-- Não repetir os 4 nomes em mais de 2 sítios do relatório.
-- Não criar logos das fontes.
-- Não criar tooltip que parece atribuir números do perfil às fontes.
+### Tiers pagos futuros (não implementar agora)
+- **Indústria seleccionada pelo utilizador** → activar `getHootsuiteBenchmarkForIndustry`.
+- **Conexão autenticada Instagram** → activar Databox-style (alcance, visitas, cliques).
+- **Snapshots históricos** → activar follower growth do Buffer.
 
 ---
 
-## 5. Riscos & salvaguardas
+## 7. Riscos e salvaguardas
 
 | Risco | Mitigação |
 |---|---|
-| **Overclaim externo** — leitor pensar que Socialinsider analisou o perfil | Microcopy fixa: "Contexto de referência editorial". Banimento de "segundo X, este perfil…". |
-| **Confusão dado-perfil vs benchmark** | Etiquetagem obrigatória dos 3 tipos (perfil / referência / interpretação). |
-| **Duplicação Bloco 01 ↔ Bloco 02** | Política: cada métrica é mostrada em um sítio; o segundo bloco interpreta, não repete. |
-| **Sobrepeso editorial** | ≤ 1 linha de microcopy por cartão; nomes das fontes ≤ 2 ocorrências por relatório. |
-| **Aspecto "blog de benchmarking"** | Banir dropdowns "saber mais", listas extensas e citações longas. Estilo continua editorial-tech-noir. |
-| **Drift sem governance** | Texto da política vive na KB (BD + KNOWLEDGE.md). Qualquer alteração futura passa por uma única nota versionada. |
-| **Pollution do prompt OpenAI** | A nota é injectada via `formatKnowledgeContextForPrompt`; mantém-se curta para não empurrar tokens. |
-| **PT-BR ou termos técnicos vazarem** | Auditoria de copy contra vocabulário banido (`engagement_pct`, `payload`, `tela`, etc.). |
+| **Reach do Buffer fugir para o UI sem dataset real** | Helper `getBenchmarkContextForProfile` recebe `hasReachData: boolean` e omite reach se `false`. Validador `sanitizeAiCopy` detecta menções a `alcance/reach`. |
+| **IA atribuir números do perfil a fontes externas** | `sanitizeAiCopy` detecta `segundo a X` e flag interna. Política já injectada no prompt via KB. |
+| **Hootsuite indústria usado sem indústria conhecida** | Helper devolve `null` se industry null/undefined. UI nunca renderiza. |
+| **Drift entre `KNOWLEDGE.md`, constante TS e nota BD** | Migration pendente sincroniza nota com KNOWLEDGE.md. CI futuro: teste que verifica que copy canónico no TS corresponde a regex do KNOWLEDGE.md. |
+| **Conflito tiers Buffer (`0-1K`) vs internos (`nano`)** | Mapa explícito `BUFFER_TIER_TO_INTERNAL_TIER` + teste de cobertura. |
+| **Token bloat no prompt** | Injecção condicional: só envia bufferTier+socialinsider relevantes ao perfil, não todo o dataset. |
+| **Nomes das fontes repetidos demasiado** | Política: ≤2 ocorrências por relatório. UI: nomes vivem no banner; cartões usam apenas explicações temáticas. |
+| **Tabela `knowledge_benchmarks` interna ficar desconectada das constantes** | `referenceFamily` no shape distingue origem. Documentação clara de qual fonte alimenta qual cartão. |
 
 ---
 
-## 6. Critérios de aceitação (para a futura implementação)
+## 8. Critérios de aceitação (futura implementação)
 
-- [ ] As 4 fontes só aparecem por **nome**; zero `<a href>` no UI.
-- [ ] Nenhuma chamada nova a Apify, DataForSEO, OpenAI, PDFShift ou Supabase write.
-- [ ] Nenhuma alteração de schema; nenhuma migration.
-- [ ] Prompt OpenAI **não** muda nesta fase (a nota injecta-se pelo mecanismo existente da KB; o prompt-v2 não é editado).
-- [ ] Bloco 02 mantém lógica determinista intacta.
-- [ ] PDF intacto.
-- [ ] Toda a cópia visível em pt-PT (AO90).
-- [ ] Microcopy nova ≤ 1 linha por cartão.
-- [ ] Política existe simultaneamente como `KnowledgeNote` (visível no admin) e como `KNOWLEDGE.md` no root.
-- [ ] `bunx tsc --noEmit` ✓ e `bunx vitest run` ✓ após implementação.
-- [ ] Nenhum ficheiro de `LOCKED_FILES.md` é tocado sem aprovação explícita.
+- [ ] Migration `20260430145758_update_benchmark_policy_note.sql` aplicada (BD em sync com KNOWLEDGE.md).
+- [ ] `getBenchmarkContextForProfile` implementado e testado.
+- [ ] `sanitizeAiCopy` implementado, com testes para cada termo banido.
+- [ ] `BUFFER_TIER_TO_INTERNAL_TIER` definido e testado.
+- [ ] `EngagementRateCard` consome `visibleCopyRulesPt.engagementExplanation`.
+- [ ] Banner consome `visibleCopyRulesPt.sourceNote` em vez de string inline.
+- [ ] Cartão Q04 do Bloco 02 mostra explicação por formato vinda do dataset.
+- [ ] Reach do Buffer **nunca** aparece no UI até `hasReachData=true`.
+- [ ] Hootsuite **nunca** aparece sem indústria definida.
+- [ ] `sanitizeAiCopy` é executado em modo "log only" sobre output da IA; violações vão para `provider_call_logs.metadata`.
+- [ ] Zero links externos. Zero novas chamadas a Apify/DataForSEO/OpenAI/PDFShift.
+- [ ] Zero migrations de schema (apenas a UPDATE pendente).
+- [ ] Toda copy nova em pt-PT (AO90).
+- [ ] `bunx tsc --noEmit` ✓ · `bunx vitest run` ✓.
 
 ---
 
-## 7. Plano de file-locking proposto
+## 9. Plano de file-locking
 
-A implementação tocaria estes ficheiros (não estão atualmente em `LOCKED_FILES.md`):
-
+Tocados na futura implementação:
 ```text
-src/components/report-redesign/v2/report-positioning-banner.tsx     (microcopy de fontes)
-src/components/report-redesign/v2/report-overview-cards.tsx          (microcopy engagement/ritmo/formato)
-src/components/report-redesign/report-methodology.tsx                (linha "fontes de referência")
-KNOWLEDGE.md                                                          (novo — política canónica)
+src/lib/knowledge/benchmark-context.ts        (adicionar getBenchmarkContextForProfile, BUFFER_TIER_TO_INTERNAL_TIER)
+src/lib/knowledge/sanitize-ai-copy.ts         (NOVO)
+src/lib/knowledge/__tests__/*.test.ts         (testes adicionais)
+src/lib/knowledge/context.server.ts           (extensão para emitir snippet condicional)
+src/components/report-redesign/v2/report-overview-cards.tsx       (consumir copy canónico)
+src/components/report-redesign/v2/report-positioning-banner.tsx   (consumir copy canónico)
+src/components/report-redesign/v2/report-diagnostic-card.tsx      (Q01/Q04 receber explicação)
+src/lib/report/snapshot-to-report-data.ts     (campo referenceFamily)
 ```
 
-Mais (sem alteração de código, só dados):
-```text
-knowledge_notes (BD)  — INSERT de uma nota com a política
-```
+**Não tocar:**
+- `src/integrations/supabase/*` (auto-gerados).
+- Ficheiros listados em `LOCKED_FILES.md` (incluindo `KNOWLEDGE.md` e `report-methodology.tsx`).
+- `src/lib/insights/prompt-v2.ts` — alterar **só** se a injeção via KB existente não chegar (verificar primeiro).
 
-**Proposta:** após implementação aprovada, **adicionar `KNOWLEDGE.md` ao `LOCKED_FILES.md`** para evitar deriva editorial não-intencional. Os 3 componentes UI permanecem editáveis para iteração visual.
+Após implementação: avaliar **lock** de `src/lib/knowledge/benchmark-context.ts` (dataset estável).
 
 ---
 
-## 8. Prompt para a fase de implementação (quando aprovado)
+## 10. Prompt para a fase de implementação (quando aprovado)
 
 ```text
-Implementar a política "Instagram Benchmark Context & Source Policy"
-aprovada no plano anterior:
+Implementar a camada de wiring da knowledge base de benchmarks
+aprovada no plano "Camada de conhecimento de benchmarks Instagram":
 
-1. Criar /KNOWLEDGE.md no root com o texto canónico da política
-   (secção 3.2 do plano).
+1. Aplicar migration pendente:
+   supabase/migrations/20260430145758_update_benchmark_policy_note.sql
 
-2. Inserir uma KnowledgeNote em produção via admin (ou via SQL
-   migration apenas-INSERT) com category="tool",
-   title="Política de fontes de benchmark", body=texto da política.
+2. Estender src/lib/knowledge/benchmark-context.ts:
+   - export const BUFFER_TIER_TO_INTERNAL_TIER (Record com mapa).
+   - export function getBenchmarkContextForProfile({ followers,
+     dominantFormat, industry?, hasReachData }) com return type
+     explícito (omite reach se hasReachData=false).
+   - Testes: cobertura completa de tiers, formatos e omissão de reach.
 
-3. Adicionar microcopy:
-   - report-positioning-banner.tsx: linha única "Contexto de
-     referência editorial: Socialinsider, Buffer, Hootsuite, Databox."
-   - report-overview-cards.tsx: 1 linha por cartão (engagement,
-     ritmo, formato) conforme secções 4.2-4.4 do plano.
-   - report-methodology.tsx: linha de origem editorial no fim.
+3. Criar src/lib/knowledge/sanitize-ai-copy.ts:
+   - export function sanitizeAiCopy(text, { hasReachData }):
+     { ok, violations }.
+   - Regex para termos técnicos (payload|engagement_pct|result\.data|
+     keyMetrics) e atribuição directa ("segundo a (Socialinsider|
+     Buffer|Hootsuite|Databox)").
+   - Testes para cada categoria de violação.
 
-4. Sem links. Sem logos. Sem alteração ao prompt-v2.ts. Sem
-   alteração ao schema. Sem chamada a providers.
+4. Estender src/lib/knowledge/context.server.ts:
+   - Aceitar um BenchmarkContextForProfile e serializar em texto
+     compacto (≤ 30 linhas) para anexar ao prompt-system.
 
-5. Validar:
+5. Wiring UI (consumir constantes — não duplicar copy):
+   - report-positioning-banner.tsx: usar visibleCopyRulesPt.sourceNote.
+   - report-overview-cards.tsx (EngagementRateCard): usar
+     visibleCopyRulesPt.engagementExplanation. Se houver bufferTier
+     resolvido, adicionar linha mono "Tier seguidores: X · cadência
+     referência: Y/mês".
+   - report-diagnostic-card.tsx (Q04): aceitar prop opcional
+     formatExplanation; ReportDiagnosticBlock injecta consoante o
+     formato dominante.
+
+6. Aplicar sanitizeAiCopy em modo log-only sobre o output do orquestrador
+   OpenAI; gravar violations em provider_call_logs.metadata. Sem
+   bloquear render.
+
+7. Reach do Buffer NUNCA aparece no UI até hasReachData=true. Hootsuite
+   NUNCA aparece sem indústria. Databox NUNCA aparece nesta fase.
+
+8. Validar:
    - bunx tsc --noEmit
-   - bunx vitest run
-   - Visual: relatório dark/light, mobile 375px e desktop.
+   - bunx vitest run (todos os testes verdes)
+   - Visual: relatório dark/light, mobile 375px e desktop, em
+     /analyze/frederico.m.carvalho.
 
-6. Acrescentar /KNOWLEDGE.md a LOCKED_FILES.md.
+9. Reportar: ficheiros tocados, migration aplicada, número de testes
+   adicionados, exemplos de output pré/pós wiring.
 
-Reportar: ficheiros tocados, INSERT executado (sim/não), zero
-chamadas externas, resultados tsc + vitest.
+Restrições absolutas:
+- Sem novas chamadas a providers externos.
+- Sem alteração de schema.
+- Sem alteração ao prompt-v2.ts a não ser que estritamente necessário.
+- Sem links externos no UI.
+- Sem tocar em ficheiros locked.
+- Toda copy visível em pt-PT (AO90).
 ```
+
+---
+
+## 11. Resumo executivo
+
+A **camada de conhecimento já está construída** (KNOWLEDGE.md + nota BD + dataset TS + microcopy básica). O próximo passo é o **wiring**: ligar essas constantes ao UI e à IA, criar o validador anti-invenção, e fechar o loop com a migration pendente. Tudo sem schema, sem providers externos, sem links.
+
