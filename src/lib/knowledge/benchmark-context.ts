@@ -515,3 +515,15 @@ export function formatBenchmarkContextForPrompt(
 
   return lines.join("\n");
 }
+
+/**
+ * Lista as fontes editoriais activas no relatório público (i.e. as que
+ * podem ser citadas pelo nome em chips/UI). Exclui Databox enquanto
+ * estiver reservada para futura ligação autenticada. Helper único
+ * reutilizável por `ReportMethodology` e qualquer futuro componente.
+ */
+export function getActiveBenchmarkSources(): ReadonlyArray<BenchmarkSource> {
+  return INSTAGRAM_BENCHMARK_CONTEXT.sources.filter(
+    (s) => s.visibility === "active",
+  );
+}

@@ -6,6 +6,7 @@ import { ReportSourceLabel, type ReportSourceType } from "./v2/report-source-lab
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   BENCHMARK_DATASET_VERSION,
+  getActiveBenchmarkSources,
 } from "@/lib/knowledge/benchmark-context";
 import { cn } from "@/lib/utils";
 
@@ -14,9 +15,11 @@ interface Props {
 }
 
 /**
- * Metodologia humana, não-técnica. Grid de 4 fontes seguida (opcional)
- * pela linha fina de proveniência do dataset de benchmark, unificando
- * o que antes vivia em dois blocos separados.
+ * Metodologia humana, não-técnica. Grid das três famílias de fonte
+ * seguida (opcional) pela linha fina de proveniência do dataset de
+ * benchmark. Databox fica fora desta lista (visibilidade `future`) e
+ * é mencionado em itálico discreto como reserva para futura ligação
+ * autenticada.
  */
 export function ReportMethodology({ enriched }: Props = {}) {
   const sources = [
@@ -52,9 +55,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
     { type: "external", explanation: "Comparação com a Knowledge Base de pares e benchmarks." },
   ];
 
-  const benchmarkSources = INSTAGRAM_BENCHMARK_CONTEXT.sources.filter(
-    (s) => s.visibility === "active",
-  );
+  const benchmarkSources = getActiveBenchmarkSources();
 
   return (
     <ReportSectionFrame
@@ -131,11 +132,10 @@ export function ReportMethodology({ enriched }: Props = {}) {
         </div>
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {benchmarkSources.map((source) => {
-            const showQualityChip = source.referenceQuality !== "high";
-            const qualityLabel =
-              source.referenceQuality === "medium"
-                ? "Qualidade média"
-                : "Inspiração futura";
+            // Apenas qualidade `medium` recebe chip; `high` é o caso
+            // silencioso por omissão. Fontes `low` ficam fora da lista
+            // activa (filtradas por visibility=active).
+            const showQualityChip = source.referenceQuality === "medium";
             return (
               <li
                 key={source.name}
@@ -161,12 +161,10 @@ export function ReportMethodology({ enriched }: Props = {}) {
                     <span
                       className={cn(
                         "mt-1 inline-block font-mono text-[9px] uppercase tracking-[0.14em] rounded-full px-1.5 py-0.5 ring-1",
-                        source.referenceQuality === "medium"
-                          ? "bg-slate-50 text-slate-500 ring-slate-200"
-                          : "bg-amber-50 text-amber-700 ring-amber-200",
+                        "bg-slate-50 text-slate-500 ring-slate-200",
                       )}
                     >
-                      {qualityLabel}
+                      Qualidade média
                     </span>
                   ) : null}
                 </div>
