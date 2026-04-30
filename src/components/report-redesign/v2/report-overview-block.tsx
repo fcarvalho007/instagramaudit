@@ -71,18 +71,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight }: P
 
   return (
     <div className="relative space-y-8 md:space-y-10">
-      {/* Watermark "01" — decorativo, não empurra layout. */}
-      <div
-        aria-hidden="true"
-        className={cn(
-          "hidden lg:block absolute -top-16 right-0 lg:right-2 z-0 select-none pointer-events-none",
-          REDESIGN_TOKENS.blockNumberDecor,
-        )}
-      >
-        01
-      </div>
-
-      <div className="relative z-10">
+<div className="relative z-10">
         <ReportOverviewCards result={result} />
       </div>
 
