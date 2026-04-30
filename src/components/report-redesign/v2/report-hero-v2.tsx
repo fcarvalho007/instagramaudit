@@ -59,7 +59,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
         className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-white/70"
       />
 
-      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-6 md:pt-8 pb-6 md:pb-7">
+      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-5 md:pt-7 pb-5 md:pb-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
           {/* Identidade + stats */}
           <div className="flex items-start gap-4 md:gap-6 min-w-0 flex-1">
@@ -93,16 +93,16 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
 
               {/* Stats estilo perfil IG */}
               {profileStats.length > 0 ? (
-                <ul className="!mt-4 grid grid-cols-3 gap-3 max-w-md sm:max-w-lg">
+                <ul className="!mt-4 grid grid-cols-3 gap-x-4 gap-y-1 max-w-md sm:max-w-lg">
                   {profileStats.map((s) => (
                     <li
                       key={s.label}
-                      className="flex flex-col items-start gap-0.5 min-w-0"
+                      className="flex flex-col items-start gap-1 min-w-0"
                     >
-                      <span className="font-display text-lg md:text-xl font-semibold text-slate-900 tabular-nums leading-none">
+                      <span className="font-display text-xl md:text-2xl font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.01em]">
                         {s.value}
                       </span>
-                      <span className={REDESIGN_TOKENS.heroStatLabel}>
+                      <span className="font-mono text-[10px] md:text-[11px] uppercase tracking-[0.16em] text-slate-500">
                         {s.label}
                       </span>
                     </li>
@@ -113,7 +113,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               {/* Meta da análise — separada por divider hairline para
                   sinalizar que é metadata do relatório, não do perfil. */}
               {analysisMeta.length > 0 ? (
-                <div className="!mt-4 pt-3 border-t border-slate-200/60 font-mono text-[10px] md:text-[11px] uppercase tracking-[0.14em] text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <div className="!mt-3 pt-2.5 border-t border-slate-200/60 font-mono text-[10px] md:text-[11px] uppercase tracking-[0.14em] text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
                   {analysisMeta.map((m, i) => (
                     <span key={m} className="inline-flex items-center gap-2">
                       {i > 0 ? (
