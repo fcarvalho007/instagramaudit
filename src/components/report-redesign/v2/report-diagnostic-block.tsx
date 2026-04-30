@@ -38,6 +38,7 @@ import {
 } from "./report-diagnostic-card";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
+import { ReportThemesFeature } from "./report-themes-feature";
 
 interface Props {
   result: AdapterResult;
@@ -115,7 +116,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   ]);
   const groupB = compact([
     renderHashtagsCard(hashtags),
-    renderThemesCard(themes),
     renderCaptionCard(caption, aiLanguage),
     renderAudienceCard(audience),
   ]);
@@ -127,7 +127,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const totalCards = groupA.length + groupB.length + groupC.length;
 
   return (
-    <div className="space-y-8 md:space-y-10">
+    <div className="space-y-10 md:space-y-12">
       <ReportDiagnosticVerdict text={verdictText} source={verdictSource} />
 
       {totalCards >= 4 ? (
@@ -152,6 +152,10 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             </ReportDiagnosticGroup>
           ) : null}
 
+          {themes.available ? (
+            <ReportThemesFeature themes={themes} />
+          ) : null}
+
           {groupC.length > 0 ? (
             <ReportDiagnosticGroup
               letter="C"
@@ -170,7 +174,25 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         </p>
       )}
 
-      <ReportDiagnosticPriorities items={priorities} />
+      <ReportDiagnosticPriorities
+        items={
+          result.enriched.aiInsightsV2?.priorities &&
+          result.enriched.aiInsightsV2.priorities.length === 3
+            ? result.enriched.aiInsightsV2.priorities.map((p) => ({
+                level: p.level,
+                title: p.title,
+                body: p.body,
+                resolves: p.resolves,
+              }))
+            : priorities
+        }
+        source={
+          result.enriched.aiInsightsV2?.priorities &&
+          result.enriched.aiInsightsV2.priorities.length === 3
+            ? "ai"
+            : "deterministic"
+        }
+      />
 
       <ReportDiagnosticCta />
     </div>
