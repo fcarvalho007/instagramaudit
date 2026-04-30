@@ -368,6 +368,7 @@ export function classifyCaptionPattern(
       avgLength: 0,
       ctaSharePct: 0,
       questionSharePct: 0,
+      questionShareAvailable: false,
       sampleSize: posts?.length ?? 0,
     };
   }
@@ -384,12 +385,9 @@ export function classifyCaptionPattern(
   }, 0);
   const ctaShare = ctaCount / posts.length;
 
-  // Conta posts cuja caption contém pelo menos uma pergunta real ("?")
-  const questionCount = posts.reduce((acc, p) => {
-    const raw = (p.caption ?? "");
-    return raw.includes("?") ? acc + 1 : acc;
-  }, 0);
-  const questionSharePct = Math.round((questionCount / posts.length) * 100);
+  const questionShare = classifyQuestionShare(posts);
+  const questionSharePct = questionShare.sharePct;
+  const questionShareAvailable = questionShare.available;
 
   // Consistency: ≥ 60% sit in a single bucket
   const total = posts.length;
@@ -401,6 +399,7 @@ export function classifyCaptionPattern(
       avgLength: Math.round(avg),
       ctaSharePct: Math.round(ctaShare * 100),
       questionSharePct,
+      questionShareAvailable,
       sampleSize: total,
     };
   }
@@ -416,6 +415,33 @@ export function classifyCaptionPattern(
     avgLength: Math.round(avg),
     ctaSharePct: Math.round(ctaShare * 100),
     questionSharePct,
+    questionShareAvailable,
+    sampleSize: total,
+  };
+}
+
+/**
+ * Conta a percentagem de posts cuja caption (excluindo hashtags) contém
+ * pelo menos uma pergunta real (`?`). Disponível só com ≥ 4 posts.
+ * Usado pelo cartão 05 para evitar inventar a stat "COM PERGUNTAS".
+ */
+export function classifyQuestionShare(
+  posts: SnapshotPost[],
+): { available: boolean; sharePct: number; sampleSize: number } {
+  const total = Array.isArray(posts) ? posts.length : 0;
+  if (total < 4) {
+    return { available: false, sharePct: 0, sampleSize: total };
+  }
+  let count = 0;
+  for (const p of posts) {
+    const raw = p.caption ?? "";
+    // Remove hashtags antes de procurar `?` para não contar #?-... etc.
+    const stripped = raw.replace(/#\S+/g, " ");
+    if (stripped.includes("?")) count += 1;
+  }
+  return {
+    available: true,
+    sharePct: Math.round((count / total) * 100),
     sampleSize: total,
   };
 }
