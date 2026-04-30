@@ -26,8 +26,6 @@ import type {
 } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 
-import { ReportHero } from "../report-hero";
-import { ReportExecutiveSummary } from "../report-executive-summary";
 import { ReportFramedBlock } from "../report-framed-block";
 import { ReportAiReading } from "../report-ai-reading";
 import { ReportPendingAiNotice } from "../report-pending-ai-notice";
@@ -43,6 +41,8 @@ import {
 } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportPositioningBanner } from "./report-positioning-banner";
+import { ReportHeroV2 } from "./report-hero-v2";
+import { ReportOverviewBlock } from "./report-overview-block";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -91,8 +91,8 @@ export function ReportShellV2({
           "min-h-screen overflow-x-clip",
         )}
       >
-        {/* Hero (full-bleed, fora dos 6 blocos) */}
-        <ReportHero result={result} actions={actions} />
+        {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
+        <ReportHeroV2 result={result} actions={actions} />
 
         {/* Posicionamento editorial curto */}
         <ReportPositioningBanner />
@@ -105,10 +105,12 @@ export function ReportShellV2({
           <div className="flex gap-10 lg:gap-12 pt-6 lg:pt-10">
             <ReportBlockSidebar />
             <main className="min-w-0 flex-1">
-              {/* 01 · Overview */}
+              {/* 01 · Overview (redesigned) */}
               <ReportBlockSection block={overview} tone="canvas">
-                <ReportExecutiveSummary result={result} />
-                {renderInsight("hero")}
+                <ReportOverviewBlock
+                  result={result}
+                  renderInsight={renderInsight}
+                />
               </ReportBlockSection>
 
               {/* 02 · Diagnóstico */}
