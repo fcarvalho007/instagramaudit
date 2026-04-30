@@ -1,9 +1,16 @@
 import { Bot } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { AiBadge } from "./ai-badge";
 
 interface Props {
   text: string;
+  /**
+   * `ai` = veredito veio de `aiInsightsV2.sections.hero` (OpenAI).
+   * `fallback` = síntese determinística construída a partir dos cálculos.
+   * Determina se mostramos o badge "IA" — não dizer IA quando não é.
+   */
+  source?: "ai" | "fallback";
 }
 
 /**
@@ -12,7 +19,8 @@ interface Props {
  * pelo orquestrador do bloco: AI v2 quando existe, fallback
  * determinista, ou cópia segura quando o sinal é insuficiente.
  */
-export function ReportDiagnosticVerdict({ text }: Props) {
+export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
+  const isAi = source === "ai";
   return (
     <aside
       aria-label="Veredito editorial"
@@ -32,9 +40,12 @@ export function ReportDiagnosticVerdict({ text }: Props) {
           <Bot className="size-4" />
         </span>
         <div className="min-w-0 space-y-1.5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-blue-700">
-            Veredito editorial · IA
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-blue-700">
+              {isAi ? "Veredito editorial" : "Veredito editorial · síntese automática"}
+            </p>
+            {isAi ? <AiBadge variant="inline" /> : null}
+          </div>
           <p className="text-[15px] md:text-base text-slate-800 leading-relaxed font-medium">
             {text}
           </p>

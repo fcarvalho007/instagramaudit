@@ -1,133 +1,118 @@
-## Auditoria honesta dos 5 pontos
 
-### 1) Duplicação Bloco 1 ↔ Bloco 2 — o que fica e o que sai
+# Bloco 02 · Refinamento visual + sinalização IA
 
-**Bloco 1 · Overview** (3 cartões + Leitura IA):
-- Taxa de envolvimento (ER vs. referência)
-- Ritmo de publicação (posts/semana)
-- **Formato mais regular** (% do formato dominante + barra empilhada)
-- Leitura IA (texto curto v2)
+Objetivo: deixar claro o que é **deterministico** (calculado a partir dos posts) e o que é **interpretação por IA** (OpenAI), sem custo extra — aproveitando a chamada única que já existe (`ai_insights_v2`).
 
-**Bloco 2 · Diagnóstico** (8 perguntas + veredito + prioridades):
-- Veredito IA (texto v2 reaproveitado do mesmo `aiInsightsV2.sections.hero`)
-- Q01 Tipo de conteúdo · Q02 Funil · **Q03 Formato dominante** · Q04 Temas · Q05 Captions · Q06 Resposta · Q07 Integração · Q08 Objetivo
-- Prioridades de ação
+## 1. Auditoria honesta — o que é IA vs determinístico hoje
 
-**Sobreposições reais (a corrigir):**
+Após leitura do código:
 
-| Item | Bloco 1 | Bloco 2 | Decisão |
-|---|---|---|---|
-| **Leitura IA / Veredito** | `aiInsightsV2.sections.hero` (Bloco 1, "Leitura IA") | mesmo texto reutilizado em `buildVerdictText` quando `aiHero.length > 30` (Bloco 2, "Veredito editorial · IA") | **Sai do Bloco 1.** O Bloco 2 é o sítio do diagnóstico — o veredito IA pertence-lhe. O Bloco 1 fica só com os 3 cartões + watermark. |
-| **Formato dominante** | "Formato mais regular" (% + breakdown empilhado) | Q03 "Que formato domina a presença?" (% + barra distribuída) | **Sai do Bloco 2 (Q03).** O formato é uma métrica de overview, não uma pergunta editorial. Manter no Bloco 1, retirar Q03 da grelha do Bloco 2. Os grupos passam a A(2) · B(3: temas/captions/resposta) · C(2: integração/objetivo). |
-| **Ritmo, ER** | Bloco 1 | não duplicado no Bloco 2 | OK, manter |
-
-### 2) Aspas tipográficas `"…"` 
-
-Encontradas em apenas 1 sítio: `src/components/report-redesign/v2/report-diagnostic-card.tsx:96` — a pergunta de cada cartão é envolvida em `"{question}"`.
-
-**Decisão:** retirar as aspas. A pergunta passa a ser apenas o `<h3>` em serif, sem aspas.
-
-### 3) Verificação de dados reais vs. inventados
-
-Auditei classifier por classifier. Estado:
-
-| Card | Fonte | Real? |
+| Elemento do Bloco 02 | Origem real | Tem IA? |
 |---|---|---|
-| Q01 Tipo de conteúdo | `posts[].caption` + `hashtags` matched contra termos PT (`CT_TERMS`) | ✅ determinístico real |
-| Q02 Funil | mesma lógica de termos sobre captions | ✅ real (mas heurística) |
-| Q03 Formato | `keyMetrics.dominantFormat`/`formatBreakdown` — APIs Apify | ✅ real (vai sair na decisão 1) |
-| Q04 Temas | `topHashtags` / `topKeywords` | ✅ real |
-| Q05 Captions | `caption_length`, CTA terms, **`?` real** após strip de hashtags | ✅ real (já corrigido) |
-| Q06 Resposta | `likes`, `comments` | ✅ real |
-| **Q07 Integração** | bio + captions + **falta `external_urls`** | ❌ **bug real** — ver ponto 5 |
-| Q08 Objetivo | composição dos anteriores | ✅ derivado real |
-| Veredito | `aiHero` v2 quando ≥ 30 chars; senão deterministic concat | ✅ real |
-| Prioridades | derivadas dos anteriores | ✅ real |
+| Veredito editorial (caixa azul topo) | `aiInsightsV2.sections.hero.text`, fallback determinístico | **Sim (com fallback)** |
+| Q01 Tipo conteúdo · resposta + barras | `classifyContentType(posts)` | Não |
+| Q01 body | string fixa (template) | Não |
+| Q02 Funil · resposta + breakdown | `classifyFunnelStage(posts)` | Não |
+| Q02 body | mapa fixo `bodyByLabel` | Não |
+| Q04 Temas · headline + ranking | `inferThemes(hashtags, keywords)` | Não |
+| Q05 Captions · stats | `classifyCaptionPattern` (+ `classifyQuestionShare`) | Não |
+| Q06 Audiência · stats + tom | `classifyAudienceResponse` | Não |
+| Q07 Integração · checklist | `classifyChannelIntegration(bio, externalUrls, posts)` | Não |
+| Q08 Objetivo · ranking + body | `inferProbableObjective(...)` | Não |
+| Prioridades de ação | `derivePriorities(...)` | Não |
 
-### 4) "Nenhuma natureza domina claramente" vs. "42% educativo"
+**Conclusão:** hoje, **só o veredito do topo** é IA. Tudo o resto é cálculo direto. O ícone Bot atual no veredito é correto, mas o body interpretativo de cada cartão (`bodyByLabel`, mapas fixos) **não é IA** — é template determinístico parametrizado.
 
-Reli o código (`report-diagnostic-block.tsx:235-289`):
+## 2. Decisão proposta (alinhada com o pedido)
 
-- A frase `"Nenhuma natureza domina claramente — a comunicação alterna entre vários registos sem foco editorial visível."` **só é mostrada quando `r.label === "Misto / pouco claro"`** (linha 237-264).
-- Quando há um label dominante (ex.: "Educativo" 42%), o body é gerado com `Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}…` (linha 276).
+A. **Marcar visualmente apenas onde existe IA real**, com hover/tooltip explicando "interpretação gerada por IA com base nos dados deste perfil".
+B. **Aproveitar a mesma chamada `ai_insights_v2`** (sem custo extra) para iluminar 2 secções editoriais do Bloco 02 que beneficiam genuinamente de IA: `hero` (já existe) e `language` (já é gerado, mas não está a ser usado aqui).
+C. **Não pedir secções novas à OpenAI** para Q01/Q02/Q04/Q06/Q07/Q08 — esses são cálculos. Mostrar abertamente que são cálculos.
 
-**Não foi gerado por OpenAI** — é texto determinístico do classifier. Mas o utilizador descreveu ver as duas coisas em simultâneo: "42% educativo" + "Nenhuma natureza domina claramente". Isso só é possível se:
+## 3. Mudanças concretas
 
-- Hipótese A: o classifier devolveu `"Misto / pouco claro"` com `sharePct = 42` no breakdown (ou seja, 42% Educativo é o **maior**, mas não passou no critério `share >= 35% AND topCount >= secondCount * 1.5`).
-- Hipótese B: a UI está a mostrar a distribuição com o topo "Educativo 42%" mas o texto vem do branch "misto".
+### 3.1 Componente novo: `AiBadge` (`src/components/report-redesign/v2/ai-badge.tsx`)
+Pequeno chip com ícone Bot da Lucide + label "IA" + tooltip:
+- Tooltip: "Interpretação gerada por IA com base nos dados reais deste perfil. Os números são sempre calculados diretamente a partir dos posts."
+- Variante `inline` (chip pequeno ao lado do título do cartão) e `corner` (canto sup. direito).
+- Acessível: `aria-label`, foco visível.
 
-Olhando o código, **A é a explicação correta**: se a relação top/second não é ≥ 1.5×, classifica como "Misto" mesmo com 42% no top. O texto é honesto ("nenhuma domina claramente"), mas a UX é confusa porque a barra mostra o top em destaque.
+### 3.2 Componente complementar: `DeterministicBadge`
+Chip discreto "CÁLCULO" (cinza, sem ícone Bot) para cartões que dependem só de dados — opcional, ativo apenas quando próximo de um cartão IA, para evitar ambiguidade.
 
-**Decisão:** quando `label === "Misto / pouco claro"` mas existe um top ≥ 35%, ajustar o body para refletir o que o utilizador vê: `"Há um sinal mais forte em ${top} (${pct} %), mas sem distância clara para os restantes registos — ainda não chega para falar em foco editorial."`. Dados reais, copy fiel ao gráfico.
+> Decisão: **só mostrar `AiBadge`**. Não poluir todos os cartões com "CÁLCULO". A ausência do badge IA = é determinístico.
 
-### 5) Pergunta 07 — "Link na bio = ausente" mas ele existe
+### 3.3 `ReportDiagnosticVerdict` — refinamento
+- Manter o ícone Bot existente.
+- Substituir eyebrow `"Veredito editorial · IA"` por:
+  - Lado esquerdo: `Veredito editorial`
+  - Lado direito do eyebrow: `<AiBadge variant="inline" />` com tooltip explícito.
+- Quando o veredito vier de fallback determinístico (sem aiHero), **esconder o AiBadge** e mudar eyebrow para `"Veredito editorial · síntese automática"`. Isto é rigor: não dizer "IA" se foi fallback.
+- Detetar via prop nova `source: "ai" | "fallback"` passada pelo orquestrador (já temos `args.aiHero` para decidir).
 
-**Bug real e confirmado.** Consultei o snapshot do `frederico.m.carvalho`:
+### 3.4 `ReportDiagnosticCard` — suporte opcional a IA
+Adicionar prop opcional `aiSource?: { kind: "interpretation"; text: string }`. Quando presente:
+- Cartão renderiza, **abaixo do body determinístico**, uma secção destacada:
+  - Linha fina divisória + eyebrow `LEITURA IA · INTERPRETAÇÃO` + ícone Bot
+  - Texto curto da IA (≤ 240 chars, já garantido pelo prompt)
+- Quando ausente: cartão fica exatamente como hoje (sem IA).
 
-```json
-"profile": {
-  "bio": "🚀 Marketing Digital + SEO + IA…\n🔗 Acede aos meus conteúdos ↓",
-  "external_urls": ["http://fredericocarvalho.pt/saber-mais//"]
-}
+### 3.5 Orquestrador `ReportDiagnosticBlock` — wiring da IA existente
+Aproveitar o que `aiInsightsV2.sections` já devolve:
+- `sections.hero` → veredito (já feito).
+- `sections.language` → injetar como `aiSource` no **Q05 Captions** (cartão de linguagem). É exatamente o que `language` cobre no prompt.
+- Mais nenhuma secção do Bloco 02 recebe IA — Q01/Q02/Q04/Q06/Q07/Q08 são cálculos puros e ficam sem badge.
+
+Sem alterações ao prompt, ao schema, ou ao número de chamadas. **Custo: zero adicional.**
+
+### 3.6 Refinamentos visuais menores (consistência)
+- Uniformizar o padding interno dos cartões (`p-5 md:p-6` já está, manter).
+- Garantir que o eyebrow `Pergunta NN · LABEL` usa a mesma escala em todos os cartões (já usa).
+- Remover do body do Q08 a duplicação "hipótese provável... uma inferência provável" (redundância editorial). Reduzir para 1 frase mais limpa.
+- Q07: quando `bioLink.detected = true` mas é vazio, esconder a label "Link na bio · " sem URL (já está OK, validar).
+- Verificar contraste do tom `slate` no cartão Q01 quando "Padrão misto" (atualmente `bg-slate-50 ring-slate-200` — está OK).
+- `ReportDiagnosticGroup`: a regra de `md:col-span-2` para grupos de 1 cartão já existe (linha 42-50). Manter.
+
+### 3.7 Acessibilidade
+- `AiBadge` com `role="img"` + `aria-label="Conteúdo gerado por IA"`.
+- Tooltip via shadcn `Tooltip` (já disponível) com `aria-describedby`.
+- Garantir focus ring no badge quando navegado por teclado.
+
+## 4. O que NÃO muda
+
+- Locked files: nenhum.
+- Bloco 01, 03, 04, 05, 06: intactos.
+- Prompt OpenAI (`prompt-v2.ts`), schema, validators: intactos.
+- Número de chamadas IA: continua **uma só** por análise.
+- Custo OpenAI: zero adicional.
+- `/report/example`, admin, PDF, Supabase, payments, providers (Apify/DataForSEO): intactos.
+- Auth, RLS: intactos.
+
+## 5. Validação
+
+```text
+bunx tsc --noEmit
+bunx vitest run
 ```
 
-`classifyChannelIntegration` em `block02-diagnostic.ts:590-647` recebe **só `bio: string | null`** e procura URL com `URL_RE` **dentro do texto da bio**. Mas o link real do Instagram vive no campo separado **`external_urls`** que nunca é passado ao classifier. Resultado: marca "Link na bio = ausente" mesmo quando existe.
+Sem QA browser. Sem chamadas a providers.
 
-**Causa raiz:** `ReportDiagnosticBlock` extrai `bio = result.enriched.profile.bio` (linha 58) e passa só esse string. O `enriched.profile` nem sequer carrega `external_urls` — perde-se na transformação `snapshot-to-report-data.ts:1016-1021`.
+## 6. Ficheiros tocados (previsão)
 
-**Correção (3 camadas):**
-1. `snapshot-to-report-data.ts` → adicionar `externalUrls: string[]` ao `enriched.profile`, lido de `payload.profile.external_urls` (já existe no payload).
-2. Tipo `ReportEnriched["profile"]` → adicionar `externalUrls: string[]`.
-3. `classifyChannelIntegration(bio, externalUrls, posts)` → receber a lista de URLs externas, validá-la e contar como `bioLink.detected = true` quando houver pelo menos uma URL bem-formada. O texto continua a usar o `URL_RE` na bio como fallback.
-4. `report-diagnostic-block.tsx` → passar `result.enriched.profile.externalUrls` ao classifier.
+```text
+src/components/report-redesign/v2/ai-badge.tsx                 (novo)
+src/components/report-redesign/v2/report-diagnostic-verdict.tsx (badge condicional + source prop)
+src/components/report-redesign/v2/report-diagnostic-card.tsx   (prop aiSource opcional + render)
+src/components/report-redesign/v2/report-diagnostic-block.tsx  (wiring de hero+language; tweak Q08 body)
+```
 
-## Alterações a implementar
+Sem migrations. Sem novas dependências (Bot já vem de lucide-react; Tooltip já existe em shadcn).
 
-### Ficheiro 1 · `src/lib/report/snapshot-to-report-data.ts`
-- Acrescentar `externalUrls?: string[]` ao tipo `SnapshotProfile` (já lá deve existir como entrada — confirmar e adicionar `external_urls?: string[] | null` se faltar).
-- No bloco `enrichedProfile…` (linhas 941-953): extrair e normalizar `payload.profile?.external_urls` (filtrar strings com URL válida via `URL_RE`).
-- Adicionar campo `externalUrls: string[]` ao objeto `enriched.profile`.
-- Atualizar tipo `ReportEnriched["profile"]` para incluir `externalUrls: string[]`.
+## 7. Reporte final esperado
 
-### Ficheiro 2 · `src/lib/report/block02-diagnostic.ts`
-- Mudar assinatura: `classifyChannelIntegration(bio: string | null, externalUrls: string[], posts: SnapshotPost[])`.
-- Calcular `bioHasUrl = externalUrls.length > 0 || URL_RE.test(safeBio)`.
-- `bioLinkValue` preferir o primeiro `externalUrls[0]`, fallback para o match no texto.
-- Manter restante lógica intacta.
-
-### Ficheiro 3 · `src/components/report-redesign/v2/report-diagnostic-block.tsx`
-- Linha 58: ler `const externalUrls = result.enriched.profile.externalUrls ?? [];`.
-- Linha 65: passar `externalUrls` a `classifyChannelIntegration(bio, externalUrls, posts)`.
-- Q01 (linhas 235-289): quando `label === "Misto / pouco claro"` e existe top com `sharePct >= 35`, body passa a `"Há um sinal mais forte em <top> (<pct> %), mas sem distância clara para os restantes registos — ainda não chega para falar em foco editorial."` (continua determinístico).
-- **Remover Q03 (Formato)**: eliminar `renderFormatCard(km, formatBreakdown)` da composição do `groupB`. Fica `groupB = [themes, caption, audience]` (3 cartões).
-
-### Ficheiro 4 · `src/components/report-redesign/v2/report-diagnostic-card.tsx`
-- Linha 96: substituir `"{question}"` por `{question}` (sem aspas tipográficas).
-
-### Ficheiro 5 · `src/components/report-redesign/v2/report-overview-block.tsx`
-- Remover o bloco `<aside>` "Leitura IA" (linhas 78-105) — passa a viver só no Bloco 2 como veredito.
-- Eliminar `Bot` e o estado `heroInsight`/`insightText` agora não usados.
-- Manter watermark + `ReportOverviewCards` intactos.
-
-## Não tocar
-
-- Bloco 03–06, PDF, admin, `/report/example`, providers (Apify/DFS), schema, AI prompts, validators, payments, locked files.
-- Veredito do Bloco 2 mantém-se exatamente como está (continua a usar `aiHero` v2).
-- Distribuição/visualização dos cards (gráficos) intacta.
-
-## Validação
-
-1. `bunx tsc --noEmit`
-2. `bunx vitest run`
-
-Sem QA browser, sem chamadas a providers externos.
-
-## Entregáveis a reportar
-
-1. Ficheiros tocados (5).
-2. Confirmação de que `external_urls` passou a alimentar Q07 e o link real do Frederico é detetado.
-3. Confirmação de que aspas `"…"` foram removidas dos cartões.
-4. Confirmação de que Q03 (Formato) saiu do Bloco 2 e Leitura IA saiu do Bloco 1 — sem duplicação.
-5. Confirmação de que o body de Q01 quando "Misto" reflete o top real visível na barra.
-6. Auditoria por card de fonte de dados (já feita acima).
-7. Resultado TypeScript + Vitest.
+Após implementação, devolverei:
+1. Lista exata de ficheiros tocados.
+2. Confirmação de que só Q05-language e veredito-hero usam IA, e que ambos vêm da chamada única já existente.
+3. Confirmação de zero custo OpenAI adicional e zero novas chamadas.
+4. Resultado `tsc --noEmit` + `vitest run`.
+5. Confirmação de que nada fora do Bloco 02 foi tocado.

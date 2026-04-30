@@ -91,6 +91,17 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     dominantFormatShare: km.dominantFormatShare ?? 0,
   });
 
+  const aiHeroText = result.enriched.aiInsightsV2?.sections.hero?.text ?? null;
+  const verdictSource: "ai" | "fallback" =
+    aiHeroText && aiHeroText.trim().length > 30 ? "ai" : "fallback";
+
+  const aiLanguageText =
+    result.enriched.aiInsightsV2?.sections.language?.text ?? null;
+  const aiLanguage =
+    aiLanguageText && aiLanguageText.trim().length > 0
+      ? { kind: "interpretation" as const, text: aiLanguageText.trim() }
+      : null;
+
   // Build cards as nullable list, then split into groups
   const groupA = compact([
     renderContentTypeCard(contentType),
@@ -98,7 +109,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   ]);
   const groupB = compact([
     renderThemesCard(themes),
-    renderCaptionCard(caption),
+    renderCaptionCard(caption, aiLanguage),
     renderAudienceCard(audience),
   ]);
   const groupC = compact([
@@ -110,7 +121,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
   return (
     <div className="space-y-8 md:space-y-10">
-      <ReportDiagnosticVerdict text={verdictText} />
+      <ReportDiagnosticVerdict text={verdictText} source={verdictSource} />
 
       {totalCards >= 4 ? (
         <>
@@ -384,7 +395,10 @@ function inferThemesHeadline(r: ThemesResult): string {
   return `Foco em ${raw}`;
 }
 
-function renderCaptionCard(r: CaptionPatternResult): ReactNode | null {
+function renderCaptionCard(
+  r: CaptionPatternResult,
+  aiSource: { kind: "interpretation"; text: string } | null,
+): ReactNode | null {
   if (!r.available) return null;
   const ctaLabel =
     r.ctaSharePct === 0
@@ -404,6 +418,7 @@ function renderCaptionCard(r: CaptionPatternResult): ReactNode | null {
       answer={r.label}
       tone="blue"
       body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
+      aiSource={aiSource}
     >
       <DiagnosticMiniStats
         items={
@@ -538,7 +553,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
       }
       answer={r.primary}
       tone="blue"
-      body="Com base na amostra analisada, esta é uma hipótese provável derivada de sinais de conteúdo, funil, bio e ligação entre canais — uma inferência provável, não uma afirmação. Deve ser confirmada pelo objetivo real da marca ou do criador."
+      body="Hipótese derivada dos sinais de conteúdo, funil, bio e ligação entre canais. Não substitui o objetivo real da marca ou do criador — deve ser confirmada por quem comunica."
     >
       <DiagnosticRanking items={r.ranking} valuePosition="left" />
     </ReportDiagnosticCard>
