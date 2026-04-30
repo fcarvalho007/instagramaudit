@@ -287,6 +287,12 @@ export interface ReportEnriched {
     generatedAt: string | null;
     model: string | null;
     sections: Partial<Record<AiInsightV2Section, AiInsightV2Item>>;
+    priorities: ReadonlyArray<{
+      level: "alta" | "media" | "oportunidade";
+      title: string;
+      body: string;
+      resolves: string;
+    }> | null;
   } | null;
   /**
    * Editorial crossovers (R4-B). Derived from posts + market signals to
