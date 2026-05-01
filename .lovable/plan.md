@@ -1,65 +1,96 @@
 
-# Refinar Caption Intelligence — Pergunta 04
+# Refine Block 02 · Q06 "Resposta do público"
 
-## Current State
+## Root cause
 
-The Caption Intelligence section already exists with good structure:
-- **Data layer** (`caption-intelligence.ts`): themes, content type mix, recurring expressions, CTA patterns, editorial reading, action bridge — all working
-- **UI component** (`report-caption-intelligence.tsx`): Shell with header, snapshot row, 2-column layout, all sub-blocks rendered with SourceBadge
-- **No Q05 exists** as a separate component — previous merges already consolidated caption data into Q04
-- **No premium teaser** or scope transparency note exists yet
+Two issues create the contradictory state:
 
-## Changes
+1. **`classifyAudienceResponse`** (line 495): `typeof p.likes === "number" ? p.likes : 0` coerces `null` to `0`, then `if (likes <= 0 && comments <= 0) continue` skips posts where fields are genuinely missing AND posts where values are legitimately 0. When all posts have `null` likes/comments, `counted` stays 0 and the function returns `available: false` — correct. But when some have real values of 0 alongside others with `null`, it conflates the two.
 
-### 1. Update Shell header (report-caption-intelligence.tsx)
+2. **`DiagnosticAudienceHighlight`** (line 516): when avgLikes=0 and avgComments=0, it renders "Sem dados de gostos/comentários" — but the parent card already renders with label "Audiência silenciosa" from the classifier. This creates the contradiction.
 
-- Add subtitle: *"Baseado na leitura das legendas publicas dos posts analisados — nao inclui transcricao do que e dito em video."*
-- Change badge text from "Baseado em N posts" to "Baseado em N legendas" (since sampleSize already counts only posts with non-empty captions)
+## Plan
 
-### 2. Add data transparency note
+### 1. Fix `classifyAudienceResponse` in `block02-diagnostic.ts`
 
-Below the ActionBridgeStrip (before the existing hashtag note), add a small transparency block:
+- Distinguish `null`/`undefined` (missing) from `0` (valid zero).
+- Track `postsWithEngagementData` — posts where at least one of `likes`/`comments` is a `number` (including 0).
+- Track `postsWithComments` — posts where `comments >= 1`.
+- Add `totalLikes`, `totalComments`, `postsWithComments`, `analysedPosts` to the result.
+- Add `topConversationPost` — the post with the most comments (if any), with a caption excerpt.
+- Add status `"concentrated"` when comments cluster in 1-2 posts.
 
-> "Esta analise le as legendas publicas dos posts analisados. Nao inclui audio, video, texto dentro das imagens ou transcricao dos Reels."
+Updated `AudienceResponseResult`:
 
-Keep the existing hashtag separation note.
+```ts
+export interface AudienceResponseResult {
+  available: boolean;
+  label: AudienceResponseLabel;
+  status: "silent" | "moderate" | "active" | "concentrated" | "unavailable";
+  commentsToLikesPct: number;
+  avgComments: number;
+  avgLikes: number;
+  sampleSize: number;
+  totals: {
+    likes: number | null;
+    comments: number | null;
+    postsWithComments: number;
+    analysedPosts: number;
+  };
+  topConversationPost: {
+    index: number;
+    comments: number;
+    likes: number;
+    captionExcerpt: string;
+  } | null;
+  explanation: string;
+}
+```
 
-### 3. Add Premium teaser strip
+Classification logic:
+- No posts with engagement fields → `available: false`, status `"unavailable"`
+- Fields exist, comments clustered in 1-2 of 8+ posts → `"concentrated"`
+- ratioPct >= 2 AND avgComments >= 10 → `"active"`
+- ratioPct >= 0.8 OR avgComments >= 5 → `"moderate"`
+- Otherwise → `"silent"`
 
-After the transparency note, add a subtle Premium teaser card with lock icon and PRO badge:
+### 2. Refactor `renderAudienceCard` in `report-diagnostic-block.tsx`
 
-> **Analise Premium: incluir transcricao de videos/Reels**
-> "Esta versao analisa as legendas publicas. No plano Premium, a leitura pode incluir transcricao de Reels/videos, hooks falados e comparacao entre o que e dito e o que e escrito."
+Replace the current card with a 3-area structure:
 
-Style: muted gold accent (using existing token system), small lock icon, compact card.
+**A. Dados extraídos** (badge: "Dados extraídos")
+- 4 compact stats: total likes, total comments, avg comments/post, posts with comments
+- Only shown when `available: true`
 
-### 4. Refine Editorial Reading block visual identity
+**B. Cálculo** (badge: "Cálculo")  
+- Response label (e.g. "Audiência silenciosa")
+- Deterministic explanation from `result.explanation`
 
-- Add a subtle accent-gold left border (2px vertical line)
-- Use Sparkles icon (already imported) for the AI badge area
-- When source is "ai", apply slightly more editorial styling to the body text
+**C. Leitura IA** (badge: "Leitura IA")
+- Only shown when AI editorial text exists
+- Interpretation of why comments may be low + suggestions
+- No AI prompt changes in this iteration — reuse existing `aiInsightsV2` if it has audience-related content
 
-### 5. Minor refinements
+**Unavailable state**: neutral card with "Dados insuficientes" and explanation, no classification, no rose tone.
 
-- Ensure the `classifyCaptionPattern` result from `block02-diagnostic.ts` is not rendering a separate Q05 card anywhere (confirmed: it's used only for verdict/priorities, not rendered as a card)
-- No changes needed to `caption-intelligence.ts` data layer — the structure already matches the spec
+### 3. Update `DiagnosticAudienceHighlight` in `report-diagnostic-card.tsx`
 
-## Files to edit
+Remove the contradictory empty state. The highlight now receives pre-validated data and always renders metrics (the parent handles unavailable state by not rendering the card).
+
+### 4. No OpenAI prompt changes
+
+The current AI pipeline is not modified. If `aiInsightsV2` contains audience-relevant text, it will be shown. A dedicated AI audience reading can be added in a future iteration.
+
+## Files
 
 | File | Action |
 |------|--------|
-| `src/components/report-redesign/v2/report-caption-intelligence.tsx` | Edit Shell header, add transparency note, add Premium teaser, refine EditorialReadingBlock styling |
+| `src/lib/report/block02-diagnostic.ts` | Fix `classifyAudienceResponse`, expand `AudienceResponseResult` interface |
+| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Refactor `renderAudienceCard` with 3-area layout |
+| `src/components/report-redesign/v2/report-diagnostic-card.tsx` | Clean up `DiagnosticAudienceHighlight` |
 
-## Files NOT touched
+## Not touched
 
-- No provider/schema/OpenAI/PDF/admin changes
-- No changes to `caption-intelligence.ts` (data layer already correct)
-- No changes to `report-diagnostic-block.tsx` (orchestration already correct)
-- No changes to locked files
-- No new dependencies
-
-## Validation
-
-- `bunx tsc --noEmit` must pass
-- `bunx vitest run` must pass
-- Mobile-first: no overflow at 375px
+- Providers, Supabase schema, admin, PDF, `/report/example`, locked files
+- OpenAI prompt/orchestration
+- Other diagnostic cards
