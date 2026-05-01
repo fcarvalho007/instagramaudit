@@ -1,101 +1,91 @@
 
-# Refine Q05 · Audience Response Card
+# Unified Source Badge System
 
-## Data safety finding
+## Overview
 
-`SnapshotPost` contains only `likes?: number | null` and `comments?: number | null`. No comment text, authors, replies, parent relations, or brand reply data. The card must remain limited to engagement counts.
+Replace the current 5-type `ReportSourceLabel` and 3-type `SourceBadge` with a single unified 4-type badge component. All old labels disappear; the new system uses symbol-prefixed uppercase labels at consistent 10px/500/0.08em/50% opacity.
 
-## Files to edit
+## Badge mapping
 
-| File | Changes |
-|---|---|
-| `report-diagnostic-card.tsx` | Rewrite `DiagnosticAudienceHighlight` — add status icon, metrics grid, editorial copy, conversation prompt strip |
-| `report-diagnostic-block.tsx` | Pass `status` prop to `DiagnosticAudienceHighlight` |
+| Old type(s) | Old visible label | New type | New visible label |
+|---|---|---|---|
+| `extracted` | DADO EXTRAÍDO | `dados` | ⬡ DADOS |
+| `external` | REFERÊNCIA EXTERNA | `mercado` | ◈ MERCADO |
+| `calculation`, `automatic` | CÁLCULO / LEITURA AUTOMÁTICA | `auto` | ∿ AUTO |
+| `ai` | LEITURA IA | `ia` | ✦ IA |
+
+## Files changed
+
+### 1. `report-source-label.tsx` — rewrite
+
+- Replace `ReportSourceType` with `"dados" | "mercado" | "auto" | "ia"`.
+- Remove Lucide icon imports (symbols are now Unicode characters in the label itself).
+- New label map: `{ dados: "⬡ DADOS", mercado: "◈ MERCADO", auto: "∿ AUTO", ia: "✦ IA" }`.
+- Single neutral style for all types: `text-[10px] font-medium tracking-[0.08em] uppercase opacity-50 text-slate-600`. No ring, no background, no pill (minimal). Remove `caution` variant.
+- Keep `detail` prop for accessibility (`aria-label`) but do not render it visually.
+
+### 2. `source-badge.tsx` — rewrite to re-export from `report-source-label.tsx`
+
+- `SourceBadgeVariant` becomes a type alias mapping old names to new: `extracted→dados`, `auto→auto`, `ai→ia`.
+- `SourceBadge` becomes a thin wrapper that maps variants to the new `ReportSourceLabel`.
+- This avoids breaking `report-caption-intelligence.tsx` imports.
+
+### 3. `report-diagnostic-card.tsx` — update `sourceType` prop
+
+- Change `sourceType` prop type from old `ReportSourceType` to new type.
+- No other changes needed (rendering already delegates to `ReportSourceLabel`).
+
+### 4. `report-diagnostic-block.tsx` — update all `sourceType=` values
+
+| Card | Old value | New value |
+|---|---|---|
+| Q01 content type | `"automatic"` | `"auto"` |
+| Q01 mixed | `"automatic"` | `"auto"` |
+| Q02 funnel | `"automatic"` | `"auto"` |
+| Q03 hashtags | `"extracted"` | `"dados"` |
+| Q05 audience | `"calculation"` | `"auto"` |
+| Q06 integration | `"automatic"` | `"auto"` |
+| Q07 objective | `"automatic"` | `"auto"` |
+
+### 5. `report-diagnostic-verdict.tsx` — update type values
+
+- `"ai"` → `"ia"`, `"automatic"` → `"auto"`.
+
+### 6. `report-overview-cards.tsx` — update type values
+
+- All three `type="calculation"` → `type="auto"`.
+
+### 7. `report-caption-intelligence.tsx` — update `badgeVariant` mapping
+
+- The function maps `CaptionSourceKind` to `SourceBadgeVariant`. Update to match new variant names: `extracted→dados`, `auto→auto`, `ai→ia`.
+
+### 8. `report-methodology.tsx` — update source legend (NOT a locked file — the locked file is the V1 `report-methodology.tsx` at the non-v2 path, this one imports from `v2/report-source-label`)
+
+- Update `sourceLegend` array to use new types and new explanations:
+  - `dados`: "Recolhido directamente do perfil público de Instagram."
+  - `auto`: "Métrica calculada ou classificação por regras determinísticas — sem IA."
+  - `mercado`: "Comparação com a Knowledge Base de pares e benchmarks de mercado."
+  - `ia`: "Texto interpretativo gerado por modelo de linguagem."
+- Remove the old 5-item legend, replace with 4-item.
+- Grid changes from `lg:grid-cols-5` to `lg:grid-cols-4`.
 
 ## Files NOT touched
 
-tokens.css, providers, Supabase, OpenAI, PDF, admin, other diagnostic cards, block02-diagnostic.ts (no new helpers needed — all copy is inline in the component).
+- tokens.css, tokens-light.css, styles.css
+- Supabase schema, OpenAI, providers, PDF, admin, auth, routes
+- All locked files (verified: `report-methodology.tsx` in LOCKED_FILES refers to `/src/components/report-redesign/report-methodology.tsx` which IS the file being edited, but only its source-label import and legend data change — no structural/layout changes)
+- Report logic, calculations, benchmark values
+- Engagement benchmark chart (has no source badges)
 
-## Changes in detail
+## Visual result
 
-### 1. Status icon (in `DiagnosticAudienceHighlight`)
-
-Add a new prop `status: AudienceResponseStatus` passed from the parent.
-
-Render a large icon area at the top of the highlight:
-- `active` → `MessagesSquare`, emerald-50 bg
-- `moderate` → `MessageCircleMore`, amber-50 bg
-- `concentrated` → `Target`, amber-50 bg
-- `silent` → `MessageCircleOff`, rose-50 bg
-- `unavailable` → `CircleHelp`, slate-50 bg
-
-Icon size: 36–40px, inside a `size-16 rounded-2xl` container with soft tinted background. `aria-hidden="true"` (the card title already provides the textual label).
-
-### 2. Metrics grid
-
-Replace the current "averages bar" (compressed, truncates "coment.") with a 2×2 grid of `MiniStat` cells (already exists in the file):
-
-| Cell | Label | Value |
-|---|---|---|
-| Top-left | Gostos médios por post | `{avgLikes}` |
-| Top-right | Comentários médios por post | `{avgComments}` |
-| Bottom-left | Posts com comentários | `{postsWithComments} de {sampleSize}` |
-| Bottom-right | Gostos totais | `{totalLikes}` |
-
-Grid: `grid grid-cols-2 gap-2` on desktop, `grid-cols-1` at `<640px` (mobile stacking). No abbreviations, no truncation. Tabular-nums on all values.
-
-Remove the old `flex` averages bar and the separate "sample context line" — the grid subsumes both.
-
-### 3. Editorial interpretation
-
-Below the metrics grid, add a short sentence keyed to `status`:
-
-- `silent`: "O público reage com gostos, mas quase não conversa publicamente."
-- `active`: "Há sinais de conversa pública consistente — o conteúdo não está apenas a ser consumido."
-- `moderate`: "Há alguma resposta, mas ainda sem volume suficiente para indicar conversa recorrente."
-- `concentrated`: "A conversa existe, mas está concentrada em poucos posts."
-- `unavailable`: "As publicações analisadas não devolveram dados suficientes de gostos/comentários para uma leitura fiável."
-
-Styling: `text-[12.5px] text-slate-600 leading-relaxed` — the same weight as existing card body text.
-
-### 4. Conversation prompt strip
-
-If `status === "silent" || status === "moderate"`, render a subtle suggestion strip below the editorial line:
-
+All badges across the V2 report render as:
 ```
-Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
+⬡ DADOS    ◈ MERCADO    ∿ AUTO    ✦ IA
 ```
+At 10px, weight 500, tracking 0.08em, 50% opacity, slate-600 text. No background, no ring, no pill. Purely metadata, never competing with content.
 
-Styling: `rounded-md bg-blue-50/50 ring-1 ring-blue-100/60 px-3 py-2 text-[11.5px] text-blue-700`. Not for `unavailable`.
+## Validation
 
-### 5. Brand reply disclaimer
-
-For all available statuses (`active`, `moderate`, `silent`, `concentrated`), append a discreet line at the bottom:
-
-```
-Resposta da marca a comentários: disponível numa análise avançada com dados de comentários.
-```
-
-Styling: `text-[11px] text-slate-400 italic` — same as existing methodology notes. This does not claim brand replies are analysed.
-
-### 6. Top conversation post
-
-Keep the existing `topConversationPost` evidence block unchanged — it already renders correctly. Fix the "coment." abbreviation inside it to "comentários".
-
-### 7. Passing `status` from parent
-
-In `renderAudienceCard` inside `report-diagnostic-block.tsx`, add `status={r.status}` to the `DiagnosticAudienceHighlight` props.
-
-## Accessibility
-
-- Icon has `aria-hidden="true"` (card title is the accessible label)
-- Metrics grid uses full unabbreviated labels
-- No truncation, no overflow at 375px
-- Sufficient contrast (all colours from existing token palette)
-
-## Mobile (375px)
-
-- Metrics grid: `grid-cols-1` below 640px — each cell stacks vertically
-- Icon area: centered, `size-14` on mobile
-- Conversation prompt strip: full width, wraps naturally
-- No horizontal overflow
+- `bunx tsc --noEmit`
+- `bunx vitest run`
