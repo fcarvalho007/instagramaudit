@@ -1,82 +1,75 @@
 
-# Superfícies · Aumentar elevação cinematográfica dos cards (dark)
+# Bloco 02 · Ritmo visual no diagnóstico editorial
 
-## Diagnóstico
+## Problema
 
-Tokens actuais (`src/styles/tokens.css`):
+As 7 perguntas do diagnóstico (3 grupos: A=2, B=3, C=2) renderizam numa grelha uniforme `grid-cols-2` com `auto-rows-fr`. Todos os cards têm a mesma altura e largura — parece uma tabela. A resposta dominante (`text-[1.125rem]`) é quase do mesmo tamanho que o título da pergunta (`text-[1.05rem]`) — não há hierarquia visual.
 
-| Token | RGB | Hex | Luminância | Δ vs anterior |
-|---|---|---|---|---|
-| `--surface-base` | 10 14 26 | `#0A0E1A` | 0.0045 | — |
-| `--surface-secondary` | 17 24 39 | `#111827` | 0.0092 | +0.0047 |
-| `--surface-elevated` | 30 41 59 | `#1E293B` | 0.0218 | +0.0126 |
+## Estratégia
 
-Os dois primeiros saltos são pequenos: o card `surface-secondary` quase desaparece sobre `surface-base`, e o `surface-elevated` perde fôlego porque muitos cards no produto usam **`surface-secondary` directamente** (`rounded-xl bg-surface-secondary p-…`) em vez de passarem pelo `<Card>`. Bordas existem mas estão mal padronizadas — `border-border-subtle/50`, `border-border-subtle`, ou simplesmente sem border.
+### 1) Layout com ritmo — cards marcados como `span` ou `compact`
 
-A variante `elevated` do componente `Card` (linha 18 de `src/components/ui/card.tsx`) **não tem border** — só sombra. Em ecrãs reais a sombra apenas não chega.
+Em vez de uma grelha uniforme, cada card ganha uma propriedade `span` que controla se ocupa largura total ou metade. As perguntas com resposta-veredicto forte (Q01 Tipo de conteúdo, Q02 Funil, Q06 Audiência, Q08 Objetivo) ocupam **largura total**. As perguntas com evidência densa (Q03 Hashtags, Q05 Captions, Q07 Integração) ficam **lado a lado** quando possível.
 
-## Estratégia (combina as duas sugestões)
+Implementação no `ReportDiagnosticGroup`:
+- Remover `auto-rows-fr` (os cards deixam de ser forçados à mesma altura)
+- Cada card pode ter `data-span="full"` ou default (half)
+- A prop `span?: "full" | "half"` é passada ao `ReportDiagnosticCard` e propagada como classe `md:col-span-2`
 
-Ambas as sugestões — empurrar `surface-elevated` e padronizar borda hairline — resolvem partes diferentes do problema. Aplico-as juntas:
+Layout resultante por grupo:
 
-### 1) Reescala dos 3 níveis de superfície
+```text
+Grupo A · Identidade editorial
+┌──────────────────────────────────────┐
+│ Q01 · Tipo de conteúdo  (full)       │
+├──────────────────┬───────────────────┤
+│ Q02 · Funil      │  (agora metade   │
+│  (half — funil   │   se houver Q    │
+│   visual stack)  │   extra, senão   │
+│                  │   full)          │
+└──────────────────┴───────────────────┘
 
-| Token | Antes | Depois | Hex novo | Luminância nova |
-|---|---|---|---|---|
-| `--surface-base` | 10 14 26 | **inalterado** | `#0A0E1A` | 0.0045 |
-| `--surface-secondary` | 17 24 39 | **20 28 46** | `#141C2E` | 0.0118 |
-| `--surface-elevated` | 30 41 59 | **36 48 68** | `#243044` | 0.0291 |
-| `--surface-overlay` | 30 41 59 | **42 56 80** | `#2A3850` | 0.0386 |
+Grupo B · Como comunica
+┌──────────────────┬───────────────────┐
+│ Q03 · Hashtags   │ Q05 · Captions   │
+│  (half)          │  (half)          │
+├──────────────────┴───────────────────┤
+│ Q06 · Audiência  (full — destaque)   │
+└──────────────────────────────────────┘
 
-Saltos passam de **+0.0047 / +0.0126** para **+0.0073 / +0.0173 / +0.0095**. Ainda dentro de "dark editorial" (longe de cinzentos médios), mas com elevação perceptível e card legível mesmo sem sombra.
+Grupo C · Contexto estratégico
+┌──────────────────┬───────────────────┐
+│ Q07 · Integração │ Q08 · Objetivo   │
+│  (half)          │  (half)          │
+└──────────────────┴───────────────────┘
+```
 
-`surface-overlay` (popovers, modals, tooltips) ganha um quarto degrau para se distinguir de cards normais.
+### 2) Tipografia da resposta dominante — 2x maior
 
-### 2) Borda hairline obrigatória em cards elevados
+No `ReportDiagnosticCard`, a resposta dominante passa de `text-[1.125rem] md:text-[1.25rem]` para **`text-[1.5rem] md:text-[1.75rem]`** — o dobro do tamanho do body text (`text-sm` = 0.875rem). Quando `span="full"`, escala ainda mais para `text-[1.75rem] md:text-[2rem]`.
 
-- Subir `--border-subtle` de alpha `0.08` → `0.10` (mantém o ar editorial mas tem mais presença).
-- Adicionar borda à variante `elevated` do `Card` shadcn:
+### 3) Cards full-width: layout horizontal
 
-  ```ts
-  elevated: "bg-surface-elevated border border-border-subtle shadow-lg",
-  ```
+Quando `span="full"`, o card reorganiza internamente: pergunta + resposta à esquerda (60%), evidência/children à direita (40%) em desktop. Isto evita que um card full-width fique com muito espaço vertical desperdiçado.
 
-- Padronizar cards artesanais que hoje usam `rounded-xl bg-surface-secondary p-X` **sem border** ou com `border-border-subtle/50`. Sweep nos componentes mais visíveis (não em todos os 100+):
-  - `src/components/product/post-analysis-conversion-layer.tsx` (cards de planos free/pro/agency — Pro fica gold ilha como já decidido, free e agency ganham borda subtle)
-  - `src/components/product/report-gate-modal.tsx` (cards "Compra pontual" e modal-base)
-  - `src/components/admin/cockpit/parts/*` (stat-card, data-table, panels) — cockpit precisa especialmente da elevação
-  - `src/components/landing/*` que usem `bg-surface-secondary` directo
-  - Componentes do report (`report-redesign/v2/*`, `report-enriched/*`) que usem `bg-surface-secondary` em dark mode
+## Ficheiros a alterar
 
-  Em todos estes, garantir `border border-border-subtle` na raiz do card. Onde já existe `border-border-subtle/50` ou `/60`, deixar como está (overrides intencionais).
+| Ficheiro | Alteração |
+|---|---|
+| `src/components/report-redesign/v2/report-diagnostic-card.tsx` | Adicionar prop `span`, ajustar tipografia da resposta, layout horizontal para `span="full"` |
+| `src/components/report-redesign/v2/report-diagnostic-group.tsx` | Remover `auto-rows-fr`, usar children directamente (cada card controla o seu `col-span`) |
+| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Passar `span` a cada card: Q01=full, Q02=depende do count, Q03/Q05=half, Q06=full, Q07/Q08=half |
 
-### 3) Light theme — não mexer
+## Fora de âmbito
 
-`tokens-light.css` já é Iconosquare-pure com `surface-secondary: #FFFFFF` puro sobre `#FAFBFD` e bordas hairline definidas — não tem o problema. O scope é **apenas dark mode**.
-
-### 4) Sombras — micro-tweak
-
-`--shadow-md` actual é `0 4px 6px -1px rgb(0 0 0 / 0.3) ...`. Com surfaces mais claras, as sombras pretas puras ficam mais visíveis e acentuam a elevação. Não é necessário tocar — verificar visualmente; se for preciso reduzo a opacidade em 0.05 num passo seguinte.
-
-## Não está no âmbito
-
-- Light theme (`tokens-light.css`)
-- Mexer em `--surface-base` (continua o "preto editorial" da brand)
-- Fazer sweep dos 100+ ficheiros com `bg-surface-secondary` — só os de produto/cockpit/landing/report onde o problema é visível
-- Repintar cards `Card` que já consomem o componente shadcn — esses ganham automaticamente a nova surface
-- Tema light do `/report` (já é mono-azul claro)
+- Conteúdo dos cards (copy, classifiers, builders) — não muda
+- Caption Intelligence (entre grupo B e C) — não muda
+- Prioridades e CTA — não mudam
+- Report light tokens — não muda (este é um componente de layout, não de cor)
 
 ## Validação
 
-- [ ] `bunx tsc --noEmit` passa
-- [ ] `bunx vitest run` passa (51/51)
-- [ ] Inspeção visual em landing dark, `/admin`, `/analyze/$username`, `/report` (modo dark fora de `/report/example`):
-  - cards `surface-secondary` legíveis sobre `surface-base` sem precisar piscar
-  - cards `surface-elevated` claramente acima dos `surface-secondary`
-  - hairline visível em todos os cards do produto/cockpit
-- [ ] Modal `report-gate-modal` em estado paywall — separação clara entre fundo do modal e os 2 cards de plano
-
-## Atualizar memória
-
-- `mem://design/tokens` → novos valores das surfaces e regra "todo card elevado tem border-subtle".
-- `mem://index.md` Core → uma linha curta com a regra hairline.
+- `bunx tsc --noEmit` passa
+- `bunx vitest run` passa (51/51)
+- Verificação visual: cards full-width visivelmente maiores que half, resposta dominante com presença editorial clara, sem "tabela"
+- Responsivo: em mobile (375px) todos colapsam para 1 coluna sem quebrar

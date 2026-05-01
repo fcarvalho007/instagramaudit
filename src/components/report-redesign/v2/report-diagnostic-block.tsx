@@ -310,6 +310,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         question="Que natureza de conteúdo aparece mais?"
         answer="Padrão misto"
         tone="slate"
+        span="full"
         body={body}
         sourceType="automatic"
         sourceDetail="Legendas"
@@ -342,6 +343,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       question="Que natureza de conteúdo aparece mais?"
       answer={r.label}
       tone="emerald"
+        span="full"
       body={`Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}, com base em legendas e hashtags.`}
       sourceType="automatic"
       sourceDetail="Legendas"
@@ -591,6 +593,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
       question="O público responde ou só consome?"
       answer={r.label}
       tone={tone}
+        span="full"
       body={bodyByLabel[r.label]}
       sourceType="calculation"
       sourceDetail="Gostos + comentários"
