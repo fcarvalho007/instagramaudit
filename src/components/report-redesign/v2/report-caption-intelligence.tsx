@@ -218,10 +218,8 @@ function ThemesBlock({ data }: { data: CaptionIntelligence }) {
                 <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1 shrink-0", conf.color)}>
                   {conf.label}
                 </span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-eyebrow-sm text-slate-500">
-                  {ROLE_LABELS[it.role] ?? it.role}
+                <span className="text-eyebrow-sm text-slate-400 shrink-0">
+                  papel: {ROLE_LABELS[it.role] ?? it.role}
                 </span>
               </div>
               {it.evidence ? (
