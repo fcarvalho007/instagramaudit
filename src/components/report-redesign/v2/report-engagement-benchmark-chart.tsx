@@ -83,7 +83,10 @@ export function ReportEngagementBenchmarkChart({
   }
 
   const refY = yForVal(benchmarkVal);
-  const profileMarkerY = yForVal(profileVal);
+  const profileMarkerY = Math.max(
+    PAD_T + MARKER_R,
+    Math.min(yForVal(profileVal), PAD_T + innerH - MARKER_R - 2),
+  );
 
   // Tooltip position in percentage for CSS positioning
   function tooltipPctX(i: number): number {
@@ -178,9 +181,9 @@ export function ReportEngagementBenchmarkChart({
           />
           {/* Reference line label */}
           <text
-            x={VB_W - PAD_R - 2}
+            x={PAD_L + 4}
             y={refY - 5}
-            textAnchor="end"
+            textAnchor="start"
             fill="#2563D9"
             opacity={0.55}
             style={{ fontSize: "7.5px", fontFamily: "var(--font-sans)" }}
@@ -461,7 +464,7 @@ function ChartTooltip({
 
   const isActive = tierIndex === activeTierIndex;
   // Clamp tooltip position to avoid overflow
-  const clampedPct = Math.max(18, Math.min(82, pctX));
+  const clampedPct = Math.max(28, Math.min(72, pctX));
 
   return (
     <div
@@ -471,7 +474,7 @@ function ChartTooltip({
       <div
         className={cn(
           "rounded-lg shadow-lg ring-1 px-3 py-2.5 text-[11.5px] leading-relaxed",
-          "bg-white ring-slate-200/80 max-w-[220px]",
+          "bg-white ring-slate-200/80 max-w-[180px] sm:max-w-[220px]",
         )}
       >
         <p className="font-medium text-slate-800 mb-1">Escalão: {tier.tierLabel}</p>
