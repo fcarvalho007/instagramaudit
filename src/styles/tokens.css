@@ -2,9 +2,9 @@
   :root {
     /* === COLORS — Surface === */
     --surface-base: 10 14 26;
-    --surface-secondary: 17 24 39;
-    --surface-elevated: 30 41 59;
-    --surface-overlay: 30 41 59;
+    --surface-secondary: 20 28 46;
+    --surface-elevated: 36 48 68;
+    --surface-overlay: 42 56 80;
     --surface-glass-alpha: 0.6;
 
     /* === COLORS — Accent === */

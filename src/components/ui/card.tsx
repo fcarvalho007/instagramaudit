@@ -15,7 +15,7 @@ const cardVariants = cva(
         glass:
           "bg-surface-elevated/60 backdrop-blur-md border border-border-subtle shadow-md",
         outline: "bg-transparent border border-border-default",
-        elevated: "bg-surface-elevated shadow-lg",
+        elevated: "bg-surface-elevated border border-border-subtle shadow-lg",
         interactive: [
           "bg-surface-elevated border border-border-default shadow-md",
           "hover:-translate-y-0.5 hover:shadow-lg hover:border-border-strong",
