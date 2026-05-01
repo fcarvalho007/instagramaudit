@@ -38,7 +38,8 @@ import {
 } from "./report-diagnostic-card";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
-import { ReportThemesFeature } from "./report-themes-feature";
+import { ReportCaptionIntelligence } from "./report-caption-intelligence";
+import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
 
 interface Props {
   result: AdapterResult;
@@ -70,6 +71,14 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     topThemes,
     topKeywords,
     aiSections: result.enriched.aiInsightsV2?.sections ?? null,
+  });
+  void themes;
+  const captionIntel = buildCaptionIntelligence({
+    posts,
+    topThemes,
+    topHashtagLabels: topHashtags.map((t) => t.tag),
+    aiLanguageText:
+      result.enriched.aiInsightsV2?.sections.language?.text ?? null,
   });
   const integration = classifyChannelIntegration(bio, externalUrls, posts);
   const objective = inferProbableObjective({
@@ -154,9 +163,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             </ReportDiagnosticGroup>
           ) : null}
 
-          {themes.available ? (
-            <ReportThemesFeature themes={themes} />
-          ) : null}
+          <ReportCaptionIntelligence data={captionIntel} />
 
           {groupC.length > 0 ? (
             <ReportDiagnosticGroup
@@ -186,7 +193,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                 body: p.body,
                 resolves: p.resolves,
               }))
-            : priorities
+            : injectCaptionImprovement(priorities, captionIntel)
         }
         source={
           result.enriched.aiInsightsV2?.priorities &&
@@ -207,6 +214,34 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
 function compact<T>(arr: Array<T | null>): T[] {
   return arr.filter((x): x is T => x !== null);
+}
+
+/**
+ * Quando a leitura editorial das captions (Pergunta 04) é IA e produz uma
+ * recomendação de melhoria, injectamo-la como prioridade "oportunidade"
+ * adicional — desde que ainda não exista nenhuma com título equivalente.
+ */
+function injectCaptionImprovement(
+  base: ReadonlyArray<{ level: "alta" | "media" | "oportunidade"; title: string; body: string; resolves: string }>,
+  intel: import("@/lib/report/caption-intelligence").CaptionIntelligence,
+): Array<{ level: "alta" | "media" | "oportunidade"; title: string; body: string; resolves: string }> {
+  const improvement = intel.editorialReading.recommendedImprovement;
+  if (!improvement) return [...base];
+  const dup = base.some((p) =>
+    p.title.toLowerCase().includes(improvement.toLowerCase().slice(0, 24)),
+  );
+  if (dup) return [...base];
+  return [
+    ...base,
+    {
+      level: "oportunidade",
+      title: improvement.length > 60 ? improvement.slice(0, 57) + "…" : improvement,
+      body: intel.editorialReading.whatIsMissing && intel.editorialReading.whatIsMissing !== "—"
+        ? intel.editorialReading.whatIsMissing
+        : intel.ctaPatterns.summary,
+      resolves: "Resolve a Pergunta 04 — leitura das legendas.",
+    },
+  ];
 }
 
 function buildVerdictText(args: {
