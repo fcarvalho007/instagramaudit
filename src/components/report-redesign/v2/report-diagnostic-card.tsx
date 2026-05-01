@@ -505,28 +505,20 @@ export function DiagnosticRanking({
 export function DiagnosticAudienceHighlight({
   avgLikes,
   avgComments,
+  totalLikes,
+  totalComments,
+  postsWithComments,
+  sampleSize,
   tone = "rose",
 }: {
   avgLikes: number;
   avgComments: number;
+  totalLikes?: number | null;
+  totalComments?: number | null;
+  postsWithComments?: number;
+  sampleSize?: number;
   tone?: "rose" | "emerald" | "amber";
 }) {
-  // Empty-state explícito quando não há sinais de engagement
-  // (evita renderizar barra vermelha 100% com "0 GOSTOS MÉDIOS").
-  if (avgLikes <= 0 && avgComments <= 0) {
-    return (
-      <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3">
-        <p className="text-eyebrow text-slate-500">
-          Sem dados de gostos/comentários
-        </p>
-        <p className="mt-1 text-[12.5px] text-slate-600 leading-relaxed">
-          As publicações analisadas não devolveram contagens públicas de
-          engagement — comum em perfis com posts mais antigos ou conteúdo
-          restrito.
-        </p>
-      </div>
-    );
-  }
   const TONE_BG: Record<typeof tone, string> = {
     rose: "bg-rose-600 text-white",
     emerald: "bg-emerald-600 text-white",
@@ -538,27 +530,53 @@ export function DiagnosticAudienceHighlight({
     amber: "bg-amber-300",
   };
   return (
-    <div className="space-y-2">
-      <div
-        className={cn(
-          "text-eyebrow rounded-md px-3 py-2",
-          TONE_BG[tone],
-        )}
-      >
-        <span className="font-mono text-[15px] font-semibold normal-case tracking-normal tabular-nums">
-          {avgLikes.toLocaleString("pt-PT")}
-        </span>{" "}
-        <span className="opacity-90">gostos médios</span>
-      </div>
-      <div className="flex items-center gap-2 px-1">
-        <span aria-hidden className={cn("size-1.5 rounded-full", DOT[tone])} />
-        <span className="text-eyebrow text-slate-500">
-          <span className="font-mono text-[13px] font-semibold normal-case tracking-normal text-slate-700 tabular-nums">
-            {avgComments.toLocaleString("pt-PT")}
+    <div className="space-y-3">
+      {/* Totals row — dados extraídos */}
+      {totalLikes != null && totalComments != null && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <MiniStat label="Gostos totais" value={totalLikes.toLocaleString("pt-PT")} />
+          <MiniStat label="Comentários totais" value={totalComments.toLocaleString("pt-PT")} />
+          <MiniStat label="Coment. médios / post" value={avgComments.toLocaleString("pt-PT")} />
+          {postsWithComments != null && sampleSize != null && (
+            <MiniStat label="Posts com comentários" value={`${postsWithComments} / ${sampleSize}`} />
+          )}
+        </div>
+      )}
+
+      {/* Averages bar */}
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "text-eyebrow rounded-md px-3 py-2 flex-1",
+            TONE_BG[tone],
+          )}
+        >
+          <span className="font-mono text-[15px] font-semibold normal-case tracking-normal tabular-nums">
+            {avgLikes.toLocaleString("pt-PT")}
           </span>{" "}
-          comentários médios
-        </span>
+          <span className="opacity-90">gostos médios</span>
+        </div>
+        <div className="flex items-center gap-2 px-1 shrink-0">
+          <span aria-hidden className={cn("size-1.5 rounded-full", DOT[tone])} />
+          <span className="text-eyebrow text-slate-500">
+            <span className="font-mono text-[13px] font-semibold normal-case tracking-normal text-slate-700 tabular-nums">
+              {avgComments.toLocaleString("pt-PT")}
+            </span>{" "}
+            coment. médios
+          </span>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-slate-50 ring-1 ring-slate-200/60 px-2.5 py-2 flex flex-col gap-0.5">
+      <span className="text-eyebrow-sm text-slate-500">{label}</span>
+      <span className="font-mono text-[14px] tabular-nums text-slate-800 font-semibold">
+        {value}
+      </span>
     </div>
   );
 }
