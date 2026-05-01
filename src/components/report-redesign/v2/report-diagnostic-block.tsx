@@ -216,6 +216,34 @@ function compact<T>(arr: Array<T | null>): T[] {
   return arr.filter((x): x is T => x !== null);
 }
 
+/**
+ * Quando a leitura editorial das captions (Pergunta 04) é IA e produz uma
+ * recomendação de melhoria, injectamo-la como prioridade "oportunidade"
+ * adicional — desde que ainda não exista nenhuma com título equivalente.
+ */
+function injectCaptionImprovement(
+  base: ReadonlyArray<{ level: "alta" | "media" | "oportunidade"; title: string; body: string; resolves: string }>,
+  intel: import("@/lib/report/caption-intelligence").CaptionIntelligence,
+): Array<{ level: "alta" | "media" | "oportunidade"; title: string; body: string; resolves: string }> {
+  const improvement = intel.editorialReading.recommendedImprovement;
+  if (!improvement) return [...base];
+  const dup = base.some((p) =>
+    p.title.toLowerCase().includes(improvement.toLowerCase().slice(0, 24)),
+  );
+  if (dup) return [...base];
+  return [
+    ...base,
+    {
+      level: "oportunidade",
+      title: improvement.length > 60 ? improvement.slice(0, 57) + "…" : improvement,
+      body: intel.editorialReading.whatIsMissing && intel.editorialReading.whatIsMissing !== "—"
+        ? intel.editorialReading.whatIsMissing
+        : intel.ctaPatterns.summary,
+      resolves: "Resolve a Pergunta 04 — leitura das legendas.",
+    },
+  ];
+}
+
 function buildVerdictText(args: {
   aiHero: string | null;
   contentType: ContentTypeResult;
