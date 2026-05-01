@@ -189,7 +189,7 @@ function EngagementRateCard({
       interpretationTone={status.tone}
       emphasis="primary"
       sourceSlot={
-        <ReportSourceLabel type="calculation" detail="Gostos + comentários" />
+        <ReportSourceLabel type="auto" detail="Gostos + comentários" />
       }
     >
       <div className="flex items-end gap-3 flex-wrap">
@@ -250,7 +250,7 @@ function PostingRhythmCard({
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
       interpretation={null}
       interpretationTone={status.tone}
-      sourceSlot={<ReportSourceLabel type="calculation" detail="Posts ÷ janela" />}
+      sourceSlot={<ReportSourceLabel type="auto" detail="Posts ÷ janela" />}
     >
       <div className="flex items-end gap-3 flex-wrap">
         <span className="font-mono text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
@@ -379,7 +379,7 @@ function DominantFormatCard({
       interpretation={null}
       interpretationTone={status.tone}
       sourceSlot={
-        <ReportSourceLabel type="calculation" detail="Distribuição de formatos" />
+        <ReportSourceLabel type="auto" detail="Distribuição de formatos" />
       }
     >
       <div className="flex items-end gap-3 flex-wrap min-w-0">

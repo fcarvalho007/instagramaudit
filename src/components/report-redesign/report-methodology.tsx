@@ -48,11 +48,10 @@ export function ReportMethodology({ enriched }: Props = {}) {
   const benchmarkSource = enriched?.benchmarkSource ?? null;
 
   const sourceLegend: Array<{ type: ReportSourceType; explanation: string }> = [
-    { type: "extracted", explanation: "Recolhido directamente do perfil público de Instagram." },
-    { type: "calculation", explanation: "Métrica calculada pela InstaBench a partir dos dados recolhidos." },
-    { type: "automatic", explanation: "Classificação por regras determinísticas — sem IA." },
-    { type: "ai", explanation: "Texto interpretativo gerado por modelo de linguagem." },
-    { type: "external", explanation: "Comparação com a Knowledge Base de pares e benchmarks." },
+    { type: "dados", explanation: "Recolhido directamente do perfil público de Instagram." },
+    { type: "auto", explanation: "Métrica calculada ou classificação por regras determinísticas — sem IA." },
+    { type: "mercado", explanation: "Comparação com a Knowledge Base de pares e benchmarks de mercado." },
+    { type: "ia", explanation: "Texto interpretativo gerado por modelo de linguagem." },
   ];
 
   const benchmarkSources = getActiveBenchmarkSources();
@@ -106,7 +105,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
         <p className="text-eyebrow-sm text-slate-500 mb-3">
           Como ler os cartões
         </p>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {sourceLegend.map(({ type, explanation }) => (
             <li key={type} className="space-y-1.5 min-w-0">
               <ReportSourceLabel type={type} />

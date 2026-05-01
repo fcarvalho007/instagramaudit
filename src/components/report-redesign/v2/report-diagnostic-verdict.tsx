@@ -48,7 +48,7 @@ export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
               Veredito editorial
             </p>
             <ReportSourceLabel
-              type={isAi ? "ai" : "automatic"}
+              type={isAi ? "ia" : "auto"}
               detail={isAi ? "Síntese editorial" : "Síntese das classificações"}
             />
           </div>
