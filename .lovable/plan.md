@@ -1,47 +1,59 @@
 
-## Audit Result
+## Overview
 
-The unified source badge system (`ReportSourceLabel`) is already deployed across 6 V2 components. **No old labels** ("DADO EXTRAÍDO", "LEITURA AUTOMÁTICA", etc.) remain anywhere in the codebase.
+Refine Block 02 visual hierarchy across 3 files. No diagnostic logic changes.
 
-### What already uses the unified system
+## 1. Editorial Verdict Hero (`report-diagnostic-verdict.tsx`)
 
-| File | Badge(s) |
-|------|----------|
-| `report-diagnostic-card.tsx` | `ia`, dynamic `sourceType` |
-| `report-diagnostic-verdict.tsx` | `ia` / `auto` |
-| `report-diagnostic-priorities.tsx` | `ia` |
-| `report-overview-cards.tsx` | `auto`, `dados` |
-| `report-themes-feature.tsx` | `ia` |
-| `report-caption-intelligence.tsx` | via `SourceBadge` wrapper (all 3 types) |
+Current: `text-[16px] md:text-[17px]`, padding `px-6 py-5 md:px-7 md:py-6`, subtle gradient, thin left border.
 
-### Remaining fixes (3 items)
+Changes:
+- Increase text to `text-[18px] md:text-[20px]` with `leading-[1.6]`
+- Increase padding to `px-7 py-6 md:px-8 md:py-7`
+- Strengthen gradient: deeper blue start (`#E8F0FE` to `#F5F8FF`)
+- Widen left accent border from `5px` to `6px`
+- Add stronger shadow: `shadow-[0_2px_6px_rgba(37,99,217,0.06),0_8px_24px_-12px_rgba(37,99,217,0.10)]`
+- Enlarge Bot icon box from `h-9 w-9` to `h-10 w-10`, icon from `size-[18px]` to `size-5`
 
-**1. Engagement chart: replace inline `◈ MERCADO` text with `ReportSourceLabel`**
+## 2. Group Labels (`report-diagnostic-group.tsx`)
 
-Line 431 of `report-engagement-benchmark-chart.tsx` hardcodes `◈ MERCADO · Instagram...` as a raw string. Replace with `<ReportSourceLabel type="mercado" />` followed by the context text, for visual consistency.
+Current: `text-[11px]`, `pt-6 md:pt-8`, thin border-b.
 
-**2. KPI grid: add source badges to KPI cards**
+Changes:
+- Increase top spacing to `pt-8 md:pt-10` (stronger separation)
+- Increase label to `text-[12px]`
+- Letter gets a faint circular background pill (`size-5 rounded-full bg-slate-100 inline-flex items-center justify-center`)
+- Bottom border stays but shifts to `border-slate-200/60` (subtler)
+- Bottom padding increases to `pb-4`
 
-`report-kpi-grid-v2.tsx` renders 3 KPI cards (engagement, posting rhythm, dominant format) without any source badges. Add:
-- Engagement card: `auto` badge (calculated from likes + comments)
-- Posting rhythm card: `auto` badge (calculated from post dates)
-- Dominant format card: `auto` badge (classification from post types)
+## 3. Diagnostic Card Refinements (`report-diagnostic-card.tsx`)
 
-Each badge placed in the card's top-right corner, matching the card layout convention.
+### 3a. Remove redundant answer labels
+The `answerLabel` prop renders labels like "Resposta dominante", "Fase dominante" above the large answer. These are redundant when the answer itself is self-explanatory.
 
-**3. Delete legacy `ai-badge.tsx`**
+Changes:
+- Keep `answerLabel` prop for accessibility (`aria-label` on the answer box)
+- Stop rendering `answerLabel` as visible text — remove the `<p>` element
+- Callers don't need to change (prop is still accepted, just used for a11y)
 
-`ai-badge.tsx` is imported by nothing. It uses a different visual style (blue pill with Bot icon) that conflicts with the unified family. Delete it.
+### 3b. Distribution bars dominant highlight
+In `DiagnosticDistributionBar` (vertical-list variant), current bars use `opacity-30` on non-first items but the dominant bar has no special emphasis.
 
-### Files changed
+Changes:
+- First bar: full opacity + slightly taller (`h-2.5` instead of `h-2`)
+- Non-first bars: `opacity-25` (slightly more faded)
+- First bar label: `font-medium`
 
-- `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` — replace inline badge text
-- `src/components/report-redesign/v2/report-kpi-grid-v2.tsx` — add source badges
-- `src/components/report-redesign/v2/ai-badge.tsx` — delete
+### 3c. Audience icon already implemented
+The `DiagnosticAudienceHighlight` already has status-based icons (MessageCircleOff for silent/rose, MessagesSquare for active/emerald, MessageCircleMore for moderate/amber, Target for concentrated/amber). The comment about public payload not showing brand replies is already on line 488. No changes needed here.
 
-### What does NOT change
+## Files changed
+- `src/components/report-redesign/v2/report-diagnostic-verdict.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-group.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-card.tsx`
 
-- All diagnostic logic, benchmark values, calculations
-- `report-source-label.tsx` (the unified badge component itself)
-- `source-badge.tsx` (backward-compat wrapper)
-- Any locked file
+## What does NOT change
+- Diagnostic logic, classifiers, calculations
+- `report-diagnostic-block.tsx` (orchestrator — no edits)
+- OpenAI schema, Supabase, providers, PDF, admin, auth
+- No locked files edited
