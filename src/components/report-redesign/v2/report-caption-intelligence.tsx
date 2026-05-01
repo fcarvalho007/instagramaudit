@@ -36,21 +36,18 @@ export function ReportCaptionIntelligence({ data }: Props) {
 
   return (
     <Shell sampleSize={data.sampleSize}>
-      <SourceLegend />
       <SnapshotRow data={data} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         {/* Left column: Evidence */}
         <div className="flex flex-col gap-7">
-          <ThemesBlock data={data} />
-          <RecurringExpressionsBlock data={data} />
-          <ContentTypeMixBlock data={data} />
+          <ThemesAndExpressionsBlock data={data} />
+          <CtaBlock data={data} />
         </div>
 
         {/* Right column: Interpretation */}
         <div className="flex flex-col gap-6">
           <EditorialReadingBlock data={data} />
-          <CtaBlock data={data} />
           <ActionBridgeStrip data={data} />
         </div>
       </div>
@@ -67,13 +64,7 @@ export function ReportCaptionIntelligence({ data }: Props) {
   );
 }
 
-function Shell({
-  sampleSize,
-  children,
-}: {
-  sampleSize: number;
-  children: React.ReactNode;
-}) {
+function Shell({ sampleSize, children }: { sampleSize: number; children: React.ReactNode }) {
   return (
     <section
       aria-label="Pergunta 04 · Leitura das legendas"
@@ -108,20 +99,8 @@ function Shell({
           Baseado em {sampleSize} {sampleSize === 1 ? "legenda" : "legendas"}
         </span>
       </header>
-
       {children}
     </section>
-  );
-}
-
-function SourceLegend() {
-  return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <span className="text-eyebrow-sm text-slate-400">Origens:</span>
-      <SourceBadge variant="extracted" />
-      <SourceBadge variant="auto" />
-      <SourceBadge variant="ai" />
-    </div>
   );
 }
 
@@ -166,8 +145,9 @@ function SnapshotRow({ data }: { data: CaptionIntelligence }) {
   );
 }
 
-function ThemesBlock({ data }: { data: CaptionIntelligence }) {
-  const items = data.themes.items;
+function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
+  const items = data.themes.items.slice(0, 4);
+  const expressions = data.recurringExpressions.items;
   const ROLE_LABELS: Record<string, string> = {
     educativo: "educativo",
     autoridade: "autoridade",
@@ -230,87 +210,32 @@ function ThemesBlock({ data }: { data: CaptionIntelligence }) {
           })}
         </ol>
       )}
-    </div>
-  );
-}
 
-function ContentTypeMixBlock({ data }: { data: CaptionIntelligence }) {
-  const { items, dominant } = data.contentTypeMix;
-  const dominantItem = items.find((it) => it.type === dominant);
-  return (
-    <div className="flex flex-col gap-3">
-      <SectionHeader label="Tipo de conteúdo" badge={badgeVariant(data.contentTypeMix.source)} />
-      <p className="text-[12px] text-slate-500 -mt-1">
-        Função editorial provável das legendas: convite, educação, opinião ou institucional.
-      </p>
-      {items.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          Sem categorias claras com base nas legendas analisadas.
-        </p>
-      ) : (
-        <>
-          {dominant && dominantItem ? (
-            <div className="rounded-lg bg-blue-50/60 ring-1 ring-blue-100 px-3.5 py-2.5 space-y-1">
-              <p className="text-eyebrow-sm text-blue-700">Função dominante</p>
-              <p className="font-display text-[1.05rem] font-semibold tracking-tight text-slate-900">
-                {dominant}
-              </p>
-              <p className="text-[13px] text-slate-600">
-                {dominantItem.count} de {data.sampleSize} legendas com sinais de {dominant.toLowerCase()}.
-              </p>
-            </div>
-          ) : null}
-          <ul className="flex flex-col gap-2">
-            {items.map((it) => (
-              <li key={it.type} className="flex items-center gap-3">
-                <span className="text-[13px] text-slate-700 w-44 shrink-0 truncate">
-                  {it.type}
-                </span>
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100" aria-hidden>
-                  <div
-                    className="h-full rounded-full bg-blue-500"
-                    style={{ width: `${Math.min(100, Math.max(4, it.sharePct))}%` }}
-                  />
-                </div>
-                <span className="font-mono text-[11px] tabular-nums text-slate-500 w-10 text-right shrink-0">
-                  {it.sharePct}%
+      {/* Expressões recorrentes — fundidas no mesmo bloco */}
+      {expressions.length > 0 && (
+        <div className="pt-3 mt-1 border-t border-slate-100">
+          <div className="flex items-center gap-2 mb-2">
+            <p className="text-eyebrow-sm text-slate-400">Expressões recorrentes</p>
+            <SourceBadge variant={badgeVariant(data.recurringExpressions.source)} />
+          </div>
+          <ul className="flex flex-wrap gap-1.5">
+            {expressions.map((it) => (
+              <li
+                key={it.expression}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5",
+                  "ring-1 ring-slate-200 bg-slate-50",
+                  "text-[12px] text-slate-600",
+                )}
+              >
+                <span>{it.expression}</span>
+                <span className="font-mono text-[10px] tabular-nums text-slate-400">
+                  ×{it.count}
                 </span>
               </li>
             ))}
           </ul>
-        </>
-      )}
-    </div>
-  );
-}
-
-function RecurringExpressionsBlock({ data }: { data: CaptionIntelligence }) {
-  const items = data.recurringExpressions.items;
-  return (
-    <div className="flex flex-col gap-3">
-      <SectionHeader label="Expressões recorrentes" badge={badgeVariant(data.recurringExpressions.source)} />
-      {items.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          Sem expressões com peso suficiente nas legendas analisadas.
-        </p>
-      ) : (
-        <ul className="flex flex-wrap gap-2">
-          {items.map((it) => (
-            <li
-              key={it.expression}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full px-3 py-1",
-                "ring-1 ring-slate-200 bg-slate-50",
-                "text-[13px] text-slate-700",
-              )}
-            >
-              <span>{it.expression}</span>
-              <span className="font-mono text-[10px] tabular-nums text-slate-500">
-                ×{it.count}
-              </span>
-            </li>
-          ))}
-        </ul>
+        </div>
       )}
     </div>
   );
