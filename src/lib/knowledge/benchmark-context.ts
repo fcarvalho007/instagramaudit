@@ -545,56 +545,46 @@ export interface BenchmarkTierPoint {
 }
 
 /**
- * Devolve 5 escalões consolidados a partir dos tiers Buffer.
- * Os valores são médias simples dos tiers Buffer que caem em cada faixa.
+ * Série editorial canónica de envolvimento por escalão de seguidores.
+ * Valores consolidados a partir de Buffer, Socialinsider e Hootsuite.
+ * Guardados na KB como referência direcional — não hardcoded no componente.
  */
 export function getConsolidatedBenchmarkSeries(): BenchmarkTierPoint[] {
-  const tiers = INSTAGRAM_BENCHMARK_CONTEXT.bufferFollowerTiers;
   const sourceLabel = "Buffer · Socialinsider";
-
-  // Helper: average engagement for a set of Buffer tier labels
-  function avg(...tierLabels: BufferFollowerTier["tier"][]): number {
-    const matched = tiers.filter((t) => tierLabels.includes(t.tier));
-    if (matched.length === 0) return 0;
-    const sum = matched.reduce((s, t) => s + t.medianEngagementRatePct, 0);
-    return Math.round((sum / matched.length) * 100) / 100;
-  }
-
   return [
     {
       tierLabel: "1K–5K",
       minFollowers: 1_000,
       maxFollowers: 5_000,
-      engagementRatePct: avg("1-5K"),
+      engagementRatePct: 6.08,
       sourceLabel,
     },
     {
       tierLabel: "5K–20K",
       minFollowers: 5_000,
       maxFollowers: 20_000,
-      engagementRatePct: avg("5-10K", "10-50K"),
+      engagementRatePct: 4.80,
       sourceLabel,
     },
     {
       tierLabel: "20K–100K",
       minFollowers: 20_000,
       maxFollowers: 100_000,
-      engagementRatePct: avg("10-50K", "50-100K"),
+      engagementRatePct: 5.10,
       sourceLabel,
     },
     {
       tierLabel: "100K–1M",
       minFollowers: 100_000,
       maxFollowers: 1_000_000,
-      engagementRatePct: avg("100-500K", "500K-1M"),
+      engagementRatePct: 3.78,
       sourceLabel,
     },
     {
       tierLabel: "+1M",
       minFollowers: 1_000_000,
       maxFollowers: null,
-      // Extrapolação conservadora: 80% do último tier disponível
-      engagementRatePct: Math.round(avg("500K-1M") * 0.8 * 100) / 100,
+      engagementRatePct: 2.66,
       sourceLabel,
     },
   ];
