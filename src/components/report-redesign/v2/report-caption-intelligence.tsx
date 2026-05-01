@@ -1,4 +1,4 @@
-import { AlertTriangle, Crown, Lightbulb, Lock, MessageSquareQuote, Sparkles } from "lucide-react";
+import { AlertTriangle, Crown, Cpu, Lightbulb, Lock, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type {
@@ -20,11 +20,6 @@ function badgeVariant(s: CaptionSourceKind): SourceBadgeVariant {
 
 /**
  * Pergunta 04 · Leitura das legendas — Caption Intelligence.
- *
- * Substitui o antigo `ReportThemesFeature`. Mostra 5 sub-blocos com
- * badges explícitas de origem (Dados extraídos / Leitura automática /
- * Leitura IA) para tornar credível que as captions foram efectivamente
- * lidas e interpretadas — não apenas tokenizadas.
  */
 export function ReportCaptionIntelligence({ data }: Props) {
   if (!data.available) {
@@ -41,27 +36,33 @@ export function ReportCaptionIntelligence({ data }: Props) {
 
   return (
     <Shell sampleSize={data.sampleSize}>
-        <SnapshotRow data={data} />
+      <SourceLegend />
+      <SnapshotRow data={data} />
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8">
-        {/* Coluna esquerda: temas + tipo de conteúdo + expressões */}
-        <div className="md:col-span-3 flex flex-col gap-7">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        {/* Left column: Evidence */}
+        <div className="flex flex-col gap-7">
           <ThemesBlock data={data} />
-          <ContentTypeMixBlock data={data} />
           <RecurringExpressionsBlock data={data} />
+          <ContentTypeMixBlock data={data} />
         </div>
 
-        {/* Coluna direita: CTA + leitura editorial */}
-        <aside className="md:col-span-2 flex flex-col gap-6">
-          <CtaBlock data={data} />
+        {/* Right column: Interpretation */}
+        <div className="flex flex-col gap-6">
           <EditorialReadingBlock data={data} />
-        </aside>
+          <CtaBlock data={data} />
+          <ActionBridgeStrip data={data} />
+        </div>
       </div>
 
-      <ActionBridgeStrip data={data} />
-
-      <ScopeTransparencyNote />
-      <PremiumTeaserStrip />
+      <footer className="space-y-3 pt-2 border-t border-slate-100">
+        <p className="text-[12px] text-slate-500 leading-relaxed">
+          Esta análise considera apenas legendas públicas. Não inclui áudio,
+          vídeo, texto dentro de imagens ou transcrição de Reels. As hashtags
+          são analisadas separadamente.
+        </p>
+        <PremiumTeaserStrip />
+      </footer>
     </Shell>
   );
 }
@@ -92,9 +93,9 @@ function Shell({
           <h3 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-snug">
             O que as legendas revelam sobre a estratégia de conteúdo?
           </h3>
-          <p className="text-[13px] text-slate-500 max-w-xl">
-            Baseado na leitura das legendas públicas dos posts analisados
-            — não inclui transcrição do que é dito em vídeo.
+          <p className="text-[13px] text-slate-500 max-w-xl leading-relaxed">
+            Análise ao texto das legendas públicas dos posts analisados
+            — sem incluir áudio, vídeo ou transcrição de Reels.
           </p>
         </div>
         <span
@@ -113,19 +114,22 @@ function Shell({
   );
 }
 
-function BlockHeader({
-  label,
-  variant,
-}: {
-  label: string;
-  variant: SourceBadgeVariant;
-}) {
+function SourceLegend() {
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <span className="text-eyebrow-sm text-slate-400">Origens:</span>
+      <SourceBadge variant="extracted" />
+      <SourceBadge variant="auto" />
+      <SourceBadge variant="ai" />
+    </div>
+  );
+}
+
+function SectionHeader({ label, badge }: { label: string; badge?: SourceBadgeVariant }) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
-      <p className="text-eyebrow-sm text-slate-500">
-        {label}
-      </p>
-      <SourceBadge variant={variant} />
+      <p className="text-eyebrow-sm text-slate-500">{label}</p>
+      {badge ? <SourceBadge variant={badge} /> : null}
     </div>
   );
 }
@@ -136,14 +140,11 @@ function BlockHeader({
 
 function SnapshotRow({ data }: { data: CaptionIntelligence }) {
   const s = data.snapshot;
-  const cards: Array<{ label: string; value: string; variant: SourceBadgeVariant }> = [
-    { label: "Tema dominante", value: s.dominantTheme, variant: "auto" },
-    { label: "Intenção principal", value: s.mainIntent, variant: "auto" },
-    {
-      label: "Oportunidade principal",
-      value: s.mainOpportunity,
-      variant: data.editorialReading.source === "ai" ? "ai" : "auto",
-    },
+  const isAiOpp = data.editorialReading.source === "ai";
+  const cards: Array<{ label: string; value: string; highlight?: boolean }> = [
+    { label: "Tema dominante", value: s.dominantTheme },
+    { label: "Intenção principal", value: s.mainIntent },
+    { label: "Oportunidade principal", value: s.mainOpportunity, highlight: isAiOpp },
   ];
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -151,17 +152,12 @@ function SnapshotRow({ data }: { data: CaptionIntelligence }) {
         <div
           key={c.label}
           className={cn(
-            "rounded-xl ring-1 px-4 py-3.5 flex flex-col gap-2 transition-shadow",
-            c.variant === "ai"
-              ? "bg-blue-50/50 ring-blue-100"
-              : "bg-slate-50/60 ring-slate-200/60",
+            "rounded-xl ring-1 px-4 py-3.5 flex flex-col gap-1.5",
+            c.highlight ? "bg-blue-50/50 ring-blue-100" : "bg-slate-50/60 ring-slate-200/60",
           )}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-eyebrow-sm text-slate-500">{c.label}</span>
-            <SourceBadge variant={c.variant} />
-          </div>
-          <p className="font-display text-[1.05rem] md:text-[1.125rem] font-semibold tracking-tight text-slate-900 leading-snug">
+          <span className="text-eyebrow-sm text-slate-500">{c.label}</span>
+          <p className="text-[15px] md:text-[1.05rem] font-semibold tracking-tight text-slate-900 leading-snug">
             {c.value}
           </p>
         </div>
@@ -188,25 +184,28 @@ function ThemesBlock({ data }: { data: CaptionIntelligence }) {
   };
   return (
     <div className="flex flex-col gap-3">
-      <BlockHeader label="Temas dominantes" variant={badgeVariant(data.themes.source)} />
+      <SectionHeader label="Temas dominantes" badge={badgeVariant(data.themes.source)} />
+      <p className="text-[12px] text-slate-500 -mt-1">
+        Assuntos mais recorrentes no texto das legendas — não confundir com hashtags.
+      </p>
       {items.length === 0 ? (
         <p className="text-sm text-slate-500">
           Sem temas semânticos suficientes nas legendas analisadas.
         </p>
       ) : (
-        <ol className="flex flex-col gap-3">
+        <ol className="flex flex-col gap-2.5">
           {items.map((it, idx) => {
             const conf = CONFIDENCE_STYLE[it.confidence];
             return (
             <li
               key={`${it.label}-${idx}`}
-              className="rounded-lg ring-1 ring-slate-200/70 bg-white p-3.5 flex flex-col gap-2"
+              className="rounded-lg ring-1 ring-slate-200/50 bg-white px-3.5 py-2.5 flex flex-col gap-1.5"
             >
               <div className="flex items-center gap-2.5 flex-wrap min-w-0">
                 <span className="font-mono text-[11px] tabular-nums text-slate-400 shrink-0">
                   {String(idx + 1).padStart(2, "0")}
                 </span>
-                <span className="text-[15px] md:text-[16px] font-semibold text-slate-900">
+                <span className="text-[14px] font-semibold text-slate-900">
                   {it.label}
                 </span>
                 <span className="font-mono text-[11px] tabular-nums text-slate-500 shrink-0">
@@ -216,19 +215,14 @@ function ThemesBlock({ data }: { data: CaptionIntelligence }) {
                   {conf.label}
                 </span>
                 <span className="text-eyebrow-sm text-slate-400 shrink-0">
-                  papel: {ROLE_LABELS[it.role] ?? it.role}
+                  {ROLE_LABELS[it.role] ?? it.role}
                 </span>
               </div>
               {it.evidence ? (
-                <p className="text-[13px] text-slate-600 italic leading-relaxed">
-                  <MessageSquareQuote
-                    aria-hidden
-                    className="inline size-3.5 -mt-1 mr-1 text-slate-400"
-                  />
-                  <span className="text-eyebrow-sm not-italic text-slate-400 mr-1.5">
-                    excerto real
-                  </span>
+                <p className="text-[12.5px] text-slate-500 italic leading-relaxed line-clamp-2 pl-7">
+                  <span className="not-italic text-slate-400 mr-1">«</span>
                   {it.evidence}
+                  <span className="not-italic text-slate-400 ml-0.5">»</span>
                 </p>
               ) : null}
             </li>
@@ -245,7 +239,10 @@ function ContentTypeMixBlock({ data }: { data: CaptionIntelligence }) {
   const dominantItem = items.find((it) => it.type === dominant);
   return (
     <div className="flex flex-col gap-3">
-      <BlockHeader label="Tipo de conteúdo" variant={badgeVariant(data.contentTypeMix.source)} />
+      <SectionHeader label="Tipo de conteúdo" badge={badgeVariant(data.contentTypeMix.source)} />
+      <p className="text-[12px] text-slate-500 -mt-1">
+        Função editorial provável das legendas: convite, educação, opinião ou institucional.
+      </p>
       {items.length === 0 ? (
         <p className="text-sm text-slate-500">
           Sem categorias claras com base nas legendas analisadas.
@@ -291,7 +288,7 @@ function RecurringExpressionsBlock({ data }: { data: CaptionIntelligence }) {
   const items = data.recurringExpressions.items;
   return (
     <div className="flex flex-col gap-3">
-      <BlockHeader label="Expressões recorrentes" variant={badgeVariant(data.recurringExpressions.source)} />
+      <SectionHeader label="Expressões recorrentes" badge={badgeVariant(data.recurringExpressions.source)} />
       {items.length === 0 ? (
         <p className="text-sm text-slate-500">
           Sem expressões com peso suficiente nas legendas analisadas.
@@ -328,25 +325,22 @@ function CtaBlock({ data }: { data: CaptionIntelligence }) {
   };
   const strength = STRENGTH_STYLE[c.ctaStrength];
   return (
-    <div className="rounded-xl bg-slate-50/80 ring-1 ring-slate-100 p-5 flex flex-col gap-3">
-      <BlockHeader label="Chamadas à ação" variant={badgeVariant(c.source)} />
-      <div className="flex items-center gap-2">
-        <span className="text-eyebrow-sm text-slate-500">Força CTA</span>
-        <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1", strength.cls)}>
-          {strength.label}
+    <div className="rounded-xl bg-slate-50/80 ring-1 ring-slate-100 p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <SectionHeader label="Chamadas à ação" badge={badgeVariant(c.source)} />
+        <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1 shrink-0", strength.cls)}>
+          CTA {strength.label.toLowerCase()}
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex items-center gap-4">
         <Stat label="Com CTA" value={`${c.hasCtaPct}%`} />
         <Stat label="Com pergunta" value={`${c.hasQuestionPct}%`} />
       </div>
       <p className="text-[13px] text-slate-700">
-        <span className="text-eyebrow-sm text-slate-500 mr-1.5">
-          CTA dominante
-        </span>
-        <span className="font-semibold text-slate-900">{c.dominantCtaLabel}</span>
+        <span className="text-eyebrow-sm text-slate-500 mr-1.5">CTA dominante</span>
+        <span className="font-medium text-slate-900">{c.dominantCtaLabel}</span>
       </p>
-      <p className="text-[13px] text-slate-600 leading-relaxed">{c.summary}</p>
+      <p className="text-[12.5px] text-slate-600 leading-relaxed">{c.summary}</p>
     </div>
   );
 }
@@ -372,39 +366,38 @@ function EditorialReadingBlock({ data }: { data: CaptionIntelligence }) {
     <div
       className={cn(
         "rounded-xl ring-1 overflow-hidden",
-        isAi ? "bg-blue-50/60 ring-blue-100" : "bg-slate-50/80 ring-slate-100",
+        isAi ? "bg-blue-50/50 ring-blue-100" : "bg-slate-50/80 ring-slate-100",
       )}
     >
-      <div className={cn("flex", isAi && "border-l-2 border-blue-400/50")}>
-        <div className="p-5 flex flex-col gap-3 min-w-0 flex-1">
+      <div className={cn(isAi && "border-l-[3px] border-blue-400/60")}>
+        <div className="p-5 md:p-6 flex flex-col gap-4 min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               {isAi ? (
-                <Sparkles aria-hidden className="size-3.5 text-blue-500" />
-              ) : null}
-              <p className="text-eyebrow-sm text-slate-500">Leitura editorial</p>
+                <Sparkles aria-hidden className="size-4 text-blue-500" />
+              ) : (
+                <Cpu aria-hidden className="size-3.5 text-slate-400" />
+              )}
+              <p className="text-eyebrow-sm text-slate-600 font-medium">Leitura editorial</p>
             </div>
             <SourceBadge variant={badgeVariant(r.source)} />
           </div>
-          <p className={cn("text-[14px] text-slate-700 leading-relaxed", isAi && "italic")}>
+
+          <p className={cn(
+            "text-[14px] md:text-[15px] text-slate-700 leading-[1.7]",
+            isAi && "italic",
+          )}>
             {r.whatItCommunicates}
           </p>
+
           {r.whatWorks && r.whatWorks !== "—" ? (
-            <ReadingLine label="O que está a funcionar" text={r.whatWorks} />
+            <ReadingLine label="O que está a funcionar" text={r.whatWorks} tone="slate" />
           ) : null}
           {hasMissing ? (
-            <ReadingLine
-              label="O que está em falta"
-              text={r.whatIsMissing}
-              tone="amber"
-            />
+            <ReadingLine label="O que está em falta" text={r.whatIsMissing} tone="amber" />
           ) : null}
           {r.recommendedImprovement ? (
-            <ReadingLine
-              label="Próxima melhoria"
-              text={r.recommendedImprovement}
-              tone={isAi ? "blue" : "slate"}
-            />
+            <ReadingLine label="Próxima melhoria" text={r.recommendedImprovement} tone={isAi ? "blue" : "slate"} />
           ) : null}
         </div>
       </div>
@@ -442,49 +435,28 @@ function ReadingLine({
   );
 }
 
-function ScopeTransparencyNote() {
-  return (
-    <div className="border-t border-slate-200/40 pt-4 mt-2 space-y-2">
-      <p className="text-[12.5px] text-slate-500 leading-relaxed max-w-2xl">
-        Esta análise lê as legendas públicas dos posts analisados. Não inclui
-        áudio, vídeo, texto dentro das imagens ou transcrição dos Reels.
-      </p>
-      <p className="text-[12.5px] text-slate-500 leading-relaxed max-w-2xl">
-        As hashtags são analisadas separadamente — esta secção foca o texto
-        editorial das legendas, CTAs, temas e padrões de linguagem.
-      </p>
-    </div>
-  );
-}
-
 function PremiumTeaserStrip() {
   return (
     <div
       className={cn(
-        "rounded-xl ring-1 px-5 py-4 flex items-start gap-3",
-        "bg-amber-50/40 ring-amber-200/60",
+        "rounded-lg ring-1 px-4 py-3 flex items-start gap-3",
+        "bg-amber-50/30 ring-amber-200/50",
       )}
     >
-      <Lock aria-hidden className="size-4 mt-0.5 shrink-0 text-amber-600/70" />
+      <Lock aria-hidden className="size-3.5 mt-0.5 shrink-0 text-amber-600/60" />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <p className="text-eyebrow-sm text-amber-800/80">
-            Análise Premium
-          </p>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 ring-1",
-              "text-eyebrow-sm bg-amber-100/60 text-amber-700 ring-amber-300/50",
-            )}
-          >
-            <Crown aria-hidden className="size-2.5" />
-            PRO
-          </span>
-        </div>
-        <p className="text-[13px] text-slate-600 leading-relaxed">
-          Esta versão analisa as legendas públicas. No plano Premium, a leitura
-          pode incluir transcrição de Reels/vídeos, hooks falados e comparação
-          entre o que é dito e o que é escrito na legenda.
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 ring-1",
+            "text-eyebrow-sm bg-amber-100/60 text-amber-700 ring-amber-300/50",
+          )}
+        >
+          <Crown aria-hidden className="size-2.5" />
+          PRO
+        </span>
+        <p className="text-[12px] text-slate-500 leading-relaxed mt-1">
+          Análise Premium: inclui transcrição de Reels/vídeos, hooks falados e
+          comparação entre o que é dito e o que é escrito na legenda.
         </p>
       </div>
     </div>
@@ -498,7 +470,7 @@ function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
   return (
     <div
       className={cn(
-        "rounded-xl ring-1 px-5 py-4 flex items-start gap-3",
+        "rounded-xl ring-1 px-4 py-3.5 flex items-start gap-3",
         ab.priorityType === "alta"
           ? "bg-amber-50/60 ring-amber-200"
           : "bg-blue-50/50 ring-blue-100",
@@ -512,8 +484,8 @@ function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
         )}
       />
       <div className="min-w-0">
-        <p className="text-eyebrow-sm text-slate-600 mb-1">{ab.title}</p>
-        <p className="text-[14px] text-slate-800 leading-relaxed">{ab.body}</p>
+        <p className="text-eyebrow-sm text-slate-600 mb-0.5">Próximo passo recomendado</p>
+        <p className="text-[13px] text-slate-800 leading-relaxed">{ab.body}</p>
       </div>
     </div>
   );
