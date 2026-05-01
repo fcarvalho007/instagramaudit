@@ -435,3 +435,30 @@ function ReadingLine({
     </p>
   );
 }
+
+function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
+  const ab = data.actionBridge;
+  if (!ab.body || ab.body.length < 5) return null;
+  return (
+    <div
+      className={cn(
+        "rounded-xl ring-1 px-5 py-4 flex items-start gap-3",
+        ab.priorityType === "alta"
+          ? "bg-amber-50/60 ring-amber-200"
+          : "bg-blue-50/50 ring-blue-100",
+      )}
+    >
+      <ArrowRight
+        aria-hidden
+        className={cn(
+          "size-4 mt-0.5 shrink-0",
+          ab.priorityType === "alta" ? "text-amber-600" : "text-blue-600",
+        )}
+      />
+      <div className="min-w-0">
+        <p className="text-eyebrow-sm text-slate-600 mb-1">{ab.title}</p>
+        <p className="text-[14px] text-slate-800 leading-relaxed">{ab.body}</p>
+      </div>
+    </div>
+  );
+}
