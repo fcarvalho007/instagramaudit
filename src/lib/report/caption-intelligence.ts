@@ -583,14 +583,17 @@ export function buildCaptionIntelligence(
   const sampleSize = posts.length;
   const available = sampleSize >= 4;
 
-  const themes = buildThemes(args.topThemes, args.topHashtagLabels);
+  const themes = buildThemes(args.topThemes, args.topHashtagLabels, sampleSize, posts);
   const mix = buildContentTypeMix(posts);
   const expressions = buildRecurringExpressions(posts);
   const ctaRaw = buildCtaPatterns(posts);
+  const ctaStrength: CtaStrength =
+    ctaRaw.hasCtaPct >= 50 ? "strong" : ctaRaw.hasCtaPct >= 20 ? "moderate" : "weak";
   const cta: CtaPatternsBlock = {
     source: "auto",
     ...ctaRaw,
     summary: ctaSummary(ctaRaw),
+    ctaStrength,
   };
 
   const avgLen =
@@ -614,13 +617,54 @@ export function buildCaptionIntelligence(
         recommendedImprovement: null,
       };
 
+  // Snapshot row — 3 quick-read insights
+  const INTENT_LABELS: Partial<Record<ContentTypeMixLabel, string>> = {
+    "Educativo": "Educar e gerar autoridade",
+    "Opinião / análise": "Criar opinião e posicionamento",
+    "Promocional": "Promover produtos ou serviços",
+    "Institucional": "Construir marca e reputação",
+    "Bastidores / pessoal": "Aproximar e humanizar",
+    "Convite / CTA": "Converter e gerar ação",
+  };
+  const snapshot: SnapshotRow = {
+    dominantTheme: themes[0]?.label ?? "Sem tema dominante claro",
+    mainIntent: mix.dominant
+      ? (INTENT_LABELS[mix.dominant] ?? mix.dominant)
+      : "Sem intenção editorial dominante",
+    mainOpportunity: editorialReading.recommendedImprovement
+      ?? "Manter consistência editorial",
+  };
+
+  // Action Bridge
+  const actionBridge: ActionBridge = buildActionBridge(editorialReading, cta);
+
   return {
     sampleSize,
     available,
+    snapshot,
     themes: { source: "auto", items: themes },
     contentTypeMix: { source: "auto", items: mix.items, dominant: mix.dominant },
     recurringExpressions: { source: "extracted", items: expressions },
     ctaPatterns: cta,
     editorialReading,
+    actionBridge,
+  };
+}
+
+function buildActionBridge(
+  reading: EditorialReadingBlock,
+  cta: CtaPatternsBlock,
+): ActionBridge {
+  if (reading.recommendedImprovement && reading.recommendedImprovement.length > 5) {
+    return {
+      title: "Ação sugerida",
+      body: reading.recommendedImprovement,
+      priorityType: cta.ctaStrength === "weak" ? "alta" : "oportunidade",
+    };
+  }
+  return {
+    title: "Ação sugerida",
+    body: "Manter a consistência editorial e testar variações de CTA para identificar o formato mais eficaz.",
+    priorityType: "oportunidade",
   };
 }
