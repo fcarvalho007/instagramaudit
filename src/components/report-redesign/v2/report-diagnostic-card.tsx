@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { Bot, MessagesSquare, MessageCircleMore, Target, MessageCircleOff, CircleHelp } from "lucide-react";
+import { MessagesSquare, MessageCircleMore, Target, MessageCircleOff, CircleHelp } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
 
