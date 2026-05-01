@@ -95,6 +95,10 @@ const STOP_WORDS_PT = new Set<string>([
   // marcas próprias frequentes em CTAs (filtradas como ruído editorial
   // — não são "temas" da comunicação, são chamadas de acção)
   "digitalsprint", "frederico", "carvalho",
+  // adjectivos genéricos sem valor temático
+  "ultimas", "ultima", "ultimos", "ultimo", "novos", "nova", "novas",
+  "varios", "varias", "outros", "outras", "todos", "todas", "ferramentas",
+  "ferramenta", "queres", "quero", "quer",
 ]);
 
 // ---------- helpers ----------
