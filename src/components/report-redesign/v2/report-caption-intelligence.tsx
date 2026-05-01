@@ -30,6 +30,7 @@ export function ReportCaptionIntelligence({ data }: Props) {
           leitura semântica fiável. À medida que houver mais publicações
           com texto, este bloco abre a interpretação editorial completa.
         </p>
+        <PremiumTeaserStrip />
       </Shell>
     );
   }
@@ -379,9 +380,12 @@ function PremiumTeaserStrip() {
           <Crown aria-hidden className="size-2.5" />
           PRO
         </span>
-        <p className="text-[12px] text-slate-500 leading-relaxed mt-1">
-          Análise Premium: inclui transcrição de Reels/vídeos, hooks falados e
-          comparação entre o que é dito e o que é escrito na legenda.
+        <p className="text-[12.5px] text-slate-600 font-medium mt-1">
+          Análise completa de Reels e vídeo
+        </p>
+        <p className="text-[12px] text-slate-500 leading-relaxed mt-0.5">
+          Inclui transcrição de Reels/vídeos, hooks falados e comparação
+          entre o que é dito e o que é escrito na legenda.
         </p>
       </div>
     </div>
@@ -399,13 +403,14 @@ function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
         ab.priorityType === "alta"
           ? "bg-amber-50/60 ring-amber-200"
           : "bg-blue-50/50 ring-blue-100",
-      )}
+        // ↑ replaced below
+      ))}
     >
       <Icon
         aria-hidden
         className={cn(
           "size-4 mt-0.5 shrink-0",
-          ab.priorityType === "alta" ? "text-amber-600" : "text-blue-600",
+          ab.priorityType === "alta" ? "text-rose-600" : "text-blue-600",
         )}
       />
       <div className="min-w-0">
