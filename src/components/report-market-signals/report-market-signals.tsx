@@ -464,7 +464,7 @@ export function ReportMarketSignals({
             {usable.map((kw) => (
               <span
                 key={kw}
-                className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-mono text-blue-700"
+                className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-sans text-blue-700"
               >
                 {kw}
               </span>
@@ -480,7 +480,7 @@ export function ReportMarketSignals({
               {dropped.map((kw) => (
                 <span
                   key={kw}
-                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-mono text-slate-500"
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-sans text-slate-500"
                 >
                   {kw}
                 </span>

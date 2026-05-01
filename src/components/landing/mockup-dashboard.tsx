@@ -129,7 +129,7 @@ export function MockupDashboard() {
                   >
                     <span
                       className={cn(
-                        "font-mono text-xs md:text-sm truncate",
+                        "font-sans text-xs md:text-sm truncate",
                         row.self
                           ? "text-on-light-primary font-semibold"
                           : "text-on-light-secondary",

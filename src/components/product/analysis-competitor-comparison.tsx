@@ -122,7 +122,7 @@ function FailureCard({ entry }: { entry: Extract<CompetitorAnalysis, { success: 
           aria-hidden="true"
           className="size-1.5 rounded-full bg-content-tertiary"
         />
-        <span className="font-mono text-xs text-content-secondary">
+        <span className="font-sans text-xs text-content-secondary">
           @{entry.username}
         </span>
       </div>

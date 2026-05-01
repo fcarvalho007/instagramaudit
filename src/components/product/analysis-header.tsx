@@ -72,7 +72,7 @@ export function AnalysisHeader({
             ) : null}
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-sm text-content-secondary">
-            <span className="font-mono text-content-secondary">@{username}</span>
+            <span className="font-sans text-content-secondary">@{username}</span>
             <span aria-hidden="true" className="text-content-tertiary">
               ·
             </span>
