@@ -594,7 +594,7 @@ function renderObjectiveCard(
 
   return (
     <ReportDiagnosticCard
-      key="q08"
+      key="q07"
       number="07"
       label="Objetivo · Síntese"
       question="Que objetivo estratégico parece estar por trás?"

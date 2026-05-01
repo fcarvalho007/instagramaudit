@@ -31,7 +31,7 @@ export const BLOCKS: readonly BlockConfig[] = [
     eyebrowOverride: "Diagnóstico editorial",
     question: "O que explica estes resultados?",
     subtitle:
-      "Oito perguntas que qualquer marketer faz ao olhar para um perfil — respondidas pelo cruzamento dos dados recolhidos.",
+      "Perguntas essenciais que qualquer marketer faz ao olhar para um perfil — respondidas pelo cruzamento dos dados recolhidos.",
   },
   {
     id: "performance",

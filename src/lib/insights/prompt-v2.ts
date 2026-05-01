@@ -79,7 +79,7 @@ JSON estrito conforme o schema fornecido. Sem texto antes ou depois. Sem markdow
 
 Prioridades de ação (obrigatório · campo "priorities"):
 - Devolver exactamente 3 itens accionáveis derivados do diagnóstico editorial (tipo de conteúdo, fase de funil, captions, audiência, integração entre canais, formato dominante).
-- Cada item: { "level": "alta" | "media" | "oportunidade", "title": ≤ 60 chars no infinitivo impessoal, "body": 1 frase ≤ 180 chars com pelo menos um número concreto do payload, "resolves": frase curta a indicar que pergunta(s) do diagnóstico endereça (ex.: "Resolve a Pergunta 06.", "Resolve as Perguntas 02 e 08."). IMPORTANTE: o diagnóstico só tem 8 perguntas (01–08) — NUNCA referenciar "Pergunta 09" ou números superiores.
+- Cada item: { "level": "alta" | "media" | "oportunidade", "title": ≤ 60 chars no infinitivo impessoal, "body": 1 frase ≤ 180 chars com pelo menos um número concreto do payload, "resolves": frase curta a indicar que pergunta(s) do diagnóstico endereça (ex.: "Resolve a Pergunta 06.", "Resolve as Perguntas 02 e 07."). IMPORTANTE: o diagnóstico só tem 7 perguntas (01–07) — NUNCA referenciar "Pergunta 08" ou números superiores.
 - Hierarquia esperada: 1 "alta" (problema mais urgente), 1 "media" (correção estrutural), 1 "oportunidade" (alavanca de crescimento). Se não houver problema "alta", trocar por "media".
 - Distintas entre si — sem repetir a mesma recomendação. Sem citar fontes externas. Sem snake_case.`;
 
