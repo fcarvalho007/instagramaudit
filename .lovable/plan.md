@@ -1,44 +1,41 @@
 
-## File to edit
+## Scope
 
-`src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` (not locked)
+Only `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`. No logic, data, or schema changes.
 
-## Changes
+## Refinements
 
-### 1. Mobile tooltip overflow fix (lines 464, 475)
+### 1. Competitor marker Y clamp (parity with profile marker)
 
-- Tighten the clamp from `Math.max(18, Math.min(82, pctX))` to `Math.max(28, Math.min(72, pctX))`.
-- Add responsive max-width: change `max-w-[220px]` to `max-w-[180px] sm:max-w-[220px]`.
+The profile marker already has a near-zero clamp, but the competitor marker at line 327 uses raw `yForVal()` — it can bleed into the X-axis zone too. Apply the same clamp pattern.
 
-### 2. Near-zero profile marker guard (line 86)
+### 2. Reference line label collision with profile marker
 
-Replace the raw `profileMarkerY` assignment:
+When the profile value is close to the benchmark value, the "Referência do escalão" label (at `refY - 5`) can collide with the profile marker's "Este perfil" label (at `my - 7`). Add a dynamic offset: if the two Y values are within ~18px, nudge the reference label above the collision zone.
 
-```ts
-const profileMarkerY = Math.max(
-  PAD_T + MARKER_R,
-  Math.min(yForVal(profileVal), PAD_T + innerH - MARKER_R - 2)
-);
-```
+### 3. Soften grid lines
 
-This clamps the marker so the circle and label never bleed into the X-axis zone or above the chart.
+Change grid line stroke from `#e2e8f0` / `0.5` to `#e2e8f0` / `0.35` for a more refined, less busy background.
 
-### 3. Reference line label repositioned (lines 180-189)
+### 4. Smoother bar hover transition
 
-Move label from right-aligned (`x={VB_W - PAD_R - 2}`, `textAnchor="end"`) to left-aligned near the Y-axis:
+Add `transition-all duration-200` to bar rects instead of just `transition-opacity duration-150` for a more polished feel when hovering.
 
-```
-x={PAD_L + 4}
-textAnchor="start"
-```
+### 5. Active bar subtle glow
 
-Everything else (the dashed line, colour, opacity, font) stays identical.
+Add a faint drop shadow filter on the active bar to visually separate it from context bars — using an SVG `<filter>` with a soft blue shadow.
+
+### 6. Profile marker label right-edge guard
+
+When the active tier is the last bar, the "Este perfil" and rate labels positioned at `cx + MARKER_R + 5` can overflow the SVG viewBox right edge. Detect this case and flip the label to the left side of the marker.
+
+## Files changed
+
+- `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
 
 ## What does NOT change
 
 - Benchmark values, calculation logic, gap formula
-- Active tier highlighting, profile marker colour, gap pill copy
-- Source references as [1] [2] [3] with aria-labels
+- Source references format
 - Pro competitor slot
-- Desktop hover behaviour and keyboard accessibility
-- No other files touched
+- Tooltip content and accessibility
