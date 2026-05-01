@@ -115,10 +115,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
   const aiLanguageText =
     result.enriched.aiInsightsV2?.sections.language?.text ?? null;
-  const aiLanguage =
-    aiLanguageText && aiLanguageText.trim().length > 0
-      ? { kind: "interpretation" as const, text: aiLanguageText.trim() }
-      : null;
 
   // Build cards as nullable list, then split into groups
   const groupA = compact([
