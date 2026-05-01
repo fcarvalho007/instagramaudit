@@ -500,6 +500,7 @@ export function DiagnosticAudienceHighlight({
   postsWithComments,
   sampleSize,
   tone = "rose",
+  topConversationPost,
 }: {
   avgLikes: number;
   avgComments: number;
@@ -508,6 +509,12 @@ export function DiagnosticAudienceHighlight({
   postsWithComments?: number;
   sampleSize?: number;
   tone?: "rose" | "emerald" | "amber";
+  topConversationPost?: {
+    index: number;
+    comments: number;
+    likes: number;
+    captionExcerpt: string;
+  } | null;
 }) {
   const TONE_BG: Record<typeof tone, string> = {
     rose: "bg-rose-600 text-white",
@@ -522,7 +529,7 @@ export function DiagnosticAudienceHighlight({
   return (
     <div className="space-y-2.5">
       {/* Averages bar */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div
           className={cn(
             "text-eyebrow rounded-md px-3 py-2 flex-1",
@@ -552,6 +559,27 @@ export function DiagnosticAudienceHighlight({
           {postsWithComments != null ? ` · ${postsWithComments} com comentários` : ""}
           {totalLikes != null ? ` · ${totalLikes.toLocaleString("pt-PT")} gostos no total` : ""}
         </p>
+      )}
+
+      {/* Top conversation post evidence */}
+      {topConversationPost && topConversationPost.comments > 0 && (
+        <div className="rounded-md bg-slate-50 ring-1 ring-slate-200/60 px-3 py-2 flex flex-col gap-0.5">
+          <span className="text-eyebrow-sm text-slate-500">Post com mais conversa</span>
+          <div className="flex items-center gap-3 text-[12.5px] text-slate-700">
+            <span className="font-mono tabular-nums text-slate-800 font-semibold">
+              {topConversationPost.comments} coment.
+            </span>
+            <span className="text-slate-400">·</span>
+            <span className="font-mono tabular-nums">
+              {topConversationPost.likes} gostos
+            </span>
+          </div>
+          {topConversationPost.captionExcerpt && (
+            <p className="text-[11.5px] text-slate-500 italic line-clamp-1 mt-0.5">
+              «{topConversationPost.captionExcerpt.slice(0, 80)}»
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
