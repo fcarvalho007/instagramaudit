@@ -80,6 +80,7 @@ function KpiCard({
   value,
   help,
   compact,
+  sourceBadge,
 }: {
   icon: ReactNode;
   label: string;
