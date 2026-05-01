@@ -454,8 +454,6 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
         tone="slate"
         span="full"
         body={r.explanation}
-        sourceType="automatic"
-        sourceDetail="Gostos + comentários"
       >
         <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3">
           <p className="text-[12.5px] text-slate-600 leading-relaxed">
@@ -503,6 +501,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
         postsWithComments={r.totals.postsWithComments}
         sampleSize={r.sampleSize}
         tone={highlightTone}
+        topConversationPost={r.topConversationPost}
       />
     </ReportDiagnosticCard>
   );
