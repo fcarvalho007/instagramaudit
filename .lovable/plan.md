@@ -1,128 +1,65 @@
 
-# Benchmark Gap Card — Engagement Rate (Block 01)
+# Refinar Caption Intelligence — Pergunta 04
 
-Replace the current Engagement Rate card (linear bar + text) with a premium "Benchmark Gap Card" featuring a vertical bar chart, provenance labels, source references, and a Pro competitor slot.
+## Current State
 
-No locked files are affected.
+The Caption Intelligence section already exists with good structure:
+- **Data layer** (`caption-intelligence.ts`): themes, content type mix, recurring expressions, CTA patterns, editorial reading, action bridge — all working
+- **UI component** (`report-caption-intelligence.tsx`): Shell with header, snapshot row, 2-column layout, all sub-blocks rendered with SourceBadge
+- **No Q05 exists** as a separate component — previous merges already consolidated caption data into Q04
+- **No premium teaser** or scope transparency note exists yet
 
----
+## Changes
 
-## 1. Benchmark tier series helper
+### 1. Update Shell header (report-caption-intelligence.tsx)
 
-**File:** `src/lib/knowledge/benchmark-context.ts` (edit — add helper, not modify existing data)
+- Add subtitle: *"Baseado na leitura das legendas publicas dos posts analisados — nao inclui transcricao do que e dito em video."*
+- Change badge text from "Baseado em N posts" to "Baseado em N legendas" (since sampleSize already counts only posts with non-empty captions)
 
-Add a new type and builder function:
+### 2. Add data transparency note
 
-```ts
-export interface BenchmarkTierPoint {
-  tierLabel: string;        // "1K–5K"
-  minFollowers: number;
-  maxFollowers: number | null;
-  engagementRatePct: number;
-  sourceLabel: string;      // "Buffer · Socialinsider"
-  sourceUrl?: string;
-}
-```
+Below the ActionBridgeStrip (before the existing hashtag note), add a small transparency block:
 
-Add `getConsolidatedBenchmarkSeries(): BenchmarkTierPoint[]` that returns 5 consolidated tiers by averaging/weighting the existing Buffer tiers:
-- 1K–5K → Buffer 1-5K (4.4%)
-- 5K–20K → average of Buffer 5-10K and 10-50K
-- 20K–100K → average of Buffer 10-50K and 50-100K  
-- 100K–1M → average of Buffer 100-500K and 500K-1M
-- +1M → extrapolated from 500K-1M with decay
+> "Esta analise le as legendas publicas dos posts analisados. Nao inclui audio, video, texto dentro das imagens ou transcricao dos Reels."
 
-Also add `getActiveTierIndex(followers: number, series: BenchmarkTierPoint[]): number` to find which tier the profile belongs to.
+Keep the existing hashtag separation note.
 
-The user-provided example values (6.08, 4.80, etc.) are treated as illustrative — the real values come from the existing Buffer dataset with simple averaging. This keeps data provenance honest.
+### 3. Add Premium teaser strip
 
-Add source reference URLs as typed constants (Socialinsider, Buffer, Hootsuite) — reuse the existing `INSTAGRAM_BENCHMARK_CONTEXT.sources` array rather than hardcoding new URLs.
+After the transparency note, add a subtle Premium teaser card with lock icon and PRO badge:
 
----
+> **Analise Premium: incluir transcricao de videos/Reels**
+> "Esta versao analisa as legendas publicas. No plano Premium, a leitura pode incluir transcricao de Reels/videos, hooks falados e comparacao entre o que e dito e o que e escrito."
 
-## 2. Benchmark bar chart component
+Style: muted gold accent (using existing token system), small lock icon, compact card.
 
-**New file:** `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
+### 4. Refine Editorial Reading block visual identity
 
-Pure SVG bar chart (no new dependencies). Receives all data via props:
+- Add a subtle accent-gold left border (2px vertical line)
+- Use Sparkles icon (already imported) for the AI badge area
+- When source is "ai", apply slightly more editorial styling to the body text
 
-```ts
-interface Props {
-  profileEngagementRatePct: number;
-  followersCount: number;
-  benchmarkSeries: BenchmarkTierPoint[];
-  activeTierIndex: number;
-  sourceReferences: Array<{ name: string; url: string }>;
-  showProSlot?: boolean;
-  competitor?: { handle: string; engagementRatePct: number } | null;
-  onProSlotClick?: () => void;
-}
-```
+### 5. Minor refinements
 
-**Chart spec:**
-- Height: ~170px
-- 5 vertical bars, one per tier
-- Inactive bars: `bg-slate-200` at ~40% opacity, rounded top
-- Active tier bar: accent blue, full opacity, slightly wider
-- Profile value: small rose/danger marker overlaid on the active bar (min 4px height for very low values)
-- Dashed horizontal reference line at active tier benchmark value
-- Labels: "Referência do escalão · X,X%" and "O teu perfil · X,XX%"
-- X-axis: tier labels; no visible Y-axis numbers, 3 subtle grid lines
-- Gap message: "Gap face à referência: −X,X p.p." / "Acima da referência: +X,X p.p." / "Em linha com a referência"
+- Ensure the `classifyCaptionPattern` result from `block02-diagnostic.ts` is not rendering a separate Q05 card anywhere (confirmed: it's used only for verdict/priorities, not rendered as a card)
+- No changes needed to `caption-intelligence.ts` data layer — the structure already matches the spec
 
-**Provenance markers** (inline, discreet):
-- `⬡ Dados` near profile value
-- `◈ Mercado` near benchmark reference
-- Uses `text-eyebrow-sm`, ~60% opacity, no bold
-
-**Source references footer** inside the card:
-- "◈ Referências de mercado: Socialinsider [1], Buffer [2], Hootsuite [3]"
-- Numeric footnote links, `target="_blank" rel="noreferrer noopener"`
-- Names from the existing `INSTAGRAM_BENCHMARK_CONTEXT.sources` array
-
-**Pro competitor slot** at the bottom:
-- Lock icon + "Comparar com concorrente direto" + `PRO` badge
-- Helper: "Adiciona um perfil concorrente para ver o teu resultado lado a lado."
-- Calls `onProSlotClick` if provided
-- If `competitor` is passed: shows `@handle · X%` with accent-gold marker (future state — not wired in this task)
-
----
-
-## 3. Refactor EngagementRateCard
-
-**File:** `src/components/report-redesign/v2/report-overview-cards.tsx`
-
-- Replace the body of `EngagementRateCard` to use the new chart component
-- Keep the `PremiumCard` wrapper, title, icon, interpretation chip, and source slot
-- Remove `EngagementDistanceBar` (dead code after replacement)
-- Keep `computeEngagementStatus` (used by the interpretation chip)
-- Wire `getConsolidatedBenchmarkSeries()` and `getActiveTierIndex()` to pass data as props
-- Keep the existing `ReportBenchmarkEvidence` component below the chart for the full provenance line
-- Keep the italic methodology disclaimer
-
----
-
-## 4. Responsive
-
-- Mobile 375px: bars shrink, tier labels abbreviate ("1K–5K" → stays short enough), no horizontal overflow
-- Pro slot becomes full-width row
-- Chart SVG uses `viewBox` + percentage widths for fluid sizing
-
----
-
-## Files changed
+## Files to edit
 
 | File | Action |
 |------|--------|
-| `src/lib/knowledge/benchmark-context.ts` | Add `BenchmarkTierPoint`, `getConsolidatedBenchmarkSeries()`, `getActiveTierIndex()` |
-| `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` | **New** — SVG chart + provenance + source refs + Pro slot |
-| `src/components/report-redesign/v2/report-overview-cards.tsx` | Refactor `EngagementRateCard`, remove `EngagementDistanceBar` |
+| `src/components/report-redesign/v2/report-caption-intelligence.tsx` | Edit Shell header, add transparency note, add Premium teaser, refine EditorialReadingBlock styling |
 
-No changes to: tokens.css, providers, OpenAI, Supabase schema, PDF, admin, `/report/example`, other blocks.
+## Files NOT touched
 
----
+- No provider/schema/OpenAI/PDF/admin changes
+- No changes to `caption-intelligence.ts` (data layer already correct)
+- No changes to `report-diagnostic-block.tsx` (orchestration already correct)
+- No changes to locked files
+- No new dependencies
 
 ## Validation
 
-- `bunx vitest run` passes (existing benchmark tests unaffected)
-- `bunx tsc --noEmit` passes
-- Mobile 375px: no horizontal overflow
+- `bunx tsc --noEmit` must pass
+- `bunx vitest run` must pass
+- Mobile-first: no overflow at 375px
