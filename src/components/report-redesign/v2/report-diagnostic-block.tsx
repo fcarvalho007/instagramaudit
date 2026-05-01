@@ -225,17 +225,18 @@ function injectCaptionImprovement(
   base: ReadonlyArray<{ level: "alta" | "media" | "oportunidade"; title: string; body: string; resolves: string }>,
   intel: import("@/lib/report/caption-intelligence").CaptionIntelligence,
 ): Array<{ level: "alta" | "media" | "oportunidade"; title: string; body: string; resolves: string }> {
-  const improvement = intel.editorialReading.recommendedImprovement;
-  if (!improvement) return [...base];
+  const ab = intel.actionBridge;
+  const title = ab.body && ab.body.length > 5 ? ab.body : intel.editorialReading.recommendedImprovement;
+  if (!title) return [...base];
   const dup = base.some((p) =>
-    p.title.toLowerCase().includes(improvement.toLowerCase().slice(0, 24)),
+    p.title.toLowerCase().includes(title.toLowerCase().slice(0, 24)),
   );
   if (dup) return [...base];
   return [
     ...base,
     {
-      level: "oportunidade",
-      title: improvement.length > 60 ? improvement.slice(0, 57) + "…" : improvement,
+      level: ab.priorityType,
+      title: title.length > 60 ? title.slice(0, 57) + "…" : title,
       body: intel.editorialReading.whatIsMissing && intel.editorialReading.whatIsMissing !== "—"
         ? intel.editorialReading.whatIsMissing
         : intel.ctaPatterns.summary,
