@@ -1,4 +1,5 @@
-import { Bot, Hash, Quote, Sparkles } from "lucide-react";
+import { Hash, Quote, Sparkles } from "lucide-react";
+import { ReportSourceLabel } from "./report-source-label";
 
 import { cn } from "@/lib/utils";
 import type { ThemesResult } from "@/lib/report/block02-diagnostic";
@@ -68,10 +69,10 @@ export function ReportThemesFeature({ themes }: Props) {
               "p-5 md:p-6 flex flex-col gap-2.5 self-start",
             )}
           >
-            <p className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1.5">
-              <Bot aria-hidden className="size-3" />
-              Leitura IA · interpretação
-            </p>
+            <div className="inline-flex items-center gap-2">
+              <ReportSourceLabel type="ia" />
+              <span className="text-eyebrow-sm text-slate-500">Interpretação</span>
+            </div>
             <p className="text-[14px] text-slate-700 leading-relaxed italic">
               <Quote
                 aria-hidden

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { PriorityItem } from "@/lib/report/block02-diagnostic";
-import { Bot } from "lucide-react";
+import { ReportSourceLabel } from "./report-source-label";
 
 interface Props {
   items: PriorityItem[];
@@ -33,12 +33,7 @@ export function ReportDiagnosticPriorities({ items, source = "deterministic" }: 
         <p className="text-eyebrow-sm text-slate-500">
           Prioridades de ação
         </p>
-        {source === "ai" ? (
-          <span className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1">
-            <Bot aria-hidden className="size-3" />
-            Leitura IA
-          </span>
-        ) : null}
+        {source === "ai" ? <ReportSourceLabel type="ia" /> : null}
         <span className="text-eyebrow-sm ml-auto text-slate-400 tabular-nums">
           {items.length} {items.length === 1 ? "AÇÃO" : "AÇÕES"}
         </span>
