@@ -512,51 +512,6 @@ function renderThemesCard(r: ThemesResult): ReactNode | null {
   );
 }
 
-function renderCaptionCard(
-  r: CaptionPatternResult,
-  aiSource: { kind: "interpretation"; text: string } | null,
-): ReactNode | null {
-  if (!r.available) return null;
-  const ctaLabel =
-    r.ctaSharePct === 0
-      ? "Poucos sinais explícitos de chamada à ação foram detetados."
-      : r.ctaSharePct < 20
-        ? "Poucas publicações terminam com chamada à ação clara."
-        : r.ctaSharePct < 50
-          ? "Algumas publicações incluem chamada à ação direta."
-          : "A maioria das publicações termina com chamada à ação clara.";
-  return (
-    <ReportDiagnosticCard
-      key="q05"
-      number="05"
-      label="Linguagem"
-      question="Como são as legendas?"
-      answerLabel="Padrão dominante"
-      answer={r.label}
-      tone="blue"
-      body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
-      aiSource={aiSource}
-      sourceType={aiSource ? "ai" : "automatic"}
-      sourceDetail="Estilo das legendas"
-    >
-      <DiagnosticMiniStats
-        items={
-          r.questionShareAvailable
-            ? [
-                { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
-                { value: `${r.questionSharePct}%`, label: "COM PERGUNTAS" },
-                { value: `${r.ctaSharePct}%`, label: "COM CTA" },
-              ]
-            : [
-                { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
-                { value: `${r.ctaSharePct}%`, label: "COM CTA" },
-              ]
-        }
-      />
-    </ReportDiagnosticCard>
-  );
-}
-
 function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
   if (!r.available) return null;
   const tone: DiagnosticTone =
