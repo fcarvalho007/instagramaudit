@@ -235,13 +235,34 @@ function buildSnippet(caption: string, needle: string): string | null {
   const half = Math.floor((max - flatNeedle.length) / 2);
   let start = Math.max(0, idx - half);
   let end = Math.min(caption.length, idx + flatNeedle.length + half);
-  // Snap to word boundaries when possible
-  while (start > 0 && /\S/.test(caption[start - 1] ?? "")) start -= 1;
-  while (end < caption.length && /\S/.test(caption[end] ?? "")) end += 1;
+  // Snap to word boundaries — recuar/avançar até encontrar whitespace OU
+  // pontuação forte (.,!?;:—…). Evita começar no meio de uma palavra
+  // quando a janela cai a meio de um token.
+  const isBoundary = (ch: string) => /\s|[.,!?;:—…\-()"'«»]/.test(ch);
+  // Recuar `start`: se já está numa boundary, avançar uma posição para
+  // não começar com pontuação. Senão, recuar até encontrar boundary.
+  if (start > 0 && !isBoundary(caption[start - 1] ?? " ")) {
+    while (start > 0 && !isBoundary(caption[start - 1] ?? " ")) start -= 1;
+  }
+  // Saltar whitespace/pontuação inicial para começar limpo na palavra.
+  while (start < caption.length && isBoundary(caption[start] ?? "")) {
+    start += 1;
+  }
+  // Avançar `end` até fim de palavra.
+  while (end < caption.length && !isBoundary(caption[end] ?? " ")) end += 1;
   let slice = caption.slice(start, end).replace(/\s+/g, " ").trim();
-  // Strip leading/trailing hashtags ou pontuação solta
-  slice = slice.replace(/^[#@\W_]+/, "").replace(/[#@\W_]+$/, "").trim();
+  // Strip URLs residuais e hashtags/pontuação solta no início/fim
+  slice = slice
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, "")
+    .replace(/^[#@\W_]+/, "")
+    .replace(/[#@\W_]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (slice.length === 0) return null;
+  // Garantir que o snippet ainda contém o needle após limpezas — se não,
+  // descartar (poluição por URL/hashtag tornou o excerto inútil).
+  if (!stripAccents(slice).toLowerCase().includes(flatNeedle)) return null;
   if (slice.length > max) slice = slice.slice(0, max - 1).trimEnd() + "…";
   const prefix = start > 0 ? "…" : "";
   const suffix = end < caption.length ? "…" : "";
