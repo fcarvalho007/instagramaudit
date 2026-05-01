@@ -30,17 +30,17 @@ export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
       className={cn(
         "rounded-2xl border border-blue-200/70",
         "bg-[linear-gradient(180deg,#EFF4FF_0%,#F8FAFF_100%)]",
-        "px-5 py-4 md:px-6 md:py-5",
+        "px-6 py-5 md:px-7 md:py-6",
         "shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
-        "border-l-4 border-l-blue-500",
+        "border-l-[5px] border-l-blue-500",
       )}
     >
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white ring-1 ring-blue-200 text-blue-600"
+          className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white ring-1 ring-blue-200 text-blue-600"
         >
-          <Bot className="size-4" />
+          <Bot className="size-[18px]" />
         </span>
         <div className="min-w-0 space-y-1.5 flex-1">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -52,7 +52,7 @@ export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
               detail={isAi ? "Síntese editorial" : "Síntese das classificações"}
             />
           </div>
-          <p className="text-[15px] md:text-base text-slate-800 leading-relaxed font-medium">
+          <p className="text-[16px] md:text-[17px] text-slate-800 leading-relaxed font-medium">
             {text}
           </p>
         </div>
