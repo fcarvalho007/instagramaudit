@@ -1,25 +1,20 @@
-import { Bot, Cpu, Database } from "lucide-react";
+import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
 
-import { cn } from "@/lib/utils";
-
+/**
+ * Variant names used by caption-intelligence (data-level values).
+ * Maps to the unified ReportSourceType.
+ */
 export type SourceBadgeVariant = "extracted" | "auto" | "ai";
 
-const COPY: Record<SourceBadgeVariant, { label: string; Icon: typeof Bot }> = {
-  extracted: { label: "Dados extraídos", Icon: Database },
-  auto: { label: "Leitura automática", Icon: Cpu },
-  ai: { label: "Leitura IA", Icon: Bot },
-};
-
-const STYLE: Record<SourceBadgeVariant, string> = {
-  extracted: "bg-slate-50 text-slate-600 ring-slate-200",
-  auto: "bg-slate-50 text-slate-700 ring-slate-200",
-  ai: "bg-blue-50 text-blue-700 ring-blue-100",
+const VARIANT_MAP: Record<SourceBadgeVariant, ReportSourceType> = {
+  extracted: "dados",
+  auto: "auto",
+  ai: "ia",
 };
 
 /**
- * Pequena badge usada na Pergunta 04 para sinalizar a origem de cada
- * sub-bloco da leitura editorial: dados crus extraídos, leitura
- * automática (heurísticas) ou leitura IA.
+ * Thin wrapper around ReportSourceLabel for backward compatibility
+ * with caption-intelligence's data-level source kinds.
  */
 export function SourceBadge({
   variant,
@@ -28,18 +23,5 @@ export function SourceBadge({
   variant: SourceBadgeVariant;
   className?: string;
 }) {
-  const { label, Icon } = COPY[variant];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 ring-1",
-        "text-eyebrow-sm",
-        STYLE[variant],
-        className,
-      )}
-    >
-      <Icon aria-hidden className="size-3" />
-      {label}
-    </span>
-  );
+  return <ReportSourceLabel type={VARIANT_MAP[variant]} className={className} />;
 }
