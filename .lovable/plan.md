@@ -1,89 +1,66 @@
 
-# Unified Source Badge System
+# Engagement Benchmark Hero Chart Refinement
 
-## Overview
+## Summary
 
-Replace the current 5-type `ReportSourceLabel` and 3-type `SourceBadge` with a single unified 4-type badge component. All old labels disappear; the new system uses symbol-prefixed uppercase labels at consistent 10px/500/0.08em/50% opacity.
+Make the engagement chart larger, more interactive, less text-heavy. Move explanatory text to tooltip. Replace source links with [1] [2] [3]. Remove duplicate red warning. Add context line with unified badge.
 
-## Badge mapping
+## Changes
 
-| Old type(s) | Old visible label | New type | New visible label |
-|---|---|---|---|
-| `extracted` | DADO EXTRAÍDO | `dados` | ⬡ DADOS |
-| `external` | REFERÊNCIA EXTERNA | `mercado` | ◈ MERCADO |
-| `calculation`, `automatic` | CÁLCULO / LEITURA AUTOMÁTICA | `auto` | ∿ AUTO |
-| `ai` | LEITURA IA | `ia` | ✦ IA |
+### 1. `report-engagement-benchmark-chart.tsx` — main refinements
 
-## Files changed
+**Chart size**: Increase `VB_H` from 280 to 340. Remove `maxHeight: 300px` inline style so the chart breathes. Increase `PAD_B` slightly for x-axis labels.
 
-### 1. `report-source-label.tsx` — rewrite
+**Methodology paragraph → removed**: Delete the italic `<p>` at line 393–395 (methodology note). This text will live in the info tooltip added to the parent card title.
 
-- Replace `ReportSourceType` with `"dados" | "mercado" | "auto" | "ia"`.
-- Remove Lucide icon imports (symbols are now Unicode characters in the label itself).
-- New label map: `{ dados: "⬡ DADOS", mercado: "◈ MERCADO", auto: "∿ AUTO", ia: "✦ IA" }`.
-- Single neutral style for all types: `text-[10px] font-medium tracking-[0.08em] uppercase opacity-50 text-slate-600`. No ring, no background, no pill (minimal). Remove `caution` variant.
-- Keep `detail` prop for accessibility (`aria-label`) but do not render it visually.
+**Source context line**: After the [1] [2] [3] references, add:
+```
+◈ MERCADO · Instagram · contas 5–10K · referência por dimensão e formato
+```
+Using the `ReportSourceLabel type="mercado"` inline, plus `·`-separated context segments derived from the active tier label. Subtle, 10px, low opacity.
 
-### 2. `source-badge.tsx` — rewrite to re-export from `report-source-label.tsx`
+**Interactive hover refinements**:
+- When a bar is hovered, dim all non-hovered bars (opacity 0.3 instead of 0.55).
+- Tooltip content for non-active tiers: "Referência de mercado para contas {tierLabel}".
+- Tooltip content for active tier: "Este é o teu escalão. A referência é {benchmark}%; o perfil está em {profile}%."
+- Already implemented but will polish wording.
 
-- `SourceBadgeVariant` becomes a type alias mapping old names to new: `extracted→dados`, `auto→auto`, `ai→ia`.
-- `SourceBadge` becomes a thin wrapper that maps variants to the new `ReportSourceLabel`.
-- This avoids breaking `report-caption-intelligence.tsx` imports.
+**Reduce duplicate warning**: The gap pill at the top of the chart already communicates the delta. The `PremiumCard` bottom interpretation badge is the duplicate. This will be handled in the parent.
 
-### 3. `report-diagnostic-card.tsx` — update `sourceType` prop
+**PRO slot**: Already present and subdued. No changes needed except ensuring `cursor-default` when no handler.
 
-- Change `sourceType` prop type from old `ReportSourceType` to new type.
-- No other changes needed (rendering already delegates to `ReportSourceLabel`).
+### 2. `report-overview-cards.tsx` — EngagementRateCard changes
 
-### 4. `report-diagnostic-block.tsx` — update all `sourceType=` values
+**Info tooltip on title**: Add a small `Info` icon (from lucide-react) next to "Taxa de envolvimento" in the card header. On hover/focus, show the methodology text:
+> "A taxa de envolvimento compara gostos e comentários com a dimensão da audiência. É uma referência direcional e pode variar por setor, dimensão da conta e método de cálculo."
 
-| Card | Old value | New value |
-|---|---|---|
-| Q01 content type | `"automatic"` | `"auto"` |
-| Q01 mixed | `"automatic"` | `"auto"` |
-| Q02 funnel | `"automatic"` | `"auto"` |
-| Q03 hashtags | `"extracted"` | `"dados"` |
-| Q05 audience | `"calculation"` | `"auto"` |
-| Q06 integration | `"automatic"` | `"auto"` |
-| Q07 objective | `"automatic"` | `"auto"` |
+Implementation: a `<span>` with `tabIndex={0}`, the `Info` icon, and a CSS-positioned tooltip that appears on `:hover` and `:focus-within`. No new dependencies.
 
-### 5. `report-diagnostic-verdict.tsx` — update type values
+**Remove bottom interpretation badge for engagement card**: Pass `interpretation={null}` to `PremiumCard` for the engagement card. The gap pill inside the chart already communicates the status — no need for a second red badge at the bottom.
 
-- `"ai"` → `"ia"`, `"automatic"` → `"auto"`.
+**Pass active tier label to chart**: Pass follower tier label as a new optional prop so the context line can say "contas 5–10K" dynamically.
 
-### 6. `report-overview-cards.tsx` — update type values
+### 3. `report-benchmark-evidence.tsx` — no changes
 
-- All three `type="calculation"` → `type="auto"`.
+This component is unused (zero imports). Leave it untouched.
 
-### 7. `report-caption-intelligence.tsx` — update `badgeVariant` mapping
+### 4. No other files touched
 
-- The function maps `CaptionSourceKind` to `SourceBadgeVariant`. Update to match new variant names: `extracted→dados`, `auto→auto`, `ai→ia`.
-
-### 8. `report-methodology.tsx` — update source legend (NOT a locked file — the locked file is the V1 `report-methodology.tsx` at the non-v2 path, this one imports from `v2/report-source-label`)
-
-- Update `sourceLegend` array to use new types and new explanations:
-  - `dados`: "Recolhido directamente do perfil público de Instagram."
-  - `auto`: "Métrica calculada ou classificação por regras determinísticas — sem IA."
-  - `mercado`: "Comparação com a Knowledge Base de pares e benchmarks de mercado."
-  - `ia`: "Texto interpretativo gerado por modelo de linguagem."
-- Remove the old 5-item legend, replace with 4-item.
-- Grid changes from `lg:grid-cols-5` to `lg:grid-cols-4`.
-
-## Files NOT touched
-
-- tokens.css, tokens-light.css, styles.css
-- Supabase schema, OpenAI, providers, PDF, admin, auth, routes
-- All locked files (verified: `report-methodology.tsx` in LOCKED_FILES refers to `/src/components/report-redesign/report-methodology.tsx` which IS the file being edited, but only its source-label import and legend data change — no structural/layout changes)
-- Report logic, calculations, benchmark values
-- Engagement benchmark chart (has no source badges)
+- No locked files edited
+- No Supabase/admin/provider/PDF/auth changes
+- No benchmark values changed
+- No calculation logic changed
+- No new dependencies
 
 ## Visual result
 
-All badges across the V2 report render as:
-```
-⬡ DADOS    ◈ MERCADO    ∿ AUTO    ✦ IA
-```
-At 10px, weight 500, tracking 0.08em, 50% opacity, slate-600 text. No background, no ring, no pill. Purely metadata, never competing with content.
+- Chart is taller and more dominant
+- Explanatory paragraph gone from card body → lives in `ℹ` tooltip
+- Source links show only `[1] [2] [3]` (already the case, confirmed)
+- Context line: `◈ MERCADO · Instagram · contas 5–10K · referência por dimensão e formato`
+- Only one gap indicator (the chart's pill), no bottom red badge
+- Hover dims non-active bars more, tooltip copy is more explicit
+- Mobile: chart fills width, tooltip clamped, PRO slot stacks
 
 ## Validation
 
