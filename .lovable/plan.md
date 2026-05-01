@@ -1,68 +1,78 @@
 
-# Engagement Benchmark Hero Chart Refinement
+# Block 02 Visual Hierarchy Refinement
 
-## Summary
+## 1. Editorial verdict hero (`report-diagnostic-verdict.tsx`)
 
-Make the engagement chart larger, more interactive, less text-heavy. Move explanatory text to tooltip. Replace source links with [1] [2] [3]. Remove duplicate red warning. Add context line with unified badge.
+- Increase main text size from `text-[15px] md:text-base` to `text-[16px] md:text-[17px]`
+- Increase padding from `px-5 py-4 md:px-6 md:py-5` to `px-6 py-5 md:px-7 md:py-6`
+- Make left accent border thicker: `border-l-4` → `border-l-[5px]`
+- Increase icon box from `h-8 w-8` to `h-9 w-9` and icon from `size-4` to `size-[18px]`
+- Already uses `border-l-blue-500` (accent-primary) — keep
 
-## Changes
+## 2. Group labels (`report-diagnostic-group.tsx`)
 
-### 1. `report-engagement-benchmark-chart.tsx` — main refinements
+- Add `mt-8 md:mt-10` top margin for breathing room (first group excluded via `first:mt-0` on parent or explicit prop)
+- Increase label size: replace `text-eyebrow-sm` with `text-[11px] font-semibold tracking-[0.1em] uppercase`
+- Make letter bolder: `text-slate-500 font-bold` instead of `text-slate-400`
+- Add `pt-6 md:pt-8` before the border for more separation
+- Keep the bottom `border-b` divider line
 
-**Chart size**: Increase `VB_H` from 280 to 340. Remove `maxHeight: 300px` inline style so the chart breathes. Increase `PAD_B` slightly for x-axis labels.
+## 3. Remove redundant answer labels (`report-diagnostic-card.tsx`)
 
-**Methodology paragraph → removed**: Delete the italic `<p>` at line 393–395 (methodology note). This text will live in the info tooltip added to the parent card title.
+- Change `answerLabel` default from `"Resposta dominante"` to `undefined`
+- When `answerLabel` is `undefined`/empty, skip rendering the `<p>` label entirely — show only the large highlighted answer text
+- This removes "Resposta dominante" from all cards that don't explicitly override it
 
-**Source context line**: After the [1] [2] [3] references, add:
+In `report-diagnostic-block.tsx`:
+- Remove `answerLabel="Fase dominante"` (Q02) — the large answer "Topo do funil" is self-explanatory
+- Remove `answerLabel="Síntese estratégica"` (Q07) — same reasoning
+- Keep `answerLabel="Hashtags mais utilizadas"` (Q03) — this one is clarifying, not redundant
+- Remove `answerLabel="Estado"` (Q05) — "Audiência silenciosa" is already clear
+
+Also in `report-diagnostic-card.tsx` for the `DiagnosticObjectiveSynthesis`:
+- Remove the visible `<p>` "Hipótese principal" label; keep the answer text. Add `aria-label="Hipótese principal"` to the container for accessibility.
+
+## 4. Distribution bars dominant emphasis (`report-diagnostic-card.tsx`)
+
+In `DiagnosticDistributionBar` (vertical-list variant):
+- Accept a new optional `dominantIndex` prop (default `0`)
+- Dominant bar: full opacity (as-is via color prop)
+- Non-dominant bars: apply `opacity-30` to the bar fill
+
+In `DiagnosticRanking`:
+- First item bar: full opacity `bg-blue-500`
+- Remaining items: `bg-blue-500/30`
+
+## 5. Source badges
+
+Already unified in previous task. No changes needed — already using `∿ AUTO`, `⬡ DADOS`, `✦ IA`, `◈ MERCADO`. The `ReportSourceLabel` component renders at 10px, 50% opacity, no pill.
+
+## 6. Audience response card icon
+
+The card already has `StatusIcon` rendered at `size-14 sm:size-16` in a rounded box. This is good.
+
+Add a code comment above the audience highlight component:
 ```
-◈ MERCADO · Instagram · contas 5–10K · referência por dimensão e formato
+// Public Apify profile/post payload does not reliably indicate whether the
+// brand replied inside comment threads unless comment-level data with
+// authors is collected.
 ```
-Using the `ReportSourceLabel type="mercado"` inline, plus `·`-separated context segments derived from the active tier label. Subtle, 10px, low opacity.
 
-**Interactive hover refinements**:
-- When a bar is hovered, dim all non-hovered bars (opacity 0.3 instead of 0.55).
-- Tooltip content for non-active tiers: "Referência de mercado para contas {tierLabel}".
-- Tooltip content for active tier: "Este é o teu escalão. A referência é {benchmark}%; o perfil está em {profile}%."
-- Already implemented but will polish wording.
+## 7. No word clipping
 
-**Reduce duplicate warning**: The gap pill at the top of the chart already communicates the delta. The `PremiumCard` bottom interpretation badge is the duplicate. This will be handled in the parent.
+- In `DiagnosticRanking` (valuePosition="left"): change label `w-44` to `min-w-0 flex-1 truncate` to prevent overflow on mobile
+- In `DiagnosticDistributionBar` (vertical-list): change label `w-28` to `w-24 sm:w-28` for mobile safety
+- In `DiagnosticChecklist`: the truncate is already there — fine
 
-**PRO slot**: Already present and subdued. No changes needed except ensuring `cursor-default` when no handler.
+## Files changed
 
-### 2. `report-overview-cards.tsx` — EngagementRateCard changes
+- `report-diagnostic-verdict.tsx` — hero sizing
+- `report-diagnostic-group.tsx` — stronger separators
+- `report-diagnostic-card.tsx` — remove answerLabel default, distribution bar dominant emphasis, ranking opacity, mobile width fixes, code comment
+- `report-diagnostic-block.tsx` — remove specific answerLabel overrides
 
-**Info tooltip on title**: Add a small `Info` icon (from lucide-react) next to "Taxa de envolvimento" in the card header. On hover/focus, show the methodology text:
-> "A taxa de envolvimento compara gostos e comentários com a dimensão da audiência. É uma referência direcional e pode variar por setor, dimensão da conta e método de cálculo."
+## Files NOT changed
 
-Implementation: a `<span>` with `tabIndex={0}`, the `Info` icon, and a CSS-positioned tooltip that appears on `:hover` and `:focus-within`. No new dependencies.
-
-**Remove bottom interpretation badge for engagement card**: Pass `interpretation={null}` to `PremiumCard` for the engagement card. The gap pill inside the chart already communicates the status — no need for a second red badge at the bottom.
-
-**Pass active tier label to chart**: Pass follower tier label as a new optional prop so the context line can say "contas 5–10K" dynamically.
-
-### 3. `report-benchmark-evidence.tsx` — no changes
-
-This component is unused (zero imports). Leave it untouched.
-
-### 4. No other files touched
-
-- No locked files edited
-- No Supabase/admin/provider/PDF/auth changes
-- No benchmark values changed
-- No calculation logic changed
-- No new dependencies
-
-## Visual result
-
-- Chart is taller and more dominant
-- Explanatory paragraph gone from card body → lives in `ℹ` tooltip
-- Source links show only `[1] [2] [3]` (already the case, confirmed)
-- Context line: `◈ MERCADO · Instagram · contas 5–10K · referência por dimensão e formato`
-- Only one gap indicator (the chart's pill), no bottom red badge
-- Hover dims non-active bars more, tooltip copy is more explicit
-- Mobile: chart fills width, tooltip clamped, PRO slot stacks
-
-## Validation
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
+- `report-caption-intelligence.tsx` — structurally acceptable per spec
+- `source-badge.tsx` / `report-source-label.tsx` — already unified
+- No logic, no schema, no admin, no locked files
