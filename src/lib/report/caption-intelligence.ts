@@ -40,12 +40,29 @@ export type DominantCtaType =
   | "none"
   | "other";
 
+export type ThemeRole =
+  | "educativo"
+  | "autoridade"
+  | "conversão"
+  | "comunidade"
+  | "opinião"
+  | "promocional"
+  | "outro";
+
+export type ThemeConfidence = "low" | "medium" | "high";
+
+export type CtaStrength = "weak" | "moderate" | "strong";
+
 export interface CaptionThemeItem {
   label: string;
   /** Nº de posts distintos onde apareceu. */
   postsCount: number;
   /** Excerto curto da legenda (≤ 90 chars). Vazio quando não há. */
   evidence: string | null;
+  /** Papel editorial inferido por co-ocorrência com termos de conteúdo. */
+  role: ThemeRole;
+  /** Confiança baseada em postsCount / sampleSize. */
+  confidence: ThemeConfidence;
 }
 
 export interface ContentTypeMixItem {
@@ -68,6 +85,8 @@ export interface CtaPatternsBlock {
   /** Label legível em pt-PT do dominantCtaType (ex.: "Subscrever newsletter"). */
   dominantCtaLabel: string;
   summary: string;
+  /** Força global do CTA nas legendas. */
+  ctaStrength: CtaStrength;
 }
 
 export interface EditorialReadingBlock {
@@ -79,16 +98,32 @@ export interface EditorialReadingBlock {
   recommendedImprovement: string | null;
 }
 
+export interface SnapshotRow {
+  dominantTheme: string;
+  mainIntent: string;
+  mainOpportunity: string;
+}
+
+export interface ActionBridge {
+  title: string;
+  body: string;
+  priorityType: "alta" | "media" | "oportunidade";
+}
+
 export interface CaptionIntelligence {
   /** Nº de posts com caption não vazia. Usado no header "Baseado em N posts". */
   sampleSize: number;
   /** True quando há captions suficientes para mostrar a leitura (≥ 4). */
   available: boolean;
+  /** 3 insights de topo para leitura rápida (< 5 s). */
+  snapshot: SnapshotRow;
   themes: { source: CaptionSourceKind; items: CaptionThemeItem[] };
   contentTypeMix: { source: CaptionSourceKind; items: ContentTypeMixItem[]; dominant: ContentTypeMixLabel | null };
   recurringExpressions: { source: CaptionSourceKind; items: RecurringExpressionItem[] };
   ctaPatterns: CtaPatternsBlock;
   editorialReading: EditorialReadingBlock;
+  /** Strip de ação sugerida no final do cartão. */
+  actionBridge: ActionBridge;
 }
 
 // ─────────────────────────────────────────────────────────────────────
