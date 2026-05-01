@@ -154,10 +154,10 @@ function SnapshotRow({ data }: { data: CaptionIntelligence }) {
         <div
           key={c.label}
           className={cn(
-            "rounded-xl ring-1 px-4 py-3.5 flex flex-col gap-2",
+            "rounded-xl ring-1 px-4 py-3.5 flex flex-col gap-2 transition-shadow",
             c.variant === "ai"
-              ? "bg-blue-50/60 ring-blue-100"
-              : "bg-slate-50/80 ring-slate-200/70",
+              ? "bg-blue-50/50 ring-blue-100"
+              : "bg-slate-50/60 ring-slate-200/60",
           )}
         >
           <div className="flex items-center justify-between gap-2">
