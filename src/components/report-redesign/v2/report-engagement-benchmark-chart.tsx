@@ -29,6 +29,9 @@ const BAR_RADIUS = 5;
 const GRID_LINES = 5;
 const MARKER_R = 5;
 
+// Dynamic label offset when reference line and profile marker collide
+const LABEL_COLLISION_THRESHOLD = 18;
+
 // ─── Main component ────────────────────────────────────────────────
 
 export function ReportEngagementBenchmarkChart({
@@ -88,6 +91,16 @@ export function ReportEngagementBenchmarkChart({
     Math.min(yForVal(profileVal), PAD_T + innerH - MARKER_R - 2),
   );
 
+  // Detect collision between reference label and profile marker label
+  const refLabelY = refY - 5;
+  const profileLabelY = profileMarkerY - 7;
+  const labelsCollide = Math.abs(refLabelY - profileLabelY) < LABEL_COLLISION_THRESHOLD;
+  const adjustedRefLabelY = labelsCollide ? Math.min(refY - 18, profileLabelY - 14) : refLabelY;
+
+  // Right-edge guard for profile marker labels
+  const activeCx = PAD_L + barGap * activeTierIndex + barGap / 2;
+  const labelFlipRight = activeCx + MARKER_R + 5 + 60 > VB_W; // 60 ≈ approx label width
+
   // Tooltip position in percentage for CSS positioning
   function tooltipPctX(i: number): number {
     const cx = PAD_L + barGap * i + barGap / 2;
@@ -132,6 +145,13 @@ export function ReportEngagementBenchmarkChart({
           role="img"
           aria-label="Gráfico de comparação de taxa de envolvimento por escalão de seguidores"
         >
+          {/* SVG filter for active bar glow */}
+          <defs>
+            <filter id="activeBarGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#2563D9" floodOpacity="0.25" />
+            </filter>
+          </defs>
+
           {/* Y-axis labels */}
           {Array.from({ length: GRID_LINES + 1 }, (_, i) => {
             const frac = i / GRID_LINES;
@@ -163,7 +183,8 @@ export function ReportEngagementBenchmarkChart({
                 y1={gy}
                 y2={gy}
                 stroke="#e2e8f0"
-                strokeWidth={0.5}
+                strokeWidth={0.35}
+                opacity={0.7}
               />
             );
           })}
@@ -182,7 +203,7 @@ export function ReportEngagementBenchmarkChart({
           {/* Reference line label */}
           <text
             x={PAD_L + 4}
-            y={refY - 5}
+            y={adjustedRefLabelY}
             textAnchor="start"
             fill="#2563D9"
             opacity={0.55}
@@ -228,6 +249,7 @@ export function ReportEngagementBenchmarkChart({
                   rx={BAR_RADIUS}
                   ry={BAR_RADIUS}
                   fill={isActive ? "#2563D9" : "#CBD5E1"}
+                  filter={isActive ? "url(#activeBarGlow)" : undefined}
                   opacity={
                     isActive
                       ? 1
@@ -235,7 +257,7 @@ export function ReportEngagementBenchmarkChart({
                         ? isHovered ? 0.75 : 0.3
                         : 0.55
                   }
-                  className="transition-opacity duration-150"
+                  className="transition-all duration-200"
                 />
                 {/* Value label above bar */}
                 <text
@@ -272,8 +294,10 @@ export function ReportEngagementBenchmarkChart({
 
           {/* Profile marker — prominent pill on active tier */}
           {(() => {
-            const cx = PAD_L + barGap * activeTierIndex + barGap / 2;
+            const cx = activeCx;
             const my = profileMarkerY;
+            const labelAnchor = labelFlipRight ? "end" : "start";
+            const labelX = labelFlipRight ? cx - MARKER_R - 5 : cx + MARKER_R + 5;
             return (
               <g>
                 {/* Horizontal indicator line from left edge to marker */}
@@ -298,9 +322,9 @@ export function ReportEngagementBenchmarkChart({
                 />
                 {/* Profile value label */}
                 <text
-                  x={cx + MARKER_R + 5}
+                  x={labelX}
                   y={my + 3.5}
-                  textAnchor="start"
+                  textAnchor={labelAnchor}
                   fill="#E11D48"
                   style={{ fontSize: "10px", fontFamily: "var(--font-mono)", fontWeight: 700 }}
                 >
@@ -308,9 +332,9 @@ export function ReportEngagementBenchmarkChart({
                 </text>
                 {/* "Este perfil" label */}
                 <text
-                  x={cx + MARKER_R + 5}
+                  x={labelX}
                   y={my - 7}
-                  textAnchor="start"
+                  textAnchor={labelAnchor}
                   fill="#E11D48"
                   opacity={0.7}
                   style={{ fontSize: "7.5px", fontFamily: "var(--font-sans)", fontWeight: 500 }}
@@ -324,7 +348,10 @@ export function ReportEngagementBenchmarkChart({
           {/* Competitor marker */}
           {competitor ? (() => {
             const cx = PAD_L + barGap * activeTierIndex + barGap / 2;
-            const cy = yForVal(competitor.engagementRatePct);
+            const cy = Math.max(
+              PAD_T + 4,
+              Math.min(yForVal(competitor.engagementRatePct), PAD_T + innerH - 4 - 2),
+            );
             return (
               <g>
                 <circle
