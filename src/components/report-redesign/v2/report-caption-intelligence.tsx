@@ -1,4 +1,4 @@
-import { ArrowRight, MessageSquareQuote, Sparkles } from "lucide-react";
+import { AlertTriangle, Lightbulb, MessageSquareQuote, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type {
