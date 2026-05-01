@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 
+import { ReportSourceLabel } from "./report-source-label";
 import { REDESIGN_TOKENS } from "../report-tokens";
 
 interface Props {
@@ -41,6 +42,7 @@ export function ReportKpiGridV2({ result }: Props) {
         icon={<Activity className="h-4 w-4" aria-hidden="true" />}
         label="Envolvimento médio"
         value={`${k.engagementRate.toFixed(2)}%`}
+        sourceBadge={<ReportSourceLabel type="auto" detail="Gostos + comentários" />}
         help={
           k.engagementBenchmark > 0
             ? `vs. ${k.engagementBenchmark.toFixed(2).replace(".", ",")}% de referência`
@@ -53,12 +55,14 @@ export function ReportKpiGridV2({ result }: Props) {
         label="Ritmo semanal"
         value={k.postingFrequencyWeekly.toFixed(1).replace(".", ",")}
         help="publicações por semana"
+        sourceBadge={<ReportSourceLabel type="auto" detail="Datas de publicação" />}
       />
 
       <KpiCard
         icon={<Film className="h-4 w-4" aria-hidden="true" />}
         label="Formato dominante"
         value={<FormatChip label={formatLabel} tone={formatTone} />}
+        sourceBadge={<ReportSourceLabel type="auto" detail="Tipo de publicação" />}
         help={
           k.dominantFormatShare > 0
             ? `${k.dominantFormatShare}% da amostra`
@@ -82,6 +86,7 @@ function KpiCard({
   value: ReactNode;
   help?: string;
   compact?: boolean;
+  sourceBadge?: ReactNode;
 }) {
   return (
     <div
@@ -94,6 +99,7 @@ function KpiCard({
         <span className={REDESIGN_TOKENS.kpiIconBoxV2} aria-hidden="true">
           {icon}
         </span>
+        {sourceBadge ?? null}
       </div>
       <p className={REDESIGN_TOKENS.kpiLabel}>{label}</p>
       <div
