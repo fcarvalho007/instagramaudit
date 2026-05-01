@@ -59,7 +59,13 @@ export function ReportBenchmarkEvidence({
     segments.push("contexto geral");
   }
 
-  const sources = sourceNames.slice(0, 3);
+  const sources = sourceNames.slice(0, 3) as ActiveBenchmarkSourceName[];
+
+  const SOURCE_CONTEXT: Record<ActiveBenchmarkSourceName, string> = {
+    Socialinsider: "envolvimento por formato",
+    Buffer: "referência por dimensão da conta",
+    Hootsuite: "contexto cross-indústria",
+  };
 
   return (
     <div className={cn("space-y-1", className)}>
@@ -86,10 +92,13 @@ export function ReportBenchmarkEvidence({
                 {i > 0 ? <span className="text-slate-300">, </span> : null}
                 <span
                   className="text-slate-600 normal-case tracking-normal"
-                  title={`Fonte: ${name} — detalhes na metodologia`}
-                  aria-label={`Fonte: ${name} — detalhes na metodologia`}
+                  title={`${name} — ${SOURCE_CONTEXT[name]}`}
+                  aria-label={`${name} — ${SOURCE_CONTEXT[name]}`}
                 >
                   {name}
+                  <span className="text-slate-400 ml-0.5">
+                    ({SOURCE_CONTEXT[name]})
+                  </span>
                 </span>
               </span>
             ))}
