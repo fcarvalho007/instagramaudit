@@ -175,17 +175,7 @@ function EngagementRateCard({
   deltaPct: number;
   followers: number;
 }) {
-  const hasBenchmark = benchmark > 0;
   const status = computeEngagementStatus(engagement, benchmark, deltaPct);
-  const bufferTier = getBufferTierForFollowers(followers);
-  const followerTierLabel = bufferTier
-    ? bufferTier.tier.replace("-", "–")
-    : null;
-  const isAboveBufferRange = Number.isFinite(followers) && followers >= 1_000_000;
-  const aboveRangeHint = isAboveBufferRange
-    ? INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.aboveBufferRangeHint
-    : null;
-
   const benchmarkSeries = getConsolidatedBenchmarkSeries();
   const activeTierIdx = getActiveTierIndex(followers, benchmarkSeries);
   const activeSourceRefs = INSTAGRAM_BENCHMARK_CONTEXT.sources
