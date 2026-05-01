@@ -360,7 +360,7 @@ function Stat({ label, value }: { label: string; value: string }) {
       <span className="text-eyebrow-sm text-slate-500">
         {label}
       </span>
-      <span className="font-mono text-[18px] tabular-nums text-slate-900">
+      <span className="font-mono text-[1.25rem] tabular-nums text-slate-900">
         {value}
       </span>
     </div>
