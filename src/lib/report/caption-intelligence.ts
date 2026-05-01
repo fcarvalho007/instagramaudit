@@ -171,6 +171,8 @@ function cleanCaption(raw: string): string {
 function buildThemes(
   topThemes: readonly ThemeRow[],
   topHashtagLabels: ReadonlyArray<string>,
+  sampleSize: number,
+  posts: readonly SnapshotPost[],
 ): CaptionThemeItem[] {
   const banned = new Set(
     topHashtagLabels.map((h) => normalize(h.replace(/^#/, ""))),
@@ -179,14 +181,56 @@ function buildThemes(
   for (const t of topThemes) {
     const flat = normalize(t.word).replace(/\s+/g, "");
     if (banned.has(flat)) continue;
+    const role = inferThemeRole(t.word, posts);
+    const confidence: ThemeConfidence =
+      sampleSize > 0 && (t.postsCount / sampleSize) >= 0.4
+        ? "high"
+        : sampleSize > 0 && (t.postsCount / sampleSize) >= 0.2
+          ? "medium"
+          : "low";
     out.push({
       label: t.word,
       postsCount: t.postsCount,
       evidence: t.snippets[0] ?? null,
+      role,
+      confidence,
     });
     if (out.length >= 5) break;
   }
   return out;
+}
+
+/** Infere o role editorial de um tema com base nos termos do CONTENT_MIX_TERMS co-ocorrentes. */
+function inferThemeRole(
+  themeLabel: string,
+  posts: readonly SnapshotPost[],
+): ThemeRole {
+  const themeLower = normalize(themeLabel);
+  const roleCounts = new Map<ThemeRole, number>();
+  const ROLE_MAP: Record<ContentTypeMixLabel, ThemeRole> = {
+    "Educativo": "educativo",
+    "Opinião / análise": "opinião",
+    "Promocional": "promocional",
+    "Institucional": "autoridade",
+    "Bastidores / pessoal": "comunidade",
+    "Convite / CTA": "conversão",
+  };
+  for (const p of posts) {
+    const cap = normalize(cleanCaption(p.caption ?? ""));
+    if (!cap.includes(themeLower)) continue;
+    for (const { type, terms } of CONTENT_MIX_TERMS) {
+      if (hasAny(cap, terms)) {
+        const role = ROLE_MAP[type];
+        roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+      }
+    }
+  }
+  let best: ThemeRole = "outro";
+  let bestCount = 0;
+  for (const [r, c] of roleCounts) {
+    if (c > bestCount) { best = r; bestCount = c; }
+  }
+  return best;
 }
 
 // ─────────────────────────────────────────────────────────────────────
