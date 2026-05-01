@@ -174,7 +174,7 @@ export function CostsDetailSection() {
                     (label, idx) => (
                       <th
                         key={label}
-                        className={`pb-3 font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary ${
+                        className={`pb-3 text-eyebrow-sm text-admin-text-tertiary ${
                           idx >= 6 ? "text-right" : "text-left"
                         }`}
                       >

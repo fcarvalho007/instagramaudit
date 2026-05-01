@@ -52,7 +52,7 @@ export function ReportBenchmarkGauge() {
     >
       <span className={`h-1.5 w-1.5 rounded-full ${badgeStyles.dot}`} />
       <span
-        className={`font-mono text-[10px] uppercase tracking-wider font-semibold ${badgeStyles.text}`}
+        className={`text-eyebrow-sm font-semibold ${badgeStyles.text}`}
       >
         {badgeStyles.label}
       </span>
