@@ -90,6 +90,7 @@ export function ReportDiagnosticCard({
   children,
   body,
   tone = "blue",
+  span = "half",
   aiSource,
   sourceType,
   sourceDetail,
