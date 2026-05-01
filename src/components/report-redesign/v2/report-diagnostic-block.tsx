@@ -127,7 +127,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   ]);
   const groupB = compact([
     renderHashtagsCard(hashtags),
-    renderCaptionCard(caption, aiLanguage),
     renderAudienceCard(audience),
   ]);
   const groupC = compact([
