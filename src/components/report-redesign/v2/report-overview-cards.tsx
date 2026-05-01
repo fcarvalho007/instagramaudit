@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, Layers } from "lucide-react";
+import { Activity, CalendarDays, Layers, Info } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
@@ -83,6 +83,7 @@ function PremiumCard({
   interpretationTone = "neutral",
   emphasis = "secondary",
   sourceSlot,
+  titleExtra,
 }: {
   title: string;
   icon: ReactNode;
@@ -92,6 +93,8 @@ function PremiumCard({
   emphasis?: "primary" | "secondary";
   /** Chip de proveniência opcional, alinhado à direita do título. */
   sourceSlot?: ReactNode;
+  /** Extra element rendered inline after the title (e.g. info tooltip). */
+  titleExtra?: ReactNode;
 }) {
   const chipCls =
     interpretationTone === "good"
@@ -132,7 +135,10 @@ function PremiumCard({
           <span className={REDESIGN_TOKENS.kpiIconBoxV2} aria-hidden="true">
             {icon}
           </span>
-          <h3 className={titleCls}>{title}</h3>
+          <h3 className={cn(titleCls, "inline-flex items-center gap-1.5")}>
+            {title}
+            {titleExtra ?? null}
+          </h3>
         </div>
       </header>
 
@@ -185,9 +191,9 @@ function EngagementRateCard({
     <PremiumCard
       title="Taxa de envolvimento"
       icon={<Activity className="h-4 w-4" aria-hidden="true" />}
-      interpretation={status.label}
-      interpretationTone={status.tone}
+      interpretation={null}
       emphasis="primary"
+      titleExtra={<EngagementInfoTooltip />}
       sourceSlot={
         <ReportSourceLabel type="auto" detail="Gostos + comentários" />
       }
@@ -211,6 +217,7 @@ function EngagementRateCard({
         benchmarkSeries={benchmarkSeries}
         activeTierIndex={activeTierIdx}
         sourceReferences={activeSourceRefs}
+        activeTierLabel={benchmarkSeries[activeTierIdx]?.tierLabel}
         showProSlot
       />
     </PremiumCard>
@@ -229,6 +236,38 @@ function computeEngagementStatus(
   if (deltaPct >= 10) return { label: "Acima da referência", tone: "good" };
   if (deltaPct <= -10) return { label: "Abaixo da referência", tone: "bad" };
   return { label: "Dentro da referência", tone: "neutral" };
+}
+
+// ─── Card 2 — Ritmo de publicação ────────────────────────────────────
+
+// ─── Info tooltip for engagement title ───────────────────────────────
+
+function EngagementInfoTooltip() {
+  return (
+    <span
+      className="relative group/info inline-flex"
+      tabIndex={0}
+      aria-label="Como é calculada a taxa de envolvimento"
+    >
+      <Info className="size-3.5 text-slate-400 cursor-help" aria-hidden />
+      <span
+        role="tooltip"
+        className={cn(
+          "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20",
+          "w-[260px] rounded-lg bg-white shadow-lg ring-1 ring-slate-200/80",
+          "px-3 py-2.5 text-[11.5px] text-slate-600 leading-relaxed font-normal tracking-normal",
+          "pointer-events-none opacity-0 scale-95",
+          "group-hover/info:opacity-100 group-hover/info:scale-100",
+          "group-focus-within/info:opacity-100 group-focus-within/info:scale-100",
+          "transition-all duration-150",
+        )}
+      >
+        A taxa de envolvimento compara gostos e comentários com a dimensão da
+        audiência. É uma referência direcional e pode variar por setor,
+        dimensão da conta e método de cálculo.
+      </span>
+    </span>
+  );
 }
 
 // ─── Card 2 — Ritmo de publicação ────────────────────────────────────

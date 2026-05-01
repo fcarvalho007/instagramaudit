@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, type ReactNode } from "react";
 import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -10,6 +10,8 @@ export interface BenchmarkChartProps {
   benchmarkSeries: readonly BenchmarkTierPoint[];
   activeTierIndex: number;
   sourceReferences: ReadonlyArray<{ name: string; url: string }>;
+  /** Active tier label for the context line (e.g. "5–10K"). */
+  activeTierLabel?: string;
   showProSlot?: boolean;
   competitor?: { handle: string; engagementRatePct: number } | null;
   onProSlotClick?: () => void;
@@ -18,11 +20,11 @@ export interface BenchmarkChartProps {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const VB_W = 400;
-const VB_H = 280;
+const VB_H = 340;
 const PAD_L = 42;
 const PAD_R = 14;
 const PAD_T = 32;
-const PAD_B = 40;
+const PAD_B = 46;
 const BAR_RADIUS = 5;
 const GRID_LINES = 5;
 const MARKER_R = 5;
@@ -34,6 +36,7 @@ export function ReportEngagementBenchmarkChart({
   benchmarkSeries,
   activeTierIndex,
   sourceReferences,
+  activeTierLabel,
   showProSlot = false,
   competitor,
   onProSlotClick,
@@ -89,7 +92,7 @@ export function ReportEngagementBenchmarkChart({
   }
 
   return (
-    <div className="flex flex-col gap-4" ref={containerRef}>
+    <div className="flex flex-col gap-5" ref={containerRef}>
       {/* Gap pill */}
       <div className="flex items-center gap-2 flex-wrap">
         <span
@@ -123,7 +126,6 @@ export function ReportEngagementBenchmarkChart({
         <svg
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           className="w-full"
-          style={{ maxHeight: "300px" }}
           role="img"
           aria-label="Gráfico de comparação de taxa de envolvimento por escalão de seguidores"
         >
@@ -223,7 +225,13 @@ export function ReportEngagementBenchmarkChart({
                   rx={BAR_RADIUS}
                   ry={BAR_RADIUS}
                   fill={isActive ? "#2563D9" : "#CBD5E1"}
-                  opacity={isActive ? 1 : isHovered ? 0.75 : 0.55}
+                  opacity={
+                    isActive
+                      ? 1
+                      : hovered !== null
+                        ? isHovered ? 0.75 : 0.3
+                        : 0.55
+                  }
                   className="transition-opacity duration-150"
                 />
                 {/* Value label above bar */}
@@ -389,9 +397,11 @@ export function ReportEngagementBenchmarkChart({
         </p>
       ) : null}
 
-      {/* Methodology note */}
-      <p className="text-[11px] text-slate-400 leading-relaxed italic">
-        A taxa de envolvimento compara gostos e comentários com a dimensão da audiência. Deve ser interpretada como referência direcional, porque varia por setor, dimensão da conta e método de cálculo.
+      {/* Source context line */}
+      <p className="text-[10px] text-slate-400 opacity-50 leading-snug">
+        ◈ MERCADO · Instagram
+        {activeTierLabel ? ` · contas ${activeTierLabel}` : ""}
+        {" "}· referência por dimensão e formato
       </p>
 
       {/* Pro competitor slot — quiet */}
@@ -466,7 +476,7 @@ function ChartTooltip({
       >
         <p className="font-medium text-slate-800 mb-1">Escalão: {tier.tierLabel}</p>
         <p className="text-slate-600">
-          Referência de mercado: <span className="font-mono tabular-nums">{fmtRate(tier.engagementRatePct)}</span>
+          Referência: <span className="font-mono tabular-nums">{fmtRate(tier.engagementRatePct)}</span>
         </p>
 
         {isActive ? (
@@ -484,12 +494,12 @@ function ChartTooltip({
               </p>
             ) : null}
             <p className="text-slate-400 text-[10px] mt-1.5 italic">
-              Esta é a comparação mais relevante porque corresponde ao escalão atual de seguidores.
+              Este é o teu escalão. A referência é {fmtRate(tier.engagementRatePct)}; o perfil está em {fmtRate(profileVal)}.
             </p>
           </>
         ) : (
-          <p className="text-slate-400 text-[10px] mt-1.5 italic">
-            Escalão apresentado apenas como contexto. A comparação principal é feita com o escalão atual do perfil.
+          <p className="text-slate-400 text-[10px] mt-1 italic">
+            Referência de mercado para contas {tier.tierLabel}.
           </p>
         )}
       </div>
