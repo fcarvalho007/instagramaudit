@@ -367,37 +367,48 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function EditorialReadingBlock({ data }: { data: CaptionIntelligence }) {
   const r = data.editorialReading;
-  const hasMissing = r.whatIsMissing && r.whatIsMissing !== "—";
+  const hasMissing = Boolean(r.whatIsMissing && r.whatIsMissing !== "—");
+  const isAi = r.source === "ai";
   return (
     <div
       className={cn(
-        "rounded-xl p-5 ring-1 flex flex-col gap-3",
-        r.source === "ai"
-          ? "bg-blue-50/60 ring-blue-100"
-          : "bg-slate-50/80 ring-slate-100",
+        "rounded-xl ring-1 overflow-hidden",
+        isAi ? "bg-blue-50/60 ring-blue-100" : "bg-slate-50/80 ring-slate-100",
       )}
     >
-      <BlockHeader label="Leitura editorial" variant={badgeVariant(r.source)} />
-      <p className="text-[14px] text-slate-700 leading-relaxed">
-        {r.whatItCommunicates}
-      </p>
-      {r.whatWorks && r.whatWorks !== "—" ? (
-        <ReadingLine label="O que está a funcionar" text={r.whatWorks} />
-      ) : null}
-      {hasMissing ? (
-        <ReadingLine
-          label="O que está em falta"
-          text={r.whatIsMissing}
-          tone="amber"
-        />
-      ) : null}
-      {r.recommendedImprovement ? (
-        <ReadingLine
-          label="Próxima melhoria"
-          text={r.recommendedImprovement}
-          tone={r.source === "ai" ? "blue" : "slate"}
-        />
-      ) : null}
+      <div className={cn("flex", isAi && "border-l-2 border-blue-400/50")}>
+        <div className="p-5 flex flex-col gap-3 min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              {isAi ? (
+                <Sparkles aria-hidden className="size-3.5 text-blue-500" />
+              ) : null}
+              <p className="text-eyebrow-sm text-slate-500">Leitura editorial</p>
+            </div>
+            <SourceBadge variant={badgeVariant(r.source)} />
+          </div>
+          <p className={cn("text-[14px] text-slate-700 leading-relaxed", isAi && "italic")}>
+            {r.whatItCommunicates}
+          </p>
+          {r.whatWorks && r.whatWorks !== "—" ? (
+            <ReadingLine label="O que está a funcionar" text={r.whatWorks} />
+          ) : null}
+          {hasMissing ? (
+            <ReadingLine
+              label="O que está em falta"
+              text={r.whatIsMissing}
+              tone="amber"
+            />
+          ) : null}
+          {r.recommendedImprovement ? (
+            <ReadingLine
+              label="Próxima melhoria"
+              text={r.recommendedImprovement}
+              tone={isAi ? "blue" : "slate"}
+            />
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -429,6 +440,55 @@ function ReadingLine({
       </span>
       {text}
     </p>
+  );
+}
+
+function ScopeTransparencyNote() {
+  return (
+    <div className="border-t border-slate-200/40 pt-4 mt-2 space-y-2">
+      <p className="text-[12.5px] text-slate-500 leading-relaxed max-w-2xl">
+        Esta análise lê as legendas públicas dos posts analisados. Não inclui
+        áudio, vídeo, texto dentro das imagens ou transcrição dos Reels.
+      </p>
+      <p className="text-[12.5px] text-slate-500 leading-relaxed max-w-2xl">
+        As hashtags são analisadas separadamente — esta secção foca o texto
+        editorial das legendas, CTAs, temas e padrões de linguagem.
+      </p>
+    </div>
+  );
+}
+
+function PremiumTeaserStrip() {
+  return (
+    <div
+      className={cn(
+        "rounded-xl ring-1 px-5 py-4 flex items-start gap-3",
+        "bg-amber-50/40 ring-amber-200/60",
+      )}
+    >
+      <Lock aria-hidden className="size-4 mt-0.5 shrink-0 text-amber-600/70" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <p className="text-eyebrow-sm text-amber-800/80">
+            Análise Premium
+          </p>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 ring-1",
+              "text-eyebrow-sm bg-amber-100/60 text-amber-700 ring-amber-300/50",
+            )}
+          >
+            <Crown aria-hidden className="size-2.5" />
+            PRO
+          </span>
+        </div>
+        <p className="text-[13px] text-slate-600 leading-relaxed">
+          Esta versão analisa as legendas públicas. No plano Premium, a leitura
+          pode incluir transcrição de Reels/vídeos, hooks falados e comparação
+          entre o que é dito e o que é escrito na legenda.
+        </p>
+      </div>
+    </div>
   );
 }
 
