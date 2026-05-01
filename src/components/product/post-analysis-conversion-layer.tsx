@@ -171,7 +171,7 @@ export function PostAnalysisConversionLayer({
           </ul>
           <Button
             type="button"
-            variant="primary"
+            variant="premium"
             size="sm"
             asChild
             className="w-full mt-auto"
