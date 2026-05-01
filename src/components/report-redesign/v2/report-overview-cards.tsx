@@ -5,7 +5,6 @@ import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
-  getBufferTierForFollowers,
   getConsolidatedBenchmarkSeries,
   getActiveTierIndex,
 } from "@/lib/knowledge/benchmark-context";
