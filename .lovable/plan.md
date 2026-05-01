@@ -1,92 +1,101 @@
 
-# Refactor: Engagement Rate → Cinematic Benchmark Hero Chart
+# Refine Q05 · Audience Response Card
 
-## Scope
+## Data safety finding
 
-Rewrite `report-engagement-benchmark-chart.tsx` to become the main visual figure of Block 01. Update `report-overview-cards.tsx` to remove brand names from visible source references. Keep the card shell (`PremiumCard`) and the other two overview cards untouched.
-
-## Current state
-
-- SVG-based custom bar chart already exists, ~350 lines
-- Props already receive benchmark series, active tier, profile rate, competitor, source refs
-- Chart height is already 260 viewBox / 300px max — close to target
-- Brand names (Socialinsider, Buffer) visible in source footer AND in `ReportBenchmarkEvidence`
-- No hover tooltips exist
-- Profile marker is a thin red bar inside the active tier — easily missed
-- Recharts is installed but not used in this chart (custom SVG)
-
-## What changes
-
-### 1. Chart component rewrite (`report-engagement-benchmark-chart.tsx`)
-
-**Keep**: SVG-based approach (no Recharts — the custom SVG is more controllable for this specific chart). Keep all existing props.
-
-**Visual upgrades**:
-- Increase `VB_H` to 280 for more vertical impact
-- Make the profile marker more prominent: change from thin sub-bar to a visible **pill/dot marker** with a horizontal indicator line, positioned on the active tier column — clearly distinguishable from the benchmark bar
-- Add a **profile label** "Este perfil" next to the marker with the value
-- Keep the dashed reference line for the benchmark value
-
-**Interactive tooltips** (CSS-only, no framer-motion):
-- Wrap each bar in an SVG `<g>` with `tabIndex={0}` and `role="button"`
-- On hover/focus, show a floating HTML tooltip (positioned with absolute CSS, not SVG foreignObject) using React state (`hoveredIndex`)
-- Tooltip content per spec:
-  - Tier label, benchmark rate
-  - For active tier: profile value, gap, context explanation
-  - For non-active tiers: context-only message
-  - Competitor data when available
-
-**Source references** — remove brand names from visible UI:
-- Replace `{ref.name} [n]` with just `[n]` as clickable links
-- Keep `aria-label` with full name for accessibility
-- Format: `Referências de mercado: [1] [2] [3]`
-
-**Pro slot** — make quieter:
-- Reduce visual weight: smaller icon, lighter ring, no background hover transition
-- Keep the copy and PRO badge
-
-### 2. Engagement card in `report-overview-cards.tsx`
-
-- Remove `<ReportBenchmarkEvidence>` call (brand names live there). The chart's own footer replaces it.
-- Keep the methodology note (`engagementExplanation`)
-- Keep the `sourceSlot` (calculation badge)
-- Keep the gap pill (now inside the chart component)
-
-### 3. `report-benchmark-evidence.tsx`
-
-- No changes to the component itself (still used elsewhere potentially)
-- Just stop calling it from the engagement card
+`SnapshotPost` contains only `likes?: number | null` and `comments?: number | null`. No comment text, authors, replies, parent relations, or brand reply data. The card must remain limited to engagement counts.
 
 ## Files to edit
 
 | File | Changes |
-|------|---------|
-| `report-engagement-benchmark-chart.tsx` | Full rewrite: prominent profile marker, hover tooltips, source links as [1][2][3], quieter Pro slot |
-| `report-overview-cards.tsx` | Remove `ReportBenchmarkEvidence` import and call from `EngagementRateCard` |
+|---|---|
+| `report-diagnostic-card.tsx` | Rewrite `DiagnosticAudienceHighlight` — add status icon, metrics grid, editorial copy, conversation prompt strip |
+| `report-diagnostic-block.tsx` | Pass `status` prop to `DiagnosticAudienceHighlight` |
 
 ## Files NOT touched
 
-- `block-config.ts`, `report-overview-block.tsx`, `report-diagnostic-*`, `tokens.css`, locked files, Supabase, OpenAI, PDF, admin, providers, caption intelligence
+tokens.css, providers, Supabase, OpenAI, PDF, admin, other diagnostic cards, block02-diagnostic.ts (no new helpers needed — all copy is inline in the component).
+
+## Changes in detail
+
+### 1. Status icon (in `DiagnosticAudienceHighlight`)
+
+Add a new prop `status: AudienceResponseStatus` passed from the parent.
+
+Render a large icon area at the top of the highlight:
+- `active` → `MessagesSquare`, emerald-50 bg
+- `moderate` → `MessageCircleMore`, amber-50 bg
+- `concentrated` → `Target`, amber-50 bg
+- `silent` → `MessageCircleOff`, rose-50 bg
+- `unavailable` → `CircleHelp`, slate-50 bg
+
+Icon size: 36–40px, inside a `size-16 rounded-2xl` container with soft tinted background. `aria-hidden="true"` (the card title already provides the textual label).
+
+### 2. Metrics grid
+
+Replace the current "averages bar" (compressed, truncates "coment.") with a 2×2 grid of `MiniStat` cells (already exists in the file):
+
+| Cell | Label | Value |
+|---|---|---|
+| Top-left | Gostos médios por post | `{avgLikes}` |
+| Top-right | Comentários médios por post | `{avgComments}` |
+| Bottom-left | Posts com comentários | `{postsWithComments} de {sampleSize}` |
+| Bottom-right | Gostos totais | `{totalLikes}` |
+
+Grid: `grid grid-cols-2 gap-2` on desktop, `grid-cols-1` at `<640px` (mobile stacking). No abbreviations, no truncation. Tabular-nums on all values.
+
+Remove the old `flex` averages bar and the separate "sample context line" — the grid subsumes both.
+
+### 3. Editorial interpretation
+
+Below the metrics grid, add a short sentence keyed to `status`:
+
+- `silent`: "O público reage com gostos, mas quase não conversa publicamente."
+- `active`: "Há sinais de conversa pública consistente — o conteúdo não está apenas a ser consumido."
+- `moderate`: "Há alguma resposta, mas ainda sem volume suficiente para indicar conversa recorrente."
+- `concentrated`: "A conversa existe, mas está concentrada em poucos posts."
+- `unavailable`: "As publicações analisadas não devolveram dados suficientes de gostos/comentários para uma leitura fiável."
+
+Styling: `text-[12.5px] text-slate-600 leading-relaxed` — the same weight as existing card body text.
+
+### 4. Conversation prompt strip
+
+If `status === "silent" || status === "moderate"`, render a subtle suggestion strip below the editorial line:
+
+```
+Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
+```
+
+Styling: `rounded-md bg-blue-50/50 ring-1 ring-blue-100/60 px-3 py-2 text-[11.5px] text-blue-700`. Not for `unavailable`.
+
+### 5. Brand reply disclaimer
+
+For all available statuses (`active`, `moderate`, `silent`, `concentrated`), append a discreet line at the bottom:
+
+```
+Resposta da marca a comentários: disponível numa análise avançada com dados de comentários.
+```
+
+Styling: `text-[11px] text-slate-400 italic` — same as existing methodology notes. This does not claim brand replies are analysed.
+
+### 6. Top conversation post
+
+Keep the existing `topConversationPost` evidence block unchanged — it already renders correctly. Fix the "coment." abbreviation inside it to "comentários".
+
+### 7. Passing `status` from parent
+
+In `renderAudienceCard` inside `report-diagnostic-block.tsx`, add `status={r.status}` to the `DiagnosticAudienceHighlight` props.
 
 ## Accessibility
 
-- Bars keyboard focusable via `tabIndex={0}` on interactive `<g>` elements
-- Each bar has `aria-label` with tier + benchmark value
-- Tooltip visible on keyboard focus
-- Source links [1][2][3] have `aria-label="Fonte: {name}"`
-- Gap pill has descriptive text
+- Icon has `aria-hidden="true"` (card title is the accessible label)
+- Metrics grid uses full unabbreviated labels
+- No truncation, no overflow at 375px
+- Sufficient contrast (all colours from existing token palette)
 
 ## Mobile (375px)
 
-- SVG uses `viewBox` + `w-full` — scales naturally
-- Tooltip positioned to avoid overflow (clamped to chart bounds)
-- Pro slot stacks vertically without horizontal overflow
-- No horizontal scrolling
-
-## Design tokens
-
-- Active bar: `#2563D9` (existing accent-primary blue)
-- Profile marker: `#E11D48` (existing rose/red for profile)
-- Inactive bars: `#CBD5E1` (existing muted slate)
-- Competitor: `#BA7517` (existing gold — only in Pro context)
-- All match current token system
+- Metrics grid: `grid-cols-1` below 640px — each cell stacks vertically
+- Icon area: centered, `size-14` on mobile
+- Conversation prompt strip: full width, wraps naturally
+- No horizontal overflow
