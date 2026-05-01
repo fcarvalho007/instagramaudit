@@ -499,52 +499,108 @@ export function classifyQuestionShare(
 export function classifyAudienceResponse(
   posts: SnapshotPost[],
 ): AudienceResponseResult {
-  if (!Array.isArray(posts) || posts.length < 4) {
-    return {
-      available: false,
-      label: "Sem dados suficientes",
-      commentsToLikesPct: 0,
-      avgComments: 0,
-      sampleSize: posts?.length ?? 0,
-    };
-  }
+  const unavailable: AudienceResponseResult = {
+    available: false,
+    label: "Dados insuficientes",
+    status: "unavailable",
+    commentsToLikesPct: 0,
+    avgComments: 0,
+    avgLikes: 0,
+    sampleSize: 0,
+    totals: { likes: null, comments: null, postsWithComments: 0, analysedPosts: posts?.length ?? 0 },
+    topConversationPost: null,
+    explanation: "As publicações analisadas não devolveram contagens públicas de gostos ou comentários.",
+  };
 
+  if (!Array.isArray(posts) || posts.length < 4) return unavailable;
+
+  // Distinguish null/undefined (missing) from 0 (valid zero).
   let totalLikes = 0;
   let totalComments = 0;
-  let counted = 0;
-  for (const p of posts) {
-    const likes = typeof p.likes === "number" ? p.likes : 0;
-    const comments = typeof p.comments === "number" ? p.comments : 0;
-    if (likes <= 0 && comments <= 0) continue;
+  let postsWithData = 0;        // posts where at least one field is a number
+  let postsWithComments = 0;    // posts where comments >= 1
+  let topPost: { index: number; comments: number; likes: number; caption: string } | null = null;
+
+  for (let i = 0; i < posts.length; i++) {
+    const p = posts[i];
+    const hasLikes = typeof p.likes === "number";
+    const hasComments = typeof p.comments === "number";
+    if (!hasLikes && !hasComments) continue; // genuinely missing
+
+    const likes = hasLikes ? p.likes! : 0;
+    const comments = hasComments ? p.comments! : 0;
+    postsWithData += 1;
     totalLikes += likes;
     totalComments += comments;
-    counted += 1;
+    if (comments >= 1) postsWithComments += 1;
+    if (!topPost || comments > topPost.comments) {
+      topPost = {
+        index: i,
+        comments,
+        likes,
+        caption: (p.caption ?? "").slice(0, 90).trim(),
+      };
+    }
   }
 
-  if (counted < 4 || totalLikes <= 0) {
-    return {
-      available: false,
-      label: "Sem dados suficientes",
-      commentsToLikesPct: 0,
-      avgComments: counted > 0 ? Math.round(totalComments / counted) : 0,
-      sampleSize: counted,
-    };
+  if (postsWithData < 4) {
+    return { ...unavailable, sampleSize: postsWithData, totals: { ...unavailable.totals, analysedPosts: posts.length } };
   }
 
-  const ratioPct = (totalComments / totalLikes) * 100;
-  const avgComments = totalComments / counted;
+  const ratioPct = totalLikes > 0 ? (totalComments / totalLikes) * 100 : 0;
+  const avgComments = totalComments / postsWithData;
+  const avgLikes = totalLikes / postsWithData;
+
+  // Concentrated: comments cluster in 1–2 posts out of 8+
+  const isConcentrated =
+    postsWithData >= 8 &&
+    postsWithComments >= 1 &&
+    postsWithComments <= 2 &&
+    totalComments >= 5;
 
   let label: AudienceResponseLabel;
-  if (ratioPct >= 2 && avgComments >= 10) label = "Audiência ativa";
-  else if (ratioPct >= 0.8 || avgComments >= 5) label = "Resposta moderada";
-  else label = "Audiência silenciosa";
+  let status: AudienceResponseStatus;
+  let explanation: string;
+
+  if (isConcentrated) {
+    label = "Resposta concentrada";
+    status = "concentrated";
+    explanation = `Os comentários concentram-se em ${postsWithComments} de ${postsWithData} publicações — a conversa é pontual, não recorrente.`;
+  } else if (ratioPct >= 2 && avgComments >= 10) {
+    label = "Audiência ativa";
+    status = "active";
+    explanation = "Os comentários surgem de forma consistente face aos gostos — sinal de conversa, não apenas consumo.";
+  } else if (ratioPct >= 0.8 || avgComments >= 5) {
+    label = "Resposta moderada";
+    status = "moderate";
+    explanation = "Os comentários aparecem, mas em volume moderado face aos gostos recebidos.";
+  } else {
+    label = "Audiência silenciosa";
+    status = "silent";
+    explanation = "O público reage com gostos, mas quase não conversa publicamente.";
+  }
+
+  const topConversationPost =
+    topPost && topPost.comments >= 1
+      ? { index: topPost.index, comments: topPost.comments, likes: topPost.likes, captionExcerpt: topPost.caption }
+      : null;
 
   return {
     available: true,
     label,
+    status,
     commentsToLikesPct: Math.round(ratioPct * 10) / 10,
     avgComments: Math.round(avgComments),
-    sampleSize: counted,
+    avgLikes: Math.round(avgLikes),
+    sampleSize: postsWithData,
+    totals: {
+      likes: totalLikes,
+      comments: totalComments,
+      postsWithComments,
+      analysedPosts: posts.length,
+    },
+    topConversationPost,
+    explanation,
   };
 }
 
