@@ -84,7 +84,7 @@ export function ReportDiagnosticCard({
   number,
   label,
   question,
-  answerLabel = "Resposta dominante",
+  answerLabel,
   answer,
   children,
   body,
@@ -133,7 +133,7 @@ export function ReportDiagnosticCard({
               {question}
             </h3>
             <div className={cn("rounded-xl ring-1 px-5 py-4", t.box)}>
-              <p className="text-eyebrow-sm text-slate-500">{answerLabel}</p>
+              {answerLabel ? <p className="text-eyebrow-sm text-slate-500">{answerLabel}</p> : null}
               <p
                 className={cn(
                   "mt-1.5 font-display text-[1.75rem] md:text-[2rem] font-semibold tracking-[-0.02em] leading-tight",
@@ -175,7 +175,7 @@ export function ReportDiagnosticCard({
           </h3>
 
           <div className={cn("rounded-xl ring-1 px-4 py-3", t.box)}>
-            <p className="text-eyebrow-sm text-slate-500">{answerLabel}</p>
+            {answerLabel ? <p className="text-eyebrow-sm text-slate-500">{answerLabel}</p> : null}
             <p
               className={cn(
                 "mt-1 font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-[-0.015em] leading-tight",
@@ -235,12 +235,12 @@ export function DiagnosticDistributionBar({
           return (
             <li key={`${it.label}-${i}`} className="text-sm">
               <div className="flex items-center gap-3">
-                <span className="w-28 shrink-0 truncate text-slate-700">
+                <span className="w-24 sm:w-28 shrink-0 truncate text-slate-700">
                   {it.label}
                 </span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className={cn("h-full", it.color ?? "bg-emerald-600")}
+                    className={cn("h-full", it.color ?? "bg-emerald-600", i > 0 && "opacity-30")}
                     style={{ width: `${pct}%` }}
                     aria-hidden
                   />
@@ -447,12 +447,12 @@ export function DiagnosticRanking({
                 </span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full bg-blue-500"
+                    className={cn("h-full bg-blue-500", i > 0 && "opacity-30")}
                     style={{ width: `${pct}%` }}
                     aria-hidden
                   />
                 </div>
-                <span className="w-44 shrink-0 truncate text-slate-700">
+                <span className="min-w-0 flex-1 truncate text-slate-700">
                   {it.label}
                 </span>
               </div>
@@ -474,7 +474,7 @@ export function DiagnosticRanking({
           </div>
           <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full bg-blue-500"
+              className={cn("h-full bg-blue-500", i > 0 && "opacity-30")}
               style={{ width: `${(it.score / max) * 100}%` }}
               aria-hidden
             />
@@ -484,6 +484,10 @@ export function DiagnosticRanking({
     </ul>
   );
 }
+
+// Public Apify profile/post payload does not reliably indicate whether the
+// brand replied inside comment threads unless comment-level data with
+// authors is collected.
 
 /**
  * Destaque editorial para a Q06 — strip colorido com a métrica
@@ -642,8 +646,7 @@ export function DiagnosticObjectiveSynthesis({
   return (
     <div className="space-y-4">
       {/* Primary hypothesis */}
-      <div className="rounded-lg bg-blue-50/60 ring-1 ring-blue-100 px-4 py-3.5 space-y-1">
-        <p className="text-eyebrow-sm text-blue-700">Hipótese principal</p>
+      <div className="rounded-lg bg-blue-50/60 ring-1 ring-blue-100 px-4 py-3.5 space-y-1" aria-label="Hipótese principal">
         <p className="font-display text-[1.05rem] md:text-[1.125rem] font-semibold tracking-tight text-slate-900 leading-snug">
           {primary}
         </p>

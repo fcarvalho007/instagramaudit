@@ -378,7 +378,6 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       number="02"
       label="Funil · Mapeamento"
       question="Atrai, educa, converte ou fideliza?"
-      answerLabel="Fase dominante"
       answer={r.label ?? "—"}
       tone={isFocused ? "blue" : "amber"}
       body={`Mapeamento da função do conteúdo na jornada — atenção, educação, decisão ou relação. ${bodyByLabel[r.label ?? "Comunicação dispersa"]}`}
@@ -522,7 +521,6 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
       number="06"
       label="Integração"
       question="Há ligação entre canais?"
-      answerLabel="Estado"
       answer={r.label}
       tone={tone}
       body="Há infraestrutura cross-canal quando a bio aponta para fora e as captions reforçam a saída do Instagram. Sem isso, a audiência fica presa à plataforma."
@@ -598,7 +596,6 @@ function renderObjectiveCard(
       number="07"
       label="Objetivo · Síntese"
       question="Que objetivo estratégico parece estar por trás?"
-      answerLabel="Síntese estratégica"
       answer={r.primary}
       tone="blue"
       body="Síntese provável com base no tipo de conteúdo, funil, bio e ligação entre canais."
