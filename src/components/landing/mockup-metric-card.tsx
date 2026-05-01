@@ -62,7 +62,7 @@ export function MockupMetricCard({
     >
       <span
         className={cn(
-          "font-mono uppercase tracking-wide text-[0.6875rem]",
+          "text-eyebrow-sm text-[0.6875rem]",
           isLight ? "text-on-light-tertiary" : "text-content-tertiary",
         )}
       >

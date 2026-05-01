@@ -68,7 +68,7 @@ function formatDate(value: string | null): string {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="font-mono text-[0.625rem] uppercase tracking-[0.12em] text-content-tertiary">
+      <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
         {label}
       </p>
       <div className="text-sm text-content-primary">{children}</div>
@@ -213,7 +213,7 @@ export function RequestDetailSheet({
                 <PdfStatusBadge value={row.pdf_status} />
                 <DeliveryStatusBadge value={row.delivery_status} />
                 {row.is_free_request ? (
-                  <span className="rounded-md border border-border-subtle bg-surface-base px-2 py-0.5 font-mono text-[0.625rem] uppercase tracking-[0.12em] text-content-tertiary">
+                  <span className="text-eyebrow-sm rounded-md border border-border-subtle bg-surface-base px-2 py-0.5 text-[0.625rem] text-content-tertiary">
                     Gratuito
                   </span>
                 ) : null}
@@ -239,7 +239,7 @@ export function RequestDetailSheet({
               <Separator />
 
               <div className="space-y-3">
-                <h3 className="font-mono text-xs uppercase tracking-[0.12em] text-content-tertiary">
+                <h3 className="text-eyebrow text-content-tertiary">
                   Lead
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -255,7 +255,7 @@ export function RequestDetailSheet({
               <Separator />
 
               <div className="space-y-3">
-                <h3 className="font-mono text-xs uppercase tracking-[0.12em] text-content-tertiary">
+                <h3 className="text-eyebrow text-content-tertiary">
                   Snapshot
                 </h3>
                 <Field label="ID do snapshot">
@@ -276,7 +276,7 @@ export function RequestDetailSheet({
               <Separator />
 
               <div className="space-y-3">
-                <h3 className="font-mono text-xs uppercase tracking-[0.12em] text-content-tertiary">
+                <h3 className="text-eyebrow text-content-tertiary">
                   PDF
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -297,7 +297,7 @@ export function RequestDetailSheet({
               <Separator />
 
               <div className="space-y-3">
-                <h3 className="font-mono text-xs uppercase tracking-[0.12em] text-content-tertiary">
+                <h3 className="text-eyebrow text-content-tertiary">
                   Email
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-2">

@@ -33,7 +33,7 @@ export function ReportHeader({ actions }: { actions?: ReportHeaderActions } = {}
             <h1 className="font-display text-2xl md:text-[28px] font-medium tracking-tight text-content-primary leading-tight">
               @{profile.username}
             </h1>
-            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-content-secondary mt-1.5">
+            <p className="text-eyebrow text-content-secondary mt-1.5">
               Análise · {profile.postsAnalyzed} publicações ·{" "}
               {profile.analyzedAt}
             </p>
@@ -44,7 +44,7 @@ export function ReportHeader({ actions }: { actions?: ReportHeaderActions } = {}
           {isAdminPreview ? (
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-signal-warning/30">
               <span className="h-1.5 w-1.5 rounded-full bg-signal-warning" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-warning font-semibold">
+              <span className="text-eyebrow-sm text-signal-warning font-semibold">
                 Pré-visualização admin
               </span>
             </span>
@@ -52,7 +52,7 @@ export function ReportHeader({ actions }: { actions?: ReportHeaderActions } = {}
             <>
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-signal-success/30">
                 <span className="h-1.5 w-1.5 rounded-full bg-signal-success" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-success font-semibold">
+                <span className="text-eyebrow-sm text-signal-success font-semibold">
                   Relatório completo
                 </span>
               </span>

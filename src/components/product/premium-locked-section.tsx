@@ -70,7 +70,7 @@ export function PremiumLockedSection({
       <header className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <span className="h-px flex-1 bg-border-subtle" aria-hidden="true" />
-          <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+          <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
             Conteúdo premium
           </span>
           <span className="h-px flex-1 bg-border-subtle" aria-hidden="true" />
@@ -107,7 +107,7 @@ export function PremiumLockedSection({
                   <div className="flex size-10 items-center justify-center rounded-lg bg-accent-violet/10 border border-accent-violet/30 text-accent-violet-luminous">
                     <Icon className="size-5" />
                   </div>
-                  <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
+                  <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
                     {card.label}
                   </span>
                 </div>
@@ -155,7 +155,7 @@ export function PremiumLockedSection({
                   ? "Ver opções de upgrade"
                   : "Desbloquear relatório completo"}
             </Button>
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               Dois relatórios gratuitos por mês
             </span>
           </div>

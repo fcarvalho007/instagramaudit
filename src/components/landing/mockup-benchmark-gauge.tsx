@@ -27,7 +27,7 @@ export function MockupBenchmarkGauge({
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[0.625rem] uppercase tracking-wide text-on-light-tertiary">
+          <span className="text-eyebrow-sm text-[0.625rem] text-on-light-tertiary">
             Atual
           </span>
           <span className="font-mono text-xs text-on-light-primary">
@@ -35,7 +35,7 @@ export function MockupBenchmarkGauge({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[0.625rem] uppercase tracking-wide text-on-light-tertiary">
+          <span className="text-eyebrow-sm text-[0.625rem] text-on-light-tertiary">
             Benchmark
           </span>
           <span className="font-mono text-xs text-on-light-primary">

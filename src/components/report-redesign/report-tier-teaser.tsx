@@ -16,7 +16,7 @@ export function ReportTierTeaser() {
     >
       <div className="rounded-2xl border border-accent-violet/25 bg-accent-violet/[0.04] p-5 md:p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1.5 max-w-2xl min-w-0">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent-violet">
+          <p className="text-eyebrow text-accent-violet">
             {TIER_COPY.comparison.eyebrow}
           </p>
           <h3 className="font-display text-lg md:text-xl font-medium text-content-primary leading-snug tracking-tight">
@@ -38,7 +38,7 @@ export function ReportTierTeaser() {
         </div>
         <a
           href="#leitura-completa"
-          className="shrink-0 inline-flex items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-accent-violet hover:text-accent-violet-luminous transition-colors"
+          className="text-eyebrow shrink-0 inline-flex items-center justify-center gap-2 text-accent-violet hover:text-accent-violet-luminous transition-colors"
         >
           Saber mais <ArrowRight className="size-3.5" aria-hidden="true" />
         </a>

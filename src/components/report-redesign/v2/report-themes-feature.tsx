@@ -68,7 +68,7 @@ export function ReportThemesFeature({ themes }: Props) {
               "p-5 md:p-6 flex flex-col gap-2.5 self-start",
             )}
           >
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-blue-700 inline-flex items-center gap-1.5">
+            <p className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1.5">
               <Bot aria-hidden className="size-3" />
               Leitura IA · interpretação
             </p>
@@ -118,7 +118,7 @@ function ThemesShell({
     >
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-2 min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 inline-flex items-center gap-1.5">
+          <p className="text-eyebrow-sm text-slate-500 inline-flex items-center gap-1.5">
             <Sparkles aria-hidden className="size-3 text-slate-400" />
             Pergunta 04 · Temas das legendas
           </p>
@@ -129,7 +129,7 @@ function ThemesShell({
         <span
           className={cn(
             "self-start inline-flex items-center rounded-full px-2.5 py-1",
-            "font-mono text-[10px] uppercase tracking-[0.14em] ring-1",
+            "text-eyebrow-sm ring-1",
             "bg-slate-50 text-slate-600 ring-slate-200",
           )}
         >

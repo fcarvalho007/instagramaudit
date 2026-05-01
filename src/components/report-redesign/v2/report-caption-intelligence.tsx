@@ -82,7 +82,7 @@ function Shell({
     >
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-2 min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 inline-flex items-center gap-1.5">
+          <p className="text-eyebrow-sm text-slate-500 inline-flex items-center gap-1.5">
             <Sparkles aria-hidden className="size-3 text-slate-400" />
             Pergunta 04 · Leitura das legendas
           </p>
@@ -97,7 +97,7 @@ function Shell({
         <span
           className={cn(
             "self-start inline-flex items-center rounded-full px-2.5 py-1",
-            "font-mono text-[10px] uppercase tracking-[0.14em] ring-1",
+            "text-eyebrow-sm ring-1",
             "bg-slate-50 text-slate-600 ring-slate-200",
           )}
         >
@@ -119,7 +119,7 @@ function BlockHeader({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+      <p className="text-eyebrow-sm text-slate-500">
         {label}
       </p>
       <SourceBadge variant={variant} />
@@ -164,7 +164,7 @@ function ThemesBlock({ data }: { data: CaptionIntelligence }) {
                     aria-hidden
                     className="inline size-3.5 -mt-1 mr-1 text-slate-400"
                   />
-                  <span className="not-italic font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400 mr-1.5">
+                  <span className="text-eyebrow-sm not-italic text-slate-400 mr-1.5">
                     excerto real
                   </span>
                   {it.evidence}
@@ -261,7 +261,7 @@ function CtaBlock({ data }: { data: CaptionIntelligence }) {
         <Stat label="Com pergunta" value={`${c.hasQuestionPct}%`} />
       </div>
       <p className="text-[13px] text-slate-700">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500 mr-1.5">
+        <span className="text-eyebrow-sm text-slate-500 mr-1.5">
           CTA dominante
         </span>
         <span className="font-semibold text-slate-900">{c.dominantCtaLabel}</span>
@@ -274,7 +274,7 @@ function CtaBlock({ data }: { data: CaptionIntelligence }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+      <span className="text-eyebrow-sm text-slate-500">
         {label}
       </span>
       <span className="font-mono text-[18px] tabular-nums text-slate-900">
@@ -340,7 +340,7 @@ function ReadingLine({
     <p className="text-[13px] text-slate-700 leading-relaxed">
       <span
         className={cn(
-          "font-mono text-[10px] uppercase tracking-[0.14em] mr-1.5",
+          "text-eyebrow-sm mr-1.5",
           labelTone,
         )}
       >

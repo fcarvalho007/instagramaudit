@@ -41,7 +41,7 @@ export function AiBadge({ variant = "inline", tooltip, className }: Props) {
             tabIndex={0}
             className={cn(
               base,
-              "font-mono text-[9px] uppercase tracking-[0.16em] cursor-help",
+              "text-eyebrow-sm cursor-help",
               "outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
               className,
             )}

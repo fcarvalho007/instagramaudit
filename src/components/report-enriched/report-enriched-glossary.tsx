@@ -17,13 +17,13 @@ export function ReportEnrichedGlossary() {
       className="mx-auto max-w-7xl px-6 pt-3 hidden md:block"
     >
       <div className="border-t border-border-subtle/30 pt-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary mb-2">
+        <p className="text-eyebrow-sm text-content-tertiary mb-2">
           {eyebrow}
         </p>
         <dl className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-2">
           {items.map((it) => (
             <div key={it.term} className="min-w-0">
-              <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-secondary">
+              <dt className="text-eyebrow-sm text-content-secondary">
                 {it.term}
               </dt>
               <dd className="text-xs text-content-tertiary leading-relaxed mt-0.5">

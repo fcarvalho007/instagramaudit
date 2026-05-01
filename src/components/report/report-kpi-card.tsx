@@ -90,7 +90,7 @@ export function ReportKpiCard({
         >
           <Icon className={cn("size-3.5", t.fg)} />
         </div>
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-content-secondary">
+        <p className="text-eyebrow-sm font-medium text-content-secondary">
           {label}
         </p>
       </div>
@@ -142,7 +142,7 @@ export function ReportKpiCard({
               </span>
             )}
             {subtitle && (
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-content-tertiary">
+              <p className="text-eyebrow-sm text-content-tertiary">
                 {subtitle}
               </p>
             )}

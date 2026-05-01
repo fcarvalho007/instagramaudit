@@ -21,7 +21,7 @@ export function ReportEnrichedMentions({ enriched }: Props) {
     >
       <div className="rounded-xl border border-border-subtle/30 bg-surface-secondary/30 p-5 md:p-6 space-y-4">
         <header className="space-y-1.5 max-w-3xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-content-tertiary">
+          <p className="text-eyebrow text-content-tertiary">
             {ENRICHED_COPY.mentions.eyebrow}
           </p>
           <h2 className="font-display text-xl md:text-2xl font-medium tracking-tight text-content-primary leading-snug">
@@ -42,7 +42,7 @@ export function ReportEnrichedMentions({ enriched }: Props) {
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border-subtle/60 text-content-secondary hover:text-accent-primary hover:border-accent-primary/40 transition-colors"
               >
                 <span className="text-sm">@{m.handle}</span>
-                <span className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+                <span className="text-eyebrow-sm text-content-tertiary">
                   {m.count} {m.count === 1 ? "menção" : "menções"}
                 </span>
                 <ExternalLink className="size-3" aria-hidden="true" />

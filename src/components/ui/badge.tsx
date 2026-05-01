@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const badgeVariants = cva(
   [
     "inline-flex items-center rounded-md border",
-    "font-mono font-medium uppercase tracking-[0.05em]",
+    "text-eyebrow-sm font-medium",
     "transition-colors duration-[150ms]",
     "whitespace-nowrap",
   ].join(" "),

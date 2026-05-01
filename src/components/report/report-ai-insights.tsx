@@ -26,7 +26,7 @@ export function ReportAiInsights() {
             <Sparkles className="size-5 text-accent-primary" />
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+            <p className="text-eyebrow-sm text-content-tertiary">
               Análise preparada por
             </p>
             <p className="text-sm font-medium text-content-primary">
@@ -48,7 +48,7 @@ export function ReportAiInsights() {
                   </span>
                 </div>
                 <div className="flex-1 space-y-2">
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary font-semibold">
+                  <p className="text-eyebrow-sm text-content-tertiary font-semibold">
                     {ins.label}
                   </p>
                   <p className="text-sm md:text-[15px] text-content-primary leading-relaxed">

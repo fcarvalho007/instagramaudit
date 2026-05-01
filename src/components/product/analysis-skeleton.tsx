@@ -14,7 +14,7 @@ export function AnalysisSkeleton(_: { username?: string }) {
       <Container size="lg" as="section" className="py-10 md:py-16 space-y-12 md:space-y-16">
         {/* Eyebrow — single discreet status line, no editorial copy */}
         <div className="flex justify-center">
-          <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+          <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
             A analisar perfil
           </span>
         </div>

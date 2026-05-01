@@ -61,7 +61,7 @@ export function CockpitShell() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+          <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
             Cockpit
           </p>
           <h2 className="font-display text-lg text-content-primary">
@@ -192,7 +192,7 @@ function ReadinessStrip({
           }
         />
         <div className="ml-auto flex items-center gap-2 text-xs text-content-tertiary">
-          <span className="font-mono uppercase tracking-[0.18em]">
+          <span className="text-eyebrow-sm">
             Atualizado
           </span>
           <span className="font-mono text-content-secondary">
@@ -229,7 +229,7 @@ function Chip({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+      <span className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
         {label}
       </span>
       <Badge variant={variant} dot={dot}>

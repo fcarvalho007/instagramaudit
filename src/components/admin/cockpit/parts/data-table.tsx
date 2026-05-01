@@ -42,7 +42,7 @@ export function DataTable<T>({ columns, rows, rowKey, empty }: DataTableProps<T>
                   key={col.key}
                   scope="col"
                   className={cn(
-                    "px-3.5 py-3 font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-secondary",
+                    "text-eyebrow-sm px-3.5 py-3 text-[0.6875rem] text-content-secondary",
                     col.align === "right" && "text-right",
                     col.align === "center" && "text-center",
                     col.align !== "right" && col.align !== "center" && "text-left",

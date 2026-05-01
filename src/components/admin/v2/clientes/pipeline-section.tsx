@@ -68,7 +68,7 @@ export function PipelineSection() {
                 }}
               >
                 <p
-                  className="m-0 text-[10px] uppercase font-mono"
+                  className="text-eyebrow-sm m-0"
                   style={{ color: s.eyebrowColor, letterSpacing: "0.08em" }}
                 >
                   {s.eyebrow}

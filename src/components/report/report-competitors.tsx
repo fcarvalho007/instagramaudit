@@ -63,7 +63,7 @@ export function ReportCompetitors() {
                       @{c.username}
                     </p>
                     {c.isOwn && (
-                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full border border-accent-primary/30 font-mono text-[9px] uppercase tracking-[0.12em] text-accent-primary font-semibold">
+                      <span className="text-eyebrow-sm inline-block mt-0.5 px-2 py-0.5 rounded-full border border-accent-primary/30 text-accent-primary font-semibold">
                         Perfil
                       </span>
                     )}

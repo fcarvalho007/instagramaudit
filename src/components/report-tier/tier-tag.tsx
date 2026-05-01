@@ -20,7 +20,7 @@ export function TierTag({ variant, className, label }: TierTagProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] px-2 py-1 rounded-full border",
+        "text-eyebrow-sm inline-flex items-center gap-1.5 px-2 py-1 rounded-full border",
         variant === "essential" &&
           "text-content-tertiary border-border-subtle/40 bg-surface-secondary/50",
         variant === "complete" &&

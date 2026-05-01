@@ -45,7 +45,7 @@ export function ReportTopPosts() {
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
                   />
                 ) : null}
-                <span className="absolute top-3 right-3 z-10 px-2 py-1 rounded-md bg-white/90 backdrop-blur font-mono text-[10px] uppercase tracking-wider text-content-primary font-semibold">
+                <span className="text-eyebrow-sm absolute top-3 right-3 z-10 px-2 py-1 rounded-md bg-white/90 backdrop-blur text-content-primary font-semibold">
                   {post.format}
                 </span>
                 {permalink ? (
@@ -55,7 +55,7 @@ export function ReportTopPosts() {
                 )}
               </div>
               <div className="p-4 flex flex-col gap-3 flex-1">
-                <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+                <p className="text-eyebrow-sm text-content-tertiary">
                   {post.date}
                 </p>
                 <p className="text-sm text-content-primary leading-snug line-clamp-2">

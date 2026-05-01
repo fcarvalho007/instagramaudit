@@ -20,7 +20,7 @@ export function AnalysisErrorState({
             <AlertCircle className="size-5" aria-hidden="true" />
           </div>
           <div className="space-y-2">
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               Análise indisponível
             </span>
             <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">

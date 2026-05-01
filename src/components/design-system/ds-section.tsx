@@ -19,7 +19,7 @@ const DSSection = React.forwardRef<HTMLElement, DSSectionProps>(
         {...props}
       >
         <header className="mb-10">
-          <p className="font-mono text-xs uppercase tracking-wide text-content-tertiary mb-3">
+          <p className="text-eyebrow text-content-tertiary mb-3">
             {label}
           </p>
           <h2 className="font-display text-3xl md:text-4xl font-semibold tracking-tight text-content-primary mb-3">
@@ -46,7 +46,7 @@ const DSExample = React.forwardRef<HTMLDivElement, DSExampleProps>(
   ({ label, className, children, ...props }, ref) => {
     return (
       <div ref={ref} className={cn("space-y-4", className)} {...props}>
-        <p className="font-mono text-xs uppercase tracking-wide text-content-tertiary mb-4">
+        <p className="text-eyebrow text-content-tertiary mb-4">
           {label}
         </p>
         <div className="rounded-lg border border-border-subtle bg-surface-secondary/40 p-6">

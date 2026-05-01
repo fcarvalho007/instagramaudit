@@ -145,7 +145,7 @@ export function ReportBlockTopTabs() {
               >
                 <span
                   className={cn(
-                    "font-mono text-[10px] uppercase tracking-[0.14em]",
+                    "text-eyebrow-sm",
                     isActive ? "text-white/80" : "text-slate-400",
                   )}
                 >

@@ -122,7 +122,7 @@ export function ShareReportPopover({
         className="w-[min(92vw,360px)] p-4 space-y-3 border-border-subtle/60 bg-surface-base/98 backdrop-blur-sm"
       >
         <div className="space-y-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+          <p className="text-eyebrow-sm text-content-tertiary">
             Partilhar este relatório
           </p>
           <p className="text-sm text-content-secondary leading-relaxed">{message.text}</p>

@@ -65,7 +65,7 @@ export function ReportBenchmarkEvidence({
     <div className={cn("space-y-1", className)}>
       <p
         className={cn(
-          "font-mono text-[10.5px] uppercase tracking-[0.14em] leading-snug",
+          "text-eyebrow-sm text-[10.5px] leading-snug",
           "text-slate-500",
         )}
       >
@@ -97,7 +97,7 @@ export function ReportBenchmarkEvidence({
         ) : null}
       </p>
       {aboveBufferRangeHint && aboveBufferRangeHint.trim().length > 0 ? (
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] leading-snug text-slate-400">
+        <p className="text-eyebrow-sm leading-snug text-slate-400">
           {aboveBufferRangeHint}
         </p>
       ) : null}

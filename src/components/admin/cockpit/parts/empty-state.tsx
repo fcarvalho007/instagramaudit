@@ -43,7 +43,7 @@ export function EmptyState({
           {icon}
         </div>
       ) : null}
-      <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+      <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
         Sem dados
       </p>
       <p className="mt-1.5 font-display text-base text-content-primary">{title}</p>

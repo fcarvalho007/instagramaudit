@@ -24,7 +24,7 @@ export function ReportEnrichedBio({ enriched, username: _username }: Props) {
       className="mx-auto max-w-7xl px-6 pt-4"
     >
       <div className="border-t border-border-subtle/30 pt-4 min-w-0 space-y-2">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+        <p className="text-eyebrow-sm text-content-tertiary">
           {ENRICHED_COPY.bio.eyebrow}
         </p>
         <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed whitespace-pre-line max-w-3xl">
@@ -34,7 +34,7 @@ export function ReportEnrichedBio({ enriched, username: _username }: Props) {
           href={profileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-accent-primary hover:text-accent-luminous transition-colors"
+          className="text-eyebrow inline-flex items-center gap-1.5 text-accent-primary hover:text-accent-luminous transition-colors"
         >
           {ENRICHED_COPY.bio.profileLinkLabel}
           <ExternalLink className="size-3" aria-hidden="true" />

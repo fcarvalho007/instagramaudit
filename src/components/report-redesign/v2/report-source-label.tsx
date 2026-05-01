@@ -81,7 +81,7 @@ export function ReportSourceLabel({
       title={a11y}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full ring-1 px-2 py-0.5",
-        "font-mono text-[10px] uppercase tracking-[0.16em] leading-none",
+        "text-eyebrow-sm leading-none",
         "max-w-full whitespace-nowrap overflow-hidden text-ellipsis",
         (caution ? CAUTION_TONE : NEUTRAL_TONE),
         className,

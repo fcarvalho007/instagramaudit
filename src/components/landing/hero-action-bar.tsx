@@ -70,7 +70,7 @@ export function HeroActionBar() {
       {/* Micro-label above the bar */}
       <div className="mb-3 flex items-center justify-center gap-2 text-content-secondary">
         <InstagramGlyph className="size-[18px]" />
-        <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em]">
+        <span className="text-eyebrow-sm text-[0.625rem]">
           Perfil público do Instagram
         </span>
       </div>
@@ -139,7 +139,7 @@ export function HeroActionBar() {
         ) : (
           <div className="w-full space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-xs uppercase tracking-wide text-content-tertiary">
+              <span className="text-eyebrow text-content-tertiary">
                 Concorrentes (opcional)
               </span>
               <button

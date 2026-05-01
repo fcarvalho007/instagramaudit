@@ -44,7 +44,7 @@ export function ReportFinalBlock({ snapshotId, reportUrl, result }: ReportFinalB
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]">
           {/* Header compacto: eyebrow + título + 1 linha de hint */}
           <header className="space-y-2 max-w-2xl">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600">
+            <p className="text-eyebrow text-blue-600">
               {SHARE_COPY.eyebrow}
             </p>
             <h2 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 leading-tight">
@@ -99,7 +99,7 @@ export function ReportFinalBlock({ snapshotId, reportUrl, result }: ReportFinalB
                 <ExternalLink className="h-4 w-4" aria-hidden="true" />
                 <span>{SHARE_COPY.actions.pdfFallback.label}</span>
               </a>
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+              <p className="text-eyebrow-sm text-slate-500">
                 {SHARE_COPY.actions.pdfFallback.blockedHint}
               </p>
             </div>

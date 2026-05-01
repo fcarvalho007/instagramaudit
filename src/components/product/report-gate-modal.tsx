@@ -198,7 +198,7 @@ export function ReportGateModal({
         ? FREE_MONTHLY_LIMIT
         : 1;
   const renderQuotaLine = () => (
-    <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+    <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
       {usedFromServer} de {FREE_MONTHLY_LIMIT} relatórios utilizados este mês
     </p>
   );
@@ -317,7 +317,7 @@ export function ReportGateModal({
         {state === "paywall" && (
           <div className="flex flex-col p-6 md:p-8 gap-6" aria-live="polite">
             <header className="space-y-2 text-center">
-              <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-accent-gold">
+              <span className="text-eyebrow-sm text-[0.625rem] text-accent-gold">
                 Limite mensal atingido
               </span>
               <DialogTitle className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
@@ -333,7 +333,7 @@ export function ReportGateModal({
               <div className="flex flex-col rounded-xl border border-border-default bg-surface-base/40 p-4 gap-3">
                 <div className="flex items-center gap-2">
                   <FileText className="size-4 text-accent-luminous" aria-hidden="true" />
-                  <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+                  <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
                     Compra pontual
                   </span>
                 </div>
@@ -359,12 +359,12 @@ export function ReportGateModal({
 
               {/* Pro subscription */}
               <div className="relative flex flex-col rounded-xl border border-accent-gold/40 bg-accent-gold/5 p-4 gap-3 shadow-glow-gold">
-                <span className="absolute -top-2 right-3 rounded-full bg-accent-gold px-2 py-0.5 font-mono text-[0.5625rem] uppercase tracking-[0.14em] text-text-inverse">
+                <span className="text-eyebrow-sm absolute -top-2 right-3 rounded-full bg-accent-gold px-2 py-0.5 text-[0.5625rem] text-text-inverse">
                   Recomendado
                 </span>
                 <div className="flex items-center gap-2">
                   <Crown className="size-4 text-accent-gold" aria-hidden="true" />
-                  <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-accent-gold">
+                  <span className="text-eyebrow-sm text-[0.625rem] text-accent-gold">
                     Acesso Pro
                   </span>
                 </div>
@@ -389,7 +389,7 @@ export function ReportGateModal({
               </div>
             </div>
 
-            <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary text-center">
+            <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary text-center">
               A quota reinicia no início do próximo mês
             </p>
 
@@ -405,7 +405,7 @@ export function ReportGateModal({
           <form onSubmit={handleSubmit} className="flex flex-col" noValidate>
             <div className="p-6 md:p-8 space-y-6">
               <header className="space-y-2">
-                <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+                <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
                   Relatório completo
                 </span>
                 <DialogTitle className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">

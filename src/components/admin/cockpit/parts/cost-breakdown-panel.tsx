@@ -84,7 +84,7 @@ function ProviderCard({
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary">
+        <p className="text-eyebrow-sm text-content-tertiary">
           {providerLabel(provider)}
         </p>
         <Badge variant={sourceBadgeVariant(bucket.source)}>
@@ -127,7 +127,7 @@ export function CostBreakdownPanel({
       key: "provider",
       header: "Provedor",
       render: (r) => (
-        <span className="font-mono text-xs uppercase tracking-[0.12em] text-content-secondary">
+        <span className="text-eyebrow text-content-secondary">
           {r.provider}
         </span>
       ),
@@ -208,7 +208,7 @@ export function CostBreakdownPanel({
     <section className="mx-auto max-w-7xl px-6 pb-10">
       <div className="rounded-xl border border-border-default/40 bg-surface-secondary p-5 shadow-card">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+          <p className="text-eyebrow-sm text-content-tertiary">
             Custos do provedor neste relatório
           </p>
           <div className="flex items-center gap-2 text-xs text-content-secondary">

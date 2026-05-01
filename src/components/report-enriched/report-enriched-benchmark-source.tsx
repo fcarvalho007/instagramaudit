@@ -24,7 +24,7 @@ export function ReportEnrichedBenchmarkSource({ enriched }: Props) {
           aria-hidden="true"
         />
         <div className="space-y-1.5 min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+          <p className="text-eyebrow-sm text-content-tertiary">
             {ENRICHED_COPY.benchmarkSource.eyebrow}
             {datasetVersion ? (
               <>

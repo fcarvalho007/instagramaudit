@@ -74,7 +74,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
           >
             <div className="flex items-center gap-2 text-blue-600">
               <Icon className="size-4" aria-hidden="true" />
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+              <p className="text-eyebrow-sm text-slate-500">
                 {label}
               </p>
             </div>
@@ -87,7 +87,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
 
       {benchmarkSource ? (
         <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+          <p className="text-eyebrow-sm text-slate-500">
             Fonte do benchmark
             {benchmarkSource.datasetVersion ? (
               <>
@@ -103,7 +103,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
       ) : null}
 
       <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 mb-3">
+        <p className="text-eyebrow-sm text-slate-500 mb-3">
           Como ler os cartões
         </p>
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -123,10 +123,10 @@ export function ReportMethodology({ enriched }: Props = {}) {
 
       <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
         <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+          <p className="text-eyebrow-sm text-slate-500">
             Fontes de referência
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+          <p className="text-eyebrow-sm text-slate-400">
             Dataset {BENCHMARK_DATASET_VERSION}
           </p>
         </div>
@@ -160,7 +160,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
                   {showQualityChip ? (
                     <span
                       className={cn(
-                        "mt-1 inline-block font-mono text-[9px] uppercase tracking-[0.14em] rounded-full px-1.5 py-0.5 ring-1",
+                        "text-eyebrow-sm mt-1 inline-block rounded-full px-1.5 py-0.5 ring-1",
                         "bg-slate-50 text-slate-500 ring-slate-200",
                       )}
                     >
@@ -195,7 +195,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
             <Users className="size-3.5" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1 space-y-1.5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+            <p className="text-eyebrow-sm text-slate-500">
               Comparação direta com concorrentes
             </p>
             <p className="text-sm text-slate-700 leading-relaxed">
@@ -216,7 +216,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
               )}
             >
               <span>Adicionar concorrente</span>
-              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-blue-600 bg-blue-50 ring-1 ring-blue-200 rounded-full px-1.5 py-0.5">
+              <span className="text-eyebrow-sm text-blue-600 bg-blue-50 ring-1 ring-blue-200 rounded-full px-1.5 py-0.5">
                 Pro
               </span>
             </button>

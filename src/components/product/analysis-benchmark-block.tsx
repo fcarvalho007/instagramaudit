@@ -35,7 +35,7 @@ export function AnalysisBenchmarkBlock({
         className="rounded-xl border border-border-subtle bg-surface-secondary p-5 md:p-6 space-y-4"
       >
         <header className="flex flex-col gap-1">
-          <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
+          <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
             Benchmark
           </span>
           <h2
@@ -75,7 +75,7 @@ export function AnalysisBenchmarkBlock({
     >
       <header className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1 min-w-0">
-          <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
+          <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
             {`Benchmark · ${dominantFormat} · ${accountTierLabel}`}
           </span>
           <h2
@@ -113,7 +113,7 @@ export function AnalysisBenchmarkBlock({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="size-1.5 rounded-full bg-accent-luminous" aria-hidden="true" />
-            <span className="font-mono text-[0.625rem] uppercase tracking-wide text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               Atual
             </span>
             <span className="font-mono text-sm text-content-primary">
@@ -122,7 +122,7 @@ export function AnalysisBenchmarkBlock({
           </div>
           <div className="flex items-center gap-2">
             <span className="h-3 w-px bg-content-secondary" aria-hidden="true" />
-            <span className="font-mono text-[0.625rem] uppercase tracking-wide text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               Benchmark
             </span>
             <span className="font-mono text-sm text-content-primary">
@@ -130,7 +130,7 @@ export function AnalysisBenchmarkBlock({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[0.625rem] uppercase tracking-wide text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               Δ
             </span>
             <span className="font-mono text-sm text-content-primary">

@@ -33,7 +33,7 @@ export function LegacyAccessSection() {
         >
           <div className="flex-1">
             <p className="m-0 flex items-center gap-2 text-[14px] font-medium text-admin-text-primary">
-              <span className="inline-flex items-center rounded border border-admin-border px-1.5 py-0.5 font-mono text-[10px] font-normal uppercase tracking-[0.08em] text-admin-text-tertiary">
+              <span className="text-eyebrow-sm inline-flex items-center rounded border border-admin-border px-1.5 py-0.5 font-normal text-admin-text-tertiary">
                 Legado
               </span>
               Cockpit técnico
@@ -43,7 +43,7 @@ export function LegacyAccessSection() {
               Acesso temporário durante a transição.
             </p>
           </div>
-          <span className="hidden font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary sm:inline">
+          <span className="text-eyebrow-sm hidden text-admin-text-tertiary sm:inline">
             {open ? "Recolher" : "Expandir"}
           </span>
           <ChevronRight

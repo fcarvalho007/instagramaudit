@@ -202,7 +202,7 @@ function EngagementRateCard({
         {hasBenchmark && deltaPct !== 0 ? (
           <span
             className={cn(
-              "font-mono text-[11px] uppercase tracking-[0.1em] pb-1.5",
+              "text-eyebrow pb-1.5",
               status.tone === "good"
                 ? "text-emerald-700"
                 : status.tone === "bad"
@@ -299,7 +299,7 @@ function EngagementDistanceBar({
           style={{ left: `calc(${refPct}% - 4px)` }}
         />
       </div>
-      <div className="relative font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+      <div className="text-eyebrow-sm relative text-slate-400">
         <span>0%</span>
         <span
           className="absolute -translate-x-1/2 text-blue-600"
@@ -351,7 +351,7 @@ function PostingRhythmCard({
         <span className="font-mono text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
           {weekly.toFixed(1).replace(".", ",")}
         </span>
-        <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-slate-500 pb-1">
+        <span className="text-eyebrow text-slate-500 pb-1">
           /semana
         </span>
       </div>
@@ -383,7 +383,7 @@ function PostingRhythmCard({
       </p>
 
       <RhythmDots weekly={weekly} tone={status.tone} />
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+      <p className="text-eyebrow-sm text-slate-400">
         escala · 0 → 7+ por semana
       </p>
     </PremiumCard>
@@ -531,7 +531,7 @@ function FormatStackedBar({
           );
         })}
       </div>
-      <ul className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
+      <ul className="text-eyebrow-sm flex flex-wrap gap-x-3 gap-y-1 text-slate-500">
         {items.map((b) => {
           const label = FORMAT_PT[b.format] ?? b.format;
           const tone = formatChipTone(label);

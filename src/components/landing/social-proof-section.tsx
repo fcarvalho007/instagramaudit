@@ -30,7 +30,7 @@ export function SocialProofSection() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-10 md:gap-12">
           {/* Left: editorial micro-statement */}
           <div className="flex-1">
-            <span className="font-mono text-xs uppercase tracking-wide text-content-tertiary mb-2 block">
+            <span className="text-eyebrow text-content-tertiary mb-2 block">
               Benchmarks atualizados
             </span>
             <p className="font-display text-xl md:text-2xl text-content-primary leading-snug tracking-tight">
@@ -53,7 +53,7 @@ export function SocialProofSection() {
                     className="absolute -bottom-1.5 left-0 h-[2px] w-8 bg-gradient-to-r from-accent-violet to-accent-violet-luminous rounded-full"
                   />
                 </div>
-                <div className="font-mono text-[0.65rem] md:text-xs uppercase tracking-wide text-content-secondary leading-snug">
+                <div className="text-eyebrow text-[0.65rem] text-content-secondary leading-snug">
                   {metric.label}
                 </div>
               </div>

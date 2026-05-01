@@ -79,7 +79,7 @@ interface SuccessEntry {
 function SectionHeader() {
   return (
     <header className="flex flex-col gap-1">
-      <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
+      <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
         Comparação
       </span>
       <h2
@@ -122,7 +122,7 @@ function FailureCard({ entry }: { entry: Extract<CompetitorAnalysis, { success: 
           aria-hidden="true"
           className="size-1.5 rounded-full bg-content-tertiary"
         />
-        <span className="font-mono text-xs text-content-secondary">
+        <span className="font-sans text-xs text-content-secondary">
           @{entry.username}
         </span>
       </div>
@@ -214,7 +214,7 @@ export function AnalysisCompetitorComparison({
             >
               <span
                 className={cn(
-                  "font-mono text-[0.625rem] uppercase tracking-[0.14em]",
+                  "text-eyebrow-sm text-[0.625rem]",
                   entry.isPrimary
                     ? "text-accent-luminous"
                     : "text-content-tertiary",
@@ -271,7 +271,7 @@ function Row({ metric, entries, bestUsername }: RowProps) {
   return (
     <>
       <div className="flex items-center">
-        <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
+        <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
           {metric.label}
         </span>
       </div>

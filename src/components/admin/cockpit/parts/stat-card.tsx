@@ -27,7 +27,7 @@ const toneText: Record<NonNullable<StatCardProps["tone"]>, string> = {
 export function StatCard({ label, value, sublabel, tone = "default" }: StatCardProps) {
   return (
     <div className="flex min-h-[6.5rem] flex-col rounded-lg border border-border-subtle bg-surface-elevated p-4 sm:p-5">
-      <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+      <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
         {label}
       </p>
       <p

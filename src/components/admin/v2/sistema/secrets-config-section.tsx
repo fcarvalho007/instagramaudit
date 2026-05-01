@@ -204,7 +204,7 @@ function ConfigCell({
         : "text-admin-text-primary";
   return (
     <div className="bg-admin-surface px-4 py-3.5">
-      <p className="m-0 font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
+      <p className="text-eyebrow-sm m-0 text-admin-text-tertiary">
         {eyebrow}
       </p>
       <p className={`m-0 mt-1 font-mono text-[14px] ${valueClass}`}>{value}</p>

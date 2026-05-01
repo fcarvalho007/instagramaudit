@@ -178,7 +178,7 @@ function CoverageBadge({
     <span
       className={cn(
         "inline-flex items-center gap-2 rounded-full ring-1 px-3 py-1.5",
-        "font-mono text-[10px] uppercase tracking-[0.16em]",
+        "text-eyebrow-sm",
         toneClass,
       )}
     >
