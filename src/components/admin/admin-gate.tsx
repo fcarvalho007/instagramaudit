@@ -65,7 +65,7 @@ export function AdminGate({ onSuccess }: AdminGateProps = {}) {
         className="w-full max-w-sm space-y-6 rounded-xl border border-border-subtle bg-surface-elevated p-8 shadow-xl"
       >
         <div className="space-y-2">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-content-tertiary">
+          <p className="text-eyebrow text-content-tertiary">
             InstaBench · Admin
           </p>
           <h1 className="font-display text-2xl text-content-primary">Acesso</h1>
@@ -77,7 +77,7 @@ export function AdminGate({ onSuccess }: AdminGateProps = {}) {
         <div className="space-y-2">
           <label
             htmlFor="admin-email"
-            className="block font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary"
+            className="text-eyebrow-sm block text-content-tertiary"
           >
             Email
           </label>

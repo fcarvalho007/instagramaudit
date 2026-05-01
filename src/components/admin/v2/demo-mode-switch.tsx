@@ -41,7 +41,7 @@ export function DemoModeSwitch() {
           style={{ transform: enabled ? "translateX(15px)" : "translateX(2px)" }}
         />
       </span>
-      <span className="font-mono uppercase tracking-[0.1em]">
+      <span className="text-eyebrow-sm">
         {enabled ? "Demo" : "Real"}
       </span>
     </button>

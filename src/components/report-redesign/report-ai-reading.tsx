@@ -113,7 +113,7 @@ export function ReportAiReading({ data, enriched, compact = false }: Props) {
 
       {techMeta && techMeta.items.length > 0 ? (
         <details className="group mt-6">
-          <summary className="cursor-pointer inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-slate-500 hover:text-blue-600 transition-colors list-none [&::-webkit-details-marker]:hidden">
+          <summary className="text-eyebrow cursor-pointer inline-flex items-center gap-1.5 text-slate-500 hover:text-blue-600 transition-colors list-none [&::-webkit-details-marker]:hidden">
             <span>Ver base e sinais usados</span>
             <span
               aria-hidden="true"
@@ -134,7 +134,7 @@ export function ReportAiReading({ data, enriched, compact = false }: Props) {
                   className="border-l-2 border-slate-200 pl-3"
                 >
                   <p className="text-slate-600">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 mr-2">
+                    <span className="text-eyebrow-sm text-slate-500 mr-2">
                       {it.number}
                     </span>
                     {humanize(it.title)}
@@ -148,7 +148,7 @@ export function ReportAiReading({ data, enriched, compact = false }: Props) {
               ))}
             </ul>
             {(techMeta.model || techMeta.generatedAt) && (
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] pt-2">
+              <p className="text-eyebrow-sm pt-2">
                 {techMeta.model ? `Modelo ${techMeta.model}` : null}
                 {techMeta.model && techMeta.generatedAt ? " · " : null}
                 {techMeta.generatedAt

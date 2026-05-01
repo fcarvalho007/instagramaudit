@@ -69,7 +69,7 @@ export function ReportFormatBreakdown() {
                 </div>
                 <span
                   className={cn(
-                    "inline-flex items-center px-2.5 py-1 rounded-full border font-mono text-[10px] uppercase tracking-[0.12em] font-semibold",
+                    "text-eyebrow-sm inline-flex items-center px-2.5 py-1 rounded-full border font-semibold",
                     TONE[status.tone],
                   )}
                 >
@@ -81,7 +81,7 @@ export function ReportFormatBreakdown() {
                 <h3 className="font-sans text-[18px] font-medium tracking-[-0.01em] text-content-primary">
                   {f.format}
                 </h3>
-                <p className="font-mono text-[10px] text-content-tertiary uppercase tracking-[0.12em] mt-1">
+                <p className="text-eyebrow-sm text-content-tertiary mt-1">
                   {f.sharePct}% do conteúdo
                 </p>
               </div>
@@ -90,7 +90,7 @@ export function ReportFormatBreakdown() {
                 {/* Barra "Atual" — cor depende da posição face ao benchmark */}
                 <div className="space-y-1">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-content-secondary">
+                    <span className="text-eyebrow-sm text-content-secondary">
                       Atual
                     </span>
                     <span className="font-sans text-[18px] font-medium tracking-[-0.01em] text-content-primary tabular-nums">
@@ -107,7 +107,7 @@ export function ReportFormatBreakdown() {
                 {/* Barra "Benchmark" — sempre cinza neutro */}
                 <div className="space-y-1">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-content-tertiary">
+                    <span className="text-eyebrow-sm text-content-tertiary">
                       Benchmark
                     </span>
                     <span className="font-mono text-[13px] font-medium text-content-secondary tabular-nums">

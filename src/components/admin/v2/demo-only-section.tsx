@@ -60,7 +60,7 @@ export function DemoOnlySection({
       />
       <AdminCard>
         <div className="flex flex-col items-start gap-3 py-6">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-admin-text-tertiary">
+          <span className="text-eyebrow-sm text-admin-text-tertiary">
             Sem dados reais ainda
           </span>
           <p className="m-0 max-w-xl text-sm leading-relaxed text-admin-text-secondary">

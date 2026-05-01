@@ -33,7 +33,7 @@ export function MockupDashboard() {
             <span className="font-display text-base md:text-lg font-medium text-on-light-primary truncate">
               @marca_exemplo
             </span>
-            <span className="font-mono text-[0.625rem] md:text-xs uppercase tracking-[0.12em] text-on-light-tertiary truncate">
+            <span className="text-eyebrow text-[0.625rem] md: text-on-light-tertiary truncate">
               Análise · 30 publicações · 14 Abr 2026
             </span>
           </div>
@@ -43,7 +43,7 @@ export function MockupDashboard() {
             aria-hidden="true"
             className="h-1.5 w-1.5 rounded-full bg-accent-violet animate-pulse"
           />
-          <span className="font-mono text-[0.625rem] md:text-xs uppercase tracking-wide text-accent-violet-deep">
+          <span className="text-eyebrow text-[0.625rem] md: text-accent-violet-deep">
             <span className="hidden sm:inline">Relatório completo</span>
             <span className="sm:hidden">Completo</span>
           </span>
@@ -97,7 +97,7 @@ export function MockupDashboard() {
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 md:p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex flex-col gap-1 min-w-0">
-                <span className="font-mono text-[0.625rem] uppercase tracking-wide text-on-light-tertiary">
+                <span className="text-eyebrow-sm text-[0.625rem] text-on-light-tertiary">
                   Benchmark · Reels
                 </span>
                 <span className="font-sans text-sm text-on-light-secondary">
@@ -113,7 +113,7 @@ export function MockupDashboard() {
 
           {/* Competitor comparison */}
           <div className="space-y-3">
-            <span className="font-mono text-[0.625rem] uppercase tracking-wide text-on-light-tertiary block">
+            <span className="text-eyebrow-sm text-[0.625rem] text-on-light-tertiary block">
               Comparação com concorrentes
             </span>
             <div className="space-y-2.5">
@@ -171,7 +171,7 @@ export function MockupDashboard() {
                 <Sparkles className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="flex flex-col gap-2 min-w-0">
-                <span className="font-mono text-[0.625rem] uppercase tracking-wide text-accent-violet-deep">
+                <span className="text-eyebrow-sm text-[0.625rem] text-accent-violet-deep">
                   Insight prioritário
                 </span>
                 <p className="font-sans text-sm md:text-base text-on-light-secondary leading-relaxed">
@@ -190,7 +190,7 @@ export function MockupDashboard() {
 
         {/* Central intrigue label with lock icon */}
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
-          <span className="inline-flex items-center gap-2 font-mono text-[0.625rem] uppercase tracking-[0.24em] text-on-light-secondary px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-sm">
+          <span className="text-eyebrow-sm inline-flex items-center gap-2 text-[0.625rem] text-on-light-secondary px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-sm">
             <Lock className="h-3 w-3" aria-hidden="true" />
             Conteúdo completo no relatório
           </span>

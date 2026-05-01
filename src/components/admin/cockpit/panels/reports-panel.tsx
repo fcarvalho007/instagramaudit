@@ -238,7 +238,7 @@ export function ReportsPanel() {
       header: "Formato",
       render: (r) =>
         r.dominant_format ? (
-          <span className="font-mono text-xs uppercase tracking-[0.12em] text-content-secondary">
+          <span className="text-eyebrow text-content-secondary">
             {r.dominant_format}
           </span>
         ) : (
@@ -324,12 +324,12 @@ export function ReportsPanel() {
               relatório disponível durante 5 dias.
             </p>
             <p className="text-xs text-content-tertiary">
-              <span className="font-mono uppercase tracking-[0.12em]">
+              <span className="text-eyebrow-sm">
                 Cache
               </span>{" "}
               é a janela técnica de reuso interno (evita repetir chamadas ao
               provider).{" "}
-              <span className="font-mono uppercase tracking-[0.12em]">
+              <span className="text-eyebrow-sm">
                 Retenção
               </span>{" "}
               é a janela de visibilidade administrativa: 5 dias contados a

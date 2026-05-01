@@ -232,7 +232,7 @@ function BetaFeedbackBannerV2() {
       <div className="mx-auto max-w-7xl px-5 md:px-6 py-10 md:py-12">
         <div className="rounded-2xl border border-slate-200/70 bg-white p-6 md:p-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="space-y-1.5 max-w-2xl">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600">
+            <p className="text-eyebrow text-blue-600">
               {feedback.eyebrow}
             </p>
             <p className="text-sm md:text-base text-slate-700 leading-relaxed">

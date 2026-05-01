@@ -60,7 +60,7 @@ export function ReportEngagementHistory({ handle, current }: Props) {
   if (items === null) {
     return (
       <div className="mt-7 pt-6 border-t border-border-subtle/60">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary mb-3">
+        <p className="text-eyebrow-sm text-content-tertiary mb-3">
           Histórico de análises
         </p>
         <div className="space-y-2">
@@ -75,7 +75,7 @@ export function ReportEngagementHistory({ handle, current }: Props) {
   if (items.length < 2) {
     return (
       <div className="mt-7 pt-6 border-t border-border-subtle/60">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary mb-2">
+        <p className="text-eyebrow-sm text-content-tertiary mb-2">
           Histórico de análises
         </p>
         <p className="text-sm text-content-tertiary leading-relaxed">
@@ -92,10 +92,10 @@ export function ReportEngagementHistory({ handle, current }: Props) {
   return (
     <div className="mt-7 pt-6 border-t border-border-subtle/60">
       <div className="flex items-baseline justify-between mb-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary">
+        <p className="text-eyebrow-sm text-content-tertiary">
           Histórico das últimas {ordered.length} análises
         </p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-content-tertiary/80">
+        <p className="text-eyebrow-sm text-content-tertiary/80">
           envolvimento médio
         </p>
       </div>

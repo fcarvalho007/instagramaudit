@@ -32,7 +32,7 @@ export function HowItWorksSection() {
       <Container size="lg" className="relative">
         {/* Section header */}
         <div className="max-w-2xl mb-16 md:mb-20">
-          <span className="font-mono text-xs uppercase tracking-wide text-accent-violet-luminous mb-4 block">
+          <span className="text-eyebrow text-accent-violet-luminous mb-4 block">
             Como funciona
           </span>
           <h2 className="font-display text-3xl md:text-5xl text-content-primary font-medium tracking-tight leading-[1.1] mb-6">

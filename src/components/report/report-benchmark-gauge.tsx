@@ -88,7 +88,7 @@ export function ReportBenchmarkGauge() {
               className="absolute -top-12 -translate-x-1/2 flex flex-col items-center gap-1"
               style={{ left: `${valuePct}%` }}
             >
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-content-secondary whitespace-nowrap">
+              <span className="text-eyebrow-sm font-semibold text-content-secondary whitespace-nowrap">
                 Atual
               </span>
               <span className="block h-2.5 w-2.5 rounded-full bg-content-primary ring-4 ring-surface-secondary" />
@@ -108,7 +108,7 @@ export function ReportBenchmarkGauge() {
               className="absolute -top-12 -translate-x-1/2 flex flex-col items-center gap-1"
               style={{ left: `${benchPct}%` }}
             >
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-content-tertiary whitespace-nowrap">
+              <span className="text-eyebrow-sm font-semibold text-content-tertiary whitespace-nowrap">
                 Benchmark
               </span>
               <span className="block h-3 w-[2px] rounded-full bg-content-tertiary" />
@@ -127,7 +127,7 @@ export function ReportBenchmarkGauge() {
 
         {/* Gap summary */}
         <div className="flex items-center justify-center gap-2 pt-2">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-content-secondary">
+          <span className="text-eyebrow-sm font-semibold text-content-secondary">
             Gap
           </span>
           <ArrowRight className="size-3.5 text-content-tertiary" />

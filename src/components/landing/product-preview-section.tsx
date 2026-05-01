@@ -98,7 +98,7 @@ export function ProductPreviewSection() {
       <Container size="lg" className="relative z-10">
         {/* Header — dark text on light surface */}
         <div className="max-w-2xl mb-12 md:mb-16">
-          <span className="font-mono text-xs uppercase tracking-wide text-accent-violet-deep mb-4 block">
+          <span className="text-eyebrow text-accent-violet-deep mb-4 block">
             Preview do produto
           </span>
           <h2 className="font-display text-3xl md:text-5xl font-medium tracking-tight text-on-light-primary leading-[1.1] mb-6">
@@ -118,7 +118,7 @@ export function ProductPreviewSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mt-16 md:mt-20">
           {highlights.map((item) => (
             <div key={item.label} className="flex flex-col gap-3">
-              <span className="font-mono text-xs uppercase tracking-wide text-on-light-secondary">
+              <span className="text-eyebrow text-on-light-secondary">
                 {item.label}
               </span>
               <h3 className="font-display text-xl font-medium text-on-light-primary tracking-tight">

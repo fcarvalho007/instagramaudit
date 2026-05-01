@@ -120,7 +120,7 @@ export function DiagnosticsPanel({ data }: Props) {
       >
         <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
               Estado
             </span>
             <Badge variant={data.testing_mode.active ? "accent" : "warning"} dot>
@@ -129,7 +129,7 @@ export function DiagnosticsPanel({ data }: Props) {
           </div>
           {data.testing_mode.allowlist.length > 0 ? (
             <div className="mt-4 space-y-2">
-              <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+              <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
                 Handles autorizados ({data.testing_mode.allowlist.length})
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -240,7 +240,7 @@ function Section({
 function KV({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3">
-      <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+      <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
         {label}
       </p>
       <div className="mt-1.5 text-sm text-content-primary">{children}</div>
@@ -401,7 +401,7 @@ function ReadinessCard({ data }: { data: CockpitData }) {
         <div className="flex items-start gap-3">
           <m.Icon className={cn("mt-0.5 size-6 shrink-0", m.iconClass)} aria-hidden="true" />
           <div className="space-y-1">
-            <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+            <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
               {m.kicker}
             </p>
             <h3 className="font-display text-lg text-content-primary">{m.title}</h3>
@@ -645,7 +645,7 @@ function ReadinessChecklistCard({ data }: { data: CockpitData }) {
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+          <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
             Checklist · Prontidão
           </p>
           <h3 className="font-display text-base text-content-primary">
@@ -750,7 +750,7 @@ function SmokeTestStatusCard({ data }: { data: CockpitData }) {
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+          <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
             Verificação de runtime
           </p>
           <h3 className="font-display text-lg text-content-primary">
@@ -775,7 +775,7 @@ function SmokeTestStatusCard({ data }: { data: CockpitData }) {
             key={row.label}
             className="flex items-center justify-between gap-3 px-3 py-2.5"
           >
-            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
               {row.label}
             </span>
             <span className="flex items-center gap-2 text-sm text-content-primary">
@@ -798,7 +798,7 @@ function SmokeTestStatusCard({ data }: { data: CockpitData }) {
 
       {!check.ready_for_smoke_test && check.blocking_reason ? (
         <div className="mt-4 rounded-md border border-signal-warning/30 bg-signal-warning/10 p-3 text-sm text-signal-warning">
-          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-signal-warning/80">
+          <p className="text-eyebrow-sm text-[0.6875rem] text-signal-warning/80">
             Razão do bloqueio
           </p>
           <p className="mt-1 text-content-primary">{check.blocking_reason}</p>

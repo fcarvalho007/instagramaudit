@@ -104,7 +104,7 @@ export function ReportDiagnosticCard({
       )}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500 min-w-0">
+        <p className="text-eyebrow-sm text-slate-500 min-w-0">
           Pergunta {number}
           <span className="mx-1.5 text-slate-300">·</span>
           <span className="text-slate-500">{label}</span>
@@ -133,7 +133,7 @@ export function ReportDiagnosticCard({
           t.box,
         )}
       >
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+          <p className="text-eyebrow-sm text-slate-500">
           {answerLabel}
         </p>
         <p
@@ -152,7 +152,7 @@ export function ReportDiagnosticCard({
 
       {aiSource ? (
         <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-blue-700 inline-flex items-center gap-1.5">
+          <p className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1.5">
             <Bot aria-hidden className="size-3" />
             Leitura IA · interpretação
           </p>
@@ -300,7 +300,7 @@ export function DiagnosticFunnelStack({
             <div
               className={cn(
                 "h-7 rounded-md flex items-center px-2.5",
-                "font-mono text-[10px] uppercase tracking-[0.14em]",
+                "text-eyebrow-sm",
                 active ? tone.active : tone.idle,
               )}
               style={{ width: `${width}%`, minWidth: "fit-content" }}
@@ -335,7 +335,7 @@ export function DiagnosticMiniStats({
           <p className="font-mono text-[15px] font-semibold text-slate-900 tabular-nums leading-none">
             {it.value}
           </p>
-          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-slate-500">
+          <p className="text-eyebrow-sm mt-1 text-slate-500">
             {it.label}
           </p>
         </div>
@@ -379,7 +379,7 @@ export function DiagnosticChecklist({
                 <span className="ml-1.5 text-slate-400">{it.hint}</span>
               ) : null}
             </span>
-            <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+            <span className="text-eyebrow-sm ml-auto text-slate-500">
               {tag}
             </span>
           </li>
@@ -435,7 +435,7 @@ export function DiagnosticRanking({
         <li key={`${it.label}-${i}`} className="text-sm">
           <div className="flex items-center justify-between gap-3">
             <span className="text-slate-700 truncate">{it.label}</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500 tabular-nums shrink-0">
+            <span className="text-eyebrow-sm text-slate-500 tabular-nums shrink-0">
               {Math.round((it.score / max) * 100)}%
             </span>
           </div>
@@ -470,7 +470,7 @@ export function DiagnosticAudienceHighlight({
   if (avgLikes <= 0 && avgComments <= 0) {
     return (
       <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3">
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">
+        <p className="text-eyebrow text-slate-500">
           Sem dados de gostos/comentários
         </p>
         <p className="mt-1 text-[12.5px] text-slate-600 leading-relaxed">
@@ -495,7 +495,7 @@ export function DiagnosticAudienceHighlight({
     <div className="space-y-2">
       <div
         className={cn(
-          "rounded-md px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em]",
+          "text-eyebrow rounded-md px-3 py-2",
           TONE_BG[tone],
         )}
       >
@@ -506,7 +506,7 @@ export function DiagnosticAudienceHighlight({
       </div>
       <div className="flex items-center gap-2 px-1">
         <span aria-hidden className={cn("size-1.5 rounded-full", DOT[tone])} />
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">
+        <span className="text-eyebrow text-slate-500">
           <span className="font-mono text-[13px] font-semibold normal-case tracking-normal text-slate-700 tabular-nums">
             {avgComments.toLocaleString("pt-PT")}
           </span>{" "}

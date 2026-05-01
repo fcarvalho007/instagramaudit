@@ -59,7 +59,7 @@ export function HowItWorksStep({
             {icon}
           </span>
         </div>
-        <span className="font-mono text-xs uppercase tracking-wide text-content-tertiary">
+        <span className="text-eyebrow text-content-tertiary">
           Passo {number}
         </span>
       </div>

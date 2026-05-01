@@ -22,7 +22,7 @@ export function AnalysisMetricCard({
           : "border-border-subtle",
       )}
     >
-      <span className="block font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
+      <span className="text-eyebrow-sm block text-[0.625rem] text-content-tertiary">
         {label}
       </span>
       <span

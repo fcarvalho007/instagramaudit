@@ -16,7 +16,7 @@ export function ScopeStrip() {
       className="mx-auto max-w-7xl px-6 pt-6"
     >
       <div className="rounded-2xl border border-border-subtle/40 bg-surface-secondary/50 backdrop-blur-sm p-5 md:p-6 space-y-2">
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-primary">
+        <p className="text-eyebrow text-accent-primary">
           {scope.eyebrow}
         </p>
         <h2 className="font-display text-lg md:text-xl font-medium tracking-tight text-content-primary leading-snug">

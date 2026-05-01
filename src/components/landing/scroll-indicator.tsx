@@ -4,7 +4,7 @@ export function ScrollIndicator() {
       className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-10"
       aria-hidden="true"
     >
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-content-tertiary">
+      <span className="text-eyebrow-sm text-content-tertiary">
         Explorar
       </span>
       <span className="scroll-indicator-line block h-8 w-px bg-content-tertiary origin-top" />

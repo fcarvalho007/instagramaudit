@@ -30,7 +30,7 @@ export function LegalLayout({ eyebrow, title, lede, lastUpdated, toc, children }
         <article className="py-16 md:py-24">
           {/* Header */}
           <header className="max-w-3xl space-y-5 mb-12 md:mb-16">
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-accent-luminous">
+            <span className="text-eyebrow-sm text-[0.625rem] text-accent-luminous">
               {eyebrow}
             </span>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-content-primary tracking-tight">
@@ -39,7 +39,7 @@ export function LegalLayout({ eyebrow, title, lede, lastUpdated, toc, children }
             <p className="font-sans text-base md:text-lg text-content-secondary leading-relaxed">
               {lede}
             </p>
-            <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary pt-2">
+            <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary pt-2">
               Última atualização: {lastUpdated}
             </p>
           </header>
@@ -49,7 +49,7 @@ export function LegalLayout({ eyebrow, title, lede, lastUpdated, toc, children }
             {toc && toc.length > 0 && (
               <aside className="hidden lg:block">
                 <div className="sticky top-24 space-y-3">
-                  <p className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+                  <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
                     Índice
                   </p>
                   <nav>
@@ -76,7 +76,7 @@ export function LegalLayout({ eyebrow, title, lede, lastUpdated, toc, children }
 
           {/* Footer notes */}
           <footer className="max-w-3xl mt-16 md:mt-20 pt-8 border-t border-border-subtle space-y-4">
-            <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+            <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               InstaBench não é afiliado, patrocinado nem operado pela Meta ou pelo Instagram. A
               análise incide sobre dados públicos disponíveis no Instagram.
             </p>

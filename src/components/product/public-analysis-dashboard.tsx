@@ -124,7 +124,7 @@ export function PublicAnalysisDashboard({
             >
               Métricas-chave
             </h2>
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               {`${content_summary.posts_analyzed} publicações analisadas`}
             </span>
           </header>

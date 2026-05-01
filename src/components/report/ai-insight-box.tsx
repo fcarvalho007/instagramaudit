@@ -46,7 +46,7 @@ export function AIInsightBox({
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
         <p
-          className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]"
+          className="text-eyebrow-sm font-semibold"
           style={{ color: `rgb(var(--insight-${v}-icon))` }}
         >
           Leitura IA

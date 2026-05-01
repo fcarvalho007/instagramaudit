@@ -22,7 +22,7 @@ export function ReportEnrichedTopLinks({ enriched }: Props) {
     >
       <div className="rounded-xl border border-border-subtle/30 bg-surface-secondary/30 p-5 md:p-6 space-y-4">
         <header className="space-y-1.5 max-w-3xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-content-tertiary">
+          <p className="text-eyebrow text-content-tertiary">
             {ENRICHED_COPY.topLinks.eyebrow}
           </p>
           <h2 className="font-display text-xl md:text-2xl font-medium tracking-tight text-content-primary leading-snug">
@@ -43,10 +43,10 @@ export function ReportEnrichedTopLinks({ enriched }: Props) {
                 className="group grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] sm:items-center gap-3 sm:gap-4"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary shrink-0 w-14">
+                  <span className="text-eyebrow-sm text-content-tertiary shrink-0 w-14">
                     {post.date}
                   </span>
-                  <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border border-border-subtle/60 text-content-secondary shrink-0">
+                  <span className="text-eyebrow-sm px-2 py-0.5 rounded-md border border-border-subtle/60 text-content-secondary shrink-0">
                     {post.format}
                   </span>
                 </div>
@@ -77,7 +77,7 @@ export function ReportEnrichedTopLinks({ enriched }: Props) {
           ))}
         </ul>
 
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary">
+        <p className="text-eyebrow-sm text-content-tertiary">
           {ENRICHED_COPY.topLinks.linkLabel} · abre numa nova janela
         </p>
       </div>

@@ -157,7 +157,7 @@ const InputLabel = React.forwardRef<
   <label
     ref={ref}
     className={cn(
-      "block font-mono text-xs uppercase tracking-wide text-content-tertiary mb-2",
+      "text-eyebrow block text-content-tertiary mb-2",
       className,
     )}
     {...props}

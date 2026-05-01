@@ -143,7 +143,7 @@ export function CostsDetailSection() {
       )}
 
       {!metrics.isLoading && !metrics.error ? (
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
+        <p className="text-eyebrow-sm mt-2 text-admin-text-tertiary">
           Janela: últimas 24h · fonte: provider_call_logs · status: success + cache · custo: actual_cost_usd ?? estimated_cost_usd
         </p>
       ) : null}
@@ -262,7 +262,7 @@ export function CostsDetailSection() {
                   }}
                 >
                   <header className="mb-1 flex items-center justify-between gap-3">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
+                    <span className="text-eyebrow-sm text-admin-text-tertiary">
                       {ALERT_EYEBROW[alert.severity]}
                     </span>
                     <span className="text-[11px] text-admin-text-tertiary">

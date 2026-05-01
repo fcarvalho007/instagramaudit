@@ -23,12 +23,12 @@ export function ReportDiagnosticGroup({
   return (
     <div className="space-y-4 md:space-y-5">
       <div className="flex items-center gap-3 border-b border-slate-200/70 pb-2">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+        <p className="text-eyebrow-sm text-slate-500">
           <span className="text-slate-400">{letter}</span>
           <span className="mx-2 text-slate-300">·</span>
           <span>{label}</span>
         </p>
-        <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.16em] text-slate-400 tabular-nums">
+        <span className="text-eyebrow-sm ml-auto text-slate-400 tabular-nums">
           {questionsCount} {questionsCount === 1 ? "PERGUNTA" : "PERGUNTAS"}
         </span>
       </div>

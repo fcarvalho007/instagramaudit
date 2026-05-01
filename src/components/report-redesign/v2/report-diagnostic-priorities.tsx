@@ -30,16 +30,16 @@ export function ReportDiagnosticPriorities({ items, source = "deterministic" }: 
   return (
     <section aria-label="Prioridades de ação" className="space-y-4 md:space-y-5">
       <div className="flex items-center gap-3 border-b border-slate-200/70 pb-2">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+        <p className="text-eyebrow-sm text-slate-500">
           Prioridades de ação
         </p>
         {source === "ai" ? (
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-blue-700 inline-flex items-center gap-1">
+          <span className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1">
             <Bot aria-hidden className="size-3" />
             Leitura IA
           </span>
         ) : null}
-        <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.16em] text-slate-400 tabular-nums">
+        <span className="text-eyebrow-sm ml-auto text-slate-400 tabular-nums">
           {items.length} {items.length === 1 ? "AÇÃO" : "AÇÕES"}
         </span>
       </div>
@@ -60,7 +60,7 @@ export function ReportDiagnosticPriorities({ items, source = "deterministic" }: 
               <span
                 className={cn(
                   "self-start inline-flex items-center rounded-full px-2.5 py-1",
-                  "font-mono text-[10px] uppercase tracking-[0.14em] ring-1",
+                  "text-eyebrow-sm ring-1",
                   s.chip,
                 )}
               >
@@ -70,7 +70,7 @@ export function ReportDiagnosticPriorities({ items, source = "deterministic" }: 
                 {it.title}
               </h4>
               <p className="text-sm text-slate-600 leading-relaxed">{it.body}</p>
-              <p className="mt-auto font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+              <p className="text-eyebrow-sm mt-auto text-slate-500">
                 {it.resolves}
               </p>
             </article>

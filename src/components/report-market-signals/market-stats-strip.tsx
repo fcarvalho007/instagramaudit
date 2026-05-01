@@ -27,7 +27,7 @@ export function MarketStatsStrip({ items }: { items: MarketStat[] }) {
             <div key={idx} className="p-5 md:p-6 min-w-0">
               <div className="flex items-center gap-2">
                 <span aria-hidden="true" className={`inline-block h-1.5 w-1.5 rounded-full ${accentDot}`} />
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                <p className="text-eyebrow-sm text-slate-500">
                   {stat.eyebrow}
                 </p>
               </div>

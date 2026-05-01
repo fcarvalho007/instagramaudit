@@ -55,7 +55,7 @@ function ReadinessChip({ chip }: { chip: HealthChip }) {
             boxShadow: `0 0 0 3px ${dotColor}26`,
           }}
         />
-        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
+        <span className="text-eyebrow-sm text-admin-text-tertiary">
           {chip.service}
         </span>
       </div>

@@ -64,7 +64,7 @@ export function PostAnalysisConversionLayer({
       <header className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <span className="h-px flex-1 bg-border-subtle" aria-hidden="true" />
-          <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+          <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
             {copy.label}
           </span>
           <span className="h-px flex-1 bg-border-subtle" aria-hidden="true" />
@@ -117,7 +117,7 @@ export function PostAnalysisConversionLayer({
         >
           <header className="flex items-center gap-2">
             <FileText className="size-4 text-accent-luminous" aria-hidden="true" />
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               Compra pontual
             </span>
           </header>
@@ -147,12 +147,12 @@ export function PostAnalysisConversionLayer({
 
         {/* Pro — recommended */}
         <article className="relative flex flex-col rounded-xl border border-accent-gold/40 bg-accent-gold/5 p-5 gap-4 shadow-glow-gold">
-          <span className="absolute -top-2 right-4 rounded-full bg-accent-gold px-2 py-0.5 font-mono text-[0.5625rem] uppercase tracking-[0.14em] text-text-inverse">
+          <span className="text-eyebrow-sm absolute -top-2 right-4 rounded-full bg-accent-gold px-2 py-0.5 text-[0.5625rem] text-text-inverse">
             Recomendado
           </span>
           <header className="flex items-center gap-2">
             <Crown className="size-4 text-accent-gold" aria-hidden="true" />
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-accent-gold">
+            <span className="text-eyebrow-sm text-[0.625rem] text-accent-gold">
               Pro
             </span>
           </header>
@@ -185,7 +185,7 @@ export function PostAnalysisConversionLayer({
         <article className="flex flex-col rounded-xl border border-border-default bg-surface-secondary/40 p-5 gap-4">
           <header className="flex items-center gap-2">
             <Users className="size-4 text-content-tertiary" aria-hidden="true" />
-            <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary">
+            <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               Agency
             </span>
           </header>
@@ -214,7 +214,7 @@ export function PostAnalysisConversionLayer({
         </article>
       </div>
 
-      <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-content-tertiary text-center">
+      <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary text-center">
         {copy.note}
       </p>
     </section>

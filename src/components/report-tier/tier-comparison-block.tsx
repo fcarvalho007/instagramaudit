@@ -18,7 +18,7 @@ export function TierComparisonBlock() {
     >
       <div className="rounded-2xl border border-border-subtle/40 bg-surface-secondary/40 p-6 md:p-10 space-y-8">
         <header className="space-y-2 max-w-3xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-content-tertiary">
+          <p className="text-eyebrow text-content-tertiary">
             {comparison.eyebrow}
           </p>
           <h2 className="font-display text-2xl md:text-3xl font-medium tracking-tight text-content-primary leading-tight">

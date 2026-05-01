@@ -59,7 +59,7 @@ function Header() {
               aria-hidden="true"
             >
               <span className="h-5 w-px bg-border-default" />
-              <span className="font-mono text-xs uppercase tracking-wide">
+              <span className="text-eyebrow">
                 Instagram Benchmark
               </span>
             </span>

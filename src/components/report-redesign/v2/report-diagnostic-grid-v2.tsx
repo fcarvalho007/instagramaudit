@@ -145,7 +145,7 @@ function DiagnosticCard({ card }: { card: CardModel }) {
           aria-hidden="true"
           className={cn("size-1.5 rounded-full shrink-0", tone.dot)}
         />
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+        <span className="text-eyebrow-sm text-slate-500">
           {card.eyebrow}
         </span>
         <span className="ml-auto font-mono text-[10px] tabular-nums text-slate-400">
@@ -184,7 +184,7 @@ function DiagnosticCard({ card }: { card: CardModel }) {
       </p>
 
       {card.micro ? (
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+        <p className="text-eyebrow-sm text-slate-500">
           {card.micro}
         </p>
       ) : null}

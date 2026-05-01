@@ -21,7 +21,7 @@ export function ReportSection({
     <section className={cn("space-y-6", className)}>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="space-y-2">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-content-secondary">
+          <p className="text-eyebrow-sm font-medium text-content-secondary">
             {label}
           </p>
           {title && (

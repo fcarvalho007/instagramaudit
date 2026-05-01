@@ -33,7 +33,7 @@ export function ReportPositioningBanner() {
                   key={chip}
                   className={cn(
                     "inline-flex items-center gap-2 rounded-full ring-1 px-3 py-1.5",
-                    "font-mono text-[10px] uppercase tracking-[0.16em]",
+                    "text-eyebrow-sm",
                     "ring-blue-200 text-blue-700 bg-blue-50",
                   )}
                 >
@@ -45,7 +45,7 @@ export function ReportPositioningBanner() {
           </ul>
         </div>
 
-        <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-slate-500 leading-relaxed">
+        <p className="text-eyebrow-sm text-[10.5px] text-slate-500 leading-relaxed">
           {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.sourceNote}{" "}
           <span className="normal-case tracking-normal font-sans text-[12px] text-slate-500">
             {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.benchmarkNote}

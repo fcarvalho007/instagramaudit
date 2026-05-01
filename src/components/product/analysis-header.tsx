@@ -57,14 +57,14 @@ export function AnalysisHeader({
           />
         )}
         <div className="flex flex-col gap-1 min-w-0">
-          <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-content-tertiary">
+          <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
             Análise pública
           </span>
           <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight truncate">
             {displayName}
             {isVerified ? (
               <span
-                className="ml-2 inline-block align-middle font-mono text-[0.5625rem] uppercase tracking-wider text-accent-luminous"
+                className="text-eyebrow-sm ml-2 inline-block align-middle text-[0.5625rem] text-accent-luminous"
                 aria-label="Conta verificada"
               >
                 · Verificada

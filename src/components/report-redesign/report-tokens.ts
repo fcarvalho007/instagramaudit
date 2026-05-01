@@ -36,14 +36,14 @@ export const REDESIGN_TOKENS = {
   h2Section:
     "font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-slate-900 leading-tight",
   eyebrow:
-    "font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500",
+    "text-eyebrow-sm text-slate-500",
   eyebrowAccent:
-    "font-mono text-[10px] uppercase tracking-[0.18em] text-blue-600",
+    "text-eyebrow-sm text-blue-600",
   subtitle: "text-sm md:text-[15px] text-slate-600 leading-relaxed",
   kpiValue:
     "font-display text-[2rem] md:text-[2.25rem] font-semibold tracking-tight text-slate-900 leading-none",
   kpiLabel:
-    "font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500",
+    "text-eyebrow-sm text-slate-500",
   kpiHelp: "text-xs text-slate-500 leading-snug",
 
   // ── V2 (Phase 1B.1 — Bloco 01 Overview) ────────────────────────────
@@ -87,12 +87,12 @@ export const REDESIGN_TOKENS = {
   heroStatValue:
     "font-display text-base md:text-lg font-semibold text-slate-900 tabular-nums leading-none",
   heroStatLabel:
-    "font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500",
+    "text-eyebrow-sm text-slate-500",
   /** Strip de posicionamento integrada no hero (substitui a banda standalone). */
   positioningStrip:
     "mt-6 md:mt-7 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-t border-slate-200/60 pt-4 md:pt-5",
   positioningChip:
-    "inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]",
+    "text-eyebrow-sm inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1",
   /** Valor categorical do KPI (ex.: nome de formato) — escala mais sóbria. */
   kpiValueV2Categorical:
     "font-display text-[1.375rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-tight break-words [word-break:normal] [hyphens:none]",

@@ -171,7 +171,7 @@ export function ReportTemporalChart() {
           {visibleSeries.map((s) => (
             <div
               key={s.key}
-              className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-content-tertiary"
+              className="text-eyebrow flex items-center gap-2 text-content-tertiary"
             >
               <span
                 className="h-2 w-2 rounded-full"

@@ -36,7 +36,7 @@ export function ReportPostingHeatmap() {
                 {HOURS_LABELS.map((h) => (
                   <span
                     key={h}
-                    className="font-mono text-[10px] uppercase tracking-wide text-content-tertiary"
+                    className="text-eyebrow-sm text-content-tertiary"
                   >
                     {h}
                   </span>
@@ -51,7 +51,7 @@ export function ReportPostingHeatmap() {
                   key={day}
                   className="grid grid-cols-[40px_1fr] gap-2 items-center"
                 >
-                  <span className="font-mono text-[10px] uppercase tracking-wide text-content-tertiary">
+                  <span className="text-eyebrow-sm text-content-tertiary">
                     {day}
                   </span>
                   <div
@@ -77,7 +77,7 @@ export function ReportPostingHeatmap() {
 
             {/* Legend */}
             <div className="flex items-center justify-end gap-2 mt-5">
-              <span className="font-mono text-[10px] uppercase tracking-wide text-content-tertiary">
+              <span className="text-eyebrow-sm text-content-tertiary">
                 Menos
               </span>
               <div className="flex gap-[3px]">
@@ -91,7 +91,7 @@ export function ReportPostingHeatmap() {
                   />
                 ))}
               </div>
-              <span className="font-mono text-[10px] uppercase tracking-wide text-content-tertiary">
+              <span className="text-eyebrow-sm text-content-tertiary">
                 Mais
               </span>
             </div>
@@ -100,7 +100,7 @@ export function ReportPostingHeatmap() {
 
         {/* Best slots */}
         <div className="flex flex-wrap gap-2 pt-6 mt-6 border-t border-border-subtle">
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-content-tertiary self-center mr-2">
+          <span className="text-eyebrow-sm text-content-tertiary self-center mr-2">
             Picos detetados
           </span>
           {bestSlots.map((s) => (
@@ -108,7 +108,7 @@ export function ReportPostingHeatmap() {
               key={`${s.day}-${s.hour}`}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-accent-primary/30"
             >
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-accent-primary font-semibold">
+              <span className="text-eyebrow-sm text-accent-primary font-semibold">
                 {s.day} · {s.hour}
               </span>
               <span className="font-mono text-xs font-medium text-content-primary">

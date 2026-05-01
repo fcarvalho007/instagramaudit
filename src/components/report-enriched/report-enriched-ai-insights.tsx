@@ -59,12 +59,12 @@ export function ReportEnrichedAiInsights({ enriched }: Props) {
           {footerCopy.helpLine}
         </p>
         {summaryParts.length > 0 && (
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+          <p className="text-eyebrow-sm text-content-tertiary">
             {summaryParts.join(" · ")}
           </p>
         )}
         <details className="group">
-          <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-[0.16em] text-accent-primary hover:text-accent-luminous transition-colors list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1.5">
+          <summary className="text-eyebrow cursor-pointer text-accent-primary hover:text-accent-luminous transition-colors list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1.5">
             <span>{footerCopy.detailsLabel}</span>
             <span aria-hidden="true" className="transition-transform group-open:rotate-90">›</span>
           </summary>
@@ -75,7 +75,7 @@ export function ReportEnrichedAiInsights({ enriched }: Props) {
                 className="border-l-2 border-border-subtle/40 pl-4 space-y-1.5"
               >
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary">
+                  <span className="text-eyebrow-sm text-content-tertiary">
                     {item.number}
                   </span>
                   <h3 className="text-sm font-medium text-content-primary leading-snug">
@@ -84,7 +84,7 @@ export function ReportEnrichedAiInsights({ enriched }: Props) {
                 </div>
                 <dl className="flex flex-wrap gap-x-5 gap-y-1">
                   <div className="inline-flex items-baseline gap-2">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary">
+                    <dt className="text-eyebrow-sm text-content-tertiary">
                       {ENRICHED_COPY.aiInsights.confidenceLabel}
                     </dt>
                     <dd className="text-xs text-content-secondary">
@@ -92,7 +92,7 @@ export function ReportEnrichedAiInsights({ enriched }: Props) {
                     </dd>
                   </div>
                   <div className="inline-flex items-baseline gap-2 min-w-0">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-content-tertiary shrink-0">
+                    <dt className="text-eyebrow-sm text-content-tertiary shrink-0">
                       {ENRICHED_COPY.aiInsights.evidenceLabel}
                     </dt>
                     <dd className="text-xs text-content-secondary break-words min-w-0">

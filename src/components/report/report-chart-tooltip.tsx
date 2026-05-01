@@ -25,7 +25,7 @@ export function ReportChartTooltip({
   return (
     <div className="bg-surface-secondary border border-border-default/40 rounded-lg shadow-lg px-3 py-2.5 min-w-[140px]">
       {label !== undefined && (
-        <p className="font-mono text-[10px] uppercase tracking-wide text-content-tertiary mb-1.5">
+        <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
           {label}
         </p>
       )}

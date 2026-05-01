@@ -94,7 +94,7 @@ export function CostsPanel({ data }: Props) {
       </section>
 
       <section className="rounded-lg border border-border-subtle bg-surface-elevated p-4 text-sm text-content-secondary">
-        <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-secondary">
+        <p className="text-eyebrow-sm text-[0.6875rem] text-content-secondary">
           Metodologia
         </p>
         <p className="mt-2">
@@ -121,7 +121,7 @@ export function CostsPanel({ data }: Props) {
 function DistributionCard({ label, w }: { label: string; w: ActivityWindow }) {
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
-      <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-content-tertiary">
+      <p className="text-eyebrow-sm text-[0.6875rem] text-content-tertiary">
         {label}
       </p>
       <dl className="mt-3 space-y-1.5 text-sm">

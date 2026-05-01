@@ -44,7 +44,7 @@ export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
         </span>
         <div className="min-w-0 space-y-1.5 flex-1">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-blue-700">
+            <p className="text-eyebrow-sm text-blue-700">
               Veredito editorial
             </p>
             <ReportSourceLabel
