@@ -16,10 +16,14 @@ export interface BenchmarkChartProps {
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-const CHART_H = 170;
-const BAR_RADIUS = 4;
-const GRID_LINES = 3;
-const MIN_PROFILE_PX = 4;
+const VB_W = 400;
+const VB_H = 200;
+const PAD_L = 40;
+const PAD_R = 12;
+const PAD_T = 24;
+const PAD_B = 32;
+const BAR_RADIUS = 6;
+const GRID_LINES = 4;
 
 // ─── Main component ────────────────────────────────────────────────
 
@@ -57,19 +61,14 @@ export function ReportEngagementBenchmarkChart({
     Math.abs(gapPp) < 0.15 ? "neutral" : gapPp > 0 ? "good" : "bad";
 
   // SVG layout
-  const padL = 0;
-  const padR = 0;
-  const padT = 28;
-  const padB = 22;
-  const chartW = 100; // percentage-based viewBox
-  const innerW = chartW - padL - padR;
-  const innerH = CHART_H - padT - padB;
+  const innerW = VB_W - PAD_L - PAD_R;
+  const innerH = VB_H - PAD_T - PAD_B;
   const barGap = innerW / n;
-  const barW = barGap * 0.45;
-  const activeBarW = barGap * 0.55;
+  const barW = barGap * 0.52;
+  const activeBarW = barGap * 0.68;
 
   function yForVal(v: number): number {
-    return padT + innerH - (v / scaleMax) * innerH;
+    return PAD_T + innerH - (v / scaleMax) * innerH;
   }
 
   const refY = yForVal(benchmarkVal);
@@ -106,25 +105,44 @@ export function ReportEngagementBenchmarkChart({
 
       {/* SVG Chart */}
       <svg
-        viewBox={`0 0 ${chartW} ${CHART_H}`}
+        viewBox={`0 0 ${VB_W} ${VB_H}`}
         className="w-full"
-        style={{ height: `${CHART_H}px`, maxHeight: `${CHART_H}px` }}
+        style={{ maxHeight: "220px" }}
         role="img"
         aria-label="Gráfico de comparação de taxa de envolvimento por escalão de seguidores"
       >
+        {/* Y-axis labels */}
+        {Array.from({ length: GRID_LINES + 1 }, (_, i) => {
+          const frac = i / GRID_LINES;
+          const val = scaleMax * frac;
+          const gy = PAD_T + innerH * (1 - frac);
+          return (
+            <text
+              key={`y-${i}`}
+              x={PAD_L - 6}
+              y={gy + 3}
+              textAnchor="end"
+              fill="#94a3b8"
+              style={{ fontSize: "9px", fontFamily: "var(--font-mono)" }}
+            >
+              {val.toFixed(1)}%
+            </text>
+          );
+        })}
+
         {/* Grid lines */}
-        {Array.from({ length: GRID_LINES }, (_, i) => {
-          const frac = (i + 1) / (GRID_LINES + 1);
-          const gy = padT + innerH * (1 - frac);
+        {Array.from({ length: GRID_LINES + 1 }, (_, i) => {
+          const frac = i / GRID_LINES;
+          const gy = PAD_T + innerH * (1 - frac);
           return (
             <line
               key={i}
-              x1={padL}
-              x2={chartW - padR}
+              x1={PAD_L}
+              x2={VB_W - PAD_R}
               y1={gy}
               y2={gy}
               stroke="#e2e8f0"
-              strokeWidth={0.3}
+              strokeWidth={0.5}
             />
           );
         })}
@@ -132,10 +150,10 @@ export function ReportEngagementBenchmarkChart({
         {/* Benchmark bars */}
         {benchmarkSeries.map((tier, i) => {
           const isActive = i === activeTierIndex;
-          const cx = padL + barGap * i + barGap / 2;
+          const cx = PAD_L + barGap * i + barGap / 2;
           const w = isActive ? activeBarW : barW;
-          const h = Math.max(2, (tier.engagementRatePct / scaleMax) * innerH);
-          const y = padT + innerH - h;
+          const h = Math.max(4, (tier.engagementRatePct / scaleMax) * innerH);
+          const y = PAD_T + innerH - h;
           return (
             <g key={tier.tierLabel}>
               <rect
@@ -146,15 +164,34 @@ export function ReportEngagementBenchmarkChart({
                 rx={BAR_RADIUS}
                 ry={BAR_RADIUS}
                 fill={isActive ? "#2563D9" : "#CBD5E1"}
-                opacity={isActive ? 1 : 0.4}
+                opacity={isActive ? 1 : 0.6}
               />
+              {/* Value label above bar */}
+              <text
+                x={cx}
+                y={y - 5}
+                textAnchor="middle"
+                fill={isActive ? "#2563D9" : "#94a3b8"}
+                style={{
+                  fontSize: isActive ? "10px" : "8.5px",
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: isActive ? 600 : 400,
+                }}
+              >
+                {fmtRate(tier.engagementRatePct)}
+              </text>
               {/* X-axis label */}
               <text
                 x={cx}
-                y={CHART_H - 4}
+                y={VB_H - 8}
                 textAnchor="middle"
-                className="fill-slate-400"
-                style={{ fontSize: "3.2px", fontFamily: "var(--font-sans)", letterSpacing: "0.04em" }}
+                fill={isActive ? "#334155" : "#94a3b8"}
+                style={{
+                  fontSize: isActive ? "10px" : "9px",
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: isActive ? 600 : 400,
+                  letterSpacing: "0.03em",
+                }}
               >
                 {tier.tierLabel}
               </text>
@@ -164,54 +201,45 @@ export function ReportEngagementBenchmarkChart({
 
         {/* Reference dashed line */}
         <line
-          x1={padL}
-          x2={chartW - padR}
+          x1={PAD_L}
+          x2={VB_W - PAD_R}
           y1={refY}
           y2={refY}
           stroke="#2563D9"
-          strokeWidth={0.35}
-          strokeDasharray="1.5 1"
-          opacity={0.5}
+          strokeWidth={0.7}
+          strokeDasharray="4 3"
+          opacity={0.45}
         />
-
-        {/* Reference label */}
-        <text
-          x={chartW - padR - 1}
-          y={refY - 2.5}
-          textAnchor="end"
-          className="fill-blue-600"
-          style={{ fontSize: "2.8px", fontFamily: "var(--font-sans)", letterSpacing: "0.02em" }}
-        >
-          ◈ Referência do escalão · {fmtRate(benchmarkVal)}
-        </text>
 
         {/* Profile marker on active bar */}
         {(() => {
-          const cx = padL + barGap * activeTierIndex + barGap / 2;
-          const rawH = (profileVal / scaleMax) * innerH;
-          const markerH = Math.max(MIN_PROFILE_PX, rawH);
-          const markerY = padT + innerH - markerH;
-          const markerW = activeBarW * 0.5;
+          const cx = PAD_L + barGap * activeTierIndex + barGap / 2;
+          const markerH = Math.max(6, (profileVal / scaleMax) * innerH);
+          const markerY = PAD_T + innerH - markerH;
+          const markerW = activeBarW * 0.38;
+          // Position profile bar slightly to the right of center
+          const mx = cx + activeBarW * 0.18;
           return (
             <g>
               <rect
-                x={cx - markerW / 2}
+                x={mx - markerW / 2}
                 y={markerY}
                 width={markerW}
                 height={markerH}
-                rx={2}
-                ry={2}
+                rx={BAR_RADIUS - 2}
+                ry={BAR_RADIUS - 2}
                 fill="#E11D48"
                 opacity={0.85}
               />
+              {/* Profile value label */}
               <text
-                x={cx + markerW / 2 + 1.5}
-                y={Math.min(markerY + 3, padT + innerH - 2)}
-                textAnchor="start"
-                className="fill-rose-600"
-                style={{ fontSize: "2.8px", fontFamily: "var(--font-sans)", letterSpacing: "0.02em" }}
+                x={mx}
+                y={markerY - 5}
+                textAnchor="middle"
+                fill="#E11D48"
+                style={{ fontSize: "9px", fontFamily: "var(--font-mono)", fontWeight: 600 }}
               >
-                ⬡ O teu perfil · {fmtRate(profileVal)}
+                {fmtRate(profileVal)}
               </text>
             </g>
           );
@@ -219,36 +247,52 @@ export function ReportEngagementBenchmarkChart({
 
         {/* Competitor marker (future) */}
         {competitor ? (() => {
-          const cx = padL + barGap * activeTierIndex + barGap / 2;
-          const rawH = (competitor.engagementRatePct / scaleMax) * innerH;
-          const cH = Math.max(MIN_PROFILE_PX, rawH);
-          const cY = padT + innerH - cH;
-          const cW = activeBarW * 0.35;
+          const cx = PAD_L + barGap * activeTierIndex + barGap / 2;
+          const cH = Math.max(6, (competitor.engagementRatePct / scaleMax) * innerH);
+          const cY = PAD_T + innerH - cH;
+          const cW = activeBarW * 0.3;
+          const cmx = cx - activeBarW * 0.18;
           return (
             <g>
               <rect
-                x={cx + activeBarW / 2 - cW}
+                x={cmx - cW / 2}
                 y={cY}
                 width={cW}
                 height={cH}
-                rx={2}
-                ry={2}
+                rx={BAR_RADIUS - 2}
+                ry={BAR_RADIUS - 2}
                 fill="#BA7517"
                 opacity={0.8}
               />
               <text
-                x={cx + activeBarW / 2 + 1}
-                y={cY + 3}
-                textAnchor="start"
-                className="fill-amber-700"
-                style={{ fontSize: "2.5px", fontFamily: "var(--font-sans)" }}
+                x={cmx}
+                y={cY - 5}
+                textAnchor="middle"
+                fill="#BA7517"
+                style={{ fontSize: "8px", fontFamily: "var(--font-mono)", fontWeight: 600 }}
               >
-                @{competitor.handle} · {fmtRate(competitor.engagementRatePct)}
+                {fmtRate(competitor.engagementRatePct)}
               </text>
             </g>
           );
         })() : null}
       </svg>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 flex-wrap text-[11.5px]">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2.5 rounded-sm bg-[#2563D9]" aria-hidden />
+          <span className="text-slate-600">Referência do escalão</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2.5 rounded-sm bg-[#E11D48] opacity-85" aria-hidden />
+          <span className="text-slate-600">O teu perfil</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2.5 rounded-sm bg-[#CBD5E1]" aria-hidden />
+          <span className="text-slate-500">Outros escalões</span>
+        </span>
+      </div>
 
       {/* Source references footer */}
       {sourceReferences.length > 0 ? (
