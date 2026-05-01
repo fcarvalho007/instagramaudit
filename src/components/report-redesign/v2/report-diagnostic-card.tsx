@@ -146,10 +146,10 @@ export function ReportDiagnosticCard({
             <p className="text-sm text-slate-600 leading-relaxed">{body}</p>
             {aiSource ? (
               <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
-                <p className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1.5">
-                  <Bot aria-hidden className="size-3" />
-                  Leitura IA · interpretação
-                </p>
+                <div className="inline-flex items-center gap-2">
+                  <ReportSourceLabel type="ia" />
+                  <span className="text-eyebrow-sm text-slate-500">Interpretação</span>
+                </div>
                 <p className="text-sm text-slate-700 leading-relaxed italic">
                   {aiSource.text}
                 </p>
@@ -192,10 +192,10 @@ export function ReportDiagnosticCard({
 
           {aiSource ? (
             <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
-              <p className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1.5">
-                <Bot aria-hidden className="size-3" />
-                Leitura IA · interpretação
-              </p>
+              <div className="inline-flex items-center gap-2">
+                <ReportSourceLabel type="ia" />
+                <span className="text-eyebrow-sm text-slate-500">Interpretação</span>
+              </div>
               <p className="text-sm text-slate-700 leading-relaxed italic">
                 {aiSource.text}
               </p>
