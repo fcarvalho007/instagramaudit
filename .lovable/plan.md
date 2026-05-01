@@ -1,47 +1,128 @@
 
-# Refinamentos — Caption Intelligence (Q04, Block 02)
+# Benchmark Gap Card — Engagement Rate (Block 01)
 
-## Avaliação
+Replace the current Engagement Rate card (linear bar + text) with a premium "Benchmark Gap Card" featuring a vertical bar chart, provenance labels, source references, and a Pro competitor slot.
 
-A implementação está sólida: tipos bem definidos, separação hashtags/captions respeitada, `font-mono` apenas em números crus, `text-eyebrow-sm` nos labels, sem cores hardcoded, action bridge funcional. Identifico 6 refinamentos para elevar a consistência e polish:
-
----
-
-## Refinamentos a aplicar
-
-### 1. Duplicação do card Q05 "Linguagem" com o Caption Intelligence
-
-O antigo `renderCaptionCard` (agora numerado "05" — "Como são as legendas?") no groupB sobrepõe-se conceptualmente ao novo `ReportCaptionIntelligence`. Ambos analisam captions, CTAs e padrões de linguagem. O card Q05 deve ser removido do groupB para eliminar redundância — a informação já está coberta (e melhor) pelo novo bloco.
-
-### 2. Snapshot cards — usar tokens de design em vez de Tailwind raw
-
-Os 3 snapshot cards usam `bg-slate-50/80`, `bg-blue-50/60`, `ring-slate-200/70` diretamente. Para consistência com o sistema de tokens do relatório light, substituir por classes semânticas quando o token existir (ex.: insight box variants de `tokens-light.css`), ou pelo menos uniformizar os valores de opacidade (atualmente misturam `/60`, `/70`, `/80`).
-
-### 3. Theme cluster cards — role label isolado
-
-O role label (ex.: "educativo", "autoridade") está numa `div` própria sem contexto visual — parece perdido. Melhorar integrando-o como chip inline ao lado do confidence badge, com prefixo "papel:" para dar significado ao leitor não técnico.
-
-### 4. CTA block — stat value vertical alignment
-
-O `Stat` component usa `font-mono text-[18px]` para os valores percentuais. O tamanho é inconsistente com o sistema tipográfico do resto do relatório — os mini-stats nos diagnostic cards usam `text-[1.5rem]`. Uniformizar para `text-[1.25rem]` ou `text-[1.5rem]` conforme o espaço disponível na sidebar.
-
-### 5. Action Bridge strip — ícone rotado
-
-O `ArrowRight` como ícone da strip de ação sugerida é genérico. Usar `Lightbulb` (para "oportunidade") ou `AlertTriangle` (para "alta") daria mais clareza semântica sem adicionar complexidade.
-
-### 6. Footer disclaimer — border token
-
-O `border-t border-slate-100` do disclaimer final deve usar `border-border-subtle` para respeitar o sistema de tokens e funcionar correctamente em ambos os temas.
+No locked files are affected.
 
 ---
 
-## Technical details
+## 1. Benchmark tier series helper
 
-### Ficheiros alterados
-- `src/components/report-redesign/v2/report-caption-intelligence.tsx` — refinamentos 2, 3, 4, 5, 6
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — refinamento 1 (remover `renderCaptionCard` do groupB)
+**File:** `src/lib/knowledge/benchmark-context.ts` (edit — add helper, not modify existing data)
 
-### Validação
-- `bunx vitest run` deve passar (nenhum teste referencia renderCaptionCard directamente)
-- `bunx tsc --noEmit` deve passar
-- Verificar mobile 375px sem overflow horizontal
+Add a new type and builder function:
+
+```ts
+export interface BenchmarkTierPoint {
+  tierLabel: string;        // "1K–5K"
+  minFollowers: number;
+  maxFollowers: number | null;
+  engagementRatePct: number;
+  sourceLabel: string;      // "Buffer · Socialinsider"
+  sourceUrl?: string;
+}
+```
+
+Add `getConsolidatedBenchmarkSeries(): BenchmarkTierPoint[]` that returns 5 consolidated tiers by averaging/weighting the existing Buffer tiers:
+- 1K–5K → Buffer 1-5K (4.4%)
+- 5K–20K → average of Buffer 5-10K and 10-50K
+- 20K–100K → average of Buffer 10-50K and 50-100K  
+- 100K–1M → average of Buffer 100-500K and 500K-1M
+- +1M → extrapolated from 500K-1M with decay
+
+Also add `getActiveTierIndex(followers: number, series: BenchmarkTierPoint[]): number` to find which tier the profile belongs to.
+
+The user-provided example values (6.08, 4.80, etc.) are treated as illustrative — the real values come from the existing Buffer dataset with simple averaging. This keeps data provenance honest.
+
+Add source reference URLs as typed constants (Socialinsider, Buffer, Hootsuite) — reuse the existing `INSTAGRAM_BENCHMARK_CONTEXT.sources` array rather than hardcoding new URLs.
+
+---
+
+## 2. Benchmark bar chart component
+
+**New file:** `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
+
+Pure SVG bar chart (no new dependencies). Receives all data via props:
+
+```ts
+interface Props {
+  profileEngagementRatePct: number;
+  followersCount: number;
+  benchmarkSeries: BenchmarkTierPoint[];
+  activeTierIndex: number;
+  sourceReferences: Array<{ name: string; url: string }>;
+  showProSlot?: boolean;
+  competitor?: { handle: string; engagementRatePct: number } | null;
+  onProSlotClick?: () => void;
+}
+```
+
+**Chart spec:**
+- Height: ~170px
+- 5 vertical bars, one per tier
+- Inactive bars: `bg-slate-200` at ~40% opacity, rounded top
+- Active tier bar: accent blue, full opacity, slightly wider
+- Profile value: small rose/danger marker overlaid on the active bar (min 4px height for very low values)
+- Dashed horizontal reference line at active tier benchmark value
+- Labels: "Referência do escalão · X,X%" and "O teu perfil · X,XX%"
+- X-axis: tier labels; no visible Y-axis numbers, 3 subtle grid lines
+- Gap message: "Gap face à referência: −X,X p.p." / "Acima da referência: +X,X p.p." / "Em linha com a referência"
+
+**Provenance markers** (inline, discreet):
+- `⬡ Dados` near profile value
+- `◈ Mercado` near benchmark reference
+- Uses `text-eyebrow-sm`, ~60% opacity, no bold
+
+**Source references footer** inside the card:
+- "◈ Referências de mercado: Socialinsider [1], Buffer [2], Hootsuite [3]"
+- Numeric footnote links, `target="_blank" rel="noreferrer noopener"`
+- Names from the existing `INSTAGRAM_BENCHMARK_CONTEXT.sources` array
+
+**Pro competitor slot** at the bottom:
+- Lock icon + "Comparar com concorrente direto" + `PRO` badge
+- Helper: "Adiciona um perfil concorrente para ver o teu resultado lado a lado."
+- Calls `onProSlotClick` if provided
+- If `competitor` is passed: shows `@handle · X%` with accent-gold marker (future state — not wired in this task)
+
+---
+
+## 3. Refactor EngagementRateCard
+
+**File:** `src/components/report-redesign/v2/report-overview-cards.tsx`
+
+- Replace the body of `EngagementRateCard` to use the new chart component
+- Keep the `PremiumCard` wrapper, title, icon, interpretation chip, and source slot
+- Remove `EngagementDistanceBar` (dead code after replacement)
+- Keep `computeEngagementStatus` (used by the interpretation chip)
+- Wire `getConsolidatedBenchmarkSeries()` and `getActiveTierIndex()` to pass data as props
+- Keep the existing `ReportBenchmarkEvidence` component below the chart for the full provenance line
+- Keep the italic methodology disclaimer
+
+---
+
+## 4. Responsive
+
+- Mobile 375px: bars shrink, tier labels abbreviate ("1K–5K" → stays short enough), no horizontal overflow
+- Pro slot becomes full-width row
+- Chart SVG uses `viewBox` + percentage widths for fluid sizing
+
+---
+
+## Files changed
+
+| File | Action |
+|------|--------|
+| `src/lib/knowledge/benchmark-context.ts` | Add `BenchmarkTierPoint`, `getConsolidatedBenchmarkSeries()`, `getActiveTierIndex()` |
+| `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` | **New** — SVG chart + provenance + source refs + Pro slot |
+| `src/components/report-redesign/v2/report-overview-cards.tsx` | Refactor `EngagementRateCard`, remove `EngagementDistanceBar` |
+
+No changes to: tokens.css, providers, OpenAI, Supabase schema, PDF, admin, `/report/example`, other blocks.
+
+---
+
+## Validation
+
+- `bunx vitest run` passes (existing benchmark tests unaffected)
+- `bunx tsc --noEmit` passes
+- Mobile 375px: no horizontal overflow

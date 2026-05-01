@@ -6,11 +6,14 @@ import { cn } from "@/lib/utils";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   getBufferTierForFollowers,
+  getConsolidatedBenchmarkSeries,
+  getActiveTierIndex,
 } from "@/lib/knowledge/benchmark-context";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 import { ReportSourceLabel } from "./report-source-label";
 import { ReportBenchmarkEvidence } from "./report-benchmark-evidence";
+import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
 
 interface Props {
   result: AdapterResult;
@@ -184,6 +187,12 @@ function EngagementRateCard({
     ? INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.aboveBufferRangeHint
     : null;
 
+  const benchmarkSeries = getConsolidatedBenchmarkSeries();
+  const activeTierIdx = getActiveTierIndex(followers, benchmarkSeries);
+  const activeSourceRefs = INSTAGRAM_BENCHMARK_CONTEXT.sources
+    .filter((s) => s.visibility === "active")
+    .map((s) => ({ name: s.name, url: s.url }));
+
   return (
     <PremiumCard
       title="Taxa de envolvimento"
@@ -199,116 +208,38 @@ function EngagementRateCard({
         <span className="font-mono text-[2.75rem] md:text-[3.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
           {formatPct(engagement)}
         </span>
-        {hasBenchmark && deltaPct !== 0 ? (
-          <span
-            className={cn(
-              "text-eyebrow pb-1.5",
-              status.tone === "good"
-                ? "text-emerald-700"
-                : status.tone === "bad"
-                  ? "text-rose-700"
-                  : "text-slate-500",
-            )}
-          >
-            {deltaPct > 0 ? "+" : ""}
-            {deltaPct.toFixed(1).replace(".", ",")}%
-          </span>
-        ) : null}
+        <span className="text-eyebrow-sm text-slate-400 pb-2 opacity-60">
+          ⬡ Dados
+        </span>
       </div>
 
       <p className="text-[13px] text-slate-600 leading-relaxed">
         gostos e comentários face à dimensão do perfil
       </p>
 
+      <ReportEngagementBenchmarkChart
+        profileEngagementRatePct={engagement}
+        followersCount={followers}
+        benchmarkSeries={benchmarkSeries}
+        activeTierIndex={activeTierIdx}
+        sourceReferences={activeSourceRefs}
+        showProSlot
+      />
+
       {hasBenchmark ? (
-        <div className="space-y-2">
-          <p className="text-[12px] text-slate-500 leading-relaxed">
-            vs.{" "}
-            <span className="font-medium text-slate-700 tabular-nums">
-              {formatPct(benchmark)}
-            </span>{" "}
-            de referência
-          </p>
-          <ReportBenchmarkEvidence
-            platform="instagram"
-            followerTier={isAboveBufferRange ? null : followerTierLabel}
-            industry={null}
-            sourceNames={["Socialinsider", "Buffer"]}
-            aboveBufferRangeHint={aboveRangeHint}
-          />
-        </div>
-      ) : (
-        <p className="text-[12px] text-slate-500 leading-relaxed">
-          Sem referência disponível para esta categoria.
-        </p>
-      )}
+        <ReportBenchmarkEvidence
+          platform="instagram"
+          followerTier={isAboveBufferRange ? null : followerTierLabel}
+          industry={null}
+          sourceNames={["Socialinsider", "Buffer"]}
+          aboveBufferRangeHint={aboveRangeHint}
+        />
+      ) : null}
 
       <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
         {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.engagementExplanation}
       </p>
-
-      {hasBenchmark ? (
-        <EngagementDistanceBar
-          engagement={engagement}
-          benchmark={benchmark}
-          tone={status.tone}
-        />
-      ) : null}
     </PremiumCard>
-  );
-}
-
-function EngagementDistanceBar({
-  engagement,
-  benchmark,
-  tone,
-}: {
-  engagement: number;
-  benchmark: number;
-  tone: "good" | "warn" | "bad" | "neutral";
-}) {
-  // Escala: 0 → 2× referência. Posiciona barra do perfil e marca de referência.
-  const max = Math.max(benchmark * 2, engagement * 1.1, 0.01);
-  const erPct = clamp((engagement / max) * 100, 0, 100);
-  const refPct = clamp((benchmark / max) * 100, 0, 100);
-
-  const barCls =
-    tone === "bad"
-      ? "bg-rose-400"
-      : tone === "good"
-        ? "bg-emerald-500"
-        : "bg-blue-500";
-
-  return (
-    <div className="space-y-1.5" aria-hidden="true">
-      <div className="relative h-2.5 w-full rounded-full bg-slate-100 overflow-visible">
-        <div
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-full transition-all duration-500",
-            barCls,
-          )}
-          style={{ width: `${erPct}%` }}
-        />
-        {/* Marca da referência */}
-        <div
-          className="absolute -top-1 -bottom-1 w-px bg-blue-400"
-          style={{ left: `${refPct}%` }}
-        />
-        <div
-          className="absolute -top-2 size-2 rounded-full bg-white ring-1 ring-blue-500"
-          style={{ left: `calc(${refPct}% - 4px)` }}
-        />
-      </div>
-      <div className="text-eyebrow-sm relative text-slate-400">
-        <span>0%</span>
-        <span
-          className="absolute -translate-x-1/2 text-blue-600"
-          style={{ left: `${refPct}%` }}
-        >
-          referência
-        </span>
-      </div>
-    </div>
   );
 }
 

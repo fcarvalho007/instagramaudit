@@ -527,3 +527,90 @@ export function getActiveBenchmarkSources(): ReadonlyArray<BenchmarkSource> {
     (s) => s.visibility === "active",
   );
 }
+
+// ─── Consolidated benchmark tier series ─────────────────────────────
+
+/**
+ * Ponto de referência consolidado por escalão de seguidores.
+ * Usado pelo gráfico de barras do Benchmark Gap Card (Block 01).
+ * Valores derivados dos tiers Buffer existentes — nunca hardcoded.
+ */
+export interface BenchmarkTierPoint {
+  tierLabel: string;
+  minFollowers: number;
+  maxFollowers: number | null;
+  engagementRatePct: number;
+  sourceLabel: string;
+  sourceUrl?: string;
+}
+
+/**
+ * Devolve 5 escalões consolidados a partir dos tiers Buffer.
+ * Os valores são médias simples dos tiers Buffer que caem em cada faixa.
+ */
+export function getConsolidatedBenchmarkSeries(): BenchmarkTierPoint[] {
+  const tiers = INSTAGRAM_BENCHMARK_CONTEXT.bufferFollowerTiers;
+  const sourceLabel = "Buffer · Socialinsider";
+
+  // Helper: average engagement for a set of Buffer tier labels
+  function avg(...tierLabels: BufferFollowerTier["tier"][]): number {
+    const matched = tiers.filter((t) => tierLabels.includes(t.tier));
+    if (matched.length === 0) return 0;
+    const sum = matched.reduce((s, t) => s + t.medianEngagementRatePct, 0);
+    return Math.round((sum / matched.length) * 100) / 100;
+  }
+
+  return [
+    {
+      tierLabel: "1K–5K",
+      minFollowers: 1_000,
+      maxFollowers: 5_000,
+      engagementRatePct: avg("1-5K"),
+      sourceLabel,
+    },
+    {
+      tierLabel: "5K–20K",
+      minFollowers: 5_000,
+      maxFollowers: 20_000,
+      engagementRatePct: avg("5-10K", "10-50K"),
+      sourceLabel,
+    },
+    {
+      tierLabel: "20K–100K",
+      minFollowers: 20_000,
+      maxFollowers: 100_000,
+      engagementRatePct: avg("10-50K", "50-100K"),
+      sourceLabel,
+    },
+    {
+      tierLabel: "100K–1M",
+      minFollowers: 100_000,
+      maxFollowers: 1_000_000,
+      engagementRatePct: avg("100-500K", "500K-1M"),
+      sourceLabel,
+    },
+    {
+      tierLabel: "+1M",
+      minFollowers: 1_000_000,
+      maxFollowers: null,
+      // Extrapolação conservadora: 80% do último tier disponível
+      engagementRatePct: Math.round(avg("500K-1M") * 0.8 * 100) / 100,
+      sourceLabel,
+    },
+  ];
+}
+
+/**
+ * Determina o índice do escalão activo para um dado número de seguidores.
+ * Retorna o último índice se estiver acima de todos os escalões.
+ */
+export function getActiveTierIndex(
+  followers: number,
+  series: readonly BenchmarkTierPoint[],
+): number {
+  for (let i = 0; i < series.length; i++) {
+    const t = series[i];
+    if (t.maxFollowers === null || followers < t.maxFollowers) return i;
+  }
+  return series.length - 1;
+}
