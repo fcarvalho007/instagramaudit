@@ -442,33 +442,46 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
 }
 
 function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
-  if (!r.available) return null;
+  // — State B: data unavailable —
+  if (!r.available) {
+    return (
+      <ReportDiagnosticCard
+        key="q06"
+        number="05"
+        label="Resposta"
+        question="O público responde ou só consome?"
+        answer={r.label}
+        tone="slate"
+        span="full"
+        body={r.explanation}
+        sourceType="extracted"
+        sourceDetail="Gostos + comentários"
+      >
+        <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3">
+          <p className="text-[12.5px] text-slate-600 leading-relaxed">
+            Quando estes dados estiverem disponíveis, o relatório compara
+            reação, conversa e concentração de comentários.
+          </p>
+        </div>
+      </ReportDiagnosticCard>
+    );
+  }
+
+  // — State A: data available —
   const tone: DiagnosticTone =
-    r.label === "Audiência ativa"
+    r.status === "active"
       ? "emerald"
-      : r.label === "Audiência silenciosa"
+      : r.status === "silent"
         ? "rose"
         : "blue";
-  const bodyByLabel: Record<string, string> = {
-    "Audiência ativa":
-      "Os comentários surgem de forma consistente face aos likes — sinal de conversa, não apenas consumo.",
-    "Resposta moderada":
-      "Os comentários aparecem, mas em volume moderado face aos likes recebidos.",
-    "Audiência silenciosa":
-      "Comunicação unidirecional: o público vê o conteúdo, mas conversa pouco em público.",
-  };
-  // Reconstroi avgLikes a partir do ratio: ratioPct = comments/likes * 100
-  // → likes ≈ comments / (ratio/100). Quando ratioPct = 0 fallback = 0.
-  const avgLikes =
-    r.commentsToLikesPct > 0
-      ? Math.round((r.avgComments / r.commentsToLikesPct) * 100)
-      : 0;
-  const highlightTone =
-    r.label === "Audiência ativa"
+
+  const highlightTone: "rose" | "emerald" | "amber" =
+    r.status === "active"
       ? "emerald"
-      : r.label === "Resposta moderada"
+      : r.status === "moderate" || r.status === "concentrated"
         ? "amber"
         : "rose";
+
   return (
     <ReportDiagnosticCard
       key="q06"
@@ -477,14 +490,18 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
       question="O público responde ou só consome?"
       answer={r.label}
       tone={tone}
-        span="full"
-      body={bodyByLabel[r.label]}
+      span="full"
+      body={r.explanation}
       sourceType="calculation"
       sourceDetail="Gostos + comentários"
     >
       <DiagnosticAudienceHighlight
-        avgLikes={avgLikes}
+        avgLikes={r.avgLikes}
         avgComments={r.avgComments}
+        totalLikes={r.totals.likes}
+        totalComments={r.totals.comments}
+        postsWithComments={r.totals.postsWithComments}
+        sampleSize={r.sampleSize}
         tone={highlightTone}
       />
     </ReportDiagnosticCard>
