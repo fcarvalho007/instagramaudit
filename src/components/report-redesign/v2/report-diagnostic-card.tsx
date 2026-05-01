@@ -465,6 +465,22 @@ export function DiagnosticAudienceHighlight({
   avgComments: number;
   tone?: "rose" | "emerald" | "amber";
 }) {
+  // Empty-state explícito quando não há sinais de engagement
+  // (evita renderizar barra vermelha 100% com "0 GOSTOS MÉDIOS").
+  if (avgLikes <= 0 && avgComments <= 0) {
+    return (
+      <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3">
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">
+          Sem dados de gostos/comentários
+        </p>
+        <p className="mt-1 text-[12.5px] text-slate-600 leading-relaxed">
+          As publicações analisadas não devolveram contagens públicas de
+          engagement — comum em perfis com posts mais antigos ou conteúdo
+          restrito.
+        </p>
+      </div>
+    );
+  }
   const TONE_BG: Record<typeof tone, string> = {
     rose: "bg-rose-600 text-white",
     emerald: "bg-emerald-600 text-white",

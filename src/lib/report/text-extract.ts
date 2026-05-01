@@ -87,6 +87,18 @@ const STOP_WORDS_PT = new Set<string>([
   "tempo", "ainda", "sempre", "nunca", "pouco", "outros", "outras",
   "novo", "nova", "novos", "novas", "primeira", "primeiro", "alguma",
   "obrigado", "obrigada",
+  // ruído vindo de URLs / domínios partidos pelo tokenizer
+  // (ex.: `podes.entrar.pt/news` → "podes", "entrar", "news")
+  "entrar", "podes", "news", "newsletter", "saber", "subscreve",
+  "inscreve", "link", "bio", "site", "url", "https", "http", "www",
+  "youtube", "youtu", "facebook", "linkedin", "tiktok", "instagram",
+  // marcas próprias frequentes em CTAs (filtradas como ruído editorial
+  // — não são "temas" da comunicação, são chamadas de acção)
+  "digitalsprint", "frederico", "carvalho",
+  // adjectivos genéricos sem valor temático
+  "ultimas", "ultima", "ultimos", "ultimo", "novos", "nova", "novas",
+  "varios", "varias", "outros", "outras", "todos", "todas", "ferramentas",
+  "ferramenta", "queres", "quero", "quer",
 ]);
 
 // ---------- helpers ----------
@@ -111,11 +123,21 @@ function normaliseHashtag(raw: string): string | null {
  * and mentions (`@user`).
  */
 function tokenise(caption: string): string[] {
-  // Drop hashtags and mentions before tokenising, so they never count as
-  // keywords. We replace the whole token with whitespace.
+  // Drop URLs (with or without protocol), hashtags, mentions and digit
+  // runs before tokenising, so URL fragments never count as themes.
   const cleaned = caption
+    // 1) URLs com protocolo
+    .replace(/https?:\/\/\S+/gi, " ")
+    // 2) URLs sem protocolo (foo.bar/baz, foo.bar.tld) — exige TLD ≥ 2
+    //    e opcional path. Apanha "podes.entrar.pt/news", "exemplo.com",
+    //    etc., antes do tokenizer partir o domínio em palavras.
+    .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, " ")
+    // 3) hashtags e menções
     .replace(/[@#][\p{L}\p{N}_]+/gu, " ")
-    .replace(/https?:\/\/\S+/g, " ")
+    // 4) ALL-CAPS tokens com ≥ 6 letras (marcas em destaque tipo
+    //    "DIGITALSPRINT", "TEMU") — antes da normalização para lowercase
+    .replace(/\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{6,}\b/g, " ")
+    // 5) dígitos e underscores residuais
     .replace(/[\d_]+/g, " ");
 
   const stripped = stripAccents(cleaned).toLowerCase();
@@ -217,13 +239,47 @@ function buildSnippet(caption: string, needle: string): string | null {
   const half = Math.floor((max - flatNeedle.length) / 2);
   let start = Math.max(0, idx - half);
   let end = Math.min(caption.length, idx + flatNeedle.length + half);
-  // Snap to word boundaries when possible
-  while (start > 0 && /\S/.test(caption[start - 1] ?? "")) start -= 1;
-  while (end < caption.length && /\S/.test(caption[end] ?? "")) end += 1;
+  // Snap to word boundaries — recuar/avançar até encontrar whitespace OU
+  // pontuação forte (.,!?;:—…). Evita começar no meio de uma palavra
+  // quando a janela cai a meio de um token.
+  const isBoundary = (ch: string) => /\s|[.,!?;:—…\-()"'«»]/.test(ch);
+  // Recuar `start`: se já está numa boundary, avançar uma posição para
+  // não começar com pontuação. Senão, recuar até encontrar boundary.
+  if (start > 0 && !isBoundary(caption[start - 1] ?? " ")) {
+    while (start > 0 && !isBoundary(caption[start - 1] ?? " ")) start -= 1;
+  }
+  // Saltar whitespace/pontuação inicial para começar limpo na palavra.
+  while (start < caption.length && isBoundary(caption[start] ?? "")) {
+    start += 1;
+  }
+  // Avançar `end` até fim de palavra.
+  while (end < caption.length && !isBoundary(caption[end] ?? " ")) end += 1;
   let slice = caption.slice(start, end).replace(/\s+/g, " ").trim();
-  // Strip leading/trailing hashtags ou pontuação solta
-  slice = slice.replace(/^[#@\W_]+/, "").replace(/[#@\W_]+$/, "").trim();
+  // Strip URLs residuais e hashtags/pontuação solta no início/fim
+  slice = slice
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, "")
+    // ALL-CAPS tokens (>=4) cortados a meio (ex.: "DIGITALS"
+    // de "DIGITALSPRINT") são ruído e devem desaparecer
+    .replace(/\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{4,}\b/g, "")
+    .replace(/^[#@\W_]+/, "")
+    .replace(/[#@\W_]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Descartar palavras-órfãs muito curtas (≤ 2 chars) no início do
+  // snippet — tipicamente sufixos de pronomes ("ti", "lo", "te")
+  // resultantes de janela cortada a meio.
+  while (true) {
+    const m = slice.match(/^(\S{1,2})\s+/);
+    if (!m) break;
+    // Não comer prefixos significativos como "IA", "TV", "UX"
+    if (/^[A-Z]/.test(m[1])) break;
+    slice = slice.slice(m[0].length).trim();
+  }
   if (slice.length === 0) return null;
+  // Garantir que o snippet ainda contém o needle após limpezas — se não,
+  // descartar (poluição por URL/hashtag tornou o excerto inútil).
+  if (!stripAccents(slice).toLowerCase().includes(flatNeedle)) return null;
   if (slice.length > max) slice = slice.slice(0, max - 1).trimEnd() + "…";
   const prefix = start > 0 ? "…" : "";
   const suffix = end < caption.length ? "…" : "";

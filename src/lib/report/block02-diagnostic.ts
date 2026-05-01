@@ -614,8 +614,14 @@ export function inferThemesFromCaptions(args: {
   topKeywords: ReportData["topKeywords"];
   aiSections?: AiSectionsLike;
 }): ThemesResult {
-  const aiText = args.aiSections?.language?.text?.trim() ?? null;
-  const aiAvailable = !!aiText && aiText.length >= 30;
+  // NOTA: a Pergunta 04 é puramente determinística. A leitura IA da
+  // secção `language` pertence à Pergunta 05 e NÃO deve ser usada aqui
+  // (causa cross-contamination editorial). Mantemos o parâmetro
+  // `aiSections` na assinatura para compat com chamadas existentes,
+  // mas é deliberadamente ignorado.
+  void args.aiSections;
+  const aiText: string | null = null;
+  const aiAvailable = false;
 
   // 1) Preferir topThemes (com snippets + postsCount)
   const themes = Array.isArray(args.topThemes) ? args.topThemes : [];

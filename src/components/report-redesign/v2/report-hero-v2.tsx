@@ -94,7 +94,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                       key={s.label}
                       className="flex flex-col items-start gap-1 min-w-0"
                     >
-                      <span className="font-display text-xl md:text-2xl font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.01em]">
+                      <span className="font-mono text-[1.5rem] md:text-[1.875rem] font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.02em]">
                         {s.value}
                       </span>
                       <span className="font-mono text-[10px] md:text-[11px] uppercase tracking-[0.16em] text-slate-500">
