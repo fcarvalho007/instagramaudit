@@ -202,9 +202,7 @@ function EngagementRateCard({
         <span className="font-mono text-[2.75rem] md:text-[3.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
           {formatPct(engagement)}
         </span>
-        <span className="text-eyebrow-sm text-slate-400 pb-2 opacity-60">
-          ⬡ Dados
-        </span>
+        <ReportSourceLabel type="dados" className="pb-2" />
       </div>
 
       <p className="text-[13px] text-slate-600 leading-relaxed">

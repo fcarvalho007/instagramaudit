@@ -38,8 +38,6 @@ interface Props {
   sourceType?: ReportSourceType;
   /** Detalhe curto à direita do tipo, ex.: "GOSTOS + COMENTÁRIOS". */
   sourceDetail?: string;
-  /** Marca o chip como `caution` (amber) — usar só em leituras automáticas que sinalizam algo a corrigir. */
-  sourceCaution?: boolean;
 }
 
 const TONE: Record<
@@ -95,7 +93,6 @@ export function ReportDiagnosticCard({
   aiSource,
   sourceType,
   sourceDetail,
-  sourceCaution,
 }: Props) {
   const t = TONE[tone];
   const isFull = span === "full";
