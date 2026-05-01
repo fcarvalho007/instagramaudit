@@ -61,11 +61,8 @@ export function ReportCaptionIntelligence({ data }: Props) {
 
       <ActionBridgeStrip data={data} />
 
-      <p className="text-[12.5px] text-slate-500 leading-relaxed border-t border-slate-200/40 pt-4 mt-2">
-        As hashtags são analisadas separadamente. Esta leitura considera o
-        texto das legendas, CTAs, temas recorrentes e padrões editoriais
-        dos posts analisados.
-      </p>
+      <ScopeTransparencyNote />
+      <PremiumTeaserStrip />
     </Shell>
   );
 }
