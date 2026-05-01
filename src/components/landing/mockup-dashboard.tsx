@@ -33,7 +33,7 @@ export function MockupDashboard() {
             <span className="font-display text-base md:text-lg font-medium text-on-light-primary truncate">
               @marca_exemplo
             </span>
-            <span className="text-eyebrow text-[0.625rem] md: text-on-light-tertiary truncate">
+            <span className="text-eyebrow text-[0.625rem] text-on-light-tertiary truncate">
               Análise · 30 publicações · 14 Abr 2026
             </span>
           </div>
@@ -43,7 +43,7 @@ export function MockupDashboard() {
             aria-hidden="true"
             className="h-1.5 w-1.5 rounded-full bg-accent-violet animate-pulse"
           />
-          <span className="text-eyebrow text-[0.625rem] md: text-accent-violet-deep">
+          <span className="text-eyebrow text-[0.625rem] text-accent-violet-deep">
             <span className="hidden sm:inline">Relatório completo</span>
             <span className="sm:hidden">Completo</span>
           </span>

@@ -53,7 +53,7 @@ export function SocialProofSection() {
                     className="absolute -bottom-1.5 left-0 h-[2px] w-8 bg-gradient-to-r from-accent-violet to-accent-violet-luminous rounded-full"
                   />
                 </div>
-                <div className="text-eyebrow text-[0.65rem] md: text-content-secondary leading-snug">
+                <div className="text-eyebrow text-[0.65rem] text-content-secondary leading-snug">
                   {metric.label}
                 </div>
               </div>

@@ -97,7 +97,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                       <span className="font-mono text-[1.5rem] md:text-[1.875rem] font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.02em]">
                         {s.value}
                       </span>
-                      <span className="text-eyebrow-sm md: text-slate-500">
+                      <span className="text-eyebrow-sm text-slate-500">
                         {s.label}
                       </span>
                     </li>
@@ -108,7 +108,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               {/* Meta da análise — separada por divider hairline para
                   sinalizar que é metadata do relatório, não do perfil. */}
               {analysisMeta.length > 0 ? (
-                <div className="text-eyebrow-sm !mt-3 pt-2.5 border-t border-slate-200/60 md: text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <div className="text-eyebrow-sm !mt-3 pt-2.5 border-t border-slate-200/60 text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
                   {analysisMeta.map((m, i) => (
                     <span key={m} className="inline-flex items-center gap-2">
                       {i > 0 ? (
