@@ -28,9 +28,9 @@ import {
   ReportDiagnosticCard,
   DiagnosticDistributionBar,
   DiagnosticChecklist,
-  DiagnosticRanking,
   DiagnosticFunnelStack,
   DiagnosticAudienceHighlight,
+  DiagnosticObjectiveSynthesis,
   type DiagnosticTone,
 } from "./report-diagnostic-card";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
@@ -118,7 +118,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   ]);
   const groupC = compact([
     renderIntegrationCard(integration),
-    renderObjectiveCard(objective),
+    renderObjectiveCard(objective, contentType, funnel, integration),
   ]);
 
   const totalCards = groupA.length + groupB.length + groupC.length;
@@ -293,14 +293,14 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       <ReportDiagnosticCard
         key="q01"
         number="01"
-        label="Tipo de conteúdo"
+      label="Tipo de conteúdo · Classificação"
         question="Que natureza de conteúdo aparece mais?"
         answer="Padrão misto"
         tone="slate"
         span="full"
         body={body}
         sourceType="automatic"
-        sourceDetail="Legendas"
+      sourceDetail="Legendas · classificação"
       >
         {r.distribution.length >= 2 ? (
           <DiagnosticDistributionBar
@@ -326,14 +326,14 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
     <ReportDiagnosticCard
       key="q01"
       number="01"
-      label="Tipo de conteúdo"
+      label="Tipo de conteúdo · Classificação"
       question="Que natureza de conteúdo aparece mais?"
       answer={r.label}
       tone="emerald"
         span="full"
-      body={`Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}, com base em legendas e hashtags.`}
+      body={`Classificação do tipo de conteúdo publicado nas legendas e padrões editoriais. Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}.`}
       sourceType="automatic"
-      sourceDetail="Legendas"
+      sourceDetail="Legendas · classificação"
     >
       {r.distribution.length >= 2 ? (
         <DiagnosticDistributionBar
@@ -376,14 +376,14 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
     <ReportDiagnosticCard
       key="q02"
       number="02"
-      label="Funil"
+      label="Funil · Mapeamento"
       question="Atrai, educa, converte ou fideliza?"
       answerLabel="Fase dominante"
       answer={r.label ?? "—"}
       tone={isFocused ? "blue" : "amber"}
-      body={bodyByLabel[r.label ?? "Comunicação dispersa"]}
+      body={`Mapeamento da função do conteúdo na jornada — atenção, educação, decisão ou relação. ${bodyByLabel[r.label ?? "Comunicação dispersa"]}`}
       sourceType="automatic"
-      sourceDetail="Legendas"
+      sourceDetail="Legendas · mapeamento"
     >
       {r.breakdown.length > 0 ? (
         <DiagnosticFunnelStack
@@ -565,24 +565,52 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
 
 type ReportDiagnosticCardChild = ReactNode | null;
 
-function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
+function renderObjectiveCard(
+  r: ObjectiveResult,
+  contentType: ContentTypeResult,
+  funnel: FunnelStageResult,
+  integration: IntegrationResult,
+): ReportDiagnosticCardChild {
   if (!r.available || !r.primary) return null;
+
+  // Build support signal chips from detected data
+  const supportSignals: string[] = [];
+  if (contentType.available && contentType.label && contentType.label !== "Misto / pouco claro") {
+    supportSignals.push(`Conteúdo ${contentType.label.toLowerCase()}`);
+  }
+  if (funnel.available && funnel.label && funnel.label !== "Comunicação dispersa") {
+    supportSignals.push(funnel.label);
+  }
+  if (integration.available) {
+    if (integration.signals.bioLink.detected) supportSignals.push("Link na bio");
+    if (integration.signals.siteOrNewsletter.detected) supportSignals.push("CTA para site/newsletter");
+  }
+
+  // Show secondary objective if close to primary
+  const secondary =
+    r.ranking.length >= 2 && r.ranking[1].score >= r.ranking[0].score * 0.6
+      ? r.ranking[1].label
+      : null;
+
   return (
     <ReportDiagnosticCard
       key="q08"
       number="07"
-      label="Objetivo"
-      question="Que objetivo provável serve?"
-      answerLabel={
-        r.confidence === "med" ? "Hipótese principal" : "Hipótese (sinal parcial)"
-      }
+      label="Objetivo · Síntese"
+      question="Que objetivo estratégico parece estar por trás?"
+      answerLabel="Síntese estratégica"
       answer={r.primary}
       tone="blue"
-      body="Hipótese derivada dos sinais de conteúdo, funil, bio e ligação entre canais. Não substitui o objetivo real da marca ou do criador — deve ser confirmada por quem comunica."
+      body="Síntese provável com base no tipo de conteúdo, funil, bio e ligação entre canais."
       sourceType="automatic"
-      sourceDetail="Conteúdo + funil + bio"
+      sourceDetail="Conteúdo + funil + bio · síntese"
     >
-      <DiagnosticRanking items={r.ranking} valuePosition="left" />
+      <DiagnosticObjectiveSynthesis
+        primary={r.primary}
+        secondary={secondary}
+        confidence={r.confidence}
+        supportSignals={supportSignals.slice(0, 4)}
+      />
     </ReportDiagnosticCard>
   );
 }
