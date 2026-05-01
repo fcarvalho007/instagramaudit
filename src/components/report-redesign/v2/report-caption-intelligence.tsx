@@ -439,6 +439,7 @@ function ReadingLine({
 function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
   const ab = data.actionBridge;
   if (!ab.body || ab.body.length < 5) return null;
+  const Icon = ab.priorityType === "alta" ? AlertTriangle : Lightbulb;
   return (
     <div
       className={cn(
@@ -448,7 +449,7 @@ function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
           : "bg-blue-50/50 ring-blue-100",
       )}
     >
-      <ArrowRight
+      <Icon
         aria-hidden
         className={cn(
           "size-4 mt-0.5 shrink-0",
