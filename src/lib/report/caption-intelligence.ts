@@ -40,12 +40,29 @@ export type DominantCtaType =
   | "none"
   | "other";
 
+export type ThemeRole =
+  | "educativo"
+  | "autoridade"
+  | "conversão"
+  | "comunidade"
+  | "opinião"
+  | "promocional"
+  | "outro";
+
+export type ThemeConfidence = "low" | "medium" | "high";
+
+export type CtaStrength = "weak" | "moderate" | "strong";
+
 export interface CaptionThemeItem {
   label: string;
   /** Nº de posts distintos onde apareceu. */
   postsCount: number;
   /** Excerto curto da legenda (≤ 90 chars). Vazio quando não há. */
   evidence: string | null;
+  /** Papel editorial inferido por co-ocorrência com termos de conteúdo. */
+  role: ThemeRole;
+  /** Confiança baseada em postsCount / sampleSize. */
+  confidence: ThemeConfidence;
 }
 
 export interface ContentTypeMixItem {
@@ -68,6 +85,8 @@ export interface CtaPatternsBlock {
   /** Label legível em pt-PT do dominantCtaType (ex.: "Subscrever newsletter"). */
   dominantCtaLabel: string;
   summary: string;
+  /** Força global do CTA nas legendas. */
+  ctaStrength: CtaStrength;
 }
 
 export interface EditorialReadingBlock {
@@ -79,16 +98,32 @@ export interface EditorialReadingBlock {
   recommendedImprovement: string | null;
 }
 
+export interface SnapshotRow {
+  dominantTheme: string;
+  mainIntent: string;
+  mainOpportunity: string;
+}
+
+export interface ActionBridge {
+  title: string;
+  body: string;
+  priorityType: "alta" | "media" | "oportunidade";
+}
+
 export interface CaptionIntelligence {
   /** Nº de posts com caption não vazia. Usado no header "Baseado em N posts". */
   sampleSize: number;
   /** True quando há captions suficientes para mostrar a leitura (≥ 4). */
   available: boolean;
+  /** 3 insights de topo para leitura rápida (< 5 s). */
+  snapshot: SnapshotRow;
   themes: { source: CaptionSourceKind; items: CaptionThemeItem[] };
   contentTypeMix: { source: CaptionSourceKind; items: ContentTypeMixItem[]; dominant: ContentTypeMixLabel | null };
   recurringExpressions: { source: CaptionSourceKind; items: RecurringExpressionItem[] };
   ctaPatterns: CtaPatternsBlock;
   editorialReading: EditorialReadingBlock;
+  /** Strip de ação sugerida no final do cartão. */
+  actionBridge: ActionBridge;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -136,6 +171,8 @@ function cleanCaption(raw: string): string {
 function buildThemes(
   topThemes: readonly ThemeRow[],
   topHashtagLabels: ReadonlyArray<string>,
+  sampleSize: number,
+  posts: readonly SnapshotPost[],
 ): CaptionThemeItem[] {
   const banned = new Set(
     topHashtagLabels.map((h) => normalize(h.replace(/^#/, ""))),
@@ -144,14 +181,56 @@ function buildThemes(
   for (const t of topThemes) {
     const flat = normalize(t.word).replace(/\s+/g, "");
     if (banned.has(flat)) continue;
+    const role = inferThemeRole(t.word, posts);
+    const confidence: ThemeConfidence =
+      sampleSize > 0 && (t.postsCount / sampleSize) >= 0.4
+        ? "high"
+        : sampleSize > 0 && (t.postsCount / sampleSize) >= 0.2
+          ? "medium"
+          : "low";
     out.push({
       label: t.word,
       postsCount: t.postsCount,
       evidence: t.snippets[0] ?? null,
+      role,
+      confidence,
     });
     if (out.length >= 5) break;
   }
   return out;
+}
+
+/** Infere o role editorial de um tema com base nos termos do CONTENT_MIX_TERMS co-ocorrentes. */
+function inferThemeRole(
+  themeLabel: string,
+  posts: readonly SnapshotPost[],
+): ThemeRole {
+  const themeLower = normalize(themeLabel);
+  const roleCounts = new Map<ThemeRole, number>();
+  const ROLE_MAP: Record<ContentTypeMixLabel, ThemeRole> = {
+    "Educativo": "educativo",
+    "Opinião / análise": "opinião",
+    "Promocional": "promocional",
+    "Institucional": "autoridade",
+    "Bastidores / pessoal": "comunidade",
+    "Convite / CTA": "conversão",
+  };
+  for (const p of posts) {
+    const cap = normalize(cleanCaption(p.caption ?? ""));
+    if (!cap.includes(themeLower)) continue;
+    for (const { type, terms } of CONTENT_MIX_TERMS) {
+      if (hasAny(cap, terms)) {
+        const role = ROLE_MAP[type];
+        roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+      }
+    }
+  }
+  let best: ThemeRole = "outro";
+  let bestCount = 0;
+  for (const [r, c] of roleCounts) {
+    if (c > bestCount) { best = r; bestCount = c; }
+  }
+  return best;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -504,14 +583,17 @@ export function buildCaptionIntelligence(
   const sampleSize = posts.length;
   const available = sampleSize >= 4;
 
-  const themes = buildThemes(args.topThemes, args.topHashtagLabels);
+  const themes = buildThemes(args.topThemes, args.topHashtagLabels, sampleSize, posts);
   const mix = buildContentTypeMix(posts);
   const expressions = buildRecurringExpressions(posts);
   const ctaRaw = buildCtaPatterns(posts);
+  const ctaStrength: CtaStrength =
+    ctaRaw.hasCtaPct >= 50 ? "strong" : ctaRaw.hasCtaPct >= 20 ? "moderate" : "weak";
   const cta: CtaPatternsBlock = {
     source: "auto",
     ...ctaRaw,
     summary: ctaSummary(ctaRaw),
+    ctaStrength,
   };
 
   const avgLen =
@@ -535,13 +617,54 @@ export function buildCaptionIntelligence(
         recommendedImprovement: null,
       };
 
+  // Snapshot row — 3 quick-read insights
+  const INTENT_LABELS: Partial<Record<ContentTypeMixLabel, string>> = {
+    "Educativo": "Educar e gerar autoridade",
+    "Opinião / análise": "Criar opinião e posicionamento",
+    "Promocional": "Promover produtos ou serviços",
+    "Institucional": "Construir marca e reputação",
+    "Bastidores / pessoal": "Aproximar e humanizar",
+    "Convite / CTA": "Converter e gerar ação",
+  };
+  const snapshot: SnapshotRow = {
+    dominantTheme: themes[0]?.label ?? "Sem tema dominante claro",
+    mainIntent: mix.dominant
+      ? (INTENT_LABELS[mix.dominant] ?? mix.dominant)
+      : "Sem intenção editorial dominante",
+    mainOpportunity: editorialReading.recommendedImprovement
+      ?? "Manter consistência editorial",
+  };
+
+  // Action Bridge
+  const actionBridge: ActionBridge = buildActionBridge(editorialReading, cta);
+
   return {
     sampleSize,
     available,
+    snapshot,
     themes: { source: "auto", items: themes },
     contentTypeMix: { source: "auto", items: mix.items, dominant: mix.dominant },
     recurringExpressions: { source: "extracted", items: expressions },
     ctaPatterns: cta,
     editorialReading,
+    actionBridge,
+  };
+}
+
+function buildActionBridge(
+  reading: EditorialReadingBlock,
+  cta: CtaPatternsBlock,
+): ActionBridge {
+  if (reading.recommendedImprovement && reading.recommendedImprovement.length > 5) {
+    return {
+      title: "Ação sugerida",
+      body: reading.recommendedImprovement,
+      priorityType: cta.ctaStrength === "weak" ? "alta" : "oportunidade",
+    };
+  }
+  return {
+    title: "Ação sugerida",
+    body: "Manter a consistência editorial e testar variações de CTA para identificar o formato mais eficaz.",
+    priorityType: "oportunidade",
   };
 }

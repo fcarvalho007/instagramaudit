@@ -1,75 +1,112 @@
 
-# Bloco 02 · Ritmo visual no diagnóstico editorial
+# Pergunta 04 · Caption Intelligence Upgrade
 
-## Problema
+## O que já existe
 
-As 7 perguntas do diagnóstico (3 grupos: A=2, B=3, C=2) renderizam numa grelha uniforme `grid-cols-2` com `auto-rows-fr`. Todos os cards têm a mesma altura e largura — parece uma tabela. A resposta dominante (`text-[1.125rem]`) é quase do mesmo tamanho que o título da pergunta (`text-[1.05rem]`) — não há hierarquia visual.
+A infraestrutura Caption Intelligence foi criada numa iteração anterior e já cobre:
 
-## Estratégia
+- `src/lib/report/caption-intelligence.ts` — motor determinístico com 5 blocos (temas, contentTypeMix, expressões, CTA, leitura editorial), separação explícita hashtags/temas, fallback quando não há IA
+- `src/components/report-redesign/v2/report-caption-intelligence.tsx` — UI com layout 2 colunas, source badges, CTA stats, leitura editorial, nota de rodapé
+- `src/components/report-redesign/v2/source-badge.tsx` — badges extracted/auto/ai
+- Ponte para prioridades via `injectCaptionImprovement` no `report-diagnostic-block.tsx`
 
-### 1) Layout com ritmo — cards marcados como `span` ou `compact`
+## O que falta (delta desta iteração)
 
-Em vez de uma grelha uniforme, cada card ganha uma propriedade `span` que controla se ocupa largura total ou metade. As perguntas com resposta-veredicto forte (Q01 Tipo de conteúdo, Q02 Funil, Q06 Audiência, Q08 Objetivo) ocupam **largura total**. As perguntas com evidência densa (Q03 Hashtags, Q05 Captions, Q07 Integração) ficam **lado a lado** quando possível.
+### 1. Top Snapshot Row (3 mini-cards)
 
-Implementação no `ReportDiagnosticGroup`:
-- Remover `auto-rows-fr` (os cards deixam de ser forçados à mesma altura)
-- Cada card pode ter `data-span="full"` ou default (half)
-- A prop `span?: "full" | "half"` é passada ao `ReportDiagnosticCard` e propagada como classe `md:col-span-2`
+Adicionar uma fila de 3 cartões compactos logo abaixo do header:
+- **A) Tema dominante** — `themes.items[0].label` · badge `auto`
+- **B) Intenção principal** — derivado de `contentTypeMix.dominant` (ex.: "Educar e gerar autoridade") · badge `auto`
+- **C) Oportunidade principal** — derivado de `editorialReading.recommendedImprovement` ou CTA weakness · badge `auto`/`ai`
 
-Layout resultante por grupo:
+Estes 3 valores já existem nos dados; é só extraí-los e renderizar. Sem novas chamadas.
 
-```text
-Grupo A · Identidade editorial
-┌──────────────────────────────────────┐
-│ Q01 · Tipo de conteúdo  (full)       │
-├──────────────────┬───────────────────┤
-│ Q02 · Funil      │  (agora metade   │
-│  (half — funil   │   se houver Q    │
-│   visual stack)  │   extra, senão   │
-│                  │   full)          │
-└──────────────────┴───────────────────┘
+### 2. Theme clusters com role + confidence + evidence
 
-Grupo B · Como comunica
-┌──────────────────┬───────────────────┐
-│ Q03 · Hashtags   │ Q05 · Captions   │
-│  (half)          │  (half)          │
-├──────────────────┴───────────────────┤
-│ Q06 · Audiência  (full — destaque)   │
-└──────────────────────────────────────┘
+Adicionar ao tipo `CaptionThemeItem`:
+- `role`: `"educativo" | "autoridade" | "conversão" | "comunidade" | "opinião" | "promocional" | "outro"` — inferido deterministicamente a partir dos termos do `CONTENT_MIX_TERMS` que co-ocorrem com o tema
+- `confidence`: `"low" | "medium" | "high"` — baseado em `postsCount` vs. `sampleSize` (high ≥ 40%, medium ≥ 20%, low < 20%)
 
-Grupo C · Contexto estratégico
-┌──────────────────┬───────────────────┐
-│ Q07 · Integração │ Q08 · Objetivo   │
-│  (half)          │  (half)          │
-└──────────────────┴───────────────────┘
+O evidence/excerpt já existe. A UI muda de lista plana para cluster cards com role tag + barra de confiança.
+
+### 3. CTA strength label
+
+Adicionar `ctaStrength: "weak" | "moderate" | "strong"` ao `CtaPatternsBlock`:
+- strong: `hasCtaPct ≥ 50`
+- moderate: `hasCtaPct ≥ 20`
+- weak: `< 20`
+
+Renderizar como chip colorido no bloco CTA.
+
+### 4. Action Bridge strip
+
+Adicionar ao tipo `CaptionIntelligence`:
+```ts
+actionBridge: {
+  title: string;
+  body: string;
+  priorityType: "alta" | "media" | "oportunidade";
+}
 ```
 
-### 2) Tipografia da resposta dominante — 2x maior
+Derivado deterministicamente da `editorialReading.recommendedImprovement` + CTA gap. Renderizado como strip final antes da nota de rodapé. Também consumível pelo `injectCaptionImprovement` existente.
 
-No `ReportDiagnosticCard`, a resposta dominante passa de `text-[1.125rem] md:text-[1.25rem]` para **`text-[1.5rem] md:text-[1.75rem]`** — o dobro do tamanho do body text (`text-sm` = 0.875rem). Quando `span="full"`, escala ainda mais para `text-[1.75rem] md:text-[2rem]`.
+### 5. Microcopy update
 
-### 3) Cards full-width: layout horizontal
+Header sub-copy muda para:
+> "Análise ao texto das legendas, CTAs, temas recorrentes, expressões e intenção editorial."
 
-Quando `span="full"`, o card reorganiza internamente: pergunta + resposta à esquerda (60%), evidência/children à direita (40%) em desktop. Isto evita que um card full-width fique com muito espaço vertical desperdiçado.
+### 6. Content Type Mix dominant highlight
+
+Adicionar texto acima da barra de distribuição:
+> "Função dominante: Educativo / autoridade"
+> "7 de 8 legendas procuram ensinar ou contextualizar."
+
+Já temos `dominant` e `count` — é só formatar.
 
 ## Ficheiros a alterar
 
 | Ficheiro | Alteração |
 |---|---|
-| `src/components/report-redesign/v2/report-diagnostic-card.tsx` | Adicionar prop `span`, ajustar tipografia da resposta, layout horizontal para `span="full"` |
-| `src/components/report-redesign/v2/report-diagnostic-group.tsx` | Remover `auto-rows-fr`, usar children directamente (cada card controla o seu `col-span`) |
-| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Passar `span` a cada card: Q01=full, Q02=depende do count, Q03/Q05=half, Q06=full, Q07/Q08=half |
+| `src/lib/report/caption-intelligence.ts` | Adicionar `role`, `confidence` a `CaptionThemeItem`; adicionar `ctaStrength` a `CtaPatternsBlock`; adicionar `actionBridge` ao output; adicionar `snapshot` convenience object |
+| `src/components/report-redesign/v2/report-caption-intelligence.tsx` | Snapshot row, cluster UI com role/confidence, CTA strength chip, action bridge strip, microcopy, dominant function highlight |
 
-## Fora de âmbito
+## NÃO muda
 
-- Conteúdo dos cards (copy, classifiers, builders) — não muda
-- Caption Intelligence (entre grupo B e C) — não muda
-- Prioridades e CTA — não mudam
-- Report light tokens — não muda (este é um componente de layout, não de cor)
+- Não há chamada a OpenAI/Lovable AI — tudo continua determinístico + `aiLanguageText` opcional que já existia
+- Não muda o schema da base de dados
+- Não mexe em ficheiros locked
+- Não duplica hashtags (separação já garantida por `buildThemes`)
+- Não toca em PDF, admin, /report.example, pagamento, auth, scraping, benchmark
+- Não refactora o action-plan system (o `injectCaptionImprovement` já consome `actionBridge`)
+- `source-badge.tsx` — não muda (já completo)
+- `report-diagnostic-block.tsx` — ajuste mínimo se o `injectCaptionImprovement` precisar de ler `actionBridge` em vez de campos separados
+
+## JSON shape resultante (para referência)
+
+A `CaptionIntelligence` fica com esta forma:
+
+```ts
+{
+  sampleSize: number;
+  available: boolean;
+  snapshot: {
+    dominantTheme: string;
+    mainIntent: string;
+    mainOpportunity: string;
+  };
+  themes: { source; items: CaptionThemeItem[] };   // +role, +confidence
+  contentTypeMix: { source; items; dominant };
+  recurringExpressions: { source; items };
+  ctaPatterns: CtaPatternsBlock;                     // +ctaStrength
+  editorialReading: EditorialReadingBlock;
+  actionBridge: { title; body; priorityType };
+}
+```
 
 ## Validação
 
 - `bunx tsc --noEmit` passa
 - `bunx vitest run` passa (51/51)
-- Verificação visual: cards full-width visivelmente maiores que half, resposta dominante com presença editorial clara, sem "tabela"
-- Responsivo: em mobile (375px) todos colapsam para 1 coluna sem quebrar
+- Verificação visual no preview: snapshot row legível em < 5s, clusters com role tags, CTA com strength chip, action bridge strip
+- Mobile 375px: stacked, sem overflow horizontal
