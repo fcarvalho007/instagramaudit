@@ -5,14 +5,12 @@ import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
-  getBufferTierForFollowers,
   getConsolidatedBenchmarkSeries,
   getActiveTierIndex,
 } from "@/lib/knowledge/benchmark-context";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 import { ReportSourceLabel } from "./report-source-label";
-import { ReportBenchmarkEvidence } from "./report-benchmark-evidence";
 import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
 
 interface Props {
@@ -176,17 +174,7 @@ function EngagementRateCard({
   deltaPct: number;
   followers: number;
 }) {
-  const hasBenchmark = benchmark > 0;
   const status = computeEngagementStatus(engagement, benchmark, deltaPct);
-  const bufferTier = getBufferTierForFollowers(followers);
-  const followerTierLabel = bufferTier
-    ? bufferTier.tier.replace("-", "–")
-    : null;
-  const isAboveBufferRange = Number.isFinite(followers) && followers >= 1_000_000;
-  const aboveRangeHint = isAboveBufferRange
-    ? INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.aboveBufferRangeHint
-    : null;
-
   const benchmarkSeries = getConsolidatedBenchmarkSeries();
   const activeTierIdx = getActiveTierIndex(followers, benchmarkSeries);
   const activeSourceRefs = INSTAGRAM_BENCHMARK_CONTEXT.sources
@@ -225,20 +213,6 @@ function EngagementRateCard({
         sourceReferences={activeSourceRefs}
         showProSlot
       />
-
-      {hasBenchmark ? (
-        <ReportBenchmarkEvidence
-          platform="instagram"
-          followerTier={isAboveBufferRange ? null : followerTierLabel}
-          industry={null}
-          sourceNames={["Socialinsider", "Buffer"]}
-          aboveBufferRangeHint={aboveRangeHint}
-        />
-      ) : null}
-
-      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
-        {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.engagementExplanation}
-      </p>
     </PremiumCard>
   );
 }
