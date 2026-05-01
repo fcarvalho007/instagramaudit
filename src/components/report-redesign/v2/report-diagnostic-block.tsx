@@ -502,6 +502,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
         sampleSize={r.sampleSize}
         tone={highlightTone}
         topConversationPost={r.topConversationPost}
+        status={r.status}
       />
     </ReportDiagnosticCard>
   );
