@@ -131,3 +131,29 @@
     border-color: var(--color-border);
   }
 }
+
+/*
+ * Editorial eyebrow utility — replaces ad-hoc font-mono uppercase chains
+ * used as section labels, badges, captions. Keeps the cinematic
+ * "tipografia técnica" feel while honouring the 2-font rule
+ * (Fraunces + Inter). JetBrains Mono is reserved exclusively for raw
+ * numeric data (counts, percentages, chart ticks).
+ */
+@layer components {
+  .text-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem; /* 11px */
+    line-height: 1;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .text-eyebrow-sm {
+    font-family: var(--font-sans);
+    font-size: 0.625rem; /* 10px */
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+}
