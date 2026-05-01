@@ -1,4 +1,4 @@
-import { ArrowRight, MessageSquareQuote, Sparkles } from "lucide-react";
+import { AlertTriangle, Lightbulb, MessageSquareQuote, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type {
@@ -60,7 +60,7 @@ export function ReportCaptionIntelligence({ data }: Props) {
 
       <ActionBridgeStrip data={data} />
 
-      <p className="text-[12.5px] text-slate-500 leading-relaxed border-t border-slate-100 pt-4 mt-2">
+      <p className="text-[12.5px] text-slate-500 leading-relaxed border-t border-slate-200/40 pt-4 mt-2">
         As hashtags são analisadas separadamente. Esta leitura considera o
         texto das legendas, CTAs, temas recorrentes e padrões editoriais
         dos posts analisados.
@@ -154,10 +154,10 @@ function SnapshotRow({ data }: { data: CaptionIntelligence }) {
         <div
           key={c.label}
           className={cn(
-            "rounded-xl ring-1 px-4 py-3.5 flex flex-col gap-2",
+            "rounded-xl ring-1 px-4 py-3.5 flex flex-col gap-2 transition-shadow",
             c.variant === "ai"
-              ? "bg-blue-50/60 ring-blue-100"
-              : "bg-slate-50/80 ring-slate-200/70",
+              ? "bg-blue-50/50 ring-blue-100"
+              : "bg-slate-50/60 ring-slate-200/60",
           )}
         >
           <div className="flex items-center justify-between gap-2">
@@ -218,10 +218,8 @@ function ThemesBlock({ data }: { data: CaptionIntelligence }) {
                 <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1 shrink-0", conf.color)}>
                   {conf.label}
                 </span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-eyebrow-sm text-slate-500">
-                  {ROLE_LABELS[it.role] ?? it.role}
+                <span className="text-eyebrow-sm text-slate-400 shrink-0">
+                  papel: {ROLE_LABELS[it.role] ?? it.role}
                 </span>
               </div>
               {it.evidence ? (
@@ -362,7 +360,7 @@ function Stat({ label, value }: { label: string; value: string }) {
       <span className="text-eyebrow-sm text-slate-500">
         {label}
       </span>
-      <span className="font-mono text-[18px] tabular-nums text-slate-900">
+      <span className="font-mono text-[1.25rem] tabular-nums text-slate-900">
         {value}
       </span>
     </div>
@@ -439,6 +437,7 @@ function ReadingLine({
 function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
   const ab = data.actionBridge;
   if (!ab.body || ab.body.length < 5) return null;
+  const Icon = ab.priorityType === "alta" ? AlertTriangle : Lightbulb;
   return (
     <div
       className={cn(
@@ -448,7 +447,7 @@ function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
           : "bg-blue-50/50 ring-blue-100",
       )}
     >
-      <ArrowRight
+      <Icon
         aria-hidden
         className={cn(
           "size-4 mt-0.5 shrink-0",

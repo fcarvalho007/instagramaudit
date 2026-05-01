@@ -11,17 +11,15 @@ import {
   classifyAudienceResponse,
   classifyChannelIntegration,
   classifyHashtags,
-  inferThemesFromCaptions,
   inferProbableObjective,
   derivePriorities,
   type ContentTypeResult,
   type FunnelStageResult,
   type CaptionPatternResult,
-  type AudienceResponseResult,
+  type AudienceResponseResult, 
   type IntegrationResult,
   type ObjectiveResult,
   type HashtagsResult,
-  type ThemesResult,
 } from "@/lib/report/block02-diagnostic";
 
 import { ReportDiagnosticVerdict } from "./report-diagnostic-verdict";
@@ -29,7 +27,6 @@ import { ReportDiagnosticGroup } from "./report-diagnostic-group";
 import {
   ReportDiagnosticCard,
   DiagnosticDistributionBar,
-  DiagnosticMiniStats,
   DiagnosticChecklist,
   DiagnosticRanking,
   DiagnosticFunnelStack,
@@ -67,12 +64,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const caption = classifyCaptionPattern(posts);
   const audience = classifyAudienceResponse(posts);
   const hashtags = classifyHashtags(topHashtags);
-  const themes = inferThemesFromCaptions({
-    topThemes,
-    topKeywords,
-    aiSections: result.enriched.aiInsightsV2?.sections ?? null,
-  });
-  void themes;
   const captionIntel = buildCaptionIntelligence({
     posts,
     topThemes,
@@ -115,10 +106,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
   const aiLanguageText =
     result.enriched.aiInsightsV2?.sections.language?.text ?? null;
-  const aiLanguage =
-    aiLanguageText && aiLanguageText.trim().length > 0
-      ? { kind: "interpretation" as const, text: aiLanguageText.trim() }
-      : null;
 
   // Build cards as nullable list, then split into groups
   const groupA = compact([
@@ -127,7 +114,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   ]);
   const groupB = compact([
     renderHashtagsCard(hashtags),
-    renderCaptionCard(caption, aiLanguage),
     renderAudienceCard(audience),
   ]);
   const groupC = compact([
@@ -455,109 +441,6 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
   );
 }
 
-function renderThemesCard(r: ThemesResult): ReactNode | null {
-  if (!r.available) return null;
-  // Só consideramos "leitura IA" quando temos efectivamente texto da IA
-  // para mostrar — caso contrário cai para leitura automática (keyword
-  // recurrence) e o chip reflecte isso, evitando "LEITURA IA" sem bloco
-  // interpretativo abaixo.
-  const hasAiText = !!(r.aiText && r.aiText.trim().length >= 20);
-  const isAi = r.source === "ai" && hasAiText;
-  const body = isAi
-    ? "Esta leitura resume os assuntos recorrentes nas legendas, com base na interpretação editorial gerada pela IA."
-    : "Esta leitura resume os assuntos mais frequentes nas legendas analisadas — não as hashtags utilizadas.";
-  return (
-    <ReportDiagnosticCard
-      key="q04"
-      number="04"
-      label="Temas"
-      question="Sobre que assuntos o perfil fala mais?"
-      answerLabel="Temas dominantes"
-      answer={r.headline}
-      tone="blue"
-      body={body}
-      sourceType={isAi ? "ai" : "automatic"}
-      sourceDetail="Assuntos das legendas"
-      aiSource={
-        isAi && r.aiText
-          ? { kind: "interpretation", text: r.aiText }
-          : null
-      }
-    >
-      {!isAi && r.items.length > 0 ? (
-        <ul className="space-y-1.5">
-          {r.items.map((it) => {
-            const max = Math.max(1, ...r.items.map((x) => x.weight));
-            const pct = (it.weight / max) * 100;
-            return (
-              <li key={it.text} className="text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate-700 truncate">{it.text}</span>
-                  <span className="font-mono text-[10px] text-slate-500 tabular-nums shrink-0">
-                    {it.weight}×
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full bg-blue-500"
-                    style={{ width: `${pct}%` }}
-                    aria-hidden
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-    </ReportDiagnosticCard>
-  );
-}
-
-function renderCaptionCard(
-  r: CaptionPatternResult,
-  aiSource: { kind: "interpretation"; text: string } | null,
-): ReactNode | null {
-  if (!r.available) return null;
-  const ctaLabel =
-    r.ctaSharePct === 0
-      ? "Poucos sinais explícitos de chamada à ação foram detetados."
-      : r.ctaSharePct < 20
-        ? "Poucas publicações terminam com chamada à ação clara."
-        : r.ctaSharePct < 50
-          ? "Algumas publicações incluem chamada à ação direta."
-          : "A maioria das publicações termina com chamada à ação clara.";
-  return (
-    <ReportDiagnosticCard
-      key="q05"
-      number="05"
-      label="Linguagem"
-      question="Como são as legendas?"
-      answerLabel="Padrão dominante"
-      answer={r.label}
-      tone="blue"
-      body={ctaLabel + " O texto explica o conteúdo, mas a forma como convida o leitor a responder define a conversa pública."}
-      aiSource={aiSource}
-      sourceType={aiSource ? "ai" : "automatic"}
-      sourceDetail="Estilo das legendas"
-    >
-      <DiagnosticMiniStats
-        items={
-          r.questionShareAvailable
-            ? [
-                { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
-                { value: `${r.questionSharePct}%`, label: "COM PERGUNTAS" },
-                { value: `${r.ctaSharePct}%`, label: "COM CTA" },
-              ]
-            : [
-                { value: String(r.avgLength), label: "CARACTERES MÉDIOS" },
-                { value: `${r.ctaSharePct}%`, label: "COM CTA" },
-              ]
-        }
-      />
-    </ReportDiagnosticCard>
-  );
-}
-
 function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
   if (!r.available) return null;
   const tone: DiagnosticTone =
@@ -589,7 +472,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
   return (
     <ReportDiagnosticCard
       key="q06"
-      number="06"
+      number="05"
       label="Resposta"
       question="O público responde ou só consome?"
       answer={r.label}
@@ -619,7 +502,7 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
   return (
     <ReportDiagnosticCard
       key="q07"
-      number="07"
+      number="06"
       label="Integração"
       question="Há ligação entre canais?"
       answerLabel="Estado"
@@ -670,7 +553,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
   return (
     <ReportDiagnosticCard
       key="q08"
-      number="08"
+      number="07"
       label="Objetivo"
       question="Que objetivo provável serve?"
       answerLabel={
