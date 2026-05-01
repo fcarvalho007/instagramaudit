@@ -446,7 +446,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
   if (!r.available) {
     return (
       <ReportDiagnosticCard
-        key="q06"
+        key="q05"
         number="05"
         label="Resposta"
         question="O público responde ou só consome?"
@@ -454,7 +454,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
         tone="slate"
         span="full"
         body={r.explanation}
-        sourceType="extracted"
+        sourceType="automatic"
         sourceDetail="Gostos + comentários"
       >
         <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3">
@@ -484,7 +484,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
 
   return (
     <ReportDiagnosticCard
-      key="q06"
+      key="q05"
       number="05"
       label="Resposta"
       question="O público responde ou só consome?"
@@ -518,7 +518,7 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
         : "amber";
   return (
     <ReportDiagnosticCard
-      key="q07"
+      key="q06"
       number="06"
       label="Integração"
       question="Há ligação entre canais?"

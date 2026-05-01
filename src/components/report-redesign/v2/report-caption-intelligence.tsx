@@ -1,5 +1,4 @@
-import { AlertTriangle, Lightbulb, MessageSquareQuote, Sparkles } from "lucide-react";
-import { Crown, Lock } from "lucide-react";
+import { AlertTriangle, Crown, Lightbulb, Lock, MessageSquareQuote, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type {

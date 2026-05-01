@@ -1,96 +1,100 @@
 
-# Refine Block 02 · Q06 "Resposta do público"
+# QA Visual Review · Report V2
 
-## Root cause
+**Limitation**: The V2 report (`ReportShellV2`) only renders on `/analyze/$username`, which requires the full Apify analysis pipeline. The admin preview requires localStorage auth. Neither route could be rendered in the browser. The `/report/example` uses the old `ReportPage` component and does **not** reflect V2 changes. This audit is therefore **code-level only**, supplemented by a design regression check on `/report/example`.
 
-Two issues create the contradictory state:
+**Confirmation**: No files were edited during this QA.
 
-1. **`classifyAudienceResponse`** (line 495): `typeof p.likes === "number" ? p.likes : 0` coerces `null` to `0`, then `if (likes <= 0 && comments <= 0) continue` skips posts where fields are genuinely missing AND posts where values are legitimately 0. When all posts have `null` likes/comments, `counted` stays 0 and the function returns `available: false` — correct. But when some have real values of 0 alongside others with `null`, it conflates the two.
+---
 
-2. **`DiagnosticAudienceHighlight`** (line 516): when avgLikes=0 and avgComments=0, it renders "Sem dados de gostos/comentários" — but the parent card already renders with label "Audiência silenciosa" from the classifier. This creates the contradiction.
+## Verdict: **PASS WITH MINOR REFINEMENTS**
 
-## Plan
+---
 
-### 1. Fix `classifyAudienceResponse` in `block02-diagnostic.ts`
+## A. Bloco 02 Structure
 
-- Distinguish `null`/`undefined` (missing) from `0` (valid zero).
-- Track `postsWithEngagementData` — posts where at least one of `likes`/`comments` is a `number` (including 0).
-- Track `postsWithComments` — posts where `comments >= 1`.
-- Add `totalLikes`, `totalComments`, `postsWithComments`, `analysedPosts` to the result.
-- Add `topConversationPost` — the post with the most comments (if any), with a caption excerpt.
-- Add status `"concentrated"` when comments cluster in 1-2 posts.
+| Check | Status | Notes |
+|-------|--------|-------|
+| New numbering correct? | **Issue** | Audience card renders `number="05"` but uses `key="q06"` (stale key from before renumber). Integration renders `number="06"` / `key="q07"`. Objective renders `number="07"`. The **visible numbers** are correct (01-07 after Caption Intelligence as Q04), but the React keys still use old numbering — cosmetic only, no user impact. |
+| Q03 clearly covers hashtags? | PASS | `number="03"`, `label="Hashtags"`, question "Que hashtags aparecem mais vezes?", body clarifies hashtags ≠ topics. |
+| Q04 clearly covers caption text only? | PASS | Header says "Leitura das legendas", subtitle says "Baseado na leitura das legendas públicas dos posts analisados — não inclui transcrição do que é dito em vídeo." |
+| Q05/Q06/Q07 correctly renumbered? | PASS | Audience=05, Integration=06, Objective=07. No duplication. |
+| Group counter correct? | **Minor** | `block-config.ts` L34 still says "Oito perguntas" but there are now 7 diagnostic cards + Caption Intelligence = 8 items total. Technically accurate if Caption Intelligence counts as a question, but ambiguous. |
 
-Updated `AudienceResponseResult`:
+## B. Caption Intelligence
 
-```ts
-export interface AudienceResponseResult {
-  available: boolean;
-  label: AudienceResponseLabel;
-  status: "silent" | "moderate" | "active" | "concentrated" | "unavailable";
-  commentsToLikesPct: number;
-  avgComments: number;
-  avgLikes: number;
-  sampleSize: number;
-  totals: {
-    likes: number | null;
-    comments: number | null;
-    postsWithComments: number;
-    analysedPosts: number;
-  };
-  topConversationPost: {
-    index: number;
-    comments: number;
-    likes: number;
-    captionExcerpt: string;
-  } | null;
-  explanation: string;
-}
-```
+| Check | Status | Notes |
+|-------|--------|-------|
+| One of the strongest sections? | PASS | 5 sub-blocks (themes, content type, expressions, CTAs, editorial reading) + snapshot row + action bridge + premium teaser. Well-structured. |
+| Clear it analyses public captions only? | PASS | Header subtitle + `ScopeTransparencyNote` both state this explicitly. |
+| Clear what it does NOT analyse? | PASS | "Não inclui áudio, vídeo, texto dentro das imagens ou transcrição dos Reels." |
+| Badges clear and not overused? | **Minor** | Each sub-block has its own `SourceBadge` + the snapshot row has 3 badges. With 5 sub-blocks + 3 snapshot cards = 8 badges total on screen. Risk of badge fatigue. |
+| Real caption excerpts readable? | PASS | Themes show `it.evidence` with italic styling and "excerto real" label. |
+| Distinction between hashtags/themes/expressions/CTAs/editorial? | PASS | Each has its own `BlockHeader` with distinct label. |
+| Premium teaser visible but not intrusive? | PASS | Amber-toned card with Lock icon and PRO badge. Minimal copy. |
 
-Classification logic:
-- No posts with engagement fields → `available: false`, status `"unavailable"`
-- Fields exist, comments clustered in 1-2 of 8+ posts → `"concentrated"`
-- ratioPct >= 2 AND avgComments >= 10 → `"active"`
-- ratioPct >= 0.8 OR avgComments >= 5 → `"moderate"`
-- Otherwise → `"silent"`
+## C. UX/UI
 
-### 2. Refactor `renderAudienceCard` in `report-diagnostic-block.tsx`
+| Check | Status | Notes |
+|-------|--------|-------|
+| Scannable in 10 seconds? | PASS | Snapshot row provides instant summary, sub-blocks are well-separated. |
+| Layout too dense? | **Minor** | The 3/5 + 2/5 column grid packs themes + content type + expressions in the left column. With long theme lists, left column could become very long vs short right column. |
+| Too many badges/chips? | **Minor** | See badge fatigue note above. |
+| Typography hierarchy strong? | PASS | `font-display` for main heading, `text-eyebrow-sm` for labels, consistent sizing. |
+| Cards feel premium/editorial? | PASS | `ring-1`, rounded-xl, subtle bg tints, no generic dashboard look. |
+| AI reading has consistent visual identity? | PASS | Blue tint + left border + Sparkles icon + italic text for AI source. |
 
-Replace the current card with a 3-area structure:
+## D. Mobile
 
-**A. Dados extraídos** (badge: "Dados extraídos")
-- 4 compact stats: total likes, total comments, avg comments/post, posts with comments
-- Only shown when `available: true`
+| Check | Status | Notes |
+|-------|--------|-------|
+| No horizontal overflow at 375px? | **Cannot verify visually** | Grid uses `grid-cols-1 sm:grid-cols-3` for snapshot row and `grid-cols-1 md:grid-cols-5` for main layout. Should stack correctly. |
+| Badges wrap? | Likely OK | `flex-wrap` on header. Badges use `shrink-0`. |
+| Caption excerpts readable? | PASS | `leading-relaxed`, `text-[13px]`, `max-w-xl`. |
+| Visually overwhelming? | **Risk** | On mobile, all sub-blocks stack vertically = very long scroll. No collapsible sections. |
 
-**B. Cálculo** (badge: "Cálculo")  
-- Response label (e.g. "Audiência silenciosa")
-- Deterministic explanation from `result.explanation`
+## E. Global Design Regression
 
-**C. Leitura IA** (badge: "Leitura IA")
-- Only shown when AI editorial text exists
-- Interpretation of why comments may be low + suggestions
-- No AI prompt changes in this iteration — reuse existing `aiInsightsV2` if it has audience-related content
+| Check | Status | Notes |
+|-------|--------|-------|
+| Typography sweep caused issues? | **Minor** | `report-caption-intelligence.tsx` L1-2 has duplicate `lucide-react` imports (both `{ AlertTriangle, Lightbulb, MessageSquareQuote, Sparkles }` and `{ Crown, Lock }`). Works but untidy. |
+| Surface/border changes? | PASS | `/report/example` renders cleanly with light theme. Cards have subtle borders. |
+| Gold/cyan rules coherent? | PASS | Premium teaser uses amber (gold) family exclusively. No cyan mixing in the same card. |
 
-**Unavailable state**: neutral card with "Dados insuficientes" and explanation, no classification, no rose tone.
+## F. Data Safety
 
-### 3. Update `DiagnosticAudienceHighlight` in `report-diagnostic-card.tsx`
+| Check | Status | Notes |
+|-------|--------|-------|
+| No claims about unavailable metrics? | PASS | No reach, saves, shares, impressions, profile visits, follower growth, demographics, or video transcripts referenced. |
+| No technical terms in UI? | **Minor** | `sourceType="calculation"` renders as "CÁLCULO" via `ReportSourceLabel` — acceptable. `key="q06"` is React internal only. No payload/JSON/classifier terms visible. |
+| Audience unavailable state correct? | PASS | Shows "Dados insuficientes" with neutral explanation, no contradictory classification. |
 
-Remove the contradictory empty state. The highlight now receives pre-validated data and always renders metrics (the parent handles unavailable state by not rendering the card).
+---
 
-### 4. No OpenAI prompt changes
+## Findings Table
 
-The current AI pipeline is not modified. If `aiInsightsV2` contains audience-relevant text, it will be shown. A dedicated AI audience reading can be added in a future iteration.
+| Severity | Finding | File |
+|----------|---------|------|
+| Minor | Duplicate `lucide-react` imports (L1-2) | `report-caption-intelligence.tsx` |
+| Minor | React keys use old numbering (`key="q06"` for card numbered "05") | `report-diagnostic-block.tsx` |
+| Minor | Badge count (8 per section) risks visual fatigue | `report-caption-intelligence.tsx` |
+| Minor | `block-config.ts` says "Oito perguntas" — verify this is still accurate | `block-config.ts` |
+| Minor | Mobile: long vertical scroll without collapse affordance | `report-caption-intelligence.tsx` |
 
-## Files
+---
 
-| File | Action |
-|------|--------|
-| `src/lib/report/block02-diagnostic.ts` | Fix `classifyAudienceResponse`, expand `AudienceResponseResult` interface |
-| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Refactor `renderAudienceCard` with 3-area layout |
-| `src/components/report-redesign/v2/report-diagnostic-card.tsx` | Clean up `DiagnosticAudienceHighlight` |
+## Screenshots Reviewed
 
-## Not touched
+1. `/report/example` desktop 1440px — top fold (Bloco 01): PASS, clean light theme.
+2. `/report/example` desktop 1440px — temporal chart + AI insights: PASS.
+3. V2 report (code review only): Could not screenshot.
 
-- Providers, Supabase schema, admin, PDF, `/report/example`, locked files
-- OpenAI prompt/orchestration
-- Other diagnostic cards
+---
+
+## Refinement Prompt (if approved)
+
+> 1. Consolidate the two `lucide-react` imports on L1-2 of `report-caption-intelligence.tsx` into one.
+> 2. Update React `key` props in `report-diagnostic-block.tsx` to match visible numbering: audience `key="q05"`, integration `key="q06"`, objective `key="q07"`.
+> 3. Verify "Oito perguntas" in `block-config.ts` L34 is accurate after renumbering — update if needed.
+
+These are all Minor-level. No Critical or Medium issues found.
