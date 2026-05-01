@@ -80,7 +80,7 @@
   --color-content-inverse: rgb(var(--text-inverse));
 
   /* === Border colors === */
-  --color-border-subtle: rgb(var(--border-subtle) / 0.08);
+  --color-border-subtle: rgb(var(--border-subtle) / 0.10);
   --color-border-default: rgb(var(--border-default) / 0.12);
   --color-border-strong: rgb(var(--border-strong) / 0.2);
 
