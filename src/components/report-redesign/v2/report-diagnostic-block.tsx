@@ -38,7 +38,8 @@ import {
 } from "./report-diagnostic-card";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
-import { ReportThemesFeature } from "./report-themes-feature";
+import { ReportCaptionIntelligence } from "./report-caption-intelligence";
+import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
 
 interface Props {
   result: AdapterResult;
@@ -70,6 +71,14 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     topThemes,
     topKeywords,
     aiSections: result.enriched.aiInsightsV2?.sections ?? null,
+  });
+  void themes;
+  const captionIntel = buildCaptionIntelligence({
+    posts,
+    topThemes,
+    topHashtagLabels: topHashtags.map((t) => t.tag),
+    aiLanguageText:
+      result.enriched.aiInsightsV2?.sections.language?.text ?? null,
   });
   const integration = classifyChannelIntegration(bio, externalUrls, posts);
   const objective = inferProbableObjective({
@@ -154,9 +163,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             </ReportDiagnosticGroup>
           ) : null}
 
-          {themes.available ? (
-            <ReportThemesFeature themes={themes} />
-          ) : null}
+          <ReportCaptionIntelligence data={captionIntel} />
 
           {groupC.length > 0 ? (
             <ReportDiagnosticGroup
@@ -186,7 +193,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                 body: p.body,
                 resolves: p.resolves,
               }))
-            : priorities
+            : injectCaptionImprovement(priorities, captionIntel)
         }
         source={
           result.enriched.aiInsightsV2?.priorities &&
