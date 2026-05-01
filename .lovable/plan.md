@@ -1,112 +1,47 @@
 
-# Pergunta 04 · Caption Intelligence Upgrade
+# Refinamentos — Caption Intelligence (Q04, Block 02)
 
-## O que já existe
+## Avaliação
 
-A infraestrutura Caption Intelligence foi criada numa iteração anterior e já cobre:
+A implementação está sólida: tipos bem definidos, separação hashtags/captions respeitada, `font-mono` apenas em números crus, `text-eyebrow-sm` nos labels, sem cores hardcoded, action bridge funcional. Identifico 6 refinamentos para elevar a consistência e polish:
 
-- `src/lib/report/caption-intelligence.ts` — motor determinístico com 5 blocos (temas, contentTypeMix, expressões, CTA, leitura editorial), separação explícita hashtags/temas, fallback quando não há IA
-- `src/components/report-redesign/v2/report-caption-intelligence.tsx` — UI com layout 2 colunas, source badges, CTA stats, leitura editorial, nota de rodapé
-- `src/components/report-redesign/v2/source-badge.tsx` — badges extracted/auto/ai
-- Ponte para prioridades via `injectCaptionImprovement` no `report-diagnostic-block.tsx`
+---
 
-## O que falta (delta desta iteração)
+## Refinamentos a aplicar
 
-### 1. Top Snapshot Row (3 mini-cards)
+### 1. Duplicação do card Q05 "Linguagem" com o Caption Intelligence
 
-Adicionar uma fila de 3 cartões compactos logo abaixo do header:
-- **A) Tema dominante** — `themes.items[0].label` · badge `auto`
-- **B) Intenção principal** — derivado de `contentTypeMix.dominant` (ex.: "Educar e gerar autoridade") · badge `auto`
-- **C) Oportunidade principal** — derivado de `editorialReading.recommendedImprovement` ou CTA weakness · badge `auto`/`ai`
+O antigo `renderCaptionCard` (agora numerado "05" — "Como são as legendas?") no groupB sobrepõe-se conceptualmente ao novo `ReportCaptionIntelligence`. Ambos analisam captions, CTAs e padrões de linguagem. O card Q05 deve ser removido do groupB para eliminar redundância — a informação já está coberta (e melhor) pelo novo bloco.
 
-Estes 3 valores já existem nos dados; é só extraí-los e renderizar. Sem novas chamadas.
+### 2. Snapshot cards — usar tokens de design em vez de Tailwind raw
 
-### 2. Theme clusters com role + confidence + evidence
+Os 3 snapshot cards usam `bg-slate-50/80`, `bg-blue-50/60`, `ring-slate-200/70` diretamente. Para consistência com o sistema de tokens do relatório light, substituir por classes semânticas quando o token existir (ex.: insight box variants de `tokens-light.css`), ou pelo menos uniformizar os valores de opacidade (atualmente misturam `/60`, `/70`, `/80`).
 
-Adicionar ao tipo `CaptionThemeItem`:
-- `role`: `"educativo" | "autoridade" | "conversão" | "comunidade" | "opinião" | "promocional" | "outro"` — inferido deterministicamente a partir dos termos do `CONTENT_MIX_TERMS` que co-ocorrem com o tema
-- `confidence`: `"low" | "medium" | "high"` — baseado em `postsCount` vs. `sampleSize` (high ≥ 40%, medium ≥ 20%, low < 20%)
+### 3. Theme cluster cards — role label isolado
 
-O evidence/excerpt já existe. A UI muda de lista plana para cluster cards com role tag + barra de confiança.
+O role label (ex.: "educativo", "autoridade") está numa `div` própria sem contexto visual — parece perdido. Melhorar integrando-o como chip inline ao lado do confidence badge, com prefixo "papel:" para dar significado ao leitor não técnico.
 
-### 3. CTA strength label
+### 4. CTA block — stat value vertical alignment
 
-Adicionar `ctaStrength: "weak" | "moderate" | "strong"` ao `CtaPatternsBlock`:
-- strong: `hasCtaPct ≥ 50`
-- moderate: `hasCtaPct ≥ 20`
-- weak: `< 20`
+O `Stat` component usa `font-mono text-[18px]` para os valores percentuais. O tamanho é inconsistente com o sistema tipográfico do resto do relatório — os mini-stats nos diagnostic cards usam `text-[1.5rem]`. Uniformizar para `text-[1.25rem]` ou `text-[1.5rem]` conforme o espaço disponível na sidebar.
 
-Renderizar como chip colorido no bloco CTA.
+### 5. Action Bridge strip — ícone rotado
 
-### 4. Action Bridge strip
+O `ArrowRight` como ícone da strip de ação sugerida é genérico. Usar `Lightbulb` (para "oportunidade") ou `AlertTriangle` (para "alta") daria mais clareza semântica sem adicionar complexidade.
 
-Adicionar ao tipo `CaptionIntelligence`:
-```ts
-actionBridge: {
-  title: string;
-  body: string;
-  priorityType: "alta" | "media" | "oportunidade";
-}
-```
+### 6. Footer disclaimer — border token
 
-Derivado deterministicamente da `editorialReading.recommendedImprovement` + CTA gap. Renderizado como strip final antes da nota de rodapé. Também consumível pelo `injectCaptionImprovement` existente.
+O `border-t border-slate-100` do disclaimer final deve usar `border-border-subtle` para respeitar o sistema de tokens e funcionar correctamente em ambos os temas.
 
-### 5. Microcopy update
+---
 
-Header sub-copy muda para:
-> "Análise ao texto das legendas, CTAs, temas recorrentes, expressões e intenção editorial."
+## Technical details
 
-### 6. Content Type Mix dominant highlight
+### Ficheiros alterados
+- `src/components/report-redesign/v2/report-caption-intelligence.tsx` — refinamentos 2, 3, 4, 5, 6
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — refinamento 1 (remover `renderCaptionCard` do groupB)
 
-Adicionar texto acima da barra de distribuição:
-> "Função dominante: Educativo / autoridade"
-> "7 de 8 legendas procuram ensinar ou contextualizar."
-
-Já temos `dominant` e `count` — é só formatar.
-
-## Ficheiros a alterar
-
-| Ficheiro | Alteração |
-|---|---|
-| `src/lib/report/caption-intelligence.ts` | Adicionar `role`, `confidence` a `CaptionThemeItem`; adicionar `ctaStrength` a `CtaPatternsBlock`; adicionar `actionBridge` ao output; adicionar `snapshot` convenience object |
-| `src/components/report-redesign/v2/report-caption-intelligence.tsx` | Snapshot row, cluster UI com role/confidence, CTA strength chip, action bridge strip, microcopy, dominant function highlight |
-
-## NÃO muda
-
-- Não há chamada a OpenAI/Lovable AI — tudo continua determinístico + `aiLanguageText` opcional que já existia
-- Não muda o schema da base de dados
-- Não mexe em ficheiros locked
-- Não duplica hashtags (separação já garantida por `buildThemes`)
-- Não toca em PDF, admin, /report.example, pagamento, auth, scraping, benchmark
-- Não refactora o action-plan system (o `injectCaptionImprovement` já consome `actionBridge`)
-- `source-badge.tsx` — não muda (já completo)
-- `report-diagnostic-block.tsx` — ajuste mínimo se o `injectCaptionImprovement` precisar de ler `actionBridge` em vez de campos separados
-
-## JSON shape resultante (para referência)
-
-A `CaptionIntelligence` fica com esta forma:
-
-```ts
-{
-  sampleSize: number;
-  available: boolean;
-  snapshot: {
-    dominantTheme: string;
-    mainIntent: string;
-    mainOpportunity: string;
-  };
-  themes: { source; items: CaptionThemeItem[] };   // +role, +confidence
-  contentTypeMix: { source; items; dominant };
-  recurringExpressions: { source; items };
-  ctaPatterns: CtaPatternsBlock;                     // +ctaStrength
-  editorialReading: EditorialReadingBlock;
-  actionBridge: { title; body; priorityType };
-}
-```
-
-## Validação
-
-- `bunx tsc --noEmit` passa
-- `bunx vitest run` passa (51/51)
-- Verificação visual no preview: snapshot row legível em < 5s, clusters com role tags, CTA com strength chip, action bridge strip
-- Mobile 375px: stacked, sem overflow horizontal
+### Validação
+- `bunx vitest run` deve passar (nenhum teste referencia renderCaptionCard directamente)
+- `bunx tsc --noEmit` deve passar
+- Verificar mobile 375px sem overflow horizontal
