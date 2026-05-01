@@ -1,4 +1,5 @@
 import { AlertTriangle, Lightbulb, MessageSquareQuote, Sparkles } from "lucide-react";
+import { Crown, Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type {
@@ -96,8 +97,8 @@ function Shell({
             O que as legendas revelam sobre a estratégia de conteúdo?
           </h3>
           <p className="text-[13px] text-slate-500 max-w-xl">
-            Análise ao texto das legendas, CTAs, temas recorrentes,
-            expressões e intenção editorial.
+            Baseado na leitura das legendas públicas dos posts analisados
+            — não inclui transcrição do que é dito em vídeo.
           </p>
         </div>
         <span
@@ -107,7 +108,7 @@ function Shell({
             "bg-slate-50 text-slate-600 ring-slate-200",
           )}
         >
-          Baseado em {sampleSize} {sampleSize === 1 ? "post" : "posts"}
+          Baseado em {sampleSize} {sampleSize === 1 ? "legenda" : "legendas"}
         </span>
       </header>
 
