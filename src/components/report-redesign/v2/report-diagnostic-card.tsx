@@ -580,3 +580,91 @@ function MiniStat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+// ─── Q07 — Síntese de objetivo estratégico ──────────────────────────
+
+export interface ObjectiveSynthesisProps {
+  primary: string;
+  secondary?: string | null;
+  confidence: "low" | "med";
+  supportSignals: string[];
+}
+
+const CONFIDENCE_COPY: Record<"low" | "med", { label: string; cls: string }> = {
+  med: { label: "Confiança média", cls: "text-blue-700 bg-blue-50 ring-blue-100" },
+  low: { label: "Confiança baixa", cls: "text-slate-600 bg-slate-50 ring-slate-200" },
+};
+
+/**
+ * Layout de síntese estratégica para Q07 — substitui as barras de ranking
+ * percentuais por uma apresentação de hipótese principal + secundária +
+ * sinais de suporte + nível de confiança.
+ */
+export function DiagnosticObjectiveSynthesis({
+  primary,
+  secondary,
+  confidence,
+  supportSignals,
+}: ObjectiveSynthesisProps) {
+  const conf = CONFIDENCE_COPY[confidence];
+  return (
+    <div className="space-y-4">
+      {/* Primary hypothesis */}
+      <div className="rounded-lg bg-blue-50/60 ring-1 ring-blue-100 px-4 py-3.5 space-y-1">
+        <p className="text-eyebrow-sm text-blue-700">Hipótese principal</p>
+        <p className="font-display text-[1.05rem] md:text-[1.125rem] font-semibold tracking-tight text-slate-900 leading-snug">
+          {primary}
+        </p>
+      </div>
+
+      {/* Secondary hypothesis */}
+      {secondary ? (
+        <div className="rounded-lg bg-slate-50/60 ring-1 ring-slate-200/60 px-4 py-3 space-y-1">
+          <p className="text-eyebrow-sm text-slate-500">Objetivo secundário</p>
+          <p className="text-[15px] font-medium text-slate-800">
+            {secondary}
+          </p>
+        </div>
+      ) : null}
+
+      {/* Support signals */}
+      {supportSignals.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-eyebrow-sm text-slate-500">Sinais de suporte</p>
+          <div className="flex flex-wrap gap-2">
+            {supportSignals.map((signal) => (
+              <span
+                key={signal}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+                  "ring-1 ring-slate-200 bg-slate-50",
+                  "text-[12px] text-slate-700",
+                )}
+              >
+                <span className="size-1 rounded-full bg-slate-400 shrink-0" aria-hidden />
+                {signal}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Confidence chip */}
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full ring-1 px-2.5 py-1",
+          "text-[12px] font-medium",
+          conf.cls,
+        )}
+      >
+        {conf.label}
+      </span>
+
+      {/* Disclaimer */}
+      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
+        Esta hipótese é derivada dos sinais públicos analisados e não substitui o
+        objetivo real definido pela marca ou criador.
+      </p>
+    </div>
+  );
+}
