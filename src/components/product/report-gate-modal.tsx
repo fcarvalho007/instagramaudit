@@ -332,7 +332,7 @@ export function ReportGateModal({
               {/* One-time purchase */}
               <div className="flex flex-col rounded-xl border border-border-default bg-surface-base/40 p-4 gap-3">
                 <div className="flex items-center gap-2">
-                  <FileText className="size-4 text-accent-luminous" aria-hidden="true" />
+                  <FileText className="size-4 text-content-secondary" aria-hidden="true" />
                   <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
                     Compra pontual
                   </span>
@@ -378,7 +378,7 @@ export function ReportGateModal({
                 </div>
                 <Button
                   type="button"
-                  variant="primary"
+                  variant="premium"
                   size="sm"
                   disabled
                   className="w-full mt-auto"
