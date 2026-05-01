@@ -1,94 +1,62 @@
-import { Database, Calculator, Cpu, Bot, BookOpen } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
-export type ReportSourceType =
-  | "extracted"
-  | "calculation"
-  | "automatic"
-  | "ai"
-  | "external";
+export type ReportSourceType = "dados" | "mercado" | "auto" | "ia";
 
 interface Props {
   type: ReportSourceType;
-  /** Texto curto à direita do label, ex.: "GOSTOS + COMENTÁRIOS". */
+  /** Texto curto para acessibilidade (não renderizado). */
   detail?: string;
-  /**
-   * Quando `true` o chip apresenta-se com tom "atenção" (amber). Usar
-   * apenas em leituras automáticas que sinalizam algo a corrigir.
-   * Default: `false`.
-   */
-  caution?: boolean;
   className?: string;
 }
 
-const LABEL_PT: Record<ReportSourceType, string> = {
-  extracted: "Dado extraído",
-  calculation: "Cálculo",
-  automatic: "Leitura automática",
-  ai: "Leitura IA",
-  external: "Referência externa",
+const LABEL: Record<ReportSourceType, string> = {
+  dados: "⬡ DADOS",
+  mercado: "◈ MERCADO",
+  auto: "∿ AUTO",
+  ia: "✦ IA",
 };
 
-const ICON: Record<ReportSourceType, typeof Database> = {
-  extracted: Database,
-  calculation: Calculator,
-  automatic: Cpu,
-  ai: Bot,
-  external: BookOpen,
+const A11Y: Record<ReportSourceType, string> = {
+  dados: "Dados extraídos do perfil público",
+  mercado: "Referência de mercado externa",
+  auto: "Cálculo ou classificação automática",
+  ia: "Leitura editorial por IA",
 };
 
 /**
- * Cor ÚNICA para todos os tipos. O chip vive em rodapé discreto e
- * nunca compete com títulos. A diferenciação é feita pelo ícone +
- * label, não pela cor. `caution` mantém-se como variante leve de aviso
- * (apenas borda) — opcional, raramente usada.
- */
-const NEUTRAL_TONE =
-  "bg-slate-50 ring-slate-200 text-slate-500";
-const CAUTION_TONE =
-  "bg-slate-50 ring-amber-300 text-slate-600";
-
-/**
- * Micro-rótulo de proveniência usado em todo o relatório.
+ * Micro-rótulo de proveniência unificado para todo o relatório V2.
  *
- * Cinco tipos editoriais:
- *   · extracted   → dado público recolhido directamente do Instagram
- *   · calculation → métrica calculada pela InstaBench
- *   · automatic   → classificação determinística por regras internas
- *   · ai          → texto/leitura gerado por IA
- *   · external    → referência da Knowledge Base (Buffer, Socialinsider…)
+ * Quatro tipos:
+ *   · dados   → dado público recolhido directamente do Instagram
+ *   · mercado → referência da Knowledge Base (Buffer, Socialinsider…)
+ *   · auto    → métrica calculada ou classificação determinística
+ *   · ia      → texto/leitura gerado por IA
  *
- * Estilo: mono uppercase, 10px, tracking largo, pill ultra-discreto
- * em tom slate único. Pensado para viver no rodapé dos cartões, nunca
- * a competir com títulos. O `detail` é guardado em `aria-label`/`title`
- * mas não renderizado visualmente — o chip mostra apenas tipo + ícone.
+ * Estilo: 10px, weight 500, tracking 0.08em, opacity 50%.
+ * Sem fundo, sem ring, sem pill — puro metadata.
  */
 export function ReportSourceLabel({
   type,
   detail,
-  caution = false,
   className,
 }: Props) {
-  const Icon = ICON[type];
-  const label = LABEL_PT[type];
-  const detailText = detail?.trim() ? detail.trim().toUpperCase() : null;
-  const a11y = detailText ? `${label} · ${detailText.toLowerCase()}` : label;
+  const label = LABEL[type];
+  const detailText = detail?.trim() || null;
+  const a11y = detailText ? `${A11Y[type]} · ${detailText}` : A11Y[type];
   return (
     <span
       role="note"
       aria-label={a11y}
       title={a11y}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full ring-1 px-2 py-0.5",
-        "text-eyebrow-sm leading-none",
-        "max-w-full whitespace-nowrap overflow-hidden text-ellipsis",
-        (caution ? CAUTION_TONE : NEUTRAL_TONE),
+        "inline-flex items-center",
+        "text-[10px] font-medium tracking-[0.08em] leading-none",
+        "text-slate-500 opacity-50",
+        "whitespace-nowrap",
         className,
       )}
     >
-      <Icon aria-hidden className="size-3 shrink-0 opacity-70" />
-      <span className="truncate">{label.toUpperCase()}</span>
+      {label}
     </span>
   );
 }

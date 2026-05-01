@@ -299,7 +299,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         tone="slate"
         span="full"
         body={body}
-        sourceType="automatic"
+       sourceType="auto"
       sourceDetail="Legendas · classificação"
       >
         {r.distribution.length >= 2 ? (
@@ -332,7 +332,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       tone="emerald"
         span="full"
       body={`Classificação do tipo de conteúdo publicado nas legendas e padrões editoriais. Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}.`}
-      sourceType="automatic"
+      sourceType="auto"
       sourceDetail="Legendas · classificação"
     >
       {r.distribution.length >= 2 ? (
@@ -382,7 +382,7 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       answer={r.label ?? "—"}
       tone={isFocused ? "blue" : "amber"}
       body={`Mapeamento da função do conteúdo na jornada — atenção, educação, decisão ou relação. ${bodyByLabel[r.label ?? "Comunicação dispersa"]}`}
-      sourceType="automatic"
+      sourceType="auto"
       sourceDetail="Legendas · mapeamento"
     >
       {r.breakdown.length > 0 ? (
@@ -412,7 +412,7 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
       answer={r.items.slice(0, 2).map((it) => it.text).join(" · ")}
       tone="blue"
       body="As hashtags mostram como o perfil etiqueta os conteúdos e que territórios quer associar às publicações — não representam, por si só, os assuntos abordados."
-      sourceType="extracted"
+      sourceType="dados"
       sourceDetail="Hashtags"
     >
       <ul className="space-y-1.5">
@@ -490,7 +490,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
       tone={tone}
       span="full"
       body={r.explanation}
-      sourceType="calculation"
+      sourceType="auto"
       sourceDetail="Gostos + comentários"
     >
       <DiagnosticAudienceHighlight
@@ -526,7 +526,7 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
       answer={r.label}
       tone={tone}
       body="Há infraestrutura cross-canal quando a bio aponta para fora e as captions reforçam a saída do Instagram. Sem isso, a audiência fica presa à plataforma."
-      sourceType="automatic"
+      sourceType="auto"
       sourceDetail="Bio + legendas"
     >
       <DiagnosticChecklist
@@ -602,7 +602,7 @@ function renderObjectiveCard(
       answer={r.primary}
       tone="blue"
       body="Síntese provável com base no tipo de conteúdo, funil, bio e ligação entre canais."
-      sourceType="automatic"
+      sourceType="auto"
       sourceDetail="Conteúdo + funil + bio · síntese"
     >
       <DiagnosticObjectiveSynthesis

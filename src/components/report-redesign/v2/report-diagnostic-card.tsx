@@ -119,7 +119,6 @@ export function ReportDiagnosticCard({
           <ReportSourceLabel
             type={sourceType}
             detail={sourceDetail}
-            caution={sourceCaution}
           />
         ) : null}
       </div>
