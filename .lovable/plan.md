@@ -1,65 +1,82 @@
 
-# Paleta · Resolver tensão cyan ↔ gold
+# Superfícies · Aumentar elevação cinematográfica dos cards (dark)
 
 ## Diagnóstico
 
-A tensão é real e está concentrada em **dois ficheiros**:
+Tokens actuais (`src/styles/tokens.css`):
 
-1. **`src/components/product/report-gate-modal.tsx`** (paywall)
-   - Card "Compra pontual" usa `text-accent-luminous` (cyan, linha 335)
-   - Card "Pro" ao lado usa `text-accent-gold`, `border-accent-gold`, `bg-accent-gold/5`, `shadow-glow-gold` (linhas 361–367)
-   - O CTA "Ver plano Pro" dentro do card gold é `variant="primary"` (cyan) → **dupla colisão dentro do mesmo card**
+| Token | RGB | Hex | Luminância | Δ vs anterior |
+|---|---|---|---|---|
+| `--surface-base` | 10 14 26 | `#0A0E1A` | 0.0045 | — |
+| `--surface-secondary` | 17 24 39 | `#111827` | 0.0092 | +0.0047 |
+| `--surface-elevated` | 30 41 59 | `#1E293B` | 0.0218 | +0.0126 |
 
-2. **`src/components/product/post-analysis-conversion-layer.tsx`** (3 planos)
-   - Card central "Pro" (linhas 149–181) inteiro em gold
-   - CTA "Pedir acesso Pro" dentro do card gold é `variant="primary"` (cyan) → **mesma colisão**
+Os dois primeiros saltos são pequenos: o card `surface-secondary` quase desaparece sobre `surface-base`, e o `surface-elevated` perde fôlego porque muitos cards no produto usam **`surface-secondary` directamente** (`rounded-xl bg-surface-secondary p-…`) em vez de passarem pelo `<Card>`. Bordas existem mas estão mal padronizadas — `border-border-subtle/50`, `border-border-subtle`, ou simplesmente sem border.
 
-Os outros usos de gold (`Badge variant="premium"`, `Button variant="premium"`) ficam em ecrãs onde não há CTA cyan adjacente, por isso não são problema imediato.
+A variante `elevated` do componente `Card` (linha 18 de `src/components/ui/card.tsx`) **não tem border** — só sombra. Em ecrãs reais a sombra apenas não chega.
 
-> Nota separada (não resolvido aqui): violet (`accent-violet*`) também coabita com cyan em vários ecrãs de landing/produto. É outra tensão de paleta que merece tratamento próprio numa próxima fase. Não está incluída neste plano.
+## Estratégia (combina as duas sugestões)
 
-## Regra a fixar
+Ambas as sugestões — empurrar `surface-elevated` e padronizar borda hairline — resolvem partes diferentes do problema. Aplico-as juntas:
 
-| Acento | Função | Quando aparece | Pode coexistir com |
-|---|---|---|---|
-| **Cyan** (`accent-primary` / `accent-luminous`) | Sistema | CTAs, links, focus rings, botões `variant="primary"`, ícones de interação | Tudo neutral (signal, surface, content) |
-| **Gold** (`accent-gold`) | Sinal editorial premium | Selo "Pro", cards de upgrade, IA premium destacado | Apenas neutrais — **nunca** cyan no mesmo card |
+### 1) Reescala dos 3 níveis de superfície
 
-Quando um card é gold, o CTA dentro dele tem de ser **`variant="premium"`** (que já existe e usa gold como acento e dourado dourado escuro como texto). O card gold passa a ser uma **ilha gold pura**.
+| Token | Antes | Depois | Hex novo | Luminância nova |
+|---|---|---|---|---|
+| `--surface-base` | 10 14 26 | **inalterado** | `#0A0E1A` | 0.0045 |
+| `--surface-secondary` | 17 24 39 | **20 28 46** | `#141C2E` | 0.0118 |
+| `--surface-elevated` | 30 41 59 | **36 48 68** | `#243044` | 0.0291 |
+| `--surface-overlay` | 30 41 59 | **42 56 80** | `#2A3850` | 0.0386 |
 
-Quando um card é cyan/sistema, segue o padrão actual (`variant="primary"`).
+Saltos passam de **+0.0047 / +0.0126** para **+0.0073 / +0.0173 / +0.0095**. Ainda dentro de "dark editorial" (longe de cinzentos médios), mas com elevação perceptível e card legível mesmo sem sombra.
 
-## Mudanças concretas
+`surface-overlay` (popovers, modals, tooltips) ganha um quarto degrau para se distinguir de cards normais.
 
-### 1) `report-gate-modal.tsx`
+### 2) Borda hairline obrigatória em cards elevados
 
-- **Linha 335** (card "Compra pontual"): `text-accent-luminous` → `text-content-secondary`. O ícone `FileText` é decorativo neutro; não precisa do cyan a competir com o gold do card vizinho. O cyan continua presente noutro sítio do modal (botões `variant="primary"`).
-- **Linha 379–388** (CTA dentro do card Pro): `<Button variant="primary">` → `<Button variant="premium">`. Mantém o ar de destaque mas sem cyan a invadir o card gold.
+- Subir `--border-subtle` de alpha `0.08` → `0.10` (mantém o ar editorial mas tem mais presença).
+- Adicionar borda à variante `elevated` do `Card` shadcn:
 
-### 2) `post-analysis-conversion-layer.tsx`
+  ```ts
+  elevated: "bg-surface-elevated border border-border-subtle shadow-lg",
+  ```
 
-- **Linha 172–181** (CTA "Pedir acesso Pro"): `variant="primary"` → `variant="premium"`. Mesma lógica.
+- Padronizar cards artesanais que hoje usam `rounded-xl bg-surface-secondary p-X` **sem border** ou com `border-border-subtle/50`. Sweep nos componentes mais visíveis (não em todos os 100+):
+  - `src/components/product/post-analysis-conversion-layer.tsx` (cards de planos free/pro/agency — Pro fica gold ilha como já decidido, free e agency ganham borda subtle)
+  - `src/components/product/report-gate-modal.tsx` (cards "Compra pontual" e modal-base)
+  - `src/components/admin/cockpit/parts/*` (stat-card, data-table, panels) — cockpit precisa especialmente da elevação
+  - `src/components/landing/*` que usem `bg-surface-secondary` directo
+  - Componentes do report (`report-redesign/v2/*`, `report-enriched/*`) que usem `bg-surface-secondary` em dark mode
 
-### 3) `Button` `variant="premium"` (sanity check)
+  Em todos estes, garantir `border border-border-subtle` na raiz do card. Onde já existe `border-border-subtle/50` ou `/60`, deixar como está (overrides intencionais).
 
-A definição actual em `button.tsx` (linhas 49–54) usa `text-accent-gold`, fundo `surface-secondary`, borda gold, glow gold. Isto funciona como CTA gold-on-gold dentro de um card gold. Não precisa alterar — só validar visualmente que não fica demasiado "fantasma" sobre o fundo `bg-accent-gold/5` do card. Caso fique pouco contrastado, ajusto o background para `bg-accent-gold` (sólido) com `text-text-inverse` numa pequena tweak no `variant="premium"`.
+### 3) Light theme — não mexer
 
-### 4) Documentar a regra
+`tokens-light.css` já é Iconosquare-pure com `surface-secondary: #FFFFFF` puro sobre `#FAFBFD` e bordas hairline definidas — não tem o problema. O scope é **apenas dark mode**.
 
-- `mem://design/tokens` → adicionar a regra "Gold é ilha — nunca coexiste com cyan no mesmo card."
-- `mem://index.md` Core → uma linha curta com a mesma regra.
+### 4) Sombras — micro-tweak
+
+`--shadow-md` actual é `0 4px 6px -1px rgb(0 0 0 / 0.3) ...`. Com surfaces mais claras, as sombras pretas puras ficam mais visíveis e acentuam a elevação. Não é necessário tocar — verificar visualmente; se for preciso reduzo a opacidade em 0.05 num passo seguinte.
 
 ## Não está no âmbito
 
-- Repensar o uso de **violet** (terceira família de acento). Fica como follow-up explícito a discutir.
-- Trocar tons de gold/cyan ou ajustar tokens em `tokens.css` / `tokens-light.css`.
-- Mexer no light theme do `/report` (já é mono-azul Iconosquare e não tem gold).
-- Tocar em `Badge variant="premium"` ou `Button variant="premium"` para além do possível tweak de contraste descrito acima.
+- Light theme (`tokens-light.css`)
+- Mexer em `--surface-base` (continua o "preto editorial" da brand)
+- Fazer sweep dos 100+ ficheiros com `bg-surface-secondary` — só os de produto/cockpit/landing/report onde o problema é visível
+- Repintar cards `Card` que já consomem o componente shadcn — esses ganham automaticamente a nova surface
+- Tema light do `/report` (já é mono-azul claro)
 
 ## Validação
 
 - [ ] `bunx tsc --noEmit` passa
 - [ ] `bunx vitest run` passa (51/51)
-- [ ] Inspeção visual no `report-gate-modal` (estado paywall) — cards lado a lado já não competem
-- [ ] Inspeção visual em `post-analysis-conversion-layer` — card Pro é uma ilha gold coerente
-- [ ] CTA "premium" continua legível sobre fundo `bg-accent-gold/5`
+- [ ] Inspeção visual em landing dark, `/admin`, `/analyze/$username`, `/report` (modo dark fora de `/report/example`):
+  - cards `surface-secondary` legíveis sobre `surface-base` sem precisar piscar
+  - cards `surface-elevated` claramente acima dos `surface-secondary`
+  - hairline visível em todos os cards do produto/cockpit
+- [ ] Modal `report-gate-modal` em estado paywall — separação clara entre fundo do modal e os 2 cards de plano
+
+## Atualizar memória
+
+- `mem://design/tokens` → novos valores das surfaces e regra "todo card elevado tem border-subtle".
+- `mem://index.md` Core → uma linha curta com a regra hairline.
