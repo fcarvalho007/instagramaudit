@@ -255,10 +255,23 @@ function buildSnippet(caption: string, needle: string): string | null {
   slice = slice
     .replace(/https?:\/\/\S+/gi, "")
     .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, "")
+    // ALL-CAPS tokens (>=4) cortados a meio (ex.: "DIGITALS"
+    // de "DIGITALSPRINT") são ruído e devem desaparecer
+    .replace(/\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{4,}\b/g, "")
     .replace(/^[#@\W_]+/, "")
     .replace(/[#@\W_]+$/, "")
     .replace(/\s+/g, " ")
     .trim();
+  // Descartar palavras-órfãs muito curtas (≤ 2 chars) no início do
+  // snippet — tipicamente sufixos de pronomes ("ti", "lo", "te")
+  // resultantes de janela cortada a meio.
+  while (true) {
+    const m = slice.match(/^(\S{1,2})\s+/);
+    if (!m) break;
+    // Não comer prefixos significativos como "IA", "TV", "UX"
+    if (/^[A-Z]/.test(m[1])) break;
+    slice = slice.slice(m[0].length).trim();
+  }
   if (slice.length === 0) return null;
   // Garantir que o snippet ainda contém o needle após limpezas — se não,
   // descartar (poluição por URL/hashtag tornou o excerto inútil).
