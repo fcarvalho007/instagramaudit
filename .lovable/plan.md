@@ -1,41 +1,47 @@
 
-## Scope
+## Audit Result
 
-Only `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`. No logic, data, or schema changes.
+The unified source badge system (`ReportSourceLabel`) is already deployed across 6 V2 components. **No old labels** ("DADO EXTRAÍDO", "LEITURA AUTOMÁTICA", etc.) remain anywhere in the codebase.
 
-## Refinements
+### What already uses the unified system
 
-### 1. Competitor marker Y clamp (parity with profile marker)
+| File | Badge(s) |
+|------|----------|
+| `report-diagnostic-card.tsx` | `ia`, dynamic `sourceType` |
+| `report-diagnostic-verdict.tsx` | `ia` / `auto` |
+| `report-diagnostic-priorities.tsx` | `ia` |
+| `report-overview-cards.tsx` | `auto`, `dados` |
+| `report-themes-feature.tsx` | `ia` |
+| `report-caption-intelligence.tsx` | via `SourceBadge` wrapper (all 3 types) |
 
-The profile marker already has a near-zero clamp, but the competitor marker at line 327 uses raw `yForVal()` — it can bleed into the X-axis zone too. Apply the same clamp pattern.
+### Remaining fixes (3 items)
 
-### 2. Reference line label collision with profile marker
+**1. Engagement chart: replace inline `◈ MERCADO` text with `ReportSourceLabel`**
 
-When the profile value is close to the benchmark value, the "Referência do escalão" label (at `refY - 5`) can collide with the profile marker's "Este perfil" label (at `my - 7`). Add a dynamic offset: if the two Y values are within ~18px, nudge the reference label above the collision zone.
+Line 431 of `report-engagement-benchmark-chart.tsx` hardcodes `◈ MERCADO · Instagram...` as a raw string. Replace with `<ReportSourceLabel type="mercado" />` followed by the context text, for visual consistency.
 
-### 3. Soften grid lines
+**2. KPI grid: add source badges to KPI cards**
 
-Change grid line stroke from `#e2e8f0` / `0.5` to `#e2e8f0` / `0.35` for a more refined, less busy background.
+`report-kpi-grid-v2.tsx` renders 3 KPI cards (engagement, posting rhythm, dominant format) without any source badges. Add:
+- Engagement card: `auto` badge (calculated from likes + comments)
+- Posting rhythm card: `auto` badge (calculated from post dates)
+- Dominant format card: `auto` badge (classification from post types)
 
-### 4. Smoother bar hover transition
+Each badge placed in the card's top-right corner, matching the card layout convention.
 
-Add `transition-all duration-200` to bar rects instead of just `transition-opacity duration-150` for a more polished feel when hovering.
+**3. Delete legacy `ai-badge.tsx`**
 
-### 5. Active bar subtle glow
+`ai-badge.tsx` is imported by nothing. It uses a different visual style (blue pill with Bot icon) that conflicts with the unified family. Delete it.
 
-Add a faint drop shadow filter on the active bar to visually separate it from context bars — using an SVG `<filter>` with a soft blue shadow.
+### Files changed
 
-### 6. Profile marker label right-edge guard
+- `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` — replace inline badge text
+- `src/components/report-redesign/v2/report-kpi-grid-v2.tsx` — add source badges
+- `src/components/report-redesign/v2/ai-badge.tsx` — delete
 
-When the active tier is the last bar, the "Este perfil" and rate labels positioned at `cx + MARKER_R + 5` can overflow the SVG viewBox right edge. Detect this case and flip the label to the left side of the marker.
+### What does NOT change
 
-## Files changed
-
-- `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
-
-## What does NOT change
-
-- Benchmark values, calculation logic, gap formula
-- Source references format
-- Pro competitor slot
-- Tooltip content and accessibility
+- All diagnostic logic, benchmark values, calculations
+- `report-source-label.tsx` (the unified badge component itself)
+- `source-badge.tsx` (backward-compat wrapper)
+- Any locked file

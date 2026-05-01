@@ -3,6 +3,7 @@ import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { BenchmarkTierPoint } from "@/lib/knowledge/benchmark-context";
+import { ReportSourceLabel } from "./report-source-label";
 
 export interface BenchmarkChartProps {
   profileEngagementRatePct: number;
@@ -428,10 +429,11 @@ export function ReportEngagementBenchmarkChart({
       ) : null}
 
       {/* Source context line */}
-      <p className="text-[10px] text-slate-400 opacity-50 leading-snug">
-        ◈ MERCADO · Instagram
+      <p className="text-[10px] text-slate-400 leading-snug flex items-center gap-1.5 flex-wrap">
+        <ReportSourceLabel type="mercado" />
+        <span className="opacity-50">· Instagram
         {activeTierLabel ? ` · contas ${activeTierLabel}` : ""}
-        {" "}· referência por dimensão e formato
+        {" "}· referência por dimensão e formato</span>
       </p>
 
       {/* Pro competitor slot — quiet */}
