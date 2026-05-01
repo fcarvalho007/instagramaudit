@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type ReactNode } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
