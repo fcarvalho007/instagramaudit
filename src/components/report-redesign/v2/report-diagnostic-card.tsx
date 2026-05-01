@@ -22,6 +22,8 @@ interface Props {
   /** Texto interpretativo curto. */
   body: ReactNode;
   tone?: DiagnosticTone;
+  /** Layout span: "full" ocupa 2 colunas com layout horizontal, "half" (default) ocupa 1. */
+  span?: "full" | "half";
   /**
    * Quando presente, renderiza um bloco "Leitura IA" abaixo do body,
    * com o texto curto vindo de `aiInsightsV2.sections.*`. Só passar
@@ -94,10 +96,12 @@ export function ReportDiagnosticCard({
   sourceCaution,
 }: Props) {
   const t = TONE[tone];
+  const isFull = span === "full";
   return (
     <article
       className={cn(
-        "h-full flex flex-col gap-5",
+        "flex flex-col gap-5",
+        isFull && "md:col-span-2",
         "rounded-2xl border border-slate-200/70 bg-white",
         "p-6 md:p-7",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
@@ -118,50 +122,91 @@ export function ReportDiagnosticCard({
         ) : null}
       </div>
 
-      <h3
-        className={cn(
-          "font-display text-[1.05rem] md:text-[1.125rem] font-semibold leading-snug tracking-tight text-slate-900",
-          "min-w-0",
-        )}
-      >
-        {question}
-      </h3>
-
-      <div
-        className={cn(
-          "rounded-xl ring-1 px-4 py-3",
-          t.box,
-        )}
-      >
-          <p className="text-eyebrow-sm text-slate-500">
-          {answerLabel}
-        </p>
-        <p
-          className={cn(
-              "mt-1 font-display text-[1.125rem] md:text-[1.25rem] font-semibold tracking-tight leading-tight",
-            t.answerText,
-          )}
-        >
-          {answer}
-        </p>
-      </div>
-
-      {children ? <div className="min-w-0">{children}</div> : null}
-
-      <p className="text-sm text-slate-600 leading-relaxed mt-auto">{body}</p>
-
-      {aiSource ? (
-        <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
-          <p className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1.5">
-            <Bot aria-hidden className="size-3" />
-            Leitura IA · interpretação
-          </p>
-          <p className="text-sm text-slate-700 leading-relaxed italic">
-            {aiSource.text}
-          </p>
+      {/* Full-width: horizontal layout with question+answer left, evidence right */}
+      {isFull ? (
+        <div className="flex flex-col md:flex-row md:gap-8">
+          <div className="flex-1 min-w-0 flex flex-col gap-4">
+            <h3
+              className={cn(
+                "font-display text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-slate-900",
+                "min-w-0",
+              )}
+            >
+              {question}
+            </h3>
+            <div className={cn("rounded-xl ring-1 px-5 py-4", t.box)}>
+              <p className="text-eyebrow-sm text-slate-500">{answerLabel}</p>
+              <p
+                className={cn(
+                  "mt-1.5 font-display text-[1.75rem] md:text-[2rem] font-semibold tracking-[-0.02em] leading-tight",
+                  t.answerText,
+                )}
+              >
+                {answer}
+              </p>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">{body}</p>
+            {aiSource ? (
+              <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
+                <p className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1.5">
+                  <Bot aria-hidden className="size-3" />
+                  Leitura IA · interpretação
+                </p>
+                <p className="text-sm text-slate-700 leading-relaxed italic">
+                  {aiSource.text}
+                </p>
+              </div>
+            ) : null}
+          </div>
+          {children ? (
+            <div className="mt-4 md:mt-0 md:w-[40%] shrink-0 min-w-0">
+              {children}
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      ) : (
+        /* Half-width: vertical stack (original layout with enlarged answer) */
+        <>
+          <h3
+            className={cn(
+              "font-display text-[1.05rem] md:text-[1.125rem] font-semibold leading-snug tracking-tight text-slate-900",
+              "min-w-0",
+            )}
+          >
+            {question}
+          </h3>
 
+          <div className={cn("rounded-xl ring-1 px-4 py-3", t.box)}>
+            <p className="text-eyebrow-sm text-slate-500">{answerLabel}</p>
+            <p
+              className={cn(
+                "mt-1 font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-[-0.015em] leading-tight",
+                t.answerText,
+              )}
+            >
+              {answer}
+            </p>
+          </div>
+
+          {children ? <div className="min-w-0">{children}</div> : null}
+
+          <p className="text-sm text-slate-600 leading-relaxed mt-auto">{body}</p>
+
+          {aiSource ? (
+            <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
+              <p className="text-eyebrow-sm text-blue-700 inline-flex items-center gap-1.5">
+                <Bot aria-hidden className="size-3" />
+                Leitura IA · interpretação
+              </p>
+              <p className="text-sm text-slate-700 leading-relaxed italic">
+                {aiSource.text}
+              </p>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {/* Source footer — always at card bottom */}
       {sourceType ? (
         <div className="pt-3 border-t border-slate-100">
           <ReportSourceLabel
