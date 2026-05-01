@@ -401,10 +401,9 @@ function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
       className={cn(
         "rounded-xl ring-1 px-4 py-3.5 flex items-start gap-3",
         ab.priorityType === "alta"
-          ? "bg-amber-50/60 ring-amber-200"
+          ? "bg-rose-50/60 ring-rose-200"
           : "bg-blue-50/50 ring-blue-100",
-        // ↑ replaced below
-      ))}
+      )}
     >
       <Icon
         aria-hidden
