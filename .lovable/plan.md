@@ -1,42 +1,34 @@
 
-# Diagnóstico · Bloco 01 — Gráfico de benchmark sem expressão
+# Refinamento UX/UI — Q05 "O público responde ou só consome?"
 
-## Problema identificado
+## Problemas identificados
 
-O gráfico SVG em `ReportEngagementBenchmarkChart` é tecnicamente correcto (dados, barras, marcadores existem) mas **visualmente inexpressivo** por três razões:
+1. **Badge de fonte duplicado**: "CÁLCULO" aparece no header E no footer do cartão — o `ReportDiagnosticCard` renderiza `sourceType` em dois sítios (linha 117 e linha 211).
+2. **Dados repetidos**: "Coment. médios / post" aparece na grelha de totais E na barra de médias abaixo. O mesmo para gostos (total na grelha + média na barra).
+3. **Grelha de 4 mini-stats sobrecarrega**: Gostos totais / Comentários totais / Coment. médios / Posts com comentários — demasiada informação bruta que compete com a resposta dominante e a barra de médias.
 
-1. **viewBox de 100×170 com fontes de 2.8px/3.2px** — o SVG é renderizado a ~100% width do card (≈800px desktop), mas os textos internos usam tamanhos absolutos do viewBox (2.8px, 3.2px), ficando microscopicamente pequenos em ecrãs reais. Invisíveis no screenshot.
+## Plano
 
-2. **Barras muito estreitas** — `barW = barGap * 0.45` com 5 tiers numa viewBox de 100 unidades = cada barra ≈ 9px de largura. O marcador do perfil (rosa) usa metade disso = ≈4.5px. Quase imperceptível.
+### 1. Remover badge duplicado no `ReportDiagnosticCard`
 
-3. **Sem legenda, sem eixo Y, sem valor nas barras** — não há nenhuma anotação que permita ao leitor interpretar o gráfico sem conhecer o contexto. As únicas labels são os tier labels no eixo X (3.2px, ilegíveis) e duas anotações flutuantes (referência e perfil) igualmente pequenas.
+**Ficheiro**: `src/components/report-redesign/v2/report-diagnostic-card.tsx`
 
-4. **Sem contraste cromático forte** — barras inactivas em `#CBD5E1` a 40% opacity sobre fundo branco = quase invisíveis. A barra activa (#2563D9) e o marcador (#E11D48) são as únicas cores fortes, mas por serem tão estreitas, perdem-se.
+Eliminar o bloco do footer (linhas 211-219) que re-renderiza `ReportSourceLabel`. Manter apenas o do header.
 
-## Plano de refinamento
+### 2. Simplificar `DiagnosticAudienceHighlight`
 
-### Ficheiro: `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
+**Ficheiro**: `src/components/report-redesign/v2/report-diagnostic-card.tsx`
 
-1. **Redimensionar o viewBox** para 400×200 (ou similar 4:1) para dar espaço real aos textos e barras.
+- Remover a grelha de 4 mini-stats (totalLikes, totalComments, coment. médios, posts com comentários) — esta informação duplica o que a barra de médias já mostra.
+- Manter apenas a barra de médias (gostos médios + coment. médios) como a peça visual principal.
+- Adicionar uma linha discreta abaixo com "com base em N publicações · X com comentários" como contexto de amostra em texto corrido (sem caixas).
 
-2. **Aumentar fontes SVG** para 9-11px no viewBox (renderizam proporcionalmente ao container). Tier labels, referência e perfil devem ser legíveis de imediato.
+### 3. Resultado esperado
 
-3. **Alargar barras** — `barW` para ~60% do gap; barra activa ~75%. O marcador do perfil deve ser uma barra visível, não um traço.
+O cartão fica mais limpo: pergunta → resposta dominante → barra de médias com contexto de amostra → body interpretativo. Sem repetições.
 
-4. **Adicionar valores sobre as barras** — cada tier mostra o seu ER% no topo. O tier activo e o perfil mostram com destaque.
+## Ficheiros a editar
 
-5. **Aumentar opacidade das barras inactivas** de 0.4 para 0.55-0.65 — presentes mas claramente secundárias.
+- `src/components/report-redesign/v2/report-diagnostic-card.tsx`
 
-6. **Eixo Y implícito** — adicionar 2-3 labels discretas no lado esquerdo (0%, metade, topo) para dar escala.
-
-7. **Manter a linha de referência tracejada** mas aumentar `strokeWidth` para 0.6 e a label para tamanho legível.
-
-8. **Mobile** — viewBox escala naturalmente com `w-full`; verificar que labels não sobrepõem a 375px.
-
-### Ficheiros tocados
-
-| Ficheiro | Acção |
-|----------|-------|
-| `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` | Rewrite do SVG layout |
-
-Nenhum ficheiro locked será alterado. Nenhuma lógica de dados, schema, providers, PDF ou blocos não relacionados será tocada.
+Nenhum ficheiro bloqueado, schema, provider ou PDF será tocado.

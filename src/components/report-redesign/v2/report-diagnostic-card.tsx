@@ -207,16 +207,6 @@ export function ReportDiagnosticCard({
         </>
       )}
 
-      {/* Source footer — always at card bottom */}
-      {sourceType ? (
-        <div className="pt-3 border-t border-slate-100">
-          <ReportSourceLabel
-            type={sourceType}
-            detail={sourceDetail}
-            caution={sourceCaution}
-          />
-        </div>
-      ) : null}
     </article>
   );
 }
@@ -530,19 +520,7 @@ export function DiagnosticAudienceHighlight({
     amber: "bg-amber-300",
   };
   return (
-    <div className="space-y-3">
-      {/* Totals row — dados extraídos */}
-      {totalLikes != null && totalComments != null && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <MiniStat label="Gostos totais" value={totalLikes.toLocaleString("pt-PT")} />
-          <MiniStat label="Comentários totais" value={totalComments.toLocaleString("pt-PT")} />
-          <MiniStat label="Coment. médios / post" value={avgComments.toLocaleString("pt-PT")} />
-          {postsWithComments != null && sampleSize != null && (
-            <MiniStat label="Posts com comentários" value={`${postsWithComments} / ${sampleSize}`} />
-          )}
-        </div>
-      )}
-
+    <div className="space-y-2.5">
       {/* Averages bar */}
       <div className="flex items-center gap-3">
         <div
@@ -566,6 +544,15 @@ export function DiagnosticAudienceHighlight({
           </span>
         </div>
       </div>
+
+      {/* Sample context line */}
+      {sampleSize != null && sampleSize > 0 && (
+        <p className="text-[12px] text-slate-500 leading-relaxed">
+          Com base em {sampleSize} publicações
+          {postsWithComments != null ? ` · ${postsWithComments} com comentários` : ""}
+          {totalLikes != null ? ` · ${totalLikes.toLocaleString("pt-PT")} gostos no total` : ""}
+        </p>
+      )}
     </div>
   );
 }
