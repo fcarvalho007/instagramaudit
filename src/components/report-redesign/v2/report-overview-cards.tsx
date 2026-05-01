@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, Layers } from "lucide-react";
+import { Activity, CalendarDays, Layers, Info } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
@@ -185,9 +185,9 @@ function EngagementRateCard({
     <PremiumCard
       title="Taxa de envolvimento"
       icon={<Activity className="h-4 w-4" aria-hidden="true" />}
-      interpretation={status.label}
-      interpretationTone={status.tone}
+      interpretation={null}
       emphasis="primary"
+      titleExtra={<EngagementInfoTooltip />}
       sourceSlot={
         <ReportSourceLabel type="auto" detail="Gostos + comentários" />
       }
@@ -211,6 +211,7 @@ function EngagementRateCard({
         benchmarkSeries={benchmarkSeries}
         activeTierIndex={activeTierIdx}
         sourceReferences={activeSourceRefs}
+        activeTierLabel={benchmarkSeries[activeTierIdx]?.tierLabel}
         showProSlot
       />
     </PremiumCard>
