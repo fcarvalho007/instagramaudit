@@ -132,8 +132,7 @@ export function ReportDiagnosticCard({
             >
               {question}
             </h3>
-            <div className={cn("rounded-xl ring-1 px-5 py-4", t.box)}>
-              {answerLabel ? <p className="text-eyebrow-sm text-slate-500">{answerLabel}</p> : null}
+            <div className={cn("rounded-xl ring-1 px-5 py-4", t.box)} aria-label={answerLabel}>
               <p
                 className={cn(
                   "mt-1.5 font-display text-[1.75rem] md:text-[2rem] font-semibold tracking-[-0.02em] leading-tight",
@@ -174,8 +173,7 @@ export function ReportDiagnosticCard({
             {question}
           </h3>
 
-          <div className={cn("rounded-xl ring-1 px-4 py-3", t.box)}>
-            {answerLabel ? <p className="text-eyebrow-sm text-slate-500">{answerLabel}</p> : null}
+          <div className={cn("rounded-xl ring-1 px-4 py-3", t.box)} aria-label={answerLabel}>
             <p
               className={cn(
                 "mt-1 font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-[-0.015em] leading-tight",
@@ -232,15 +230,16 @@ export function DiagnosticDistributionBar({
       <ul className="space-y-2">
         {items.map((it, i) => {
           const pct = (Math.max(0, it.value) / max) * 100;
+          const isDominant = i === 0;
           return (
             <li key={`${it.label}-${i}`} className="text-sm">
               <div className="flex items-center gap-3">
-                <span className="w-24 sm:w-28 shrink-0 truncate text-slate-700">
+                <span className={cn("w-24 sm:w-28 shrink-0 truncate text-slate-700", isDominant && "font-medium")}>
                   {it.label}
                 </span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <div className={cn("flex-1 overflow-hidden rounded-full bg-slate-100", isDominant ? "h-2.5" : "h-2")}>
                   <div
-                    className={cn("h-full", it.color ?? "bg-emerald-600", i > 0 && "opacity-30")}
+                    className={cn("h-full", it.color ?? "bg-emerald-600", !isDominant && "opacity-25")}
                     style={{ width: `${pct}%` }}
                     aria-hidden
                   />
