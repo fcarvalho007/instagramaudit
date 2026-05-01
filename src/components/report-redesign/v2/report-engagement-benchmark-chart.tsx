@@ -17,13 +17,13 @@ export interface BenchmarkChartProps {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const VB_W = 400;
-const VB_H = 200;
+const VB_H = 260;
 const PAD_L = 40;
 const PAD_R = 12;
-const PAD_T = 24;
-const PAD_B = 32;
+const PAD_T = 28;
+const PAD_B = 36;
 const BAR_RADIUS = 6;
-const GRID_LINES = 4;
+const GRID_LINES = 5;
 
 // ─── Main component ────────────────────────────────────────────────
 
@@ -107,7 +107,7 @@ export function ReportEngagementBenchmarkChart({
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         className="w-full"
-        style={{ maxHeight: "220px" }}
+        style={{ maxHeight: "300px" }}
         role="img"
         aria-label="Gráfico de comparação de taxa de envolvimento por escalão de seguidores"
       >
@@ -306,7 +306,7 @@ export function ReportEngagementBenchmarkChart({
                 href={ref.url}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="text-slate-500 hover:text-slate-700 transition-colors"
+                className="text-slate-500 hover:text-blue-600 hover:underline transition-colors"
                 title={`Fonte: ${ref.name}`}
               >
                 {ref.name}{" "}
