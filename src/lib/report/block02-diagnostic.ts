@@ -88,14 +88,37 @@ export type AudienceResponseLabel =
   | "Audiência ativa"
   | "Resposta moderada"
   | "Audiência silenciosa"
-  | "Sem dados suficientes";
+  | "Resposta concentrada"
+  | "Dados insuficientes";
+
+export type AudienceResponseStatus =
+  | "active"
+  | "moderate"
+  | "silent"
+  | "concentrated"
+  | "unavailable";
 
 export interface AudienceResponseResult {
   available: boolean;
   label: AudienceResponseLabel;
+  status: AudienceResponseStatus;
   commentsToLikesPct: number;
   avgComments: number;
+  avgLikes: number;
   sampleSize: number;
+  totals: {
+    likes: number | null;
+    comments: number | null;
+    postsWithComments: number;
+    analysedPosts: number;
+  };
+  topConversationPost: {
+    index: number;
+    comments: number;
+    likes: number;
+    captionExcerpt: string;
+  } | null;
+  explanation: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────
