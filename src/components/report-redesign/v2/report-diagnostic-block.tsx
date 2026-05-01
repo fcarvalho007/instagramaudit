@@ -588,7 +588,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
   return (
     <ReportDiagnosticCard
       key="q06"
-      number="06"
+      number="05"
       label="Resposta"
       question="O público responde ou só consome?"
       answer={r.label}
@@ -618,7 +618,7 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
   return (
     <ReportDiagnosticCard
       key="q07"
-      number="07"
+      number="06"
       label="Integração"
       question="Há ligação entre canais?"
       answerLabel="Estado"
@@ -669,7 +669,7 @@ function renderObjectiveCard(r: ObjectiveResult): ReportDiagnosticCardChild {
   return (
     <ReportDiagnosticCard
       key="q08"
-      number="08"
+      number="07"
       label="Objetivo"
       question="Que objetivo provável serve?"
       answerLabel={
