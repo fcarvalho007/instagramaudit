@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { Bot } from "lucide-react";
+import { Bot, MessagesSquare, MessageCircleMore, Target, MessageCircleOff, CircleHelp } from "lucide-react";
+import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
 
 export type DiagnosticTone = "blue" | "amber" | "rose" | "emerald" | "slate";
@@ -501,6 +502,7 @@ export function DiagnosticAudienceHighlight({
   sampleSize,
   tone = "rose",
   topConversationPost,
+  status = "silent",
 }: {
   avgLikes: number;
   avgComments: number;
@@ -515,50 +517,62 @@ export function DiagnosticAudienceHighlight({
     likes: number;
     captionExcerpt: string;
   } | null;
+  status?: AudienceResponseStatus;
 }) {
-  const TONE_BG: Record<typeof tone, string> = {
-    rose: "bg-rose-600 text-white",
-    emerald: "bg-emerald-600 text-white",
-    amber: "bg-amber-500 text-white",
+  const STATUS_ICON: Record<AudienceResponseStatus, { Icon: typeof MessagesSquare; bg: string; fg: string }> = {
+    active: { Icon: MessagesSquare, bg: "bg-emerald-50", fg: "text-emerald-600" },
+    moderate: { Icon: MessageCircleMore, bg: "bg-amber-50", fg: "text-amber-600" },
+    concentrated: { Icon: Target, bg: "bg-amber-50", fg: "text-amber-600" },
+    silent: { Icon: MessageCircleOff, bg: "bg-rose-50", fg: "text-rose-500" },
+    unavailable: { Icon: CircleHelp, bg: "bg-slate-50", fg: "text-slate-400" },
   };
-  const DOT: Record<typeof tone, string> = {
-    rose: "bg-rose-300",
-    emerald: "bg-emerald-300",
-    amber: "bg-amber-300",
+
+  const EDITORIAL: Record<AudienceResponseStatus, string> = {
+    silent: "O público reage com gostos, mas quase não conversa publicamente.",
+    active: "Há sinais de conversa pública consistente — o conteúdo não está apenas a ser consumido.",
+    moderate: "Há alguma resposta, mas ainda sem volume suficiente para indicar conversa recorrente.",
+    concentrated: "A conversa existe, mas está concentrada em poucos posts.",
+    unavailable: "As publicações analisadas não devolveram dados suficientes de gostos/comentários para uma leitura fiável.",
   };
+
+  const { Icon: StatusIcon, bg: iconBg, fg: iconFg } = STATUS_ICON[status];
+
   return (
     <div className="space-y-2.5">
-      {/* Averages bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div
-          className={cn(
-            "text-eyebrow rounded-md px-3 py-2 flex-1",
-            TONE_BG[tone],
-          )}
-        >
-          <span className="font-mono text-[15px] font-semibold normal-case tracking-normal tabular-nums">
-            {avgLikes.toLocaleString("pt-PT")}
-          </span>{" "}
-          <span className="opacity-90">gostos médios</span>
-        </div>
-        <div className="flex items-center gap-2 px-1 shrink-0">
-          <span aria-hidden className={cn("size-1.5 rounded-full", DOT[tone])} />
-          <span className="text-eyebrow text-slate-500">
-            <span className="font-mono text-[13px] font-semibold normal-case tracking-normal text-slate-700 tabular-nums">
-              {avgComments.toLocaleString("pt-PT")}
-            </span>{" "}
-            coment. médios
-          </span>
+      {/* Status icon */}
+      <div className="flex justify-center sm:justify-start">
+        <div className={cn("size-14 sm:size-16 rounded-2xl flex items-center justify-center", iconBg)} aria-hidden="true">
+          <StatusIcon size={36} className={iconFg} strokeWidth={1.5} />
         </div>
       </div>
 
-      {/* Sample context line */}
-      {sampleSize != null && sampleSize > 0 && (
-        <p className="text-[12px] text-slate-500 leading-relaxed">
-          Com base em {sampleSize} publicações
-          {postsWithComments != null ? ` · ${postsWithComments} com comentários` : ""}
-          {totalLikes != null ? ` · ${totalLikes.toLocaleString("pt-PT")} gostos no total` : ""}
-        </p>
+      {/* Metrics grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <MiniStat label="Gostos médios por post" value={avgLikes.toLocaleString("pt-PT")} />
+        <MiniStat label="Comentários médios por post" value={avgComments.toLocaleString("pt-PT")} />
+        {sampleSize != null && sampleSize > 0 && (
+          <MiniStat
+            label="Posts com comentários"
+            value={`${postsWithComments ?? 0} de ${sampleSize}`}
+          />
+        )}
+        {totalLikes != null && (
+          <MiniStat label="Gostos totais" value={totalLikes.toLocaleString("pt-PT")} />
+        )}
+      </div>
+
+      {/* Editorial interpretation */}
+      <p className="text-[12.5px] text-slate-600 leading-relaxed">
+        {EDITORIAL[status]}
+      </p>
+
+      {/* Conversation prompt strip */}
+      {(status === "silent" || status === "moderate") && (
+        <div className="rounded-md bg-blue-50/50 ring-1 ring-blue-100/60 px-3 py-2">
+          <p className="text-[11.5px] text-blue-700 leading-relaxed">
+            Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
+          </p>
+        </div>
       )}
 
       {/* Top conversation post evidence */}
@@ -567,7 +581,7 @@ export function DiagnosticAudienceHighlight({
           <span className="text-eyebrow-sm text-slate-500">Post com mais conversa</span>
           <div className="flex items-center gap-3 text-[12.5px] text-slate-700">
             <span className="font-mono tabular-nums text-slate-800 font-semibold">
-              {topConversationPost.comments} coment.
+              {topConversationPost.comments} comentários
             </span>
             <span className="text-slate-400">·</span>
             <span className="font-mono tabular-nums">
@@ -580,6 +594,13 @@ export function DiagnosticAudienceHighlight({
             </p>
           )}
         </div>
+      )}
+
+      {/* Brand reply disclaimer */}
+      {status !== "unavailable" && (
+        <p className="text-[11px] text-slate-400 italic leading-relaxed">
+          Resposta da marca a comentários: disponível numa análise avançada com dados de comentários.
+        </p>
       )}
     </div>
   );
