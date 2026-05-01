@@ -12,7 +12,6 @@ import {
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 import { ReportSourceLabel } from "./report-source-label";
-import { ReportBenchmarkEvidence } from "./report-benchmark-evidence";
 import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
 
 interface Props {
@@ -225,20 +224,6 @@ function EngagementRateCard({
         sourceReferences={activeSourceRefs}
         showProSlot
       />
-
-      {hasBenchmark ? (
-        <ReportBenchmarkEvidence
-          platform="instagram"
-          followerTier={isAboveBufferRange ? null : followerTierLabel}
-          industry={null}
-          sourceNames={["Socialinsider", "Buffer"]}
-          aboveBufferRangeHint={aboveRangeHint}
-        />
-      ) : null}
-
-      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
-        {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.engagementExplanation}
-      </p>
     </PremiumCard>
   );
 }
