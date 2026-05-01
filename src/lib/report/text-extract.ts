@@ -87,6 +87,14 @@ const STOP_WORDS_PT = new Set<string>([
   "tempo", "ainda", "sempre", "nunca", "pouco", "outros", "outras",
   "novo", "nova", "novos", "novas", "primeira", "primeiro", "alguma",
   "obrigado", "obrigada",
+  // ruído vindo de URLs / domínios partidos pelo tokenizer
+  // (ex.: `podes.entrar.pt/news` → "podes", "entrar", "news")
+  "entrar", "podes", "news", "newsletter", "saber", "subscreve",
+  "inscreve", "link", "bio", "site", "url", "https", "http", "www",
+  "youtube", "youtu", "facebook", "linkedin", "tiktok", "instagram",
+  // marcas próprias frequentes em CTAs (filtradas como ruído editorial
+  // — não são "temas" da comunicação, são chamadas de acção)
+  "digitalsprint", "frederico", "carvalho",
 ]);
 
 // ---------- helpers ----------
@@ -111,11 +119,21 @@ function normaliseHashtag(raw: string): string | null {
  * and mentions (`@user`).
  */
 function tokenise(caption: string): string[] {
-  // Drop hashtags and mentions before tokenising, so they never count as
-  // keywords. We replace the whole token with whitespace.
+  // Drop URLs (with or without protocol), hashtags, mentions and digit
+  // runs before tokenising, so URL fragments never count as themes.
   const cleaned = caption
+    // 1) URLs com protocolo
+    .replace(/https?:\/\/\S+/gi, " ")
+    // 2) URLs sem protocolo (foo.bar/baz, foo.bar.tld) — exige TLD ≥ 2
+    //    e opcional path. Apanha "podes.entrar.pt/news", "exemplo.com",
+    //    etc., antes do tokenizer partir o domínio em palavras.
+    .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, " ")
+    // 3) hashtags e menções
     .replace(/[@#][\p{L}\p{N}_]+/gu, " ")
-    .replace(/https?:\/\/\S+/g, " ")
+    // 4) ALL-CAPS tokens com ≥ 6 letras (marcas em destaque tipo
+    //    "DIGITALSPRINT", "TEMU") — antes da normalização para lowercase
+    .replace(/\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{6,}\b/g, " ")
+    // 5) dígitos e underscores residuais
     .replace(/[\d_]+/g, " ");
 
   const stripped = stripAccents(cleaned).toLowerCase();
