@@ -161,6 +161,19 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
       if (!/\d/.test(body)) {
         return fail("GENERIC_OUTPUT", `priority=${i} (missing number)`);
       }
+      // `resolves` referencia perguntas — apenas 1..8 existem no Bloco 02.
+      // Rejeitar números fora desse range para evitar a IA inventar
+      // "Pergunta 09" / "Pergunta 12".
+      const refs = resolves.match(/\b(\d{1,2})\b/g) ?? [];
+      for (const ref of refs) {
+        const n = Number.parseInt(ref, 10);
+        if (!Number.isFinite(n) || n < 1 || n > 8) {
+          return fail(
+            "INVALID_QUESTION_REF",
+            `priority=${i} resolves="${resolves}" ref=${n}`,
+          );
+        }
+      }
       arr.push({ level: p.level, title, body, resolves });
     }
     priorities = arr;
