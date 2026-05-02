@@ -8,6 +8,14 @@
  * IMPORTANT: The raw comment data is processed in-memory only. It must
  * never be persisted — only the aggregated CommentIntelligence object
  * is stored (GDPR-safe).
+ *
+ * TODO: Verify actor input/output schema against a real Apify run before
+ * enabling in production. The `directUrls`, `resultsLimit`,
+ * `includeNestedComments`, and `isNewestComments` fields match the
+ * documented schema as of 2025-05. The output shape (flat comments
+ * without per-comment post-URL back-reference) is the documented
+ * behaviour — grouping falls back to a single aggregated bucket when
+ * no post-URL field is found on individual items.
  */
 
 import {
@@ -33,7 +41,34 @@ export const COMMENT_SCRAPER_RESULTS_LIMIT = 50;
 export const COMMENT_SCRAPER_INCLUDE_REPLIES = true;
 
 /** Hard USD cap per comment scraper run. */
-const COMMENT_SCRAPER_MAX_CHARGE_USD = 3.0;
+export const COMMENT_SCRAPER_MAX_CHARGE_USD = 3.0;
+
+// ─────────────────────────────────────────────────────────────────────
+// Feature gate
+// ─────────────────────────────────────────────────────────────────────
+
+export interface CommentScraperGateInput {
+  /** Is `COMMENT_SCRAPER_ENABLED` === "true"? */
+  featureEnabled: boolean;
+  /** Is the current analysis a PRO/Premium request? */
+  isProAnalysis: boolean;
+  /** Override for internal testing (admin/test profiles). */
+  isInternalTest?: boolean;
+}
+
+/**
+ * Determine whether the comment scraper should run for a given analysis.
+ *
+ * Both the feature flag AND a plan/test gate must be satisfied:
+ *   - `featureEnabled` must be true (env-level kill switch)
+ *   - Either `isProAnalysis` is true OR `isInternalTest` is true
+ *
+ * This prevents free/anonymous analyses from incurring Apify costs.
+ */
+export function shouldRunCommentScraper(input: CommentScraperGateInput): boolean {
+  if (!input.featureEnabled) return false;
+  return input.isProAnalysis || input.isInternalTest === true;
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // Main entry point
@@ -43,18 +78,24 @@ export interface CommentScraperResult {
   batches: PostCommentBatch[];
   runId: string | null;
   actualCostUsd: number | null;
+  durationMs: number;
+  commentsReturned: number;
+  postsRequested: number;
+  /** True if per-post grouping was available; false if all comments fell into a single aggregated bucket. */
+  groupedByPost: boolean;
 }
 
 /**
  * Fetch comments for a list of post URLs via Apify.
  *
- * The actor returns a flat list of comment objects. Each comment has a
- * reference to its parent post (via the input URL). Since we send
- * multiple URLs in a single actor run, we need to group comments by
- * post URL after the fact.
+ * The actor returns a flat list of comment objects. The official
+ * `apify/instagram-comment-scraper` documentation does NOT guarantee
+ * a per-comment post-URL back-reference. When no back-reference is
+ * found (or fewer than 50% of items match), all comments are placed
+ * into a single aggregated batch and `groupedByPost` is set to false.
  *
  * @param postUrls - Array of Instagram post permalinks (max COMMENT_SCRAPER_MAX_POSTS)
- * @returns Batches grouped by post URL, plus run metadata
+ * @returns Batches grouped by post URL (or single aggregated batch), plus run metadata
  */
 export async function fetchCommentsForPosts(
   postUrls: string[],
@@ -62,8 +103,18 @@ export async function fetchCommentsForPosts(
   const urls = postUrls.slice(0, COMMENT_SCRAPER_MAX_POSTS);
 
   if (urls.length === 0) {
-    return { batches: [], runId: null, actualCostUsd: null };
+    return {
+      batches: [],
+      runId: null,
+      actualCostUsd: null,
+      durationMs: 0,
+      commentsReturned: 0,
+      postsRequested: 0,
+      groupedByPost: false,
+    };
   }
+
+  const startTime = Date.now();
 
   const result = await runActorWithMetadata<Record<string, unknown>>(
     COMMENT_ACTOR,
@@ -80,15 +131,10 @@ export async function fetchCommentsForPosts(
     },
   );
 
-  // Group raw items by post URL. The comment scraper includes the post
-  // URL in each item — common field names: `postUrl`, `inputUrl`, `url`.
-  const byPost = new Map<string, RawApifyComment[]>();
+  const durationMs = Date.now() - startTime;
 
-  // Initialise buckets for all requested URLs so we return empty batches
-  // for posts with zero comments.
-  for (const u of urls) {
-    byPost.set(u, []);
-  }
+  // Parse all raw items into typed comments
+  const parsedComments: Array<{ comment: RawApifyComment; postRef: string | null }> = [];
 
   for (const raw of result.items) {
     const comment: RawApifyComment = {
@@ -103,12 +149,12 @@ export async function fetchCommentsForPosts(
       repliesCount:
         typeof raw.repliesCount === "number" ? raw.repliesCount : undefined,
       replies: Array.isArray(raw.replies)
-        ? (raw.replies as RawApifyComment[])
+        ? parseReplies(raw.replies as Record<string, unknown>[])
         : undefined,
     };
 
-    // Determine which post URL this comment belongs to
-    const postUrl =
+    // Try to extract a post-URL back-reference (not guaranteed by this actor)
+    const postRef =
       typeof raw.postUrl === "string"
         ? raw.postUrl
         : typeof raw.inputUrl === "string"
@@ -117,51 +163,120 @@ export async function fetchCommentsForPosts(
             ? raw.url
             : null;
 
-    // Try to match against known URLs
-    if (postUrl) {
-      const bucket = findBucket(byPost, postUrl);
-      if (bucket) {
-        bucket.push(comment);
-      }
-    }
+    parsedComments.push({ comment, postRef });
   }
 
-  const batches: PostCommentBatch[] = [];
-  for (const [postUrl, comments] of byPost) {
-    batches.push({ postUrl, comments });
+  // Determine if we have post-level grouping
+  const hasPostRefs = parsedComments.some((c) => c.postRef !== null);
+  let groupedByPost = false;
+  let batches: PostCommentBatch[];
+
+  if (hasPostRefs) {
+    // Attempt per-post grouping using back-references
+    const byPost = new Map<string, RawApifyComment[]>();
+    for (const u of urls) {
+      byPost.set(u, []);
+    }
+
+    let matchedCount = 0;
+    const orphans: RawApifyComment[] = [];
+
+    for (const { comment, postRef } of parsedComments) {
+      if (postRef) {
+        const bucket = findBucket(byPost, postRef);
+        if (bucket) {
+          bucket.push(comment);
+          matchedCount++;
+          continue;
+        }
+      }
+      orphans.push(comment);
+    }
+
+    // If at least half matched, consider grouping valid
+    if (matchedCount > parsedComments.length * 0.5) {
+      groupedByPost = true;
+      if (orphans.length > 0) {
+        const firstBucket = byPost.get(urls[0]);
+        if (firstBucket) {
+          firstBucket.push(...orphans);
+        }
+      }
+      batches = [];
+      for (const [postUrl, comments] of byPost) {
+        batches.push({ postUrl, comments });
+      }
+    } else {
+      batches = buildAggregatedBatch(urls, parsedComments.map((c) => c.comment));
+    }
+  } else {
+    batches = buildAggregatedBatch(urls, parsedComments.map((c) => c.comment));
   }
 
   return {
     batches,
     runId: result.runId,
     actualCostUsd: result.actualCostUsd,
+    durationMs,
+    commentsReturned: parsedComments.length,
+    postsRequested: urls.length,
+    groupedByPost,
   };
 }
 
 /**
+ * Build a single aggregated batch when per-post grouping is unavailable.
+ */
+function buildAggregatedBatch(
+  urls: string[],
+  comments: RawApifyComment[],
+): PostCommentBatch[] {
+  if (comments.length === 0) {
+    return urls.map((postUrl) => ({ postUrl, comments: [] }));
+  }
+  return [{ postUrl: urls[0], comments }];
+}
+
+/**
+ * Safely parse nested replies from raw Apify data.
+ */
+function parseReplies(rawReplies: Record<string, unknown>[]): RawApifyComment[] {
+  return rawReplies.map((r) => ({
+    id: String(r.id ?? ""),
+    text: typeof r.text === "string" ? r.text : undefined,
+    ownerUsername:
+      typeof r.ownerUsername === "string" ? r.ownerUsername : undefined,
+    timestamp: typeof r.timestamp === "string" ? r.timestamp : undefined,
+    likesCount: typeof r.likesCount === "number" ? r.likesCount : undefined,
+    repliesCount:
+      typeof r.repliesCount === "number" ? r.repliesCount : undefined,
+    replies: Array.isArray(r.replies)
+      ? parseReplies(r.replies as Record<string, unknown>[])
+      : undefined,
+  }));
+}
+
+/**
  * Find the matching bucket for a post URL, handling trailing slash and
- * shortcode variations.
+ * shortcode variations (both /p/ and /reel/).
  */
 function findBucket(
   byPost: Map<string, RawApifyComment[]>,
   postUrl: string,
 ): RawApifyComment[] | null {
-  // Direct match
   const direct = byPost.get(postUrl);
   if (direct) return direct;
 
-  // Normalise: strip trailing slash and try again
   const normalised = postUrl.replace(/\/+$/, "");
   for (const [key, bucket] of byPost) {
     if (key.replace(/\/+$/, "") === normalised) return bucket;
   }
 
-  // Extract shortcode and match
-  const shortcodeMatch = postUrl.match(/\/p\/([^/]+)/);
+  const shortcodeMatch = postUrl.match(/\/(?:p|reel)\/([^/]+)/);
   if (shortcodeMatch) {
     const code = shortcodeMatch[1];
     for (const [key, bucket] of byPost) {
-      if (key.includes(`/p/${code}`)) return bucket;
+      if (key.includes(`/p/${code}`) || key.includes(`/reel/${code}`)) return bucket;
     }
   }
 
