@@ -300,7 +300,7 @@ function PostingRhythmCard({
       </div>
 
       {postsAnalyzed > 0 || windowDays > 0 ? (
-        <p className="text-[12.5px] text-slate-600 leading-relaxed">
+        <p className="text-[13px] text-slate-600 leading-relaxed">
           {postsAnalyzed > 0 ? (
             <>
               <span className="font-medium text-slate-800 tabular-nums">
@@ -321,7 +321,7 @@ function PostingRhythmCard({
         </p>
       ) : null}
 
-      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
+      <p className="text-[12px] text-slate-500 leading-relaxed italic">
         Volume não garante desempenho — é o equilíbrio entre cadência e qualidade que sustenta o envolvimento.
       </p>
 
@@ -429,10 +429,10 @@ function DominantFormatCard({
         ) : null}
       </div>
 
-      <p className="text-[12.5px] text-slate-600 leading-relaxed">
+      <p className="text-[13px] text-slate-600 leading-relaxed">
         formato mais frequente na amostra
       </p>
-      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
+      <p className="text-[12px] text-slate-500 leading-relaxed italic">
         {formatStrategicNote(dominantLabel)}
       </p>
 
