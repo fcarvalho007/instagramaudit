@@ -420,6 +420,13 @@ function PostingRhythmCard({
         </p>
       ) : null}
 
+      {/* Format transparency note */}
+      {postsAnalyzed > 0 && (
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          Inclui imagens, carrosséis e Reels publicados no feed.
+        </p>
+      )}
+
       {/* Benchmark bar chart */}
       {hasWindow && (
         <FrequencyBenchmarkBars
