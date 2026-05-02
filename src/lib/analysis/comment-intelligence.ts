@@ -31,21 +31,31 @@ export interface PostCommentBatch {
 // Core aggregation
 // ─────────────────────────────────────────────────────────────────────
 
-const LIMITATIONS: string[] = [
+const BASE_LIMITATIONS: string[] = [
   "Análise de comentários públicos — não inclui DMs.",
   "Não inclui comentários ocultos, apagados ou visíveis apenas com login.",
-  "Resultados podem variar consoante o que está publicamente acessível.",
+  "Resultados podem variar conforme o que está publicamente acessível.",
 ];
+
+const LIMITATION_NO_PER_POST =
+  "Granularidade por publicação indisponível — métricas agregadas globalmente.";
 
 function normalizeUsername(u: string): string {
   return u.toLowerCase().trim().replace(/^@/, "");
 }
 
+export interface AggregateOptions {
+  /** Whether comments were successfully grouped per post. Default true. */
+  groupedByPost?: boolean;
+}
+
 export function aggregateCommentIntelligence(
   profileUsername: string,
   batches: PostCommentBatch[],
+  options?: AggregateOptions,
 ): CommentIntelligence {
   const owner = normalizeUsername(profileUsername);
+  const groupedByPost = options?.groupedByPost ?? true;
 
   let totalComments = 0;
   let totalReplies = 0;
@@ -75,11 +85,12 @@ export function aggregateCommentIntelligence(
       postCommentCount++;
       totalComments++;
 
-      // Process replies
+      // Process replies — count towards totalComments too
       if (Array.isArray(comment.replies)) {
         for (const reply of comment.replies) {
           const replyOwner = normalizeUsername(reply.ownerUsername ?? "");
           totalReplies++;
+          totalComments++;
 
           if (replyOwner === owner) {
             postOwnerReplies++;
@@ -96,13 +107,15 @@ export function aggregateCommentIntelligence(
       postsWithOwnerReply++;
     }
 
-    // Track top conversation post
-    if (!topPost || postOwnerReplies > topPost.ownerRepliesCount) {
-      topPost = {
-        postUrl: batch.postUrl,
-        commentsCount: postCommentCount,
-        ownerRepliesCount: postOwnerReplies,
-      };
+    // Track top conversation post (only meaningful when grouped)
+    if (groupedByPost) {
+      if (!topPost || postOwnerReplies > topPost.ownerRepliesCount) {
+        topPost = {
+          postUrl: batch.postUrl,
+          commentsCount: postCommentCount,
+          ownerRepliesCount: postOwnerReplies,
+        };
+      }
     }
   }
 
@@ -113,9 +126,15 @@ export function aggregateCommentIntelligence(
       : 0;
 
   const postsWithOwnerReplyPct =
-    samplePosts > 0
+    samplePosts > 0 && groupedByPost
       ? Math.round((postsWithOwnerReply / samplePosts) * 1000) / 10
       : 0;
+
+  // Build limitations list
+  const limitations = [...BASE_LIMITATIONS];
+  if (!groupedByPost) {
+    limitations.push(LIMITATION_NO_PER_POST);
+  }
 
   return {
     available: true,
@@ -130,6 +149,6 @@ export function aggregateCommentIntelligence(
     audienceCommentsCount: totalAudienceComments,
     topConversationPost:
       topPost && topPost.ownerRepliesCount > 0 ? topPost : undefined,
-    limitations: LIMITATIONS,
+    limitations,
   };
 }

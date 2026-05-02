@@ -86,7 +86,7 @@ import {
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
-import { fetchCommentsForPosts } from "@/lib/analysis/comment-scraper.server";
+import { fetchCommentsForPosts, shouldRunCommentScraper } from "@/lib/analysis/comment-scraper.server";
 import { aggregateCommentIntelligence } from "@/lib/analysis/comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 
@@ -1033,7 +1033,16 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const commentScraperEnabled =
             (process.env.COMMENT_SCRAPER_ENABLED ?? "false").toLowerCase() === "true";
 
-          if (commentScraperEnabled) {
+          const commentScraperInternalTest =
+            (process.env.COMMENT_SCRAPER_INTERNAL_TEST ?? "false").toLowerCase() === "true";
+
+          const runComments = shouldRunCommentScraper({
+            featureEnabled: commentScraperEnabled,
+            isProAnalysis: false, // No plan system yet — always false
+            isInternalTest: commentScraperInternalTest,
+          });
+
+          if (runComments) {
             try {
               // Pick top posts by engagement (desc), filter to those with a permalink
               const postsWithUrl = primaryEnriched.posts
@@ -1061,11 +1070,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   handle: primary,
                   status: "success",
                   httpStatus: 200,
-                  durationMs: 0, // approximate — actual timing not tracked here
-                  postsReturned: commentResult.batches.reduce(
-                    (sum, b) => sum + b.comments.length,
-                    0,
-                  ),
+                  durationMs: commentResult.durationMs,
+                  postsReturned: commentResult.commentsReturned,
                   apifyRunId: commentResult.runId ?? undefined,
                   actualCostUsd: commentResult.actualCostUsd ?? undefined,
                 });
@@ -1073,6 +1079,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 commentIntelligence = aggregateCommentIntelligence(
                   primaryProfile.username,
                   commentResult.batches,
+                  { groupedByPost: commentResult.groupedByPost },
                 );
 
                 // Persist into the snapshot payload
@@ -1100,6 +1107,21 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             } catch (err) {
               // Hard guarantee: comment scraper never breaks the analysis.
               console.error("[analyze-public-v1] comment scraper threw", err);
+              // Log the failure so admin cost view captures it
+              try {
+                await recordProviderCall({
+                  provider: "apify",
+                  actor: "apify/instagram-comment-scraper",
+                  network: "instagram",
+                  handle: primary,
+                  status: "network_error",
+                  durationMs: 0,
+                  postsReturned: 0,
+                  errorMessage: err instanceof Error ? err.message : String(err),
+                });
+              } catch {
+                // Best-effort — do not let logging break the flow
+              }
             }
           }
 
