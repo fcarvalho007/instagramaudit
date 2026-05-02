@@ -7,6 +7,7 @@
 import { describe, it, expect } from "vitest";
 import {
   aggregateCommentIntelligence,
+  buildUnavailableCommentIntelligence,
   type PostCommentBatch,
   type RawApifyComment,
 } from "../comment-intelligence";
@@ -16,9 +17,9 @@ import { shouldRunCommentScraper } from "../comment-scraper.server";
 // Fixtures
 // ─────────────────────────────────────────────────────────────────────
 
-const audienceComment = (username: string, replies?: RawApifyComment[]): RawApifyComment => ({
+const audienceComment = (username: string, text?: string, replies?: RawApifyComment[]): RawApifyComment => ({
   id: `c-${username}`,
-  text: `Comment by ${username}`,
+  text: text ?? `Comment by ${username}`,
   ownerUsername: username,
   timestamp: "2025-01-15T12:00:00.000Z",
   likesCount: 3,
@@ -37,7 +38,7 @@ describe("shouldRunCommentScraper", () => {
     expect(shouldRunCommentScraper({ featureEnabled: false })).toBe(false);
   });
 
-  it("returns true when feature is enabled", () => {
+  it("returns true when feature is enabled (free report)", () => {
     expect(shouldRunCommentScraper({ featureEnabled: true })).toBe(true);
   });
 
@@ -55,6 +56,28 @@ describe("shouldRunCommentScraper", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────
+// buildUnavailableCommentIntelligence
+// ─────────────────────────────────────────────────────────────────────
+
+describe("buildUnavailableCommentIntelligence", () => {
+  it("returns available=false with reason", () => {
+    const result = buildUnavailableCommentIntelligence(OWNER, "comment_scraper_failed");
+    expect(result.available).toBe(false);
+    expect(result.reason).toBe("comment_scraper_failed");
+    expect(result.ownerUsername).toBe(OWNER);
+    expect(result.samplePosts).toBe(0);
+    expect(result.dominantConversationSignals).toEqual([]);
+    expect(result.recommendedConversationAction).toBe("");
+  });
+
+  it("does not contain raw text or third-party usernames", () => {
+    const result = buildUnavailableCommentIntelligence("testuser", "comment_scraper_disabled");
+    const json = JSON.stringify(result);
+    expect(json).not.toContain("Comment by");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
 // aggregateCommentIntelligence
 // ─────────────────────────────────────────────────────────────────────
 
@@ -68,6 +91,10 @@ describe("aggregateCommentIntelligence", () => {
     expect(result.audienceCommentsCount).toBe(0);
     expect(result.ownerRepliesCount).toBe(0);
     expect(result.ownerReplyRatePct).toBe(0);
+    expect(result.uniqueAudienceCommentersCount).toBe(0);
+    expect(result.postsWithConversationPct).toBe(0);
+    expect(result.questionsFromAudienceCount).toBe(0);
+    expect(result.dominantConversationSignals).toEqual([]);
     expect(result.topConversationPost).toBeUndefined();
   });
 
@@ -93,9 +120,9 @@ describe("aggregateCommentIntelligence", () => {
       {
         postUrl: "https://instagram.com/p/XYZ/",
         comments: [
-          audienceComment("fan1", [
-            audienceComment(OWNER), // owner replied
-            audienceComment("fan2"), // audience nested reply
+          audienceComment("fan1", "Great post!", [
+            audienceComment(OWNER, "Thanks!"), // owner replied
+            audienceComment("fan2", "Agreed!"), // audience nested reply
           ]),
         ],
       },
@@ -105,6 +132,7 @@ describe("aggregateCommentIntelligence", () => {
     expect(result.audienceCommentsCount).toBe(2); // fan1 top-level + fan2 reply
     expect(result.sampleReplies).toBe(2); // 2 nested replies
     expect(result.postsWithOwnerReplyPct).toBe(100);
+    expect(result.postsWithConversationPct).toBe(100);
   });
 
   it("includes reply-level comments in sampleComments total", () => {
@@ -112,12 +140,11 @@ describe("aggregateCommentIntelligence", () => {
       {
         postUrl: "https://instagram.com/p/A/",
         comments: [
-          audienceComment("x", [audienceComment("y"), audienceComment("z")]),
+          audienceComment("x", "hello", [audienceComment("y", "hi"), audienceComment("z", "hey")]),
         ],
       },
     ];
     const result = aggregateCommentIntelligence(OWNER, batches);
-    // 1 top-level + 2 replies = 3 total
     expect(result.sampleComments).toBe(3);
     expect(result.sampleReplies).toBe(2);
   });
@@ -160,9 +187,7 @@ describe("aggregateCommentIntelligence", () => {
     expect(result.limitations).toContain(
       "Granularidade por publicação indisponível — métricas agregadas globalmente.",
     );
-    // postsWithOwnerReplyPct should be 0 when not grouped
     expect(result.postsWithOwnerReplyPct).toBe(0);
-    // topConversationPost should be undefined when not grouped
     expect(result.topConversationPost).toBeUndefined();
   });
 
@@ -170,13 +195,13 @@ describe("aggregateCommentIntelligence", () => {
     const batches: PostCommentBatch[] = [
       {
         postUrl: "https://instagram.com/p/E/",
-        comments: [audienceComment("fan_with_text")],
+        comments: [audienceComment("fan_with_text", "Secret text here")],
       },
     ];
     const result = aggregateCommentIntelligence(OWNER, batches);
     const json = JSON.stringify(result);
-    expect(json).not.toContain("Comment by fan_with_text");
-    // Only ownerUsername (the profile's own) should be present
+    expect(json).not.toContain("Secret text here");
+    expect(json).not.toContain("fan_with_text");
     expect(result.ownerUsername).toBe(OWNER);
   });
 
@@ -185,14 +210,14 @@ describe("aggregateCommentIntelligence", () => {
       {
         postUrl: "https://instagram.com/p/low/",
         comments: [
-          audienceComment("a", [audienceComment(OWNER)]),
+          audienceComment("a", "nice", [audienceComment(OWNER, "ty")]),
         ],
       },
       {
         postUrl: "https://instagram.com/p/high/",
         comments: [
-          audienceComment("b", [audienceComment(OWNER), audienceComment(OWNER)]),
-          audienceComment("c", [audienceComment(OWNER)]),
+          audienceComment("b", "wow", [audienceComment(OWNER, "thx"), audienceComment(OWNER, "yes")]),
+          audienceComment("c", "cool", [audienceComment(OWNER, "thanks")]),
         ],
       },
     ];
@@ -200,7 +225,85 @@ describe("aggregateCommentIntelligence", () => {
     expect(result.topConversationPost?.postUrl).toBe("https://instagram.com/p/high/");
     expect(result.topConversationPost?.ownerRepliesCount).toBe(3);
   });
+
+  it("counts unique audience commenters", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/U/",
+        comments: [
+          audienceComment("alice"),
+          audienceComment("bob"),
+          audienceComment("alice"), // duplicate
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.uniqueAudienceCommentersCount).toBe(2);
+  });
+
+  it("classifies questions from audience", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/Q/",
+        comments: [
+          audienceComment("fan1", "Onde posso comprar isto?"),
+          audienceComment("fan2", "Quanto custa?"),
+          audienceComment("fan3", "Lindo!"),
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.questionsFromAudienceCount).toBe(1); // "Onde posso comprar isto?" has ? so question
+    expect(result.buyingIntentCount).toBe(1); // "Quanto custa?" matches buying_intent
+  });
+
+  it("classifies praise signals", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/P/",
+        comments: [
+          audienceComment("fan1", "Incrível trabalho, parabéns!"),
+          audienceComment("fan2", "Amazing content!"),
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.praiseCount).toBe(2);
+  });
+
+  it("generates dominant conversation signals", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/S/",
+        comments: [
+          audienceComment("a", "Incrível!"),
+          audienceComment("b", "Maravilhoso!"),
+          audienceComment("c", "Where can I buy?"),
+          audienceComment("d", "Não funciona"),
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.dominantConversationSignals.length).toBeGreaterThan(0);
+    expect(result.dominantConversationSignals[0]).toBe("praise");
+  });
+
+  it("generates a recommendation for low reply rate", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/R/",
+        comments: [
+          audienceComment("fan1", "Hello"),
+          audienceComment("fan2", "World"),
+          audienceComment("fan3", "Test comment here"),
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.recommendedConversationAction).toContain("Taxa de resposta");
+  });
 });
+
 // ─────────────────────────────────────────────────────────────────────
 // Edge cases — failure scenarios / empty data
 // ─────────────────────────────────────────────────────────────────────
@@ -245,13 +348,13 @@ describe("aggregateCommentIntelligence — edge cases", () => {
         postUrl: "https://instagram.com/p/no-owner/",
         comments: [
           audienceComment("fan_a"),
-          audienceComment("fan_b", [audienceComment("fan_c")]),
+          audienceComment("fan_b", "nice", [audienceComment("fan_c")]),
         ],
       },
     ];
     const result = aggregateCommentIntelligence(OWNER, batches);
     expect(result.ownerRepliesCount).toBe(0);
-    expect(result.audienceCommentsCount).toBe(3); // fan_a + fan_b + fan_c
+    expect(result.audienceCommentsCount).toBe(3);
     expect(result.ownerReplyRatePct).toBe(0);
     expect(result.postsWithOwnerReplyPct).toBe(0);
     expect(result.topConversationPost).toBeUndefined();
@@ -268,7 +371,6 @@ describe("aggregateCommentIntelligence — edge cases", () => {
       },
     ];
     const result = aggregateCommentIntelligence(OWNER, batches);
-    // Both treated as audience (not owner)
     expect(result.audienceCommentsCount).toBe(2);
     expect(result.ownerRepliesCount).toBe(0);
   });
@@ -286,7 +388,6 @@ describe("aggregateCommentIntelligence — edge cases", () => {
     const result = aggregateCommentIntelligence(OWNER, batches);
     expect(result.ownerRepliesCount).toBe(2);
     expect(result.audienceCommentsCount).toBe(0);
-    // Rate should be 0 when there are no audience comments
     expect(result.ownerReplyRatePct).toBe(0);
   });
 
@@ -302,5 +403,13 @@ describe("aggregateCommentIntelligence — edge cases", () => {
     const result = aggregateCommentIntelligence(OWNER, batches);
     expect(result.sampleComments).toBe(1);
     expect(result.sampleReplies).toBe(0);
+  });
+
+  it("scraper failure produces available=false without breaking report", () => {
+    const unavailable = buildUnavailableCommentIntelligence(OWNER, "comment_scraper_failed");
+    expect(unavailable.available).toBe(false);
+    expect(unavailable.reason).toBe("comment_scraper_failed");
+    expect(unavailable.samplePosts).toBe(0);
+    expect(unavailable.limitations.length).toBeGreaterThan(0);
   });
 });
