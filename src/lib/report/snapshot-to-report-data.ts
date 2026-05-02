@@ -32,6 +32,7 @@ import {
   buildEditorialPatterns,
   type EditorialPatterns,
 } from "./editorial-patterns";
+import type { CommentIntelligence } from "@/lib/analysis/types";
 
 // ============================================================================
 // Snapshot input typing — kept loose because `normalized_payload` is `Json`.
@@ -311,6 +312,8 @@ export interface ReportEnriched {
    * so the UI can render empty states gracefully on legacy snapshots.
    */
   editorialPatterns: EditorialPatterns;
+  /** Comment-level intelligence (PRO-only). Null when absent. */
+  commentIntelligence: CommentIntelligence | null;
 }
 
 // ============================================================================
@@ -1138,6 +1141,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     aiInsights: enrichedAiInsights,
     aiInsightsV2: buildAiInsightsV2(payload.ai_insights_v2),
     editorialPatterns: buildEditorialPatterns(payload),
+    commentIntelligence: (payload as { comment_intelligence?: CommentIntelligence | null }).comment_intelligence ?? null,
   };
 
   const data: ReportData = {
