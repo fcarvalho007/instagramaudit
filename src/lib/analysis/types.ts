@@ -102,6 +102,11 @@ export interface PublicAnalysisSuccess {
    * the same enriched posts. Optional for backward compatibility.
    */
   format_stats?: FormatStats;
+  /**
+   * Comment-level intelligence derived from apify/instagram-comment-scraper.
+   * PRO-only — absent for FREE reports or when COMMENT_SCRAPER_ENABLED=false.
+   */
+  comment_intelligence?: CommentIntelligence;
 }
 
 export type PublicAnalysisErrorCode =
@@ -122,3 +127,36 @@ export interface PublicAnalysisFailure {
 export type PublicAnalysisResponse =
   | PublicAnalysisSuccess
   | PublicAnalysisFailure;
+
+// ─────────────────────────────────────────────────────────────────────
+// Comment Intelligence (PRO feature)
+// ─────────────────────────────────────────────────────────────────────
+
+export interface CommentIntelligence {
+  available: boolean;
+  source: "apify_comments";
+  /** Number of posts whose comments were sampled. */
+  samplePosts: number;
+  /** Total top-level comments analysed across all sampled posts. */
+  sampleComments: number;
+  /** Total reply-level comments analysed. */
+  sampleReplies: number;
+  /** The profile username used for owner detection. */
+  ownerUsername: string;
+  /** Number of comments + replies authored by the profile owner. */
+  ownerRepliesCount: number;
+  /** ownerRepliesCount / audienceCommentsCount × 100. */
+  ownerReplyRatePct: number;
+  /** % of sampled posts where the owner replied at least once. */
+  postsWithOwnerReplyPct: number;
+  /** Total comments from non-owner users. */
+  audienceCommentsCount: number;
+  /** Post with most owner interaction. */
+  topConversationPost?: {
+    postUrl: string;
+    commentsCount: number;
+    ownerRepliesCount: number;
+  };
+  /** Transparency disclaimers shown in the UI. */
+  limitations: string[];
+}
