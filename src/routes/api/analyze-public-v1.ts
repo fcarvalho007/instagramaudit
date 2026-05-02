@@ -87,7 +87,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
 import { fetchCommentsForPosts, shouldRunCommentScraper } from "@/lib/analysis/comment-scraper.server";
-import { aggregateCommentIntelligence } from "@/lib/analysis/comment-intelligence";
+import { aggregateCommentIntelligence, buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
@@ -1026,7 +1026,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             );
           }
 
-          // ─── Comment Intelligence (PRO-only, gated, best-effort) ──────
+          // ─── Comment Intelligence (free report, gated by feature flag) ──────
           // Disabled by default via COMMENT_SCRAPER_ENABLED secret.
           // Never blocks the base report. Failures are swallowed.
           let commentIntelligence: CommentIntelligence | null = null;
@@ -1043,10 +1043,17 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
           if (runComments) {
             try {
-              // Pick top posts by engagement (desc), filter to those with a permalink
+              // Pick posts by conversation potential: most comments first,
+              // then engagement, then most recent. Filter to those with permalink.
               const postsWithUrl = primaryEnriched.posts
                 .filter((p) => !!p.permalink)
-                .sort((a, b) => b.engagement_pct - a.engagement_pct);
+                .sort((a, b) => {
+                  const ca = a.comments ?? 0;
+                  const cb = b.comments ?? 0;
+                  if (cb !== ca) return cb - ca;
+                  if (b.engagement_pct !== a.engagement_pct) return b.engagement_pct - a.engagement_pct;
+                  return (b.taken_at_iso ?? "").localeCompare(a.taken_at_iso ?? "");
+                });
 
               const postUrls = postsWithUrl
                 .slice(0, 12)
@@ -1106,6 +1113,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             } catch (err) {
               // Hard guarantee: comment scraper never breaks the analysis.
               console.error("[analyze-public-v1] comment scraper threw", err);
+              // Store structured unavailable state so UI can show a clear message
+              commentIntelligence = buildUnavailableCommentIntelligence(
+                primaryProfile.username,
+                "comment_scraper_failed",
+              );
               // Log the failure so admin cost view captures it
               try {
                 await recordProviderCall({
