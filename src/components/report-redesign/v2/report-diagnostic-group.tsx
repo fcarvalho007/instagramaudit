@@ -19,7 +19,7 @@ export function ReportDiagnosticGroup({
   children,
 }: Props) {
   return (
-    <div className="space-y-4 md:space-y-5 pt-8 md:pt-10 first:pt-0">
+     <div className="space-y-4 md:space-y-5">
       <div className="flex items-center gap-3 border-b border-slate-200/60 pb-4">
         <span
           aria-hidden
