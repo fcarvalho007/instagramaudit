@@ -1059,7 +1059,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   actor: "apify/instagram-comment-scraper",
                   network: "instagram",
                   handle: primary,
-                  status: "ok",
+                  status: "success",
                   httpStatus: 200,
                   durationMs: 0, // approximate — actual timing not tracked here
                   postsReturned: commentResult.batches.reduce(
