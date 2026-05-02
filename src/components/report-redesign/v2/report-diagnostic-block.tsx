@@ -38,6 +38,11 @@ import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
 import { ReportCaptionIntelligence } from "./report-caption-intelligence";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
+import {
+  CommentIntelligenceSection,
+  CommentIntelligenceTeaser,
+} from "./report-comment-intelligence";
+import type { CommentIntelligence } from "@/lib/analysis/types";
 
 interface Props {
   result: AdapterResult;
@@ -120,7 +125,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   ]);
   // C · Resposta do público: Q05 (audience) — full width
   const groupC = compact([
-    renderAudienceCard(audience),
+    renderAudienceCard(audience, result.enriched.commentIntelligence),
   ]);
   // D · Contexto estratégico: Q06 + Q07
   const groupD = compact([
@@ -463,7 +468,10 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
   );
 }
 
-function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
+function renderAudienceCard(
+  r: AudienceResponseResult,
+  commentIntel: CommentIntelligence | null,
+): ReactNode | null {
   // — State B: data unavailable —
   if (!r.available) {
     return (
@@ -483,6 +491,7 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
             reação, conversa e concentração de comentários.
           </p>
         </div>
+        <CommentIntelligenceTeaser />
       </ReportDiagnosticCard>
     );
   }
@@ -526,6 +535,11 @@ function renderAudienceCard(r: AudienceResponseResult): ReactNode | null {
         topConversationPost={r.topConversationPost}
         status={r.status}
       />
+      {commentIntel?.available ? (
+        <CommentIntelligenceSection data={commentIntel} />
+      ) : (
+        <CommentIntelligenceTeaser />
+      )}
     </ReportDiagnosticCard>
   );
 }
