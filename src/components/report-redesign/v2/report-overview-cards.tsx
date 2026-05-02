@@ -61,7 +61,6 @@ export function ReportOverviewCards({ result }: Props) {
       {/* Secondary stack — rhythm + format */}
       <div className="lg:col-span-1 flex flex-col gap-4 md:gap-5">
         <PostingRhythmCard
-          weekly={k.postingFrequencyWeekly}
           postsAnalyzed={k.postsAnalyzed}
           windowDays={windowDays}
           followers={followers}
