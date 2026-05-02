@@ -55,6 +55,7 @@ import { Route as ApiAdminSistemaProviderCallsRouteImport } from './routes/api/a
 import { Route as ApiAdminSistemaHealthRouteImport } from './routes/api/admin/sistema.health'
 import { Route as ApiAdminSistemaExpense30dRouteImport } from './routes/api/admin/sistema.expense-30d'
 import { Route as ApiAdminSistemaCostMetrics24hRouteImport } from './routes/api/admin/sistema.cost-metrics-24h'
+import { Route as ApiAdminSistemaCommentScraperRouteImport } from './routes/api/admin/sistema.comment-scraper'
 import { Route as ApiAdminSistemaCapsRouteImport } from './routes/api/admin/sistema.caps'
 import { Route as ApiAdminSistemaAlertsRouteImport } from './routes/api/admin/sistema.alerts'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
@@ -317,6 +318,12 @@ const ApiAdminSistemaCostMetrics24hRoute =
     path: '/api/admin/sistema/cost-metrics-24h',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminSistemaCommentScraperRoute =
+  ApiAdminSistemaCommentScraperRouteImport.update({
+    id: '/api/admin/sistema/comment-scraper',
+    path: '/api/admin/sistema/comment-scraper',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminSistemaCapsRoute = ApiAdminSistemaCapsRouteImport.update({
   id: '/api/admin/sistema/caps',
   path: '/api/admin/sistema/caps',
@@ -461,6 +468,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
+  '/api/admin/sistema/comment-scraper': typeof ApiAdminSistemaCommentScraperRoute
   '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
   '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
@@ -525,6 +533,7 @@ export interface FileRoutesByTo {
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
+  '/api/admin/sistema/comment-scraper': typeof ApiAdminSistemaCommentScraperRoute
   '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
   '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
@@ -591,6 +600,7 @@ export interface FileRoutesById {
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
+  '/api/admin/sistema/comment-scraper': typeof ApiAdminSistemaCommentScraperRoute
   '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
   '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
@@ -658,6 +668,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
     | '/api/admin/sistema/caps'
+    | '/api/admin/sistema/comment-scraper'
     | '/api/admin/sistema/cost-metrics-24h'
     | '/api/admin/sistema/expense-30d'
     | '/api/admin/sistema/health'
@@ -722,6 +733,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
     | '/api/admin/sistema/caps'
+    | '/api/admin/sistema/comment-scraper'
     | '/api/admin/sistema/cost-metrics-24h'
     | '/api/admin/sistema/expense-30d'
     | '/api/admin/sistema/health'
@@ -787,6 +799,7 @@ export interface FileRouteTypes {
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
     | '/api/admin/sistema/caps'
+    | '/api/admin/sistema/comment-scraper'
     | '/api/admin/sistema/cost-metrics-24h'
     | '/api/admin/sistema/expense-30d'
     | '/api/admin/sistema/health'
@@ -840,6 +853,7 @@ export interface RootRouteChildren {
   ApiAdminKnowledgeSuggestionsRoute: typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   ApiAdminSistemaAlertsRoute: typeof ApiAdminSistemaAlertsRouteWithChildren
   ApiAdminSistemaCapsRoute: typeof ApiAdminSistemaCapsRoute
+  ApiAdminSistemaCommentScraperRoute: typeof ApiAdminSistemaCommentScraperRoute
   ApiAdminSistemaCostMetrics24hRoute: typeof ApiAdminSistemaCostMetrics24hRoute
   ApiAdminSistemaExpense30dRoute: typeof ApiAdminSistemaExpense30dRoute
   ApiAdminSistemaHealthRoute: typeof ApiAdminSistemaHealthRoute
@@ -1181,6 +1195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSistemaCostMetrics24hRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/sistema/comment-scraper': {
+      id: '/api/admin/sistema/comment-scraper'
+      path: '/api/admin/sistema/comment-scraper'
+      fullPath: '/api/admin/sistema/comment-scraper'
+      preLoaderRoute: typeof ApiAdminSistemaCommentScraperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/sistema/caps': {
       id: '/api/admin/sistema/caps'
       path: '/api/admin/sistema/caps'
@@ -1459,6 +1480,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiAdminKnowledgeSuggestionsRouteWithChildren,
   ApiAdminSistemaAlertsRoute: ApiAdminSistemaAlertsRouteWithChildren,
   ApiAdminSistemaCapsRoute: ApiAdminSistemaCapsRoute,
+  ApiAdminSistemaCommentScraperRoute: ApiAdminSistemaCommentScraperRoute,
   ApiAdminSistemaCostMetrics24hRoute: ApiAdminSistemaCostMetrics24hRoute,
   ApiAdminSistemaExpense30dRoute: ApiAdminSistemaExpense30dRoute,
   ApiAdminSistemaHealthRoute: ApiAdminSistemaHealthRoute,
