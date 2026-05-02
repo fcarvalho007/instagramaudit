@@ -33,22 +33,30 @@ const COMMENT_ACTOR = "apify/instagram-comment-scraper";
 
 /**
  * Max posts to send to the comment scraper per analysis.
- * Override via COMMENT_SCRAPER_MAX_POSTS env var. Default: 5 (conservative for initial testing).
+ * Override via COMMENT_SCRAPER_MAX_POSTS env var. Default: 3 (conservative for free reports).
  */
 export const COMMENT_SCRAPER_MAX_POSTS = clampInt(
-  process.env.COMMENT_SCRAPER_MAX_POSTS, 5, 1, 12,
+  process.env.COMMENT_SCRAPER_MAX_POSTS, 3, 1, 12,
 );
 
 /**
  * Max comments to retrieve per post.
- * Override via COMMENT_SCRAPER_RESULTS_LIMIT env var. Default: 50.
+ * Override via COMMENT_SCRAPER_RESULTS_LIMIT env var. Default: 20 (conservative for free reports).
  */
 export const COMMENT_SCRAPER_RESULTS_LIMIT = clampInt(
-  process.env.COMMENT_SCRAPER_RESULTS_LIMIT, 50, 5, 200,
+  process.env.COMMENT_SCRAPER_RESULTS_LIMIT, 20, 5, 200,
 );
 
 /** Whether to include nested replies in comment results. */
 export const COMMENT_SCRAPER_INCLUDE_REPLIES = true;
+
+/**
+ * Hard cap on total comments (top-level + replies) kept per report.
+ * Override via COMMENT_SCRAPER_MAX_TOTAL_COMMENTS env var. Default: 60.
+ */
+export const COMMENT_SCRAPER_MAX_TOTAL_COMMENTS = clampInt(
+  process.env.COMMENT_SCRAPER_MAX_TOTAL_COMMENTS, 60, 10, 500,
+);
 
 /**
  * Hard USD cap per comment scraper run.
