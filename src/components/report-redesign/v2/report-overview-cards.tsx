@@ -688,10 +688,6 @@ function FormatChipContextual({
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
-}
-
 function formatPct(n: number): string {
   if (!Number.isFinite(n)) return "0,00%";
   return `${n.toFixed(2).replace(".", ",")}%`;
