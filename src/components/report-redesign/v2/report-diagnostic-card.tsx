@@ -538,10 +538,10 @@ export function DiagnosticAudienceHighlight({
 
   return (
     <div className="space-y-2.5">
-      {/* Status icon */}
+      {/* Status icon — decorative, large */}
       <div className="flex justify-center sm:justify-start">
-        <div className={cn("size-14 sm:size-16 rounded-2xl flex items-center justify-center", iconBg)} aria-hidden="true">
-          <StatusIcon size={36} className={iconFg} strokeWidth={1.5} />
+        <div className={cn("size-20 sm:size-24 rounded-2xl flex items-center justify-center", iconBg)} aria-hidden="true">
+          <StatusIcon size={48} className={cn(iconFg, "opacity-80")} strokeWidth={1.25} />
         </div>
       </div>
 
@@ -598,7 +598,7 @@ export function DiagnosticAudienceHighlight({
       {/* Brand reply disclaimer */}
       {status !== "unavailable" && (
         <p className="text-[11px] text-slate-400 italic leading-relaxed">
-          Resposta da marca a comentários: disponível numa análise avançada com dados de comentários.
+          Esta leitura mede volume público de gostos e comentários; não avalia respostas da marca aos comentários.
         </p>
       )}
     </div>

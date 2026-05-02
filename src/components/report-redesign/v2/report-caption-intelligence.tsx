@@ -74,6 +74,7 @@ function Shell({ sampleSize, children }: { sampleSize: number; children: React.R
         "p-6 md:p-9",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
         "flex flex-col gap-6",
+        "md:col-span-2",
       )}
     >
       <header className="flex items-start justify-between gap-3 flex-wrap">

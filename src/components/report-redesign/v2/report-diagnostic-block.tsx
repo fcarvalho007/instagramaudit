@@ -108,22 +108,26 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     result.enriched.aiInsightsV2?.sections.language?.text ?? null;
 
   // Build cards as nullable list, then split into groups
+  // A · Identidade editorial: Q01 + Q02
   const groupA = compact([
     renderContentTypeCard(contentType),
-  ]);
-  const groupB = compact([
     renderFunnelCard(funnel),
+  ]);
+  // B · Como comunica: Q03 (hashtags) — Q04 (captions) rendered inside group
+  const groupB = compact([
     renderHashtagsCard(hashtags),
   ]);
+  // C · Resposta do público: Q05 (audience) — full width
   const groupC = compact([
     renderAudienceCard(audience),
   ]);
+  // D · Contexto estratégico: Q06 + Q07
   const groupD = compact([
     renderIntegrationCard(integration),
     renderObjectiveCard(objective, contentType, funnel, integration),
   ]);
 
-  const totalCards = groupA.length + groupB.length + groupC.length + groupD.length;
+  const totalCards = groupA.length + groupB.length + 1 + groupC.length + groupD.length;
 
   return (
     <div className="space-y-10 md:space-y-12">
@@ -141,27 +145,24 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             </ReportDiagnosticGroup>
           ) : null}
 
-          {groupB.length > 0 ? (
-            <ReportDiagnosticGroup
-              letter="B"
-              label="Posicionamento e descoberta"
-              questionsCount={groupB.length}
-            >
-              {groupB}
-            </ReportDiagnosticGroup>
-          ) : null}
+          <ReportDiagnosticGroup
+            letter="B"
+            label="Como comunica"
+            questionsCount={groupB.length + 1}
+          >
+            {groupB}
+            <ReportCaptionIntelligence data={captionIntel} />
+          </ReportDiagnosticGroup>
 
           {groupC.length > 0 ? (
             <ReportDiagnosticGroup
               letter="C"
-              label="Resposta e linguagem"
+              label="Resposta do público"
               questionsCount={groupC.length}
             >
               {groupC}
             </ReportDiagnosticGroup>
           ) : null}
-
-          <ReportCaptionIntelligence data={captionIntel} />
 
           {groupD.length > 0 ? (
             <ReportDiagnosticGroup
