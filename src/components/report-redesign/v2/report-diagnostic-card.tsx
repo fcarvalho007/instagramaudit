@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { MessagesSquare, MessageCircleMore, Target, MessageCircleOff, CircleHelp } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
+import { InsightCallout } from "./insight-callout";
 
 export type DiagnosticTone = "blue" | "amber" | "rose" | "emerald" | "slate";
 
@@ -71,6 +72,14 @@ const TONE: Record<
   },
 };
 
+const ACCENT_BORDER: Record<DiagnosticTone, string> = {
+  blue: "border-t-2 border-t-blue-400/60",
+  emerald: "border-t-2 border-t-emerald-400/60",
+  amber: "border-t-2 border-t-amber-400/60",
+  rose: "border-t-2 border-t-rose-400/60",
+  slate: "",
+};
+
 /**
  * Cartão de pergunta do Bloco 02. Estrutura:
  *   eyebrow (PERGUNTA NN · LABEL) + chip de proveniência (à direita)
@@ -104,6 +113,7 @@ export function ReportDiagnosticCard({
         "rounded-2xl border border-slate-200/70 bg-white",
         "p-6 md:p-7",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
+        ACCENT_BORDER[tone],
       )}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -561,17 +571,18 @@ export function DiagnosticAudienceHighlight({
       </div>
 
       {/* Editorial interpretation */}
-      <p className="text-[13px] text-slate-600 leading-relaxed">
+      <InsightCallout
+        tone={status === "silent" ? "warning" : status === "active" ? "editorial" : "suggestion"}
+        label={status === "silent" ? "Atenção" : status === "active" ? "Leitura editorial" : "O que isto sugere"}
+      >
         {EDITORIAL[status]}
-      </p>
+      </InsightCallout>
 
       {/* Conversation prompt strip */}
       {(status === "silent" || status === "moderate") && (
-        <div className="rounded-md bg-blue-50/50 ring-1 ring-blue-100/60 px-3 py-2">
-          <p className="text-[12px] text-blue-700 leading-relaxed">
-            Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
-          </p>
-        </div>
+        <InsightCallout tone="suggestion" label="Próximo passo">
+          Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
+        </InsightCallout>
       )}
 
       {/* Top conversation post evidence */}

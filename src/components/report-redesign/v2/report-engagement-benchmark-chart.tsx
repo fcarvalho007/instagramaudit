@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from "react";
-import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { BenchmarkTierPoint } from "@/lib/knowledge/benchmark-context";
+import { PremiumCallout } from "./premium-callout";
 
 export interface BenchmarkChartProps {
   profileEngagementRatePct: number;
@@ -403,32 +403,10 @@ export function ReportEngagementBenchmarkChart({
 
       {/* Pro competitor slot — quiet */}
       {showProSlot && !competitor ? (
-        <button
-          type="button"
-          onClick={onProSlotClick}
-          className={cn(
-            "flex items-center gap-2.5 rounded-lg ring-1 ring-slate-200/50 px-3 py-2.5",
-            "bg-slate-50/40 w-full text-left",
-            !onProSlotClick && "cursor-default opacity-70",
-          )}
-        >
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 ring-1 ring-slate-200/60 shrink-0">
-            <Lock className="size-3 text-slate-400" aria-hidden />
-          </span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[12px] font-medium text-slate-600">
-                Comparar com concorrente direto
-              </span>
-              <span className="text-eyebrow-sm rounded-full px-1.5 py-0.5 ring-1 bg-amber-50 text-amber-700 ring-amber-200 text-[10px]">
-                PRO
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Vê se o teu perfil está abaixo do mercado ou apenas abaixo dos teus concorrentes.
-            </p>
-          </div>
-        </button>
+        <PremiumCallout
+          title="Comparar com concorrente direto"
+          description="Vê se o teu perfil está abaixo do mercado ou apenas abaixo dos teus concorrentes."
+        />
       ) : null}
     </div>
   );

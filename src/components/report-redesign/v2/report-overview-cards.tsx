@@ -87,6 +87,7 @@ function PremiumCard({
   emphasis = "secondary",
   sourceSlot,
   titleExtra,
+  accentTone,
 }: {
   title: string;
   icon: ReactNode;
@@ -98,6 +99,8 @@ function PremiumCard({
   sourceSlot?: ReactNode;
   /** Extra element rendered inline after the title (e.g. info tooltip). */
   titleExtra?: ReactNode;
+  /** Subtle 2px top border accent. */
+  accentTone?: "blue" | "green" | "rose" | "gold" | "slate";
 }) {
   const chipCls =
     interpretationTone === "good"
@@ -116,6 +119,16 @@ function PremiumCard({
           ? "bg-rose-500"
           : "bg-slate-400";
 
+  const accentCls = accentTone
+    ? ({
+        blue: "border-t-2 border-t-blue-400/60",
+        green: "border-t-2 border-t-emerald-400/60",
+        rose: "border-t-2 border-t-rose-400/60",
+        gold: "border-t-2 border-t-amber-400/60",
+        slate: "border-t-2 border-t-slate-300/60",
+      })[accentTone]
+    : "";
+
   const padding =
     emphasis === "primary"
       ? "p-6 md:p-7 lg:p-8"
@@ -131,6 +144,7 @@ function PremiumCard({
         REDESIGN_TOKENS.kpiCardV2,
         padding,
         "flex flex-col gap-4 min-w-0 h-full",
+        accentCls,
       )}
     >
       <header>
@@ -196,6 +210,7 @@ function EngagementRateCard({
       icon={<Activity className="h-4 w-4" aria-hidden="true" />}
       interpretation={null}
       emphasis="primary"
+      accentTone="blue"
       titleExtra={<EngagementInfoTooltip />}
       sourceSlot={
         <ReportSourceLabel type="auto" detail="Gostos + comentários" />
@@ -346,6 +361,7 @@ function PostingRhythmCard({
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
       interpretation={gapStatus.label}
       interpretationTone={gapStatus.tone}
+      accentTone={gapStatus.tone === "good" ? "green" : gapStatus.tone === "warn" ? "rose" : gapStatus.tone === "bad" ? "rose" : undefined}
       sourceSlot={
         <div className="space-y-1.5">
           <p className="text-[11px] text-slate-400 leading-relaxed">

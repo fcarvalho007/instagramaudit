@@ -1,4 +1,4 @@
-import { AlertTriangle, Crown, Cpu, Lightbulb, Lock, Sparkles } from "lucide-react";
+import { AlertTriangle, Cpu, Lightbulb, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type {
@@ -9,6 +9,8 @@ import type {
 } from "@/lib/report/caption-intelligence";
 
 import { SourceBadge, type SourceBadgeVariant } from "./source-badge";
+import { InsightCallout } from "./insight-callout";
+import { PremiumCallout } from "./premium-callout";
 
 interface Props {
   data: CaptionIntelligence;
@@ -71,6 +73,7 @@ function Shell({ sampleSize, children }: { sampleSize: number; children: React.R
       aria-label="Pergunta 04 · Leitura das legendas"
       className={cn(
         "rounded-2xl border border-slate-200/70 bg-white",
+      "border-t-2 border-t-blue-400/60",
         "p-6 md:p-9",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
         "flex flex-col gap-6",
@@ -366,32 +369,10 @@ function ReadingLine({
 
 function PremiumTeaserStrip() {
   return (
-    <div
-      className={cn(
-        "rounded-lg ring-1 px-4 py-3 flex items-start gap-3",
-        "bg-amber-50/30 ring-amber-200/50",
-      )}
-    >
-      <Lock aria-hidden className="size-3.5 mt-0.5 shrink-0 text-amber-600/60" />
-      <div className="min-w-0 flex-1">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 ring-1",
-            "text-eyebrow-sm bg-amber-100/60 text-amber-700 ring-amber-300/50",
-          )}
-        >
-          <Crown aria-hidden className="size-2.5" />
-          PRO
-        </span>
-        <p className="text-[13px] text-slate-600 font-medium mt-1">
-          Análise completa de Reels e vídeo
-        </p>
-        <p className="text-[12px] text-slate-500 leading-relaxed mt-0.5">
-          Inclui transcrição de Reels/vídeos, hooks falados e comparação
-          entre o que é dito e o que é escrito na legenda.
-        </p>
-      </div>
-    </div>
+    <PremiumCallout
+      title="Análise completa de Reels e vídeo"
+      description="Inclui transcrição de Reels/vídeos, hooks falados e comparação entre o que é dito e o que é escrito na legenda."
+    />
   );
 }
 
