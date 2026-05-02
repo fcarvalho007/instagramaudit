@@ -127,7 +127,7 @@ export function ReportDiagnosticCard({
             <h3
               className={cn(
                 "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-slate-950",
-                "min-w-0",
+                "min-w-0 text-slate-900",
               )}
             >
               {question}
@@ -166,7 +166,7 @@ export function ReportDiagnosticCard({
         <>
           <h3
             className={cn(
-              "font-display text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-slate-950",
+              "font-display text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-slate-900",
               "min-w-0",
             )}
           >
