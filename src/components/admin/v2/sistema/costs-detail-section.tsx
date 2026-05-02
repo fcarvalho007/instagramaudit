@@ -24,6 +24,7 @@ import type {
   Cost24hMetrics,
   ProviderCallRow,
 } from "@/lib/admin/system-queries.server";
+import { CommentScraperCard } from "./comment-scraper-card";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await adminFetch(url);
@@ -147,6 +148,9 @@ export function CostsDetailSection() {
           Janela: últimas 24h · fonte: provider_call_logs · status: success + cache · custo: actual_cost_usd ?? estimated_cost_usd
         </p>
       ) : null}
+
+      {/* Comment Scraper cost card */}
+      <CommentScraperCard />
 
       {/* Últimas chamadas */}
       <AdminCard className="mt-4">
