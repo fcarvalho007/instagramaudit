@@ -491,7 +491,7 @@ function renderAudienceCard(
             reação, conversa e concentração de comentários.
           </p>
         </div>
-        <CommentIntelligenceUnavailable />
+        <CommentIntelligenceUnavailable data={commentIntel} />
       </ReportDiagnosticCard>
     );
   }
@@ -538,7 +538,7 @@ function renderAudienceCard(
       {commentIntel?.available ? (
         <CommentIntelligenceSection data={commentIntel} />
       ) : (
-        <CommentIntelligenceUnavailable />
+        <CommentIntelligenceUnavailable data={commentIntel} />
       )}
     </ReportDiagnosticCard>
   );

@@ -1,18 +1,26 @@
 /**
  * Comment Intelligence subsection for Block 02 → Q05 "Resposta".
+ * Part of the FREE report — no PRO gating.
  *
  * Two states:
- *   Available   → CommentIntelligenceSection — "Marca na conversa" sub-card
- *   Unavailable → CommentIntelligenceUnavailable — neutral note (no upsell)
+ *   Available   → CommentIntelligenceSection — full analysis
+ *   Unavailable → CommentIntelligenceUnavailable — neutral note
  */
 
 import type { CommentIntelligence } from "@/lib/analysis/types";
 import { cn } from "@/lib/utils";
+import { InsightCallout } from "./insight-callout";
 import {
   MessageCircleReply,
   Info,
   MessageCircle,
   ShieldCheck,
+  HelpCircle,
+  ShoppingCart,
+  ThumbsUp,
+  AlertTriangle,
+  Sparkles,
+  Ban,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -106,11 +114,11 @@ const BADGE_ICON_CLASSES: Record<StatusConfig["tone"], string> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────
-// Scope note — shared between both states
+// Scope note — shared
 // ─────────────────────────────────────────────────────────────────────
 
 const SCOPE_NOTE =
-  "Esta leitura usa comentários públicos acessíveis. Não inclui DMs, comentários apagados, respostas privadas ou comentários não visíveis sem login.";
+  "Esta leitura usa comentários públicos acessíveis nos posts analisados. Não inclui DMs, comentários apagados, respostas privadas ou comentários não visíveis sem login.";
 
 function ScopeNote() {
   return (
@@ -121,13 +129,88 @@ function ScopeNote() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Unavailable state (shown when comment intelligence data is absent)
+// Signal chips
 // ─────────────────────────────────────────────────────────────────────
 
-export function CommentIntelligenceUnavailable() {
+interface SignalChip {
+  key: string;
+  label: string;
+  count: number;
+  Icon: typeof HelpCircle;
+  className: string;
+}
+
+function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
+  const chips: SignalChip[] = [];
+  if (ci.questionsFromAudienceCount > 0) {
+    chips.push({
+      key: "questions",
+      label: "Perguntas",
+      count: ci.questionsFromAudienceCount,
+      Icon: HelpCircle,
+      className: "border-blue-200 bg-blue-50 text-blue-700",
+    });
+  }
+  if (ci.praiseCount > 0) {
+    chips.push({
+      key: "praise",
+      label: "Elogios",
+      count: ci.praiseCount,
+      Icon: ThumbsUp,
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    });
+  }
+  if (ci.complaintOrIssueCount > 0) {
+    chips.push({
+      key: "complaint",
+      label: "Dúvidas/objeções",
+      count: ci.complaintOrIssueCount,
+      Icon: AlertTriangle,
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+    });
+  }
+  if (ci.buyingIntentCount > 0) {
+    chips.push({
+      key: "buying",
+      label: "Intenção de compra",
+      count: ci.buyingIntentCount,
+      Icon: ShoppingCart,
+      className: "border-violet-200 bg-violet-50 text-violet-700",
+    });
+  }
+  if (ci.spamOrLowQualityCount > 0) {
+    chips.push({
+      key: "spam",
+      label: "Ruído/spam",
+      count: ci.spamOrLowQualityCount,
+      Icon: Ban,
+      className: "border-slate-200 bg-slate-50 text-slate-500",
+    });
+  }
+  return chips;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Unavailable state
+// ─────────────────────────────────────────────────────────────────────
+
+const UNAVAILABLE_REASONS: Record<string, string> = {
+  comment_scraper_failed:
+    "A recolha de comentários não foi possível nesta execução. O relatório será atualizado automaticamente na próxima análise.",
+  comment_scraper_disabled:
+    "A análise de comentários está temporariamente desativada.",
+  no_posts_with_comments:
+    "As publicações analisadas não contêm comentários públicos acessíveis.",
+};
+
+export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {
+  const reason = data?.reason;
+  const explanation =
+    (reason && UNAVAILABLE_REASONS[reason]) ??
+    "Comentários públicos não analisados nesta execução.";
+
   return (
     <div className="mt-5 space-y-3">
-      {/* Sub-card header */}
       <div className="flex items-center gap-2">
         <MessageCircleReply
           className="h-4 w-4 shrink-0 text-slate-400"
@@ -138,18 +221,15 @@ export function CommentIntelligenceUnavailable() {
         </h4>
       </div>
 
-      {/* Info box */}
       <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3.5 space-y-1.5">
         <div className="flex items-center gap-2">
           <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
           <p className="text-[12.5px] font-medium text-slate-500">
-            Análise de respostas indisponível
+            Comentários públicos não analisados nesta execução
           </p>
         </div>
         <p className="text-[12px] leading-relaxed text-slate-500">
-          A análise de comentários não está disponível para este relatório.
-          Esta funcionalidade verifica se a marca responde aos comentários
-          públicos dos posts analisados.
+          {explanation}
         </p>
       </div>
 
@@ -168,6 +248,7 @@ interface Props {
 
 export function CommentIntelligenceSection({ data }: Props) {
   const { config } = classifyBrandReply(data);
+  const signalChips = buildSignalChips(data);
 
   return (
     <div className="mt-5 space-y-4">
@@ -182,7 +263,7 @@ export function CommentIntelligenceSection({ data }: Props) {
         </h4>
       </div>
 
-      {/* Status badge with icon */}
+      {/* Status badge */}
       <div className="flex items-center gap-3 flex-wrap">
         <div
           className={cn(
@@ -198,30 +279,69 @@ export function CommentIntelligenceSection({ data }: Props) {
         </div>
       </div>
 
-      {/* Editorial reading */}
-      <p className="text-[12.5px] leading-relaxed text-slate-600">
+      {/* Editorial interpretation */}
+      <InsightCallout
+        tone={config.tone === "emerald" ? "editorial" : config.tone === "rose" ? "warning" : "suggestion"}
+        label={config.tone === "emerald" ? "Leitura editorial" : config.tone === "rose" ? "Atenção" : "O que isto sugere"}
+      >
         {config.editorial}
-      </p>
+      </InsightCallout>
 
       {/* 4-metric grid */}
       <div className="grid grid-cols-2 gap-2">
         <MetricCell
           label="Respostas da marca"
           value={String(data.ownerRepliesCount)}
+          source="Cálculo"
         />
         <MetricCell
           label="Taxa de resposta"
           value={`${data.ownerReplyRatePct}%`}
+          source="Cálculo"
         />
         <MetricCell
           label="Posts com resposta"
           value={`${data.postsWithOwnerReplyPct}%`}
+          source="Cálculo"
         />
         <MetricCell
           label="Comentários analisados"
           value={data.sampleComments.toLocaleString("pt-PT")}
+          source="Dados extraídos"
         />
       </div>
+
+      {/* Conversation quality signals */}
+      {signalChips.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-eyebrow-sm text-slate-500">Sinais de conversa</p>
+          <div className="flex flex-wrap gap-1.5">
+            {signalChips.map((chip) => (
+              <div
+                key={chip.key}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
+                  chip.className,
+                )}
+              >
+                <chip.Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="break-words">{chip.label}</span>
+                <span className="tabular-nums font-semibold">{chip.count}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10.5px] text-slate-400">
+            Leitura automática — classificação heurística dos comentários públicos.
+          </p>
+        </div>
+      )}
+
+      {/* Recommended action */}
+      {data.recommendedConversationAction && (
+        <InsightCallout tone="suggestion" label="Ação recomendada">
+          {data.recommendedConversationAction}
+        </InsightCallout>
+      )}
 
       {/* Top conversation post */}
       {data.topConversationPost && (
@@ -273,7 +393,15 @@ export function CommentIntelligenceSection({ data }: Props) {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────
 
-function MetricCell({ label, value }: { label: string; value: string }) {
+function MetricCell({
+  label,
+  value,
+  source,
+}: {
+  label: string;
+  value: string;
+  source?: string;
+}) {
   return (
     <div className="rounded-lg border border-slate-100 bg-white px-3 py-2.5">
       <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 break-words">
@@ -282,6 +410,11 @@ function MetricCell({ label, value }: { label: string; value: string }) {
       <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-slate-800">
         {value}
       </p>
+      {source && (
+        <p className="mt-0.5 text-[9.5px] text-slate-300 uppercase tracking-wider">
+          {source}
+        </p>
+      )}
     </div>
   );
 }
