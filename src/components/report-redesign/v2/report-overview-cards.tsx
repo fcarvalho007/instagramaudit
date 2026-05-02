@@ -335,6 +335,9 @@ const POSTING_FREQ_BENCHMARK: Record<AccountTier, number> = {
   mega: 7,
 };
 
+/** Buffer general recommended range (posts/week), 2025 data. */
+const BUFFER_GENERAL_RANGE = { min: 3, max: 5 };
+
 // ─── Card 2 — Ritmo de publicação ────────────────────────────────────
 
 function PostingRhythmCard({
