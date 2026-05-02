@@ -542,3 +542,68 @@ export async function setCostCap(
     { onConflict: "key" },
   );
 }
+
+/* ============================================= Comment Scraper Metrics -- */
+
+export interface CommentScraperMetrics {
+  total_cost_usd: number;
+  run_count: number;
+  comments_returned: number;
+  avg_cost_per_run: number | null;
+  avg_cost_per_1k_comments: number | null;
+  last_run_status: string | null;
+  last_run_at: string | null;
+  enabled: boolean;
+  max_charge_usd: number;
+  max_posts: number;
+  max_comments_per_post: number;
+}
+
+const COMMENT_SCRAPER_ACTOR = "apify/instagram-comment-scraper";
+
+export async function fetchCommentScraperMetrics(
+  sinceIso: string,
+): Promise<CommentScraperMetrics> {
+  const enabled = process.env.COMMENT_SCRAPER_ENABLED === "true";
+
+  const { data: logs } = await supabaseAdmin
+    .from("provider_call_logs")
+    .select(
+      "id, status, actual_cost_usd, estimated_cost_usd, posts_returned, created_at",
+    )
+    .eq("actor", COMMENT_SCRAPER_ACTOR)
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false });
+
+  const rows = logs ?? [];
+
+  let totalCost = 0;
+  let totalComments = 0;
+  let runCount = 0;
+
+  for (const row of rows) {
+    const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+    totalCost += cost;
+    totalComments += row.posts_returned ?? 0;
+    runCount += 1;
+  }
+
+  const lastRun = rows[0] ?? null;
+
+  return {
+    total_cost_usd: Number(totalCost.toFixed(4)),
+    run_count: runCount,
+    comments_returned: totalComments,
+    avg_cost_per_run: runCount > 0 ? Number((totalCost / runCount).toFixed(4)) : null,
+    avg_cost_per_1k_comments:
+      totalComments >= 10
+        ? Number(((totalCost / totalComments) * 1000).toFixed(4))
+        : null,
+    last_run_status: lastRun ? String(lastRun.status) : null,
+    last_run_at: lastRun ? String(lastRun.created_at) : null,
+    enabled,
+    max_charge_usd: 3.0,
+    max_posts: 12,
+    max_comments_per_post: 50,
+  };
+}
