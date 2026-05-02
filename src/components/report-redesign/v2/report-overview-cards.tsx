@@ -364,7 +364,7 @@ function PostingRhythmCard({
     <PremiumCard
       title="Ritmo de publicação"
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
-      interpretation={gapStatus.label}
+      interpretation={hasWindow ? gapStatus.label : "Dados insuficientes"}
       interpretationTone={gapStatus.tone}
       accentTone={gapStatus.tone === "good" ? "green" : gapStatus.tone === "warn" ? "rose" : gapStatus.tone === "bad" ? "rose" : undefined}
       sourceSlot={
