@@ -872,6 +872,15 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   }
   const profileWithWindow = { ...profile, windowDays };
 
+  // Recalculate posting frequency from windowDays so every consumer
+  // (overview card, attention row, share message, KPI grids) uses the
+  // same value that matches the visible "X publicações em Y dias".
+  if (windowDays > 0 && keyMetrics.postsAnalyzed > 0) {
+    keyMetrics.postingFrequencyWeekly = round1(
+      (keyMetrics.postsAnalyzed / windowDays) * 7,
+    );
+  }
+
   // Competitors: only emit a row when the snapshot carries real competitor
   // data. Otherwise return an empty array so the section can show its empty
   // state (or be hidden in admin preview). We deliberately do NOT echo the

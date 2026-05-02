@@ -1,45 +1,39 @@
+## Problema
 
-## Problem
+O `postingFrequencyWeekly` em `keyMetrics` usa o valor do provider (`estimated_posts_per_week` = 6.0, calculado com ~14 dias), mas o card "Ritmo de publicação" já recalcula localmente com `windowDays` (= 15 dias → 5.6/semana). Isto cria inconsistência nos seguintes locais que ainda usam o valor antigo:
 
-The posting frequency shown in the card (`6,0/semana`) doesn't match the visible window (`12 publicações em 15 dias`). This is because `estimated_posts_per_week` in normalize.ts uses the raw timestamp span (max-min, ~14 days) while `windowDays` adds +1 for inclusivity (15 days). The user sees "15 dias" but the math uses ~14.
+1. **Attention row** — threshold `>= 5` e texto "Há cerca de 6,0 publicações/semana"
+2. **Share message** — texto partilhável com valor antigo
+3. **KPI grid v2** — display do valor (se usado)
+4. **Old KPI grid / key metrics** — display (se usado)
 
-## Changes
+Exemplo concreto (perfil de teste):
+- Provider diz: 6.0/semana (12 posts ÷ ~14 dias × 7)
+- Card overview diz: 5,6/semana (12 posts ÷ 15 dias × 7)
 
-### 1. Fix calculation in PostingRhythmCard (`report-overview-cards.tsx`)
+## Solução
 
-Recalculate `weekly` and `daily` locally from `postsAnalyzed` and `windowDays` instead of using the pre-computed `postingFrequencyWeekly` (which uses a different day count):
-
-```
-weekly = windowDays > 0 ? postsAnalyzed / windowDays * 7 : 0
-daily  = windowDays > 0 ? postsAnalyzed / windowDays : 0
-```
-
-Guard: if `windowDays <= 0`, hide benchmark comparison and show fallback.
-
-This ensures the visible numbers (`12 publicações em 15 dias` → `5,6/semana`, `0,8/dia`) always match.
-
-### 2. Replace tier label with follower range
-
-Change `"Ref. Nano"` to `"Escalão 0–10K"` by extracting the range from the existing `tierLabel` format `"Nano (0–10K)"`:
+Corrigir na fonte: em `snapshotToReportData()` (snapshot-to-report-data.ts), **após** calcular `windowDays`, reescrever `keyMetrics.postingFrequencyWeekly` com a fórmula consistente:
 
 ```
-tierLabel = "Nano (0–10K)" → extract "0–10K" → display "Escalão 0–10K"
+if (windowDays > 0 && keyMetrics.postsAnalyzed > 0) {
+  keyMetrics.postingFrequencyWeekly = round1(
+    (keyMetrics.postsAnalyzed / windowDays) * 7
+  );
+}
 ```
 
-### 3. Add Buffer general range band to the bar chart
+Isto garante que todos os consumidores de `keyMetrics` (attention row, share, KPI grids) usam o mesmo valor que o card de overview — sem precisar de alterar cada componente individualmente.
 
-Add a subtle shaded band for the Buffer general recommendation (3–5 posts/week) behind the existing bars. Label: `"Intervalo geral 3–5/sem"`.
+Adicionalmente, o `PostingRhythmCard` pode ser simplificado para usar `k.postingFrequencyWeekly` directamente em vez do recálculo local (dado que a fonte já estará correcta).
 
-### 4. Refine gap badge text
+## Ficheiros a editar
 
-- `"+3,6 posts/sem vs escalão"` instead of `"vs referência"`
-- Add second-line interpretation when both sources available: `"Dentro do intervalo geral"` / `"Acima do intervalo geral"`
+1. `src/lib/report/snapshot-to-report-data.ts` — patch `keyMetrics.postingFrequencyWeekly` após `windowDays`
+2. `src/components/report-redesign/v2/report-overview-cards.tsx` — simplificar `PostingRhythmCard` para usar `keyMetrics` directamente (opcional, mas reduz duplicação)
 
-### 5. Methodology note update
+## Validação
 
-`"Frequência = publicações ÷ dias analisados × 7"` (already close, just align wording).
-
-### Files changed
-- `src/components/report-redesign/v2/report-overview-cards.tsx` (PostingRhythmCard + FrequencyBenchmarkBars)
-
-No locked files. No data provider changes.
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Confirmar que: 12 posts ÷ 15 dias × 7 = 5.6/semana aparece em todos os locais

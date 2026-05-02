@@ -62,6 +62,7 @@ export function ReportOverviewCards({ result }: Props) {
       <div className="lg:col-span-1 flex flex-col gap-4 md:gap-5">
         <PostingRhythmCard
           postsAnalyzed={k.postsAnalyzed}
+          postingFrequencyWeekly={k.postingFrequencyWeekly}
           windowDays={windowDays}
           followers={followers}
         />
@@ -341,16 +342,18 @@ const BUFFER_GENERAL_RANGE = { min: 3, max: 5 };
 
 function PostingRhythmCard({
   postsAnalyzed,
+  postingFrequencyWeekly,
   windowDays,
   followers,
 }: {
   postsAnalyzed: number;
+  postingFrequencyWeekly: number;
   windowDays: number;
   followers: number;
 }) {
-  // Recalculate from visible inputs so numbers always match the card copy
   const hasWindow = windowDays > 0 && postsAnalyzed > 0;
-  const weekly = hasWindow ? Math.round((postsAnalyzed / windowDays) * 7 * 10) / 10 : 0;
+  // Use the already-corrected value from keyMetrics (recalculated in snapshotToReportData)
+  const weekly = hasWindow ? postingFrequencyWeekly : 0;
   const daily = hasWindow ? Math.round((postsAnalyzed / windowDays) * 10) / 10 : 0;
 
   const tier = getTierForFollowers(followers);
