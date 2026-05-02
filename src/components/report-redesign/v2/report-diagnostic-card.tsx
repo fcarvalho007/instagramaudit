@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { MessagesSquare, MessageCircleMore, Target, MessageCircleOff, CircleHelp } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
+import { InsightCallout } from "./insight-callout";
 
 export type DiagnosticTone = "blue" | "amber" | "rose" | "emerald" | "slate";
 
@@ -570,17 +571,18 @@ export function DiagnosticAudienceHighlight({
       </div>
 
       {/* Editorial interpretation */}
-      <p className="text-[13px] text-slate-600 leading-relaxed">
+      <InsightCallout
+        tone={status === "silent" ? "warning" : status === "active" ? "editorial" : "suggestion"}
+        label={status === "silent" ? "Atenção" : status === "active" ? "Leitura editorial" : "O que isto sugere"}
+      >
         {EDITORIAL[status]}
-      </p>
+      </InsightCallout>
 
       {/* Conversation prompt strip */}
       {(status === "silent" || status === "moderate") && (
-        <div className="rounded-md bg-blue-50/50 ring-1 ring-blue-100/60 px-3 py-2">
-          <p className="text-[12px] text-blue-700 leading-relaxed">
-            Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
-          </p>
-        </div>
+        <InsightCallout tone="suggestion" label="Próximo passo">
+          Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
+        </InsightCallout>
       )}
 
       {/* Top conversation post evidence */}
