@@ -40,7 +40,7 @@ import { ReportCaptionIntelligence } from "./report-caption-intelligence";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
 import {
   CommentIntelligenceSection,
-  CommentIntelligenceTeaser,
+  CommentIntelligenceUnavailable,
 } from "./report-comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 
@@ -491,7 +491,7 @@ function renderAudienceCard(
             reação, conversa e concentração de comentários.
           </p>
         </div>
-        <CommentIntelligenceTeaser />
+        <CommentIntelligenceUnavailable />
       </ReportDiagnosticCard>
     );
   }
@@ -538,7 +538,7 @@ function renderAudienceCard(
       {commentIntel?.available ? (
         <CommentIntelligenceSection data={commentIntel} />
       ) : (
-        <CommentIntelligenceTeaser />
+        <CommentIntelligenceUnavailable />
       )}
     </ReportDiagnosticCard>
   );
