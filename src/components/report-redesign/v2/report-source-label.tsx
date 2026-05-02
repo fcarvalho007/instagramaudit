@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type ReportSourceType = "dados" | "mercado" | "auto" | "ia";
+export type ReportSourceType = "dados" | "mercado" | "auto" | "ia" | "pro";
 
 interface Props {
   type: ReportSourceType;
@@ -14,6 +14,7 @@ const LABEL: Record<ReportSourceType, string> = {
   mercado: "◈ MERCADO",
   auto: "∿ AUTO",
   ia: "✦ IA",
+  pro: "◆ PRO",
 };
 
 const A11Y: Record<ReportSourceType, string> = {
@@ -21,6 +22,7 @@ const A11Y: Record<ReportSourceType, string> = {
   mercado: "Referência de mercado externa",
   auto: "Cálculo ou classificação automática",
   ia: "Leitura editorial por IA",
+  pro: "Funcionalidade disponível na versão PRO",
 };
 
 /**
