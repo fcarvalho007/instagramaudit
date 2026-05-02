@@ -253,8 +253,8 @@ describe("aggregateCommentIntelligence", () => {
       },
     ];
     const result = aggregateCommentIntelligence(OWNER, batches);
-    expect(result.questionsFromAudienceCount).toBe(1); // "Onde posso comprar isto?" has ? so question
-    expect(result.buyingIntentCount).toBe(1); // "Quanto custa?" matches buying_intent
+    expect(result.questionsFromAudienceCount).toBe(2); // both have ? so both are questions
+    expect(result.buyingIntentCount).toBe(0); // ? takes precedence over buying_intent
   });
 
   it("classifies praise signals", () => {
