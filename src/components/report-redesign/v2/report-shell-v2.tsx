@@ -139,8 +139,6 @@ export function ReportShellV2({
                   tone="soft-blue"
                   ariaLabel="Top publicações"
                 >
-                  <ReportTopPosts />
-                  <div className="mt-4">{renderInsight("topPosts")}</div>
                   <div className="mt-6">
                     <ReportEnrichedTopLinks enriched={result.enriched} />
                   </div>
