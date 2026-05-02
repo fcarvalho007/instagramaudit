@@ -149,7 +149,7 @@ export function PublicAnalysisDashboard({
             <AnalysisMetricCard
               label="Frequência semanal"
               value={formatPostsPerWeek(content_summary.estimated_posts_per_week)}
-              hint="publicações por semana"
+              hint="imagens, carrosséis e Reels no feed"
             />
             <AnalysisMetricCard
               label="Formato dominante"
