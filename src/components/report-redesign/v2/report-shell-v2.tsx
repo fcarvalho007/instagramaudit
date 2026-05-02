@@ -3,7 +3,6 @@ import { ReportTemporalChart } from "@/components/report/report-temporal-chart";
 import { ReportBenchmarkGauge } from "@/components/report/report-benchmark-gauge";
 import { ReportFormatBreakdown } from "@/components/report/report-format-breakdown";
 import { ReportCompetitors } from "@/components/report/report-competitors";
-import { ReportTopPosts } from "@/components/report/report-top-posts";
 import { ReportPostingHeatmap } from "@/components/report/report-posting-heatmap";
 import { ReportBestDays } from "@/components/report/report-best-days";
 import { ReportHashtagsKeywords } from "@/components/report/report-hashtags-keywords";
