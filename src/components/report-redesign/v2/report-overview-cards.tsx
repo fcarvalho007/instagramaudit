@@ -442,17 +442,21 @@ function extractTierRange(label: string): string {
 function FrequencyBenchmarkBars({
   profileValue,
   benchmarkValue,
-  tierLabel,
+  tierRange,
   gapTone,
+  bufferRange,
 }: {
   profileValue: number;
   benchmarkValue: number;
-  tierLabel: string;
+  tierRange: string;
   gapTone: "good" | "warn" | "bad" | "neutral";
+  bufferRange: { min: number; max: number };
 }) {
-  const max = Math.max(profileValue, benchmarkValue, 1) * 1.3;
+  const max = Math.max(profileValue, benchmarkValue, bufferRange.max, 1) * 1.25;
   const profilePct = Math.min((profileValue / max) * 100, 100);
   const benchPct = Math.min((benchmarkValue / max) * 100, 100);
+  const bufMinPct = Math.min((bufferRange.min / max) * 100, 100);
+  const bufMaxPct = Math.min((bufferRange.max / max) * 100, 100);
 
   const barColor =
     gapTone === "good"
@@ -471,11 +475,34 @@ function FrequencyBenchmarkBars({
       ? gap.toFixed(1).replace(".", ",")
       : "0";
 
+  const bufferStatus = profileValue >= bufferRange.min && profileValue <= bufferRange.max
+    ? "Dentro do intervalo geral"
+    : profileValue > bufferRange.max
+      ? "Acima do intervalo geral"
+      : "Abaixo do intervalo geral";
+
   return (
     <div className="space-y-2.5"
       role="img"
-      aria-label={`Frequência do perfil: ${profileValue.toFixed(1)} posts/semana vs referência ${benchmarkValue}/semana`}
+      aria-label={`Frequência do perfil: ${profileValue.toFixed(1)} posts/semana vs escalão ${tierRange}: ${benchmarkValue}/semana`}
     >
+      {/* Buffer general range band */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium text-slate-400">Intervalo geral</span>
+          <span className="font-mono text-[11px] text-slate-400 tabular-nums">
+            {bufferRange.min}–{bufferRange.max}/sem
+          </span>
+        </div>
+        <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden relative">
+          <div
+            className="absolute h-full rounded-full bg-blue-100/70"
+            style={{ left: `${bufMinPct}%`, width: `${bufMaxPct - bufMinPct}%` }}
+            aria-hidden
+          />
+        </div>
+      </div>
+
       {/* Profile bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
@@ -496,7 +523,7 @@ function FrequencyBenchmarkBars({
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-medium text-slate-500">
-            Ref. {tierLabel.split("(")[0]?.trim() ?? tierLabel}
+            Escalão {tierRange}
           </span>
           <span className="font-mono text-[11px] text-slate-500 tabular-nums">
             {benchmarkValue}/sem
@@ -526,9 +553,12 @@ function FrequencyBenchmarkBars({
           gapTone === "bad" ? "text-rose-500" :
           "text-slate-500"
         )}>
-          {gapLabel} posts/sem vs referência
+          {gapLabel} posts/sem vs escalão
         </span>
       </div>
+      <p className="text-[11px] text-slate-400 italic">
+        {bufferStatus}
+      </p>
     </div>
   );
 }
