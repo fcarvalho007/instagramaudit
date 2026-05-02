@@ -1,4 +1,4 @@
-import { AlertTriangle, Cpu, Lightbulb, Sparkles } from "lucide-react";
+import { Cpu, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type {
@@ -109,11 +109,10 @@ function Shell({ sampleSize, children }: { sampleSize: number; children: React.R
   );
 }
 
-function SectionHeader({ label, badge }: { label: string; badge?: SourceBadgeVariant }) {
+function SectionHeader({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
       <p className="text-eyebrow-sm text-slate-500">{label}</p>
-      {badge ? <SourceBadge variant={badge} /> : null}
     </div>
   );
 }
@@ -169,7 +168,7 @@ function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
   };
   return (
     <div className="flex flex-col gap-3">
-      <SectionHeader label="Temas dominantes" badge={badgeVariant(data.themes.source)} />
+      <SectionHeader label="Temas dominantes" />
       <p className="text-[12px] text-slate-500 -mt-1">
         Assuntos mais recorrentes no texto das legendas — não confundir com hashtags.
       </p>
@@ -259,7 +258,7 @@ function CtaBlock({ data }: { data: CaptionIntelligence }) {
   return (
     <div className="rounded-xl bg-slate-50/80 ring-1 ring-slate-100 p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <SectionHeader label="Chamadas à ação" badge={badgeVariant(c.source)} />
+        <SectionHeader label="Chamadas à ação" />
         <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1 shrink-0", strength.cls)}>
           CTA {strength.label.toLowerCase()}
         </span>
@@ -303,16 +302,13 @@ function EditorialReadingBlock({ data }: { data: CaptionIntelligence }) {
     >
       <div className={cn(isAi && "border-l-[3px] border-blue-400/60")}>
         <div className="p-5 md:p-6 flex flex-col gap-4 min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
               {isAi ? (
                 <Sparkles aria-hidden className="size-4 text-blue-500" />
               ) : (
                 <Cpu aria-hidden className="size-3.5 text-slate-400" />
               )}
               <p className="text-eyebrow-sm text-slate-600 font-medium">Leitura editorial</p>
-            </div>
-            <SourceBadge variant={badgeVariant(r.source)} />
           </div>
 
           <p className={cn(
@@ -379,27 +375,12 @@ function PremiumTeaserStrip() {
 function ActionBridgeStrip({ data }: { data: CaptionIntelligence }) {
   const ab = data.actionBridge;
   if (!ab.body || ab.body.length < 5) return null;
-  const Icon = ab.priorityType === "alta" ? AlertTriangle : Lightbulb;
   return (
-    <div
-      className={cn(
-        "rounded-xl ring-1 px-4 py-3.5 flex items-start gap-3",
-        ab.priorityType === "alta"
-          ? "bg-rose-50/60 ring-rose-200"
-          : "bg-blue-50/50 ring-blue-100",
-      )}
+    <InsightCallout
+      tone={ab.priorityType === "alta" ? "warning" : "suggestion"}
+      label="Próximo passo recomendado"
     >
-      <Icon
-        aria-hidden
-        className={cn(
-          "size-4 mt-0.5 shrink-0",
-          ab.priorityType === "alta" ? "text-rose-600" : "text-blue-600",
-        )}
-      />
-      <div className="min-w-0">
-        <p className="text-eyebrow-sm text-slate-600 mb-0.5">Próximo passo recomendado</p>
-        <p className="text-[13px] text-slate-800 leading-relaxed">{ab.body}</p>
-      </div>
-    </div>
+      {ab.body}
+    </InsightCallout>
   );
 }
