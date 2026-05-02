@@ -1,44 +1,95 @@
 
-## Problema identificado
+## QA Audit Results
 
-O cartão Q07 ("Que objetivo estratégico parece estar por trás?") repete a mesma informação duas vezes:
+### 1. JSX and Code Integrity
 
-1. **Answer box** do `ReportDiagnosticCard` — mostra "Notoriedade · marca pessoal" em texto grande azul (1.5rem)
-2. **Primary hypothesis** dentro do `DiagnosticObjectiveSynthesis` (children) — repete exatamente o mesmo texto num pill azul
+**Files inspected:** All 7 focus files.
 
-A screenshot mostra claramente esta duplicação. O body text ("Síntese provável com base no tipo de conteúdo, funil, bio e ligação entre canais.") também é genérico e pouco informativo.
+**Issues found:**
 
-## Plano de refinamento
+| File | Issue | Severity |
+|---|---|---|
+| `report-overview-cards.tsx` L239 | Duplicate section comment `// ─── Card 2 — Ritmo de publicação` (same as L272). Should be `// ─── Engagement helpers`. | Cosmetic |
+| `report-overview-cards.tsx` L254 | Tooltip uses `left-1/2 -translate-x-1/2` — on 375px viewport, the 260px tooltip can clip left edge when the info icon is near the card's left margin. Change to `left-0 sm:left-1/2 sm:-translate-x-1/2` with `w-[240px] sm:w-[260px]`. | Mobile safety |
 
-### 1. Eliminar a duplicação
+**No issues found in:**
+- `report-diagnostic-verdict.tsx` — clean, no duplicates, no unused imports
+- `report-diagnostic-group.tsx` — clean
+- `report-diagnostic-card.tsx` — clean, all 5 lucide icons are used, `ranking` prop properly integrated
+- `report-diagnostic-block.tsx` — clean, all imports used, `SnapshotPayload` used in Props
+- `report-caption-intelligence.tsx` — clean
+- `report-engagement-benchmark-chart.tsx` — clean
 
-Remover a caixa "Primary hypothesis" do `DiagnosticObjectiveSynthesis`, já que o answer box do card pai já mostra o objetivo principal. O componente fica apenas com: objetivo secundário, sinais de suporte, confiança e disclaimer.
+### 2. Typography Consistency
 
-### 2. Redesign visual do cartão Q07
+**Confirmed hierarchy:**
+- Block section titles: `font-display text-[1.25rem] md:text-[1.5rem]` (Caption Intelligence) / `text-[1.15rem] md:text-[1.3rem]` (overview primary) — consistent
+- Card questions: `font-display text-[1.125rem] md:text-[1.25rem]` (half) / `text-[1.25rem] md:text-[1.375rem]` (full) — consistent
+- Numbers/percentages: `font-mono` everywhere — correct
+- Eyebrows: `text-eyebrow` / `text-eyebrow-sm` (Inter) — consistent, no font-mono misuse
+- Body: `text-sm` (14px) or `text-[13px]` — consistent
+- Meta/disclaimer: `text-[12px]` — consistent
 
-Transformar o Q07 num cartão `span="full"` com layout horizontal mais apelativo:
+**Minor inconsistency:** `text-[11.5px]` used in engagement chart tooltip and legend (L395, L257). This sits between tiers but is intentional for chart micro-text — not worth changing.
 
-- **Esquerda**: pergunta + answer box com o objetivo principal (já existe)
-- **Direita**: substituir o layout actual por uma visualização tipo "radar" simplificado ou **barra de scoring horizontal** mostrando os 3-4 objetivos do ranking com as suas pontuações relativas — dá contexto visual imediato de porque o objetivo X foi escolhido vs os outros
+### 3. Visual Rhythm
 
-### 3. Melhorar o body text
+Spacing is consistent across all blocks:
+- Verdict → groups: `space-y-10 md:space-y-12` (from block container)
+- Groups internally: `space-y-4 md:space-y-5`
+- Caption Intelligence: `gap-6` internal, fits well
+- Priorities: integrated in block flow
 
-Substituir o body genérico por texto dinâmico que mencione os sinais concretos que levaram à conclusão. Ex: "Predominância de conteúdo educativo e posição de topo de funil sugerem foco em notoriedade."
+No excessive gaps or cramping detected.
 
-### 4. Slot para leitura IA (aiSource)
+### 4. Mobile Safety (375px)
 
-Adicionar suporte ao `aiSource` prop neste cartão — quando `aiInsightsV2.sections.objective` existir, mostrar a interpretação IA abaixo do body, dando uma leitura editorial mais rica sobre o posicionamento estratégico.
+**Potential issue:** Tooltip in `EngagementInfoTooltip` (overview-cards L254) — `left-1/2 -translate-x-1/2` with `w-[260px]` can overflow on 375px. Fix: left-align on mobile.
 
-## Ficheiros alterados
+**All other elements verified safe:**
+- Ranking bars in `DiagnosticObjectiveSynthesis` use `w-[7.5rem] sm:w-40` — fits 375px
+- Distribution bar labels: `w-20 sm:w-28` — correct
+- Badge wrapping: `flex-wrap` present on all badge containers
+- Caption Intelligence grid: `grid-cols-1 md:grid-cols-2` — stacks on mobile
+- Audience card metrics: `grid-cols-1 sm:grid-cols-2` — stacks correctly
+- Funnel stack bars: `minWidth: "fit-content"` prevents clipping
 
-| Ficheiro | Alteração |
-|---|---|
-| `src/components/report-redesign/v2/report-diagnostic-card.tsx` | Refactor `DiagnosticObjectiveSynthesis`: remover primary hypothesis duplicado, manter secondary + sinais + confiança + disclaimer. Adicionar visualização de ranking com barras horizontais. |
-| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Alterar Q07 para `span="full"`, gerar body dinâmico baseado nos sinais, passar ranking items e aiSource. |
+### 5. Engagement Benchmark Chart
 
-## Sem alterações a
+- Chart has strong visual prominence (2-col span on desktop)
+- Reference line label "Referência do escalão" is readable at 7.5px SVG
+- Profile value visible even when low (marker is clamped to min Y)
+- Source references [1], [2], [3] are discreet and clickable (L417-L425)
+- No brand names used as large links — numeric references only
+- Source context is concise (L432-L437)
 
-- Lógica/classificadores em `block02-diagnostic.ts`
-- Dados, cálculos, fontes, AI prompts
-- Outros cartões do Bloco 02
-- Layout desktop dos restantes componentes
+### 6. Audience Response Card
+
+- "Audiência silenciosa" uses `MessageCircleOff` with `bg-rose-50` + `text-rose-500` — looks like a neutral observation, not an error/destructive state. The icon is appropriately muted.
+- Average likes/comments labels are fully readable via `MiniStat` component
+- Zero comments handled: `postsWithComments ?? 0` with clear "X de Y" format
+- Icons are accessible: `aria-hidden="true"` on decorative icon, parent has editorial text
+- Brand reply disclaimer present: "disponível numa análise avançada com dados de comentários" — no false claims
+
+### 7. Caption Intelligence
+
+- Q04 clearly states "legendas públicas" (L59, L89) — no audio/video claim
+- Hashtags explicitly separated: "não confundir com hashtags" (L170)
+- AI reading has consistent visual identity: blue accent when AI, slate when auto
+- Premium teaser uses gold only (`amber-*` tokens) — visually separated in footer
+- Action bridge uses `bg-blue-50/50` or `bg-rose-50/60` — does NOT compete with gold premium teaser
+
+### 8. V2 Preview Route
+
+There is no stable mock route for `ReportShellV2`. The component is only rendered on `/analyze/$username` which requires a live Apify snapshot. **Recommended as a separate task:** "Create `/report/v2-preview` with mock `AdapterResult` for safe visual QA."
+
+---
+
+## Changes to make
+
+Only 2 fixes needed:
+
+1. **`report-overview-cards.tsx` L239** — Change duplicate comment from `// ─── Card 2 — Ritmo de publicação` to `// ─── Engagement helpers`
+2. **`report-overview-cards.tsx` L254** — Fix tooltip mobile positioning: change `left-1/2 -translate-x-1/2` to `left-0 sm:left-1/2 sm:-translate-x-1/2` and `w-[260px]` to `w-[240px] sm:w-[260px]`
+
+No other files need changes. No logic, data, or API changes.
