@@ -135,9 +135,11 @@ export type PublicAnalysisResponse =
 export interface CommentIntelligence {
   available: boolean;
   source: "apify_comments";
+  /** Reason the feature is unavailable (only when available=false). */
+  reason?: "comment_scraper_failed" | "comment_scraper_disabled" | "no_posts_with_comments";
   /** Number of posts whose comments were sampled. */
   samplePosts: number;
-  /** Total top-level comments analysed across all sampled posts. */
+  /** Total top-level + reply-level comments analysed across all sampled posts. */
   sampleComments: number;
   /** Total reply-level comments analysed. */
   sampleReplies: number;
@@ -151,6 +153,24 @@ export interface CommentIntelligence {
   postsWithOwnerReplyPct: number;
   /** Total comments from non-owner users. */
   audienceCommentsCount: number;
+  /** Number of unique audience commenters (distinct usernames). */
+  uniqueAudienceCommentersCount: number;
+  /** % of sampled posts where at least one conversation thread exists. */
+  postsWithConversationPct: number;
+  /** Audience comments classified as questions. */
+  questionsFromAudienceCount: number;
+  /** Audience comments expressing praise / positive sentiment. */
+  praiseCount: number;
+  /** Audience comments expressing complaint or issue. */
+  complaintOrIssueCount: number;
+  /** Audience comments expressing buying intent. */
+  buyingIntentCount: number;
+  /** Audience comments classified as spam or low quality. */
+  spamOrLowQualityCount: number;
+  /** Top conversation signals detected across all comments. */
+  dominantConversationSignals: string[];
+  /** Actionable recommendation for the brand. */
+  recommendedConversationAction: string;
   /** Post with most owner interaction. */
   topConversationPost?: {
     postUrl: string;
