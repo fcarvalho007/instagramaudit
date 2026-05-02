@@ -1052,7 +1052,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   const cb = b.comments ?? 0;
                   if (cb !== ca) return cb - ca;
                   if (b.engagement_pct !== a.engagement_pct) return b.engagement_pct - a.engagement_pct;
-                  return (b.timestamp ?? "").localeCompare(a.timestamp ?? "");
+                  return (b.taken_at_iso ?? "").localeCompare(a.taken_at_iso ?? "");
                 });
 
               const postUrls = postsWithUrl
