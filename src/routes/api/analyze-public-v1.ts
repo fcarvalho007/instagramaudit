@@ -86,6 +86,9 @@ import {
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
+import { fetchCommentsForPosts } from "@/lib/analysis/comment-scraper.server";
+import { aggregateCommentIntelligence } from "@/lib/analysis/comment-intelligence";
+import type { CommentIntelligence } from "@/lib/analysis/types";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -1021,6 +1024,83 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             console.info(
               "[analyze-public-v1] snapshot kept without ai_insights (OpenAI unavailable or failed)",
             );
+          }
+
+          // ─── Comment Intelligence (PRO-only, gated, best-effort) ──────
+          // Disabled by default via COMMENT_SCRAPER_ENABLED secret.
+          // Never blocks the base report. Failures are swallowed.
+          let commentIntelligence: CommentIntelligence | null = null;
+          const commentScraperEnabled =
+            (process.env.COMMENT_SCRAPER_ENABLED ?? "false").toLowerCase() === "true";
+
+          if (commentScraperEnabled) {
+            try {
+              // Pick top posts by engagement (desc), filter to those with a permalink
+              const postsWithUrl = primaryEnriched.posts
+                .filter((p) => !!p.permalink)
+                .sort((a, b) => b.engagement_pct - a.engagement_pct);
+
+              const postUrls = postsWithUrl
+                .slice(0, 12)
+                .map((p) => p.permalink!);
+
+              if (postUrls.length > 0) {
+                console.info(
+                  "[analyze-public-v1] comment scraper: fetching comments for",
+                  postUrls.length,
+                  "posts",
+                );
+
+                const commentResult = await fetchCommentsForPosts(postUrls);
+
+                // Log the comment scraper call
+                await recordProviderCall({
+                  provider: "apify",
+                  actor: "apify/instagram-comment-scraper",
+                  network: "instagram",
+                  handle: primary,
+                  status: "ok",
+                  httpStatus: 200,
+                  durationMs: 0, // approximate — actual timing not tracked here
+                  postsReturned: commentResult.batches.reduce(
+                    (sum, b) => sum + b.comments.length,
+                    0,
+                  ),
+                  apifyRunId: commentResult.runId ?? undefined,
+                  actualCostUsd: commentResult.actualCostUsd ?? undefined,
+                });
+
+                commentIntelligence = aggregateCommentIntelligence(
+                  primaryProfile.username,
+                  commentResult.batches,
+                );
+
+                // Persist into the snapshot payload
+                normalizedPayload = {
+                  ...normalizedPayload,
+                  comment_intelligence: commentIntelligence,
+                };
+
+                await storeSnapshot({
+                  cacheKey,
+                  instagramUsername: primaryProfile.username,
+                  competitorUsernames: competitors,
+                  normalizedPayload,
+                });
+
+                console.info(
+                  "[analyze-public-v1] comment intelligence attached",
+                  {
+                    samplePosts: commentIntelligence.samplePosts,
+                    ownerReplies: commentIntelligence.ownerRepliesCount,
+                    audienceComments: commentIntelligence.audienceCommentsCount,
+                  },
+                );
+              }
+            } catch (err) {
+              // Hard guarantee: comment scraper never breaks the analysis.
+              console.error("[analyze-public-v1] comment scraper threw", err);
+            }
           }
 
           // Reuse the positioning already computed above for the AI
