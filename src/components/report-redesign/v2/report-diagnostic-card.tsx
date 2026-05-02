@@ -234,7 +234,7 @@ export function DiagnosticDistributionBar({
           return (
             <li key={`${it.label}-${i}`} className="text-sm">
               <div className="flex items-center gap-3">
-                <span className={cn("w-24 sm:w-28 shrink-0 truncate text-slate-700", isDominant && "font-medium")}>
+                <span className={cn("w-20 sm:w-28 shrink-0 truncate text-slate-700", isDominant && "font-medium")}>
                   {it.label}
                 </span>
                 <div className={cn("flex-1 overflow-hidden rounded-full bg-slate-100", isDominant ? "h-2.5" : "h-2")}>

@@ -253,6 +253,7 @@ function EngagementInfoTooltip() {
         className={cn(
           "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20",
           "w-[260px] rounded-lg bg-white shadow-lg ring-1 ring-slate-200/80",
+          "max-w-[calc(100vw-3rem)]",
           "px-3 py-2.5 text-[11.5px] text-slate-600 leading-relaxed font-normal tracking-normal",
           "pointer-events-none opacity-0 scale-95",
           "group-hover/info:opacity-100 group-hover/info:scale-100",
