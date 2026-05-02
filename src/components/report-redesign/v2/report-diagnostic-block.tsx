@@ -33,6 +33,7 @@ import {
   DiagnosticObjectiveSynthesis,
   type DiagnosticTone,
 } from "./report-diagnostic-card";
+import { InsightCallout } from "./insight-callout";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
 import { ReportCaptionIntelligence } from "./report-caption-intelligence";
@@ -397,16 +398,25 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       sourceType="auto"
       sourceDetail="Legendas · mapeamento"
     >
-      {r.breakdown.length > 0 ? (
-        <DiagnosticFunnelStack
-          items={r.breakdown.map((b) => ({
-            stage: b.stage,
-            label: b.label,
-            sharePct: b.sharePct,
-            active: dominantStage === b.stage,
-          }))}
-        />
-      ) : null}
+      <div className="flex flex-col gap-4">
+        {r.breakdown.length > 0 ? (
+          <DiagnosticFunnelStack
+            items={r.breakdown.map((b) => ({
+              stage: b.stage,
+              label: b.label,
+              sharePct: b.sharePct,
+              active: dominantStage === b.stage,
+            }))}
+          />
+        ) : null}
+        {!isFocused && (
+          <InsightCallout tone="warning" label="O que isto sugere">
+            Sem uma fase dominante, o conteúdo pode não estar a conduzir a audiência
+            numa direção clara. Definir uma intenção por bloco de publicações pode
+            melhorar a coerência editorial.
+          </InsightCallout>
+        )}
+      </div>
     </ReportDiagnosticCard>
   );
 }

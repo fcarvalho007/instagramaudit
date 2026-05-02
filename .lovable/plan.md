@@ -1,129 +1,55 @@
 
-# Consistent Insight Card System
+## Current State
 
-## Overview
+The foundational components already exist:
+- `InsightCallout` (editorial/suggestion/warning tones) — used in `DiagnosticAudienceHighlight` only
+- `PremiumCallout` (gold island) — used in caption intelligence + engagement chart
+- `ReportSourceLabel` with 5 types (dados/mercado/auto/ia/pro)
+- Accent borders on `PremiumCard` and `ReportDiagnosticCard`
 
-Create two reusable shared components and refine the PremiumCard primitive with a subtle status accent. Apply selectively to improve comprehension without visual noise.
+**Gaps identified:**
 
-No changes to: calculations, copy logic, AI prompts, providers, schema, routes, pricing, PDF, auth, or locked files.
+1. `ActionBridgeStrip` in caption-intelligence duplicates `InsightCallout` pattern manually instead of using the component
+2. `DominantFormatCard` (Block 01) has no accent tone applied
+3. Several editorial body texts in diagnostic cards are plain `<p>` tags that could benefit from `InsightCallout` wrapping for visual consistency
+4. `ReadingLine` in caption-intelligence uses ad-hoc styling that partially overlaps with `InsightCallout`
+5. Some source badges appear at both header and section level within the same card (caption intelligence) — minor redundancy
 
----
+## Plan
 
-## TASK 1 — Status accent on PremiumCard
+### 1. Refactor `ActionBridgeStrip` to use `InsightCallout`
 
-Add an optional `accentTone` prop to the existing `PremiumCard` in `report-overview-cards.tsx`. When set, renders a subtle 2px top border.
+In `report-caption-intelligence.tsx`, replace the manual box in `ActionBridgeStrip` with `InsightCallout`:
+- `priorityType === "alta"` → `tone="warning"`, label "Próximo passo recomendado"
+- else → `tone="suggestion"`, same label
 
-- `"blue"` → `border-t-blue-400/60` (market reference / neutral calculation)
-- `"green"` → `border-t-emerald-400/60` (positive signal)
-- `"rose"` → `border-t-rose-400/60` (warning / below reference)
-- `"gold"` → `border-t-amber-400/60` (premium / PRO)
-- `"slate"` → `border-t-slate-300/60` (extracted data)
-- `undefined` → no accent (default, most cards)
+### 2. Add accent tone to `DominantFormatCard`
 
-Apply selectively:
-- Engagement rate card: `accentTone="blue"` (market reference)
-- Posting rhythm card: dynamic based on gap tone (green/amber/rose)
-- Dominant format card: no accent (neutral)
+In `report-overview-cards.tsx`, add `accentTone="slate"` to the Format card's `PremiumCard` — neutral extraction/calculation accent.
 
-Add the same accent support to `ReportDiagnosticCard` via the existing `tone` prop — a 2px top border matching the existing tone color.
+### 3. Add `InsightCallout` to key diagnostic card bodies
 
----
+In `report-diagnostic-block.tsx`:
+- **Q07 (Objective)**: wrap the disclaimer text at the bottom of `DiagnosticObjectiveSynthesis` in `InsightCallout tone="suggestion"` for consistency
+- **Q02 (Funnel)**: when `label === "Comunicação dispersa"`, use `InsightCallout tone="warning"` for the interpretation body
 
-## TASK 2 — InsightCallout component
+### 4. Clean up source badge duplication in caption intelligence
 
-Create `src/components/report-redesign/v2/insight-callout.tsx`:
+In `report-caption-intelligence.tsx`:
+- Remove `SourceBadge` from individual sub-section headers (`ThemesAndExpressionsBlock`, `CtaBlock`, `EditorialReadingBlock`) since the shell already has the Q04 eyebrow context
+- Keep only the `SourceBadge` next to "Expressões recorrentes" sub-label (it's a different source from the section)
 
-```
-InsightCallout({ label?, icon?, children, tone? })
-```
+### 5. Accessibility and mobile checks
 
-Visual: soft blue/rose/amber background, subtle border, small icon, 2-3 line body text.
-
-Tones:
-- `"editorial"` (default): `bg-blue-50/50 ring-blue-100/60`, Lightbulb icon, label "Leitura editorial"
-- `"suggestion"`: `bg-blue-50/40 ring-blue-100/50`, Cpu icon, label "O que isto sugere"
-- `"warning"`: `bg-rose-50/50 ring-rose-100/60`, AlertTriangle icon, label "Atenção"
-
-Apply to:
-- Audience response interpretation (Q05) — replace the inline `<p>` editorial text
-- Caption Intelligence editorial reading (already has its own styled box — leave as-is, it's already close)
-- Conversation prompt strip in Q05 — wrap with InsightCallout `"suggestion"` tone
-
----
-
-## TASK 3 — PremiumCallout component
-
-Create `src/components/report-redesign/v2/premium-callout.tsx`:
-
-```
-PremiumCallout({ title, description, children? })
-```
-
-Standardized visual:
-- `bg-amber-50/30 ring-1 ring-amber-200/50 rounded-xl`
-- 2px top border `border-t-amber-400/50`
-- Lock icon (amber-600/60)
-- Inline PRO badge: `bg-amber-100/60 text-amber-700 ring-amber-300/50`
-- Title + description
-- Optional children slot for CTA
-
-Replace:
-- `PremiumTeaserStrip` in `report-caption-intelligence.tsx` (2 usages)
-- Competitor PRO slot in `report-engagement-benchmark-chart.tsx` (adapt to use PremiumCallout, keeping the button wrapper)
-
-Gold-island rule: no cyan accents inside this component.
-
----
-
-## TASK 4 — Standardize source badges
-
-Update `ReportSourceLabel`:
-- Add two missing types: `"pro"` and `"mercado"` (mercado already exists)
-- Add `"pro"` type with label `"◆ PRO"` and amber styling
-- Keep the visual style: 10px, metadata-tier, no pill, no ring
-
-Ensure one badge per card at header level. No repeated badges for the same source.
-
----
-
-## TASK 5 — Selective application
-
-Only apply accents where they improve comprehension:
-
-| Card/Section | Accent | Reason |
-|---|---|---|
-| Engagement rate (overview) | blue | Market reference |
-| Posting rhythm (overview) | dynamic (gap tone) | Gap signal |
-| Dominant format (overview) | none | Neutral |
-| Q05 Audience response | dynamic (status) | Response quality |
-| Q04 Caption Intelligence shell | blue | AI/editorial reading |
-| Premium teasers | gold | PRO callout |
-| Engagement benchmark chart | none | Already has chart visual |
-
----
-
-## TASK 6 — Accessibility and mobile
-
-- All accent lines have text labels (interpretation chip already exists)
-- InsightCallout icon uses `aria-hidden`
-- PremiumCallout PRO badge is text-based
-- Test badge wrapping at 375px
-- No truncated words in callout text
-
----
+- Verify all `InsightCallout` instances wrap text correctly at 375px
+- Confirm no truncated labels or badges
+- Run `tsc --noEmit` and `vitest`
 
 ## Files to change
 
-1. `src/components/report-redesign/v2/insight-callout.tsx` — NEW
-2. `src/components/report-redesign/v2/premium-callout.tsx` — NEW
-3. `src/components/report-redesign/v2/report-overview-cards.tsx` — add accent to PremiumCard
-4. `src/components/report-redesign/v2/report-diagnostic-card.tsx` — add top accent to card
-5. `src/components/report-redesign/v2/report-caption-intelligence.tsx` — replace PremiumTeaserStrip with PremiumCallout
-6. `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` — replace inline PRO slot with PremiumCallout
-7. `src/components/report-redesign/v2/report-source-label.tsx` — add "pro" type
+1. `src/components/report-redesign/v2/report-caption-intelligence.tsx` — refactor ActionBridgeStrip; reduce source badge duplication
+2. `src/components/report-redesign/v2/report-overview-cards.tsx` — add accentTone to Format card
+3. `src/components/report-redesign/v2/report-diagnostic-block.tsx` — add InsightCallout to Q07 disclaimer and Q02 dispersa case
+4. `src/components/report-redesign/v2/report-diagnostic-card.tsx` — wrap Q07 disclaimer in InsightCallout (in `DiagnosticObjectiveSynthesis`)
 
-## Files NOT changed
-
-- Locked files (tokens, shell, hero, etc.)
-- Schema, routes, auth, providers, pricing, PDF
-- Data logic, calculations, AI prompts
+No locked files touched. No data/calculation/schema changes.
