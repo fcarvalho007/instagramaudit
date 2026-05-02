@@ -198,17 +198,7 @@ function EngagementRateCard({
         <ReportSourceLabel type="auto" detail="Gostos + comentários" />
       }
     >
-      <div className="flex items-end gap-3 flex-wrap">
-        <span className="font-mono text-[2.75rem] md:text-[3.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
-          {formatPct(engagement)}
-        </span>
-        <ReportSourceLabel type="dados" className="pb-2" />
-      </div>
-
-      <p className="text-[13px] text-slate-600 leading-relaxed">
-        gostos e comentários face à dimensão do perfil
-      </p>
-
+      <EngagementComparison engagement={engagement} benchmark={benchmark} />
       <ReportEngagementBenchmarkChart
         profileEngagementRatePct={engagement}
         followersCount={followers}
@@ -234,6 +224,55 @@ function computeEngagementStatus(
   if (deltaPct >= 10) return { label: "Acima da referência", tone: "good" };
   if (deltaPct <= -10) return { label: "Abaixo da referência", tone: "bad" };
   return { label: "Dentro da referência", tone: "neutral" };
+}
+
+// ─── Comparison headline ─────────────────────────────────────────────
+
+function EngagementComparison({
+  engagement,
+  benchmark,
+}: {
+  engagement: number;
+  benchmark: number;
+}) {
+  const gapPp = engagement - benchmark;
+  const gapTone: "good" | "bad" | "neutral" =
+    Math.abs(gapPp) < 0.15 ? "neutral" : gapPp > 0 ? "good" : "bad";
+  const gapColor =
+    gapTone === "good"
+      ? "text-emerald-600"
+      : gapTone === "bad"
+        ? "text-rose-600"
+        : "text-slate-600";
+
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+      <div className="flex flex-col">
+        <span className="text-eyebrow-sm text-slate-500">Atual</span>
+        <span className="font-mono text-[2.25rem] md:text-[2.5rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+          {formatPct(engagement)}
+        </span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-eyebrow-sm text-slate-400">Referência do escalão</span>
+        <span className="font-mono text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] text-slate-600 leading-none tabular-nums">
+          {formatPct(benchmark)}
+        </span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-eyebrow-sm text-slate-400">Gap</span>
+        <span className={cn("font-mono text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] leading-none tabular-nums", gapColor)}>
+          {fmtPpCard(gapPp)} p.p.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function fmtPpCard(n: number): string {
+  const abs = Math.abs(n);
+  const s = abs.toFixed(1).replace(".", ",");
+  return n < 0 ? `−${s}` : `+${s}`;
 }
 
 // ─── Info tooltip for engagement title ───────────────────────────────
