@@ -110,18 +110,20 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   // Build cards as nullable list, then split into groups
   const groupA = compact([
     renderContentTypeCard(contentType),
-    renderFunnelCard(funnel),
   ]);
   const groupB = compact([
+    renderFunnelCard(funnel),
     renderHashtagsCard(hashtags),
-    renderAudienceCard(audience),
   ]);
   const groupC = compact([
+    renderAudienceCard(audience),
+  ]);
+  const groupD = compact([
     renderIntegrationCard(integration),
     renderObjectiveCard(objective, contentType, funnel, integration),
   ]);
 
-  const totalCards = groupA.length + groupB.length + groupC.length;
+  const totalCards = groupA.length + groupB.length + groupC.length + groupD.length;
 
   return (
     <div className="space-y-10 md:space-y-12">
@@ -142,22 +144,32 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {groupB.length > 0 ? (
             <ReportDiagnosticGroup
               letter="B"
-              label="Como comunica"
+              label="Posicionamento e descoberta"
               questionsCount={groupB.length}
             >
               {groupB}
             </ReportDiagnosticGroup>
           ) : null}
 
-          <ReportCaptionIntelligence data={captionIntel} />
-
           {groupC.length > 0 ? (
             <ReportDiagnosticGroup
               letter="C"
-              label="Contexto estratégico"
+              label="Resposta e linguagem"
               questionsCount={groupC.length}
             >
               {groupC}
+            </ReportDiagnosticGroup>
+          ) : null}
+
+          <ReportCaptionIntelligence data={captionIntel} />
+
+          {groupD.length > 0 ? (
+            <ReportDiagnosticGroup
+              letter="D"
+              label="Contexto estratégico"
+              questionsCount={groupD.length}
+            >
+              {groupD}
             </ReportDiagnosticGroup>
           ) : null}
         </>
