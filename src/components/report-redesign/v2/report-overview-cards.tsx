@@ -61,7 +61,6 @@ export function ReportOverviewCards({ result }: Props) {
       {/* Secondary stack — rhythm + format */}
       <div className="lg:col-span-1 flex flex-col gap-4 md:gap-5">
         <PostingRhythmCard
-          weekly={k.postingFrequencyWeekly}
           postsAnalyzed={k.postsAnalyzed}
           windowDays={windowDays}
           followers={followers}
@@ -335,43 +334,49 @@ const POSTING_FREQ_BENCHMARK: Record<AccountTier, number> = {
   mega: 7,
 };
 
+/** Buffer general recommended range (posts/week), 2025 data. */
+const BUFFER_GENERAL_RANGE = { min: 3, max: 5 };
+
 // ─── Card 2 — Ritmo de publicação ────────────────────────────────────
 
 function PostingRhythmCard({
-  weekly,
   postsAnalyzed,
   windowDays,
   followers,
 }: {
-  weekly: number;
   postsAnalyzed: number;
   windowDays: number;
   followers: number;
 }) {
+  // Recalculate from visible inputs so numbers always match the card copy
+  const hasWindow = windowDays > 0 && postsAnalyzed > 0;
+  const weekly = hasWindow ? Math.round((postsAnalyzed / windowDays) * 7 * 10) / 10 : 0;
+  const daily = hasWindow ? Math.round((postsAnalyzed / windowDays) * 10) / 10 : 0;
+
   const tier = getTierForFollowers(followers);
   const tierLabel = getTierLabel(tier);
   const benchmarkWeekly = POSTING_FREQ_BENCHMARK[tier];
-  const daily = weekly / 7;
   const gap = weekly - benchmarkWeekly;
   const gapStatus = computeFreqGapStatus(gap);
+  const tierRange = extractTierRange(tierLabel);
 
   return (
     <PremiumCard
       title="Ritmo de publicação"
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
-      interpretation={gapStatus.label}
+      interpretation={hasWindow ? gapStatus.label : "Dados insuficientes"}
       interpretationTone={gapStatus.tone}
       accentTone={gapStatus.tone === "good" ? "green" : gapStatus.tone === "warn" ? "rose" : gapStatus.tone === "bad" ? "rose" : undefined}
       sourceSlot={
         <div className="space-y-1.5">
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            Frequência = publicações ÷ dias da janela × 7
+            Frequência = publicações ÷ dias analisados × 7
           </p>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[1]</a>{" "}
-            Later, 19M posts{" · "}
-            <a href="https://buffer.com/resources/how-often-to-post-on-instagram" target="_blank" rel="noopener noreferrer" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[2]</a>{" "}
-            Buffer, 2M+ posts
+            <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" aria-label="Later — referência por escalão" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[1]</a>{" "}
+            referência por escalão{" · "}
+            <a href="https://buffer.com/resources/how-often-to-post-on-instagram" target="_blank" rel="noopener noreferrer" aria-label="Buffer — intervalo geral" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[2]</a>{" "}
+            intervalo geral
           </p>
         </div>
       }
@@ -413,14 +418,23 @@ function PostingRhythmCard({
       ) : null}
 
       {/* Benchmark bar chart */}
-      <FrequencyBenchmarkBars
-        profileValue={weekly}
-        benchmarkValue={benchmarkWeekly}
-        tierLabel={tierLabel}
-        gapTone={gapStatus.tone}
-      />
+      {hasWindow && (
+        <FrequencyBenchmarkBars
+          profileValue={weekly}
+          benchmarkValue={benchmarkWeekly}
+          tierRange={tierRange}
+          gapTone={gapStatus.tone}
+          bufferRange={BUFFER_GENERAL_RANGE}
+        />
+      )}
     </PremiumCard>
   );
+}
+
+/** Extract "0–10K" from "Nano (0–10K)". */
+function extractTierRange(label: string): string {
+  const match = label.match(/\(([^)]+)\)/);
+  return match?.[1] ?? label;
 }
 
 // ─── Frequency benchmark bar chart ───────────────────────────────────
@@ -428,17 +442,21 @@ function PostingRhythmCard({
 function FrequencyBenchmarkBars({
   profileValue,
   benchmarkValue,
-  tierLabel,
+  tierRange,
   gapTone,
+  bufferRange,
 }: {
   profileValue: number;
   benchmarkValue: number;
-  tierLabel: string;
+  tierRange: string;
   gapTone: "good" | "warn" | "bad" | "neutral";
+  bufferRange: { min: number; max: number };
 }) {
-  const max = Math.max(profileValue, benchmarkValue, 1) * 1.3;
+  const max = Math.max(profileValue, benchmarkValue, bufferRange.max, 1) * 1.25;
   const profilePct = Math.min((profileValue / max) * 100, 100);
   const benchPct = Math.min((benchmarkValue / max) * 100, 100);
+  const bufMinPct = Math.min((bufferRange.min / max) * 100, 100);
+  const bufMaxPct = Math.min((bufferRange.max / max) * 100, 100);
 
   const barColor =
     gapTone === "good"
@@ -457,11 +475,34 @@ function FrequencyBenchmarkBars({
       ? gap.toFixed(1).replace(".", ",")
       : "0";
 
+  const bufferStatus = profileValue >= bufferRange.min && profileValue <= bufferRange.max
+    ? "Dentro do intervalo geral"
+    : profileValue > bufferRange.max
+      ? "Acima do intervalo geral"
+      : "Abaixo do intervalo geral";
+
   return (
     <div className="space-y-2.5"
       role="img"
-      aria-label={`Frequência do perfil: ${profileValue.toFixed(1)} posts/semana vs referência ${benchmarkValue}/semana`}
+      aria-label={`Frequência do perfil: ${profileValue.toFixed(1)} posts/semana vs escalão ${tierRange}: ${benchmarkValue}/semana`}
     >
+      {/* Buffer general range band */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium text-slate-400">Intervalo geral</span>
+          <span className="font-mono text-[11px] text-slate-400 tabular-nums">
+            {bufferRange.min}–{bufferRange.max}/sem
+          </span>
+        </div>
+        <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden relative">
+          <div
+            className="absolute h-full rounded-full bg-blue-100/70"
+            style={{ left: `${bufMinPct}%`, width: `${bufMaxPct - bufMinPct}%` }}
+            aria-hidden
+          />
+        </div>
+      </div>
+
       {/* Profile bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
@@ -482,7 +523,7 @@ function FrequencyBenchmarkBars({
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-medium text-slate-500">
-            Ref. {tierLabel.split("(")[0]?.trim() ?? tierLabel}
+            Escalão {tierRange}
           </span>
           <span className="font-mono text-[11px] text-slate-500 tabular-nums">
             {benchmarkValue}/sem
@@ -512,9 +553,12 @@ function FrequencyBenchmarkBars({
           gapTone === "bad" ? "text-rose-500" :
           "text-slate-500"
         )}>
-          {gapLabel} posts/sem vs referência
+          {gapLabel} posts/sem vs escalão
         </span>
       </div>
+      <p className="text-[11px] text-slate-400 italic">
+        {bufferStatus}
+      </p>
     </div>
   );
 }
