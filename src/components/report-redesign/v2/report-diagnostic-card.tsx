@@ -743,10 +743,10 @@ export function DiagnosticObjectiveSynthesis({
       </span>
 
       {/* Disclaimer */}
-      <p className="text-[12px] text-slate-500 leading-relaxed italic">
-        Esta hipótese é derivada dos sinais públicos analisados e não substitui o
-        objetivo real definido pela marca ou criador.
-      </p>
+      <InsightCallout tone="suggestion" label="Nota metodológica">
+        Esta hipótese é derivada dos sinais públicos analisados e não substitui
+        o objetivo real definido pela marca ou criador.
+      </InsightCallout>
     </div>
   );
 }
