@@ -71,6 +71,14 @@ const TONE: Record<
   },
 };
 
+const ACCENT_BORDER: Record<DiagnosticTone, string> = {
+  blue: "border-t-2 border-t-blue-400/60",
+  emerald: "border-t-2 border-t-emerald-400/60",
+  amber: "border-t-2 border-t-amber-400/60",
+  rose: "border-t-2 border-t-rose-400/60",
+  slate: "",
+};
+
 /**
  * Cartão de pergunta do Bloco 02. Estrutura:
  *   eyebrow (PERGUNTA NN · LABEL) + chip de proveniência (à direita)
@@ -104,6 +112,7 @@ export function ReportDiagnosticCard({
         "rounded-2xl border border-slate-200/70 bg-white",
         "p-6 md:p-7",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
+        ACCENT_BORDER[tone],
       )}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
