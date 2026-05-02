@@ -43,6 +43,7 @@ import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
 
 import { ReportOverviewCards } from "./report-overview-cards";
+import { ReportTopPosts } from "@/components/report/report-top-posts";
 
 interface Props {
   result: AdapterResult;
@@ -61,13 +62,18 @@ interface Props {
  *  - 3 cartões cinematográficos: Saúde do envolvimento, Ritmo, Motor
  *  - frame editorial "Leitura IA" com pista visual de IA
  */
-export function ReportOverviewBlock({ result, renderInsight: _renderInsight }: Props) {
-  void _renderInsight;
+export function ReportOverviewBlock({ result, renderInsight }: Props) {
 
   return (
     <div className="relative space-y-8 md:space-y-10">
-<div className="relative z-10">
+      <div className="relative z-10">
         <ReportOverviewCards result={result} />
+      </div>
+
+      {/* Top 5 publicações — prova imediata de que o conteúdo foi lido */}
+      <div className="relative z-10">
+        <ReportTopPosts />
+        <div className="mt-4">{renderInsight("topPosts")}</div>
       </div>
     </div>
   );
