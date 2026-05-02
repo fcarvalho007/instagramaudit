@@ -341,22 +341,25 @@ const BUFFER_GENERAL_RANGE = { min: 3, max: 5 };
 // ─── Card 2 — Ritmo de publicação ────────────────────────────────────
 
 function PostingRhythmCard({
-  weekly,
   postsAnalyzed,
   windowDays,
   followers,
 }: {
-  weekly: number;
   postsAnalyzed: number;
   windowDays: number;
   followers: number;
 }) {
+  // Recalculate from visible inputs so numbers always match the card copy
+  const hasWindow = windowDays > 0 && postsAnalyzed > 0;
+  const weekly = hasWindow ? Math.round((postsAnalyzed / windowDays) * 7 * 10) / 10 : 0;
+  const daily = hasWindow ? Math.round((postsAnalyzed / windowDays) * 10) / 10 : 0;
+
   const tier = getTierForFollowers(followers);
   const tierLabel = getTierLabel(tier);
   const benchmarkWeekly = POSTING_FREQ_BENCHMARK[tier];
-  const daily = weekly / 7;
   const gap = weekly - benchmarkWeekly;
   const gapStatus = computeFreqGapStatus(gap);
+  const tierRange = extractTierRange(tierLabel);
 
   return (
     <PremiumCard
