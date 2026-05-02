@@ -1,78 +1,55 @@
 
-# Refine Block 01 — Engagement Rate Card & Benchmark Chart
+# Refinar o card "Ritmo de publicação"
 
-## Files to edit
+## Problemas identificados
 
-1. `src/components/report-redesign/v2/report-overview-cards.tsx` — EngagementRateCard only
-2. `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` — chart sizing, tooltips, source refs, PRO slot
+1. **Falta de clareza** — mostra "6,0 /semana" mas não desdobra em posts/dia (~0,86/dia) nem contextualiza a janela de análise de forma imediata.
+2. **Sem benchmark** — não existe referência de frequência de publicação por escalão. O utilizador não sabe se 6/semana é muito ou pouco para o seu tier.
+3. **Sem gráfico** — os "RhythmDots" são decorativos mas não comunicam informação útil. Falta um gráfico de barras ou gauge que compare o perfil com a referência.
+4. **Sem fonte** — nenhuma citação de onde vem a referência de cadência.
 
-No other files changed. No locked files, schema, admin, PDF, or provider changes.
+## Dados de benchmark a incorporar
 
----
+Fonte: Later.com, análise de 19M posts (março 2025). Publicar como referência `[1]`.
 
-## Changes
+| Escalão | Feed posts/semana (média) |
+|---------|--------------------------|
+| Nano (0–10K) | 2 |
+| Micro (10K–100K) | 3 |
+| Mid (100K–500K) | 5 |
 
-### 1. Headline comparison block (report-overview-cards.tsx)
+Nota: Later não segmenta Macro/Mega separadamente. Para Macro (250K–1M) usaremos 5 e para Mega (1M+) usaremos 7 como estimativas conservadoras baseadas na tendência observada.
 
-Replace the current big number + subtitle in `EngagementRateCard` with a structured comparison:
+Fonte secundária: Buffer.com, análise de 2M+ posts (2025) — recomendação geral de 3–5 posts/semana. Publicar como `[2]`.
 
-```
-Atual: 0,11%        Referência do escalão: 4,80%        Gap: −4,7 p.p.
-```
+## Alteracoes previstas
 
-- Three inline items using a flex row, wrapping on mobile.
-- "Atual" value keeps `font-mono` large style (slightly reduced from 3.25rem to ~2.5rem to make room for the pair).
-- "Referência" and "Gap" use `font-mono` at ~1.1rem, muted colors.
-- Gap gets tone-colored text (emerald/rose/slate).
-- Remove the current subtitle "gostos e comentários face à dimensão do perfil" — the info tooltip already explains this.
+### Ficheiro: `src/components/report-redesign/v2/report-overview-cards.tsx`
 
-### 2. Larger chart (report-engagement-benchmark-chart.tsx)
+**PostingRhythmCard — reestruturar:**
 
-- Increase `VB_H` from 340 to 420 (taller bars, more visual weight).
-- Adjust `PAD_T` and `PAD_B` proportionally to keep label space.
-- The chart already uses `w-full` so it scales responsively. No width changes needed.
+1. **Headline dupla**: manter "X,X /semana" como métrica principal. Adicionar "≈ Y,Y /dia" em subtexto.
+2. **Benchmark bar chart inline**: um gráfico SVG simples de barras horizontais com duas barras:
+   - Barra "Perfil" (cor primaria) — valor real do perfil.
+   - Barra "Referência do escalão" (cor neutra) — valor do benchmark por tier.
+   - Label do escalão visível (ex: "Nano · 2/sem").
+3. **Gap badge**: chip tipo "Acima da referência" / "Dentro da referência" / "Abaixo da referência" com tom verde/neutro/amber.
+4. **Remover RhythmDots** — substituir pelo gráfico de barras que comunica informação real.
+5. **Nota de fonte compacta**: `[1] Later, 19M posts · [2] Buffer, 2M+ posts` com link numérico clicável.
+6. **Nota metodológica curta**: "Frequência calculada como publicações ÷ dias da janela × 7."
 
-### 3. Remove the gap pill from chart component
+**Dados de benchmark** — criar constante `POSTING_FREQUENCY_BENCHMARK` no mesmo ficheiro (ou num módulo partilhado) com os valores por tier, reutilizando o tipo `AccountTier` existente.
 
-The gap pill inside the chart component duplicates the new headline comparison. Remove the `{/* Gap pill */}` section from `ReportEngagementBenchmarkChart`. The gap information now lives in the card header.
+**Lógica de tier lookup** — reutilizar `getActiveTierIndex` ou a lógica de tiers existente em `src/lib/benchmark/tiers.ts` para determinar o escalão do perfil com base nos seguidores.
 
-### 4. Tooltips (already partially implemented)
+### Nenhuma alteracao a:
+- Blocos 02, 03, pricing, admin, PDF, auth, providers, Supabase
+- Ficheiros bloqueados
+- Schema de base de dados
 
-The chart already has hover/focus tooltips (`ChartTooltip` component) with keyboard accessibility (`tabIndex`, `onFocus`/`onBlur`). Current tooltip content matches requirements (tier label, benchmark value, profile value for active tier, gap). Minor refinements:
-
-- Add "Referência de mercado por escalão" as a short footer line in tooltip.
-- Ensure `max-w-[180px] sm:max-w-[220px]` doesn't clip at 375px — already has `clampedPct` logic; verify it's sufficient.
-
-### 5. Source references — numeric only
-
-In the chart's source references section, the current code already renders `[1] [2] [3]` as clickable links with no brand names visible. However, source `name` values are passed from the parent. Changes:
-
-- Keep clickable `[1] [2] [3]` links (already implemented).
-- Add a compact descriptive line below: `"[1] Envolvimento por formato · [2] referência por dimensão · [3] contexto de mercado"` as plain text (no clickable brand names).
-- Remove the existing `ReportSourceLabel` context line at the bottom that repeats similar info, consolidating into one compact reference block.
-
-### 6. PRO competitor slot — improved copy
-
-Update the PRO slot text:
-- Title: "Comparar com concorrente direto" (already correct)
-- Subtitle: change from "Adiciona um perfil concorrente para ver o resultado lado a lado." to "Vê se o teu perfil está abaixo do mercado ou apenas abaixo dos teus concorrentes."
-
-### 7. Reduce duplicated text
-
-Remove the bottom `ReportSourceLabel` context line (`<p>` with "Instagram · contas X · referência por dimensão e formato") since the new numeric references section covers this. The card hierarchy becomes:
-
-1. Card header (icon + title + info tooltip)
-2. Comparison headline (Atual / Referência / Gap)
-3. Large chart
-4. Legend
-5. Compact numeric references with descriptors
-6. PRO slot
-
----
-
-## Validation
+## Validacao
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Visual check at desktop and 375px
-- Confirm no locked files touched
+- Verificar desktop e 375px mobile
+- Confirmar que nenhum ficheiro bloqueado foi tocado
