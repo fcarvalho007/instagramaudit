@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, Layers, Info } from "lucide-react";
+import { Activity, CalendarDays, Layers, Info, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
@@ -8,6 +8,8 @@ import {
   getConsolidatedBenchmarkSeries,
   getActiveTierIndex,
 } from "@/lib/knowledge/benchmark-context";
+import { getTierForFollowers, getTierLabel } from "@/lib/benchmark/tiers";
+import type { AccountTier } from "@/lib/benchmark/types";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 import { ReportSourceLabel } from "./report-source-label";
@@ -62,6 +64,7 @@ export function ReportOverviewCards({ result }: Props) {
           weekly={k.postingFrequencyWeekly}
           postsAnalyzed={k.postsAnalyzed}
           windowDays={windowDays}
+          followers={followers}
         />
         <DominantFormatCard
           dominantFormat={k.dominantFormat}
@@ -306,27 +309,58 @@ function EngagementInfoTooltip() {
   );
 }
 
+// ─── Posting frequency benchmark data ────────────────────────────────
+// Source: Later.com (19M posts, March 2025) + Buffer.com (2M+ posts, 2025)
+
+const POSTING_FREQ_BENCHMARK: Record<AccountTier, number> = {
+  nano: 2,
+  micro: 3,
+  mid: 5,
+  macro: 5,
+  mega: 7,
+};
+
 // ─── Card 2 — Ritmo de publicação ────────────────────────────────────
 
 function PostingRhythmCard({
   weekly,
   postsAnalyzed,
   windowDays,
+  followers,
 }: {
   weekly: number;
   postsAnalyzed: number;
   windowDays: number;
+  followers: number;
 }) {
-  const status = computeRhythmStatus(weekly);
+  const tier = getTierForFollowers(followers);
+  const tierLabel = getTierLabel(tier);
+  const benchmarkWeekly = POSTING_FREQ_BENCHMARK[tier];
+  const daily = weekly / 7;
+  const gap = weekly - benchmarkWeekly;
+  const gapStatus = computeFreqGapStatus(gap);
 
   return (
     <PremiumCard
       title="Ritmo de publicação"
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
-      interpretation={null}
-      interpretationTone={status.tone}
-      sourceSlot={<ReportSourceLabel type="auto" detail="Posts ÷ janela" />}
+      interpretation={gapStatus.label}
+      interpretationTone={gapStatus.tone}
+      sourceSlot={
+        <div className="space-y-1.5">
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Frequência = publicações ÷ dias da janela × 7
+          </p>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[1]</a>{" "}
+            Later, 19M posts{" · "}
+            <a href="https://buffer.com/resources/how-often-to-post-on-instagram" target="_blank" rel="noopener noreferrer" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[2]</a>{" "}
+            Buffer, 2M+ posts
+          </p>
+        </div>
+      }
     >
+      {/* Main metric */}
       <div className="flex items-end gap-3 flex-wrap">
         <span className="font-mono text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
           {weekly.toFixed(1).replace(".", ",")}
@@ -334,8 +368,12 @@ function PostingRhythmCard({
         <span className="text-eyebrow text-slate-500 pb-1">
           /semana
         </span>
+        <span className="text-[13px] text-slate-400 pb-1">
+          ≈ {daily.toFixed(1).replace(".", ",")} /dia
+        </span>
       </div>
 
+      {/* Window context */}
       {postsAnalyzed > 0 || windowDays > 0 ? (
         <p className="text-[13px] text-slate-600 leading-relaxed">
           {postsAnalyzed > 0 ? (
@@ -358,73 +396,121 @@ function PostingRhythmCard({
         </p>
       ) : null}
 
-      <p className="text-[12px] text-slate-500 leading-relaxed italic">
-        Volume não garante desempenho — é o equilíbrio entre cadência e qualidade que sustenta o envolvimento.
-      </p>
-
-      <RhythmDots weekly={weekly} tone={status.tone} />
-      <p className="text-eyebrow-sm text-slate-400">
-        escala · 0 → 7+ por semana
-      </p>
+      {/* Benchmark bar chart */}
+      <FrequencyBenchmarkBars
+        profileValue={weekly}
+        benchmarkValue={benchmarkWeekly}
+        tierLabel={tierLabel}
+        gapTone={gapStatus.tone}
+      />
     </PremiumCard>
   );
 }
 
-function RhythmDots({
-  weekly,
-  tone,
+// ─── Frequency benchmark bar chart ───────────────────────────────────
+
+function FrequencyBenchmarkBars({
+  profileValue,
+  benchmarkValue,
+  tierLabel,
+  gapTone,
 }: {
-  weekly: number;
-  tone: "good" | "warn" | "bad" | "neutral";
+  profileValue: number;
+  benchmarkValue: number;
+  tierLabel: string;
+  gapTone: "good" | "warn" | "bad" | "neutral";
 }) {
-  // Escala visual 0 → 7+ que reflecte a intensidade do ritmo semanal.
-  // Os segmentos NÃO representam dias específicos da semana — apenas
-  // posições numa escala contínua.
-  const filled = Math.round(clamp(weekly, 0, 7));
-  const partial = clamp(weekly - filled, 0, 1);
-  const onCls =
-    tone === "good"
-      ? "bg-emerald-500"
-      : tone === "warn"
-        ? "bg-amber-500"
-        : tone === "bad"
-          ? "bg-rose-400"
-          : "bg-slate-400";
+  const max = Math.max(profileValue, benchmarkValue, 1) * 1.3;
+  const profilePct = Math.min((profileValue / max) * 100, 100);
+  const benchPct = Math.min((benchmarkValue / max) * 100, 100);
+
+  const barColor =
+    gapTone === "good"
+      ? "bg-emerald-500/80"
+      : gapTone === "warn"
+        ? "bg-amber-500/80"
+        : gapTone === "bad"
+          ? "bg-rose-400/80"
+          : "bg-slate-400/80";
+
+  const gap = profileValue - benchmarkValue;
+  const GapIcon = gap > 0 ? ArrowUp : gap < 0 ? ArrowDown : Minus;
+  const gapLabel = gap > 0
+    ? `+${gap.toFixed(1).replace(".", ",")}`
+    : gap < 0
+      ? gap.toFixed(1).replace(".", ",")
+      : "0";
+
   return (
-    <div
-      className="flex items-center gap-1.5"
-      role="presentation"
-      aria-label={`Escala de ritmo semanal: ${weekly.toFixed(1).replace(".", ",")} de 7+`}
+    <div className="space-y-2.5"
+      role="img"
+      aria-label={`Frequência do perfil: ${profileValue.toFixed(1)} posts/semana vs referência ${benchmarkValue}/semana`}
     >
-      {Array.from({ length: 7 }, (_, i) => {
-        const isOn = i < filled;
-        const isPartial = !isOn && i === filled && partial > 0;
-        return (
-          <span
-            key={i}
-            className={cn(
-              "h-2.5 w-6 rounded-full",
-              isOn
-                ? onCls
-                : isPartial
-                  ? cn(onCls, "opacity-40")
-                  : "bg-slate-200",
-            )}
+      {/* Profile bar */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium text-slate-600">Perfil</span>
+          <span className="font-mono text-[11px] text-slate-700 tabular-nums">
+            {profileValue.toFixed(1).replace(".", ",")}/sem
+          </span>
+        </div>
+        <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all", barColor)}
+            style={{ width: `${profilePct}%` }}
           />
-        );
-      })}
+        </div>
+      </div>
+
+      {/* Benchmark bar */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium text-slate-500">
+            Ref. {tierLabel.split("(")[0]?.trim() ?? tierLabel}
+          </span>
+          <span className="font-mono text-[11px] text-slate-500 tabular-nums">
+            {benchmarkValue}/sem
+          </span>
+        </div>
+        <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-slate-300/70 transition-all"
+            style={{ width: `${benchPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Gap indicator */}
+      <div className="flex items-center gap-1.5 pt-0.5">
+        <GapIcon className={cn(
+          "size-3",
+          gapTone === "good" ? "text-emerald-600" :
+          gapTone === "warn" ? "text-amber-600" :
+          gapTone === "bad" ? "text-rose-500" :
+          "text-slate-400"
+        )} />
+        <span className={cn(
+          "font-mono text-[11px] tabular-nums",
+          gapTone === "good" ? "text-emerald-600" :
+          gapTone === "warn" ? "text-amber-600" :
+          gapTone === "bad" ? "text-rose-500" :
+          "text-slate-500"
+        )}>
+          {gapLabel} posts/sem vs referência
+        </span>
+      </div>
     </div>
   );
 }
 
-function computeRhythmStatus(weekly: number): {
+function computeFreqGapStatus(gap: number): {
   label: string;
   tone: "good" | "warn" | "bad" | "neutral";
 } {
-  if (weekly <= 0) return { label: "Sem publicações na amostra", tone: "neutral" };
-  if (weekly >= 5) return { label: "Ritmo elevado", tone: "good" };
-  if (weekly >= 2) return { label: "Ritmo moderado", tone: "warn" };
-  return { label: "Ritmo baixo", tone: "bad" };
+  if (gap >= 1) return { label: "Acima da referência", tone: "good" };
+  if (gap >= -0.5) return { label: "Dentro da referência", tone: "neutral" };
+  if (gap >= -2) return { label: "Abaixo da referência", tone: "warn" };
+  return { label: "Muito abaixo da referência", tone: "bad" };
 }
 
 // ─── Card 3 — Formato mais regular ───────────────────────────────────
