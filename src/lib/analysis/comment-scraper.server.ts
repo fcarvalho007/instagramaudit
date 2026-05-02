@@ -81,8 +81,6 @@ function clampFloat(raw: string | undefined, fallback: number, min: number, max:
 export interface CommentScraperGateInput {
   /** Is `COMMENT_SCRAPER_ENABLED` === "true"? */
   featureEnabled: boolean;
-  /** Is the current analysis a PRO/Premium request? */
-  isProAnalysis: boolean;
   /** Override for internal testing (admin/test profiles). */
   isInternalTest?: boolean;
 }
@@ -90,15 +88,11 @@ export interface CommentScraperGateInput {
 /**
  * Determine whether the comment scraper should run for a given analysis.
  *
- * Both the feature flag AND a plan/test gate must be satisfied:
- *   - `featureEnabled` must be true (env-level kill switch)
- *   - Either `isProAnalysis` is true OR `isInternalTest` is true
- *
- * This prevents free/anonymous analyses from incurring Apify costs.
+ * Requires `featureEnabled` (env-level kill switch).
+ * `isInternalTest` allows running even when the feature flag is off (dev convenience).
  */
 export function shouldRunCommentScraper(input: CommentScraperGateInput): boolean {
-  if (!input.featureEnabled) return false;
-  return input.isProAnalysis || input.isInternalTest === true;
+  return input.featureEnabled || input.isInternalTest === true;
 }
 
 // ─────────────────────────────────────────────────────────────────────
