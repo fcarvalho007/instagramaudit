@@ -555,6 +555,7 @@ function DominantFormatCard({
       icon={<Layers className="h-4 w-4" aria-hidden="true" />}
       interpretation={null}
       interpretationTone={status.tone}
+      accentTone="slate"
       sourceSlot={
         <ReportSourceLabel type="auto" detail="Distribuição de formatos" />
       }
