@@ -21,11 +21,11 @@ export interface BenchmarkChartProps {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const VB_W = 400;
-const VB_H = 340;
+const VB_H = 420;
 const PAD_L = 42;
 const PAD_R = 14;
-const PAD_T = 32;
-const PAD_B = 46;
+const PAD_T = 36;
+const PAD_B = 50;
 const BAR_RADIUS = 5;
 const GRID_LINES = 5;
 const MARKER_R = 5;
@@ -109,35 +109,7 @@ export function ReportEngagementBenchmarkChart({
   }
 
   return (
-    <div className="flex flex-col gap-5" ref={containerRef}>
-      {/* Gap pill */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full ring-1 px-2.5 py-1",
-            "text-[12px] font-medium",
-            gapTone === "good"
-              ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-              : gapTone === "bad"
-                ? "bg-rose-50 text-rose-700 ring-rose-100"
-                : "bg-slate-50 text-slate-600 ring-slate-200",
-          )}
-        >
-          <span
-            className={cn(
-              "size-1.5 rounded-full shrink-0",
-              gapTone === "good"
-                ? "bg-emerald-500"
-                : gapTone === "bad"
-                  ? "bg-rose-500"
-                  : "bg-slate-400",
-            )}
-            aria-hidden
-          />
-          {gapLabel}
-        </span>
-      </div>
-
+    <div className="flex flex-col gap-4" ref={containerRef}>
       {/* Chart container with tooltip layer */}
       <div className="relative">
         <svg
@@ -407,34 +379,36 @@ export function ReportEngagementBenchmarkChart({
         </span>
       </div>
 
-      {/* Source references — numeric only, no brand names */}
+      {/* Source references — numeric clickable + descriptive line */}
       {sourceReferences.length > 0 ? (
-        <p className="text-eyebrow-sm text-slate-400 leading-snug">
-          <span className="text-slate-500">Referências de mercado:</span>{" "}
-          {sourceReferences.map((ref, i) => (
-            <span key={ref.url}>
-              {i > 0 ? <span className="text-slate-300 mx-0.5">·</span> : null}
-              <a
-                href={ref.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-500 hover:text-blue-600 hover:underline transition-colors"
-                aria-label={`Fonte ${i + 1}: ${ref.name}`}
-              >
-                [{i + 1}]
-              </a>
-            </span>
-          ))}
-        </p>
+        <div className="space-y-0.5">
+          <p className="text-eyebrow-sm text-slate-400 leading-snug">
+            <span className="text-slate-500">Referências de mercado</span>{" "}
+            {sourceReferences.map((ref, i) => (
+              <span key={ref.url}>
+                <a
+                  href={ref.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-500 hover:text-blue-600 hover:underline transition-colors"
+                  aria-label={`Fonte ${i + 1}: ${ref.name}`}
+                >
+                  [{i + 1}]
+                </a>
+                {i < sourceReferences.length - 1 ? " " : null}
+              </span>
+            ))}
+          </p>
+          <p className="text-[10px] text-slate-400 leading-snug">
+            {sourceReferences.map((ref, i) => (
+              <span key={ref.url}>
+                {i > 0 ? <span className="text-slate-300 mx-1">·</span> : null}
+                <span>[{i + 1}] {SOURCE_DESCRIPTOR[ref.name as keyof typeof SOURCE_DESCRIPTOR] ?? ref.name}</span>
+              </span>
+            ))}
+          </p>
+        </div>
       ) : null}
-
-      {/* Source context line */}
-      <p className="text-[10px] text-slate-400 leading-snug flex items-center gap-1.5 flex-wrap">
-        <ReportSourceLabel type="mercado" />
-        <span className="opacity-50">· Instagram
-        {activeTierLabel ? ` · contas ${activeTierLabel}` : ""}
-        {" "}· referência por dimensão e formato</span>
-      </p>
 
       {/* Pro competitor slot — quiet */}
       {showProSlot && !competitor ? (
@@ -460,7 +434,7 @@ export function ReportEngagementBenchmarkChart({
               </span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Adiciona um perfil concorrente para ver o resultado lado a lado.
+              Vê se o teu perfil está abaixo do mercado ou apenas abaixo dos teus concorrentes.
             </p>
           </div>
         </button>
@@ -525,14 +499,10 @@ function ChartTooltip({
                 @{competitor.handle}: <span className="font-mono tabular-nums">{fmtRate(competitor.engagementRatePct)}</span>
               </p>
             ) : null}
-            <p className="text-slate-400 text-[10px] mt-1.5 italic">
-              Este é o teu escalão. A referência é {fmtRate(tier.engagementRatePct)}; o perfil está em {fmtRate(profileVal)}.
-            </p>
+            <p className="text-slate-400 text-[10px] mt-1.5 italic">Referência de mercado por escalão</p>
           </>
         ) : (
-          <p className="text-slate-400 text-[10px] mt-1 italic">
-            Referência de mercado para contas {tier.tierLabel}.
-          </p>
+          <p className="text-slate-400 text-[10px] mt-1 italic">Referência de mercado por escalão</p>
         )}
       </div>
     </div>
@@ -540,6 +510,12 @@ function ChartTooltip({
 }
 
 // ─── Formatters ─────────────────────────────────────────────────────
+
+const SOURCE_DESCRIPTOR: Record<string, string> = {
+  Socialinsider: "Envolvimento por formato",
+  Buffer: "Referência por dimensão da conta",
+  Hootsuite: "Contexto de mercado",
+};
 
 function fmtRate(n: number): string {
   return `${n.toFixed(2).replace(".", ",")}%`;
