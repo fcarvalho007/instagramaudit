@@ -159,6 +159,7 @@ const SECRET_NAMES = [
   "ADMIN_ALLOWED_EMAILS",
   "SUPABASE_SERVICE_ROLE_KEY",
   "COMMENT_SCRAPER_ENABLED",
+  "COMMENT_SCRAPER_INTERNAL_TEST",
 ] as const;
 
 export function listSecretPresence(): SecretPresence[] {

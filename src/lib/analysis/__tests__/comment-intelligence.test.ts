@@ -205,3 +205,106 @@ describe("aggregateCommentIntelligence", () => {
     expect(result.topConversationPost?.ownerRepliesCount).toBe(3);
   });
 });
+// ─────────────────────────────────────────────────────────────────────
+// Edge cases — failure scenarios / empty data
+// ─────────────────────────────────────────────────────────────────────
+
+describe("aggregateCommentIntelligence — edge cases", () => {
+  it("handles comments without any replies array", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/no-replies/",
+        comments: [
+          { id: "1", ownerUsername: "fan1", likesCount: 5 },
+          { id: "2", ownerUsername: "fan2", likesCount: 2 },
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.sampleComments).toBe(2);
+    expect(result.sampleReplies).toBe(0);
+    expect(result.audienceCommentsCount).toBe(2);
+    expect(result.ownerRepliesCount).toBe(0);
+    expect(result.ownerReplyRatePct).toBe(0);
+  });
+
+  it("handles empty comments array per post", () => {
+    const batches: PostCommentBatch[] = [
+      { postUrl: "https://instagram.com/p/empty1/", comments: [] },
+      { postUrl: "https://instagram.com/p/empty2/", comments: [] },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.available).toBe(true);
+    expect(result.samplePosts).toBe(2);
+    expect(result.sampleComments).toBe(0);
+    expect(result.audienceCommentsCount).toBe(0);
+    expect(result.ownerRepliesCount).toBe(0);
+    expect(result.postsWithOwnerReplyPct).toBe(0);
+    expect(result.topConversationPost).toBeUndefined();
+  });
+
+  it("handles comments with no owner replies at all", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/no-owner/",
+        comments: [
+          audienceComment("fan_a"),
+          audienceComment("fan_b", [audienceComment("fan_c")]),
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.ownerRepliesCount).toBe(0);
+    expect(result.audienceCommentsCount).toBe(3); // fan_a + fan_b + fan_c
+    expect(result.ownerReplyRatePct).toBe(0);
+    expect(result.postsWithOwnerReplyPct).toBe(0);
+    expect(result.topConversationPost).toBeUndefined();
+  });
+
+  it("handles comments with empty ownerUsername", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/anon/",
+        comments: [
+          { id: "1", text: "hello", ownerUsername: undefined },
+          { id: "2", text: "world", ownerUsername: "" },
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    // Both treated as audience (not owner)
+    expect(result.audienceCommentsCount).toBe(2);
+    expect(result.ownerRepliesCount).toBe(0);
+  });
+
+  it("handles single post with only owner comments (no audience)", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/solo/",
+        comments: [
+          audienceComment(OWNER),
+          audienceComment(OWNER),
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.ownerRepliesCount).toBe(2);
+    expect(result.audienceCommentsCount).toBe(0);
+    // Rate should be 0 when there are no audience comments
+    expect(result.ownerReplyRatePct).toBe(0);
+  });
+
+  it("handles replies with empty array", () => {
+    const batches: PostCommentBatch[] = [
+      {
+        postUrl: "https://instagram.com/p/empty-replies/",
+        comments: [
+          { id: "1", ownerUsername: "fan", replies: [] },
+        ],
+      },
+    ];
+    const result = aggregateCommentIntelligence(OWNER, batches);
+    expect(result.sampleComments).toBe(1);
+    expect(result.sampleReplies).toBe(0);
+  });
+});

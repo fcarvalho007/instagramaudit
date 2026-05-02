@@ -31,17 +31,48 @@ import type { RawApifyComment, PostCommentBatch } from "./comment-intelligence";
 
 const COMMENT_ACTOR = "apify/instagram-comment-scraper";
 
-/** Max posts to send to the comment scraper per analysis. */
-export const COMMENT_SCRAPER_MAX_POSTS = 12;
+/**
+ * Max posts to send to the comment scraper per analysis.
+ * Override via COMMENT_SCRAPER_MAX_POSTS env var. Default: 5 (conservative for initial testing).
+ */
+export const COMMENT_SCRAPER_MAX_POSTS = clampInt(
+  process.env.COMMENT_SCRAPER_MAX_POSTS, 5, 1, 12,
+);
 
-/** Max comments to retrieve per post. */
-export const COMMENT_SCRAPER_RESULTS_LIMIT = 50;
+/**
+ * Max comments to retrieve per post.
+ * Override via COMMENT_SCRAPER_RESULTS_LIMIT env var. Default: 50.
+ */
+export const COMMENT_SCRAPER_RESULTS_LIMIT = clampInt(
+  process.env.COMMENT_SCRAPER_RESULTS_LIMIT, 50, 5, 200,
+);
 
 /** Whether to include nested replies in comment results. */
 export const COMMENT_SCRAPER_INCLUDE_REPLIES = true;
 
-/** Hard USD cap per comment scraper run. */
-export const COMMENT_SCRAPER_MAX_CHARGE_USD = 3.0;
+/**
+ * Hard USD cap per comment scraper run.
+ * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: 1.50 (conservative).
+ */
+export const COMMENT_SCRAPER_MAX_CHARGE_USD = clampFloat(
+  process.env.COMMENT_SCRAPER_MAX_CHARGE_USD, 1.5, 0.10, 5.0,
+);
+
+/** Parse an int env var with clamped min/max bounds. */
+function clampInt(raw: string | undefined, fallback: number, min: number, max: number): number {
+  if (!raw) return fallback;
+  const n = parseInt(raw, 10);
+  if (Number.isNaN(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+/** Parse a float env var with clamped min/max bounds. */
+function clampFloat(raw: string | undefined, fallback: number, min: number, max: number): number {
+  if (!raw) return fallback;
+  const n = parseFloat(raw);
+  if (Number.isNaN(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // Feature gate
