@@ -311,6 +311,8 @@ export interface ReportEnriched {
    * so the UI can render empty states gracefully on legacy snapshots.
    */
   editorialPatterns: EditorialPatterns;
+  /** Comment-level intelligence (PRO-only). Null when absent. */
+  commentIntelligence: CommentIntelligence | null;
 }
 
 // ============================================================================
