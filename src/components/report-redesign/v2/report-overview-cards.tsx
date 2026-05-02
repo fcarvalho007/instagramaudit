@@ -370,13 +370,13 @@ function PostingRhythmCard({
       sourceSlot={
         <div className="space-y-1.5">
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            Frequência = publicações ÷ dias da janela × 7
+            Frequência = publicações ÷ dias analisados × 7
           </p>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[1]</a>{" "}
-            Later, 19M posts{" · "}
-            <a href="https://buffer.com/resources/how-often-to-post-on-instagram" target="_blank" rel="noopener noreferrer" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[2]</a>{" "}
-            Buffer, 2M+ posts
+            <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" aria-label="Later — referência por escalão" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[1]</a>{" "}
+            referência por escalão{" · "}
+            <a href="https://buffer.com/resources/how-often-to-post-on-instagram" target="_blank" rel="noopener noreferrer" aria-label="Buffer — intervalo geral" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[2]</a>{" "}
+            intervalo geral
           </p>
         </div>
       }
@@ -418,14 +418,23 @@ function PostingRhythmCard({
       ) : null}
 
       {/* Benchmark bar chart */}
-      <FrequencyBenchmarkBars
-        profileValue={weekly}
-        benchmarkValue={benchmarkWeekly}
-        tierLabel={tierLabel}
-        gapTone={gapStatus.tone}
-      />
+      {hasWindow && (
+        <FrequencyBenchmarkBars
+          profileValue={weekly}
+          benchmarkValue={benchmarkWeekly}
+          tierRange={tierRange}
+          gapTone={gapStatus.tone}
+          bufferRange={BUFFER_GENERAL_RANGE}
+        />
+      )}
     </PremiumCard>
   );
+}
+
+/** Extract "0–10K" from "Nano (0–10K)". */
+function extractTierRange(label: string): string {
+  const match = label.match(/\(([^)]+)\)/);
+  return match?.[1] ?? label;
 }
 
 // ─── Frequency benchmark bar chart ───────────────────────────────────
