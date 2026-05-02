@@ -3,7 +3,6 @@ import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { BenchmarkTierPoint } from "@/lib/knowledge/benchmark-context";
-import { ReportSourceLabel } from "./report-source-label";
 
 export interface BenchmarkChartProps {
   profileEngagementRatePct: number;
@@ -64,16 +63,8 @@ export function ReportEngagementBenchmarkChart({
   if (competitor?.engagementRatePct) allVals.push(competitor.engagementRatePct);
   const scaleMax = Math.max(...allVals) * 1.25 || 1;
 
-  // Gap calculation
+  // Gap for tooltip
   const gapPp = profileVal - benchmarkVal;
-  const gapLabel =
-    Math.abs(gapPp) < 0.15
-      ? "Em linha com a referência"
-      : gapPp > 0
-        ? `Acima da referência: +${fmtPp(gapPp)} p.p.`
-        : `Gap face à referência: ${fmtPp(gapPp)} p.p.`;
-  const gapTone: "good" | "bad" | "neutral" =
-    Math.abs(gapPp) < 0.15 ? "neutral" : gapPp > 0 ? "good" : "bad";
 
   // SVG layout
   const innerW = VB_W - PAD_L - PAD_R;
