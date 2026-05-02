@@ -202,7 +202,7 @@ function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
                 </span>
               </div>
               {it.evidence ? (
-                <p className="text-[12.5px] text-slate-500 italic leading-relaxed line-clamp-2 pl-7">
+                <p className="text-[13px] text-slate-500 italic leading-relaxed line-clamp-2 pl-7">
                   <span className="not-italic text-slate-400 mr-1">«</span>
                   {it.evidence}
                   <span className="not-italic text-slate-400 ml-0.5">»</span>
@@ -268,7 +268,7 @@ function CtaBlock({ data }: { data: CaptionIntelligence }) {
         <span className="text-eyebrow-sm text-slate-500 mr-1.5">CTA dominante</span>
         <span className="font-medium text-slate-900">{c.dominantCtaLabel}</span>
       </p>
-      <p className="text-[12.5px] text-slate-600 leading-relaxed">{c.summary}</p>
+      <p className="text-[13px] text-slate-600 leading-relaxed">{c.summary}</p>
     </div>
   );
 }
@@ -382,7 +382,7 @@ function PremiumTeaserStrip() {
           <Crown aria-hidden className="size-2.5" />
           PRO
         </span>
-        <p className="text-[12.5px] text-slate-600 font-medium mt-1">
+        <p className="text-[13px] text-slate-600 font-medium mt-1">
           Análise completa de Reels e vídeo
         </p>
         <p className="text-[12px] text-slate-500 leading-relaxed mt-0.5">

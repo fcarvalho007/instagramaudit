@@ -27,7 +27,7 @@ export function ReportDiagnosticGroup({
         >
           {letter}
         </span>
-        <p className="text-[12px] font-semibold tracking-[0.1em] uppercase text-slate-500">
+        <p className="text-eyebrow text-slate-500">
           {label}
         </p>
         <span className="text-[10px] font-medium tracking-[0.08em] uppercase ml-auto text-slate-400 tabular-nums">

@@ -126,7 +126,7 @@ export function ReportDiagnosticCard({
           <div className="flex-1 min-w-0 flex flex-col gap-4">
             <h3
               className={cn(
-                "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-slate-950",
+                "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-slate-900",
                 "min-w-0",
               )}
             >
@@ -166,7 +166,7 @@ export function ReportDiagnosticCard({
         <>
           <h3
             className={cn(
-              "font-display text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-slate-950",
+              "font-display text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-slate-900",
               "min-w-0",
             )}
           >
@@ -561,14 +561,14 @@ export function DiagnosticAudienceHighlight({
       </div>
 
       {/* Editorial interpretation */}
-      <p className="text-[12.5px] text-slate-600 leading-relaxed">
+      <p className="text-[13px] text-slate-600 leading-relaxed">
         {EDITORIAL[status]}
       </p>
 
       {/* Conversation prompt strip */}
       {(status === "silent" || status === "moderate") && (
         <div className="rounded-md bg-blue-50/50 ring-1 ring-blue-100/60 px-3 py-2">
-          <p className="text-[11.5px] text-blue-700 leading-relaxed">
+          <p className="text-[12px] text-blue-700 leading-relaxed">
             Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
           </p>
         </div>
@@ -578,7 +578,7 @@ export function DiagnosticAudienceHighlight({
       {topConversationPost && topConversationPost.comments > 0 && (
         <div className="rounded-md bg-slate-50 ring-1 ring-slate-200/60 px-3 py-2 flex flex-col gap-0.5">
           <span className="text-eyebrow-sm text-slate-500">Post com mais conversa</span>
-          <div className="flex items-center gap-3 text-[12.5px] text-slate-700">
+          <div className="flex items-center gap-3 text-[13px] text-slate-700">
             <span className="font-mono tabular-nums text-slate-800 font-semibold">
               {topConversationPost.comments} comentários
             </span>
@@ -588,7 +588,7 @@ export function DiagnosticAudienceHighlight({
             </span>
           </div>
           {topConversationPost.captionExcerpt && (
-            <p className="text-[11.5px] text-slate-500 italic line-clamp-1 mt-0.5">
+            <p className="text-[12px] text-slate-500 italic line-clamp-1 mt-0.5">
               «{topConversationPost.captionExcerpt.slice(0, 80)}»
             </p>
           )}
@@ -695,7 +695,7 @@ export function DiagnosticObjectiveSynthesis({
       </span>
 
       {/* Disclaimer */}
-      <p className="text-[11.5px] text-slate-500 leading-relaxed italic">
+      <p className="text-[12px] text-slate-500 leading-relaxed italic">
         Esta hipótese é derivada dos sinais públicos analisados e não substitui o
         objetivo real definido pela marca ou criador.
       </p>

@@ -1,58 +1,59 @@
 
-## Mobile Responsive QA — Report V2
+## Typography Consistency Audit — Block 01 + Block 02
 
-### Analysis Summary
+### Issues Found
 
-Inspected all target files across 320px–768px breakpoints. The layout is generally well-structured for mobile:
-- Overview cards: `grid-cols-1 lg:grid-cols-3` — stacks correctly.
-- Diagnostic cards: `grid-cols-1 md:grid-cols-2` — stacks correctly.
-- Caption Intelligence: `grid-cols-1 md:grid-cols-2` inner grid, `grid-cols-1 sm:grid-cols-3` snapshot row — stacks correctly.
-- Container padding: `px-5` (20px) meets 16px minimum.
-- All source badges use `whitespace-nowrap` and `shrink-0` — no awkward wrapping.
-- Chart tooltip already has responsive `max-w-[180px] sm:max-w-[220px]` and clamped X positioning.
-- Block 02 reading order (verdict, Q01, Q02, Q03, Q05, Q04, Q06, Q07) is correct in the DOM.
+#### 1. "Veredito editorial" is visually exaggerated
 
-### Issues Found (3)
+The verdict box uses `text-[18px] md:text-[20px] font-medium` — this makes it nearly the same visual weight as card question titles (`text-[1.125rem]–[1.375rem] font-semibold`). Combined with the large blue gradient background, thick left border, and Bot icon, it reads as a **second block heading** rather than an interpretive paragraph.
 
-**1. EngagementInfoTooltip overflow on narrow viewports**
+**Proposed refinement:**
+- Reduce text size from `text-[18px] md:text-[20px]` to `text-[15px] md:text-[16px]`
+- Change weight from `font-medium` to regular (drop `font-medium`)
+- Increase line-height from `leading-[1.6]` to `leading-relaxed` (1.625) for readability at smaller size
+- Reduce the icon box from `h-10 w-10` to `h-8 w-8` and icon from `size-5` to `size-4`
+- Reduce the border-left from `border-l-[6px]` to `border-l-[4px]`
+- Reduce padding from `px-7 py-6 md:px-8 md:py-7` to `px-6 py-5 md:px-7 md:py-6`
 
-File: `src/components/report-redesign/v2/report-overview-cards.tsx` (lines 243-268)
+Result: the verdict becomes an editorial pull-quote — readable, present, but clearly subordinate to the block heading and card questions.
 
-The tooltip uses `left-1/2 -translate-x-1/2` with `w-[260px]`. On 320px viewport (280px content area after padding), the tooltip can overflow left or right depending on where the info icon sits. The icon follows the title text "Taxa de envolvimento" which wraps unpredictably on narrow screens.
+#### 2. Group heading label inconsistent with eyebrow system
 
-**Fix**: Change tooltip positioning from center-anchored to left-anchored on mobile, right-guarded. Replace `left-1/2 -translate-x-1/2` with `left-0 sm:left-1/2 sm:-translate-x-1/2` and add `max-w-[calc(100vw-3rem)]` to prevent viewport overflow on any screen size.
+The group label uses `text-[12px] font-semibold tracking-[0.1em] uppercase` — a custom tier between `text-eyebrow` (11px/500) and `text-eyebrow-sm` (10px/500). It should use `text-eyebrow` for consistency since it's a structural separator heading.
 
-**2. Caption Intelligence theme items — confidence badge + role label crowding**
+**Proposed fix:** Replace inline styles with `text-eyebrow text-slate-500` class in `report-diagnostic-group.tsx`.
 
-File: `src/components/report-redesign/v2/report-caption-intelligence.tsx` (lines 185-201)
+#### 3. Card title color inconsistency (slate-900 vs slate-950)
 
-Each theme item has 5 inline elements in a `flex-wrap` container: index number, label, post count, confidence badge, role label. On 320px these wrap into 2-3 lines which is acceptable, but the confidence badge and role label sit on the same wrap line and compete visually.
+Block 01 card titles use `text-slate-900`. Block 02 diagnostic card questions use `text-slate-950`. These should match.
 
-**Fix**: Wrap the confidence badge and role label into a sub-flex container that stays together, preventing them from splitting across wrap lines. This is a minimal CSS grouping change only.
+**Proposed fix:** Align diagnostic card titles to `text-slate-900` (same as Block 01 and Caption Intelligence).
 
-**3. Diagnostic card vertical-list bar labels on narrow screens**
+#### 4. Body text size cleanup (four tiers to three)
 
-File: `src/components/report-redesign/v2/report-diagnostic-card.tsx` (line 237)
+Current body text uses 4 different sizes: 14px, 13px, 12.5px, 11.5px. This is too many gradations for two blocks.
 
-The `DiagnosticDistributionBar` vertical-list variant uses `w-24 sm:w-28` for labels. On 320px, after card padding (~48px), the available width is ~232px. With label (96px) + gap (12px) + value (40px) = 148px fixed, leaving only ~84px for the bar. This is tight but functional. However, long Portuguese labels like "Notoriedade · marca pessoal" will be `truncate`d aggressively.
+**Proposed simplification:**
+- **Primary body**: `text-sm` (14px) — card body text, editorial reading
+- **Secondary body**: `text-[13px]` — chart explanations, descriptions
+- **Tertiary/meta**: `text-[12px]` — footnotes, disclaimers, theme descriptions
 
-**Fix**: Reduce the fixed label width on very small screens: change `w-24 sm:w-28` to `w-20 sm:w-28` to give the bar more breathing room at 320px while keeping the current size from 640px up.
+Instances of `text-[12.5px]` and `text-[11.5px]` should round to `text-[12px]` or `text-[13px]` as appropriate.
+
+This change touches multiple lines across several files. I'll identify each instance and align to the closest tier.
 
 ### Files to Change
 
-1. `src/components/report-redesign/v2/report-overview-cards.tsx` — tooltip positioning
-2. `src/components/report-redesign/v2/report-caption-intelligence.tsx` — theme badge grouping
-3. `src/components/report-redesign/v2/report-diagnostic-card.tsx` — bar label width
+1. `src/components/report-redesign/v2/report-diagnostic-verdict.tsx` — verdict styling refinement
+2. `src/components/report-redesign/v2/report-diagnostic-group.tsx` — group label to use `text-eyebrow`
+3. `src/components/report-redesign/v2/report-diagnostic-card.tsx` — title color, body text alignment
+4. `src/components/report-redesign/v2/report-overview-cards.tsx` — body text alignment
+5. `src/components/report-redesign/v2/report-caption-intelligence.tsx` — body text alignment
 
 ### What Will NOT Change
 
-- No calculations, data sources, AI logic, copy, or backend changes
+- No calculations, AI logic, data sources, copy content, or backend
 - No locked files
-- Desktop layout remains identical
-- Container width stays at `max-w-[1380px]`
-- Block 02 order stays: verdict → A(Q01) → B(Q02+Q03) → C(Q05) → Q04 → D(Q06+Q07)
-
-### Validation
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
+- Card structure and layout remain identical
+- Block order unchanged
+- Desktop/mobile responsive behaviour unchanged
