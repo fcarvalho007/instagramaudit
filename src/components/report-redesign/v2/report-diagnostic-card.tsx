@@ -623,6 +623,7 @@ export interface ObjectiveSynthesisProps {
   secondary?: string | null;
   confidence: "low" | "med";
   supportSignals: string[];
+  ranking?: Array<{ label: string; score: number }>;
 }
 
 const CONFIDENCE_COPY: Record<"low" | "med", { label: string; cls: string }> = {
@@ -640,18 +641,54 @@ export function DiagnosticObjectiveSynthesis({
   secondary,
   confidence,
   supportSignals,
+  ranking,
 }: ObjectiveSynthesisProps) {
   const conf = CONFIDENCE_COPY[confidence];
+  const maxScore = ranking ? Math.max(1, ...ranking.map((r) => r.score)) : 0;
   return (
     <div className="space-y-4">
-      {/* Primary hypothesis */}
-      <div className="rounded-lg bg-blue-50/60 ring-1 ring-blue-100 px-4 py-3.5 space-y-1" aria-label="Hipótese principal">
-        <p className="font-display text-[1.05rem] md:text-[1.125rem] font-semibold tracking-tight text-slate-900 leading-snug">
-          {primary}
-        </p>
-      </div>
+      {/* Ranking bars — visual scoring of all objectives */}
+      {ranking && ranking.length > 1 ? (
+        <div className="space-y-2">
+          <p className="text-eyebrow-sm text-slate-500">Ranking de objetivos</p>
+          <ul className="space-y-1.5">
+            {ranking.map((item) => {
+              const pct = Math.round((item.score / maxScore) * 100);
+              const isPrimary = item.label === primary;
+              return (
+                <li key={item.label} className="text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "w-[7.5rem] sm:w-40 shrink-0 truncate",
+                      isPrimary ? "font-medium text-slate-900" : "text-slate-600",
+                    )}>
+                      {item.label}
+                    </span>
+                    <div className={cn(
+                      "flex-1 overflow-hidden rounded-full",
+                      isPrimary ? "h-2.5 bg-blue-100" : "h-2 bg-slate-100",
+                    )}>
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          isPrimary ? "bg-blue-600" : "bg-slate-300",
+                        )}
+                        style={{ width: `${pct}%` }}
+                        aria-hidden
+                      />
+                    </div>
+                    <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-500">
+                      {item.score}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
 
-      {/* Secondary hypothesis */}
+      {/* Secondary objective */}
       {secondary ? (
         <div className="rounded-lg bg-slate-50/60 ring-1 ring-slate-200/60 px-4 py-3 space-y-1">
           <p className="text-eyebrow-sm text-slate-500">Objetivo secundário</p>

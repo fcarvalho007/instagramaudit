@@ -610,7 +610,8 @@ function renderObjectiveCard(
       question="Que objetivo estratégico parece estar por trás?"
       answer={r.primary}
       tone="blue"
-      body="Síntese provável com base no tipo de conteúdo, funil, bio e ligação entre canais."
+      span="full"
+      body={buildObjectiveBody(r.primary, contentType, funnel)}
       sourceType="auto"
       sourceDetail="Conteúdo + funil + bio · síntese"
     >
@@ -619,6 +620,7 @@ function renderObjectiveCard(
         secondary={secondary}
         confidence={r.confidence}
         supportSignals={supportSignals.slice(0, 4)}
+        ranking={r.ranking.slice(0, 4)}
       />
     </ReportDiagnosticCard>
   );
@@ -626,4 +628,23 @@ function renderObjectiveCard(
 
 function shortenUrl(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+}
+
+function buildObjectiveBody(
+  primary: string,
+  contentType: ContentTypeResult,
+  funnel: FunnelStageResult,
+): string {
+  const parts: string[] = [];
+  if (contentType.available && contentType.label && contentType.label !== "Misto / pouco claro") {
+    parts.push(`conteúdo predominantemente ${contentType.label.toLowerCase()}`);
+  }
+  if (funnel.available && funnel.label && funnel.label !== "Comunicação dispersa") {
+    parts.push(`posição de ${funnel.label.toLowerCase()}`);
+  }
+  if (parts.length === 0) {
+    return "Síntese provável com base no tipo de conteúdo, funil, bio e ligação entre canais.";
+  }
+  const joined = parts.join(" e ");
+  return `A combinação de ${joined} sugere que o foco principal é ${primary.toLowerCase()}.`;
 }

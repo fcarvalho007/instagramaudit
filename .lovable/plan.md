@@ -1,59 +1,44 @@
 
-## Typography Consistency Audit — Block 01 + Block 02
+## Problema identificado
 
-### Issues Found
+O cartão Q07 ("Que objetivo estratégico parece estar por trás?") repete a mesma informação duas vezes:
 
-#### 1. "Veredito editorial" is visually exaggerated
+1. **Answer box** do `ReportDiagnosticCard` — mostra "Notoriedade · marca pessoal" em texto grande azul (1.5rem)
+2. **Primary hypothesis** dentro do `DiagnosticObjectiveSynthesis` (children) — repete exatamente o mesmo texto num pill azul
 
-The verdict box uses `text-[18px] md:text-[20px] font-medium` — this makes it nearly the same visual weight as card question titles (`text-[1.125rem]–[1.375rem] font-semibold`). Combined with the large blue gradient background, thick left border, and Bot icon, it reads as a **second block heading** rather than an interpretive paragraph.
+A screenshot mostra claramente esta duplicação. O body text ("Síntese provável com base no tipo de conteúdo, funil, bio e ligação entre canais.") também é genérico e pouco informativo.
 
-**Proposed refinement:**
-- Reduce text size from `text-[18px] md:text-[20px]` to `text-[15px] md:text-[16px]`
-- Change weight from `font-medium` to regular (drop `font-medium`)
-- Increase line-height from `leading-[1.6]` to `leading-relaxed` (1.625) for readability at smaller size
-- Reduce the icon box from `h-10 w-10` to `h-8 w-8` and icon from `size-5` to `size-4`
-- Reduce the border-left from `border-l-[6px]` to `border-l-[4px]`
-- Reduce padding from `px-7 py-6 md:px-8 md:py-7` to `px-6 py-5 md:px-7 md:py-6`
+## Plano de refinamento
 
-Result: the verdict becomes an editorial pull-quote — readable, present, but clearly subordinate to the block heading and card questions.
+### 1. Eliminar a duplicação
 
-#### 2. Group heading label inconsistent with eyebrow system
+Remover a caixa "Primary hypothesis" do `DiagnosticObjectiveSynthesis`, já que o answer box do card pai já mostra o objetivo principal. O componente fica apenas com: objetivo secundário, sinais de suporte, confiança e disclaimer.
 
-The group label uses `text-[12px] font-semibold tracking-[0.1em] uppercase` — a custom tier between `text-eyebrow` (11px/500) and `text-eyebrow-sm` (10px/500). It should use `text-eyebrow` for consistency since it's a structural separator heading.
+### 2. Redesign visual do cartão Q07
 
-**Proposed fix:** Replace inline styles with `text-eyebrow text-slate-500` class in `report-diagnostic-group.tsx`.
+Transformar o Q07 num cartão `span="full"` com layout horizontal mais apelativo:
 
-#### 3. Card title color inconsistency (slate-900 vs slate-950)
+- **Esquerda**: pergunta + answer box com o objetivo principal (já existe)
+- **Direita**: substituir o layout actual por uma visualização tipo "radar" simplificado ou **barra de scoring horizontal** mostrando os 3-4 objetivos do ranking com as suas pontuações relativas — dá contexto visual imediato de porque o objetivo X foi escolhido vs os outros
 
-Block 01 card titles use `text-slate-900`. Block 02 diagnostic card questions use `text-slate-950`. These should match.
+### 3. Melhorar o body text
 
-**Proposed fix:** Align diagnostic card titles to `text-slate-900` (same as Block 01 and Caption Intelligence).
+Substituir o body genérico por texto dinâmico que mencione os sinais concretos que levaram à conclusão. Ex: "Predominância de conteúdo educativo e posição de topo de funil sugerem foco em notoriedade."
 
-#### 4. Body text size cleanup (four tiers to three)
+### 4. Slot para leitura IA (aiSource)
 
-Current body text uses 4 different sizes: 14px, 13px, 12.5px, 11.5px. This is too many gradations for two blocks.
+Adicionar suporte ao `aiSource` prop neste cartão — quando `aiInsightsV2.sections.objective` existir, mostrar a interpretação IA abaixo do body, dando uma leitura editorial mais rica sobre o posicionamento estratégico.
 
-**Proposed simplification:**
-- **Primary body**: `text-sm` (14px) — card body text, editorial reading
-- **Secondary body**: `text-[13px]` — chart explanations, descriptions
-- **Tertiary/meta**: `text-[12px]` — footnotes, disclaimers, theme descriptions
+## Ficheiros alterados
 
-Instances of `text-[12.5px]` and `text-[11.5px]` should round to `text-[12px]` or `text-[13px]` as appropriate.
+| Ficheiro | Alteração |
+|---|---|
+| `src/components/report-redesign/v2/report-diagnostic-card.tsx` | Refactor `DiagnosticObjectiveSynthesis`: remover primary hypothesis duplicado, manter secondary + sinais + confiança + disclaimer. Adicionar visualização de ranking com barras horizontais. |
+| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Alterar Q07 para `span="full"`, gerar body dinâmico baseado nos sinais, passar ranking items e aiSource. |
 
-This change touches multiple lines across several files. I'll identify each instance and align to the closest tier.
+## Sem alterações a
 
-### Files to Change
-
-1. `src/components/report-redesign/v2/report-diagnostic-verdict.tsx` — verdict styling refinement
-2. `src/components/report-redesign/v2/report-diagnostic-group.tsx` — group label to use `text-eyebrow`
-3. `src/components/report-redesign/v2/report-diagnostic-card.tsx` — title color, body text alignment
-4. `src/components/report-redesign/v2/report-overview-cards.tsx` — body text alignment
-5. `src/components/report-redesign/v2/report-caption-intelligence.tsx` — body text alignment
-
-### What Will NOT Change
-
-- No calculations, AI logic, data sources, copy content, or backend
-- No locked files
-- Card structure and layout remain identical
-- Block order unchanged
-- Desktop/mobile responsive behaviour unchanged
+- Lógica/classificadores em `block02-diagnostic.ts`
+- Dados, cálculos, fontes, AI prompts
+- Outros cartões do Bloco 02
+- Layout desktop dos restantes componentes
