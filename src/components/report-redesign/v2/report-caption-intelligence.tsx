@@ -192,11 +192,13 @@ function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
                 <span className="font-mono text-[11px] tabular-nums text-slate-500 shrink-0">
                   {it.postsCount} {it.postsCount === 1 ? "post" : "posts"}
                 </span>
-                <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1 shrink-0", conf.color)}>
-                  {conf.label}
-                </span>
-                <span className="text-eyebrow-sm text-slate-400 shrink-0">
-                  {ROLE_LABELS[it.role] ?? it.role}
+                <span className="inline-flex items-center gap-2 shrink-0">
+                  <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1", conf.color)}>
+                    {conf.label}
+                  </span>
+                  <span className="text-eyebrow-sm text-slate-400">
+                    {ROLE_LABELS[it.role] ?? it.role}
+                  </span>
                 </span>
               </div>
               {it.evidence ? (
