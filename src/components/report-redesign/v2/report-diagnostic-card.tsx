@@ -126,8 +126,8 @@ export function ReportDiagnosticCard({
           <div className="flex-1 min-w-0 flex flex-col gap-4">
             <h3
               className={cn(
-                "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-slate-950",
-                "min-w-0 text-slate-900",
+                "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-slate-900",
+                "min-w-0",
               )}
             >
               {question}
