@@ -1,55 +1,129 @@
 
-# Refinar o card "Ritmo de publicação"
+# Consistent Insight Card System
 
-## Problemas identificados
+## Overview
 
-1. **Falta de clareza** — mostra "6,0 /semana" mas não desdobra em posts/dia (~0,86/dia) nem contextualiza a janela de análise de forma imediata.
-2. **Sem benchmark** — não existe referência de frequência de publicação por escalão. O utilizador não sabe se 6/semana é muito ou pouco para o seu tier.
-3. **Sem gráfico** — os "RhythmDots" são decorativos mas não comunicam informação útil. Falta um gráfico de barras ou gauge que compare o perfil com a referência.
-4. **Sem fonte** — nenhuma citação de onde vem a referência de cadência.
+Create two reusable shared components and refine the PremiumCard primitive with a subtle status accent. Apply selectively to improve comprehension without visual noise.
 
-## Dados de benchmark a incorporar
+No changes to: calculations, copy logic, AI prompts, providers, schema, routes, pricing, PDF, auth, or locked files.
 
-Fonte: Later.com, análise de 19M posts (março 2025). Publicar como referência `[1]`.
+---
 
-| Escalão | Feed posts/semana (média) |
-|---------|--------------------------|
-| Nano (0–10K) | 2 |
-| Micro (10K–100K) | 3 |
-| Mid (100K–500K) | 5 |
+## TASK 1 — Status accent on PremiumCard
 
-Nota: Later não segmenta Macro/Mega separadamente. Para Macro (250K–1M) usaremos 5 e para Mega (1M+) usaremos 7 como estimativas conservadoras baseadas na tendência observada.
+Add an optional `accentTone` prop to the existing `PremiumCard` in `report-overview-cards.tsx`. When set, renders a subtle 2px top border.
 
-Fonte secundária: Buffer.com, análise de 2M+ posts (2025) — recomendação geral de 3–5 posts/semana. Publicar como `[2]`.
+- `"blue"` → `border-t-blue-400/60` (market reference / neutral calculation)
+- `"green"` → `border-t-emerald-400/60` (positive signal)
+- `"rose"` → `border-t-rose-400/60` (warning / below reference)
+- `"gold"` → `border-t-amber-400/60` (premium / PRO)
+- `"slate"` → `border-t-slate-300/60` (extracted data)
+- `undefined` → no accent (default, most cards)
 
-## Alteracoes previstas
+Apply selectively:
+- Engagement rate card: `accentTone="blue"` (market reference)
+- Posting rhythm card: dynamic based on gap tone (green/amber/rose)
+- Dominant format card: no accent (neutral)
 
-### Ficheiro: `src/components/report-redesign/v2/report-overview-cards.tsx`
+Add the same accent support to `ReportDiagnosticCard` via the existing `tone` prop — a 2px top border matching the existing tone color.
 
-**PostingRhythmCard — reestruturar:**
+---
 
-1. **Headline dupla**: manter "X,X /semana" como métrica principal. Adicionar "≈ Y,Y /dia" em subtexto.
-2. **Benchmark bar chart inline**: um gráfico SVG simples de barras horizontais com duas barras:
-   - Barra "Perfil" (cor primaria) — valor real do perfil.
-   - Barra "Referência do escalão" (cor neutra) — valor do benchmark por tier.
-   - Label do escalão visível (ex: "Nano · 2/sem").
-3. **Gap badge**: chip tipo "Acima da referência" / "Dentro da referência" / "Abaixo da referência" com tom verde/neutro/amber.
-4. **Remover RhythmDots** — substituir pelo gráfico de barras que comunica informação real.
-5. **Nota de fonte compacta**: `[1] Later, 19M posts · [2] Buffer, 2M+ posts` com link numérico clicável.
-6. **Nota metodológica curta**: "Frequência calculada como publicações ÷ dias da janela × 7."
+## TASK 2 — InsightCallout component
 
-**Dados de benchmark** — criar constante `POSTING_FREQUENCY_BENCHMARK` no mesmo ficheiro (ou num módulo partilhado) com os valores por tier, reutilizando o tipo `AccountTier` existente.
+Create `src/components/report-redesign/v2/insight-callout.tsx`:
 
-**Lógica de tier lookup** — reutilizar `getActiveTierIndex` ou a lógica de tiers existente em `src/lib/benchmark/tiers.ts` para determinar o escalão do perfil com base nos seguidores.
+```
+InsightCallout({ label?, icon?, children, tone? })
+```
 
-### Nenhuma alteracao a:
-- Blocos 02, 03, pricing, admin, PDF, auth, providers, Supabase
-- Ficheiros bloqueados
-- Schema de base de dados
+Visual: soft blue/rose/amber background, subtle border, small icon, 2-3 line body text.
 
-## Validacao
+Tones:
+- `"editorial"` (default): `bg-blue-50/50 ring-blue-100/60`, Lightbulb icon, label "Leitura editorial"
+- `"suggestion"`: `bg-blue-50/40 ring-blue-100/50`, Cpu icon, label "O que isto sugere"
+- `"warning"`: `bg-rose-50/50 ring-rose-100/60`, AlertTriangle icon, label "Atenção"
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Verificar desktop e 375px mobile
-- Confirmar que nenhum ficheiro bloqueado foi tocado
+Apply to:
+- Audience response interpretation (Q05) — replace the inline `<p>` editorial text
+- Caption Intelligence editorial reading (already has its own styled box — leave as-is, it's already close)
+- Conversation prompt strip in Q05 — wrap with InsightCallout `"suggestion"` tone
+
+---
+
+## TASK 3 — PremiumCallout component
+
+Create `src/components/report-redesign/v2/premium-callout.tsx`:
+
+```
+PremiumCallout({ title, description, children? })
+```
+
+Standardized visual:
+- `bg-amber-50/30 ring-1 ring-amber-200/50 rounded-xl`
+- 2px top border `border-t-amber-400/50`
+- Lock icon (amber-600/60)
+- Inline PRO badge: `bg-amber-100/60 text-amber-700 ring-amber-300/50`
+- Title + description
+- Optional children slot for CTA
+
+Replace:
+- `PremiumTeaserStrip` in `report-caption-intelligence.tsx` (2 usages)
+- Competitor PRO slot in `report-engagement-benchmark-chart.tsx` (adapt to use PremiumCallout, keeping the button wrapper)
+
+Gold-island rule: no cyan accents inside this component.
+
+---
+
+## TASK 4 — Standardize source badges
+
+Update `ReportSourceLabel`:
+- Add two missing types: `"pro"` and `"mercado"` (mercado already exists)
+- Add `"pro"` type with label `"◆ PRO"` and amber styling
+- Keep the visual style: 10px, metadata-tier, no pill, no ring
+
+Ensure one badge per card at header level. No repeated badges for the same source.
+
+---
+
+## TASK 5 — Selective application
+
+Only apply accents where they improve comprehension:
+
+| Card/Section | Accent | Reason |
+|---|---|---|
+| Engagement rate (overview) | blue | Market reference |
+| Posting rhythm (overview) | dynamic (gap tone) | Gap signal |
+| Dominant format (overview) | none | Neutral |
+| Q05 Audience response | dynamic (status) | Response quality |
+| Q04 Caption Intelligence shell | blue | AI/editorial reading |
+| Premium teasers | gold | PRO callout |
+| Engagement benchmark chart | none | Already has chart visual |
+
+---
+
+## TASK 6 — Accessibility and mobile
+
+- All accent lines have text labels (interpretation chip already exists)
+- InsightCallout icon uses `aria-hidden`
+- PremiumCallout PRO badge is text-based
+- Test badge wrapping at 375px
+- No truncated words in callout text
+
+---
+
+## Files to change
+
+1. `src/components/report-redesign/v2/insight-callout.tsx` — NEW
+2. `src/components/report-redesign/v2/premium-callout.tsx` — NEW
+3. `src/components/report-redesign/v2/report-overview-cards.tsx` — add accent to PremiumCard
+4. `src/components/report-redesign/v2/report-diagnostic-card.tsx` — add top accent to card
+5. `src/components/report-redesign/v2/report-caption-intelligence.tsx` — replace PremiumTeaserStrip with PremiumCallout
+6. `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` — replace inline PRO slot with PremiumCallout
+7. `src/components/report-redesign/v2/report-source-label.tsx` — add "pro" type
+
+## Files NOT changed
+
+- Locked files (tokens, shell, hero, etc.)
+- Schema, routes, auth, providers, pricing, PDF
+- Data logic, calculations, AI prompts
