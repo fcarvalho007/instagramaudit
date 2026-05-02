@@ -104,7 +104,7 @@ export interface PublicAnalysisSuccess {
   format_stats?: FormatStats;
   /**
    * Comment-level intelligence derived from apify/instagram-comment-scraper.
-   * PRO-only — absent for FREE reports or when COMMENT_SCRAPER_ENABLED=false.
+   * Absent when COMMENT_SCRAPER_ENABLED=false or scraper failed.
    */
   comment_intelligence?: CommentIntelligence;
 }
@@ -129,7 +129,7 @@ export type PublicAnalysisResponse =
   | PublicAnalysisFailure;
 
 // ─────────────────────────────────────────────────────────────────────
-// Comment Intelligence (PRO feature)
+// Comment Intelligence
 // ─────────────────────────────────────────────────────────────────────
 
 export interface CommentIntelligence {

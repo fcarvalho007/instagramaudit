@@ -2,15 +2,15 @@
  * Comment Intelligence subsection for Block 02 → Q05 "Resposta".
  *
  * Two states:
- *   PRO  → CommentIntelligenceSection — "Marca na conversa" sub-card
- *   FREE → CommentIntelligenceTeaser  — compact PRO teaser with scope note
+ *   Available   → CommentIntelligenceSection — "Marca na conversa" sub-card
+ *   Unavailable → CommentIntelligenceUnavailable — neutral note (no upsell)
  */
 
 import type { CommentIntelligence } from "@/lib/analysis/types";
 import { cn } from "@/lib/utils";
 import {
   MessageCircleReply,
-  Lock,
+  Info,
   MessageCircle,
   ShieldCheck,
 } from "lucide-react";
@@ -121,10 +121,10 @@ function ScopeNote() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// PRO Teaser (shown when comment intelligence is not available)
+// Unavailable state (shown when comment intelligence data is absent)
 // ─────────────────────────────────────────────────────────────────────
 
-export function CommentIntelligenceTeaser() {
+export function CommentIntelligenceUnavailable() {
   return (
     <div className="mt-5 space-y-3">
       {/* Sub-card header */}
@@ -138,17 +138,18 @@ export function CommentIntelligenceTeaser() {
         </h4>
       </div>
 
-      {/* Teaser box */}
-      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3.5 space-y-1.5">
+      {/* Info box */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3.5 space-y-1.5">
         <div className="flex items-center gap-2">
-          <Lock className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
-          <p className="text-[12.5px] font-medium text-slate-600">
-            Análise de respostas da marca
+          <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+          <p className="text-[12.5px] font-medium text-slate-500">
+            Análise de respostas indisponível
           </p>
         </div>
         <p className="text-[12px] leading-relaxed text-slate-500">
-          No plano Pro, a análise pode verificar se a marca responde aos
-          comentários públicos dos posts analisados.
+          A análise de comentários não está disponível para este relatório.
+          Esta funcionalidade verifica se a marca responde aos comentários
+          públicos dos posts analisados.
         </p>
       </div>
 
@@ -158,7 +159,7 @@ export function CommentIntelligenceTeaser() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Full Comment Intelligence Section (PRO)
+// Full Comment Intelligence Section
 // ─────────────────────────────────────────────────────────────────────
 
 interface Props {

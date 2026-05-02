@@ -34,27 +34,23 @@ const OWNER = "mybrand";
 
 describe("shouldRunCommentScraper", () => {
   it("returns false when feature is disabled", () => {
-    expect(shouldRunCommentScraper({ featureEnabled: false, isProAnalysis: true })).toBe(false);
+    expect(shouldRunCommentScraper({ featureEnabled: false })).toBe(false);
   });
 
-  it("returns false when feature enabled but not PRO and not internal test", () => {
-    expect(shouldRunCommentScraper({ featureEnabled: true, isProAnalysis: false })).toBe(false);
-  });
-
-  it("returns true when feature enabled and PRO analysis", () => {
-    expect(shouldRunCommentScraper({ featureEnabled: true, isProAnalysis: true })).toBe(true);
+  it("returns true when feature is enabled", () => {
+    expect(shouldRunCommentScraper({ featureEnabled: true })).toBe(true);
   });
 
   it("returns true when feature enabled and internal test", () => {
     expect(
-      shouldRunCommentScraper({ featureEnabled: true, isProAnalysis: false, isInternalTest: true }),
+      shouldRunCommentScraper({ featureEnabled: true, isInternalTest: true }),
     ).toBe(true);
   });
 
-  it("returns false when feature disabled even with internal test", () => {
+  it("returns true when feature disabled but internal test is true", () => {
     expect(
-      shouldRunCommentScraper({ featureEnabled: false, isProAnalysis: false, isInternalTest: true }),
-    ).toBe(false);
+      shouldRunCommentScraper({ featureEnabled: false, isInternalTest: true }),
+    ).toBe(true);
   });
 });
 

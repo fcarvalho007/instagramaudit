@@ -1,70 +1,70 @@
 
-## Backend Hardening — Comment Intelligence
+# Convert Comment Intelligence to Free Report Feature
 
-### 1. Fix post-URL grouping with fallback (`comment-scraper.server.ts`)
+## Problem
 
-The Apify `instagram-comment-scraper` output does NOT include a `postUrl`/`inputUrl`/`url` field per comment. The current code tries to match by those fields — when absent, all comments stay orphaned and every batch is empty.
+Comment intelligence is currently gated behind a PRO/plan check. The product decision is to make it part of the free report. Six locations reference PRO/Premium in relation to this feature.
 
-**Changes:**
-- Keep the existing field-sniffing logic (postUrl / inputUrl / url) as a best-effort path
-- When no back-references are found (or less than 50% match), fall through to a single aggregated batch with all comments under `urls[0]`
-- Add `groupedByPost: boolean` to `CommentScraperResult` so the aggregator knows whether per-post stats are reliable
-- When `groupedByPost === false`, add a limitation note: "Granularidade por publicação indisponível — métricas agregadas globalmente."
-- Add `parseReplies()` helper to safely parse nested reply objects from raw data
-- Also handle `/reel/` shortcodes in `findBucket`, not just `/p/`
-- Add `durationMs`, `commentsReturned`, `postsRequested` to `CommentScraperResult`
-- Export `COMMENT_SCRAPER_MAX_CHARGE_USD` for admin card use
-- Add a TODO header noting schema needs verification against a real run
+## PRO References Found
 
-### 2. Add PRO/plan gate helper (`comment-scraper.server.ts`)
+| # | File | Line(s) | What says PRO | Action |
+|---|------|---------|---------------|--------|
+| 1 | `src/lib/analysis/types.ts` | 107 | `PRO-only — absent for FREE reports…` | Update comment to reflect free availability |
+| 2 | `src/lib/analysis/types.ts` | 132 | `// Comment Intelligence (PRO feature)` | Remove PRO label |
+| 3 | `src/lib/analysis/comment-scraper.server.ts` | 87-100 | `CommentScraperGateInput.isProAnalysis` + `shouldRunCommentScraper` requires PRO or internal test | Simplify: only require `featureEnabled` |
+| 4 | `src/routes/api/analyze-public-v1.ts` | 1039-1043 | Passes `isProAnalysis: false` to gate — currently only runs with `INTERNAL_TEST` | Remove plan gate; run when `featureEnabled` is true |
+| 5 | `src/components/report-redesign/v2/report-comment-intelligence.tsx` | 5-6, 124-157 | `CommentIntelligenceTeaser` with Lock icon + "No plano Pro…" text | Remove teaser component; show "unavailable" state without PRO upsell |
+| 6 | `src/components/report-redesign/v2/report-comment-intelligence.tsx` | 161 | `// Full Comment Intelligence Section (PRO)` comment | Remove PRO label |
 
-**New export:**
-```typescript
-interface CommentScraperGateInput {
-  featureEnabled: boolean;
-  isProAnalysis: boolean;
-  isInternalTest?: boolean;
-}
-function shouldRunCommentScraper(input: CommentScraperGateInput): boolean
-```
+## Changes Per File
 
-Returns true only if `featureEnabled` AND (`isProAnalysis` OR `isInternalTest`). Default `isProAnalysis` is false everywhere until a plan system exists.
+### 1. `src/lib/analysis/types.ts`
+- Line 107: Change comment to "Absent when COMMENT_SCRAPER_ENABLED=false or scraper failed."
+- Line 132: Change section header to "Comment Intelligence"
 
-### 3. Fix counting in aggregation (`comment-intelligence.ts`)
+### 2. `src/lib/analysis/comment-scraper.server.ts`
+- Remove `isProAnalysis` from `CommentScraperGateInput` interface
+- Simplify `shouldRunCommentScraper`: return `input.featureEnabled` (keep `isInternalTest` as optional override for when feature flag is off during dev)
+- Update JSDoc accordingly
 
-- Include reply-level comments in `totalComments` so `sampleComments` reflects true total
-- Accept optional `groupedByPost` parameter and append a limitation note when false
-- Fix typo "consoante" → "consoante" is correct, but "consoante o que" should be "conforme o que"
+### 3. `src/routes/api/analyze-public-v1.ts`
+- Remove `isProAnalysis` from the `shouldRunCommentScraper` call (line ~1041)
+- Keep `isInternalTest` for dev convenience
 
-### 4. Wire gate + timing + failure logging (`analyze-public-v1.ts`)
+### 4. `src/components/report-redesign/v2/report-comment-intelligence.tsx`
+- Replace `CommentIntelligenceTeaser` (PRO upsell with Lock icon) with a neutral "unavailable" state — e.g. a note saying comment analysis is not available for this report (no plan mention, no upsell)
+- Remove all PRO/Premium comments and labels
+- Keep `ScopeNote` component as-is
 
-- Replace the simple `commentScraperEnabled` boolean with `shouldRunCommentScraper()`
-- Default `isProAnalysis: false` and `isInternalTest: true` when `COMMENT_SCRAPER_INTERNAL_TEST === "true"` (so the existing test profile works)
-- Capture `Date.now()` before/after the call for real `durationMs`
-- Use `commentResult.durationMs` from the scraper result
-- In the `catch` block, add a `recordProviderCall` with `status: "network_error"` and the error message
-- Replace `postsReturned` with `commentsReturned` from the result (use `postsReturned` field for the actual `postsRequested` count)
-- Pass `commentResult.groupedByPost` to the aggregator
+### 5. `src/lib/analysis/__tests__/comment-intelligence.test.ts`
+- Update gate tests: `shouldRunCommentScraper` should return true when only `featureEnabled` is true (no plan check needed)
+- Remove/update test cases that assert PRO-gating behaviour
 
-### 5. Tests (`src/lib/analysis/__tests__/comment-intelligence.test.ts`)
+## Cost Controls (Unchanged)
 
-New test file covering:
-- Owner reply detection from nested replies (owner in replies[] counted)
-- Brand top-level comment excluded from audience count
-- Zero comments returns `available: true` with zeros
-- Empty batches array returns baseline result
-- `shouldRunCommentScraper` gate logic (all combinations)
-- `sampleComments` includes both top-level and reply-level comments
-- Aggregation output never contains raw text or usernames (only `ownerUsername` of the profile)
+All cost guardrails remain intact — this is not about removing controls, only removing plan-gating:
 
-### 6. No changes to
+- `COMMENT_SCRAPER_ENABLED` env kill switch
+- `COMMENT_SCRAPER_MAX_POSTS` (default 5, max 12)
+- `COMMENT_SCRAPER_RESULTS_LIMIT` (default 50, max 200)
+- `COMMENT_SCRAPER_MAX_CHARGE_USD` (default $1.50, max $5.00)
+- Cache reuse via snapshot (scraper only runs on fresh analyses)
+- Failure-safe: comment scraper errors never break the main analysis
+- `provider_call_logs` records every run with cost, duration, status
 
-- UI components (no redesign this prompt)
-- Database schema (no migration needed — `postsReturned` column repurposed)
-- Locked files
-- Admin cost card (already mounted)
+## Files Changed Summary
 
-### Validation
+| File | Type of change |
+|------|---------------|
+| `src/lib/analysis/types.ts` | Comments only |
+| `src/lib/analysis/comment-scraper.server.ts` | Remove `isProAnalysis` from gate |
+| `src/routes/api/analyze-public-v1.ts` | Remove `isProAnalysis` from call |
+| `src/components/report-redesign/v2/report-comment-intelligence.tsx` | Replace PRO teaser with neutral state |
+| `src/lib/analysis/__tests__/comment-intelligence.test.ts` | Update gate tests |
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
+## Validation
+
+- `bunx tsc --noEmit` — zero errors
+- `bunx vitest run` — all tests pass
+- Existing free report flow unaffected
+- Other PRO features (competitors, export, white-label) untouched

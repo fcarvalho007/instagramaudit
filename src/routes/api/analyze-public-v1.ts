@@ -1038,7 +1038,6 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
           const runComments = shouldRunCommentScraper({
             featureEnabled: commentScraperEnabled,
-            isProAnalysis: false, // No plan system yet — always false
             isInternalTest: commentScraperInternalTest,
           });
 
