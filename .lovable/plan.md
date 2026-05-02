@@ -1,32 +1,50 @@
 
-# Widen Report V2 Content Container
+## Visual QA Findings
 
-## What changes
+### Structure Verification (all correct)
 
-One file: `src/components/report-redesign/v2/report-shell-v2.tsx` (not locked).
+The Block 02 order matches the target:
+1. Editorial verdict (full width)
+2. **Group A** — Q01 content type (full width, `span="full"`)
+3. **Group B** — Q02 funnel + Q03 hashtags (side by side, no `span`)
+4. **Group C** — Q05 audience response (full width, `span="full"`)
+5. Caption Intelligence Q04 (standalone full width)
+6. **Group D** — Q06 integration + Q07 objective (side by side, no `span`)
+7. Priorities + CTA
 
-## Current state
+No orphan half-width cards. Container is `max-w-[1380px]`.
 
-- Line 97: `max-w-7xl` (1280px) — wraps the main 2-column layout (sidebar + content)
-- Line 232: `max-w-7xl` (1280px) — wraps the footer/methodology area
-- Sidebar: `w-60 xl:w-64` (~240-256px), gap `gap-10 lg:gap-12` (40-48px)
-- Effective main content column: ~976px on desktop
+### Issue Found: Double Vertical Spacing Between Groups
 
-## Change
+The parent wrapper uses `space-y-10 md:space-y-12` (40-48px margin between siblings), but each `ReportDiagnosticGroup` also adds `pt-8 md:pt-10` (32-40px padding). The `first:pt-0` pseudo-class only removes padding for the first child of the parent — but the first child is the Verdict, not Group A.
 
-Replace both `max-w-7xl` instances with `max-w-[1380px]` (+100px / ~7.8% wider).
+Result: ~80-88px of vertical gap between groups on desktop. This creates excessive whitespace that weakens the editorial rhythm.
 
-- Line 97: `max-w-7xl` → `max-w-[1380px]`
-- Line 232: `max-w-7xl` → `max-w-[1380px]`
+### Fix
 
-This gives the main content column ~1076px — enough breathing room for 2-column diagnostic cards without losing the editorial feel. The hero remains full-bleed, so the "funnel" gap between hero and body shrinks proportionally.
+**File: `src/components/report-redesign/v2/report-diagnostic-group.tsx`**
 
-## What does NOT change
+Remove the `pt-8 md:pt-10 first:pt-0` from the group wrapper, since the parent's `space-y` already provides consistent inter-group spacing. The group heading's border-bottom already acts as a visual separator without needing extra top padding.
 
-- Hero, navigation, sidebar, card internals, typography, tokens, charts, landing page, admin, API, auth, PDF, Supabase
+Change line 22 from:
+```
+<div className="space-y-4 md:space-y-5 pt-8 md:pt-10 first:pt-0">
+```
+to:
+```
+<div className="space-y-4 md:space-y-5">
+```
 
-## Validation
+This gives clean 40-48px spacing between all siblings (verdict, groups, caption intelligence) controlled by the single parent `space-y`.
+
+### What Will NOT Change
+
+- No calculation, data, or AI logic changes
+- No card internals, copy, badges, or colors
+- No locked files
+- Container width stays at `max-w-[1380px]`
+
+### Validation
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Visual check at 375px for no horizontal overflow
