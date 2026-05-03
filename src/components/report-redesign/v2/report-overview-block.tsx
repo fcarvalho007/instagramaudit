@@ -1,77 +1,85 @@
-/**
- * ─────────────────────────────────────────────────────────────────────
- * Bloco 01 · Overview — papel editorial (NÃO transformar em dashboard)
- * ─────────────────────────────────────────────────────────────────────
- *
- * Este ficheiro compõe o Bloco 01 do relatório `/analyze/$username`. A
- * sua função é dar ao leitor uma leitura de SEGUNDOS sobre o estado
- * geral do perfil, antes do diagnóstico detalhado. Toda a interpretação
- * profunda pertence ao Bloco 02 em diante.
- *
- * 1. Hero (acima deste bloco — ver `ReportHeroV2`)
- *    Mostra a identidade pública do perfil Instagram.
- *
- * 2. Três cartões de overview (`ReportOverviewCards`) com hierarquia
- *    assimétrica: Taxa de envolvimento como cartão primário e Ritmo /
- *    Formato como cartões secundários empilhados.
- *
- * 3. Síntese "Leitura IA" — calma, editorial. NUNCA renderizar como
- *    alerta vermelho/rosa, mesmo quando o emphasis v2 é "negative".
- *    Usamos o texto v2 directamente, não o componente partilhado
- *    `AIInsightBox`, para garantir tratamento neutro.
- *
- * 4. NÃO pertence ao Bloco 01:
- *      • explicações longas / diagnóstico completo
- *      • detalhe dos top posts
- *      • análise profunda Google / Search / procura externa
- *      • comparação detalhada com concorrentes
- *      • placeholders de "history will appear later" (ex.: crescimento
- *        de seguidores)
- *      • repetição de stats de perfil já mostradas no hero
- *      • duplicação dos diagnósticos dos cartões numa attention row
- *
- * 5. Handoff
- *    A interpretação detalhada (motivos, recomendações, sinais de
- *    procura, comparação com pares, top posts, hashtags, melhor
- *    horário, etc.) vive no Bloco 02 e seguintes. O Bloco 01 deve
- *    permanecer leve, editorial e cinematográfico.
- * ─────────────────────────────────────────────────────────────────────
- */
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
 
-import { ReportOverviewCards } from "./report-overview-cards";
+import { ComparisonHeader } from "./overview/comparison-header";
+import { ScoreGrid } from "./overview/score-grid";
+import {
+  computeEnvolvimento,
+  envolvimentoSubtitle,
+  computeFrequencia,
+  frequenciaSubtitle,
+  computeInteraccao,
+  interaccaoSubtitle,
+  computeMensagem,
+  mensagemSubtitle,
+  type ScoreKey,
+} from "./overview/score-utils";
+import { EngagementCardRefined } from "./report-overview-engagement";
 import { ReportTopPosts } from "@/components/report/report-top-posts";
 
-interface Props {
+export interface Props {
   result: AdapterResult;
-  /**
-   * Renderer de insight v2 partilhado pelo `ReportShellV2`. Mantido
-   * para compatibilidade da assinatura, mas o Bloco 01 usa o texto v2
-   * directamente para impor um tratamento calmo (não-alerta).
-   */
   renderInsight: (key: AiInsightV2Section) => ReactNode;
 }
 
-/**
- * Composição visual do Bloco 01 · Overview (Phase 1B.1F).
- *
- *  - watermark "01" decorativo (não empurra layout)
- *  - 3 cartões cinematográficos: Saúde do envolvimento, Ritmo, Motor
- *  - frame editorial "Leitura IA" com pista visual de IA
- */
 export function ReportOverviewBlock({ result, renderInsight }: Props) {
+  const k = result.data.keyMetrics;
+  const profile = result.data.profile;
+  const enriched = result.enriched;
+  const coverage = result.coverage;
+
+  // Compute avg comments from enriched top posts
+  const avgComments = useMemo(() => {
+    const posts = enriched.topPosts;
+    if (!posts.length) return 0;
+    return posts.reduce((sum, p) => sum + p.comments, 0) / posts.length;
+  }, [enriched.topPosts]);
+
+  const scores: Record<ScoreKey, { value: number; subtitle: string }> = useMemo(() => ({
+    envolvimento: {
+      value: computeEnvolvimento(k.engagementRate, k.engagementBenchmark),
+      subtitle: envolvimentoSubtitle(k.engagementRate, k.engagementBenchmark),
+    },
+    frequencia: {
+      value: computeFrequencia(k.postingFrequencyWeekly),
+      subtitle: frequenciaSubtitle(k.postingFrequencyWeekly),
+    },
+    interaccao: {
+      value: computeInteraccao(avgComments, k.postsAnalyzed, 0, 0),
+      subtitle: interaccaoSubtitle(avgComments),
+    },
+    mensagem: {
+      value: computeMensagem(null, null, null),
+      subtitle: mensagemSubtitle(50),
+    },
+  }), [k, avgComments]);
 
   return (
-    <div className="relative space-y-8 md:space-y-10">
-      <div className="relative z-10">
-        <ReportOverviewCards result={result} />
+    <div className="relative space-y-5 md:space-y-6">
+      {/* Zona A — Header de comparação */}
+      <ComparisonHeader
+        handle={profile.username ?? ""}
+        avatarUrl={enriched.profile.avatarUrl}
+        isVerified={Boolean(profile.verified)}
+        followers={profile.followers ?? 0}
+        postsAnalyzed={profile.postsAnalyzed ?? k.postsAnalyzed}
+        daysAnalyzed={coverage.windowDays ?? 0}
+      />
+
+      {/* Zona B — Pontuação global */}
+      <div className="pt-4">
+        <ScoreGrid scores={scores} />
       </div>
 
-      {/* Top 5 publicações — prova imediata de que o conteúdo foi lido */}
-      <div className="relative z-10">
+      {/* Zona C — Card de Taxa de Envolvimento refinado */}
+      <div className="pt-4">
+        <EngagementCardRefined result={result} />
+      </div>
+
+      {/* Top Posts */}
+      <div className="pt-2">
         <ReportTopPosts />
         <div className="mt-4">{renderInsight("topPosts")}</div>
       </div>
