@@ -26,7 +26,6 @@ export interface Props {
 
 export function ReportOverviewBlock({ result, renderInsight }: Props) {
   const k = result.data.keyMetrics;
-  const coverage = result.coverage;
   const enriched = result.enriched;
 
   // Compute avg comments from enriched top posts
