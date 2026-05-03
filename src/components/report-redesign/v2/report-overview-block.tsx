@@ -3,7 +3,6 @@ import { useMemo, type ReactNode } from "react";
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
 
-import { ComparisonHeader } from "./overview/comparison-header";
 import { ScoreGrid } from "./overview/score-grid";
 import {
   computeEnvolvimento,
@@ -67,8 +66,6 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
 
   return (
     <div className="relative space-y-8 md:space-y-10">
-      {/* Zona A — CTA concorrente */}
-      <ComparisonHeader />
 
       {/* Zona B — Pontuação global (4 scorecards) */}
       <ScoreGrid scores={scores} />
