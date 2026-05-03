@@ -16,10 +16,10 @@
  *   - `isNewestComments`     : boolean  — sort newest first
  *
  * Replies are nested inside each comment object, NOT separate charged results.
-* `resultsLimit` is applied PER URL. Fixed at 10 per post/reel.
-* With 12 posts: 10 × 12 = 120 total results → ~$0.228.
+* `resultsLimit` is applied PER URL. Dynamically clamped to fit within hard cap.
+* With 12 posts and $0.20 ceiling: 8 × 12 = 96 total results → ~$0.1824.
  *
- * Budget target: ~$0.23/analysis. Hard cap: $0.25/analysis.
+ * Budget target: ~$0.15/analysis. Hard cap: $0.20/analysis.
  * Pricing assumption: ~$1.90 per 1,000 results → $0.0019/result.
  */
 
@@ -43,11 +43,11 @@ const COMMENT_ACTOR = "apify/instagram-comment-scraper";
 /** Estimated cost per result (comment) based on Apify pricing ~$1.90/1K */
 const COST_PER_RESULT_USD = 0.0019;
 
-/** Target cost per analysis — informational, used in budget planning (10 comments × 12 posts). */
-export const COMMENT_SCRAPER_TARGET_COST_USD = 0.23;
+/** Target cost per analysis — informational, used in budget planning (8 comments × 12 posts). */
+export const COMMENT_SCRAPER_TARGET_COST_USD = 0.15;
 
-/** Absolute hard cap — env vars above this are clamped down with a warning. Raised to $0.25 to accommodate 10/post × 12 posts. */
-const HARD_MAX_CHARGE_CEILING = 0.25;
+/** Absolute hard cap — env vars above this are clamped down with a warning. Capped at $0.20. */
+const HARD_MAX_CHARGE_CEILING = 0.20;
 
 /**
  * Fixed per-post comment limit sent to the actor.
@@ -68,7 +68,7 @@ export const COMMENT_SCRAPER_MAX_POSTS = clampInt(
 /**
  * Max total results (comments) across all posts — theoretical ceiling.
  * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 120 (10 × 12 posts).
- * Hard-capped at ~131 (~$0.25).
+ * Hard-capped at ~105 (~$0.20).
  */
 export const COMMENT_SCRAPER_MAX_TOTAL_RESULTS = clampInt(
   process.env.COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
@@ -83,7 +83,7 @@ export const COMMENT_SCRAPER_INCLUDE_REPLIES = true;
 /**
  * Hard USD cap per comment scraper run.
  * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: $0.20.
- * CRITICAL: Clamped to $0.20 ceiling — env values above are silently reduced with a warning.
+ * CRITICAL: Clamped to $0.20 ceiling — env values above are reduced with a warning.
  */
 export const COMMENT_SCRAPER_MAX_CHARGE_USD = (() => {
   const raw = process.env.COMMENT_SCRAPER_MAX_CHARGE_USD;

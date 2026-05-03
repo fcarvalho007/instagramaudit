@@ -49,7 +49,7 @@ interface AnalysisBreakdown {
   };
 }
 
-const COMMENT_HARD_MAX = 0.25;
+const COMMENT_HARD_MAX = 0.20;
 const TOTAL_ANALYSIS_THRESHOLD = 0.05;
 
 function fmt(v: number | null | undefined): string {
@@ -190,7 +190,7 @@ export function AnalysisCostBreakdown() {
               <AlertTriangle size={10} className="text-signal-warning" /> Custo real indisponível
             </span>
             <span className="flex items-center gap-1">
-              <AlertCircle size={10} className="text-signal-error" /> Custo comentários &gt; $0.25
+              <AlertCircle size={10} className="text-signal-error" /> Custo comentários &gt; $0.20
             </span>
           </div>
         </div>
