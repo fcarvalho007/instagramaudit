@@ -92,7 +92,6 @@ import {
   isValidInstagramPostUrl,
 } from "@/lib/analysis/comment-scraper.server";
 import { buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
