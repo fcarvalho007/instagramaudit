@@ -1,67 +1,86 @@
 
-# QA Test — Instagram Comment Scraper Integration
+# Add Transparency Strip to Q05 Comment Intelligence
 
-## Current Status
+## Audit Results
 
-The analysis ran successfully (HTTP 200 on `instagramaudit.lovable.app`), but the comment scraper was **skipped** because `COMMENT_SCRAPER_ENABLED` is not set to `"true"`. No `enrich-comments` call was made, and no `provider_call_logs` row exists for `apify/instagram-comment-scraper`.
+### Fields in `CommentIntelligence` (types.ts L135-188)
 
-## Budget Plan (verified from code)
+| Field | In type | Displayed in UI | Notes |
+|---|---|---|---|
+| `available` | Yes | Yes (gates section) | |
+| `source` | Yes | No | Always "apify_comments" |
+| `reason` | Yes | Yes (unavailable state) | 6 reason codes |
+| `samplePosts` | Yes | Yes (bottom line) | |
+| `sampleComments` | Yes | Yes (bottom line) | |
+| `sampleReplies` | Yes | Yes (bottom line, conditional) | |
+| `ownerUsername` | Yes | No | Used internally |
+| `ownerRepliesCount` | Yes | Yes (metric cell) | |
+| `ownerReplyRatePct` | Yes | Yes (metric cell) | |
+| `postsWithOwnerReplyPct` | Yes | Yes (metric cell) | |
+| `audienceCommentsCount` | Yes | **No** | Available but not shown |
+| `uniqueAudienceCommentersCount` | Yes | **No** | Available but not shown |
+| `postsWithConversationPct` | Yes | **No** | Available but not shown |
+| `questionsFromAudienceCount` | Yes | Yes (metric cell) | |
+| `praiseCount` | Yes | Yes (signal chip) | |
+| `complaintOrIssueCount` | Yes | Yes (metric cell) | |
+| `buyingIntentCount` | Yes | Yes (metric cell) | |
+| `spamOrLowQualityCount` | Yes | Yes (signal chip) | |
+| `dominantConversationSignals` | Yes | Yes (signal chips) | |
+| `recommendedConversationAction` | Yes | Yes (insight callout) | |
+| `topConversationPost` | Yes | Yes (sub-card) | URL shown but not clickable |
+| `limitations` | Yes | Yes (bottom notes) | |
 
-| Parameter | Value |
-|---|---|
-| actor | `apify/instagram-comment-scraper` |
-| maxPosts | 12 (clamped [1,12]) |
-| maxTotalResults | 80 (clamped [5,105]) |
-| targetCostUsd | $0.15 |
-| hardMaxCostUsd | $0.20 |
-| estimatedMaxCostUsd | $0.152 (80 × $0.0019) |
-| includeReplies | true |
-| timeout | 120s (actor: 110s) |
-| selectedPostCount | Up to 12 from base actor posts only |
-| maxResultsPerPost | N/A — `resultsLimit` is global |
+**Fields available but not displayed:** `audienceCommentsCount`, `uniqueAudienceCommentersCount`, `postsWithConversationPct`.
 
-### Constraints confirmed in code:
-- Only base actor posts used (line 1056-1069 of analyze-public-v1.ts)
-- $1.50 impossible — `HARD_MAX_CHARGE_CEILING = 0.20`, env values clamped
-- Budget blocked if estimated > $0.20
-- No PRO/Premium wording in `report-comment-intelligence.tsx`
+**Fields not persisted:** None missing for this use case. All needed data is already in the type.
 
-## Steps to Execute (after approval)
+### Unavailable reasons supported (types.ts L139-145):
+- `comment_scraper_failed`
+- `comment_scraper_disabled`
+- `no_posts_with_comments`
+- `no_valid_post_urls`
+- `budget_blocked`
+- `processing`
 
-1. **Enable comment scraper** — use `secrets--add_secret` to set `COMMENT_SCRAPER_ENABLED` to `"true"` (or ask user to confirm current value)
+---
 
-2. **Run fresh analysis** — POST to `/api/analyze-public-v1` with `{"instagram_username":"frederico.m.carvalho","competitor_usernames":[]}`
+## Changes
 
-3. **Wait ~30s for async enrichment** — the enrich-comments endpoint runs fire-and-forget
+### File: `src/components/report-redesign/v2/report-comment-intelligence.tsx`
 
-4. **Verify provider_call_logs** — query for `actor = 'apify/instagram-comment-scraper'`:
-   - apify_run_id exists
-   - actual_cost_usd exists or is explicitly null (not forced to 0)
-   - actual_cost_usd <= $0.20 when present
-   - posts_returned > 0
+**1. Add "Amostra analisada" transparency strip** (inside `CommentIntelligenceSection`, after the 6-metric grid):
 
-5. **Verify snapshot** — check that `normalized_payload->comment_intelligence` exists in the snapshot
+A compact card with a thin blue-grey left border showing:
+- Publicacoes analisadas: `samplePosts` / 12
+- Comentarios publicos recolhidos: `sampleComments`
+- Respostas em thread: `sampleReplies` (only if > 0)
+- Comentarios da audiencia: `audienceCommentsCount`
+- Respostas da marca: `ownerRepliesCount`
+- Taxa de resposta da marca: `ownerReplyRatePct`%
 
-6. **Verify report UI** — navigate to `/analyze/frederico.m.carvalho`, check Q05 card:
-   - Shows comment intelligence data when available
-   - No PRO/Premium wording
-   - Neutral fallback for unavailable states
+Layout: 2-column grid at 375px, 3-column at sm+. Small eyebrow labels, tabular-nums values. Contained in a subtle `bg-slate-50/40 border border-slate-100` card.
 
-7. **Verify admin** — check:
-   - `/api/admin/sistema/comment-scraper` returns config + last run
-   - `/api/admin/sistema/expense-30d` includes comment scraper costs
+Below the grid, a single-line methodological note in `text-[11px] text-slate-400`:
+"Leitura baseada em comentarios publicos visiveis nos posts analisados. Nao inclui DMs, comentarios apagados ou comentarios apenas visiveis apos login."
 
-8. **Run validation**:
-   - `bunx tsc --noEmit`
-   - `bunx vitest run`
+**2. Replace the existing bottom "Amostra:" line** (L401-406) which currently duplicates some of this info — remove it since the new strip is more complete.
 
-9. **Deliver PASS/FAIL table**
+**3. Improve `CommentIntelligenceUnavailable`:**
+- Keep the existing neutral design.
+- Add all 6 reason codes to the `UNAVAILABLE_REASONS` map (verify `budget_blocked` and `no_valid_post_urls` have entries — currently checking).
+- Ensure the fallback text is neutral and informative without PRO/Premium wording.
 
-## Files involved (read-only audit, no changes needed)
-- `src/lib/analysis/comment-scraper.server.ts` — budget constants
-- `src/routes/api/public/enrich-comments.ts` — enrichment endpoint
-- `src/routes/api/analyze-public-v1.ts` — fire-and-forget trigger
-- `src/components/report-redesign/v2/report-comment-intelligence.tsx` — Q05 UI
-- `src/components/admin/v2/sistema/comment-scraper-card.tsx` — admin card
-- `src/components/admin/v2/visao-geral/expense-section.tsx` — expense display
-- `src/lib/admin/system-queries.server.ts` — metrics queries
+**4. Remove `topConversationPost` URL display** — currently the post URL is stored but I'll verify it's not rendered as a clickable link (it's not — only comment counts are shown, the URL is in the data but not displayed to users, which is correct).
+
+### No changes to:
+- `snapshot-to-report-data.ts` (already maps `comment_intelligence` correctly at L1144)
+- `comment-intelligence.ts` (aggregation logic is complete)
+- `types.ts` (all fields needed are present)
+- Supabase schema, admin, auth, payments
+
+### Validation
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Visual QA at 375px and desktop
+- Confirm zero raw comments/PII/usernames displayed
+- Confirm zero PRO/Premium wording
