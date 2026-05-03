@@ -179,7 +179,7 @@ export const Route = createFileRoute("/api/public/enrich-comments")({
 
           const { error: updateErr } = await supabaseAdmin
             .from("analysis_snapshots")
-            .update({ normalized_payload: updatedPayload })
+            .update({ normalized_payload: updatedPayload as never })
             .eq("id", snapshotId);
 
           if (updateErr) {
