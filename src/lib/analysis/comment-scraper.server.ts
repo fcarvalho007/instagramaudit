@@ -9,13 +9,17 @@
  * never be persisted — only the aggregated CommentIntelligence object
  * is stored (GDPR-safe).
  *
- * TODO: Verify actor input/output schema against a real Apify run before
- * enabling in production. The `directUrls`, `resultsLimit`,
- * `includeNestedComments`, and `isNewestComments` fields match the
- * documented schema as of 2025-05. The output shape (flat comments
- * without per-comment post-URL back-reference) is the documented
- * behaviour — grouping falls back to a single aggregated bucket when
- * no post-URL field is found on individual items.
+ * Actor input fields (verified against docs as of 2025-05):
+ *   - `directUrls`           : string[] — post/reel URLs to scrape
+ *   - `resultsLimit`         : number   — GLOBAL total results (not per-URL)
+ *   - `includeNestedComments`: boolean  — include reply threads (nested inside parent)
+ *   - `isNewestComments`     : boolean  — sort newest first
+ *
+ * Replies are nested inside each comment object, NOT separate charged results.
+ * `resultsLimit` controls the total flat result count across all URLs.
+ *
+ * Budget target: ~$0.15/analysis. Hard cap: $0.20/analysis.
+ * Pricing assumption: ~$1.90 per 1,000 results → $0.0019/result.
  */
 
 import {
@@ -31,40 +35,57 @@ import type { RawApifyComment, PostCommentBatch } from "./comment-intelligence";
 
 const COMMENT_ACTOR = "apify/instagram-comment-scraper";
 
+// ─────────────────────────────────────────────────────────────────────
+// Pricing assumption
+// ─────────────────────────────────────────────────────────────────────
+
+/** Estimated cost per result (comment) based on Apify pricing ~$1.90/1K */
+const COST_PER_RESULT_USD = 0.0019;
+
+/** Target cost per analysis — informational, used in budget planning. */
+export const COMMENT_SCRAPER_TARGET_COST_USD = 0.15;
+
+/** Absolute hard cap — env vars above this are clamped down with a warning. */
+const HARD_MAX_CHARGE_CEILING = 0.20;
+
 /**
  * Max posts to send to the comment scraper per analysis.
- * Override via COMMENT_SCRAPER_MAX_POSTS env var. Default: 3 (conservative for free reports).
+ * Override via COMMENT_SCRAPER_MAX_POSTS env var. Default: 12 (all base actor posts).
  */
 export const COMMENT_SCRAPER_MAX_POSTS = clampInt(
-  process.env.COMMENT_SCRAPER_MAX_POSTS, 3, 1, 12,
+  process.env.COMMENT_SCRAPER_MAX_POSTS, 12, 1, 12,
 );
 
 /**
- * Max comments to retrieve per post.
- * Override via COMMENT_SCRAPER_RESULTS_LIMIT env var. Default: 20 (conservative for free reports).
+ * Max total results (comments) across all posts — global limit for the actor.
+ * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 80 (~$0.152).
+ * Hard-capped at 105 (~$0.20).
  */
-export const COMMENT_SCRAPER_RESULTS_LIMIT = clampInt(
-  process.env.COMMENT_SCRAPER_RESULTS_LIMIT, 20, 5, 200,
+export const COMMENT_SCRAPER_MAX_TOTAL_RESULTS = clampInt(
+  process.env.COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
+  80,
+  5,
+  Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD), // ~105
 );
 
 /** Whether to include nested replies in comment results. */
 export const COMMENT_SCRAPER_INCLUDE_REPLIES = true;
 
 /**
- * Hard cap on total comments (top-level + replies) kept per report.
- * Override via COMMENT_SCRAPER_MAX_TOTAL_COMMENTS env var. Default: 60.
- */
-export const COMMENT_SCRAPER_MAX_TOTAL_COMMENTS = clampInt(
-  process.env.COMMENT_SCRAPER_MAX_TOTAL_COMMENTS, 60, 10, 500,
-);
-
-/**
  * Hard USD cap per comment scraper run.
- * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: 1.50 (conservative).
+ * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: $0.20.
+ * CRITICAL: Clamped to $0.20 ceiling — env values above are silently reduced with a warning.
  */
-export const COMMENT_SCRAPER_MAX_CHARGE_USD = clampFloat(
-  process.env.COMMENT_SCRAPER_MAX_CHARGE_USD, 1.5, 0.10, 5.0,
-);
+export const COMMENT_SCRAPER_MAX_CHARGE_USD = (() => {
+  const raw = process.env.COMMENT_SCRAPER_MAX_CHARGE_USD;
+  const parsed = clampFloat(raw, HARD_MAX_CHARGE_CEILING, 0.05, HARD_MAX_CHARGE_CEILING);
+  if (raw && parseFloat(raw) > HARD_MAX_CHARGE_CEILING) {
+    console.warn(
+      `[comment-scraper] COMMENT_SCRAPER_MAX_CHARGE_USD env (${raw}) exceeds hard ceiling $${HARD_MAX_CHARGE_CEILING}. Clamped to $${HARD_MAX_CHARGE_CEILING}.`,
+    );
+  }
+  return parsed;
+})();
 
 /** Parse an int env var with clamped min/max bounds. */
 function clampInt(raw: string | undefined, fallback: number, min: number, max: number): number {
@@ -107,7 +128,17 @@ export function shouldRunCommentScraper(input: CommentScraperGateInput): boolean
 // Main entry point
 // ─────────────────────────────────────────────────────────────────────
 
-export interface CommentScraperResult {
+export interface CommentBudgetPlan {
+  selectedPostCount: number;
+  validPostUrlsCount: number;
+  maxTotalResults: number;
+  estimatedMaxCostUsd: number;
+  hardMaxCostUsd: number;
+  budgetBlocked: boolean;
+  adjustedResultsLimit: number;
+}
+
+export interface CommentScraperResult extends CommentBudgetPlan {
   batches: PostCommentBatch[];
   runId: string | null;
   actualCostUsd: number | null;
@@ -117,6 +148,37 @@ export interface CommentScraperResult {
   postsRequested: number;
   /** True if per-post grouping was available; false if all comments fell into a single aggregated bucket. */
   groupedByPost: boolean;
+}
+
+/**
+ * Pre-flight budget check. Calculates whether the planned scrape fits
+ * within the $0.20 hard cap. If not, reduces the results limit.
+ * If even 1 result would exceed the cap, returns budgetBlocked = true.
+ */
+export function planCommentBudget(
+  validPostUrlCount: number,
+  totalPostsProvided: number,
+): CommentBudgetPlan {
+  let maxResults = COMMENT_SCRAPER_MAX_TOTAL_RESULTS;
+  let estimated = maxResults * COST_PER_RESULT_USD;
+
+  // Reduce results until we fit within the hard cap
+  if (estimated > HARD_MAX_CHARGE_CEILING) {
+    maxResults = Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD);
+    estimated = maxResults * COST_PER_RESULT_USD;
+  }
+
+  const blocked = maxResults < 1 || validPostUrlCount === 0;
+
+  return {
+    selectedPostCount: totalPostsProvided,
+    validPostUrlsCount: validPostUrlCount,
+    maxTotalResults: COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
+    estimatedMaxCostUsd: Number(estimated.toFixed(4)),
+    hardMaxCostUsd: HARD_MAX_CHARGE_CEILING,
+    budgetBlocked: blocked,
+    adjustedResultsLimit: maxResults,
+  };
 }
 
 /**
@@ -146,6 +208,33 @@ export async function fetchCommentsForPosts(
       repliesReturned: 0,
       postsRequested: 0,
       groupedByPost: false,
+      selectedPostCount: 0,
+      validPostUrlsCount: 0,
+      maxTotalResults: COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
+      estimatedMaxCostUsd: 0,
+      hardMaxCostUsd: HARD_MAX_CHARGE_CEILING,
+      budgetBlocked: false,
+      adjustedResultsLimit: COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
+    };
+  }
+
+  // Pre-flight budget check
+  const budget = planCommentBudget(urls.length, postUrls.length);
+
+  console.info("[comment-scraper] budget plan", budget);
+
+  if (budget.budgetBlocked) {
+    console.warn("[comment-scraper] budget blocked — skipping actor call");
+    return {
+      batches: [],
+      runId: null,
+      actualCostUsd: null,
+      durationMs: 0,
+      commentsReturned: 0,
+      repliesReturned: 0,
+      postsRequested: urls.length,
+      groupedByPost: false,
+      ...budget,
     };
   }
 
@@ -154,10 +243,10 @@ export async function fetchCommentsForPosts(
   const result = await runActorWithMetadata<Record<string, unknown>>(
     COMMENT_ACTOR,
     {
-      directUrls: urls,
-      resultsLimit: COMMENT_SCRAPER_RESULTS_LIMIT,
-      includeNestedComments: COMMENT_SCRAPER_INCLUDE_REPLIES,
-      isNewestComments: true,
+      directUrls: urls,                                    // Post/reel URLs from base actor
+      resultsLimit: budget.adjustedResultsLimit,            // Global total (not per-URL)
+      includeNestedComments: COMMENT_SCRAPER_INCLUDE_REPLIES, // Replies nested inside parent
+      isNewestComments: true,                               // Newest comments first
     },
     {
       timeoutMs: 120_000,
@@ -263,6 +352,7 @@ export async function fetchCommentsForPosts(
     repliesReturned: totalRepliesReturned,
     postsRequested: urls.length,
     groupedByPost,
+      ...budget,
   };
 }
 
