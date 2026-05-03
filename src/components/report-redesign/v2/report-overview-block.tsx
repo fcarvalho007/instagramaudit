@@ -26,9 +26,7 @@ export interface Props {
 
 export function ReportOverviewBlock({ result, renderInsight }: Props) {
   const k = result.data.keyMetrics;
-  const profile = result.data.profile;
   const enriched = result.enriched;
-  const coverage = result.coverage;
 
   // Compute avg comments from enriched top posts
   const avgComments = useMemo(() => {
@@ -57,29 +55,18 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
   }), [k, avgComments]);
 
   return (
-    <div className="relative space-y-5 md:space-y-6">
-      {/* Zona A — Header de comparação */}
-      <ComparisonHeader
-        handle={profile.username ?? ""}
-        avatarUrl={enriched.profile.avatarUrl}
-        isVerified={Boolean(profile.verified)}
-        followers={profile.followers ?? 0}
-        postsAnalyzed={profile.postsAnalyzed ?? k.postsAnalyzed}
-        daysAnalyzed={coverage.windowDays ?? 0}
-      />
+    <div className="relative space-y-6 md:space-y-8">
+      {/* Zona A — CTA concorrente */}
+      <ComparisonHeader />
 
-      {/* Zona B — Pontuação global */}
-      <div className="pt-4">
-        <ScoreGrid scores={scores} />
-      </div>
+      {/* Zona B — Pontuação global (4 scorecards) */}
+      <ScoreGrid scores={scores} />
 
-      {/* Zona C — Card de Taxa de Envolvimento refinado */}
-      <div className="pt-4">
-        <EngagementCardRefined result={result} />
-      </div>
+      {/* Zona C — Card de Taxa de Envolvimento */}
+      <EngagementCardRefined result={result} />
 
       {/* Top Posts */}
-      <div className="pt-2">
+      <div>
         <ReportTopPosts />
         <div className="mt-4">{renderInsight("topPosts")}</div>
       </div>

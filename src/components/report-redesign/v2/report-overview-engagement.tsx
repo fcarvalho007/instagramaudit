@@ -12,7 +12,6 @@ import {
   getActiveTierIndex,
 } from "@/lib/knowledge/benchmark-context";
 import { cn } from "@/lib/utils";
-import { REDESIGN_TOKENS } from "../report-tokens";
 import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
 
 interface Props {
@@ -32,10 +31,10 @@ export function EngagementCardRefined({ result }: Props) {
   const gapColor = gap >= 0 ? "text-emerald-600" : "text-rose-600";
 
   return (
-    <article className={cn(REDESIGN_TOKENS.card, "p-5 md:p-6")}>
+    <article className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <span className="text-[13px] font-medium text-slate-900">
+        <span className="text-sm font-medium text-slate-900">
           Taxa de envolvimento
         </span>
         <span className="text-[10px] text-slate-400 tracking-[0.06em]">
@@ -44,7 +43,7 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Hero numbers */}
-      <div className="flex items-baseline gap-4 flex-wrap mb-5">
+      <div className="flex items-baseline gap-3 sm:gap-4 flex-wrap mb-5">
         <span className="font-display text-[22px] font-medium text-slate-900 tabular-nums leading-none">
           {formatPct(k.engagementRate)}
         </span>
@@ -57,7 +56,7 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Chart */}
-      <div style={{ maxHeight: 130 }}>
+      <div className="max-h-[140px] overflow-hidden">
         <ReportEngagementBenchmarkChart
           profileEngagementRatePct={k.engagementRate}
           followersCount={followers}

@@ -52,7 +52,9 @@ export function CompetitorModal({ open, onOpenChange }: CompetitorModalProps) {
 
         {/* CTAs */}
         <div className="mt-6 flex flex-col gap-2">
-          <Button className="w-full">Ver planos PRO</Button>
+          <Button className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.4)]">
+            Ver planos PRO
+          </Button>
           <Button
             variant="ghost"
             className="w-full"
