@@ -210,6 +210,9 @@ export function ReportShellV2({
         <TierComparisonBlock />
         <ReportFinalBlock snapshotId={snapshotId} result={result} />
         <BetaFeedbackBannerV2 />
+
+        {/* Espaço inferior mobile para a bottom nav bar não tapar conteúdo */}
+        <div className="h-20 lg:hidden" aria-hidden="true" />
       </div>
     </ReportDataProvider>
   );
