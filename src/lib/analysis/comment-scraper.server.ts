@@ -11,12 +11,12 @@
  *
  * Actor input fields (verified against docs as of 2025-05):
  *   - `directUrls`           : string[] — post/reel URLs to scrape
- *   - `resultsLimit`         : number   — GLOBAL total results (not per-URL)
+*   - `resultsLimit`         : number   — PER URL limit (total = this × URL count)
  *   - `includeNestedComments`: boolean  — include reply threads (nested inside parent)
  *   - `isNewestComments`     : boolean  — sort newest first
  *
  * Replies are nested inside each comment object, NOT separate charged results.
- * `resultsLimit` controls the total flat result count across all URLs.
+* `resultsLimit` is applied PER URL. If set to 5 with 2 URLs, 10 results total.
  *
  * Budget target: ~$0.15/analysis. Hard cap: $0.20/analysis.
  * Pricing assumption: ~$1.90 per 1,000 results → $0.0019/result.
@@ -136,6 +136,8 @@ export interface CommentBudgetPlan {
   hardMaxCostUsd: number;
   budgetBlocked: boolean;
   adjustedResultsLimit: number;
+  /** Per-URL limit sent to the actor. Total theoretical = this × validPostUrlsCount. */
+  perPostLimit: number;
 }
 
 export interface CommentScraperResult extends CommentBudgetPlan {
@@ -160,15 +162,25 @@ export function planCommentBudget(
   totalPostsProvided: number,
 ): CommentBudgetPlan {
   let maxResults = COMMENT_SCRAPER_MAX_TOTAL_RESULTS;
-  let estimated = maxResults * COST_PER_RESULT_USD;
 
-  // Reduce results until we fit within the hard cap
-  if (estimated > HARD_MAX_CHARGE_CEILING) {
-    maxResults = Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD);
-    estimated = maxResults * COST_PER_RESULT_USD;
+  // resultsLimit is PER URL — total = perPostLimit × urlCount
+  // We must ensure perPostLimit × urlCount × costPerResult <= hard cap
+  const urlCount = Math.max(validPostUrlCount, 1);
+  let perPostLimit = Math.floor(maxResults / urlCount);
+
+  // Clamp so total theoretical cost fits within hard cap
+  const maxAffordableTotal = Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD);
+  if (perPostLimit * urlCount > maxAffordableTotal) {
+    perPostLimit = Math.floor(maxAffordableTotal / urlCount);
   }
 
-  const blocked = maxResults < 1 || validPostUrlCount === 0;
+  // Hard floor: at least 1 comment per post
+  perPostLimit = Math.max(perPostLimit, 1);
+
+  const theoreticalTotal = perPostLimit * urlCount;
+  const estimated = theoreticalTotal * COST_PER_RESULT_USD;
+
+  const blocked = perPostLimit < 1 || validPostUrlCount === 0;
 
   return {
     selectedPostCount: totalPostsProvided,
@@ -177,7 +189,8 @@ export function planCommentBudget(
     estimatedMaxCostUsd: Number(estimated.toFixed(4)),
     hardMaxCostUsd: HARD_MAX_CHARGE_CEILING,
     budgetBlocked: blocked,
-    adjustedResultsLimit: maxResults,
+    adjustedResultsLimit: theoreticalTotal,
+    perPostLimit,
   };
 }
 
@@ -215,6 +228,7 @@ export async function fetchCommentsForPosts(
       hardMaxCostUsd: HARD_MAX_CHARGE_CEILING,
       budgetBlocked: false,
       adjustedResultsLimit: COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
+      perPostLimit: COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
     };
   }
 
@@ -245,6 +259,8 @@ export async function fetchCommentsForPosts(
     {
       directUrls: urls,                                    // Post/reel URLs from base actor
       resultsLimit: budget.adjustedResultsLimit,            // Global total (not per-URL)
+      // resultsLimit is PER URL — actor multiplies by URL count internally
+      resultsLimit: budget.perPostLimit,                      // PER URL — total = this × URL count
       includeNestedComments: COMMENT_SCRAPER_INCLUDE_REPLIES, // Replies nested inside parent
       isNewestComments: true,                               // Newest comments first
     },
