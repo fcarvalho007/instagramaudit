@@ -36,6 +36,7 @@ export interface Cost24hMetrics {
   dataforseo: { amount_usd: number; calls: number };
   cache_hits: number;
   cache_savings_usd: number;
+  apify_actors: ApifyActorBreakdown[];
 }
 
 export interface ProviderCallRow {
@@ -83,12 +84,8 @@ export interface Expense30d {
    * ainda não correu.
    */
   apify_billed_total_30d: number | null;
-  /** Comment scraper sub-breakdown within Apify costs */
-  comment_scraper: {
-    total_cost_usd: number;
-    run_count: number;
-    comments_returned: number;
-  };
+  /** Actor-level breakdown within Apify costs */
+  apify_actors: ApifyActorBreakdown[];
 }
 
 export interface CostCaps {
@@ -98,6 +95,143 @@ export interface CostCaps {
 }
 
 /* ====================================================== Helpers -- */
+
+/* ================================================= Apify Actor Breakdown -- */
+
+export interface ApifyActorBreakdown {
+  actor: string;
+  label: string;
+  total_cost_usd: number;
+  actual_total_usd: number;
+  estimated_total_usd: number;
+  unavailable_count: number;
+  run_count: number;
+  error_count: number;
+  total_results: number;
+  avg_cost_per_run: number | null;
+  cost_per_1k_results: number | null;
+  last_run_at: string | null;
+  last_run_status: string | null;
+  last_run_cost_usd: number | null;
+  cost_source: "actual" | "estimated" | "mixed" | "unavailable";
+  included_in_free_report: boolean;
+}
+
+const APIFY_ACTOR_LABELS: Record<string, string> = {
+  "apify/instagram-profile-scraper": "Scraper de perfil Instagram",
+  "apify/instagram-post-scraper": "Scraper de posts Instagram",
+  "apify/instagram-comment-scraper": "Scraper de comentários Instagram",
+};
+
+const KNOWN_APIFY_ACTORS = [
+  "apify/instagram-profile-scraper",
+  "apify/instagram-comment-scraper",
+];
+
+export async function aggregateApifyActorBreakdown(
+  sinceIso: string,
+): Promise<ApifyActorBreakdown[]> {
+  const { data: logs } = await supabaseAdmin
+    .from("provider_call_logs")
+    .select("actor, status, actual_cost_usd, estimated_cost_usd, posts_returned, created_at")
+    .eq("provider", "apify")
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false });
+
+  const map = new Map<string, {
+    actualTotal: number; estimatedTotal: number; unavailable: number;
+    runs: number; errors: number; results: number;
+    hasActual: boolean; hasEstimated: boolean;
+    lastAt: string | null; lastStatus: string | null; lastCost: number | null;
+  }>();
+
+  const ensure = (actor: string) => {
+    if (!map.has(actor))
+      map.set(actor, {
+        actualTotal: 0, estimatedTotal: 0, unavailable: 0,
+        runs: 0, errors: 0, results: 0,
+        hasActual: false, hasEstimated: false,
+        lastAt: null, lastStatus: null, lastCost: null,
+      });
+    return map.get(actor)!;
+  };
+
+  for (const a of KNOWN_APIFY_ACTORS) ensure(a);
+
+  for (const row of logs ?? []) {
+    const actor = String(row.actor ?? "apify/unknown");
+    const acc = ensure(actor);
+    const status = String(row.status);
+    const isSuccess = status === "success" || status === "ok" || status === "cache";
+
+    if (!isSuccess) {
+      acc.errors += 1;
+      if (row.actual_cost_usd != null) {
+        acc.actualTotal += Number(row.actual_cost_usd);
+        acc.hasActual = true;
+      }
+    } else {
+      acc.runs += 1;
+      acc.results += row.posts_returned ?? 0;
+      if (row.actual_cost_usd != null) {
+        acc.actualTotal += Number(row.actual_cost_usd);
+        acc.hasActual = true;
+      } else if (row.estimated_cost_usd != null) {
+        acc.estimatedTotal += Number(row.estimated_cost_usd);
+        acc.hasEstimated = true;
+      } else {
+        acc.unavailable += 1;
+      }
+    }
+
+    if (acc.lastAt === null) {
+      acc.lastAt = String(row.created_at);
+      acc.lastStatus = status;
+      acc.lastCost = row.actual_cost_usd != null ? Number(row.actual_cost_usd)
+        : row.estimated_cost_usd != null ? Number(row.estimated_cost_usd) : null;
+    }
+  }
+
+  const results: ApifyActorBreakdown[] = [];
+  for (const [actor, acc] of map) {
+    const totalCost = acc.actualTotal + acc.estimatedTotal;
+    const costSource: ApifyActorBreakdown["cost_source"] =
+      acc.runs === 0 && acc.errors === 0 ? "unavailable"
+        : acc.hasActual && acc.hasEstimated ? "mixed"
+        : acc.hasActual ? "actual"
+        : acc.hasEstimated ? "estimated" : "unavailable";
+
+    results.push({
+      actor,
+      label: APIFY_ACTOR_LABELS[actor] ?? actor.replace("apify/", "").replace(/-/g, " "),
+      total_cost_usd: Number(totalCost.toFixed(4)),
+      actual_total_usd: Number(acc.actualTotal.toFixed(4)),
+      estimated_total_usd: Number(acc.estimatedTotal.toFixed(4)),
+      unavailable_count: acc.unavailable,
+      run_count: acc.runs,
+      error_count: acc.errors,
+      total_results: acc.results,
+      avg_cost_per_run: acc.runs > 0 ? Number((totalCost / acc.runs).toFixed(4)) : null,
+      cost_per_1k_results: acc.results >= 10 ? Number(((totalCost / acc.results) * 1000).toFixed(4)) : null,
+      last_run_at: acc.lastAt,
+      last_run_status: acc.lastStatus,
+      last_run_cost_usd: acc.lastCost,
+      cost_source: costSource,
+      included_in_free_report: true,
+    });
+  }
+
+  results.sort((a, b) => {
+    const aK = KNOWN_APIFY_ACTORS.indexOf(a.actor);
+    const bK = KNOWN_APIFY_ACTORS.indexOf(b.actor);
+    if (aK >= 0 && bK >= 0) return aK - bK;
+    if (aK >= 0) return -1;
+    if (bK >= 0) return 1;
+    return b.total_cost_usd - a.total_cost_usd;
+  });
+
+  return results;
+}
 
 function isoSinceHours(hours: number): string {
   return new Date(Date.now() - hours * HOUR_MS).toISOString();
@@ -385,6 +519,7 @@ export async function fetchCostMetrics24h(): Promise<Cost24hMetrics> {
     },
     cache_hits: cacheHits ?? 0,
     cache_savings_usd: Number(cacheSavings.toFixed(4)),
+    apify_actors: await aggregateApifyActorBreakdown(since),
   };
 }
 
@@ -496,22 +631,8 @@ export async function fetchExpense30d(): Promise<Expense30d> {
     }
   }
 
-  // Sub-query for comment scraper breakdown within Apify
-  const { data: csLogs } = await supabaseAdmin
-    .from("provider_call_logs")
-    .select("actual_cost_usd, estimated_cost_usd, posts_returned, status")
-    .eq("actor", "apify/instagram-comment-scraper")
-    .gte("created_at", sinceIso)
-    .in("status", ["success", "ok"]);
-
-  let csTotalCost = 0;
-  let csRunCount = 0;
-  let csCommentsReturned = 0;
-  for (const r of csLogs ?? []) {
-    csTotalCost += Number(r.actual_cost_usd ?? r.estimated_cost_usd ?? 0);
-    csRunCount += 1;
-    csCommentsReturned += r.posts_returned ?? 0;
-  }
+  // Actor-level breakdown within Apify
+  const apifyActors = await aggregateApifyActorBreakdown(sinceIso);
 
   return {
     apify_total: Number(totals.apify.amount_usd.toFixed(4)),
@@ -532,11 +653,7 @@ export async function fetchExpense30d(): Promise<Expense30d> {
     apify_billed_total_30d: apifyHasBilled
       ? Number(apifyBilled.toFixed(4))
       : null,
-    comment_scraper: {
-      total_cost_usd: Number(csTotalCost.toFixed(4)),
-      run_count: csRunCount,
-      comments_returned: csCommentsReturned,
-    },
+    apify_actors: apifyActors,
   };
 }
 

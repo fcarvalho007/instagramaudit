@@ -2,6 +2,8 @@
  * Custos detalhados — dados reais via API.
  */
 
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { AdminCard } from "@/components/admin/v2/admin-card";
@@ -21,10 +23,11 @@ import {
 import { adminFetch } from "@/lib/admin/fetch";
 import type {
   AlertRow,
+  ApifyActorBreakdown,
   Cost24hMetrics,
   ProviderCallRow,
 } from "@/lib/admin/system-queries.server";
-import { CommentScraperCard } from "./comment-scraper-card";
+import type { CommentScraperMetrics } from "@/lib/admin/system-queries.server";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await adminFetch(url);
@@ -149,8 +152,10 @@ export function CostsDetailSection() {
         </p>
       ) : null}
 
-      {/* Comment Scraper cost card */}
-      <CommentScraperCard />
+      {/* Apify actor breakdown */}
+      {!metrics.isLoading && !metrics.error && (
+        <ApifyActorBreakdownSection actors={metrics.data!.apify_actors} />
+      )}
 
       {/* Últimas chamadas */}
       <AdminCard className="mt-4">
@@ -296,5 +301,278 @@ export function CostsDetailSection() {
         )}
       </AdminCard>
     </section>
+  );
+}
+
+/* ============================================ Apify Actor Breakdown ===== */
+
+const COST_SOURCE_BADGE: Record<
+  ApifyActorBreakdown["cost_source"],
+  { text: string; variant: AdminAccent }
+> = {
+  actual: { text: "Real", variant: "revenue" },
+  estimated: { text: "Estimado", variant: "signal" },
+  mixed: { text: "Misto", variant: "info" },
+  unavailable: { text: "Indisponível", variant: "neutral" },
+};
+
+function fmtAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(diff) || diff < 0) return "—";
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  if (hours < 1) return "< 1h";
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+function ApifyActorBreakdownSection({
+  actors,
+}: {
+  actors: ApifyActorBreakdown[];
+}) {
+  // Fetch comment scraper config for the config details
+  const csConfig = useQuery({
+    queryKey: ["admin", "sistema", "comment-scraper"],
+    queryFn: () =>
+      fetchJson<CommentScraperMetrics>("/api/admin/sistema/comment-scraper"),
+    refetchInterval: 60_000,
+  });
+
+  return (
+    <AdminCard className="mt-4">
+      <div className="mb-4">
+        <h3 className="m-0 text-[15px] font-medium text-admin-text-primary">
+          Apify — decomposição por actor
+        </h3>
+        <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
+          Custo por actor nas últimas 24h · fonte: provider_call_logs · displayCost = actual_cost_usd ?? estimated_cost_usd
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {actors.map((actor) => (
+          <ActorDetailCard
+            key={actor.actor}
+            actor={actor}
+            csConfig={
+              actor.actor === "apify/instagram-comment-scraper"
+                ? csConfig.data ?? null
+                : null
+            }
+          />
+        ))}
+      </div>
+    </AdminCard>
+  );
+}
+
+function ActorDetailCard({
+  actor,
+  csConfig,
+}: {
+  actor: ApifyActorBreakdown;
+  csConfig: CommentScraperMetrics | null;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const source = COST_SOURCE_BADGE[actor.cost_source];
+  const noRuns = actor.run_count === 0 && actor.error_count === 0;
+
+  return (
+    <div className="rounded-lg border border-admin-border bg-admin-surface-muted/30 overflow-hidden">
+      {/* Header — always visible, clickable */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-admin-surface-muted/60 transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-eyebrow-sm text-admin-text-secondary uppercase truncate">
+            {actor.label}
+          </span>
+          <AdminBadge variant={source.variant}>
+            {noRuns ? "Sem execuções" : source.text}
+          </AdminBadge>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {!noRuns && (
+            <span className="font-mono text-[14px] font-semibold tabular-nums text-admin-text-primary">
+              ${actor.total_cost_usd.toFixed(2)}
+            </span>
+          )}
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
+          )}
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-admin-border px-4 py-3 space-y-3">
+          {noRuns ? (
+            <p className="text-[12px] text-admin-text-tertiary italic m-0">
+              Nenhuma execução registada neste período. O actor aparecerá aqui quando for utilizado.
+            </p>
+          ) : (
+            <>
+              {/* KPI grid */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                <KPICard
+                  eyebrow="Custo total"
+                  value={`$${actor.total_cost_usd.toFixed(2)}`}
+                  sub={source.text}
+                  size="sm"
+                />
+                <KPICard
+                  eyebrow="Execuções"
+                  value={String(actor.run_count)}
+                  sub={
+                    actor.error_count > 0
+                      ? `+ ${actor.error_count} erro(s)`
+                      : "com sucesso"
+                  }
+                  size="sm"
+                />
+                <KPICard
+                  eyebrow="Resultados"
+                  value={actor.total_results.toLocaleString("pt-PT")}
+                  sub="itens devolvidos"
+                  size="sm"
+                />
+                <KPICard
+                  eyebrow="Custo / run"
+                  value={
+                    actor.avg_cost_per_run != null
+                      ? `$${actor.avg_cost_per_run.toFixed(3)}`
+                      : "—"
+                  }
+                  sub="média"
+                  size="sm"
+                />
+              </div>
+
+              {/* Cost source breakdown */}
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-admin-text-secondary">
+                <span>
+                  Real:{" "}
+                  <span className="font-mono tabular-nums text-admin-revenue-700">
+                    ${actor.actual_total_usd.toFixed(3)}
+                  </span>
+                </span>
+                <span>
+                  Estimado:{" "}
+                  <span className="font-mono tabular-nums text-admin-signal-700">
+                    ${actor.estimated_total_usd.toFixed(3)}
+                  </span>
+                </span>
+                {actor.unavailable_count > 0 && (
+                  <span>
+                    Indisponível:{" "}
+                    <span className="text-admin-text-tertiary">
+                      {actor.unavailable_count} run(s)
+                    </span>
+                  </span>
+                )}
+                {actor.cost_per_1k_results != null && (
+                  <span>
+                    Custo/1K resultados:{" "}
+                    <span className="font-mono tabular-nums text-admin-text-primary">
+                      ${actor.cost_per_1k_results.toFixed(3)}
+                    </span>
+                  </span>
+                )}
+              </div>
+
+              {/* Last run */}
+              {actor.last_run_at && (
+                <p className="text-[11px] text-admin-text-tertiary m-0">
+                  Última execução: {fmtAgo(actor.last_run_at)} ·{" "}
+                  {actor.last_run_status === "success" || actor.last_run_status === "ok"
+                    ? "sucesso"
+                    : actor.last_run_status ?? "—"}
+                  {actor.last_run_cost_usd != null
+                    ? ` · $${actor.last_run_cost_usd.toFixed(4)}`
+                    : " · custo não disponível"}
+                </p>
+              )}
+            </>
+          )}
+
+          {/* Comment scraper config — only for that specific actor */}
+          {csConfig && (
+            <div className="border-t border-admin-border pt-3 mt-2">
+              <p className="m-0 text-eyebrow-sm text-admin-text-tertiary">
+                CONFIGURAÇÃO DO ACTOR
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-admin-text-secondary">
+                <span>
+                  Limite total alvo:{" "}
+                  <span className="font-mono tabular-nums text-admin-text-primary">
+                    {csConfig.max_total_results} comentários
+                  </span>
+                </span>
+                <span>
+                  Limite por post calculado:{" "}
+                  <span className="font-mono tabular-nums text-admin-text-primary">
+                    {csConfig.max_posts > 0
+                      ? Math.ceil(csConfig.max_total_results / csConfig.max_posts)
+                      : "—"}
+                  </span>
+                </span>
+                <span>
+                  Posts por análise:{" "}
+                  <span className="font-mono tabular-nums text-admin-text-primary">
+                    até {csConfig.max_posts}
+                  </span>
+                </span>
+                <span>
+                  Hard max:{" "}
+                  <span className="font-mono tabular-nums text-admin-text-primary">
+                    ${csConfig.hard_max_cost_usd.toFixed(2)}/run
+                  </span>
+                </span>
+                <span>
+                  Alvo:{" "}
+                  <span className="font-mono tabular-nums text-admin-text-primary">
+                    ${csConfig.target_cost_usd.toFixed(2)}/análise
+                  </span>
+                </span>
+                <span>
+                  Replies:{" "}
+                  <span
+                    className={`font-medium ${csConfig.include_replies ? "text-admin-revenue-700" : "text-admin-text-tertiary"}`}
+                  >
+                    {csConfig.include_replies ? "sim" : "não"}
+                  </span>
+                </span>
+                <span>
+                  Timeout:{" "}
+                  <span className="font-mono tabular-nums text-admin-text-primary">
+                    {csConfig.timeout_ms / 1000}s
+                  </span>
+                </span>
+                <span>
+                  Feature flag:{" "}
+                  <span
+                    className={`font-medium ${csConfig.enabled ? "text-admin-revenue-700" : "text-admin-text-tertiary"}`}
+                  >
+                    {csConfig.enabled ? "ativo" : "desativado"}
+                  </span>
+                </span>
+              </div>
+              <p className="mt-1.5 text-[10px] text-admin-text-tertiary m-0 italic">
+                O resultsLimit do Apify é aplicado por post URL. O sistema calcula o limite por post a partir do limite total alvo ÷ número de posts.
+              </p>
+            </div>
+          )}
+
+          <p className="text-[10px] text-admin-text-tertiary m-0 italic">
+            Incluído no relatório gratuito
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
