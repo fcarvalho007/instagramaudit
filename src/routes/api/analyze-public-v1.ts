@@ -1151,6 +1151,23 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             };
           }
 
+          // ─── Final snapshot persist (comment_intelligence placeholder) ────
+          // Re-persist the snapshot with the comment_intelligence placeholder
+          // so the report shows "processing" / "disabled" / "no_valid_post_urls"
+          // immediately, even before the async enrichment completes.
+          if ((normalizedPayload as Record<string, unknown>).comment_intelligence) {
+            try {
+              await storeSnapshot({
+                cacheKey,
+                instagramUsername: primaryProfile.username,
+                competitorUsernames: competitors,
+                normalizedPayload,
+              });
+            } catch (persistErr) {
+              console.error("[analyze-public-v1] failed to persist comment_intelligence placeholder", persistErr);
+            }
+          }
+
           // Reuse the positioning already computed above for the AI
           // context — single source of truth, no duplicate dataset reads.
           const benchmarkPositioning: BenchmarkPositioning = benchmarkPositioningEarly;
