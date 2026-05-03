@@ -227,11 +227,15 @@ export const Route = createFileRoute("/api/public/enrich-comments")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // Auth check
+        // Auth check — accepts INTERNAL_API_TOKEN (Bearer) or apikey header (for pg_cron sweep)
         const token = process.env.INTERNAL_API_TOKEN;
         const auth = request.headers.get("Authorization");
-        if (!token || auth !== `Bearer ${token}`) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        const apikey = request.headers.get("apikey");
+        const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+        const validBearer = token && auth === `Bearer ${token}`;
+        const validApikey = anonKey && apikey === anonKey;
+        if (!validBearer && !validApikey) {
+          return Response.json({ error: "Unauthorized" }, { status: 401  });
         }
 
         let body: { job_id?: string; snapshot_id?: string; sweep?: boolean };
