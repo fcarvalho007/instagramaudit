@@ -585,7 +585,8 @@ export interface CommentScraperMetrics {
   enabled: boolean;
   max_charge_usd: number;
   max_posts: number;
-  max_comments_per_post: number;
+  /** Max total results (global) per run */
+  max_total_results: number;
   /** Number of successful runs where actualCostUsd was null */
   null_cost_count: number;
   /** Total failed runs in the period */
@@ -598,8 +599,6 @@ export interface CommentScraperMetrics {
   include_replies: boolean;
   /** Timeout in ms */
   timeout_ms: number;
-  /** Max total comments per report */
-  max_total_comments: number;
   /** Last run cost (null if unavailable) */
   last_run_cost_usd: number | null;
   /** Last run comments returned */
@@ -615,13 +614,11 @@ export async function fetchCommentScraperMetrics(
 
   // Read actual guardrail values from env (same logic as comment-scraper.server.ts)
   const maxChargeRaw = process.env.COMMENT_SCRAPER_MAX_CHARGE_USD;
-  const maxCharge = maxChargeRaw ? Math.max(0.10, Math.min(5.0, parseFloat(maxChargeRaw) || 1.5)) : 1.5;
+  const maxCharge = maxChargeRaw ? Math.max(0.05, Math.min(0.20, parseFloat(maxChargeRaw) || 0.20)) : 0.20;
   const maxPostsRaw = process.env.COMMENT_SCRAPER_MAX_POSTS;
-  const maxPosts = maxPostsRaw ? Math.max(1, Math.min(12, parseInt(maxPostsRaw, 10) || 3)) : 3;
-  const maxCommentsRaw = process.env.COMMENT_SCRAPER_RESULTS_LIMIT;
-  const maxComments = maxCommentsRaw ? Math.max(5, Math.min(200, parseInt(maxCommentsRaw, 10) || 20)) : 20;
-  const maxTotalRaw = process.env.COMMENT_SCRAPER_MAX_TOTAL_COMMENTS;
-  const maxTotal = maxTotalRaw ? Math.max(10, Math.min(500, parseInt(maxTotalRaw, 10) || 60)) : 60;
+  const maxPosts = maxPostsRaw ? Math.max(1, Math.min(12, parseInt(maxPostsRaw, 10) || 12)) : 12;
+  const maxTotalResultsRaw = process.env.COMMENT_SCRAPER_MAX_TOTAL_RESULTS;
+  const maxTotalResults = maxTotalResultsRaw ? Math.max(5, Math.min(105, parseInt(maxTotalResultsRaw, 10) || 80)) : 80;
 
   const { data: logs } = await supabaseAdmin
     .from("provider_call_logs")
@@ -677,14 +674,13 @@ export async function fetchCommentScraperMetrics(
     enabled,
     max_charge_usd: maxCharge,
     max_posts: maxPosts,
-    max_comments_per_post: maxComments,
+    max_total_results: maxTotalResults,
     null_cost_count: nullCostCount,
     failure_count: failureCount,
     recent_failure_count: recentFailureCount,
     actor: COMMENT_SCRAPER_ACTOR,
     include_replies: true,
     timeout_ms: 120_000,
-    max_total_comments: maxTotal,
     last_run_cost_usd: lastRun
       ? (lastRun.actual_cost_usd != null ? Number(lastRun.actual_cost_usd) : null)
       : null,
