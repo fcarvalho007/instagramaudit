@@ -314,11 +314,97 @@ export interface ReportEnriched {
   editorialPatterns: EditorialPatterns;
   /** Comment-level intelligence (PRO-only). Null when absent. */
   commentIntelligence: CommentIntelligence | null;
+  /**
+   * Day-by-day posting timeline derived from `posts[]`. Each entry
+   * represents one calendar day in the analysis window. No PII.
+   */
+  postingTimeline: Array<{
+    date: string;       // YYYY-MM-DD
+    published: boolean;
+    postCount: number;
+  }>;
+  /**
+   * Per-post format + date, ordered chronologically. Normalised type
+   * derived from the snapshot `format` field. No PII.
+   */
+  analysedPostFormats: Array<{
+    date: string;       // YYYY-MM-DD
+    type: "carousel" | "reel" | "image" | "video" | "unknown";
+  }>;
 }
 
 // ============================================================================
 // Helpers (pure)
 // ============================================================================
+
+// ─── Posting timeline & format helpers ──────────────────────────────
+
+const FORMAT_NORMALISE: Record<string, "carousel" | "reel" | "image" | "video"> = {
+  Carousel: "carousel",
+  carousel: "carousel",
+  Reel: "reel",
+  reel: "reel",
+  Imagem: "image",
+  Image: "image",
+  image: "image",
+  Video: "video",
+  video: "video",
+};
+
+function normaliseFormat(raw: string | null | undefined): "carousel" | "reel" | "image" | "video" | "unknown" {
+  if (!raw) return "unknown";
+  return FORMAT_NORMALISE[raw] ?? "unknown";
+}
+
+function isoDateOnly(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+function buildPostingTimeline(
+  posts: SnapshotPost[],
+): ReportEnriched["postingTimeline"] {
+  if (posts.length === 0) return [];
+
+  const countByDate = new Map<string, number>();
+  let minMs = Infinity;
+  let maxMs = -Infinity;
+
+  for (const p of posts) {
+    const dateStr = isoDateOnly(p.taken_at_iso);
+    if (!dateStr) continue;
+    const ms = new Date(dateStr).getTime();
+    minMs = Math.min(minMs, ms);
+    maxMs = Math.max(maxMs, ms);
+    countByDate.set(dateStr, (countByDate.get(dateStr) ?? 0) + 1);
+  }
+
+  if (!Number.isFinite(minMs)) return [];
+
+  const result: ReportEnriched["postingTimeline"] = [];
+  const DAY_MS = 86_400_000;
+  for (let ms = minMs; ms <= maxMs; ms += DAY_MS) {
+    const dateStr = new Date(ms).toISOString().slice(0, 10);
+    const postCount = countByDate.get(dateStr) ?? 0;
+    result.push({ date: dateStr, published: postCount > 0, postCount });
+  }
+  return result;
+}
+
+function buildAnalysedPostFormats(
+  posts: SnapshotPost[],
+): ReportEnriched["analysedPostFormats"] {
+  if (posts.length === 0) return [];
+
+  return posts
+    .map((p) => ({
+      date: isoDateOnly(p.taken_at_iso) ?? "1970-01-01",
+      type: normaliseFormat(p.format),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
 
 const PT_MONTHS_SHORT = [
   "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -1142,6 +1228,8 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     aiInsightsV2: buildAiInsightsV2(payload.ai_insights_v2),
     editorialPatterns: buildEditorialPatterns(payload),
     commentIntelligence: (payload as { comment_intelligence?: CommentIntelligence | null }).comment_intelligence ?? null,
+    postingTimeline: buildPostingTimeline(posts),
+    analysedPostFormats: buildAnalysedPostFormats(posts),
   };
 
   const data: ReportData = {
