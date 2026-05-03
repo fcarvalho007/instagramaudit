@@ -52,8 +52,9 @@ function fmtNum(n: number): string {
 // ─── Props ──────────────────────────────────────────────────────────
 
 export interface DayEntry {
-  isoDate: string;
-  hadPost: boolean;
+  date: string;
+  published: boolean;
+  postCount: number;
 }
 
 export interface FrequencyCardProps {
@@ -76,7 +77,7 @@ export function FrequencyCard({
   const score = computeFrequencia(postingFrequencyWeekly);
   const verdict = getFrequencyVerdict(score);
 
-  const publishedCount = calendarDays.filter((d) => d.hadPost).length;
+  const publishedCount = calendarDays.filter((d) => d.published).length;
   const pausedCount = calendarDays.length - publishedCount;
 
   const statsLine =
@@ -120,10 +121,10 @@ export function FrequencyCard({
           >
             {calendarDays.map((day) => (
               <span
-                key={day.isoDate}
-                title={`${fmtPtDate(day.isoDate)} · ${day.hadPost ? "publicou" : "não publicou"}`}
+                key={day.date}
+                title={`${fmtPtDate(day.date)} · ${day.published ? "publicou" : "não publicou"}`}
                 className={`size-[14px] rounded-[3px] shrink-0 transition-opacity duration-300 ${
-                  day.hadPost
+                  day.published
                     ? "bg-emerald-500"
                     : "bg-slate-200"
                 }`}

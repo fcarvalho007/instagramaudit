@@ -6,7 +6,7 @@ import { Layers, Check, Play, Image, GalleryHorizontalEnd } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-type FormatKey = "Reels" | "Carousels" | "Imagens";
+type FormatKey = "Reels" | "Carousels" | "Imagens" | "Video";
 
 export interface FormatEntry {
   format: FormatKey;
@@ -14,11 +14,17 @@ export interface FormatEntry {
   count: number;
 }
 
+export type AnalysedPostFormat = {
+  date: string;
+  type: "carousel" | "reel" | "image" | "video" | "unknown";
+};
+
 export interface FormatCardProps {
   postsAnalyzed: number;
   dominantFormat: string;
   dominantFormatShare: number;
   formats: FormatEntry[];
+  analysedPostFormats: AnalysedPostFormat[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -27,12 +33,30 @@ const FORMAT_PT: Record<FormatKey, string> = {
   Carousels: "carrosséis",
   Reels: "reels",
   Imagens: "imagens",
+  Video: "vídeos",
 };
 
-const FORMAT_STYLE: Record<FormatKey, { bg: string; iconColor: string; icon: typeof Play }> = {
+const TYPE_TO_FORMAT_KEY: Record<string, FormatKey> = {
+  carousel: "Carousels",
+  reel: "Reels",
+  image: "Imagens",
+  video: "Video",
+};
+
+const FORMAT_STYLE: Record<string, { bg: string; iconColor: string; icon: typeof Play }> = {
   Reels: { bg: "bg-sky-100", iconColor: "text-sky-700", icon: Play },
   Carousels: { bg: "bg-emerald-100", iconColor: "text-emerald-700", icon: GalleryHorizontalEnd },
   Imagens: { bg: "bg-amber-100", iconColor: "text-amber-700", icon: Image },
+  Video: { bg: "bg-sky-100", iconColor: "text-sky-700", icon: Play },
+  unknown: { bg: "bg-slate-100", iconColor: "text-slate-500", icon: Image },
+};
+
+const TYPE_PT: Record<string, string> = {
+  carousel: "carrossel",
+  reel: "reel",
+  image: "imagem",
+  video: "vídeo",
+  unknown: "post",
 };
 
 export function getFormatHeadline(formats: FormatEntry[]): string {
@@ -100,29 +124,33 @@ export function FormatCard({
   dominantFormat,
   dominantFormatShare,
   formats,
+  analysedPostFormats,
 }: FormatCardProps) {
   const headline = getFormatHeadline(formats);
   const dk = toDominantKey(dominantFormat, dominantFormatShare);
   const verdict = getFormatVerdict(dk);
   const statsLine = buildStatsLine(formats, postsAnalyzed);
 
-  // Build thumbnails grouped by dominant format first
-  const sortedFormats = [...formats].sort((a, b) => b.count - a.count);
-  const thumbnails: Array<{ format: FormatKey; idx: number }> = [];
-  for (const f of sortedFormats) {
-    for (let i = 0; i < f.count; i++) {
-      thumbnails.push({ format: f.format, idx: thumbnails.length });
-    }
-  }
+  // Build thumbnails from literal per-post data, grouped by dominant format first
+  const sortedFormats = [...formats].filter((f) => f.count > 0).sort((a, b) => b.count - a.count);
+  const dominantType = sortedFormats.length > 0 ? sortedFormats[0].format : null;
+  const dominantTypeNorm = dominantType
+    ? Object.entries(TYPE_TO_FORMAT_KEY).find(([, v]) => v === dominantType)?.[0]
+    : null;
+
+  const sortedPosts = [...analysedPostFormats].sort((a, b) => {
+    const aIsDominant = a.type === dominantTypeNorm ? 0 : 1;
+    const bIsDominant = b.type === dominantTypeNorm ? 0 : 1;
+    if (aIsDominant !== bIsDominant) return aIsDominant - bIsDominant;
+    return a.date.localeCompare(b.date);
+  });
 
   // Aria label
-  const ariaFormatParts = sortedFormats
-    .filter((f) => f.count > 0)
-    .map((f) => `${f.count} ${FORMAT_PT[f.format]}`);
+  const ariaFormatParts = sortedFormats.map((f) => `${f.count} ${FORMAT_PT[f.format]}`);
   const ariaLabel = `Distribuição dos ${postsAnalyzed} posts analisados: ${ariaFormatParts.join(" e ")}`;
 
   // Active formats for legend
-  const activeFormats = sortedFormats.filter((f) => f.count > 0);
+  const activeFormats = sortedFormats;
 
   return (
     <article className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)] flex flex-col">
@@ -148,7 +176,7 @@ export function FormatCard({
       </p>
 
       {/* Thumbnails visualisation */}
-      {thumbnails.length > 0 && (
+      {sortedPosts.length > 0 && (
         <div className="mb-5">
           <span className="text-[10px] uppercase tracking-[0.04em] text-slate-400 block mb-2">
             {`OS TEUS ${postsAnalyzed} POSTS`}
@@ -158,14 +186,15 @@ export function FormatCard({
             aria-label={ariaLabel}
             className="flex flex-wrap gap-1"
           >
-            {thumbnails.map((t) => {
-              const style = FORMAT_STYLE[t.format];
+            {sortedPosts.map((post, idx) => {
+              const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
+              const style = FORMAT_STYLE[fk] ?? FORMAT_STYLE.unknown;
               const Icon = style.icon;
-              const label = FORMAT_PT[t.format] ?? t.format;
+              const label = TYPE_PT[post.type] ?? post.type;
               return (
                 <span
-                  key={t.idx}
-                  title={`Post ${t.idx + 1} · ${label}`}
+                  key={`${post.date}-${idx}`}
+                  title={`Post de ${post.date} · ${label}`}
                   className={`flex items-center justify-center rounded-[3px] shrink-0 ${style.bg}`}
                   style={{ width: 28, height: 37 }}
                 >

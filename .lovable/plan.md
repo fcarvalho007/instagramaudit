@@ -1,41 +1,52 @@
 
-# Micro-alteração no adapter — novos campos enriched
+# Zona D — Reescrita visual com dados literais do adapter
 
-Expor dois arrays derivados dos `posts[]` já existentes no snapshot, sem alterar backend, API, base de dados nem campos locked.
+## Contexto
 
-## Campos a adicionar em `ReportEnriched`
+Os campos `enriched.postingTimeline` e `enriched.analysedPostFormats` já estão disponíveis no adapter. Os cards actuais usam dados aproximados (`temporalSeries` e `formatBreakdown`). Este plano liga os cards aos dados literais.
 
-```ts
-postingTimeline: Array<{
-  date: string;       // YYYY-MM-DD
-  published: boolean;
-  postCount: number;
-}>;
+## Ficheiros a alterar
 
-analysedPostFormats: Array<{
-  date: string;       // YYYY-MM-DD
-  type: "carousel" | "reel" | "image" | "video" | "unknown";
-}>;
-```
+1. **`src/components/report-redesign/v2/report-overview-block.tsx`** — substituir derivações aproximadas pelos campos `enriched`
+2. **`src/components/report-redesign/v2/overview/frequency-card.tsx`** — actualizar props e calendar para usar `postingTimeline`
+3. **`src/components/report-redesign/v2/overview/format-card.tsx`** — actualizar thumbnails para usar `analysedPostFormats` (um mini-thumbnail por post real com data)
+4. **`src/components/report-redesign/v2/overview/__tests__/zone-d-helpers.test.ts`** — ajustar testes se assinaturas mudarem
 
-## Ficheiro afetado
+## Alterações detalhadas
 
-`src/lib/report/snapshot-to-report-data.ts` — único ficheiro.
+### report-overview-block.tsx
 
-## Implementação
+- Remover `calendarDays` derivado de `temporalSeries` — usar `enriched.postingTimeline` directamente
+- Remover `formatEntries` derivado de `formatBreakdown` — usar `enriched.analysedPostFormats` + `formatBreakdown` para stats agregadas
+- Passar `postingTimeline` ao FrequencyCard e `analysedPostFormats` ao FormatCard
 
-1. **Tipo**: adicionar os dois campos à interface `ReportEnriched` (linhas ~244-317).
+### frequency-card.tsx
 
-2. **Builder `buildPostingTimeline`**: iterar `posts[]`, agrupar por data ISO (`taken_at_iso`). Gerar uma entrada por dia no intervalo `[minDate, maxDate]` com `published: true/false` e `postCount`. Se `posts` vazio → array vazio.
+- Mudar interface `DayEntry` para `{ date: string; published: boolean; postCount: number }` (alinhar com adapter)
+- Títulos dos quadrados: `2026-04-15 · publicou` / `2026-04-16 · não publicou`
+- Legenda: `publicou (12)` / `parou (6)`
+- Accessibility: aria-label com contagem literal
 
-3. **Builder `buildAnalysedPostFormats`**: mapear cada post para `{ date, type }`, normalizando `format` via lookup (`"Reel" → "reel"`, `"Carousel" → "carousel"`, `"Imagem"/"Image" → "image"`, `"Video" → "video"`, fallback `"unknown"`). Ordenar por data ascendente. Se `posts` vazio → array vazio.
+### format-card.tsx
 
-4. **Ligação**: chamar ambos em `snapshotToReportData()` e incluir no objecto `enriched` (~linha 1128).
+- Aceitar `analysedPostFormats` como prop (array de `{ date, type }`)
+- Gerar um thumbnail por post real (em vez de N thumbnails sintéticos por formato)
+- Cada thumbnail mostra ícone do formato + título `Post de 2026-04-15 · carrossel`
+- Agrupar visualmente por formato dominante primeiro
+- Manter `formatBreakdown` para stats line e headline (dados agregados)
+- Normalizar `type` do adapter para as chaves visuais existentes
 
-5. **Sem efeitos colaterais**: nenhum componente é alterado — os campos ficam disponíveis para a Zona D os consumir na próxima iteração.
+### Testes
+
+- Actualizar assinaturas se `DayEntry` mudar
+- Garantir que helpers exportados mantêm a mesma lógica
+
+## Sem alterações a
+
+- Backend, adapter, API, base de dados, tokens globais, outros blocos, admin
 
 ## Validação
 
-- `tsc --noEmit` passa
-- Suite de testes existente passa (103 testes)
-- Nenhum outro ficheiro é tocado
+- `tsc --noEmit`
+- `bunx vitest run`
+- Verificar desktop, 720px e 375px — sem overflow horizontal

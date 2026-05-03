@@ -17,7 +17,7 @@ import {
   type ScoreKey,
 } from "./overview/score-utils";
 import { EngagementCardRefined } from "./report-overview-engagement";
-import { FrequencyCard, type DayEntry } from "./overview/frequency-card";
+import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
 import { ReportTopPosts } from "@/components/report/report-top-posts";
 
@@ -56,15 +56,7 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
     },
   }), [k, avgComments]);
 
-  // Derive calendar days from temporalSeries
-  const calendarDays: DayEntry[] = useMemo(() => {
-    return result.data.temporalSeries.map((d) => ({
-      isoDate: d.isoDate,
-      hadPost: d.likes > 0 || d.comments > 0 || d.views > 0,
-    }));
-  }, [result.data.temporalSeries]);
-
-  // Derive format entries from formatBreakdown
+  // Derive format entries from formatBreakdown (aggregate stats)
   const formatEntries: FormatEntry[] = useMemo(() => {
     return result.data.formatBreakdown.map((f) => ({
       format: f.format as "Reels" | "Carousels" | "Imagens",
@@ -90,13 +82,14 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
           postsAnalyzed={k.postsAnalyzed}
           windowDays={result.coverage.windowDays}
           postingFrequencyWeekly={k.postingFrequencyWeekly}
-          calendarDays={calendarDays}
+          calendarDays={enriched.postingTimeline}
         />
         <FormatCard
           postsAnalyzed={k.postsAnalyzed}
           dominantFormat={k.dominantFormat}
           dominantFormatShare={k.dominantFormatShare}
           formats={formatEntries}
+          analysedPostFormats={enriched.analysedPostFormats}
         />
       </div>
 
