@@ -113,6 +113,7 @@ export interface CommentScraperResult {
   actualCostUsd: number | null;
   durationMs: number;
   commentsReturned: number;
+  repliesReturned: number;
   postsRequested: number;
   /** True if per-post grouping was available; false if all comments fell into a single aggregated bucket. */
   groupedByPost: boolean;
@@ -142,6 +143,7 @@ export async function fetchCommentsForPosts(
       actualCostUsd: null,
       durationMs: 0,
       commentsReturned: 0,
+      repliesReturned: 0,
       postsRequested: 0,
       groupedByPost: false,
     };
@@ -168,8 +170,16 @@ export async function fetchCommentsForPosts(
 
   // Parse all raw items into typed comments
   const parsedComments: Array<{ comment: RawApifyComment; postRef: string | null }> = [];
+  let totalRepliesReturned = 0;
 
   for (const raw of result.items) {
+    const parsedReplies = Array.isArray(raw.replies)
+      ? parseReplies(raw.replies as Record<string, unknown>[])
+      : undefined;
+    if (parsedReplies) {
+      totalRepliesReturned += countRepliesDeep(parsedReplies);
+    }
+
     const comment: RawApifyComment = {
       id: String(raw.id ?? ""),
       text: typeof raw.text === "string" ? raw.text : undefined,
@@ -181,9 +191,7 @@ export async function fetchCommentsForPosts(
         typeof raw.likesCount === "number" ? raw.likesCount : undefined,
       repliesCount:
         typeof raw.repliesCount === "number" ? raw.repliesCount : undefined,
-      replies: Array.isArray(raw.replies)
-        ? parseReplies(raw.replies as Record<string, unknown>[])
-        : undefined,
+      replies: parsedReplies,
     };
 
     // Try to extract a post-URL back-reference (not guaranteed by this actor)
@@ -252,9 +260,36 @@ export async function fetchCommentsForPosts(
     actualCostUsd: result.actualCostUsd,
     durationMs,
     commentsReturned: parsedComments.length,
+    repliesReturned: totalRepliesReturned,
     postsRequested: urls.length,
     groupedByPost,
   };
+}
+
+/**
+ * Count replies recursively.
+ */
+function countRepliesDeep(replies: RawApifyComment[]): number {
+  let count = replies.length;
+  for (const r of replies) {
+    if (r.replies) count += countRepliesDeep(r.replies);
+  }
+  return count;
+}
+
+/**
+ * Validate that a URL looks like an Instagram post/reel permalink.
+ */
+export function isValidInstagramPostUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      (u.hostname === "www.instagram.com" || u.hostname === "instagram.com") &&
+      /^\/(p|reel)\/[A-Za-z0-9_-]+/.test(u.pathname)
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**

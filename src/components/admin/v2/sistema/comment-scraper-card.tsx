@@ -90,8 +90,8 @@ export function CommentScraperCard() {
       </div>
 
       <p className="m-0 mb-4 text-[12px] text-admin-text-tertiary">
-        Custo adicional por análise PRO quando a análise de comentários está
-        ativa.
+        Custo adicional por análise quando a extração de comentários está
+        ativa. Incluído no relatório gratuito.
       </p>
 
       {m.run_count === 0 ? (

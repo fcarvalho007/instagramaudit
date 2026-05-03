@@ -567,6 +567,14 @@ export async function fetchCommentScraperMetrics(
 ): Promise<CommentScraperMetrics> {
   const enabled = process.env.COMMENT_SCRAPER_ENABLED === "true";
 
+  // Read actual guardrail values from env (same logic as comment-scraper.server.ts)
+  const maxChargeRaw = process.env.COMMENT_SCRAPER_MAX_CHARGE_USD;
+  const maxCharge = maxChargeRaw ? Math.max(0.10, Math.min(5.0, parseFloat(maxChargeRaw) || 1.5)) : 1.5;
+  const maxPostsRaw = process.env.COMMENT_SCRAPER_MAX_POSTS;
+  const maxPosts = maxPostsRaw ? Math.max(1, Math.min(12, parseInt(maxPostsRaw, 10) || 3)) : 3;
+  const maxCommentsRaw = process.env.COMMENT_SCRAPER_RESULTS_LIMIT;
+  const maxComments = maxCommentsRaw ? Math.max(5, Math.min(200, parseInt(maxCommentsRaw, 10) || 20)) : 20;
+
   const { data: logs } = await supabaseAdmin
     .from("provider_call_logs")
     .select(
@@ -603,8 +611,8 @@ export async function fetchCommentScraperMetrics(
     last_run_status: lastRun ? String(lastRun.status) : null,
     last_run_at: lastRun ? String(lastRun.created_at) : null,
     enabled,
-    max_charge_usd: 3.0,
-    max_posts: 12,
-    max_comments_per_post: 50,
+    max_charge_usd: maxCharge,
+    max_posts: maxPosts,
+    max_comments_per_post: maxComments,
   };
 }

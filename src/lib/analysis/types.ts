@@ -136,7 +136,7 @@ export interface CommentIntelligence {
   available: boolean;
   source: "apify_comments";
   /** Reason the feature is unavailable (only when available=false). */
-  reason?: "comment_scraper_failed" | "comment_scraper_disabled" | "no_posts_with_comments";
+  reason?: "comment_scraper_failed" | "comment_scraper_disabled" | "no_posts_with_comments" | "no_valid_post_urls";
   /** Number of posts whose comments were sampled. */
   samplePosts: number;
   /** Total top-level + reply-level comments analysed across all sampled posts. */
