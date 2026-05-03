@@ -1050,6 +1050,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             isInternalTest: commentScraperInternalTest,
           });
 
+          console.info("[analyze-public-v1] comment scraper gate", {
+            COMMENT_SCRAPER_ENABLED: process.env.COMMENT_SCRAPER_ENABLED ?? "(unset)",
+            COMMENT_SCRAPER_INTERNAL_TEST: process.env.COMMENT_SCRAPER_INTERNAL_TEST ?? "(unset)",
+            commentScraperEnabled,
+            commentScraperInternalTest,
+            runComments,
+          });
+
           if (runComments) {
             try {
               // Pick posts by conversation potential: most comments first,
