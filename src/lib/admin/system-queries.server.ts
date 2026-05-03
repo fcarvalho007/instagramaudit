@@ -836,3 +836,67 @@ export async function fetchCommentScraperMetrics(
     runs_above_hard_max: runsAboveHardMax,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Comment Enrichment Jobs
+// ─────────────────────────────────────────────────────────────────────
+
+export interface EnrichmentJobSummary {
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+  total: number;
+  recent_failures: Array<{
+    id: string;
+    handle: string;
+    last_error: string | null;
+    attempts: number;
+    created_at: string;
+    updated_at: string;
+  }>;
+}
+
+export async function fetchEnrichmentJobSummary(): Promise<EnrichmentJobSummary> {
+  // Count by status
+  const { data: allJobs } = await supabaseAdmin
+    .from("comment_enrichment_jobs")
+    .select("id, status, handle, last_error, attempts, created_at, updated_at")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const rows = allJobs ?? [];
+  let pending = 0;
+  let processing = 0;
+  let completed = 0;
+  let failed = 0;
+
+  for (const r of rows) {
+    const s = String(r.status);
+    if (s === "pending") pending++;
+    else if (s === "processing") processing++;
+    else if (s === "completed") completed++;
+    else if (s === "failed") failed++;
+  }
+
+  const recentFailures = rows
+    .filter((r) => String(r.status) === "failed")
+    .slice(0, 5)
+    .map((r) => ({
+      id: String(r.id),
+      handle: String(r.handle),
+      last_error: r.last_error ? String(r.last_error) : null,
+      attempts: Number(r.attempts ?? 0),
+      created_at: String(r.created_at),
+      updated_at: String(r.updated_at),
+    }));
+
+  return {
+    pending,
+    processing,
+    completed,
+    failed,
+    total: rows.length,
+    recent_failures: recentFailures,
+  };
+}
