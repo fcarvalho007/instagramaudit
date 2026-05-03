@@ -182,7 +182,7 @@ export async function updateProviderCallsEventId(
   try {
     const { error } = await supabaseAdmin
       .from("provider_call_logs")
-      .update({ analysis_event_id: analysisEventId } as never)
+      .update({ analysis_event_id: analysisEventId })
       .in("id", logIds);
     if (error) {
       console.error("[analytics] updateProviderCallsEventId failed", error.message);
@@ -208,7 +208,7 @@ export async function linkProviderCallsToEvent(
       .select("id")
       .eq("handle", handle.toLowerCase())
       .gte("created_at", since.toISOString())
-      .is("analysis_event_id" as never, null);
+      .is("analysis_event_id", null);
     if (fetchErr) {
       console.error("[analytics] linkProviderCallsToEvent query failed", fetchErr.message);
       return;
