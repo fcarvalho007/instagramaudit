@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompetitorModal } from "./competitor-modal";
 
@@ -13,7 +13,8 @@ export function ComparisonHeader() {
   return (
     <>
       <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-slate-50/60 px-4 py-3">
-        <p className="text-[13px] text-slate-500">
+        <p className="text-[13px] text-slate-500 flex items-center gap-2">
+          <Users className="size-4 text-slate-400 shrink-0" aria-hidden="true" />
           Compara o teu perfil com concorrentes diretos
         </p>
         <Button
@@ -26,7 +27,7 @@ export function ComparisonHeader() {
           <span className="hidden sm:inline">Adicionar concorrente</span>
           <span className="sm:hidden">Concorrente</span>
           <span className="ml-0.5 rounded-sm bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.04em] text-amber-700 leading-none">
-            PRO
+            <span className="animate-pulse">PRO</span>
           </span>
         </Button>
       </div>

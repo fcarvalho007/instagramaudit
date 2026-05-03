@@ -35,6 +35,7 @@ export function ScoreGrid({ scores }: ScoreGridProps) {
         <LegendItem color={SCORE_COLORS.warning.stroke} label="50–89 a melhorar" />
         <LegendItem color={SCORE_COLORS.success.stroke} label="90–100 forte" />
       </div>
+      <div className="border-b border-slate-100 mt-2" aria-hidden="true" />
     </div>
   );
 }

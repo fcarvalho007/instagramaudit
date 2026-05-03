@@ -13,10 +13,10 @@ export function getScoreFamily(score: number): ScoreFamily {
 }
 
 /** Score ring colors per family */
-export const SCORE_COLORS: Record<ScoreFamily, { bg: string; stroke: string; text: string }> = {
-  danger:  { bg: "rgba(163,45,45,0.15)", stroke: "#A32D2D", text: "#A32D2D" },
-  warning: { bg: "rgba(133,79,11,0.20)", stroke: "#854F0B", text: "#854F0B" },
-  success: { bg: "rgba(15,110,86,0.15)", stroke: "#0F6E56", text: "#0F6E56" },
+export const SCORE_COLORS: Record<ScoreFamily, { bg: string; stroke: string; text: string; tintBg: string; glow: string }> = {
+  danger:  { bg: "rgba(163,45,45,0.15)", stroke: "#A32D2D", text: "#A32D2D", tintBg: "rgba(244,63,94,0.05)", glow: "drop-shadow(0 0 6px rgba(163,45,45,0.35))" },
+  warning: { bg: "rgba(133,79,11,0.20)", stroke: "#854F0B", text: "#854F0B", tintBg: "rgba(245,158,11,0.06)", glow: "none" },
+  success: { bg: "rgba(15,110,86,0.15)", stroke: "#0F6E56", text: "#0F6E56", tintBg: "rgba(16,185,129,0.05)", glow: "drop-shadow(0 0 6px rgba(15,110,86,0.3))" },
 };
 
 // ─── Score 1: Envolvimento ──────────────────────────────────────────

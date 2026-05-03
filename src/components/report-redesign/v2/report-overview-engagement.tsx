@@ -6,6 +6,7 @@
  *  3. Gráfico a 130px, sem grid verticais, 3 horizontais a 4% opac
  */
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   getConsolidatedBenchmarkSeries,
@@ -37,21 +38,26 @@ export function EngagementCardRefined({ result }: Props) {
         <span className="text-sm font-medium text-slate-900">
           Taxa de envolvimento
         </span>
-        <span className="text-[10px] text-slate-400 tracking-[0.06em]">
-          ◈ MERCADO · SOCIALINSIDER
+        <span className="text-[10px] text-slate-500 tracking-[0.06em] bg-slate-100 px-2 py-0.5 rounded-md">
+          ◈ MERCADO
         </span>
       </div>
 
       {/* Hero numbers */}
       <div className="flex items-baseline gap-3 sm:gap-4 flex-wrap mb-5">
-        <span className="font-display text-[22px] font-medium text-slate-900 tabular-nums leading-none">
+        <span className="font-display text-[28px] font-semibold text-slate-900 tabular-nums leading-none">
           {formatPct(k.engagementRate)}
         </span>
         <span className="text-xs text-slate-500">
           ref. tier {formatPct(k.engagementBenchmark)}
         </span>
-        <span className={cn("text-xs tabular-nums", gapColor)}>
-          {fmtPp(gap)} p.p.
+        <span className={cn("text-xs tabular-nums inline-flex items-center gap-1", gapColor)}>
+          {gap >= 0 ? (
+            <TrendingUp className="size-3.5" aria-hidden="true" />
+          ) : (
+            <TrendingDown className="size-3.5" aria-hidden="true" />
+          )}
+          {fmtPp(gap)}&nbsp;p.p.
         </span>
       </div>
 
@@ -66,6 +72,23 @@ export function EngagementCardRefined({ result }: Props) {
           activeTierLabel={benchmarkSeries[activeTierIdx]?.tierLabel}
         />
       </div>
+
+      {/* Source references */}
+      {activeSourceRefs.length > 0 && (
+        <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap gap-x-3 gap-y-1">
+          {activeSourceRefs.map((s) => (
+            <a
+              key={s.name}
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-slate-400 hover:text-blue-500 transition-colors"
+            >
+              {s.name} ↗
+            </a>
+          ))}
+        </div>
+      )}
     </article>
   );
 }
