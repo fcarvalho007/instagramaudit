@@ -1,62 +1,43 @@
 
-# CRITICAL: `resultsLimit` is PER URL, not global
+# Fixed 10 comments per post
 
-## Finding
+## What changes
 
-Apify documentation (confirmed on input schema page, 2026-05-03):
+The user wants `resultsLimit = 10` per post/reel, replacing the dynamic calculation.
 
-> **resultsLimit** — Set the number of comments you expect to scrape **from each post or reel**.
-> If set to **5**, you will get **5** comments per URL. If you add 2 URLs, you will extract **10** results altogether.
+### Budget impact
 
-The current code on line 247 of `comment-scraper.server.ts` comments `// Global total (not per-URL)` — this is **incorrect**.
+| Posts | Per-post | Total comments | Est. cost |
+|-------|----------|---------------|-----------|
+| 1     | 10       | 10            | $0.019    |
+| 6     | 10       | 60            | $0.114    |
+| 12    | 10       | 120           | $0.228    |
 
-## Impact
+12 posts at 10 each = $0.228, which exceeds the current $0.20 hard cap. Two options:
 
-| Scenario | Current assumption | Reality |
-|---|---|---|
-| 12 URLs, `resultsLimit: 80` | 80 total comments, ~$0.152 | **960 total comments, ~$1.82** |
-| Budget hard cap $0.20 | Respected | **Exceeded by 9×** |
+- **A) Raise hard cap to $0.25** — accommodates 10/post at 12 posts with margin
+- **B) Keep $0.20 cap, reduce max posts to 10** — 10×10 = $0.19, fits
 
-The `maxTotalChargeUsd: $0.20` Apify-level cap would stop the run at ~105 results, but the cost would hit $0.20 instead of $0.15, and more importantly the intent of the limit is violated.
+I recommend **Option A** (raise to $0.25) since the difference is marginal and 12 posts gives better comment intelligence.
 
-## Fix — no test needed
+### Changes in `src/lib/analysis/comment-scraper.server.ts`
 
-The documentation is unambiguous. A live test would only confirm what's already documented. Spending $0.02 on a confirmation test is unnecessary.
+1. Add new constant `COMMENT_SCRAPER_PER_POST_LIMIT = 10` (overridable via env)
+2. Raise `HARD_MAX_CHARGE_CEILING` from `0.20` to `0.25`
+3. Update `COMMENT_SCRAPER_TARGET_COST_USD` from `0.15` to `0.23`
+4. Update `COMMENT_SCRAPER_MAX_TOTAL_RESULTS` default from 80 to 120 and hard max accordingly
+5. Simplify `planCommentBudget()` — use fixed `perPostLimit = 10` instead of `floor(maxTotal / urlCount)`, with safety clamp if `10 × urlCount` exceeds affordable total
+6. Update doc comments to reflect fixed 10/post strategy
 
-## Required changes
-
-### 1. `planCommentBudget()` — compute `perPostLimit`
-
-```
-perPostLimit = floor(maxTotalResults / selectedPostCount)
-```
-
-- With 12 posts and `maxTotalResults = 80`: `perPostLimit = floor(80/12) = 6`
-- Theoretical max: `6 × 12 = 72 comments` → ~$0.137 (under target $0.15)
-- With 1 post: `perPostLimit = 80` (full budget)
-- Hard floor: `perPostLimit >= 1`
-
-### 2. Actor call — use `perPostLimit` instead of `adjustedResultsLimit`
-
-```ts
-resultsLimit: budget.perPostLimit,  // PER URL — actor multiplies by URL count
-```
-
-### 3. Update constants/comments
-
-- Fix the misleading comment `// Global total (not per-URL)` → `// PER URL — total = this × URL count`
-- Add `perPostLimit` to `CommentBudgetPlan` interface
-- Recalculate `estimatedMaxCostUsd` = `perPostLimit × selectedPostCount × COST_PER_RESULT_USD`
-
-### 4. Files changed
-
-- `src/lib/analysis/comment-scraper.server.ts` — budget formula + actor input + comments
-
-### 5. Files NOT changed
-
-- No schema changes, no admin/frontend changes, no payment/auth changes
-
-## Validation
+### Validation
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
+
+### Files changed
+
+- `src/lib/analysis/comment-scraper.server.ts` only
+
+### No changes to
+
+- Admin UI, schema, RLS, auth, frontend, locked files
