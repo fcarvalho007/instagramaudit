@@ -84,12 +84,8 @@ export interface Expense30d {
    * ainda não correu.
    */
   apify_billed_total_30d: number | null;
-  /** Comment scraper sub-breakdown within Apify costs */
-  comment_scraper: {
-    total_cost_usd: number;
-    run_count: number;
-    comments_returned: number;
-  };
+  /** Actor-level breakdown within Apify costs */
+  apify_actors: ApifyActorBreakdown[];
 }
 
 export interface CostCaps {
