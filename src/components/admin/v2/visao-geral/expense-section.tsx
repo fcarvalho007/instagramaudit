@@ -73,6 +73,44 @@ export function ExpenseSection() {
     queryFn: () => fetchJson<CostCaps>("/api/admin/sistema/caps"),
   });
 
+  // Hooks must be called unconditionally (before early returns).
+  const dailyData = expense.data?.daily ?? [];
+
+  const allActorKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of dailyData) {
+      if (d.apify_by_actor) {
+        for (const k of Object.keys(d.apify_by_actor)) set.add(k);
+      }
+    }
+    const known = [
+      "apify/instagram-profile-scraper",
+      "apify/instagram-comment-scraper",
+      "apify/instagram-scraper",
+    ].filter((a) => set.has(a));
+    const rest = [...set].filter((a) => !known.includes(a)).sort();
+    return [...known, ...rest];
+  }, [dailyData]);
+
+  const hasActorBreakdown = allActorKeys.length > 0;
+
+  const chartData = useMemo(() =>
+    dailyData.map((d) => {
+      const row: Record<string, string | number> = {
+        day: d.day.slice(8, 10),
+        apify: Number(d.apify ?? 0),
+        openai: Number(d.openai ?? 0),
+        dataforseo: Number(d.dataforseo ?? 0),
+      };
+      if (hasActorBreakdown && d.apify_by_actor) {
+        for (const actor of allActorKeys) {
+          row[`apify_${actor}`] = Number(d.apify_by_actor[actor] ?? 0);
+        }
+      }
+      return row;
+    }),
+  [dailyData, allActorKeys, hasActorBreakdown]);
+
   if (expense.isLoading || caps.isLoading) {
     return (
       <section>
@@ -113,43 +151,6 @@ export function ExpenseSection() {
 
   const data = expense.data!;
   const c = caps.data!;
-
-  // Discover all unique actor keys across all daily data
-  const allActorKeys = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of data.daily) {
-      if (d.apify_by_actor) {
-        for (const k of Object.keys(d.apify_by_actor)) set.add(k);
-      }
-    }
-    // Deterministic order: known actors first, then alphabetical
-    const known = [
-      "apify/instagram-profile-scraper",
-      "apify/instagram-comment-scraper",
-      "apify/instagram-scraper",
-    ].filter((a) => set.has(a));
-    const rest = [...set].filter((a) => !known.includes(a)).sort();
-    return [...known, ...rest];
-  }, [data.daily]);
-
-  const hasActorBreakdown = allActorKeys.length > 0;
-
-  const chartData = useMemo(() =>
-    data.daily.map((d) => {
-      const row: Record<string, string | number> = {
-        day: d.day.slice(8, 10),
-        apify: Number(d.apify ?? 0),
-        openai: Number(d.openai ?? 0),
-        dataforseo: Number(d.dataforseo ?? 0),
-      };
-      if (hasActorBreakdown && d.apify_by_actor) {
-        for (const actor of allActorKeys) {
-          row[`apify_${actor}`] = Number(d.apify_by_actor[actor] ?? 0);
-        }
-      }
-      return row;
-    }),
-  [data.daily, allActorKeys, hasActorBreakdown]);
 
   const hasData = chartData.length > 0;
 
