@@ -9,7 +9,7 @@ import { computeFrequencia } from "./score-utils";
 
 const PT_MONTHS = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "dezembro",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
 function getFrequencyHeadline(postsPerDay: number): string {
