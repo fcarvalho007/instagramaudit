@@ -154,6 +154,23 @@ export function ExpenseSection() {
               color="expense"
               showCap
             />
+            {/* Comment scraper sub-breakdown */}
+            {data.comment_scraper.run_count > 0 && (
+              <div className="mt-3 rounded-md border border-admin-border bg-admin-surface-muted/40 px-3 py-2.5 space-y-1">
+                <p className="text-eyebrow-sm text-admin-text-tertiary m-0">
+                  COMENTÁRIOS INSTAGRAM
+                </p>
+                <p className="text-[13px] font-semibold tabular-nums text-admin-text-primary m-0">
+                  ${data.comment_scraper.total_cost_usd.toFixed(2)}
+                </p>
+                <p className="text-[11px] text-admin-text-secondary m-0">
+                  {data.comment_scraper.run_count} run(s) · {data.comment_scraper.comments_returned.toLocaleString("pt-PT")} resultados
+                </p>
+                <p className="text-[10px] text-admin-text-tertiary m-0 italic">
+                  Custo da análise gratuita de comentários públicos.
+                </p>
+              </div>
+            )}
           </ExpenseColumn>
 
           {/* OpenAI */}

@@ -83,6 +83,38 @@ function buildWarnings(m: CommentScraperMetrics): WarningItem[] {
     });
   }
 
+  // Amber: avg cost per run exceeds target
+  if (m.avg_cost_per_run != null && m.avg_cost_per_run > m.target_cost_usd) {
+    warnings.push({
+      tone: "amber",
+      message: `Custo médio por run ($${m.avg_cost_per_run.toFixed(3)}) excede o alvo de $${m.target_cost_usd.toFixed(2)}.`,
+    });
+  }
+
+  // Amber: runs above target cost
+  if (m.runs_above_target > 0) {
+    warnings.push({
+      tone: "amber",
+      message: `${m.runs_above_target} run(s) com custo real acima de $${m.target_cost_usd.toFixed(2)}.`,
+    });
+  }
+
+  // Rose: runs above hard max
+  if (m.runs_above_hard_max > 0) {
+    warnings.push({
+      tone: "rose",
+      message: `${m.runs_above_hard_max} run(s) com custo real acima do hard cap de $${m.hard_max_cost_usd.toFixed(2)}. Investigar.`,
+    });
+  }
+
+  // Rose: env was clamped (raw value > $0.20)
+  if (m.env_was_clamped) {
+    warnings.push({
+      tone: "rose",
+      message: `O valor do secret COMMENT_SCRAPER_MAX_CHARGE_USD excedia $${m.hard_max_cost_usd.toFixed(2)} e foi reduzido automaticamente.`,
+    });
+  }
+
   // Rose: many failures overall
   if (m.failure_count > 0 && m.failure_count >= m.run_count && m.run_count > 0) {
     warnings.push({
@@ -245,18 +277,25 @@ export function CommentScraperCard() {
             </span>
           </span>
           <span>
-            Max charge:{" "}
+            Hard max:{" "}
             <span className="font-mono tabular-nums text-admin-text-primary">
-              ${m.max_charge_usd.toFixed(2)}
+              ${m.hard_max_cost_usd.toFixed(2)}
             </span>
             /run
+          </span>
+          <span>
+            Alvo:{" "}
+            <span className="font-mono tabular-nums text-admin-text-primary">
+              ${m.target_cost_usd.toFixed(2)}
+            </span>
+            /análise
           </span>
           <span>
             Posts:{" "}
             <span className="font-mono tabular-nums text-admin-text-primary">
               {m.max_posts}
             </span>
-            /análise
+            /análise (máx. 12)
           </span>
           <span>
             Resultados:{" "}
@@ -264,11 +303,6 @@ export function CommentScraperCard() {
               {m.max_total_results}
             </span>
             /run (global)
-          </span>
-          <span>
-            Custo alvo:{" "}
-            <span className="font-mono tabular-nums text-admin-text-primary">$0.15</span>
-            /análise
           </span>
           <span>
             Replies:{" "}
@@ -288,6 +322,12 @@ export function CommentScraperCard() {
               className={`font-medium ${m.enabled ? "text-admin-revenue-700" : "text-admin-text-tertiary"}`}
             >
               {m.enabled ? "ativo" : "desativado"}
+            </span>
+          </span>
+          <span>
+            Seleção de posts:{" "}
+            <span className="text-admin-text-primary">
+              apenas posts do ator principal
             </span>
           </span>
         </div>

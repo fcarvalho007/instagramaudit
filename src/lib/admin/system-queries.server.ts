@@ -603,6 +603,18 @@ export interface CommentScraperMetrics {
   last_run_cost_usd: number | null;
   /** Last run comments returned */
   last_run_comments: number;
+  /** Target cost per analysis (informational) */
+  target_cost_usd: number;
+  /** Hard budget ceiling — env values above this are clamped */
+  hard_max_cost_usd: number;
+  /** Post selection rule */
+  post_rule: "base_actor_posts_only";
+  /** Whether env was clamped (raw value > $0.20) */
+  env_was_clamped: boolean;
+  /** Number of runs where cost exceeded target ($0.15) */
+  runs_above_target: number;
+  /** Number of runs where cost exceeded hard max ($0.20) */
+  runs_above_hard_max: number;
 }
 
 const COMMENT_SCRAPER_ACTOR = "apify/instagram-comment-scraper";
@@ -660,6 +672,20 @@ export async function fetchCommentScraperMetrics(
     (r) => String(r.status) !== "success" && String(r.status) !== "ok",
   ).length;
 
+  // Count runs above thresholds
+  let runsAboveTarget = 0;
+  let runsAboveHardMax = 0;
+  for (const row of rows) {
+    const status = String(row.status);
+    if (status === "success" || status === "ok") {
+      const cost = Number(row.actual_cost_usd ?? 0);
+      if (cost > 0.15) runsAboveTarget++;
+      if (cost > 0.20) runsAboveHardMax++;
+    }
+  }
+
+  const envWasClamped = maxChargeRaw != null && parseFloat(maxChargeRaw) > 0.20;
+
   return {
     total_cost_usd: Number(totalCost.toFixed(4)),
     run_count: runCount,
@@ -685,5 +711,11 @@ export async function fetchCommentScraperMetrics(
       ? (lastRun.actual_cost_usd != null ? Number(lastRun.actual_cost_usd) : null)
       : null,
     last_run_comments: lastRun ? (lastRun.posts_returned ?? 0) : 0,
+    target_cost_usd: 0.15,
+    hard_max_cost_usd: 0.20,
+    post_rule: "base_actor_posts_only",
+    env_was_clamped: envWasClamped,
+    runs_above_target: runsAboveTarget,
+    runs_above_hard_max: runsAboveHardMax,
   };
 }
