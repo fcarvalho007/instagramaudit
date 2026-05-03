@@ -17,6 +17,8 @@ import {
   type ScoreKey,
 } from "./overview/score-utils";
 import { EngagementCardRefined } from "./report-overview-engagement";
+import { FrequencyCard, type DayEntry } from "./overview/frequency-card";
+import { FormatCard, type FormatEntry } from "./overview/format-card";
 import { ReportTopPosts } from "@/components/report/report-top-posts";
 
 export interface Props {
@@ -54,6 +56,23 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
     },
   }), [k, avgComments]);
 
+  // Derive calendar days from temporalSeries
+  const calendarDays: DayEntry[] = useMemo(() => {
+    return result.data.temporalSeries.map((d) => ({
+      isoDate: d.isoDate,
+      hadPost: d.likes > 0 || d.comments > 0 || d.views > 0,
+    }));
+  }, [result.data.temporalSeries]);
+
+  // Derive format entries from formatBreakdown
+  const formatEntries: FormatEntry[] = useMemo(() => {
+    return result.data.formatBreakdown.map((f) => ({
+      format: f.format as "Reels" | "Carousels" | "Imagens",
+      sharePct: f.sharePct,
+      count: Math.round((f.sharePct / 100) * k.postsAnalyzed),
+    }));
+  }, [result.data.formatBreakdown, k.postsAnalyzed]);
+
   return (
     <div className="relative space-y-8 md:space-y-10">
       {/* Zona A — CTA concorrente */}
@@ -64,6 +83,22 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
 
       {/* Zona C — Card de Taxa de Envolvimento */}
       <EngagementCardRefined result={result} />
+
+      {/* Zona D — Frequência + Tipo de conteúdo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+        <FrequencyCard
+          postsAnalyzed={k.postsAnalyzed}
+          windowDays={result.coverage.windowDays}
+          postingFrequencyWeekly={k.postingFrequencyWeekly}
+          calendarDays={calendarDays}
+        />
+        <FormatCard
+          postsAnalyzed={k.postsAnalyzed}
+          dominantFormat={k.dominantFormat}
+          dominantFormatShare={k.dominantFormatShare}
+          formats={formatEntries}
+        />
+      </div>
 
       {/* Top Posts */}
       <div>
