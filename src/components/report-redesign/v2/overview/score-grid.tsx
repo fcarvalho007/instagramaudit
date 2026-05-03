@@ -18,7 +18,7 @@ export function ScoreGrid({ scores }: ScoreGridProps) {
       </span>
 
       {/* 4-column grid */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4 sm:gap-4">
         {SCORE_DEFINITIONS.map((def) => (
           <ScoreCard
             key={def.key}
