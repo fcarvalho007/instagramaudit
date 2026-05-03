@@ -26,7 +26,7 @@ const PAD_R = 14;
 const PAD_T = 36;
 const PAD_B = 50;
 const BAR_RADIUS = 5;
-const GRID_LINES = 5;
+const GRID_LINES = 4;
 const MARKER_R = 5;
 
 // Dynamic label offset when reference line and profile marker collide
@@ -61,7 +61,10 @@ export function ReportEngagementBenchmarkChart({
   const allVals = benchmarkSeries.map((t) => t.engagementRatePct);
   if (profileVal > 0) allVals.push(profileVal);
   if (competitor?.engagementRatePct) allVals.push(competitor.engagementRatePct);
-  const scaleMax = Math.max(...allVals) * 1.25 || 1;
+  const rawMax = Math.max(...allVals) * 1.15 || 1;
+  // Round up to nice step so grid labels are clean numbers
+  const niceStep = rawMax <= 3 ? 0.5 : rawMax <= 8 ? 1 : rawMax <= 15 ? 2 : 5;
+  const scaleMax = Math.ceil(rawMax / niceStep) * niceStep;
 
   // Gap for tooltip
   const gapPp = profileVal - benchmarkVal;
@@ -70,8 +73,8 @@ export function ReportEngagementBenchmarkChart({
   const innerW = VB_W - PAD_L - PAD_R;
   const innerH = VB_H - PAD_T - PAD_B;
   const barGap = innerW / n;
-  const barW = barGap * 0.48;
-  const activeBarW = barGap * 0.62;
+  const barW = barGap * 0.46;
+  const activeBarW = barGap * 0.52;
 
   function yForVal(v: number): number {
     return PAD_T + innerH - (v / scaleMax) * innerH;
@@ -130,7 +133,7 @@ export function ReportEngagementBenchmarkChart({
                 fill="#94a3b8"
                 style={{ fontSize: "9px", fontFamily: "var(--font-mono)" }}
               >
-                {val.toFixed(1)}%
+                {val % 1 === 0 ? `${val.toFixed(0)}%` : `${val.toFixed(1)}%`}
               </text>
             );
           })}
