@@ -19,8 +19,8 @@ import {
   ShoppingCart,
   ThumbsUp,
   AlertTriangle,
-  Sparkles,
   Ban,
+  Loader2,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ function classifyBrandReply(ci: CommentIntelligence): {
     return {
       status: "active",
       config: {
-        label: "Marca responde ativamente",
+        label: "Responde ativamente",
         tone: "emerald",
         editorial:
           "A marca mantém presença consistente nos comentários — responde a uma parte significativa da audiência.",
@@ -81,7 +81,7 @@ function classifyBrandReply(ci: CommentIntelligence): {
     return {
       status: "minimal",
       config: {
-        label: "Presença mínima",
+        label: "Quase não responde",
         tone: "amber",
         editorial:
           "Foram detetadas respostas pontuais, mas em volume insuficiente para indicar participação ativa na conversa.",
@@ -163,7 +163,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
   if (ci.complaintOrIssueCount > 0) {
     chips.push({
       key: "complaint",
-      label: "Dúvidas/objeções",
+      label: "Problemas ou queixas",
       count: ci.complaintOrIssueCount,
       Icon: AlertTriangle,
       className: "border-amber-200 bg-amber-50 text-amber-700",
@@ -181,7 +181,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
   if (ci.spamOrLowQualityCount > 0) {
     chips.push({
       key: "spam",
-      label: "Ruído/spam",
+      label: "Ruído ou spam",
       count: ci.spamOrLowQualityCount,
       Icon: Ban,
       className: "border-slate-200 bg-slate-50 text-slate-500",
@@ -194,20 +194,39 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
 // Unavailable state
 // ─────────────────────────────────────────────────────────────────────
 
-const UNAVAILABLE_REASONS: Record<string, string> = {
-  comment_scraper_failed:
-    "A recolha de comentários não foi possível nesta execução. O relatório será atualizado automaticamente na próxima análise.",
-  comment_scraper_disabled:
-    "A análise de comentários está temporariamente desativada.",
-  no_posts_with_comments:
-    "As publicações analisadas não contêm comentários públicos acessíveis.",
+const UNAVAILABLE_REASONS: Record<string, { title: string; body: string }> = {
+  processing: {
+    title: "A aguardar análise de comentários",
+    body: "Análise de comentários em processamento. Atualiza o relatório dentro de alguns instantes.",
+  },
+  budget_blocked: {
+    title: "Análise não executada",
+    body: "Análise de comentários não executada para manter o custo dentro do limite operacional.",
+  },
+  comment_scraper_failed: {
+    title: "Análise indisponível",
+    body: "Não foi possível analisar comentários nesta execução.",
+  },
+  comment_scraper_disabled: {
+    title: "Análise desativada",
+    body: "A análise de comentários está temporariamente desativada.",
+  },
+  no_posts_with_comments: {
+    title: "Sem comentários acessíveis",
+    body: "As publicações analisadas não contêm comentários públicos acessíveis.",
+  },
+  no_valid_post_urls: {
+    title: "URLs insuficientes",
+    body: "Não havia URLs públicos suficientes para analisar comentários.",
+  },
 };
 
 export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {
   const reason = data?.reason;
-  const explanation =
-    (reason && UNAVAILABLE_REASONS[reason]) ??
-    "Comentários públicos não analisados nesta execução.";
+  const info = reason ? UNAVAILABLE_REASONS[reason] : undefined;
+  const title = info?.title ?? "A aguardar análise de comentários";
+  const body = info?.body ?? "Comentários públicos não analisados nesta execução.";
+  const isProcessing = reason === "processing";
 
   return (
     <div className="mt-5 space-y-3">
@@ -223,13 +242,17 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
 
       <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3.5 space-y-1.5">
         <div className="flex items-center gap-2">
-          <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+          {isProcessing ? (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 text-slate-400 animate-spin" aria-hidden="true" />
+          ) : (
+            <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+          )}
           <p className="text-[12.5px] font-medium text-slate-500">
-            Comentários públicos não analisados nesta execução
+            {title}
           </p>
         </div>
         <p className="text-[12px] leading-relaxed text-slate-500">
-          {explanation}
+          {body}
         </p>
       </div>
 
@@ -259,7 +282,7 @@ export function CommentIntelligenceSection({ data }: Props) {
           aria-hidden="true"
         />
         <h4 className="text-[13px] font-semibold text-slate-700">
-          Marca na conversa
+          A marca participa na conversa?
         </h4>
       </div>
 
@@ -287,27 +310,31 @@ export function CommentIntelligenceSection({ data }: Props) {
         {config.editorial}
       </InsightCallout>
 
-      {/* 4-metric grid */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* 6-metric grid */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <MetricCell
           label="Respostas da marca"
           value={String(data.ownerRepliesCount)}
-          source="Cálculo"
         />
         <MetricCell
           label="Taxa de resposta"
           value={`${data.ownerReplyRatePct}%`}
-          source="Cálculo"
         />
         <MetricCell
           label="Posts com resposta"
           value={`${data.postsWithOwnerReplyPct}%`}
-          source="Cálculo"
         />
         <MetricCell
-          label="Comentários analisados"
-          value={data.sampleComments.toLocaleString("pt-PT")}
-          source="Dados extraídos"
+          label="Perguntas do público"
+          value={String(data.questionsFromAudienceCount)}
+        />
+        <MetricCell
+          label="Intenção de compra"
+          value={String(data.buyingIntentCount)}
+        />
+        <MetricCell
+          label="Queixas detetadas"
+          value={String(data.complaintOrIssueCount)}
         />
       </div>
 
@@ -371,6 +398,13 @@ export function CommentIntelligenceSection({ data }: Props) {
         </div>
       )}
 
+      {/* Sample info */}
+      <p className="text-[11px] text-slate-400">
+        Amostra: {data.sampleComments.toLocaleString("pt-PT")} comentários em {data.samplePosts}{" "}
+        {data.samplePosts === 1 ? "publicação" : "publicações"}
+        {data.sampleReplies > 0 && ` · ${data.sampleReplies} respostas aninhadas`}
+      </p>
+
       {/* Scope + limitations */}
       <div className="space-y-1 pt-1">
         <ScopeNote />
@@ -396,25 +430,18 @@ export function CommentIntelligenceSection({ data }: Props) {
 function MetricCell({
   label,
   value,
-  source,
 }: {
   label: string;
   value: string;
-  source?: string;
 }) {
   return (
     <div className="rounded-lg border border-slate-100 bg-white px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 break-words">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 break-words leading-tight">
         {label}
       </p>
       <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-slate-800">
         {value}
       </p>
-      {source && (
-        <p className="mt-0.5 text-[9.5px] text-slate-300 uppercase tracking-wider">
-          {source}
-        </p>
-      )}
     </div>
   );
 }
