@@ -1,52 +1,19 @@
 
-# Zona D — Reescrita visual com dados literais do adapter
+# Adicionar links de acesso rápido ao report na landing page
 
-## Contexto
+## O que muda
 
-Os campos `enriched.postingTimeline` e `enriched.analysedPostFormats` já estão disponíveis no adapter. Os cards actuais usam dados aproximados (`temporalSeries` e `formatBreakdown`). Este plano liga os cards aos dados literais.
+Adicionar uma pequena secção de "acesso rápido" (visível apenas em dev/admin) na página `/` com links directos para:
 
-## Ficheiros a alterar
+1. `/analyze/frederico.m.carvalho` — Report real com dados live
+2. `/report/example` — Report mockup editorial
 
-1. **`src/components/report-redesign/v2/report-overview-block.tsx`** — substituir derivações aproximadas pelos campos `enriched`
-2. **`src/components/report-redesign/v2/overview/frequency-card.tsx`** — actualizar props e calendar para usar `postingTimeline`
-3. **`src/components/report-redesign/v2/overview/format-card.tsx`** — actualizar thumbnails para usar `analysedPostFormats` (um mini-thumbnail por post real com data)
-4. **`src/components/report-redesign/v2/overview/__tests__/zone-d-helpers.test.ts`** — ajustar testes se assinaturas mudarem
+## Implementação
 
-## Alterações detalhadas
+**Ficheiro:** `src/routes/index.tsx`
 
-### report-overview-block.tsx
+- Adicionar um bloco discreto no topo ou fundo da página (antes do `HeroSection` ou após `ProductPreviewSection`) com dois `Link` do TanStack Router apontando para as rotas acima.
+- Estilo minimalista: fundo `surface-secondary`, texto pequeno, alinhado ao design system existente.
+- Sem lógica de gate — links visíveis para qualquer visitante (o site está em fase de testes admin).
 
-- Remover `calendarDays` derivado de `temporalSeries` — usar `enriched.postingTimeline` directamente
-- Remover `formatEntries` derivado de `formatBreakdown` — usar `enriched.analysedPostFormats` + `formatBreakdown` para stats agregadas
-- Passar `postingTimeline` ao FrequencyCard e `analysedPostFormats` ao FormatCard
-
-### frequency-card.tsx
-
-- Mudar interface `DayEntry` para `{ date: string; published: boolean; postCount: number }` (alinhar com adapter)
-- Títulos dos quadrados: `2026-04-15 · publicou` / `2026-04-16 · não publicou`
-- Legenda: `publicou (12)` / `parou (6)`
-- Accessibility: aria-label com contagem literal
-
-### format-card.tsx
-
-- Aceitar `analysedPostFormats` como prop (array de `{ date, type }`)
-- Gerar um thumbnail por post real (em vez de N thumbnails sintéticos por formato)
-- Cada thumbnail mostra ícone do formato + título `Post de 2026-04-15 · carrossel`
-- Agrupar visualmente por formato dominante primeiro
-- Manter `formatBreakdown` para stats line e headline (dados agregados)
-- Normalizar `type` do adapter para as chaves visuais existentes
-
-### Testes
-
-- Actualizar assinaturas se `DayEntry` mudar
-- Garantir que helpers exportados mantêm a mesma lógica
-
-## Sem alterações a
-
-- Backend, adapter, API, base de dados, tokens globais, outros blocos, admin
-
-## Validação
-
-- `tsc --noEmit`
-- `bunx vitest run`
-- Verificar desktop, 720px e 375px — sem overflow horizontal
+Nenhum outro ficheiro será alterado.
