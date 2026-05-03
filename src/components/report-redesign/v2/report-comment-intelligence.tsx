@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Ban,
   Loader2,
+  BarChart3,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -120,11 +121,57 @@ const BADGE_ICON_CLASSES: Record<StatusConfig["tone"], string> = {
 const SCOPE_NOTE =
   "Esta leitura usa comentários públicos acessíveis nos posts analisados. Não inclui DMs, comentários apagados, respostas privadas ou comentários não visíveis sem login.";
 
+const METHODOLOGY_NOTE =
+  "Leitura baseada em comentários públicos visíveis nos posts analisados. Não inclui DMs, comentários apagados ou comentários apenas visíveis após login.";
+
 function ScopeNote() {
   return (
     <p className="text-[11px] leading-relaxed text-slate-400 italic">
       {SCOPE_NOTE}
     </p>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Transparency strip — "Amostra analisada"
+// ─────────────────────────────────────────────────────────────────────
+
+function TransparencyStrip({ data }: { data: CommentIntelligence }) {
+  const items: { label: string; value: string }[] = [
+    { label: "Publicações analisadas", value: `${data.samplePosts} / 12` },
+    { label: "Comentários públicos recolhidos", value: data.sampleComments.toLocaleString("pt-PT") },
+  ];
+  if (data.sampleReplies > 0) {
+    items.push({ label: "Respostas em thread", value: data.sampleReplies.toLocaleString("pt-PT") });
+  }
+  items.push(
+    { label: "Comentários da audiência", value: data.audienceCommentsCount.toLocaleString("pt-PT") },
+    { label: "Respostas da marca", value: String(data.ownerRepliesCount) },
+    { label: "Taxa de resposta da marca", value: `${data.ownerReplyRatePct}%` },
+  );
+
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50/40 p-3 space-y-2.5">
+      <div className="flex items-center gap-1.5">
+        <BarChart3 className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+        <p className="text-eyebrow-sm text-slate-500">Amostra analisada</p>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
+        {items.map((item) => (
+          <div key={item.label}>
+            <p className="text-[10.5px] font-medium uppercase tracking-wide text-slate-400 leading-tight break-words">
+              {item.label}
+            </p>
+            <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-slate-700">
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10.5px] leading-relaxed text-slate-400">
+        {METHODOLOGY_NOTE}
+      </p>
+    </div>
   );
 }
 
@@ -398,12 +445,8 @@ export function CommentIntelligenceSection({ data }: Props) {
         </div>
       )}
 
-      {/* Sample info */}
-      <p className="text-[11px] text-slate-400">
-        Amostra: {data.sampleComments.toLocaleString("pt-PT")} comentários em {data.samplePosts}{" "}
-        {data.samplePosts === 1 ? "publicação" : "publicações"}
-        {data.sampleReplies > 0 && ` · ${data.sampleReplies} respostas aninhadas`}
-      </p>
+      {/* Transparency strip */}
+      <TransparencyStrip data={data} />
 
       {/* Scope + limitations */}
       <div className="space-y-1 pt-1">
