@@ -93,6 +93,11 @@ export function ReportShellV2({
         {/* Tabs mobile sticky abaixo do hero/posicionamento */}
         <ReportBlockTopTabs />
 
+        {/* Banner concorrentes — destaque acima dos blocos */}
+        <div className="mx-auto max-w-[1380px] px-5 md:px-6 pt-5 md:pt-6">
+          <ComparisonHeader />
+        </div>
+
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1380px] px-5 md:px-6">
           <div className="flex gap-10 lg:gap-12 pt-6 lg:pt-10">
