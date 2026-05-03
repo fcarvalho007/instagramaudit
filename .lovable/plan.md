@@ -1,36 +1,63 @@
 
-# Quality verification — fixes found
+# Fix budget constants + smoke test
 
-## Verification results
+## Problem
 
-All major components are correctly wired:
+The comment scraper budget constants in `src/lib/analysis/comment-scraper.server.ts` do not match the stated constraints:
 
-| Area | Status |
-|------|--------|
-| Comment scraper budget (10/post, $0.25 cap) | Done |
-| Comment intelligence aggregator | Done |
-| UI component (TransparencyStrip, signals, unavailable) | Done |
-| Diagnostic block wiring (Q05 audience card) | Done |
-| Snapshot adapter (comment_intelligence field) | Done |
-| Event attribution in pipeline (linkProviderCallsToEvent) | Done |
-| Admin cost breakdown (SectionSkeleton/Error/Empty + mobile) | Done |
-| Sync cron (sync-apify-costs) | Done |
-| Tests: 78/78, typecheck: 0 errors | Pass |
+- `COMMENT_SCRAPER_TARGET_COST_USD` is `0.23` — should be `0.15`
+- `HARD_MAX_CHARGE_CEILING` is `0.25` — should be `0.20`
+- `COMMENT_SCRAPER_MAX_CHARGE_USD` defaults to the ceiling (`0.25`) — should default to `0.20`
+- `COMMENT_SCRAPER_PER_POST_LIMIT` is `10` and `COMMENT_SCRAPER_MAX_POSTS` is `12`, giving 120 results at ~$0.228. With a $0.20 ceiling, the max affordable results are ~105 (floor(0.20/0.0019)), so the per-post limit or max-posts must be reduced.
 
-## Issue found
+Running a test now would send `maxTotalChargeUsd: $0.25` to Apify, violating the hard cap.
 
-**`as never` type casts in `src/lib/analysis/events.ts`** — lines 185 and 211 use `as never` to bypass type checking on `analysis_event_id`. The column IS in the generated Supabase types, so these casts are unnecessary. While they shouldn't cause runtime failures, they mask potential type issues and make the code less maintainable.
+## Step 1 — Fix constants
 
-DB check: 66 provider_call_logs exist, 0 are linked to events. The `linkProviderCallsToEvent` function runs correctly in the code path (line 450 of analyze-public-v1.ts) but the `as never` casts should be cleaned up for clarity.
+In `src/lib/analysis/comment-scraper.server.ts`:
 
-## Changes
+1. Change `COMMENT_SCRAPER_TARGET_COST_USD` from `0.23` to `0.15`
+2. Change `HARD_MAX_CHARGE_CEILING` from `0.25` to `0.20`
+3. `COMMENT_SCRAPER_MAX_CHARGE_USD` already clamps to ceiling, so it will naturally become `0.20`
+4. `COMMENT_SCRAPER_MAX_TOTAL_RESULTS` will auto-adjust via `Math.floor(0.20 / 0.0019)` = 105
+5. With 12 posts and 105 max results, per-post limit becomes `floor(105/12) = 8` (down from 10)
+6. Update doc comments to reflect $0.15 target / $0.20 ceiling
 
-### `src/lib/analysis/events.ts`
+New effective budget at 12 posts: 8 x 12 = 96 results, estimated $0.1824. Within $0.20 cap.
 
-1. Line 185: Remove `as never` from `.update({ analysis_event_id: analysisEventId } as never)` — change to `.update({ analysis_event_id: analysisEventId })`
-2. Line 211: Remove `as never` from `.is("analysis_event_id" as never, null)` — change to `.is("analysis_event_id", null)`
+No other files need changes — all consumers reference these exported constants.
 
-### Validation
+## Step 2 — Validate build
 
-- `bunx tsc --noEmit` — must pass (confirms the column is properly typed)
-- `bunx vitest run` — all 78 tests pass
+Run `tsc` and `vitest` to confirm no regressions.
+
+## Step 3 — Pre-flight verification
+
+Read the effective values from server logs or source to confirm:
+- Target: $0.15
+- Hard cap: $0.20
+- `maxTotalChargeUsd`: $0.20
+- Per-post limit: 8
+- Max posts: 12
+- Max total results: 96
+- Estimated max cost: ~$0.1824
+- Cannot exceed $0.20
+
+## Step 4 — Run one fresh analysis
+
+Use the admin force-refresh endpoint for `frederico.m.carvalho` to bypass cache and trigger a fresh analysis including the comment scraper.
+
+## Step 5 — Full verification
+
+After the analysis completes, perform the full A-through-G verification checklist from the task:
+- Analysis result (fresh vs cache, comment scraper outcome)
+- Comment Intelligence aggregated data (no PII)
+- Privacy validation (no raw comments in snapshot)
+- UI validation (Q05 block, transparency strip, no PRO language)
+- Cost validation (provider_call_logs, attribution, estimated vs actual)
+- Admin validation (sistema, cost breakdown, mobile layout)
+- Final recommendation (PASS / PARTIAL PASS / FAIL)
+
+## Files changed
+
+- `src/lib/analysis/comment-scraper.server.ts` — budget constants only (lines 47-50, 73-78, 88-97, doc comments)
