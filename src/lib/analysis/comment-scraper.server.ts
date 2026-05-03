@@ -11,14 +11,15 @@
  *
  * Actor input fields (verified against docs as of 2025-05):
  *   - `directUrls`           : string[] — post/reel URLs to scrape
-*   - `resultsLimit`         : number   — PER URL limit (total = this × URL count)
+*   - `resultsLimit`         : number   — PER URL limit (fixed at 10; total = 10 × URL count)
  *   - `includeNestedComments`: boolean  — include reply threads (nested inside parent)
  *   - `isNewestComments`     : boolean  — sort newest first
  *
  * Replies are nested inside each comment object, NOT separate charged results.
-* `resultsLimit` is applied PER URL. If set to 5 with 2 URLs, 10 results total.
+* `resultsLimit` is applied PER URL. Fixed at 10 per post/reel.
+* With 12 posts: 10 × 12 = 120 total results → ~$0.228.
  *
- * Budget target: ~$0.15/analysis. Hard cap: $0.20/analysis.
+ * Budget target: ~$0.23/analysis. Hard cap: $0.25/analysis.
  * Pricing assumption: ~$1.90 per 1,000 results → $0.0019/result.
  */
 
@@ -42,11 +43,19 @@ const COMMENT_ACTOR = "apify/instagram-comment-scraper";
 /** Estimated cost per result (comment) based on Apify pricing ~$1.90/1K */
 const COST_PER_RESULT_USD = 0.0019;
 
-/** Target cost per analysis — informational, used in budget planning. */
-export const COMMENT_SCRAPER_TARGET_COST_USD = 0.15;
+/** Target cost per analysis — informational, used in budget planning (10 comments × 12 posts). */
+export const COMMENT_SCRAPER_TARGET_COST_USD = 0.23;
 
-/** Absolute hard cap — env vars above this are clamped down with a warning. */
-const HARD_MAX_CHARGE_CEILING = 0.20;
+/** Absolute hard cap — env vars above this are clamped down with a warning. Raised to $0.25 to accommodate 10/post × 12 posts. */
+const HARD_MAX_CHARGE_CEILING = 0.25;
+
+/**
+ * Fixed per-post comment limit sent to the actor.
+ * Override via COMMENT_SCRAPER_PER_POST_LIMIT env var. Default: 10.
+ */
+export const COMMENT_SCRAPER_PER_POST_LIMIT = clampInt(
+  process.env.COMMENT_SCRAPER_PER_POST_LIMIT, 10, 1, 50,
+);
 
 /**
  * Max posts to send to the comment scraper per analysis.
@@ -57,13 +66,13 @@ export const COMMENT_SCRAPER_MAX_POSTS = clampInt(
 );
 
 /**
- * Max total results (comments) across all posts — global limit for the actor.
- * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 80 (~$0.152).
- * Hard-capped at 105 (~$0.20).
+ * Max total results (comments) across all posts — theoretical ceiling.
+ * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 120 (10 × 12 posts).
+ * Hard-capped at ~131 (~$0.25).
  */
 export const COMMENT_SCRAPER_MAX_TOTAL_RESULTS = clampInt(
   process.env.COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
-  80,
+  120,
   5,
   Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD), // ~105
 );
@@ -163,15 +172,19 @@ export function planCommentBudget(
 ): CommentBudgetPlan {
   let maxResults = COMMENT_SCRAPER_MAX_TOTAL_RESULTS;
 
-  // resultsLimit is PER URL — total = perPostLimit × urlCount
-  // We must ensure perPostLimit × urlCount × costPerResult <= hard cap
+  // Fixed per-post limit (default 10), with safety clamp against hard cap
   const urlCount = Math.max(validPostUrlCount, 1);
-  let perPostLimit = Math.floor(maxResults / urlCount);
+  let perPostLimit = COMMENT_SCRAPER_PER_POST_LIMIT;
 
   // Clamp so total theoretical cost fits within hard cap
   const maxAffordableTotal = Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD);
   if (perPostLimit * urlCount > maxAffordableTotal) {
     perPostLimit = Math.floor(maxAffordableTotal / urlCount);
+  }
+
+  // Also clamp against maxTotalResults
+  if (perPostLimit * urlCount > maxResults) {
+    perPostLimit = Math.floor(maxResults / urlCount);
   }
 
   // Hard floor: at least 1 comment per post
