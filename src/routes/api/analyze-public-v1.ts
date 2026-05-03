@@ -86,7 +86,17 @@ import {
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
-import { fetchCommentsForPosts, shouldRunCommentScraper } from "@/lib/analysis/comment-scraper.server";
+import {
+  fetchCommentsForPosts,
+  shouldRunCommentScraper,
+  isValidInstagramPostUrl,
+  COMMENT_SCRAPER_MAX_POSTS,
+  COMMENT_SCRAPER_RESULTS_LIMIT,
+  COMMENT_SCRAPER_INCLUDE_REPLIES,
+  COMMENT_SCRAPER_MAX_CHARGE_USD,
+  COMMENT_SCRAPER_MAX_TOTAL_COMMENTS,
+} from "@/lib/analysis/comment-scraper.server";
+import { ApifyConfigError, ApifyUpstreamError } from "@/lib/analysis/apify-client";
 import { aggregateCommentIntelligence, buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 
@@ -1059,14 +1069,33 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 .slice(0, 12)
                 .map((p) => p.permalink!);
 
-              if (postUrls.length > 0) {
-                console.info(
-                  "[analyze-public-v1] comment scraper: fetching comments for",
-                  postUrls.length,
-                  "posts",
-                );
+              // Validate & deduplicate Instagram URLs
+              const validUrls = [...new Set(
+                postUrls.filter((u) => isValidInstagramPostUrl(u)),
+              )].slice(0, COMMENT_SCRAPER_MAX_POSTS);
 
-                const commentResult = await fetchCommentsForPosts(postUrls);
+              if (validUrls.length === 0) {
+                commentIntelligence = buildUnavailableCommentIntelligence(
+                  primaryProfile.username,
+                  "no_valid_post_urls",
+                );
+              } else {
+                // Sanitized audit log — no secrets, no raw URLs
+                console.info("[analyze-public-v1] comment scraper audit", {
+                  actor: "apify/instagram-comment-scraper",
+                  requestedPostUrlsCount: postUrls.length,
+                  effectivePostUrlsCount: validUrls.length,
+                  resultsLimit: COMMENT_SCRAPER_RESULTS_LIMIT,
+                  maxTotalComments: COMMENT_SCRAPER_MAX_TOTAL_COMMENTS,
+                  includeReplies: COMMENT_SCRAPER_INCLUDE_REPLIES,
+                  maxChargeUsd: COMMENT_SCRAPER_MAX_CHARGE_USD,
+                  timeoutMs: 120_000,
+                  selectedPostStrategy: "highest_comments_then_engagement_then_recent",
+                  featureFlag: commentScraperEnabled,
+                  freeReportFeature: true,
+                });
+
+                const commentResult = await fetchCommentsForPosts(validUrls);
 
                 // Log the comment scraper call
                 await recordProviderCall({
@@ -1080,6 +1109,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   postsReturned: commentResult.commentsReturned,
                   apifyRunId: commentResult.runId ?? undefined,
                   actualCostUsd: commentResult.actualCostUsd ?? undefined,
+                  errorMessage: undefined,
                 });
 
                 commentIntelligence = aggregateCommentIntelligence(
@@ -1118,6 +1148,21 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 primaryProfile.username,
                 "comment_scraper_failed",
               );
+
+              // Determine granular error status for provider_call_logs
+              let errStatus: "config_error" | "timeout" | "http_error" | "network_error" = "network_error";
+              let errRunId: string | undefined;
+              let errCost: number | undefined;
+              if (err instanceof ApifyConfigError) {
+                errStatus = "config_error";
+              } else if (err instanceof ApifyUpstreamError) {
+                if (err.status === 504) errStatus = "timeout";
+                else errStatus = "http_error";
+                errRunId = (err as ApifyUpstreamError & { runId?: string }).runId;
+                const maybeCost = (err as ApifyUpstreamError & { actualCostUsd?: number }).actualCostUsd;
+                errCost = typeof maybeCost === "number" ? maybeCost : undefined;
+              }
+
               // Log the failure so admin cost view captures it
               try {
                 await recordProviderCall({
@@ -1125,9 +1170,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   actor: "apify/instagram-comment-scraper",
                   network: "instagram",
                   handle: primary,
-                  status: "network_error",
+                  status: errStatus,
                   durationMs: 0,
                   postsReturned: 0,
+                  apifyRunId: errRunId,
+                  actualCostUsd: errCost,
                   errorMessage: err instanceof Error ? err.message : String(err),
                 });
               } catch {
