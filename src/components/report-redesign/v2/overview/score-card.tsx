@@ -32,13 +32,13 @@ export function ScoreCard({ definition, score, subtitle }: ScoreCardProps) {
             type="button"
             onClick={handleClick}
             aria-label={definition.ariaLabel(score, family)}
-            className="flex flex-col items-center gap-1.5 rounded-lg border border-slate-200/60 bg-white px-2 py-3.5 text-center transition-colors hover:border-slate-300 hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+            className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-4 text-center shadow-[0_1px_3px_rgba(15,23,42,0.04),0_8px_20px_-12px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-slate-300 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_14px_28px_-12px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
           >
-            <ScoreRing score={score} label={definition.label} />
-            <span className="text-xs font-medium text-slate-900 mt-1.5">
+            <ScoreRing score={score} size={64} label={definition.label} />
+            <span className="text-[13px] font-medium text-slate-900 mt-1">
               {definition.label}
             </span>
-            <span className="text-[10px] text-slate-500 leading-tight">
+            <span className="text-[11px] text-slate-500 leading-tight">
               {subtitle}
             </span>
           </button>

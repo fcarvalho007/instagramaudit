@@ -11,7 +11,7 @@ const RADIUS = 30;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const STROKE_WIDTH = 6;
 
-export function ScoreRing({ score, size = 72, label }: ScoreRingProps) {
+export function ScoreRing({ score, size = 64, label }: ScoreRingProps) {
   const family = getScoreFamily(score);
   const colors = SCORE_COLORS[family];
   const [mounted, setMounted] = useState(false);
@@ -68,8 +68,8 @@ export function ScoreRing({ score, size = 72, label }: ScoreRingProps) {
         textAnchor="middle"
         dominantBaseline="central"
         fill={colors.text}
-        fontSize="20"
-        fontWeight="500"
+        fontSize={size >= 72 ? "20" : "18"}
+        fontWeight="600"
         fontFamily="Inter, sans-serif"
       >
         {score}

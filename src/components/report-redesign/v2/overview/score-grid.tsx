@@ -1,6 +1,7 @@
 import { ScoreCard } from "./score-card";
 import {
   SCORE_DEFINITIONS,
+  SCORE_COLORS,
   type ScoreKey,
 } from "./score-utils";
 
@@ -10,14 +11,14 @@ interface ScoreGridProps {
 
 export function ScoreGrid({ scores }: ScoreGridProps) {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {/* Section label */}
-      <span className="text-eyebrow-sm text-[11px] text-slate-500 tracking-[0.06em]">
+      <span className="text-eyebrow-sm text-slate-500">
         PONTUAÇÃO GLOBAL
       </span>
 
       {/* 4-column grid */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {SCORE_DEFINITIONS.map((def) => (
           <ScoreCard
             key={def.key}
@@ -29,10 +30,10 @@ export function ScoreGrid({ scores }: ScoreGridProps) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-3 pt-1">
-        <LegendItem color="#A32D2D" label="0–49 crítico" />
-        <LegendItem color="#854F0B" label="50–89 a melhorar" />
-        <LegendItem color="#0F6E56" label="90–100 forte" />
+      <div className="flex items-center justify-center gap-4 pt-1.5">
+        <LegendItem color={SCORE_COLORS.danger.stroke} label="0–49 crítico" />
+        <LegendItem color={SCORE_COLORS.warning.stroke} label="50–89 a melhorar" />
+        <LegendItem color={SCORE_COLORS.success.stroke} label="90–100 forte" />
       </div>
     </div>
   );
