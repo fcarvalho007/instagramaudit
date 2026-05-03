@@ -399,8 +399,9 @@ function buildAnalysedPostFormats(
   if (posts.length === 0) return [];
 
   return posts
+    .filter((p) => isoDateOnly(p.taken_at_iso) !== null)
     .map((p) => ({
-      date: isoDateOnly(p.taken_at_iso) ?? "1970-01-01",
+      date: isoDateOnly(p.taken_at_iso)!,
       type: normaliseFormat(p.format),
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
