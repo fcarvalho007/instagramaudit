@@ -1118,12 +1118,6 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   // 3. Fire-and-forget trigger to the enrichment endpoint
                   const internalToken = process.env.INTERNAL_API_TOKEN;
                   if (internalToken) {
-                    const triggerUrl = `${process.env.SUPABASE_URL ? "" : ""}${
-                      import.meta.env.VITE_SUPABASE_URL
-                        ? ""
-                        : ""
-                    }`;
-                    // Use the request's own origin for the trigger URL
                     const origin = new URL(request.url).origin;
                     fetch(`${origin}/api/public/enrich-comments`, {
                       method: "POST",
