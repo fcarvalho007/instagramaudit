@@ -133,7 +133,7 @@ export function ReportBlockTopTabs() {
                 onClick={() => scrollToBlock(block.id)}
                 aria-current={isActive ? "true" : undefined}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 w-full",
+                  "relative flex flex-col items-center justify-center gap-0.5 w-full",
                   "py-2 pt-2.5 transition-colors duration-150",
                   "min-h-[52px]",
                   "focus-visible:outline-none focus-visible:bg-blue-50",
