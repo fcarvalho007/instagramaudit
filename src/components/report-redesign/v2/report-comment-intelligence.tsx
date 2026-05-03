@@ -272,7 +272,7 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
   const reason = data?.reason;
   const info = reason ? UNAVAILABLE_REASONS[reason] : undefined;
   const title = info?.title ?? "A aguardar análise de comentários";
-  const body = info?.body ?? "Comentários públicos não analisados nesta execução.";
+  const body = info?.body ?? "A análise de comentários não ficou disponível nesta execução.";
   const isProcessing = reason === "processing";
 
   return (
