@@ -42,6 +42,7 @@ import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/re
 import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/force-refresh'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
+import { Route as ApiAdminAnalysisCostBreakdownRouteImport } from './routes/api/admin/analysis-cost-breakdown'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
 import { Route as ApiPublicHooksSyncOpenaiCostsRouteImport } from './routes/api/public/hooks/sync-openai-costs'
@@ -241,6 +242,12 @@ const ApiAdminDataforseoDiagnosticsRoute =
   ApiAdminDataforseoDiagnosticsRouteImport.update({
     id: '/api/admin/dataforseo-diagnostics',
     path: '/api/admin/dataforseo-diagnostics',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminAnalysisCostBreakdownRoute =
+  ApiAdminAnalysisCostBreakdownRouteImport.update({
+    id: '/api/admin/analysis-cost-breakdown',
+    path: '/api/admin/analysis-cost-breakdown',
     getParentRoute: () => rootRouteImport,
   } as any)
 const AdminSistemaCockpitLegadoRoute =
@@ -458,6 +465,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
+  '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -525,6 +533,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
+  '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -594,6 +603,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
+  '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -664,6 +674,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
+    | '/api/admin/analysis-cost-breakdown'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
@@ -731,6 +742,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
+    | '/api/admin/analysis-cost-breakdown'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
@@ -799,6 +811,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
+    | '/api/admin/analysis-cost-breakdown'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
@@ -858,6 +871,7 @@ export interface RootRouteChildren {
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
   ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
   ReportExampleRoute: typeof ReportExampleRoute
+  ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
@@ -1128,6 +1142,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/dataforseo-diagnostics'
       fullPath: '/api/admin/dataforseo-diagnostics'
       preLoaderRoute: typeof ApiAdminDataforseoDiagnosticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/analysis-cost-breakdown': {
+      id: '/api/admin/analysis-cost-breakdown'
+      path: '/api/admin/analysis-cost-breakdown'
+      fullPath: '/api/admin/analysis-cost-breakdown'
+      preLoaderRoute: typeof ApiAdminAnalysisCostBreakdownRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/sistema/cockpit-legado': {
@@ -1499,6 +1520,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
   ApiSendReportEmailRoute: ApiSendReportEmailRoute,
   ReportExampleRoute: ReportExampleRoute,
+  ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,

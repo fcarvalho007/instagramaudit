@@ -169,3 +169,56 @@ export async function recordProviderCall(
     return null;
   }
 }
+
+/**
+ * Batch-update `analysis_event_id` on existing provider_call_logs rows.
+ * Best-effort — never throws.
+ */
+export async function updateProviderCallsEventId(
+  logIds: string[],
+  analysisEventId: string,
+): Promise<void> {
+  if (logIds.length === 0) return;
+  try {
+    const { error } = await supabaseAdmin
+      .from("provider_call_logs")
+      .update({ analysis_event_id: analysisEventId } as never)
+      .in("id", logIds);
+    if (error) {
+      console.error("[analytics] updateProviderCallsEventId failed", error.message);
+    }
+  } catch (err) {
+    console.error("[analytics] updateProviderCallsEventId threw", err);
+  }
+}
+
+/**
+ * Find all provider_call_logs for a given handle created after `since`,
+ * and set their `analysis_event_id`. Uses time-window correlation.
+ * Best-effort — never throws.
+ */
+export async function linkProviderCallsToEvent(
+  handle: string,
+  since: Date,
+  analysisEventId: string,
+): Promise<void> {
+  try {
+    const { data, error: fetchErr } = await supabaseAdmin
+      .from("provider_call_logs")
+      .select("id")
+      .eq("handle", handle.toLowerCase())
+      .gte("created_at", since.toISOString())
+      .is("analysis_event_id" as never, null);
+    if (fetchErr) {
+      console.error("[analytics] linkProviderCallsToEvent query failed", fetchErr.message);
+      return;
+    }
+    const ids = (data ?? []).map((r) => r.id);
+    if (ids.length > 0) {
+      await updateProviderCallsEventId(ids, analysisEventId);
+      console.info("[analytics] linked", ids.length, "provider calls to event", analysisEventId);
+    }
+  } catch (err) {
+    console.error("[analytics] linkProviderCallsToEvent threw", err);
+  }
+}
