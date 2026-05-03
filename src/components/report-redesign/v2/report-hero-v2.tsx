@@ -241,8 +241,7 @@ function Avatar({
   const storyRing =
     "p-[2.5px] rounded-full shrink-0 bg-[conic-gradient(from_180deg_at_50%_50%,#FCD34D_0deg,#F472B6_120deg,#A855F7_220deg,#3B82F6_360deg)] shadow-[0_8px_22px_-10px_rgba(59,130,246,0.35)]";
   const innerWhite = "p-[2px] rounded-full bg-white";
-  const innerSize = "size-[68px] md:size-[92px]";
-  const innerSizeMobile = "size-[56px] md:size-[92px]";
+  const innerSizeMobile = "size-14 md:size-[92px]";
 
   if (avatarUrl) {
     return (
