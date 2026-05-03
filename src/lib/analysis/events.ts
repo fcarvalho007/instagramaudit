@@ -119,6 +119,8 @@ export interface RecordProviderCallInput {
   completionTokens?: number | null;
   totalTokens?: number | null;
   errorMessage?: string | null;
+  /** Link this provider call to an existing analysis_event_id. */
+  analysisEventId?: string | null;
 }
 
 /**
@@ -153,6 +155,7 @@ export async function recordProviderCall(
     if (input.promptTokens != null) row.prompt_tokens = input.promptTokens;
     if (input.completionTokens != null) row.completion_tokens = input.completionTokens;
     if (input.totalTokens != null) row.total_tokens = input.totalTokens;
+    if (input.analysisEventId != null) row.analysis_event_id = input.analysisEventId;
 
     const { data, error } = await supabaseAdmin
       .from("provider_call_logs")
