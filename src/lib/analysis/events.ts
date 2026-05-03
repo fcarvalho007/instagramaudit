@@ -169,3 +169,25 @@ export async function recordProviderCall(
     return null;
   }
 }
+
+/**
+ * Batch-update `analysis_event_id` on existing provider_call_logs rows.
+ * Best-effort — never throws.
+ */
+export async function updateProviderCallsEventId(
+  logIds: string[],
+  analysisEventId: string,
+): Promise<void> {
+  if (logIds.length === 0) return;
+  try {
+    const { error } = await supabaseAdmin
+      .from("provider_call_logs")
+      .update({ analysis_event_id: analysisEventId } as never)
+      .in("id", logIds);
+    if (error) {
+      console.error("[analytics] updateProviderCallsEventId failed", error.message);
+    }
+  } catch (err) {
+    console.error("[analytics] updateProviderCallsEventId threw", err);
+  }
+}
