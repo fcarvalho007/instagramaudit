@@ -411,8 +411,8 @@ interface LogCallInput {
   errorMessage: string | null;
 }
 
-async function logCall(input: LogCallInput): Promise<string | null> {
-  return recordProviderCall({
+async function logCall(input: LogCallInput): Promise<void> {
+  await recordProviderCall({
     network: "instagram",
     provider: "openai",
     actor: `insights:${input.model}`,
