@@ -309,7 +309,8 @@ export function CostsDetailSection() {
       </AdminCard>
 
       {/* ─── Enrichment Jobs ──────────────────────────── */}
-      <AdminCard title="Enrichment Jobs — Comentários" accent="info">
+      <AdminCard accent="info">
+        <h3 className="text-eyebrow text-admin-text-tertiary mb-3">Enrichment Jobs — Comentários</h3>
         {enrichmentJobs.isLoading ? (
           <SectionSkeleton rows={1} rowHeight={64} />
         ) : enrichmentJobs.error ? (
