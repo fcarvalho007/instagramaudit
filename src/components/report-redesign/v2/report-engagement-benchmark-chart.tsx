@@ -19,15 +19,15 @@ export interface BenchmarkChartProps {
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-const VB_W = 400;
-const VB_H = 420;
-const PAD_L = 42;
-const PAD_R = 14;
-const PAD_T = 36;
-const PAD_B = 50;
-const BAR_RADIUS = 5;
-const GRID_LINES = 4;
-const MARKER_R = 5;
+const VB_W = 420;
+const VB_H = 320;
+const PAD_L = 44;
+const PAD_R = 16;
+const PAD_T = 28;
+const PAD_B = 56;
+const BAR_RADIUS = 6;
+const GRID_LINES = 3;
+const MARKER_R = 6;
 
 // Dynamic label offset when reference line and profile marker collide
 const LABEL_COLLISION_THRESHOLD = 18;
@@ -57,12 +57,11 @@ export function ReportEngagementBenchmarkChart({
   const benchmarkVal = activeTier?.engagementRatePct ?? 0;
   const profileVal = profileEngagementRatePct;
 
-  // Scale: max of all values + 25% headroom
+  // Scale: max of all values + 20% headroom
   const allVals = benchmarkSeries.map((t) => t.engagementRatePct);
   if (profileVal > 0) allVals.push(profileVal);
   if (competitor?.engagementRatePct) allVals.push(competitor.engagementRatePct);
-  const rawMax = Math.max(...allVals) * 1.15 || 1;
-  // Round up to nice step so grid labels are clean numbers
+  const rawMax = Math.max(...allVals) * 1.2 || 1;
   const niceStep = rawMax <= 3 ? 0.5 : rawMax <= 8 ? 1 : rawMax <= 15 ? 2 : 5;
   const scaleMax = Math.ceil(rawMax / niceStep) * niceStep;
 
@@ -73,8 +72,8 @@ export function ReportEngagementBenchmarkChart({
   const innerW = VB_W - PAD_L - PAD_R;
   const innerH = VB_H - PAD_T - PAD_B;
   const barGap = innerW / n;
-  const barW = barGap * 0.46;
-  const activeBarW = barGap * 0.52;
+  const barW = barGap * 0.42;
+  const activeBarW = barGap * 0.5;
 
   function yForVal(v: number): number {
     return PAD_T + innerH - (v / scaleMax) * innerH;
@@ -94,7 +93,7 @@ export function ReportEngagementBenchmarkChart({
 
   // Right-edge guard for profile marker labels
   const activeCx = PAD_L + barGap * activeTierIndex + barGap / 2;
-  const labelFlipRight = activeCx + MARKER_R + 5 + 60 > VB_W; // 60 ≈ approx label width
+  const labelFlipRight = activeCx + MARKER_R + 5 + 60 > VB_W;
 
   // Tooltip position in percentage for CSS positioning
   function tooltipPctX(i: number): number {
@@ -112,10 +111,24 @@ export function ReportEngagementBenchmarkChart({
           role="img"
           aria-label="Gráfico de comparação de taxa de envolvimento por escalão de seguidores"
         >
-          {/* SVG filter for active bar glow */}
           <defs>
+            {/* Gradient for active bar */}
+            <linearGradient id="activeBarGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3B82F6" />
+              <stop offset="100%" stopColor="#2563EB" />
+            </linearGradient>
+            {/* Gradient for inactive bars */}
+            <linearGradient id="inactiveBarGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#E2E8F0" />
+              <stop offset="100%" stopColor="#CBD5E1" />
+            </linearGradient>
+            {/* Subtle glow for active bar */}
             <filter id="activeBarGlow" x="-30%" y="-30%" width="160%" height="160%">
-              <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#2563D9" floodOpacity="0.25" />
+              <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#3B82F6" floodOpacity="0.2" />
+            </filter>
+            {/* Profile marker glow */}
+            <filter id="markerGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#E11D48" floodOpacity="0.35" />
             </filter>
           </defs>
 
@@ -127,7 +140,7 @@ export function ReportEngagementBenchmarkChart({
             return (
               <text
                 key={`y-${i}`}
-                x={PAD_L - 6}
+                x={PAD_L - 8}
                 y={gy + 3}
                 textAnchor="end"
                 fill="#94a3b8"
@@ -138,7 +151,7 @@ export function ReportEngagementBenchmarkChart({
             );
           })}
 
-          {/* Grid lines */}
+          {/* Grid lines — subtle */}
           {Array.from({ length: GRID_LINES + 1 }, (_, i) => {
             const frac = i / GRID_LINES;
             const gy = PAD_T + innerH * (1 - frac);
@@ -150,8 +163,8 @@ export function ReportEngagementBenchmarkChart({
                 y1={gy}
                 y2={gy}
                 stroke="#e2e8f0"
-                strokeWidth={0.35}
-                opacity={0.7}
+                strokeWidth={0.5}
+                opacity={i === 0 ? 0.6 : 0.35}
               />
             );
           })}
@@ -162,21 +175,21 @@ export function ReportEngagementBenchmarkChart({
             x2={VB_W - PAD_R}
             y1={refY}
             y2={refY}
-            stroke="#2563D9"
-            strokeWidth={0.7}
-            strokeDasharray="4 3"
-            opacity={0.4}
+            stroke="#3B82F6"
+            strokeWidth={0.8}
+            strokeDasharray="5 3"
+            opacity={0.35}
           />
-          {/* Reference line label */}
+          {/* Reference line label — pill style */}
           <text
             x={PAD_L + 4}
             y={adjustedRefLabelY}
             textAnchor="start"
-            fill="#2563D9"
-            opacity={0.55}
-            style={{ fontSize: "7.5px", fontFamily: "var(--font-sans)" }}
+            fill="#3B82F6"
+            opacity={0.6}
+            style={{ fontSize: "7.5px", fontFamily: "var(--font-sans)", fontWeight: 500 }}
           >
-            Referência do escalão
+            Ref. escalão {fmtRate(benchmarkVal)}
           </text>
 
           {/* Benchmark bars */}
@@ -199,7 +212,7 @@ export function ReportEngagementBenchmarkChart({
                 onBlur={handleBarLeave}
                 style={{ outline: "none", cursor: "default" }}
               >
-                {/* Hover hit area (invisible wider rect) */}
+                {/* Hover hit area */}
                 <rect
                   x={cx - barGap / 2}
                   y={PAD_T}
@@ -215,27 +228,27 @@ export function ReportEngagementBenchmarkChart({
                   height={h}
                   rx={BAR_RADIUS}
                   ry={BAR_RADIUS}
-                  fill={isActive ? "#2563D9" : "#CBD5E1"}
+                  fill={isActive ? "url(#activeBarGrad)" : "url(#inactiveBarGrad)"}
                   filter={isActive ? "url(#activeBarGlow)" : undefined}
                   opacity={
                     isActive
                       ? 1
                       : hovered !== null
-                        ? isHovered ? 0.75 : 0.3
-                        : 0.55
+                        ? isHovered ? 0.8 : 0.3
+                        : 0.6
                   }
                   className="transition-all duration-200"
                 />
                 {/* Value label above bar */}
                 <text
                   x={cx}
-                  y={y - 7}
+                  y={y - 8}
                   textAnchor="middle"
-                  fill={isActive ? "#2563D9" : "#94a3b8"}
+                  fill={isActive ? "#1D4ED8" : "#94a3b8"}
                   style={{
-                    fontSize: isActive ? "10px" : "8.5px",
+                    fontSize: isActive ? "10.5px" : "8.5px",
                     fontFamily: "var(--font-mono)",
-                    fontWeight: isActive ? 600 : 400,
+                    fontWeight: isActive ? 700 : 400,
                   }}
                 >
                   {fmtRate(tier.engagementRatePct)}
@@ -243,68 +256,91 @@ export function ReportEngagementBenchmarkChart({
                 {/* X-axis label */}
                 <text
                   x={cx}
-                  y={VB_H - 10}
+                  y={VB_H - 14}
                   textAnchor="middle"
-                  fill={isActive ? "#334155" : "#94a3b8"}
+                  fill={isActive ? "#1E293B" : "#94a3b8"}
                   style={{
-                    fontSize: isActive ? "10px" : "9px",
+                    fontSize: isActive ? "10.5px" : "9px",
                     fontFamily: "var(--font-sans)",
-                    fontWeight: isActive ? 600 : 400,
-                    letterSpacing: "0.03em",
+                    fontWeight: isActive ? 700 : 400,
+                    letterSpacing: "0.02em",
                   }}
                 >
                   {tier.tierLabel}
                 </text>
+                {/* Active tier underline accent */}
+                {isActive ? (
+                  <rect
+                    x={cx - 14}
+                    y={VB_H - 9}
+                    width={28}
+                    height={2}
+                    rx={1}
+                    fill="#3B82F6"
+                    opacity={0.5}
+                  />
+                ) : null}
               </g>
             );
           })}
 
-          {/* Profile marker — prominent pill on active tier */}
+          {/* Profile marker — prominent with glow */}
           {(() => {
             const cx = activeCx;
             const my = profileMarkerY;
             const labelAnchor = labelFlipRight ? "end" : "start";
-            const labelX = labelFlipRight ? cx - MARKER_R - 5 : cx + MARKER_R + 5;
+            const labelX = labelFlipRight ? cx - MARKER_R - 6 : cx + MARKER_R + 6;
             return (
               <g>
-                {/* Horizontal indicator line from left edge to marker */}
+                {/* Horizontal indicator line */}
                 <line
                   x1={PAD_L}
-                  x2={cx - MARKER_R - 3}
+                  x2={cx - MARKER_R - 4}
                   y1={my}
                   y2={my}
                   stroke="#E11D48"
-                  strokeWidth={0.7}
-                  strokeDasharray="3 2"
-                  opacity={0.5}
+                  strokeWidth={0.8}
+                  strokeDasharray="3 3"
+                  opacity={0.4}
                 />
-                {/* Marker circle */}
+                {/* Marker outer ring */}
+                <circle
+                  cx={cx}
+                  cy={my}
+                  r={MARKER_R + 2}
+                  fill="none"
+                  stroke="#E11D48"
+                  strokeWidth={1}
+                  opacity={0.15}
+                />
+                {/* Marker circle with glow */}
                 <circle
                   cx={cx}
                   cy={my}
                   r={MARKER_R}
                   fill="#E11D48"
                   stroke="#fff"
-                  strokeWidth={1.5}
+                  strokeWidth={2}
+                  filter="url(#markerGlow)"
                 />
                 {/* Profile value label */}
                 <text
                   x={labelX}
-                  y={my + 3.5}
+                  y={my + 4}
                   textAnchor={labelAnchor}
                   fill="#E11D48"
-                  style={{ fontSize: "10px", fontFamily: "var(--font-mono)", fontWeight: 700 }}
+                  style={{ fontSize: "11px", fontFamily: "var(--font-mono)", fontWeight: 700 }}
                 >
                   {fmtRate(profileVal)}
                 </text>
                 {/* "Este perfil" label */}
                 <text
                   x={labelX}
-                  y={my - 7}
+                  y={my - 8}
                   textAnchor={labelAnchor}
                   fill="#E11D48"
-                  opacity={0.7}
-                  style={{ fontSize: "7.5px", fontFamily: "var(--font-sans)", fontWeight: 500 }}
+                  opacity={0.6}
+                  style={{ fontSize: "8px", fontFamily: "var(--font-sans)", fontWeight: 600 }}
                 >
                   Este perfil
                 </text>
@@ -324,17 +360,17 @@ export function ReportEngagementBenchmarkChart({
                 <circle
                   cx={cx}
                   cy={cy}
-                  r={4}
+                  r={4.5}
                   fill="#BA7517"
                   stroke="#fff"
-                  strokeWidth={1.2}
+                  strokeWidth={1.5}
                 />
                 <text
                   x={cx - MARKER_R - 5}
                   y={cy + 3}
                   textAnchor="end"
                   fill="#BA7517"
-                  style={{ fontSize: "8.5px", fontFamily: "var(--font-mono)", fontWeight: 600 }}
+                  style={{ fontSize: "9px", fontFamily: "var(--font-mono)", fontWeight: 600 }}
                 >
                   {fmtRate(competitor.engagementRatePct)}
                 </text>
@@ -357,25 +393,25 @@ export function ReportEngagementBenchmarkChart({
         ) : null}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 flex-wrap text-[11.5px]">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-[#2563D9]" aria-hidden />
-          <span className="text-slate-600">Referência do escalão</span>
+      {/* Legend — cleaner horizontal layout */}
+      <div className="flex items-center gap-5 flex-wrap text-[11px]">
+        <span className="inline-flex items-center gap-2">
+          <span className="size-2.5 rounded-[3px] bg-gradient-to-b from-blue-400 to-blue-600" aria-hidden />
+          <span className="text-slate-600 font-medium">Referência do escalão</span>
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full bg-[#E11D48]" aria-hidden />
-          <span className="text-slate-600">Este perfil</span>
+        <span className="inline-flex items-center gap-2">
+          <span className="size-2.5 rounded-full bg-rose-500" aria-hidden />
+          <span className="text-slate-600 font-medium">Este perfil</span>
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-[#CBD5E1]" aria-hidden />
+        <span className="inline-flex items-center gap-2">
+          <span className="size-2.5 rounded-[3px] bg-gradient-to-b from-slate-200 to-slate-300" aria-hidden />
           <span className="text-slate-500">Outros escalões</span>
         </span>
       </div>
 
-      {/* Source references — numeric clickable + descriptive line */}
+      {/* Source references */}
       {sourceReferences.length > 0 ? (
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 pt-1 border-t border-slate-100">
           <p className="text-eyebrow-sm text-slate-400 leading-snug">
             <span className="text-slate-500">Referências de mercado</span>{" "}
             {sourceReferences.map((ref, i) => (
@@ -404,7 +440,7 @@ export function ReportEngagementBenchmarkChart({
         </div>
       ) : null}
 
-      {/* Pro competitor slot — quiet */}
+      {/* Pro competitor slot */}
       {showProSlot && !competitor ? (
         <PremiumCallout
           title="Comparar com concorrente direto"
@@ -438,7 +474,6 @@ function ChartTooltip({
   if (!tier) return null;
 
   const isActive = tierIndex === activeTierIndex;
-  // Clamp tooltip position to avoid overflow
   const clampedPct = Math.max(28, Math.min(72, pctX));
 
   return (
@@ -448,34 +483,31 @@ function ChartTooltip({
     >
       <div
         className={cn(
-          "rounded-lg shadow-lg ring-1 px-3 py-2.5 text-[11.5px] leading-relaxed",
-          "bg-white ring-slate-200/80 max-w-[180px] sm:max-w-[220px]",
+          "rounded-xl shadow-lg ring-1 px-3.5 py-3 text-[11.5px] leading-relaxed",
+          "bg-white/95 backdrop-blur-sm ring-slate-200/80 max-w-[200px] sm:max-w-[220px]",
         )}
       >
-        <p className="font-medium text-slate-800 mb-1">Escalão: {tier.tierLabel}</p>
+        <p className="font-semibold text-slate-800 mb-1.5">Escalão {tier.tierLabel}</p>
         <p className="text-slate-600">
-          Referência: <span className="font-mono tabular-nums">{fmtRate(tier.engagementRatePct)}</span>
+          Referência: <span className="font-mono tabular-nums font-medium">{fmtRate(tier.engagementRatePct)}</span>
         </p>
 
         {isActive ? (
           <>
-            <div className="border-t border-slate-100 my-1.5" />
+            <div className="border-t border-slate-100 my-2" />
             <p className="text-slate-700">
-              Este perfil: <span className="font-mono tabular-nums text-[#E11D48] font-semibold">{fmtRate(profileVal)}</span>
+              Este perfil: <span className="font-mono tabular-nums text-rose-600 font-semibold">{fmtRate(profileVal)}</span>
             </p>
             <p className="text-slate-600">
-              Gap: <span className="font-mono tabular-nums">{fmtPp(gapPp)} p.p.</span>
+              Gap: <span className={cn("font-mono tabular-nums font-medium", gapPp >= 0 ? "text-emerald-600" : "text-rose-600")}>{fmtPp(gapPp)} p.p.</span>
             </p>
             {competitor ? (
-              <p className="text-slate-500 mt-1">
+              <p className="text-slate-500 mt-1.5">
                 @{competitor.handle}: <span className="font-mono tabular-nums">{fmtRate(competitor.engagementRatePct)}</span>
               </p>
             ) : null}
-            <p className="text-slate-400 text-[10px] mt-1.5 italic">Referência de mercado por escalão</p>
           </>
-        ) : (
-          <p className="text-slate-400 text-[10px] mt-1 italic">Referência de mercado por escalão</p>
-        )}
+        ) : null}
       </div>
     </div>
   );
