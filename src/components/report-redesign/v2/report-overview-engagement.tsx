@@ -38,8 +38,8 @@ export function EngagementCardRefined({ result }: Props) {
         <span className="text-sm font-medium text-slate-900">
           Taxa de envolvimento
         </span>
-        <span className="text-[10px] text-slate-500 tracking-[0.06em] bg-slate-100 px-2 py-0.5 rounded-md">
-          ◈ MERCADO
+        <span className="text-[10px] text-slate-500 tracking-[0.06em] bg-slate-100 px-2 py-0.5 rounded-md whitespace-nowrap">
+          ◈ MERCADO · SOCIALINSIDER
         </span>
       </div>
 
@@ -62,7 +62,7 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Chart */}
-      <div className="max-h-[140px] overflow-hidden">
+      <div>
         <ReportEngagementBenchmarkChart
           profileEngagementRatePct={k.engagementRate}
           followersCount={followers}
@@ -72,23 +72,6 @@ export function EngagementCardRefined({ result }: Props) {
           activeTierLabel={benchmarkSeries[activeTierIdx]?.tierLabel}
         />
       </div>
-
-      {/* Source references */}
-      {activeSourceRefs.length > 0 && (
-        <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap gap-x-3 gap-y-1">
-          {activeSourceRefs.map((s) => (
-            <a
-              key={s.name}
-              href={s.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-slate-400 hover:text-blue-500 transition-colors"
-            >
-              {s.name} ↗
-            </a>
-          ))}
-        </div>
-      )}
     </article>
   );
 }
