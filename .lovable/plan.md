@@ -1,27 +1,33 @@
 
-## Situação atual
+## Situação
 
-A análise de `frederico.m.carvalho` foi disparada mas retornou de **cache** (snapshot `683e4c21` expira às `2026-05-03 09:07 UTC`). O bloco do comment scraper (linha 1048 de `analyze-public-v1.ts`) só corre em análises **fresh** — quando não existe snapshot em cache.
+O código do comment scraper está correto e publicado. O log de diagnóstico (`comment scraper gate`) confirmará se `COMMENT_SCRAPER_ENABLED` é lido como `"true"` no runtime.
 
-O endpoint suporta `?refresh=1` com `Authorization: Bearer $INTERNAL_API_TOKEN`, mas a ferramenta de invocação não consegue incluir o token interno.
+**Problema**: o snapshot de `frederico.m.carvalho` está em cache até **2026-05-04 08:47 UTC** (amanhã). Todas as análises fresh anteriores correram ANTES da publicação do código com os logs de diagnóstico. Como o cache está ativo, nenhuma análise fresh corre — logo o bloco do comment scraper nunca é atingido.
 
-## Opções
+## Plano
 
-### Opção A — Esperar ~30 minutos
-O cache expira automaticamente às ~09:07 UTC. Depois disso, a próxima chamada a `/analyze/frederico.m.carvalho` (mesmo pelo browser) será fresh e o comment scraper correrá. Sem alterações de código.
+### 1. Expirar o cache via migração SQL
 
-### Opção B — Criar rota admin de force-refresh (recomendado)
-Criar um endpoint `/api/admin/force-refresh` que:
-1. Aceita `POST { instagram_username }` protegido por `requireAdminSession`
-2. Deleta ou expira o snapshot atual via `supabaseAdmin`
-3. Chama internamente a lógica de análise fresh (ou simplesmente expira o cache e retorna, deixando a próxima visita correr fresh)
+Executar uma migração que faz `UPDATE analysis_snapshots SET expires_at = now() - interval '1 minute' WHERE instagram_username = 'frederico.m.carvalho'`.
 
-Isto permite validar o comment scraper imediatamente e serve como ferramenta operacional futura.
+Isto força a próxima chamada a correr como **fresh**.
 
-## Plano técnico (Opção B)
+### 2. Disparar análise fresh
 
-1. **Criar `/api/admin/force-refresh.ts`** — endpoint admin que atualiza `expires_at` do snapshot para o passado, forçando a próxima análise a ser fresh.
-2. **Invocar via ferramenta** — chamar o endpoint admin, depois disparar a análise novamente.
-3. **Verificar `provider_call_logs`** — confirmar que aparece um registo com `actor = 'apify/instagram-comment-scraper'` e o custo real.
+Chamar `POST /api/analyze-public-v1` com `username=frederico.m.carvalho` — agora sem cache, o bloco do comment scraper será atingido.
 
-Estimativa: ~15 minutos de implementação.
+### 3. Verificar nos logs
+
+Confirmar nos server logs:
+- O log `comment scraper gate` aparece com os valores de `COMMENT_SCRAPER_ENABLED`
+- Se `runComments = true`, o log `comment scraper audit` também aparecerá
+- Se o actor correu, haverá um registo em `provider_call_logs`
+
+### 4. Reportar custo real
+
+Consultar `provider_call_logs` para o actor `apify/instagram-comment-scraper` e reportar `actual_cost_usd`, `duration_ms` e `posts_returned` (comentários).
+
+## Risco
+
+Custo estimado: ~$0.10–$1.50 (uma execução do comment scraper + uma chamada Apify profile scraper). Guardrail de $1.50/run está ativo.
