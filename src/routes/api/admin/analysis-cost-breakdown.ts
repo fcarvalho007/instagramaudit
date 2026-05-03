@@ -51,8 +51,10 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const session = await requireAdminSession(request);
-        if (!session.ok) {
+        try {
+          await requireAdminSession();
+        } catch (err) {
+          if (err instanceof Response) return err;
           return new Response("Unauthorized", { status: 401 });
         }
 
@@ -159,7 +161,11 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
         }
 
         return Response.json({ analyses: results });
-      },
+      } catch (err) {
+        if (err instanceof Response) throw err;
+        return Response.json({ error: String(err) }, { status: 500 });
+      }
+     },
     },
   },
 });
