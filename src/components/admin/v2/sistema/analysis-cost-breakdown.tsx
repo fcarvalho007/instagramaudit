@@ -8,6 +8,11 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle, AlertCircle } from "lucide-react";
 import { adminFetch } from "@/lib/admin/fetch";
 import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
+import {
+  SectionSkeleton,
+  SectionError,
+  SectionEmpty,
+} from "@/components/admin/v2/section-state";
 
 interface ProviderCall {
   id: string;
@@ -63,8 +68,8 @@ function CostCell({ value, warn, danger }: { value: number | null | undefined; w
 
 function ExpandedRow({ calls }: { calls: ProviderCall[] }) {
   return (
-    <div className="bg-surface-secondary/50 rounded-lg p-3 mt-1 mb-2 space-y-1">
-      <div className="grid grid-cols-[1fr_80px_80px_80px_60px_60px] gap-2 text-[10px] text-foreground-muted uppercase tracking-wider font-medium px-1">
+    <div className="bg-surface-secondary/50 rounded-lg p-2 sm:p-3 mt-1 mb-2 space-y-1 overflow-x-auto">
+      <div className="grid grid-cols-[1fr_80px_80px_80px_60px_60px] gap-2 text-[10px] text-foreground-muted uppercase tracking-wider font-medium px-1 min-w-[420px]">
         <span>Actor</span>
         <span className="text-right">Est.</span>
         <span className="text-right">Real</span>
@@ -75,7 +80,7 @@ function ExpandedRow({ calls }: { calls: ProviderCall[] }) {
       {calls.map((c) => (
         <div
           key={c.id}
-          className="grid grid-cols-[1fr_80px_80px_80px_60px_60px] gap-2 text-xs px-1 py-0.5 rounded hover:bg-surface-elevated/30"
+          className="grid grid-cols-[1fr_80px_80px_80px_60px_60px] gap-2 text-xs px-1 py-0.5 rounded hover:bg-surface-elevated/30 min-w-[420px]"
         >
           <span className="text-foreground-secondary truncate" title={c.actor}>
             {c.actor}
@@ -110,7 +115,7 @@ function AnalysisRow({ a }: { a: AnalysisBreakdown }) {
     <div className="border border-border-subtle rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full grid grid-cols-[1fr_100px_70px_70px_70px_70px_70px_30px] gap-2 items-center px-3 py-2 text-left hover:bg-surface-elevated/20 transition-colors"
+        className="w-full grid grid-cols-[1fr_80px_30px] sm:grid-cols-[1fr_100px_70px_70px_70px_70px_70px_30px] gap-1.5 sm:gap-2 items-center px-2 sm:px-3 py-2 text-left hover:bg-surface-elevated/20 transition-colors"
       >
         <div className="min-w-0">
           <span className="text-sm font-medium text-foreground-primary truncate block">@{a.handle}</span>
@@ -124,14 +129,16 @@ function AnalysisRow({ a }: { a: AnalysisBreakdown }) {
             <AlertTriangle size={10} className="inline ml-1 text-signal-warning" />
           )}
         </div>
-        <CostCell value={t.apify_base_usd} />
-        <div className="text-right">
-          <CostCell value={t.comment_scraper_status === "not_run" ? undefined : t.comment_scraper_usd} danger={commentDanger} warn={commentWarn} />
-          {commentDanger && <AlertCircle size={10} className="inline ml-0.5 text-signal-error" />}
+        <div className="hidden sm:contents">
+          <CostCell value={t.apify_base_usd} />
+          <div className="text-right">
+            <CostCell value={t.comment_scraper_status === "not_run" ? undefined : t.comment_scraper_usd} danger={commentDanger} warn={commentWarn} />
+            {commentDanger && <AlertCircle size={10} className="inline ml-0.5 text-signal-error" />}
+          </div>
+          <CostCell value={t.openai_usd} />
+          <CostCell value={t.dataforseo_usd} />
+          <span className="text-right font-mono text-xs text-foreground-muted">{t.call_count}</span>
         </div>
-        <CostCell value={t.openai_usd} />
-        <CostCell value={t.dataforseo_usd} />
-        <span className="text-right font-mono text-xs text-foreground-muted">{t.call_count}</span>
         <span className="text-foreground-muted">
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
@@ -160,30 +167,17 @@ export function AnalysisCostBreakdown() {
         accent="expense"
       />
 
-      {isLoading && (
-        <p className="text-sm text-foreground-muted animate-pulse">A carregar…</p>
-      )}
+      {isLoading && <SectionSkeleton rows={4} rowHeight={40} message="A carregar análises…" />}
 
-      {error && (
-        <p className="text-sm text-signal-error">Erro: {(error as Error).message}</p>
-      )}
+      {error && <SectionError error={error} />}
 
-      {data && data.analyses.length === 0 && (
-        <p className="text-sm text-foreground-muted">Nenhuma análise fresh registada.</p>
-      )}
+      {data && data.analyses.length === 0 && <SectionEmpty message="Nenhuma análise fresh registada." />}
 
       {data && data.analyses.length > 0 && (
         <div className="space-y-1">
           {/* Header */}
-          <div className="grid grid-cols-[1fr_100px_70px_70px_70px_70px_70px_30px] gap-2 px-3 py-1 text-[10px] text-foreground-muted uppercase tracking-wider font-medium">
-            <span>Perfil</span>
-            <span className="text-right">Total est.</span>
-            <span className="text-right">Apify</span>
-            <span className="text-right">Coment.</span>
-            <span className="text-right">OpenAI</span>
-            <span className="text-right">DFS</span>
-            <span className="text-right">Calls</span>
-            <span />
+          <div className="hidden sm:grid grid-cols-[1fr_100px_70px_70px_70px_70px_70px_30px] gap-2 px-3 py-1 text-[10px] text-foreground-muted uppercase tracking-wider font-medium">
+            <span>Perfil</span><span className="text-right">Total est.</span><span className="text-right">Apify</span><span className="text-right">Coment.</span><span className="text-right">OpenAI</span><span className="text-right">DFS</span><span className="text-right">Calls</span><span />
           </div>
 
           {data.analyses.map((a) => (
@@ -191,7 +185,7 @@ export function AnalysisCostBreakdown() {
           ))}
 
           {/* Legend */}
-          <div className="flex gap-4 pt-2 text-[10px] text-foreground-muted">
+          <div className="hidden sm:flex gap-4 pt-2 text-[10px] text-foreground-muted">
             <span className="flex items-center gap-1">
               <AlertTriangle size={10} className="text-signal-warning" /> Custo real indisponível
             </span>
