@@ -176,7 +176,7 @@ export function FormatCard({
       </p>
 
       {/* Thumbnails visualisation */}
-      {thumbnails.length > 0 && (
+      {sortedPosts.length > 0 && (
         <div className="mb-5">
           <span className="text-[10px] uppercase tracking-[0.04em] text-slate-400 block mb-2">
             {`OS TEUS ${postsAnalyzed} POSTS`}
