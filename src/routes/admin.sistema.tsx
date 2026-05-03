@@ -26,6 +26,7 @@ import { HealthSection } from "@/components/admin/v2/sistema/health-section";
 import { SecretsConfigSection } from "@/components/admin/v2/sistema/secrets-config-section";
 import { CostsDetailSection } from "@/components/admin/v2/sistema/costs-detail-section";
 import { LegacyAccessSection } from "@/components/admin/v2/sistema/legacy-access-section";
+import { AnalysisCostBreakdown } from "@/components/admin/v2/sistema/analysis-cost-breakdown";
 import { adminFetch } from "@/lib/admin/fetch";
 
 export const Route = createFileRoute("/admin/sistema")({
@@ -87,6 +88,7 @@ function SistemaPage() {
         <HealthSection />
         <SecretsConfigSection />
         <CostsDetailSection />
+        <AnalysisCostBreakdown />
         <LegacyAccessSection />
       </div>
     </>
