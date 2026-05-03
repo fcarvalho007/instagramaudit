@@ -35,7 +35,7 @@ const FORMAT_STYLE: Record<FormatKey, { bg: string; iconColor: string; icon: typ
   Imagens: { bg: "bg-amber-100", iconColor: "text-amber-700", icon: Image },
 };
 
-function getFormatHeadline(formats: FormatEntry[]): string {
+export function getFormatHeadline(formats: FormatEntry[]): string {
   if (!formats.length) return "Sem dados de formato";
   const sorted = [...formats].sort((a, b) => b.sharePct - a.sharePct);
   const top = sorted[0];
@@ -49,7 +49,7 @@ function getFormatHeadline(formats: FormatEntry[]): string {
 
 type DominantKey = "carousel" | "reel" | "image" | "mixed";
 
-function toDominantKey(format: string, share: number): DominantKey {
+export function toDominantKey(format: string, share: number): DominantKey {
   if (share < 40) return "mixed";
   const s = format.toLowerCase();
   if (s.startsWith("reel")) return "reel";
@@ -58,7 +58,7 @@ function toDominantKey(format: string, share: number): DominantKey {
   return "mixed";
 }
 
-function getFormatVerdict(dk: DominantKey): { strong: string; rest: string } {
+export function getFormatVerdict(dk: DominantKey): { strong: string; rest: string } {
   if (dk === "carousel") {
     return {
       strong: "Apostas em conteúdo para guardar.",
