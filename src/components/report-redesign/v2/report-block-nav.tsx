@@ -105,8 +105,8 @@ export function ReportBlockSidebar() {
 }
 
 /**
- * Navegação horizontal sticky para mobile/tablet (<1024px).
- * Scroll-x interno com snap; bullet activo correcto.
+ * Bottom navigation bar fixa para mobile/tablet (<1024px).
+ * 6 ícones + label curto em grid, estilo app nativa (thumb zone).
  */
 export function ReportBlockTopTabs() {
   const active = useActiveBlock(BLOCK_IDS);
@@ -115,43 +115,55 @@ export function ReportBlockTopTabs() {
     <nav
       aria-label="Navegação do relatório"
       className={cn(
-        "lg:hidden sticky top-0 z-30 w-full",
-        "bg-white/85 backdrop-blur border-b border-slate-200/70",
+        "lg:hidden fixed bottom-0 left-0 right-0 z-40",
+        "bg-white/95 supports-[backdrop-filter]:backdrop-blur-lg",
+        "border-t border-slate-200/80",
+        "shadow-[0_-2px_12px_rgba(15,23,42,0.06)]",
+        "pb-[env(safe-area-inset-bottom,0px)]",
       )}
     >
-      <ul
-        className={cn(
-          "mx-auto max-w-7xl flex gap-1 overflow-x-auto px-3 py-2",
-          "snap-x snap-mandatory scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none]",
-          "[&::-webkit-scrollbar]:hidden",
-        )}
-      >
+      <ul className="grid grid-cols-6 w-full">
         {BLOCKS.map((block) => {
           const isActive = block.id === active;
+          const Icon = block.icon;
           return (
-            <li key={block.id} className="snap-start shrink-0">
+            <li key={block.id}>
               <button
                 type="button"
                 onClick={() => scrollToBlock(block.id)}
                 aria-current={isActive ? "true" : undefined}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-3.5 py-2",
-                  "text-xs font-medium transition-colors",
-                  "min-h-[36px]",
+                  "relative flex flex-col items-center justify-center gap-0.5 w-full",
+                  "py-2 pt-2.5 transition-colors duration-150",
+                  "min-h-[52px]",
+                  "focus-visible:outline-none focus-visible:bg-blue-50",
                   isActive
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                    ? "text-blue-600"
+                    : "text-slate-400 active:text-slate-600",
                 )}
               >
+                <Icon
+                  className={cn(
+                    "size-5 transition-colors",
+                    isActive ? "text-blue-600" : "text-slate-400",
+                  )}
+                  strokeWidth={isActive ? 2.2 : 1.8}
+                  aria-hidden="true"
+                />
                 <span
                   className={cn(
-                    "text-eyebrow-sm",
-                    isActive ? "text-white/80" : "text-slate-400",
+                    "text-[9px] font-medium leading-tight truncate max-w-full px-0.5",
+                    isActive ? "text-blue-600 font-semibold" : "text-slate-500",
                   )}
                 >
-                  {block.number}
+                  {block.shortLabel}
                 </span>
-                <span>{block.shortLabel}</span>
+                {isActive ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 rounded-b-full bg-blue-500"
+                  />
+                ) : null}
               </button>
             </li>
           );

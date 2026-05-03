@@ -1,39 +1,52 @@
 
-# Pontuação Global — números maiores e UX/UI refinada
+# Primeira dobra refinada + menu sticky de fundo em mobile
 
 ## Problema
 
-Os score cards actuais têm rings de 64px com números em fontSize 18–20. No ecrã móvel ficam pequenos e pouco impactantes. A UX pede números "cinematográficos" — grandes, com presença visual imediata.
+1. A primeira dobra (hero + tabs) no mobile ocupa demasiado espaço vertical e não está bem organizada.
+2. A navegação horizontal de tabs no topo é pouco confortável em mobile — o padrão mais eficaz para 6 items é uma **bottom navigation bar fixa** (thumb zone, à la Instagram/apps nativos).
 
 ## Alterações
 
-### 1. `score-ring.tsx` — ring maior e número dominante
+### 1. Hero v2 mais compacto em mobile (`report-hero-v2.tsx`)
 
-- Aumentar o `RADIUS` de 30 para 38 e o `STROKE_WIDTH` de 6 para 5 (anel mais fino e elegante).
-- Default `size` de 64 para 88 (mobile) — o card passa a receber `size={88}`.
-- `fontSize` do número sobe para 28–30 (bold 700), tornando o dígito o elemento dominante do card.
-- Font-weight 700 em vez de 600.
+- Reduzir padding vertical mobile de `pt-5 pb-5` para `pt-4 pb-4`.
+- Avatar ligeiramente mais pequeno em mobile (de 68px para 56px).
+- Bio reduzida a `line-clamp-2` (já está 3).
+- Stats (publicações/seguidores/a seguir): font-size reduzido de `1.5rem` para `1.25rem` em mobile para ser mais compacto.
+- CTAs (Exportar PDF + Partilhar) movidos para dentro de uma linha compacta abaixo dos stats, em vez de coluna separada no mobile.
+- Analysis meta (publicações analisadas, dias, data) mantém-se mas mais compacto.
 
-### 2. `score-card.tsx` — layout mais respirado e hierárquico
+### 2. Bottom nav bar sticky em mobile (`report-block-nav.tsx`)
 
-- Padding interno sobe de `px-3 py-4` para `px-4 py-5`.
-- Label sobe de `text-[13px]` para `text-sm font-semibold`.
-- Subtitle sobe de `text-[11px]` para `text-xs`.
-- Gap entre ring e texto aumenta ligeiramente.
+- `ReportBlockTopTabs` transforma-se numa **barra fixa no fundo** (`fixed bottom-0`) em vez de sticky no topo.
+- Layout: 6 ícones + label curto em grelha `grid-cols-6`, estilo bottom tab bar.
+- Adicionar ícones Lucide a cada bloco (Eye, Stethoscope, TrendingUp, FileText, Search, BarChart3) — definidos em `block-config.ts`.
+- Active state: ícone + label em azul, fundo claro.
+- Inactive: ícone cinza, label cinza.
+- Safe area padding inferior (`pb-[env(safe-area-inset-bottom)]`).
+- Altura: ~60px + safe area.
+- Remover a versão horizontal scrollável do topo.
+- Adicionar `pb-20` ao body/main do report em mobile para não tapar conteúdo com a barra.
 
-### 3. `score-grid.tsx` — gap refinado
+### 3. Sidebar desktop — inalterada
 
-- Gap entre cards de `gap-3` para `gap-3.5` em mobile, `gap-4` em `sm:`.
-- Legenda mantém-se.
+A `ReportBlockSidebar` mantém-se exactamente como está para `lg:` e acima.
+
+### 4. `block-config.ts` — adicionar ícones
+
+Adicionar um campo `icon` a cada `BlockConfig` com o nome do ícone Lucide correspondente. O componente de nav importa e renderiza.
 
 ## Ficheiros editados
 
-1. `src/components/report-redesign/v2/overview/score-ring.tsx`
-2. `src/components/report-redesign/v2/overview/score-card.tsx`
-3. `src/components/report-redesign/v2/overview/score-grid.tsx`
+1. `src/components/report-redesign/v2/block-config.ts` — campo `icon`
+2. `src/components/report-redesign/v2/report-block-nav.tsx` — bottom bar mobile
+3. `src/components/report-redesign/v2/report-hero-v2.tsx` — hero mais compacto
+4. `src/components/report-redesign/v2/report-shell-v2.tsx` — padding inferior mobile
+5. `src/components/report-redesign/report-tokens.ts` — ajuste de tokens hero compacto se necessário
 
 ## Restrições respeitadas
 
-- Sem alterações ao backend, adapter, admin, tokens globais.
+- Sem alterações ao backend, adapter, admin, tokens globais, base de dados.
 - Sem alterações a outros blocos do report.
-- Cores continuam a vir de `score-utils.ts` (sem hardcode).
+- Desktop sidebar inalterada.
