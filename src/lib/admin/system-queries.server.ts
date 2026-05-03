@@ -519,6 +519,7 @@ export async function fetchCostMetrics24h(): Promise<Cost24hMetrics> {
     },
     cache_hits: cacheHits ?? 0,
     cache_savings_usd: Number(cacheSavings.toFixed(4)),
+    apify_actors: await aggregateApifyActorBreakdown(since),
   };
 }
 
@@ -630,22 +631,8 @@ export async function fetchExpense30d(): Promise<Expense30d> {
     }
   }
 
-  // Sub-query for comment scraper breakdown within Apify
-  const { data: csLogs } = await supabaseAdmin
-    .from("provider_call_logs")
-    .select("actual_cost_usd, estimated_cost_usd, posts_returned, status")
-    .eq("actor", "apify/instagram-comment-scraper")
-    .gte("created_at", sinceIso)
-    .in("status", ["success", "ok"]);
-
-  let csTotalCost = 0;
-  let csRunCount = 0;
-  let csCommentsReturned = 0;
-  for (const r of csLogs ?? []) {
-    csTotalCost += Number(r.actual_cost_usd ?? r.estimated_cost_usd ?? 0);
-    csRunCount += 1;
-    csCommentsReturned += r.posts_returned ?? 0;
-  }
+  // Actor-level breakdown within Apify
+  const apifyActors = await aggregateApifyActorBreakdown(sinceIso);
 
   return {
     apify_total: Number(totals.apify.amount_usd.toFixed(4)),
@@ -666,11 +653,7 @@ export async function fetchExpense30d(): Promise<Expense30d> {
     apify_billed_total_30d: apifyHasBilled
       ? Number(apifyBilled.toFixed(4))
       : null,
-    comment_scraper: {
-      total_cost_usd: Number(csTotalCost.toFixed(4)),
-      run_count: csRunCount,
-      comments_returned: csCommentsReturned,
-    },
+    apify_actors: apifyActors,
   };
 }
 
