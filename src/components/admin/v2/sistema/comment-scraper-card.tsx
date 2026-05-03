@@ -277,18 +277,25 @@ export function CommentScraperCard() {
             </span>
           </span>
           <span>
-            Max charge:{" "}
+            Hard max:{" "}
             <span className="font-mono tabular-nums text-admin-text-primary">
-              ${m.max_charge_usd.toFixed(2)}
+              ${m.hard_max_cost_usd.toFixed(2)}
             </span>
             /run
+          </span>
+          <span>
+            Alvo:{" "}
+            <span className="font-mono tabular-nums text-admin-text-primary">
+              ${m.target_cost_usd.toFixed(2)}
+            </span>
+            /análise
           </span>
           <span>
             Posts:{" "}
             <span className="font-mono tabular-nums text-admin-text-primary">
               {m.max_posts}
             </span>
-            /análise
+            /análise (máx. 12)
           </span>
           <span>
             Resultados:{" "}
@@ -296,11 +303,6 @@ export function CommentScraperCard() {
               {m.max_total_results}
             </span>
             /run (global)
-          </span>
-          <span>
-            Custo alvo:{" "}
-            <span className="font-mono tabular-nums text-admin-text-primary">$0.15</span>
-            /análise
           </span>
           <span>
             Replies:{" "}
@@ -320,6 +322,12 @@ export function CommentScraperCard() {
               className={`font-medium ${m.enabled ? "text-admin-revenue-700" : "text-admin-text-tertiary"}`}
             >
               {m.enabled ? "ativo" : "desativado"}
+            </span>
+          </span>
+          <span>
+            Seleção de posts:{" "}
+            <span className="text-admin-text-primary">
+              apenas posts do ator principal
             </span>
           </span>
         </div>
