@@ -1038,7 +1038,6 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // ─── Comment Intelligence (free report, gated by feature flag) ──────
           // Disabled by default via COMMENT_SCRAPER_ENABLED secret.
           // Never blocks the base report. Failures are swallowed.
-          let commentIntelligence: CommentIntelligence | null = null;
           const commentScraperEnabled =
             (process.env.COMMENT_SCRAPER_ENABLED ?? "false").toLowerCase() === "true";
 
@@ -1058,135 +1057,65 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             runComments,
           });
 
-          if (runComments) {
-            try {
-              // Pick posts by conversation potential: most comments first,
-              // then engagement, then most recent. Filter to those with permalink.
-              const postsWithUrl = primaryEnriched.posts
-                .filter((p) => !!p.permalink)
-                .sort((a, b) => {
-                  const ca = a.comments ?? 0;
-                  const cb = b.comments ?? 0;
-                  if (cb !== ca) return cb - ca;
-                  if (b.engagement_pct !== a.engagement_pct) return b.engagement_pct - a.engagement_pct;
-                  return (b.taken_at_iso ?? "").localeCompare(a.taken_at_iso ?? "");
-                });
+          // Fire-and-forget: trigger async comment enrichment via a separate
+          // endpoint that has its own Worker invocation and timeout budget.
+          // The main response is sent immediately without waiting.
+          if (runComments && snapshotId) {
+            const postsWithUrl = primaryEnriched.posts
+              .filter((p) => !!p.permalink)
+              .sort((a, b) => {
+                const ca = a.comments ?? 0;
+                const cb = b.comments ?? 0;
+                if (cb !== ca) return cb - ca;
+                if (b.engagement_pct !== a.engagement_pct) return b.engagement_pct - a.engagement_pct;
+                return (b.taken_at_iso ?? "").localeCompare(a.taken_at_iso ?? "");
+              });
 
-              const postUrls = postsWithUrl
-                .slice(0, 12)
-                .map((p) => p.permalink!);
+            const postUrls = postsWithUrl
+              .slice(0, 12)
+              .map((p) => p.permalink!)
+              .filter((u) => isValidInstagramPostUrl(u));
 
-              // Validate & deduplicate Instagram URLs
-              const validUrls = [...new Set(
-                postUrls.filter((u) => isValidInstagramPostUrl(u)),
-              )].slice(0, COMMENT_SCRAPER_MAX_POSTS);
+            if (postUrls.length > 0) {
+              const internalToken = process.env.INTERNAL_API_TOKEN;
+              const baseUrl = process.env.SUPABASE_URL
+                ? new URL(process.env.SUPABASE_URL).origin
+                : "";
+              // Determine the app origin for the self-call
+              const appOrigin =
+                request.headers.get("origin") ||
+                request.headers.get("x-forwarded-host") ||
+                "";
+              const enrichUrl = appOrigin
+                ? `${appOrigin.startsWith("http") ? appOrigin : `https://${appOrigin}`}/api/public/enrich-comments`
+                : "/api/public/enrich-comments";
 
-              if (validUrls.length === 0) {
-                commentIntelligence = buildUnavailableCommentIntelligence(
-                  primaryProfile.username,
-                  "no_valid_post_urls",
-                );
-              } else {
-                // Sanitized audit log — no secrets, no raw URLs
-                console.info("[analyze-public-v1] comment scraper audit", {
-                  actor: "apify/instagram-comment-scraper",
-                  requestedPostUrlsCount: postUrls.length,
-                  effectivePostUrlsCount: validUrls.length,
-                  resultsLimit: COMMENT_SCRAPER_RESULTS_LIMIT,
-                  maxTotalComments: COMMENT_SCRAPER_MAX_TOTAL_COMMENTS,
-                  includeReplies: COMMENT_SCRAPER_INCLUDE_REPLIES,
-                  maxChargeUsd: COMMENT_SCRAPER_MAX_CHARGE_USD,
-                  timeoutMs: 120_000,
-                  selectedPostStrategy: "highest_comments_then_engagement_then_recent",
-                  featureFlag: commentScraperEnabled,
-                  freeReportFeature: true,
-                });
+              // Derive the absolute URL from the request URL if enrichUrl is relative
+              const absoluteEnrichUrl = enrichUrl.startsWith("http")
+                ? enrichUrl
+                : `${new URL(request.url).origin}/api/public/enrich-comments`;
 
-                const commentResult = await fetchCommentsForPosts(validUrls);
+              console.info("[analyze-public-v1] firing async comment enrichment", {
+                snapshotId,
+                postUrlCount: postUrls.length,
+                enrichUrl: absoluteEnrichUrl,
+              });
 
-                // Log the comment scraper call
-                await recordProviderCall({
-                  provider: "apify",
-                  actor: "apify/instagram-comment-scraper",
-                  network: "instagram",
-                  handle: primary,
-                  status: "success",
-                  httpStatus: 200,
-                  durationMs: commentResult.durationMs,
-                  postsReturned: commentResult.commentsReturned,
-                  apifyRunId: commentResult.runId ?? undefined,
-                  actualCostUsd: commentResult.actualCostUsd ?? undefined,
-                  errorMessage: undefined,
-                });
-
-                commentIntelligence = aggregateCommentIntelligence(
-                  primaryProfile.username,
-                  commentResult.batches,
-                  { groupedByPost: commentResult.groupedByPost },
-                );
-
-                // Persist into the snapshot payload
-                normalizedPayload = {
-                  ...normalizedPayload,
-                  comment_intelligence: commentIntelligence,
-                };
-
-                await storeSnapshot({
-                  cacheKey,
-                  instagramUsername: primaryProfile.username,
-                  competitorUsernames: competitors,
-                  normalizedPayload,
-                });
-
-                console.info(
-                  "[analyze-public-v1] comment intelligence attached",
-                  {
-                    samplePosts: commentIntelligence.samplePosts,
-                    ownerReplies: commentIntelligence.ownerRepliesCount,
-                    audienceComments: commentIntelligence.audienceCommentsCount,
-                  },
-                );
-              }
-            } catch (err) {
-              // Hard guarantee: comment scraper never breaks the analysis.
-              console.error("[analyze-public-v1] comment scraper threw", err);
-              // Store structured unavailable state so UI can show a clear message
-              commentIntelligence = buildUnavailableCommentIntelligence(
-                primaryProfile.username,
-                "comment_scraper_failed",
-              );
-
-              // Determine granular error status for provider_call_logs
-              let errStatus: "config_error" | "timeout" | "http_error" | "network_error" = "network_error";
-              let errRunId: string | undefined;
-              let errCost: number | undefined;
-              if (err instanceof ApifyConfigError) {
-                errStatus = "config_error";
-              } else if (err instanceof ApifyUpstreamError) {
-                if (err.status === 504) errStatus = "timeout";
-                else errStatus = "http_error";
-                errRunId = (err as ApifyUpstreamError & { runId?: string }).runId;
-                const maybeCost = (err as ApifyUpstreamError & { actualCostUsd?: number }).actualCostUsd;
-                errCost = typeof maybeCost === "number" ? maybeCost : undefined;
-              }
-
-              // Log the failure so admin cost view captures it
-              try {
-                await recordProviderCall({
-                  provider: "apify",
-                  actor: "apify/instagram-comment-scraper",
-                  network: "instagram",
-                  handle: primary,
-                  status: errStatus,
-                  durationMs: 0,
-                  postsReturned: 0,
-                  apifyRunId: errRunId,
-                  actualCostUsd: errCost,
-                  errorMessage: err instanceof Error ? err.message : String(err),
-                });
-              } catch {
-                // Best-effort — do not let logging break the flow
-              }
+              // Fire-and-forget — do not await
+              fetch(absoluteEnrichUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  ...(internalToken ? { Authorization: `Bearer ${internalToken}` } : {}),
+                },
+                body: JSON.stringify({
+                  snapshot_id: snapshotId,
+                  username: primary,
+                  post_urls: postUrls,
+                }),
+              }).catch((err) => {
+                console.error("[analyze-public-v1] async comment enrichment fire failed", err);
+              });
             }
           }
 
