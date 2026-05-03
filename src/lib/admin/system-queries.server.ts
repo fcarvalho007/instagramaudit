@@ -65,6 +65,8 @@ export interface ExpenseDailyPoint {
   apify: number;
   openai: number;
   dataforseo: number;
+  /** Per-actor Apify breakdown for chart sub-bars */
+  apify_by_actor?: Record<string, number>;
 }
 
 export interface Expense30d {
@@ -450,7 +452,7 @@ export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
 }> {
   const { data: logs } = await supabaseAdmin
     .from("provider_call_logs")
-    .select("provider, actual_cost_usd, estimated_cost_usd, status, created_at")
+    .select("provider, actor, actual_cost_usd, estimated_cost_usd, status, created_at")
     .gte("created_at", sinceIso);
 
   const totals = {
@@ -473,8 +475,15 @@ export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
     totals[provider].calls += 1;
 
     const day = String(row.created_at).slice(0, 10);
-    const point = dayMap.get(day) ?? { day, apify: 0, openai: 0, dataforseo: 0 };
+    const point = dayMap.get(day) ?? { day, apify: 0, openai: 0, dataforseo: 0, apify_by_actor: {} };
     point[provider] = Number((point[provider] + cost).toFixed(6));
+
+    if (provider === "apify") {
+      const actor = String((row as Record<string, unknown>).actor ?? "unknown");
+      if (!point.apify_by_actor) point.apify_by_actor = {};
+      point.apify_by_actor[actor] = Number(((point.apify_by_actor[actor] ?? 0) + cost).toFixed(6));
+    }
+
     dayMap.set(day, point);
 
     if (provider === "apify" && status === "success") {

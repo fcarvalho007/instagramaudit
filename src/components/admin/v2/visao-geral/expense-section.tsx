@@ -16,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AdminSectionHeader } from "../admin-section-header";
@@ -31,6 +32,27 @@ import type {
   Expense30d,
 } from "@/lib/admin/system-queries.server";
 import type { ApifyActorBreakdown } from "@/lib/admin/system-queries.server";
+
+/* ── Actor color mapping ───────────────────────────────────────────── */
+
+const ACTOR_COLOR: Record<string, string> = {
+  "apify/instagram-profile-scraper": ADMIN_LITERAL.apifyActorProfile,
+  "apify/instagram-comment-scraper": ADMIN_LITERAL.apifyActorComments,
+  "apify/instagram-scraper": ADMIN_LITERAL.apifyActorScraper,
+};
+
+const ACTOR_SHORT_LABEL: Record<string, string> = {
+  "apify/instagram-profile-scraper": "Perfil",
+  "apify/instagram-comment-scraper": "Comentários",
+  "apify/instagram-scraper": "Scraper",
+};
+
+function actorColor(actor: string): string {
+  return ACTOR_COLOR[actor] ?? ADMIN_LITERAL.apifyActorDefault;
+}
+function actorShortLabel(actor: string): string {
+  return ACTOR_SHORT_LABEL[actor] ?? actor.split("/").pop() ?? actor;
+}
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await adminFetch(url);
@@ -91,12 +113,44 @@ export function ExpenseSection() {
 
   const data = expense.data!;
   const c = caps.data!;
-  const chartData = data.daily.map((d) => ({
-    day: d.day.slice(8, 10), // DD
-    apify: Number(d.apify ?? 0),
-    openai: Number(d.openai ?? 0),
-    dataforseo: Number(d.dataforseo ?? 0),
-  }));
+
+  // Discover all unique actor keys across all daily data
+  const allActorKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of data.daily) {
+      if (d.apify_by_actor) {
+        for (const k of Object.keys(d.apify_by_actor)) set.add(k);
+      }
+    }
+    // Deterministic order: known actors first, then alphabetical
+    const known = [
+      "apify/instagram-profile-scraper",
+      "apify/instagram-comment-scraper",
+      "apify/instagram-scraper",
+    ].filter((a) => set.has(a));
+    const rest = [...set].filter((a) => !known.includes(a)).sort();
+    return [...known, ...rest];
+  }, [data.daily]);
+
+  const hasActorBreakdown = allActorKeys.length > 0;
+
+  const chartData = useMemo(() =>
+    data.daily.map((d) => {
+      const row: Record<string, string | number> = {
+        day: d.day.slice(8, 10),
+        apify: Number(d.apify ?? 0),
+        openai: Number(d.openai ?? 0),
+        dataforseo: Number(d.dataforseo ?? 0),
+      };
+      if (hasActorBreakdown && d.apify_by_actor) {
+        for (const actor of allActorKeys) {
+          row[`apify_${actor}`] = Number(d.apify_by_actor[actor] ?? 0);
+        }
+      }
+      return row;
+    }),
+  [data.daily, allActorKeys, hasActorBreakdown]);
+
   const hasData = chartData.length > 0;
 
   const apifyShare = data.total > 0 ? (data.apify_total / data.total) * 100 : 0;
@@ -134,7 +188,7 @@ export function ExpenseSection() {
       <AdminCard variant="flush" className="overflow-hidden">
         {/* Zona superior: 4 colunas */}
         <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-4 md:gap-0">
-          {/* Apify */}
+          {/* Apify — sem actor rows aqui, ficam abaixo */}
           <ExpenseColumn
             colorVar="rgb(var(--admin-expense-500))"
             colorTextVar="rgb(var(--admin-expense-700))"
@@ -155,14 +209,6 @@ export function ExpenseSection() {
               color="expense"
               showCap
             />
-            {/* Apify actor breakdown */}
-            {data.apify_actors.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {data.apify_actors.map((actor) => (
-                  <ApifyActorRow key={actor.actor} actor={actor} />
-                ))}
-              </div>
-            )}
           </ExpenseColumn>
 
           {/* OpenAI */}
@@ -225,7 +271,38 @@ export function ExpenseSection() {
           </ExpenseColumn>
         </div>
 
-        {/* Linha separadora */}
+        {/* Actor breakdown table — faixa horizontal */}
+        {data.apify_actors.length > 0 && (
+          <>
+            <div className="border-t border-admin-border" />
+            <div className="px-6 py-4">
+              <p className="mb-3 text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
+                Breakdown por ator Apify
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="text-left text-admin-text-tertiary border-b border-admin-border">
+                      <th className="pb-1.5 pr-4 font-medium">Ator</th>
+                      <th className="pb-1.5 pr-4 font-medium text-right">Custo</th>
+                      <th className="pb-1.5 pr-4 font-medium text-right">Runs</th>
+                      <th className="pb-1.5 pr-4 font-medium text-right">Resultados</th>
+                      <th className="pb-1.5 pr-4 font-medium text-right">Média/run</th>
+                      <th className="pb-1.5 font-medium text-right">Fonte</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.apify_actors.map((actor) => (
+                      <ApifyActorTableRow key={actor.actor} actor={actor} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Linha separadora antes do gráfico */}
         <div className="border-t border-admin-border" />
 
         {/* Zona inferior: gráfico de custos */}
@@ -277,28 +354,31 @@ export function ExpenseSection() {
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(136,135,128,0.06)" }}
-                  contentStyle={{
-                    border: "1px solid rgb(44 44 42 / 0.14)",
-                    borderRadius: 8,
-                    fontSize: 11,
-                    padding: "6px 10px",
-                    boxShadow: "none",
-                  }}
-                  formatter={(value: number, name: string) => [
-                    `$${value.toFixed(2)}`,
-                    name === "apify"
-                      ? "Apify"
-                      : name === "openai"
-                        ? "OpenAI"
-                        : "DataForSEO",
-                  ]}
-                  labelFormatter={(label) => `Dia ${label}`}
+                  content={
+                    <ExpenseTooltipContent
+                      actorKeys={allActorKeys}
+                      hasActorBreakdown={hasActorBreakdown}
+                    />
+                  }
                 />
-                <Bar
-                  dataKey="apify"
-                  stackId="c"
-                  fill={ADMIN_LITERAL.expenseChartApify}
-                />
+                {/* Apify — sub-barras por ator se disponíveis, senão barra única */}
+                {hasActorBreakdown ? (
+                  allActorKeys.map((actor, i) => (
+                    <Bar
+                      key={actor}
+                      dataKey={`apify_${actor}`}
+                      stackId="c"
+                      fill={actorColor(actor)}
+                      name={`apify_${actor}`}
+                    />
+                  ))
+                ) : (
+                  <Bar
+                    dataKey="apify"
+                    stackId="c"
+                    fill={ADMIN_LITERAL.expenseChartApify}
+                  />
+                )}
                 <Bar
                   dataKey="openai"
                   stackId="c"
@@ -411,50 +491,177 @@ const COST_SOURCE_LABEL: Record<ApifyActorBreakdown["cost_source"], { text: stri
   unavailable: { text: "Indisponível", cls: "text-admin-text-tertiary" },
 };
 
-function ApifyActorRow({ actor }: { actor: ApifyActorBreakdown }) {
-  const source = COST_SOURCE_LABEL[actor.cost_source];
-  const noRuns = actor.run_count === 0 && actor.error_count === 0;
+/* ── Custom tooltip ────────────────────────────────────────────────── */
+
+function ExpenseTooltipContent({
+  active,
+  payload,
+  label,
+  actorKeys,
+  hasActorBreakdown,
+}: {
+  active?: boolean;
+  payload?: Array<{ dataKey: string; value: number; color: string }>;
+  label?: string;
+  actorKeys: string[];
+  hasActorBreakdown: boolean;
+}) {
+  if (!active || !payload?.length) return null;
+
+  const openaiEntry = payload.find((p) => p.dataKey === "openai");
+  const dfsEntry = payload.find((p) => p.dataKey === "dataforseo");
+
+  const actorEntries = hasActorBreakdown
+    ? actorKeys
+        .map((actor) => {
+          const entry = payload.find((p) => p.dataKey === `apify_${actor}`);
+          return entry && entry.value > 0
+            ? { actor, value: entry.value }
+            : null;
+        })
+        .filter(Boolean) as Array<{ actor: string; value: number }>
+    : [];
+
+  const apifyFallback =
+    !hasActorBreakdown
+      ? payload.find((p) => p.dataKey === "apify")
+      : null;
+
+  const apifyTotal = hasActorBreakdown
+    ? actorEntries.reduce((s, e) => s + e.value, 0)
+    : (apifyFallback?.value ?? 0);
+
+  const total =
+    apifyTotal +
+    (openaiEntry?.value ?? 0) +
+    (dfsEntry?.value ?? 0);
 
   return (
-    <div className="rounded-md border border-admin-border bg-admin-surface-muted/40 px-3 py-2.5 space-y-1">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-eyebrow-sm text-admin-text-tertiary m-0 uppercase">
-          {actor.label}
-        </p>
-        <span className={`text-[10px] font-medium ${source.cls}`}>
-          {noRuns ? "Sem execuções" : source.text}
-        </span>
-      </div>
-      {noRuns ? (
-        <p className="text-[11px] text-admin-text-tertiary m-0 italic">
-          Nenhuma execução registada no período.
-        </p>
-      ) : (
-        <>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[13px] font-semibold tabular-nums text-admin-text-primary">
-              ${actor.total_cost_usd.toFixed(2)}
+    <div
+      className="rounded-lg border bg-white px-3 py-2.5 shadow-sm"
+      style={{
+        border: "1px solid rgb(44 44 42 / 0.14)",
+        fontSize: 11,
+        minWidth: 180,
+      }}
+    >
+      <p className="mb-1.5 font-medium text-gray-700">Dia {label}</p>
+
+      {/* Apify section */}
+      {(actorEntries.length > 0 || (apifyFallback && apifyFallback.value > 0)) && (
+        <div className="mb-1">
+          <div className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2 w-2 rounded-sm"
+                style={{ backgroundColor: ADMIN_LITERAL.expenseChartApify }}
+              />
+              <span className="font-medium text-gray-600">Apify</span>
             </span>
-            <span className="text-[11px] text-admin-text-secondary">
-              {actor.run_count} run(s)
-              {actor.error_count > 0 && (
-                <span className="text-admin-danger-700"> · {actor.error_count} erro(s)</span>
-              )}
+            <span className="tabular-nums font-semibold text-gray-800">
+              ${apifyTotal.toFixed(4)}
             </span>
           </div>
-          <div className="flex flex-wrap gap-x-3 text-[10px] text-admin-text-tertiary">
-            {actor.total_results > 0 && (
-              <span>{actor.total_results.toLocaleString("pt-PT")} resultados</span>
-            )}
-            {actor.avg_cost_per_run != null && (
-              <span>média ${actor.avg_cost_per_run.toFixed(3)}/run</span>
-            )}
+          {actorEntries.map((e) => (
+            <div
+              key={e.actor}
+              className="ml-3.5 flex items-center justify-between gap-4 text-[10px] text-gray-500"
+            >
+              <span className="flex items-center gap-1">
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: actorColor(e.actor) }}
+                />
+                {actorShortLabel(e.actor)}
+              </span>
+              <span className="tabular-nums">${e.value.toFixed(4)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* OpenAI */}
+      {openaiEntry && openaiEntry.value > 0 && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-2 w-2 rounded-sm"
+              style={{ backgroundColor: ADMIN_LITERAL.expenseChartOpenAI }}
+            />
+            <span className="text-gray-600">OpenAI</span>
+          </span>
+          <span className="tabular-nums text-gray-800">
+            ${openaiEntry.value.toFixed(4)}
+          </span>
+        </div>
+      )}
+
+      {/* DataForSEO */}
+      {dfsEntry && dfsEntry.value > 0 && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-2 w-2 rounded-sm"
+              style={{ backgroundColor: ADMIN_LITERAL.expenseChartDataForSeo }}
+            />
+            <span className="text-gray-600">DataForSEO</span>
+          </span>
+          <span className="tabular-nums text-gray-800">
+            ${dfsEntry.value.toFixed(4)}
+          </span>
+        </div>
+      )}
+
+      {/* Total */}
+      {total > 0 && (
+        <>
+          <div className="my-1 border-t border-gray-200" />
+          <div className="flex items-center justify-between gap-4 font-medium text-gray-800">
+            <span>Total</span>
+            <span className="tabular-nums">${total.toFixed(4)}</span>
           </div>
         </>
       )}
-      <p className="text-[10px] text-admin-text-tertiary m-0 italic">
-        Incluído no relatório gratuito
-      </p>
     </div>
+  );
+}
+
+/* ── Actor table row ───────────────────────────────────────────────── */
+
+function ApifyActorTableRow({ actor }: { actor: ApifyActorBreakdown }) {
+  const source = COST_SOURCE_LABEL[actor.cost_source];
+  const noRuns = actor.run_count === 0 && actor.error_count === 0;
+  const color = actorColor(actor.actor);
+
+  return (
+    <tr className={noRuns ? "text-admin-text-tertiary/60" : "text-admin-text-secondary"}>
+      <td className="py-1.5 pr-4">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-2 w-2 rounded-sm shrink-0"
+            style={{ backgroundColor: color }}
+          />
+          <span className={noRuns ? "italic" : ""}>{actor.label}</span>
+        </span>
+      </td>
+      <td className="py-1.5 pr-4 text-right tabular-nums font-semibold text-admin-text-primary">
+        {noRuns ? "—" : `$${actor.total_cost_usd.toFixed(3)}`}
+      </td>
+      <td className="py-1.5 pr-4 text-right tabular-nums">
+        {noRuns ? "—" : actor.run_count}
+        {actor.error_count > 0 && (
+          <span className="text-admin-danger-700 ml-0.5">({actor.error_count} err)</span>
+        )}
+      </td>
+      <td className="py-1.5 pr-4 text-right tabular-nums">
+        {noRuns ? "—" : actor.total_results > 0 ? actor.total_results.toLocaleString("pt-PT") : "0"}
+      </td>
+      <td className="py-1.5 pr-4 text-right tabular-nums">
+        {actor.avg_cost_per_run != null ? `$${actor.avg_cost_per_run.toFixed(4)}` : "—"}
+      </td>
+      <td className={`py-1.5 text-right font-medium ${source.cls}`}>
+        {noRuns ? "Sem execuções" : source.text}
+      </td>
+    </tr>
   );
 }

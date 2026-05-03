@@ -104,4 +104,9 @@ export const ADMIN_LITERAL = {
   profileBarAnalyses: "#888780",
   profileBarReports: "#D85A30",
   profileFunnelBase: "#B4B2A9",
+  // ===== Apify atores (sub-barras despesa) =====
+  apifyActorProfile: "#D4920F",
+  apifyActorComments: "#E8A838",
+  apifyActorScraper: "#BA7517",
+  apifyActorDefault: "#C78A30",
 } as const;
