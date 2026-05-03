@@ -59,8 +59,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
         className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-white/70"
       />
 
-      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-5 md:pt-7 pb-5 md:pb-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
+      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-4 md:pt-7 pb-4 md:pb-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
           {/* Identidade + stats */}
           <div className="flex items-start gap-4 md:gap-6 min-w-0 flex-1">
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
@@ -79,22 +79,21 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </p>
               ) : null}
 
-              {/* Bio */}
               {bio ? (
-                <p className="text-[13px] md:text-sm text-slate-600 leading-relaxed line-clamp-3 max-w-xl whitespace-pre-line">
+                <p className="text-[13px] md:text-sm text-slate-600 leading-relaxed line-clamp-2 max-w-xl whitespace-pre-line">
                   {bio}
                 </p>
               ) : null}
 
               {/* Stats estilo perfil IG */}
               {profileStats.length > 0 ? (
-                <ul className="!mt-4 grid grid-cols-3 gap-x-4 gap-y-1 max-w-md sm:max-w-lg">
+                <ul className="!mt-3 grid grid-cols-3 gap-x-4 gap-y-1 max-w-md sm:max-w-lg">
                   {profileStats.map((s) => (
                     <li
                       key={s.label}
                       className="flex flex-col items-start gap-1 min-w-0"
                     >
-                      <span className="font-mono text-[1.5rem] md:text-[1.875rem] font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.02em]">
+                      <span className="font-mono text-[1.25rem] md:text-[1.875rem] font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.02em]">
                         {s.value}
                       </span>
                       <span className="text-eyebrow-sm text-slate-500">
@@ -108,7 +107,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               {/* Meta da análise — separada por divider hairline para
                   sinalizar que é metadata do relatório, não do perfil. */}
               {analysisMeta.length > 0 ? (
-                <div className="text-eyebrow-sm !mt-3 pt-2.5 border-t border-slate-200/60 text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <div className="text-eyebrow-sm !mt-2.5 pt-2 border-t border-slate-200/60 text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
                   {analysisMeta.map((m, i) => (
                     <span key={m} className="inline-flex items-center gap-2">
                       {i > 0 ? (
@@ -124,9 +123,9 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             </div>
           </div>
 
-          {/* Ações + cobertura — visualmente secundário */}
-          <div className="flex flex-col gap-2 lg:items-end lg:shrink-0">
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          {/* Ações + cobertura */}
+          <div className="flex flex-col gap-2 lg:items-end lg:shrink-0 -mt-1 lg:mt-0">
+            <div className="flex flex-wrap items-center gap-1.5 lg:gap-2 lg:justify-end">
               <button
                 type="button"
                 onClick={actions.onExportPdf}
@@ -154,7 +153,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 triggerLabel="Partilhar"
               />
             </div>
-            <div className="flex flex-wrap gap-1.5 lg:justify-end">
+            <div className="flex flex-wrap gap-1 lg:gap-1.5 lg:justify-end">
               <CoverageBadge label="Dados públicos" status="real" />
             </div>
           </div>
@@ -243,6 +242,7 @@ function Avatar({
     "p-[2.5px] rounded-full shrink-0 bg-[conic-gradient(from_180deg_at_50%_50%,#FCD34D_0deg,#F472B6_120deg,#A855F7_220deg,#3B82F6_360deg)] shadow-[0_8px_22px_-10px_rgba(59,130,246,0.35)]";
   const innerWhite = "p-[2px] rounded-full bg-white";
   const innerSize = "size-[68px] md:size-[92px]";
+  const innerSizeMobile = "size-[56px] md:size-[92px]";
 
   if (avatarUrl) {
     return (
@@ -255,7 +255,7 @@ function Avatar({
             decoding="async"
             className={cn(
               "rounded-full object-cover bg-white",
-              innerSize,
+              innerSizeMobile,
             )}
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -273,7 +273,7 @@ function Avatar({
             "rounded-full flex items-center justify-center",
             "font-display text-xl md:text-2xl font-semibold text-white",
             "bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600",
-            innerSize,
+            innerSizeMobile,
           )}
         >
           {initials}
