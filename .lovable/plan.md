@@ -1,60 +1,44 @@
 
-# Correções visuais e melhorias UX/UI — Bloco 1 (Overview)
+# Refinamentos UX/UI — Bloco 1 (Overview) — Iteração 2
 
-## Problemas identificados
+## Melhorias identificadas
 
-1. **ComparisonHeader** repete informação já presente no Hero (avatar, handle, seguidores) — redundância visual confusa
-2. **ScoreGrid** usa `text-eyebrow-sm` como classe CSS mas o eyebrow "PONTUAÇÃO GLOBAL" não segue o token do design system
-3. **ScoreCard** — cards com `border-slate-200/60` e `bg-white` ficam quase invisíveis contra o fundo branco/canvas da page
-4. **ScoreRing** — o texto do score dentro do SVG usa tamanho fixo `fontSize="20"` que não escala bem em mobile
-5. **EngagementCardRefined** — o `maxHeight: 130` no chart é inline style rígido; o header "Taxa de envolvimento" tem fonte genérica sem usar os tokens
-6. **Spacing** — `pt-4` entre zonas B e C cria espaçamento inconsistente com o `space-y-5` do container
-7. **Legend** do ScoreGrid usa cores hardcoded em vez dos tokens de `SCORE_COLORS`
-8. **CompetitorModal** — botão "Ver planos PRO" usa variant default sem estilo premium (gold/amber)
+### 1. ScoreCard — interatividade e polish visual
+- Adicionar ícone de seta (ChevronDown ou ArrowRight) sutil para sinalizar que o card é clicável e leva a outra secção
+- Adicionar tinted background subtil por família de score (danger → rose-50, warning → amber-50, success → emerald-50) para dar significado cromático imediato
+- Scorecard subtitle com `font-mono tabular-nums` para alinhamento numérico
 
-## Plano de correções
+### 2. ScoreRing — efeito glow sutil
+- Adicionar `filter: drop-shadow` suave na cor do stroke quando o score está na família "success" ou "danger" — reforça a leitura emocional
 
-### 1. Remover ComparisonHeader redundante
-O Hero v2 já mostra avatar, handle, followers. O ComparisonHeader dentro do bloco repete tudo. Substituir por uma faixa compacta com apenas o botão "Adicionar concorrente PRO" + label contextual.
+### 3. ComparisonHeader — micro-interação e ícone
+- Adicionar ícone `Users` à esquerda do texto para dar identidade visual ao CTA
+- Adicionar animação pulse suave no badge PRO para chamar atenção
 
-### 2. Melhorar ScoreCard visualmente
-- Adicionar `shadow-sm` e `bg-white` com bordo mais visível (`border-slate-200`)
-- Adicionar padding interno mais generoso (`px-3 py-4`)
-- Melhorar o hover com `hover:shadow-md` e leve elevação
-- Usar `REDESIGN_TOKENS.card` ou um subset dele para consistência
+### 4. EngagementCardRefined — hierarquia tipográfica
+- Hero number: aumentar para `text-[28px]` com `font-semibold` em vez de `font-medium`
+- Adicionar ícone de tendência (TrendingUp/TrendingDown) junto ao gap p.p.
+- Source badge: melhorar contraste com `bg-slate-100 px-2 py-0.5 rounded-md`
 
-### 3. Refinar ScoreGrid
-- Remover `text-eyebrow-sm` inline e usar o token `REDESIGN_TOKENS.eyebrow`
-- Melhorar spacing do grid: `gap-3` em vez de `gap-2.5`
-- Legend: usar `SCORE_COLORS` importado em vez de cores hardcoded
+### 5. CompetitorModal — ortografia + polish
+- Corrigir "directa" → "direta", "directos" → "diretos" (Acordo Ortográfico)
+- GhostChart: adicionar animação fade-in suave ao abrir o modal
+- Melhorar espaçamento dos benefits com ícone maior
 
-### 4. Ajustar ScoreRing
-- Reduzir `size` default para 64 em mobile, 72 em desktop (via prop ou responsive)
-- Score text: usar `fontSize` proporcional ao `size`
+### 6. ScoreGrid — label clicável
+- Tornar o eyebrow "PONTUAÇÃO GLOBAL" mais descritivo com tooltip explicativo
+- Adicionar divider hairline abaixo da legend para separar da secção seguinte
 
-### 5. Melhorar EngagementCardRefined
-- Usar `REDESIGN_TOKENS.card` para consistência
-- Remover inline `maxHeight` rígido, usar classe Tailwind `max-h-[130px]`
-- Melhorar tipografia do header com tokens
-
-### 6. Corrigir spacing do ReportOverviewBlock
-- Remover `pt-4` individuais, deixar o `space-y-6` do container gerir o ritmo
-- Eliminar redundância do ComparisonHeader
-
-### 7. Melhorar CompetitorModal
-- Botão "Ver planos PRO": usar estilo gold/amber premium (variant="premium" ou custom)
-- Melhorar contraste do ghost chart
-
-### 8. Responsividade mobile
-- ScoreGrid: garantir 2x2 mobile com gap adequado
-- ComparisonHeader simplificado: stack vertical em mobile
+### 7. Layout geral do ReportOverviewBlock
+- Adicionar dividers sutis entre zonas (A, B, C) para ritmo visual
+- Zona TopPosts: adicionar eyebrow "MELHORES PUBLICAÇÕES" antes do componente
 
 ## Ficheiros a editar
 
-- `src/components/report-redesign/v2/report-overview-block.tsx` — layout e spacing
-- `src/components/report-redesign/v2/overview/comparison-header.tsx` — simplificar para CTA-only
-- `src/components/report-redesign/v2/overview/score-card.tsx` — visual melhorado
-- `src/components/report-redesign/v2/overview/score-grid.tsx` — tokens e legend
-- `src/components/report-redesign/v2/overview/score-ring.tsx` — responsividade
-- `src/components/report-redesign/v2/report-overview-engagement.tsx` — tokens e chart height
-- `src/components/report-redesign/v2/overview/competitor-modal.tsx` — CTA premium
+- `src/components/report-redesign/v2/overview/score-card.tsx` — tinted bg, seta, mono subtitle
+- `src/components/report-redesign/v2/overview/score-ring.tsx` — glow sutil
+- `src/components/report-redesign/v2/overview/comparison-header.tsx` — ícone Users, pulse PRO
+- `src/components/report-redesign/v2/report-overview-engagement.tsx` — tipografia hero, ícone tendência, source badge
+- `src/components/report-redesign/v2/overview/competitor-modal.tsx` — ortografia, fade-in, spacing
+- `src/components/report-redesign/v2/overview/score-grid.tsx` — divider, tooltip
+- `src/components/report-redesign/v2/report-overview-block.tsx` — dividers entre zonas, eyebrow top posts
