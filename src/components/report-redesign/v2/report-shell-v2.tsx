@@ -39,6 +39,7 @@ import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
+import { ComparisonHeader } from "./overview/comparison-header";
 
 interface ReportShellV2Props {
   result: AdapterResult;
