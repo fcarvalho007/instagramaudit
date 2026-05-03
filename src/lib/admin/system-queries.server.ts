@@ -83,6 +83,12 @@ export interface Expense30d {
    * ainda não correu.
    */
   apify_billed_total_30d: number | null;
+  /** Comment scraper sub-breakdown within Apify costs */
+  comment_scraper: {
+    total_cost_usd: number;
+    run_count: number;
+    comments_returned: number;
+  };
 }
 
 export interface CostCaps {
@@ -490,6 +496,23 @@ export async function fetchExpense30d(): Promise<Expense30d> {
     }
   }
 
+  // Sub-query for comment scraper breakdown within Apify
+  const { data: csLogs } = await supabaseAdmin
+    .from("provider_call_logs")
+    .select("actual_cost_usd, estimated_cost_usd, posts_returned, status")
+    .eq("actor", "apify/instagram-comment-scraper")
+    .gte("created_at", sinceIso)
+    .in("status", ["success", "ok"]);
+
+  let csTotalCost = 0;
+  let csRunCount = 0;
+  let csCommentsReturned = 0;
+  for (const r of csLogs ?? []) {
+    csTotalCost += Number(r.actual_cost_usd ?? r.estimated_cost_usd ?? 0);
+    csRunCount += 1;
+    csCommentsReturned += r.posts_returned ?? 0;
+  }
+
   return {
     apify_total: Number(totals.apify.amount_usd.toFixed(4)),
     openai_total: Number(totals.openai.amount_usd.toFixed(4)),
@@ -509,6 +532,11 @@ export async function fetchExpense30d(): Promise<Expense30d> {
     apify_billed_total_30d: apifyHasBilled
       ? Number(apifyBilled.toFixed(4))
       : null,
+    comment_scraper: {
+      total_cost_usd: Number(csTotalCost.toFixed(4)),
+      run_count: csRunCount,
+      comments_returned: csCommentsReturned,
+    },
   };
 }
 
@@ -558,6 +586,24 @@ export interface CommentScraperMetrics {
   max_charge_usd: number;
   max_posts: number;
   max_comments_per_post: number;
+  /** Number of successful runs where actualCostUsd was null */
+  null_cost_count: number;
+  /** Total failed runs in the period */
+  failure_count: number;
+  /** Failures among last 3 runs */
+  recent_failure_count: number;
+  /** Actor name */
+  actor: string;
+  /** Include replies */
+  include_replies: boolean;
+  /** Timeout in ms */
+  timeout_ms: number;
+  /** Max total comments per report */
+  max_total_comments: number;
+  /** Last run cost (null if unavailable) */
+  last_run_cost_usd: number | null;
+  /** Last run comments returned */
+  last_run_comments: number;
 }
 
 const COMMENT_SCRAPER_ACTOR = "apify/instagram-comment-scraper";
@@ -574,6 +620,8 @@ export async function fetchCommentScraperMetrics(
   const maxPosts = maxPostsRaw ? Math.max(1, Math.min(12, parseInt(maxPostsRaw, 10) || 3)) : 3;
   const maxCommentsRaw = process.env.COMMENT_SCRAPER_RESULTS_LIMIT;
   const maxComments = maxCommentsRaw ? Math.max(5, Math.min(200, parseInt(maxCommentsRaw, 10) || 20)) : 20;
+  const maxTotalRaw = process.env.COMMENT_SCRAPER_MAX_TOTAL_COMMENTS;
+  const maxTotal = maxTotalRaw ? Math.max(10, Math.min(500, parseInt(maxTotalRaw, 10) || 60)) : 60;
 
   const { data: logs } = await supabaseAdmin
     .from("provider_call_logs")
@@ -589,15 +637,31 @@ export async function fetchCommentScraperMetrics(
   let totalCost = 0;
   let totalComments = 0;
   let runCount = 0;
+  let nullCostCount = 0;
+  let failureCount = 0;
 
   for (const row of rows) {
-    const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
-    totalCost += cost;
-    totalComments += row.posts_returned ?? 0;
-    runCount += 1;
+    const status = String(row.status);
+    if (status === "success" || status === "ok") {
+      const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+      totalCost += cost;
+      totalComments += row.posts_returned ?? 0;
+      runCount += 1;
+      if (row.actual_cost_usd == null) nullCostCount += 1;
+    } else {
+      failureCount += 1;
+      // Still count cost for failed runs if Apify charged
+      if (row.actual_cost_usd != null) {
+        totalCost += Number(row.actual_cost_usd);
+      }
+    }
   }
 
   const lastRun = rows[0] ?? null;
+  // Failures among last 3 runs
+  const recentFailureCount = rows.slice(0, 3).filter(
+    (r) => String(r.status) !== "success" && String(r.status) !== "ok",
+  ).length;
 
   return {
     total_cost_usd: Number(totalCost.toFixed(4)),
@@ -614,5 +678,16 @@ export async function fetchCommentScraperMetrics(
     max_charge_usd: maxCharge,
     max_posts: maxPosts,
     max_comments_per_post: maxComments,
+    null_cost_count: nullCostCount,
+    failure_count: failureCount,
+    recent_failure_count: recentFailureCount,
+    actor: COMMENT_SCRAPER_ACTOR,
+    include_replies: true,
+    timeout_ms: 120_000,
+    max_total_comments: maxTotal,
+    last_run_cost_usd: lastRun
+      ? (lastRun.actual_cost_usd != null ? Number(lastRun.actual_cost_usd) : null)
+      : null,
+    last_run_comments: lastRun ? (lastRun.posts_returned ?? 0) : 0,
   };
 }
