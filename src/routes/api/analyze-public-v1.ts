@@ -96,7 +96,6 @@ import {
   COMMENT_SCRAPER_MAX_CHARGE_USD,
   COMMENT_SCRAPER_MAX_TOTAL_COMMENTS,
 } from "@/lib/analysis/comment-scraper.server";
-import { ApifyConfigError, ApifyUpstreamError } from "@/lib/analysis/apify-client";
 import { aggregateCommentIntelligence, buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 
