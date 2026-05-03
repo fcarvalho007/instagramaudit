@@ -27,7 +27,7 @@ import type {
   Cost24hMetrics,
   ProviderCallRow,
 } from "@/lib/admin/system-queries.server";
-import type { CommentScraperMetrics } from "@/lib/admin/system-queries.server";
+import type { CommentScraperMetrics, EnrichmentJobSummary } from "@/lib/admin/system-queries.server";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await adminFetch(url);
@@ -96,6 +96,13 @@ export function CostsDetailSection() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "sistema", "alerts"] }),
+  });
+
+  const enrichmentJobs = useQuery({
+    queryKey: ["admin", "sistema", "enrichment-jobs"],
+    queryFn: () =>
+      fetchJson<EnrichmentJobSummary>("/api/admin/sistema/enrichment-jobs"),
+    refetchInterval: 30_000,
   });
 
   return (
@@ -300,6 +307,40 @@ export function CostsDetailSection() {
           </div>
         )}
       </AdminCard>
+
+      {/* ─── Enrichment Jobs ──────────────────────────── */}
+      <AdminCard accent="info">
+        <h3 className="text-eyebrow text-admin-text-tertiary mb-3">Enrichment Jobs — Comentários</h3>
+        {enrichmentJobs.isLoading ? (
+          <SectionSkeleton rows={1} rowHeight={64} />
+        ) : enrichmentJobs.error ? (
+          <SectionError error={enrichmentJobs.error} onRetry={() => enrichmentJobs.refetch()} />
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <KPICard eyebrow="Pendente" value={String(enrichmentJobs.data!.pending)} size="sm" accent="signal" />
+              <KPICard eyebrow="Em processamento" value={String(enrichmentJobs.data!.processing)} size="sm" accent="info" />
+              <KPICard eyebrow="Concluído" value={String(enrichmentJobs.data!.completed)} size="sm" accent="revenue" />
+              <KPICard eyebrow="Falhado" value={String(enrichmentJobs.data!.failed)} size="sm" accent="danger" />
+            </div>
+            {enrichmentJobs.data!.recent_failures.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-eyebrow-sm text-admin-text-tertiary">Falhas recentes</p>
+                {enrichmentJobs.data!.recent_failures.map((f) => (
+                  <div key={f.id} className="rounded-md border border-admin-border bg-admin-surface-muted/40 px-3 py-2 text-[12px]">
+                    <span className="font-mono text-admin-text-primary">@{f.handle}</span>
+                    <span className="ml-2 text-admin-text-tertiary">tentativas: {f.attempts}</span>
+                    {f.last_error && (
+                      <p className="mt-1 text-admin-danger-700 text-[11px] truncate">{f.last_error}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </AdminCard>
+
     </section>
   );
 }

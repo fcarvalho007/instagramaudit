@@ -266,6 +266,10 @@ const UNAVAILABLE_REASONS: Record<string, { title: string; body: string }> = {
     title: "URLs insuficientes",
     body: "Não havia URLs públicos suficientes para analisar comentários.",
   },
+  comment_scraper_timeout: {
+    title: "Análise excedeu o tempo limite",
+    body: "A análise de comentários excedeu o tempo disponível. Tenta novamente mais tarde.",
+  },
 };
 
 export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {

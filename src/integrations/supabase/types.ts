@@ -179,6 +179,51 @@ export type Database = {
         }
         Relationships: []
       }
+      comment_enrichment_jobs: {
+        Row: {
+          analysis_event_id: string | null
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          handle: string
+          id: string
+          last_error: string | null
+          post_urls: Json
+          snapshot_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          analysis_event_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          handle: string
+          id?: string
+          last_error?: string | null
+          post_urls?: Json
+          snapshot_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          analysis_event_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          handle?: string
+          id?: string
+          last_error?: string | null
+          post_urls?: Json
+          snapshot_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cost_daily: {
         Row: {
           amount_usd: number

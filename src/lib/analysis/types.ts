@@ -142,7 +142,8 @@ export interface CommentIntelligence {
     | "no_posts_with_comments"
     | "no_valid_post_urls"
     | "budget_blocked"
-    | "processing";
+    | "processing"
+    | "comment_scraper_timeout";
   /** Number of posts whose comments were sampled. */
   samplePosts: number;
   /** Total top-level + reply-level comments analysed across all sampled posts. */

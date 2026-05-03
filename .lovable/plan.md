@@ -1,140 +1,179 @@
 
-# Admin Cost Transparency — Apify Actor Breakdown
+# Async Comment Enrichment — Architecture Plan
 
-## Audit Findings
+## Audit Answers
 
-### 1. Files that compute `/admin` expenses
-- **`src/components/admin/v2/visao-geral/expense-section.tsx`** — renders the Despesas section (4 provider columns + chart)
-- **`src/lib/admin/system-queries.server.ts`** — `fetchExpense30d()` (line 469) aggregates from `provider_call_logs`, plus `aggregateCostsFromLogs()` (line 308) which groups by provider only (no actor-level)
-- **`src/routes/api/admin/sistema.expense-30d.ts`** — API route that calls `fetchExpense30d()`
+### 1. Where comment enrichment runs inline
+Lines 1043-1101 of `src/routes/api/analyze-public-v1.ts` — `enrichCommentsInline()` is awaited directly inside the POST handler, blocking the response.
 
-### 2. Files that compute `/admin/sistema` cost details
-- **`src/components/admin/v2/sistema/costs-detail-section.tsx`** — renders KPIs (24h costs), recent calls table, alerts, and imports `CommentScraperCard`
-- **`src/components/admin/v2/sistema/comment-scraper-card.tsx`** — standalone card with different visual style from the KPIs
-- **`src/lib/admin/system-queries.server.ts`** — `fetchCostMetrics24h()` (line 359), `fetchCommentScraperMetrics()` (line 622)
-- **`src/routes/api/admin/sistema.comment-scraper.ts`** and `sistema.cost-metrics-24h.ts` — API routes
+### 2. Why the previous production test failed
+The Apify comment scraper needs 60-120s. The Cloudflare Worker has a ~30s wall-clock limit. The inline `await enrichCommentsInline(...)` was killed mid-flight. No `provider_call_logs` entry was recorded, no `comment_intelligence` was stored, and no error was surfaced because the Worker died silently.
 
-### 3. Where Apify calls are grouped
-- `aggregateCostsFromLogs()` groups by `provider` only — no `actor` column is read
-- `fetchExpense30d()` has a separate sub-query for `apify/instagram-comment-scraper` but returns it as a flat sub-object, not a general actor breakdown
-- `fetchCommentScraperMetrics()` queries only the comment scraper actor
+### 3. Budget constants verification
+All confirmed at correct values — no `$0.25` path remains:
+- `COMMENT_SCRAPER_TARGET_COST_USD = 0.15` (line 47)
+- `HARD_MAX_CHARGE_CEILING = 0.20` (line 50)
+- `maxTotalChargeUsd` is derived from these, capped at `$0.20`
 
-### 4. Actor-level aggregation
-Does NOT exist as a general mechanism. Comment scraper is hard-coded as a special case. No general "Apify actors" breakdown.
+### 4. New DB table required: YES
+A `comment_enrichment_jobs` table is needed to track async enrichment lifecycle, enable idempotency, prevent duplicate runs, and give admin visibility.
 
-### 5. `actual_cost_usd` and `estimated_cost_usd` availability
-Both columns exist in `provider_call_logs` and are already selected. The cost formula `actual_cost_usd ?? estimated_cost_usd` is used consistently. However, the UI does not distinguish between actual and estimated — it just shows a single number.
+### 5. Existing endpoint reuse
+`/api/public/enrich-comments` (src/routes/api/public/enrich-comments.ts) already exists with the right structure. It will be refactored to read from the jobs table and become idempotent.
 
-### 6. Files that need to change
-- `src/lib/admin/system-queries.server.ts` — add actor-level aggregation
-- `src/routes/api/admin/sistema.expense-30d.ts` — expose new data (or modify existing response)
-- `src/components/admin/v2/visao-geral/expense-section.tsx` — add actor breakdown under Apify column
-- `src/components/admin/v2/sistema/costs-detail-section.tsx` — replace standalone comment card with unified actor breakdown
-- `src/components/admin/v2/sistema/comment-scraper-card.tsx` — refactor into the new actor breakdown (may keep for config display)
-
-### 7. Locked files
-None of the files above appear in LOCKED_FILES.md. Safe to proceed.
-
-### 8. Tests to add/update
-- No existing tests for these admin components or queries
-- Add unit test for the actor aggregation function (pure logic, testable without DB)
+### 6. Risks of using only `waitUntil`
+- `ctx.waitUntil` extends Worker lifetime by ~30s max on Cloudflare Workers — not enough for 60-120s scraper runs.
+- If the extended lifetime is exceeded, the promise is killed silently with no error callback.
+- No retry mechanism, no state tracking, no admin visibility.
+- **Verdict**: Unsafe as sole mechanism. The job table + separate HTTP trigger is required.
 
 ---
 
 ## Implementation Plan
 
-### Step 1 — Server: Actor-level aggregation
+### Step 1 — Migration: `comment_enrichment_jobs` table
 
-In `system-queries.server.ts`:
+```sql
+CREATE TABLE public.comment_enrichment_jobs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  snapshot_id uuid NOT NULL,
+  analysis_event_id uuid,
+  handle text NOT NULL,
+  post_urls jsonb NOT NULL DEFAULT '[]',
+  status text NOT NULL DEFAULT 'pending',
+  attempts integer NOT NULL DEFAULT 0,
+  last_error text,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-Add a new exported function `aggregateApifyActorBreakdown(sinceIso)` that queries `provider_call_logs` for `provider = 'apify'` and groups by `actor`. For each actor, compute:
+-- Index for polling/admin queries
+CREATE INDEX idx_cej_status ON public.comment_enrichment_jobs (status);
+CREATE INDEX idx_cej_snapshot ON public.comment_enrichment_jobs (snapshot_id);
+
+-- Prevent duplicate pending jobs for the same snapshot
+CREATE UNIQUE INDEX idx_cej_snapshot_pending
+  ON public.comment_enrichment_jobs (snapshot_id)
+  WHERE status IN ('pending', 'processing');
+
+-- Auto-update timestamp
+CREATE TRIGGER set_updated_at_cej
+  BEFORE UPDATE ON public.comment_enrichment_jobs
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER TABLE public.comment_enrichment_jobs ENABLE ROW LEVEL SECURITY;
+```
+
+No RLS policies needed (admin-only, accessed via `supabaseAdmin`).
+
+### Step 2 — Add `comment_scraper_timeout` to type
+
+In `src/lib/analysis/types.ts`, add `"comment_scraper_timeout"` to the `CommentIntelligence.reason` union.
+
+### Step 3 — Refactor `/api/analyze-public-v1.ts`
+
+Replace lines 1043-1101 (inline enrichment block) with:
+
+1. Build the `comment_intelligence` placeholder: `buildUnavailableCommentIntelligence(primary, "processing")` with `samplePosts` set to the known post count.
+2. Include placeholder in the snapshot payload before the final persist.
+3. Insert a row into `comment_enrichment_jobs` with status `"pending"`, the snapshot_id, analysis_event_id (from `logEvent`), handle, and post_urls.
+4. Fire-and-forget HTTP call to `/api/public/enrich-comments` using `fetch()` without awaiting (best-effort trigger). If `waitUntil` is available, wrap in it for extended lifetime. The job table guarantees delivery even if this call fails.
+5. Return the response immediately.
+
+Remove `enrichCommentsInline` import — that module can be deleted or kept as reference.
+
+### Step 4 — Refactor `/api/public/enrich-comments`
+
+Rewrite to be job-table-driven and idempotent:
+
+1. Accept `{ job_id }` or `{ snapshot_id }` in body (auth via `INTERNAL_API_TOKEN`).
+2. Look up the job row. If status is already `completed`, return early (idempotent).
+3. Set status to `processing`, increment `attempts`, set `started_at`.
+4. Run `fetchCommentsForPosts()` with the stored `post_urls`.
+5. On success: aggregate, patch snapshot, set status `completed`, record `provider_call_logs` with `analysis_event_id` from the job.
+6. On failure/timeout: patch snapshot with appropriate unavailable reason (`comment_scraper_failed` or `comment_scraper_timeout`), set job status to `failed`, store `last_error`.
+7. This endpoint runs in its own Worker invocation with its own 30s budget. If the Apify actor still exceeds this, the `runActorWithMetadata` timeout parameter must be set to ~25s with `maxTotalChargeUsd: 0.20`. Partial results are accepted.
+
+### Step 5 — Fallback: pg_cron sweep for stuck jobs
+
+A pg_cron job (every 5 minutes) calls `/api/public/enrich-comments` for any jobs stuck in `pending` status for >60s. This guarantees delivery even if the fire-and-forget trigger from Step 3 was killed.
+
+```sql
+SELECT cron.schedule(
+  'sweep-pending-comment-jobs',
+  '*/5 * * * *',
+  $$ SELECT net.http_post(
+    url := 'https://project--b554ee82-2f67-4f5a-895d-cd69f2867df7.lovable.app/api/public/enrich-comments',
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer INTERNAL_TOKEN"}'::jsonb,
+    body := '{"sweep":true}'::jsonb
+  ) $$
+);
+```
+
+The endpoint, when receiving `{"sweep": true}`, queries for oldest pending job and processes it. Max 1 per sweep to avoid overload.
+
+### Step 6 — Snapshot patching
+
+Same as current `enrich-comments-inline.server.ts` logic:
+1. Read snapshot's `normalized_payload`.
+2. Merge `comment_intelligence` into it.
+3. Update the row.
+
+The `analysis_event_id` is stored in the job row and passed to `recordProviderCall` so cost tracking links correctly.
+
+### Step 7 — Frontend: processing state (already done)
+
+The `CommentIntelligenceUnavailable` component already handles `reason: "processing"` with a spinner and appropriate copy. Add the missing `comment_scraper_timeout` reason to the `UNAVAILABLE_REASONS` map:
 
 ```
-{
-  actor: string,           // e.g. "apify/instagram-scraper"
-  label: string,           // Portuguese label
-  total_cost_usd: number,  // actual ?? estimated
-  actual_total_usd: number,
-  estimated_total_usd: number,
-  unavailable_count: number, // rows where both are null
-  run_count: number,        // success/ok count
-  error_count: number,
-  total_results: number,    // sum of posts_returned
-  avg_cost_per_run: number | null,
-  cost_per_1k_results: number | null,
-  last_run_at: string | null,
-  last_run_status: string | null,
-  last_run_cost_usd: number | null,
-  cost_source: "actual" | "estimated" | "mixed" | "unavailable",
-  included_in_free_report: boolean
+comment_scraper_timeout: {
+  title: "Análise excedeu o tempo limite",
+  body: "A análise de comentários excedeu o tempo disponível. Tenta novamente mais tarde.",
 }
 ```
 
-The function returns `ApifyActorBreakdown[]` with one entry per known actor (always include profile scraper, comment scraper; post scraper only if present). Comment scraper always appears even with 0 runs.
+No polling. The user refreshes manually — the snapshot will already be patched by then.
 
-Add this to `Expense30d` interface as `apify_actors: ApifyActorBreakdown[]`, replacing the flat `comment_scraper` sub-object.
+### Step 8 — Admin visibility
 
-Update `fetchExpense30d()` to call this function and include the result.
+In `src/lib/admin/system-queries.server.ts`, add `fetchCommentEnrichmentJobs()` that queries `comment_enrichment_jobs` with counts by status, recent failures, and pending jobs.
 
-### Step 2 — API: Expose actor breakdown
+In `src/components/admin/v2/sistema/costs-detail-section.tsx`, add a "Enrichment Jobs" section showing:
+- Pending / Processing / Completed / Failed counts
+- Recent failed jobs with `last_error`
+- Cost from linked `provider_call_logs` (labelled Real/Estimado/Indisponivel)
 
-`sistema.expense-30d.ts` already returns `Expense30d` — no route change needed, just the type grows.
+### Step 9 — `analysis_event_id` preservation
 
-Also update `sistema.cost-metrics-24h.ts` to include a 24h actor breakdown (same structure, shorter window).
+The main analysis route already calls `logEvent()` (line 912) which returns the event ID. This ID is stored in `comment_enrichment_jobs.analysis_event_id`. When the enrichment endpoint records the provider call, it passes this ID so costs are linked to the original analysis event.
 
-### Step 3 — `/admin` Despesas: Actor breakdown under Apify column
+### Step 10 — Tests
 
-In `expense-section.tsx`, under the existing Apify `ExpenseColumn`, replace the current `comment_scraper` conditional block with a general actor breakdown:
+- Unit test for `buildUnavailableCommentIntelligence` with `"processing"` and `"comment_scraper_timeout"` reasons.
+- Update existing comment-intelligence tests if any reference the reason union.
+- Integration test: verify the enrichment endpoint is idempotent (calling twice with same job returns early on second call).
 
-- Render a compact list of actor rows inside the Apify column
-- Each row: actor label, cost (with source indicator), run count, status dot
-- Comment scraper always visible (show "Sem execucoes" if 0 runs)
-- Visual style: same `rounded-md border border-admin-border bg-admin-surface-muted/40 px-3 py-2.5` pattern already used
-- On mobile: stack vertically, full width, no horizontal overflow
+### Step 11 — Validation
 
-### Step 4 — `/admin/sistema` Costs: Unified actor breakdown
-
-In `costs-detail-section.tsx`:
-
-- Add a new "Apify — decomposicao por actor" section between the KPIs and the recent calls table
-- Use the same `KPICard` visual language for consistency
-- Each actor gets a sub-card with: cost (actual vs estimated clearly labelled), runs, errors, results, avg cost, last run info
-- The comment scraper config section (actor name, hard max, target, posts, resultsLimit, replies, timeout, flag) stays but moves inside the actor's expandable area
-- Fix the `resultsLimit` wording: "Limite total alvo: X comentarios", "Limite por post calculado: Y", "Posts por analise: ate 12", "Hard max: $0.20/run", "Alvo: $0.15/analise"
-- Remove `CommentScraperCard` as a standalone import; absorb its content into the unified breakdown
-
-### Step 5 — Cost source clarity
-
-Everywhere a cost is displayed in the actor breakdown:
-
-- Show the primary number as `displayCostUsd = actual ?? estimated ?? null`
-- Next to it, a small badge or label: "Real" (green), "Estimado" (amber), "Indisponivel" (grey)
-- If mixed (some runs actual, some estimated), show "Misto" with tooltip/breakdown
-
-### Step 6 — Mobile
-
-- Actor breakdown uses `grid grid-cols-1` on mobile
-- Expandable details for each actor (chevron pattern, same as `AnalysisCostBreakdown`)
-- No horizontal overflow on 375px
-- Actor name and cost never truncated
-
-### Step 7 — Validation
-
-- `tsc --noEmit` passes
-- `vitest run` — 78+ tests pass
-- Visual QA via browser tools at 375px and 1460px on both `/admin` and `/admin/sistema`
+- `tsc --noEmit` (run by harness)
+- `bunx vitest run` — all tests pass
+- Manual: verify no `$0.25` references remain via `rg "0\.25" src/`
 
 ---
 
-## Files Changed (summary)
+## Files to change
 
 | File | Change |
 |------|--------|
-| `src/lib/admin/system-queries.server.ts` | Add `ApifyActorBreakdown` type + `aggregateApifyActorBreakdown()` function; update `Expense30d` and `Cost24hMetrics` interfaces |
-| `src/routes/api/admin/sistema.cost-metrics-24h.ts` | No change (type auto-updates) |
-| `src/routes/api/admin/sistema.expense-30d.ts` | No change (type auto-updates) |
-| `src/components/admin/v2/visao-geral/expense-section.tsx` | Replace comment_scraper block with general actor breakdown |
-| `src/components/admin/v2/sistema/costs-detail-section.tsx` | Add unified actor breakdown section, remove standalone CommentScraperCard import |
-| `src/components/admin/v2/sistema/comment-scraper-card.tsx` | Keep file but refactor — config section becomes a reusable sub-component used inside the unified breakdown |
+| `src/lib/analysis/types.ts` | Add `"comment_scraper_timeout"` to reason union |
+| `src/routes/api/analyze-public-v1.ts` | Replace inline enrichment with job creation + fire-and-forget trigger |
+| `src/routes/api/public/enrich-comments.ts` | Rewrite: job-table-driven, idempotent, with timeout handling |
+| `src/lib/analysis/enrich-comments-inline.server.ts` | Delete or deprecate |
+| `src/components/report-redesign/v2/report-comment-intelligence.tsx` | Add `comment_scraper_timeout` to UNAVAILABLE_REASONS |
+| `src/lib/admin/system-queries.server.ts` | Add `fetchCommentEnrichmentJobs()` |
+| `src/components/admin/v2/sistema/costs-detail-section.tsx` | Add enrichment jobs section |
+| New migration | `comment_enrichment_jobs` table + pg_cron sweep |
 
 No locked files are touched.
