@@ -91,7 +91,8 @@ import {
   shouldRunCommentScraper,
   isValidInstagramPostUrl,
 } from "@/lib/analysis/comment-scraper.server";
-import { enrichCommentsInline } from "@/lib/analysis/enrich-comments-inline.server";
+import { buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -909,7 +910,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // Record the success event immediately. This guarantees that a
           // completed Apify+DataForSEO run is reflected in analysis_events
           // even if the Worker dies before OpenAI returns.
-          await logEvent({
+          const analysisEventId = await logEvent({
             handle: primary,
             competitorHandles: competitors,
             cacheKey,
@@ -1062,9 +1063,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             runComments,
           });
 
-          // Inline comment enrichment — runs directly in this Worker
-          // invocation instead of a fire-and-forget HTTP self-call
-          // (which fails on Workers due to early termination + auth).
+          // Async comment enrichment — creates a job and triggers fire-and-forget.
+          // The main response is returned immediately; enrichment runs in a
+          // separate Worker invocation via /api/public/enrich-comments.
           if (runComments && snapshotId) {
             const postsWithUrl = primaryEnriched.posts
               .filter((p) => !!p.permalink)
@@ -1082,23 +1083,79 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               .filter((u) => isValidInstagramPostUrl(u));
 
             if (postUrls.length > 0) {
-              console.info("[analyze-public-v1] starting inline comment enrichment", {
+              // 1. Set processing placeholder in snapshot payload
+              const processingPlaceholder = buildUnavailableCommentIntelligence(primary, "processing");
+              // Override samplePosts with known count for transparency
+              processingPlaceholder.samplePosts = postUrls.length;
+              normalizedPayload = {
+                ...normalizedPayload,
+                comment_intelligence: processingPlaceholder as unknown as Record<string, unknown>,
+              };
+
+              console.info("[analyze-public-v1] creating comment enrichment job", {
                 snapshotId,
                 postUrlCount: postUrls.length,
               });
 
-              // Await inline — no HTTP self-call needed
+              // 2. Insert job into comment_enrichment_jobs
               try {
-                const enrichResult = await enrichCommentsInline({
-                  snapshotId,
-                  username: primary,
-                  postUrls,
-                });
-                console.info("[analyze-public-v1] comment enrichment done", enrichResult);
+                const { data: jobRow, error: jobErr } = await supabaseAdmin
+                  .from("comment_enrichment_jobs")
+                  .insert({
+                    snapshot_id: snapshotId,
+                    analysis_event_id: analysisEventId ?? null,
+                    handle: primary,
+                    post_urls: postUrls,
+                    status: "pending",
+                  } as never)
+                  .select("id")
+                  .single();
+
+                if (jobErr) {
+                  console.error("[analyze-public-v1] failed to create enrichment job", jobErr.message);
+                } else {
+                  console.info("[analyze-public-v1] enrichment job created", jobRow.id);
+
+                  // 3. Fire-and-forget trigger to the enrichment endpoint
+                  const internalToken = process.env.INTERNAL_API_TOKEN;
+                  if (internalToken) {
+                    const triggerUrl = `${process.env.SUPABASE_URL ? "" : ""}${
+                      import.meta.env.VITE_SUPABASE_URL
+                        ? ""
+                        : ""
+                    }`;
+                    // Use the request's own origin for the trigger URL
+                    const origin = new URL(request.url).origin;
+                    fetch(`${origin}/api/public/enrich-comments`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${internalToken}`,
+                      },
+                      body: JSON.stringify({ job_id: jobRow.id }),
+                    }).catch((triggerErr) => {
+                      console.warn("[analyze-public-v1] fire-and-forget trigger failed (job table ensures delivery)", triggerErr);
+                    });
+                  }
+                }
               } catch (err) {
-                console.error("[analyze-public-v1] comment enrichment failed", err);
+                console.error("[analyze-public-v1] enrichment job creation failed", err);
               }
+            } else {
+              // No valid URLs — store unavailable state
+              const noUrlsPlaceholder = buildUnavailableCommentIntelligence(primary, "no_valid_post_urls");
+              normalizedPayload = {
+                ...normalizedPayload,
+                comment_intelligence: noUrlsPlaceholder as unknown as Record<string, unknown>,
+              };
             }
+          } else if (!runComments) {
+            // Comment scraper disabled — store disabled state in payload
+            const disabledPlaceholder = buildUnavailableCommentIntelligence(primary, "comment_scraper_disabled");
+            normalizedPayload = {
+              ...normalizedPayload,
+              comment_intelligence: disabledPlaceholder as unknown as Record<string, unknown>,
+            };
           }
 
           // Reuse the positioning already computed above for the AI
