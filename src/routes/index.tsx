@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { Check, ExternalLink } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 import { Container } from "@/components/layout/container";
 import { HeroSection } from "@/components/landing/hero-section";
@@ -64,6 +65,32 @@ function Home() {
       <SocialProofSection />
       <HowItWorksSection />
       <ProductPreviewSection />
+
+      {/* Dev/admin: acesso rápido aos reports */}
+      <section className="border-t border-border-default bg-surface-secondary/40 py-6">
+        <Container size="lg">
+          <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary mb-3">
+            Acesso rápido · Testes
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to="/analyze/$username"
+              params={{ username: "frederico.m.carvalho" }}
+              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-cyan/40"
+            >
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+              Report live · frederico.m.carvalho
+            </Link>
+            <Link
+              to="/report/example"
+              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-cyan/40"
+            >
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+              Report mockup editorial
+            </Link>
+          </div>
+        </Container>
+      </section>
     </>
   );
 }
