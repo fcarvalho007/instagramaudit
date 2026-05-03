@@ -55,7 +55,7 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
   }), [k, avgComments]);
 
   return (
-    <div className="relative space-y-6 md:space-y-8">
+    <div className="relative space-y-8 md:space-y-10">
       {/* Zona A — CTA concorrente */}
       <ComparisonHeader />
 
@@ -67,6 +67,9 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
 
       {/* Top Posts */}
       <div>
+        <span className="text-eyebrow-sm text-slate-500 block mb-3">
+          MELHORES PUBLICAÇÕES
+        </span>
         <ReportTopPosts />
         <div className="mt-4">{renderInsight("topPosts")}</div>
       </div>

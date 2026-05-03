@@ -14,7 +14,7 @@ interface CompetitorModalProps {
 }
 
 const BENEFITS = [
-  "Comparação directa com até 2 concorrentes",
+  "Comparação direta com até 2 concorrentes",
   "Gap competitivo por formato e dia",
   "Histórico de evolução cruzado",
 ] as const;
@@ -28,23 +28,23 @@ export function CompetitorModal({ open, onOpenChange }: CompetitorModalProps) {
             Comparar com concorrentes
           </DialogTitle>
           <DialogDescription className="text-[13px] text-slate-500">
-            Vê o teu perfil lado a lado com até 2 concorrentes directos
+            Vê o teu perfil lado a lado com até 2 concorrentes diretos
           </DialogDescription>
         </DialogHeader>
 
         {/* Ghost preview chart */}
-        <div className="mt-4 rounded-xl border border-slate-200/60 bg-slate-50/50 p-4">
+        <div className="mt-4 rounded-xl border border-slate-200/60 bg-slate-50/50 p-4 animate-fade-in">
           <GhostChart />
           <p className="mt-3 text-[12px] text-slate-500 leading-relaxed text-center">
-            Assim verias o teu perfil comparado com os teus concorrentes directos no mesmo gráfico.
+            Assim verias o teu perfil comparado com os teus concorrentes diretos no mesmo gráfico.
           </p>
         </div>
 
         {/* Benefits */}
         <ul className="mt-5 space-y-2.5">
           {BENEFITS.map((b) => (
-            <li key={b} className="flex items-start gap-2.5 text-[13px] text-slate-700">
-              <Check className="size-4 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
+            <li key={b} className="flex items-start gap-3 text-[13px] text-slate-700">
+              <Check className="size-[18px] text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
               {b}
             </li>
           ))}

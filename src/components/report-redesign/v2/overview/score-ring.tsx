@@ -34,7 +34,8 @@ export function ScoreRing({ score, size = 64, label }: ScoreRingProps) {
       viewBox={viewBox}
       role="img"
       aria-label={`${label}: ${score} de 100`}
-      className="block"
+      className="block transition-[filter] duration-500"
+      style={{ filter: colors.glow }}
     >
       <title>{`${label}: ${score} de 100`}</title>
       {/* Background circle */}
