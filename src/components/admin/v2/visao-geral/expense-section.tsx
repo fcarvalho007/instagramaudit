@@ -403,3 +403,58 @@ function ExpenseColumn({
     </div>
   );
 }
+
+const COST_SOURCE_LABEL: Record<ApifyActorBreakdown["cost_source"], { text: string; cls: string }> = {
+  actual: { text: "Real", cls: "text-admin-revenue-700" },
+  estimated: { text: "Estimado", cls: "text-admin-signal-700" },
+  mixed: { text: "Misto", cls: "text-admin-info-700" },
+  unavailable: { text: "Indisponível", cls: "text-admin-text-tertiary" },
+};
+
+function ApifyActorRow({ actor }: { actor: ApifyActorBreakdown }) {
+  const source = COST_SOURCE_LABEL[actor.cost_source];
+  const noRuns = actor.run_count === 0 && actor.error_count === 0;
+
+  return (
+    <div className="rounded-md border border-admin-border bg-admin-surface-muted/40 px-3 py-2.5 space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-eyebrow-sm text-admin-text-tertiary m-0 uppercase">
+          {actor.label}
+        </p>
+        <span className={`text-[10px] font-medium ${source.cls}`}>
+          {noRuns ? "Sem execuções" : source.text}
+        </span>
+      </div>
+      {noRuns ? (
+        <p className="text-[11px] text-admin-text-tertiary m-0 italic">
+          Nenhuma execução registada no período.
+        </p>
+      ) : (
+        <>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[13px] font-semibold tabular-nums text-admin-text-primary">
+              ${actor.total_cost_usd.toFixed(2)}
+            </span>
+            <span className="text-[11px] text-admin-text-secondary">
+              {actor.run_count} run(s)
+              {actor.error_count > 0 && (
+                <span className="text-admin-danger-700"> · {actor.error_count} erro(s)</span>
+              )}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-x-3 text-[10px] text-admin-text-tertiary">
+            {actor.total_results > 0 && (
+              <span>{actor.total_results.toLocaleString("pt-PT")} resultados</span>
+            )}
+            {actor.avg_cost_per_run != null && (
+              <span>média ${actor.avg_cost_per_run.toFixed(3)}/run</span>
+            )}
+          </div>
+        </>
+      )}
+      <p className="text-[10px] text-admin-text-tertiary m-0 italic">
+        Incluído no relatório gratuito
+      </p>
+    </div>
+  );
+}
