@@ -603,7 +603,6 @@ export interface CommentScraperMetrics {
   last_run_cost_usd: number | null;
   /** Last run comments returned */
   last_run_comments: number;
-}
   /** Target cost per analysis (informational) */
   target_cost_usd: number;
   /** Hard budget ceiling — env values above this are clamped */
