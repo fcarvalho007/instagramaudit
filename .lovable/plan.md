@@ -1,84 +1,62 @@
 
-# Per-Analysis Cost Breakdown in /admin
+# CRITICAL: `resultsLimit` is PER URL, not global
 
-## Audit Results
+## Finding
 
-### 1. Can we attribute provider calls to a specific analysis?
+Apify documentation (confirmed on input schema page, 2026-05-03):
 
-**Partially.** The `analysis_event_id` column exists on `provider_call_logs` but is **never populated** — all rows have `NULL`. Currently:
+> **resultsLimit** — Set the number of comments you expect to scrape **from each post or reel**.
+> If set to **5**, you will get **5** comments per URL. If you add 2 URLs, you will extract **10** results altogether.
 
-- `analysis_events.provider_call_log_id` links to **one** provider call (the base Apify scraper only)
-- OpenAI insight calls (2 per analysis), DataForSEO calls, and comment scraper calls have **no link** to the analysis event
-- Correlation by `handle + created_at` within a ~30s window works as a heuristic but is fragile and can't distinguish retries
+The current code on line 247 of `comment-scraper.server.ts` comments `// Global total (not per-URL)` — this is **incorrect**.
 
-### 2. What's missing?
+## Impact
 
-**One field needs populating, not adding:** `provider_call_logs.analysis_event_id` (uuid, already in schema, always NULL). No migration needed — just code changes to pass the event ID through.
+| Scenario | Current assumption | Reality |
+|---|---|---|
+| 12 URLs, `resultsLimit: 80` | 80 total comments, ~$0.152 | **960 total comments, ~$1.82** |
+| Budget hard cap $0.20 | Respected | **Exceeded by 9×** |
 
-### 3. Comment scraper costs
+The `maxTotalChargeUsd: $0.20` Apify-level cap would stop the run at ~105 results, but the cost would hit $0.20 instead of $0.15, and more importantly the intent of the limit is violated.
 
-The comment scraper actor (`apify/instagram-comment-scraper`) does not yet appear in `provider_call_logs` because `COMMENT_SCRAPER_ENABLED` has been off. The `enrich-comments-inline.server.ts` already calls `recordProviderCall` — once enabled, rows will appear. But they also won't have `analysis_event_id`.
+## Fix — no test needed
 
----
+The documentation is unambiguous. A live test would only confirm what's already documented. Spending $0.02 on a confirmation test is unnecessary.
 
-## Plan
+## Required changes
 
-### Phase 1: Wire `analysis_event_id` into provider calls (no migration)
+### 1. `planCommentBudget()` — compute `perPostLimit`
 
-**Problem:** The analysis event is created at the END of the flow (after all provider calls), so provider_call_log rows are inserted before the event_id exists.
+```
+perPostLimit = floor(maxTotalResults / selectedPostCount)
+```
 
-**Solution:** Two-pass approach:
-1. Keep recording provider calls as-is (returning their IDs)
-2. After `recordAnalysisEvent` returns the event ID, batch-update all collected provider call log IDs with that `analysis_event_id`
-3. Add `analysisEventId` to `RecordProviderCallInput` for future calls that happen after the event is created
+- With 12 posts and `maxTotalResults = 80`: `perPostLimit = floor(80/12) = 6`
+- Theoretical max: `6 × 12 = 72 comments` → ~$0.137 (under target $0.15)
+- With 1 post: `perPostLimit = 80` (full budget)
+- Hard floor: `perPostLimit >= 1`
 
-**Files changed:**
-- `src/lib/analysis/events.ts` — add `updateProviderCallsEventId(logIds: string[], eventId: string)` helper
-- `src/routes/api/analyze-public-v1.ts` — collect all provider call log IDs during the flow, call the new helper after `recordAnalysisEvent`
-- `src/lib/analysis/enrich-comments-inline.server.ts` — accept and return the provider call log ID so the parent can include it
-- `src/lib/insights/openai-insights.server.ts` — return provider call log IDs from insight generation
+### 2. Actor call — use `perPostLimit` instead of `adjustedResultsLimit`
 
-### Phase 2: Admin "Últimas análises" view
+```ts
+resultsLimit: budget.perPostLimit,  // PER URL — actor multiplies by URL count
+```
 
-New component in `/admin` (Sistema or Visão Geral tab) showing:
+### 3. Update constants/comments
 
-| Coluna | Fonte |
-|---|---|
-| Username | `analysis_events.handle` |
-| Timestamp | `analysis_events.created_at` |
-| Cache/Fresh | `analysis_events.data_source` |
-| Total cost | SUM of linked `provider_call_logs.estimated_cost_usd` |
-| Apify base | PCL where `actor = 'apify/instagram-scraper'` |
-| Comment scraper | PCL where `actor = 'apify/instagram-comment-scraper'` |
-| OpenAI/AI | PCL where `provider = 'openai'` |
-| DataForSEO | PCL where `provider = 'dataforseo'` |
-| Provider calls | COUNT of linked PCL rows |
-| Comment status | from snapshot `comment_intelligence.available` / `reason` |
-| Actual cost available? | whether `actual_cost_usd IS NOT NULL` on any PCL |
+- Fix the misleading comment `// Global total (not per-URL)` → `// PER URL — total = this × URL count`
+- Add `perPostLimit` to `CommentBudgetPlan` interface
+- Recalculate `estimatedMaxCostUsd` = `perPostLimit × selectedPostCount × COST_PER_RESULT_USD`
 
-**Expandable detail row** per analysis showing individual provider calls.
+### 4. Files changed
 
-**Warning badges:**
-- Red: comment scraper cost > $0.20
-- Amber: cost is NULL/estimated only
-- Amber: total analysis cost above expected threshold (~$0.05 without comments, ~$0.20 with)
+- `src/lib/analysis/comment-scraper.server.ts` — budget formula + actor input + comments
 
-**Files:**
-- New: `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx`
-- New: `src/server/admin/analysis-cost.functions.ts` + `src/server/admin/analysis-cost.server.ts`
-- Edit: the Sistema tab route to include the new section
+### 5. Files NOT changed
 
-### Phase 3: Backfill existing data (best-effort)
+- No schema changes, no admin/frontend changes, no payment/auth changes
 
-A one-time server function or admin button that correlates existing `provider_call_logs` rows to `analysis_events` by matching `handle + created_at` within ±30s. This populates `analysis_event_id` for historical data.
-
-### Privacy
-
-- Zero raw comments, commenter usernames, or PII
-- Only aggregated costs, counts, and status flags
-
-### Validation
+## Validation
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Visual check in /admin
