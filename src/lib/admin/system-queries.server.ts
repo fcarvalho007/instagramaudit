@@ -36,6 +36,7 @@ export interface Cost24hMetrics {
   dataforseo: { amount_usd: number; calls: number };
   cache_hits: number;
   cache_savings_usd: number;
+  apify_actors: ApifyActorBreakdown[];
 }
 
 export interface ProviderCallRow {
