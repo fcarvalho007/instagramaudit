@@ -13,10 +13,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   fetchCommentsForPosts,
   COMMENT_SCRAPER_MAX_POSTS,
-  COMMENT_SCRAPER_RESULTS_LIMIT,
   COMMENT_SCRAPER_INCLUDE_REPLIES,
   COMMENT_SCRAPER_MAX_CHARGE_USD,
-  COMMENT_SCRAPER_MAX_TOTAL_COMMENTS,
+  COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
 } from "@/lib/analysis/comment-scraper.server";
 import {
   aggregateCommentIntelligence,
@@ -84,7 +83,8 @@ export const Route = createFileRoute("/api/public/enrich-comments")({
           snapshotId,
           username,
           postCount: validUrls.length,
-          maxComments: COMMENT_SCRAPER_MAX_TOTAL_COMMENTS,
+          maxResults: COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
+          maxChargeUsd: COMMENT_SCRAPER_MAX_CHARGE_USD,
         });
 
         let commentIntelligence: CommentIntelligence;
@@ -119,6 +119,10 @@ export const Route = createFileRoute("/api/public/enrich-comments")({
             audienceComments: commentIntelligence.audienceCommentsCount,
             actualCostUsd: commentResult.actualCostUsd,
             durationMs: commentResult.durationMs,
+            estimatedMaxCostUsd: commentResult.estimatedMaxCostUsd,
+            hardMaxCostUsd: commentResult.hardMaxCostUsd,
+            adjustedResultsLimit: commentResult.adjustedResultsLimit,
+            costStatus: commentResult.actualCostUsd != null ? "real" : "unavailable",
           });
         } catch (err) {
           console.error(LOG, "comment scraper failed", err);
