@@ -258,8 +258,6 @@ export async function fetchCommentsForPosts(
     COMMENT_ACTOR,
     {
       directUrls: urls,                                    // Post/reel URLs from base actor
-      resultsLimit: budget.adjustedResultsLimit,            // Global total (not per-URL)
-      // resultsLimit is PER URL — actor multiplies by URL count internally
       resultsLimit: budget.perPostLimit,                      // PER URL — total = this × URL count
       includeNestedComments: COMMENT_SCRAPER_INCLUDE_REPLIES, // Replies nested inside parent
       isNewestComments: true,                               // Newest comments first
