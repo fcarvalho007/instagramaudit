@@ -42,7 +42,7 @@ export function ScoreCard({ definition, score, subtitle }: ScoreCardProps) {
             <span className="text-[13px] font-medium text-slate-900 mt-1">
               {definition.label}
             </span>
-            <span className="text-[11px] text-slate-500 leading-tight font-mono tabular-nums">
+            <span className="text-[11px] text-slate-500 leading-tight tabular-nums">
               {subtitle}
             </span>
             <ChevronRight className="absolute top-2 right-2 size-3.5 text-slate-300 transition-colors group-hover:text-slate-400" aria-hidden="true" />
