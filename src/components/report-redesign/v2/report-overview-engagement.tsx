@@ -1,12 +1,9 @@
 /**
  * Zona C — Card de Taxa de Envolvimento refinado.
- * Mantém o gráfico de benchmark por escalão, com 3 refinamentos:
- *  1. Header com label + source badge à direita
- *  2. Linha hero: valor real + ref. tier + gap
- *  3. Gráfico a 130px, sem grid verticais, 3 horizontais a 4% opac
+ * Header com label + source badge, hero numbers, gráfico de benchmark.
  */
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   getConsolidatedBenchmarkSeries,
@@ -30,39 +27,50 @@ export function EngagementCardRefined({ result }: Props) {
 
   const gap = k.engagementRate - k.engagementBenchmark;
   const gapColor = gap >= 0 ? "text-emerald-600" : "text-rose-600";
+  const gapBg = gap >= 0 ? "bg-emerald-50" : "bg-rose-50";
 
   return (
-    <article className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]">
+    <article className="rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_12px_32px_-16px_rgba(15,23,42,0.10)] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm font-medium text-slate-900">
-          Taxa de envolvimento
-        </span>
-        <span className="text-[10px] text-slate-500 tracking-[0.06em] bg-slate-100 px-2 py-0.5 rounded-md whitespace-nowrap">
-          ◈ MERCADO · SOCIALINSIDER
+      <div className="flex items-center justify-between px-5 md:px-6 pt-5 md:pt-6 pb-0">
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-center size-8 rounded-lg bg-blue-50 text-blue-500">
+            <Activity className="size-4" strokeWidth={2.2} aria-hidden="true" />
+          </div>
+          <span className="text-sm font-semibold text-slate-900">
+            Taxa de envolvimento
+          </span>
+        </div>
+        <span className="text-[10px] text-slate-500 tracking-[0.05em] bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap font-medium">
+          MERCADO · SOCIALINSIDER
         </span>
       </div>
 
       {/* Hero numbers */}
-      <div className="flex items-baseline gap-3 sm:gap-4 flex-wrap mb-5">
-        <span className="font-display text-[28px] font-semibold text-slate-900 tabular-nums leading-none">
+      <div className="flex items-end gap-3 sm:gap-4 flex-wrap px-5 md:px-6 pt-4 pb-5">
+        <span className="font-display text-[2rem] md:text-[2.25rem] font-bold text-slate-900 tabular-nums leading-none tracking-tight">
           {formatPct(k.engagementRate)}
         </span>
-        <span className="text-xs text-slate-500">
-          ref. tier {formatPct(k.engagementBenchmark)}
-        </span>
-        <span className={cn("text-xs tabular-nums inline-flex items-center gap-1", gapColor)}>
-          {gap >= 0 ? (
-            <TrendingUp className="size-3.5" aria-hidden="true" />
-          ) : (
-            <TrendingDown className="size-3.5" aria-hidden="true" />
-          )}
-          {fmtPp(gap)}&nbsp;p.p.
-        </span>
+        <div className="flex items-center gap-2 pb-1">
+          <span className="text-xs text-slate-400 font-medium">
+            ref. {formatPct(k.engagementBenchmark)}
+          </span>
+          <span className={cn(
+            "text-xs tabular-nums inline-flex items-center gap-1 font-semibold rounded-full px-2 py-0.5",
+            gapColor, gapBg,
+          )}>
+            {gap >= 0 ? (
+              <TrendingUp className="size-3" aria-hidden="true" />
+            ) : (
+              <TrendingDown className="size-3" aria-hidden="true" />
+            )}
+            {fmtPp(gap)} p.p.
+          </span>
+        </div>
       </div>
 
       {/* Chart */}
-      <div>
+      <div className="px-5 md:px-6 pb-5 md:pb-6">
         <ReportEngagementBenchmarkChart
           profileEngagementRatePct={k.engagementRate}
           followersCount={followers}
