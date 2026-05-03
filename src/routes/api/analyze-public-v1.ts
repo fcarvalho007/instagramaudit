@@ -87,17 +87,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
 import {
-  fetchCommentsForPosts,
   shouldRunCommentScraper,
   isValidInstagramPostUrl,
-  COMMENT_SCRAPER_MAX_POSTS,
-  COMMENT_SCRAPER_RESULTS_LIMIT,
-  COMMENT_SCRAPER_INCLUDE_REPLIES,
-  COMMENT_SCRAPER_MAX_CHARGE_USD,
-  COMMENT_SCRAPER_MAX_TOTAL_COMMENTS,
 } from "@/lib/analysis/comment-scraper.server";
-import { aggregateCommentIntelligence, buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
-import type { CommentIntelligence } from "@/lib/analysis/types";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
