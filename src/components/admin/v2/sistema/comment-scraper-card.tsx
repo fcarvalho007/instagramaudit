@@ -259,18 +259,16 @@ export function CommentScraperCard() {
             /análise
           </span>
           <span>
-            Comentários:{" "}
+            Resultados:{" "}
             <span className="font-mono tabular-nums text-admin-text-primary">
-              {m.max_comments_per_post}
+              {m.max_total_results}
             </span>
-            /post
+            /run (global)
           </span>
           <span>
-            Max total:{" "}
-            <span className="font-mono tabular-nums text-admin-text-primary">
-              {m.max_total_comments}
-            </span>
-            /relatório
+            Custo alvo:{" "}
+            <span className="font-mono tabular-nums text-admin-text-primary">$0.15</span>
+            /análise
           </span>
           <span>
             Replies:{" "}
