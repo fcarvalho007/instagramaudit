@@ -22,7 +22,7 @@ import {
   aggregateCommentIntelligence,
   buildUnavailableCommentIntelligence,
 } from "@/lib/analysis/comment-intelligence";
-import { recordProviderCall } from "@/lib/analysis/cost";
+import { recordProviderCall } from "@/lib/analysis/events";
 import { ApifyConfigError, ApifyUpstreamError } from "@/lib/analysis/apify-client";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 
@@ -172,7 +172,10 @@ export const Route = createFileRoute("/api/public/enrich-comments")({
           }
 
           const payload = snapshot.normalized_payload as Record<string, unknown>;
-          const updatedPayload = { ...payload, comment_intelligence: commentIntelligence };
+          const updatedPayload = {
+            ...payload,
+            comment_intelligence: commentIntelligence as unknown as Record<string, unknown>,
+          };
 
           const { error: updateErr } = await supabaseAdmin
             .from("analysis_snapshots")
