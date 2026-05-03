@@ -39,6 +39,7 @@ import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
+import { ComparisonHeader } from "./overview/comparison-header";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -91,6 +92,11 @@ export function ReportShellV2({
 
         {/* Tabs mobile sticky abaixo do hero/posicionamento */}
         <ReportBlockTopTabs />
+
+        {/* Banner concorrentes — destaque acima dos blocos */}
+        <div className="mx-auto max-w-[1380px] px-5 md:px-6 pt-5 md:pt-6">
+          <ComparisonHeader />
+        </div>
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1380px] px-5 md:px-6">
