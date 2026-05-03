@@ -57,6 +57,7 @@ import { Route as ApiAdminSistemaRuntimeChecksRouteImport } from './routes/api/a
 import { Route as ApiAdminSistemaProviderCallsRouteImport } from './routes/api/admin/sistema.provider-calls'
 import { Route as ApiAdminSistemaHealthRouteImport } from './routes/api/admin/sistema.health'
 import { Route as ApiAdminSistemaExpense30dRouteImport } from './routes/api/admin/sistema.expense-30d'
+import { Route as ApiAdminSistemaEnrichmentJobsRouteImport } from './routes/api/admin/sistema.enrichment-jobs'
 import { Route as ApiAdminSistemaCostMetrics24hRouteImport } from './routes/api/admin/sistema.cost-metrics-24h'
 import { Route as ApiAdminSistemaCommentScraperRouteImport } from './routes/api/admin/sistema.comment-scraper'
 import { Route as ApiAdminSistemaCapsRouteImport } from './routes/api/admin/sistema.caps'
@@ -331,6 +332,12 @@ const ApiAdminSistemaExpense30dRoute =
     path: '/api/admin/sistema/expense-30d',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminSistemaEnrichmentJobsRoute =
+  ApiAdminSistemaEnrichmentJobsRouteImport.update({
+    id: '/api/admin/sistema/enrichment-jobs',
+    path: '/api/admin/sistema/enrichment-jobs',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminSistemaCostMetrics24hRoute =
   ApiAdminSistemaCostMetrics24hRouteImport.update({
     id: '/api/admin/sistema/cost-metrics-24h',
@@ -492,6 +499,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
   '/api/admin/sistema/comment-scraper': typeof ApiAdminSistemaCommentScraperRoute
   '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
+  '/api/admin/sistema/enrichment-jobs': typeof ApiAdminSistemaEnrichmentJobsRoute
   '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
   '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
@@ -560,6 +568,7 @@ export interface FileRoutesByTo {
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
   '/api/admin/sistema/comment-scraper': typeof ApiAdminSistemaCommentScraperRoute
   '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
+  '/api/admin/sistema/enrichment-jobs': typeof ApiAdminSistemaEnrichmentJobsRoute
   '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
   '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
@@ -630,6 +639,7 @@ export interface FileRoutesById {
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
   '/api/admin/sistema/comment-scraper': typeof ApiAdminSistemaCommentScraperRoute
   '/api/admin/sistema/cost-metrics-24h': typeof ApiAdminSistemaCostMetrics24hRoute
+  '/api/admin/sistema/enrichment-jobs': typeof ApiAdminSistemaEnrichmentJobsRoute
   '/api/admin/sistema/expense-30d': typeof ApiAdminSistemaExpense30dRoute
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
   '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
@@ -701,6 +711,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/caps'
     | '/api/admin/sistema/comment-scraper'
     | '/api/admin/sistema/cost-metrics-24h'
+    | '/api/admin/sistema/enrichment-jobs'
     | '/api/admin/sistema/expense-30d'
     | '/api/admin/sistema/health'
     | '/api/admin/sistema/provider-calls'
@@ -769,6 +780,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/caps'
     | '/api/admin/sistema/comment-scraper'
     | '/api/admin/sistema/cost-metrics-24h'
+    | '/api/admin/sistema/enrichment-jobs'
     | '/api/admin/sistema/expense-30d'
     | '/api/admin/sistema/health'
     | '/api/admin/sistema/provider-calls'
@@ -838,6 +850,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/caps'
     | '/api/admin/sistema/comment-scraper'
     | '/api/admin/sistema/cost-metrics-24h'
+    | '/api/admin/sistema/enrichment-jobs'
     | '/api/admin/sistema/expense-30d'
     | '/api/admin/sistema/health'
     | '/api/admin/sistema/provider-calls'
@@ -895,6 +908,7 @@ export interface RootRouteChildren {
   ApiAdminSistemaCapsRoute: typeof ApiAdminSistemaCapsRoute
   ApiAdminSistemaCommentScraperRoute: typeof ApiAdminSistemaCommentScraperRoute
   ApiAdminSistemaCostMetrics24hRoute: typeof ApiAdminSistemaCostMetrics24hRoute
+  ApiAdminSistemaEnrichmentJobsRoute: typeof ApiAdminSistemaEnrichmentJobsRoute
   ApiAdminSistemaExpense30dRoute: typeof ApiAdminSistemaExpense30dRoute
   ApiAdminSistemaHealthRoute: typeof ApiAdminSistemaHealthRoute
   ApiAdminSistemaProviderCallsRoute: typeof ApiAdminSistemaProviderCallsRoute
@@ -1249,6 +1263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSistemaExpense30dRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/sistema/enrichment-jobs': {
+      id: '/api/admin/sistema/enrichment-jobs'
+      path: '/api/admin/sistema/enrichment-jobs'
+      fullPath: '/api/admin/sistema/enrichment-jobs'
+      preLoaderRoute: typeof ApiAdminSistemaEnrichmentJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/sistema/cost-metrics-24h': {
       id: '/api/admin/sistema/cost-metrics-24h'
       path: '/api/admin/sistema/cost-metrics-24h'
@@ -1546,6 +1567,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSistemaCapsRoute: ApiAdminSistemaCapsRoute,
   ApiAdminSistemaCommentScraperRoute: ApiAdminSistemaCommentScraperRoute,
   ApiAdminSistemaCostMetrics24hRoute: ApiAdminSistemaCostMetrics24hRoute,
+  ApiAdminSistemaEnrichmentJobsRoute: ApiAdminSistemaEnrichmentJobsRoute,
   ApiAdminSistemaExpense30dRoute: ApiAdminSistemaExpense30dRoute,
   ApiAdminSistemaHealthRoute: ApiAdminSistemaHealthRoute,
   ApiAdminSistemaProviderCallsRoute: ApiAdminSistemaProviderCallsRoute,
