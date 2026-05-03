@@ -40,6 +40,7 @@ import {
 import {
   recordAnalysisEvent,
   recordProviderCall,
+  linkProviderCallsToEvent,
   type AnalysisDataSource,
   type AnalysisOutcome,
 } from "@/lib/analysis/events";
@@ -420,6 +421,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // fresh success / provider_error events. The Supabase RPC is a few
         // ms and any failure is swallowed locally so the public response is
         // never blocked by analytics issues.
+        const providerCallsStartedAt = new Date();
         const logEvent = async (overrides: {
           handle: string;
           competitorHandles?: string[];
@@ -434,15 +436,23 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           estimatedCostUsd?: number | null;
           displayName?: string | null;
           followersLastSeen?: number | null;
-        }): Promise<void> => {
+        }): Promise<string | null> => {
           try {
             const requestIpHash = await ipHashPromise;
-            await recordAnalysisEvent({
+            const eventId = await recordAnalysisEvent({
               ...overrides,
               durationMs: Date.now() - startedAt,
               requestIpHash,
               userAgentFamily,
             });
+            // Link all provider calls created during this analysis
+            if (eventId && overrides.dataSource === "fresh") {
+              await linkProviderCallsToEvent(
+                overrides.handle,
+                providerCallsStartedAt,
+                eventId,
+              );
+            }
             // Evaluate cheap inline alerts after the event is persisted.
             // Skipped for the synthetic "(invalid)" handle to avoid noise.
             if (overrides.handle !== "(invalid)") {
@@ -453,9 +463,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 outcome: overrides.outcome,
               });
             }
+            return eventId;
           } catch (err) {
             // Logging must never crash the public response.
             console.error("[analyze-public-v1] logEvent failed", err);
+            return null;
           }
         };
 
