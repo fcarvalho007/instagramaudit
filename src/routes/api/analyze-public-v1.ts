@@ -90,6 +90,7 @@ import {
   shouldRunCommentScraper,
   isValidInstagramPostUrl,
 } from "@/lib/analysis/comment-scraper.server";
+import { enrichCommentsInline } from "@/lib/analysis/enrich-comments-inline.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -1049,9 +1050,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             runComments,
           });
 
-          // Fire-and-forget: trigger async comment enrichment via a separate
-          // endpoint that has its own Worker invocation and timeout budget.
-          // The main response is sent immediately without waiting.
+          // Inline comment enrichment — runs directly in this Worker
+          // invocation instead of a fire-and-forget HTTP self-call
+          // (which fails on Workers due to early termination + auth).
           if (runComments && snapshotId) {
             const postsWithUrl = primaryEnriched.posts
               .filter((p) => !!p.permalink)
@@ -1069,45 +1070,22 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               .filter((u) => isValidInstagramPostUrl(u));
 
             if (postUrls.length > 0) {
-              const internalToken = process.env.INTERNAL_API_TOKEN;
-              const baseUrl = process.env.SUPABASE_URL
-                ? new URL(process.env.SUPABASE_URL).origin
-                : "";
-              // Determine the app origin for the self-call
-              const appOrigin =
-                request.headers.get("origin") ||
-                request.headers.get("x-forwarded-host") ||
-                "";
-              const enrichUrl = appOrigin
-                ? `${appOrigin.startsWith("http") ? appOrigin : `https://${appOrigin}`}/api/public/enrich-comments`
-                : "/api/public/enrich-comments";
-
-              // Derive the absolute URL from the request URL if enrichUrl is relative
-              const absoluteEnrichUrl = enrichUrl.startsWith("http")
-                ? enrichUrl
-                : `${new URL(request.url).origin}/api/public/enrich-comments`;
-
-              console.info("[analyze-public-v1] firing async comment enrichment", {
+              console.info("[analyze-public-v1] starting inline comment enrichment", {
                 snapshotId,
                 postUrlCount: postUrls.length,
-                enrichUrl: absoluteEnrichUrl,
               });
 
-              // Fire-and-forget — do not await
-              fetch(absoluteEnrichUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  ...(internalToken ? { Authorization: `Bearer ${internalToken}` } : {}),
-                },
-                body: JSON.stringify({
-                  snapshot_id: snapshotId,
+              // Await inline — no HTTP self-call needed
+              try {
+                const enrichResult = await enrichCommentsInline({
+                  snapshotId,
                   username: primary,
-                  post_urls: postUrls,
-                }),
-              }).catch((err) => {
-                console.error("[analyze-public-v1] async comment enrichment fire failed", err);
-              });
+                  postUrls,
+                });
+                console.info("[analyze-public-v1] comment enrichment done", enrichResult);
+              } catch (err) {
+                console.error("[analyze-public-v1] comment enrichment failed", err);
+              }
             }
           }
 
