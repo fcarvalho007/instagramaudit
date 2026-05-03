@@ -331,6 +331,7 @@ function ExpenseColumn({
   value,
   cap,
   note,
+  subNote,
   children,
   borderRight,
 }: {
@@ -341,6 +342,7 @@ function ExpenseColumn({
   value: string;
   cap: string;
   note: string;
+  subNote?: string;
   children: React.ReactNode;
   borderRight?: boolean;
 }) {
@@ -384,6 +386,11 @@ function ExpenseColumn({
       <p className="mt-2 text-[11px]" style={{ color: colorTextVar }}>
         {note}
       </p>
+      {subNote ? (
+        <p className="mt-0.5 text-[10px] text-admin-text-tertiary">
+          {subNote}
+        </p>
+      ) : null}
     </div>
   );
 }
