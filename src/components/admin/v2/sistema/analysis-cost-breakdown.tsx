@@ -121,7 +121,7 @@ function AnalysisRow({ a }: { a: AnalysisBreakdown }) {
         <div className="text-right">
           <CostCell value={t.estimated_usd} warn={totalWarn} />
           {!t.has_actual && (
-            <AlertTriangle size={10} className="inline ml-1 text-signal-warning" title="Custo real indisponível" />
+            <AlertTriangle size={10} className="inline ml-1 text-signal-warning" />
           )}
         </div>
         <CostCell value={t.apify_base_usd} />
@@ -157,6 +157,7 @@ export function AnalysisCostBreakdown() {
       <AdminSectionHeader
         title="Últimas análises — custo por perfil"
         subtitle="Decomposição de custo real por provedor em cada análise fresh"
+        accent="expense"
       />
 
       {isLoading && (
