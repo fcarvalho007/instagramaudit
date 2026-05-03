@@ -161,11 +161,7 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
         }
 
         return Response.json({ analyses: results });
-      } catch (err) {
-        if (err instanceof Response) throw err;
-        return Response.json({ error: String(err) }, { status: 500 });
-      }
-     },
+      },
     },
   },
 });
