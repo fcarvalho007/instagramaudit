@@ -12,7 +12,7 @@ const PT_MONTHS = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
-function getFrequencyHeadline(postsPerDay: number): string {
+export function getFrequencyHeadline(postsPerDay: number): string {
   if (postsPerDay > 1.2) return "Mais de 1 post por dia";
   if (postsPerDay >= 0.85) return "Cerca de 1 post por dia";
   if (postsPerDay >= 0.5) return "1 post a cada 1–2 dias";
@@ -20,7 +20,7 @@ function getFrequencyHeadline(postsPerDay: number): string {
   return "Menos de 1 post por semana";
 }
 
-function getFrequencyVerdict(score: number): { strong: string; rest: string } {
+export function getFrequencyVerdict(score: number): { strong: string; rest: string } {
   if (score >= 90) {
     return {
       strong: "Cadência forte e consistente.",
