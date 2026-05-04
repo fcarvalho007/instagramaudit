@@ -1,45 +1,41 @@
 /**
  * Auto-login server function — testing phase only.
- * Generates a session for a hardcoded email without any user interaction
- * beyond clicking a button. Uses admin API to create/find the user and
- * generate a magic link token that the client verifies immediately.
+ * Sets a temporary password on the hardcoded test user, returns it to the
+ * client so it can do a standard signInWithPassword. Zero friction.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { randomBytes } from "crypto";
 
 const ALLOWED_EMAIL = "fredericodigital@gmail.com";
 
 export const autoLogin = createServerFn({ method: "POST" })
   .handler(async () => {
-    // Ensure user exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    let user = existingUsers?.users?.find(
+    // 1. Find or create the user
+    const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+    let user = listData?.users?.find(
       (u) => u.email?.toLowerCase() === ALLOWED_EMAIL,
     );
+
+    const tempPassword = randomBytes(24).toString("hex");
 
     if (!user) {
       const { data: created, error: createErr } =
         await supabaseAdmin.auth.admin.createUser({
           email: ALLOWED_EMAIL,
+          password: tempPassword,
           email_confirm: true,
         });
       if (createErr) throw new Error(createErr.message);
       user = created.user;
+    } else {
+      // Update existing user's password to the temp one
+      const { error: updateErr } =
+        await supabaseAdmin.auth.admin.updateUserById(user.id, {
+          password: tempPassword,
+        });
+      if (updateErr) throw new Error(updateErr.message);
     }
 
-    // Generate a magic link (server-side, no email sent)
-    const { data: linkData, error: linkErr } =
-      await supabaseAdmin.auth.admin.generateLink({
-        type: "magiclink",
-        email: ALLOWED_EMAIL,
-      });
-
-    if (linkErr || !linkData?.properties) {
-      throw new Error(linkErr?.message ?? "Não foi possível gerar sessão.");
-    }
-
-    return {
-      email: ALLOWED_EMAIL,
-      token_hash: linkData.properties.hashed_token,
-    };
+    return { email: ALLOWED_EMAIL, password: tempPassword };
   });
