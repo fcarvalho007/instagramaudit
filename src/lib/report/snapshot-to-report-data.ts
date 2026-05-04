@@ -264,6 +264,7 @@ export interface ReportEnriched {
     engagementPct: number;
     date: string;
     mentions: string[];
+    thumbnailUrl?: string;
   }>;
   /** Bottom 2 posts by engagement — empty if fewer than 4 posts available. */
   bottomPosts: Array<{
@@ -277,6 +278,7 @@ export interface ReportEnriched {
     engagementPct: number;
     date: string;
     mentions: string[];
+    thumbnailUrl?: string;
   }>;
   mentionsSummary: Array<{ handle: string; count: number }>;
   benchmarkSource: {
