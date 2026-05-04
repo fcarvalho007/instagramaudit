@@ -253,7 +253,7 @@ function ReportsPage() {
         Relatórios
       </h1>
       <p className="mt-1 text-sm text-slate-500">
-        Consulta as análises pedidas e descarrega os relatórios disponíveis.
+        Análises pedidas e relatórios disponíveis para download.
       </p>
 
       {/* Stats */}
@@ -290,7 +290,7 @@ function ReportsPage() {
             Ainda não há relatórios
           </h2>
           <p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed text-slate-400">
-            Analisa um perfil público para começar a construir o histórico de análises.
+            Analisar um perfil público para começar a construir o histórico de análises.
           </p>
           <Link
             to="/"
@@ -313,7 +313,7 @@ function ReportsPage() {
               </p>
               <p className="mt-1 text-[13px] leading-relaxed text-slate-400">
                 Os planos Pro e Agency vão incluir tracking diário, evolução temporal e alertas
-                de crescimento. A conta está preparada para quando ativares.
+                de crescimento. A conta está preparada para quando for ativado.
               </p>
               <Link
                 to="/app/plan"
