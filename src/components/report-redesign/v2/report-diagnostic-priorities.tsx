@@ -9,8 +9,8 @@ interface Props {
 
 const STYLE = {
   alta: {
-    border: "border-l-signal-warning",
-    chip: "bg-tint-warning text-signal-warning ring-signal-warning/20",
+    border: "border-l-signal-danger/60",
+    chip: "bg-tint-danger text-signal-danger ring-signal-danger/15",
     label: "PRIORIDADE ALTA",
   },
   media: {

@@ -328,10 +328,10 @@ export function DiagnosticFunnelStack({
     "topo" | "meio" | "fundo" | "pos",
     { active: string; idle: string }
   > = {
-    topo: { active: "bg-accent-primary text-white", idle: "bg-tint-primary text-accent-primary" },
-    meio: { active: "bg-accent-primary/80 text-white", idle: "bg-tint-primary text-accent-primary" },
-    fundo: { active: "bg-accent-primary/60 text-white", idle: "bg-surface-muted text-content-secondary" },
-    pos: { active: "bg-accent-primary/40 text-content-primary", idle: "bg-surface-muted text-content-tertiary" },
+    topo: { active: "bg-accent-primary/20 text-accent-primary font-semibold", idle: "bg-tint-primary text-accent-primary" },
+    meio: { active: "bg-accent-primary/15 text-accent-primary", idle: "bg-tint-primary text-accent-primary" },
+    fundo: { active: "bg-accent-primary/10 text-accent-primary/80", idle: "bg-surface-muted text-content-secondary" },
+    pos: { active: "bg-surface-muted text-content-secondary", idle: "bg-surface-muted text-content-tertiary" },
   };
   return (
     <ul className="space-y-1.5">
@@ -554,8 +554,8 @@ export function DiagnosticAudienceHighlight({
     <div className="space-y-2.5">
       {/* Status icon — decorative, reduced size */}
       <div className="flex justify-center sm:justify-start">
-        <div className={cn("size-16 sm:size-20 rounded-2xl flex items-center justify-center", iconBg)} aria-hidden="true">
-          <StatusIcon size={40} className={cn(iconFg, "opacity-80")} strokeWidth={1.25} />
+        <div className={cn("size-11 rounded-xl flex items-center justify-center", iconBg)} aria-hidden="true">
+          <StatusIcon size={22} className={cn(iconFg, "opacity-80")} strokeWidth={1.5} />
         </div>
       </div>
 
@@ -681,12 +681,12 @@ export function DiagnosticObjectiveSynthesis({
                     </span>
                     <div className={cn(
                       "flex-1 overflow-hidden rounded-full",
-                      isPrimary ? "h-2.5 bg-tint-primary" : "h-2 bg-surface-muted",
+                      isPrimary ? "h-2.5 bg-purple-100" : "h-2 bg-surface-muted",
                     )}>
                       <div
                         className={cn(
                           "h-full rounded-full transition-all",
-                          isPrimary ? "bg-accent-primary" : "bg-content-tertiary/30",
+                          isPrimary ? "bg-purple-500" : "bg-content-tertiary/30",
                         )}
                         style={{ width: `${pct}%` }}
                         aria-hidden
