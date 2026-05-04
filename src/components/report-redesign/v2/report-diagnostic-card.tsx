@@ -46,37 +46,37 @@ const TONE: Record<
   { box: string; answerText: string; chip: string }
 > = {
   blue: {
-    box: "bg-blue-50/70 ring-blue-100",
-    answerText: "text-blue-800",
-    chip: "text-blue-700",
+    box: "bg-tint-primary ring-accent-primary/15",
+    answerText: "text-accent-primary",
+    chip: "text-accent-primary",
   },
   emerald: {
-    box: "bg-emerald-50/70 ring-emerald-100",
-    answerText: "text-emerald-800",
-    chip: "text-emerald-700",
+    box: "bg-tint-success ring-signal-success/15",
+    answerText: "text-signal-success",
+    chip: "text-signal-success",
   },
   amber: {
-    box: "bg-amber-50/70 ring-amber-100",
-    answerText: "text-amber-900",
-    chip: "text-amber-800",
+    box: "bg-tint-warning ring-signal-warning/15",
+    answerText: "text-signal-warning",
+    chip: "text-signal-warning",
   },
   rose: {
-    box: "bg-rose-50/70 ring-rose-100",
-    answerText: "text-rose-800",
-    chip: "text-rose-700",
+    box: "bg-tint-danger ring-signal-danger/15",
+    answerText: "text-signal-danger",
+    chip: "text-signal-danger",
   },
   slate: {
-    box: "bg-slate-50 ring-slate-200",
-    answerText: "text-slate-800",
-    chip: "text-slate-700",
+    box: "bg-surface-muted ring-border-default",
+    answerText: "text-content-primary",
+    chip: "text-content-secondary",
   },
 };
 
 const ACCENT_BORDER: Record<DiagnosticTone, string> = {
-  blue: "border-t-2 border-t-blue-400/60",
-  emerald: "border-t-2 border-t-emerald-400/60",
-  amber: "border-t-2 border-t-amber-400/60",
-  rose: "border-t-2 border-t-rose-400/60",
+  blue: "border-t-2 border-t-accent-primary/50",
+  emerald: "border-t-2 border-t-signal-success/50",
+  amber: "border-t-2 border-t-signal-warning/50",
+  rose: "border-t-2 border-t-signal-danger/40",
   slate: "",
 };
 
@@ -110,17 +110,17 @@ export function ReportDiagnosticCard({
       className={cn(
         "flex flex-col gap-5",
         isFull && "md:col-span-2",
-        "rounded-2xl border border-slate-200/70 bg-white",
+        "rounded-2xl border border-border-default bg-surface-secondary",
         "p-6 md:p-7",
-        "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
+        "shadow-card",
         ACCENT_BORDER[tone],
       )}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-eyebrow-sm text-slate-500 min-w-0">
+        <p className="text-eyebrow-sm text-content-tertiary min-w-0">
           Pergunta {number}
-          <span className="mx-1.5 text-slate-300">·</span>
-          <span className="text-slate-500">{label}</span>
+          <span className="mx-1.5 text-content-tertiary/40">·</span>
+          <span className="text-content-tertiary">{label}</span>
         </p>
         {sourceType ? (
           <ReportSourceLabel
@@ -136,7 +136,7 @@ export function ReportDiagnosticCard({
           <div className="flex-1 min-w-0 flex flex-col gap-4">
             <h3
               className={cn(
-                "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-slate-900",
+                "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-content-primary",
                 "min-w-0",
               )}
             >
@@ -152,14 +152,14 @@ export function ReportDiagnosticCard({
                 {answer}
               </p>
             </div>
-            <p className="text-sm text-slate-600 leading-relaxed">{body}</p>
+            <p className="text-sm text-content-secondary leading-relaxed">{body}</p>
             {aiSource ? (
-              <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
+              <div className="border-t border-border-subtle pt-3 space-y-1.5">
                 <div className="inline-flex items-center gap-2">
                   <ReportSourceLabel type="ia" />
-                  <span className="text-eyebrow-sm text-slate-500">Interpretação</span>
+                  <span className="text-eyebrow-sm text-content-tertiary">Interpretação</span>
                 </div>
-                <p className="text-sm text-slate-700 leading-relaxed italic">
+                <p className="text-sm text-content-secondary leading-relaxed italic">
                   {aiSource.text}
                 </p>
               </div>
@@ -176,7 +176,7 @@ export function ReportDiagnosticCard({
         <>
           <h3
             className={cn(
-              "font-display text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-slate-900",
+              "font-display text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-content-primary",
               "min-w-0",
             )}
           >
@@ -196,15 +196,15 @@ export function ReportDiagnosticCard({
 
           {children ? <div className="min-w-0">{children}</div> : null}
 
-          <p className="text-sm text-slate-600 leading-relaxed mt-auto">{body}</p>
+          <p className="text-sm text-content-secondary leading-relaxed mt-auto">{body}</p>
 
           {aiSource ? (
-            <div className="border-t border-slate-200/70 pt-3 space-y-1.5">
+            <div className="border-t border-border-subtle pt-3 space-y-1.5">
               <div className="inline-flex items-center gap-2">
                 <ReportSourceLabel type="ia" />
-                <span className="text-eyebrow-sm text-slate-500">Interpretação</span>
+                <span className="text-eyebrow-sm text-content-tertiary">Interpretação</span>
               </div>
-              <p className="text-sm text-slate-700 leading-relaxed italic">
+              <p className="text-sm text-content-secondary leading-relaxed italic">
                 {aiSource.text}
               </p>
             </div>
@@ -244,17 +244,17 @@ export function DiagnosticDistributionBar({
           return (
             <li key={`${it.label}-${i}`} className="text-sm">
               <div className="flex items-center gap-3">
-                <span className={cn("w-20 sm:w-28 shrink-0 truncate text-slate-700", isDominant && "font-medium")}>
+                <span className={cn("w-20 sm:w-28 shrink-0 truncate text-content-secondary", isDominant && "font-medium text-content-primary")}>
                   {it.label}
                 </span>
-                <div className={cn("flex-1 overflow-hidden rounded-full bg-slate-100", isDominant ? "h-2.5" : "h-2")}>
+                <div className={cn("flex-1 overflow-hidden rounded-full bg-surface-muted", isDominant ? "h-2.5" : "h-2")}>
                   <div
-                    className={cn("h-full", it.color ?? "bg-emerald-600", !isDominant && "opacity-25")}
+                    className={cn("h-full", it.color ?? "bg-accent-primary", !isDominant && "opacity-25")}
                     style={{ width: `${pct}%` }}
                     aria-hidden
                   />
                 </div>
-                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-600">
+                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-content-tertiary">
                   {Math.round(it.value)}%
                 </span>
               </div>
@@ -271,11 +271,11 @@ export function DiagnosticDistributionBar({
   );
   return (
     <div className="space-y-2.5">
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
         {items.map((it, i) => (
           <div
             key={`${it.label}-${i}`}
-            className={cn("h-full", it.color ?? "bg-blue-500")}
+            className={cn("h-full", it.color ?? "bg-accent-primary")}
             style={{ width: `${(Math.max(0, it.value) / total) * 100}%` }}
             aria-hidden
           />
@@ -285,17 +285,17 @@ export function DiagnosticDistributionBar({
         {items.map((it, i) => (
           <li
             key={`${it.label}-${i}-legend`}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-600"
+            className="inline-flex items-center gap-1.5 text-xs text-content-secondary"
           >
             <span
               aria-hidden
               className={cn(
                 "size-1.5 rounded-full",
-                it.color ?? "bg-blue-500",
+                it.color ?? "bg-accent-primary",
               )}
             />
-            <span className="font-medium text-slate-700">{it.label}</span>
-            <span className="tabular-nums text-slate-500">
+            <span className="font-medium text-content-primary">{it.label}</span>
+            <span className="tabular-nums text-content-tertiary">
               {valueFormat === "percent"
                 ? `${Math.round(it.value)}%`
                 : it.count ?? Math.round(it.value)}
@@ -322,14 +322,16 @@ export function DiagnosticFunnelStack({
     active?: boolean;
   }>;
 }) {
+  /* Funnel tones — local map, softened for Iconosquare style.
+   * Active uses accent-primary at varying opacity; idle uses surface-muted. */
   const STAGE_TONE: Record<
     "topo" | "meio" | "fundo" | "pos",
-    { active: string; idle: string; text: string }
+    { active: string; idle: string }
   > = {
-    topo: { active: "bg-blue-700 text-white", idle: "bg-blue-100 text-blue-900", text: "text-blue-900" },
-    meio: { active: "bg-blue-500 text-white", idle: "bg-blue-100 text-blue-900", text: "text-blue-900" },
-    fundo: { active: "bg-blue-400 text-white", idle: "bg-slate-100 text-slate-700", text: "text-slate-700" },
-    pos: { active: "bg-blue-300 text-blue-950", idle: "bg-slate-100 text-slate-500", text: "text-slate-500" },
+    topo: { active: "bg-accent-primary text-white", idle: "bg-tint-primary text-accent-primary" },
+    meio: { active: "bg-accent-primary/80 text-white", idle: "bg-tint-primary text-accent-primary" },
+    fundo: { active: "bg-accent-primary/60 text-white", idle: "bg-surface-muted text-content-secondary" },
+    pos: { active: "bg-accent-primary/40 text-content-primary", idle: "bg-surface-muted text-content-tertiary" },
   };
   return (
     <ul className="space-y-1.5">
@@ -349,7 +351,7 @@ export function DiagnosticFunnelStack({
             >
               {it.label}
             </div>
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 font-mono text-[11px] tabular-nums text-slate-600">
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 font-mono text-[11px] tabular-nums text-content-tertiary">
               {it.sharePct}%
             </span>
           </li>
@@ -372,12 +374,12 @@ export function DiagnosticMiniStats({
       {items.map((it, i) => (
         <div
           key={`${it.label}-${i}`}
-          className="rounded-lg border border-slate-200/70 bg-slate-50/60 px-3 py-2.5 text-center"
+          className="rounded-lg border border-border-subtle bg-surface-muted/60 px-3 py-2.5 text-center"
         >
-          <p className="font-mono text-[15px] font-semibold text-slate-900 tabular-nums leading-none">
+          <p className="font-mono text-[15px] font-semibold text-content-primary tabular-nums leading-none">
             {it.value}
           </p>
-          <p className="text-eyebrow-sm mt-1 text-slate-500">
+          <p className="text-eyebrow-sm mt-1 text-content-tertiary">
             {it.label}
           </p>
         </div>
@@ -399,10 +401,10 @@ export function DiagnosticChecklist({
       {items.map((it, i) => {
         const dot =
           it.status === "detected"
-            ? "bg-emerald-500"
+            ? "bg-signal-success"
             : it.status === "partial"
-              ? "bg-amber-500"
-              : "bg-slate-300";
+              ? "bg-signal-warning"
+              : "bg-content-tertiary/40";
         const tag =
           it.status === "detected"
             ? "Detetado"
@@ -412,16 +414,16 @@ export function DiagnosticChecklist({
         return (
           <li
             key={`${it.label}-${i}`}
-            className="flex items-center gap-2.5 rounded-lg border border-slate-200/60 bg-white px-3 py-2"
+            className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-secondary px-3 py-2"
           >
             <span aria-hidden className={cn("size-2 rounded-full shrink-0", dot)} />
-            <span className="text-sm text-slate-700 min-w-0 truncate">
+            <span className="text-sm text-content-secondary min-w-0 truncate">
               {it.label}
               {it.hint ? (
-                <span className="ml-1.5 text-slate-400">{it.hint}</span>
+                <span className="ml-1.5 text-content-tertiary">{it.hint}</span>
               ) : null}
             </span>
-            <span className="text-eyebrow-sm ml-auto text-slate-500">
+            <span className="text-eyebrow-sm ml-auto text-content-tertiary">
               {tag}
             </span>
           </li>
@@ -451,17 +453,17 @@ export function DiagnosticRanking({
           return (
             <li key={`${it.label}-${i}`} className="text-sm">
               <div className="flex items-center gap-3">
-                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-600">
+                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-content-tertiary">
                   {pct}%
                 </span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
                   <div
-                    className={cn("h-full bg-blue-500", i > 0 && "opacity-30")}
+                    className={cn("h-full bg-accent-primary", i > 0 && "opacity-30")}
                     style={{ width: `${pct}%` }}
                     aria-hidden
                   />
                 </div>
-                <span className="min-w-0 flex-1 truncate text-slate-700">
+                <span className="min-w-0 flex-1 truncate text-content-secondary">
                   {it.label}
                 </span>
               </div>
@@ -476,14 +478,14 @@ export function DiagnosticRanking({
       {items.map((it, i) => (
         <li key={`${it.label}-${i}`} className="text-sm">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-slate-700 truncate">{it.label}</span>
-            <span className="text-eyebrow-sm text-slate-500 tabular-nums shrink-0">
+            <span className="text-content-secondary truncate">{it.label}</span>
+            <span className="text-eyebrow-sm text-content-tertiary tabular-nums shrink-0">
               {Math.round((it.score / max) * 100)}%
             </span>
           </div>
-          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
             <div
-              className={cn("h-full bg-blue-500", i > 0 && "opacity-30")}
+              className={cn("h-full bg-accent-primary", i > 0 && "opacity-30")}
               style={{ width: `${(it.score / max) * 100}%` }}
               aria-hidden
             />
@@ -528,12 +530,14 @@ export function DiagnosticAudienceHighlight({
   } | null;
   status?: AudienceResponseStatus;
 }) {
+  /* Status icon map — local, uses semantic tint + signal tokens where possible.
+   * "silent" uses tint-warning (soft amber) instead of aggressive rose. */
   const STATUS_ICON: Record<AudienceResponseStatus, { Icon: typeof MessagesSquare; bg: string; fg: string }> = {
-    active: { Icon: MessagesSquare, bg: "bg-emerald-50", fg: "text-emerald-600" },
-    moderate: { Icon: MessageCircleMore, bg: "bg-amber-50", fg: "text-amber-600" },
-    concentrated: { Icon: Target, bg: "bg-amber-50", fg: "text-amber-600" },
-    silent: { Icon: MessageCircleOff, bg: "bg-rose-50", fg: "text-rose-500" },
-    unavailable: { Icon: CircleHelp, bg: "bg-slate-50", fg: "text-slate-400" },
+    active: { Icon: MessagesSquare, bg: "bg-tint-success", fg: "text-signal-success" },
+    moderate: { Icon: MessageCircleMore, bg: "bg-tint-warning", fg: "text-signal-warning" },
+    concentrated: { Icon: Target, bg: "bg-tint-warning", fg: "text-signal-warning" },
+    silent: { Icon: MessageCircleOff, bg: "bg-tint-danger", fg: "text-signal-danger" },
+    unavailable: { Icon: CircleHelp, bg: "bg-surface-muted", fg: "text-content-tertiary" },
   };
 
   const EDITORIAL: Record<AudienceResponseStatus, string> = {
@@ -548,10 +552,10 @@ export function DiagnosticAudienceHighlight({
 
   return (
     <div className="space-y-2.5">
-      {/* Status icon — decorative, large */}
+      {/* Status icon — decorative, reduced size */}
       <div className="flex justify-center sm:justify-start">
-        <div className={cn("size-20 sm:size-24 rounded-2xl flex items-center justify-center", iconBg)} aria-hidden="true">
-          <StatusIcon size={48} className={cn(iconFg, "opacity-80")} strokeWidth={1.25} />
+        <div className={cn("size-16 sm:size-20 rounded-2xl flex items-center justify-center", iconBg)} aria-hidden="true">
+          <StatusIcon size={40} className={cn(iconFg, "opacity-80")} strokeWidth={1.25} />
         </div>
       </div>
 
@@ -587,19 +591,19 @@ export function DiagnosticAudienceHighlight({
 
       {/* Top conversation post evidence */}
       {topConversationPost && topConversationPost.comments > 0 && (
-        <div className="rounded-md bg-slate-50 ring-1 ring-slate-200/60 px-3 py-2 flex flex-col gap-0.5">
-          <span className="text-eyebrow-sm text-slate-500">Post com mais conversa</span>
-          <div className="flex items-center gap-3 text-[13px] text-slate-700">
-            <span className="font-mono tabular-nums text-slate-800 font-semibold">
+        <div className="rounded-md bg-surface-muted ring-1 ring-border-default px-3 py-2 flex flex-col gap-0.5">
+          <span className="text-eyebrow-sm text-content-tertiary">Post com mais conversa</span>
+          <div className="flex items-center gap-3 text-[13px] text-content-secondary">
+            <span className="font-mono tabular-nums text-content-primary font-semibold">
               {topConversationPost.comments} comentários
             </span>
-            <span className="text-slate-400">·</span>
+            <span className="text-content-tertiary">·</span>
             <span className="font-mono tabular-nums">
               {topConversationPost.likes} gostos
             </span>
           </div>
           {topConversationPost.captionExcerpt && (
-            <p className="text-[12px] text-slate-500 italic line-clamp-1 mt-0.5">
+            <p className="text-[12px] text-content-tertiary italic line-clamp-1 mt-0.5">
               «{topConversationPost.captionExcerpt.slice(0, 80)}»
             </p>
           )}
@@ -608,7 +612,7 @@ export function DiagnosticAudienceHighlight({
 
       {/* Brand reply disclaimer */}
       {status !== "unavailable" && (
-        <p className="text-[11px] text-slate-400 italic leading-relaxed">
+        <p className="text-[11px] text-content-tertiary italic leading-relaxed">
           Esta leitura mede volume público de gostos e comentários; não avalia respostas da marca aos comentários.
         </p>
       )}
@@ -618,9 +622,9 @@ export function DiagnosticAudienceHighlight({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-slate-50 ring-1 ring-slate-200/60 px-2.5 py-2 flex flex-col gap-0.5">
-      <span className="text-eyebrow-sm text-slate-500">{label}</span>
-      <span className="font-mono text-[14px] tabular-nums text-slate-800 font-semibold">
+    <div className="rounded-md bg-surface-muted ring-1 ring-border-default px-2.5 py-2 flex flex-col gap-0.5">
+      <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
+      <span className="font-mono text-[14px] tabular-nums text-content-primary font-semibold">
         {value}
       </span>
     </div>
@@ -638,8 +642,8 @@ export interface ObjectiveSynthesisProps {
 }
 
 const CONFIDENCE_COPY: Record<"low" | "med", { label: string; cls: string }> = {
-  med: { label: "Confiança média", cls: "text-blue-700 bg-blue-50 ring-blue-100" },
-  low: { label: "Confiança baixa", cls: "text-slate-600 bg-slate-50 ring-slate-200" },
+  med: { label: "Confiança média", cls: "text-accent-primary bg-tint-primary ring-accent-primary/15" },
+  low: { label: "Confiança baixa", cls: "text-content-secondary bg-surface-muted ring-border-default" },
 };
 
 /**
@@ -661,7 +665,7 @@ export function DiagnosticObjectiveSynthesis({
       {/* Ranking bars — visual scoring of all objectives */}
       {ranking && ranking.length > 1 ? (
         <div className="space-y-2">
-          <p className="text-eyebrow-sm text-slate-500">Ranking de objetivos</p>
+          <p className="text-eyebrow-sm text-content-tertiary">Ranking de objetivos</p>
           <ul className="space-y-1.5">
             {ranking.map((item) => {
               const pct = Math.round((item.score / maxScore) * 100);
@@ -671,24 +675,24 @@ export function DiagnosticObjectiveSynthesis({
                   <div className="flex items-center gap-3">
                     <span className={cn(
                       "w-[7.5rem] sm:w-40 shrink-0 truncate",
-                      isPrimary ? "font-medium text-slate-900" : "text-slate-600",
+                      isPrimary ? "font-medium text-content-primary" : "text-content-secondary",
                     )}>
                       {item.label}
                     </span>
                     <div className={cn(
                       "flex-1 overflow-hidden rounded-full",
-                      isPrimary ? "h-2.5 bg-blue-100" : "h-2 bg-slate-100",
+                      isPrimary ? "h-2.5 bg-tint-primary" : "h-2 bg-surface-muted",
                     )}>
                       <div
                         className={cn(
                           "h-full rounded-full transition-all",
-                          isPrimary ? "bg-blue-600" : "bg-slate-300",
+                          isPrimary ? "bg-accent-primary" : "bg-content-tertiary/30",
                         )}
                         style={{ width: `${pct}%` }}
                         aria-hidden
                       />
                     </div>
-                    <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-500">
+                    <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-content-tertiary">
                       {item.score}
                     </span>
                   </div>
@@ -701,9 +705,9 @@ export function DiagnosticObjectiveSynthesis({
 
       {/* Secondary objective */}
       {secondary ? (
-        <div className="rounded-lg bg-slate-50/60 ring-1 ring-slate-200/60 px-4 py-3 space-y-1">
-          <p className="text-eyebrow-sm text-slate-500">Objetivo secundário</p>
-          <p className="text-[15px] font-medium text-slate-800">
+        <div className="rounded-lg bg-surface-muted/60 ring-1 ring-border-default px-4 py-3 space-y-1">
+          <p className="text-eyebrow-sm text-content-tertiary">Objetivo secundário</p>
+          <p className="text-[15px] font-medium text-content-primary">
             {secondary}
           </p>
         </div>
@@ -712,18 +716,18 @@ export function DiagnosticObjectiveSynthesis({
       {/* Support signals */}
       {supportSignals.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-eyebrow-sm text-slate-500">Sinais de suporte</p>
+          <p className="text-eyebrow-sm text-content-tertiary">Sinais de suporte</p>
           <div className="flex flex-wrap gap-2">
             {supportSignals.map((signal) => (
               <span
                 key={signal}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                  "ring-1 ring-slate-200 bg-slate-50",
-                  "text-[12px] text-slate-700",
+                  "ring-1 ring-border-default bg-surface-muted",
+                  "text-[12px] text-content-secondary",
                 )}
               >
-                <span className="size-1 rounded-full bg-slate-400 shrink-0" aria-hidden />
+                <span className="size-1 rounded-full bg-content-tertiary/40 shrink-0" aria-hidden />
                 {signal}
               </span>
             ))}
