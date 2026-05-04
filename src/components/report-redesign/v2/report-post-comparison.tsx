@@ -102,7 +102,7 @@ export function PostComparisonBlock({
           {/* Main grid: best | divider | worst */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 md:gap-0">
             {/* Best column */}
-            <div className="space-y-4 md:pr-6">
+            <div className="space-y-4 md:pr-8">
               {best2.map((post, i) => (
                 <div key={post.id} className="space-y-2">
                   <RankRow
@@ -123,7 +123,7 @@ export function PostComparisonBlock({
             <MobileDifferenceMarker multiplierLabel={multiplierLabel} />
 
             {/* Worst column */}
-            <div className="space-y-4 md:pl-6">
+            <div className="space-y-4 md:pl-8">
               {worst2.map((post, i) => (
                 <div key={post.id} className="space-y-2">
                   <RankRow
@@ -159,10 +159,10 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
 
   return (
     <div
-      className="relative flex items-center justify-between rounded-2xl border border-border-default px-5 py-4 md:px-8 md:py-5 overflow-hidden"
+      className="relative flex items-center justify-between rounded-2xl border border-border-subtle px-5 py-4 md:px-8 md:py-5 overflow-hidden"
       style={{
         background:
-          "linear-gradient(90deg, rgba(37,99,217,0.10) 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0) 65%, rgba(217,119,6,0.10) 100%)",
+          "linear-gradient(90deg, rgba(37,99,217,0.06) 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0) 65%, rgba(217,119,6,0.06) 100%)",
       }}
     >
       {/* Best side */}
@@ -171,17 +171,17 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
           <TrendingUp className="size-3.5 text-accent-primary" aria-hidden="true" />
           <span className="text-eyebrow-sm text-accent-primary">MELHOR</span>
         </div>
-        <span className="font-mono text-[22px] md:text-[26px] font-bold tabular-nums text-accent-primary leading-none">
+        <span className="font-mono text-[20px] md:text-[26px] font-bold tabular-nums text-accent-primary leading-none">
           {bestEng.toString().replace(".", ",")}%
         </span>
-        <div className="w-full h-1.5 rounded-full bg-accent-primary/15 mt-1">
+        <div className="w-full h-2 rounded-full bg-accent-primary/15 mt-1">
           <div className="h-full rounded-full bg-accent-primary" style={{ width: "100%" }} />
         </div>
       </div>
 
       {/* VS badge */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-        <div className="flex items-center justify-center size-11 md:size-12 rounded-full bg-white border-2 border-border-default shadow-md">
+        <div className="flex items-center justify-center size-11 md:size-12 rounded-full bg-white border border-border-default shadow-sm">
           <span className="text-[11px] md:text-[12px] font-bold text-content-primary tracking-wider">
             VS
           </span>
@@ -194,10 +194,10 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
           <span className="text-eyebrow-sm text-signal-warning">PIOR</span>
           <TrendingDown className="size-3.5 text-signal-warning" aria-hidden="true" />
         </div>
-        <span className="font-mono text-[22px] md:text-[26px] font-bold tabular-nums text-signal-warning leading-none">
+        <span className="font-mono text-[20px] md:text-[26px] font-bold tabular-nums text-signal-warning leading-none">
           {worstEng.toString().replace(".", ",")}%
         </span>
-        <div className="w-full h-1.5 rounded-full bg-signal-warning/15 mt-1">
+        <div className="w-full h-2 rounded-full bg-signal-warning/15 mt-1">
           <div
             className="h-full rounded-full bg-signal-warning ml-auto"
             style={{ width: `${worstBarPct}%` }}
@@ -264,11 +264,11 @@ function RankRow({
 
 function CentralDivider({ multiplierLabel }: { multiplierLabel: string }) {
   return (
-    <div className="hidden md:flex flex-col items-center justify-center gap-3 px-5 min-w-[90px]">
+    <div className="hidden md:flex flex-col items-center justify-center gap-3 px-8 min-w-[100px]">
       <div className="w-px flex-1 bg-border-default" />
       {multiplierLabel && (
-        <div className="flex flex-col items-center gap-1.5 bg-surface-muted rounded-xl px-3 py-2.5">
-          <span className="font-mono text-[24px] font-bold text-content-primary tabular-nums leading-none">
+        <div className="flex flex-col items-center gap-1.5 bg-surface-muted border border-border-subtle rounded-xl px-3 py-2.5">
+          <span className="font-mono text-[22px] font-bold text-content-primary tabular-nums leading-none">
             {multiplierLabel}
           </span>
           <span className="text-eyebrow-sm text-content-tertiary text-center leading-tight max-w-[80px]">
@@ -316,10 +316,10 @@ function AiReadingCard({
 }) {
   return (
     <div
-      className="rounded-2xl border border-border-default p-5 md:p-6 space-y-3 overflow-hidden"
+      className="rounded-2xl border border-l-[3px] border-l-accent-primary border-border-default p-5 md:p-6 space-y-3 overflow-hidden"
       style={{
         background:
-          "linear-gradient(90deg, rgba(37,99,217,0.07) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(217,119,6,0.07) 100%)",
+          "linear-gradient(90deg, rgba(37,99,217,0.05) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(217,119,6,0.05) 100%)",
       }}
     >
       <div className="flex items-center gap-3">
@@ -331,7 +331,7 @@ function AiReadingCard({
         </span>
       </div>
       {/* Render the AI insight if provided */}
-      <div>{children}</div>
+      {children && <div>{children}</div>}
       {/* Deterministic fallback always shown as supporting context */}
       {fallback && (
         <div className="space-y-2 pt-1">
@@ -370,14 +370,14 @@ function PostCard({
   return (
     <div
       className={cn(
-        "flex gap-3 md:gap-4 rounded-2xl border border-t-[3px] bg-white p-3 md:p-4",
-        "border-border-default shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)]",
+        "flex gap-3 md:gap-4 rounded-2xl border border-t-2 bg-white p-3 md:p-4",
+        "border-border-default shadow-[0_1px_8px_-3px_rgba(0,0,0,0.06)]",
         topBorderColor,
         mirror ? "md:flex-row-reverse" : "",
       )}
     >
       {/* Thumbnail — 3:4 aspect ratio */}
-      <div className="relative shrink-0 w-[80px] md:w-[88px] aspect-[3/4] rounded-lg overflow-hidden bg-surface-muted">
+      <div className="relative shrink-0 w-[80px] md:w-[88px] aspect-[3/4] rounded-xl overflow-hidden bg-surface-muted">
         {showImg ? (
           <img
             src={thumbUrl}
@@ -413,7 +413,7 @@ function PostCard({
         </p>
 
         {/* Metrics */}
-        <div className="flex items-center gap-3.5 pt-1.5 mt-auto border-t border-border-subtle">
+        <div className="flex items-center gap-3 pt-1.5 mt-auto border-t border-border-subtle">
           <span className="inline-flex items-center gap-1 text-[11px] text-content-secondary">
             <Heart className="size-3" aria-hidden="true" />
             <span className="tabular-nums font-mono">
