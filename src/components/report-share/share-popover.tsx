@@ -35,6 +35,7 @@ export function ShareReportPopover({
   variant = "ghost",
   triggerLabel = "Partilhar",
   className,
+  "aria-label": ariaLabel,
 }: ShareReportPopoverProps) {
   const [resolvedUrl, setResolvedUrl] = useState(url ?? "");
   const [copied, setCopied] = useState(false);
@@ -113,9 +114,9 @@ export function ShareReportPopover({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" className={cn(triggerClass, className)}>
+        <button type="button" className={cn(triggerClass, className)} aria-label={ariaLabel} title={ariaLabel}>
           <Share2 className="h-4 w-4" aria-hidden="true" />
-          <span>{triggerLabel}</span>
+          {triggerLabel ? <span>{triggerLabel}</span> : <span className="sr-only">{ariaLabel ?? "Partilhar"}</span>}
         </button>
       </PopoverTrigger>
       <PopoverContent
