@@ -1206,6 +1206,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         engagementPct: round2(num(p.engagement_pct, 0)),
         date: formatPtDateShort(p.taken_at_iso ?? null),
         mentions,
+        ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
+          ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
+          : {}),
       };
     });
 
