@@ -195,26 +195,31 @@ function AnalyzePage() {
     void load();
   }, [load]);
 
-  if (state.status === "loading") {
-    return <AnalysisSkeleton username={cleaned} />;
-  }
-
-  if (state.status === "error") {
-    return (
-      <AnalysisErrorState
-        message={state.message}
-        onRetry={() => void load()}
-      />
-    );
-  }
-
   return (
-    <AnalyzeReady
-      result={state.result}
-      snapshotId={state.snapshotId}
-      payload={state.payload}
-      analyzedAtIso={state.analyzedAtIso}
-    />
+    <ReportThemeWrapper>
+      {/* Negative margins cancel AppShell pt-8 pb-24 so the loading/error
+          screens sit flush — no phantom spacing or ghost layout. */}
+      <div className="-mt-8 -mb-24">
+        {state.status === "loading" && (
+          <AnalysisSkeleton username={cleaned} />
+        )}
+        {state.status === "error" && (
+          <AnalysisErrorState
+            message={state.message}
+            onRetry={() => void load()}
+          />
+        )}
+        {state.status === "ready" && (
+          <AnalyzeReady
+            result={state.result}
+            snapshotId={state.snapshotId}
+            payload={state.payload}
+            analyzedAtIso={state.analyzedAtIso}
+          />
+        )}
+      </div>
+      <Toaster />
+    </ReportThemeWrapper>
   );
 }
 
@@ -231,21 +236,18 @@ function AnalyzeReady({
 }) {
   const shareActions = useReportShareActions({ snapshotId });
   return (
-    <ReportThemeWrapper>
-      <ReportShellV2
-        result={result}
-        snapshotId={snapshotId}
-        payload={payload}
-        analyzedAtIso={analyzedAtIso}
-        actions={{
-          onExportPdf: () => void shareActions.exportPdf(),
-          onShare: () => void shareActions.share(),
-          pdfBusy: shareActions.pdfBusy,
-          shareBusy: shareActions.shareBusy,
-          pdfDisabled: shareActions.pdfDisabled,
-        }}
-      />
-      <Toaster />
-    </ReportThemeWrapper>
+    <ReportShellV2
+      result={result}
+      snapshotId={snapshotId}
+      payload={payload}
+      analyzedAtIso={analyzedAtIso}
+      actions={{
+        onExportPdf: () => void shareActions.exportPdf(),
+        onShare: () => void shareActions.share(),
+        pdfBusy: shareActions.pdfBusy,
+        shareBusy: shareActions.shareBusy,
+        pdfDisabled: shareActions.pdfDisabled,
+      }}
+    />
   );
 }

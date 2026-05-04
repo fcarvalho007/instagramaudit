@@ -13,7 +13,7 @@ export function AnalysisErrorState({
   onRetry,
 }: AnalysisErrorStateProps) {
   return (
-    <div className="bg-surface-base">
+    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #F6FAFF 0%, #FFFFFF 100%)" }}>
       <Container size="md" as="section" className="py-20 md:py-32">
         <div className="mx-auto flex max-w-md flex-col items-center gap-6 text-center">
           <div className="flex size-12 items-center justify-center rounded-full border border-border-default bg-surface-secondary text-content-secondary">

@@ -93,7 +93,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
   return (
     <section
       aria-label="A analisar perfil"
-      className="flex min-h-[80vh] items-center justify-center px-4 sm:px-6"
+      className="flex min-h-screen items-center justify-center px-4 sm:px-6"
       style={{
         background: "linear-gradient(180deg, #F6FAFF 0%, #FFFFFF 100%)",
       }}
