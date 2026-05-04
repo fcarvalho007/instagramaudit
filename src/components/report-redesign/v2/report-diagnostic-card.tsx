@@ -554,8 +554,8 @@ export function DiagnosticAudienceHighlight({
     <div className="space-y-2.5">
       {/* Status icon — decorative, reduced size */}
       <div className="flex justify-center sm:justify-start">
-        <div className={cn("size-16 sm:size-20 rounded-2xl flex items-center justify-center", iconBg)} aria-hidden="true">
-          <StatusIcon size={40} className={cn(iconFg, "opacity-80")} strokeWidth={1.25} />
+        <div className={cn("size-11 rounded-xl flex items-center justify-center", iconBg)} aria-hidden="true">
+          <StatusIcon size={22} className={cn(iconFg, "opacity-80")} strokeWidth={1.5} />
         </div>
       </div>
 
