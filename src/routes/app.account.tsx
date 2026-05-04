@@ -141,13 +141,15 @@ function AccountPage() {
                 <button
                   onClick={handleSaveName}
                   disabled={saving}
-                  className="flex size-8 items-center justify-center rounded-md bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+                  className="flex size-8 items-center justify-center rounded-md bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none"
+                  aria-label="Guardar nome"
                 >
                   {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                 </button>
                 <button
                   onClick={() => { setEditing(false); setNameInput(account.displayName ?? ""); }}
-                  className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:text-slate-600"
+                  className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:text-slate-600 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none"
+                  aria-label="Cancelar edição"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -223,7 +225,7 @@ function AccountPage() {
         <button
           onClick={handleLogout}
           disabled={loggingOut}
-          className="flex items-center gap-2 rounded-lg border border-slate-200/60 bg-white px-4 py-2.5 text-sm text-slate-500 shadow-sm transition-colors hover:border-red-200 hover:text-red-500"
+          className="flex items-center gap-2 rounded-lg border border-slate-200/60 bg-white px-4 py-2.5 text-sm text-slate-500 shadow-sm transition-colors hover:border-red-200 hover:text-red-500 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none"
         >
           {loggingOut ? <Loader2 className="size-3.5 animate-spin" /> : <LogOut className="size-3.5" />}
           Terminar sessão
