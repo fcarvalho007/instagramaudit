@@ -61,7 +61,7 @@ export function ReportEngagementBenchmarkChart({
       {/* Chart header */}
       <div className="flex items-baseline justify-between flex-wrap gap-1">
         <span className="text-eyebrow-sm text-content-secondary">
-          Comparação entre escalões de seguidores
+          Comparação de perfis com escalões de seguidores semelhantes
         </span>
         <span className="text-[10px] text-content-secondary hidden sm:inline">
           eixo: 0% → {scaleMax % 1 === 0 ? `${scaleMax}` : scaleMax.toFixed(1)}%
@@ -115,7 +115,7 @@ export function ReportEngagementBenchmarkChart({
               {/* Active tier badge */}
               {isActive && (
                 <span className="absolute -top-2.5 left-3 sm:left-4 text-[9px] font-bold tracking-[0.08em] text-accent-primary bg-surface-secondary border border-accent-primary/20 rounded px-1.5 py-0.5 uppercase">
-                  O teu escalão
+                  Escalão deste perfil
                 </span>
               )}
 
@@ -214,7 +214,7 @@ export function ReportEngagementBenchmarkChart({
               <span className="w-1.5 h-2.5 rounded-l-sm bg-accent-primary" />
               <span className="w-1 h-2.5 rounded-r-sm bg-signal-success" />
             </span>
-            <span className="text-content-secondary font-medium">O teu escalão</span>
+            <span className="text-content-secondary font-medium">Escalão deste perfil</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-sm bg-surface-muted" aria-hidden="true" />

@@ -63,7 +63,7 @@ export function EngagementCardRefined({ result }: Props) {
         {/* Column 1: Profile engagement */}
         <div className="px-4 py-3 border-b sm:border-b-0 sm:border-r border-border-subtle">
           <span className="text-eyebrow-sm text-accent-primary block mb-1">
-            O teu perfil
+            Taxa de engagement deste perfil
           </span>
           <div className="flex items-baseline">
             <span className="font-sans text-2xl sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
@@ -74,14 +74,14 @@ export function EngagementCardRefined({ result }: Props) {
             </span>
           </div>
           <span className="block text-[11px] text-content-secondary mt-1">
-            envolvimento médio
+            média de gostos, comentários e partilhas a dividir por seguidores
           </span>
         </div>
 
         {/* Column 2: Tier benchmark */}
         <div className="px-4 py-3 flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-border-subtle">
           <span className="text-eyebrow-sm text-content-secondary block mb-1">
-            Referência do escalão
+            % Média de perfis semelhantes
           </span>
           <div className="flex items-baseline">
             <span className="font-sans text-xl sm:text-[1.75rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
@@ -92,7 +92,7 @@ export function EngagementCardRefined({ result }: Props) {
             </span>
           </div>
           <span className="block text-[11px] text-content-secondary mt-1">
-            tier {activeTier?.tierLabel ?? "—"}
+            Escalão de {activeTier?.tierLabel?.match(/\(([^)]+)\)/)?.[1] ?? activeTier?.tierLabel ?? "—"}
           </span>
         </div>
 
@@ -102,7 +102,7 @@ export function EngagementCardRefined({ result }: Props) {
             "text-eyebrow-sm block mb-1",
             isPositive ? "text-signal-success" : "text-signal-danger",
           )}>
-            Gap face à referência
+            Diferença percentual: Perfil VS Média perfis
           </span>
           <div className="flex items-baseline gap-1.5">
             <span className={cn(
@@ -131,6 +131,7 @@ export function EngagementCardRefined({ result }: Props) {
             )}>
               {isPositive ? "+" : ""}{Math.round(Math.abs(gapPct))}%{" "}
               {isPositive ? "acima da média" : "abaixo da média"}
+              {" · gap ~"}{fmtPpSigned(gapPp)}{" pontos percentuais"}
             </span>
           )}
         </div>
