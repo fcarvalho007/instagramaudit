@@ -10,7 +10,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, userEmail, userName }: AppLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-[#F0F4FA]">
+    <div className="flex min-h-screen bg-surface-muted">
       <AppSidebar userEmail={userEmail} userName={userName} />
 
       <div className="flex flex-1 flex-col overflow-x-hidden">

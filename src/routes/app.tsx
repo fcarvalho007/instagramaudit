@@ -50,7 +50,7 @@ function AppShell() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F0F4FA]">
+      <div className="flex min-h-screen items-center justify-center bg-surface-muted">
         <div className="size-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
       </div>
     );
