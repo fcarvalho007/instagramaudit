@@ -265,6 +265,19 @@ export interface ReportEnriched {
     date: string;
     mentions: string[];
   }>;
+  /** Bottom 2 posts by engagement — empty if fewer than 4 posts available. */
+  bottomPosts: Array<{
+    id: string;
+    permalink: string | null;
+    shortcode: string | null;
+    caption: string;
+    format: "Reel" | "Carousel" | "Imagem";
+    likes: number;
+    comments: number;
+    engagementPct: number;
+    date: string;
+    mentions: string[];
+  }>;
   mentionsSummary: Array<{ handle: string; count: number }>;
   benchmarkSource: {
     datasetVersion: string | null;
