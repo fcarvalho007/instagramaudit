@@ -84,7 +84,13 @@ function SignupPage() {
     }
   };
 
-  if (checkingSession) return null;
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F0F4FA]">
+        <Loader2 className="size-5 animate-spin text-slate-400" />
+      </div>
+    );
+  }
 
   if (success) {
     return (
