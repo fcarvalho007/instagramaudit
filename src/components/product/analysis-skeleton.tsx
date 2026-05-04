@@ -21,6 +21,8 @@ function getWaitMessage(elapsed: number): string {
 
 /* ─── Bar gradient pairs (local decorative) ────────────────────────── */
 
+const BAR_STATIC_SCALES = [0.45, 0.60, 0.35, 0.70, 0.90, 0.55, 0.75] as const;
+
 const BAR_GRADIENTS = [
   { from: "#C084FC", to: "#EC4899" },
   { from: "#818CF8", to: "#A855F7" },
@@ -64,13 +66,7 @@ const LOADER_CSS = `
   .liq-glow {
     animation: none !important;
   }
-  .liq-bar:nth-child(1) { transform: scaleY(0.45) !important; }
-  .liq-bar:nth-child(2) { transform: scaleY(0.60) !important; }
-  .liq-bar:nth-child(3) { transform: scaleY(0.35) !important; }
-  .liq-bar:nth-child(4) { transform: scaleY(0.70) !important; }
-  .liq-bar:nth-child(5) { transform: scaleY(0.90) !important; }
-  .liq-bar:nth-child(6) { transform: scaleY(0.55) !important; }
-  .liq-bar:nth-child(7) { transform: scaleY(0.75) !important; }
+  .liq-bar { transform: scaleY(var(--liq-static, 0.5)) !important; }
   .liq-droplet { opacity: 0 !important; }
 }
 `;
@@ -120,7 +116,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
           aria-hidden="true"
         >
           {BAR_GRADIENTS.map((g, i) => (
-            <LiquidBar key={i} index={i} from={g.from} to={g.to} />
+            <LiquidBar key={i} index={i} from={g.from} to={g.to} staticScale={BAR_STATIC_SCALES[i]} />
           ))}
           <div
             className="liq-glow pointer-events-none absolute inset-0 rounded-xl"
@@ -184,10 +180,12 @@ function LiquidBar({
   index,
   from,
   to,
+  staticScale,
 }: {
   index: number;
   from: string;
   to: string;
+  staticScale: number;
 }) {
   const delay = `${index * 0.4}s`;
   const duration = "3s";
@@ -207,6 +205,8 @@ function LiquidBar({
         style={{
           height: "100%",
           transformOrigin: "bottom",
+          // @ts-expect-error CSS custom property
+          "--liq-static": staticScale,
           background: `linear-gradient(180deg, ${from} 0%, ${to} 100%)`,
           animation: `liq-wave ${duration} cubic-bezier(0.45, 0.05, 0.55, 0.95) ${delay} infinite`,
           willChange: "transform",
