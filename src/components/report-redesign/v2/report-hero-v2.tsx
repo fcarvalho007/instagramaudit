@@ -1,4 +1,4 @@
-import { Check, FileDown, Loader2 } from "lucide-react";
+import { Check, Download, Loader2 } from "lucide-react";
 
 import type {
   AdapterResult,
@@ -8,25 +8,21 @@ import type { ReportPageActions } from "@/components/report/report-page";
 import { ShareReportPopover } from "@/components/report-share/share-popover";
 import { cn } from "@/lib/utils";
 
-import { REDESIGN_TOKENS } from "../report-tokens";
-
 interface ReportHeroV2Props {
   result: AdapterResult;
   actions: ReportPageActions;
 }
 
 /**
- * Hero v2 (Phase 1B.1E) — Instagram profile snapshot.
+ * Hero v2 — Premium identity card (Iconosquare-inspired).
  *
- *  - avatar à esquerda + identidade (handle, nome, bio)
- *  - linha de stats estilo perfil IG: Publicações · Seguidores · A seguir
- *  - meta secundária da análise: publicações analisadas, dias, data
- *  - ações à direita (Exportar PDF, Partilhar) + chips de cobertura
+ * Two internal zones:
+ *   Zone 1: avatar + handle + platform pill + bio + icon-only actions
+ *   Zone 2: stats strip (followers / publications / following) + analysis meta
  */
 export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   const profile = result.data.profile;
   const enriched: ReportEnriched = result.enriched;
-  const coverage = result.coverage;
 
   const handle = `@${profile.username}`;
   const fullName = profile.fullName?.trim() || "";
@@ -42,119 +38,109 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
 
   const analysisMeta = buildAnalysisMeta({
     postsAnalyzed: profile.postsAnalyzed ?? 0,
-    windowDays: coverage.windowDays ?? 0,
+    windowDays: result.coverage.windowDays ?? 0,
     analyzedAt: profile.analyzedAt ?? "",
   });
 
   return (
     <section
       aria-label="Cabeçalho do relatório"
-      className={cn(
-        "relative w-full overflow-hidden",
-        REDESIGN_TOKENS.heroBandV2Compact,
-      )}
+      className="w-full bg-[linear-gradient(180deg,#F0F4FF_0%,#F7FAFF_60%,#FAFBFD_100%)] pt-5 pb-2 md:pt-8 md:pb-4"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-white/70"
-      />
-
-      <div className="relative mx-auto max-w-7xl px-5 md:px-6 pt-4 md:pt-7 pb-4 md:pb-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
-          {/* Identidade + stats */}
-          <div className="flex items-start gap-4 md:gap-6 min-w-0 flex-1">
+      <div className="mx-auto max-w-[1380px] px-5 md:px-6">
+        {/* Main card */}
+        <div className="rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)] overflow-hidden">
+          {/* ── Zone 1: Identity ──────────────────────────────────── */}
+          <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:gap-6 md:p-6 lg:p-7">
+            {/* Avatar */}
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
 
-            <div className="min-w-0 flex-1 space-y-3">
-              {/* Handle + verified */}
-              <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                <h1 className={REDESIGN_TOKENS.h1HeroV2Compact}>{handle}</h1>
-                {verified ? <VerifiedBadge /> : null}
+            {/* Handle + description */}
+            <div className="min-w-0 flex-1 space-y-1.5">
+              {/* Handle row */}
+              <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+                <h1 className="font-display text-xl sm:text-[1.375rem] md:text-2xl font-semibold tracking-[-0.015em] text-slate-900 leading-tight break-words">
+                  {handle}
+                </h1>
+                {verified && <VerifiedBadge />}
+                <PlatformPill />
               </div>
 
-              {/* Nome */}
-              {fullName ? (
-                <p className="text-sm md:text-base font-medium text-slate-700 -mt-1">
-                  {fullName}
+              {/* Name + bio */}
+              {(fullName || bio) && (
+                <p className="text-sm text-slate-600 leading-relaxed line-clamp-1 max-w-xl">
+                  {[fullName, bio].filter(Boolean).join(" · ")}
                 </p>
-              ) : null}
-
-              {bio ? (
-                <p className="text-[13px] md:text-sm text-slate-600 leading-relaxed line-clamp-2 max-w-xl whitespace-pre-line">
-                  {bio}
-                </p>
-              ) : null}
-
-              {/* Stats estilo perfil IG */}
-              {profileStats.length > 0 ? (
-                <ul className="!mt-3 grid grid-cols-3 gap-x-4 gap-y-1 max-w-md sm:max-w-lg">
-                  {profileStats.map((s) => (
-                    <li
-                      key={s.label}
-                      className="flex flex-col items-start gap-1 min-w-0"
-                    >
-                      <span className="font-mono text-[1.25rem] md:text-[1.875rem] font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.02em]">
-                        {s.value}
-                      </span>
-                      <span className="text-eyebrow-sm text-slate-500">
-                        {s.label}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-
-              {/* Meta da análise — separada por divider hairline para
-                  sinalizar que é metadata do relatório, não do perfil. */}
-              {analysisMeta.length > 0 ? (
-                <div className="text-eyebrow-sm !mt-2.5 pt-2 border-t border-slate-200/60 text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {analysisMeta.map((m, i) => (
-                    <span key={m} className="inline-flex items-center gap-2">
-                      {i > 0 ? (
-                        <span aria-hidden="true" className="text-slate-300">
-                          ·
-                        </span>
-                      ) : null}
-                      <span>{m}</span>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+              )}
             </div>
-          </div>
 
-          {/* Ações + cobertura */}
-          <div className="flex flex-col gap-2 lg:items-end lg:shrink-0 -mt-1 lg:mt-0">
-            <div className="flex flex-wrap items-center gap-1.5 lg:gap-2 lg:justify-end">
-              <button
-                type="button"
+            {/* Icon-only actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              <IconButton
+                aria-label="Exportar relatório em PDF"
+                title="Exportar PDF"
                 onClick={actions.onExportPdf}
                 disabled={actions.pdfDisabled || actions.pdfBusy}
-                aria-busy={actions.pdfBusy}
-                className={cn(
-                  "inline-flex items-center justify-center gap-1.5 rounded-full",
-                  "bg-blue-600 text-white px-3.5 py-1.5 text-[13px] font-medium",
-                  "shadow-[0_1px_2px_rgba(15,23,42,0.06)]",
-                  "transition-colors duration-200 hover:bg-blue-700",
-                  "disabled:cursor-not-allowed disabled:opacity-60",
-                  "h-9",
-                )}
+                busy={actions.pdfBusy}
               >
                 {actions.pdfBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Download className="size-4" aria-hidden="true" />
                 )}
-                <span>{actions.pdfBusy ? "A preparar…" : "Exportar PDF"}</span>
-              </button>
+              </IconButton>
+
               <ShareReportPopover
                 result={result}
                 variant="ghost"
-                triggerLabel="Partilhar"
+                triggerLabel=""
+                className="inline-flex items-center justify-center size-[34px] rounded-lg border border-slate-200/80 bg-white text-slate-600 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
               />
             </div>
-            <div className="flex flex-wrap gap-1 lg:gap-1.5 lg:justify-end">
-              <CoverageBadge label="Dados públicos" status="real" />
+          </div>
+
+          {/* ── Zone 2: Stats ─────────────────────────────────────── */}
+          <div className="border-t border-slate-200/60 bg-slate-50/60 px-5 md:px-6 lg:px-7 py-4 md:py-5">
+            <div className="flex flex-wrap items-start gap-x-0 gap-y-3">
+              {/* Profile stats */}
+              <div className="flex flex-wrap items-start gap-0">
+                {profileStats.map((s, i) => (
+                  <div
+                    key={s.label}
+                    className={cn(
+                      "flex flex-col items-start gap-0.5 px-4 md:px-5 first:pl-0",
+                      i > 0 && "border-l border-slate-200/60",
+                    )}
+                  >
+                    <span className="font-mono text-lg md:text-xl font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.01em]">
+                      {s.value}
+                    </span>
+                    <span className="text-eyebrow-sm text-slate-500 uppercase">
+                      {s.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Analysis metadata */}
+              {(analysisMeta.postsLabel || analysisMeta.dateLabel) && (
+                <div className="flex items-center gap-3 ml-auto">
+                  {analysisMeta.postsLabel && (
+                    <span className="text-eyebrow-sm text-slate-500">
+                      {analysisMeta.postsLabel}
+                    </span>
+                  )}
+                  {analysisMeta.dateLabel && (
+                    <span className="inline-flex items-center gap-1.5 text-eyebrow-sm text-slate-500">
+                      <span
+                        className="size-1.5 rounded-full bg-emerald-500"
+                        aria-hidden="true"
+                      />
+                      {analysisMeta.dateLabel}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -177,12 +163,12 @@ function buildProfileStats(input: {
 }): StatItem[] {
   return [
     {
-      label: "publicações",
-      value: input.postsCount > 0 ? formatCompact(input.postsCount) : "—",
-    },
-    {
       label: "seguidores",
       value: input.followers > 0 ? formatCompact(input.followers) : "—",
+    },
+    {
+      label: "publicações",
+      value: input.postsCount > 0 ? formatCompact(input.postsCount) : "—",
     },
     {
       label: "a seguir",
@@ -195,18 +181,20 @@ function buildAnalysisMeta(input: {
   postsAnalyzed: number;
   windowDays: number;
   analyzedAt: string;
-}): string[] {
-  const out: string[] = [];
-  if (input.postsAnalyzed > 0) {
-    out.push(`${input.postsAnalyzed} publicações analisadas`);
+}): { postsLabel: string | null; dateLabel: string | null } {
+  let postsLabel: string | null = null;
+  if (input.postsAnalyzed > 0 && input.windowDays > 0) {
+    postsLabel = `${input.postsAnalyzed} posts em ${input.windowDays} dias`;
+  } else if (input.postsAnalyzed > 0) {
+    postsLabel = `${input.postsAnalyzed} posts analisados`;
   }
-  if (input.windowDays > 0) {
-    out.push(`${input.windowDays} dias analisados`);
-  }
+
+  let dateLabel: string | null = null;
   if (input.analyzedAt) {
-    out.push(`analisado em ${input.analyzedAt}`);
+    dateLabel = `analisado ${input.analyzedAt}`;
   }
-  return out;
+
+  return { postsLabel, dateLabel };
 }
 
 function formatCompact(n: number): string {
@@ -221,6 +209,8 @@ function formatCompact(n: number): string {
 function trimZero(s: string): string {
   return s.replace(/\.0$/, "");
 }
+
+// ─── Sub-components ──────────────────────────────────────────────────
 
 function Avatar({
   avatarUrl,
@@ -237,25 +227,21 @@ function Avatar({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  // Story ring estilo IG: gradient subtil em redor + inset branco.
-  const storyRing =
-    "p-[2.5px] rounded-full shrink-0 bg-[conic-gradient(from_180deg_at_50%_50%,#FCD34D_0deg,#F472B6_120deg,#A855F7_220deg,#3B82F6_360deg)] shadow-[0_8px_22px_-10px_rgba(59,130,246,0.35)]";
+  const ringClass =
+    "p-[2px] rounded-full shrink-0 bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300";
   const innerWhite = "p-[2px] rounded-full bg-white";
-  const innerSizeMobile = "size-14 md:size-[92px]";
+  const sizeMobile = "size-14 md:size-[76px]";
 
   if (avatarUrl) {
     return (
-      <div className={storyRing}>
+      <div className={ringClass}>
         <div className={innerWhite}>
           <img
             src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
             alt={`Avatar de ${fullName}`}
             loading="eager"
             decoding="async"
-            className={cn(
-              "rounded-full object-cover bg-white",
-              innerSizeMobile,
-            )}
+            className={cn("rounded-full object-cover bg-white", sizeMobile)}
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
@@ -264,15 +250,16 @@ function Avatar({
       </div>
     );
   }
+
   return (
-    <div className={storyRing} aria-hidden="true">
+    <div className={ringClass} aria-hidden="true">
       <div className={innerWhite}>
         <div
           className={cn(
             "rounded-full flex items-center justify-center",
-            "font-display text-xl md:text-2xl font-semibold text-white",
-            "bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600",
-            innerSizeMobile,
+            "font-display text-lg md:text-xl font-semibold text-slate-500",
+            "bg-slate-100",
+            sizeMobile,
           )}
         >
           {initials}
@@ -287,15 +274,10 @@ function VerifiedBadge() {
     <span
       aria-label="Conta verificada"
       title="Conta verificada"
-      className={cn(
-        "inline-flex items-center justify-center shrink-0",
-        "h-[18px] w-[18px] md:h-5 md:w-5 rounded-full",
-        "bg-blue-500 text-white",
-        "shadow-[0_1px_2px_rgba(15,23,42,0.15)]",
-      )}
+      className="inline-flex items-center justify-center shrink-0 size-[18px] md:size-5 rounded-full bg-blue-500 text-white shadow-[0_1px_2px_rgba(15,23,42,0.15)]"
     >
       <Check
-        className="h-2.5 w-2.5 md:h-3 md:w-3"
+        className="size-2.5 md:size-3"
         strokeWidth={3.5}
         aria-hidden="true"
       />
@@ -303,35 +285,37 @@ function VerifiedBadge() {
   );
 }
 
-function CoverageBadge({
-  label,
-  status,
-}: {
-  label: string;
-  status: "real" | "partial" | "empty" | "placeholder";
-}) {
-  const toneClass =
-    status === "real"
-      ? "ring-blue-200 text-blue-700 bg-blue-50"
-      : status === "partial"
-        ? "ring-amber-200 text-amber-700 bg-amber-50"
-        : "ring-slate-200 text-slate-500 bg-white";
-  const dot =
-    status === "real"
-      ? "bg-blue-500"
-      : status === "partial"
-        ? "bg-amber-500"
-        : "bg-slate-400";
+function PlatformPill() {
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full ring-1 px-2.5 py-1",
-        "text-eyebrow-sm",
-        toneClass,
-      )}
+      aria-label="Plataforma analisada: Instagram"
+      title="Instagram"
+      className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200/70"
     >
-      <span className={cn("size-1.5 rounded-full", dot)} aria-hidden="true" />
-      {label}
+      Instagram
     </span>
+  );
+}
+
+function IconButton({
+  children,
+  busy,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean }) {
+  return (
+    <button
+      type="button"
+      aria-busy={busy}
+      className={cn(
+        "inline-flex items-center justify-center size-[34px] rounded-lg",
+        "border border-slate-200/80 bg-white text-slate-600",
+        "transition-colors duration-150",
+        "hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+      )}
+      {...props}
+    >
+      {children}
+    </button>
   );
 }
