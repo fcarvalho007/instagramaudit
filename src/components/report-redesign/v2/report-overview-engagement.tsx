@@ -26,33 +26,33 @@ export function EngagementCardRefined({ result }: Props) {
     .map((s) => ({ name: s.name, url: s.url }));
 
   const gap = k.engagementRate - k.engagementBenchmark;
-  const gapColor = gap >= 0 ? "text-emerald-600" : "text-rose-600";
-  const gapBg = gap >= 0 ? "bg-emerald-50" : "bg-rose-50";
+  const gapColor = gap >= 0 ? "text-signal-success" : "text-signal-danger";
+  const gapBg = gap >= 0 ? "bg-tint-success" : "bg-tint-danger";
 
   return (
-    <article className="rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_12px_32px_-16px_rgba(15,23,42,0.10)] overflow-hidden">
+    <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-5 md:px-6 pt-5 md:pt-6 pb-0">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-blue-50 text-blue-500">
+          <div className="flex items-center justify-center size-8 rounded-lg bg-tint-primary text-accent-primary">
             <Activity className="size-4" strokeWidth={2.2} aria-hidden="true" />
           </div>
-          <span className="text-sm font-semibold text-slate-900">
+          <span className="text-sm font-semibold text-content-primary">
             Taxa de envolvimento
           </span>
         </div>
-        <span className="text-[10px] text-slate-500 tracking-[0.05em] bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap font-medium">
+        <span className="text-[10px] text-content-secondary tracking-[0.05em] bg-surface-muted border border-border-subtle px-2.5 py-1 rounded-full whitespace-nowrap font-medium">
           MERCADO · SOCIALINSIDER
         </span>
       </div>
 
       {/* Hero numbers */}
       <div className="flex items-end gap-3 sm:gap-4 flex-wrap px-5 md:px-6 pt-4 pb-5">
-        <span className="font-display text-[2rem] md:text-[2.25rem] font-bold text-slate-900 tabular-nums leading-none tracking-tight">
+        <span className="font-display text-[2rem] md:text-[2.25rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
           {formatPct(k.engagementRate)}
         </span>
         <div className="flex items-center gap-2 pb-1">
-          <span className="text-xs text-slate-400 font-medium">
+          <span className="text-xs text-content-tertiary font-medium">
             ref. {formatPct(k.engagementBenchmark)}
           </span>
           <span className={cn(
