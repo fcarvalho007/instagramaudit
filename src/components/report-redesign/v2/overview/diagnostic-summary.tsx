@@ -130,7 +130,7 @@ export function DiagnosticCard({ card: c }: { card: SummaryCardData }) {
         "flex flex-col gap-2.5",
         "rounded-2xl border border-border-default bg-surface-secondary",
         "p-4 sm:p-5",
-        "shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.06)]",
+        "shadow-card",
       )}
     >
       <span
