@@ -5,17 +5,18 @@ import { cn } from "@/lib/utils";
 
 const PHASES = [
   "A recolher dados públicos do perfil…",
-  "A analisar métricas e sinais de engagement…",
-  "A cruzar resultados com benchmarks do setor…",
-  "A interpretar padrões com IA…",
-  "A preparar o teu relatório visual…",
+  "A organizar publicações, métricas e sinais de interação…",
+  "A comparar o perfil com referências de mercado…",
+  "A identificar padrões editoriais e oportunidades…",
+  "A preparar o relatório visual…",
 ] as const;
 
 function getWaitMessage(elapsed: number): string {
-  if (elapsed < 7) return "Normalmente demora alguns segundos.";
+  if (elapsed < 8)
+    return "A recolha de dados públicos demora normalmente poucos segundos.";
   if (elapsed < 25)
-    return "Estamos a processar dados públicos. Pode demorar até 30 segundos.";
-  return "Ainda estamos a montar o relatório. Obrigado pela paciência.";
+    return "A recolha de dados ainda está em curso. Pode demorar até 30 segundos.";
+  return "Ainda a processar. O relatório estará pronto em instantes.";
 }
 
 /* ─── Bar gradient pairs (local decorative) ────────────────────────── */
@@ -170,7 +171,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
 
         {/* Footnote */}
         <p className="max-w-[360px] text-center font-sans text-[12px] leading-relaxed text-content-tertiary">
-          Não feches esta janela — estamos a montar o diagnóstico.
+          Não feches esta janela — estamos a preparar o diagnóstico.
         </p>
       </div>
     </section>

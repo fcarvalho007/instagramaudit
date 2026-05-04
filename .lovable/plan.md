@@ -1,43 +1,33 @@
 
-## Fix: Dark flash before loader appears
+## Refine loading screen copy
 
-### Problem
+### Phase messages
 
-When navigating from the homepage (dark theme) to `/analyze/$username`, there's a visible dark page flash before the loader appears. This happens because:
+| # | Message | Rationale |
+|---|---------|-----------|
+| 1 | A recolher dados públicos do perfil… | Unchanged — accurate, sets expectations |
+| 2 | A organizar publicações, métricas e sinais de interação… | Replaces "engagement" (anglicismo) with "interação"; adds "publicações" for clarity |
+| 3 | A comparar o perfil com referências de mercado… | Replaces "benchmarks do setor" with plain Portuguese; removes jargon |
+| 4 | A identificar padrões editoriais e oportunidades… | Removes "com IA" (not always true); focuses on value delivered |
+| 5 | A preparar o relatório visual… | Drops "o teu" (impersonal tone per workspace rules) |
 
-1. The route has `ssr: false` — component only mounts after client hydration
-2. `ReportThemeWrapper` sets `data-theme="light"` inside a `useEffect`, which runs after mount
-3. Between navigation start and effect execution, the dark shell is visible
+### Elapsed-time messages
 
-### Fix
+| Window | Message | Rationale |
+|--------|---------|-----------|
+| 0–8s | A recolha de dados públicos demora normalmente poucos segundos. | Calm, factual, sets expectation without overpromising speed |
+| 8–25s | A recolha de dados ainda está em curso. Pode demorar até 30 segundos. | Acknowledges delay, gives concrete ceiling |
+| 25s+ | Ainda a processar. O relatório estará pronto em instantes. | Reassures without apology |
 
-**File:** `src/routes/analyze.$username.tsx`
+### Footnote
 
-Add a `beforeLoad` hook that sets `data-theme="light"` on `<body>` immediately on navigation — before the component mounts:
+Change "montar o diagnóstico" → "preparar o diagnóstico" for consistency with phase 5 verb.
 
-```typescript
-export const Route = createFileRoute("/analyze/$username")({
-  ssr: false,
-  beforeLoad: () => {
-    if (typeof document !== "undefined") {
-      document.body.setAttribute("data-theme", "light");
-    }
-  },
-  // ... rest unchanged
-```
+### File changed
 
-`beforeLoad` runs synchronously during route transition, before the component renders. This eliminates the dark gap entirely. The `typeof document` guard prevents SSR crashes.
-
-### What remains untouched
-
-- Backend, Apify, cache — zero changes
-- Report UI, PDF, share — zero changes
-- `ReportThemeWrapper` — kept as safety net (still restores dark on unmount)
-- `AnalysisSkeleton` component — no changes
-- Locked files — no changes
+**`src/components/product/analysis-skeleton.tsx`** — `PHASES` array, `getWaitMessage()` function, and footnote text.
 
 ### Validation
 
-- TypeScript check
-- Vitest (103 tests)
-- Visual QA: navigate from homepage to `/analyze/frederico.m.carvalho` — confirm no dark flash
+- tsc
+- vitest
