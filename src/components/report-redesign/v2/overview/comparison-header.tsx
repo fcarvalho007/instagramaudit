@@ -171,7 +171,7 @@ function RoadmapInfoDialog({ onClose }: { onClose: () => void }) {
         </p>
         <p className="mt-2 text-sm text-content-secondary leading-relaxed">
           Análise de Facebook, TikTok e YouTube. Estamos a preparar tudo para
-          que possas analisar todas as tuas redes num único relatório.
+          que seja possível analisar todas as redes num único relatório.
         </p>
         <button
           ref={btnRef}

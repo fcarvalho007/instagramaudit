@@ -290,7 +290,7 @@ function ReportsPage() {
             Ainda não há relatórios
           </h2>
           <p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed text-slate-400">
-            Analisa um perfil público para começares a construir o teu histórico.
+            Analisa um perfil público para começar a construir o histórico de análises.
           </p>
           <Link
             to="/"

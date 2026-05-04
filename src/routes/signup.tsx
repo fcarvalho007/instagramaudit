@@ -13,7 +13,7 @@ export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
       { title: "Criar conta — InstaBench" },
-      { name: "description", content: "Cria a tua conta InstaBench." },
+      { name: "description", content: "Cria uma conta InstaBench." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -95,8 +95,8 @@ function SignupPage() {
   if (success) {
     return (
       <AuthCard
-        title="Verifica o teu email"
-        subtitle="Enviámos um link de confirmação. Clica no link para ativar a tua conta."
+        title="Verifica o email"
+        subtitle="Enviámos um link de confirmação. Clica no link para ativar a conta."
       >
         <div className="flex flex-col items-center gap-4 py-4">
           <CheckCircle2 className="size-12 text-emerald-600" />
@@ -117,7 +117,7 @@ function SignupPage() {
   return (
     <AuthCard
       title="Criar conta"
-      subtitle="Guarda os teus relatórios e prepara o acesso ao tracking PRO."
+      subtitle="Guarda relatórios e prepara o acesso ao tracking PRO."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">

@@ -28,7 +28,7 @@ const tiers: Tier[] = [
     key: "free",
     name: "Free",
     icon: Zap,
-    description: "Análise pontual para conhecer o teu perfil.",
+    description: "Análise pontual para conhecer um perfil.",
     features: [
       "Análise pontual de perfil",
       "Snapshot guardado",
@@ -101,7 +101,7 @@ function PlanPage() {
         Plano
       </h1>
       <p className="mt-1 text-sm text-slate-400">
-        Consulta o teu plano atual e compara as opções disponíveis.
+        Consulta o plano atual e compara as opções disponíveis.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -170,7 +170,7 @@ function PlanPage() {
 
             {tier.key === currentPlan && (
               <p className="mt-5 text-center text-[11px] font-medium text-blue-500">
-                O teu plano atual
+                Plano atual
               </p>
             )}
           </div>
@@ -186,7 +186,7 @@ function PlanPage() {
               Sobre o tracking diário
             </p>
             <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-              O tracking diário será uma funcionalidade PRO futura. Por agora, a tua conta guarda
+              O tracking diário será uma funcionalidade PRO futura. Por agora, a conta guarda
               os relatórios solicitados e prepara a evolução para histórico contínuo. Não existem
               cobranças nem funcionalidades ativas dos planos Pro e Agency neste momento.
             </p>

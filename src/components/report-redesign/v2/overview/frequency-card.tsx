@@ -24,7 +24,7 @@ export function getFrequencyVerdict(score: number): { strong: string; rest: stri
   if (score >= 90) {
     return {
       strong: "Cadência forte e consistente.",
-      rest: "Publicas mais que a média de quem tem o teu número de seguidores.",
+      rest: "Publica mais que a média de perfis com um número de seguidores semelhante.",
     };
   }
   if (score >= 50) {
