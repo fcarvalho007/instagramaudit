@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { MessagesSquare, MessageCircleMore, Target, MessageCircleOff, CircleHelp } from "lucide-react";
+import { MessagesSquare, MessageCircleMore, Target, MessageCircleOff, CircleHelp, Heart, MessageCircle, Reply, ArrowRight, CheckCircle2, XCircle, Lightbulb, Quote } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
+import type { CommentIntelligence } from "@/lib/analysis/types";
 import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
 import { InsightCallout } from "./insight-callout";
 
@@ -496,32 +497,22 @@ export function DiagnosticRanking({
   );
 }
 
-// Public Apify profile/post payload does not reliably indicate whether the
-// brand replied inside comment threads unless comment-level data with
-// authors is collected.
+// ─── Q05 — 5-zone editorial layout ─────────────────────────────────
 
 /**
- * Destaque editorial para a Q06 — strip colorido com a métrica
- * principal (likes médios) e linha discreta com comentários médios.
+ * P05 redesign: 5-zone editorial card for "O público responde ou só consome?"
+ *
+ * Z1 — Header + dominant answer (handled by ReportDiagnosticCard wrapper)
+ * Z2 — Three KPI cards
+ * Z3 — Conversation flow diagram ("Elo Perdido")
+ * Z4 — Top conversation post highlight
+ * Z5 — Works / Fails / Next
  */
-export function DiagnosticAudienceHighlight({
-  avgLikes,
-  avgComments,
-  totalLikes,
-  totalComments,
-  postsWithComments,
-  sampleSize,
-  tone = "rose",
-  topConversationPost,
-  status = "silent",
-}: {
+
+interface AudienceHighlightProps {
   avgLikes: number;
   avgComments: number;
-  totalLikes?: number | null;
-  totalComments?: number | null;
-  postsWithComments?: number;
   sampleSize?: number;
-  tone?: "rose" | "emerald" | "amber";
   topConversationPost?: {
     index: number;
     comments: number;
@@ -529,104 +520,229 @@ export function DiagnosticAudienceHighlight({
     captionExcerpt: string;
   } | null;
   status?: AudienceResponseStatus;
-}) {
-  /* Status icon map — local, uses semantic tint + signal tokens where possible.
-   * "silent" uses tint-warning (soft amber) instead of aggressive rose. */
-  const STATUS_ICON: Record<AudienceResponseStatus, { Icon: typeof MessagesSquare; bg: string; fg: string }> = {
-    active: { Icon: MessagesSquare, bg: "bg-tint-success", fg: "text-signal-success" },
-    moderate: { Icon: MessageCircleMore, bg: "bg-tint-warning", fg: "text-signal-warning" },
-    concentrated: { Icon: Target, bg: "bg-tint-warning", fg: "text-signal-warning" },
-    silent: { Icon: MessageCircleOff, bg: "bg-tint-danger", fg: "text-signal-danger" },
-    unavailable: { Icon: CircleHelp, bg: "bg-surface-muted", fg: "text-content-tertiary" },
-  };
+  commentIntel?: CommentIntelligence | null;
+}
 
-  const EDITORIAL: Record<AudienceResponseStatus, string> = {
-    silent: "O público reage com gostos, mas quase não conversa publicamente.",
-    active: "Há sinais de conversa pública consistente — o conteúdo não está apenas a ser consumido.",
-    moderate: "Há alguma resposta, mas ainda sem volume suficiente para indicar conversa recorrente.",
-    concentrated: "A conversa existe, mas está concentrada em poucos posts.",
-    unavailable: "As publicações analisadas não devolveram dados suficientes de gostos/comentários para uma leitura fiável.",
-  };
+const WORKS_MAP: Record<AudienceResponseStatus, string> = {
+  active: "Bom volume de reações e conversa pública consistente.",
+  moderate: "Volume de gostos saudável — o conteúdo gera reação.",
+  concentrated: "Há posts que provam capacidade de gerar conversa.",
+  silent: "O conteúdo gera gostos — há audiência presente.",
+  unavailable: "—",
+};
 
-  const { Icon: StatusIcon, bg: iconBg, fg: iconFg } = STATUS_ICON[status];
+const FAILS_MAP: Record<AudienceResponseStatus, string> = {
+  active: "Garantir que a marca responde para manter o ciclo.",
+  moderate: "Poucos comentários em proporção aos gostos.",
+  concentrated: "A conversa está concentrada em poucos posts.",
+  silent: "Quase zero comentários — a audiência consome sem conversar.",
+  unavailable: "Dados insuficientes para avaliar.",
+};
+
+const NEXT_MAP: Record<AudienceResponseStatus, string> = {
+  active: "Manter consistência e responder para alimentar o ciclo.",
+  moderate: "Testar perguntas fechadas ou escolhas A/B nas legendas.",
+  concentrated: "Replicar a fórmula dos posts que geraram conversa.",
+  silent: "Testar perguntas fechadas, escolhas A/B ou CTAs de comentário.",
+  unavailable: "Aguardar dados suficientes para uma leitura fiável.",
+};
+
+export function DiagnosticAudienceHighlight({
+  avgLikes,
+  avgComments,
+  sampleSize,
+  topConversationPost,
+  status = "silent",
+  commentIntel,
+}: AudienceHighlightProps) {
+  const ownerReplyRate = commentIntel?.available ? commentIntel.ownerReplyRatePct : null;
+  const ownerReplies = commentIntel?.available ? commentIntel.ownerRepliesCount : 0;
+
+  // Z3 proportional widths — normalise to largest value
+  const flowMax = Math.max(avgLikes, avgComments, ownerReplies, 1);
+  const likesW = Math.round((avgLikes / flowMax) * 100);
+  const commentsW = Math.max(Math.round((avgComments / flowMax) * 100), 4);
+  const repliesW = ownerReplies > 0 ? Math.max(Math.round((ownerReplies / flowMax) * 100), 4) : 4;
 
   return (
-    <div className="space-y-2.5">
-      {/* Status icon — decorative, reduced size */}
-      <div className="flex justify-center sm:justify-start">
-        <div className={cn("size-11 rounded-xl flex items-center justify-center", iconBg)} aria-hidden="true">
-          <StatusIcon size={22} className={cn(iconFg, "opacity-80")} strokeWidth={1.5} />
+    <div className="space-y-4">
+      {/* ── Z2: Three KPI cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <KpiCard
+          icon={<Heart size={15} className="text-signal-danger opacity-70" />}
+          label="Gostos médios"
+          value={avgLikes.toLocaleString("pt-PT")}
+          sublabel="por publicação"
+        />
+        <KpiCard
+          icon={<MessageCircle size={15} className="text-accent-primary opacity-70" />}
+          label="Comentários médios"
+          value={avgComments.toLocaleString("pt-PT")}
+          sublabel="por publicação"
+        />
+        <KpiCard
+          icon={<Reply size={15} className="text-signal-success opacity-70" />}
+          label="Taxa de resposta"
+          value={ownerReplyRate != null ? `${ownerReplyRate}%` : "—"}
+          sublabel="da marca"
+        />
+      </div>
+
+      {/* ── Z3: Conversation flow diagram ── */}
+      <div className="rounded-xl border border-border-subtle bg-surface-muted/40 px-4 py-4 space-y-3">
+        <p className="text-eyebrow-sm text-content-tertiary">Fluxo de conversa</p>
+
+        <div className="flex items-end gap-1.5 h-16">
+          {/* Likes bar */}
+          <div className="flex flex-col items-center gap-1 flex-1">
+            <div
+              className="w-full rounded-md bg-signal-danger/20 transition-all"
+              style={{ height: `${Math.max(likesW * 0.6, 8)}px` }}
+            />
+            <span className="text-[10px] font-medium text-content-tertiary text-center">Gostos</span>
+          </div>
+
+          <ArrowRight size={12} className="text-content-tertiary/40 shrink-0 mb-4" />
+
+          {/* Comments bar */}
+          <div className="flex flex-col items-center gap-1 flex-1">
+            <div
+              className="w-full rounded-md bg-accent-primary/25 transition-all"
+              style={{ height: `${Math.max(commentsW * 0.6, 8)}px` }}
+            />
+            <span className="text-[10px] font-medium text-content-tertiary text-center">Comentários</span>
+          </div>
+
+          <ArrowRight size={12} className="text-content-tertiary/40 shrink-0 mb-4" />
+
+          {/* Replies bar */}
+          <div className="flex flex-col items-center gap-1 flex-1">
+            <div
+              className={cn(
+                "w-full rounded-md transition-all",
+                ownerReplies > 0 ? "bg-signal-success/25" : "bg-surface-muted border border-dashed border-border-default",
+              )}
+              style={{ height: `${Math.max(repliesW * 0.6, 8)}px` }}
+            />
+            <span className="text-[10px] font-medium text-content-tertiary text-center">Respostas</span>
+          </div>
         </div>
+
+        <p className="text-[12px] text-content-secondary leading-relaxed">
+          {avgLikes > 0 && avgComments > 0 ? (
+            <>
+              De cada <span className="font-semibold tabular-nums">{Math.round(avgLikes / Math.max(avgComments, 1))}</span> gostos,
+              apenas <span className="font-semibold">1</span> gera comentário
+              {ownerReplyRate != null && (
+                <> — e a marca responde a <span className="font-semibold tabular-nums">{ownerReplyRate}%</span></>
+              )}
+              .
+            </>
+          ) : (
+            "Dados insuficientes para calcular a proporção de conversão."
+          )}
+        </p>
       </div>
 
-      {/* Metrics grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <MiniStat label="Gostos médios por post" value={avgLikes.toLocaleString("pt-PT")} />
-        <MiniStat label="Comentários médios por post" value={avgComments.toLocaleString("pt-PT")} />
-        {sampleSize != null && sampleSize > 0 && (
-          <MiniStat
-            label="Posts com comentários"
-            value={`${postsWithComments ?? 0} de ${sampleSize}`}
-          />
-        )}
-        {totalLikes != null && (
-          <MiniStat label="Gostos totais" value={totalLikes.toLocaleString("pt-PT")} />
-        )}
-      </div>
-
-      {/* Editorial interpretation */}
-      <InsightCallout
-        tone={status === "silent" ? "warning" : status === "active" ? "editorial" : "suggestion"}
-        label={status === "silent" ? "Atenção" : status === "active" ? "Leitura editorial" : "O que isto sugere"}
-      >
-        {EDITORIAL[status]}
-      </InsightCallout>
-
-      {/* Conversation prompt strip */}
-      {(status === "silent" || status === "moderate") && (
-        <InsightCallout tone="suggestion" label="Próximo passo">
-          Experiência sugerida: testar perguntas fechadas, escolhas A/B ou CTAs de comentário.
-        </InsightCallout>
-      )}
-
-      {/* Top conversation post evidence */}
+      {/* ── Z4: Top conversation post ── */}
       {topConversationPost && topConversationPost.comments > 0 && (
-        <div className="rounded-md bg-surface-muted ring-1 ring-border-default px-3 py-2 flex flex-col gap-0.5">
-          <span className="text-eyebrow-sm text-content-tertiary">Post com mais conversa</span>
-          <div className="flex items-center gap-3 text-[13px] text-content-secondary">
-            <span className="font-mono tabular-nums text-content-primary font-semibold">
+        <div className="rounded-xl border border-border-subtle bg-surface-secondary px-4 py-3.5 space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <Quote size={13} className="text-content-tertiary shrink-0" aria-hidden="true" />
+            <span className="text-eyebrow-sm text-content-tertiary">Post com mais conversa</span>
+          </div>
+          <div className="flex items-center gap-3 text-[13px]">
+            <span className="font-semibold tabular-nums text-content-primary">
               {topConversationPost.comments} comentários
             </span>
             <span className="text-content-tertiary">·</span>
-            <span className="font-mono tabular-nums">
+            <span className="tabular-nums text-content-secondary">
               {topConversationPost.likes} gostos
             </span>
           </div>
           {topConversationPost.captionExcerpt && (
-            <p className="text-[12px] text-content-tertiary italic line-clamp-1 mt-0.5">
-              «{topConversationPost.captionExcerpt.slice(0, 80)}»
+            <p className="text-[12px] text-content-tertiary italic line-clamp-2 leading-relaxed">
+              «{topConversationPost.captionExcerpt.slice(0, 120)}»
             </p>
           )}
         </div>
       )}
 
-      {/* Brand reply disclaimer */}
+      {/* ── Z5: Works / Fails / Next ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <WfnCard
+          icon={<CheckCircle2 size={14} className="text-signal-success" />}
+          label="Funciona"
+          text={WORKS_MAP[status]}
+        />
+        <WfnCard
+          icon={<XCircle size={14} className="text-signal-danger" />}
+          label="Falha"
+          text={FAILS_MAP[status]}
+        />
+        <WfnCard
+          icon={<Lightbulb size={14} className="text-signal-warning" />}
+          label="Próximo passo"
+          text={commentIntel?.available && commentIntel.recommendedConversationAction
+            ? commentIntel.recommendedConversationAction
+            : NEXT_MAP[status]}
+        />
+      </div>
+
+      {/* Scope note — compact */}
       {status !== "unavailable" && (
-        <p className="text-[11px] text-content-tertiary italic leading-relaxed">
-          Esta leitura mede volume público de gostos e comentários; não avalia respostas da marca aos comentários.
+        <p className="text-[10.5px] text-content-tertiary italic leading-relaxed">
+          Leitura baseada em gostos e comentários públicos
+          {sampleSize ? ` de ${sampleSize} publicações` : ""}
+          {commentIntel?.available ? ` + ${commentIntel.sampleComments} comentários analisados` : ""}
+          . Não inclui DMs, respostas privadas ou comentários não visíveis.
         </p>
       )}
     </div>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function KpiCard({
+  icon,
+  label,
+  value,
+  sublabel,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  sublabel: string;
+}) {
   return (
-    <div className="rounded-md bg-surface-muted ring-1 ring-border-default px-2.5 py-2 flex flex-col gap-0.5">
-      <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
-      <span className="font-mono text-[14px] tabular-nums text-content-primary font-semibold">
+    <div className="rounded-xl border border-border-subtle bg-surface-secondary px-3.5 py-3 flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        {icon}
+        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
+      </div>
+      <span className="text-[20px] font-semibold tabular-nums text-content-primary leading-tight">
         {value}
       </span>
+      <span className="text-[11px] text-content-tertiary">{sublabel}</span>
+    </div>
+  );
+}
+
+function WfnCard({
+  icon,
+  label,
+  text,
+}: {
+  icon: ReactNode;
+  label: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface-muted/40 px-3.5 py-3 space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        {icon}
+        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
+      </div>
+      <p className="text-[12.5px] text-content-secondary leading-relaxed">{text}</p>
     </div>
   );
 }
