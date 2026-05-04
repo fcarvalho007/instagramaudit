@@ -1,77 +1,72 @@
 
-# Premium Analysis Loading Screen
+# QA Report — First Fold / Report Header
 
-## Audit findings
+## 1. Desktop Result
 
-1. **Files rendering loading screen**: Only `src/components/product/analysis-skeleton.tsx`, used exclusively by `src/routes/analyze.$username.tsx`.
-2. **State that triggers it**: The single `status: "loading"` state in `AnalyzePage` — covers initial load, fresh analysis, and retry. There is no granular progress from the backend (single fetch cycle).
-3. **Shared**: No — only used by the analyze route. Not used by admin, PDF print, or report blocks.
-4. **Impact of changing it**: Zero — isolated component, no other consumers.
-5. **Framer Motion**: Not installed. No motion libraries present.
-6. **Locked files**: `analysis-skeleton.tsx` is NOT locked. Safe to edit.
+**PASS.** The first fold is clean, premium, and Iconosquare-inspired:
 
-## Plan
+- **Identity card**: Clear 2-zone hierarchy. Zone 1 (avatar + handle + verified + INSTAGRAM pill + bio + icon actions) reads well. Zone 2 (stats + analysis meta) is compact and scannable.
+- **Stats row**: Mono-font numbers are readable; labels are uppercase eyebrow style.
+- **Competitor card**: Visually primary — solid border, icon, dark CTA with PRO badge.
+- **Multi-network card**: Secondary — dashed border, "EM BREVE" purple badge, informational tone.
+- **PDF/share buttons**: Discreet icon-only (34px), secondary styling. Not dominant.
+- **No clutter, no excessive glow, no dark panels** except the intentional dark CTA pill.
 
-### What to build
+## 2. Mobile Result (375px)
 
-Replace `AnalysisSkeleton` with a premium, animated loading experience inside the same file. No new files needed — the component is self-contained and only has one consumer.
+**PASS.**
 
-### Animation approach: CSS-only
+- No horizontal overflow.
+- Avatar, handle, verified badge, and INSTAGRAM pill fit and wrap correctly.
+- Action buttons (download + share) are accessible below the bio line.
+- Stats render as 2x2 grid with analysis meta in the 4th cell.
+- Competitor and multi-network cards stack vertically.
+- Mobile CTA is a compact 36px icon button (no overflow).
+- Social circles on multi-network card remain readable.
 
-No dependencies added. Use Tailwind keyframes already available (`animate-pulse`, `animate-fade-in`) plus a few new local `@keyframes` defined via inline `<style>` or Tailwind arbitrary values for:
+## 3. Accessibility Result
 
-- A rotating/pulsing analytics ring (SVG circles with `stroke-dasharray` animation)
-- Staggered fade-in of progress phase messages
-- A subtle shimmer gradient on the background card
+**PASS with one minor note.**
 
-### Component structure
+- Icon-only PDF button: `aria-label="Exportar relatório em PDF"` + `title="Exportar PDF"` — OK.
+- ShareReportPopover: inherits its own aria handling from the component.
+- Platform pill: `aria-label="Plataforma analisada: Instagram"` + `title="Instagram"` — OK.
+- Multi-network icon stack: `role="img"` + `aria-label="Redes futuras: Facebook, TikTok e YouTube"` — OK.
+- Competitor card: `aria-label="Comparar com concorrentes diretos"` — OK.
+- Roadmap card: `aria-label` + `title` — OK.
+- Roadmap dialog: `role="dialog"` + `aria-modal="true"` + `aria-label` — OK.
+- All interactive elements are `<button>` — keyboard reachable by default.
+- **Minor note**: The roadmap dialog has no focus trap; pressing Tab can escape the dialog. Not critical for an informational-only modal, but worth noting for a future polish pass.
 
-```
-AnalysisSkeleton({ username })
-├── Full-viewport centered layout (light surface background)
-├── White card (shadow-card, rounded-2xl, max-w-md, centered)
-│   ├── Animated analytics ring (SVG, ~80px, cyan/blue stroke animation)
-│   ├── Phase message (cycles through 4 messages via React state + setInterval)
-│   ├── Username badge (@frederico.m.carvalho)
-│   └── Subtle "Isto pode demorar até 30 segundos" footnote
-```
+## 4. Remaining Hardcoded Decorative Classes
 
-### Loading phase messages (cycle every ~4s)
+| Class | File | Purpose | Verdict |
+|---|---|---|---|
+| `from-slate-300 via-slate-200 to-slate-300` | report-hero-v2.tsx:240 | Avatar gradient ring | Local decorative — no semantic token for avatar rings. Intentional. |
+| `bg-white` | report-hero-v2.tsx:241,253 | Avatar inner ring / fallback bg | Light-theme only component, white is correct. |
+| `shadow-[0_1px_2px_rgba(15,23,42,0.15)]` | report-hero-v2.tsx:286 | Verified badge micro-shadow | Local decorative. Intentional. |
+| `bg-slate-900`, `hover:bg-slate-800` | comparison-header.tsx:47,57,155 | Dark CTA pill + dialog button | Intentional dark primary CTA — no semantic `bg-cta-primary` token exists. |
+| `shadow-[0_1px_3px_rgba(15,23,42,0.12)]` | comparison-header.tsx:47 | CTA pill shadow | Local decorative. |
+| `bg-blue-600` | comparison-header.tsx:80 | Facebook brand circle | Brand-approximate colour. Intentional. |
+| `bg-red-600` | comparison-header.tsx:82 | YouTube brand circle | Brand-approximate colour. Intentional. |
+| `bg-amber-400/20`, `text-amber-500` | comparison-header.tsx:51 | PRO badge gold accent | Follows project gold-accent rule. Intentional. |
+| `bg-purple-100`, `text-purple-600` | comparison-header.tsx:92 | "EM BREVE" badge | No semantic purple token. Intentional local decorative. |
+| `ring-white` | comparison-header.tsx:121 | Social circle ring separator | Light-theme white. Intentional. |
 
-1. "A recolher dados do perfil…"
-2. "A analisar métricas e engagement…"
-3. "A comparar com benchmarks do setor…"
-4. "A preparar o teu relatório…"
+All hardcoded values are local decorative or brand-specific. None are candidates for semantic tokens at this stage.
 
-These are cosmetic — the backend has no real progress events. The cycling messages give the perception of progress.
+## 5. Scope Confirmation
 
-### Mobile behaviour
+- No backend files changed.
+- No adapter files changed.
+- No global tokens (`tokens.css`, `tokens-light.css`) changed.
+- No admin files changed.
+- Block 1 scorecards: unchanged.
+- Block 2: unchanged.
+- Only `report-hero-v2.tsx`, `comparison-header.tsx`, and `report-shell-v2.tsx` were modified across Steps 1-3.
 
-- Card remains centered, max-w constrained, padded
-- Ring scales down slightly on mobile (`size-16 md:size-20`)
-- Text remains readable at 375px
+## 6. Final Recommendation
 
-### Files changed
+**PASS.**
 
-| File | Change |
-|------|--------|
-| `src/components/product/analysis-skeleton.tsx` | Full rewrite of the component body. Same export name, same props interface. |
-
-No other files touched.
-
-### Risk level
-
-**Very low.** Single file, single consumer, no backend changes, no locked files, no new dependencies, CSS-only animations.
-
-### Not changed
-
-- Backend / analysis pipeline
-- Global tokens, styles.css, tokens-light.css
-- Locked files
-- Admin, report blocks, PDF route
-- Cache logic, budget constants
-- No new dependencies
-
-### Confirmation
-
-No code was changed during this audit.
+No critical or visual bugs found. The only future-polish item is adding a focus trap to the roadmap info dialog, which is non-blocking for this milestone.
