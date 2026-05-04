@@ -435,7 +435,15 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
 
 function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
   if (!r.available) return null;
-  const max = Math.max(1, ...r.items.map((x) => x.weight));
+  const maxWeight = Math.max(1, ...r.items.map((x) => x.weight));
+  const maxEng = Math.max(0.0001, ...r.items.map((x) => x.avgEngagement));
+  // When all weights are equal, use engagement for bar differentiation
+  const allSameWeight = r.items.every((it) => it.weight === r.items[0]?.weight);
+
+  // Cloud sizing: use engagement rank when weights are tied
+  const sortedByEng = [...r.items].sort((a, b) => b.avgEngagement - a.avgEngagement);
+  const engRank = new Map(sortedByEng.map((it, i) => [it.text, i]));
+
   return (
     <ReportDiagnosticCard
       key="q03"
@@ -450,23 +458,26 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
       sourceType="dados"
       sourceDetail="Hashtags"
     >
-      <div className="grid grid-cols-1 sm:grid-cols-[1.15fr_1fr] gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr] gap-6">
         {/* Left — hashtag cloud */}
         <div>
           <p className="text-eyebrow-sm text-content-tertiary mb-3">Nuvem de hashtags</p>
-          <div className="rounded-xl bg-surface-muted/70 p-4 flex flex-wrap gap-2 content-start items-start min-h-[80px]">
-            {r.items.map((it, i) => {
-              const isDominant = it.weight === max;
+          <div className="rounded-xl bg-surface-muted/50 border border-border-subtle p-5 flex flex-wrap gap-2.5 content-start items-center justify-center min-h-[100px]">
+            {r.items.map((it) => {
+              const rank = engRank.get(it.text) ?? r.items.length;
+              // Size tiers: 0 = largest, 1 = medium-large, 2+ = base
+              const sizeClass =
+                rank === 0
+                  ? "px-4 py-2 text-[15px] font-semibold text-accent-primary border-accent-primary/30"
+                  : rank === 1
+                    ? "px-3.5 py-1.5 text-[14px] font-medium text-accent-primary/90 border-accent-primary/20"
+                    : rank === 2
+                      ? "px-3 py-1.5 text-[13px] font-medium text-content-primary border-border-subtle"
+                      : "px-2.5 py-1 text-[12px] text-content-secondary border-border-subtle";
               return (
                 <span
                   key={it.text}
-                  className={
-                    isDominant
-                      ? "inline-flex items-center rounded-full border border-border-subtle bg-surface-secondary px-4 py-2 font-display text-base font-semibold text-accent-primary"
-                      : i < 2
-                        ? "inline-flex items-center rounded-full border border-border-subtle bg-surface-secondary px-3 py-1.5 text-sm font-medium text-accent-primary"
-                        : "inline-flex items-center rounded-full border border-border-subtle bg-surface-secondary px-2.5 py-1 text-xs text-content-secondary"
-                  }
+                  className={`inline-flex items-center rounded-full border bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${sizeClass}`}
                 >
                   {it.text}
                 </span>
@@ -475,25 +486,36 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
           </div>
         </div>
 
-        {/* Right — frequency chart */}
+        {/* Right — frequency + engagement */}
         <div>
-          <p className="text-eyebrow-sm text-content-tertiary mb-3">Frequência</p>
-          <ul className="space-y-2.5">
-            {r.items.map((it) => {
-              const pct = (it.weight / max) * 100;
-              const isTop = it.weight === max;
+          <p className="text-eyebrow-sm text-content-tertiary mb-3">Frequência e envolvimento</p>
+          <ul className="space-y-3">
+            {r.items.map((it, i) => {
+              // Bar uses engagement when all weights are tied, otherwise weight
+              const barValue = allSameWeight
+                ? (it.avgEngagement / maxEng) * 100
+                : (it.weight / maxWeight) * 100;
+              const barPct = Math.max(8, barValue);
+              const isTop = i === 0;
               return (
                 <li key={it.text} className="text-sm">
                   <div className="flex items-center justify-between gap-3 mb-1">
-                    <span className="text-content-secondary truncate">{it.text}</span>
-                    <span className="font-mono text-[11px] text-content-tertiary tabular-nums shrink-0">
-                      {it.weight}×
-                    </span>
+                    <span className={`truncate ${isTop ? "font-medium text-content-primary" : "text-content-secondary"}`}>{it.text}</span>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className="font-mono text-[11px] text-content-tertiary tabular-nums">
+                        {it.weight}×
+                      </span>
+                      {it.avgEngagement > 0 ? (
+                        <span className="font-mono text-[11px] tabular-nums text-accent-primary font-medium">
+                          {it.avgEngagement.toString().replace(".", ",")}%
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
                     <div
-                      className={isTop ? "h-full bg-accent-primary" : "h-full bg-accent-primary/20"}
-                      style={{ width: `${pct}%` }}
+                      className={isTop ? "h-full rounded-full bg-accent-primary" : "h-full rounded-full bg-accent-primary/40"}
+                      style={{ width: `${barPct}%` }}
                       aria-hidden
                     />
                   </div>

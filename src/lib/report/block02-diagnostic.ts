@@ -611,7 +611,7 @@ export function classifyAudienceResponse(
 
 export interface HashtagsResult {
   available: boolean;
-  items: Array<{ text: string; weight: number }>;
+  items: Array<{ text: string; weight: number; avgEngagement: number }>;
   sampleSize: number;
 }
 
@@ -633,6 +633,7 @@ export function classifyHashtags(
     items: tags.slice(0, 5).map((t) => ({
       text: t.tag.startsWith("#") ? t.tag : `#${t.tag}`,
       weight: t.uses,
+      avgEngagement: t.avgEngagement ?? 0,
     })),
   };
 }
