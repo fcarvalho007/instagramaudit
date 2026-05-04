@@ -20,17 +20,17 @@ export function ReportDiagnosticGroup({
 }: Props) {
   return (
      <div className="space-y-4 md:space-y-5">
-      <div className="flex items-center gap-3 border-b border-slate-200/60 pb-4">
+      <div className="flex items-center gap-3 border-b border-border-subtle pb-4">
         <span
           aria-hidden
-          className="size-5 rounded-full bg-slate-100 inline-flex items-center justify-center text-[11px] font-bold text-slate-500 shrink-0"
+          className="size-5 rounded-full bg-surface-muted inline-flex items-center justify-center text-[11px] font-bold text-content-tertiary shrink-0"
         >
           {letter}
         </span>
-        <p className="text-eyebrow text-slate-500">
+        <p className="text-eyebrow text-content-tertiary">
           {label}
         </p>
-        <span className="text-[10px] font-medium tracking-[0.08em] uppercase ml-auto text-slate-400 tabular-nums">
+        <span className="text-[10px] font-medium tracking-[0.08em] uppercase ml-auto text-content-tertiary tabular-nums">
           {questionsCount} {questionsCount === 1 ? "PERGUNTA" : "PERGUNTAS"}
         </span>
       </div>
