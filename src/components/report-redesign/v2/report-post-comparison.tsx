@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, ImageOff, Sparkles } from "lucide-react";
+import { Heart, MessageCircle, ImageOff, Sparkles, TrendingUp, TrendingDown } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
@@ -108,7 +108,6 @@ export function PostComparisonBlock({
                   <RankRow
                     rank={i + 1}
                     label={BEST_LABELS[i]}
-                    engPct={post.engagementPct}
                     tone="best"
                     mirror={false}
                   />
@@ -130,11 +129,10 @@ export function PostComparisonBlock({
                   <RankRow
                     rank={i + 1}
                     label={WORST_LABELS[i]}
-                    engPct={post.engagementPct}
                     tone="worst"
                     mirror={true}
                   />
-                  <PostCard post={post} tone="worst" />
+                  <PostCard post={post} tone="worst" mirror />
                 </div>
               ))}
             </div>
@@ -157,37 +155,54 @@ export function PostComparisonBlock({
 // ─── VS Bar ─────────────────────────────────────────────────────────
 
 function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
+  const worstBarPct = bestEng > 0 ? Math.max(8, (worstEng / bestEng) * 100) : 50;
+
   return (
     <div
-      className="relative flex items-center justify-between rounded-xl border border-border-default px-4 py-3 md:px-6 md:py-3.5 overflow-hidden"
+      className="relative flex items-center justify-between rounded-2xl border border-border-default px-5 py-4 md:px-8 md:py-5 overflow-hidden"
       style={{
         background:
-          "linear-gradient(90deg, rgba(37,99,217,0.06) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(217,119,6,0.06) 100%)",
+          "linear-gradient(90deg, rgba(37,99,217,0.10) 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0) 65%, rgba(217,119,6,0.10) 100%)",
       }}
     >
       {/* Best side */}
-      <div className="flex flex-col items-start gap-0.5">
-        <span className="text-eyebrow-sm text-accent-primary">MELHOR</span>
-        <span className="font-mono text-[18px] md:text-[22px] font-bold tabular-nums text-accent-primary">
+      <div className="flex flex-col items-start gap-1 min-w-[80px] md:min-w-[120px]">
+        <div className="flex items-center gap-1.5">
+          <TrendingUp className="size-3.5 text-accent-primary" aria-hidden="true" />
+          <span className="text-eyebrow-sm text-accent-primary">MELHOR</span>
+        </div>
+        <span className="font-mono text-[22px] md:text-[26px] font-bold tabular-nums text-accent-primary leading-none">
           {bestEng.toString().replace(".", ",")}%
         </span>
+        <div className="w-full h-1.5 rounded-full bg-accent-primary/15 mt-1">
+          <div className="h-full rounded-full bg-accent-primary" style={{ width: "100%" }} />
+        </div>
       </div>
 
       {/* VS badge */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-        <div className="flex items-center justify-center size-9 md:size-10 rounded-full bg-surface-secondary border-2 border-border-default shadow-sm">
-          <span className="text-[11px] md:text-[12px] font-bold text-content-secondary tracking-wide">
+        <div className="flex items-center justify-center size-11 md:size-12 rounded-full bg-white border-2 border-border-default shadow-md">
+          <span className="text-[11px] md:text-[12px] font-bold text-content-primary tracking-wider">
             VS
           </span>
         </div>
       </div>
 
       {/* Worst side */}
-      <div className="flex flex-col items-end gap-0.5">
-        <span className="text-eyebrow-sm text-signal-warning">PIOR</span>
-        <span className="font-mono text-[18px] md:text-[22px] font-bold tabular-nums text-signal-warning">
+      <div className="flex flex-col items-end gap-1 min-w-[80px] md:min-w-[120px]">
+        <div className="flex items-center gap-1.5">
+          <span className="text-eyebrow-sm text-signal-warning">PIOR</span>
+          <TrendingDown className="size-3.5 text-signal-warning" aria-hidden="true" />
+        </div>
+        <span className="font-mono text-[22px] md:text-[26px] font-bold tabular-nums text-signal-warning leading-none">
           {worstEng.toString().replace(".", ",")}%
         </span>
+        <div className="w-full h-1.5 rounded-full bg-signal-warning/15 mt-1">
+          <div
+            className="h-full rounded-full bg-signal-warning ml-auto"
+            style={{ width: `${worstBarPct}%` }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -198,13 +213,11 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
 function RankRow({
   rank,
   label,
-  engPct,
   tone,
   mirror,
 }: {
   rank: number;
   label: string;
-  engPct: number;
   tone: "best" | "worst";
   mirror: boolean;
 }) {
@@ -212,8 +225,6 @@ function RankRow({
     tone === "best"
       ? "bg-accent-primary text-white"
       : "bg-signal-warning text-white";
-  const engClasses =
-    tone === "best" ? "text-accent-primary" : "text-signal-warning";
 
   const badge = (
     <span
@@ -226,27 +237,16 @@ function RankRow({
     </span>
   );
   const labelEl = (
-    <span className="text-[12px] font-semibold text-content-primary truncate">
+    <span className="text-[13px] font-semibold text-content-primary truncate">
       {label}
-    </span>
-  );
-  const engEl = (
-    <span
-      className={cn(
-        "text-[12px] font-bold tabular-nums font-mono",
-        engClasses,
-      )}
-    >
-      {engPct.toString().replace(".", ",")}%
     </span>
   );
 
   if (mirror) {
     return (
       <div className="flex items-center gap-2">
-        {engEl}
-        <span className="flex-1" />
         {labelEl}
+        <span className="flex-1" />
         {badge}
       </div>
     );
@@ -256,8 +256,6 @@ function RankRow({
     <div className="flex items-center gap-2">
       {badge}
       {labelEl}
-      <span className="flex-1" />
-      {engEl}
     </div>
   );
 }
@@ -266,14 +264,14 @@ function RankRow({
 
 function CentralDivider({ multiplierLabel }: { multiplierLabel: string }) {
   return (
-    <div className="hidden md:flex flex-col items-center justify-center gap-3 px-4 min-w-[80px]">
+    <div className="hidden md:flex flex-col items-center justify-center gap-3 px-5 min-w-[90px]">
       <div className="w-px flex-1 bg-border-default" />
       {multiplierLabel && (
-        <div className="flex flex-col items-center gap-1">
-          <span className="font-mono text-[20px] font-bold text-content-primary tabular-nums">
+        <div className="flex flex-col items-center gap-1.5 bg-surface-muted rounded-xl px-3 py-2.5">
+          <span className="font-mono text-[24px] font-bold text-content-primary tabular-nums leading-none">
             {multiplierLabel}
           </span>
-          <span className="text-eyebrow-sm text-content-tertiary text-center leading-tight max-w-[70px]">
+          <span className="text-eyebrow-sm text-content-tertiary text-center leading-tight max-w-[80px]">
             DIFERENÇA ENTRE EXTREMOS
           </span>
         </div>
@@ -294,7 +292,7 @@ function MobileDifferenceMarker({
   return (
     <div className="flex md:hidden items-center gap-3 py-2">
       <div className="h-px flex-1 bg-border-default" />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 bg-surface-muted rounded-lg px-3 py-1.5">
         <span className="font-mono text-[16px] font-bold text-content-primary tabular-nums">
           {multiplierLabel}
         </span>
@@ -318,15 +316,15 @@ function AiReadingCard({
 }) {
   return (
     <div
-      className="rounded-xl border border-border-default p-5 md:p-6 space-y-3 overflow-hidden"
+      className="rounded-2xl border border-border-default p-5 md:p-6 space-y-3 overflow-hidden"
       style={{
         background:
-          "linear-gradient(90deg, rgba(37,99,217,0.04) 0%, rgba(255,255,255,0) 45%, rgba(255,255,255,0) 55%, rgba(217,119,6,0.04) 100%)",
+          "linear-gradient(90deg, rgba(37,99,217,0.07) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(217,119,6,0.07) 100%)",
       }}
     >
-      <div className="flex items-center gap-2.5">
-        <div className="flex items-center justify-center size-7 rounded-full bg-tint-primary">
-          <Sparkles className="size-3.5 text-accent-primary" />
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center size-9 rounded-full bg-tint-primary">
+          <Sparkles className="size-4 text-accent-primary" />
         </div>
         <span className="text-eyebrow-sm text-content-secondary">
           LEITURA IA · COMPARAÇÃO DE EXTREMOS
@@ -336,11 +334,11 @@ function AiReadingCard({
       <div>{children}</div>
       {/* Deterministic fallback always shown as supporting context */}
       {fallback && (
-        <div className="space-y-1.5 pt-1">
-          <p className="font-display text-[16px] md:text-[18px] font-bold text-content-primary leading-snug">
+        <div className="space-y-2 pt-1">
+          <p className="font-display text-[18px] md:text-[20px] font-bold text-content-primary leading-snug">
             {fallback.headline}
           </p>
-          <p className="text-[13px] text-content-secondary leading-relaxed">
+          <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed max-w-3xl">
             {fallback.body}
           </p>
         </div>
@@ -354,13 +352,15 @@ function AiReadingCard({
 function PostCard({
   post,
   tone,
+  mirror = false,
 }: {
   post: EnrichedPost;
   tone: "best" | "worst";
+  mirror?: boolean;
 }) {
   const [imgError, setImgError] = useState(false);
 
-  const topBorder =
+  const topBorderColor =
     tone === "best" ? "border-t-accent-primary" : "border-t-signal-warning";
 
   const thumbUrl = (post as EnrichedPost & { thumbnailUrl?: string })
@@ -370,13 +370,14 @@ function PostCard({
   return (
     <div
       className={cn(
-        "flex gap-3 md:gap-4 rounded-xl border border-t-2 bg-surface-secondary p-3 md:p-4",
-        "border-border-default shadow-card",
-        topBorder,
+        "flex gap-3 md:gap-4 rounded-2xl border border-t-[3px] bg-white p-3 md:p-4",
+        "border-border-default shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)]",
+        topBorderColor,
+        mirror ? "md:flex-row-reverse" : "",
       )}
     >
       {/* Thumbnail — 3:4 aspect ratio */}
-      <div className="relative shrink-0 w-[72px] md:w-[80px] aspect-[3/4] rounded-lg overflow-hidden bg-surface-muted">
+      <div className="relative shrink-0 w-[80px] md:w-[88px] aspect-[3/4] rounded-lg overflow-hidden bg-surface-muted">
         {showImg ? (
           <img
             src={thumbUrl}
@@ -401,16 +402,10 @@ function PostCard({
 
       {/* Content */}
       <div className="flex-1 min-w-0 flex flex-col justify-between gap-1">
-        {/* Date + format metadata */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary font-medium">
-            {post.date}
-          </span>
-          <span className="text-[10px] text-content-tertiary">·</span>
-          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary font-medium">
-            {formatChipLabel(post.format)}
-          </span>
-        </div>
+        {/* Date metadata */}
+        <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary font-medium">
+          {post.date}
+        </span>
 
         {/* Caption */}
         <p className="text-[12px] md:text-[13px] text-content-primary leading-snug line-clamp-2 font-medium">
@@ -418,24 +413,16 @@ function PostCard({
         </p>
 
         {/* Metrics */}
-        <div className="flex items-center gap-4 pt-1.5 mt-auto border-t border-border-subtle">
+        <div className="flex items-center gap-3.5 pt-1.5 mt-auto border-t border-border-subtle">
           <span className="inline-flex items-center gap-1 text-[11px] text-content-secondary">
             <Heart className="size-3" aria-hidden="true" />
-            <span className="tabular-nums">
+            <span className="tabular-nums font-mono">
               {post.likes.toLocaleString("pt-PT")}
             </span>
           </span>
           <span className="inline-flex items-center gap-1 text-[11px] text-content-secondary">
             <MessageCircle className="size-3" aria-hidden="true" />
-            <span className="tabular-nums">{post.comments}</span>
-          </span>
-          <span
-            className={cn(
-              "ml-auto text-[12px] font-bold tabular-nums",
-              tone === "best" ? "text-accent-primary" : "text-signal-warning",
-            )}
-          >
-            {post.engagementPct.toString().replace(".", ",")}%
+            <span className="tabular-nums font-mono">{post.comments}</span>
           </span>
         </div>
       </div>
