@@ -90,13 +90,13 @@ export function ReportShellV2({
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
         <ReportHeroV2 result={result} actions={actions} />
 
-        {/* Tabs mobile sticky abaixo do hero/posicionamento */}
-        <ReportBlockTopTabs />
-
-        {/* Banner concorrentes — destaque acima dos blocos */}
-        <div className="mx-auto max-w-[1380px] px-5 md:px-6 pt-5 md:pt-6">
+        {/* Auxiliary action row — competitor + multi-network */}
+        <div className="mx-auto max-w-[1380px] px-5 md:px-6">
           <ComparisonHeader />
         </div>
+
+        {/* Tabs mobile sticky abaixo do hero */}
+        <ReportBlockTopTabs />
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1380px] px-5 md:px-6">
