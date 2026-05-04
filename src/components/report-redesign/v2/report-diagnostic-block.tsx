@@ -567,17 +567,12 @@ function renderAudienceCard(
       <DiagnosticAudienceHighlight
         avgLikes={r.avgLikes}
         avgComments={r.avgComments}
-        totalLikes={r.totals.likes}
-        totalComments={r.totals.comments}
-        postsWithComments={r.totals.postsWithComments}
         sampleSize={r.sampleSize}
-        tone={highlightTone}
         topConversationPost={r.topConversationPost}
         status={r.status}
+        commentIntel={commentIntel?.available ? commentIntel : null}
       />
-      {commentIntel?.available ? (
-        <CommentIntelligenceSection data={commentIntel} />
-      ) : (
+      {!commentIntel?.available && (
         <CommentIntelligenceUnavailable data={commentIntel} />
       )}
     </ReportDiagnosticCard>
