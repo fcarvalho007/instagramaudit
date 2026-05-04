@@ -1,5 +1,5 @@
-import { Heart, MessageCircle, ExternalLink, TrendingUp, TrendingDown, ImageOff } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Heart, MessageCircle, ExternalLink, TrendingUp, TrendingDown, ImageOff, Sparkles } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 
@@ -13,8 +13,8 @@ interface PostComparisonBlockProps {
 }
 
 /**
- * "O que funcionou melhor — e pior"
- * 2 best + 2 worst posts side-by-side, Iconosquare-clean card style.
+ * "Variante 2 · Pódio e Perigo"
+ * 2 best vs 2 worst posts with central divider, VS bar, and AI reading card.
  */
 export function PostComparisonBlock({
   topPosts,
@@ -26,49 +26,72 @@ export function PostComparisonBlock({
   const worst2 = bottomPosts.slice(0, 2);
   const hasComparison = best2.length > 0 && worst2.length > 0;
 
+  const bestEng = best2[0]?.engagementPct ?? 0;
+  const worstEng = worst2[worst2.length - 1]?.engagementPct ?? 0;
+  const multiplier = useMemo(
+    () => (worstEng > 0 ? Math.round(bestEng / worstEng) : 0),
+    [bestEng, worstEng],
+  );
+  const multiplierLabel = multiplier > 1 ? `${multiplier}×` : "";
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
+    <div className="space-y-6">
+      {/* ── Header ─────────────────────────────────────── */}
+      <div className="space-y-1.5">
         <p className="text-eyebrow-sm text-content-secondary">
           MELHORES E PIORES PUBLICAÇÕES
         </p>
         <h3 className="font-sans text-[24px] md:text-[28px] font-bold tracking-tight text-content-primary leading-tight">
-          O que funcionou melhor — e pior
+          Os extremos do conteúdo
         </h3>
         <p className="text-[14px] md:text-[15px] text-content-secondary leading-relaxed max-w-2xl">
-          Comparação entre os conteúdos com maior e menor envolvimento
+          2 que voaram e 2 que caíram
           {windowLabel ? ` nos ${windowLabel}` : " na janela analisada"}.
+          {multiplierLabel
+            ? ` ${multiplierLabel} de diferença entre o melhor e o pior.`
+            : ""}
         </p>
       </div>
 
       {hasComparison ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-          {/* Best 2 column */}
-          <PostGroup
-            label="Melhores 2"
-            helper="Conteúdos com maior envolvimento"
-            icon={<TrendingUp className="size-4" />}
-            accentBg="bg-tint-primary"
-            accentText="text-accent-primary"
-            accentBorder="border-border-subtle"
-            posts={best2}
-            rankPrefix="#"
-          />
-          {/* Worst 2 column */}
-          <PostGroup
-            label="A melhorar"
-            helper="Conteúdos com menor envolvimento"
-            icon={<TrendingDown className="size-4" />}
-            accentBg="bg-tint-warning"
-            accentText="text-signal-warning"
-            accentBorder="border-border-subtle"
-            posts={worst2}
-            rankPrefix="A melhorar #"
-          />
-        </div>
+        <>
+          {/* ── VS Bar ─────────────────────────────────── */}
+          <VsBar bestEng={bestEng} worstEng={worstEng} />
+
+          {/* ── Main grid: best | divider | worst ──────── */}
+          {/* Desktop: 3 columns. Mobile: stacked. */}
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 md:gap-0">
+            {/* Best column */}
+            <div className="space-y-3 md:pr-6">
+              <ColumnHeader
+                label="Melhores 2"
+                helper="Maior envolvimento"
+                icon={<TrendingUp className="size-3.5" />}
+                tone="best"
+              />
+              {best2.map((post, i) => (
+                <PostCard key={post.id} post={post} rank={`#${i + 1}`} tone="best" />
+              ))}
+            </div>
+
+            {/* Central divider — hidden on mobile */}
+            <CentralDivider multiplierLabel={multiplierLabel} />
+
+            {/* Worst column */}
+            <div className="space-y-3 md:pl-6">
+              <ColumnHeader
+                label="A melhorar"
+                helper="Menor envolvimento"
+                icon={<TrendingDown className="size-3.5" />}
+                tone="worst"
+              />
+              {worst2.map((post, i) => (
+                <PostCard key={post.id} post={post} rank={`#${i + 1}`} tone="worst" />
+              ))}
+            </div>
+          </div>
+        </>
       ) : (
-        /* Fallback: just show best posts if not enough data for comparison */
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {best2.map((post, i) => (
             <PostCard key={post.id} post={post} rank={`#${i + 1}`} tone="best" />
@@ -76,57 +99,116 @@ export function PostComparisonBlock({
         </div>
       )}
 
-      {/* AI Insight */}
-      <div className="mt-2">{renderInsight()}</div>
+      {/* ── AI / Editorial reading card ────────────────── */}
+      <AiReadingCard>{renderInsight()}</AiReadingCard>
     </div>
   );
 }
 
-// ─── Post Group ─────────────────────────────────────────────────────
+// ─── VS Bar ─────────────────────────────────────────────────────────
 
-function PostGroup({
+function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
+  return (
+    <div
+      className="relative flex items-center justify-between rounded-xl border border-border-default px-4 py-3 md:px-6 md:py-3.5 overflow-hidden"
+      style={{
+        background:
+          "linear-gradient(90deg, rgba(37,99,217,0.06) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(217,119,6,0.06) 100%)",
+      }}
+    >
+      {/* Best value */}
+      <div className="flex items-center gap-2">
+        <TrendingUp className="size-4 text-accent-primary" />
+        <span className="font-mono text-[18px] md:text-[22px] font-bold tabular-nums text-accent-primary">
+          {bestEng.toString().replace(".", ",")}%
+        </span>
+      </div>
+
+      {/* VS badge */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+        <div className="flex items-center justify-center size-9 md:size-10 rounded-full bg-surface-secondary border-2 border-border-default shadow-sm">
+          <span className="text-[11px] md:text-[12px] font-bold text-content-secondary tracking-wide">
+            VS
+          </span>
+        </div>
+      </div>
+
+      {/* Worst value */}
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[18px] md:text-[22px] font-bold tabular-nums text-signal-warning">
+          {worstEng.toString().replace(".", ",")}%
+        </span>
+        <TrendingDown className="size-4 text-signal-warning" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Column Header ──────────────────────────────────────────────────
+
+function ColumnHeader({
   label,
   helper,
   icon,
-  accentBg,
-  accentText,
-  accentBorder,
-  posts,
-  rankPrefix,
+  tone,
 }: {
   label: string;
   helper: string;
   icon: ReactNode;
-  accentBg: string;
-  accentText: string;
-  accentBorder: string;
-  posts: EnrichedPost[];
-  rankPrefix: string;
+  tone: "best" | "worst";
 }) {
-  const tone = rankPrefix === "#" ? "best" : "worst";
+  const accent = tone === "best" ? "text-accent-primary" : "text-signal-warning";
+  const bg = tone === "best" ? "bg-tint-primary" : "bg-tint-warning";
   return (
-    <div className="space-y-4">
-      {/* Group header */}
-      <div className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 border", accentBg, accentBorder)}>
-        <span className={cn("shrink-0", accentText)}>{icon}</span>
-        <div className="min-w-0">
-          <p className={cn("text-[13px] font-semibold leading-snug", accentText)}>
-            {label}
-          </p>
-          <p className="text-[11px] text-content-secondary leading-snug">{helper}</p>
+    <div className={cn("flex items-center gap-2 rounded-lg px-3 py-2 border border-border-subtle", bg)}>
+      <span className={cn("shrink-0", accent)}>{icon}</span>
+      <div className="min-w-0">
+        <p className={cn("text-[13px] font-semibold leading-snug", accent)}>{label}</p>
+        <p className="text-[11px] text-content-secondary leading-snug">{helper}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Central Divider ────────────────────────────────────────────────
+
+function CentralDivider({ multiplierLabel }: { multiplierLabel: string }) {
+  return (
+    <div className="hidden md:flex flex-col items-center justify-center gap-3 px-4 min-w-[80px]">
+      <div className="w-px flex-1 bg-border-default" />
+      {multiplierLabel && (
+        <div className="flex flex-col items-center gap-1">
+          <span className="font-mono text-[20px] font-bold text-content-primary tabular-nums">
+            {multiplierLabel}
+          </span>
+          <span className="text-eyebrow-sm text-content-tertiary text-center leading-tight max-w-[70px]">
+            DIFERENÇA ENTRE EXTREMOS
+          </span>
         </div>
+      )}
+      <div className="w-px flex-1 bg-border-default" />
+    </div>
+  );
+}
+
+// ─── AI Reading Card ────────────────────────────────────────────────
+
+function AiReadingCard({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="rounded-xl border border-border-default p-5 md:p-6 space-y-3 overflow-hidden"
+      style={{
+        background:
+          "linear-gradient(90deg, rgba(37,99,217,0.04) 0%, rgba(255,255,255,0) 45%, rgba(255,255,255,0) 55%, rgba(217,119,6,0.04) 100%)",
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <Sparkles className="size-4 text-accent-primary" />
+        <span className="text-eyebrow-sm text-content-secondary">
+          LEITURA IA · COMPARAÇÃO DE EXTREMOS
+        </span>
       </div>
-      {/* Cards */}
-      <div className="space-y-3.5">
-        {posts.map((post, i) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            rank={`${rankPrefix}${i + 1}`}
-            tone={tone}
-          />
-        ))}
-      </div>
+      <div>{children}</div>
     </div>
   );
 }
@@ -166,15 +248,15 @@ function PostCard({
     <Wrapper
       {...wrapperProps}
       className={cn(
-        "group flex gap-4 md:gap-5 rounded-xl border bg-surface-secondary p-4 md:p-5",
+        "group flex gap-3 md:gap-4 rounded-xl border bg-surface-secondary p-3 md:p-4",
         "border-border-default shadow-card",
         "transition-all duration-200",
         permalink && tone === "best" && "hover:border-accent-primary/30 hover:shadow-[0_2px_8px_rgba(37,99,217,0.08)] cursor-pointer",
         permalink && tone === "worst" && "hover:border-signal-warning/30 hover:shadow-[0_2px_8px_rgba(217,119,6,0.06)] cursor-pointer",
       )}
     >
-      {/* Thumbnail */}
-      <div className="relative shrink-0 w-[110px] md:w-[120px] aspect-square rounded-lg overflow-hidden bg-surface-muted">
+      {/* Thumbnail — 3:4 aspect ratio */}
+      <div className="relative shrink-0 w-[80px] md:w-[100px] aspect-[3/4] rounded-lg overflow-hidden bg-surface-muted">
         {showImg ? (
           <img
             src={thumbUrl}
@@ -185,7 +267,7 @@ function PostCard({
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-surface-muted">
-            <ImageOff className="size-6 text-content-tertiary/40" aria-hidden="true" />
+            <ImageOff className="size-5 text-content-tertiary/40" aria-hidden="true" />
           </div>
         )}
         {/* Format chip */}
@@ -194,21 +276,21 @@ function PostCard({
         </span>
         {permalink ? (
           <span className="absolute inset-0 z-10 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors duration-200">
-            <ExternalLink className="size-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow" />
+            <ExternalLink className="size-3.5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow" />
           </span>
         ) : null}
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 flex flex-col justify-between gap-1.5">
+      <div className="flex-1 min-w-0 flex flex-col justify-between gap-1">
         {/* Top: date + rank */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] uppercase tracking-[0.04em] text-content-tertiary font-medium">
+          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary font-medium">
             {post.date}
           </span>
           <span
             className={cn(
-              "text-[11px] font-semibold px-2.5 py-0.5 rounded-full border leading-none whitespace-nowrap",
+              "text-[10px] font-semibold px-2 py-0.5 rounded-full border leading-none whitespace-nowrap",
               rankChipClasses,
             )}
           >
@@ -217,22 +299,22 @@ function PostCard({
         </div>
 
         {/* Caption */}
-        <p className="text-[13px] md:text-[14px] text-content-primary leading-snug line-clamp-3 font-medium">
+        <p className="text-[12px] md:text-[13px] text-content-primary leading-snug line-clamp-2 font-medium">
           {post.caption || "Sem legenda"}
         </p>
 
         {/* Metrics */}
-        <div className="flex items-center gap-5 pt-2 mt-auto border-t border-border-subtle">
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-content-secondary">
-            <Heart className="size-3.5" aria-hidden="true" />
+        <div className="flex items-center gap-4 pt-1.5 mt-auto border-t border-border-subtle">
+          <span className="inline-flex items-center gap-1 text-[11px] text-content-secondary">
+            <Heart className="size-3" aria-hidden="true" />
             <span className="tabular-nums">{post.likes.toLocaleString("pt-PT")}</span>
           </span>
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-content-secondary">
-            <MessageCircle className="size-3.5" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1 text-[11px] text-content-secondary">
+            <MessageCircle className="size-3" aria-hidden="true" />
             <span className="tabular-nums">{post.comments}</span>
           </span>
           <span className={cn(
-            "ml-auto text-[13px] font-bold tabular-nums",
+            "ml-auto text-[12px] font-bold tabular-nums",
             tone === "best" ? "text-accent-primary" : "text-content-tertiary",
           )}>
             {post.engagementPct.toString().replace(".", ",")}%
