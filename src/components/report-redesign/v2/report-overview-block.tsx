@@ -18,7 +18,7 @@ import {
 import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
-import { ReportTopPosts } from "@/components/report/report-top-posts";
+import { PostComparisonBlock } from "./report-post-comparison";
 
 export interface Props {
   result: AdapterResult;
@@ -90,14 +90,13 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
         />
       </div>
 
-      {/* Top Posts */}
-      <div>
-        <span className="text-eyebrow-sm text-slate-500 block mb-3">
-          MELHORES PUBLICAÇÕES
-        </span>
-        <ReportTopPosts />
-        <div className="mt-4">{renderInsight("topPosts")}</div>
-      </div>
+      {/* Best vs Worst Posts */}
+      <PostComparisonBlock
+        topPosts={result.enriched.topPosts}
+        bottomPosts={result.enriched.bottomPosts}
+        renderInsight={() => renderInsight("topPosts")}
+        windowLabel={result.data.meta?.windowShortLabel}
+      />
     </div>
   );
 }

@@ -265,6 +265,19 @@ export interface ReportEnriched {
     date: string;
     mentions: string[];
   }>;
+  /** Bottom 2 posts by engagement — empty if fewer than 4 posts available. */
+  bottomPosts: Array<{
+    id: string;
+    permalink: string | null;
+    shortcode: string | null;
+    caption: string;
+    format: "Reel" | "Carousel" | "Imagem";
+    likes: number;
+    comments: number;
+    engagementPct: number;
+    date: string;
+    mentions: string[];
+  }>;
   mentionsSummary: Array<{ handle: string; count: number }>;
   benchmarkSource: {
     datasetVersion: string | null;
@@ -1212,6 +1225,52 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     .sort((a, b) => b.count - a.count || a.handle.localeCompare(b.handle))
     .slice(0, 8);
 
+  // Bottom 2 posts by engagement (worst performers).
+  // Only populated when we have >= 4 posts to avoid overlap with top posts.
+  const sortedForBottom = [...posts].sort(
+    (a, b) => num(a.engagement_pct, 0) - num(b.engagement_pct, 0),
+  );
+  const enrichedBottomPosts: ReportEnriched["bottomPosts"] =
+    posts.length >= 4
+      ? sortedForBottom.slice(0, 2).map((p, idx) => {
+          const shortcode =
+            typeof p.shortcode === "string" && p.shortcode.trim().length > 0
+              ? p.shortcode.trim()
+              : null;
+          const permalinkRaw =
+            typeof p.permalink === "string" && p.permalink.trim().length > 0
+              ? p.permalink.trim()
+              : null;
+          const permalink =
+            permalinkRaw ??
+            (shortcode ? `https://www.instagram.com/p/${shortcode}/` : null);
+          const mentionsRaw = Array.isArray(p.mentions) ? p.mentions : [];
+          const mentions = Array.from(
+            new Set(
+              mentionsRaw
+                .map((m) =>
+                  typeof m === "string"
+                    ? m.trim().replace(/^@/, "").toLowerCase()
+                    : "",
+                )
+                .filter((m) => m.length > 0),
+            ),
+          ).slice(0, 5);
+          return {
+            id: p.id ?? `bottom-${idx}`,
+            permalink,
+            shortcode,
+            caption: (p.caption ?? "").slice(0, 200),
+            format: formatLabelForCard(p.format),
+            likes: num(p.likes, 0),
+            comments: num(p.comments, 0),
+            engagementPct: round2(num(p.engagement_pct, 0)),
+            date: formatPtDateShort(p.taken_at_iso ?? null),
+            mentions,
+          };
+        })
+      : [];
+
   const enriched: ReportEnriched = {
     profile: {
       bio: enrichedProfileBio,
@@ -1220,6 +1279,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       externalUrls: enrichedExternalUrls,
     },
     topPosts: enrichedTopPosts,
+    bottomPosts: enrichedBottomPosts,
     mentionsSummary,
     benchmarkSource: {
       datasetVersion: input.benchmark?.datasetVersion ?? null,

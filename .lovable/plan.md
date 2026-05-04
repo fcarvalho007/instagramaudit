@@ -1,63 +1,74 @@
 
-## Problema
+## Resumo
 
-O card "Taxa de envolvimento" ocupa demasiado espaço vertical, o gráfico SVG é desproporcionadamente alto, as labels mono têm espaçamento estranho, e o perfil marker a 0,08% fica esmagado no fundo do gráfico. Falta elegância e leitura clara.
+Substituir a secção "Melhores publicações" (5 posts horizontais) por um bloco comparativo "Melhores e piores publicações" com 2 top + 2 bottom, layout 2-col em desktop, e insight IA mais estruturado.
 
-## Solução — Redesign compacto com barras verticais proporcionais
+## Alterações
 
-Reescrever o card e o gráfico com foco em legibilidade e proporção.
+### 1. Adapter — expor bottom 2 posts (`snapshot-to-report-data.ts`)
 
-### 1. Card wrapper (`report-overview-engagement.tsx`)
+- Adicionar `bottomPosts` ao `ReportEnriched` (mesma shape que `topPosts`)
+- No builder, após ordenar posts por engagement desc, pegar `slice(-2).reverse()` para os 2 piores
+- Se houver menos de 4 posts no total, `bottomPosts` fica vazio
 
-- Hero number maior: `text-[2.5rem]` font-display (não mono)
-- Referência e gap pill na mesma linha, com mais breathing
-- Remover ícone Activity header — substituir por eyebrow "TAXA DE ENVOLVIMENTO" + source badge à direita
-- Fundo do card limpo, sem gradients
+### 2. Novo componente — `report-post-comparison.tsx` (em `v2/`)
 
-### 2. Gráfico (`report-engagement-benchmark-chart.tsx`) — Redesign completo
+**Header:**
+- Eyebrow: "MELHORES E PIORES PUBLICAÇÕES"
+- Título: "O que funcionou melhor — e pior"
+- Subtítulo: "Comparação entre os conteúdos com maior e menor envolvimento na janela analisada."
 
-**Abordagem: barras verticais compactas com HTML/CSS em vez de SVG puro**
+**Layout desktop (md+):** grid 2-col
+- Coluna esquerda: "Melhores 2" — accent teal/emerald subtil
+- Coluna direita: "A melhorar" — accent rose/amber subtil
 
-- Substituir o SVG complexo por um layout flex/grid com divs para as barras — mais controlo sobre tipografia, responsividade e alinhamento
-- Cada barra: `div` com `height` proporcional ao valor, `border-radius` no topo, transição suave
-- Barra ativa: azul com gradient sutil, barras inactivas: slate-200 opaco
-- Label do valor acima de cada barra em `text-[13px] font-display tabular-nums`
-- Label do escalão abaixo em `text-[12px] font-sans`
-- Escalão ativo: bold + underline accent azul
-- Altura máxima do gráfico: `max-h-[200px]` — compacto mas legível
+**Layout mobile:** stack vertical (best 2, then worst 2)
 
-**Profile marker:**
-- Linha horizontal tracejada vermelha a atravessar as barras na posição proporcional
-- Label "Este perfil: 0,08%" à direita da linha, fora das barras, em `text-[13px] font-semibold text-rose-600`
-- Se o valor é muito baixo, o marker fica visível no fundo com padding mínimo
+**Card design:**
+- Thumbnail aspect-[4/5] com format chip
+- Date eyebrow
+- Caption 2 lines max
+- Metric row: likes, comments, engagement % — ancorado em baixo
+- Ranking chip opcional: "#1", "#2" vs "A melhorar"
+- Hover: border ligeiramente mais forte + leve elevação
+- Usa classes estilo Iconosquare (bg-white, border-slate-200, shadow suave)
 
-**Reference line:**
-- Linha tracejada azul a marcar a referência do escalão
-- Label "Ref. escalão: 4,20%" posicionada à esquerda
+**Insight IA:**
+- Abaixo das duas colunas
+- Reutiliza `renderInsight("topPosts")` existente
 
-**Tooltip:** ao hover/tap de uma barra, mostrar card flutuante com detalhes (mantém lógica actual simplificada)
+### 3. Overview block — substituir uso (`report-overview-block.tsx`)
 
-### 3. Legend e sources
+- Remover `<ReportTopPosts />` e a eyebrow "MELHORES PUBLICAÇÕES"
+- Importar e renderizar o novo `PostComparisonBlock` passando `result.enriched.topPosts` (top 2) e `result.enriched.bottomPosts` (bottom 2)
+- Manter `renderInsight("topPosts")` abaixo
 
-- Legend horizontal mais compacta: 3 dots + labels em `text-[12px]`
-- Sources numa linha final discreta
+### 4. Mock data — adicionar bottomPosts (`report-mock-data.ts`)
 
-### 4. Dimensões
-
-- Card com `max-w` que respeita o layout do overview block
-- Gráfico compacto: ~180-200px de altura para as barras
-- Padding interno: `p-6 md:p-8`
+- NÃO é locked — verificar LOCKED_FILES.md
+- Adicionar 2 posts mock com engagement baixo para que `/report/example` continue funcional
 
 ## Ficheiros a editar
 
-| Ficheiro | Alteração |
+| Ficheiro | Tipo |
 |---|---|
-| `report-engagement-benchmark-chart.tsx` | Reescrever de SVG para HTML/CSS bars layout |
-| `report-overview-engagement.tsx` | Refinar header, hero numbers e espaçamento |
+| `src/lib/report/snapshot-to-report-data.ts` | Adapter — adicionar bottomPosts |
+| `src/components/report-redesign/v2/report-post-comparison.tsx` | Novo componente |
+| `src/components/report-redesign/v2/report-overview-block.tsx` | Substituir ReportTopPosts |
 
-## Notas técnicas
+## Ficheiros NÃO tocados
 
-- A interface `BenchmarkChartProps` mantém-se inalterada (backward compatible)
-- `getConsolidatedBenchmarkSeries()` e `getActiveTierIndex()` continuam a alimentar os dados
-- Nenhum ficheiro locked é tocado
-- O gráfico em HTML/CSS resolve os problemas de font-mono spacing e dá controlo total sobre responsive
+- `report-top-posts.tsx` (locked, continua a existir para `/report/example`)
+- `report-mock-data.ts` (bottomPosts derivado do topPosts existente no contexto)
+- Nenhum ficheiro locked
+
+## Lógica de bottom 2
+
+```
+const sorted = [...posts].sort((a, b) => engB - engA);
+const bottom2 = sorted.length >= 4
+  ? sorted.slice(-2).reverse()  // 2 piores, do menos pior ao pior
+  : [];
+```
+
+Tiebreaker: likes > comments > data mais recente (mesma ordem do sort existente).
