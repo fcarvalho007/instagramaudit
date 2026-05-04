@@ -345,6 +345,7 @@ export interface ReportEnriched {
   analysedPostFormats: Array<{
     date: string;       // YYYY-MM-DD
     type: "carousel" | "reel" | "image" | "video" | "unknown";
+    thumbnailUrl?: string;
   }>;
 }
 
@@ -418,6 +419,9 @@ function buildAnalysedPostFormats(
     .map((p) => ({
       date: isoDateOnly(p.taken_at_iso)!,
       type: normaliseFormat(p.format),
+      ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
+        ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
+        : {}),
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
