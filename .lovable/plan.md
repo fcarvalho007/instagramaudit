@@ -1,43 +1,76 @@
 
-## Audit Results
+## Copy Audit & Fixes
 
-| # | Question | Finding |
-|---|----------|---------|
-| 1 | Schema and fields | `report_requests` has all required fields. Schema matches spec exactly. |
-| 2 | `user_id` populated for test data | No test data exists yet — `report_requests` table is empty. `profiles` table is also empty. |
-| 3 | Legacy `lead_id` association | Yes — `getUserReports` already queries `profiles.lead_id` and uses `.or()` to match both `user_id` and `lead_id`. |
-| 4 | Server functions only | Yes — both `getUserReports` and `getReportPdfUrl` use `requireSupabaseAuth` middleware. No direct client SDK queries. |
-| 5 | Signed PDF URL function | Yes — `getReportPdfUrl` exists, verifies ownership via `user_id`, checks `pdf_status = "generated"`, uses `supabaseAdmin.storage.from("report-pdfs").createSignedUrl(path, 60)`. |
+The report currently uses "O teu perfil" and "O teu escalão" — implying it's the viewer's own profile. Since the tool analyzes any profile (including competitors), all copy must be neutral/3rd-person.
 
-## Current Implementation Status
+### Changes by file
 
-**Everything requested is already implemented.**
+---
 
-### `src/server/reports.functions.ts` — 3 server functions
-- `getUserReports` — authenticated list, ownership via `user_id` or `lead_id`, returns safe summary fields only
-- `getOwnedReport` — single report detail with ownership check
-- `getReportPdfUrl` — signed URL with ownership + pdf_status check
+### 1. `src/components/report-redesign/v2/report-overview-engagement.tsx`
 
-### `src/routes/app.reports.tsx` — complete page
-- Stats bar (total, ready, processing, failed)
-- Report cards with: username, date, status badge, PDF badge, delivery badge, competitor count, "Ver detalhe" CTA, "Abrir relatório" if snapshot exists
-- Empty state with correct PT-PT copy: "Ainda não há relatórios" + "Analisar perfil" CTA to `/`
-- PRO teaser card
-- Loading and error states
+**Line 66** — Column 1 eyebrow:
+- Current: `O teu perfil`
+- New: `Taxa de engagement deste perfil`
 
-### Security
-- `requireSupabaseAuth` on all server functions
-- `user_id` ownership filter on every query
-- `pdf_storage_path` never exposed to client
-- RLS on `report_requests` (`user_id = auth.uid()`) as defence-in-depth
-- `leads` table never queried from client
+**Line 77** — Column 1 subtitle:
+- Current: `envolvimento médio`
+- New: `média de gostos, comentários e partilhas a dividir por seguidores`
 
-## Verdict
+**Line 83** — Column 2 eyebrow:
+- Current: `Referência do escalão`
+- New: `% Média de perfis semelhantes`
 
-No files need to be created or edited. The page is complete and matches the spec. The only gap is that there is no test data to validate visually — once a report request is created (via the public flow or manually), the page will render it.
+**Line 95** — Column 2 subtitle:
+- Current: `tier {activeTier?.tierLabel ?? "—"}`
+- New: `Escalão de {tierRange}` (extract follower range from tierLabel)
 
-### To test visually
-You would need to:
-1. Sign in as `fredericodigital@gmail.com`
-2. Insert a test row into `report_requests` with `user_id` matching the auth user's ID
-3. Navigate to `/app/reports`
+**Lines 105, 132-133** — Column 3 eyebrow + gap label:
+- Current: `Gap face à referência` + `acima/abaixo da média`
+- New: `Diferença percentual: Perfil VS Média perfis` + keep `acima/abaixo da média` + add `gap ~{fmtPpSigned(gapPp)} pontos percentuais`
+
+---
+
+### 2. `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
+
+**Line 64** — Chart header:
+- Current: `Comparação entre escalões de seguidores`
+- New: `Comparação de perfis com escalões de seguidores semelhantes`
+
+**Lines 117-118** — Active tier badge:
+- Current: `O teu escalão`
+- New: `Escalão deste perfil`
+
+**Line 217** — Legend:
+- Current: `O teu escalão`
+- New: `Escalão deste perfil`
+
+---
+
+### 3. `src/components/report-redesign/v2/report-overview-cards.tsx`
+
+**Line 209** — Card title:
+- Current: `Taxa de envolvimento`
+- New: `Taxa de engagement deste perfil`
+
+**Line 269** — Comparison eyebrow:
+- Current: `Atual`
+- New: `Este perfil`
+
+**Line 275** — Benchmark eyebrow:
+- Current: `Referência do escalão`
+- New: `% Média de perfis semelhantes`
+
+---
+
+### 4. Global scan — any remaining "teu" / possessive
+
+Run `rg "O teu|o teu|do teu" src/components/report-redesign/` to catch any other occurrences and replace with neutral forms.
+
+---
+
+### Validation
+
+- `tsc` — zero errors
+- Visual check at `/analyze/frederico.m.carvalho` to verify labels render correctly
+- No truncation on mobile (375px)
