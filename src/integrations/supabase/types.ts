@@ -495,6 +495,47 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          lead_id: string | null
+          plan: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          lead_id?: string | null
+          plan?: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          lead_id?: string | null
+          plan?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_call_logs: {
         Row: {
           actor: string
@@ -583,6 +624,7 @@ export type Database = {
           request_source: string
           request_status: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           analysis_snapshot_id?: string | null
@@ -605,6 +647,7 @@ export type Database = {
           request_source?: string
           request_status?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           analysis_snapshot_id?: string | null
@@ -627,6 +670,7 @@ export type Database = {
           request_source?: string
           request_status?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -767,6 +811,10 @@ export type Database = {
       get_knowledge_context: {
         Args: { p_format: string; p_tier: string; p_vertical?: string }
         Returns: Json
+      }
+      link_user_to_existing_reports: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: undefined
       }
       record_analysis_event: {
         Args: {

@@ -1,88 +1,35 @@
 
-## Criar 4 KPI summary cards no topo do Bloco 2
+## Estado atual
 
-### Contexto
+### Concluído
+- 4 KPI cards do Bloco 2 refinados e integrados
+- Rotas `/login`, `/signup`, `/reset-password` criadas com copy pt-PT
+- Componente `AuthCard` criado
+- Layout `/app` com `Outlet` e rota placeholder `/app/reports`
+- Ficheiro de migração `20260504130500_user_account_foundation.sql` no repo
 
-Os 4 cards compactos mostrados no screenshot **não existem no código atual**. O ficheiro `report-diagnostic-grid-v2.tsx` contém um grid de 6 cards com estilo semelhante, mas é dead code (não importado em nenhum local). O `ReportDiagnosticBlock` renderiza: veredicto → grupos A-D de Q cards detalhados → prioridades → CTA — sem summary row.
+### Pendente
 
-A tarefa é criar um **novo componente de 4 summary cards** que se posiciona entre o veredicto e os grupos, mostrando os 4 sinais-chave de forma compacta e acessível.
+**1. Migração de base de dados não aplicada**
 
-### Ficheiros a editar
-- **Criar**: `src/components/report-redesign/v2/report-diagnostic-summary-cards.tsx` (novo componente)
-- **Editar**: `src/components/report-redesign/v2/report-diagnostic-block.tsx` (inserir o componente após o veredicto)
+O ficheiro SQL existe mas a tabela `profiles`, a coluna `report_requests.user_id`, o trigger `handle_new_user`, a função `link_user_to_existing_reports` e as políticas RLS **não existem na base de dados**. Precisam de ser aplicados via ferramenta de migração.
 
-### Ficheiros que NÃO serão tocados
-Block 2 title/subtitle, groups A-D, Q cards (P01-P07), verdict, priorities, backend, adapters, admin, PDF, global tokens, locked files.
+Conteúdo da migração (já escrito, sem alterações):
+- Tabela `profiles` (id, email, display_name, avatar_url, plan, lead_id)
+- Coluna `report_requests.user_id` (nullable)
+- Função `link_user_to_existing_reports` (SECURITY DEFINER)
+- Trigger `on_auth_user_created` → `handle_new_user`
+- RLS: profiles SELECT/UPDATE own row; report_requests SELECT by user_id
 
----
+**2. Google OAuth**
 
-### Novo componente: `ReportDiagnosticSummaryCards`
+O botão "Continuar com Google" está na UI mas o provider Google não está configurado no backend de auth. Requer:
+- Configurar o provider Google via `cloud--configure_auth`
+- O utilizador precisará de fornecer Client ID e Client Secret do Google Cloud Console (ou pode ser adiado para mais tarde)
 
-Recebe os 4 classificadores já calculados (`contentType`, `funnel`, `audience`, `objective`) e renderiza 4 cards compactos em grid `grid-cols-2 sm:grid-cols-4`.
+## Plano de execução
 
-Cada card:
-- Ícone pastel em círculo colorido (mesmos ícones do screenshot: Sparkles, Layers, MessageCircle, Compass)
-- Label pequena (eyebrow-sm)
-- Headline serif (`font-display`, semibold) — texto humano e auto-explicativo
-- Subtítulo técnico preciso
-
-**Sem** badge "∿ AUTO". Sem `ReportSourceLabel`.
-
-#### Copy proposta (derivada dos dados dos classificadores):
-
-| # | Label | Headline | Subtítulo | Fonte do dado |
-|---|-------|----------|-----------|---------------|
-| 1 | Tipo de conteúdo | *Dinâmico*: "Conteúdo variado" (se misto) ou label do classificador | `"{topCategory} lidera, mas só com {share}%"` ou `"{share}% {label}"` | `contentType.label`, `contentType.distribution[0]` |
-| 2 | Papel do conteúdo | *Dinâmico*: "Atrai mais do que converte" (se topo) / adaptado por fase | `"{share}% dos posts geram {ação}"` | `funnel.label`, `funnel.breakdown` |
-| 3 | Resposta do público | *Dinâmico*: "Quase sem comentários" (se silenciosa) / "Audiência ativa" | `"{n} comentários médios por post"` | `audience.label`, `audience.avgComments` |
-| 4 | Objetivo deste perfil | *Dinâmico*: label do objetivo | `"{context} · {confidence}%"` | `objective.label`, `objective.confidence` |
-
-A copy é **derivada dos dados dos classificadores**, não hardcoded. Cada headline tem uma versão humanizada via lookup, com fallback para o label original.
-
-#### Lookup de headlines humanizadas:
-
-```
-contentType:
-  "Misto / pouco claro" → "Conteúdo variado"
-  default → label original
-
-funnel:
-  "Topo do funil" → "Atrai mais do que converte"
-  "Meio do funil" → "Educa antes de vender"
-  "Fundo do funil" → "Foco na conversão"
-  "Pós-venda / fidelização" → "Relação com a comunidade"
-  "Comunicação dispersa" → "Sem direção clara"
-
-audience:
-  "Audiência silenciosa" → "Quase sem comentários"
-  "Audiência ativa" → "Conversa ativa"
-  default → label original
-
-objective:
-  label original mantido (já é claro: "Notoriedade", "Vendas", etc.)
-```
-
-#### Tokens visuais:
-- Card: `rounded-2xl border border-border-default bg-surface-secondary shadow-card p-5`
-- Icon wrap: pastel ring circles (`bg-blue-50 ring-blue-100 text-blue-600`, etc.) — mesmos tons do screenshot
-- Label: `text-eyebrow-sm text-content-secondary`
-- Headline: `font-display text-base font-semibold text-content-primary tracking-tight`
-- Subtitle: `text-xs text-content-secondary` (com valores signal-success/danger quando aplicável)
-
-### Integração no `report-diagnostic-block.tsx`
-
-Inserir entre o veredicto (linha 140) e o bloco condicional `totalCards >= 4` (linha 142):
-
-```tsx
-<ReportDiagnosticSummaryCards
-  contentType={contentType}
-  funnel={funnel}
-  audience={audience}
-  objective={objective}
-/>
-```
-
-### Validação
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Screenshot desktop + 375px mobile
+1. Aplicar a migração pendente usando a ferramenta de migração DB
+2. Verificar que `profiles`, `user_id` e RLS existem
+3. Tentar configurar Google OAuth (ou documentar como pendente se precisar de credenciais)
+4. Correr tsc + vitest para validação final
