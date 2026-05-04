@@ -54,9 +54,6 @@ export function EngagementCardRefined({ result }: Props) {
           <span className="text-[10px] text-accent-primary font-semibold tracking-[0.04em]">
             ✦ MERCADO
           </span>
-          <span className="text-[10px] text-content-secondary tracking-[0.05em] bg-surface-muted border border-border-subtle px-2 py-0.5 rounded-full whitespace-nowrap font-medium uppercase">
-            {activeSourceRefs[0]?.name ?? "SOCIALINSIDER"}
-          </span>
         </div>
       </div>
 
