@@ -30,13 +30,13 @@ export function PostComparisonBlock({
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <p className="text-eyebrow-sm text-slate-500">
+        <p className="text-eyebrow-sm text-content-secondary">
           MELHORES E PIORES PUBLICAÇÕES
         </p>
-        <h3 className="font-sans text-[24px] md:text-[28px] font-bold tracking-tight text-slate-900 leading-tight">
+        <h3 className="font-sans text-[24px] md:text-[28px] font-bold tracking-tight text-content-primary leading-tight">
           O que funcionou melhor — e pior
         </h3>
-        <p className="text-[14px] md:text-[15px] text-slate-500 leading-relaxed max-w-2xl">
+        <p className="text-[14px] md:text-[15px] text-content-secondary leading-relaxed max-w-2xl">
           Comparação entre os conteúdos com maior e menor envolvimento
           {windowLabel ? ` nos ${windowLabel}` : " na janela analisada"}.
         </p>
@@ -113,7 +113,7 @@ function PostGroup({
           <p className={cn("text-[13px] font-semibold leading-snug", accentText)}>
             {label}
           </p>
-          <p className="text-[11px] text-slate-500 leading-snug">{helper}</p>
+          <p className="text-[11px] text-content-secondary leading-snug">{helper}</p>
         </div>
       </div>
       {/* Cards */}
@@ -162,19 +162,19 @@ function PostCard({
     <Wrapper
       {...wrapperProps}
       className={cn(
-        "group flex gap-4 rounded-2xl border border-slate-200/70 bg-white p-4",
-        "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_-6px_rgba(15,23,42,0.06)]",
+        "group flex gap-4 rounded-2xl border border-border-default bg-surface-secondary p-4",
+        "shadow-card",
         "transition-all duration-200",
-        permalink && "hover:border-slate-300 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06)] cursor-pointer",
+        permalink && "hover:shadow-[0_2px_6px_rgba(15,23,42,0.06)] cursor-pointer",
       )}
     >
       {/* Thumbnail */}
-      <div className="relative shrink-0 w-[88px] md:w-[96px] aspect-[4/5] rounded-xl overflow-hidden bg-slate-100">
+      <div className="relative shrink-0 w-[88px] md:w-[96px] aspect-[4/5] rounded-xl overflow-hidden bg-surface-muted">
         {post.permalink ? (
           <div className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300" />
         ) : null}
         {/* Format chip */}
-        <span className="absolute top-1.5 right-1.5 z-10 text-[9px] font-semibold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-white/90 backdrop-blur text-slate-700 leading-none">
+        <span className="absolute top-1.5 right-1.5 z-10 text-[9px] font-semibold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-surface-secondary/90 backdrop-blur text-content-primary leading-none">
           {post.format}
         </span>
         {permalink ? (
@@ -186,7 +186,7 @@ function PostCard({
       <div className="flex-1 min-w-0 flex flex-col justify-between gap-2 min-h-[120px]">
         {/* Top: date + rank — fixed height for alignment */}
         <div className="flex items-center justify-between gap-2 h-5">
-          <span className="text-[11px] uppercase tracking-[0.04em] text-slate-400 font-medium">
+          <span className="text-[11px] uppercase tracking-[0.04em] text-content-tertiary font-medium">
             {post.date}
           </span>
           <span
@@ -200,23 +200,23 @@ function PostCard({
         </div>
 
         {/* Caption */}
-        <p className="text-[13px] md:text-[14px] text-slate-800 leading-snug line-clamp-2 font-medium h-[2.5rem]">
+        <p className="text-[13px] md:text-[14px] text-content-primary leading-snug line-clamp-2 font-medium h-[2.5rem]">
           {post.caption || "Sem legenda"}
         </p>
 
         {/* Metrics */}
-        <div className="flex items-center gap-5 pt-2 mt-auto border-t border-slate-100">
-          <span className="inline-flex items-center gap-1 text-[12px] text-slate-500">
+        <div className="flex items-center gap-5 pt-2 mt-auto border-t border-border-subtle">
+          <span className="inline-flex items-center gap-1 text-[12px] text-content-secondary">
             <Heart className="size-3.5" aria-hidden="true" />
             <span className="tabular-nums">{post.likes.toLocaleString("pt-PT")}</span>
           </span>
-          <span className="inline-flex items-center gap-1 text-[12px] text-slate-500">
+          <span className="inline-flex items-center gap-1 text-[12px] text-content-secondary">
             <MessageCircle className="size-3.5" aria-hidden="true" />
             <span className="tabular-nums">{post.comments}</span>
           </span>
           <span className={cn(
             "ml-auto text-[12px] font-semibold tabular-nums",
-            tone === "best" ? "text-sky-600" : "text-slate-400",
+            tone === "best" ? "text-accent-primary" : "text-content-tertiary",
           )}>
             {post.engagementPct.toString().replace(".", ",")}%
           </span>

@@ -21,10 +21,10 @@ export function ComparisonHeader() {
 
           {/* Copy */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm md:text-[15px] font-semibold text-slate-900 leading-snug">
+            <p className="text-sm md:text-[15px] font-semibold text-content-primary leading-snug">
               Compara com concorrentes diretos
             </p>
-            <p className="text-[12px] md:text-[13px] text-slate-500 mt-0.5 leading-relaxed">
+            <p className="text-[12px] md:text-[13px] text-content-secondary mt-0.5 leading-relaxed">
               Vê o teu perfil lado a lado com perfis do mesmo nicho
             </p>
           </div>

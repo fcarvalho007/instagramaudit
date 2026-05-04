@@ -86,32 +86,32 @@ export function FrequencyCard({
       : `${postsAnalyzed} publicações analisadas`;
 
   return (
-    <article className="rounded-2xl border border-slate-200/70 bg-white p-5 md:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)] flex flex-col">
+    <article className="rounded-2xl border border-border-default bg-surface-secondary p-5 md:p-6 shadow-card flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <span className="flex items-center gap-1.5 text-[13px] font-medium text-slate-900">
-          <CalendarDays className="size-4 text-slate-500" aria-hidden="true" />
+        <span className="flex items-center gap-1.5 text-[13px] font-medium text-content-primary">
+          <CalendarDays className="size-4 text-content-secondary" aria-hidden="true" />
           Frequência de publicação
         </span>
-        <span className="text-[9px] text-slate-400 tracking-[0.06em]">
+        <span className="text-[9px] text-content-tertiary tracking-[0.06em]">
           ✦ AUTO
         </span>
       </div>
 
       {/* Human headline */}
-      <p className="font-display text-[22px] font-medium text-slate-900 leading-[1.2] mb-1.5">
+      <p className="font-display text-[22px] font-medium text-content-primary leading-[1.2] mb-1.5">
         {headline}
       </p>
 
       {/* Stats line */}
-      <p className="text-[12px] text-slate-500 mb-5">
+      <p className="text-[12px] text-content-secondary mb-5">
         {statsLine}
       </p>
 
       {/* Calendar visualisation */}
       {calendarDays.length > 0 && (
         <div className="mb-5">
-          <span className="text-[10px] uppercase tracking-[0.04em] text-slate-400 block mb-2">
+          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-2">
             Quando publicou
           </span>
           <div
@@ -126,7 +126,7 @@ export function FrequencyCard({
                 className={`size-[14px] rounded-[3px] shrink-0 transition-opacity duration-300 ${
                   day.published
                     ? "bg-emerald-500"
-                    : "bg-slate-200"
+                    : "bg-surface-muted"
                 }`}
               />
             ))}
@@ -134,12 +134,12 @@ export function FrequencyCard({
 
           {/* Legend */}
           <div className="flex items-center gap-4 mt-2">
-            <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500">
+            <span className="inline-flex items-center gap-1.5 text-[10px] text-content-secondary">
               <span className="size-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
               publicou ({publishedCount})
             </span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500">
-              <span className="size-2 rounded-full bg-slate-200 shrink-0" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1.5 text-[10px] text-content-secondary">
+              <span className="size-2 rounded-full bg-surface-muted shrink-0" aria-hidden="true" />
               parou ({pausedCount})
             </span>
           </div>
@@ -147,9 +147,9 @@ export function FrequencyCard({
       )}
 
       {/* Verdict */}
-      <div className="mt-auto rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5 flex items-start gap-2">
-        <Check className="size-3.5 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
-        <p className="text-[12px] text-emerald-900 leading-[1.4]">
+      <div className="mt-auto rounded-lg bg-tint-success border border-border-subtle px-3 py-2.5 flex items-start gap-2">
+        <Check className="size-3.5 text-signal-success shrink-0 mt-0.5" aria-hidden="true" />
+        <p className="text-[12px] text-content-primary leading-[1.4]">
           <span className="font-medium">{verdict.strong}</span>{" "}
           {verdict.rest}
         </p>

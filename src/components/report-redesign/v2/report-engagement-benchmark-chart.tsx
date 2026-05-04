@@ -397,30 +397,30 @@ export function ReportEngagementBenchmarkChart({
       <div className="flex items-center gap-5 flex-wrap text-[11px]">
         <span className="inline-flex items-center gap-2">
           <span className="size-2.5 rounded-[3px] bg-gradient-to-b from-blue-400 to-blue-600" aria-hidden />
-          <span className="text-slate-600 font-medium">Referência do escalão</span>
+          <span className="text-content-secondary font-medium">Referência do escalão</span>
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="size-2.5 rounded-full bg-rose-500" aria-hidden />
-          <span className="text-slate-600 font-medium">Este perfil</span>
+          <span className="text-content-secondary font-medium">Este perfil</span>
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="size-2.5 rounded-[3px] bg-gradient-to-b from-slate-200 to-slate-300" aria-hidden />
-          <span className="text-slate-500">Outros escalões</span>
+          <span className="size-2.5 rounded-[3px] bg-surface-muted" aria-hidden />
+          <span className="text-content-tertiary">Outros escalões</span>
         </span>
       </div>
 
       {/* Source references */}
       {sourceReferences.length > 0 ? (
-        <div className="space-y-0.5 pt-1 border-t border-slate-100">
-          <p className="text-eyebrow-sm text-slate-400 leading-snug">
-            <span className="text-slate-500">Referências de mercado</span>{" "}
+        <div className="space-y-0.5 pt-1 border-t border-border-subtle">
+          <p className="text-eyebrow-sm text-content-tertiary leading-snug">
+            <span className="text-content-secondary">Referências de mercado</span>{" "}
             {sourceReferences.map((ref, i) => (
               <span key={ref.url}>
                 <a
                   href={ref.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-slate-500 hover:text-blue-600 hover:underline transition-colors"
+                  className="text-content-secondary hover:text-accent-primary hover:underline transition-colors"
                   aria-label={`Fonte ${i + 1}: ${ref.name}`}
                 >
                   [{i + 1}]
@@ -429,10 +429,10 @@ export function ReportEngagementBenchmarkChart({
               </span>
             ))}
           </p>
-          <p className="text-[10px] text-slate-400 leading-snug">
+          <p className="text-[10px] text-content-tertiary leading-snug">
             {sourceReferences.map((ref, i) => (
               <span key={ref.url}>
-                {i > 0 ? <span className="text-slate-300 mx-1">·</span> : null}
+                {i > 0 ? <span className="text-content-tertiary mx-1">·</span> : null}
                 <span>[{i + 1}] {SOURCE_DESCRIPTOR[ref.name as keyof typeof SOURCE_DESCRIPTOR] ?? ref.name}</span>
               </span>
             ))}
@@ -484,25 +484,25 @@ function ChartTooltip({
       <div
         className={cn(
           "rounded-xl shadow-lg ring-1 px-3.5 py-3 text-[11.5px] leading-relaxed",
-          "bg-white/95 backdrop-blur-sm ring-slate-200/80 max-w-[200px] sm:max-w-[220px]",
+          "bg-surface-secondary/95 backdrop-blur-sm ring-slate-200/80 max-w-[200px] sm:max-w-[220px]",
         )}
       >
-        <p className="font-semibold text-slate-800 mb-1.5">Escalão {tier.tierLabel}</p>
-        <p className="text-slate-600">
+        <p className="font-semibold text-content-primary mb-1.5">Escalão {tier.tierLabel}</p>
+        <p className="text-content-secondary">
           Referência: <span className="font-mono tabular-nums font-medium">{fmtRate(tier.engagementRatePct)}</span>
         </p>
 
         {isActive ? (
           <>
-            <div className="border-t border-slate-100 my-2" />
-            <p className="text-slate-700">
-              Este perfil: <span className="font-mono tabular-nums text-rose-600 font-semibold">{fmtRate(profileVal)}</span>
+            <div className="border-t border-border-subtle my-2" />
+            <p className="text-content-primary">
+              Este perfil: <span className="font-mono tabular-nums text-signal-danger font-semibold">{fmtRate(profileVal)}</span>
             </p>
-            <p className="text-slate-600">
-              Gap: <span className={cn("font-mono tabular-nums font-medium", gapPp >= 0 ? "text-emerald-600" : "text-rose-600")}>{fmtPp(gapPp)} p.p.</span>
+            <p className="text-content-secondary">
+              Gap: <span className={cn("font-mono tabular-nums font-medium", gapPp >= 0 ? "text-signal-success" : "text-signal-danger")}>{fmtPp(gapPp)} p.p.</span>
             </p>
             {competitor ? (
-              <p className="text-slate-500 mt-1.5">
+              <p className="text-content-secondary mt-1.5">
                 @{competitor.handle}: <span className="font-mono tabular-nums">{fmtRate(competitor.engagementRatePct)}</span>
               </p>
             ) : null}
