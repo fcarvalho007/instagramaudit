@@ -1,9 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/reports")({
-  component: ReportsPlaceholder,
+  component: ReportsPage,
   head: () => ({
     meta: [
       { title: "Os meus relatórios — InstaBench" },
@@ -12,34 +10,21 @@ export const Route = createFileRoute("/app/reports")({
   }),
 });
 
-function ReportsPlaceholder() {
-  const [user, setUser] = useState<{ email?: string } | null>(null);
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        window.location.href = "/login";
-      } else {
-        setUser({ email: data.user.email ?? undefined });
-        setChecking(false);
-      }
-    });
-  }, []);
-
-  if (checking) return null;
-
+function ReportsPage() {
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 text-center">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-content-primary">
-        Os meus relatórios
+    <div>
+      <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+        Os teus relatórios
       </h1>
-      <p className="mt-2 text-sm text-content-secondary">
-        {user?.email ? `Sessão ativa: ${user.email}` : ""}
+      <p className="mt-1 text-sm text-slate-500">
+        Consulta as análises pedidas e descarrega os relatórios disponíveis.
       </p>
-      <p className="mt-4 text-sm text-content-tertiary">
-        Esta secção será desenvolvida em breve.
-      </p>
+
+      <div className="mt-6 rounded-xl border border-slate-200/70 bg-white p-8 text-center shadow-sm">
+        <p className="text-sm text-slate-400">
+          Ainda não existem relatórios. Analisa um perfil para gerar o primeiro.
+        </p>
+      </div>
     </div>
   );
 }

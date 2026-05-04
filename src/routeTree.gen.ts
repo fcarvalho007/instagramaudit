@@ -22,6 +22,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ReportExampleRouteImport } from './routes/report.example'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
+import { Route as AppPlanRouteImport } from './routes/app.plan'
+import { Route as AppAccountRouteImport } from './routes/app.account'
 import { Route as ApiSendReportEmailRouteImport } from './routes/api/send-report-email'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
 import { Route as ApiMarketSignalsRouteImport } from './routes/api/market-signals'
@@ -147,6 +149,16 @@ const ReportExampleRoute = ReportExampleRouteImport.update({
 const AppReportsRoute = AppReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlanRoute = AppPlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAccountRoute = AppAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiSendReportEmailRoute = ApiSendReportEmailRouteImport.update({
@@ -509,6 +521,8 @@ export interface FileRoutesByFullPath {
   '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/app/account': typeof AppAccountRoute
+  '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRoute
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
@@ -584,6 +598,8 @@ export interface FileRoutesByTo {
   '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/app/account': typeof AppAccountRoute
+  '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRoute
   '/report/example': typeof ReportExampleRoute
   '/admin': typeof AdminIndexRoute
@@ -661,6 +677,8 @@ export interface FileRoutesById {
   '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/app/account': typeof AppAccountRoute
+  '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRoute
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
@@ -739,6 +757,8 @@ export interface FileRouteTypes {
     | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/app/account'
+    | '/app/plan'
     | '/app/reports'
     | '/report/example'
     | '/admin/'
@@ -814,6 +834,8 @@ export interface FileRouteTypes {
     | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/app/account'
+    | '/app/plan'
     | '/app/reports'
     | '/report/example'
     | '/admin'
@@ -890,6 +912,8 @@ export interface FileRouteTypes {
     | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/app/account'
+    | '/app/plan'
     | '/app/reports'
     | '/report/example'
     | '/admin/'
@@ -1093,6 +1117,20 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/app/reports'
       preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/plan': {
+      id: '/app/plan'
+      path: '/plan'
+      fullPath: '/app/plan'
+      preLoaderRoute: typeof AppPlanRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/account': {
+      id: '/app/account'
+      path: '/account'
+      fullPath: '/app/account'
+      preLoaderRoute: typeof AppAccountRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/send-report-email': {
@@ -1567,10 +1605,14 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AppRouteChildren {
+  AppAccountRoute: typeof AppAccountRoute
+  AppPlanRoute: typeof AppPlanRoute
   AppReportsRoute: typeof AppReportsRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAccountRoute: AppAccountRoute,
+  AppPlanRoute: AppPlanRoute,
   AppReportsRoute: AppReportsRoute,
 }
 
