@@ -39,16 +39,17 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const { token_hash, email } = await autoLogin();
+      // Server generates a temp password and ensures user exists
+      const { email, password } = await autoLogin();
 
-      const { error: verifyErr } = await supabase.auth.verifyOtp({
+      // Sign in with the temp credentials
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
         email,
-        token_hash,
-        type: "magiclink",
+        password,
       });
 
-      if (verifyErr) {
-        setError(verifyErr.message);
+      if (signInErr) {
+        setError(signInErr.message);
         setLoading(false);
         return;
       }
