@@ -1,4 +1,13 @@
+import { useState, useMemo } from "react";
+import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { REDESIGN_TOKENS } from "../report-tokens";
 import { BLOCKS } from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
@@ -106,10 +115,23 @@ export function ReportBlockSidebar() {
 
 /**
  * Bottom navigation bar fixa para mobile/tablet (<1024px).
- * 6 ícones + label curto em grid, estilo app nativa (thumb zone).
+ * Mostra 3 ícones contextuais grandes (ativo + adjacentes) + hamburger
+ * para navegação completa via Sheet drawer.
  */
 export function ReportBlockTopTabs() {
   const active = useActiveBlock(BLOCK_IDS);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const activeIndex = useMemo(
+    () => Math.max(0, BLOCKS.findIndex((b) => b.id === active)),
+    [active],
+  );
+
+  // 3 ícones visíveis: ativo + adjacentes, clamped aos limites
+  const visibleIndices = useMemo(() => {
+    const start = Math.max(0, Math.min(activeIndex - 1, BLOCKS.length - 3));
+    return [start, start + 1, start + 2];
+  }, [activeIndex]);
 
   return (
     <nav
@@ -122,53 +144,145 @@ export function ReportBlockTopTabs() {
         "pb-[env(safe-area-inset-bottom,0px)]",
       )}
     >
-      <ul className="grid grid-cols-6 w-full">
-        {BLOCKS.map((block) => {
-          const isActive = block.id === active;
-          const Icon = block.icon;
-          return (
-            <li key={block.id}>
+      <div className="flex w-full items-stretch">
+        {/* 3 ícones contextuais */}
+        <div className="flex flex-1">
+          {visibleIndices.map((idx) => {
+            const block = BLOCKS[idx];
+            const isActive = block.id === active;
+            const Icon = block.icon;
+            return (
               <button
+                key={block.id}
                 type="button"
                 onClick={() => scrollToBlock(block.id)}
                 aria-current={isActive ? "true" : undefined}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 w-full",
-                  "py-2 pt-2.5 transition-colors duration-150",
-                  "min-h-[52px]",
-                  "focus-visible:outline-none focus-visible:bg-blue-50",
+                  "relative flex flex-1 flex-col items-center justify-center gap-1",
+                  "py-2.5 min-h-[64px] transition-colors duration-200",
+                  "focus-visible:outline-none focus-visible:bg-blue-50/60",
                   isActive
                     ? "text-blue-600"
                     : "text-slate-400 active:text-slate-600",
                 )}
               >
+                {/* Barra superior ativa */}
+                {isActive && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 h-[2.5px] w-10 rounded-b-full bg-blue-500 transition-all duration-300"
+                  />
+                )}
                 <Icon
                   className={cn(
-                    "size-5 transition-colors",
+                    "size-7 transition-colors duration-200",
                     isActive ? "text-blue-600" : "text-slate-400",
                   )}
-                  strokeWidth={isActive ? 2.2 : 1.8}
+                  strokeWidth={isActive ? 2.2 : 1.6}
                   aria-hidden="true"
                 />
                 <span
                   className={cn(
-                    "text-[9px] font-medium leading-tight truncate max-w-full px-0.5",
-                    isActive ? "text-blue-600 font-semibold" : "text-slate-500",
+                    "text-[11px] leading-tight truncate max-w-full px-1",
+                    isActive
+                      ? "text-blue-600 font-semibold"
+                      : "text-slate-500 font-medium",
                   )}
                 >
                   {block.shortLabel}
                 </span>
-                {isActive ? (
-                  <span
-                    aria-hidden="true"
-                    className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 rounded-b-full bg-blue-500"
-                  />
-                ) : null}
               </button>
-            </li>
-          );
-        })}
-      </ul>
+            );
+          })}
+        </div>
+
+        {/* Separador vertical */}
+        <div className="w-px bg-slate-200/70 my-3" aria-hidden="true" />
+
+        {/* Hamburger → Sheet com todas as secções */}
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              aria-label="Menu de secções"
+              className={cn(
+                "flex flex-col items-center justify-center gap-1",
+                "w-[72px] min-h-[64px] transition-colors duration-200",
+                "text-slate-400 active:text-slate-600",
+                "focus-visible:outline-none focus-visible:bg-blue-50/60",
+              )}
+            >
+              <Menu className="size-7" strokeWidth={1.6} aria-hidden="true" />
+              <span className="text-[11px] font-medium leading-tight text-slate-500">
+                Menu
+              </span>
+            </button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-8 pt-3">
+            <SheetHeader className="pb-3 border-b border-slate-100">
+              <SheetTitle className="text-base font-semibold text-slate-900">
+                Secções do relatório
+              </SheetTitle>
+            </SheetHeader>
+            <ul className="mt-3 space-y-1">
+              {BLOCKS.map((block) => {
+                const isActive = block.id === active;
+                const Icon = block.icon;
+                return (
+                  <li key={block.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSheetOpen(false);
+                        // small delay so sheet closes before scroll
+                        setTimeout(() => scrollToBlock(block.id), 180);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-xl px-3 py-3",
+                        "transition-colors duration-150",
+                        isActive
+                          ? "bg-blue-50/80 text-blue-700"
+                          : "text-slate-600 active:bg-slate-50",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "font-mono text-[10px] tabular-nums tracking-widest",
+                          isActive ? "text-blue-500" : "text-slate-400",
+                        )}
+                      >
+                        {block.number}
+                      </span>
+                      <Icon
+                        className={cn(
+                          "size-5 shrink-0",
+                          isActive ? "text-blue-600" : "text-slate-400",
+                        )}
+                        strokeWidth={isActive ? 2 : 1.6}
+                        aria-hidden="true"
+                      />
+                      <span
+                        className={cn(
+                          "text-sm",
+                          isActive ? "font-semibold" : "font-medium",
+                        )}
+                      >
+                        {block.shortLabel}
+                      </span>
+                      {isActive && (
+                        <span
+                          aria-hidden="true"
+                          className="ml-auto size-1.5 rounded-full bg-blue-500"
+                        />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </SheetContent>
+        </Sheet>
+      </div>
     </nav>
   );
 }
