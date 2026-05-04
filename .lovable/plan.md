@@ -1,60 +1,61 @@
 
-## QA Finding: Títulos do Block 1 sem fonte serifada
+## Refinamento do card de benchmark de engagement (Block 1)
 
-### Problema
-
-Os dois títulos do card de engagement usam `font-sans` (Inter) em vez de `font-display` (Fraunces), quebrando a regra do projeto: "Fraunces display para headings".
-
-Outros componentes do relatório (hero, diagnostic card, overview cards) já usam `font-display` consistentemente.
-
-### Títulos afetados
-
-1. **"Taxa de envolvimento"** — `report-overview-engagement.tsx` linha 45
-2. **"Comparação entre escalões de seguidores"** — `report-engagement-benchmark-chart.tsx` linha 63
-
-### O que NÃO muda
-
-Os eyebrow labels ("O teu perfil", "Referência do escalão", "Gap face à referência") mantêm-se com `.text-eyebrow-sm` (Inter uppercase) — conforme a regra: "Eyebrows/labels/badges = Inter uppercase, nunca font-mono".
-
-### Correções
-
-**Ficheiro 1: `report-overview-engagement.tsx`** (linha 45)
-
-Antes:
-```
-text-sm font-semibold text-content-primary block
-```
-Depois:
-```
-font-display text-sm font-semibold text-content-primary block tracking-tight
-```
-
-**Ficheiro 2: `report-engagement-benchmark-chart.tsx`** (linha 63)
-
-Antes:
-```
-text-eyebrow-sm text-content-secondary
-```
-Depois:
-```
-font-display text-[13px] font-semibold text-content-secondary tracking-tight normal-case
-```
-
-Nota: Remove `text-eyebrow-sm` deste título porque essa classe aplica uppercase + Inter, e o título de secção deve ser Fraunces sentence-case.
-
-### Correções adicionais do QA anterior (incluídas)
-
-Enquanto editamos estes ficheiros, corrigimos também os 3 problemas "important" do audit:
-
-3. **`text-white` hardcoded** (chart linha 163) — substituir por `text-surface-secondary` (branco semântico no light theme).
-
-4. **Legend swatch mismatch** (chart linha 205) — separar em dois swatches: azul para benchmark, verde para gap.
-
-5. **Tailwind `-translate-y-1/2` redundante** (chart linha 163) — remover da className, o inline `transform` já faz o trabalho.
-
-### Ficheiros tocados
-
+### Ficheiros a editar
 - `src/components/report-redesign/v2/report-overview-engagement.tsx`
 - `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
 
-Nenhum outro ficheiro.
+Nenhum outro ficheiro será tocado.
+
+---
+
+### 1. Remover pill de fonte do header (engagement.tsx, linhas 53-60)
+
+Atualmente o header tem dois elementos à direita: `✦ MERCADO` e uma pill dinâmica com o nome da fonte (ex: "SOCIALINSIDER"). Remover a pill da fonte, manter apenas o badge `✦ MERCADO`.
+
+```
+Antes:  ✦ MERCADO  [SOCIALINSIDER]
+Depois: ✦ MERCADO
+```
+
+As fontes continuam visíveis apenas no footer do chart (`Fontes: [1] Socialinsider · ...`).
+
+### 2. Linha de referência vertical full-height (chart.tsx)
+
+Atualmente a dashed line existe dentro de cada bar row individualmente (linha 136-141), repetida por tier. Problema: são linhas independentes por row e não criam uma linha visual contínua.
+
+Alteração:
+- Remover a dashed line de dentro do loop de cada row.
+- Adicionar uma **linha vertical absoluta** ao container pai (`div.relative.flex.flex-col.gap-2`, linha 72) que corre do topo ao fundo de todo o bloco de rows.
+- A linha será posicionada com `left` calculado relativamente à área dos bars (offset pelo espaço do label à esquerda e do valor à direita).
+- Estilo: `w-px border-l border-dashed border-content-secondary/25`, `top-0 bottom-0`, `z-10`.
+- O label "benchmark X,XX%" (linhas 74-83) permanece acima, com posicionamento alinhado à mesma margem.
+
+Cálculo: a posição usa o mesmo `benchmarkPct` já existente, aplicado como `left: calc(${benchmarkPct}%)` dentro do wrapper que tem o mesmo offset que as bars.
+
+### 3. Manter o destaque do tier ativo
+
+Sem alterações — o highlight atual (border-accent-primary/30, bg-tint-primary, badge "O TEU ESCALÃO") já está correto e será preservado.
+
+### 4. Melhorar legibilidade da bar ativa
+
+Ajustes à lógica existente (linhas 143-177):
+
+**Quando profile > benchmark** (já funciona): dois segmentos (azul + verde). Sem alteração.
+
+**Quando profile < benchmark** (precisa de melhoria):
+- O segmento azul renderiza até ao valor do perfil (já funciona).
+- Garantir que o label externo (profilePctVal <= 12) aparece sempre, mesmo com valores muito baixos (ex: 0.08%).
+- Acrescentar margem mínima para o label não ficar colado ao zero: `left: max(profilePctVal + 1, 3)%`.
+
+**Quando profile = 0**: manter o comportamento actual (sem bar visível).
+
+### 5. Design tokens
+
+Todos os estilos usam tokens semânticos existentes. Não serão introduzidos hardcoded colors novos.
+
+### 6. Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- QA visual via browser screenshot
