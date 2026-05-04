@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,13 +73,15 @@ function SignupPage() {
 
   const handleGoogle = async () => {
     setError("");
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/app/reports`,
-      },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
-    if (authError) setError(authError.message);
+    if (result.error) {
+      setError(result.error instanceof Error ? result.error.message : String(result.error));
+    }
+    if (!result.error && !result.redirected) {
+      navigate({ to: "/app/reports" });
+    }
   };
 
   if (checkingSession) return null;
