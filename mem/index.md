@@ -14,3 +14,4 @@ Benchmark sources (Socialinsider, Buffer, Hootsuite, Databox) nomeáveis sem lin
 - [Locked files](mem://constraints/locked-files) — Foundation files that must not be modified without permission
 - [Cost source of truth](mem://features/cost-source-of-truth) — provider_call_logs é fonte única; cost_daily só reconciliação Apify e saldo DFS
 - [Benchmark source policy](mem://features/benchmark-policy) — Fontes editoriais aprovadas, uso por bloco, regras anti-invenção, etiquetagem perfil/referência/interpretação. Canónico em KNOWLEDGE.md.
+- [Iconosquare style](mem://design/iconosquare-style) — Visual DNA, palette, card/chart/post patterns, do/don't rules for Iconosquare-inspired report
