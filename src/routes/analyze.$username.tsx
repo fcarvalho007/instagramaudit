@@ -25,6 +25,13 @@ export const Route = createFileRoute("/analyze/$username")({
   // SSR-disabled: the analysis fetch runs only in the browser to keep the
   // Apify boundary inside the server route and avoid SSR-time fetch loops.
   ssr: false,
+  beforeLoad: () => {
+    // Flip to light theme immediately on SPA navigation, before the
+    // component mounts, to avoid a dark→light flash.
+    if (typeof document !== "undefined") {
+      document.body.setAttribute("data-theme", "light");
+    }
+  },
   validateSearch: (search: Record<string, unknown>): AnalyzeSearch => ({
     vs: typeof search.vs === "string" ? search.vs : undefined,
     previewLoading: Number(search.previewLoading) === 1 ? 1 : undefined,
