@@ -9,7 +9,6 @@ import {
   Clock,
   ExternalLink,
   Download,
-  Sparkles,
   Search,
   Mail,
   MailCheck,
