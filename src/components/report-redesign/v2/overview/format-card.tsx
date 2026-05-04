@@ -2,6 +2,7 @@
  * Zone D — Card 2: Tipo de conteúdo.
  * Human-readable headline → stats → visual thumbnails → verdict.
  */
+import { useState } from "react";
 import { Layers, Check, Play, Image, GalleryHorizontalEnd } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ export interface FormatEntry {
 export type AnalysedPostFormat = {
   date: string;
   type: "carousel" | "reel" | "image" | "video" | "unknown";
+  thumbnailUrl?: string;
 };
 
 export interface FormatCardProps {
@@ -103,7 +105,7 @@ export function getFormatVerdict(dk: DominantKey): { strong: string; rest: strin
   }
   return {
     strong: "Mix variado.",
-    rest: "Diferentes formatos servem objetivos diferentes — vê nas próximas secções onde cada um está a render.",
+    rest: "Diferentes formatos servem objetivos diferentes — as próximas secções mostram onde cada formato rende mais.",
   };
 }
 
@@ -179,12 +181,12 @@ export function FormatCard({
       {sortedPosts.length > 0 && (
         <div className="mb-5">
           <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-2">
-            {`OS TEUS ${postsAnalyzed} POSTS`}
+            {`OS ${postsAnalyzed} POSTS ANALISADOS`}
           </span>
           <div
             role="img"
             aria-label={ariaLabel}
-            className="flex flex-wrap gap-1"
+            className="flex flex-wrap gap-1.5"
           >
             {sortedPosts.map((post, idx) => {
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
@@ -195,10 +197,14 @@ export function FormatCard({
                 <span
                   key={`${post.date}-${idx}`}
                   title={`Post de ${post.date} · ${label}`}
-                  className={`flex items-center justify-center rounded-[3px] shrink-0 ${style.bg}`}
-                  style={{ width: 28, height: 37 }}
+                  className="relative flex items-center justify-center rounded-[4px] shrink-0 overflow-hidden bg-slate-100"
+                  style={{ width: 36, height: 48 }}
                 >
-                  <Icon className={`size-3 ${style.iconColor}`} aria-hidden="true" />
+                  {post.thumbnailUrl ? (
+                    <PostThumb src={post.thumbnailUrl} alt={label} />
+                  ) : (
+                    <Icon className={`size-3.5 ${style.iconColor}`} aria-hidden="true" />
+                  )}
                 </span>
               );
             })}
@@ -228,5 +234,22 @@ export function FormatCard({
         </p>
       </div>
     </article>
+  );
+}
+
+/** Tiny thumbnail with graceful fallback to icon. */
+function PostThumb({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <Image className="size-3.5 text-slate-400" aria-hidden="true" />;
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="absolute inset-0 w-full h-full object-cover"
+    />
   );
 }
