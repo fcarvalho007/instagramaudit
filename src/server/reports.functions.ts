@@ -83,7 +83,7 @@ export const getOwnedReport = createServerFn({ method: "POST" })
     const { data: report, error } = await supabaseAdmin
       .from("report_requests")
       .select(
-        "id, instagram_username, created_at, updated_at, request_status, pdf_status, delivery_status, email_sent_at, analysis_snapshot_id, competitor_usernames, pdf_error_message, email_error_message, request_source, is_free_request, user_id",
+        "id, instagram_username, created_at, updated_at, request_status, pdf_status, delivery_status, email_sent_at, pdf_generated_at, analysis_snapshot_id, competitor_usernames, pdf_error_message, email_error_message, request_source, is_free_request, user_id",
       )
       .eq("id", data.reportId)
       .eq("user_id", userId)
@@ -111,6 +111,7 @@ export const getOwnedReport = createServerFn({ method: "POST" })
       competitor_usernames: report.competitor_usernames,
       request_source: report.request_source,
       is_free_request: report.is_free_request,
+      pdf_generated_at: report.pdf_generated_at ?? null,
       has_pdf_error: !!report.pdf_error_message,
       has_email_error: !!report.email_error_message,
       pdf_error_hint: report.pdf_error_message

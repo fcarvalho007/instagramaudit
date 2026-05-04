@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Mail,
   Calendar,
+  Send,
+  Search,
 } from "lucide-react";
 import { getOwnedReport, getReportPdfUrl } from "@/server/reports.functions";
 import { cn } from "@/lib/utils";
@@ -123,10 +125,15 @@ function ReportDetailPage() {
     : [];
 
   const timeline = [
-    { label: "Pedido criado", date: fmtDate(report.created_at), done: true },
+    { label: "Pedido recebido", date: fmtDate(report.created_at), done: true },
+    {
+      label: "Análise ligada",
+      date: hasSnapshot ? fmtDate(report.updated_at) : null,
+      done: hasSnapshot,
+    },
     {
       label: "PDF gerado",
-      date: pdfReady ? fmtDate(report.updated_at) : null,
+      date: pdfReady ? fmtDate(report.pdf_generated_at ?? report.updated_at) : null,
       done: pdfReady,
       failed: report.pdf_status === "failed",
     },
@@ -137,6 +144,14 @@ function ReportDetailPage() {
       failed: report.has_email_error,
     },
   ];
+
+  const deliveryLabel: Record<string, { text: string; color: string }> = {
+    sent: { text: "Enviado com sucesso", color: "text-emerald-600" },
+    sending: { text: "A enviar…", color: "text-blue-600" },
+    failed: { text: "Falha no envio", color: "text-amber-600" },
+    not_sent: { text: "Ainda não enviado", color: "text-slate-400" },
+  };
+  const delivery = deliveryLabel[report.delivery_status] ?? deliveryLabel.not_sent;
 
   return (
     <div className="space-y-5">
@@ -289,6 +304,22 @@ function ReportDetailPage() {
         </div>
       </div>
 
+      {/* Delivery card */}
+      <div className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-700">Entrega por email</h2>
+        <div className="mt-3 flex items-center gap-2">
+          <Mail className="size-4 text-slate-400" />
+          <span className={cn("text-sm font-medium", delivery.color)}>
+            {delivery.text}
+          </span>
+        </div>
+        {report.email_sent_at && (
+          <p className="mt-1.5 pl-6 text-xs text-slate-400">
+            {fmtDate(report.email_sent_at)}
+          </p>
+        )}
+      </div>
+
       {/* Actions card */}
       {hasSnapshot && (
         <div className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
@@ -330,12 +361,21 @@ function ReportDetailPage() {
 
 function BackLink() {
   return (
-    <Link
-      to="/app/reports"
-      className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-    >
-      <ArrowLeft className="size-3.5" />
-      Voltar aos relatórios
-    </Link>
+    <div className="flex flex-wrap items-center gap-4">
+      <Link
+        to="/app/reports"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+      >
+        <ArrowLeft className="size-3.5" />
+        Voltar aos relatórios
+      </Link>
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+      >
+        <Search className="size-3.5" />
+        Analisar outro perfil
+      </Link>
+    </div>
   );
 }
