@@ -60,7 +60,7 @@ export function ReportEngagementBenchmarkChart({
     <div className="flex flex-col gap-4">
       {/* Chart header */}
       <div className="flex items-baseline justify-between flex-wrap gap-1">
-        <span className="text-eyebrow-sm text-content-secondary">
+        <span className="font-display text-[13px] font-semibold text-content-secondary tracking-tight">
           Comparação entre escalões de seguidores
         </span>
         <span className="text-[10px] text-content-secondary hidden sm:inline">
@@ -160,8 +160,8 @@ export function ReportEngagementBenchmarkChart({
                       {/* Inline profile value */}
                       {profileVal > 0 && (
                         <span
-                          className="absolute top-1/2 -translate-y-1/2 text-[11px] font-bold text-white tabular-nums drop-shadow-sm z-20"
-                          style={{ left: `${Math.max(profilePctVal - 1, 2)}%`, transform: `translate(-100%, -50%)` }}
+                          className="absolute text-[11px] font-bold text-content-inverse tabular-nums drop-shadow-sm z-20"
+                          style={{ left: `${Math.max(profilePctVal - 1, 2)}%`, top: '50%', transform: `translate(-100%, -50%)` }}
                         >
                           {profilePctVal > 12 && fmtRate(profileVal)}
                         </span>
@@ -202,8 +202,12 @@ export function ReportEngagementBenchmarkChart({
       <div className="flex items-center justify-between flex-wrap gap-3 text-[11px] pt-1">
         <div className="flex items-center gap-4">
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm" style={{ background: "linear-gradient(90deg, rgb(var(--accent-primary)), rgb(var(--signal-success)))" }} aria-hidden="true" />
-            <span className="text-content-secondary font-medium">O teu escalão</span>
+            <span className="size-2.5 rounded-sm bg-accent-primary" aria-hidden="true" />
+            <span className="text-content-secondary font-medium">Benchmark</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-sm bg-signal-success" aria-hidden="true" />
+            <span className="text-content-secondary font-medium">Gap positivo</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-sm bg-surface-muted" aria-hidden="true" />
