@@ -1,11 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -17,13 +15,14 @@ export const Route = createFileRoute("/login")({
   }),
 });
 
+const ALLOWED_EMAIL = "fredericodigital@gmail.com";
+
 function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -35,46 +34,23 @@ function LoginPage() {
     });
   }, [navigate]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError("");
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) {
-      setError("Preenche todos os campos.");
-      return;
-    }
     setLoading(true);
 
-    // Try sign in first
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: trimmedEmail,
-      password,
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: ALLOWED_EMAIL,
+      options: {
+        emailRedirectTo: `${window.location.origin}/app/reports`,
+      },
     });
 
-    if (signInError) {
-      // If user doesn't exist, try sign up (auto-confirm must be enabled)
-      if (signInError.message.includes("Invalid login")) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: trimmedEmail,
-          password,
-        });
-        if (signUpError) {
-          setLoading(false);
-          setError(signUpError.message);
-          return;
-        }
-        // With auto-confirm, user is immediately signed in after signup
-        setLoading(false);
-        navigate({ to: "/app/reports" });
-        return;
-      }
-      setLoading(false);
-      setError(signInError.message);
-      return;
-    }
-
     setLoading(false);
-    navigate({ to: "/app/reports" });
+    if (otpError) {
+      setError(otpError.message);
+    } else {
+      setMagicLinkSent(true);
+    }
   };
 
   if (checkingSession) {
@@ -85,35 +61,39 @@ function LoginPage() {
     );
   }
 
+  if (magicLinkSent) {
+    return (
+      <AuthCard
+        title="Verifica o email"
+        subtitle="Enviámos um magic link para continuar."
+      >
+        <div className="flex flex-col items-center gap-4 py-4">
+          <CheckCircle2 className="size-12 text-emerald-600" />
+          <p className="text-sm text-slate-600 font-medium">{ALLOWED_EMAIL}</p>
+          <p className="text-sm text-slate-500 text-center">
+            Clica no link que recebeste no email para aceder à área de testes.
+            Verifica também a pasta de spam.
+          </p>
+          <button
+            onClick={() => setMagicLinkSent(false)}
+            className="text-sm font-medium text-blue-600 hover:underline"
+          >
+            Voltar
+          </button>
+        </div>
+      </AuthCard>
+    );
+  }
+
   return (
     <AuthCard
       title="Entrar no InstaBench"
-      subtitle="Acede à área de testes com email e palavra-passe."
+      subtitle="Acesso restrito — fase de testes privados."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="login-email">Email</Label>
-          <Input
-            id="login-email"
-            type="email"
-            autoComplete="email"
-            placeholder="fredericodigital@gmail.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="login-password">Palavra-passe</Label>
-          <Input
-            id="login-password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+      <div className="space-y-4">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-3">
+          <Mail className="size-4 text-slate-400 shrink-0" />
+          <span className="text-sm text-slate-700 font-medium">{ALLOWED_EMAIL}</span>
         </div>
 
         {error && (
@@ -122,14 +102,14 @@ function LoginPage() {
           </p>
         )}
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button onClick={handleLogin} className="w-full" disabled={loading}>
           {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-          Entrar
+          Enviar magic link
         </Button>
-      </form>
+      </div>
 
       <p className="mt-5 text-center text-xs text-slate-400">
-        Fase de testes — acesso restrito.
+        Receberás um link de acesso no email indicado.
       </p>
     </AuthCard>
   );
