@@ -7,9 +7,9 @@ interface ScoreRingProps {
   label: string;
 }
 
-const RADIUS = 38;
+const RADIUS = 40;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const STROKE_WIDTH = 5;
+const STROKE_WIDTH = 5.5;
 
 export function ScoreRing({ score, size = 88, label }: ScoreRingProps) {
   const family = getScoreFamily(score);
@@ -69,7 +69,7 @@ export function ScoreRing({ score, size = 88, label }: ScoreRingProps) {
         textAnchor="middle"
         dominantBaseline="central"
         fill={colors.text}
-        fontSize={size >= 80 ? "28" : "22"}
+        fontSize={size >= 90 ? "30" : size >= 80 ? "28" : "22"}
         fontWeight="700"
         fontFamily="Inter, sans-serif"
       >
