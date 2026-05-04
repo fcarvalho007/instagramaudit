@@ -543,13 +543,6 @@ function renderAudienceCard(
         ? "rose"
         : "blue";
 
-  const highlightTone: "rose" | "emerald" | "amber" =
-    r.status === "active"
-      ? "emerald"
-      : r.status === "moderate" || r.status === "concentrated"
-        ? "amber"
-        : "rose";
-
   return (
     <ReportDiagnosticCard
       key="q05"
