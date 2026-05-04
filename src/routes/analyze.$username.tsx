@@ -18,6 +18,7 @@ import {
 
 interface AnalyzeSearch {
   vs?: string;
+  previewLoading?: number;
 }
 
 export const Route = createFileRoute("/analyze/$username")({
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/analyze/$username")({
   ssr: false,
   validateSearch: (search: Record<string, unknown>): AnalyzeSearch => ({
     vs: typeof search.vs === "string" ? search.vs : undefined,
+    previewLoading: Number(search.previewLoading) === 1 ? 1 : undefined,
   }),
   head: ({ params }) => {
     const handle = params.username.replace(/^@/, "");
@@ -122,8 +124,11 @@ type LoadState =
 
 function AnalyzePage() {
   const { username } = Route.useParams();
-  const { vs } = Route.useSearch();
+  const { vs, previewLoading } = Route.useSearch();
   const cleaned = username.replace(/^@/, "");
+
+  // Dev-only: freeze on the loader for visual QA
+  const forceLoader = previewLoading === 1;
 
   // Parse competitors from the `?vs=` query string. Capped at 2.
   const competitors = useMemo(() => {
@@ -192,8 +197,9 @@ function AnalyzePage() {
   }, [cleaned, competitorsKey]);
 
   useEffect(() => {
+    if (forceLoader) return;
     void load();
-  }, [load]);
+  }, [load, forceLoader]);
 
   return (
     <ReportThemeWrapper>
