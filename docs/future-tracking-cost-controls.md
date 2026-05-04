@@ -37,7 +37,7 @@
 
 ```
 100 Agency users × 10 profiles × 4 (with competitors) × $0.03 × 30 days
-= $36,000/month in Apify alone
+= $3,600/month in Apify alone
 ```
 
 This is why safeguards are non-negotiable before enabling tracking.
