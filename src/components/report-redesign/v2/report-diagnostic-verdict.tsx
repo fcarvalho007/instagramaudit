@@ -6,7 +6,7 @@ import { ReportSourceLabel } from "./report-source-label";
 interface Props {
   text: string;
   /**
-   * `ai` = veredito veio de `aiInsightsV2.sections.hero` (OpenAI).
+   * `ai` = veredicto veio de `aiInsightsV2.sections.hero` (OpenAI).
    * `fallback` = síntese determinística construída a partir dos cálculos.
    * Determina o chip de proveniência mostrado no header.
    */
@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * Caixa de veredito editorial (azul/neutra) que abre o Bloco 02.
+ * Caixa de veredicto editorial (azul/neutra) que abre o Bloco 02.
  * Sem alarmes vermelhos. Ícone Bot da Lucide. A cópia é decidida
  * pelo orquestrador do bloco: AI v2 quando existe, fallback
  * determinista, ou cópia segura quando o sinal é insuficiente.
@@ -26,33 +26,33 @@ export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
   const isAi = source === "ai";
   return (
     <aside
-      aria-label="Veredito editorial"
+      aria-label="Veredicto editorial"
       className={cn(
-        "rounded-2xl border border-blue-200/70",
-        "bg-[linear-gradient(180deg,#E8F0FE_0%,#F5F8FF_100%)]",
+        "rounded-2xl border border-accent-primary/20",
+        "bg-tint-primary",
         "px-6 py-5 md:px-7 md:py-6",
-        "shadow-[0_2px_6px_rgba(37,99,217,0.06),0_8px_24px_-12px_rgba(37,99,217,0.10)]",
-        "border-l-[4px] border-l-blue-500",
+        "shadow-card",
+        "border-l-[3px] border-l-accent-primary",
       )}
     >
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white ring-1 ring-blue-200 text-blue-600"
+          className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-surface-secondary ring-1 ring-accent-primary/20 text-accent-primary"
         >
           <Bot className="size-4" />
         </span>
         <div className="min-w-0 space-y-1.5 flex-1">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-eyebrow-sm text-blue-700">
-              Veredito editorial
+            <p className="text-eyebrow-sm text-accent-primary">
+              Veredicto editorial
             </p>
             <ReportSourceLabel
               type={isAi ? "ia" : "auto"}
               detail={isAi ? "Síntese editorial" : "Síntese das classificações"}
             />
           </div>
-          <p className="text-[15px] md:text-[16px] text-slate-800 leading-relaxed">
+          <p className="text-[15px] md:text-[16px] text-content-primary leading-relaxed">
             {text}
           </p>
         </div>
