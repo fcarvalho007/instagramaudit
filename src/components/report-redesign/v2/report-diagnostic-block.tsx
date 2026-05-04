@@ -40,7 +40,6 @@ import { ReportCaptionIntelligence } from "./report-caption-intelligence";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
 import { ReportDiagnosticSummaryCards } from "./report-diagnostic-summary-cards";
 import {
-  CommentIntelligenceSection,
   CommentIntelligenceUnavailable,
 } from "./report-comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
@@ -544,13 +543,6 @@ function renderAudienceCard(
         ? "rose"
         : "blue";
 
-  const highlightTone: "rose" | "emerald" | "amber" =
-    r.status === "active"
-      ? "emerald"
-      : r.status === "moderate" || r.status === "concentrated"
-        ? "amber"
-        : "rose";
-
   return (
     <ReportDiagnosticCard
       key="q05"
@@ -567,17 +559,12 @@ function renderAudienceCard(
       <DiagnosticAudienceHighlight
         avgLikes={r.avgLikes}
         avgComments={r.avgComments}
-        totalLikes={r.totals.likes}
-        totalComments={r.totals.comments}
-        postsWithComments={r.totals.postsWithComments}
         sampleSize={r.sampleSize}
-        tone={highlightTone}
         topConversationPost={r.topConversationPost}
         status={r.status}
+        commentIntel={commentIntel?.available ? commentIntel : null}
       />
-      {commentIntel?.available ? (
-        <CommentIntelligenceSection data={commentIntel} />
-      ) : (
+      {!commentIntel?.available && (
         <CommentIntelligenceUnavailable data={commentIntel} />
       )}
     </ReportDiagnosticCard>
