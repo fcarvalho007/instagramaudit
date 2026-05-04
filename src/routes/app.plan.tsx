@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Lock, Check, Loader2, Sparkles, Building2, Zap } from "lucide-react";
+import { Lock, Check, Loader2, Sparkles, Building2, Zap, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app/plan")({
@@ -177,9 +177,22 @@ function PlanPage() {
         ))}
       </div>
 
-      <p className="mt-6 text-center text-xs text-slate-400">
-        Os planos Pro e Agency estão em preparação. Serás notificado quando estiverem disponíveis.
-      </p>
+      {/* Manifesto card */}
+      <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50/40 p-5">
+        <div className="flex gap-3">
+          <Info className="mt-0.5 size-4 shrink-0 text-blue-400" />
+          <div>
+            <p className="text-[13px] font-medium text-slate-700">
+              Sobre o tracking diário
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
+              O tracking diário será uma funcionalidade PRO futura. Por agora, a tua conta guarda
+              os relatórios solicitados e prepara a evolução para histórico contínuo. Não existem
+              cobranças nem funcionalidades ativas dos planos Pro e Agency neste momento.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
