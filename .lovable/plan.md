@@ -1,44 +1,73 @@
-## Audit Result
 
-| # | Requirement | Status |
-|---|------------|--------|
-| 1 | Auth pages render light-first | PASS — AuthCard already uses `bg-[#F0F4FA]` + white card |
-| 2 | No blank screen during session check | **FAIL** — login.tsx and signup.tsx return `null` while checking session |
-| 3 | Session checks use useEffect | PASS — useEffect triggers async getUser() |
-| 4 | Google OAuth uses approved method | PASS — `lovable.auth.signInWithOAuth("google")` |
-| 5 | /app/* redirects unauthenticated | PASS — app.tsx redirects to /login |
-| 6 | Authenticated users access /app/* | PASS |
-| 7 | Logout works from layout + account | PASS — sidebar, topbar, and account page all call signOut |
-| 8 | Route tree registration | PASS — all files use correct createFileRoute paths |
+## Audit Results
 
-## Fix Required
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | Route convention | Flat dot-separated: `app.reports.$id.tsx` → `/app/reports/$id` ✅ Already exists |
+| 2 | Route param = `report_requests.id` | Yes, uses `$id` → `getOwnedReport({ reportId: id })` ✅ |
+| 3 | Signed PDF URL function exists | Yes: `getReportPdfUrl` in `reports.functions.ts` ✅ |
+| 4 | Storage bucket + method | `report-pdfs` (private), `createSignedUrl(path, 60)` via `supabaseAdmin` ✅ |
+| 5 | Safe fields exposed | ✅ `pdf_storage_path` never sent to client; `pdf_error_message` / `email_error_message` replaced with boolean + generic hint |
 
-**Files to change (2):**
+### What already works
 
-### 1. `src/routes/login.tsx` (line 81)
-Replace `if (checkingSession) return null;` with a light-themed centered spinner using the AuthCard background, so the user sees the pale blue page instead of a blank/dark flash.
+- Header with username, date, status badge, competitor list
+- Timeline with 3 steps (Pedido criado, PDF gerado, Email enviado)
+- PDF card with download / generating / failed / not_generated states
+- Error info card
+- Back link to `/app/reports`
+- Ownership check (`user_id = userId`) on both server functions
 
-### 2. `src/routes/signup.tsx` (line 87)
-Same fix — replace `return null` with a light spinner.
+### Gaps vs. spec
 
-Both fixes are identical: replace the early return with:
-```tsx
-if (checkingSession) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F0F4FA]">
-      <Loader2 className="size-5 animate-spin text-slate-400" />
-    </div>
-  );
-}
-```
+| Gap | Detail |
+|-----|--------|
+| **Timeline missing "Análise ligada ao snapshot"** | Spec requires 4 steps; current has 3. Need step between "Pedido recebido" and "PDF gerado" showing snapshot linkage (`analysis_snapshot_id` presence). |
+| **Timeline labels differ** | Spec: "Pedido recebido" (not "Pedido criado"). Minor copy fix. |
+| **Delivery card missing** | Spec requires a separate delivery card showing `delivery_status` (sent / sending / failed / not_sent). Currently only shown as error info. |
+| **`pdf_generated_at` not exposed** | `getOwnedReport` selects it from DB but doesn't return it. Timeline uses `updated_at` as proxy — should use `pdf_generated_at`. |
+| **"Analyze another profile" action missing** | Spec requires a CTA linking to `/` alongside the back link. |
 
-`Loader2` is already imported in both files.
+## Plan
 
-## Not touched
-- Public analysis flow, /analyze/$username
-- Report generation pipeline, PDF/email endpoints
-- Admin routes
-- Report redesign components
-- Locked files
-- Supabase auto-generated files
-- No database migrations needed
+### 1. Extend `getOwnedReport` return shape
+**File:** `src/server/reports.functions.ts`
+
+- Add `pdf_generated_at` to the select query (already selected, just not returned)
+- Add it to the return object
+
+### 2. Refine `app.reports.$id.tsx`
+**File:** `src/routes/app.reports.$id.tsx`
+
+- **Timeline:** 4 steps — "Pedido recebido", "Análise ligada", "PDF gerado" (use `pdf_generated_at`), "Email enviado"
+- **Delivery card:** New card below PDF card showing delivery status with appropriate icon/copy for each state
+- **Actions:** Add "Analisar outro perfil" link to `/` below the back link
+- **Copy fix:** "Pedido recebido" instead of "Pedido criado"
+
+### Security confirmation
+
+- Ownership enforced via `.eq("user_id", userId)` on both `getOwnedReport` and `getReportPdfUrl`
+- `pdf_storage_path` never leaves the server
+- Error messages sanitized to generic hints
+- `supabaseAdmin` used server-side only (`.server.ts`-imported client)
+- RLS policy on `report_requests` adds defence-in-depth (`user_id = auth.uid()`)
+
+### Edge cases
+
+- `analysis_snapshot_id` is null → timeline step shows "Pendente"
+- `pdf_generated_at` is null but `pdf_status = "generated"` → fallback to `updated_at`
+- Report not found → existing NOT_FOUND error handling
+- Legacy reports (matched via `lead_id`) → `getOwnedReport` currently only checks `user_id`, not `lead_id` — this is a known limitation but matches the list page behavior for owned reports
+
+### Validation plan
+
+- `bunx tsc --noEmit` — zero errors
+- `bunx vitest run` — all pass
+- Manual: open `/app/reports/{valid-id}` authenticated → see 4-step timeline, delivery card, both actions
+- Manual: open `/app/reports/{other-user-id}` → NOT_FOUND error
+- Manual: open `/app/reports/$id` unauthenticated → redirect to `/login`
+
+### Files to edit
+
+1. `src/server/reports.functions.ts` — add `pdf_generated_at` to return
+2. `src/routes/app.reports.$id.tsx` — timeline, delivery card, action CTA, copy fixes
