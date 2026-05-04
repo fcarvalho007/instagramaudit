@@ -206,7 +206,7 @@ function EngagementRateCard({
 
   return (
     <PremiumCard
-      title="Taxa de envolvimento"
+      title="Taxa de engagement deste perfil"
       icon={<Activity className="h-4 w-4" aria-hidden="true" />}
       interpretation={null}
       emphasis="primary"
@@ -266,13 +266,13 @@ function EngagementComparison({
   return (
     <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
       <div className="flex flex-col">
-        <span className="text-eyebrow-sm text-slate-500">Atual</span>
+        <span className="text-eyebrow-sm text-slate-500">Este perfil</span>
         <span className="font-mono text-[2.25rem] md:text-[2.5rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
           {formatPct(engagement)}
         </span>
       </div>
       <div className="flex flex-col">
-        <span className="text-eyebrow-sm text-slate-400">Referência do escalão</span>
+        <span className="text-eyebrow-sm text-slate-400">% Média de perfis semelhantes</span>
         <span className="font-mono text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] text-slate-600 leading-none tabular-nums">
           {formatPct(benchmark)}
         </span>
