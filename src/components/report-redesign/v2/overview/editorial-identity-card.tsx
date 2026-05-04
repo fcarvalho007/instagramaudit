@@ -242,11 +242,12 @@ export function EditorialIdentityCard({
                 key={col.key}
                 className={cn(
                   "flex flex-col gap-1.5 px-4 py-4 sm:px-5 sm:py-5",
-                  /* Borders: right border except last in row */
-                  idx < 3 && "md:border-r md:border-border-default",
-                  idx === 0 && "border-r border-border-default",
-                  idx === 2 && "border-r border-border-default md:border-r",
-                  /* Top border for bottom row on mobile */
+                  /* Right border: odd columns (0,2) on mobile 2-col; all except last on md 4-col */
+                  idx % 2 === 0 && "border-r border-border-default",
+                  idx < 3 && "md:border-r",
+                  idx === 1 && "border-r-0 md:border-r md:border-border-default",
+                  idx === 3 && "border-r-0 md:border-r-0",
+                  /* Top border for bottom row on mobile 2-col */
                   idx >= 2 && "border-t border-border-default md:border-t-0",
                 )}
               >
