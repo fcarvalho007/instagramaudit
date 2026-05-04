@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevLoadingPreviewRouteImport } from './routes/dev-loading-preview'
@@ -83,6 +84,11 @@ import { Route as ApiAdminKnowledgeHistoryTypeIdRouteImport } from './routes/api
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -468,6 +474,7 @@ export interface FileRoutesByFullPath {
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
@@ -539,6 +546,7 @@ export interface FileRoutesByTo {
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
@@ -612,6 +620,7 @@ export interface FileRoutesById {
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
@@ -686,6 +695,7 @@ export interface FileRouteTypes {
     | '/dev-loading-preview'
     | '/login'
     | '/privacidade'
+    | '/signup'
     | '/termos'
     | '/admin/clientes'
     | '/admin/conhecimento'
@@ -757,6 +767,7 @@ export interface FileRouteTypes {
     | '/dev-loading-preview'
     | '/login'
     | '/privacidade'
+    | '/signup'
     | '/termos'
     | '/admin/clientes'
     | '/admin/conhecimento'
@@ -829,6 +840,7 @@ export interface FileRouteTypes {
     | '/dev-loading-preview'
     | '/login'
     | '/privacidade'
+    | '/signup'
     | '/termos'
     | '/admin/clientes'
     | '/admin/conhecimento'
@@ -902,6 +914,7 @@ export interface RootRouteChildren {
   DevLoadingPreviewRoute: typeof DevLoadingPreviewRoute
   LoginRoute: typeof LoginRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
+  SignupRoute: typeof SignupRoute
   TermosRoute: typeof TermosRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
   ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
@@ -958,6 +971,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -1575,6 +1595,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevLoadingPreviewRoute: DevLoadingPreviewRoute,
   LoginRoute: LoginRoute,
   PrivacidadeRoute: PrivacidadeRoute,
+  SignupRoute: SignupRoute,
   TermosRoute: TermosRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
   ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,
