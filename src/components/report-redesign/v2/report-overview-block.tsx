@@ -24,7 +24,7 @@ import {
   classifyChannelIntegration,
   inferProbableObjective,
 } from "@/lib/report/block02-diagnostic";
-import { DiagnosticCard, buildDiagnosticCards } from "./overview/diagnostic-summary";
+import { buildDiagnosticCards } from "./overview/diagnostic-summary";
 import type { SummaryCardData } from "./overview/diagnostic-summary";
 
 export interface Props {
