@@ -2,6 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/app/app-layout";
+import { ensureReportAssociation } from "@/server/account.functions";
 
 export const Route = createFileRoute("/app")({
   component: AppShell,
@@ -30,6 +31,9 @@ function AppShell() {
             undefined,
         });
         setChecking(false);
+
+        // Fire-and-forget: link any reports created since last login
+        ensureReportAssociation().catch(() => {});
       }
     });
 
