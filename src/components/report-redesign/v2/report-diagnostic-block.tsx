@@ -560,6 +560,8 @@ function renderAudienceCard(
         avgLikes={r.avgLikes}
         avgComments={r.avgComments}
         sampleSize={r.sampleSize}
+        totalLikes={r.totals.likes}
+        postsWithComments={r.totals.postsWithComments}
         topConversationPost={r.topConversationPost}
         status={r.status}
         commentIntel={commentIntel?.available ? commentIntel : null}
