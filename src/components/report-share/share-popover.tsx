@@ -17,6 +17,8 @@ interface ShareReportPopoverProps {
   /** Texto do trigger (defeito: "Partilhar"). */
   triggerLabel?: string;
   className?: string;
+  /** aria-label para o botão trigger (útil quando triggerLabel é vazio). */
+  "aria-label"?: string;
 }
 
 /**
