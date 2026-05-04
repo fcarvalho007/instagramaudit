@@ -40,7 +40,7 @@ export const getAccountDetails = createServerFn({ method: "GET" })
   });
 
 export const updateDisplayName = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .inputValidator((data: unknown) => {
     const parsed = data as { displayName: string };
     if (typeof parsed.displayName !== "string" || parsed.displayName.length > 100) {
@@ -65,7 +65,7 @@ export const updateDisplayName = createServerFn({ method: "POST" })
   });
 
 export const ensureReportAssociation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { userId } = context;
 
