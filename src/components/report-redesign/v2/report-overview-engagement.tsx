@@ -38,11 +38,11 @@ export function EngagementCardRefined({ result }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between px-5 md:px-6 pt-5 md:pt-6 pb-0">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-tint-primary text-accent-primary">
+          <div className="flex items-center justify-center size-9 rounded-xl bg-tint-primary text-accent-primary">
             <Activity className="size-4" strokeWidth={2.2} aria-hidden="true" />
           </div>
           <div>
-            <span className="font-display text-sm font-semibold text-content-primary block tracking-tight">
+            <span className="font-display text-lg sm:text-xl font-semibold text-content-primary block tracking-tight">
               Taxa de envolvimento
             </span>
             <span className="text-[11px] text-content-secondary">
@@ -59,17 +59,17 @@ export function EngagementCardRefined({ result }: Props) {
 
       {/* Hero row — 3 columns */}
       <div className="px-5 md:px-6 pt-5 pb-5">
-        <div className="rounded-xl border border-border-subtle bg-surface-muted/50 grid grid-cols-1 sm:grid-cols-3">
+        <div className="rounded-xl border border-accent-primary/15 bg-gradient-to-r from-surface-secondary via-tint-primary/30 to-surface-secondary grid grid-cols-1 sm:grid-cols-3">
         {/* Column 1: Profile engagement */}
         <div className="px-4 py-3 border-b sm:border-b-0 sm:border-r border-border-subtle">
           <span className="text-eyebrow-sm text-accent-primary block mb-1">
             Taxa de engagement deste perfil
           </span>
           <div className="flex items-baseline">
-            <span className="font-sans text-2xl sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+            <span className="font-sans text-[1.75rem] sm:text-[2.25rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
               {fmtPctHero(k.engagementRate)}
             </span>
-            <span className="font-sans text-2xl sm:text-[2rem] font-light text-content-secondary/60 ml-0.5">
+            <span className="font-sans text-[1.75rem] sm:text-[2.25rem] font-light text-content-secondary/60 ml-0.5">
               %
             </span>
           </div>
@@ -84,10 +84,10 @@ export function EngagementCardRefined({ result }: Props) {
             % Média de perfis semelhantes
           </span>
           <div className="flex items-baseline">
-            <span className="font-sans text-xl sm:text-[1.75rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+            <span className="font-sans text-[1.5rem] sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
               {fmtPctHero(benchmarkVal)}
             </span>
-            <span className="font-sans text-xl sm:text-[1.75rem] font-light text-content-secondary/50 ml-0.5">
+            <span className="font-sans text-[1.5rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
               %
             </span>
           </div>

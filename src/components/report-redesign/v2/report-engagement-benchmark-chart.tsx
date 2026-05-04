@@ -88,7 +88,7 @@ export function ReportEngagementBenchmarkChart({
               aria-hidden="true"
             >
               <div
-                className="absolute top-0 bottom-0 w-px border-l border-dashed border-content-secondary/25"
+                className="absolute top-0 bottom-0 w-px border-l border-dashed border-content-secondary/20"
                 style={{ left: `${benchmarkPct}%` }}
               />
             </div>
@@ -108,7 +108,7 @@ export function ReportEngagementBenchmarkChart({
               className={cn(
                 "relative rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 transition-colors",
                 isActive
-                  ? "border-2 border-accent-primary/30 bg-tint-primary"
+                  ? "border border-accent-primary/25 bg-tint-primary"
                   : "border border-transparent",
               )}
             >
@@ -150,7 +150,7 @@ export function ReportEngagementBenchmarkChart({
                       {/* Segment 1: benchmark portion (solid blue) */}
                       <div
                         className={cn(
-                          "absolute inset-y-0 left-0 bg-accent-primary rounded-l-md",
+                          "absolute inset-y-0 left-0 bg-gradient-to-r from-accent-primary via-[#06B6D4] to-signal-success rounded-l-md",
                           profileVal <= benchmarkVal && "rounded-r-md",
                         )}
                         style={{ width: `${Math.max(Math.min(tierPct, profilePctVal), 1)}%` }}
@@ -158,7 +158,7 @@ export function ReportEngagementBenchmarkChart({
                       {/* Segment 2: gap above benchmark (green) — only when profile > benchmark */}
                       {profileVal > benchmarkVal && (
                         <div
-                          className="absolute inset-y-0 rounded-r-md bg-signal-success/80"
+                          className="absolute inset-y-0 rounded-r-md bg-signal-success/70"
                           style={{
                             left: `${tierPct}%`,
                             width: `${Math.max(profilePctVal - tierPct, 0)}%`,
@@ -187,7 +187,7 @@ export function ReportEngagementBenchmarkChart({
                   ) : (
                     /* Inactive tier: grey bar */
                     <div
-                      className="absolute inset-y-0 left-0 rounded-md bg-content-secondary/12"
+                      className="absolute inset-y-0 left-0 rounded-md bg-content-secondary/8"
                       style={{ width: `${Math.max(tierPct, 1)}%` }}
                     />
                   )}
@@ -207,7 +207,7 @@ export function ReportEngagementBenchmarkChart({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-between flex-wrap gap-3 text-[11px] pt-1">
+      <div className="flex items-center justify-between flex-wrap gap-3 text-[11px] border-t border-border-subtle pt-3">
         <div className="flex items-center gap-4">
           <span className="inline-flex items-center gap-1.5">
             <span className="flex gap-px" aria-hidden="true">

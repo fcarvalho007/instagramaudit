@@ -1,99 +1,44 @@
 
-# Refactoring: 6-Card Summary Grid
+# Block 1 Engagement Card — Visual Refinement
 
-## Current Architecture
+Pure CSS/class changes. Zero text, metric, calculation, or data source modifications.
 
-### Row 1 — "PONTUAÇÃO GLOBAL" (3 score cards)
+## Files to edit (2)
 
-Rendered by `ScoreGrid` → `ScoreCard` in `report-overview-block.tsx` (line 65).
+### 1. `src/components/report-redesign/v2/report-overview-engagement.tsx`
 
-| File | Role |
-|---|---|
-| `src/components/report-redesign/v2/overview/score-grid.tsx` | Grid wrapper, "PONTUAÇÃO GLOBAL" label, legend |
-| `src/components/report-redesign/v2/overview/score-card.tsx` | Individual card with ScoreRing |
-| `src/components/report-redesign/v2/overview/score-ring.tsx` | SVG ring gauge |
-| `src/components/report-redesign/v2/overview/score-utils.ts` | Score functions, definitions (3 keys: envolvimento, frequencia, interaccao) |
+**Card header (lines 39–57)**
+- Title `text-sm` → `text-lg sm:text-xl` + keep `font-display font-semibold tracking-tight`
+- Icon container: subtle size bump `size-9 rounded-xl`
 
-Cards rendered: **Taxa de Engagement**, **Frequência de Posts**, **Interação nos Posts**.
-No "Mensagem" card exists — it was already removed in a previous edit. Only 3 cards.
+**Hero metric strip (lines 61–139)**
+- Container: `bg-surface-muted/50` → `bg-gradient-to-r from-surface-secondary via-tint-primary/30 to-surface-secondary`
+- Border: `border-border-subtle` → `border-accent-primary/15`
+- Main profile value (col 1): `text-2xl sm:text-[2rem]` → `text-[1.75rem] sm:text-[2.25rem]`
+- Benchmark value (col 2): `text-xl sm:text-[1.75rem]` → `text-[1.5rem] sm:text-[2rem]`
 
-**Clickability**: Cards are plain `<div>` elements. No onClick, href, button role, cursor-pointer, or keyboard handlers. Already non-clickable.
+### 2. `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
 
-**Visual effects to remove**: `score-card.tsx` uses `shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.06)]` — a subtle shadow, acceptable for Iconosquare style. No glow, blur, ring shadow, hover elevation, or animated arrows exist. The `score-grid.tsx` legend and divider line should be evaluated for removal in the merged layout.
+**Active tier row (line 108–113)**
+- Background: `bg-tint-primary` stays
+- Border: `border-2 border-accent-primary/30` → `border border-accent-primary/25` (lighter, less heavy)
 
-### Row 2 — Diagnostic Summary (3 cards)
+**Active tier bar — premium gradient (lines 149–167)**
+- Segment 1 (benchmark portion): `bg-accent-primary` → `bg-gradient-to-r from-accent-primary via-[#06B6D4] to-signal-success`
+- Segment 2 (gap above benchmark): `bg-signal-success/80` → `bg-signal-success/70` (softer)
 
-Rendered by `OverviewDiagnosticSummary` in `report-overview-block.tsx` (line 68).
+**Inactive tier bars (line 190)**
+- `bg-content-secondary/12` → `bg-content-secondary/8` (softer, more elegant)
 
-| File | Role |
-|---|---|
-| `src/components/report-redesign/v2/overview/diagnostic-summary.tsx` | 3-card grid: Tipo de conteúdo, Papel do conteúdo, Objetivo deste perfil |
+**Benchmark dashed line (line 91)**
+- `border-content-secondary/25` → `border-content-secondary/20` (subtler)
 
-**Note**: There is also `src/components/report-redesign/v2/report-diagnostic-summary-cards.tsx` which renders 4 cards (adds "Resposta do público") for Block 02. This file is NOT part of the overview block and must NOT be touched.
+**Legend (lines 210–250)**
+- Add `border-t border-border-subtle pt-3` to the legend wrapper for separation
 
-**Clickability**: Cards are `<article>` elements. No onClick, href, or interactive affordances. Already non-clickable.
+## Not touched
 
-**Visual effects**: `shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.06)]` — same subtle shadow. Pastel icon circles with `ring-1`. No glow.
-
-### Data Sources (confirmed)
-
-| Card | Source |
-|---|---|
-| Taxa de Engagement | `k.engagementRate` vs `k.engagementBenchmark` → `computeEnvolvimento()` |
-| Frequência de Posts | `k.postingFrequencyWeekly` → `computeFrequencia()` |
-| Interação nos Posts | `avgComments` from `enriched.topPosts` → `computeInteraccao()` |
-| Tipo de conteúdo | `classifyContentType(posts)` from `block02-diagnostic` |
-| Papel do conteúdo | `classifyFunnelStage(posts)` from `block02-diagnostic` |
-| Objetivo deste perfil | `inferProbableObjective(...)` from `block02-diagnostic` |
-
-All data comes from the cached snapshot payload — no external calls needed.
-
-### "Mensagem" card
-
-Does not exist in the current implementation. Nothing to remove.
-
-## Proposed Changes
-
-Merge the two separate grids into a single unified 6-card grid with consistent card design.
-
-### Files to EDIT (3 files)
-
-1. **`src/components/report-redesign/v2/report-overview-block.tsx`**
-   - Remove separate `ScoreGrid` and `OverviewDiagnosticSummary` renders
-   - Replace with a single unified component
-   - Keep all data computation (scores, classifier calls) in this file
-
-2. **`src/components/report-redesign/v2/overview/score-grid.tsx`**
-   - Refactor into a unified 6-card grid component
-   - Remove the "PONTUAÇÃO GLOBAL" eyebrow label (the Block title/subtitle remain untouched)
-   - Remove the color legend
-   - Remove the bottom divider
-   - Accept both score cards and diagnostic cards as children or props
-   - Grid layout: `grid-cols-2 sm:grid-cols-3` (2 per row mobile, 3 per row desktop)
-
-3. **`src/components/report-redesign/v2/overview/score-card.tsx`**
-   - Unify card design: same visual treatment for score cards (row 1) and diagnostic cards (row 2)
-   - Keep ScoreRing for row 1 cards, pastel icon circle for row 2 cards
-   - Ensure no clickable affordances
-
-### Files to POTENTIALLY SIMPLIFY
-
-4. **`src/components/report-redesign/v2/overview/diagnostic-summary.tsx`**
-   - May be inlined into the unified grid, or kept as a data-building helper
-   - The component's rendering would be absorbed into the unified grid
-
-### Files that MUST NOT be touched
-
-- `src/styles/tokens.css`, `src/styles/tokens-light.css` (locked)
-- `src/styles.css` (locked)
-- `src/components/report-redesign/v2/report-diagnostic-summary-cards.tsx` (Block 02 — separate)
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` (Block 02)
-- `src/lib/report/block02-diagnostic.ts` (classifier logic)
-- `src/lib/report/snapshot-to-report-data.ts` (adapter)
-- All locked files in LOCKED_FILES.md
-- Backend, database, auth, PDF, admin, loading screen
-- Block 02 title/subtitle
-
-### Risk
-
-**Low**. Pure visual refactor of 3-4 component files. No data model, backend, or classifier changes. Score computation functions in `score-utils.ts` remain unchanged. Block 02's own diagnostic cards are a separate component and unaffected.
+- All text/copy stays identical
+- All metrics, calculations, formatters unchanged
+- `score-utils.ts`, `score-card.tsx`, `score-grid.tsx`, `diagnostic-summary.tsx` — not touched
+- Block 2, admin, PDF, auth, backend, adapters, loading, global tokens, locked files — not touched
