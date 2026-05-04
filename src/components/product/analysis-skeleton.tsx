@@ -109,7 +109,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
 
       <div className="flex w-full max-w-[520px] flex-col items-center gap-6 rounded-2xl border border-border-default bg-surface-secondary px-6 py-8 shadow-card sm:px-8 sm:py-10">
         {/* Eyebrow */}
-        <span className="text-eyebrow-sm text-content-tertiary">
+        <span className="text-eyebrow-sm text-content-secondary">
           A analisar perfil
         </span>
 
@@ -170,7 +170,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
         </p>
 
         {/* Footnote */}
-        <p className="max-w-[360px] text-center font-sans text-[12px] leading-relaxed text-content-tertiary">
+        <p className="max-w-[360px] text-center font-sans text-[12px] leading-relaxed text-content-secondary">
           Não feches esta janela — estamos a preparar o diagnóstico.
         </p>
       </div>
