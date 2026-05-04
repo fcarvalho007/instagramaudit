@@ -350,7 +350,7 @@ function ReportDetailPage() {
           )}
           {report.has_email_error && (
             <p className="mt-2 text-sm text-amber-700">
-              Ocorreu um erro ao enviar o email. Podes descarregar o PDF diretamente se estiver disponível.
+              Ocorreu um erro ao enviar o email. O PDF pode ser descarregado diretamente, se disponível.
             </p>
           )}
         </div>

@@ -105,7 +105,7 @@ function AccountPage() {
         Conta
       </h1>
       <p className="mt-1 text-sm text-slate-400">
-        Consulta e gere as informações da conta.
+        Informações e definições da conta.
       </p>
 
       {/* Profile card */}

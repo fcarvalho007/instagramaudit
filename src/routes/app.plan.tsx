@@ -101,7 +101,7 @@ function PlanPage() {
         Plano
       </h1>
       <p className="mt-1 text-sm text-slate-400">
-        Consulta o plano atual e compara as opções disponíveis.
+        Plano atual e opções disponíveis.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
