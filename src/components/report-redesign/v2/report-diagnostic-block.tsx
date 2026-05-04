@@ -40,7 +40,6 @@ import { ReportCaptionIntelligence } from "./report-caption-intelligence";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
 import { ReportDiagnosticSummaryCards } from "./report-diagnostic-summary-cards";
 import {
-  CommentIntelligenceSection,
   CommentIntelligenceUnavailable,
 } from "./report-comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
