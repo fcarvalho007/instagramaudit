@@ -12,7 +12,7 @@ export function ComparisonHeader() {
 
   return (
     <>
-      <div className="rounded-2xl border border-blue-200/60 bg-gradient-to-r from-blue-50/80 via-white to-indigo-50/60 px-5 py-4 md:px-6 md:py-5 shadow-[0_1px_3px_rgba(59,130,246,0.06),0_8px_24px_-12px_rgba(59,130,246,0.10)]">
+      <div className="rounded-2xl border border-blue-200/60 bg-gradient-to-r from-blue-50/80 via-white to-indigo-50/60 px-5 py-4 md:px-6 md:py-5 shadow-card">
         <div className="flex items-center gap-4 md:gap-5">
           {/* Icon */}
           <div className="shrink-0 flex items-center justify-center size-10 md:size-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.45)]">

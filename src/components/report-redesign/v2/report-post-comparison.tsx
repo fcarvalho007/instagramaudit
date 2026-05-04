@@ -49,9 +49,9 @@ export function PostComparisonBlock({
             label="Melhores 2"
             helper="Conteúdos com maior envolvimento"
             icon={<TrendingUp className="size-4" />}
-            accentBg="bg-sky-50/50"
-            accentText="text-sky-700"
-            accentBorder="border-sky-200/50"
+            accentBg="bg-tint-primary"
+            accentText="text-accent-primary"
+            accentBorder="border-border-subtle"
             posts={best2}
             rankPrefix="#"
           />
@@ -60,9 +60,9 @@ export function PostComparisonBlock({
             label="A melhorar"
             helper="Conteúdos com menor envolvimento"
             icon={<TrendingDown className="size-4" />}
-            accentBg="bg-slate-100/60"
-            accentText="text-slate-500"
-            accentBorder="border-slate-200/60"
+            accentBg="bg-tint-warning"
+            accentText="text-signal-warning"
+            accentBorder="border-border-subtle"
             posts={worst2}
             rankPrefix="A melhorar #"
           />
@@ -155,8 +155,8 @@ function PostCard({
 
   const rankChipClasses =
     tone === "best"
-      ? "bg-sky-50 text-sky-700 border-sky-200/50"
-      : "bg-slate-100 text-slate-500 border-slate-200/60";
+      ? "bg-tint-primary text-accent-primary border-border-subtle"
+      : "bg-tint-warning text-signal-warning border-border-subtle";
 
   return (
     <Wrapper
@@ -171,7 +171,7 @@ function PostCard({
       {/* Thumbnail */}
       <div className="relative shrink-0 w-[88px] md:w-[96px] aspect-[4/5] rounded-xl overflow-hidden bg-surface-muted">
         {post.permalink ? (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300" />
+          <div className="absolute inset-0 bg-surface-muted" />
         ) : null}
         {/* Format chip */}
         <span className="absolute top-1.5 right-1.5 z-10 text-[9px] font-semibold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-surface-secondary/90 backdrop-blur text-content-primary leading-none">
