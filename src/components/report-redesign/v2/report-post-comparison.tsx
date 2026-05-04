@@ -1,5 +1,5 @@
 import { Heart, MessageCircle, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
-import type { ReactNode} from "react";
+import type { ReactNode } from "react";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 
