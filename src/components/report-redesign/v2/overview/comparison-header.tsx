@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CompetitorModal } from "./competitor-modal";
@@ -130,19 +130,43 @@ function SocialCircle({ letter, bg }: { letter: string; bg: string }) {
 
 /** Lightweight informational modal for the multi-network roadmap. */
 function RoadmapInfoDialog({ onClose }: { onClose: () => void }) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previousFocus.current = document.activeElement as HTMLElement | null;
+    btnRef.current?.focus();
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      previousFocus.current?.focus();
+    };
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
       onClick={onClose}
+      onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
-      aria-label="Informação sobre redes futuras"
+      aria-labelledby="roadmap-dialog-title"
     >
       <div
         className="mx-4 w-full max-w-sm rounded-2xl border border-border-default bg-surface-secondary p-6 shadow-lg animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-base font-semibold text-content-primary">
+        <p id="roadmap-dialog-title" className="text-base font-semibold text-content-primary">
           Em breve
         </p>
         <p className="mt-2 text-sm text-content-secondary leading-relaxed">
@@ -150,6 +174,7 @@ function RoadmapInfoDialog({ onClose }: { onClose: () => void }) {
           que possas analisar todas as tuas redes num único relatório.
         </p>
         <button
+          ref={btnRef}
           type="button"
           onClick={onClose}
           className="mt-5 w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-slate-800"
