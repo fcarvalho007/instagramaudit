@@ -181,7 +181,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           ) : null}
         </>
       ) : (
-        <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
+        <p className="text-sm text-content-secondary leading-relaxed max-w-2xl">
           A amostra de publicações é demasiado pequena para sustentar um
           diagnóstico editorial detalhado. À medida que houver mais
           atividade, este bloco passa a abrir até oito perguntas de leitura.
@@ -329,10 +329,10 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
               value: d.sharePct,
               color:
                 i === 0
-                  ? "bg-slate-500"
+                  ? "bg-content-tertiary"
                   : i === 1
-                    ? "bg-slate-400"
-                    : "bg-slate-300",
+                    ? "bg-content-tertiary/60"
+                    : "bg-content-tertiary/30",
             }))}
           />
         ) : null}
@@ -340,7 +340,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
     );
   }
   const colorByIndex = (i: number) =>
-    i === 0 ? "bg-emerald-600" : i === 1 ? "bg-emerald-400" : "bg-slate-300";
+    i === 0 ? "bg-emerald-600" : i === 1 ? "bg-emerald-400" : "bg-content-tertiary/30";
   return (
     <ReportDiagnosticCard
       key="q01"
@@ -448,14 +448,14 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
           return (
             <li key={it.text} className="text-sm">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-700 truncate">{it.text}</span>
-                <span className="font-mono text-[10px] text-slate-500 tabular-nums shrink-0">
+                <span className="text-content-secondary truncate">{it.text}</span>
+                <span className="font-mono text-[10px] text-content-tertiary tabular-nums shrink-0">
                   {it.weight}×
                 </span>
               </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
                 <div
-                  className="h-full bg-blue-500"
+                  className="h-full bg-accent-primary"
                   style={{ width: `${pct}%` }}
                   aria-hidden
                 />
@@ -485,8 +485,8 @@ function renderAudienceCard(
         span="full"
         body={r.explanation}
       >
-        <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3">
-          <p className="text-[12.5px] text-slate-600 leading-relaxed">
+        <div className="rounded-md border border-dashed border-border-default bg-surface-muted px-3 py-3">
+          <p className="text-[12.5px] text-content-secondary leading-relaxed">
             Quando estes dados estiverem disponíveis, o relatório compara
             reação, conversa e concentração de comentários.
           </p>
