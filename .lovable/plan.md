@@ -1,42 +1,32 @@
 
-## What changes
+## Assessment
 
-### 1. `/app/account` — Full account page
+The signup trigger (`handle_new_user` → `link_user_to_existing_reports`) correctly links existing reports at signup time. However, there's **no login-time fallback**. Reports created after signup are never linked.
 
-**File:** `src/routes/app.account.tsx` (rewrite)
+## What to add
 
-- Fetch profile from `profiles` table via Supabase client (RLS ensures own data only)
-- Show: email, display_name (editable), plan badge, created_at, associated lead email (from `profiles.lead_id` → `leads.email`)
-- Editable display_name with inline save (uses `supabase.from('profiles').update()`)
-- Logout button using `supabase.auth.signOut()` + redirect to `/login`
-- No email change, no plan change, no account deletion
-- White card style consistent with Iconosquare light theme
+### 1. Server function: `ensureReportAssociation`
 
-### 2. `/app/plan` — Detailed plan comparison
+**File:** `src/server/account.functions.ts` (add to existing)
 
-**File:** `src/routes/app.plan.tsx` (rewrite)
+- New `createServerFn` with `requireSupabaseAuth` middleware
+- Calls `link_user_to_existing_reports(userId, userEmail)` via `supabaseAdmin.rpc()`
+- Returns `{ linked: boolean }` — whether any new associations were made
+- Safe to call multiple times (function is already idempotent)
 
-- Fetch current plan from `profiles` table
-- Three cards with updated copy per spec:
-  - **Free** (current): análise pontual, snapshot guardado, sem histórico completo
-  - **Pro** ("Em breve"): tracking diário 1 perfil, evolução semanal/mensal, alertas crescimento, comparação temporal
-  - **Agency** ("Em breve"): tracking diário vários perfis, concorrentes, exportação, alertas, comparação lado a lado
-- Current plan highlighted with blue ring; others show lock icon + "Preparado para uma fase futura"
-- Pastel badges, subtle borders, no fake availability, no payment buttons
+### 2. Call it on app load
 
-### 3. Optional: server function for lead email lookup
+**File:** `src/routes/app.tsx`
 
-**File:** `src/server/account.functions.ts` (new)
-
-- `getAccountDetails` server function using `requireSupabaseAuth` middleware
-- Fetches profile + joined lead email in one query (profiles with lead_id → leads)
-- Avoids exposing lead table directly to client
+- After confirming the user is authenticated, fire-and-forget call to `ensureReportAssociation`
+- Runs silently in the background — no UI change, no blocking
+- Ensures any reports created between sessions get linked
 
 ### Files changed
-- `src/routes/app.account.tsx` — rewritten
-- `src/routes/app.plan.tsx` — rewritten
-- `src/server/account.functions.ts` — new server function
+- `src/server/account.functions.ts` — add `ensureReportAssociation`
+- `src/routes/app.tsx` — call it on auth-confirmed load
 
-### What remains placeholder
-- Pro/Agency plans are visual teasers only — no payments, no tracking jobs, no subscriptions table
-- Plan upgrade buttons are disabled/absent
+### Security
+- Uses `supabaseAdmin.rpc()` server-side only — leads table never exposed to client
+- Server function validates user identity via `requireSupabaseAuth`
+- The DB function itself ensures `user_id IS NULL` guard (no overwrites)
