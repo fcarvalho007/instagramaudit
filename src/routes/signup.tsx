@@ -37,7 +37,6 @@ function SignupPage() {
       }
     });
   }, [navigate]);
-  });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

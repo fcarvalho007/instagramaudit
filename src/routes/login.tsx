@@ -36,7 +36,6 @@ function LoginPage() {
       }
     });
   }, [navigate]);
-  });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
