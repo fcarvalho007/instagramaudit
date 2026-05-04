@@ -2,10 +2,72 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+export interface UserReport {
+  id: string;
+  instagramUsername: string;
+  competitorUsernames: string[];
+  requestStatus: string;
+  pdfStatus: string;
+  deliveryStatus: string;
+  createdAt: string;
+  pdfGeneratedAt: string | null;
+  emailSentAt: string | null;
+  analysisSnapshotId: string | null;
+}
+
+export const getUserReports = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<UserReport[]> => {
+    const { supabase, userId } = context;
+
+    // Fetch profile to get lead_id for legacy report association
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("lead_id")
+      .eq("id", userId)
+      .single();
+
+    const leadId = profile?.lead_id ?? null;
+
+    // Build query: user_id match OR lead_id match (for legacy pre-signup reports)
+    let query = supabase
+      .from("report_requests")
+      .select(
+        "id, instagram_username, competitor_usernames, request_status, pdf_status, delivery_status, created_at, pdf_generated_at, email_sent_at, analysis_snapshot_id",
+      )
+      .order("created_at", { ascending: false });
+
+    if (leadId) {
+      query = query.or(`user_id.eq.${userId},lead_id.eq.${leadId}`);
+    } else {
+      query = query.eq("user_id", userId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("getUserReports query error:", error.message);
+      throw new Error("Não foi possível carregar os relatórios.");
+    }
+
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      instagramUsername: r.instagram_username,
+      competitorUsernames: Array.isArray(r.competitor_usernames)
+        ? (r.competitor_usernames as string[])
+        : [],
+      requestStatus: r.request_status,
+      pdfStatus: r.pdf_status,
+      deliveryStatus: r.delivery_status,
+      createdAt: r.created_at,
+      pdfGeneratedAt: r.pdf_generated_at,
+      emailSentAt: r.email_sent_at,
+      analysisSnapshotId: r.analysis_snapshot_id,
+    }));
+  });
+
 /**
  * Fetch a single report request owned by the current user.
- * Uses supabaseAdmin to avoid needing a second RLS policy for single-row fetch,
- * but explicitly checks ownership via user_id.
  */
 export const getOwnedReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -36,7 +98,6 @@ export const getOwnedReport = createServerFn({ method: "POST" })
       throw new Error("NOT_FOUND");
     }
 
-    // Sanitize error messages — don't leak internal details
     return {
       id: report.id,
       instagram_username: report.instagram_username,
@@ -60,7 +121,6 @@ export const getOwnedReport = createServerFn({ method: "POST" })
 
 /**
  * Generate a short-lived signed URL for a report's PDF.
- * Only works if the report is owned by the current user and PDF is generated.
  */
 export const getReportPdfUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -73,7 +133,6 @@ export const getReportPdfUrl = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
 
-    // Verify ownership and PDF readiness
     const { data: report, error } = await supabaseAdmin
       .from("report_requests")
       .select("id, pdf_status, pdf_storage_path, user_id")
@@ -89,7 +148,6 @@ export const getReportPdfUrl = createServerFn({ method: "POST" })
       throw new Error("PDF_NOT_READY");
     }
 
-    // Generate signed URL (60 seconds expiry)
     const { data: signedData, error: signError } = await supabaseAdmin.storage
       .from("report-pdfs")
       .createSignedUrl(report.pdf_storage_path, 60);
