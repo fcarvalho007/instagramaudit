@@ -63,7 +63,13 @@ const LOADER_CSS = `
   .liq-glow {
     animation: none !important;
   }
-  .liq-bar { transform: scaleY(0.6) !important; }
+  .liq-bar:nth-child(1) { transform: scaleY(0.45) !important; }
+  .liq-bar:nth-child(2) { transform: scaleY(0.60) !important; }
+  .liq-bar:nth-child(3) { transform: scaleY(0.35) !important; }
+  .liq-bar:nth-child(4) { transform: scaleY(0.70) !important; }
+  .liq-bar:nth-child(5) { transform: scaleY(0.90) !important; }
+  .liq-bar:nth-child(6) { transform: scaleY(0.55) !important; }
+  .liq-bar:nth-child(7) { transform: scaleY(0.75) !important; }
   .liq-droplet { opacity: 0 !important; }
 }
 `;
@@ -102,7 +108,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
 
       <div className="flex w-full max-w-[520px] flex-col items-center gap-6 rounded-2xl border border-border-default bg-surface-secondary px-6 py-8 shadow-card sm:px-8 sm:py-10">
         {/* Eyebrow */}
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-content-tertiary">
+        <span className="text-eyebrow-sm text-content-tertiary">
           A analisar perfil
         </span>
 
@@ -130,7 +136,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
         <div className="flex min-h-[3.5rem] items-center justify-center" role="status">
           <p
             key={phase}
-            className="text-center font-display text-xl font-semibold text-content-primary sm:text-2xl"
+            className="text-center font-sans text-lg font-semibold text-content-primary sm:text-xl"
             style={{ animation: "liq-phase-in 0.45s ease-out both" }}
           >
             {PHASES[phase]}
