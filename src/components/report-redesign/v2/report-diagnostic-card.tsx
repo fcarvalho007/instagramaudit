@@ -1,7 +1,22 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { MessagesSquare, MessageCircleMore, Target, MessageCircleOff, CircleHelp, Heart, MessageCircle, Reply, ArrowRight, CheckCircle2, XCircle, Lightbulb, Quote } from "lucide-react";
+import {
+  MessagesSquare,
+  MessageCircleMore,
+  Target,
+  MessageCircleOff,
+  CircleHelp,
+  Heart,
+  MessageCircle,
+  MessageCircleReply,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Lightbulb,
+  MessageSquare,
+  Users,
+} from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
@@ -503,9 +518,9 @@ export function DiagnosticRanking({
  * P05 redesign: 5-zone editorial card for "O público responde ou só consome?"
  *
  * Z1 — Header + dominant answer (handled by ReportDiagnosticCard wrapper)
- * Z2 — Three KPI cards
- * Z3 — Conversation flow diagram ("Elo Perdido")
- * Z4 — Top conversation post highlight
+ * Z2 — Three KPI cards (gostos/post, comentários/post, respostas da marca)
+ * Z3 — Conversation flow diagram ("Diagnóstico da Conversa")
+ * Z4 — Highlighted top conversation post
  * Z5 — Works / Fails / Next
  */
 
@@ -513,6 +528,8 @@ interface AudienceHighlightProps {
   avgLikes: number;
   avgComments: number;
   sampleSize?: number;
+  totalLikes?: number | null;
+  postsWithComments?: number;
   topConversationPost?: {
     index: number;
     comments: number;
@@ -523,27 +540,29 @@ interface AudienceHighlightProps {
   commentIntel?: CommentIntelligence | null;
 }
 
+/* ── Z5 copy maps (status-driven) ── */
+
 const WORKS_MAP: Record<AudienceResponseStatus, string> = {
-  active: "Bom volume de reações e conversa pública consistente.",
-  moderate: "Volume de gostos saudável — o conteúdo gera reação.",
-  concentrated: "Há posts que provam capacidade de gerar conversa.",
-  silent: "O conteúdo gera gostos — há audiência presente.",
+  active: "O conteúdo gera reações e conversa pública consistente — há audiência viva e participativa.",
+  moderate: "Os posts captam atenção e geram reação passiva — há audiência viva.",
+  concentrated: "Há posts que provam capacidade de gerar conversa — a fórmula existe.",
+  silent: "Os posts captam atenção e geram reação passiva — há audiência viva.",
   unavailable: "—",
 };
 
 const FAILS_MAP: Record<AudienceResponseStatus, string> = {
-  active: "Garantir que a marca responde para manter o ciclo.",
-  moderate: "Poucos comentários em proporção aos gostos.",
-  concentrated: "A conversa está concentrada em poucos posts.",
-  silent: "Quase zero comentários — a audiência consome sem conversar.",
+  active: "Garantir que a marca responde para manter o ciclo de conversa ativo.",
+  moderate: "Poucos comentários em proporção aos gostos — comunicação ainda numa só direção.",
+  concentrated: "A conversa está concentrada em poucos posts — sem consistência.",
+  silent: "Zero comentários médios e zero respostas da marca — comunicação numa só direção.",
   unavailable: "Dados insuficientes para avaliar.",
 };
 
 const NEXT_MAP: Record<AudienceResponseStatus, string> = {
-  active: "Manter consistência e responder para alimentar o ciclo.",
-  moderate: "Testar perguntas fechadas ou escolhas A/B nas legendas.",
-  concentrated: "Replicar a fórmula dos posts que geraram conversa.",
-  silent: "Testar perguntas fechadas, escolhas A/B ou CTAs de comentário.",
+  active: "Manter consistência e responder a 100% dos comentários novos.",
+  moderate: "Fechar legendas com pergunta direta e responder a 100% dos comentários novos.",
+  concentrated: "Replicar a fórmula dos posts que geraram conversa e responder sempre.",
+  silent: "Fechar legendas com pergunta direta e responder a 100% dos comentários novos.",
   unavailable: "Aguardar dados suficientes para uma leitura fiável.",
 };
 
@@ -551,183 +570,240 @@ export function DiagnosticAudienceHighlight({
   avgLikes,
   avgComments,
   sampleSize,
+  totalLikes,
+  postsWithComments,
   topConversationPost,
   status = "silent",
   commentIntel,
 }: AudienceHighlightProps) {
-  const ownerReplyRate = commentIntel?.available ? commentIntel.ownerReplyRatePct : null;
   const ownerReplies = commentIntel?.available ? commentIntel.ownerRepliesCount : 0;
+  const sampleComments = commentIntel?.available ? commentIntel.sampleComments : null;
 
-  // Z3 proportional widths — normalise to largest value
-  const flowMax = Math.max(avgLikes, avgComments, ownerReplies, 1);
-  const likesW = Math.round((avgLikes / flowMax) * 100);
-  const commentsW = Math.max(Math.round((avgComments / flowMax) * 100), 4);
-  const repliesW = ownerReplies > 0 ? Math.max(Math.round((ownerReplies / flowMax) * 100), 4) : 4;
+  /* Determine if KPI 2 and KPI 3 are in alert state */
+  const commentsIsAlert = avgComments < 1;
+  const repliesIsAlert = ownerReplies === 0;
+
+  /* Z3 comment subcopy */
+  const commentSubcopy = (() => {
+    if (postsWithComments != null && sampleSize != null && sampleSize > 0) {
+      if (postsWithComments === 0) return `0 em ${sampleSize} posts · quase nada`;
+      return `${postsWithComments} de ${sampleSize} posts com comentários`;
+    }
+    if (avgComments < 0.5) return "quase nenhum comentário";
+    return `${avgComments.toLocaleString("pt-PT")} por post`;
+  })();
 
   return (
     <div className="space-y-4">
       {/* ── Z2: Three KPI cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <KpiCard
-          icon={<Heart size={15} className="text-signal-danger opacity-70" />}
-          label="Gostos médios"
-          value={avgLikes.toLocaleString("pt-PT")}
-          sublabel="por publicação"
-        />
-        <KpiCard
-          icon={<MessageCircle size={15} className="text-accent-primary opacity-70" />}
-          label="Comentários médios"
-          value={avgComments.toLocaleString("pt-PT")}
-          sublabel="por publicação"
-        />
-        <KpiCard
-          icon={<Reply size={15} className="text-signal-success opacity-70" />}
-          label="Taxa de resposta"
-          value={ownerReplyRate != null ? `${ownerReplyRate}%` : "—"}
-          sublabel="da marca"
-        />
+        {/* KPI 1 — Gostos / post (neutral) */}
+        <div className="rounded-[14px] border border-border-subtle bg-surface-muted/70 px-4 py-3.5 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <Heart size={14} className="text-content-tertiary" strokeWidth={1.5} />
+            <span className="text-eyebrow-sm text-content-tertiary">Gostos / post</span>
+          </div>
+          <span className="font-mono text-[28px] font-semibold tabular-nums text-content-primary leading-none">
+            {avgLikes.toLocaleString("pt-PT")}
+          </span>
+          <span className="text-[11px] text-content-tertiary">
+            {totalLikes != null
+              ? `${totalLikes.toLocaleString("pt-PT")} gostos no total`
+              : "por publicação"}
+          </span>
+        </div>
+
+        {/* KPI 2 — Comentários / post (alert when < 1) */}
+        <div
+          className={cn(
+            "rounded-[14px] border px-4 py-3.5 flex flex-col gap-1.5",
+            commentsIsAlert
+              ? "border-signal-danger/20 bg-tint-danger"
+              : "border-border-subtle bg-surface-muted/70",
+          )}
+        >
+          <div className="flex items-center gap-1.5">
+            <MessageCircle
+              size={14}
+              className={commentsIsAlert ? "text-signal-danger" : "text-content-tertiary"}
+              strokeWidth={1.5}
+            />
+            <span className="text-eyebrow-sm text-content-tertiary">Coment. / post</span>
+            {commentsIsAlert && (
+              <span className="ml-auto text-[9px] font-semibold uppercase tracking-wider text-signal-danger bg-signal-danger/10 rounded-full px-1.5 py-0.5">
+                Alerta
+              </span>
+            )}
+          </div>
+          <span
+            className={cn(
+              "font-mono text-[28px] font-semibold tabular-nums leading-none",
+              commentsIsAlert ? "text-signal-danger" : "text-content-primary",
+            )}
+          >
+            {avgComments.toLocaleString("pt-PT")}
+          </span>
+          <span className="text-[11px] text-content-tertiary">
+            {sampleSize ? `em ${sampleSize} publicações` : "por publicação"}
+          </span>
+        </div>
+
+        {/* KPI 3 — Respostas da marca (alert when 0) */}
+        <div
+          className={cn(
+            "rounded-[14px] border px-4 py-3.5 flex flex-col gap-1.5",
+            repliesIsAlert
+              ? "border-signal-danger/20 bg-tint-danger"
+              : "border-border-subtle bg-surface-muted/70",
+          )}
+        >
+          <div className="flex items-center gap-1.5">
+            <MessageCircleReply
+              size={14}
+              className={repliesIsAlert ? "text-signal-danger" : "text-content-tertiary"}
+              strokeWidth={1.5}
+            />
+            <span className="text-eyebrow-sm text-content-tertiary">Respostas da marca</span>
+            {repliesIsAlert && (
+              <span className="ml-auto text-[9px] font-semibold uppercase tracking-wider text-signal-danger bg-signal-danger/10 rounded-full px-1.5 py-0.5">
+                Alerta
+              </span>
+            )}
+          </div>
+          <span
+            className={cn(
+              "font-mono text-[28px] font-semibold tabular-nums leading-none",
+              repliesIsAlert ? "text-signal-danger" : "text-content-primary",
+            )}
+          >
+            {ownerReplies}
+          </span>
+          <span className="text-[11px] text-content-tertiary">
+            {ownerReplies === 0 ? "a marca não conversa" : "respostas públicas detetadas"}
+          </span>
+        </div>
       </div>
 
       {/* ── Z3: Conversation flow diagram ── */}
-      <div className="rounded-xl border border-border-subtle bg-surface-muted/40 px-4 py-4 space-y-3">
-        <p className="text-eyebrow-sm text-content-tertiary">Fluxo de conversa</p>
+      <div
+        className="rounded-[14px] border border-border-default px-5 py-5 space-y-4"
+        /* Decorative horizontal gradient: danger-tint → surface → primary-tint.
+         * No semantic token exists for this multi-stop decorative gradient. */
+        style={{
+          background: "linear-gradient(90deg, var(--tint-danger) 0%, var(--surface-secondary) 45%, var(--tint-primary) 100%)",
+        }}
+      >
+        <p className="text-eyebrow text-content-tertiary">Diagnóstico da conversa</p>
 
-        <div className="flex items-end gap-1.5 h-16">
-          {/* Likes bar */}
-          <div className="flex flex-col items-center gap-1 flex-1">
-            <div
-              className="w-full rounded-md bg-signal-danger/20 transition-all"
-              style={{ height: `${Math.max(likesW * 0.6, 8)}px` }}
-            />
-            <span className="text-[10px] font-medium text-content-tertiary text-center">Gostos</span>
+        {/* 3-node flow: Audience → Comments → Brand */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-0">
+          {/* Node 1 — Audience */}
+          <div className="flex-1 rounded-xl border border-signal-success/20 bg-tint-success px-3.5 py-3 flex flex-col items-center gap-1.5 text-center">
+            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center">
+              <Users size={16} className="text-signal-success" strokeWidth={1.5} />
+            </div>
+            <span className="text-[12px] font-semibold text-content-primary">Audiência</span>
+            <span className="text-[11px] text-content-secondary leading-snug">vê e reage com gostos</span>
           </div>
 
-          <ArrowRight size={12} className="text-content-tertiary/40 shrink-0 mb-4" />
-
-          {/* Comments bar */}
-          <div className="flex flex-col items-center gap-1 flex-1">
-            <div
-              className="w-full rounded-md bg-accent-primary/25 transition-all"
-              style={{ height: `${Math.max(commentsW * 0.6, 8)}px` }}
-            />
-            <span className="text-[10px] font-medium text-content-tertiary text-center">Comentários</span>
+          {/* Arrow 1 */}
+          <div className="flex items-center justify-center sm:px-1.5 py-1 sm:py-0">
+            <ArrowRight size={14} className="text-content-tertiary/50 hidden sm:block" />
+            <svg className="sm:hidden text-content-tertiary/50" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
           </div>
 
-          <ArrowRight size={12} className="text-content-tertiary/40 shrink-0 mb-4" />
+          {/* Node 2 — Comments ("Elo perdido") */}
+          <div className="flex-1 rounded-xl border-2 border-dashed border-signal-danger/40 bg-tint-danger px-3.5 py-3 flex flex-col items-center gap-1.5 text-center relative">
+            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-widest text-signal-danger bg-surface-secondary border border-signal-danger/20 rounded-full px-2 py-0.5 whitespace-nowrap">
+              Elo perdido
+            </span>
+            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center mt-1">
+              <MessageCircle size={16} className="text-signal-danger" strokeWidth={1.5} />
+            </div>
+            <span className="text-[12px] font-semibold text-content-primary">Comentários</span>
+            <span className="text-[11px] text-content-secondary leading-snug">{commentSubcopy}</span>
+          </div>
 
-          {/* Replies bar */}
-          <div className="flex flex-col items-center gap-1 flex-1">
-            <div
-              className={cn(
-                "w-full rounded-md transition-all",
-                ownerReplies > 0 ? "bg-signal-success/25" : "bg-surface-muted border border-dashed border-border-default",
-              )}
-              style={{ height: `${Math.max(repliesW * 0.6, 8)}px` }}
-            />
-            <span className="text-[10px] font-medium text-content-tertiary text-center">Respostas</span>
+          {/* Arrow 2 */}
+          <div className="flex items-center justify-center sm:px-1.5 py-1 sm:py-0">
+            <ArrowRight size={14} className="text-content-tertiary/50 hidden sm:block" />
+            <svg className="sm:hidden text-content-tertiary/50" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
+          </div>
+
+          {/* Node 3 — Brand */}
+          <div className="flex-1 rounded-xl border border-border-default bg-surface-muted px-3.5 py-3 flex flex-col items-center gap-1.5 text-center opacity-70">
+            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center">
+              <MessageCircleReply size={16} className="text-content-tertiary" strokeWidth={1.5} />
+            </div>
+            <span className="text-[12px] font-semibold text-content-primary">Marca</span>
+            <span className="text-[11px] text-content-secondary leading-snug">
+              {ownerReplies === 0 ? "não responde publicamente" : "responde pontualmente"}
+            </span>
           </div>
         </div>
-
-        <p className="text-[12px] text-content-secondary leading-relaxed">
-          {avgLikes > 0 && avgComments > 0 ? (
-            <>
-              De cada <span className="font-semibold tabular-nums">{Math.round(avgLikes / Math.max(avgComments, 1))}</span> gostos,
-              apenas <span className="font-semibold">1</span> gera comentário
-              {ownerReplyRate != null && (
-                <> — e a marca responde a <span className="font-semibold tabular-nums">{ownerReplyRate}%</span></>
-              )}
-              .
-            </>
-          ) : (
-            "Dados insuficientes para calcular a proporção de conversão."
-          )}
-        </p>
       </div>
 
-      {/* ── Z4: Top conversation post ── */}
+      {/* ── Z4: Top conversation post highlight ── */}
       {topConversationPost && topConversationPost.comments > 0 && (
-        <div className="rounded-xl border border-border-subtle bg-surface-secondary px-4 py-3.5 space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <Quote size={13} className="text-content-tertiary shrink-0" aria-hidden="true" />
-            <span className="text-eyebrow-sm text-content-tertiary">Post com mais conversa</span>
-          </div>
-          <div className="flex items-center gap-3 text-[13px]">
-            <span className="font-semibold tabular-nums text-content-primary">
-              {topConversationPost.comments} comentários
-            </span>
-            <span className="text-content-tertiary">·</span>
-            <span className="tabular-nums text-content-secondary">
-              {topConversationPost.likes} gostos
-            </span>
+        <div className="rounded-[14px] border border-border-subtle bg-tint-primary/60 px-4 py-3.5 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="size-7 rounded-full bg-surface-secondary flex items-center justify-center shrink-0">
+              <MessageSquare size={13} className="text-accent-primary" strokeWidth={1.5} />
+            </div>
+            <span className="text-eyebrow-sm text-content-tertiary">Post que gerou mais conversa</span>
           </div>
           {topConversationPost.captionExcerpt && (
-            <p className="text-[12px] text-content-tertiary italic line-clamp-2 leading-relaxed">
+            <p className="font-display text-[14px] font-medium text-content-primary leading-relaxed line-clamp-2">
               «{topConversationPost.captionExcerpt.slice(0, 120)}»
             </p>
           )}
+          <div className="flex items-center gap-3 text-[12px]">
+            <span className="flex items-center gap-1 text-content-secondary">
+              <Heart size={11} strokeWidth={1.5} />
+              <span className="tabular-nums">{topConversationPost.likes.toLocaleString("pt-PT")}</span>
+            </span>
+            <span className="flex items-center gap-1 text-accent-primary font-semibold">
+              <MessageCircle size={11} strokeWidth={1.5} />
+              <span className="tabular-nums">{topConversationPost.comments.toLocaleString("pt-PT")}</span>
+            </span>
+          </div>
         </div>
       )}
 
       {/* ── Z5: Works / Fails / Next ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <WfnCard
+        <Z5Card
           icon={<CheckCircle2 size={14} className="text-signal-success" />}
           label="Funciona"
           text={WORKS_MAP[status]}
         />
-        <WfnCard
+        <Z5Card
           icon={<XCircle size={14} className="text-signal-danger" />}
           label="Falha"
           text={FAILS_MAP[status]}
         />
-        <WfnCard
+        <Z5Card
           icon={<Lightbulb size={14} className="text-signal-warning" />}
-          label="Próximo passo"
+          label="Próximo"
           text={commentIntel?.available && commentIntel.recommendedConversationAction
             ? commentIntel.recommendedConversationAction
             : NEXT_MAP[status]}
         />
       </div>
 
-      {/* Scope note — compact */}
+      {/* ── Methodology footer ── */}
       {status !== "unavailable" && (
         <p className="text-[10.5px] text-content-tertiary italic leading-relaxed">
-          Leitura baseada em gostos e comentários públicos
-          {sampleSize ? ` de ${sampleSize} publicações` : ""}
-          {commentIntel?.available ? ` + ${commentIntel.sampleComments} comentários analisados` : ""}
-          . Não inclui DMs, respostas privadas ou comentários não visíveis.
+          Análise sobre {sampleSize ?? "—"} publicações
+          {sampleComments != null ? ` · ${sampleComments} comentários públicos` : " · comentários públicos visíveis"}
+          {" "}· sem DMs nem comentários ocultos
         </p>
       )}
     </div>
   );
 }
 
-function KpiCard({
-  icon,
-  label,
-  value,
-  sublabel,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  sublabel: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border-subtle bg-surface-secondary px-3.5 py-3 flex flex-col gap-1">
-      <div className="flex items-center gap-1.5">
-        {icon}
-        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
-      </div>
-      <span className="text-[20px] font-semibold tabular-nums text-content-primary leading-tight">
-        {value}
-      </span>
-      <span className="text-[11px] text-content-tertiary">{sublabel}</span>
-    </div>
-  );
-}
-
-function WfnCard({
+function Z5Card({
   icon,
   label,
   text,
@@ -737,7 +813,7 @@ function WfnCard({
   text: string;
 }) {
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-muted/40 px-3.5 py-3 space-y-1.5">
+    <div className="rounded-[14px] border border-border-subtle bg-surface-muted/40 px-3.5 py-3 space-y-1.5">
       <div className="flex items-center gap-1.5">
         {icon}
         <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
