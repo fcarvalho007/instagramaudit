@@ -80,7 +80,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             <div className="flex items-center gap-2 shrink-0">
               <IconButton
                 aria-label="Exportar relatório em PDF"
-                title="Exportar PDF"
+                title="Exportar relatório em PDF"
                 onClick={actions.onExportPdf}
                 disabled={actions.pdfDisabled || actions.pdfBusy}
                 busy={actions.pdfBusy}
@@ -96,6 +96,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 result={result}
                 variant="ghost"
                 triggerLabel=""
+                aria-label="Partilhar relatório"
                 className={cn(
                   "inline-flex items-center justify-center size-[34px] rounded-lg",
                   "bg-surface-secondary border border-border-default text-content-secondary",
