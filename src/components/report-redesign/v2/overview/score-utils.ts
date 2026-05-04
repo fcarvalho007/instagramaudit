@@ -113,3 +113,22 @@ export const SCORE_DEFINITIONS: readonly ScoreDefinition[] = [
     tooltip: "Mede o volume de comentários e a taxa de resposta do perfil.",
   },
 ] as const;
+
+// ─── Global Score (weighted average) ────────────────────────────────
+
+/**
+ * Weighted average of the three sub-scores.
+ * Engagement carries the most weight as the primary health signal.
+ */
+export function computeGlobalScore(
+  envolvimento: number,
+  frequencia: number,
+  interaccao: number,
+): number {
+  const w = { envolvimento: 0.45, frequencia: 0.25, interaccao: 0.30 };
+  return Math.round(
+    envolvimento * w.envolvimento +
+    frequencia * w.frequencia +
+    interaccao * w.interaccao,
+  );
+}
