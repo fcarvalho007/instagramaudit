@@ -14,11 +14,13 @@ interface ReportHeroV2Props {
 }
 
 /**
- * Hero v2 — Premium identity card (Iconosquare-inspired).
+ * Hero v2 — Premium 2-zone identity card (Iconosquare-inspired).
  *
- * Two internal zones:
  *   Zone 1: avatar + handle + platform pill + bio + icon-only actions
- *   Zone 2: stats strip (followers / publications / following) + analysis meta
+ *   Zone 2: stats (followers / publications / following) + analysis meta
+ *
+ * Zone 3 (auxiliary action row) is rendered separately by ComparisonHeader
+ * and positioned in report-shell-v2.tsx below this card.
  */
 export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   const profile = result.data.profile;
@@ -45,13 +47,13 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   return (
     <section
       aria-label="Cabeçalho do relatório"
-      className="w-full bg-[linear-gradient(180deg,#F0F4FF_0%,#F7FAFF_60%,#FAFBFD_100%)] pt-5 pb-2 md:pt-8 md:pb-4"
+      className="w-full bg-[linear-gradient(180deg,#F6FAFF_0%,#FFFFFF_100%)] px-4 sm:px-6 lg:px-8 py-6"
     >
-      <div className="mx-auto max-w-[1380px] px-5 md:px-6">
+      <div className="mx-auto max-w-[1380px]">
         {/* Main card */}
-        <div className="rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)] overflow-hidden">
+        <div className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
           {/* ── Zone 1: Identity ──────────────────────────────────── */}
-          <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:gap-6 md:p-6 lg:p-7">
+          <div className="flex flex-col gap-4 p-5 sm:p-6 border-b border-border-subtle md:flex-row md:items-center md:gap-6">
             {/* Avatar */}
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
 
@@ -59,7 +61,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             <div className="min-w-0 flex-1 space-y-1.5">
               {/* Handle row */}
               <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-                <h1 className="font-display text-xl sm:text-[1.375rem] md:text-2xl font-semibold tracking-[-0.015em] text-slate-900 leading-tight break-words">
+                <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-[-0.015em] text-content-primary leading-tight break-words">
                   {handle}
                 </h1>
                 {verified && <VerifiedBadge />}
@@ -68,7 +70,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
 
               {/* Name + bio */}
               {(fullName || bio) && (
-                <p className="text-sm text-slate-600 leading-relaxed line-clamp-1 max-w-xl">
+                <p className="text-sm text-content-secondary leading-relaxed line-clamp-1 max-w-xl">
                   {[fullName, bio].filter(Boolean).join(" · ")}
                 </p>
               )}
@@ -94,53 +96,59 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 result={result}
                 variant="ghost"
                 triggerLabel=""
-                className="inline-flex items-center justify-center size-[34px] rounded-lg border border-slate-200/80 bg-white text-slate-600 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
+                className={cn(
+                  "inline-flex items-center justify-center size-[34px] rounded-lg",
+                  "bg-surface-secondary border border-border-default text-content-secondary",
+                  "transition-colors duration-150",
+                  "hover:border-accent-primary/30 hover:text-accent-primary",
+                )}
               />
             </div>
           </div>
 
           {/* ── Zone 2: Stats ─────────────────────────────────────── */}
-          <div className="border-t border-slate-200/60 bg-slate-50/60 px-5 md:px-6 lg:px-7 py-4 md:py-5">
-            <div className="flex flex-wrap items-start gap-x-0 gap-y-3">
-              {/* Profile stats */}
-              <div className="flex flex-wrap items-start gap-0">
-                {profileStats.map((s, i) => (
-                  <div
-                    key={s.label}
-                    className={cn(
-                      "flex flex-col items-start gap-0.5 px-4 md:px-5 first:pl-0",
-                      i > 0 && "border-l border-slate-200/60",
-                    )}
-                  >
-                    <span className="font-mono text-lg md:text-xl font-semibold text-slate-900 tabular-nums leading-none tracking-[-0.01em]">
-                      {s.value}
-                    </span>
-                    <span className="text-eyebrow-sm text-slate-500 uppercase">
-                      {s.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Analysis metadata */}
-              {(analysisMeta.postsLabel || analysisMeta.dateLabel) && (
-                <div className="flex items-center gap-3 ml-auto">
-                  {analysisMeta.postsLabel && (
-                    <span className="text-eyebrow-sm text-slate-500">
-                      {analysisMeta.postsLabel}
-                    </span>
+          <div className="bg-surface-muted/50 px-5 sm:px-6 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-0">
+              {/* First 3 stats */}
+              {profileStats.map((s, i) => (
+                <div
+                  key={s.label}
+                  className={cn(
+                    "flex flex-col items-start gap-0.5 px-4 sm:px-5 first:pl-0",
+                    i > 0 && "sm:border-l sm:border-border-subtle",
                   )}
-                  {analysisMeta.dateLabel && (
-                    <span className="inline-flex items-center gap-1.5 text-eyebrow-sm text-slate-500">
-                      <span
-                        className="size-1.5 rounded-full bg-emerald-500"
-                        aria-hidden="true"
-                      />
-                      {analysisMeta.dateLabel}
-                    </span>
-                  )}
+                >
+                  <span className="font-mono text-xl sm:text-2xl font-semibold text-content-primary tabular-nums leading-none">
+                    {s.value}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
+                    {s.label}
+                  </span>
                 </div>
-              )}
+              ))}
+
+              {/* 4th segment: analysis metadata */}
+              <div
+                className={cn(
+                  "flex flex-col items-start gap-0.5 px-4 sm:px-5",
+                  "sm:border-l sm:border-border-subtle",
+                )}
+              >
+                {analysisMeta.postsLabel && (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
+                    <span
+                      className="size-1.5 rounded-full bg-signal-success"
+                      aria-hidden="true"
+                    />
+                    {analysisMeta.postsLabel}
+                  </span>
+                )}
+                {analysisMeta.dateLabel && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
+                    {analysisMeta.dateLabel}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -227,6 +235,7 @@ function Avatar({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
+  /* Local decorative gradient ring — no semantic token for avatar rings */
   const ringClass =
     "p-[2px] rounded-full shrink-0 bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300";
   const innerWhite = "p-[2px] rounded-full bg-white";
@@ -257,8 +266,8 @@ function Avatar({
         <div
           className={cn(
             "rounded-full flex items-center justify-center",
-            "font-display text-lg md:text-xl font-semibold text-slate-500",
-            "bg-slate-100",
+            "font-display text-lg md:text-xl font-semibold text-content-tertiary",
+            "bg-surface-muted",
             sizeMobile,
           )}
         >
@@ -274,7 +283,7 @@ function VerifiedBadge() {
     <span
       aria-label="Conta verificada"
       title="Conta verificada"
-      className="inline-flex items-center justify-center shrink-0 size-[18px] md:size-5 rounded-full bg-blue-500 text-white shadow-[0_1px_2px_rgba(15,23,42,0.15)]"
+      className="inline-flex items-center justify-center shrink-0 size-[18px] md:size-5 rounded-full bg-accent-primary text-white shadow-[0_1px_2px_rgba(15,23,42,0.15)]"
     >
       <Check
         className="size-2.5 md:size-3"
@@ -290,7 +299,7 @@ function PlatformPill() {
     <span
       aria-label="Plataforma analisada: Instagram"
       title="Instagram"
-      className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200/70"
+      className="inline-flex items-center gap-1 rounded-full bg-tint-warning px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-signal-warning ring-1 ring-signal-warning/20"
     >
       Instagram
     </span>
@@ -308,9 +317,9 @@ function IconButton({
       aria-busy={busy}
       className={cn(
         "inline-flex items-center justify-center size-[34px] rounded-lg",
-        "border border-slate-200/80 bg-white text-slate-600",
+        "bg-surface-secondary border border-border-default text-content-secondary",
         "transition-colors duration-150",
-        "hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300",
+        "hover:border-accent-primary/30 hover:text-accent-primary",
         "disabled:cursor-not-allowed disabled:opacity-50",
       )}
       {...props}
