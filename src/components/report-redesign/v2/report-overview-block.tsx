@@ -3,7 +3,8 @@ import { useMemo, type ReactNode } from "react";
 import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
 
-import { ScoreGrid } from "./overview/score-grid";
+import { SummaryGrid } from "./overview/score-grid";
+import { ScoreCard } from "./overview/score-card";
 import {
   computeEnvolvimento,
   envolvimentoSubtitle,
@@ -12,12 +13,20 @@ import {
   computeInteraccao,
   interaccaoSubtitle,
   type ScoreKey,
+  SCORE_DEFINITIONS,
 } from "./overview/score-utils";
 import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
 import { PostComparisonBlock } from "./report-post-comparison";
-import { OverviewDiagnosticSummary } from "./overview/diagnostic-summary";
+import {
+  classifyContentType,
+  classifyFunnelStage,
+  classifyAudienceResponse,
+  classifyChannelIntegration,
+  inferProbableObjective,
+} from "@/lib/report/block02-diagnostic";
+import { DiagnosticCard, buildDiagnosticCards } from "./overview/diagnostic-summary";
 
 export interface Props {
   result: AdapterResult;
@@ -50,6 +59,18 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
     },
   }), [k, avgComments]);
 
+  const diagnosticCards = useMemo(() => {
+    const posts = payload?.posts ?? [];
+    const bio = enriched.profile.bio ?? null;
+    const externalUrls = enriched.profile.externalUrls ?? [];
+    const contentType = classifyContentType(posts);
+    const funnel = classifyFunnelStage(posts);
+    const audience = classifyAudienceResponse(posts);
+    const integration = classifyChannelIntegration(bio, externalUrls, posts);
+    const objective = inferProbableObjective({ contentType, funnel, integration, bio, audience });
+    return buildDiagnosticCards(contentType, funnel, objective);
+  }, [payload?.posts, enriched.profile.bio, enriched.profile.externalUrls]);
+
   const formatEntries: FormatEntry[] = useMemo(() => {
     return result.data.formatBreakdown.map((f) => ({
       format: f.format as "Reels" | "Carousels" | "Imagens",
@@ -61,11 +82,20 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
   return (
     <div className="relative space-y-8 md:space-y-10">
 
-      {/* Zona B — Pontuação global (3 scorecards) */}
-      <ScoreGrid scores={scores} />
-
-      {/* Zona B2 — 3 diagnostic summary cards */}
-      <OverviewDiagnosticSummary payload={payload} result={result} />
+      {/* Zona B — 6-card summary grid (3 scores + 3 diagnostic) */}
+      <SummaryGrid>
+        {SCORE_DEFINITIONS.map((def) => (
+          <ScoreCard
+            key={def.key}
+            definition={def}
+            score={scores[def.key].value}
+            subtitle={scores[def.key].subtitle}
+          />
+        ))}
+        {diagnosticCards.map((c) => (
+          <DiagnosticCard key={c.label} card={c} />
+        ))}
+      </SummaryGrid>
 
       {/* Zona C — Card de Taxa de Envolvimento */}
       <EngagementCardRefined result={result} />

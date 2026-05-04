@@ -1,32 +1,16 @@
 /**
- * 3 diagnostic summary cards for the overview block.
- * Shows: Content Type, Funnel Role, Profile Objective.
- * Reuses classifiers from block02-diagnostic.
+ * Diagnostic summary card data builders + standalone card component.
+ * Used by the unified 6-card SummaryGrid in report-overview-block.
  */
 
-import { useMemo } from "react";
 import { Sparkles, Layers, Compass } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type {
-  AdapterResult,
-  SnapshotPayload,
-} from "@/lib/report/snapshot-to-report-data";
-import {
-  classifyContentType,
-  classifyFunnelStage,
-  classifyAudienceResponse,
-  classifyChannelIntegration,
-  inferProbableObjective,
-  type ContentTypeResult,
-  type FunnelStageResult,
-  type ObjectiveResult,
+  ContentTypeResult,
+  FunnelStageResult,
+  ObjectiveResult,
 } from "@/lib/report/block02-diagnostic";
-
-interface Props {
-  result: AdapterResult;
-  payload?: SnapshotPayload;
-}
 
 /* ── Headline humanization lookups ─────────────────────────────────── */
 
@@ -44,7 +28,7 @@ const FUNNEL_HEADLINE: Record<string, string> = {
 
 /* ── Card builder types ────────────────────────────────────────────── */
 
-interface SummaryCard {
+export interface SummaryCardData {
   label: string;
   headline: string;
   subtitle: string;
@@ -58,7 +42,7 @@ const TONE_CLASSES = {
   violet: { wrap: "bg-violet-50 ring-1 ring-violet-100", icon: "text-violet-600" },
 } as const;
 
-function buildContentCard(r: ContentTypeResult): SummaryCard {
+function buildContentCard(r: ContentTypeResult): SummaryCardData {
   const raw = r.label ?? "Misto / pouco claro";
   const headline = CONTENT_HEADLINE[raw] ?? raw;
   const top = r.distribution[0];
@@ -70,10 +54,16 @@ function buildContentCard(r: ContentTypeResult): SummaryCard {
   } else {
     subtitle = `${r.sharePct}% ${raw.toLowerCase()}`;
   }
-  return { label: "Tipo de conteúdo", headline, subtitle, icon: Sparkles, tone: "blue" };
+  return {
+    label: "Tipo de conteúdo",
+    headline,
+    subtitle,
+    icon: Sparkles,
+    tone: "blue",
+  };
 }
 
-function buildFunnelCard(r: FunnelStageResult): SummaryCard {
+function buildFunnelCard(r: FunnelStageResult): SummaryCardData {
   const raw = r.label ?? "Comunicação dispersa";
   const headline = FUNNEL_HEADLINE[raw] ?? raw;
   const topoItem = r.breakdown.find((b) => b.stage === "topo");
@@ -85,10 +75,16 @@ function buildFunnelCard(r: FunnelStageResult): SummaryCard {
   } else {
     subtitle = `${r.sharePct}% na fase dominante`;
   }
-  return { label: "Papel do conteúdo", headline, subtitle, icon: Layers, tone: "emerald" };
+  return {
+    label: "Papel do conteúdo",
+    headline,
+    subtitle,
+    icon: Layers,
+    tone: "emerald",
+  };
 }
 
-function buildObjectiveCard(r: ObjectiveResult): SummaryCard {
+function buildObjectiveCard(r: ObjectiveResult): SummaryCardData {
   const primary = r.primary ?? "Sem sinal claro";
   const headline = primary.includes("·") ? primary.split("·")[0].trim() : primary;
   const detail = primary.includes("·") ? primary.split("·")[1].trim() : null;
@@ -98,76 +94,66 @@ function buildObjectiveCard(r: ObjectiveResult): SummaryCard {
       ? `${detail.charAt(0).toUpperCase() + detail.slice(1)} · ${confLabel}`
       : confLabel
     : "Dados insuficientes";
-  return { label: "Objetivo deste perfil", headline, subtitle, icon: Compass, tone: "violet" };
+  return {
+    label: "Objetivo deste perfil",
+    headline,
+    subtitle,
+    icon: Compass,
+    tone: "violet",
+  };
 }
 
-/* ── Component ─────────────────────────────────────────────────────── */
+/* ── Public builders ───────────────────────────────────────────────── */
 
-export function OverviewDiagnosticSummary({ result, payload }: Props) {
-  const posts = payload?.posts ?? [];
-  const bio = result.enriched.profile.bio ?? null;
-  const externalUrls = result.enriched.profile.externalUrls ?? [];
+export function buildDiagnosticCards(
+  contentType: ContentTypeResult,
+  funnel: FunnelStageResult,
+  objective: ObjectiveResult,
+): SummaryCardData[] {
+  return [
+    buildContentCard(contentType),
+    buildFunnelCard(funnel),
+    buildObjectiveCard(objective),
+  ];
+}
 
-  const cards = useMemo(() => {
-    const contentType = classifyContentType(posts);
-    const funnel = classifyFunnelStage(posts);
-    const audience = classifyAudienceResponse(posts);
-    const integration = classifyChannelIntegration(bio, externalUrls, posts);
-    const objective = inferProbableObjective({
-      contentType,
-      funnel,
-      integration,
-      bio,
-      audience,
-    });
+/* ── Card component ────────────────────────────────────────────────── */
 
-    return [
-      buildContentCard(contentType),
-      buildFunnelCard(funnel),
-      buildObjectiveCard(objective),
-    ];
-  }, [posts, bio, externalUrls]);
+export function DiagnosticCard({ card: c }: { card: SummaryCardData }) {
+  const t = TONE_CLASSES[c.tone];
+  const Icon = c.icon;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
-      {cards.map((c) => {
-        const t = TONE_CLASSES[c.tone];
-        const Icon = c.icon;
-        return (
-          <article
-            key={c.label}
-            aria-label={`${c.label}: ${c.headline}. ${c.subtitle}.`}
-            className={cn(
-              "flex flex-col gap-2.5",
-              "rounded-2xl border border-border-default bg-surface-secondary",
-              "p-4 sm:p-5",
-              "shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.06)]",
-            )}
-          >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "inline-flex size-9 items-center justify-center rounded-full shrink-0",
-                t.wrap,
-              )}
-            >
-              <Icon className={cn("size-4", t.icon)} />
-            </span>
+    <article
+      aria-label={`${c.label}: ${c.headline}. ${c.subtitle}.`}
+      className={cn(
+        "flex flex-col gap-2.5",
+        "rounded-2xl border border-border-default bg-surface-secondary",
+        "p-4 sm:p-5",
+        "shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.06)]",
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "inline-flex size-9 items-center justify-center rounded-full shrink-0",
+          t.wrap,
+        )}
+      >
+        <Icon className={cn("size-4", t.icon)} />
+      </span>
 
-            <p className="text-eyebrow-sm text-content-secondary">
-              {c.label}
-            </p>
+      <p className="text-eyebrow-sm text-content-secondary">
+        {c.label}
+      </p>
 
-            <h3 className="font-display text-[0.95rem] sm:text-base font-semibold leading-snug tracking-tight text-content-primary">
-              {c.headline}
-            </h3>
+      <h3 className="font-display text-[0.95rem] sm:text-base font-semibold leading-snug tracking-tight text-content-primary">
+        {c.headline}
+      </h3>
 
-            <p className="text-xs leading-relaxed text-content-secondary">
-              {c.subtitle}
-            </p>
-          </article>
-        );
-      })}
-    </div>
+      <p className="text-xs leading-relaxed text-content-secondary">
+        {c.subtitle}
+      </p>
+    </article>
   );
 }
