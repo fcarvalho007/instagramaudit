@@ -108,6 +108,7 @@ export function ReportShellV2({
                 <ReportOverviewBlock
                   result={result}
                   renderInsight={renderInsight}
+                  payload={payload}
                 />
               </ReportBlockSection>
 

@@ -18,7 +18,6 @@ export function ScoreRing({ score, size = 88, label }: ScoreRingProps) {
   const ref = useRef<SVGCircleElement>(null);
 
   useEffect(() => {
-    // Trigger animation on mount
     const t = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(t);
   }, []);
@@ -34,8 +33,7 @@ export function ScoreRing({ score, size = 88, label }: ScoreRingProps) {
       viewBox={viewBox}
       role="img"
       aria-label={`${label}: ${score} de 100`}
-      className="block transition-[filter] duration-500"
-      style={{ filter: colors.glow }}
+      className="block"
     >
       <title>{`${label}: ${score} de 100`}</title>
       {/* Background circle */}

@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 
-import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
+import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
 
 import { ScoreGrid } from "./overview/score-grid";
@@ -11,25 +11,24 @@ import {
   frequenciaSubtitle,
   computeInteraccao,
   interaccaoSubtitle,
-  computeMensagem,
-  mensagemSubtitle,
   type ScoreKey,
 } from "./overview/score-utils";
 import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
 import { PostComparisonBlock } from "./report-post-comparison";
+import { OverviewDiagnosticSummary } from "./overview/diagnostic-summary";
 
 export interface Props {
   result: AdapterResult;
   renderInsight: (key: AiInsightV2Section) => ReactNode;
+  payload?: SnapshotPayload;
 }
 
-export function ReportOverviewBlock({ result, renderInsight }: Props) {
+export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
 
-  // Compute avg comments from enriched top posts
   const avgComments = useMemo(() => {
     const posts = enriched.topPosts;
     if (!posts.length) return 0;
@@ -49,13 +48,8 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
       value: computeInteraccao(avgComments, k.postsAnalyzed, 0, 0),
       subtitle: interaccaoSubtitle(avgComments),
     },
-    mensagem: {
-      value: computeMensagem(null, null, null),
-      subtitle: mensagemSubtitle(50),
-    },
   }), [k, avgComments]);
 
-  // Derive format entries from formatBreakdown (aggregate stats)
   const formatEntries: FormatEntry[] = useMemo(() => {
     return result.data.formatBreakdown.map((f) => ({
       format: f.format as "Reels" | "Carousels" | "Imagens",
@@ -67,8 +61,11 @@ export function ReportOverviewBlock({ result, renderInsight }: Props) {
   return (
     <div className="relative space-y-8 md:space-y-10">
 
-      {/* Zona B — Pontuação global (4 scorecards) */}
+      {/* Zona B — Pontuação global (3 scorecards) */}
       <ScoreGrid scores={scores} />
+
+      {/* Zona B2 — 3 diagnostic summary cards */}
+      <OverviewDiagnosticSummary payload={payload} result={result} />
 
       {/* Zona C — Card de Taxa de Envolvimento */}
       <EngagementCardRefined result={result} />
