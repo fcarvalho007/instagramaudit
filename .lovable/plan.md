@@ -1,74 +1,76 @@
 
-## Resumo
+# Polish pass — Best vs Worst posts comparison
 
-Substituir a secção "Melhores publicações" (5 posts horizontais) por um bloco comparativo "Melhores e piores publicações" com 2 top + 2 bottom, layout 2-col em desktop, e insight IA mais estruturado.
+**Single file changed:** `src/components/report-redesign/v2/report-post-comparison.tsx`
 
-## Alterações
+No backend/data changes. No concept redesign. Pure CSS/layout refinement.
 
-### 1. Adapter — expor bottom 2 posts (`snapshot-to-report-data.ts`)
+---
 
-- Adicionar `bottomPosts` ao `ReportEnriched` (mesma shape que `topPosts`)
-- No builder, após ordenar posts por engagement desc, pegar `slice(-2).reverse()` para os 2 piores
-- Se houver menos de 4 posts no total, `bottomPosts` fica vazio
+## 1. Spacing and rhythm
 
-### 2. Novo componente — `report-post-comparison.tsx` (em `v2/`)
+- Outer `space-y-6` → `space-y-8` for breathing room between header, grid, and AI box.
+- PostGroup inner `space-y-3` → `space-y-4` so cards separate from group header.
+- Card internal padding `p-3.5` → `p-4` for consistency.
+- Metric row `pt-1.5` → `pt-2` and `gap-4` → `gap-5` for less cramped feel.
+- Grid gap `gap-5 md:gap-6` → `gap-6 md:gap-8` for clear column separation.
 
-**Header:**
-- Eyebrow: "MELHORES E PIORES PUBLICAÇÕES"
-- Título: "O que funcionou melhor — e pior"
-- Subtítulo: "Comparação entre os conteúdos com maior e menor envolvimento na janela analisada."
+## 2. Card alignment and height normalisation
 
-**Layout desktop (md+):** grid 2-col
-- Coluna esquerda: "Melhores 2" — accent teal/emerald subtil
-- Coluna direita: "A melhorar" — accent rose/amber subtil
+- Fix thumbnail to `w-[88px] md:w-[96px]` (slightly narrower on desktop to give text more room).
+- Content area: add `min-h-[120px]` so cards with short captions match height of longer ones.
+- Caption: `line-clamp-2` stays, add fixed `h-[2.5rem]` (2 lines at 13px leading-snug) so metric row baseline is stable.
+- Date + rank row: explicit `h-5` so chips align across cards.
 
-**Layout mobile:** stack vertical (best 2, then worst 2)
+## 3. Colour tuning
 
-**Card design:**
-- Thumbnail aspect-[4/5] com format chip
-- Date eyebrow
-- Caption 2 lines max
-- Metric row: likes, comments, engagement % — ancorado em baixo
-- Ranking chip opcional: "#1", "#2" vs "A melhorar"
-- Hover: border ligeiramente mais forte + leve elevação
-- Usa classes estilo Iconosquare (bg-white, border-slate-200, shadow suave)
+Replace hardcoded emerald/amber with softer, more Iconosquare-aligned tones:
 
-**Insight IA:**
-- Abaixo das duas colunas
-- Reutiliza `renderInsight("topPosts")` existente
+**Best side (success)**:
+- Group header bg: `bg-emerald-50/60` → `bg-sky-50/50`
+- Border: `border-emerald-200/60` → `border-sky-200/50`
+- Text: `text-emerald-700` → `text-sky-700`
+- Rank chip: same sky family
+- Engagement %: `text-emerald-600` → `text-sky-600`
 
-### 3. Overview block — substituir uso (`report-overview-block.tsx`)
+**Worst side (informative, not alarming)**:
+- Group header bg: `bg-amber-50/60` → `bg-slate-100/60`
+- Border: `border-amber-200/60` → `border-slate-200/60`
+- Text: `text-amber-700` → `text-slate-500`
+- Rank chip: `bg-slate-100 text-slate-500 border-slate-200/60`
+- Engagement %: `text-amber-600` → `text-slate-400`
 
-- Remover `<ReportTopPosts />` e a eyebrow "MELHORES PUBLICAÇÕES"
-- Importar e renderizar o novo `PostComparisonBlock` passando `result.enriched.topPosts` (top 2) e `result.enriched.bottomPosts` (bottom 2)
-- Manter `renderInsight("topPosts")` abaixo
+This creates a calm best (blue) vs neutral worst (grey) contrast — analytical, not traffic-light.
 
-### 4. Mock data — adicionar bottomPosts (`report-mock-data.ts`)
+## 4. Section header hierarchy
 
-- NÃO é locked — verificar LOCKED_FILES.md
-- Adicionar 2 posts mock com engagement baixo para que `/report/example` continue funcional
+- Eyebrow: keep `text-eyebrow-sm text-slate-500` as is.
+- H3 title: bump to `text-[24px] md:text-[28px]` and `font-bold` for stronger anchor.
+- Support text: keep current sizing.
 
-## Ficheiros a editar
+## 5. Group label polish
 
-| Ficheiro | Tipo |
-|---|---|
-| `src/lib/report/snapshot-to-report-data.ts` | Adapter — adicionar bottomPosts |
-| `src/components/report-redesign/v2/report-post-comparison.tsx` | Novo componente |
-| `src/components/report-redesign/v2/report-overview-block.tsx` | Substituir ReportTopPosts |
+- Group header pill: `rounded-xl` → `rounded-lg`, reduce `px-3.5 py-2.5` → `px-3 py-2` for tighter profile.
+- Icon size stays `size-4`.
 
-## Ficheiros NÃO tocados
+## 6. AI insight box
 
-- `report-top-posts.tsx` (locked, continua a existir para `/report/example`)
-- `report-mock-data.ts` (bottomPosts derivado do topPosts existente no contexto)
-- Nenhum ficheiro locked
+- Wrap `renderInsight()` in a container with `mt-2` to tighten connection to the grid above (currently double-spaced by outer `space-y-8`).
 
-## Lógica de bottom 2
+## 7. Mobile refinements
 
-```
-const sorted = [...posts].sort((a, b) => engB - engA);
-const bottom2 = sorted.length >= 4
-  ? sorted.slice(-2).reverse()  // 2 piores, do menos pior ao pior
-  : [];
-```
+- Thumbnail: keep `w-[88px]` on mobile (no change needed).
+- Caption height constraint ensures cards stay compact on mobile.
+- Metric row: keep `text-[12px]` but ensure `flex-wrap` is absent (row should not wrap).
 
-Tiebreaker: likes > comments > data mais recente (mesma ordem do sort existente).
+## 8. Card shadow refinement
+
+- Current multi-layer shadow is good; keep it.
+- Hover state: soften slightly — `hover:shadow-[0_2px_6px_rgba(15,23,42,0.06)]` instead of `0.08`.
+
+---
+
+## Validation
+
+- `bunx tsc --noEmit` and `bunx vitest run` after changes.
+- Visual check: section reads in under 3 seconds, best vs worst instantly clear, cards aligned, colours balanced, mobile clean.
