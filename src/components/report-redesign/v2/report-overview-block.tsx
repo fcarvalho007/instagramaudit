@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode, type ComponentType } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
