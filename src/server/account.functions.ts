@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const getAccountDetails = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -17,10 +18,9 @@ export const getAccountDetails = createServerFn({ method: "GET" })
       throw new Error("Perfil não encontrado");
     }
 
-    // If profile has a linked lead, fetch lead email
     let leadEmail: string | null = null;
     if (profile.lead_id) {
-      const { data: lead } = await supabase
+      const { data: lead } = await supabaseAdmin
         .from("leads")
         .select("email")
         .eq("id", profile.lead_id)
