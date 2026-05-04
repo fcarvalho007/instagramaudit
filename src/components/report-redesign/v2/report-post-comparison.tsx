@@ -1,5 +1,5 @@
 import { Heart, MessageCircle, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode} from "react";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 
@@ -27,13 +27,13 @@ export function PostComparisonBlock({
   const hasComparison = best2.length > 0 && worst2.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <p className="text-eyebrow-sm text-slate-500">
           MELHORES E PIORES PUBLICAÇÕES
         </p>
-        <h3 className="font-sans text-[22px] md:text-[26px] font-semibold tracking-tight text-slate-900 leading-tight">
+        <h3 className="font-sans text-[24px] md:text-[28px] font-bold tracking-tight text-slate-900 leading-tight">
           O que funcionou melhor — e pior
         </h3>
         <p className="text-[14px] md:text-[15px] text-slate-500 leading-relaxed max-w-2xl">
@@ -43,15 +43,15 @@ export function PostComparisonBlock({
       </div>
 
       {hasComparison ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {/* Best 2 column */}
           <PostGroup
             label="Melhores 2"
             helper="Conteúdos com maior envolvimento"
             icon={<TrendingUp className="size-4" />}
-            accentBg="bg-emerald-50/60"
-            accentText="text-emerald-700"
-            accentBorder="border-emerald-200/60"
+            accentBg="bg-sky-50/50"
+            accentText="text-sky-700"
+            accentBorder="border-sky-200/50"
             posts={best2}
             rankPrefix="#"
           />
@@ -60,9 +60,9 @@ export function PostComparisonBlock({
             label="A melhorar"
             helper="Conteúdos com menor envolvimento"
             icon={<TrendingDown className="size-4" />}
-            accentBg="bg-amber-50/60"
-            accentText="text-amber-700"
-            accentBorder="border-amber-200/60"
+            accentBg="bg-slate-100/60"
+            accentText="text-slate-500"
+            accentBorder="border-slate-200/60"
             posts={worst2}
             rankPrefix="A melhorar #"
           />
@@ -77,7 +77,7 @@ export function PostComparisonBlock({
       )}
 
       {/* AI Insight */}
-      <div>{renderInsight()}</div>
+      <div className="mt-2">{renderInsight()}</div>
     </div>
   );
 }
@@ -105,9 +105,9 @@ function PostGroup({
 }) {
   const tone = rankPrefix === "#" ? "best" : "worst";
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Group header */}
-      <div className={cn("flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 border", accentBg, accentBorder)}>
+      <div className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 border", accentBg, accentBorder)}>
         <span className={cn("shrink-0", accentText)}>{icon}</span>
         <div className="min-w-0">
           <p className={cn("text-[13px] font-semibold leading-snug", accentText)}>
@@ -117,7 +117,7 @@ function PostGroup({
         </div>
       </div>
       {/* Cards */}
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {posts.map((post, i) => (
           <PostCard
             key={post.id}
@@ -155,21 +155,21 @@ function PostCard({
 
   const rankChipClasses =
     tone === "best"
-      ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
-      : "bg-amber-50 text-amber-700 border-amber-200/60";
+      ? "bg-sky-50 text-sky-700 border-sky-200/50"
+      : "bg-slate-100 text-slate-500 border-slate-200/60";
 
   return (
     <Wrapper
       {...wrapperProps}
       className={cn(
-        "group flex gap-4 rounded-2xl border border-slate-200/70 bg-white p-3.5",
+        "group flex gap-4 rounded-2xl border border-slate-200/70 bg-white p-4",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_-6px_rgba(15,23,42,0.06)]",
         "transition-all duration-200",
-        permalink && "hover:border-slate-300 hover:shadow-[0_2px_8px_rgba(15,23,42,0.08)] cursor-pointer",
+        permalink && "hover:border-slate-300 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06)] cursor-pointer",
       )}
     >
       {/* Thumbnail */}
-      <div className="relative shrink-0 w-[88px] md:w-[100px] aspect-[4/5] rounded-xl overflow-hidden bg-slate-100">
+      <div className="relative shrink-0 w-[88px] md:w-[96px] aspect-[4/5] rounded-xl overflow-hidden bg-slate-100">
         {post.permalink ? (
           <div className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300" />
         ) : null}
@@ -183,9 +183,9 @@ function PostCard({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 flex flex-col justify-between gap-2">
-        {/* Top: date + rank */}
-        <div className="flex items-center justify-between gap-2">
+      <div className="flex-1 min-w-0 flex flex-col justify-between gap-2 min-h-[120px]">
+        {/* Top: date + rank — fixed height for alignment */}
+        <div className="flex items-center justify-between gap-2 h-5">
           <span className="text-[11px] uppercase tracking-[0.04em] text-slate-400 font-medium">
             {post.date}
           </span>
@@ -200,12 +200,12 @@ function PostCard({
         </div>
 
         {/* Caption */}
-        <p className="text-[13px] md:text-[14px] text-slate-800 leading-snug line-clamp-2 font-medium">
+        <p className="text-[13px] md:text-[14px] text-slate-800 leading-snug line-clamp-2 font-medium h-[2.5rem]">
           {post.caption || "Sem legenda"}
         </p>
 
         {/* Metrics */}
-        <div className="flex items-center gap-4 pt-1.5 mt-auto border-t border-slate-100">
+        <div className="flex items-center gap-5 pt-2 mt-auto border-t border-slate-100">
           <span className="inline-flex items-center gap-1 text-[12px] text-slate-500">
             <Heart className="size-3.5" aria-hidden="true" />
             <span className="tabular-nums">{post.likes.toLocaleString("pt-PT")}</span>
@@ -216,7 +216,7 @@ function PostCard({
           </span>
           <span className={cn(
             "ml-auto text-[12px] font-semibold tabular-nums",
-            tone === "best" ? "text-emerald-600" : "text-amber-600",
+            tone === "best" ? "text-sky-600" : "text-slate-400",
           )}>
             {post.engagementPct.toString().replace(".", ",")}%
           </span>
