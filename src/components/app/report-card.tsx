@@ -89,6 +89,13 @@ export function ReportCard({ report }: { report: ReportCardData }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          to="/app/reports/$id"
+          params={{ id: report.id }}
+          className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+        >
+          Ver detalhes
+        </Link>
         {hasSnapshot && (
           <Link
             to="/analyze/$username"
