@@ -1,119 +1,74 @@
 
 ## Audit Results
 
-### 1. Files involved
+### 1. File that renders P03 Hashtags
 
-| File | Role |
-|------|------|
-| `src/components/report-redesign/v2/report-post-comparison.tsx` | Main component: `PostComparisonBlock`, `PostGroup`, `PostCard` |
-| `src/components/report-redesign/v2/report-overview-block.tsx` | Parent — renders `PostComparisonBlock` at line 121 |
-| `src/lib/report/snapshot-to-report-data.ts` | Data builder — produces `enriched.topPosts` and `enriched.bottomPosts` (NOT to be modified) |
+`src/components/report-redesign/v2/report-diagnostic-block.tsx` — function `renderHashtagsCard()` at line 437.
 
-### 2. Current data available per post
+### 2. Current span
 
-| Field | Available | Source |
-|-------|-----------|--------|
-| `id` | Yes | snapshot |
-| `permalink` | Yes | derived from snapshot permalink or shortcode |
-| `shortcode` | Yes | snapshot |
-| `caption` | Yes | truncated to 200 chars |
-| `format` | Yes | "Reel" / "Carousel" / "Imagem" |
-| `likes` | Yes | numeric |
-| `comments` | Yes | numeric |
-| `engagementPct` | Yes | rounded to 2 decimals |
-| `date` | Yes | formatted pt-PT short date |
-| `mentions` | Yes | array of handles |
-| `thumbnailUrl` | Yes (optional) | proxied via `/api/public/ig-thumb?url=...` |
+P03 does **not** set `span="full"` on `ReportDiagnosticCard`. It defaults to `span="half"`, which means it occupies 1 column in the parent `md:grid-cols-2` grid (set in `report-diagnostic-group.tsx` line 37). This creates the empty grey space on the right.
 
-### 3. Missing fields
+### 3. Can it safely become full-width?
 
-None for this layout. All required data (date, format, engagement, likes, comments, caption excerpt, thumbnail, permalink) is already present.
+Yes. Group B currently has only 2 children:
+- `renderHashtagsCard(hashtags)` — the P03 card
+- `<ReportCaptionIntelligence />` — the P04 card (already renders as its own full-width component)
 
-### 4. Thumbnail 3:4 aspect ratio
+Adding `span="full"` to P03 will make it `md:col-span-2`, filling the grid row. No other cards in Group B are affected.
 
-Currently thumbnails use `aspect-square` (1:1). Changing to `aspect-[3/4]` is purely a CSS change on the card — no data/backend impact. The `object-cover` class already handles cropping regardless of source image dimensions.
+### 4. Where hashtag counts come from
 
-### 5. Thumbnail proxy
+- `src/lib/report/text-extract.ts` → `extractTopHashtags()` aggregates `posts[].hashtags`, returns `HashtagRow[]` with `{ tag, uses, avgEngagement }`.
+- `src/lib/report/block02-diagnostic.ts` → `classifyHashtags()` takes top 5, maps to `{ text: "#tag", weight: uses }`.
+- The `weight` field is the raw occurrence count (number of posts containing that hashtag).
 
-Yes, thumbnails are already proxied via `/api/public/ig-thumb`. The `thumbnailUrl` field in enriched posts already contains the proxied URL. No changes needed.
+### 5. Displayed numbers
 
-### 6. Card click behaviour
+The `weight` values shown as `5×` are **real counts** (number of posts). The bars are scaled relative to the maximum (`pct = weight / max * 100`). This is correct — proportional bars based on real counts.
 
-Yes, cards are already clickable links when `permalink` exists. The component uses a conditional `<a>` wrapper with `target="_blank"` and hover effects.
+### 6. Bar value scale
 
-### 7. Section usage
+Correct. `max = Math.max(1, ...weights)`, then each bar is `(weight / max) * 100` percent width. No issues.
 
-`PostComparisonBlock` is used only in `report-overview-block.tsx` (line 121). Not used anywhere else.
+### 7. Files to edit
 
-### 8. Locked files
+**Only one file**: `src/components/report-redesign/v2/report-diagnostic-block.tsx` — the `renderHashtagsCard()` function (lines 437-476).
 
-Neither `report-post-comparison.tsx` nor `report-overview-block.tsx` appear in `LOCKED_FILES.md`. Safe to modify.
+### 8. Risk level
 
-### 9. AI/editorial insight
-
-Yes — the section already receives `renderInsight("topPosts")` which renders the AI insight card below the posts. The new "LEITURA IA" bottom card will replace/enhance this slot.
+**Very low.** Single function change within one file. No data logic changes. The `span="full"` mechanism already exists and is used by other cards (e.g. Q05 audience card at line 493).
 
 ---
 
-## Implementation Plan — "Variante 2 · Pódio e Perigo"
+## Implementation Plan
 
-### Files to edit
+Edit only `renderHashtagsCard()` in `src/components/report-redesign/v2/report-diagnostic-block.tsx`.
 
-1. **`src/components/report-redesign/v2/report-post-comparison.tsx`** — full rewrite of the layout (same exports, same props)
+### Changes
 
-### Files that must NOT be touched
+1. **Add `span="full"`** to the `ReportDiagnosticCard` component — makes P03 occupy the full grid width (`md:col-span-2`).
 
-- `src/lib/report/snapshot-to-report-data.ts` (data logic)
-- `src/components/report-redesign/v2/report-overview-block.tsx` (parent wiring stays identical — same component name, same props)
-- Backend, adapter, auth, admin, PDF, loading screen, global tokens
-- All files in `LOCKED_FILES.md`
-- Block 2 and engagement benchmark card
+2. **Replace the card's children** with a two-column internal layout:
 
-### Implementation steps
+   **Left column — Hashtag cloud:**
+   - Display top hashtags as styled tags/chips in a flowing `flex-wrap` layout.
+   - Each chip: `#tag` text, subtle rounded pill, readable size.
+   - Visually elegant, not a plain list.
 
-**Step 1 — New header**
-- Eyebrow: `text-eyebrow-sm` "MELHORES E PIORES PUBLICAÇÕES"
-- Title: `font-sans text-[24px] md:text-[28px] font-bold` "Os extremos do conteúdo"
-- Subtitle: computed dynamically — "2 que voaram e 2 que caíram nos últimos [windowLabel]. [X]x de diferença entre o melhor e o pior." where X = best engagementPct / worst engagementPct
+   **Right column — Horizontal bar ranking:**
+   - Keep the current bar chart structure (hashtag label + count + proportional bar).
+   - Each row: hashtag text left, count right (`Nx`), proportional bar below.
+   - Bars use `bg-accent-primary` as they do now.
+   - Scale remains `weight / max * 100`.
 
-**Step 2 — VS comparison bar**
-- Horizontal strip with subtle gradient: blue → white → amber
-- Left: best engagement value in cyan/blue
-- Center: circular "VS" badge
-- Right: worst engagement value in amber/orange
-- Clean, thin, Iconosquare-style
+3. **Layout**: `grid grid-cols-1 sm:grid-cols-2 gap-6` inside the card children area. Mobile: stacked. Desktop: side by side.
 
-**Step 3 — Two-column mirrored layout with central divider**
-- CSS Grid: `grid-cols-[1fr_auto_1fr]` on desktop, stacked on mobile
-- Left column: 2 best post cards (blue/cyan accent)
-- Center divider: vertical line with "[X]x" multiplier badge and "DIFERENÇA ENTRE EXTREMOS" label
-- Right column: 2 worst post cards (amber/orange accent)
+4. **No changes** to: `classifyHashtags()`, `extractTopHashtags()`, `HashtagsResult`, data flow, or any other card/function.
 
-**Step 4 — Compact post cards**
-- Thumbnail: `w-[80px] md:w-[100px] aspect-[3/4]` with `object-cover`, rounded corners
-- Format chip overlay on thumbnail
-- Date + rank chip row
-- Caption excerpt (line-clamp-2)
-- Metrics row: likes, comments, engagement %
-- Click behaviour preserved (permalink → `<a>` wrapper)
-- Best cards: blue/cyan accent colours
-- Worst cards: amber/orange accent colours
-
-**Step 5 — Bottom AI/editorial reading card**
-- Replace current `renderInsight()` slot with a styled wrapper
-- Label: `text-eyebrow-sm` "LEITURA IA · COMPARAÇÃO DE EXTREMOS"
-- Background: subtle blue → white → amber gradient
-- The `renderInsight()` content renders inside this wrapper
-- No changes to insight data or logic
-
-### Design constraints respected
-- No glow, no heavy shadows, no neon, no dark panels
-- Semantic tokens for colours/surfaces
-- `font-display` only for H1 (report title) per memory rules
-- `font-sans` (Inter) for all card text
-- JetBrains Mono only for raw numeric values
-- Mobile-first responsive
-
-### Risk assessment
-
-**Low risk.** Single file rewrite with identical exports and props. Parent wiring unchanged. No data/logic changes. All data fields already available.
+### Files untouched
+- All other cards (P01, P02, P04-P07)
+- `report-diagnostic-card.tsx` (already supports `span="full"`)
+- `report-diagnostic-group.tsx` (grid already handles `col-span-2`)
+- KPI cards, verdict, priorities, CTA
+- Backend, adapter, global tokens, locked files
