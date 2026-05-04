@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, Mail } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
+import { autoLogin } from "@/server/auto-login.functions";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -15,14 +16,13 @@ export const Route = createFileRoute("/login")({
   }),
 });
 
-const ALLOWED_EMAIL = "fredericodigital@gmail.com";
+const DISPLAY_EMAIL = "fredericodigital@gmail.com";
 
 function LoginPage() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -38,18 +38,25 @@ function LoginPage() {
     setError("");
     setLoading(true);
 
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: ALLOWED_EMAIL,
-      options: {
-        emailRedirectTo: `${window.location.origin}/app/reports`,
-      },
-    });
+    try {
+      const { token_hash, email } = await autoLogin();
 
-    setLoading(false);
-    if (otpError) {
-      setError(otpError.message);
-    } else {
-      setMagicLinkSent(true);
+      const { error: verifyErr } = await supabase.auth.verifyOtp({
+        email,
+        token_hash,
+        type: "magiclink",
+      });
+
+      if (verifyErr) {
+        setError(verifyErr.message);
+        setLoading(false);
+        return;
+      }
+
+      navigate({ to: "/app/reports" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao entrar.");
+      setLoading(false);
     }
   };
 
@@ -61,39 +68,14 @@ function LoginPage() {
     );
   }
 
-  if (magicLinkSent) {
-    return (
-      <AuthCard
-        title="Verifica o email"
-        subtitle="Enviámos um magic link para continuar."
-      >
-        <div className="flex flex-col items-center gap-4 py-4">
-          <CheckCircle2 className="size-12 text-emerald-600" />
-          <p className="text-sm text-slate-600 font-medium">{ALLOWED_EMAIL}</p>
-          <p className="text-sm text-slate-500 text-center">
-            Clica no link que recebeste no email para aceder à área de testes.
-            Verifica também a pasta de spam.
-          </p>
-          <button
-            onClick={() => setMagicLinkSent(false)}
-            className="text-sm font-medium text-blue-600 hover:underline"
-          >
-            Voltar
-          </button>
-        </div>
-      </AuthCard>
-    );
-  }
-
   return (
     <AuthCard
       title="Entrar no InstaBench"
       subtitle="Acesso restrito — fase de testes privados."
     >
       <div className="space-y-4">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-3">
-          <Mail className="size-4 text-slate-400 shrink-0" />
-          <span className="text-sm text-slate-700 font-medium">{ALLOWED_EMAIL}</span>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-center">
+          <span className="text-sm text-slate-700 font-medium">{DISPLAY_EMAIL}</span>
         </div>
 
         {error && (
@@ -103,13 +85,17 @@ function LoginPage() {
         )}
 
         <Button onClick={handleLogin} className="w-full" disabled={loading}>
-          {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-          Enviar magic link
+          {loading ? (
+            <Loader2 className="mr-2 size-4 animate-spin" />
+          ) : (
+            <LogIn className="mr-2 size-4" />
+          )}
+          Entrar
         </Button>
       </div>
 
       <p className="mt-5 text-center text-xs text-slate-400">
-        Receberás um link de acesso no email indicado.
+        Fase de testes — acesso restrito.
       </p>
     </AuthCard>
   );
