@@ -28,7 +28,7 @@ function SignupPage() {
   const [checkingSession, setCheckingSession] = useState(true);
 
   // Redirect if already logged in
-  useState(() => {
+  useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         navigate({ to: "/app/reports" });
@@ -36,6 +36,7 @@ function SignupPage() {
         setCheckingSession(false);
       }
     });
+  }, [navigate]);
   });
 
   const handleSubmit = async (e: FormEvent) => {
