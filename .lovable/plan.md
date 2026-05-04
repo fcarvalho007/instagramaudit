@@ -1,67 +1,60 @@
 
-## Engagement Benchmark Card — Refinements
+## QA Finding: Títulos do Block 1 sem fonte serifada
 
-The current implementation already matches ~90% of the mockup. This plan addresses the remaining gaps.
+### Problema
 
-### Files to modify
+Os dois títulos do card de engagement usam `font-sans` (Inter) em vez de `font-display` (Fraunces), quebrando a regra do projeto: "Fraunces display para headings".
 
-1. `src/components/report-redesign/v2/report-overview-engagement.tsx`
-2. `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
+Outros componentes do relatório (hero, diagnostic card, overview cards) já usam `font-display` consistentemente.
 
-### Changes
+### Títulos afetados
 
-#### 1. Remove invented year from source label
+1. **"Taxa de envolvimento"** — `report-overview-engagement.tsx` linha 45
+2. **"Comparação entre escalões de seguidores"** — `report-engagement-benchmark-chart.tsx` linha 63
 
-**Current:** `SOCIALINSIDER 2025` (hardcoded — no year exists in the benchmark data)
-**Fix:** Show only `SOCIALINSIDER` (or dynamically pull from source name). No year unless the data provides one.
+### O que NÃO muda
 
-#### 2. Benchmark reference line label placement
+Os eyebrow labels ("O teu perfil", "Referência do escalão", "Gap face à referência") mantêm-se com `.text-eyebrow-sm` (Inter uppercase) — conforme a regra: "Eyebrows/labels/badges = Inter uppercase, nunca font-mono".
 
-**Current:** The benchmark label (`benchmark X,XX%`) is in the chart header row, left-aligned.
-**Mockup:** The label sits directly above the dashed reference line, positioned at the same horizontal offset as the line itself.
-**Fix:** Move the benchmark label from the header into the bar chart area, positioned absolutely above the dashed line at `left: benchmarkPct%`. Small font, content-secondary.
+### Correções
 
-#### 3. "✦ MERCADO" pill character
+**Ficheiro 1: `report-overview-engagement.tsx`** (linha 45)
 
-**Current:** Uses `◆` (black diamond).
-**Mockup/spec:** Uses `✦` (four-pointed star).
-**Fix:** Replace `◆` with `✦`.
+Antes:
+```
+text-sm font-semibold text-content-primary block
+```
+Depois:
+```
+font-display text-sm font-semibold text-content-primary block tracking-tight
+```
 
-#### 4. Active tier bar — benchmark vs profile segments
+**Ficheiro 2: `report-engagement-benchmark-chart.tsx`** (linha 63)
 
-**Current:** The active tier bar shows only the profile overlay with gradient.
-**Mockup:** Shows the benchmark portion as solid blue and then a green segment from benchmark to profile value, making the gap visually explicit.
-**Fix:** On the active tier, render two segments: (a) solid accent-primary bar up to the benchmark value, (b) green (signal-success) segment from benchmark to profile value. If profile is below benchmark, show only the blue bar up to profile value.
+Antes:
+```
+text-eyebrow-sm text-content-secondary
+```
+Depois:
+```
+font-display text-[13px] font-semibold text-content-secondary tracking-tight normal-case
+```
 
-#### 5. Inactive tier bar styling
+Nota: Remove `text-eyebrow-sm` deste título porque essa classe aplica uppercase + Inter, e o título de secção deve ser Fraunces sentence-case.
 
-**Current:** Uses `bg-surface-muted` — very subtle.
-**Mockup:** Bars are slightly more visible, a light grey with some body.
-**Fix:** Ensure inactive bars use a visible but muted fill. Might just be a minor opacity or shade tweak on `surface-muted`.
+### Correções adicionais do QA anterior (incluídas)
 
-#### 6. Metric strip separators
+Enquanto editamos estes ficheiros, corrigimos também os 3 problemas "important" do audit:
 
-**Current:** The three columns have no visual separator between them.
-**Mockup:** Thin vertical lines between the three metric segments.
-**Fix:** Add thin `border-r border-border-subtle` between columns 1-2 and 2-3 on desktop. On mobile (stacked), hide the vertical borders and optionally add horizontal separators.
+3. **`text-white` hardcoded** (chart linha 163) — substituir por `text-surface-secondary` (branco semântico no light theme).
 
-#### 7. Metric strip background
+4. **Legend swatch mismatch** (chart linha 205) — separar em dois swatches: azul para benchmark, verde para gap.
 
-**Current:** Column 1 has blue tint, column 2 has no background, column 3 has success/danger tint.
-**Mockup:** All three segments sit within a single soft-bordered strip with uniform light background.
-**Fix:** Wrap the three columns in a single container with `bg-surface-muted rounded-xl border border-border-subtle` and remove individual column backgrounds. Keep the tint only on column 3 for signal color.
+5. **Tailwind `-translate-y-1/2` redundante** (chart linha 163) — remover da className, o inline `transform` já faz o trabalho.
 
-### No changes needed
+### Ficheiros tocados
 
-- Data source, adapter, backend — untouched
-- Tier labels, sublabels, formatters — already correct
-- Legend and sources row — already matches
-- Axis label — already dynamic
-- Accessibility (aria-labels, role="list") — already present
-- PDF, admin, other blocks — untouched
+- `src/components/report-redesign/v2/report-overview-engagement.tsx`
+- `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
 
-### Validation
-
-- `tsc` and `vitest`
-- Visual QA at desktop and 375px
-- Test: profile above/below benchmark, missing benchmark fallback
+Nenhum outro ficheiro.
