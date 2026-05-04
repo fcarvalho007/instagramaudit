@@ -42,7 +42,7 @@ export function EngagementCardRefined({ result }: Props) {
             <Activity className="size-4" strokeWidth={2.2} aria-hidden="true" />
           </div>
           <div>
-            <span className="text-sm font-semibold text-content-primary block">
+            <span className="font-display text-sm font-semibold text-content-primary block tracking-tight">
               Taxa de envolvimento
             </span>
             <span className="text-[11px] text-content-secondary">
