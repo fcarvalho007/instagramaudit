@@ -446,32 +446,51 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
       answerLabel="Hashtags mais utilizadas"
       answer={r.items.slice(0, 2).map((it) => it.text).join(" · ")}
       tone="blue"
+      span="full"
       body="As hashtags mostram como o perfil etiqueta os conteúdos e que territórios quer associar às publicações — não representam, por si só, os assuntos abordados."
       sourceType="dados"
       sourceDetail="Hashtags"
     >
-      <ul className="space-y-1.5">
-        {r.items.map((it) => {
-          const pct = (it.weight / max) * 100;
-          return (
-            <li key={it.text} className="text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-content-secondary truncate">{it.text}</span>
-                <span className="font-mono text-[10px] text-content-tertiary tabular-nums shrink-0">
-                  {it.weight}×
-                </span>
-              </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
-                <div
-                  className="h-full bg-accent-primary"
-                  style={{ width: `${pct}%` }}
-                  aria-hidden
-                />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {/* Left — hashtag cloud */}
+        <div className="flex flex-wrap gap-2 content-start">
+          {r.items.map((it) => (
+            <span
+              key={it.text}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-surface-muted/60 px-3 py-1.5 text-sm font-medium text-content-primary"
+            >
+              {it.text}
+              <span className="font-mono text-[10px] text-content-tertiary tabular-nums">
+                {it.weight}×
+              </span>
+            </span>
+          ))}
+        </div>
+
+        {/* Right — horizontal bar ranking */}
+        <ul className="space-y-2">
+          {r.items.map((it) => {
+            const pct = (it.weight / max) * 100;
+            return (
+              <li key={it.text} className="text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-content-secondary truncate">{it.text}</span>
+                  <span className="font-mono text-[10px] text-content-tertiary tabular-nums shrink-0">
+                    {it.weight}×
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
+                  <div
+                    className="h-full bg-accent-primary"
+                    style={{ width: `${pct}%` }}
+                    aria-hidden
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </ReportDiagnosticCard>
   );
 }
