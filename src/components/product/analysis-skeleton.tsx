@@ -1,23 +1,17 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-/* ─── Phase messages ───────────────────────────────────────────────── */
+/* ─── Phase steps (no repetition — one per stage) ──────────────────── */
 
-const PHASES = [
-  "A recolher dados públicos do perfil…",
-  "A organizar publicações, métricas e sinais de interação…",
-  "A comparar o perfil com referências de mercado…",
-  "A identificar padrões editoriais e oportunidades…",
-  "A preparar o relatório visual…",
+const STEPS = [
+  { label: "A recolher dados públicos do perfil…", durationMs: 3000 },
+  { label: "A organizar publicações e métricas…", durationMs: 4000 },
+  { label: "A comparar com referências de mercado…", durationMs: 5000 },
+  { label: "A identificar padrões e oportunidades…", durationMs: 6000 },
+  { label: "A preparar o relatório visual…", durationMs: 8000 },
 ] as const;
 
-function getWaitMessage(elapsed: number): string {
-  if (elapsed < 8)
-    return "A recolha de dados públicos demora normalmente poucos segundos.";
-  if (elapsed < 25)
-    return "A recolha de dados ainda está em curso. Pode demorar até 30 segundos.";
-  return "Ainda a processar. O relatório estará pronto em instantes.";
-}
+const TOTAL_STEPS = STEPS.length;
 
 /* ─── Bar gradient pairs (local decorative) ────────────────────────── */
 
@@ -55,8 +49,12 @@ const LOADER_CSS = `
   50%      { opacity: 0.22; }
 }
 @keyframes liq-phase-in {
-  0%   { opacity: 0; transform: translateY(8px); }
+  0%   { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes liq-progress {
+  0%   { width: 0%; }
+  100% { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -74,15 +72,7 @@ const LOADER_CSS = `
 /* ─── Component ────────────────────────────────────────────────────── */
 
 export function AnalysisSkeleton({ username }: { username?: string }) {
-  const [phase, setPhase] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setPhase((p) => (p + 1) % PHASES.length);
-    }, 3800);
-    return () => clearInterval(id);
-  }, []);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -90,6 +80,18 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
     }, 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Determine current step based on elapsed time
+  let cumulative = 0;
+  let currentStep = 0;
+  for (let i = 0; i < TOTAL_STEPS; i++) {
+    cumulative += STEPS[i].durationMs / 1000;
+    if (elapsed < cumulative) {
+      currentStep = i;
+      break;
+    }
+    if (i === TOTAL_STEPS - 1) currentStep = TOTAL_STEPS - 1;
+  }
 
   const handle = username ? `@${username.replace(/^@/, "")}` : null;
 
@@ -103,16 +105,23 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
     >
       <style>{LOADER_CSS}</style>
 
-      <div className="flex w-full max-w-[520px] flex-col items-center gap-6 rounded-2xl border border-border-default bg-surface-secondary px-6 py-8 shadow-card sm:px-8 sm:py-10">
-        {/* Eyebrow */}
-        <span className="text-eyebrow-sm text-content-secondary">
-          A analisar perfil
-        </span>
+      <div className="flex w-full max-w-[520px] flex-col items-center gap-5 rounded-2xl border border-border-default bg-surface-secondary px-6 py-8 shadow-card sm:px-8 sm:py-10">
+        {/* Eyebrow + handle */}
+        <div className="flex flex-col items-center gap-1.5">
+          <span className="text-eyebrow-sm text-content-secondary">
+            A analisar perfil
+          </span>
+          {handle && (
+            <span className="rounded-full bg-tint-primary px-3.5 py-1 font-sans text-xs font-medium text-accent-primary">
+              {handle}
+            </span>
+          )}
+        </div>
 
         {/* Liquid analytics loader */}
         <div
           className="relative flex items-end justify-center gap-[10px] sm:gap-3"
-          style={{ width: "clamp(220px, 60vw, 310px)", height: "clamp(100px, 18vw, 120px)" }}
+          style={{ width: "clamp(220px, 60vw, 310px)", height: "clamp(90px, 16vw, 110px)" }}
           aria-hidden="true"
         >
           {BAR_GRADIENTS.map((g, i) => (
@@ -129,45 +138,50 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
           />
         </div>
 
-        {/* Phase message */}
-        <div className="flex min-h-[3.5rem] items-center justify-center" role="status">
+        {/* Phase message — no repetition */}
+        <div className="flex min-h-[2.5rem] items-center justify-center" role="status">
           <p
-            key={phase}
-            className="text-center font-sans text-lg font-semibold text-content-primary sm:text-xl"
-            style={{ animation: "liq-phase-in 0.45s ease-out both" }}
+            key={currentStep}
+            className="text-center font-sans text-base font-semibold text-content-primary sm:text-lg"
+            style={{ animation: "liq-phase-in 0.4s ease-out both" }}
           >
-            {PHASES[phase]}
+            {STEPS[currentStep].label}
           </p>
         </div>
 
-        {/* Username badge */}
-        {handle && (
-          <span className="rounded-full bg-tint-primary px-3.5 py-1 font-sans text-xs font-medium text-accent-primary">
-            {handle}
-          </span>
-        )}
-
-        {/* Phase dots */}
-        <div className="flex items-center gap-2" aria-hidden="true">
-          {PHASES.map((_, i) => (
-            <span
+        {/* Step progress — horizontal segments */}
+        <div className="flex w-full max-w-[280px] items-center gap-1.5" aria-hidden="true">
+          {STEPS.map((_, i) => (
+            <div
               key={i}
               className={cn(
-                "size-1.5 rounded-full transition-colors duration-500",
-                i <= phase ? "bg-accent-primary" : "bg-surface-muted",
+                "h-1 flex-1 rounded-full overflow-hidden transition-colors duration-300",
+                i <= currentStep ? "bg-accent-primary/15" : "bg-surface-muted",
               )}
-            />
+            >
+              {i < currentStep && (
+                <div className="h-full w-full rounded-full bg-accent-primary" />
+              )}
+              {i === currentStep && (
+                <div
+                  className="h-full rounded-full bg-accent-primary"
+                  style={{
+                    animation: `liq-progress ${STEPS[i].durationMs}ms linear forwards`,
+                  }}
+                />
+              )}
+            </div>
           ))}
         </div>
 
-        {/* Wait message */}
-        <p className="text-center font-sans text-xs text-content-secondary">
-          {getWaitMessage(elapsed)}
+        {/* Step counter */}
+        <p className="text-center font-sans text-[11px] text-content-secondary tabular-nums">
+          Passo {currentStep + 1} de {TOTAL_STEPS}
         </p>
 
         {/* Footnote */}
-        <p className="max-w-[360px] text-center font-sans text-[12px] leading-relaxed text-content-secondary">
-          Não feches esta janela — estamos a preparar o diagnóstico.
+        <p className="max-w-[340px] text-center font-sans text-[11px] leading-relaxed text-content-tertiary">
+          Não feches esta janela — o diagnóstico está a ser preparado.
         </p>
       </div>
     </section>
