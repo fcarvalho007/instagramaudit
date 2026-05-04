@@ -1,41 +1,66 @@
 
-## Problema
+## Objetivo
 
-A bottom nav mobile atual mostra 6 ícones pequenos (grid-cols-6) com labels de 9px — demasiado apertado e pouco legível. O utilizador quer ícones maiores, mais claros, com indicação de scroll ativo, e um menu hamburger para acesso a todas as secções.
+Elevar a primeira dobra (hero + banner concorrentes) do report mobile para nível Apple — limpo, centrado, tipografia generosa, hierarquia clara.
 
-## Solução
+## Problemas atuais (vistos no screenshot)
 
-Redesenhar `ReportBlockTopTabs` com uma abordagem de **3 ícones contextuais + hamburger**:
+- Hero com layout lado-a-lado (avatar + texto) fica apertado em mobile
+- Stats em `font-mono` parecem frios e técnicos
+- Bio truncada a 2 linhas, texto pequeno (13px)
+- Botões PDF/Partilhar desconectados da identidade
+- Badge "Dados públicos" sozinho e sem contexto
+- Espaçamento geral apertado, sem respiração Apple
 
-### 1. Bottom bar com 3+1 layout
+## Solução — Hero mobile centrado, desktop lado-a-lado
 
-- **3 ícones principais** — os 3 blocos mais próximos da posição de scroll atual (o ativo + os adjacentes). Ícones `size-7` (28px) com label descritivo por baixo (`text-[11px]`).
-- **1 botão hamburger** (Menu icon) no extremo direito, que abre um sheet/drawer com a lista completa das 6 secções para navegação direta.
-- Conforme o utilizador faz scroll, os 3 ícones visíveis atualizam-se dinamicamente para refletir a zona atual do relatório.
+### 1. Hero (`report-hero-v2.tsx`)
 
-### 2. Indicador de secção ativa
+**Mobile (< md)** — layout centrado tipo perfil Apple/IG:
+- Avatar maior (`size-20` / 80px) centrado no topo
+- Handle centrado, `text-[1.75rem]` com tracking apertado
+- Nome em `text-base` abaixo, texto centrado
+- Bio até 3 linhas, `text-[15px]`, centrada
+- Stats em row de 3 colunas centradas, valores `font-display text-[1.5rem]` (não mono), labels eyebrow
+- Meta da análise numa linha subtil com separadores
+- Botões PDF + Partilhar em row centrada, com `h-10` e `px-5` (thumb-friendly)
+- Badge "Dados públicos" integrado na meta line
 
-- O ícone ativo terá cor azul (`text-blue-600`), peso de stroke maior, e uma barra superior azul animada.
-- Os outros 2 ícones visíveis ficam em `text-slate-400` subtil.
+**Desktop (>= md)** — mantém layout actual com ajustes de escala:
+- Avatar `size-24` (96px)
+- Stats com valores `text-[2rem]` em `font-display`
+- Mais padding vertical
 
-### 3. Menu hamburger (Sheet drawer)
+### 2. Tipografia dos tokens (`report-tokens.ts`)
 
-- Ao tocar no ícone hamburger, abre um `Sheet` (shadcn/ui) a partir do fundo.
-- Lista as 6 secções com número, ícone e label completo — o mesmo conteúdo da sidebar desktop.
-- Ao selecionar uma secção, o sheet fecha e faz scroll suave até ao bloco.
+- `h1HeroV2Compact`: mobile `text-[1.75rem]` (era 1.5rem)
+- `h2Section`: mobile `text-[1.625rem]` → md `text-[2rem]`
+- `subtitle`: `text-[15px]` → md `text-base` (era `text-sm`)
+- `heroStatValue`: `font-display text-[1.5rem]` (era `text-base` mono)
+- `kpiHelp`: `text-[13px]` (era `text-xs`)
+
+### 3. Banner concorrentes (`comparison-header.tsx`)
+
+- Padding ligeiramente maior: `py-5 md:py-6`
+- Título `text-[15px] md:text-base`
+- Subtítulo `text-[13px] md:text-sm`
+
+### 4. Espaçamento no shell (`report-shell-v2.tsx`)
+
+- Gap entre hero e banner: `pt-4` (era `pt-5`) — mais justo para sentir como uma unidade
 
 ## Ficheiros a editar
 
 | Ficheiro | Alteração |
 |---|---|
-| `src/components/report-redesign/v2/report-block-nav.tsx` | Reescrever `ReportBlockTopTabs` com layout 3+1, lógica de ícones contextuais e integração do Sheet hamburger |
-| `src/components/report-redesign/v2/block-config.ts` | Sem alterações |
-| `src/components/report-redesign/v2/report-shell-v2.tsx` | Sem alterações |
+| `report-hero-v2.tsx` | Layout centrado mobile, avatar maior, stats em font-display, botões maiores |
+| `report-tokens.ts` | Escala tipográfica aumentada (h1, h2, subtitle, stats, kpiHelp) |
+| `comparison-header.tsx` | Tipografia e padding ligeiramente maiores |
+| `report-shell-v2.tsx` | Ajuste de espaçamento entre hero e banner |
 
-## Detalhes técnicos
+## Notas técnicas
 
-- Lógica de "3 ícones visíveis": dado o índice do bloco ativo, mostrar `[ativo-1, ativo, ativo+1]` (clamped nos limites 0–5).
-- O Sheet usa o componente `Sheet` de shadcn/ui (já disponível no projeto).
-- Ícones vêm do `block.icon` existente em `BLOCKS`.
-- `min-h-[64px]` na bar para thumb zone confortável.
-- Transição suave nos ícones ao mudar de contexto.
+- Nenhum ficheiro locked é tocado
+- Avatar mantém story ring gradient existente
+- A lógica de `buildProfileStats` e `buildAnalysisMeta` não muda
+- Layout desktop permanece side-by-side, apenas com escala maior
