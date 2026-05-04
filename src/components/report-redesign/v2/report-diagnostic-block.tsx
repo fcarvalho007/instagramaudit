@@ -493,7 +493,7 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
                     <div
-                      className={isTop ? "h-full bg-accent-primary" : "h-full bg-content-tertiary/20"}
+                      className={isTop ? "h-full bg-accent-primary" : "h-full bg-accent-primary/20"}
                       style={{ width: `${pct}%` }}
                       aria-hidden
                     />
