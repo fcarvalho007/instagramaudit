@@ -1,52 +1,41 @@
 
-# Primeira dobra refinada + menu sticky de fundo em mobile
-
 ## Problema
 
-1. A primeira dobra (hero + tabs) no mobile ocupa demasiado espaço vertical e não está bem organizada.
-2. A navegação horizontal de tabs no topo é pouco confortável em mobile — o padrão mais eficaz para 6 items é uma **bottom navigation bar fixa** (thumb zone, à la Instagram/apps nativos).
+A bottom nav mobile atual mostra 6 ícones pequenos (grid-cols-6) com labels de 9px — demasiado apertado e pouco legível. O utilizador quer ícones maiores, mais claros, com indicação de scroll ativo, e um menu hamburger para acesso a todas as secções.
 
-## Alterações
+## Solução
 
-### 1. Hero v2 mais compacto em mobile (`report-hero-v2.tsx`)
+Redesenhar `ReportBlockTopTabs` com uma abordagem de **3 ícones contextuais + hamburger**:
 
-- Reduzir padding vertical mobile de `pt-5 pb-5` para `pt-4 pb-4`.
-- Avatar ligeiramente mais pequeno em mobile (de 68px para 56px).
-- Bio reduzida a `line-clamp-2` (já está 3).
-- Stats (publicações/seguidores/a seguir): font-size reduzido de `1.5rem` para `1.25rem` em mobile para ser mais compacto.
-- CTAs (Exportar PDF + Partilhar) movidos para dentro de uma linha compacta abaixo dos stats, em vez de coluna separada no mobile.
-- Analysis meta (publicações analisadas, dias, data) mantém-se mas mais compacto.
+### 1. Bottom bar com 3+1 layout
 
-### 2. Bottom nav bar sticky em mobile (`report-block-nav.tsx`)
+- **3 ícones principais** — os 3 blocos mais próximos da posição de scroll atual (o ativo + os adjacentes). Ícones `size-7` (28px) com label descritivo por baixo (`text-[11px]`).
+- **1 botão hamburger** (Menu icon) no extremo direito, que abre um sheet/drawer com a lista completa das 6 secções para navegação direta.
+- Conforme o utilizador faz scroll, os 3 ícones visíveis atualizam-se dinamicamente para refletir a zona atual do relatório.
 
-- `ReportBlockTopTabs` transforma-se numa **barra fixa no fundo** (`fixed bottom-0`) em vez de sticky no topo.
-- Layout: 6 ícones + label curto em grelha `grid-cols-6`, estilo bottom tab bar.
-- Adicionar ícones Lucide a cada bloco (Eye, Stethoscope, TrendingUp, FileText, Search, BarChart3) — definidos em `block-config.ts`.
-- Active state: ícone + label em azul, fundo claro.
-- Inactive: ícone cinza, label cinza.
-- Safe area padding inferior (`pb-[env(safe-area-inset-bottom)]`).
-- Altura: ~60px + safe area.
-- Remover a versão horizontal scrollável do topo.
-- Adicionar `pb-20` ao body/main do report em mobile para não tapar conteúdo com a barra.
+### 2. Indicador de secção ativa
 
-### 3. Sidebar desktop — inalterada
+- O ícone ativo terá cor azul (`text-blue-600`), peso de stroke maior, e uma barra superior azul animada.
+- Os outros 2 ícones visíveis ficam em `text-slate-400` subtil.
 
-A `ReportBlockSidebar` mantém-se exactamente como está para `lg:` e acima.
+### 3. Menu hamburger (Sheet drawer)
 
-### 4. `block-config.ts` — adicionar ícones
+- Ao tocar no ícone hamburger, abre um `Sheet` (shadcn/ui) a partir do fundo.
+- Lista as 6 secções com número, ícone e label completo — o mesmo conteúdo da sidebar desktop.
+- Ao selecionar uma secção, o sheet fecha e faz scroll suave até ao bloco.
 
-Adicionar um campo `icon` a cada `BlockConfig` com o nome do ícone Lucide correspondente. O componente de nav importa e renderiza.
+## Ficheiros a editar
 
-## Ficheiros editados
+| Ficheiro | Alteração |
+|---|---|
+| `src/components/report-redesign/v2/report-block-nav.tsx` | Reescrever `ReportBlockTopTabs` com layout 3+1, lógica de ícones contextuais e integração do Sheet hamburger |
+| `src/components/report-redesign/v2/block-config.ts` | Sem alterações |
+| `src/components/report-redesign/v2/report-shell-v2.tsx` | Sem alterações |
 
-1. `src/components/report-redesign/v2/block-config.ts` — campo `icon`
-2. `src/components/report-redesign/v2/report-block-nav.tsx` — bottom bar mobile
-3. `src/components/report-redesign/v2/report-hero-v2.tsx` — hero mais compacto
-4. `src/components/report-redesign/v2/report-shell-v2.tsx` — padding inferior mobile
-5. `src/components/report-redesign/report-tokens.ts` — ajuste de tokens hero compacto se necessário
+## Detalhes técnicos
 
-## Restrições respeitadas
-
-- Sem alterações ao backend, adapter, admin, tokens globais, base de dados.
-- Sem alterações a outros blocos do report.
-- Desktop sidebar inalterada.
+- Lógica de "3 ícones visíveis": dado o índice do bloco ativo, mostrar `[ativo-1, ativo, ativo+1]` (clamped nos limites 0–5).
+- O Sheet usa o componente `Sheet` de shadcn/ui (já disponível no projeto).
+- Ícones vêm do `block.icon` existente em `BLOCKS`.
+- `min-h-[64px]` na bar para thumb zone confortável.
+- Transição suave nos ícones ao mudar de contexto.
