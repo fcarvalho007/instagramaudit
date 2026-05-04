@@ -10,13 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevLoadingPreviewRouteImport } from './routes/dev-loading-preview'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ReportExampleRouteImport } from './routes/report.example'
+import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as ApiSendReportEmailRouteImport } from './routes/api/send-report-email'
 import { Route as ApiRequestFullReportRouteImport } from './routes/api/request-full-report'
 import { Route as ApiMarketSignalsRouteImport } from './routes/api/market-signals'
@@ -84,9 +89,24 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevLoadingPreviewRoute = DevLoadingPreviewRouteImport.update({
@@ -97,6 +117,11 @@ const DevLoadingPreviewRoute = DevLoadingPreviewRouteImport.update({
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -118,6 +143,11 @@ const ReportExampleRoute = ReportExampleRouteImport.update({
   id: '/report/example',
   path: '/report/example',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiSendReportEmailRoute = ApiSendReportEmailRouteImport.update({
   id: '/api/send-report-email',
@@ -458,9 +488,13 @@ const ApiAdminKnowledgeHistoryTypeIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
+  '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
@@ -475,6 +509,7 @@ export interface FileRoutesByFullPath {
   '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/app/reports': typeof AppReportsRoute
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -528,9 +563,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
+  '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
@@ -545,6 +584,7 @@ export interface FileRoutesByTo {
   '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/app/reports': typeof AppReportsRoute
   '/report/example': typeof ReportExampleRoute
   '/admin': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -600,9 +640,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
+  '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
@@ -617,6 +661,7 @@ export interface FileRoutesById {
   '/api/market-signals': typeof ApiMarketSignalsRoute
   '/api/request-full-report': typeof ApiRequestFullReportRoute
   '/api/send-report-email': typeof ApiSendReportEmailRoute
+  '/app/reports': typeof AppReportsRoute
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -673,9 +718,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/app'
     | '/design-system'
     | '/dev-loading-preview'
+    | '/login'
     | '/privacidade'
+    | '/reset-password'
+    | '/signup'
     | '/termos'
     | '/admin/clientes'
     | '/admin/conhecimento'
@@ -690,6 +739,7 @@ export interface FileRouteTypes {
     | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/app/reports'
     | '/report/example'
     | '/admin/'
     | '/admin/report-preview/$username'
@@ -743,9 +793,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app'
     | '/design-system'
     | '/dev-loading-preview'
+    | '/login'
     | '/privacidade'
+    | '/reset-password'
+    | '/signup'
     | '/termos'
     | '/admin/clientes'
     | '/admin/conhecimento'
@@ -760,6 +814,7 @@ export interface FileRouteTypes {
     | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/app/reports'
     | '/report/example'
     | '/admin'
     | '/admin/report-preview/$username'
@@ -814,9 +869,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/app'
     | '/design-system'
     | '/dev-loading-preview'
+    | '/login'
     | '/privacidade'
+    | '/reset-password'
+    | '/signup'
     | '/termos'
     | '/admin/clientes'
     | '/admin/conhecimento'
@@ -831,6 +890,7 @@ export interface FileRouteTypes {
     | '/api/market-signals'
     | '/api/request-full-report'
     | '/api/send-report-email'
+    | '/app/reports'
     | '/report/example'
     | '/admin/'
     | '/admin/report-preview/$username'
@@ -886,9 +946,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
   DevLoadingPreviewRoute: typeof DevLoadingPreviewRoute
+  LoginRoute: typeof LoginRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SignupRoute: typeof SignupRoute
   TermosRoute: typeof TermosRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
   ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
@@ -947,11 +1011,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacidade': {
       id: '/privacidade'
       path: '/privacidade'
       fullPath: '/privacidade'
       preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dev-loading-preview': {
@@ -966,6 +1051,13 @@ declare module '@tanstack/react-router' {
       path: '/design-system'
       fullPath: '/design-system'
       preLoaderRoute: typeof DesignSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -995,6 +1087,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/report/example'
       preLoaderRoute: typeof ReportExampleRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/reports': {
+      id: '/app/reports'
+      path: '/reports'
+      fullPath: '/app/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/send-report-email': {
       id: '/api/send-report-email'
@@ -1467,6 +1566,16 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AppRouteChildren {
+  AppReportsRoute: typeof AppReportsRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppReportsRoute: AppReportsRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 interface ApiAdminReportRequestsRouteChildren {
   ApiAdminReportRequestsIdRoute: typeof ApiAdminReportRequestsIdRoute
 }
@@ -1551,9 +1660,13 @@ const ApiAdminSistemaAlertsRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
   DevLoadingPreviewRoute: DevLoadingPreviewRoute,
+  LoginRoute: LoginRoute,
   PrivacidadeRoute: PrivacidadeRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SignupRoute: SignupRoute,
   TermosRoute: TermosRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
   ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,
