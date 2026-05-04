@@ -9,13 +9,13 @@ import {
   Clock,
   ExternalLink,
   Download,
-  Sparkles,
   Search,
   Mail,
   MailCheck,
   MailX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProTrackingTeaser } from "@/components/app/pro-tracking-teaser";
 
 export const Route = createFileRoute("/app/reports")({
   component: ReportsPage,
@@ -304,25 +304,8 @@ function ReportsPage() {
 
       {/* PRO teaser */}
       {!loading && !error && (
-        <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-5">
-          <div className="flex gap-3">
-            <Sparkles className="mt-0.5 size-4 shrink-0 text-violet-400" />
-            <div>
-              <p className="text-[13px] font-medium text-slate-600">
-                Tracking contínuo — disponível em breve
-              </p>
-              <p className="mt-1 text-[13px] leading-relaxed text-slate-400">
-                Os planos Pro e Agency vão incluir tracking diário, evolução temporal e alertas
-                de crescimento. A conta está preparada para quando for ativado.
-              </p>
-              <Link
-                to="/app/plan"
-                className="mt-2 inline-block text-[13px] font-medium text-blue-500 hover:text-blue-600"
-              >
-                Ver planos →
-              </Link>
-            </div>
-          </div>
+        <div className="mt-4">
+          <ProTrackingTeaser />
         </div>
       )}
 
