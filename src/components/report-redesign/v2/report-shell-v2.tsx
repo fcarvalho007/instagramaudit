@@ -88,12 +88,51 @@ export function ReportShellV2({
         )}
       >
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
-        <ReportHeroV2 result={result} actions={actions} />
-
-        {/* Auxiliary action row — competitor + multi-network */}
-        <div className="mx-auto max-w-[1380px] px-5 md:px-6">
-          <ComparisonHeader />
-        </div>
+        <section className="relative overflow-hidden" style={{ backgroundColor: '#F8FBFF' }}>
+          {/* BG Layer 1 — subtle grid */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            aria-hidden="true"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }}
+          />
+          {/* BG Layer 2 — top-right soft blue radial */}
+          <div
+            className="absolute top-0 right-0 w-[600px] h-[600px] pointer-events-none"
+            aria-hidden="true"
+            style={{
+              background:
+                'radial-gradient(circle at 70% 20%, rgba(6,182,212,0.08), transparent 70%)',
+            }}
+          />
+          {/* BG Layer 3 — top-left soft violet radial */}
+          <div
+            className="absolute top-0 left-0 w-[500px] h-[500px] pointer-events-none"
+            aria-hidden="true"
+            style={{
+              background:
+                'radial-gradient(circle at 30% 30%, rgba(139,92,246,0.05), transparent 70%)',
+            }}
+          />
+          {/* BG Layer 4 — bottom fade to report canvas */}
+          <div
+            className="absolute bottom-0 inset-x-0 h-24 pointer-events-none"
+            aria-hidden="true"
+            style={{
+              background: 'linear-gradient(to bottom, transparent, #FAFBFD)',
+            }}
+          />
+          {/* Content */}
+          <div className="relative z-10">
+            <ReportHeroV2 result={result} actions={actions} />
+            <div className="mx-auto max-w-[1380px] px-5 md:px-6">
+              <ComparisonHeader />
+            </div>
+          </div>
+        </section>
 
         {/* Tabs mobile sticky abaixo do hero */}
         <ReportBlockTopTabs />
