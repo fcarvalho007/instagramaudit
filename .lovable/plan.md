@@ -1,32 +1,42 @@
 
 ## Assessment
 
-The signup trigger (`handle_new_user` → `link_user_to_existing_reports`) correctly links existing reports at signup time. However, there's **no login-time fallback**. Reports created after signup are never linked.
+The `/app/plan` page already has the correct 3-tier cards with the right copy, badges, and "Preparado para uma fase futura" labels. Two additions are needed:
 
-## What to add
+### 1. Add manifesto card to `/app/plan`
 
-### 1. Server function: `ensureReportAssociation`
+**File:** `src/routes/app.plan.tsx`
 
-**File:** `src/server/account.functions.ts` (add to existing)
+Replace the closing `<p>` with an info card:
 
-- New `createServerFn` with `requireSupabaseAuth` middleware
-- Calls `link_user_to_existing_reports(userId, userEmail)` via `supabaseAdmin.rpc()`
-- Returns `{ linked: boolean }` — whether any new associations were made
-- Safe to call multiple times (function is already idempotent)
+```
+<div className="mt-6 rounded-xl border border-blue-100 bg-blue-50/40 p-5">
+  <div className="flex gap-3">
+    <Info icon />
+    <div>
+      <p>Sobre o tracking diário</p>
+      <p>O tracking diário será uma funcionalidade PRO futura. Por agora, a tua conta guarda
+         os relatórios solicitados e prepara a evolução para histórico contínuo. Não existem
+         cobranças nem funcionalidades ativas dos planos Pro e Agency neste momento.</p>
+    </div>
+  </div>
+</div>
+```
 
-### 2. Call it on app load
+### 2. Enhance empty state in `/app/reports` with PRO teaser
 
-**File:** `src/routes/app.tsx`
+**File:** `src/routes/app.reports.tsx`
 
-- After confirming the user is authenticated, fire-and-forget call to `ensureReportAssociation`
-- Runs silently in the background — no UI change, no blocking
-- Ensures any reports created between sessions get linked
+After the existing empty state card, add a subtle upsell card:
+
+- Icon: Sparkles
+- Title: "Tracking contínuo — disponível em breve"
+- Body: "Os planos Pro e Agency vão incluir tracking diário, evolução temporal e alertas de crescimento. A tua conta está preparada para quando ativares."
+- Link to `/app/plan`: "Ver planos"
+- Style: dashed border, muted colors, no fake CTA
 
 ### Files changed
-- `src/server/account.functions.ts` — add `ensureReportAssociation`
-- `src/routes/app.tsx` — call it on auth-confirmed load
+- `src/routes/app.plan.tsx` — add manifesto info card, import `Info` icon
+- `src/routes/app.reports.tsx` — add PRO teaser below empty state, import `Sparkles` and `Link`
 
-### Security
-- Uses `supabaseAdmin.rpc()` server-side only — leads table never exposed to client
-- Server function validates user identity via `requireSupabaseAuth`
-- The DB function itself ensures `user_id IS NULL` guard (no overwrites)
+No backend, no cron, no new tables, no costs.
