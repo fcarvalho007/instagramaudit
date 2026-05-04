@@ -149,7 +149,10 @@ export function ReportEngagementBenchmarkChart({
                     <>
                       {/* Segment 1: benchmark portion (solid blue) */}
                       <div
-                        className="absolute inset-y-0 left-0 rounded-l-md bg-accent-primary"
+                        className={cn(
+                          "absolute inset-y-0 left-0 bg-accent-primary rounded-l-md",
+                          profileVal <= benchmarkVal && "rounded-r-md",
+                        )}
                         style={{ width: `${Math.max(Math.min(tierPct, profilePctVal), 1)}%` }}
                       />
                       {/* Segment 2: gap above benchmark (green) — only when profile > benchmark */}
@@ -160,13 +163,6 @@ export function ReportEngagementBenchmarkChart({
                             left: `${tierPct}%`,
                             width: `${Math.max(profilePctVal - tierPct, 0)}%`,
                           }}
-                        />
-                      )}
-                      {/* Rounded right end when profile <= benchmark */}
-                      {profileVal <= benchmarkVal && profileVal > 0 && (
-                        <div
-                          className="absolute inset-y-0 left-0 rounded-r-md bg-accent-primary"
-                          style={{ width: `${Math.max(profilePctVal, 1)}%` }}
                         />
                       )}
                       {/* Inline profile value */}
