@@ -451,45 +451,58 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
       sourceType="dados"
       sourceDetail="Hashtags"
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-[1.15fr_1fr] gap-6">
         {/* Left — hashtag cloud */}
-        <div className="flex flex-wrap gap-2 content-start">
-          {r.items.map((it) => (
-            <span
-              key={it.text}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-surface-muted/60 px-3 py-1.5 text-sm font-medium text-content-primary"
-            >
-              {it.text}
-              <span className="font-mono text-[10px] text-content-tertiary tabular-nums">
-                {it.weight}×
-              </span>
-            </span>
-          ))}
+        <div>
+          <p className="text-eyebrow-sm text-content-tertiary mb-3">Nuvem de hashtags</p>
+          <div className="rounded-xl bg-surface-muted/70 p-4 flex flex-wrap gap-2 content-start items-start min-h-[80px]">
+            {r.items.map((it, i) => {
+              const isDominant = it.weight === max;
+              return (
+                <span
+                  key={it.text}
+                  className={
+                    isDominant
+                      ? "inline-flex items-center rounded-full border border-border-subtle bg-surface-secondary px-4 py-2 font-display text-base font-semibold text-accent-primary"
+                      : i < 2
+                        ? "inline-flex items-center rounded-full border border-border-subtle bg-surface-secondary px-3 py-1.5 text-sm font-medium text-accent-primary"
+                        : "inline-flex items-center rounded-full border border-border-subtle bg-surface-secondary px-2.5 py-1 text-xs text-content-secondary"
+                  }
+                >
+                  {it.text}
+                </span>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Right — horizontal bar ranking */}
-        <ul className="space-y-2">
-          {r.items.map((it) => {
-            const pct = (it.weight / max) * 100;
-            return (
-              <li key={it.text} className="text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-content-secondary truncate">{it.text}</span>
-                  <span className="font-mono text-[10px] text-content-tertiary tabular-nums shrink-0">
-                    {it.weight}×
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
-                  <div
-                    className="h-full bg-accent-primary"
-                    style={{ width: `${pct}%` }}
-                    aria-hidden
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        {/* Right — frequency chart */}
+        <div>
+          <p className="text-eyebrow-sm text-content-tertiary mb-3">Frequência</p>
+          <ul className="space-y-2.5">
+            {r.items.map((it) => {
+              const pct = (it.weight / max) * 100;
+              const isTop = it.weight === max;
+              return (
+                <li key={it.text} className="text-sm">
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <span className="text-content-secondary truncate">{it.text}</span>
+                    <span className="font-mono text-[11px] text-content-tertiary tabular-nums shrink-0">
+                      {it.weight}×
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
+                    <div
+                      className={isTop ? "h-full bg-accent-primary" : "h-full bg-content-tertiary/20"}
+                      style={{ width: `${pct}%` }}
+                      aria-hidden
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </ReportDiagnosticCard>
   );
