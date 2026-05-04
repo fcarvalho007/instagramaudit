@@ -59,28 +59,28 @@ export function ReportEngagementBenchmarkChart({
   return (
     <div className="flex flex-col gap-4">
       {/* Chart header */}
-      <div className="flex items-baseline justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-eyebrow-sm text-content-secondary">
-            Comparação entre escalões de seguidores
-          </span>
-          {benchmarkVal > 0 && (
-            <span className="text-[10px] text-content-secondary font-medium ml-1">
-              benchmark {fmtRate(benchmarkVal)}
-            </span>
-          )}
-        </div>
+      <div className="flex items-baseline justify-between flex-wrap gap-1">
+        <span className="text-eyebrow-sm text-content-secondary">
+          Comparação entre escalões de seguidores
+        </span>
         <span className="text-[10px] text-content-secondary hidden sm:inline">
           eixo: 0% → {scaleMax % 1 === 0 ? `${scaleMax}` : scaleMax.toFixed(1)}%
         </span>
       </div>
 
       {/* Tier rows */}
-      <div
-        className="flex flex-col gap-2"
-        role="list"
-        aria-label="Comparação de taxa de envolvimento por escalão"
-      >
+      <div className="relative flex flex-col gap-2" role="list" aria-label="Comparação de taxa de envolvimento por escalão">
+        {/* Benchmark reference line label — positioned above bar area */}
+        {benchmarkVal > 0 && (
+          <div className="relative h-0 ml-[calc(90px+12px)] sm:ml-[calc(110px+16px)] mr-[calc(48px+12px)] sm:mr-[calc(48px+16px)]">
+            <span
+              className="absolute -top-1 text-[10px] text-content-secondary font-medium whitespace-nowrap -translate-x-1/2"
+              style={{ left: `${benchmarkPct}%` }}
+            >
+              benchmark {fmtRate(benchmarkVal)}
+            </span>
+          </div>
+        )}
         {benchmarkSeries.map((tier, i) => {
           const isActive = i === activeTierIndex;
           const tierPct = pct(tier.engagementRatePct);
@@ -131,40 +131,57 @@ export function ReportEngagementBenchmarkChart({
                 </div>
 
                 {/* Bar area */}
-                <div className="relative flex-1 h-6 sm:h-7">
+                <div className="relative flex-1 h-6 sm:h-7 rounded-r-md overflow-hidden">
                   {/* Benchmark reference line */}
                   {benchmarkVal > 0 && (
                     <div
-                      className="absolute top-0 bottom-0 w-px border-l border-dashed border-content-secondary/25 z-10"
+                      className="absolute top-0 bottom-0 w-px border-l border-dashed border-content-secondary/30 z-10"
                       style={{ left: `${benchmarkPct}%` }}
                     />
                   )}
 
-                  {/* Benchmark bar (grey for inactive, blue for active) */}
-                  <div
-                    className={cn(
-                      "absolute inset-y-0 left-0 rounded-r-md",
-                      isActive
-                        ? "bg-accent-primary"
-                        : "bg-surface-muted",
-                    )}
-                    style={{ width: `${Math.max(tierPct, 1)}%` }}
-                  />
-
-                  {/* Profile overlay on active tier */}
-                  {isActive && profileVal > 0 && (
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-r-md"
-                      style={{
-                        width: `${Math.max(profilePctVal, 1)}%`,
-                        background: "linear-gradient(90deg, rgb(var(--accent-primary)) 0%, rgb(var(--signal-success)) 100%)",
-                      }}
-                    >
+                  {isActive ? (
+                    <>
+                      {/* Segment 1: benchmark portion (solid blue) */}
+                      <div
+                        className="absolute inset-y-0 left-0 bg-accent-primary"
+                        style={{ width: `${Math.max(Math.min(tierPct, profilePctVal), 1)}%` }}
+                      />
+                      {/* Segment 2: gap above benchmark (green) — only when profile > benchmark */}
+                      {profileVal > benchmarkVal && (
+                        <div
+                          className="absolute inset-y-0 bg-signal-success/80"
+                          style={{
+                            left: `${tierPct}%`,
+                            width: `${Math.max(profilePctVal - tierPct, 0)}%`,
+                          }}
+                        />
+                      )}
                       {/* Inline profile value */}
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-white tabular-nums drop-shadow-sm">
-                        {fmtRate(profileVal)}
-                      </span>
-                    </div>
+                      {profileVal > 0 && (
+                        <span
+                          className="absolute top-1/2 -translate-y-1/2 text-[11px] font-bold text-white tabular-nums drop-shadow-sm z-20"
+                          style={{ left: `${Math.max(profilePctVal - 1, 2)}%`, transform: `translate(-100%, -50%)` }}
+                        >
+                          {profilePctVal > 12 && fmtRate(profileVal)}
+                        </span>
+                      )}
+                      {/* External label if bar too short */}
+                      {profileVal > 0 && profilePctVal <= 12 && (
+                        <span
+                          className="absolute top-1/2 -translate-y-1/2 text-[11px] font-bold text-accent-primary tabular-nums z-20"
+                          style={{ left: `${profilePctVal + 1}%` }}
+                        >
+                          {fmtRate(profileVal)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    /* Inactive tier: grey bar */
+                    <div
+                      className="absolute inset-y-0 left-0 bg-content-secondary/12"
+                      style={{ width: `${Math.max(tierPct, 1)}%` }}
+                    />
                   )}
                 </div>
 
