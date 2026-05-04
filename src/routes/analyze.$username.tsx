@@ -27,7 +27,7 @@ export const Route = createFileRoute("/analyze/$username")({
   ssr: false,
   validateSearch: (search: Record<string, unknown>): AnalyzeSearch => ({
     vs: typeof search.vs === "string" ? search.vs : undefined,
-    previewLoading: typeof search.previewLoading === "number" ? search.previewLoading : undefined,
+    previewLoading: Number(search.previewLoading) === 1 ? 1 : undefined,
   }),
   head: ({ params }) => {
     const handle = params.username.replace(/^@/, "");
