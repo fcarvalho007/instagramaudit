@@ -340,7 +340,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
     );
   }
   const colorByIndex = (i: number) =>
-    i === 0 ? "bg-emerald-600" : i === 1 ? "bg-emerald-400" : "bg-content-tertiary/30";
+    i === 0 ? "bg-signal-success" : i === 1 ? "bg-signal-success/50" : "bg-content-tertiary/30";
   return (
     <ReportDiagnosticCard
       key="q01"
