@@ -86,6 +86,7 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
       <EditorialIdentityCard
         scores={scores}
         diagnosticCards={diagnosticCards}
+        aiHeroText={enriched.aiInsightsV2?.sections.hero?.text ?? null}
       />
 
       {/* Zona C — Card de Taxa de Envolvimento */}
