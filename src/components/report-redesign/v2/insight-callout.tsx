@@ -21,26 +21,26 @@ const TONE_CONFIG: Record<
   { bg: string; ring: string; iconCls: string; labelCls: string; DefaultIcon: LucideIcon; defaultLabel: string }
 > = {
   editorial: {
-    bg: "bg-blue-50/50",
-    ring: "ring-blue-100/60",
-    iconCls: "text-blue-500",
-    labelCls: "text-blue-700",
+    bg: "bg-tint-primary",
+    ring: "ring-border-subtle",
+    iconCls: "text-accent-primary",
+    labelCls: "text-accent-primary",
     DefaultIcon: Lightbulb,
     defaultLabel: "Leitura editorial",
   },
   suggestion: {
-    bg: "bg-blue-50/40",
-    ring: "ring-blue-100/50",
-    iconCls: "text-blue-500",
-    labelCls: "text-blue-600",
+    bg: "bg-tint-primary/60",
+    ring: "ring-border-subtle",
+    iconCls: "text-accent-primary",
+    labelCls: "text-accent-primary",
     DefaultIcon: Cpu,
     defaultLabel: "O que isto sugere",
   },
   warning: {
-    bg: "bg-rose-50/50",
-    ring: "ring-rose-100/60",
-    iconCls: "text-rose-500",
-    labelCls: "text-rose-700",
+    bg: "bg-tint-warning",
+    ring: "ring-signal-warning/20",
+    iconCls: "text-signal-warning",
+    labelCls: "text-signal-warning",
     DefaultIcon: AlertTriangle,
     defaultLabel: "Atenção",
   },
@@ -80,7 +80,7 @@ export function InsightCallout({
         <p className={cn("text-eyebrow-sm font-medium", cfg.labelCls)}>
           {displayLabel}
         </p>
-        <div className="text-[13px] text-slate-600 leading-relaxed">
+        <div className="text-[13px] text-content-secondary leading-relaxed">
           {children}
         </div>
       </div>
