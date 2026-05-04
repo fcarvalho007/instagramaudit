@@ -38,6 +38,7 @@ import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
 import { ReportCaptionIntelligence } from "./report-caption-intelligence";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
+import { ReportDiagnosticSummaryCards } from "./report-diagnostic-summary-cards";
 import {
   CommentIntelligenceSection,
   CommentIntelligenceUnavailable,
@@ -138,6 +139,13 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   return (
     <div className="space-y-10 md:space-y-12">
       <ReportDiagnosticVerdict text={verdictText} source={verdictSource} />
+
+      <ReportDiagnosticSummaryCards
+        contentType={contentType}
+        funnel={funnel}
+        audience={audience}
+        objective={objective}
+      />
 
       {totalCards >= 4 ? (
         <>
