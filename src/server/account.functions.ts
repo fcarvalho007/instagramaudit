@@ -62,3 +62,27 @@ export const updateDisplayName = createServerFn({ method: "POST" })
 
     return { ok: true, displayName: trimmed || null };
   });
+
+export const ensureReportAssociation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+
+    // Get user email from auth
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (userError || !userData.user?.email) {
+      return { linked: false };
+    }
+
+    const { error } = await supabaseAdmin.rpc("link_user_to_existing_reports", {
+      p_user_id: userId,
+      p_email: userData.user.email,
+    });
+
+    if (error) {
+      console.error("link_user_to_existing_reports error:", error.message);
+      return { linked: false };
+    }
+
+    return { linked: true };
+  });
