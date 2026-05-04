@@ -100,18 +100,20 @@ function classifyBrandReply(ci: CommentIntelligence): {
   };
 }
 
+/* Badge classes — local tone map using semantic tokens where possible.
+ * "rose" uses tint-danger with softened text to avoid aggressive red. */
 const BADGE_CLASSES: Record<StatusConfig["tone"], string> = {
-  emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  amber: "border-amber-200 bg-amber-50 text-amber-800",
-  rose: "border-rose-200 bg-rose-50 text-rose-800",
-  slate: "border-slate-200 bg-slate-50 text-slate-600",
+  emerald: "border-signal-success/20 bg-tint-success text-signal-success",
+  amber: "border-signal-warning/20 bg-tint-warning text-signal-warning",
+  rose: "border-signal-danger/20 bg-tint-danger text-signal-danger",
+  slate: "border-border-default bg-surface-muted text-content-secondary",
 };
 
 const BADGE_ICON_CLASSES: Record<StatusConfig["tone"], string> = {
-  emerald: "text-emerald-600",
-  amber: "text-amber-600",
-  rose: "text-rose-500",
-  slate: "text-slate-400",
+  emerald: "text-signal-success",
+  amber: "text-signal-warning",
+  rose: "text-signal-danger",
+  slate: "text-content-tertiary",
 };
 
 // ─────────────────────────────────────────────────────────────────────
@@ -126,7 +128,7 @@ const METHODOLOGY_NOTE =
 
 function ScopeNote() {
   return (
-    <p className="text-[11px] leading-relaxed text-slate-400 italic">
+    <p className="text-[11px] leading-relaxed text-content-tertiary italic">
       {SCOPE_NOTE}
     </p>
   );
@@ -151,24 +153,24 @@ function TransparencyStrip({ data }: { data: CommentIntelligence }) {
   );
 
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50/40 p-3 space-y-2.5">
+    <div className="rounded-lg border border-border-subtle bg-surface-muted/40 p-3 space-y-2.5">
       <div className="flex items-center gap-1.5">
-        <BarChart3 className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
-        <p className="text-eyebrow-sm text-slate-500">Amostra analisada</p>
+        <BarChart3 className="h-3.5 w-3.5 shrink-0 text-content-tertiary" aria-hidden="true" />
+        <p className="text-eyebrow-sm text-content-tertiary">Amostra analisada</p>
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
         {items.map((item) => (
           <div key={item.label}>
-            <p className="text-[10.5px] font-medium uppercase tracking-wide text-slate-400 leading-tight break-words">
+            <p className="text-[10.5px] font-medium uppercase tracking-wide text-content-tertiary leading-tight break-words">
               {item.label}
             </p>
-            <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-slate-700">
+            <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-content-secondary">
               {item.value}
             </p>
           </div>
         ))}
       </div>
-      <p className="text-[10.5px] leading-relaxed text-slate-400">
+      <p className="text-[10.5px] leading-relaxed text-content-tertiary">
         {METHODOLOGY_NOTE}
       </p>
     </div>
@@ -195,7 +197,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
       label: "Perguntas",
       count: ci.questionsFromAudienceCount,
       Icon: HelpCircle,
-      className: "border-blue-200 bg-blue-50 text-blue-700",
+      className: "border-accent-primary/20 bg-tint-primary text-accent-primary",
     });
   }
   if (ci.praiseCount > 0) {
@@ -204,7 +206,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
       label: "Elogios",
       count: ci.praiseCount,
       Icon: ThumbsUp,
-      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      className: "border-signal-success/20 bg-tint-success text-signal-success",
     });
   }
   if (ci.complaintOrIssueCount > 0) {
@@ -213,7 +215,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
       label: "Problemas ou queixas",
       count: ci.complaintOrIssueCount,
       Icon: AlertTriangle,
-      className: "border-amber-200 bg-amber-50 text-amber-700",
+      className: "border-signal-warning/20 bg-tint-warning text-signal-warning",
     });
   }
   if (ci.buyingIntentCount > 0) {
@@ -222,7 +224,8 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
       label: "Intenção de compra",
       count: ci.buyingIntentCount,
       Icon: ShoppingCart,
-      className: "border-violet-200 bg-violet-50 text-violet-700",
+      /* No semantic violet token — using accent-primary as closest match */
+      className: "border-accent-primary/20 bg-tint-primary text-accent-primary",
     });
   }
   if (ci.spamOrLowQualityCount > 0) {
@@ -231,7 +234,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
       label: "Ruído ou spam",
       count: ci.spamOrLowQualityCount,
       Icon: Ban,
-      className: "border-slate-200 bg-slate-50 text-slate-500",
+      className: "border-border-default bg-surface-muted text-content-tertiary",
     });
   }
   return chips;
@@ -283,26 +286,26 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
     <div className="mt-5 space-y-3">
       <div className="flex items-center gap-2">
         <MessageCircleReply
-          className="h-4 w-4 shrink-0 text-slate-400"
+          className="h-4 w-4 shrink-0 text-content-tertiary"
           aria-hidden="true"
         />
-        <h4 className="text-[13px] font-semibold text-slate-700">
+        <h4 className="text-[13px] font-semibold text-content-secondary">
           A marca participa na conversa?
         </h4>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3.5 space-y-1.5">
+      <div className="rounded-lg border border-border-default bg-surface-muted/60 px-4 py-3.5 space-y-1.5">
         <div className="flex items-center gap-2">
           {isProcessing ? (
-            <Loader2 className="h-3.5 w-3.5 shrink-0 text-slate-400 animate-spin" aria-hidden="true" />
+            <Loader2 className="h-3.5 w-3.5 shrink-0 text-content-tertiary animate-spin" aria-hidden="true" />
           ) : (
-            <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+            <Info className="h-3.5 w-3.5 shrink-0 text-content-tertiary" aria-hidden="true" />
           )}
-          <p className="text-[12.5px] font-medium text-slate-500">
+          <p className="text-[12.5px] font-medium text-content-tertiary">
             {title}
           </p>
         </div>
-        <p className="text-[12px] leading-relaxed text-slate-500">
+        <p className="text-[12px] leading-relaxed text-content-tertiary">
           {body}
         </p>
       </div>
@@ -329,10 +332,10 @@ export function CommentIntelligenceSection({ data }: Props) {
       {/* Sub-card header */}
       <div className="flex items-center gap-2">
         <MessageCircleReply
-          className="h-4 w-4 shrink-0 text-slate-500"
+          className="h-4 w-4 shrink-0 text-content-tertiary"
           aria-hidden="true"
         />
-        <h4 className="text-[13px] font-semibold text-slate-700">
+        <h4 className="text-[13px] font-semibold text-content-secondary">
           A marca participa na conversa?
         </h4>
       </div>
@@ -392,7 +395,7 @@ export function CommentIntelligenceSection({ data }: Props) {
       {/* Conversation quality signals */}
       {signalChips.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-eyebrow-sm text-slate-500">Sinais de conversa</p>
+          <p className="text-eyebrow-sm text-content-tertiary">Sinais de conversa</p>
           <div className="flex flex-wrap gap-1.5">
             {signalChips.map((chip) => (
               <div
@@ -408,7 +411,7 @@ export function CommentIntelligenceSection({ data }: Props) {
               </div>
             ))}
           </div>
-          <p className="text-[10.5px] text-slate-400">
+          <p className="text-[10.5px] text-content-tertiary">
             Leitura automática — classificação heurística dos comentários públicos.
           </p>
         </div>
@@ -423,17 +426,17 @@ export function CommentIntelligenceSection({ data }: Props) {
 
       {/* Top conversation post */}
       {data.topConversationPost && (
-        <div className="rounded-lg border border-slate-100 bg-white px-3.5 py-2.5 space-y-1">
+        <div className="rounded-lg border border-border-subtle bg-surface-secondary px-3.5 py-2.5 space-y-1">
           <div className="flex items-center gap-1.5">
             <ShieldCheck
-              className="h-3 w-3 shrink-0 text-slate-400"
+              className="h-3 w-3 shrink-0 text-content-tertiary"
               aria-hidden="true"
             />
-            <p className="text-eyebrow-sm text-slate-500">
+            <p className="text-eyebrow-sm text-content-tertiary">
               Publicação com mais interação da marca
             </p>
           </div>
-          <p className="text-[13px] text-slate-700">
+          <p className="text-[13px] text-content-secondary">
             <span className="font-semibold tabular-nums">
               {data.topConversationPost.ownerRepliesCount}
             </span>{" "}
@@ -460,7 +463,7 @@ export function CommentIntelligenceSection({ data }: Props) {
           .map((l, i) => (
             <p
               key={i}
-              className="text-[11px] leading-relaxed text-slate-400"
+              className="text-[11px] leading-relaxed text-content-tertiary"
             >
               {l}
             </p>
@@ -482,11 +485,11 @@ function MetricCell({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-white px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 break-words leading-tight">
+    <div className="rounded-lg border border-border-subtle bg-surface-secondary px-3 py-2.5">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-content-tertiary break-words leading-tight">
         {label}
       </p>
-      <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-slate-800">
+      <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-content-primary">
         {value}
       </p>
     </div>
