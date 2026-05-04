@@ -153,11 +153,21 @@ function AnalyzePage() {
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
-    // Step 1 — trigger the public analyze pipeline. This guarantees a fresh
-    // snapshot is recolhida (or served from cache/stale) and persisted in
-    // `analysis_snapshots` before we ask for the full payload.
+    const loadStart = Date.now();
+
+    // Minimum skeleton display: 3s — gives the user a sense of structured
+    // progress and lets the layout settle. Fresh Apify runs take 7-20s, so
+    // the floor only affects cache hits (~200-700ms).
+    const MIN_DISPLAY_MS = 3000;
+    const waitMin = () => {
+      const remaining = MIN_DISPLAY_MS - (Date.now() - loadStart);
+      return remaining > 0 ? new Promise<void>((r) => setTimeout(r, remaining)) : Promise.resolve();
+    };
+
+    // Step 1 — trigger the public analyze pipeline.
     const analysis = await fetchPublicAnalysis(cleaned, competitors);
     if (!analysis.success) {
+      await waitMin();
       setState({
         status: "error",
         message: resolveErrorMessage(analysis.error_code),
@@ -165,14 +175,14 @@ function AnalyzePage() {
       return;
     }
 
-    // Step 2 — fetch the persisted snapshot (full payload + server-resolved
-    // benchmark) and run the editorial adapter on the client.
+    // Step 2 — fetch the persisted snapshot.
     try {
       const res = await fetch(
         `/api/public/analysis-snapshot/${encodeURIComponent(cleaned)}`,
       );
       const body = (await res.json().catch(() => null)) as SnapshotResponse | null;
       if (!res.ok || !body?.success || !body.snapshot) {
+        await waitMin();
         setState({
           status: "error",
           message: resolveErrorMessage(body?.error_code),
@@ -186,6 +196,9 @@ function AnalyzePage() {
         benchmark: body.snapshot.benchmark,
         isAdminPreview: false,
       });
+
+      await waitMin();
+
       setState({
         status: "ready",
         result,
@@ -195,6 +208,7 @@ function AnalyzePage() {
           body.snapshot.meta?.generated_at ?? body.snapshot.updated_at ?? null,
       });
     } catch {
+      await waitMin();
       setState({
         status: "error",
         message: "Falha de ligação. Tentar novamente.",
