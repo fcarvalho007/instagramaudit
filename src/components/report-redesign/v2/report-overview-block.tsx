@@ -3,8 +3,6 @@ import { useMemo, type ReactNode } from "react";
 import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
 
-import { SummaryGrid } from "./overview/score-grid";
-import { ScoreCard } from "./overview/score-card";
 import {
   computeEnvolvimento,
   envolvimentoSubtitle,
@@ -13,8 +11,8 @@ import {
   computeInteraccao,
   interaccaoSubtitle,
   type ScoreKey,
-  SCORE_DEFINITIONS,
 } from "./overview/score-utils";
+import { EditorialIdentityCard } from "./overview/editorial-identity-card";
 import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
@@ -27,6 +25,7 @@ import {
   inferProbableObjective,
 } from "@/lib/report/block02-diagnostic";
 import { DiagnosticCard, buildDiagnosticCards } from "./overview/diagnostic-summary";
+import type { SummaryCardData } from "./overview/diagnostic-summary";
 
 export interface Props {
   result: AdapterResult;
@@ -83,19 +82,11 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
     <div className="relative space-y-8 md:space-y-10">
 
       {/* Zona B — 6-card summary grid (3 scores + 3 diagnostic) */}
-      <SummaryGrid>
-        {SCORE_DEFINITIONS.map((def) => (
-          <ScoreCard
-            key={def.key}
-            definition={def}
-            score={scores[def.key].value}
-            subtitle={scores[def.key].subtitle}
-          />
-        ))}
-        {diagnosticCards.map((c) => (
-          <DiagnosticCard key={c.label} card={c} />
-        ))}
-      </SummaryGrid>
+      {/* Zona B — Editorial Identity Card (replaces 6-card grid) */}
+      <EditorialIdentityCard
+        scores={scores}
+        diagnosticCards={diagnosticCards}
+      />
 
       {/* Zona C — Card de Taxa de Envolvimento */}
       <EngagementCardRefined result={result} />
