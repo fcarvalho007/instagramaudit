@@ -264,6 +264,7 @@ export interface ReportEnriched {
     engagementPct: number;
     date: string;
     mentions: string[];
+    thumbnailUrl?: string;
   }>;
   /** Bottom 2 posts by engagement — empty if fewer than 4 posts available. */
   bottomPosts: Array<{
@@ -277,6 +278,7 @@ export interface ReportEnriched {
     engagementPct: number;
     date: string;
     mentions: string[];
+    thumbnailUrl?: string;
   }>;
   mentionsSummary: Array<{ handle: string; count: number }>;
   benchmarkSource: {
@@ -1204,6 +1206,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         engagementPct: round2(num(p.engagement_pct, 0)),
         date: formatPtDateShort(p.taken_at_iso ?? null),
         mentions,
+        ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
+          ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
+          : {}),
       };
     });
 
@@ -1267,6 +1272,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
             engagementPct: round2(num(p.engagement_pct, 0)),
             date: formatPtDateShort(p.taken_at_iso ?? null),
             mentions,
+            ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
+              ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
+              : {}),
           };
         })
       : [];
