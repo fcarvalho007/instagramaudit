@@ -90,13 +90,13 @@ function SignupPage() {
         subtitle="Enviámos um link de confirmação. Clica no link para ativar a tua conta."
       >
         <div className="flex flex-col items-center gap-4 py-4">
-          <CheckCircle2 className="size-12 text-signal-success" />
-          <p className="text-sm text-content-secondary text-center">
+          <CheckCircle2 className="size-12 text-emerald-600" />
+          <p className="text-sm text-slate-500 text-center">
             O email pode demorar alguns minutos. Verifica também a pasta de spam.
           </p>
           <Link
             to="/login"
-            className="text-sm font-medium text-accent-primary hover:underline"
+            className="text-sm font-medium text-blue-600 hover:underline"
           >
             Voltar ao login
           </Link>
@@ -138,7 +138,7 @@ function SignupPage() {
         </div>
 
         {error && (
-          <p className="text-sm text-signal-danger" role="alert">
+          <p className="text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
@@ -151,10 +151,10 @@ function SignupPage() {
 
       <div className="relative my-5">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border-default" />
+          <div className="w-full border-t border-slate-200" />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="bg-surface-secondary px-3 text-content-tertiary">
+          <span className="bg-white px-3 text-slate-400">
             ou
           </span>
         </div>
@@ -175,9 +175,9 @@ function SignupPage() {
         Continuar com Google
       </Button>
 
-      <p className="mt-6 text-center text-sm text-content-secondary">
+      <p className="mt-6 text-center text-sm text-slate-500">
         Já tens conta?{" "}
-        <Link to="/login" className="font-medium text-accent-primary hover:underline">
+        <Link to="/login" className="font-medium text-blue-600 hover:underline">
           Entrar
         </Link>
       </p>

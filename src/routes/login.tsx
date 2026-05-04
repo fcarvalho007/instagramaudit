@@ -100,7 +100,7 @@ function LoginPage() {
             <Label htmlFor="login-password">Palavra-passe</Label>
             <Link
               to="/reset-password"
-              className="text-xs text-accent-primary hover:underline"
+              className="text-xs text-blue-600 hover:underline"
             >
               Esqueceste-te da palavra-passe?
             </Link>
@@ -117,7 +117,7 @@ function LoginPage() {
         </div>
 
         {error && (
-          <p className="text-sm text-signal-danger" role="alert">
+          <p className="text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
@@ -130,10 +130,10 @@ function LoginPage() {
 
       <div className="relative my-5">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border-default" />
+          <div className="w-full border-t border-slate-200" />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="bg-surface-secondary px-3 text-content-tertiary">
+          <span className="bg-white px-3 text-slate-400">
             ou
           </span>
         </div>
@@ -166,9 +166,9 @@ function LoginPage() {
         Continuar com Google
       </Button>
 
-      <p className="mt-6 text-center text-sm text-content-secondary">
+      <p className="mt-6 text-center text-sm text-slate-500">
         Ainda não tens conta?{" "}
-        <Link to="/signup" className="font-medium text-accent-primary hover:underline">
+        <Link to="/signup" className="font-medium text-blue-600 hover:underline">
           Criar conta
         </Link>
       </p>

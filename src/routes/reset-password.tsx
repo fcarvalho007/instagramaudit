@@ -97,10 +97,10 @@ function ResetPasswordPage() {
         subtitle="Já podes entrar com a nova palavra-passe."
       >
         <div className="flex flex-col items-center gap-4 py-4">
-          <CheckCircle2 className="size-12 text-signal-success" />
+          <CheckCircle2 className="size-12 text-emerald-600" />
           <Link
             to="/login"
-            className="text-sm font-medium text-accent-primary hover:underline"
+            className="text-sm font-medium text-blue-600 hover:underline"
           >
             Ir para o login
           </Link>
@@ -132,7 +132,7 @@ function ResetPasswordPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-signal-danger" role="alert">
+            <p className="text-sm text-red-600" role="alert">
               {error}
             </p>
           )}
@@ -154,13 +154,13 @@ function ResetPasswordPage() {
         subtitle="Verifica o teu email para continuar."
       >
         <div className="flex flex-col items-center gap-4 py-4">
-          <CheckCircle2 className="size-12 text-signal-success" />
-          <p className="text-sm text-content-secondary text-center">
+          <CheckCircle2 className="size-12 text-emerald-600" />
+          <p className="text-sm text-slate-500 text-center">
             Se o email estiver registado, receberás um link de recuperação. Verifica também a pasta de spam.
           </p>
           <Link
             to="/login"
-            className="text-sm font-medium text-accent-primary hover:underline"
+            className="text-sm font-medium text-blue-600 hover:underline"
           >
             Voltar ao login
           </Link>
@@ -190,7 +190,7 @@ function ResetPasswordPage() {
         </div>
 
         {error && (
-          <p className="text-sm text-signal-danger" role="alert">
+          <p className="text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
@@ -201,8 +201,8 @@ function ResetPasswordPage() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-content-secondary">
-        <Link to="/login" className="font-medium text-accent-primary hover:underline">
+      <p className="mt-6 text-center text-sm text-slate-500">
+        <Link to="/login" className="font-medium text-blue-600 hover:underline">
           Voltar ao login
         </Link>
       </p>
