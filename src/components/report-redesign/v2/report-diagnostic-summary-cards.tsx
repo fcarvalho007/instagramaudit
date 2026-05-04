@@ -33,7 +33,7 @@ const FUNNEL_HEADLINE: Record<string, string> = {
 const AUDIENCE_HEADLINE: Record<string, string> = {
   "Audiência silenciosa": "Quase sem comentários",
   "Audiência ativa": "Conversa ativa",
-  "Resposta moderada": "Resposta moderada",
+  "Resposta moderada": "Pouca conversa",
   "Resposta concentrada": "Conversa pontual",
   "Dados insuficientes": "Dados insuficientes",
 };
@@ -184,6 +184,7 @@ export function ReportDiagnosticSummaryCards({
         return (
           <article
             key={c.label}
+            aria-label={`${c.label}: ${c.headline}. ${c.subtitle}.`}
             className={cn(
               "flex flex-col gap-2.5",
               "rounded-2xl border border-border-default bg-surface-secondary",
