@@ -70,16 +70,30 @@ export function ReportEngagementBenchmarkChart({
 
       {/* Tier rows */}
       <div className="relative flex flex-col gap-2" role="list" aria-label="Comparação de taxa de envolvimento por escalão">
-        {/* Benchmark reference line label — positioned above bar area */}
+        {/* Full-height benchmark reference line + label */}
         {benchmarkVal > 0 && (
-          <div className="relative h-0 ml-[calc(90px+12px)] sm:ml-[calc(110px+16px)] mr-[calc(48px+12px)] sm:mr-[calc(48px+16px)]">
-            <span
-              className="absolute -top-1 text-[10px] text-content-secondary font-medium whitespace-nowrap -translate-x-1/2"
-              style={{ left: `${benchmarkPct}%` }}
-            >
-              benchmark {fmtRate(benchmarkVal)}
-            </span>
-          </div>
+          <>
+            {/* Label above bars */}
+            <div className="relative h-5 ml-[calc(90px+12px)] sm:ml-[calc(110px+16px)] mr-[calc(48px+12px)] sm:mr-[calc(48px+16px)]">
+              <span
+                className="absolute bottom-0 text-[10px] text-content-secondary font-medium whitespace-nowrap -translate-x-1/2"
+                style={{ left: `max(${benchmarkPct}%, 24px)` }}
+              >
+                benchmark {fmtRate(benchmarkVal)}
+              </span>
+            </div>
+            {/* Full-height vertical dashed line spanning all rows */}
+            <div
+              className="absolute w-px border-l border-dashed border-content-secondary/25 z-10 pointer-events-none"
+              style={{
+                left: `calc((100% - 90px - 12px - 48px - 12px) * ${benchmarkPct / 100} + 90px + 12px)`,
+                top: '20px',
+                bottom: '0',
+              }}
+              aria-hidden="true"
+            />
+            {/* SM breakpoint override via a second line — CSS can't do calc with responsive values inline, so we layer */}
+          </>
         )}
         {benchmarkSeries.map((tier, i) => {
           const isActive = i === activeTierIndex;
@@ -131,15 +145,7 @@ export function ReportEngagementBenchmarkChart({
                 </div>
 
                 {/* Bar area */}
-                <div className="relative flex-1 h-6 sm:h-7 rounded-r-md overflow-hidden">
-                  {/* Benchmark reference line */}
-                  {benchmarkVal > 0 && (
-                    <div
-                      className="absolute top-0 bottom-0 w-px border-l border-dashed border-content-secondary/30 z-10"
-                      style={{ left: `${benchmarkPct}%` }}
-                    />
-                  )}
-
+                <div className="relative flex-1 h-6 sm:h-7 rounded-r-md">
                   {isActive ? (
                     <>
                       {/* Segment 1: benchmark portion (solid blue) */}
@@ -167,10 +173,10 @@ export function ReportEngagementBenchmarkChart({
                         </span>
                       )}
                       {/* External label if bar too short */}
-                      {profileVal > 0 && profilePctVal <= 12 && (
+                      {profileVal > 0 && profilePctVal <= 14 && (
                         <span
                           className="absolute top-1/2 -translate-y-1/2 text-[11px] font-bold text-accent-primary tabular-nums z-20"
-                          style={{ left: `${profilePctVal + 1}%` }}
+                          style={{ left: `${Math.max(profilePctVal + 1, 3)}%` }}
                         >
                           {fmtRate(profileVal)}
                         </span>
