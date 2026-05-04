@@ -27,7 +27,7 @@ export function ReportCaptionIntelligence({ data }: Props) {
   if (!data.available) {
     return (
       <Shell sampleSize={data.sampleSize}>
-        <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
+        <p className="text-sm text-content-secondary leading-relaxed max-w-xl">
           Captions são curtas demais ou em número insuficiente para uma
           leitura semântica fiável. À medida que houver mais publicações
           com texto, este bloco abre a interpretação editorial completa.
@@ -55,8 +55,8 @@ export function ReportCaptionIntelligence({ data }: Props) {
         </div>
       </div>
 
-      <footer className="space-y-3 pt-2 border-t border-slate-100">
-        <p className="text-[12px] text-slate-500 leading-relaxed">
+      <footer className="space-y-3 pt-2 border-t border-border-subtle">
+        <p className="text-[12px] text-content-tertiary leading-relaxed">
           Esta análise considera apenas legendas públicas. Não inclui áudio,
           vídeo, texto dentro de imagens ou transcrição de Reels. As hashtags
           são analisadas separadamente.
@@ -72,24 +72,24 @@ function Shell({ sampleSize, children }: { sampleSize: number; children: React.R
     <section
       aria-label="Pergunta 04 · Leitura das legendas"
       className={cn(
-        "rounded-2xl border border-slate-200/70 bg-white",
-      "border-t-2 border-t-blue-400/60",
-        "p-6 md:p-9",
-        "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
+        "rounded-2xl border border-border-default bg-surface-secondary",
+        "border-t-2 border-t-accent-primary/50",
+        "p-6 md:p-7",
+        "shadow-card",
         "flex flex-col gap-6",
         "md:col-span-2",
       )}
     >
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-2 min-w-0">
-          <p className="text-eyebrow-sm text-slate-500 inline-flex items-center gap-1.5">
-            <Sparkles aria-hidden className="size-3 text-slate-400" />
+          <p className="text-eyebrow-sm text-content-tertiary inline-flex items-center gap-1.5">
+            <Sparkles aria-hidden className="size-3 text-content-tertiary" />
             Pergunta 04 · Leitura das legendas
           </p>
-          <h3 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-snug">
+          <h3 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-snug">
             O que as legendas revelam sobre a estratégia de conteúdo?
           </h3>
-          <p className="text-[13px] text-slate-500 max-w-xl leading-relaxed">
+          <p className="text-[13px] text-content-tertiary max-w-xl leading-relaxed">
             Análise ao texto das legendas públicas dos posts analisados
             — sem incluir áudio, vídeo ou transcrição de Reels.
           </p>
@@ -98,7 +98,7 @@ function Shell({ sampleSize, children }: { sampleSize: number; children: React.R
           className={cn(
             "self-start inline-flex items-center rounded-full px-2.5 py-1",
             "text-eyebrow-sm ring-1",
-            "bg-slate-50 text-slate-600 ring-slate-200",
+            "bg-surface-muted text-content-secondary ring-border-default",
           )}
         >
           Baseado em {sampleSize} {sampleSize === 1 ? "legenda" : "legendas"}
@@ -112,7 +112,7 @@ function Shell({ sampleSize, children }: { sampleSize: number; children: React.R
 function SectionHeader({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
-      <p className="text-eyebrow-sm text-slate-500">{label}</p>
+      <p className="text-eyebrow-sm text-content-tertiary">{label}</p>
     </div>
   );
 }
@@ -136,11 +136,11 @@ function SnapshotRow({ data }: { data: CaptionIntelligence }) {
           key={c.label}
           className={cn(
             "rounded-xl ring-1 px-4 py-3.5 flex flex-col gap-1.5",
-            c.highlight ? "bg-blue-50/50 ring-blue-100" : "bg-slate-50/60 ring-slate-200/60",
+            c.highlight ? "bg-tint-primary ring-accent-primary/15" : "bg-surface-muted/60 ring-border-default",
           )}
         >
-          <span className="text-eyebrow-sm text-slate-500">{c.label}</span>
-          <p className="text-[15px] md:text-[1.05rem] font-semibold tracking-tight text-slate-900 leading-snug">
+          <span className="text-eyebrow-sm text-content-tertiary">{c.label}</span>
+          <p className="text-[15px] md:text-[1.05rem] font-semibold tracking-tight text-content-primary leading-snug">
             {c.value}
           </p>
         </div>
@@ -162,18 +162,18 @@ function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
     outro: "outro",
   };
   const CONFIDENCE_STYLE: Record<ThemeConfidence, { label: string; color: string }> = {
-    high: { label: "sinal forte", color: "text-emerald-700 bg-emerald-50 ring-emerald-200" },
-    medium: { label: "sinal médio", color: "text-blue-700 bg-blue-50 ring-blue-100" },
-    low: { label: "sinal fraco", color: "text-slate-600 bg-slate-50 ring-slate-200" },
+    high: { label: "sinal forte", color: "text-signal-success bg-tint-success ring-signal-success/15" },
+    medium: { label: "sinal médio", color: "text-accent-primary bg-tint-primary ring-accent-primary/15" },
+    low: { label: "sinal fraco", color: "text-content-secondary bg-surface-muted ring-border-default" },
   };
   return (
     <div className="flex flex-col gap-3">
       <SectionHeader label="Temas dominantes" />
-      <p className="text-[12px] text-slate-500 -mt-1">
+      <p className="text-[12px] text-content-tertiary -mt-1">
         Assuntos mais recorrentes no texto das legendas — não confundir com hashtags.
       </p>
       {items.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-content-tertiary">
           Sem temas semânticos suficientes nas legendas analisadas.
         </p>
       ) : (
@@ -183,32 +183,32 @@ function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
             return (
             <li
               key={`${it.label}-${idx}`}
-              className="rounded-lg ring-1 ring-slate-200/50 bg-white px-3.5 py-2.5 flex flex-col gap-1.5"
+              className="rounded-lg ring-1 ring-border-subtle bg-surface-secondary px-3.5 py-2.5 flex flex-col gap-1.5"
             >
               <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-                <span className="font-mono text-[11px] tabular-nums text-slate-400 shrink-0">
+                <span className="font-mono text-[11px] tabular-nums text-content-tertiary shrink-0">
                   {String(idx + 1).padStart(2, "0")}
                 </span>
-                <span className="text-[14px] font-semibold text-slate-900">
+                <span className="text-[14px] font-semibold text-content-primary">
                   {it.label}
                 </span>
-                <span className="font-mono text-[11px] tabular-nums text-slate-500 shrink-0">
+                <span className="font-mono text-[11px] tabular-nums text-content-tertiary shrink-0">
                   {it.postsCount} {it.postsCount === 1 ? "post" : "posts"}
                 </span>
                 <span className="inline-flex items-center gap-2 shrink-0">
                   <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1", conf.color)}>
                     {conf.label}
                   </span>
-                  <span className="text-eyebrow-sm text-slate-400">
+                  <span className="text-eyebrow-sm text-content-tertiary">
                     {ROLE_LABELS[it.role] ?? it.role}
                   </span>
                 </span>
               </div>
               {it.evidence ? (
-                <p className="text-[13px] text-slate-500 italic leading-relaxed line-clamp-2 pl-7">
-                  <span className="not-italic text-slate-400 mr-1">«</span>
+                <p className="text-[13px] text-content-tertiary italic leading-relaxed line-clamp-2 pl-7">
+                  <span className="not-italic text-content-tertiary/60 mr-1">«</span>
                   {it.evidence}
-                  <span className="not-italic text-slate-400 ml-0.5">»</span>
+                  <span className="not-italic text-content-tertiary/60 ml-0.5">»</span>
                 </p>
               ) : null}
             </li>
@@ -219,9 +219,9 @@ function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
 
       {/* Expressões recorrentes — fundidas no mesmo bloco */}
       {expressions.length > 0 && (
-        <div className="pt-3 mt-1 border-t border-slate-100">
+        <div className="pt-3 mt-1 border-t border-border-subtle">
           <div className="flex items-center gap-2 mb-2">
-            <p className="text-eyebrow-sm text-slate-400">Expressões recorrentes</p>
+            <p className="text-eyebrow-sm text-content-tertiary">Expressões recorrentes</p>
             <SourceBadge variant={badgeVariant(data.recurringExpressions.source)} />
           </div>
           <ul className="flex flex-wrap gap-1.5">
@@ -230,12 +230,12 @@ function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
                 key={it.expression}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5",
-                  "ring-1 ring-slate-200 bg-slate-50",
-                  "text-[12px] text-slate-600",
+                  "ring-1 ring-border-default bg-surface-muted",
+                  "text-[12px] text-content-secondary",
                 )}
               >
                 <span>{it.expression}</span>
-                <span className="font-mono text-[10px] tabular-nums text-slate-400">
+                <span className="font-mono text-[10px] tabular-nums text-content-tertiary">
                   ×{it.count}
                 </span>
               </li>
@@ -250,13 +250,13 @@ function ThemesAndExpressionsBlock({ data }: { data: CaptionIntelligence }) {
 function CtaBlock({ data }: { data: CaptionIntelligence }) {
   const c = data.ctaPatterns;
   const STRENGTH_STYLE: Record<CtaStrength, { label: string; cls: string }> = {
-    strong: { label: "Forte", cls: "text-emerald-700 bg-emerald-50 ring-emerald-200" },
-    moderate: { label: "Moderado", cls: "text-blue-700 bg-blue-50 ring-blue-100" },
-    weak: { label: "Fraco", cls: "text-amber-700 bg-amber-50 ring-amber-200" },
+    strong: { label: "Forte", cls: "text-signal-success bg-tint-success ring-signal-success/15" },
+    moderate: { label: "Moderado", cls: "text-accent-primary bg-tint-primary ring-accent-primary/15" },
+    weak: { label: "Fraco", cls: "text-signal-warning bg-tint-warning ring-signal-warning/20" },
   };
   const strength = STRENGTH_STYLE[c.ctaStrength];
   return (
-    <div className="rounded-xl bg-slate-50/80 ring-1 ring-slate-100 p-4 flex flex-col gap-3">
+    <div className="rounded-xl bg-surface-muted/80 ring-1 ring-border-subtle p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <SectionHeader label="Chamadas à ação" />
         <span className={cn("text-eyebrow-sm rounded-full px-2 py-0.5 ring-1 shrink-0", strength.cls)}>
@@ -267,11 +267,11 @@ function CtaBlock({ data }: { data: CaptionIntelligence }) {
         <Stat label="Com CTA" value={`${c.hasCtaPct}%`} />
         <Stat label="Com pergunta" value={`${c.hasQuestionPct}%`} />
       </div>
-      <p className="text-[13px] text-slate-700">
-        <span className="text-eyebrow-sm text-slate-500 mr-1.5">CTA dominante</span>
-        <span className="font-medium text-slate-900">{c.dominantCtaLabel}</span>
+      <p className="text-[13px] text-content-secondary">
+        <span className="text-eyebrow-sm text-content-tertiary mr-1.5">CTA dominante</span>
+        <span className="font-medium text-content-primary">{c.dominantCtaLabel}</span>
       </p>
-      <p className="text-[13px] text-slate-600 leading-relaxed">{c.summary}</p>
+      <p className="text-[13px] text-content-secondary leading-relaxed">{c.summary}</p>
     </div>
   );
 }
@@ -279,10 +279,10 @@ function CtaBlock({ data }: { data: CaptionIntelligence }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-eyebrow-sm text-slate-500">
+      <span className="text-eyebrow-sm text-content-tertiary">
         {label}
       </span>
-      <span className="font-mono text-[1.25rem] tabular-nums text-slate-900">
+      <span className="font-mono text-[1.25rem] tabular-nums text-content-primary">
         {value}
       </span>
     </div>
@@ -297,22 +297,22 @@ function EditorialReadingBlock({ data }: { data: CaptionIntelligence }) {
     <div
       className={cn(
         "rounded-xl ring-1 overflow-hidden",
-        isAi ? "bg-blue-50/50 ring-blue-100" : "bg-slate-50/80 ring-slate-100",
+        isAi ? "bg-tint-primary ring-accent-primary/15" : "bg-surface-muted/80 ring-border-subtle",
       )}
     >
-      <div className={cn(isAi && "border-l-[3px] border-blue-400/60")}>
+      <div className={cn(isAi && "border-l-[3px] border-accent-primary/50")}>
         <div className="p-5 md:p-6 flex flex-col gap-4 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
               {isAi ? (
-                <Sparkles aria-hidden className="size-4 text-blue-500" />
+                <Sparkles aria-hidden className="size-4 text-accent-primary" />
               ) : (
-                <Cpu aria-hidden className="size-3.5 text-slate-400" />
+                <Cpu aria-hidden className="size-3.5 text-content-tertiary" />
               )}
-              <p className="text-eyebrow-sm text-slate-600 font-medium">Leitura editorial</p>
+              <p className="text-eyebrow-sm text-content-secondary font-medium">Leitura editorial</p>
           </div>
 
           <p className={cn(
-            "text-[14px] md:text-[15px] text-slate-700 leading-[1.7]",
+            "text-[14px] md:text-[15px] text-content-secondary leading-[1.7]",
             isAi && "italic",
           )}>
             {r.whatItCommunicates}
@@ -344,12 +344,12 @@ function ReadingLine({
 }) {
   const labelTone =
     tone === "amber"
-      ? "text-amber-700"
+      ? "text-signal-warning"
       : tone === "blue"
-        ? "text-blue-700"
-        : "text-slate-500";
+        ? "text-accent-primary"
+        : "text-content-tertiary";
   return (
-    <p className="text-[13px] text-slate-700 leading-relaxed">
+    <p className="text-[13px] text-content-secondary leading-relaxed">
       <span
         className={cn(
           "text-eyebrow-sm mr-1.5",
