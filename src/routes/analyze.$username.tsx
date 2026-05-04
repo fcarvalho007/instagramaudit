@@ -128,7 +128,7 @@ function AnalyzePage() {
   const cleaned = username.replace(/^@/, "");
 
   // Dev-only: freeze on the loader for visual QA
-  const forceLoader = import.meta.env.DEV && previewLoading === 1;
+  const forceLoader = previewLoading === 1;
 
   // Parse competitors from the `?vs=` query string. Capped at 2.
   const competitors = useMemo(() => {
