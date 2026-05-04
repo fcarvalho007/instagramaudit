@@ -10,14 +10,14 @@ export function ReportDiagnosticCta() {
     <aside
       aria-label="Ver análise completa"
       className={cn(
-        "rounded-2xl border border-slate-200/70 bg-white",
+        "rounded-2xl border border-border-default bg-surface-secondary",
         "px-5 py-4 md:px-6 md:py-5",
         "flex flex-col gap-4 md:flex-row md:items-center md:justify-between",
-        "shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
+        "shadow-card",
       )}
     >
-      <p className="text-sm md:text-[15px] text-slate-700 leading-relaxed max-w-2xl">
-        <span className="font-semibold text-slate-900">Quer aprofundar?</span>{" "}
+      <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-2xl">
+        <span className="font-semibold text-content-primary">Quer aprofundar?</span>{" "}
         A versão completa abre cada pergunta em análise por post, exemplos de
         captions e plano de execução a 30 dias.
       </p>
