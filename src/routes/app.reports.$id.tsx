@@ -163,12 +163,6 @@ function ReportDetailPage() {
               </p>
             </div>
           </div>
-          <badge.Icon
-            className={cn(
-              "size-3.5",
-              badge.label === "A processar" && "animate-spin",
-            )}
-          />
           <span
             className={cn(
               "inline-flex shrink-0 items-center gap-1.5 self-start rounded-full px-3 py-1 text-xs font-medium sm:self-center",
