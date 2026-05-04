@@ -1,87 +1,65 @@
 
-# PRO Tracking Placeholder — Visual Only
+# Freeze Test Snapshots — Dev Cache Lock
 
 ## Current state
 
-Both pages already have PRO tracking teasers:
-- `/app/reports` — dashed-border text card with "Tracking contínuo — disponível em breve" (lines 305-327)
-- `/app/plan` — tier cards already list Pro/Agency features + "Em breve" badges + info card (lines 180-195)
+| Profile | Snapshot ID | created_at | expires_at | status | payload |
+|---------|-------------|------------|------------|--------|---------|
+| frederico.m.carvalho | `683e4c21-60e0-4045-b43a-dfcd85fe9896` | 2026-04-29 | 2026-05-04 18:56 | ready | 35 KB object |
+| martimsilvai | `883cf964-fb76-4237-bc0a-8924ec901c1f` | 2026-05-04 | 2026-05-05 10:13 | ready | 25 KB object |
 
-The foundation is there. The work is upgrading the teaser in `/app/reports` from a plain text blurb to a richer, Iconosquare-style locked card with a mini chart placeholder and clear PRO badge.
+Both have `analysis_status = 'ready'`, valid `normalized_payload` (object type), and `provider = 'apify'`.
 
-## Proposed placement
+## How cache prevents Apify calls
 
-| Page | What | Where |
-|------|------|-------|
-| `/app/reports` | Replace existing dashed teaser with a `ProTrackingTeaser` component | Same position (after report list / empty state, before page end) |
-| `/app/plan` | Keep as-is | Already well-structured with tiers, badges, and info card |
+`src/lib/analysis/cache.ts` → `isFresh(snapshot)` returns `true` when `expires_at > now()`. If a fresh snapshot exists for the cache key, the analyzer serves it directly — no Apify actor is called. Setting `expires_at` far in the future guarantees zero Apify calls for these profiles.
 
-No new pages. No new routes.
+## Operation (2 UPDATE statements via insert tool)
 
-## New component
+```sql
+-- Freeze frederico.m.carvalho
+UPDATE analysis_snapshots
+SET expires_at = '2027-01-01T00:00:00+00',
+    updated_at = now()
+WHERE id = '683e4c21-60e0-4045-b43a-dfcd85fe9896';
 
-**File:** `src/components/app/pro-tracking-teaser.tsx`
-
-A single self-contained card:
-
-```
-+-------------------------------------------------------+
-|  PRO badge (violet)         "Tracking diário"          |
-|                                                        |
-|  [mini sparkline placeholder — 7 grey bars/dots]       |
-|                                                        |
-|  "Evolução semanal, alertas de crescimento e           |
-|   comparação temporal — incluído nos planos Pro         |
-|   e Agency."                                           |
-|                                                        |
-|  [ Disponível em breve ]  (disabled button)            |
-|  or                                                    |
-|  [ Pedir acesso antecipado → ]  (link to /app/plan)    |
-+-------------------------------------------------------+
+-- Freeze martimsilvai
+UPDATE analysis_snapshots
+SET expires_at = '2027-01-01T00:00:00+00',
+    updated_at = now()
+WHERE id = '883cf964-fb76-4237-bc0a-8924ec901c1f';
 ```
 
-Visual spec:
-- White bg, `border border-slate-200/70`, `rounded-xl`, `shadow-sm`
-- PRO badge: `bg-violet-50 text-violet-600 border-violet-200/60` pill
-- Mini chart: 7 small bars (h-2 to h-5, `bg-slate-200 rounded-sm`) — pure CSS, no data
-- CTA: Link to `/app/plan`, styled as `text-blue-500 hover:text-blue-600`
-- Lock icon overlay on the chart area (optional, subtle)
+## Rollback SQL (restore 24h TTL from original creation)
 
-## Copy (pt-PT, impersonal)
+```sql
+-- Unfreeze frederico.m.carvalho (restore normal expiry)
+UPDATE analysis_snapshots
+SET expires_at = created_at + interval '24 hours',
+    updated_at = now()
+WHERE id = '683e4c21-60e0-4045-b43a-dfcd85fe9896';
 
-- **Title:** "Tracking diário"
-- **Badge:** "PRO"
-- **Body:** "Evolução semanal, alertas de crescimento e comparação temporal — incluído nos planos Pro e Agency."
-- **CTA:** "Saber mais sobre os planos →"
-- **Sub-note:** (none — the plan page already explains it's not active)
+-- Unfreeze martimsilvai
+UPDATE analysis_snapshots
+SET expires_at = created_at + interval '24 hours',
+    updated_at = now()
+WHERE id = '883cf964-fb76-4237-bc0a-8924ec901c1f';
+```
 
 ## What changes
 
-| File | Action |
-|------|--------|
-| `src/components/app/pro-tracking-teaser.tsx` | Create — new component |
-| `src/routes/app.reports.tsx` | Replace the existing dashed PRO teaser (lines 305-327) with `<ProTrackingTeaser />` |
+- `expires_at` for 2 rows → `2027-01-01`
+- `updated_at` → `now()`
 
 ## What does NOT change
 
-- `/app/plan` — already well-structured, no changes needed
-- No database tables, triggers, or migrations
-- No server functions
-- No Apify calls, cron jobs, or scheduled tasks
-- No tracking writes
-- No alerts system
-- No payment/billing
-- No locked files
-
-## Future data model (informational only, NOT to implement now)
-
-When tracking is activated later, the likely schema would be:
-- `profile_tracking` — (profile_id, user_id, frequency, active, created_at)
-- `tracking_snapshots` — (profile_id, date, followers, following, posts, engagement_rate, snapshot_data jsonb)
-- `tracking_alerts` — (profile_id, alert_type, threshold, triggered_at)
-
-This is documented here for reference. No tables will be created.
+- No schema changes, no migrations
+- No code changes to cache.ts or analyzer logic
+- No other snapshots affected
+- No Apify calls triggered
+- No new tables or columns
+- No locked files touched
 
 ## Risk level
 
-**Minimal.** One new presentational component + one import swap in an existing file. No backend, no data, no cost implications.
+**Zero.** Two field updates on existing rows. Fully reversible. No side effects.
