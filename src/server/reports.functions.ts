@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export interface UserReport {
   id: string;
@@ -78,7 +79,6 @@ export const getOwnedReport = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { userId } = context;
-    const { default: { supabaseAdmin } } = await import("@/integrations/supabase/client.server");
 
     const { data: report, error } = await supabaseAdmin
       .from("report_requests")
@@ -132,7 +132,6 @@ export const getReportPdfUrl = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { userId } = context;
-    const { default: { supabaseAdmin } } = await import("@/integrations/supabase/client.server");
 
     const { data: report, error } = await supabaseAdmin
       .from("report_requests")
