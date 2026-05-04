@@ -681,12 +681,12 @@ export function DiagnosticObjectiveSynthesis({
                     </span>
                     <div className={cn(
                       "flex-1 overflow-hidden rounded-full",
-                      isPrimary ? "h-2.5 bg-tint-primary" : "h-2 bg-surface-muted",
+                      isPrimary ? "h-2.5 bg-purple-100" : "h-2 bg-surface-muted",
                     )}>
                       <div
                         className={cn(
                           "h-full rounded-full transition-all",
-                          isPrimary ? "bg-accent-primary" : "bg-content-tertiary/30",
+                          isPrimary ? "bg-purple-500" : "bg-content-tertiary/30",
                         )}
                         style={{ width: `${pct}%` }}
                         aria-hidden
