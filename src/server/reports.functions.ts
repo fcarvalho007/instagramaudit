@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { withSupabaseHeaders } from "@/lib/auth-middleware-client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export interface UserReport {
@@ -16,7 +17,7 @@ export interface UserReport {
 }
 
 export const getUserReports = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .handler(async ({ context }): Promise<UserReport[]> => {
     const { supabase, userId } = context;
 
@@ -70,7 +71,7 @@ export const getUserReports = createServerFn({ method: "GET" })
  * Fetch a single report request owned by the current user.
  */
 export const getOwnedReport = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .inputValidator((data: { reportId: string }) => {
     if (!data.reportId || typeof data.reportId !== "string") {
       throw new Error("reportId is required");
@@ -124,7 +125,7 @@ export const getOwnedReport = createServerFn({ method: "POST" })
  * Generate a short-lived signed URL for a report's PDF.
  */
 export const getReportPdfUrl = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .inputValidator((data: { reportId: string }) => {
     if (!data.reportId || typeof data.reportId !== "string") {
       throw new Error("reportId is required");
