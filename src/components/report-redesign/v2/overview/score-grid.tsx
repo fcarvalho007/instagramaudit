@@ -17,8 +17,8 @@ export function ScoreGrid({ scores }: ScoreGridProps) {
         PONTUAÇÃO GLOBAL
       </span>
 
-      {/* 4-column grid */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">
+      {/* 3-column grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
         {SCORE_DEFINITIONS.map((def) => (
           <ScoreCard
             key={def.key}
