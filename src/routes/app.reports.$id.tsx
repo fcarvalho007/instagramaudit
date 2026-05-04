@@ -216,9 +216,9 @@ function ReportDetailPage() {
       {/* Timeline card */}
       <div className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-700">Progresso</h2>
-        <ol className="mt-4 space-y-4">
+        <ol className="mt-4 space-y-4" role="list">
           {timeline.map((step, i) => (
-            <li key={i} className="flex gap-3">
+            <li key={i} className="flex gap-3" aria-current={step.done && !timeline.slice(i + 1).some(s => s.done) ? "step" : undefined}>
               <div className="flex flex-col items-center">
                 <div
                   className={cn(
@@ -262,7 +262,8 @@ function ReportDetailPage() {
             <button
               onClick={handleDownloadPdf}
               disabled={downloading}
-              className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none"
+              aria-label="Descarregar PDF do relatório"
             >
               {downloading ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -297,6 +298,8 @@ function ReportDetailPage() {
           <button
             disabled
             className="inline-flex items-center gap-1.5 rounded-md border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-300 cursor-not-allowed"
+            aria-disabled="true"
+            aria-label="Regenerar PDF — funcionalidade disponível em breve"
           >
             <RefreshCw className="size-3" />
             Regenerar PDF — em breve
