@@ -53,14 +53,14 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
         {/* Main card */}
         <div className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
           {/* ── Zone 1: Identity ──────────────────────────────────── */}
-          <div className="flex flex-col gap-4 p-5 sm:p-6 border-b border-border-subtle md:flex-row md:items-center md:gap-6">
+          <div className="flex flex-col items-center gap-4 p-5 sm:p-6 border-b border-border-subtle md:flex-row md:items-center md:gap-6">
             {/* Avatar */}
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
 
             {/* Handle + description */}
-            <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="min-w-0 flex-1 space-y-1.5 text-center md:text-left">
               {/* Handle row */}
-              <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+              <div className="flex items-center justify-center md:justify-start gap-2.5 min-w-0 flex-wrap">
                 <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-[-0.015em] text-content-primary leading-tight break-words">
                   {handle}
                 </h1>
@@ -70,7 +70,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
 
               {/* Name + bio */}
               {(fullName || bio) && (
-                <p className="text-sm text-content-secondary leading-relaxed line-clamp-1 max-w-xl">
+                <p className="text-sm text-content-secondary leading-relaxed line-clamp-2 max-w-xl">
                   {[fullName, bio].filter(Boolean).join(" · ")}
                 </p>
               )}
@@ -109,34 +109,31 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
 
           {/* ── Zone 2: Stats ─────────────────────────────────────── */}
           <div className="bg-surface-muted/50 px-5 sm:px-6 py-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-0">
-              {/* First 3 stats */}
+            <div className="grid grid-cols-3 gap-y-4 gap-x-0">
+              {/* Profile stats — 3 columns */}
               {profileStats.map((s, i) => (
                 <div
                   key={s.label}
                   className={cn(
-                    "flex flex-col items-start gap-0.5 px-4 sm:px-5 first:pl-0",
-                    i > 0 && "sm:border-l sm:border-border-subtle",
+                    "flex flex-col items-center gap-0.5",
+                    i > 0 && "border-l border-border-subtle",
                   )}
                 >
-                  <span className="font-mono text-xl sm:text-2xl font-semibold text-content-primary tabular-nums leading-none">
+                  <span className="font-mono text-lg sm:text-2xl font-semibold text-content-primary tabular-nums leading-none">
                     {s.value}
                   </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
+                  <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-content-tertiary">
                     {s.label}
                   </span>
                 </div>
               ))}
+            </div>
 
-              {/* 4th segment: analysis metadata */}
-              <div
-                className={cn(
-                  "flex flex-col items-start gap-0.5 px-4 sm:px-5",
-                  "sm:border-l sm:border-border-subtle",
-                )}
-              >
+            {/* Analysis metadata — separate row */}
+            {(analysisMeta.postsLabel || analysisMeta.dateLabel) && (
+              <div className="mt-3 pt-3 border-t border-border-subtle flex items-center justify-center gap-3 flex-wrap">
                 {analysisMeta.postsLabel && (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-content-tertiary">
                     <span
                       className="size-1.5 rounded-full bg-signal-success"
                       aria-hidden="true"
@@ -145,12 +142,12 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                   </span>
                 )}
                 {analysisMeta.dateLabel && (
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-content-tertiary">
                     {analysisMeta.dateLabel}
                   </span>
                 )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
