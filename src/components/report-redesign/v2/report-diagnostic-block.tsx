@@ -52,7 +52,7 @@ interface Props {
 /**
  * Bloco 02 · Diagnóstico Editorial — orquestrador.
  *
- * Compõe veredito → 3 grupos de perguntas → prioridades de ação → CTA.
+ * Compõe veredicto → 3 grupos de perguntas → prioridades de ação → CTA.
  * Toda a evidência vem de classifiers puros sobre `result` + `payload`.
  * Não chama providers, OpenAI, Supabase write, nada.
  */
@@ -287,7 +287,7 @@ function buildVerdictText(args: {
   }
 
   if (parts.length < 2) {
-    return "Com base na amostra analisada, ainda não há sinal suficiente para um veredito editorial — a amostra é pequena ou pouco diferenciada.";
+    return "Com base na amostra analisada, ainda não há sinal suficiente para um veredicto editorial — a amostra é pequena ou pouco diferenciada.";
   }
   return "Com base na amostra analisada, " + parts.join(", ") + ".";
 }
@@ -300,7 +300,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
   if (!r.available) return null;
   if (r.label === "Misto / pouco claro" || !r.label) {
     // Quando há um top com share relevante mas sem distância suficiente para
-    // dominar (regra share≥35% AND top≥1.5×second), o veredito honesto é:
+    // dominar (regra share≥35% AND top≥1.5×second), o veredicto honesto é:
     // "há sinal, mas não chega para foco editorial". A copy reflete o que
     // a barra mostra — sem contradizer o número visível.
     const top = r.distribution[0];
