@@ -328,10 +328,10 @@ export function DiagnosticFunnelStack({
     "topo" | "meio" | "fundo" | "pos",
     { active: string; idle: string }
   > = {
-    topo: { active: "bg-accent-primary text-white", idle: "bg-tint-primary text-accent-primary" },
-    meio: { active: "bg-accent-primary/80 text-white", idle: "bg-tint-primary text-accent-primary" },
-    fundo: { active: "bg-accent-primary/60 text-white", idle: "bg-surface-muted text-content-secondary" },
-    pos: { active: "bg-accent-primary/40 text-content-primary", idle: "bg-surface-muted text-content-tertiary" },
+    topo: { active: "bg-accent-primary/20 text-accent-primary font-semibold", idle: "bg-tint-primary text-accent-primary/70" },
+    meio: { active: "bg-accent-primary/15 text-accent-primary", idle: "bg-tint-primary text-accent-primary/70" },
+    fundo: { active: "bg-accent-primary/10 text-accent-primary/80", idle: "bg-surface-muted text-content-secondary" },
+    pos: { active: "bg-surface-muted text-content-secondary", idle: "bg-surface-muted text-content-tertiary" },
   };
   return (
     <ul className="space-y-1.5">
