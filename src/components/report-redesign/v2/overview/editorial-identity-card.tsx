@@ -152,17 +152,17 @@ export function EditorialIdentityCard({
   return (
     <article
       aria-label={`Identidade editorial: pontuação global ${globalScore} de 100`}
-      className="rounded-3xl border border-border-default bg-surface-secondary shadow-card overflow-hidden"
+      className="rounded-2xl border border-border-default bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.06)] overflow-hidden"
     >
       {/* ═══ BAND 1 — Editorial Portrait ═══ */}
       <div
-        className="relative px-5 py-6 sm:px-7 sm:py-8 md:px-8 md:py-9"
+        className="relative px-5 py-6 sm:px-7 sm:py-7 md:px-8 md:py-8"
         style={{
           background:
-            "linear-gradient(135deg, rgba(219,234,254,0.45) 0%, rgba(221,214,254,0.3) 50%, rgba(209,250,229,0.25) 100%)",
+            "linear-gradient(135deg, rgba(219,234,254,0.35) 0%, rgba(221,214,254,0.22) 50%, rgba(209,250,229,0.18) 100%)",
         }}
       >
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-8">
           {/* Left — text */}
           <div className="flex-1 min-w-0 text-center sm:text-left">
             <div className="flex items-center gap-2 justify-center sm:justify-start mb-3">
@@ -182,7 +182,7 @@ export function EditorialIdentityCard({
               </span>
             </div>
 
-            <p className="font-display text-lg sm:text-xl md:text-[1.4rem] font-semibold leading-snug tracking-tight text-content-primary max-w-xl">
+            <p className="font-display text-xl sm:text-[1.35rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary max-w-xl">
               {sentence}
             </p>
 
@@ -192,7 +192,7 @@ export function EditorialIdentityCard({
                 {chips.map((chip) => (
                   <span
                     key={chip}
-                    className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium bg-white/70 text-content-secondary ring-1 ring-border-default/50 backdrop-blur-sm"
+                    className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium bg-white/80 text-content-secondary ring-1 ring-border-default/40 backdrop-blur-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
                   >
                     {chip}
                   </span>
@@ -203,8 +203,8 @@ export function EditorialIdentityCard({
 
           {/* Right — global score ring */}
           <div className="flex flex-col items-center shrink-0">
-            <ScoreRing score={globalScore} size={120} label="Pontuação global" />
-            <span className="mt-1 text-[11px] text-content-secondary/60">
+            <ScoreRing score={globalScore} size={100} label="Pontuação global" />
+            <span className="mt-1 text-[11px] font-sans text-content-secondary/60">
               de 100
             </span>
             <span
@@ -225,7 +225,7 @@ export function EditorialIdentityCard({
       </div>
 
       {/* ═══ BAND 2 — Score Grid ═══ */}
-      <div className="border-t border-border-default">
+      <div className="border-t border-border-default bg-slate-50/40">
         <div className="grid grid-cols-2 md:grid-cols-4">
           {SCORE_COLUMNS.map((col, idx) => {
             const isMensagem = col.key === "mensagem";
@@ -235,20 +235,23 @@ export function EditorialIdentityCard({
             const colors = family ? SCORE_COLORS[family] : null;
             const explanation = scoreVal !== null
               ? col.explanation(scoreVal)
-              : diagnosticCards[2]?.headline ?? "—";
+              : diagnosticCards[2]?.headline ?? "\u2014";
+
+            // Border logic: right border on all except last in row
+            const hasRightBorder = idx < 3;
+            const hideRightBorderMobile = idx === 1; // 2nd col in mobile 2-col has no right border
+            const hasTopBorder = idx >= 2; // bottom row on mobile
 
             return (
               <div
                 key={col.key}
                 className={cn(
                   "flex flex-col gap-1.5 px-4 py-4 sm:px-5 sm:py-5",
-                  /* Right border: odd columns (0,2) on mobile 2-col; all except last on md 4-col */
-                  idx % 2 === 0 && "border-r border-border-default",
-                  idx < 3 && "md:border-r",
-                  idx === 1 && "border-r-0 md:border-r md:border-border-default",
-                  idx === 3 && "border-r-0 md:border-r-0",
-                  /* Top border for bottom row on mobile 2-col */
-                  idx >= 2 && "border-t border-border-default md:border-t-0",
+                  hasRightBorder && "md:border-r md:border-border-subtle",
+                  idx % 2 === 0 && "border-r border-border-subtle",
+                  hideRightBorderMobile && "border-r-0",
+                  hasTopBorder && "border-t border-border-subtle md:border-t-0",
+                  isMensagem && "bg-surface-muted/30",
                 )}
               >
                 {/* Header row */}
@@ -256,13 +259,18 @@ export function EditorialIdentityCard({
                   <span className="text-eyebrow-sm text-content-secondary">
                     {col.label}
                   </span>
-                  {colors && (
+                  {colors ? (
                     <span
                       aria-hidden="true"
                       className="size-2 rounded-full shrink-0"
                       style={{ backgroundColor: colors.stroke }}
                     />
-                  )}
+                  ) : isMensagem ? (
+                    <span
+                      aria-hidden="true"
+                      className="size-2 rounded-full shrink-0 bg-content-tertiary/30"
+                    />
+                  ) : null}
                 </div>
 
                 {/* Score number */}
@@ -274,12 +282,12 @@ export function EditorialIdentityCard({
                     >
                       {scoreVal}
                     </span>
-                    <span className="text-xs text-content-secondary/50 font-medium">
+                    <span className="text-xs text-content-secondary/50 font-medium font-sans">
                       /100
                     </span>
                   </div>
                 ) : (
-                  <span className="font-display text-base sm:text-lg font-semibold text-content-primary leading-tight">
+                  <span className="font-display text-[0.95rem] sm:text-base font-semibold text-content-primary leading-tight italic">
                     {explanation}
                   </span>
                 )}
@@ -293,14 +301,14 @@ export function EditorialIdentityCard({
 
                 {/* Technical line */}
                 {subtitle && (
-                  <span className="text-[11px] text-content-secondary tabular-nums leading-tight">
+                  <span className="text-[11px] text-content-secondary font-mono tabular-nums leading-tight">
                     {subtitle}
                   </span>
                 )}
 
                 {/* Mensagem fallback subtitle */}
                 {isMensagem && diagnosticCards[2] && (
-                  <span className="text-[11px] text-content-secondary leading-tight">
+                  <span className="text-[11px] text-content-secondary leading-relaxed">
                     {diagnosticCards[2].subtitle}
                   </span>
                 )}
@@ -311,11 +319,11 @@ export function EditorialIdentityCard({
       </div>
 
       {/* ═══ BAND 3 — Action Summary ═══ */}
-      <div className="border-t border-border-default bg-surface-primary/30">
+      <div className="border-t border-border-default bg-slate-50/60">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center">
           {/* Strength */}
-          <div className="flex items-center gap-3 px-5 py-4 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-default">
-            <span className="flex items-center justify-center size-8 rounded-full bg-emerald-50 shrink-0">
+          <div className="flex items-center gap-3 px-5 py-4 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-subtle">
+            <span className="flex items-center justify-center size-9 rounded-full bg-emerald-50 shrink-0">
               <CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />
             </span>
             <div className="min-w-0">
@@ -325,8 +333,8 @@ export function EditorialIdentityCard({
           </div>
 
           {/* Weakness */}
-          <div className="flex items-center gap-3 px-5 py-4 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-default">
-            <span className="flex items-center justify-center size-8 rounded-full bg-rose-50 shrink-0">
+          <div className="flex items-center gap-3 px-5 py-4 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-subtle">
+            <span className="flex items-center justify-center size-9 rounded-full bg-rose-50 shrink-0">
               <AlertCircle className="size-4 text-rose-600" aria-hidden="true" />
             </span>
             <div className="min-w-0">
@@ -341,10 +349,10 @@ export function EditorialIdentityCard({
               href="#diagnostico"
               className={cn(
                 "inline-flex items-center gap-2 rounded-full",
-                "bg-accent-primary text-white",
+                "border-2 border-accent-primary text-accent-primary bg-transparent",
                 "px-5 py-2.5 text-sm font-semibold",
-                "transition-colors duration-200 hover:bg-accent-primary/85",
-                "min-h-[44px]",
+                "transition-all duration-200 hover:bg-accent-primary hover:text-white",
+                "min-h-[44px] w-full sm:w-auto justify-center",
               )}
             >
               Ver diagnóstico completo
