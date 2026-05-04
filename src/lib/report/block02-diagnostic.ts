@@ -633,6 +633,7 @@ export function classifyHashtags(
     items: tags.slice(0, 5).map((t) => ({
       text: t.tag.startsWith("#") ? t.tag : `#${t.tag}`,
       weight: t.uses,
+      avgEngagement: t.avgEngagement ?? 0,
     })),
   };
 }
