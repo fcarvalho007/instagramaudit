@@ -51,7 +51,7 @@ export function ReportFinalBlock({ snapshotId, reportUrl, result }: ReportFinalB
               Levar este relatório
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Exporta em PDF, partilha com a tua rede ou copia o link público.
+              Exporta em PDF, partilha com a rede ou copia o link público.
             </p>
           </header>
 

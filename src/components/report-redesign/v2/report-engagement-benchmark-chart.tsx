@@ -253,7 +253,7 @@ export function ReportEngagementBenchmarkChart({
       {showProSlot && !competitor ? (
         <PremiumCallout
           title="Comparar com concorrente direto"
-          description="Vê se o teu perfil está abaixo do mercado ou apenas abaixo dos teus concorrentes."
+          description="Vê se este perfil está abaixo do mercado ou apenas abaixo dos concorrentes diretos."
         />
       ) : null}
     </div>

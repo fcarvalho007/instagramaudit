@@ -39,7 +39,7 @@ export function ComparisonHeader() {
               Compara com concorrentes diretos
             </p>
             <p className="text-[12px] text-content-secondary mt-0.5 leading-relaxed line-clamp-1">
-              Adiciona até 2 perfis e vê o teu lado a lado em todos os blocos do relatório.
+              Adiciona até 2 perfis e vê este perfil lado a lado em todos os blocos do relatório.
             </p>
           </div>
 
@@ -171,7 +171,7 @@ function RoadmapInfoDialog({ onClose }: { onClose: () => void }) {
         </p>
         <p className="mt-2 text-sm text-content-secondary leading-relaxed">
           Análise de Facebook, TikTok e YouTube. Estamos a preparar tudo para
-          que possas analisar todas as tuas redes num único relatório.
+          que seja possível analisar todas as redes num único relatório.
         </p>
         <button
           ref={btnRef}

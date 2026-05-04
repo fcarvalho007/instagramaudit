@@ -53,7 +53,7 @@ function ResetPasswordPage() {
     setError("");
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      setError("Introduz o teu email.");
+      setError("Introduz o email.");
       return;
     }
     setLoading(true);
@@ -114,7 +114,7 @@ function ResetPasswordPage() {
     return (
       <AuthCard
         title="Nova palavra-passe"
-        subtitle="Define uma nova palavra-passe para a tua conta."
+        subtitle="Define uma nova palavra-passe para a conta."
       >
         <form onSubmit={handleSetPassword} className="space-y-4">
           <div className="space-y-2">
@@ -151,7 +151,7 @@ function ResetPasswordPage() {
     return (
       <AuthCard
         title="Link enviado"
-        subtitle="Verifica o teu email para continuar."
+        subtitle="Verifica o email para continuar."
       >
         <div className="flex flex-col items-center gap-4 py-4">
           <CheckCircle2 className="size-12 text-emerald-600" />

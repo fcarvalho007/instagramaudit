@@ -88,7 +88,7 @@ function LoginPage() {
   return (
     <AuthCard
       title="Entrar no InstaBench"
-      subtitle="Acede à área de testes com o teu email."
+      subtitle="Acede à área de testes com email e palavra-passe."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
