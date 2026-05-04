@@ -38,6 +38,7 @@ import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
 import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
+import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
@@ -230,6 +231,11 @@ const ReportPrintSnapshotIdRoute = ReportPrintSnapshotIdRouteImport.update({
   id: '/report/print/$snapshotId',
   path: '/report/print/$snapshotId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppReportsIdRoute = AppReportsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppReportsRoute,
 } as any)
 const ApiPublicPublicReportPdfRoute =
   ApiPublicPublicReportPdfRouteImport.update({
@@ -523,7 +529,7 @@ export interface FileRoutesByFullPath {
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/app/account': typeof AppAccountRoute
   '/app/plan': typeof AppPlanRoute
-  '/app/reports': typeof AppReportsRoute
+  '/app/reports': typeof AppReportsRouteWithChildren
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -541,6 +547,7 @@ export interface FileRoutesByFullPath {
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/app/reports/$id': typeof AppReportsIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -600,7 +607,7 @@ export interface FileRoutesByTo {
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/app/account': typeof AppAccountRoute
   '/app/plan': typeof AppPlanRoute
-  '/app/reports': typeof AppReportsRoute
+  '/app/reports': typeof AppReportsRouteWithChildren
   '/report/example': typeof ReportExampleRoute
   '/admin': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -618,6 +625,7 @@ export interface FileRoutesByTo {
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/app/reports/$id': typeof AppReportsIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -679,7 +687,7 @@ export interface FileRoutesById {
   '/api/send-report-email': typeof ApiSendReportEmailRoute
   '/app/account': typeof AppAccountRoute
   '/app/plan': typeof AppPlanRoute
-  '/app/reports': typeof AppReportsRoute
+  '/app/reports': typeof AppReportsRouteWithChildren
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -697,6 +705,7 @@ export interface FileRoutesById {
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/app/reports/$id': typeof AppReportsIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -777,6 +786,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-comments'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
+    | '/app/reports/$id'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -854,6 +864,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-comments'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
+    | '/app/reports/$id'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -932,6 +943,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-comments'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
+    | '/app/reports/$id'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -1230,6 +1242,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/report/print/$snapshotId'
       preLoaderRoute: typeof ReportPrintSnapshotIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/reports/$id': {
+      id: '/app/reports/$id'
+      path: '/$id'
+      fullPath: '/app/reports/$id'
+      preLoaderRoute: typeof AppReportsIdRouteImport
+      parentRoute: typeof AppReportsRoute
     }
     '/api/public/public-report-pdf': {
       id: '/api/public/public-report-pdf'
@@ -1604,16 +1623,28 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AppReportsRouteChildren {
+  AppReportsIdRoute: typeof AppReportsIdRoute
+}
+
+const AppReportsRouteChildren: AppReportsRouteChildren = {
+  AppReportsIdRoute: AppReportsIdRoute,
+}
+
+const AppReportsRouteWithChildren = AppReportsRoute._addFileChildren(
+  AppReportsRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
   AppPlanRoute: typeof AppPlanRoute
-  AppReportsRoute: typeof AppReportsRoute
+  AppReportsRoute: typeof AppReportsRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAccountRoute: AppAccountRoute,
   AppPlanRoute: AppPlanRoute,
-  AppReportsRoute: AppReportsRoute,
+  AppReportsRoute: AppReportsRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
