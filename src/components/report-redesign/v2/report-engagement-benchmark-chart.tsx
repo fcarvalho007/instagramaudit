@@ -60,7 +60,7 @@ export function ReportEngagementBenchmarkChart({
     <div className="flex flex-col gap-4">
       {/* Chart header */}
       <div className="flex items-baseline justify-between flex-wrap gap-1">
-        <span className="font-display text-[13px] font-semibold text-content-secondary tracking-tight">
+        <span className="text-eyebrow-sm text-content-secondary">
           Comparação entre escalões de seguidores
         </span>
         <span className="text-[10px] text-content-secondary hidden sm:inline">
@@ -74,7 +74,7 @@ export function ReportEngagementBenchmarkChart({
         {benchmarkVal > 0 && (
           <>
             {/* Label above bars */}
-            <div className="relative h-5 ml-[calc(90px+12px)] sm:ml-[calc(110px+16px)] mr-[calc(48px+12px)] sm:mr-[calc(48px+16px)]">
+            <div className="relative h-5 ml-[calc(12px+90px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)]">
               <span
                 className="absolute bottom-0 text-[10px] text-content-secondary font-medium whitespace-nowrap -translate-x-1/2"
                 style={{ left: `max(${benchmarkPct}%, 24px)` }}
@@ -84,7 +84,7 @@ export function ReportEngagementBenchmarkChart({
             </div>
             {/* Full-height vertical dashed line spanning all rows — uses same margins as bar area */}
             <div
-              className="absolute inset-0 top-[20px] ml-[calc(90px+12px+12px)] sm:ml-[calc(110px+16px+16px)] mr-[calc(48px+12px+12px)] sm:mr-[calc(48px+16px+16px)] pointer-events-none z-10"
+              className="absolute inset-0 top-[20px] ml-[calc(12px+90px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)] pointer-events-none z-10"
               aria-hidden="true"
             >
               <div
@@ -144,18 +144,21 @@ export function ReportEngagementBenchmarkChart({
                 </div>
 
                 {/* Bar area */}
-                <div className="relative flex-1 h-6 sm:h-7 rounded-r-md">
+                <div className="relative flex-1 h-6 sm:h-7">
                   {isActive ? (
                     <>
                       {/* Segment 1: benchmark portion (solid blue) */}
                       <div
-                        className="absolute inset-y-0 left-0 bg-accent-primary"
+                        className={cn(
+                          "absolute inset-y-0 left-0 bg-accent-primary rounded-l-md",
+                          profileVal <= benchmarkVal && "rounded-r-md",
+                        )}
                         style={{ width: `${Math.max(Math.min(tierPct, profilePctVal), 1)}%` }}
                       />
                       {/* Segment 2: gap above benchmark (green) — only when profile > benchmark */}
                       {profileVal > benchmarkVal && (
                         <div
-                          className="absolute inset-y-0 bg-signal-success/80"
+                          className="absolute inset-y-0 rounded-r-md bg-signal-success/80"
                           style={{
                             left: `${tierPct}%`,
                             width: `${Math.max(profilePctVal - tierPct, 0)}%`,
@@ -184,7 +187,7 @@ export function ReportEngagementBenchmarkChart({
                   ) : (
                     /* Inactive tier: grey bar */
                     <div
-                      className="absolute inset-y-0 left-0 bg-content-secondary/12"
+                      className="absolute inset-y-0 left-0 rounded-md bg-content-secondary/12"
                       style={{ width: `${Math.max(tierPct, 1)}%` }}
                     />
                   )}
@@ -195,7 +198,7 @@ export function ReportEngagementBenchmarkChart({
                   "text-[13px] tabular-nums font-semibold shrink-0 min-w-[48px] text-right",
                   isActive ? "text-content-primary" : "text-content-secondary",
                 )}>
-                  {fmtRate(tier.engagementRatePct)}
+                  {isActive ? fmtRate(profileVal) : fmtRate(tier.engagementRatePct)}
                 </span>
               </div>
             </div>
@@ -207,19 +210,21 @@ export function ReportEngagementBenchmarkChart({
       <div className="flex items-center justify-between flex-wrap gap-3 text-[11px] pt-1">
         <div className="flex items-center gap-4">
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-accent-primary" aria-hidden="true" />
-            <span className="text-content-secondary font-medium">Benchmark</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-signal-success" aria-hidden="true" />
-            <span className="text-content-secondary font-medium">Gap positivo</span>
+            <span className="flex gap-px" aria-hidden="true">
+              <span className="w-1.5 h-2.5 rounded-l-sm bg-accent-primary" />
+              <span className="w-1 h-2.5 rounded-r-sm bg-signal-success" />
+            </span>
+            <span className="text-content-secondary font-medium">O teu escalão</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-sm bg-surface-muted" aria-hidden="true" />
             <span className="text-content-secondary">Outros escalões</span>
           </span>
           <span className="text-content-secondary/50">|</span>
-          <span className="text-content-secondary">Benchmark do tier</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-px border-l border-dashed border-content-secondary/40" aria-hidden="true" />
+            <span className="text-content-secondary">Benchmark do tier</span>
+          </span>
         </div>
 
         {/* Sources */}

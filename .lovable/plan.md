@@ -1,61 +1,41 @@
 
-## Refinamento do card de benchmark de engagement (Block 1)
+## Melhorias ao card "Taxa de envolvimento" (Block 1)
 
 ### Ficheiros a editar
-- `src/components/report-redesign/v2/report-overview-engagement.tsx`
 - `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
+- `src/components/report-redesign/v2/report-overview-engagement.tsx`
 
 Nenhum outro ficheiro será tocado.
 
 ---
 
-### 1. Remover pill de fonte do header (engagement.tsx, linhas 53-60)
+### 1. Título do chart → estilo eyebrow uppercase
 
-Atualmente o header tem dois elementos à direita: `✦ MERCADO` e uma pill dinâmica com o nome da fonte (ex: "SOCIALINSIDER"). Remover a pill da fonte, manter apenas o badge `✦ MERCADO`.
+O mockup mostra "COMPARAÇÃO ENTRE ESCALÕES DE SEGUIDORES" em uppercase tracking largo. Atualmente usa `font-display text-[13px]` (serif, title case). Corrigir para `text-eyebrow-sm` (Inter uppercase, consistente com os outros eyebrows do card).
 
-```
-Antes:  ✦ MERCADO  [SOCIALINSIDER]
-Depois: ✦ MERCADO
-```
+### 2. Valor da coluna direita no tier ativo → mostrar valor do perfil
 
-As fontes continuam visíveis apenas no footer do chart (`Fontes: [1] Socialinsider · ...`).
+No mockup, o tier ativo mostra **5,43%** à direita (valor do perfil), não o benchmark do tier. Atualmente o código mostra `tier.engagementRatePct` para todas as rows. Para o tier ativo, mostrar `profileVal` em vez do benchmark — o benchmark já está visível na linha de referência e no hero.
 
-### 2. Linha de referência vertical full-height (chart.tsx)
+### 3. Barras com forma pill (rounded nos dois lados)
 
-Atualmente a dashed line existe dentro de cada bar row individualmente (linha 136-141), repetida por tier. Problema: são linhas independentes por row e não criam uma linha visual contínua.
+No mockup, todas as barras têm cantos arredondados em ambos os lados (pill shape). Atualmente só têm `rounded-r-md`. Adicionar `rounded-l-md` → `rounded-md` a todas as barras (activas e inactivas). Para a barra activa com dois segmentos: segmento azul `rounded-l-md`, segmento verde `rounded-r-md`.
 
-Alteração:
-- Remover a dashed line de dentro do loop de cada row.
-- Adicionar uma **linha vertical absoluta** ao container pai (`div.relative.flex.flex-col.gap-2`, linha 72) que corre do topo ao fundo de todo o bloco de rows.
-- A linha será posicionada com `left` calculado relativamente à área dos bars (offset pelo espaço do label à esquerda e do valor à direita).
-- Estilo: `w-px border-l border-dashed border-content-secondary/25`, `top-0 bottom-0`, `z-10`.
-- O label "benchmark X,XX%" (linhas 74-83) permanece acima, com posicionamento alinhado à mesma margem.
+### 4. Legenda: ícone de dashed line para "Benchmark do tier"
 
-Cálculo: a posição usa o mesmo `benchmarkPct` já existente, aplicado como `left: calc(${benchmarkPct}%)` dentro do wrapper que tem o mesmo offset que as bars.
+No mockup, a legenda mostra um indicador visual (pequena linha dashed) junto a "Benchmark do tier". Atualmente é apenas texto. Adicionar um pequeno `span` com `border-l border-dashed` como swatch antes do texto.
 
-### 3. Manter o destaque do tier ativo
+### 5. Legenda: renomear "Benchmark" → "O teu escalão"
 
-Sem alterações — o highlight atual (border-accent-primary/30, bg-tint-primary, badge "O TEU ESCALÃO") já está correto e será preservado.
+No mockup, o swatch azul+verde diz "O teu escalão", não "Benchmark". Ajustar o texto e combinar os dois swatches (azul e verde) num único item de legenda com gradiente ou dois micro-dots lado a lado.
 
-### 4. Melhorar legibilidade da bar ativa
+### 6. Corrigir offset da linha de referência full-height
 
-Ajustes à lógica existente (linhas 143-177):
+O wrapper da linha usa margens `ml-[calc(90px+12px+12px)]` — o `+12px` extra não alinha corretamente com a área das barras. Deve ser `ml-[calc(90px+12px)]` (gap do flex) + padding do row. Ajustar para alinhar pixel-perfect com as barras.
 
-**Quando profile > benchmark** (já funciona): dois segmentos (azul + verde). Sem alteração.
+---
 
-**Quando profile < benchmark** (precisa de melhoria):
-- O segmento azul renderiza até ao valor do perfil (já funciona).
-- Garantir que o label externo (profilePctVal <= 12) aparece sempre, mesmo com valores muito baixos (ex: 0.08%).
-- Acrescentar margem mínima para o label não ficar colado ao zero: `left: max(profilePctVal + 1, 3)%`.
-
-**Quando profile = 0**: manter o comportamento actual (sem bar visível).
-
-### 5. Design tokens
-
-Todos os estilos usam tokens semânticos existentes. Não serão introduzidos hardcoded colors novos.
-
-### 6. Validação
-
+### Validação
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- QA visual via browser screenshot
+- Screenshot via browser para QA visual
