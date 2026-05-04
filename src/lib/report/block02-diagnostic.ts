@@ -611,7 +611,7 @@ export function classifyAudienceResponse(
 
 export interface HashtagsResult {
   available: boolean;
-  items: Array<{ text: string; weight: number }>;
+  items: Array<{ text: string; weight: number; avgEngagement: number }>;
   sampleSize: number;
 }
 
