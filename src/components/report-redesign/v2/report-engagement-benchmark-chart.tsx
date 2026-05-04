@@ -74,7 +74,7 @@ export function ReportEngagementBenchmarkChart({
         {benchmarkVal > 0 && (
           <>
             {/* Label above bars */}
-            <div className="relative h-5 ml-[calc(12px+90px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)]">
+            <div className="relative h-5 ml-[calc(12px+70px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)]">
               <span
                 className="absolute bottom-0 text-[10px] text-content-secondary font-medium whitespace-nowrap -translate-x-1/2"
                 style={{ left: `max(${benchmarkPct}%, 24px)` }}
@@ -84,7 +84,7 @@ export function ReportEngagementBenchmarkChart({
             </div>
             {/* Full-height vertical dashed line spanning all rows — uses same margins as bar area */}
             <div
-              className="absolute inset-0 top-[20px] ml-[calc(12px+90px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)] pointer-events-none z-10"
+              className="absolute inset-0 top-[20px] ml-[calc(12px+70px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)] pointer-events-none z-10"
               aria-hidden="true"
             >
               <div
@@ -121,7 +121,7 @@ export function ReportEngagementBenchmarkChart({
 
               <div className="flex items-center gap-3 sm:gap-4">
                 {/* Index + label */}
-                <div className="flex items-baseline gap-1.5 min-w-[90px] sm:min-w-[110px] shrink-0">
+                <div className="flex items-baseline gap-1.5 min-w-[70px] sm:min-w-[110px] shrink-0">
                   <span className="text-[11px] tabular-nums text-content-secondary font-medium">
                     {String(i + 1).padStart(2, "0")}
                   </span>
