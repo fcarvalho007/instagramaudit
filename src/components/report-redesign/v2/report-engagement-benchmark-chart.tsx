@@ -82,17 +82,16 @@ export function ReportEngagementBenchmarkChart({
                 benchmark {fmtRate(benchmarkVal)}
               </span>
             </div>
-            {/* Full-height vertical dashed line spanning all rows */}
+            {/* Full-height vertical dashed line spanning all rows — uses same margins as bar area */}
             <div
-              className="absolute w-px border-l border-dashed border-content-secondary/25 z-10 pointer-events-none"
-              style={{
-                left: `calc((100% - 90px - 12px - 48px - 12px) * ${benchmarkPct / 100} + 90px + 12px)`,
-                top: '20px',
-                bottom: '0',
-              }}
+              className="absolute inset-0 top-[20px] ml-[calc(90px+12px+12px)] sm:ml-[calc(110px+16px+16px)] mr-[calc(48px+12px+12px)] sm:mr-[calc(48px+16px+16px)] pointer-events-none z-10"
               aria-hidden="true"
-            />
-            {/* SM breakpoint override via a second line — CSS can't do calc with responsive values inline, so we layer */}
+            >
+              <div
+                className="absolute top-0 bottom-0 w-px border-l border-dashed border-content-secondary/25"
+                style={{ left: `${benchmarkPct}%` }}
+              />
+            </div>
           </>
         )}
         {benchmarkSeries.map((tier, i) => {
