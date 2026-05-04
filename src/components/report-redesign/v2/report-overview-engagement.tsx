@@ -1,9 +1,9 @@
 /**
- * Zona C — Card de Taxa de Envolvimento refinado.
- * Header com label + source badge, hero numbers, gráfico de benchmark.
+ * Zona C — Card de Taxa de Envolvimento com hero row 3-colunas
+ * e gráfico horizontal de comparação entre escalões.
  */
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
-import { TrendingUp, TrendingDown, Activity } from "lucide-react";
+import { Activity } from "lucide-react";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   getConsolidatedBenchmarkSeries,
@@ -21,13 +21,17 @@ export function EngagementCardRefined({ result }: Props) {
   const followers = result.data.profile.followers ?? 0;
   const benchmarkSeries = getConsolidatedBenchmarkSeries();
   const activeTierIdx = getActiveTierIndex(followers, benchmarkSeries);
+  const activeTier = benchmarkSeries[activeTierIdx];
   const activeSourceRefs = INSTAGRAM_BENCHMARK_CONTEXT.sources
     .filter((s) => s.visibility === "active")
     .map((s) => ({ name: s.name, url: s.url }));
 
-  const gap = k.engagementRate - k.engagementBenchmark;
-  const gapColor = gap >= 0 ? "text-signal-success" : "text-signal-danger";
-  const gapBg = gap >= 0 ? "bg-tint-success" : "bg-tint-danger";
+  const benchmarkVal = k.engagementBenchmark;
+  const gapPp = k.engagementRate - benchmarkVal;
+  const gapPct = benchmarkVal > 0
+    ? ((k.engagementRate / benchmarkVal) - 1) * 100
+    : 0;
+  const isPositive = gapPp >= 0;
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
@@ -37,35 +41,99 @@ export function EngagementCardRefined({ result }: Props) {
           <div className="flex items-center justify-center size-8 rounded-lg bg-tint-primary text-accent-primary">
             <Activity className="size-4" strokeWidth={2.2} aria-hidden="true" />
           </div>
-          <span className="text-sm font-semibold text-content-primary">
-            Taxa de envolvimento
+          <div>
+            <span className="text-sm font-semibold text-content-primary block">
+              Taxa de envolvimento
+            </span>
+            <span className="text-[11px] text-content-secondary">
+              posição face ao mercado por escalão
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-accent-primary font-semibold tracking-[0.04em]">
+            ◆ MERCADO
+          </span>
+          <span className="text-[10px] text-content-secondary tracking-[0.05em] bg-surface-muted border border-border-subtle px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
+            SOCIALINSIDER 2025
           </span>
         </div>
-        <span className="text-[10px] text-content-secondary tracking-[0.05em] bg-surface-muted border border-border-subtle px-2.5 py-1 rounded-full whitespace-nowrap font-medium">
-          MERCADO · SOCIALINSIDER
-        </span>
       </div>
 
-      {/* Hero numbers */}
-      <div className="flex items-end gap-3 sm:gap-4 flex-wrap px-5 md:px-6 pt-4 pb-5">
-        <span className="font-display text-[2rem] md:text-[2.25rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
-          {formatPct(k.engagementRate)}
-        </span>
-        <div className="flex items-center gap-2 pb-1">
-          <span className="text-xs text-content-tertiary font-medium">
-            ref. {formatPct(k.engagementBenchmark)}
+      {/* Hero row — 3 columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 md:px-6 pt-5 pb-5">
+        {/* Column 1: Profile engagement */}
+        <div className="rounded-xl border border-accent-primary/15 bg-tint-primary px-4 py-3.5">
+          <span className="text-eyebrow-sm text-accent-primary block mb-1">
+            O teu perfil
           </span>
+          <span className="font-sans text-[1.75rem] sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+            {fmtPctHero(k.engagementRate)}
+          </span>
+          <span className="font-sans text-[1.75rem] sm:text-[2rem] font-light text-content-secondary/60 ml-0.5">
+            %
+          </span>
+          <span className="block text-xs text-content-secondary mt-1">
+            envolvimento médio
+          </span>
+        </div>
+
+        {/* Column 2: Tier benchmark */}
+        <div className="px-4 py-3.5 flex flex-col justify-center">
+          <span className="text-eyebrow-sm text-content-secondary block mb-1">
+            Referência do escalão
+          </span>
+          <span className="font-sans text-[1.5rem] sm:text-[1.75rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+            {fmtPctHero(benchmarkVal)}
+          </span>
+          <span className="font-sans text-[1.5rem] sm:text-[1.75rem] font-light text-content-secondary/50 ml-0.5">
+            %
+          </span>
+          <span className="block text-xs text-content-secondary mt-1">
+            tier {activeTier?.tierLabel ?? "—"}
+          </span>
+        </div>
+
+        {/* Column 3: Gap */}
+        <div className={cn(
+          "rounded-xl px-4 py-3.5",
+          isPositive ? "bg-tint-success" : "bg-tint-danger",
+        )}>
           <span className={cn(
-            "text-xs tabular-nums inline-flex items-center gap-1 font-semibold rounded-full px-2 py-0.5",
-            gapColor, gapBg,
+            "text-eyebrow-sm block mb-1",
+            isPositive ? "text-signal-success" : "text-signal-danger",
           )}>
-            {gap >= 0 ? (
-              <TrendingUp className="size-3" aria-hidden="true" />
-            ) : (
-              <TrendingDown className="size-3" aria-hidden="true" />
-            )}
-            {fmtPp(gap)} p.p.
+            Gap face à referência
           </span>
+          <div className="flex items-baseline gap-1.5">
+            <span className={cn(
+              "text-lg font-medium",
+              isPositive ? "text-signal-success" : "text-signal-danger",
+            )}>
+              ~
+            </span>
+            <span className={cn(
+              "font-sans text-[1.5rem] sm:text-[1.75rem] font-bold tabular-nums leading-none tracking-tight",
+              isPositive ? "text-signal-success" : "text-signal-danger",
+            )}>
+              {fmtPpSigned(gapPp)}
+            </span>
+            <span className={cn(
+              "text-base font-medium ml-1",
+              isPositive ? "text-signal-success" : "text-signal-danger",
+            )}>
+              p.p.
+            </span>
+          </div>
+          {benchmarkVal > 0 && (
+            <span className={cn(
+              "block text-xs mt-1",
+              isPositive ? "text-signal-success" : "text-signal-danger",
+            )}>
+              {isPositive ? "+" : ""}{Math.round(Math.abs(gapPct))}%{" "}
+              {isPositive ? "acima da média" : "abaixo da média"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -77,20 +145,22 @@ export function EngagementCardRefined({ result }: Props) {
           benchmarkSeries={benchmarkSeries}
           activeTierIndex={activeTierIdx}
           sourceReferences={activeSourceRefs}
-          activeTierLabel={benchmarkSeries[activeTierIdx]?.tierLabel}
+          activeTierLabel={activeTier?.tierLabel}
         />
       </div>
     </article>
   );
 }
 
-function formatPct(n: number): string {
-  if (!Number.isFinite(n)) return "0,00%";
-  return `${n.toFixed(2).replace(".", ",")}%`;
+// ─── Formatters ─────────────────────────────────────────────────────
+
+function fmtPctHero(n: number): string {
+  if (!Number.isFinite(n)) return "0,00";
+  return n.toFixed(2).replace(".", ",");
 }
 
-function fmtPp(n: number): string {
+function fmtPpSigned(n: number): string {
   const abs = Math.abs(n);
-  const s = abs.toFixed(1).replace(".", ",");
+  const s = abs.toFixed(2).replace(".", ",");
   return n < 0 ? `−${s}` : `+${s}`;
 }
