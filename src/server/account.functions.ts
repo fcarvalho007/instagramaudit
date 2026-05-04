@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { withSupabaseHeaders } from "@/lib/auth-middleware-client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const getAccountDetails = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
 
@@ -39,7 +40,7 @@ export const getAccountDetails = createServerFn({ method: "GET" })
   });
 
 export const updateDisplayName = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .inputValidator((data: unknown) => {
     const parsed = data as { displayName: string };
     if (typeof parsed.displayName !== "string" || parsed.displayName.length > 100) {
@@ -64,7 +65,7 @@ export const updateDisplayName = createServerFn({ method: "POST" })
   });
 
 export const ensureReportAssociation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { userId } = context;
 

@@ -1,41 +1,36 @@
+## Problema
 
-## Contexto
+A página `/app/reports` dá "Something went wrong" porque:
 
-A funcionalidade de lista de relatórios (`/app/reports`, `/app/reports/$id`) e respetivas server functions já estão implementadas e completas. O que falta é **concluir a neutralização do discurso possessivo** ("teu/tua/teus/tuas") que ficou pendente em vários ficheiros.
+1. **Server functions devolvem 401**: O middleware `requireSupabaseAuth` espera um header `Authorization: Bearer <token>` no pedido HTTP. Mas as chamadas de `createServerFn` no browser (via fetch) não incluem automaticamente o token Supabase. Resultado: todas as server functions autenticadas falham com 401.
 
-## Ficheiros e alterações
+2. **Crash "s is not iterable"**: O erro 401 propaga-se como exceção e o error boundary global captura-o, mostrando "Something went wrong".
 
-### 1. Componentes do relatório (report-redesign) — 4 ficheiros
+3. **Perfil vazio (406)**: A query `profiles?select=plan&id=eq.{userId}` devolve 0 rows porque não existe row na tabela `profiles` para este utilizador (provavelmente o trigger `handle_new_user` falhou ou o user foi criado antes do trigger existir).
 
-| Ficheiro | Linha | De → Para |
-|----------|-------|-----------|
-| `report-engagement-benchmark-chart.tsx` | 256 | "Vê se o teu perfil está…teus concorrentes" → "Vê se este perfil está abaixo do mercado ou apenas abaixo dos concorrentes diretos." |
-| `overview/competitor-modal.tsx` | 31 | "o teu perfil lado a lado" → "este perfil lado a lado" |
-| `overview/competitor-modal.tsx` | 39 | "o teu perfil comparado com os teus concorrentes" → "este perfil comparado com concorrentes diretos" |
-| `overview/comparison-header.tsx` | 42 | "vê o teu lado a lado" → "vê este perfil lado a lado" |
-| `overview/comparison-header.tsx` | 174 | "todas as tuas redes" → "todas as redes" |
-| `overview/frequency-card.tsx` | 27 | "o teu número de seguidores" → "um número de seguidores semelhante" |
+## Plano
 
-### 2. Rotas da app autenticada — 4 ficheiros
+### 1. Adicionar auth header automático às server functions
 
-| Ficheiro | Alteração |
-|----------|-----------|
-| `app.reports.tsx` L293 | "o teu histórico" → "o histórico de análises" |
-| `app.plan.tsx` L31,104,173,189 | Substituir "teu/tua" por formulação impessoal |
-| `app.account.tsx` L108 | "da tua conta" → "da conta" |
-| `report-share/report-final-block.tsx` L54 | "a tua rede" → "a rede" |
+Criar um helper que intercepta todas as chamadas a server functions e injeta o header `Authorization: Bearer <token>` com o access token da sessão Supabase do browser.
 
-### 3. Rotas de auth — 3 ficheiros
+No TanStack Start, isto faz-se configurando `defaultHeaders` no router ou usando um wrapper nos server function calls. A abordagem mais direta: criar um middleware client-side que, antes de cada chamada, obtém o token via `supabase.auth.getSession()` e o adiciona aos headers.
 
-| Ficheiro | Alteração |
-|----------|-----------|
-| `signup.tsx` | "tua conta", "teus relatórios", "teu email" → impessoal |
-| `login.tsx` | "o teu email" → "o email" |
-| `reset-password.tsx` | "o teu email", "a tua conta" → impessoal |
+Ficheiro: `src/lib/server-fn-auth.ts` — exporta um helper que wraps server function calls com o token.
 
-## Notas
+Alternativa mais limpa: configurar `fetch` customizado no router que adiciona o header automaticamente a pedidos `/_serverFn/`.
 
-- Todas as substituições mantêm o tom em pt-PT, impessoal ou na 2.ª pessoa sem possessivo quando necessário.
-- Nenhuma lógica de runtime muda — apenas strings de UI.
-- Não se toca em ficheiros bloqueados nem em ficheiros gerados automaticamente.
-- Validação final: `rg` confirmará zero ocorrências de "teu |tua |teus |tuas " em `src/`.
+### 2. Garantir que o perfil existe
+
+Inserir um row na tabela `profiles` para o utilizador `fredericodigital@gmail.com` (id: `c70e200d-441d-4625-b25e-4fe37021c79c`) se ainda não existir, via migration ou query direta.
+
+### 3. Tornar `getUserReports` resiliente
+
+Tratar o caso em que `profile` é null (sem lead_id) de forma graciosa — já o faz parcialmente, mas garantir que não crashe.
+
+## Detalhes técnicos
+
+- O `createRouter()` no TanStack Start v1 suporta `context.fetch` ou wrapping global. A melhor abordagem é fazer override do `fetch` global para pedidos a `/_serverFn/` que adiciona o bearer token.
+- O token vem de `supabase.auth.getSession()` no browser.
+- Ficheiros a editar: `src/router.tsx` (ou novo `src/lib/auth-fetch.ts`) e possivelmente `src/routes/app.tsx`.
+- Migration ou query: inserir profile row em falta.
