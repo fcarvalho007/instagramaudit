@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevLoadingPreviewRouteImport } from './routes/dev-loading-preview'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -87,6 +88,11 @@ const TermosRoute = TermosRouteImport.update({
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevLoadingPreviewRoute = DevLoadingPreviewRouteImport.update({
@@ -460,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
+  '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -530,6 +537,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
+  '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -602,6 +610,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
+  '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -675,6 +684,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/design-system'
     | '/dev-loading-preview'
+    | '/login'
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
@@ -745,6 +755,7 @@ export interface FileRouteTypes {
     | '/'
     | '/design-system'
     | '/dev-loading-preview'
+    | '/login'
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
@@ -816,6 +827,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/design-system'
     | '/dev-loading-preview'
+    | '/login'
     | '/privacidade'
     | '/termos'
     | '/admin/clientes'
@@ -888,6 +900,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
   DevLoadingPreviewRoute: typeof DevLoadingPreviewRoute
+  LoginRoute: typeof LoginRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
@@ -952,6 +965,13 @@ declare module '@tanstack/react-router' {
       path: '/privacidade'
       fullPath: '/privacidade'
       preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dev-loading-preview': {
@@ -1553,6 +1573,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
   DevLoadingPreviewRoute: DevLoadingPreviewRoute,
+  LoginRoute: LoginRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
