@@ -8,8 +8,8 @@ import { Sparkles, Layers, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   ContentTypeResult,
-  type FunnelStageResult,
-  type ObjectiveResult,
+  FunnelStageResult,
+  ObjectiveResult,
 } from "@/lib/report/block02-diagnostic";
 
 /* ── Headline humanization lookups ─────────────────────────────────── */
