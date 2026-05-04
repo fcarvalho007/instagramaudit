@@ -50,20 +50,21 @@ export function EngagementCardRefined({ result }: Props) {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] text-accent-primary font-semibold tracking-[0.04em]">
-            ◆ MERCADO
+            ✦ MERCADO
           </span>
-          <span className="text-[10px] text-content-secondary tracking-[0.05em] bg-surface-muted border border-border-subtle px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
-            SOCIALINSIDER 2025
+          <span className="text-[10px] text-content-secondary tracking-[0.05em] bg-surface-muted border border-border-subtle px-2 py-0.5 rounded-full whitespace-nowrap font-medium uppercase">
+            {activeSourceRefs[0]?.name ?? "SOCIALINSIDER"}
           </span>
         </div>
       </div>
 
       {/* Hero row — 3 columns */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 md:px-6 pt-5 pb-5">
+      <div className="px-5 md:px-6 pt-5 pb-5">
+        <div className="rounded-xl border border-border-subtle bg-surface-muted/50 grid grid-cols-1 sm:grid-cols-3">
         {/* Column 1: Profile engagement */}
-        <div className="rounded-xl border border-accent-primary/15 bg-tint-primary px-4 py-3.5">
+        <div className="px-4 py-3.5 sm:border-r sm:border-border-subtle">
           <span className="text-eyebrow-sm text-accent-primary block mb-1">
             O teu perfil
           </span>
@@ -79,7 +80,7 @@ export function EngagementCardRefined({ result }: Props) {
         </div>
 
         {/* Column 2: Tier benchmark */}
-        <div className="px-4 py-3.5 flex flex-col justify-center">
+        <div className="px-4 py-3.5 flex flex-col justify-center sm:border-r sm:border-border-subtle">
           <span className="text-eyebrow-sm text-content-secondary block mb-1">
             Referência do escalão
           </span>
@@ -95,10 +96,7 @@ export function EngagementCardRefined({ result }: Props) {
         </div>
 
         {/* Column 3: Gap */}
-        <div className={cn(
-          "rounded-xl px-4 py-3.5",
-          isPositive ? "bg-tint-success" : "bg-tint-danger",
-        )}>
+        <div className="px-4 py-3.5">
           <span className={cn(
             "text-eyebrow-sm block mb-1",
             isPositive ? "text-signal-success" : "text-signal-danger",
@@ -135,6 +133,7 @@ export function EngagementCardRefined({ result }: Props) {
             </span>
           )}
         </div>
+      </div>
       </div>
 
       {/* Chart */}
