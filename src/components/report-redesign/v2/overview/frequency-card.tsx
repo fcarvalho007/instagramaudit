@@ -125,7 +125,7 @@ export function FrequencyCard({
                 title={`${fmtPtDate(day.date)} · ${day.published ? "publicou" : "não publicou"}`}
                 className={`size-[14px] rounded-[3px] shrink-0 transition-opacity duration-300 ${
                   day.published
-                    ? "bg-emerald-500"
+                    ? "bg-signal-success"
                     : "bg-surface-muted"
                 }`}
               />
@@ -135,7 +135,7 @@ export function FrequencyCard({
           {/* Legend */}
           <div className="flex items-center gap-4 mt-2">
             <span className="inline-flex items-center gap-1.5 text-[10px] text-content-secondary">
-              <span className="size-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
+              <span className="size-2 rounded-full bg-signal-success shrink-0" aria-hidden="true" />
               publicou ({publishedCount})
             </span>
             <span className="inline-flex items-center gap-1.5 text-[10px] text-content-secondary">
