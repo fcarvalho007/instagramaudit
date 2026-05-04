@@ -61,39 +61,43 @@ export function EngagementCardRefined({ result }: Props) {
       <div className="px-5 md:px-6 pt-5 pb-5">
         <div className="rounded-xl border border-border-subtle bg-surface-muted/50 grid grid-cols-1 sm:grid-cols-3">
         {/* Column 1: Profile engagement */}
-        <div className="px-4 py-3.5 sm:border-r sm:border-border-subtle">
+        <div className="px-4 py-3 border-b sm:border-b-0 sm:border-r border-border-subtle">
           <span className="text-eyebrow-sm text-accent-primary block mb-1">
             O teu perfil
           </span>
-          <span className="font-sans text-[1.75rem] sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
-            {fmtPctHero(k.engagementRate)}
-          </span>
-          <span className="font-sans text-[1.75rem] sm:text-[2rem] font-light text-content-secondary/60 ml-0.5">
-            %
-          </span>
-          <span className="block text-xs text-content-secondary mt-1">
+          <div className="flex items-baseline">
+            <span className="font-sans text-2xl sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+              {fmtPctHero(k.engagementRate)}
+            </span>
+            <span className="font-sans text-2xl sm:text-[2rem] font-light text-content-secondary/60 ml-0.5">
+              %
+            </span>
+          </div>
+          <span className="block text-[11px] text-content-secondary mt-1">
             envolvimento médio
           </span>
         </div>
 
         {/* Column 2: Tier benchmark */}
-        <div className="px-4 py-3.5 flex flex-col justify-center sm:border-r sm:border-border-subtle">
+        <div className="px-4 py-3 flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-border-subtle">
           <span className="text-eyebrow-sm text-content-secondary block mb-1">
             Referência do escalão
           </span>
-          <span className="font-sans text-[1.5rem] sm:text-[1.75rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
-            {fmtPctHero(benchmarkVal)}
-          </span>
-          <span className="font-sans text-[1.5rem] sm:text-[1.75rem] font-light text-content-secondary/50 ml-0.5">
-            %
-          </span>
-          <span className="block text-xs text-content-secondary mt-1">
+          <div className="flex items-baseline">
+            <span className="font-sans text-xl sm:text-[1.75rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+              {fmtPctHero(benchmarkVal)}
+            </span>
+            <span className="font-sans text-xl sm:text-[1.75rem] font-light text-content-secondary/50 ml-0.5">
+              %
+            </span>
+          </div>
+          <span className="block text-[11px] text-content-secondary mt-1">
             tier {activeTier?.tierLabel ?? "—"}
           </span>
         </div>
 
         {/* Column 3: Gap */}
-        <div className="px-4 py-3.5">
+        <div className="px-4 py-3">
           <span className={cn(
             "text-eyebrow-sm block mb-1",
             isPositive ? "text-signal-success" : "text-signal-danger",
