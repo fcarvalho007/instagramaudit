@@ -59,7 +59,7 @@ export function EngagementCardRefined({ result }: Props) {
 
       {/* Hero row — 3 columns */}
       <div className="px-5 md:px-6 pt-5 pb-5">
-        <div className="rounded-xl border border-accent-primary/15 bg-gradient-to-r from-surface-secondary via-tint-primary/30 to-surface-secondary grid grid-cols-1 sm:grid-cols-3">
+        <div className="rounded-xl border border-accent-primary/15 bg-gradient-to-r from-surface-secondary via-tint-primary/30 to-surface-secondary grid grid-cols-1 sm:grid-cols-[2fr_1.5fr_1.5fr]">
         {/* Column 1: Profile engagement */}
         <div className="px-4 py-3 border-b sm:border-b-0 sm:border-r border-border-subtle">
           <span className="text-eyebrow-sm text-accent-primary block mb-1">
@@ -97,20 +97,14 @@ export function EngagementCardRefined({ result }: Props) {
         </div>
 
         {/* Column 3: Gap */}
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 flex flex-col justify-center">
           <span className={cn(
             "text-eyebrow-sm block mb-1",
             isPositive ? "text-signal-success" : "text-signal-danger",
           )}>
-            Diferença percentual: Perfil VS Média perfis
+            Gap
           </span>
-          <div className="flex items-baseline gap-1.5">
-            <span className={cn(
-              "text-lg font-medium",
-              isPositive ? "text-signal-success" : "text-signal-danger",
-            )}>
-              ~
-            </span>
+          <div className="flex items-baseline gap-1">
             <span className={cn(
               "font-sans text-[1.5rem] sm:text-[1.75rem] font-bold tabular-nums leading-none tracking-tight",
               isPositive ? "text-signal-success" : "text-signal-danger",
@@ -129,9 +123,8 @@ export function EngagementCardRefined({ result }: Props) {
               "block text-xs mt-1",
               isPositive ? "text-signal-success" : "text-signal-danger",
             )}>
-              {isPositive ? "+" : ""}{Math.round(Math.abs(gapPct))}%{" "}
+              {Math.round(Math.abs(gapPct))}%{" "}
               {isPositive ? "acima da média" : "abaixo da média"}
-              {" · gap ~"}{fmtPpSigned(gapPp)}{" pontos percentuais"}
             </span>
           )}
         </div>
