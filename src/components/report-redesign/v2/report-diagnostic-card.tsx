@@ -724,8 +724,10 @@ export function DiagnosticAudienceHighlight({
       {/* ── Methodology footer ── */}
       {status !== "unavailable" && (
         <p className="text-[10.5px] text-content-tertiary italic leading-relaxed">
-          Análise sobre {sampleSize ?? "—"} publicações
-          {sampleComments != null ? ` · ${sampleComments} comentários recolhidos` : " · comentários do feed"}
+          {sampleSize ?? "—"} posts analisados
+          {postsWithComments != null && ` · ${postsWithComments} ${postsWithComments === 1 ? "post com comentários" : "posts com comentários"}`}
+          {totalComments != null && totalComments > 0 && ` · ${totalComments} ${totalComments === 1 ? "comentário público" : "comentários públicos"}`}
+          {sampleComments != null && sampleComments !== totalComments && ` · ${sampleComments} comentários analisados`}
           {" "}· sem DMs nem comentários ocultos
         </p>
       )}
