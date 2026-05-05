@@ -14,6 +14,7 @@ import {
   isOpenAiEnabled,
 } from "@/lib/security/openai-allowlist";
 import { recordProviderCall } from "@/lib/analysis/events";
+import type { ProviderCallStatus } from "@/lib/analysis/events";
 import { calculateOpenAiCost } from "@/lib/insights/cost";
 import {
   VISUAL_COVER_SYSTEM_PROMPT,
@@ -118,7 +119,7 @@ export async function generateVisualCoverAnalysis(
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.error(LOG_PREFIX, "OpenAI HTTP error", res.status, errText.slice(0, 300));
-      await logCall(handle, "http_error", res.status, Date.now() - startedAt, 0, 0, errText.slice(0, 200));
+      await logCall(handle, "http_error", res.status, Date.now() - startedAt, 0, 0, errText.slice(0, 200), undefined);
       return fail(`OPENAI_ERROR_HTTP_${res.status}`);
     }
 
@@ -137,7 +138,7 @@ export async function generateVisualCoverAnalysis(
 
     const rawContent = json.choices?.[0]?.message?.content;
     if (!rawContent) {
-      await logCall(handle, "empty_response", 200, Date.now() - startedAt, promptTokens, completionTokens);
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "empty_response");
       return fail("EMPTY_RESPONSE");
     }
 
@@ -146,14 +147,14 @@ export async function generateVisualCoverAnalysis(
       parsed = JSON.parse(rawContent);
     } catch {
       console.error(LOG_PREFIX, "JSON parse failed", rawContent.slice(0, 200));
-      await logCall(handle, "parse_error", 200, Date.now() - startedAt, promptTokens, completionTokens);
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "parse_error");
       return fail("PARSE_ERROR");
     }
 
     // Map postIndex → postId in thumbnails
     const analysis = mapAnalysisResult(parsed, postIds);
     if (!analysis) {
-      await logCall(handle, "validation_error", 200, Date.now() - startedAt, promptTokens, completionTokens);
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "validation_error");
       return fail("VALIDATION_ERROR");
     }
 
@@ -179,11 +180,11 @@ export async function generateVisualCoverAnalysis(
     const msg = err instanceof Error ? err.message : "unknown";
     if (msg.includes("abort")) {
       console.error(LOG_PREFIX, "timeout after", REQUEST_TIMEOUT_MS, "ms");
-      await logCall(handle, "timeout", null, Date.now() - startedAt, 0, 0, "timeout");
+      await logCall(handle, "timeout", null, Date.now() - startedAt, 0, 0, "timeout", undefined);
       return fail("TIMEOUT");
     }
     console.error(LOG_PREFIX, "unexpected error", err);
-    await logCall(handle, "exception", null, Date.now() - startedAt, 0, 0, msg.slice(0, 200));
+    await logCall(handle, "network_error", null, Date.now() - startedAt, 0, 0, msg.slice(0, 200), undefined);
     return fail("EXCEPTION");
   } finally {
     clearTimeout(timeout);
@@ -264,7 +265,7 @@ function mapAnalysisResult(
 
 async function logCall(
   handle: string,
-  status: string,
+  status: ProviderCallStatus,
   httpStatus: number | null,
   durationMs: number,
   promptTokens: number,
