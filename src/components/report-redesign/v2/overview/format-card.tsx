@@ -119,19 +119,19 @@ export function toDominantKey(format: string, share: number): DominantKey {
 export function getFormatVerdict(dk: DominantKey): { strong: string; rest: string } {
   if (dk === "carousel") {
     return {
-      strong: "Apostas em conteúdo para guardar.",
+      strong: "Foco em conteúdo para guardar.",
       rest: "Carrosséis funcionam para ensinar, listar e organizar ideias.",
     };
   }
   if (dk === "reel") {
     return {
-      strong: "Apostas em alcance e descoberta.",
+      strong: "Foco em alcance e descoberta.",
       rest: "Reels funcionam para entrar em novas audiências.",
     };
   }
   if (dk === "image") {
     return {
-      strong: "Apostas em comunicação direta.",
+      strong: "Foco em comunicação direta.",
       rest: "Imagens funcionam para mensagens claras e momentos.",
     };
   }
