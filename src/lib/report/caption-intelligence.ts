@@ -223,9 +223,9 @@ function countEmojis(text: string): number {
   return (text.match(EMOJI_RE) ?? []).length;
 }
 
-function classifyCaptionLengthBucket(chars: number): CaptionLengthBucket {
-  if (chars < 50) return "short";
-  if (chars <= 150) return "medium";
+function classifyCaptionLengthBucket(wordCount: number): CaptionLengthBucket {
+  if (wordCount < 50) return "short";
+  if (wordCount <= 150) return "medium";
   return "long";
 }
 
@@ -303,13 +303,13 @@ function buildDistributions(posts: readonly SnapshotPost[]): CaptionDistribution
   for (const p of posts) {
     const cap = p.caption ?? "";
     if (!cap.trim()) continue;
-    lengthCounts[classifyCaptionLengthBucket(captionLen(p))]++;
+    lengthCounts[classifyCaptionLengthBucket(countWords(cap))]++;
     openingCounts[classifyOpening(cap)]++;
     endingCounts[classifyEnding(cap)]++;
   }
 
   const n = Math.max(1, posts.length);
-  const LENGTH_LABELS: Record<CaptionLengthBucket, string> = { short: "Curtas (<50 car.)", medium: "Médias (50–150 car.)", long: "Longas (150+ car.)" };
+  const LENGTH_LABELS: Record<CaptionLengthBucket, string> = { short: "Curtas (<50 palavras)", medium: "Médias (50–150 palavras)", long: "Longas (150+ palavras)" };
   const OPENING_LABELS: Record<CaptionOpeningType, string> = { question: "Pergunta direta", news_or_update: "Anúncio de novidade", story: "História / experiência", bold_statement: "Afirmação direta" };
   const ENDING_LABELS: Record<CaptionEndingType, string> = { explicit_cta: "Com CTA explícito", question: "Com pergunta", hashtags_only: "Só hashtags", statement: "Com afirmação" };
 
