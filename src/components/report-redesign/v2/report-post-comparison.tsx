@@ -78,22 +78,12 @@ export function PostComparisonBlock({
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
-      <div className="px-5 md:px-6 pt-5 md:pt-6 pb-4 space-y-1.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-content-tertiary">
-          ✦ PERFORMANCE
-        </p>
-        <h3 className="font-display text-[1.35rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight">
-          MELHORES E PIORES PUBLICAÇÕES
+      <div className="px-5 md:px-6 pt-6 md:pt-8 pb-4 space-y-2.5">
+        <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
+          Melhores e Piores Publicações
         </h3>
-        <p className="text-[13px] text-content-secondary leading-snug">
+        <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
           Os extremos do conteúdo
-        </p>
-        <p className="text-[11px] text-content-tertiary leading-relaxed max-w-2xl">
-          2 que voaram e 2 que caíram
-          {windowLabel ? ` nos ${windowLabel}` : " na janela analisada"}.
-          {multiplierLabel
-            ? ` ${multiplierLabel} de diferença entre o melhor e o pior.`
-            : ""}
         </p>
       </div>
 

@@ -138,19 +138,30 @@ export function FrequencyCard({
   const weeks = buildWeekGrid(calendarDays);
 
   return (
-    <article className="rounded-2xl border border-border-default bg-surface-secondary p-4 md:p-5 shadow-card flex flex-col gap-3">
+    <article className="rounded-2xl border border-border-default bg-surface-secondary p-4 md:p-5 shadow-card flex flex-col gap-4">
       {/* Header */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <h3 className="font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-tight">
+      <div className="space-y-2.5">
+        <div className="flex items-start gap-3">
+          <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
             Frequência de publicação{" "}
-            <span className="font-bold">{frequencyStatus}</span>
+            <span
+              className="font-semibold"
+              style={{
+                borderBottom: `2px solid ${
+                  frequencyStatus === "Alta"
+                    ? "rgba(29,158,117,0.50)"
+                    : frequencyStatus === "Média"
+                      ? "rgba(217,119,6,0.50)"
+                      : "rgba(163,45,45,0.50)"
+                }`,
+                paddingBottom: "1px",
+              }}
+            >
+              {frequencyStatus}
+            </span>
           </h3>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-content-tertiary shrink-0">
-            ✦ AUTO
-          </span>
         </div>
-        <p className="text-[13px] text-content-secondary leading-snug">
+        <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
           {subtitleLine}
         </p>
       </div>
