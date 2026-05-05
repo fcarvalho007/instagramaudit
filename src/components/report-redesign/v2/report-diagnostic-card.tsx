@@ -134,9 +134,9 @@ export function ReportDiagnosticCard({
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-eyebrow-sm text-content-tertiary min-w-0 tracking-[0.06em]">
-          Pergunta {number}
+          P{number}
           <span className="mx-1.5 text-content-tertiary/40">·</span>
-          <span className="text-content-tertiary">{label}</span>
+          <span className="text-content-tertiary">{label.toUpperCase()}</span>
         </p>
         {sourceType ? (
           <ReportSourceLabel
