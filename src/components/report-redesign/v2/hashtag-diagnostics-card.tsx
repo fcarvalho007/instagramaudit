@@ -236,7 +236,7 @@ export function HashtagDiagnosticsCard({
 
         {/* title */}
         <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight mt-5">
-          Que hashtags etiquetam o conteúdo?
+          Que hashtags aparecem mais vezes?
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
           Hashtags públicas extraídas das legendas dos posts analisados.
