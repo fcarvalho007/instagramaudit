@@ -565,6 +565,7 @@ export function DiagnosticAudienceHighlight({
   avgComments,
   sampleSize,
   totalLikes,
+  totalComments,
   postsWithComments,
   topConversationPost,
   status = "silent",
