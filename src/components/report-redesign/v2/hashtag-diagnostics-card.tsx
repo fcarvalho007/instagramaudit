@@ -232,9 +232,6 @@ export function HashtagDiagnosticsCard({
               03 · HASHTAGS · {postsAnalyzed} POSTS ANALISADOS
             </span>
           </div>
-          <span className="text-[9px] md:text-[10px] font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
-            DADOS
-          </span>
         </div>
 
         {/* title */}
