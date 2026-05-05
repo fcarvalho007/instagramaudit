@@ -1,47 +1,42 @@
 
-# OpenAI Actor Breakdown na secção Despesa
+## P05 Conversation Metrics — Audit Results
 
-## Contexto
+### 1. Data Source — PASS
 
-A secção Despesa já mostra um breakdown detalhado por ator para o Apify (Perfil, Comentários, Scraper), mas o OpenAI aparece como valor único. O campo `actor` no `provider_call_logs` já distingue:
+`classifyAudienceResponse()` in `block02-diagnostic.ts` (lines 499-604) iterates `posts[]` and sums `p.likes` and `p.comments` (post-level totals). It correctly:
+- Counts `totalLikes`, `totalComments`, `postsWithComments` from post-level data
+- Computes `avgLikes = totalLikes / postsWithData`, `avgComments = totalComments / postsWithData`
+- Never touches `commentIntel.sampleComments` for these totals
 
-- `insights:gpt-5.4-mini`, `insights:gpt-5.4-nano` — chamadas de texto (insights editoriais)
-- `visual-cover-analysis` — chamadas de visão (thumbnails)
+`commentIntel.sampleComments` is only read inside `DiagnosticAudienceHighlight` for the footer label — never mixed with post-level totals.
 
-O plano replica o padrão Apify actor breakdown para o OpenAI.
+### 2. Formatting Rules — 2 FAILS
 
-## Alterações
+| Location | File | Handles `0`? | Handles `<0.1`? | 1 decimal <10? | Rounded >=10? |
+|---|---|---|---|---|---|
+| `formatAvg()` | `report-diagnostic-card.tsx:33` | PASS (`"0"`) | PASS (`"<0,1"`) | PASS | PASS |
+| KPI cards (Z2) | `report-diagnostic-card.tsx:602,639` | PASS (uses `formatAvg`) | PASS | PASS | PASS |
+| Summary cards | `report-diagnostic-summary-cards.tsx:120-128` | **FAIL** — `0` falls to `< 10` branch, renders `0,0` | PASS | PASS | PASS |
+| Grid v2 micro | `report-diagnostic-grid-v2.tsx:440` | **FAIL** — `0` falls to `< 10` branch, renders `0,0` | PASS | PASS | PASS |
 
-### 1. Backend: `src/lib/admin/system-queries.server.ts`
+### 3. Methodology Footer — 1 FAIL
 
-- Criar tipo `OpenAiActorBreakdown` (semelhante a `ApifyActorBreakdown` mas com campos relevantes: actor, label, total_cost_usd, call_count, total_prompt_tokens, total_completion_tokens, avg_cost_per_call, last_call_at, model).
-- Criar função `aggregateOpenAiActorBreakdown(sinceIso)` que agrupa por `actor` no `provider_call_logs` onde `provider='openai'`.
-- Adicionar campo `openai_actors: OpenAiActorBreakdown[]` ao tipo `Expense30d` e `Cost24hMetrics`.
-- Adicionar `openai_by_actor?: Record<string, number>` ao `ExpenseDailyPoint` (para sub-barras no gráfico diário).
-- Na função `aggregateCostsFromLogs`, popular `openai_by_actor` da mesma forma que `apify_by_actor`.
-- Nas funções `fetchExpense30d` e `fetchCostMetrics24h`, chamar `aggregateOpenAiActorBreakdown`.
+| Label | Source | Current copy | Expected copy | Status |
+|---|---|---|---|---|
+| Posts analisados | `sampleSize` | `{n} posts analisados` | `{n} posts analisados` | PASS |
+| Posts com comentários | `postsWithComments` | `{n} post(s) com comentários` | `{n} post(s) com comentários` | PASS |
+| Post-level comment total | `totalComments` | `{n} comentário(s) público(s)` | `{n} comentário(s) público(s)` | PASS |
+| Scraped comments | `sampleComments` | `{n} comentários analisados` | `{n} comentários recolhidos` | **FAIL** — should say "recolhidos" not "analisados" |
 
-### 2. Frontend: `src/components/admin/v2/visao-geral/expense-section.tsx`
+### Fixes Required
 
-- Adicionar mapeamento de cores e labels para atores OpenAI:
-  - `insights:*` → "Insights (texto)" — cor info variante
-  - `visual-cover-analysis` → "Análise visual (covers)" — cor info mais escura
-- Após o bloco "Breakdown por ator Apify", adicionar bloco idêntico "Breakdown por ator OpenAI" com tabela: Ator, Custo, Chamadas, Tokens (prompt+completion), Média/chamada, Modelo.
-- No gráfico de barras diário, substituir a barra única `openai` por sub-barras `openai_{actor}` (mesmo padrão das sub-barras Apify).
-- Atualizar o tooltip do gráfico para mostrar os sub-atores OpenAI.
+**File 1: `src/components/report-redesign/v2/report-diagnostic-summary-cards.tsx`** (line ~120)
+- Add `avg === 0` guard returning `"0 comentários médios por post"`
 
-### 3. Ficheiros tocados
+**File 2: `src/components/report-redesign/v2/report-diagnostic-grid-v2.tsx`** (line ~440)
+- Add `r.avgComments === 0` guard returning `"~0 comentários ..."`
 
-| Ficheiro | Ação |
-|----------|------|
-| `src/lib/admin/system-queries.server.ts` | Novo tipo + função + campos |
-| `src/components/admin/v2/visao-geral/expense-section.tsx` | Tabela + sub-barras gráfico |
+**File 3: `src/components/report-redesign/v2/report-diagnostic-card.tsx`** (line 730)
+- Change `comentários analisados` → `comentários recolhidos`
 
-### 4. Ficheiros intocados
-
-Nenhum ficheiro locked é alterado. Não se toca em auth, report, PDF, tokens globais, backend de análise, nem nos endpoints de sync existentes.
-
-### 5. Riscos
-
-- Nenhum risco funcional — é extensão read-only de dados já existentes no `provider_call_logs`.
-- Se não houver chamadas `visual-cover-analysis` ainda, a tabela simplesmente mostra apenas os atores de insights.
+All three are small, isolated fixes. No logic changes needed.

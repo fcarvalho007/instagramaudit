@@ -727,7 +727,7 @@ export function DiagnosticAudienceHighlight({
           {sampleSize ?? "—"} posts analisados
           {postsWithComments != null && ` · ${postsWithComments} ${postsWithComments === 1 ? "post com comentários" : "posts com comentários"}`}
           {totalComments != null && totalComments > 0 && ` · ${totalComments} ${totalComments === 1 ? "comentário público" : "comentários públicos"}`}
-          {sampleComments != null && sampleComments !== totalComments && ` · ${sampleComments} comentários analisados`}
+          {sampleComments != null && sampleComments !== totalComments && ` · ${sampleComments} comentários recolhidos`}
           {" "}· sem DMs nem comentários ocultos
         </p>
       )}
