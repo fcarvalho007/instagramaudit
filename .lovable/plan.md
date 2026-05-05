@@ -1,33 +1,34 @@
 
-## Changes
+# P04 Caption Diagnostics — Polish Pass
 
-### 1. Hashtag card (P03) — `hashtag-diagnostics-card.tsx`
+## File: `src/components/report-redesign/v2/caption-diagnostics-card.tsx`
 
-**Title not serifed:** `font-heading` is undefined. Replace all `font-heading` with `font-display` (maps to Fraunces via `--font-display`).
+No other files touched.
 
-**Card must occupy full width:** Add `md:col-span-2` to the root wrapper so it spans the full grid like the P04 card already does.
+### 1. Remove unused imports (line 13-14)
 
-**Eyebrow line:** Change `P03 · HASHTAGS` to `03 · HASHTAGS` (drop the "P" prefix, match mockup).
+Remove `CaptionEndingDistribution` and `CaptionOpeningDistribution` from the type import. Keep `CaptionIntelligence` and `CaptionLengthDistribution` (used by `StackedLengthBar`).
 
-**KPI card 2:** The mockup shows "USOS REGISTADOS" with the total uses count, not "TODOS OS POSTS TÊM HASHTAGS?". Replace with total hashtag uses KPI.
+### 2. Replace hardcoded colors with semantic tokens
 
-**Source footer — new format:**
-Replace the current verbose footer with a compact line:
-```
-FONTES: [1] Castmagic · [2] Later · [3] Shopify
-```
-- Label "FONTES:" in eyebrow style, darker grey (`text-content-secondary`)
-- Source names in `text-content-tertiary`, still clickable links
-- Remove the `<Info>` icon and the extra explanatory sentence about recommendation
+| Line | Current | Replacement |
+|------|---------|-------------|
+| 178 | `bg-rose-400` | `bg-signal-danger` |
+| 378 | `text-rose-600 font-medium` | `text-signal-danger font-medium` |
+| 402 | `bg-violet-50/60 ring-1 ring-violet-200/40` | `bg-[rgb(var(--tint-primary))] ring-1 ring-accent-primary/20` |
+| 403 | `text-violet-700` | `text-accent-primary` |
+| 407 | `border-violet-200/30` | `border-accent-primary/20` |
+| 415 | `text-rose-500` | `text-signal-danger` |
+| 482 | `text-violet-600 border border-violet-200 ... bg-violet-50` | `text-accent-primary border border-accent-primary/20 ... bg-[rgb(var(--tint-primary))]` |
 
-### 2. Caption card (P04) — `caption-diagnostics-card.tsx`
+### 3. Typography check
 
-**Source footer — same format:**
-Replace the current footer with the same compact `FONTES:` pattern.
-Remove the "Análise baseada apenas em legendas públicas..." sentence (move it to a single-line disclaimer above the sources if needed, or drop it — the card header already says "legendas públicas").
+The diagnostic statement (line 404) already uses `font-medium` (Inter/sans) — no `font-display`. No change needed.
 
-### Files changed
-- `src/components/report-redesign/v2/hashtag-diagnostics-card.tsx`
-- `src/components/report-redesign/v2/caption-diagnostics-card.tsx`
+### 4. Data logic
 
-No backend, auth, admin, Block 1, Groups C/D, or locked files touched.
+Zero changes to any data functions, copy text, or computation logic.
+
+### 5. Validation
+
+Run `bunx tsc --noEmit` and `bunx vitest run` to confirm no regressions.

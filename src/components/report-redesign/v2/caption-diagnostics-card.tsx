@@ -10,8 +10,6 @@ import { FileText, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   CaptionIntelligence,
-  CaptionEndingDistribution,
-  CaptionOpeningDistribution,
   CaptionLengthDistribution,
 } from "@/lib/report/caption-intelligence";
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
@@ -176,7 +174,7 @@ function DistributionBar({
               <div
                 className={cn(
                   "h-full rounded-full",
-                  isHighlighted ? "bg-rose-400" : "bg-accent-primary/50",
+                  isHighlighted ? "bg-signal-danger" : "bg-accent-primary/50",
                 )}
                 style={{ width: `${Math.max(3, it.pct)}%` }}
               />
@@ -375,7 +373,7 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
           <DistributionBar
             items={data.distributions.endings.map((e) => ({ ...e, type: e.type }))}
             highlightType="question"
-            highlightClass="text-rose-600 font-medium"
+            highlightClass="text-signal-danger font-medium"
           />
         </div>
       </div>
@@ -399,12 +397,12 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       </div>
 
       {/* ── 6. Diagnostic box ── */}
-      <div className="rounded-xl bg-violet-50/60 ring-1 ring-violet-200/40 p-5 md:p-6 space-y-5">
-        <p className="text-eyebrow-sm text-violet-700">DIAGNÓSTICO EDITORIAL</p>
+      <div className="rounded-xl bg-[rgb(var(--tint-primary))] ring-1 ring-accent-primary/20 p-5 md:p-6 space-y-5">
+        <p className="text-eyebrow-sm text-accent-primary">DIAGNÓSTICO EDITORIAL</p>
         <p className="text-[15px] md:text-base text-content-primary leading-relaxed font-medium">
           {buildDiagnosticStatement(data)}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-violet-200/30">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-accent-primary/20">
           <DiagnosticMicro
             label="FUNCIONA"
             text={buildWhatWorks(data)}
@@ -415,7 +413,7 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
             label="PONTO CRÍTICO"
             text={buildCriticalPoint(data)}
             icon={AlertTriangle}
-            toneClass="text-rose-500"
+            toneClass="text-signal-danger"
           />
           <DiagnosticMicro
             label="A OBSERVAR"
@@ -479,7 +477,7 @@ function CardShell({
               04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS
             </span>
           </div>
-          <span className="text-[10px] font-semibold tracking-wide text-violet-600 border border-violet-200 rounded-full px-2.5 py-0.5 bg-violet-50">
+          <span className="text-[10px] font-semibold tracking-wide text-accent-primary border border-accent-primary/20 rounded-full px-2.5 py-0.5 bg-[rgb(var(--tint-primary))]">
             DIAGNÓSTICO
           </span>
         </div>
