@@ -22,7 +22,6 @@ import {
   type HashtagsResult,
 } from "@/lib/report/block02-diagnostic";
 
-import { ReportDiagnosticVerdict } from "./report-diagnostic-verdict";
 import { ReportDiagnosticGroup } from "./report-diagnostic-group";
 import {
   ReportDiagnosticCard,
@@ -38,7 +37,6 @@ import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
 import { ReportCaptionIntelligence } from "./report-caption-intelligence";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
-import { ReportDiagnosticSummaryCards } from "./report-diagnostic-summary-cards";
 import {
   CommentIntelligenceUnavailable,
 } from "./report-comment-intelligence";
@@ -96,20 +94,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     dominantFormatLabel: km.dominantFormat ?? null,
   });
 
-  const verdictText = buildVerdictText({
-    aiHero: result.enriched.aiInsightsV2?.sections.hero?.text ?? null,
-    contentType,
-    funnel,
-    caption,
-    audience,
-    dominantFormat: km.dominantFormat ?? null,
-    dominantFormatShare: km.dominantFormatShare ?? 0,
-  });
-
-  const aiHeroText = result.enriched.aiInsightsV2?.sections.hero?.text ?? null;
-  const verdictSource: "ai" | "fallback" =
-    aiHeroText && aiHeroText.trim().length > 30 ? "ai" : "fallback";
-
   const aiLanguageText =
     result.enriched.aiInsightsV2?.sections.language?.text ?? null;
 
@@ -137,15 +121,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
   return (
     <div className="space-y-10 md:space-y-12">
-      <ReportDiagnosticVerdict text={verdictText} source={verdictSource} />
-
-      <ReportDiagnosticSummaryCards
-        contentType={contentType}
-        funnel={funnel}
-        audience={audience}
-        objective={objective}
-      />
-
       {totalCards >= 4 ? (
         <>
           {groupA.length > 0 ? (
@@ -328,7 +303,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
        sourceType="auto"
       sourceDetail="Legendas · classificação"
       >
-        {r.distribution.length >= 2 ? (
+        {r.distribution.length >= 2 && (
           <DiagnosticDistributionBar
             variant="vertical-list"
             items={r.distribution.map((d, i) => ({
@@ -342,7 +317,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
                     : "bg-content-tertiary/30",
             }))}
           />
-        ) : null}
+        )}
       </ReportDiagnosticCard>
     );
   }
@@ -356,12 +331,12 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       question="Que natureza de conteúdo aparece mais?"
       answer={r.label}
       tone="emerald"
-        span="full"
+        span="half"
       body={`Classificação do tipo de conteúdo publicado nas legendas e padrões editoriais. Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}.`}
       sourceType="auto"
       sourceDetail="Legendas · classificação"
     >
-      {r.distribution.length >= 2 ? (
+      {r.distribution.length >= 2 && (
         <DiagnosticDistributionBar
           variant="vertical-list"
           items={r.distribution.map((d, i) => ({
@@ -370,7 +345,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
             color: colorByIndex(i),
           }))}
         />
-      ) : null}
+      )}
     </ReportDiagnosticCard>
   );
 }
