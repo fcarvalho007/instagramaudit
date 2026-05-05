@@ -2,8 +2,9 @@
  * Zone D — Card 1: Frequência de publicação.
  * Human-readable headline → stats → posting calendar → verdict.
  */
-import { CalendarDays, Check } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { computeFrequencia } from "./score-utils";
+import { InsightCallout } from "./insight-callout";
 
 function getFrequencyStatus(score: number): string {
   if (score >= 70) return "Alta";
@@ -122,6 +123,8 @@ export function FrequencyCard({
   const score = computeFrequencia(postingFrequencyWeekly);
   const verdict = getFrequencyVerdict(score);
   const frequencyStatus = getFrequencyStatus(score);
+  const verdictTone = score >= 90 ? "positive" as const : score >= 50 ? "warning" as const : "danger" as const;
+  const verdictLabel = score >= 90 ? "PONTO FORTE" : score >= 50 ? "A MELHORAR" : "ALERTA";
 
   // Dynamic subtitle: "1 post a cada 1–2 dias · 12 publicações em 18 dias"
   const subtitleLine = `${headline} · ${postsAnalyzed} publicações em ${windowDays} dias`;
@@ -260,13 +263,12 @@ export function FrequencyCard({
       )}
 
       {/* Verdict */}
-      <div className="mt-auto rounded-lg bg-tint-success border border-border-subtle px-3 py-2 flex items-start gap-2">
-        <Check className="size-3.5 text-signal-success shrink-0 mt-0.5" aria-hidden="true" />
-        <p className="text-[11px] text-content-primary leading-[1.4]">
-          <span className="font-medium">{verdict.strong}</span>{" "}
+      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-auto">
+        <p>
+          <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
         </p>
-      </div>
+      </InsightCallout>
     </article>
   );
 }

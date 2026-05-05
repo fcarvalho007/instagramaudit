@@ -12,7 +12,7 @@
  *   Success: bg rgba(29,158,117,0.04), left-border rgba(29,158,117,0.45)
  */
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, AlertTriangle } from "lucide-react";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   getConsolidatedBenchmarkSeries,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/knowledge/benchmark-context";
 import { cn } from "@/lib/utils";
 import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
+import { InsightCallout } from "./overview/insight-callout";
 
 interface Props {
   result: AdapterResult;
@@ -261,34 +262,12 @@ export function EngagementCardRefined({ result }: Props) {
       {/* Diagnostic reading box */}
       {readingText && (
         <div className="px-5 md:px-6 pb-5 md:pb-6">
-          <div
-            className="rounded-xl px-4 py-4 flex items-start gap-3"
-            style={{
-              borderLeft: `3px solid ${isBelowBenchmark ? "rgba(163,45,45,0.45)" : "rgba(29,158,117,0.45)"}`,
-              background: isBelowBenchmark ? "rgba(163,45,45,0.04)" : "rgba(29,158,117,0.04)",
-            }}
+          <InsightCallout
+            tone={isBelowBenchmark ? "danger" : "positive"}
+            label="DIAGNÓSTICO"
           >
-            <span
-              className="flex items-center justify-center size-7 rounded-full shrink-0 mt-0.5"
-              aria-hidden="true"
-              style={{
-                background: isBelowBenchmark ? "rgba(163,45,45,0.08)" : "rgba(29,158,117,0.08)",
-              }}
-            >
-              <MessageCircle
-                className={cn(
-                  "size-3.5",
-                  isBelowBenchmark ? "text-signal-danger" : "text-signal-success"
-                )}
-                strokeWidth={2}
-              />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[13px] leading-relaxed text-content-primary">
-                {readingText}
-              </p>
-            </div>
-          </div>
+            <p>{readingText}</p>
+          </InsightCallout>
         </div>
       )}
     </article>
