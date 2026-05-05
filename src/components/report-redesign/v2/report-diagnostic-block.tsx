@@ -34,7 +34,7 @@ import {
 import { InsightCallout } from "./insight-callout";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
-import { ReportCaptionIntelligence } from "./report-caption-intelligence";
+import { CaptionDiagnosticsCard } from "./caption-diagnostics-card";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
 import { HashtagDiagnosticsCard } from "./hashtag-diagnostics-card";
 import {
@@ -146,7 +146,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             questionsCount={groupB.length + 1}
           >
             {groupB}
-            <ReportCaptionIntelligence data={captionIntel} />
+            <CaptionDiagnosticsCard data={captionIntel} />
           </ReportDiagnosticGroup>
 
           {groupC.length > 0 ? (
