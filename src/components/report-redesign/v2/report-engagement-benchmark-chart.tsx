@@ -154,7 +154,7 @@ export function ReportEngagementBenchmarkChart({
                     border: `1px solid ${isPositive ? successBorder : dangerBorder}`,
                   }}
                 >
-                  Estás aqui
+                  ESTÁS AQUI
                 </span>
 
                 <div className="flex items-center gap-3 sm:gap-4 mt-1">
