@@ -10,9 +10,13 @@ import {
   Heart,
   MessageCircle,
   MessageCircleReply,
-  ArrowRight,
+
   MessageSquare,
   Users,
+  HelpCircle,
+  ThumbsUp,
+  AlertTriangle,
+  ShoppingCart,
 } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import type { CommentIntelligence } from "@/lib/analysis/types";
@@ -662,64 +666,17 @@ export function DiagnosticAudienceHighlight({
         </div>
       </div>
 
-      {/* ── Z3: Conversation flow diagram ── */}
-      <div
-        className="rounded-[14px] border border-border-default px-5 py-5 space-y-4"
-        /* Decorative horizontal gradient: danger-tint → surface → primary-tint.
-         * No semantic token exists for this multi-stop decorative gradient. */
-        style={{
-          background: "linear-gradient(90deg, var(--tint-danger) 0%, var(--surface-secondary) 45%, var(--tint-primary) 100%)",
-        }}
-      >
-        <p className="text-eyebrow text-content-tertiary">Diagnóstico da conversa</p>
-
-        {/* 3-node flow: Audience → Comments → Brand */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-0">
-          {/* Node 1 — Audience */}
-          <div className="flex-1 rounded-xl border border-signal-success/20 bg-tint-success px-3.5 py-3 flex flex-col items-center gap-1.5 text-center">
-            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center">
-              <Users size={16} className="text-signal-success" strokeWidth={1.5} />
-            </div>
-            <span className="text-[12px] font-semibold text-content-primary">Audiência</span>
-            <span className="text-[11px] text-content-secondary leading-snug">vê e reage com gostos</span>
-          </div>
-
-          {/* Arrow 1 */}
-          <div className="flex items-center justify-center sm:px-1.5 py-1 sm:py-0">
-            <ArrowRight size={14} className="text-content-tertiary/50 hidden sm:block" />
-            <svg className="sm:hidden text-content-tertiary/50" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
-          </div>
-
-          {/* Node 2 — Comments ("Elo perdido") */}
-          <div className="flex-1 rounded-xl border-2 border-dashed border-signal-danger/40 bg-tint-danger px-3.5 py-3 flex flex-col items-center gap-1.5 text-center relative">
-            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-widest text-signal-danger bg-surface-secondary border border-signal-danger/20 rounded-full px-2 py-0.5 whitespace-nowrap">
-              Elo perdido
-            </span>
-            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center mt-1">
-              <MessageCircle size={16} className="text-signal-danger" strokeWidth={1.5} />
-            </div>
-            <span className="text-[12px] font-semibold text-content-primary">Comentários</span>
-            <span className="text-[11px] text-content-secondary leading-snug">{commentSubcopy}</span>
-          </div>
-
-          {/* Arrow 2 */}
-          <div className="flex items-center justify-center sm:px-1.5 py-1 sm:py-0">
-            <ArrowRight size={14} className="text-content-tertiary/50 hidden sm:block" />
-            <svg className="sm:hidden text-content-tertiary/50" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
-          </div>
-
-          {/* Node 3 — Brand */}
-          <div className="flex-1 rounded-xl border border-border-default bg-surface-muted px-3.5 py-3 flex flex-col items-center gap-1.5 text-center opacity-70">
-            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center">
-              <MessageCircleReply size={16} className="text-content-tertiary" strokeWidth={1.5} />
-            </div>
-            <span className="text-[12px] font-semibold text-content-primary">Marca</span>
-            <span className="text-[11px] text-content-secondary leading-snug">
-              {ownerReplies === 0 ? "não responde publicamente" : "responde pontualmente"}
-            </span>
-          </div>
+      {/* ── Z3: Voz da audiência — o que dizem nos comentários ── */}
+      {commentIntel?.available && (commentIntel.questionsFromAudienceCount > 0 || commentIntel.praiseCount > 0 || commentIntel.buyingIntentCount > 0 || commentIntel.complaintOrIssueCount > 0) ? (
+        <AudienceVoiceBreakdown commentIntel={commentIntel} />
+      ) : (
+        <div className="rounded-[14px] border border-border-subtle bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
+          <p className="text-eyebrow text-content-tertiary mb-2">Voz da audiência</p>
+          <p className="text-[13px] text-content-secondary leading-relaxed">
+            Quando a análise de comentários estiver disponível, este bloco mostra o que a audiência mais pede, elogia e questiona nos comentários públicos.
+          </p>
         </div>
-      </div>
+      )}
 
       {/* ── Z4: Top conversation post highlight ── */}
       {topConversationPost && topConversationPost.comments > 0 && (
@@ -868,6 +825,152 @@ export function DiagnosticObjectiveSynthesis({
       <p className="text-[10.5px] text-content-tertiary italic leading-relaxed">
         Hipótese derivada dos sinais públicos analisados.
       </p>
+    </div>
+  );
+}
+
+// ─── Z3 replacement: Audience Voice Breakdown ───────────────────────
+
+function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelligence }) {
+  const ci = commentIntel;
+  const totalSignals = ci.questionsFromAudienceCount + ci.praiseCount + ci.buyingIntentCount + ci.complaintOrIssueCount;
+
+  const items: Array<{
+    key: string;
+    label: string;
+    sublabel: string;
+    count: number;
+    pct: number;
+    Icon: typeof HelpCircle;
+    toneClass: string;
+    barClass: string;
+  }> = [];
+
+  if (ci.questionsFromAudienceCount > 0) {
+    items.push({
+      key: "questions",
+      label: "Perguntas",
+      sublabel: "Dúvidas, pedidos de informação, \"como faço?\"",
+      count: ci.questionsFromAudienceCount,
+      pct: totalSignals > 0 ? Math.round((ci.questionsFromAudienceCount / totalSignals) * 100) : 0,
+      Icon: HelpCircle,
+      toneClass: "text-accent-primary",
+      barClass: "bg-accent-primary",
+    });
+  }
+  if (ci.praiseCount > 0) {
+    items.push({
+      key: "praise",
+      label: "Elogios e apoio",
+      sublabel: "Parabéns, emojis positivos, incentivos",
+      count: ci.praiseCount,
+      pct: totalSignals > 0 ? Math.round((ci.praiseCount / totalSignals) * 100) : 0,
+      Icon: ThumbsUp,
+      toneClass: "text-signal-success",
+      barClass: "bg-signal-success",
+    });
+  }
+  if (ci.buyingIntentCount > 0) {
+    items.push({
+      key: "buying",
+      label: "Intenção de compra",
+      sublabel: "\"Onde compro?\", \"Qual o preço?\", pedidos de link",
+      count: ci.buyingIntentCount,
+      pct: totalSignals > 0 ? Math.round((ci.buyingIntentCount / totalSignals) * 100) : 0,
+      Icon: ShoppingCart,
+      toneClass: "text-accent-primary",
+      barClass: "bg-accent-primary/70",
+    });
+  }
+  if (ci.complaintOrIssueCount > 0) {
+    items.push({
+      key: "complaints",
+      label: "Problemas ou queixas",
+      sublabel: "Reclamações, insatisfação, pedidos de suporte",
+      count: ci.complaintOrIssueCount,
+      pct: totalSignals > 0 ? Math.round((ci.complaintOrIssueCount / totalSignals) * 100) : 0,
+      Icon: AlertTriangle,
+      toneClass: "text-signal-warning",
+      barClass: "bg-signal-warning",
+    });
+  }
+
+  // Sort by count descending
+  items.sort((a, b) => b.count - a.count);
+
+  const max = Math.max(1, ...items.map((i) => i.count));
+
+  return (
+    <div className="rounded-[14px] border border-border-default bg-surface-secondary px-4 py-4 sm:px-5 sm:py-5 space-y-4">
+      <div>
+        <p className="text-eyebrow text-content-tertiary">O que a audiência mais diz</p>
+        <p className="text-[11px] text-content-tertiary mt-0.5">
+          Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários públicos
+        </p>
+      </div>
+
+      <ul className="space-y-3">
+        {items.map((it, i) => {
+          const barW = Math.max(8, (it.count / max) * 100);
+          return (
+            <li key={it.key}>
+              <div className="flex items-start gap-2.5">
+                <div className={cn("size-7 sm:size-8 rounded-lg flex items-center justify-center shrink-0 bg-surface-muted")}>
+                  <it.Icon className={cn("size-3.5 sm:size-4", it.toneClass)} strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[13px] sm:text-[14px] font-semibold text-content-primary">{it.label}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="font-mono text-[13px] sm:text-[15px] font-bold tabular-nums text-content-primary">{it.count}</span>
+                      <span className="font-mono text-[10px] tabular-nums text-content-tertiary">({it.pct}%)</span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] sm:text-[12px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</p>
+                  <div className="h-1.5 sm:h-2 rounded-full bg-surface-muted mt-2 overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full", it.barClass, i > 0 && "opacity-60")}
+                      style={{ width: `${barW}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {ci.dominantConversationSignals.length > 0 && (
+        <div className="pt-2 border-t border-border-subtle">
+          <p className="text-eyebrow-sm text-content-tertiary mb-1.5">Sinais dominantes</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ci.dominantConversationSignals.map((signal) => {
+              const SIGNAL_LABELS: Record<string, string> = {
+                questions: "Perguntas",
+                praise: "Elogios",
+                complaint: "Queixas",
+                buying_intent: "Compra",
+                spam: "Ruído",
+              };
+              return (
+                <span
+                  key={signal}
+                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-border-default bg-surface-muted text-content-secondary"
+                >
+                  {SIGNAL_LABELS[signal] ?? signal}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {ci.recommendedConversationAction && (
+        <div className="rounded-lg bg-tint-primary px-3.5 py-3 border border-accent-primary/15">
+          <p className="text-eyebrow-sm text-accent-primary mb-1">Ação recomendada</p>
+          <p className="text-[13px] text-content-secondary leading-relaxed">{ci.recommendedConversationAction}</p>
+        </div>
+      )}
     </div>
   );
 }
