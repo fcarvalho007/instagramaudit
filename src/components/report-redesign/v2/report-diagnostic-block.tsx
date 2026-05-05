@@ -384,7 +384,7 @@ function renderAudienceCard(
   );
 }
 
-function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild {
+function renderIntegrationCard(r: IntegrationResult): ReactNode | null {
   if (!r.available || r.label === "Sem sinais suficientes") return null;
   const tone: DiagnosticTone =
     r.label === "Integração clara"
