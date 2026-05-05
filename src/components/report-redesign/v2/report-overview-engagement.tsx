@@ -1,6 +1,11 @@
 /**
- * Zona C — Card de Taxa de Envolvimento com hero row 3-colunas
- * e gráfico horizontal de comparação entre escalões.
+ * Zona C — Card de Taxa de Envolvimento.
+ * Premium Iconosquare-style KPI row + benchmark chart.
+ *
+ * KPI accent colours (local decorative values):
+ *   Rose/danger:  bg rgba(163,45,45,0.04), border rgba(163,45,45,0.15), dot rgba(163,45,45,0.70)
+ *   Blue/neutral: bg rgba(37,99,217,0.03), border rgba(37,99,217,0.10), dot rgba(37,99,217,0.45)
+ *   Emerald/ok:   bg rgba(29,158,117,0.04), border rgba(29,158,117,0.15), dot rgba(29,158,117,0.70)
  */
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { Activity } from "lucide-react";
@@ -28,10 +33,32 @@ export function EngagementCardRefined({ result }: Props) {
 
   const benchmarkVal = k.engagementBenchmark;
   const gapPp = k.engagementRate - benchmarkVal;
-  const gapPct = benchmarkVal > 0
-    ? ((k.engagementRate / benchmarkVal) - 1) * 100
-    : 0;
   const isPositive = gapPp >= 0;
+
+  // Multiplier: how many times further from benchmark
+  let multiplierLabel = "—";
+  let multiplierDirection = "";
+  if (k.engagementRate > 0 && benchmarkVal > 0) {
+    const raw = isPositive
+      ? k.engagementRate / benchmarkVal
+      : benchmarkVal / k.engagementRate;
+    multiplierLabel = raw >= 10
+      ? `${Math.round(raw)}×`
+      : `${raw.toFixed(1).replace(".", ",")}×`;
+    multiplierDirection = isPositive ? "maior" : "menor";
+  } else if (k.engagementRate === 0 && benchmarkVal > 0) {
+    multiplierLabel = "—";
+    multiplierDirection = "menor";
+  }
+
+  // Tier label — extract short form from parentheses
+  const tierShort =
+    activeTier?.tierLabel?.match(/\(([^)]+)\)/)?.[1] ??
+    activeTier?.tierLabel ??
+    "—";
+
+  // Profile is below benchmark?
+  const isBelowBenchmark = gapPp < 0;
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
@@ -57,78 +84,131 @@ export function EngagementCardRefined({ result }: Props) {
         </div>
       </div>
 
-      {/* Hero row — 3 columns */}
+      {/* Hero row — 3 KPI cards */}
       <div className="px-5 md:px-6 pt-5 pb-5">
-        <div className="rounded-xl border border-accent-primary/15 bg-gradient-to-r from-surface-secondary via-tint-primary/30 to-surface-secondary grid grid-cols-1 sm:grid-cols-[2fr_1.5fr_1.5fr]">
-        {/* Column 1: Profile engagement */}
-        <div className="px-4 py-3 border-b sm:border-b-0 sm:border-r border-border-subtle">
-          <span className="text-eyebrow-sm text-accent-primary block mb-1">
-            Taxa de engagement deste perfil
-          </span>
-          <div className="flex items-baseline">
-            <span className="font-sans text-[1.75rem] sm:text-[2.25rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
-              {fmtPctHero(k.engagementRate)}
-            </span>
-            <span className="font-sans text-[1.75rem] sm:text-[2.25rem] font-light text-content-secondary/60 ml-0.5">
-              %
-            </span>
-          </div>
-          <span className="block text-[11px] text-content-secondary mt-1">
-            média de gostos, comentários e partilhas a dividir por seguidores
-          </span>
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-        {/* Column 2: Tier benchmark */}
-        <div className="px-4 py-3 flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-border-subtle">
-          <span className="text-eyebrow-sm text-content-secondary block mb-1">
-            % Média de perfis semelhantes
-          </span>
-          <div className="flex items-baseline">
-            <span className="font-sans text-[1.5rem] sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
-              {fmtPctHero(benchmarkVal)}
-            </span>
-            <span className="font-sans text-[1.5rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
-              %
+          {/* KPI 1 — Profile engagement */}
+          <div
+            className="rounded-xl border px-4 py-4"
+            style={{
+              borderColor: isBelowBenchmark ? "rgba(163,45,45,0.15)" : "rgba(37,99,217,0.12)",
+              borderLeftWidth: 3,
+              borderLeftColor: isBelowBenchmark ? "rgba(163,45,45,0.50)" : "rgba(37,99,217,0.40)",
+              background: isBelowBenchmark ? "rgba(163,45,45,0.04)" : "rgba(37,99,217,0.03)",
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <span
+                className="size-2 rounded-full shrink-0"
+                aria-hidden="true"
+                style={{
+                  background: isBelowBenchmark ? "rgba(163,45,45,0.70)" : "rgba(37,99,217,0.50)",
+                }}
+              />
+              <span className="text-eyebrow-sm text-content-secondary">
+                Deste perfil
+              </span>
+            </div>
+            <div className="flex items-baseline">
+              <span className="font-mono text-[1.75rem] sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+                {fmtPctHero(k.engagementRate)}
+              </span>
+              <span className="font-mono text-[1.75rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
+                %
+              </span>
+            </div>
+            <span className="block text-[11px] text-content-secondary mt-1.5 leading-snug">
+              média de gostos + comentários por seguidor
             </span>
           </div>
-          <span className="block text-[11px] text-content-secondary mt-1">
-            Escalão de {activeTier?.tierLabel?.match(/\(([^)]+)\)/)?.[1] ?? activeTier?.tierLabel ?? "—"}
-          </span>
-        </div>
 
-        {/* Column 3: Gap */}
-        <div className="px-4 py-3 flex flex-col justify-center">
-          <span className={cn(
-            "text-eyebrow-sm block mb-1",
-            isPositive ? "text-signal-success" : "text-signal-danger",
-          )}>
-            Gap
-          </span>
-          <div className="flex items-baseline gap-1">
-            <span className={cn(
-              "font-sans text-[1.5rem] sm:text-[1.75rem] font-bold tabular-nums leading-none tracking-tight",
-              isPositive ? "text-signal-success" : "text-signal-danger",
-            )}>
-              {fmtPpSigned(gapPp)}
-            </span>
-            <span className={cn(
-              "text-base font-medium ml-1",
-              isPositive ? "text-signal-success" : "text-signal-danger",
-            )}>
-              p.p.
+          {/* KPI 2 — Tier benchmark */}
+          <div
+            className="rounded-xl border px-4 py-4"
+            style={{
+              borderColor: "rgba(37,99,217,0.10)",
+              borderLeftWidth: 3,
+              borderLeftColor: "rgba(37,99,217,0.30)",
+              background: "rgba(37,99,217,0.03)",
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <span
+                className="size-2 rounded-full shrink-0"
+                aria-hidden="true"
+                style={{ background: "rgba(37,99,217,0.45)" }}
+              />
+              <span className="text-eyebrow-sm text-content-secondary">
+                Referência tier
+              </span>
+            </div>
+            <div className="flex items-baseline">
+              <span className="font-mono text-[1.75rem] sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+                {fmtPctHero(benchmarkVal)}
+              </span>
+              <span className="font-mono text-[1.75rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
+                %
+              </span>
+            </div>
+            <span className="block text-[11px] text-content-secondary mt-1.5 leading-snug">
+              média de perfis {tierShort} seguidores
             </span>
           </div>
-          {benchmarkVal > 0 && (
-            <span className={cn(
-              "block text-xs mt-1",
-              isPositive ? "text-signal-success" : "text-signal-danger",
-            )}>
-              {Math.round(Math.abs(gapPct))}%{" "}
-              {isPositive ? "acima da média" : "abaixo da média"}
+
+          {/* KPI 3 — Distance to benchmark */}
+          <div
+            className="rounded-xl border px-4 py-4"
+            style={{
+              borderColor: isPositive ? "rgba(29,158,117,0.15)" : "rgba(163,45,45,0.15)",
+              borderLeftWidth: 3,
+              borderLeftColor: isPositive ? "rgba(29,158,117,0.50)" : "rgba(163,45,45,0.50)",
+              background: isPositive ? "rgba(29,158,117,0.04)" : "rgba(163,45,45,0.04)",
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <span
+                className="size-2 rounded-full shrink-0"
+                aria-hidden="true"
+                style={{
+                  background: isPositive ? "rgba(29,158,117,0.70)" : "rgba(163,45,45,0.70)",
+                }}
+              />
+              <span className="text-eyebrow-sm text-content-secondary">
+                Distância à média
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span
+                className={cn(
+                  "font-mono text-[1.75rem] sm:text-[2rem] font-bold tabular-nums leading-none tracking-tight",
+                  isPositive ? "text-signal-success" : "text-signal-danger"
+                )}
+              >
+                {multiplierLabel}
+              </span>
+              {multiplierDirection && (
+                <span
+                  className={cn(
+                    "text-sm font-medium",
+                    isPositive ? "text-signal-success" : "text-signal-danger"
+                  )}
+                >
+                  {multiplierDirection}
+                </span>
+              )}
+            </div>
+            <span
+              className={cn(
+                "block text-[11px] mt-1.5 leading-snug",
+                isPositive ? "text-signal-success/70" : "text-signal-danger/70"
+              )}
+            >
+              {fmtPpSigned(gapPp)} p.p. {isPositive ? "acima" : "abaixo"} da
+              referência
             </span>
-          )}
+          </div>
         </div>
-      </div>
       </div>
 
       {/* Chart */}
