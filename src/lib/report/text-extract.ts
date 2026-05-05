@@ -99,6 +99,10 @@ const STOP_WORDS_PT = new Set<string>([
   "ultimas", "ultima", "ultimos", "ultimo", "novos", "nova", "novas",
   "varios", "varias", "outros", "outras", "todos", "todas", "ferramentas",
   "ferramenta", "queres", "quero", "quer",
+  // ruído de CTA/assinatura recorrente — palavras isoladas sem valor
+  // temático que aparecem em frases tipo "dicas sobre as melhores ferramentas"
+  "melhores", "dicas", "perderes", "segue", "mostro",
+  "resultado", "resultados", "trabalho",
 ]);
 
 // ---------- helpers ----------
@@ -227,6 +231,22 @@ const KNOWN_BIGRAMS: ReadonlyArray<{ key: string; display: string }> = [
   { key: "negocio digital", display: "Negócio digital" },
   { key: "estrategia conteudo", display: "Estratégia de conteúdo" },
   { key: "criacao conteudo", display: "Criação de conteúdo" },
+  // tech / IA tools
+  { key: "ferramentas de ia", display: "Ferramentas de IA" },
+  { key: "ferramentas de ai", display: "Ferramentas de IA" },
+  { key: "prompts", display: "Prompts e instruções" },
+  { key: "avatar", display: "Avatares com IA" },
+  { key: "automacao", display: "Automação com IA" },
+  { key: "automatizar", display: "Automação com IA" },
+  { key: "chatgpt", display: "ChatGPT" },
+  { key: "gemini", display: "Google Gemini" },
+  { key: "claude", display: "Claude (Anthropic)" },
+  { key: "grok", display: "Grok (xAI)" },
+  { key: "meta ai", display: "Meta AI" },
+  { key: "dados pessoais", display: "Privacidade e dados" },
+  { key: "privacidade", display: "Privacidade e dados" },
+  { key: "produtividade", display: "Produtividade com IA" },
+  { key: "passo a passo", display: "Tutoriais passo a passo" },
 ];
 
 /** Extrai um snippet curto (≤ 90 chars) centrado na ocorrência da palavra. */
