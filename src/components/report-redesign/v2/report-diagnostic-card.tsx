@@ -238,7 +238,7 @@ export function DiagnosticDistributionBar({
   variant = "stacked",
   valueFormat = "count",
 }: {
-  items: Array<{ label: string; value: number; count?: number; color?: string }>;
+  items: Array<{ label: string; sublabel?: string; value: number; count?: number; color?: string }>;
   variant?: "stacked" | "vertical-list";
   /** Como mostrar o valor na legenda. */
   valueFormat?: "count" | "percent";
@@ -253,8 +253,11 @@ export function DiagnosticDistributionBar({
           return (
             <li key={`${it.label}-${i}`} className="text-sm">
               <div className="flex items-center gap-3">
-                <span className={cn("min-w-[4.5rem] w-auto sm:min-w-[7rem] shrink-0 text-[12px] sm:text-sm leading-tight text-content-secondary", isDominant && "font-medium text-content-primary")}>
-                  {it.label}
+                <span className={cn("min-w-[5.5rem] w-auto sm:min-w-[8.5rem] shrink-0 leading-tight text-content-secondary", isDominant && "font-medium text-content-primary")}>
+                  <span className="text-[12px] sm:text-sm">{it.label}</span>
+                  {it.sublabel && (
+                    <span className="block text-[10px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</span>
+                  )}
                 </span>
                 <div className={cn("flex-1 overflow-hidden rounded-full bg-surface-muted", isDominant ? "h-2.5" : "h-2")}>
                   <div
