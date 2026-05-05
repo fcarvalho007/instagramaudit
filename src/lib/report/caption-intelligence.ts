@@ -126,6 +126,8 @@ export interface CaptionIntelligence {
   editorialReading: EditorialReadingBlock;
   /** Strip de ação sugerida no final do cartão. */
   actionBridge: ActionBridge;
+  /** Caption length, opening and ending distributions. */
+  distributions: CaptionDistributions;
 }
 
 export interface CaptionStats {
