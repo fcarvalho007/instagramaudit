@@ -85,7 +85,6 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
       {/* Zona B — Editorial Identity Card (replaces 6-card grid) */}
       <EditorialIdentityCard
         scores={scores}
-        diagnosticCards={diagnosticCards}
         aiHeroText={enriched.aiInsightsV2?.sections.hero?.text ?? null}
       />
 
