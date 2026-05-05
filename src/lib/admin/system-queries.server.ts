@@ -213,22 +213,6 @@ export async function aggregateOpenAiActorBreakdown(
 }
 
 const APIFY_ACTOR_LABELS: Record<string, string> = {
-  actual_total_usd: number;
-  estimated_total_usd: number;
-  unavailable_count: number;
-  run_count: number;
-  error_count: number;
-  total_results: number;
-  avg_cost_per_run: number | null;
-  cost_per_1k_results: number | null;
-  last_run_at: string | null;
-  last_run_status: string | null;
-  last_run_cost_usd: number | null;
-  cost_source: "actual" | "estimated" | "mixed" | "unavailable";
-  included_in_free_report: boolean;
-}
-
-const APIFY_ACTOR_LABELS: Record<string, string> = {
   "apify/instagram-profile-scraper": "Scraper de perfil Instagram",
   "apify/instagram-post-scraper": "Scraper de posts Instagram",
   "apify/instagram-comment-scraper": "Scraper de comentários Instagram",
