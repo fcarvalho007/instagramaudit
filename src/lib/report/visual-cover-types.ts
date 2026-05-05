@@ -2,7 +2,7 @@
  * Visual Cover Analysis — types for the AI vision card (P07 replacement).
  *
  * Phase 1: UI-only with graceful fallback.
- * Phase 2: Populated by Lovable AI Gateway (Gemini 2.5 Flash vision).
+ * Phase 2: Populated by OpenAI vision (server-side only).
  */
 
 export type VisualCoverStatus = "strong" | "needs_improvement" | "critical";
