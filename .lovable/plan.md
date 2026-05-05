@@ -1,55 +1,37 @@
 
-# Block 1 Visual Consistency Pass
+# Completing Missed Work + Status Review
 
-After reviewing all 6 Block 1 components + the overview block, here is the assessment and planned fixes.
+## Prior Tasks Status
 
-## Current State Assessment
+| # | Task | Status |
+|---|------|--------|
+| 1 | Block 1 refinements (editorial identity, engagement, overview) | Done |
+| 2 | Normalize "envolvimento" → "Engagement" in visible copy | **Partially done — 5 occurrences missed** |
+| 3 | Engagement card "gap drama" visual refinement | Done |
+| 4 | Frequency card refinement | Done |
+| 5 | Format card refinement | Done |
+| 6 | Post comparison refinement | Done |
+| 7 | Block 1 visual consistency pass | Done (no changes needed) |
 
-The components are already in good shape. Most use `font-display` for headlines, semantic tokens for signals, and consistent card patterns. A few minor inconsistencies remain:
+## Remaining Work — Fix 5 missed visible "envolvimento" occurrences
 
-### Issues Found
+**Files to edit:**
 
-1. **Editorial Identity Card** — already clean; no chips, no "Retrato editorial" label. No changes needed.
+1. **`src/components/report-redesign/report-editorial-patterns.tsx`**
+   - Line 250: `"O envolvimento médio observado"` → `"O engagement médio observado"`
+   - Line 385: `"Envolvimento médio de"` → `"Engagement médio de"`
+   - Line 407: `"Envolvimento médio de"` → `"Engagement médio de"`
 
-2. **Engagement Card** (`report-overview-engagement.tsx`)
-   - The header icon container uses `bg-tint-primary text-accent-primary` which is correct.
-   - Minor: the header uses a nested `<em>` for "Engagement" italic — harmless but could be simplified. **No change needed** (consistent with design intent).
+2. **`src/components/report-redesign/report-methodology.tsx`**
+   - Line 34: `"contextualizar envolvimento e formato"` → `"contextualizar engagement e formato"`
 
-3. **Frequency Card** — headline uses `font-display`, consistent sizing. Calendar legend is clean. **No changes needed.**
+3. **`src/components/report-redesign/v2/report-benchmark-evidence.tsx`**
+   - Line 65: `"envolvimento por formato"` → `"engagement por formato"`
 
-4. **Format Card** — headline uses `font-display`, consistent sizing. Thumbnail grid is clean. **No changes needed.**
+**Rules followed:**
+- Only visible user-facing copy changed
+- Internal variable names, keys, comments left untouched
+- Body copy stays natural in pt-PT
+- No data logic changes
 
-5. **Post Comparison** — headline uses `font-display`, section is boxed in a card, engagement % visible on each post. **No changes needed.**
-
-6. **Benchmark Chart** — uses documented decorative RGBA values with comments. Clean. **No changes needed.**
-
-7. **Overview Block spacing** (`report-overview-block.tsx`) — uses `space-y-8 md:space-y-10` which is consistent. **No changes needed.**
-
-### Conclusion
-
-All Block 1 components are already visually consistent:
-- All major headlines use `font-display` (Fraunces)
-- All eyebrows use `text-eyebrow-sm` (Inter uppercase)
-- Numeric values use `font-mono tabular-nums`
-- All sections sit inside white cards with `border-border-default bg-surface-secondary shadow-card` (or custom card for editorial identity)
-- No glow effects
-- Semantic tokens used throughout (`text-content-primary`, `text-signal-danger`, etc.)
-- Local decorative RGBA values are documented in file-level JSDoc comments
-
-### Remaining Local Hardcoded Decorative Values
-
-These are intentional and documented in each file's JSDoc header:
-- **Engagement Card**: KPI accent colours (rose/blue/emerald RGBA at 0.03–0.70 opacity), reading box accents
-- **Benchmark Chart**: Active row border/bg/hatch/bar/pill colours (danger + success variants)
-- **Frequency Card**: Calendar cell backgrounds (slate 0.04, emerald 0.45/0.70/1.00)
-- **Format Card**: Format legend dots (Tailwind colour classes: emerald-300, sky-300, amber-300)
-- **Post Comparison**: VS bar gradient (blue/amber at 0.04)
-- **Editorial Identity Card**: Band 1 gradient background (blue/purple/green at low opacity)
-
-All of these are local decorative values that don't map to semantic tokens — they represent data-driven accent colours specific to each card's context.
-
-## Recommendation
-
-**No code changes are needed.** The components pass all consistency checks. I recommend running the validation commands (tsc + vitest) to confirm nothing is broken, then proceeding to Block 2.
-
-If you'd like me to proceed anyway with any specific tweaks (e.g. extracting decorative RGBA values into CSS custom properties, adjusting spacing), let me know.
+**Validation:** `bunx tsc --noEmit` + `bunx vitest run`

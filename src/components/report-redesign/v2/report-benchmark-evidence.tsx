@@ -62,7 +62,7 @@ export function ReportBenchmarkEvidence({
   const sources = sourceNames.slice(0, 3) as ActiveBenchmarkSourceName[];
 
   const SOURCE_CONTEXT: Record<ActiveBenchmarkSourceName, string> = {
-    Socialinsider: "envolvimento por formato",
+    Socialinsider: "engagement por formato",
     Buffer: "referência por dimensão da conta",
     Hootsuite: "contexto cross-indústria",
   };
