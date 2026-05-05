@@ -191,9 +191,9 @@ export function FormatCard({
   const activeFormats = sortedFormats;
 
   return (
-    <article className="rounded-2xl border border-border-default bg-surface-secondary p-4 md:p-5 shadow-card flex flex-col gap-4">
+    <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="space-y-2.5">
+      <div className="px-5 md:px-6 pt-6 md:pt-8 space-y-2.5">
         <div className="flex items-start gap-3">
           <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
             Formato{" "}
@@ -221,7 +221,7 @@ export function FormatCard({
 
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
-        <div>
+        <div className="px-5 md:px-6 mt-6">
           <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-1.5">
             {postsAnalyzed} posts analisados
           </span>
@@ -278,7 +278,7 @@ export function FormatCard({
       )}
 
       {/* Verdict */}
-      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-auto">
+      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-auto mx-5 md:mx-6 mb-6 md:mb-8">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
