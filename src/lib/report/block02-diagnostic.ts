@@ -590,8 +590,8 @@ export function classifyAudienceResponse(
     label,
     status,
     commentsToLikesPct: Math.round(ratioPct * 10) / 10,
-    avgComments: Math.round(avgComments),
-    avgLikes: Math.round(avgLikes),
+    avgComments,
+    avgLikes,
     sampleSize: postsWithData,
     totals: {
       likes: totalLikes,
