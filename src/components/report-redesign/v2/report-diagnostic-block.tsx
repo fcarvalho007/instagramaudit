@@ -442,6 +442,11 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
       : r.label === "Integração parcial"
         ? "blue"
         : "amber";
+  const bodyByLabel: Record<string, string> = {
+    "Integração clara": "Existe infraestrutura de saída do Instagram.",
+    "Integração parcial": "Há sinais parciais de saída do Instagram.",
+    "Sem integração": "Sem infraestrutura de saída do Instagram.",
+  };
   return (
     <ReportDiagnosticCard
       key="q06"
@@ -450,7 +455,7 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
       question="Há ligação entre canais?"
       answer={r.label}
       tone={tone}
-      body="Há infraestrutura cross-canal quando a bio aponta para fora e as captions reforçam a saída do Instagram. Sem isso, a audiência fica presa à plataforma."
+      body={bodyByLabel[r.label] ?? "Avaliação da ligação entre Instagram e canais externos."}
       sourceDetail="Bio + legendas"
     >
       <DiagnosticChecklist
@@ -516,16 +521,25 @@ function renderObjectiveCard(
       ? r.ranking[1].label
       : null;
 
+  // Short answer: first part before " · "
+  const shortAnswer = r.primary.includes(" · ") ? r.primary.split(" · ")[0] : r.primary;
+  // Short subtitle from secondary or primary detail
+  const primaryDetail = r.primary.includes(" · ") ? r.primary.split(" · ")[1] : null;
+  const shortBody = secondary
+    ? `${primaryDetail ?? shortAnswer} acima de ${secondary.toLowerCase().split(" · ")[0]}.`
+    : primaryDetail
+      ? `Foco principal: ${primaryDetail.toLowerCase()}.`
+      : buildObjectiveBody(r.primary, contentType, funnel);
+
   return (
     <ReportDiagnosticCard
       key="q07"
       number="07"
       label="Objetivo · Síntese"
       question="Que objetivo estratégico parece estar por trás?"
-      answer={r.primary}
+      answer={shortAnswer}
       tone="blue"
-      span="full"
-      body={buildObjectiveBody(r.primary, contentType, funnel)}
+      body={shortBody}
       sourceDetail="Conteúdo + funil + bio · síntese"
     >
       <DiagnosticObjectiveSynthesis
