@@ -583,7 +583,7 @@ export function DiagnosticAudienceHighlight({
       return `${postsWithComments} de ${sampleSize} posts com comentários`;
     }
     if (avgComments < 0.5) return "quase nenhum comentário";
-    return `${avgComments.toLocaleString("pt-PT")} por post`;
+    return `${formatAvg(avgComments)} por post`;
   })();
 
   return (
