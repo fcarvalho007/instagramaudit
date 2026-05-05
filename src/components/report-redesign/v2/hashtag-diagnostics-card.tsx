@@ -162,10 +162,10 @@ function FrequencyRow({
   isTop3: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="flex items-center gap-3 py-2.5">
       {/* rank pill */}
       <span
-        className={`shrink-0 w-8 h-7 rounded-md flex items-center justify-center text-[11px] font-semibold ${
+        className={`shrink-0 w-9 h-8 rounded-md flex items-center justify-center text-[12px] font-semibold ${
           isTop3
             ? "bg-accent-primary/10 text-accent-primary"
             : "bg-surface-muted text-content-tertiary"
@@ -175,7 +175,7 @@ function FrequencyRow({
       </span>
 
       {/* tag name */}
-      <span className="min-w-[120px] max-w-[180px] truncate text-sm font-medium text-content-primary">
+      <span className="min-w-[120px] max-w-[200px] truncate text-[14px] font-medium text-content-primary">
         {tag}
       </span>
 
@@ -188,10 +188,10 @@ function FrequencyRow({
       </div>
 
       {/* stats */}
-      <span className="shrink-0 text-xs text-content-secondary tabular-nums font-mono w-[52px] text-right">
+      <span className="shrink-0 text-[13px] text-content-secondary tabular-nums font-mono w-[56px] text-right">
         {uses} usos
       </span>
-      <span className="shrink-0 text-xs text-content-tertiary tabular-nums font-mono w-[60px] text-right">
+      <span className="shrink-0 text-[13px] text-content-tertiary tabular-nums font-mono w-[64px] text-right">
         {sharePct}% posts
       </span>
     </div>
@@ -238,7 +238,7 @@ export function HashtagDiagnosticsCard({
           Que hashtags aparecem mais vezes?
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
-          Hashtags públicas extraídas das legendas dos posts analisados.
+          Hashtags extraídas das legendas. Hashtags no primeiro comentário não são contabilizadas.
         </p>
       </div>
 
