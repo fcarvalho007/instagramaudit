@@ -1,5 +1,5 @@
 import { Heart, MessageCircle, ImageOff, TrendingUp, TrendingDown } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 import { InsightCallout } from "./overview/insight-callout";
@@ -9,7 +9,8 @@ type EnrichedPost = ReportEnriched["topPosts"][number];
 interface PostComparisonBlockProps {
   topPosts: EnrichedPost[];
   bottomPosts: EnrichedPost[];
-  renderInsight: () => ReactNode;
+  /** Raw AI insight text for the comparative diagnostic. */
+  aiInsightText?: string | null;
   windowLabel?: string;
 }
 
@@ -35,7 +36,7 @@ function formatChipLabel(format: string): string {
 export function PostComparisonBlock({
   topPosts,
   bottomPosts,
-  renderInsight,
+  aiInsightText,
   windowLabel,
 }: PostComparisonBlockProps) {
   const best2 = topPosts.slice(0, 2);
@@ -133,7 +134,7 @@ export function PostComparisonBlock({
           </div>
 
           {/* AI / Editorial reading */}
-          <AiReading fallback={aiFallback}>{renderInsight()}</AiReading>
+          <AiReading aiText={aiInsightText} fallback={aiFallback} />
         </div>
       ) : (
         <div className="px-5 md:px-6 pb-5 md:pb-6">
@@ -302,22 +303,21 @@ function MobileDifferenceMarker({
 // ─── AI Reading (unified InsightCallout) ────────────────────────────
 
 function AiReading({
-  children,
+  aiText,
   fallback,
 }: {
-  children: ReactNode;
+  aiText?: string | null;
   fallback: { headline: string; body: string } | null;
 }) {
-  // Show AI insight if provided, otherwise deterministic fallback — never both.
-  const hasChildren = children !== null && children !== undefined && children !== false;
+  const hasAi = !!aiText && aiText.trim().length > 10;
 
   return (
     <InsightCallout
       tone="ai"
       label="DIAGNÓSTICO COMPARATIVO"
     >
-      {hasChildren ? (
-        <div>{children}</div>
+      {hasAi ? (
+        <p>{aiText}</p>
       ) : fallback ? (
         <div className="space-y-0.5">
           <p className="font-semibold">{fallback.headline}</p>
