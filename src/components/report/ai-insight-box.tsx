@@ -30,7 +30,7 @@ export function AIInsightBox({
         borderColor: `rgb(var(--insight-${v}-border))`,
       }}
       role="note"
-      aria-label="Leitura IA"
+      aria-label="Diagnóstico"
     >
       <div
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
@@ -49,7 +49,7 @@ export function AIInsightBox({
           className="text-eyebrow-sm font-semibold"
           style={{ color: `rgb(var(--insight-${v}-icon))` }}
         >
-          Leitura IA
+          DIAGNÓSTICO
         </p>
         <p
           className="text-[14px] md:text-[15px] leading-relaxed"
