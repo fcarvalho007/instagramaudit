@@ -75,7 +75,7 @@ const TONE: Record<InsightTone, ToneCfg> = {
     iconColor: "text-signal-success",
     labelColor: "text-signal-success",
     DefaultIcon: Sparkles,
-    defaultLabel: "LEITURA IA",
+    defaultLabel: "DIAGNÓSTICO",
   },
   neutral: {
     bg: "bg-[rgb(var(--tint-primary))]",

@@ -26,10 +26,10 @@ export function ReportPendingAiNotice({ generatedAtIso }: Props) {
 
   return (
     <ReportSectionFrame
-      eyebrow="Leitura estratégica · IA editorial"
-      title="A preparar a leitura estratégica"
+      eyebrow="Diagnóstico estratégico · IA editorial"
+      title="A preparar o diagnóstico estratégico"
       tone="white"
-      ariaLabel="Leitura estratégica em preparação"
+      ariaLabel="Diagnóstico estratégico em preparação"
     >
       <div
         className={cn(

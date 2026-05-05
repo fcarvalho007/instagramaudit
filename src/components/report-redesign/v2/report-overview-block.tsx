@@ -91,7 +91,7 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
       <PostComparisonBlock
         topPosts={result.enriched.topPosts}
         bottomPosts={result.enriched.bottomPosts}
-        renderInsight={() => renderInsight("topPosts")}
+        aiInsightText={result.enriched.aiInsightsV2?.sections.topPosts?.text ?? null}
         windowLabel={result.data.meta?.windowShortLabel}
       />
     </div>

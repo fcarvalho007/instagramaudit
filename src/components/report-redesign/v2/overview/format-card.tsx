@@ -119,19 +119,19 @@ export function toDominantKey(format: string, share: number): DominantKey {
 export function getFormatVerdict(dk: DominantKey): { strong: string; rest: string } {
   if (dk === "carousel") {
     return {
-      strong: "Apostas em conteúdo para guardar.",
+      strong: "Foco em conteúdo para guardar.",
       rest: "Carrosséis funcionam para ensinar, listar e organizar ideias.",
     };
   }
   if (dk === "reel") {
     return {
-      strong: "Apostas em alcance e descoberta.",
+      strong: "Foco em alcance e descoberta.",
       rest: "Reels funcionam para entrar em novas audiências.",
     };
   }
   if (dk === "image") {
     return {
-      strong: "Apostas em comunicação direta.",
+      strong: "Foco em comunicação direta.",
       rest: "Imagens funcionam para mensagens claras e momentos.",
     };
   }
@@ -167,8 +167,15 @@ export function FormatCard({
   const verdict = getFormatVerdict(dk);
   const statsLine = buildStatsLine(formats, postsAnalyzed);
   // Determine callout tone based on format variation
-  const calloutTone: InsightTone = dk === "mixed" ? "neutral" : dominantFormatShare >= 80 ? "warning" : "positive";
-  const calloutLabel = calloutTone === "positive" ? "PONTO FORTE" : calloutTone === "warning" ? "A MELHORAR" : "DIAGNÓSTICO";
+  const calloutTone: InsightTone =
+    variationStatus === "Muito variado" ? "positive"
+    : variationStatus === "Variado" ? "neutral"
+    : dk === "mixed" ? "neutral"
+    : "warning";
+  const calloutLabel =
+    calloutTone === "positive" ? "PONTO FORTE"
+    : calloutTone === "warning" ? "A MELHORAR"
+    : "DIAGNÓSTICO";
 
   // Build thumbnails from literal per-post data, grouped by dominant format first
   const sortedFormats = [...formats].filter((f) => f.count > 0).sort((a, b) => b.count - a.count);
