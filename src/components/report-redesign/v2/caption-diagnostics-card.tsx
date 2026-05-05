@@ -401,7 +401,7 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       {/* ── 6. Diagnostic box ── */}
       <div className="rounded-xl bg-violet-50/60 ring-1 ring-violet-200/40 p-5 md:p-6 space-y-5">
         <p className="text-eyebrow-sm text-violet-700">DIAGNÓSTICO EDITORIAL</p>
-        <p className="font-display text-[15px] md:text-[17px] text-content-primary leading-relaxed">
+        <p className="text-[15px] md:text-base text-content-primary leading-relaxed font-medium">
           {buildDiagnosticStatement(data)}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-violet-200/30">
