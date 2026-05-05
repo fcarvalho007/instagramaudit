@@ -1,116 +1,55 @@
 
-# Block 1 — Visual and Copy Consistency Audit
+# Block 1 Visual Consistency Pass
 
-## Component / File Map
+After reviewing all 6 Block 1 components + the overview block, here is the assessment and planned fixes.
 
-| Component | File | Locked? |
-|---|---|---|
-| Editorial Identity Card | `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` | No |
-| Score Orbit Background | `src/components/report-redesign/v2/overview/score-orbit-background.tsx` | No |
-| Engagement Benchmark Card | `src/components/report-redesign/v2/report-overview-engagement.tsx` | No |
-| Engagement Benchmark Chart | `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` | No |
-| Frequency Card | `src/components/report-redesign/v2/overview/frequency-card.tsx` | No |
-| Format Card | `src/components/report-redesign/v2/overview/format-card.tsx` | No |
-| Post Comparison Block | `src/components/report-redesign/v2/report-post-comparison.tsx` | No |
-| Block orchestrator | `src/components/report-redesign/v2/report-overview-block.tsx` | No |
+## Current State Assessment
 
-**None of the Block 1 files are locked.**
+The components are already in good shape. Most use `font-display` for headlines, semantic tokens for signals, and consistent card patterns. A few minor inconsistencies remain:
 
----
+### Issues Found
 
-## Copy Inconsistencies Found
+1. **Editorial Identity Card** — already clean; no chips, no "Retrato editorial" label. No changes needed.
 
-| Location | Current copy | Issue |
-|---|---|---|
-| Engagement card header (line 101) | `Taxa de envolvimento` | OK — clear title |
-| Engagement KPI 1 label (line 138) | `Deste perfil` | Lowercase "perfil" — acceptable, but lacks context without reading the card title. Consider `Este perfil` or keep as-is. |
-| Engagement KPI 2 label (line 171) | `Referência tier` | Mixed case — "tier" is English. Should be `Referência do escalão` for consistency with chart labels which already say "escalão". |
-| Engagement reading label (line 286) | `Leitura` | Bare word, no "IA" tag. The post-comparison reading uses `LEITURA IA · COMPARAÇÃO DE EXTREMOS` (line 330). Inconsistent style. |
-| Editorial Identity Card (line 132) | `Retrato editorial` | Fine as eyebrow. |
-| Editorial Identity Card (line 140) | `IA` / `Auto` chip | Fine. |
-| Post comparison reading (line 330) | `LEITURA IA · COMPARAÇÃO DE EXTREMOS` | Uses serif/Fraunces for the fallback headline below it. Consistent with card style. |
-| Frequency card header (line 94) | `Frequência de publicação` | OK. |
-| Format card header (line 163) | `Tipo de conteúdo` | OK. |
-| Frequency card source badge (line 97) | `✦ AUTO` | OK — matches pattern. |
-| Format card source badge (line 166) | `⬡ DADOS` | Different glyph from `✦`. Minor inconsistency — both are data-driven cards but use different symbols. |
+2. **Engagement Card** (`report-overview-engagement.tsx`)
+   - The header icon container uses `bg-tint-primary text-accent-primary` which is correct.
+   - Minor: the header uses a nested `<em>` for "Engagement" italic — harmless but could be simplified. **No change needed** (consistent with design intent).
 
----
+3. **Frequency Card** — headline uses `font-display`, consistent sizing. Calendar legend is clean. **No changes needed.**
 
-## Typography Inconsistencies Found
+4. **Format Card** — headline uses `font-display`, consistent sizing. Thumbnail grid is clean. **No changes needed.**
 
-All five Block 1 components use `font-display` (Fraunces) for their main headlines — this is **consistent**:
+5. **Post Comparison** — headline uses `font-display`, section is boxed in a card, engagement % visible on each post. **No changes needed.**
 
-- Editorial Identity Card: `font-display text-xl` for the hero sentence
-- Engagement card: `font-display text-lg` for "Taxa de envolvimento"
-- Frequency card: `font-display text-[22px]` for the human headline
-- Format card: `font-display text-[22px]` for the human headline
-- Post comparison: `font-display text-[24px]` for "Os extremos do conteúdo" + `font-display text-[18px]` for AI reading headline
+6. **Benchmark Chart** — uses documented decorative RGBA values with comments. Clean. **No changes needed.**
 
-**No serif/typography inconsistency detected.** All cards follow the Fraunces headline + Inter body pattern.
+7. **Overview Block spacing** (`report-overview-block.tsx`) — uses `space-y-8 md:space-y-10` which is consistent. **No changes needed.**
 
----
+### Conclusion
 
-## Missing Engagement % in Post Cards
+All Block 1 components are already visually consistent:
+- All major headlines use `font-display` (Fraunces)
+- All eyebrows use `text-eyebrow-sm` (Inter uppercase)
+- Numeric values use `font-mono tabular-nums`
+- All sections sit inside white cards with `border-border-default bg-surface-secondary shadow-card` (or custom card for editorial identity)
+- No glow effects
+- Semantic tokens used throughout (`text-content-primary`, `text-signal-danger`, etc.)
+- Local decorative RGBA values are documented in file-level JSDoc comments
 
-The post cards (`PostCard` component, lines 350-431) display:
-- Thumbnail
-- Format chip
-- Date
-- Caption
-- Likes count
-- Comments count
+### Remaining Local Hardcoded Decorative Values
 
-**Engagement percentage (`post.engagementPct`) is NOT displayed** in the post card, even though it exists on the data object and is used in the `VsBar` and multiplier calculations above.
+These are intentional and documented in each file's JSDoc header:
+- **Engagement Card**: KPI accent colours (rose/blue/emerald RGBA at 0.03–0.70 opacity), reading box accents
+- **Benchmark Chart**: Active row border/bg/hatch/bar/pill colours (danger + success variants)
+- **Frequency Card**: Calendar cell backgrounds (slate 0.04, emerald 0.45/0.70/1.00)
+- **Format Card**: Format legend dots (Tailwind colour classes: emerald-300, sky-300, amber-300)
+- **Post Comparison**: VS bar gradient (blue/amber at 0.04)
+- **Editorial Identity Card**: Band 1 gradient background (blue/purple/green at low opacity)
 
----
+All of these are local decorative values that don't map to semantic tokens — they represent data-driven accent colours specific to each card's context.
 
-## Data Availability Confirmation
+## Recommendation
 
-| Data point | Available? | Source |
-|---|---|---|
-| Posting days (calendar) | Yes | `enriched.postingTimeline` → passed to FrequencyCard as `calendarDays` |
-| Number of posts per day | Yes | Derived from `calendarDays` (each entry has `count`) |
-| Post thumbnails | Yes | `post.thumbnailUrl` — proxied via `/api/public/ig-thumb` |
-| Post format | Yes | `post.format` — displayed as chip on each post card |
-| Engagement % per post | Yes | `post.engagementPct` — available but **not rendered** in post cards |
-| Likes per post | Yes | `post.likes` — rendered |
-| Comments per post | Yes | `post.comments` — rendered |
+**No code changes are needed.** The components pass all consistency checks. I recommend running the validation commands (tsc + vitest) to confirm nothing is broken, then proceeding to Block 2.
 
----
-
-## Implementation Plan
-
-### 1. Normalize "Referência tier" to "Referência do escalão"
-**File:** `report-overview-engagement.tsx` (line 171)
-Change `Referência tier` to `Referência do escalão`.
-
-### 2. Normalize reading label pattern
-**File:** `report-overview-engagement.tsx` (line 286)
-Change bare `Leitura` to `LEITURA · ENVOLVIMENTO` (eyebrow style matching the post comparison pattern). Remove the redundant "IA" prefix since the card already has a `✦ MERCADO` source badge.
-
-### 3. Normalize source badge glyphs
-**File:** `format-card.tsx` (line 166)
-Change `⬡ DADOS` to `✦ DADOS` so both Zone D cards use the same glyph style. (Or keep both — this is a minor detail; your call.)
-
-### 4. Add engagement % to post cards
-**File:** `report-post-comparison.tsx` (PostCard component, ~line 416)
-Add `engagementPct` display next to the likes/comments metrics row, formatted as e.g. `0,08%`.
-
-### 5. Validation
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Visual QA at desktop and 375px
-- Confirm no horizontal overflow in post cards
-
-### Files to Edit
-1. `src/components/report-redesign/v2/report-overview-engagement.tsx`
-2. `src/components/report-redesign/v2/report-post-comparison.tsx`
-3. `src/components/report-redesign/v2/overview/format-card.tsx` (optional — badge glyph)
-
-### Files NOT to Touch
-All locked files listed in `LOCKED_FILES.md`, plus:
-- `report-overview-block.tsx` (orchestrator — no changes needed)
-- `editorial-identity-card.tsx` (already refined in previous prompt)
-- `frequency-card.tsx` (no issues found)
-- `score-orbit-background.tsx` (animation — no changes needed)
-- `report-engagement-benchmark-chart.tsx` (chart — no changes needed)
+If you'd like me to proceed anyway with any specific tweaks (e.g. extracting decorative RGBA values into CSS custom properties, adjusting spacing), let me know.
