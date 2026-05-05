@@ -168,7 +168,7 @@ export function EngagementCardRefined({ result }: Props) {
                 style={{ background: "rgba(37,99,217,0.45)" }}
               />
               <span className="text-eyebrow-sm text-content-secondary">
-                Referência tier
+                Referência do escalão
               </span>
             </div>
             <div className="flex items-baseline">
@@ -283,7 +283,7 @@ export function EngagementCardRefined({ result }: Props) {
                   isBelowBenchmark ? "text-signal-danger" : "text-signal-success"
                 )}
               >
-                Leitura
+                Leitura · Envolvimento
               </span>
               <p className="text-[13px] leading-relaxed text-content-primary">
                 {readingText}
