@@ -139,7 +139,7 @@ function KpiCard({
           </span>
         )}
       </div>
-      <p className="font-display text-2xl md:text-3xl text-content-primary leading-none">
+      <p className="font-display text-[1.5rem] md:text-[1.75rem] text-content-primary leading-none tracking-tight">
         {value}
       </p>
       <p className="text-xs text-content-tertiary">{sub}</p>
