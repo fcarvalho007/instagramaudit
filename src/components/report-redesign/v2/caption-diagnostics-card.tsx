@@ -382,11 +382,7 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         {/* Endings */}
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-3">COMO ACABAM AS LEGENDAS?</p>
-          <DistributionBar
-            items={data.distributions.endings.map((e) => ({ ...e, type: e.type }))}
-            highlightType="question"
-            highlightClass="text-signal-danger font-medium"
-          />
+          <EndingsDistribution items={data.distributions.endings} />
         </div>
       </div>
 
