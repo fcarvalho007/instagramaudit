@@ -223,31 +223,31 @@ export function HashtagDiagnosticsCard({
       {/* ── Header ── */}
       <div className="px-5 pt-5 md:px-7 md:pt-7 pb-4">
         {/* top metadata row */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5 text-content-tertiary">
-            <span className="w-7 h-7 rounded-lg bg-accent-primary/10 flex items-center justify-center">
-              <Hash className="w-3.5 h-3.5 text-accent-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-content-tertiary">
+            <span className="w-6 h-6 rounded-md bg-surface-muted/60 flex items-center justify-center">
+              <Hash className="w-3 h-3 text-content-tertiary/70" />
             </span>
-            <span className="text-eyebrow-sm">
+            <span className="text-[10px] md:text-[11px] tracking-[0.16em] text-content-tertiary uppercase font-sans">
               03 · HASHTAGS · {postsAnalyzed} POSTS ANALISADOS
             </span>
           </div>
-          <span className="text-[10px] font-semibold tracking-wide text-content-tertiary border border-border-subtle rounded-full px-2.5 py-0.5 bg-surface-muted/50">
+          <span className="text-[9px] md:text-[10px] font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
             DADOS
           </span>
         </div>
 
         {/* title */}
-        <h3 className="font-display text-xl md:text-2xl text-content-primary leading-snug mb-1">
+        <h3 className="font-display text-[1.5rem] md:text-[2rem] leading-[1.05] tracking-[-0.02em] text-content-primary mt-5">
           Que hashtags etiquetam o conteúdo?
         </h3>
-        <p className="text-sm text-content-secondary leading-relaxed">
+        <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
           Hashtags públicas extraídas das legendas dos posts analisados.
         </p>
       </div>
 
       {/* ── KPI row ── */}
-      <div className="px-5 md:px-7 pb-5">
+      <div className="px-5 md:px-7 pb-5 pt-2">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <KpiCard
             label="HASHTAGS DIFERENTES"

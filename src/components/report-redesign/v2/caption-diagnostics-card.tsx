@@ -468,23 +468,23 @@ function CardShell({
     >
       {/* Header */}
       <header>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5 text-content-tertiary">
-            <span className="w-7 h-7 rounded-lg bg-accent-primary/10 flex items-center justify-center">
-              <FileText className="w-3.5 h-3.5 text-accent-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-content-tertiary">
+            <span className="w-6 h-6 rounded-md bg-surface-muted/60 flex items-center justify-center">
+              <FileText className="w-3 h-3 text-content-tertiary/70" />
             </span>
-            <span className="text-eyebrow-sm">
+            <span className="text-[10px] md:text-[11px] tracking-[0.16em] text-content-tertiary uppercase font-sans">
               04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS
             </span>
           </div>
-          <span className="text-[10px] font-semibold tracking-wide text-accent-primary border border-accent-primary/20 rounded-full px-2.5 py-0.5 bg-[rgb(var(--tint-primary))]">
+          <span className="text-[9px] md:text-[10px] font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
             DIAGNÓSTICO
           </span>
         </div>
-        <h3 className="font-display text-xl md:text-2xl text-content-primary leading-snug mb-1">
+        <h3 className="font-display text-[1.5rem] md:text-[2rem] leading-[1.05] tracking-[-0.02em] text-content-primary mt-5">
           O que as legendas revelam sobre a estratégia de conteúdo?
         </h3>
-        <p className="text-[13px] text-content-secondary leading-relaxed">
+        <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
           Padrões extraídos das legendas públicas dos posts analisados.
         </p>
       </header>
