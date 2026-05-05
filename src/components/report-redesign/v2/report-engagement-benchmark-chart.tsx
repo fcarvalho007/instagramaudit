@@ -312,7 +312,7 @@ export function ReportEngagementBenchmarkChart({
       {/* Sources — compact footnote */}
       {sourceReferences.length > 0 && (
         <div className="text-[9px] text-content-tertiary pt-1">
-          Fontes:{" "}
+          <span className="text-content-secondary font-semibold tracking-wider">FONTES</span>{" "}
           {sourceReferences.map((ref, i) => (
             <span key={ref.url}>
               {i > 0 && " · "}
