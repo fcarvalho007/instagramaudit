@@ -34,7 +34,7 @@ export const REDESIGN_TOKENS = {
   h1Hero:
     "font-display text-[1.25rem] sm:text-[2rem] md:text-[2.5rem] lg:text-[2.75rem] font-semibold tracking-[-0.02em] text-slate-900 leading-[1.15] break-words [word-break:normal] [hyphens:none]",
   h2Section:
-    "font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-slate-900 leading-tight",
+    "font-display text-[1.75rem] md:text-[2.25rem] font-semibold tracking-[-0.02em] text-slate-900 leading-tight",
   eyebrow:
     "text-eyebrow-sm text-slate-500",
   eyebrowAccent:
@@ -93,6 +93,12 @@ export const REDESIGN_TOKENS = {
     "mt-6 md:mt-7 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-t border-slate-200/60 pt-4 md:pt-5",
   positioningChip:
     "text-eyebrow-sm inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1",
+  /** Número do capítulo no chapter marker editorial. */
+  chapterNumber:
+    "font-display text-[3rem] md:text-[4.5rem] font-semibold leading-none tracking-tight text-blue-100 select-none",
+  /** Linha ordinal: "CAPÍTULO PRIMEIRO". */
+  chapterMeta:
+    "text-eyebrow-sm text-slate-400 tracking-widest",
   /** Valor categorical do KPI (ex.: nome de formato) — escala mais sóbria. */
   kpiValueV2Categorical:
     "font-display text-[1.375rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-tight break-words [word-break:normal] [hyphens:none]",
