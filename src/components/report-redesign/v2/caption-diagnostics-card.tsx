@@ -6,11 +6,13 @@
  * All data is real or deterministically derived — nothing invented.
  */
 import type { ReactNode } from "react";
-import { FileText, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
+import { FileText, CheckCircle2, AlertTriangle, Eye, Type, Zap, HelpCircle, BookOpen } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   CaptionIntelligence,
   CaptionLengthDistribution,
+  CaptionOpeningType,
 } from "@/lib/report/caption-intelligence";
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 
