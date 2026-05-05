@@ -31,7 +31,7 @@ export function ReportBlockSection({ block, tone = "canvas", children }: Props) 
       className={cn("w-full scroll-mt-20 lg:scroll-mt-6", band)}
     >
       <div className="py-14 md:py-20">
-        <header className="mb-0 pb-8 md:pb-10 border-b border-slate-200/40">
+        <header className="mb-0 pb-8 md:pb-10 border-b border-border-subtle">
           <div className="flex flex-col md:flex-row md:items-start gap-2 md:gap-8">
             {/* Large chapter number */}
             <span
