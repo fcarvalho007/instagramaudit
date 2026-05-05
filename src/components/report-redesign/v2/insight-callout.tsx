@@ -26,7 +26,7 @@ const TONE_CONFIG: Record<
     iconCls: "text-accent-primary",
     labelCls: "text-accent-primary",
     DefaultIcon: Lightbulb,
-    defaultLabel: "Leitura editorial",
+    defaultLabel: "DIAGNÓSTICO",
   },
   suggestion: {
     bg: "bg-tint-primary/60",
