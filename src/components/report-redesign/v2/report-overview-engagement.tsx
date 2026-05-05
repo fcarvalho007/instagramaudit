@@ -37,13 +37,16 @@ export function EngagementCardRefined({ result }: Props) {
     .map((s) => ({ name: s.name, url: s.url }));
 
   const benchmarkVal = k.engagementBenchmark;
-  const gapPp = k.engagementRate - benchmarkVal;
+  // Use the consolidated series value (same source as the chart) so KPIs
+  // and the chart benchmark line are visually consistent.
+  const chartBenchmarkVal = activeTier?.engagementRatePct ?? benchmarkVal;
+  const gapPp = k.engagementRate - chartBenchmarkVal;
   const isPositive = gapPp >= 0;
 
   // Dynamic engagement status word
   const engagementStatus: string = (() => {
-    if (benchmarkVal <= 0) return "Baixa";
-    const pctDiff = ((k.engagementRate - benchmarkVal) / benchmarkVal) * 100;
+    if (chartBenchmarkVal <= 0) return "Baixa";
+    const pctDiff = ((k.engagementRate - chartBenchmarkVal) / chartBenchmarkVal) * 100;
     if (pctDiff >= 0) return "Alta";
     if (pctDiff >= -30) return "Média";
     return "Baixa";
@@ -52,14 +55,14 @@ export function EngagementCardRefined({ result }: Props) {
   // KPI 3: percentage difference vs benchmark
   let pctDiffLabel = "—";
   let pctDiffDirection = "";
-  if (benchmarkVal > 0 && Number.isFinite(k.engagementRate)) {
-    const pctDiff = ((k.engagementRate - benchmarkVal) / benchmarkVal) * 100;
+  if (chartBenchmarkVal > 0 && Number.isFinite(k.engagementRate)) {
+    const pctDiff = ((k.engagementRate - chartBenchmarkVal) / chartBenchmarkVal) * 100;
     if (Number.isFinite(pctDiff)) {
       const absPct = Math.abs(Math.round(pctDiff));
       pctDiffLabel = `${absPct}%`;
       pctDiffDirection = pctDiff >= 0 ? "superior" : "inferior";
     }
-  } else if (k.engagementRate === 0 && benchmarkVal > 0) {
+  } else if (k.engagementRate === 0 && chartBenchmarkVal > 0) {
     pctDiffLabel = "100%";
     pctDiffDirection = "inferior";
   }
@@ -89,8 +92,8 @@ export function EngagementCardRefined({ result }: Props) {
       ? `${Math.round(highMult)}×`
       : `${highMult.toFixed(1).replace(".", ",")}×`;
     readingText = `Mesmo perfis com ${highestTierLabel} seguidores têm ${highMultLabel} mais engagement do que este perfil — o problema não é a dimensão da audiência, é como ela reage.`;
-  } else if (isPositive && benchmarkVal > 0 && k.engagementRate > 0) {
-    const aboveMult = k.engagementRate / benchmarkVal;
+  } else if (isPositive && chartBenchmarkVal > 0 && k.engagementRate > 0) {
+    const aboveMult = k.engagementRate / chartBenchmarkVal;
     const aboveMultLabel = aboveMult >= 10
       ? `${Math.round(aboveMult)}×`
       : `${aboveMult.toFixed(1).replace(".", ",")}×`;
@@ -187,7 +190,7 @@ export function EngagementCardRefined({ result }: Props) {
             </div>
             <div className="flex items-baseline">
               <span className="font-mono text-[1.6rem] sm:text-[1.85rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
-                {fmtPctHero(benchmarkVal)}
+                {fmtPctHero(chartBenchmarkVal)}
               </span>
               <span className="font-mono text-[1.6rem] sm:text-[1.85rem] font-light text-content-secondary/50 ml-0.5">
                 %
