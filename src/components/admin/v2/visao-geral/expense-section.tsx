@@ -581,16 +581,19 @@ function ExpenseTooltipContent({
   label,
   actorKeys,
   hasActorBreakdown,
+  openaiActorKeys,
+  hasOpenaiActorBreakdown,
 }: {
   active?: boolean;
   payload?: Array<{ dataKey: string; value: number; color: string }>;
   label?: string;
   actorKeys: string[];
   hasActorBreakdown: boolean;
+  openaiActorKeys: string[];
+  hasOpenaiActorBreakdown: boolean;
 }) {
   if (!active || !payload?.length) return null;
 
-  const openaiEntry = payload.find((p) => p.dataKey === "openai");
   const dfsEntry = payload.find((p) => p.dataKey === "dataforseo");
 
   const actorEntries = hasActorBreakdown
@@ -613,9 +616,30 @@ function ExpenseTooltipContent({
     ? actorEntries.reduce((s, e) => s + e.value, 0)
     : (apifyFallback?.value ?? 0);
 
+  // OpenAI actor entries
+  const openaiActorEntries = hasOpenaiActorBreakdown
+    ? openaiActorKeys
+        .map((actor) => {
+          const entry = payload.find((p) => p.dataKey === `openai_${actor}`);
+          return entry && entry.value > 0
+            ? { actor, value: entry.value }
+            : null;
+        })
+        .filter(Boolean) as Array<{ actor: string; value: number }>
+    : [];
+
+  const openaiSingleEntry =
+    !hasOpenaiActorBreakdown
+      ? payload.find((p) => p.dataKey === "openai")
+      : null;
+
+  const openaiTotal = hasOpenaiActorBreakdown
+    ? openaiActorEntries.reduce((s, e) => s + e.value, 0)
+    : (openaiSingleEntry?.value ?? 0);
+
   const total =
     apifyTotal +
-    (openaiEntry?.value ?? 0) +
+    openaiTotal +
     (dfsEntry?.value ?? 0);
 
   return (
@@ -663,18 +687,35 @@ function ExpenseTooltipContent({
       )}
 
       {/* OpenAI */}
-      {openaiEntry && openaiEntry.value > 0 && (
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-2 w-2 rounded-sm"
-              style={{ backgroundColor: ADMIN_LITERAL.expenseChartOpenAI }}
-            />
-            <span className="text-gray-600">OpenAI</span>
-          </span>
-          <span className="tabular-nums text-gray-800">
-            ${openaiEntry.value.toFixed(4)}
-          </span>
+      {openaiTotal > 0 && (
+        <div className="mb-1">
+          <div className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2 w-2 rounded-sm"
+                style={{ backgroundColor: ADMIN_LITERAL.expenseChartOpenAI }}
+              />
+              <span className="font-medium text-gray-600">OpenAI</span>
+            </span>
+            <span className="tabular-nums font-semibold text-gray-800">
+              ${openaiTotal.toFixed(4)}
+            </span>
+          </div>
+          {openaiActorEntries.map((e) => (
+            <div
+              key={e.actor}
+              className="ml-3.5 flex items-center justify-between gap-4 text-[10px] text-gray-500"
+            >
+              <span className="flex items-center gap-1">
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: openaiActorColor(e.actor) }}
+                />
+                {openaiActorShortLabel(e.actor)}
+              </span>
+              <span className="tabular-nums">${e.value.toFixed(4)}</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -743,6 +784,46 @@ function ApifyActorTableRow({ actor }: { actor: ApifyActorBreakdown }) {
       </td>
       <td className={`py-1.5 text-right font-medium ${source.cls}`}>
         {noRuns ? "Sem execuções" : source.text}
+      </td>
+    </tr>
+  );
+}
+
+/* ── OpenAI actor table row ────────────────────────────────────────── */
+
+function OpenAiActorTableRow({ actor }: { actor: OpenAiActorBreakdown }) {
+  const noCalls = actor.call_count === 0 && actor.error_count === 0;
+  const color = openaiActorColor(actor.actor);
+  const totalTokens = actor.total_prompt_tokens + actor.total_completion_tokens;
+
+  return (
+    <tr className={noCalls ? "text-admin-text-tertiary/60" : "text-admin-text-secondary"}>
+      <td className="py-1.5 pr-4">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-2 w-2 rounded-sm shrink-0"
+            style={{ backgroundColor: color }}
+          />
+          <span className={noCalls ? "italic" : ""}>{actor.label}</span>
+        </span>
+      </td>
+      <td className="py-1.5 pr-4 text-right tabular-nums font-semibold text-admin-text-primary">
+        {noCalls ? "—" : `$${actor.total_cost_usd.toFixed(4)}`}
+      </td>
+      <td className="py-1.5 pr-4 text-right tabular-nums">
+        {noCalls ? "—" : actor.call_count}
+        {actor.error_count > 0 && (
+          <span className="text-admin-danger-700 ml-0.5">({actor.error_count} err)</span>
+        )}
+      </td>
+      <td className="py-1.5 pr-4 text-right tabular-nums">
+        {noCalls ? "—" : `${actor.total_prompt_tokens.toLocaleString("pt-PT")} + ${actor.total_completion_tokens.toLocaleString("pt-PT")}`}
+      </td>
+      <td className="py-1.5 pr-4 text-right tabular-nums">
+        {actor.avg_cost_per_call != null ? `$${actor.avg_cost_per_call.toFixed(5)}` : "—"}
+      </td>
+      <td className="py-1.5 text-right text-admin-text-tertiary">
+        {actor.model ?? "—"}
       </td>
     </tr>
   );
