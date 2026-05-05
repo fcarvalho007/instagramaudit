@@ -1,97 +1,200 @@
 
-# Block 2 Refactor — Audit & Implementation Plan
+# Auditoria P03 Hashtags — Data Readiness for "Ocean Map"
 
-## Current Block 2 Architecture
+---
 
-**Orchestrator:** `src/components/report-redesign/v2/report-diagnostic-block.tsx`
-Called from `report-shell-v2.tsx` line 156.
+## 1. Current Component Architecture
 
-**Render order (lines 138-219):**
+| Question | Answer |
+|----------|--------|
+| Which component renders P03? | `renderHashtagsCard()` inside `report-diagnostic-block.tsx` (lines 362-456) |
+| Which file contains the UI? | Same file + reuses `ReportDiagnosticCard` (span="full") from `report-diagnostic-card.tsx` |
+| Custom or generic? | Uses generic `ReportDiagnosticCard` with inline cloud + frequency list as `children` |
 
-```text
-<div space-y-10>
-  1. ReportDiagnosticVerdict    ← "Veredicto editorial" callout (blue box with Bot icon)
-  2. ReportDiagnosticSummaryCards ← 4 KPI cards (Tipo de conteúdo, Papel do conteúdo, Resposta do público, Objetivo)
-  3. Group A: "Identidade editorial" (P01 + P02)
-  4. Group B: "Como comunica" (P03 hashtags + caption intelligence)
-  5. Group C: "Resposta do público" (P05 audience)
-  6. Group D: "Contexto estratégico" (P06 integration + P07 objective)
-  7. ReportDiagnosticPriorities
-  8. ReportDiagnosticCta
-</div>
+P03 is currently in **Group B** ("Como comunica"), rendered as a full-width card with two panels: a hashtag cloud (left) and a frequency+engagement bar list (right).
+
+---
+
+## 2. Available Data per Hashtag
+
+| Field | Status | Source | Details |
+|-------|--------|--------|---------|
+| `tag` (text) | **REAL** | `extractTopHashtags()` in `text-extract.ts` | Extracted from `posts[].hashtags`, normalised, prefixed with `#` |
+| `uses` (count) | **REAL** | Same extractor | Number of posts where this hashtag appears |
+| `avgEngagement` | **REAL** | Same extractor | Average `engagement_pct` across posts containing this tag |
+| Share % | **DERIVABLE** | `uses / totalPosts` | Not computed today but trivial |
+| Global post volume | **UNAVAILABLE** | Would need Instagram API or third-party | Not in payload, not in knowledge base, not in any enrichment |
+| Competitive/saturation score | **UNAVAILABLE** | No external source configured | No Apify actor, no DataForSEO endpoint fetches this |
+| Opportunity score | **UNAVAILABLE** | Would need global volume + engagement cross-reference | Cannot derive without external data |
+| AI suggestion flag | **UNAVAILABLE** | No AI section generates hashtag suggestions | `AiInsightV2Section` has no "hashtags" key |
+| AI suggested replacements | **UNAVAILABLE** | Same — no prompt section | Could be added to prompt-v2 but would be AI-generated, not factual |
+| Best hashtag count bucket | **REAL (editorial_patterns)** | `editorial_patterns.hashtag_count` in AI insight context | Only says e.g. "5–10 hashtags = best engagement", not per-tag data |
+
+---
+
+## 3. Data Reliability Summary
+
+| Data point | Classification |
+|------------|----------------|
+| Hashtag text | Real from payload |
+| Usage count | Real from payload |
+| Avg engagement per tag | Real from payload (derived deterministically) |
+| Share % | Derivable deterministically |
+| Global volume | **Unavailable** — no source exists |
+| Competitiveness index | **Unavailable** |
+| Opportunity score (x/y axes) | **Unavailable** |
+| Zone classification (blue/warm/red) | **Unavailable** (needs external benchmark) |
+| AI-suggested alternatives | **Unavailable** (no prompt section exists) |
+
+---
+
+## 4. PASS/FAIL Verdict
+
+| Requirement | Verdict |
+|-------------|---------|
+| 2D ocean map with real x/y axes | **FAIL** — no global volume or competitive data exists |
+| Colour zones (blue/warm/red) | **FAIL** — no saturation benchmark to classify against |
+| AI-suggested alternatives | **FAIL** — no AI section produces these |
+| Hashtag label + count + engagement | **PASS** — fully available |
+| Qualitative heuristic classification | **CONDITIONAL PASS** — possible with internal rules only |
+
+**Overall: FAIL for the full "Ocean Map" as described.**
+
+The report has **5 hashtags with text + count + avgEngagement**. That is enough for a visual card but not for a 2D strategic map with real competitive axes.
+
+---
+
+## 5. Safe Fallback Options
+
+### Option A — Heuristic "Ocean Map" (no backend changes)
+- **X-axis**: "Frequência de uso" (0-100, normalised from `uses/maxUses`)
+- **Y-axis**: "Engagement relativo" (0-100, normalised from `avgEngagement/maxEngagement`)
+- **Zones**: Derived from quadrant position:
+  - Blue (opportunity): low frequency + high engagement
+  - Warm (established): high frequency + high engagement
+  - Red (saturated): high frequency + low engagement
+  - Grey (low signal): low frequency + low engagement
+- **Labels**: Qualitative ("Oportunidade", "Território forte", "Saturado", "Pouco sinal")
+- **No global volume numbers shown** — only relative position within the profile's own hashtags
+- **Honest limitation**: State "Mapa relativo ao perfil — não reflete volumes globais"
+
+### Option B — Enhanced heuristic with AI layer (requires prompt change)
+- Same as A, plus add a new AI insight section "hashtags" to prompt-v2
+- AI generates: 2-3 suggested alternative hashtags + brief strategic note
+- Classification: AI-generated, clearly labelled
+
+### Option C — Defer until external data source
+- Keep current cloud+bars layout
+- Add a "coming soon" placeholder for the ocean map
+- Wait for an Apify actor or API that provides global hashtag volumes
+
+---
+
+## 6. Recommended Data Model (Option A)
+
+```ts
+type HashtagOceanPoint = {
+  tag: string;
+  count: number;            // real — from payload
+  sharePct: number;         // derived — count / totalPosts
+  avgEngagement: number;    // real — from payload
+  frequencyScore: number;   // 0–100, normalised uses
+  engagementScore: number;  // 0–100, normalised avgEngagement
+  zone: "blue" | "warm" | "red" | "grey";  // derived from quadrant
+  isSuggestion: false;      // always false in Option A
+};
 ```
 
-## Files Involved
+---
 
-| File | Role | Action |
-|------|------|--------|
-| `report-diagnostic-block.tsx` | Orchestrator | **Edit** — remove verdict + summary card calls, keep everything else |
-| `report-diagnostic-verdict.tsx` | Verdict callout | **No edit** — just stop importing/rendering it |
-| `report-diagnostic-summary-cards.tsx` | 4 KPI cards | **No edit** — just stop importing/rendering it |
-| `report-diagnostic-group.tsx` | Group header (A/B/C/D) | **No edit** — keep as-is |
-| `report-diagnostic-card.tsx` | Card component for P01-P07 | **No edit** — used by P01/P02 already |
+## 7. Proposed Visual Architecture (if approved)
 
-**None of these files are in LOCKED_FILES.md.**
+```text
+┌─────────────────────────────────────────────────────┐
+│  PERGUNTA 03 · HASHTAGS                             │
+│                                                     │
+│  "Que território de hashtags ocupa?"                 │
+│                                                     │
+│  ┌─ answer box ──────────────────────────────────┐  │
+│  │  Resposta: #hashtag1 · #hashtag2              │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌─ ocean map (SVG/canvas) ──────────────────────┐  │
+│  │  Y: Engagement ↑                              │  │
+│  │       ● #tag1                                 │  │
+│  │            ● #tag2                            │  │
+│  │                 ● #tag3                        │  │
+│  │  X: Frequência de uso →                       │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌─ 3 mini summary cards ────────────────────────┐  │
+│  │  Oportunidade │ Território forte │ Saturado   │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  ┌─ diagnostic callout ─────────────────────────┐   │
+│  │  DIAGNÓSTICO: strategic summary               │  │
+│  └───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+```
 
-## What Gets Removed (UI only)
+---
 
-1. **`ReportDiagnosticVerdict`** — the blue "Veredicto editorial" callout box at the top of Block 2. This is purely visual. The `buildVerdictText()` helper and its import of `classifyContentType` etc. can stay (it's cheap and harmless), but the rendered `<ReportDiagnosticVerdict>` element is removed.
+## 8. Files to Edit (if implementing Option A)
 
-2. **`ReportDiagnosticSummaryCards`** — the 4 compact KPI cards (Tipo de conteúdo, Papel do conteúdo, Resposta do público, Objetivo deste perfil). Also purely visual. The data they depend on (`contentType`, `funnel`, `audience`, `objective`) is still needed by the P01-P07 cards below.
+| File | Change |
+|------|--------|
+| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Replace `renderHashtagsCard()` with new ocean map component call |
+| `src/components/report-redesign/v2/report-diagnostic-card.tsx` | Add `HashtagOceanMap` component (or new file) |
+| New file: `src/components/report-redesign/v2/hashtag-ocean-map.tsx` | Ocean map SVG visualization + mini-cards |
 
-**No data logic, classifier calls, or scoring is affected.** All classifiers (`classifyContentType`, `classifyFunnelStage`, etc.) are still needed for the group cards.
+---
 
-## What Gets Kept
+## 9. Files NOT to Touch
 
-- Group A: "Identidade editorial" with P01 (Tipo de conteúdo) and P02 (Funil)
-- Groups B, C, D unchanged
-- Priorities section unchanged
-- CTA unchanged
-
-## P01 and P02 Current Structure
-
-Both cards use `ReportDiagnosticCard` — a shared component. They differ only in props:
-
-- **P01** (`renderContentTypeCard`): number="01", label="Tipo de conteúdo · Classificação", tone="emerald" or "slate", span="full", uses `DiagnosticDistributionBar`
-- **P02** (`renderFunnelCard`): number="02", label="Funil · Mapeamento", tone="blue" or "amber", uses `DiagnosticFunnelStack`
-
-Both currently render inside `ReportDiagnosticGroup` letter="A", which places them in a `grid grid-cols-1 md:grid-cols-2` layout — **they already sit side-by-side on desktop.**
-
-## Proposed Implementation (3 steps)
-
-### Step 1: Remove verdict + summary cards from orchestrator
-
-In `report-diagnostic-block.tsx`:
-- Remove the `<ReportDiagnosticVerdict>` render call (line 140)
-- Remove the `<ReportDiagnosticSummaryCards>` render call (lines 142-147)
-- Keep all imports and classifier calls (still needed by P01-P07)
-- Optionally remove unused imports for `ReportDiagnosticVerdict` and `ReportDiagnosticSummaryCards` for cleanliness
-
-### Step 2: Refine P01 and P02 visual consistency
-
-Both cards already use `ReportDiagnosticCard`. Adjustments:
-- P01 currently uses `span="full"` — change to `span="half"` so it takes exactly one column (matching P02)
-- Ensure both use comparable tone accents: P01 = blue family, P02 = green family (currently emerald/blue — may swap to match mockup)
-- Both should show the same card size, question typography, answer block styling — already handled by the shared component
-
-### Step 3: Verify side-by-side layout
-
-`ReportDiagnosticGroup` already renders children in `grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6`. With both cards as `span="half"`, they will sit side-by-side on desktop and stack on mobile. No grid changes needed.
-
-## Risks
-
-- **P01 currently uses `span="full"`**, which makes it span 2 columns. Changing to "half" will make its internal horizontal layout (question left, distribution bar right) stack vertically instead. The `ReportDiagnosticCard` already handles this via the `isFull` conditional — half-width cards use vertical stack layout. This is safe but the distribution bar will appear below the answer instead of beside it.
-- **No data dependency risk.** The verdict text and summary cards are display-only wrappers over the same classifier outputs used by the group cards.
-
-## Files That Must Not Be Touched
-
-- All files in LOCKED_FILES.md
 - Block 1 components
-- Backend/auth/admin
-- Global tokens (tokens.css, tokens-light.css)
+- Groups C, D card builders
+- `src/lib/report/block02-diagnostic.ts` (classifier — data is sufficient)
+- `src/lib/report/text-extract.ts`
+- Backend / Supabase / Auth / Admin
 - PDF generation
-- Report pipeline / adapters
+- Global tokens (`tokens.css`, `tokens-light.css`)
+- Locked files
+- AI prompt files (Option A)
 
-## Confirmation
+---
 
-No code was changed in this audit. All findings are from read-only inspection.
+## 10. Implementation Risks
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| Only 5 hashtags — map may feel sparse | Medium | Use larger dots, add quadrant labels, ensure 5 points feel intentional |
+| No real competitive data — user may assume axes are absolute | High | Add explicit disclaimer: "Posição relativa ao perfil" |
+| SVG scatter plot complexity on mobile | Low | Use simple positioned divs instead of SVG; or responsive SVG with viewBox |
+| Zone colours may clash with card tone system | Low | Use muted fills (rgba) consistent with existing tint tokens |
+
+---
+
+## 11. Constraints Confirmation
+
+| Constraint | Safe? |
+|------------|-------|
+| No backend changes | Yes |
+| No API calls | Yes |
+| No Apify calls | Yes |
+| No Supabase changes | Yes |
+| No global token changes | Yes |
+| No Block 1 changes | Yes |
+| No Groups C/D changes | Yes |
+| No locked files | Yes |
+
+---
+
+## 12. Recommendation
+
+**Proceed with Option A** — heuristic ocean map using only existing data (count + avgEngagement), with honest qualitative labels and no fabricated global volumes. The 2D scatter uses relative axes within the profile's own hashtags.
+
+Before implementing, choose between:
+1. **Option A only** (pure deterministic, no AI, no prompt changes)
+2. **Option A + B** (add AI hashtag suggestions via new prompt section — requires `prompt-v2.ts` edit)
+
+No code was changed during this audit.
