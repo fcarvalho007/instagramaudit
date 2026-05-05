@@ -10,7 +10,6 @@ import { InsightCallout } from "./insight-callout";
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 
 const KB_HASHTAGS = INSTAGRAM_CAPTION_CONTEXT.hashtagGuidelines;
-const KB_SOURCES = INSTAGRAM_CAPTION_CONTEXT.sources;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -139,7 +138,7 @@ function KpiCard({
           </span>
         )}
       </div>
-      <p className="font-display text-[1.5rem] md:text-[1.75rem] text-content-primary leading-none tracking-tight">
+      <p className="font-mono text-[1.5rem] md:text-[1.75rem] text-content-primary leading-none tracking-tight tabular-nums">
         {value}
       </p>
       <p className="text-xs text-content-tertiary">{sub}</p>
@@ -232,14 +231,11 @@ export function HashtagDiagnosticsCard({
               03 · HASHTAGS · {postsAnalyzed} POSTS ANALISADOS
             </span>
           </div>
-          <span className="text-[9px] md:text-[10px] font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
-            DADOS
-          </span>
         </div>
 
         {/* title */}
         <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight mt-5">
-          Que hashtags etiquetam o conteúdo?
+          Que hashtags aparecem mais vezes?
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
           Hashtags públicas extraídas das legendas dos posts analisados.
@@ -307,26 +303,6 @@ export function HashtagDiagnosticsCard({
         </InsightCallout>
       </div>
 
-      {/* ── Footer ── */}
-      <div className="px-5 md:px-7 py-4 border-t border-border-subtle flex items-center gap-2 text-[11px] leading-relaxed">
-        <span className="text-eyebrow-sm text-content-secondary shrink-0">FONTES:</span>
-        <span className="text-content-tertiary">
-          {KB_SOURCES.map((src, i) => (
-            <span key={src.name}>
-              {i > 0 && " · "}
-              [{i + 1}]{" "}
-              <a
-                href={src.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline"
-              >
-                {src.name}
-              </a>
-            </span>
-          ))}
-        </span>
-      </div>
     </div>
   );
 }
