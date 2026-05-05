@@ -31,7 +31,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
     {
       icon: LineChart,
       label: "Referência de mercado",
-      body: "Dataset interno versionado de perfis pares, usado para contextualizar envolvimento e formato dominante.",
+      body: "Dataset interno versionado de perfis pares, usado para contextualizar engagement e formato dominante.",
     },
     {
       icon: Sparkles,

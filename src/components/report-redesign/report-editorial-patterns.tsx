@@ -247,7 +247,7 @@ function buildEngagementGapCard(
     primary: `${sign}${Math.abs(delta).toFixed(1).replace(".", ",")} %`,
     body: (
       <>
-        O envolvimento médio observado é {formatPct(km.engagementRate)} face à
+        O engagement médio observado é {formatPct(km.engagementRate)} face à
         referência de {formatPct(km.engagementBenchmark)} para perfis
         comparáveis.
       </>
@@ -382,7 +382,7 @@ function buildCaptionCard(
     primary: best.label.replace(/\s*\(.*\)/, ""),
     body: (
       <>
-        Envolvimento médio de {formatPct(best.avgEngagementPct)} em {best.count}
+        Engagement médio de {formatPct(best.avgEngagementPct)} em {best.count}
         {" "}publicações analisadas.
       </>
     ),
@@ -404,7 +404,7 @@ function buildHashtagsCard(
     primary: `${best.label}`,
     body: (
       <>
-        Envolvimento médio de {formatPct(best.avgEngagementPct)} em {best.count}
+        Engagement médio de {formatPct(best.avgEngagementPct)} em {best.count}
         {" "}publicações analisadas.
       </>
     ),
