@@ -398,14 +398,14 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         {/* Length */}
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-3">DISTRIBUIÇÃO DE COMPRIMENTO</p>
-          <StackedLengthBar items={data.distributions.length} />
+          <StackedLengthBar items={data.distributions.length} dominantBucket={data.distributions.length.reduce((a, b) => b.pct > a.pct ? b : a, data.distributions.length[0])?.bucket} />
         </div>
       </div>
 
       {/* ── 6. Diagnostic box ── */}
       <div className="rounded-xl bg-[rgb(var(--tint-primary))] ring-1 ring-accent-primary/20 p-5 md:p-6 space-y-5">
         <p className="text-eyebrow-sm text-accent-primary">DIAGNÓSTICO EDITORIAL</p>
-        <p className="text-[15px] md:text-base text-content-primary leading-relaxed font-medium">
+        <p className="text-[15px] md:text-base text-content-primary leading-relaxed font-medium font-sans">
           {buildDiagnosticStatement(data)}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-accent-primary/20">
