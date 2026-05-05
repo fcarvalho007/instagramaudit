@@ -23,6 +23,20 @@ import type { CommentIntelligence } from "@/lib/analysis/types";
 import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
 import { InsightCallout } from "./insight-callout";
 
+/**
+ * Smart average formatting for PT locale:
+ * 0        → "0"
+ * 0 < v < 0.1 → "<0,1"
+ * 0.1 ≤ v < 10 → one decimal (e.g. "0,1", "7,3")
+ * v ≥ 10   → whole number
+ */
+function formatAvg(value: number): string {
+  if (value === 0) return "0";
+  if (value > 0 && value < 0.1) return "<0,1";
+  if (value < 10) return value.toLocaleString("pt-PT", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return Math.round(value).toLocaleString("pt-PT");
+}
+
 export type DiagnosticTone = "blue" | "amber" | "rose" | "emerald" | "slate";
 
 interface Props {
@@ -583,7 +597,7 @@ export function DiagnosticAudienceHighlight({
             <span className="text-eyebrow-sm text-content-tertiary text-[8px] sm:text-[10px]">Gostos / post</span>
           </div>
           <span className="font-mono text-[20px] sm:text-[28px] font-semibold tabular-nums text-content-primary leading-none">
-            {avgLikes.toLocaleString("pt-PT")}
+            {formatAvg(avgLikes)}
           </span>
           <span className="text-[9px] sm:text-[11px] text-content-tertiary">
             {totalLikes != null
@@ -620,7 +634,7 @@ export function DiagnosticAudienceHighlight({
               commentsIsAlert ? "text-signal-danger" : "text-content-primary",
             )}
           >
-            {avgComments.toLocaleString("pt-PT")}
+            {formatAvg(avgComments)}
           </span>
           <span className="text-[9px] sm:text-[11px] text-content-tertiary">
             {sampleSize ? `em ${sampleSize} publicações` : "por publicação"}
@@ -709,7 +723,7 @@ export function DiagnosticAudienceHighlight({
       {status !== "unavailable" && (
         <p className="text-[10.5px] text-content-tertiary italic leading-relaxed">
           Análise sobre {sampleSize ?? "—"} publicações
-          {sampleComments != null ? ` · ${sampleComments} comentários públicos` : " · comentários públicos visíveis"}
+          {sampleComments != null ? ` · ${sampleComments} comentários recolhidos` : " · comentários do feed"}
           {" "}· sem DMs nem comentários ocultos
         </p>
       )}
