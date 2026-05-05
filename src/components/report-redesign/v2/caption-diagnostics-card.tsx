@@ -307,10 +307,20 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         </KpiCard>
 
         <KpiCard label="CARACTERÍSTICAS">
-          <ul className="space-y-0.5">
-            <li>~{fmt(stats.avgWordsPerCaption)} palavras / post</li>
-            <li>{stats.avgEmojisPerCaption.toFixed(1).replace(".", ",")} emojis / post</li>
-          </ul>
+          <div className="flex flex-col gap-3">
+            <div>
+              <span className="text-[22px] font-semibold tabular-nums text-content-primary leading-none">
+                ~{fmt(stats.avgWordsPerCaption)}
+              </span>
+              <span className="text-[12px] text-content-tertiary ml-1.5">palavras / post</span>
+            </div>
+            <div>
+              <span className="text-[22px] font-semibold tabular-nums text-content-primary leading-none">
+                {stats.avgEmojisPerCaption.toFixed(1).replace(".", ",")}
+              </span>
+              <span className="text-[12px] text-content-tertiary ml-1.5">emojis / post</span>
+            </div>
+          </div>
         </KpiCard>
       </div>
 
