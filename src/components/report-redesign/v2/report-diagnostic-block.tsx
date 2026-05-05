@@ -15,14 +15,12 @@ import {
   derivePriorities,
   type ContentTypeResult,
   type FunnelStageResult,
-  type CaptionPatternResult,
   type AudienceResponseResult, 
   type IntegrationResult,
   type ObjectiveResult,
   type HashtagsResult,
 } from "@/lib/report/block02-diagnostic";
 
-import { ReportDiagnosticVerdict } from "./report-diagnostic-verdict";
 import { ReportDiagnosticGroup } from "./report-diagnostic-group";
 import {
   ReportDiagnosticCard,
@@ -38,7 +36,6 @@ import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticCta } from "./report-diagnostic-cta";
 import { ReportCaptionIntelligence } from "./report-caption-intelligence";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
-import { ReportDiagnosticSummaryCards } from "./report-diagnostic-summary-cards";
 import {
   CommentIntelligenceUnavailable,
 } from "./report-comment-intelligence";
@@ -96,20 +93,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     dominantFormatLabel: km.dominantFormat ?? null,
   });
 
-  const verdictText = buildVerdictText({
-    aiHero: result.enriched.aiInsightsV2?.sections.hero?.text ?? null,
-    contentType,
-    funnel,
-    caption,
-    audience,
-    dominantFormat: km.dominantFormat ?? null,
-    dominantFormatShare: km.dominantFormatShare ?? 0,
-  });
-
-  const aiHeroText = result.enriched.aiInsightsV2?.sections.hero?.text ?? null;
-  const verdictSource: "ai" | "fallback" =
-    aiHeroText && aiHeroText.trim().length > 30 ? "ai" : "fallback";
-
   const aiLanguageText =
     result.enriched.aiInsightsV2?.sections.language?.text ?? null;
 
@@ -137,15 +120,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
   return (
     <div className="space-y-10 md:space-y-12">
-      <ReportDiagnosticVerdict text={verdictText} source={verdictSource} />
-
-      <ReportDiagnosticSummaryCards
-        contentType={contentType}
-        funnel={funnel}
-        audience={audience}
-        objective={objective}
-      />
-
       {totalCards >= 4 ? (
         <>
           {groupA.length > 0 ? (
@@ -257,48 +231,6 @@ function injectCaptionImprovement(
   ];
 }
 
-function buildVerdictText(args: {
-  aiHero: string | null;
-  contentType: ContentTypeResult;
-  funnel: FunnelStageResult;
-  caption: CaptionPatternResult;
-  audience: AudienceResponseResult;
-  dominantFormat: string | null;
-  dominantFormatShare: number;
-}): string {
-  if (args.aiHero && args.aiHero.trim().length > 30) {
-    return args.aiHero.trim();
-  }
-  const parts: string[] = [];
-  if (
-    args.contentType.available &&
-    args.contentType.label &&
-    args.contentType.label !== "Misto / pouco claro"
-  ) {
-    parts.push(`perfil ${args.contentType.label.toLowerCase()}`);
-  }
-  if (args.funnel.available && args.funnel.label && args.funnel.label !== "Comunicação dispersa") {
-    parts.push(`com sinais de ${args.funnel.label.toLowerCase()}`);
-  }
-  if (args.dominantFormat && args.dominantFormatShare >= 50) {
-    parts.push(
-      `apoiado em ${args.dominantFormat.toLowerCase()} (${Math.round(
-        args.dominantFormatShare,
-      )} % da amostra)`,
-    );
-  }
-  if (args.audience.available && args.audience.label === "Audiência silenciosa") {
-    parts.push("sinais de audiência silenciosa — likes consistentes, conversa rara");
-  } else if (args.audience.available && args.audience.label === "Audiência ativa") {
-    parts.push("sinais de audiência ativa");
-  }
-
-  if (parts.length < 2) {
-    return "Com base na amostra analisada, ainda não há sinal suficiente para um veredicto editorial — a amostra é pequena ou pouco diferenciada.";
-  }
-  return "Com base na amostra analisada, " + parts.join(", ") + ".";
-}
-
 // ─────────────────────────────────────────────────────────────────────
 // Card builders
 // ─────────────────────────────────────────────────────────────────────
@@ -323,12 +255,12 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         question="Que natureza de conteúdo aparece mais?"
         answer="Padrão misto"
         tone="slate"
-        span="full"
+        span="half"
         body={body}
        sourceType="auto"
       sourceDetail="Legendas · classificação"
       >
-        {r.distribution.length >= 2 ? (
+        {r.distribution.length >= 2 && (
           <DiagnosticDistributionBar
             variant="vertical-list"
             items={r.distribution.map((d, i) => ({
@@ -342,7 +274,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
                     : "bg-content-tertiary/30",
             }))}
           />
-        ) : null}
+        )}
       </ReportDiagnosticCard>
     );
   }
@@ -356,12 +288,12 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       question="Que natureza de conteúdo aparece mais?"
       answer={r.label}
       tone="emerald"
-        span="full"
+        span="half"
       body={`Classificação do tipo de conteúdo publicado nas legendas e padrões editoriais. Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}.`}
       sourceType="auto"
       sourceDetail="Legendas · classificação"
     >
-      {r.distribution.length >= 2 ? (
+      {r.distribution.length >= 2 && (
         <DiagnosticDistributionBar
           variant="vertical-list"
           items={r.distribution.map((d, i) => ({
@@ -370,7 +302,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
             color: colorByIndex(i),
           }))}
         />
-      ) : null}
+      )}
     </ReportDiagnosticCard>
   );
 }
