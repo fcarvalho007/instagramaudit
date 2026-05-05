@@ -39,20 +39,19 @@ export function EngagementCardRefined({ result }: Props) {
   const gapPp = k.engagementRate - benchmarkVal;
   const isPositive = gapPp >= 0;
 
-  // Multiplier: how many times further from benchmark
-  let multiplierLabel = "—";
-  let multiplierDirection = "";
-  if (k.engagementRate > 0 && benchmarkVal > 0) {
-    const raw = isPositive
-      ? k.engagementRate / benchmarkVal
-      : benchmarkVal / k.engagementRate;
-    multiplierLabel = raw >= 10
-      ? `${Math.round(raw)}×`
-      : `${raw.toFixed(1).replace(".", ",")}×`;
-    multiplierDirection = isPositive ? "maior" : "menor";
+  // KPI 3: percentage difference vs benchmark
+  let pctDiffLabel = "—";
+  let pctDiffDirection = "";
+  if (benchmarkVal > 0 && Number.isFinite(k.engagementRate)) {
+    const pctDiff = ((k.engagementRate - benchmarkVal) / benchmarkVal) * 100;
+    if (Number.isFinite(pctDiff)) {
+      const absPct = Math.abs(Math.round(pctDiff));
+      pctDiffLabel = `${absPct}%`;
+      pctDiffDirection = pctDiff >= 0 ? "superior" : "inferior";
+    }
   } else if (k.engagementRate === 0 && benchmarkVal > 0) {
-    multiplierLabel = "—";
-    multiplierDirection = "menor";
+    pctDiffLabel = "100%";
+    pctDiffDirection = "inferior";
   }
 
   // Tier label — extract short form from parentheses
@@ -98,7 +97,7 @@ export function EngagementCardRefined({ result }: Props) {
           </div>
           <div>
             <span className="font-display text-lg sm:text-xl font-semibold text-content-primary block tracking-tight">
-              Taxa de envolvimento
+              Taxa de <em className="not-italic font-display italic">Engagement</em>
             </span>
             <span className="text-[11px] text-content-secondary">
               posição face ao mercado por escalão
@@ -135,7 +134,7 @@ export function EngagementCardRefined({ result }: Props) {
                 }}
               />
               <span className="text-eyebrow-sm text-content-secondary">
-                Deste perfil
+                Avaliação deste perfil
               </span>
             </div>
             <div className="flex items-baseline">
@@ -147,7 +146,7 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <span className="block text-[11px] text-content-secondary mt-1.5 leading-snug">
-              média de gostos + comentários por seguidor
+              Gostos, comentários, partilhas a dividir por seguidores.
             </span>
           </div>
 
@@ -168,7 +167,7 @@ export function EngagementCardRefined({ result }: Props) {
                 style={{ background: "rgba(37,99,217,0.45)" }}
               />
               <span className="text-eyebrow-sm text-content-secondary">
-                Referência do escalão
+                Outros perfis semelhantes
               </span>
             </div>
             <div className="flex items-baseline">
@@ -180,7 +179,7 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <span className="block text-[11px] text-content-secondary mt-1.5 leading-snug">
-              média de perfis {tierShort} seguidores
+              Média de perfis no mesmo escalão.
             </span>
           </div>
 
@@ -213,16 +212,16 @@ export function EngagementCardRefined({ result }: Props) {
                   isPositive ? "text-signal-success" : "text-signal-danger"
                 )}
               >
-                {multiplierLabel}
+                {pctDiffLabel}
               </span>
-              {multiplierDirection && (
+              {pctDiffDirection && (
                 <span
                   className={cn(
                     "text-sm font-medium",
                     isPositive ? "text-signal-success" : "text-signal-danger"
                   )}
                 >
-                  {multiplierDirection}
+                  {pctDiffDirection}
                 </span>
               )}
             </div>
@@ -277,14 +276,6 @@ export function EngagementCardRefined({ result }: Props) {
               />
             </span>
             <div className="min-w-0">
-              <span
-                className={cn(
-                  "text-eyebrow-sm block mb-1",
-                  isBelowBenchmark ? "text-signal-danger" : "text-signal-success"
-                )}
-              >
-                Leitura · Envolvimento
-              </span>
               <p className="text-[13px] leading-relaxed text-content-primary">
                 {readingText}
               </p>
