@@ -484,15 +484,15 @@ function CardShell({
               04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS
             </span>
           </div>
-          <span className="text-[10px] font-semibold tracking-wide text-content-tertiary border border-border-subtle rounded-full px-2.5 py-0.5 bg-surface-muted/50">
-            DADOS
+          <span className="text-[10px] font-semibold tracking-wide text-violet-600 border border-violet-200 rounded-full px-2.5 py-0.5 bg-violet-50">
+            DIAGNÓSTICO
           </span>
         </div>
-        <h3 className="font-heading text-xl md:text-2xl text-content-primary leading-snug mb-1">
+        <h3 className="font-display text-xl md:text-2xl text-content-primary leading-snug mb-1">
           O que as legendas revelam sobre a estratégia de conteúdo?
         </h3>
         <p className="text-[13px] text-content-secondary leading-relaxed">
-          Leitura editorial das legendas públicas dos posts analisados.
+          Padrões extraídos das legendas públicas dos posts analisados.
         </p>
       </header>
       {children}
