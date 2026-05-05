@@ -10,7 +10,6 @@ import { InsightCallout } from "./insight-callout";
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 
 const KB_HASHTAGS = INSTAGRAM_CAPTION_CONTEXT.hashtagGuidelines;
-const KB_SOURCES = INSTAGRAM_CAPTION_CONTEXT.sources;
 
 // ---------------------------------------------------------------------------
 // Types
