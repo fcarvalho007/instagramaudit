@@ -1011,17 +1011,17 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           if (isOpenAiAllowed(primaryProfile.username)) {
             try {
               const thumbPosts = primaryEnriched.posts
-                .filter((p: Record<string, unknown>) =>
-                  typeof p.thumbnail_url === "string" && (p.thumbnail_url as string).length > 0,
+                .filter((p) =>
+                  typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0,
                 )
                 .slice(0, 12);
 
               if (thumbPosts.length > 0) {
                 const result = await generateVisualCoverAnalysis({
                   handle: primaryProfile.username,
-                  thumbnailUrls: thumbPosts.map((p: Record<string, unknown>) => p.thumbnail_url as string),
-                  postIds: thumbPosts.map((p: Record<string, unknown>) =>
-                    (p.id as string) ?? (p.shortCode as string) ?? "",
+                  thumbnailUrls: thumbPosts.map((p) => p.thumbnail_url!),
+                  postIds: thumbPosts.map((p) =>
+                    p.id ?? p.shortCode ?? "",
                   ),
                 });
                 if (result.ok && result.analysis) {
