@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 
 import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
+import type { AiInsightV2Section } from "@/lib/insights/types";
 
 import {
   computeEnvolvimento,
@@ -19,7 +20,7 @@ import { PostComparisonBlock } from "./report-post-comparison";
 
 export interface Props {
   result: AdapterResult;
-  renderInsight: (key: string) => ReactNode;
+  renderInsight: (key: AiInsightV2Section) => ReactNode;
   payload?: SnapshotPayload;
 }
 
