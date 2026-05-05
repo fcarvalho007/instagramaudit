@@ -96,7 +96,7 @@ function buildToWatch(data: CaptionIntelligence): string {
 
 function KpiCard({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border-subtle bg-surface-muted/40 p-4 md:p-5 flex flex-col gap-2">
+    <div className="rounded-2xl border border-border-subtle bg-surface-muted/40 p-4 md:p-5 flex flex-col gap-2.5">
       <p className="text-eyebrow-sm text-content-tertiary">{label}</p>
       <div className="text-sm text-content-primary leading-relaxed">{children}</div>
     </div>
