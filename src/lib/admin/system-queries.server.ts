@@ -568,13 +568,19 @@ export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
     totals[provider].calls += 1;
 
     const day = String(row.created_at).slice(0, 10);
-    const point = dayMap.get(day) ?? { day, apify: 0, openai: 0, dataforseo: 0, apify_by_actor: {} };
+    const point = dayMap.get(day) ?? { day, apify: 0, openai: 0, dataforseo: 0, apify_by_actor: {}, openai_by_actor: {} };
     point[provider] = Number((point[provider] + cost).toFixed(6));
 
     if (provider === "apify") {
       const actor = String((row as Record<string, unknown>).actor ?? "unknown");
       if (!point.apify_by_actor) point.apify_by_actor = {};
       point.apify_by_actor[actor] = Number(((point.apify_by_actor[actor] ?? 0) + cost).toFixed(6));
+    }
+
+    if (provider === "openai") {
+      const actor = String((row as Record<string, unknown>).actor ?? "unknown");
+      if (!point.openai_by_actor) point.openai_by_actor = {};
+      point.openai_by_actor[actor] = Number(((point.openai_by_actor[actor] ?? 0) + cost).toFixed(6));
     }
 
     dayMap.set(day, point);
@@ -622,6 +628,7 @@ export async function fetchCostMetrics24h(): Promise<Cost24hMetrics> {
     cache_hits: cacheHits ?? 0,
     cache_savings_usd: Number(cacheSavings.toFixed(4)),
     apify_actors: await aggregateApifyActorBreakdown(since),
+    openai_actors: await aggregateOpenAiActorBreakdown(since),
   };
 }
 
@@ -756,6 +763,7 @@ export async function fetchExpense30d(): Promise<Expense30d> {
       ? Number(apifyBilled.toFixed(4))
       : null,
     apify_actors: apifyActors,
+    openai_actors: await aggregateOpenAiActorBreakdown(sinceIso),
   };
 }
 
