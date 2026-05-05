@@ -97,17 +97,28 @@ function buildWeekGrid(days: DayEntry[]): (DayEntry | null)[][] {
 }
 
 /**
- * Cell colour by post count (local decorative RGBA):
- *   0: rgba(15,23,42,0.04)
- *   1: rgba(29,158,117,0.45)
- *   2: rgba(29,158,117,0.70)
- *   3+: rgba(29,158,117,1.00)
+ * Cell styles by post count.
+ *   0: muted slate (visible but calm)
+ *   1: soft green
+ *   2: medium green
+ *   3+: full green
  */
-function cellBg(count: number): string {
-  if (count === 0) return "rgba(15,23,42,0.04)";
-  if (count === 1) return "rgba(29,158,117,0.45)";
-  if (count === 2) return "rgba(29,158,117,0.70)";
-  return "rgba(29,158,117,1.00)";
+function cellStyle(count: number): { bg: string; border: string } {
+  if (count === 0)
+    return { bg: "rgb(241,245,249)", border: "1px solid rgba(148,163,184,0.35)" };
+  if (count === 1)
+    return { bg: "rgba(29,158,117,0.40)", border: "1px solid rgba(29,158,117,0.55)" };
+  if (count === 2)
+    return { bg: "rgba(29,158,117,0.65)", border: "1px solid rgba(29,158,117,0.75)" };
+  return { bg: "rgba(29,158,117,0.90)", border: "1px solid rgba(29,158,117,0.95)" };
+}
+
+/** Flat bg colour for legend swatches — matches cell fill. */
+function legendBg(count: number): string {
+  if (count === 0) return "rgb(241,245,249)";
+  if (count === 1) return "rgba(29,158,117,0.40)";
+  if (count === 2) return "rgba(29,158,117,0.65)";
+  return "rgba(29,158,117,0.90)";
 }
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -172,16 +183,16 @@ export function FrequencyCard({
       {/* Calendar grid */}
       {weeks.length > 0 && (
         <div className="px-5 md:px-6 mt-6">
-          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-1.5">
+          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-2">
             Quando publicou
           </span>
 
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-[3px] mb-[3px]">
+          <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
             {PT_WEEKDAYS_SHORT.map((wd, i) => (
               <span
                 key={i}
-                className="text-[8px] text-content-tertiary text-center leading-none select-none"
+                className="text-[11px] md:text-xs font-medium text-content-secondary text-center leading-none select-none"
               >
                 {wd}
               </span>
@@ -192,7 +203,7 @@ export function FrequencyCard({
           <div
             role="img"
             aria-label={`Calendário de publicação: ${publishedCount} dias com publicação, ${pausedCount} sem publicação`}
-            className="grid gap-[3px]"
+            className="grid gap-1 md:gap-1.5"
             style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
           >
             {weeks.flatMap((week, wi) =>
@@ -202,7 +213,7 @@ export function FrequencyCard({
                   return (
                     <span
                       key={`pad-${wi}-${di}`}
-                      className="aspect-square rounded-[3px]"
+                      className="aspect-square rounded-md"
                     />
                   );
                 }
@@ -210,12 +221,12 @@ export function FrequencyCard({
                   <span
                     key={day.date}
                     title={`${fmtPtDate(day.date)} · ${day.postCount > 0 ? `${day.postCount} post${day.postCount > 1 ? "s" : ""}` : "sem publicação"}`}
-                    className="relative aspect-square rounded-[3px] flex items-center justify-center"
-                    style={{ background: cellBg(day.postCount) }}
+                    className="relative aspect-square rounded-md flex items-center justify-center transition-colors"
+                    style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
                   >
                     {day.postCount > 1 && (
                       <span
-                        className="text-[7px] font-bold leading-none text-white select-none"
+                        className="text-[9px] md:text-[10px] font-bold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
                         aria-hidden="true"
                       >
                         {day.postCount}
@@ -228,34 +239,34 @@ export function FrequencyCard({
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-3 mt-1.5">
-            <span className="inline-flex items-center gap-1 text-[9px] text-content-secondary">
+          <div className="flex items-center gap-3 md:gap-4 mt-2.5 md:mt-3">
+            <span className="inline-flex items-center gap-1.5 text-[10px] md:text-[11px] text-content-secondary">
               <span
-                className="size-[7px] rounded-[2px] shrink-0"
+                className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
                 aria-hidden="true"
-                style={{ background: cellBg(0) }}
+                style={{ background: legendBg(0), border: "1px solid rgba(148,163,184,0.35)" }}
               />
               parou ({pausedCount})
             </span>
-            <span className="inline-flex items-center gap-1 text-[9px] text-content-secondary">
+            <span className="inline-flex items-center gap-1.5 text-[10px] md:text-[11px] text-content-secondary">
               <span
-                className="size-[7px] rounded-[2px] shrink-0"
+                className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
                 aria-hidden="true"
-                style={{ background: cellBg(1) }}
+                style={{ background: legendBg(1) }}
               />
               1 post
             </span>
             {maxPosts >= 2 && (
-              <span className="inline-flex items-center gap-1 text-[9px] text-content-secondary">
+              <span className="inline-flex items-center gap-1.5 text-[10px] md:text-[11px] text-content-secondary">
                 <span
-                  className="size-[7px] rounded-[2px] shrink-0"
+                  className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
                   aria-hidden="true"
-                  style={{ background: cellBg(maxPosts >= 3 ? 3 : 2) }}
+                  style={{ background: legendBg(maxPosts >= 3 ? 3 : 2) }}
                 />
                 {maxPosts >= 3 ? "3+" : "2"} posts
               </span>
             )}
-            <span className="ml-auto text-[9px] tabular-nums text-content-tertiary">
+            <span className="ml-auto text-[13px] md:text-sm font-medium tabular-nums text-content-secondary">
               {publishedCount}/{calendarDays.length} dias
             </span>
           </div>
