@@ -1,14 +1,18 @@
 /**
  * Zona C — Card de Taxa de Envolvimento.
- * Premium Iconosquare-style KPI row + benchmark chart.
+ * Premium Iconosquare-style KPI row + benchmark chart + diagnostic reading.
  *
  * KPI accent colours (local decorative values):
  *   Rose/danger:  bg rgba(163,45,45,0.04), border rgba(163,45,45,0.15), dot rgba(163,45,45,0.70)
  *   Blue/neutral: bg rgba(37,99,217,0.03), border rgba(37,99,217,0.10), dot rgba(37,99,217,0.45)
  *   Emerald/ok:   bg rgba(29,158,117,0.04), border rgba(29,158,117,0.15), dot rgba(29,158,117,0.70)
+ *
+ * Reading box accents (local decorative):
+ *   Danger:  bg rgba(163,45,45,0.04), left-border rgba(163,45,45,0.45)
+ *   Success: bg rgba(29,158,117,0.04), left-border rgba(29,158,117,0.45)
  */
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
-import { Activity } from "lucide-react";
+import { Activity, MessageCircle } from "lucide-react";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   getConsolidatedBenchmarkSeries,
@@ -59,6 +63,30 @@ export function EngagementCardRefined({ result }: Props) {
 
   // Profile is below benchmark?
   const isBelowBenchmark = gapPp < 0;
+
+  // ── Reading box data ──────────────────────────────────────────────
+  // Find highest tier benchmark for the diagnostic reading
+  const highestTier = benchmarkSeries[benchmarkSeries.length - 1];
+  const highestTierLabel = highestTier?.tierLabel ?? "+1M";
+  const highestTierBenchmark = highestTier?.engagementRatePct ?? 0;
+
+  let readingText = "";
+  if (k.engagementRate === 0) {
+    readingText =
+      "Mesmo os escalões maiores apresentam uma referência superior — o problema parece estar na reação da audiência.";
+  } else if (isBelowBenchmark && highestTierBenchmark > 0 && k.engagementRate > 0) {
+    const highMult = highestTierBenchmark / k.engagementRate;
+    const highMultLabel = highMult >= 10
+      ? `${Math.round(highMult)}×`
+      : `${highMult.toFixed(1).replace(".", ",")}×`;
+    readingText = `Mesmo perfis com ${highestTierLabel} seguidores têm ${highMultLabel} mais envolvimento do que este perfil — o problema não é a dimensão da audiência, é como ela reage.`;
+  } else if (isPositive && benchmarkVal > 0 && k.engagementRate > 0) {
+    const aboveMult = k.engagementRate / benchmarkVal;
+    const aboveMultLabel = aboveMult >= 10
+      ? `${Math.round(aboveMult)}×`
+      : `${aboveMult.toFixed(1).replace(".", ",")}×`;
+    readingText = `Este perfil supera a média do seu escalão em ${aboveMultLabel} — há sinais de envolvimento acima da referência.`;
+  }
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
@@ -222,6 +250,48 @@ export function EngagementCardRefined({ result }: Props) {
           activeTierLabel={activeTier?.tierLabel}
         />
       </div>
+
+      {/* Diagnostic reading box */}
+      {readingText && (
+        <div className="px-5 md:px-6 pb-5 md:pb-6">
+          <div
+            className="rounded-xl px-4 py-4 flex items-start gap-3"
+            style={{
+              borderLeft: `3px solid ${isBelowBenchmark ? "rgba(163,45,45,0.45)" : "rgba(29,158,117,0.45)"}`,
+              background: isBelowBenchmark ? "rgba(163,45,45,0.04)" : "rgba(29,158,117,0.04)",
+            }}
+          >
+            <span
+              className="flex items-center justify-center size-7 rounded-full shrink-0 mt-0.5"
+              aria-hidden="true"
+              style={{
+                background: isBelowBenchmark ? "rgba(163,45,45,0.08)" : "rgba(29,158,117,0.08)",
+              }}
+            >
+              <MessageCircle
+                className={cn(
+                  "size-3.5",
+                  isBelowBenchmark ? "text-signal-danger" : "text-signal-success"
+                )}
+                strokeWidth={2}
+              />
+            </span>
+            <div className="min-w-0">
+              <span
+                className={cn(
+                  "text-eyebrow-sm block mb-1",
+                  isBelowBenchmark ? "text-signal-danger" : "text-signal-success"
+                )}
+              >
+                Leitura
+              </span>
+              <p className="text-[13px] leading-relaxed text-content-primary">
+                {readingText}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
