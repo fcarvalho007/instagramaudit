@@ -180,6 +180,16 @@ function compact<T>(arr: Array<T | null>): T[] {
 // Card builders
 // ─────────────────────────────────────────────────────────────────────
 
+
+const CONTENT_TYPE_SUBLABELS: Record<string, string> = {
+  Institucional: "quem somos, missão, valores, bastidores",
+  Promocional: "campanhas, descontos, lançamentos",
+  Educativo: "dicas, tutoriais, explicações",
+  Inspiracional: "frases, histórias, motivação",
+  Entretenimento: "memes, trends, desafios",
+  "Prova social": "clientes, reviews, testemunhos",
+};
+
 function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
   if (!r.available) return null;
   if (r.label === "Misto / pouco claro" || !r.label) {
@@ -239,6 +249,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
           variant="vertical-list"
           items={r.distribution.map((d, i) => ({
             label: d.label,
+            sublabel: CONTENT_TYPE_SUBLABELS[d.label],
             value: d.sharePct,
             color: colorByIndex(i),
           }))}
