@@ -430,7 +430,12 @@ export function DiagnosticChecklist({
         return (
           <li
             key={`${it.label}-${i}`}
-            className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-secondary px-3 py-2"
+            className={cn(
+              "flex items-center gap-2.5 rounded-lg border px-3 py-2",
+              it.status === "detected"
+                ? "border-signal-success/15 bg-tint-success/30"
+                : "border-border-subtle bg-surface-secondary",
+            )}
           >
             <span aria-hidden className={cn("size-2 rounded-full shrink-0", dot)} />
             <span className="text-sm text-content-secondary min-w-0 truncate">
