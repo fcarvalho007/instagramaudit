@@ -481,7 +481,7 @@ function CardShell({
             DIAGNÓSTICO
           </span>
         </div>
-        <h3 className="font-display text-[1.5rem] md:text-[2rem] leading-[1.05] tracking-[-0.02em] text-content-primary mt-5">
+        <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight mt-5">
           O que as legendas revelam sobre a estratégia de conteúdo?
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
