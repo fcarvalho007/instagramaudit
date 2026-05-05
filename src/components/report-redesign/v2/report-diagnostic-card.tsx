@@ -10,7 +10,7 @@ import {
   Heart,
   MessageCircle,
   MessageCircleReply,
-  ArrowRight,
+
   MessageSquare,
   Users,
 } from "lucide-react";
