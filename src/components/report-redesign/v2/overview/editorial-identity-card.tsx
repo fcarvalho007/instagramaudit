@@ -6,6 +6,7 @@
  */
 import { cn } from "@/lib/utils";
 import { ScoreRing } from "./score-ring";
+import { ScoreOrbitBackground } from "./score-orbit-background";
 import {
   getScoreFamily,
   SCORE_COLORS,
@@ -163,24 +164,27 @@ export function EditorialIdentityCard({
           </div>
 
           {/* Right — global score ring */}
-          <div className="flex flex-col items-center shrink-0">
-            <ScoreRing score={globalScore} size={100} label="Pontuação global" />
-            <span className="mt-1 text-[11px] font-sans text-content-secondary/60">
-              de 100
-            </span>
-            <span
-              className={cn(
-                "mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                "text-[11px] font-semibold tracking-wide uppercase",
-                FAMILY_CHIP[globalFamily],
-              )}
-            >
+          <div className="relative flex flex-col items-center shrink-0">
+            <ScoreOrbitBackground family={globalFamily} />
+            <div className="relative z-10 flex flex-col items-center">
+              <ScoreRing score={globalScore} size={100} label="Pontuação global" />
+              <span className="mt-1 text-[11px] font-sans text-content-secondary/60">
+                de 100
+              </span>
               <span
-                aria-hidden="true"
-                className={cn("size-1.5 rounded-full shrink-0", FAMILY_DOT[globalFamily])}
-              />
-              {GLOBAL_LABEL[globalFamily]}
-            </span>
+                className={cn(
+                  "mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+                  "text-[11px] font-semibold tracking-wide uppercase",
+                  FAMILY_CHIP[globalFamily],
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn("size-1.5 rounded-full shrink-0", FAMILY_DOT[globalFamily])}
+                />
+                {GLOBAL_LABEL[globalFamily]}
+              </span>
+            </div>
           </div>
         </div>
       </div>
