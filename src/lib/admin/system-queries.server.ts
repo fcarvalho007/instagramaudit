@@ -37,6 +37,7 @@ export interface Cost24hMetrics {
   cache_hits: number;
   cache_savings_usd: number;
   apify_actors: ApifyActorBreakdown[];
+  openai_actors: OpenAiActorBreakdown[];
 }
 
 export interface ProviderCallRow {
@@ -67,6 +68,8 @@ export interface ExpenseDailyPoint {
   dataforseo: number;
   /** Per-actor Apify breakdown for chart sub-bars */
   apify_by_actor?: Record<string, number>;
+  /** Per-actor OpenAI breakdown for chart sub-bars */
+  openai_by_actor?: Record<string, number>;
 }
 
 export interface Expense30d {
@@ -88,6 +91,8 @@ export interface Expense30d {
   apify_billed_total_30d: number | null;
   /** Actor-level breakdown within Apify costs */
   apify_actors: ApifyActorBreakdown[];
+  /** Actor-level breakdown within OpenAI costs */
+  openai_actors: OpenAiActorBreakdown[];
 }
 
 export interface CostCaps {
@@ -104,6 +109,110 @@ export interface ApifyActorBreakdown {
   actor: string;
   label: string;
   total_cost_usd: number;
+  actual_total_usd: number;
+  estimated_total_usd: number;
+  unavailable_count: number;
+  run_count: number;
+  error_count: number;
+  total_results: number;
+  avg_cost_per_run: number | null;
+  cost_per_1k_results: number | null;
+  last_run_at: string | null;
+  last_run_status: string | null;
+  last_run_cost_usd: number | null;
+  cost_source: "actual" | "estimated" | "mixed" | "unavailable";
+  included_in_free_report: boolean;
+}
+
+export interface OpenAiActorBreakdown {
+  actor: string;
+  label: string;
+  total_cost_usd: number;
+  call_count: number;
+  error_count: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  avg_cost_per_call: number | null;
+  last_call_at: string | null;
+  model: string | null;
+}
+
+const OPENAI_ACTOR_LABELS: Record<string, string> = {
+  "visual-cover-analysis": "Análise visual (covers)",
+};
+
+function openaiActorLabel(actor: string): string {
+  if (OPENAI_ACTOR_LABELS[actor]) return OPENAI_ACTOR_LABELS[actor];
+  if (actor.startsWith("insights:")) return `Insights (${actor.replace("insights:", "")})`;
+  return actor;
+}
+
+export async function aggregateOpenAiActorBreakdown(
+  sinceIso: string,
+): Promise<OpenAiActorBreakdown[]> {
+  const { data: logs } = await supabaseAdmin
+    .from("provider_call_logs")
+    .select("actor, status, estimated_cost_usd, model, prompt_tokens, completion_tokens, created_at")
+    .eq("provider", "openai")
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false });
+
+  const map = new Map<string, {
+    cost: number; calls: number; errors: number;
+    promptTokens: number; completionTokens: number;
+    lastAt: string | null; model: string | null;
+  }>();
+
+  for (const row of logs ?? []) {
+    const actor = String(row.actor ?? "unknown");
+    let acc = map.get(actor);
+    if (!acc) {
+      acc = { cost: 0, calls: 0, errors: 0, promptTokens: 0, completionTokens: 0, lastAt: null, model: null };
+      map.set(actor, acc);
+    }
+    const status = String(row.status);
+    if (status !== "success" && status !== "cache") {
+      acc.errors += 1;
+      continue;
+    }
+    acc.calls += 1;
+    acc.cost += Number(row.estimated_cost_usd ?? 0);
+    acc.promptTokens += Number(row.prompt_tokens ?? 0);
+    acc.completionTokens += Number(row.completion_tokens ?? 0);
+    if (!acc.lastAt) {
+      acc.lastAt = String(row.created_at);
+      acc.model = row.model ?? null;
+    }
+  }
+
+  const results: OpenAiActorBreakdown[] = [];
+  for (const [actor, acc] of map) {
+    results.push({
+      actor,
+      label: openaiActorLabel(actor),
+      total_cost_usd: Number(acc.cost.toFixed(6)),
+      call_count: acc.calls,
+      error_count: acc.errors,
+      total_prompt_tokens: acc.promptTokens,
+      total_completion_tokens: acc.completionTokens,
+      avg_cost_per_call: acc.calls > 0 ? Number((acc.cost / acc.calls).toFixed(6)) : null,
+      last_call_at: acc.lastAt,
+      model: acc.model,
+    });
+  }
+
+  // Sort: insights first, then by cost descending
+  results.sort((a, b) => {
+    const aInsights = a.actor.startsWith("insights:") ? 0 : 1;
+    const bInsights = b.actor.startsWith("insights:") ? 0 : 1;
+    if (aInsights !== bInsights) return aInsights - bInsights;
+    return b.total_cost_usd - a.total_cost_usd;
+  });
+
+  return results;
+}
+
+const APIFY_ACTOR_LABELS: Record<string, string> = {
   actual_total_usd: number;
   estimated_total_usd: number;
   unavailable_count: number;
