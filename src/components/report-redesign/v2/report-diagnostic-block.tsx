@@ -12,7 +12,6 @@ import {
   classifyChannelIntegration,
   classifyHashtags,
   inferProbableObjective,
-  derivePriorities,
   type ContentTypeResult,
   type FunnelStageResult,
   type AudienceResponseResult, 
@@ -32,8 +31,6 @@ import {
   type DiagnosticTone,
 } from "./report-diagnostic-card";
 import { InsightCallout } from "./insight-callout";
-import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
-import { ReportDiagnosticCta } from "./report-diagnostic-cta";
 import { CaptionDiagnosticsCard } from "./caption-diagnostics-card";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
 import { HashtagDiagnosticsCard } from "./hashtag-diagnostics-card";
@@ -82,16 +79,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     integration,
     bio,
     audience,
-  });
-
-  const priorities = derivePriorities({
-    contentType,
-    funnel,
-    caption,
-    audience,
-    integration,
-    dominantFormatShare: km.dominantFormatShare ?? 0,
-    dominantFormatLabel: km.dominantFormat ?? null,
   });
 
   const aiLanguageText =
@@ -177,27 +164,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         </p>
       )}
 
-      <ReportDiagnosticPriorities
-        items={
-          result.enriched.aiInsightsV2?.priorities &&
-          result.enriched.aiInsightsV2.priorities.length === 3
-            ? result.enriched.aiInsightsV2.priorities.map((p) => ({
-                level: p.level,
-                title: p.title,
-                body: p.body,
-                resolves: p.resolves,
-              }))
-            : injectCaptionImprovement(priorities, captionIntel)
-        }
-        source={
-          result.enriched.aiInsightsV2?.priorities &&
-          result.enriched.aiInsightsV2.priorities.length === 3
-            ? "ai"
-            : "deterministic"
-        }
-      />
-
-      <ReportDiagnosticCta />
     </div>
   );
 }
@@ -208,35 +174,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
 function compact<T>(arr: Array<T | null>): T[] {
   return arr.filter((x): x is T => x !== null);
-}
-
-/**
- * Quando a leitura editorial das captions (Pergunta 04) é IA e produz uma
- * recomendação de melhoria, injectamo-la como prioridade "oportunidade"
- * adicional — desde que ainda não exista nenhuma com título equivalente.
- */
-function injectCaptionImprovement(
-  base: ReadonlyArray<{ level: "alta" | "media" | "oportunidade"; title: string; body: string; resolves: string }>,
-  intel: import("@/lib/report/caption-intelligence").CaptionIntelligence,
-): Array<{ level: "alta" | "media" | "oportunidade"; title: string; body: string; resolves: string }> {
-  const ab = intel.actionBridge;
-  const title = ab.body && ab.body.length > 5 ? ab.body : intel.editorialReading.recommendedImprovement;
-  if (!title) return [...base];
-  const dup = base.some((p) =>
-    p.title.toLowerCase().includes(title.toLowerCase().slice(0, 24)),
-  );
-  if (dup) return [...base];
-  return [
-    ...base,
-    {
-      level: ab.priorityType,
-      title: title.length > 60 ? title.slice(0, 57) + "…" : title,
-      body: intel.editorialReading.whatIsMissing && intel.editorialReading.whatIsMissing !== "—"
-        ? intel.editorialReading.whatIsMissing
-        : intel.ctaPatterns.summary,
-      resolves: "Resolve a Pergunta 04 — leitura das legendas.",
-    },
-  ];
 }
 
 // ─────────────────────────────────────────────────────────────────────

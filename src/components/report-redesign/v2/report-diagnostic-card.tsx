@@ -11,9 +11,6 @@ import {
   MessageCircle,
   MessageCircleReply,
   ArrowRight,
-  CheckCircle2,
-  XCircle,
-  Lightbulb,
   MessageSquare,
   Users,
 } from "lucide-react";
@@ -541,32 +538,6 @@ interface AudienceHighlightProps {
   commentIntel?: CommentIntelligence | null;
 }
 
-/* ── Z5 copy maps (status-driven) ── */
-
-const WORKS_MAP: Record<AudienceResponseStatus, string> = {
-  active: "O conteúdo gera reações e conversa pública consistente — há audiência viva e participativa.",
-  moderate: "Os posts captam atenção e geram reação passiva — há audiência viva.",
-  concentrated: "Há posts que provam capacidade de gerar conversa — a fórmula existe.",
-  silent: "Os posts captam atenção e geram reação passiva — há audiência viva.",
-  unavailable: "—",
-};
-
-const FAILS_MAP: Record<AudienceResponseStatus, string> = {
-  active: "Garantir que a marca responde para manter o ciclo de conversa ativo.",
-  moderate: "Poucos comentários em proporção aos gostos — comunicação ainda numa só direção.",
-  concentrated: "A conversa está concentrada em poucos posts — sem consistência.",
-  silent: "Zero comentários médios e zero respostas da marca — comunicação numa só direção.",
-  unavailable: "Dados insuficientes para avaliar.",
-};
-
-const NEXT_MAP: Record<AudienceResponseStatus, string> = {
-  active: "Manter consistência e responder a 100% dos comentários novos.",
-  moderate: "Fechar legendas com pergunta direta e responder a 100% dos comentários novos.",
-  concentrated: "Replicar a fórmula dos posts que geraram conversa e responder sempre.",
-  silent: "Fechar legendas com pergunta direta e responder a 100% dos comentários novos.",
-  unavailable: "Aguardar dados suficientes para uma leitura fiável.",
-};
-
 export function DiagnosticAudienceHighlight({
   avgLikes,
   avgComments,
@@ -771,27 +742,6 @@ export function DiagnosticAudienceHighlight({
         </div>
       )}
 
-      {/* ── Z5: Works / Fails / Next ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <Z5Card
-          icon={<CheckCircle2 size={14} className="text-signal-success" />}
-          label="Funciona"
-          text={WORKS_MAP[status]}
-        />
-        <Z5Card
-          icon={<XCircle size={14} className="text-signal-danger" />}
-          label="Falha"
-          text={FAILS_MAP[status]}
-        />
-        <Z5Card
-          icon={<Lightbulb size={14} className="text-signal-warning" />}
-          label="Próximo"
-          text={commentIntel?.available && commentIntel.recommendedConversationAction
-            ? commentIntel.recommendedConversationAction
-            : NEXT_MAP[status]}
-        />
-      </div>
-
       {/* ── Methodology footer ── */}
       {status !== "unavailable" && (
         <p className="text-[10.5px] text-content-tertiary italic leading-relaxed">
@@ -800,26 +750,6 @@ export function DiagnosticAudienceHighlight({
           {" "}· sem DMs nem comentários ocultos
         </p>
       )}
-    </div>
-  );
-}
-
-function Z5Card({
-  icon,
-  label,
-  text,
-}: {
-  icon: ReactNode;
-  label: string;
-  text: string;
-}) {
-  return (
-    <div className="rounded-[14px] border border-border-subtle bg-surface-muted/40 px-3.5 py-3 space-y-1.5">
-      <div className="flex items-center gap-1.5">
-        {icon}
-        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
-      </div>
-      <p className="text-[12.5px] text-content-secondary leading-relaxed">{text}</p>
     </div>
   );
 }
