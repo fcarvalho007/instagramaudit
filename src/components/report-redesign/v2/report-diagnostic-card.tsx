@@ -127,13 +127,13 @@ export function ReportDiagnosticCard({
         "flex flex-col gap-5",
         isFull && "md:col-span-2",
         "rounded-2xl border border-border-default bg-surface-secondary",
-        "p-6 md:p-7",
+        "p-5 md:p-7",
         "shadow-card",
         ACCENT_BORDER[tone],
       )}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-eyebrow-sm text-content-tertiary min-w-0">
+        <p className="text-eyebrow-sm text-content-tertiary min-w-0 tracking-[0.06em]">
           Pergunta {number}
           <span className="mx-1.5 text-content-tertiary/40">·</span>
           <span className="text-content-tertiary">{label}</span>
@@ -212,7 +212,7 @@ export function ReportDiagnosticCard({
 
           {children ? <div className="min-w-0">{children}</div> : null}
 
-          <p className="text-sm text-content-secondary leading-relaxed mt-auto">{body}</p>
+          <p className="text-[13px] md:text-sm text-content-secondary leading-relaxed mt-auto">{body}</p>
 
           {aiSource ? (
             <div className="border-t border-border-subtle pt-3 space-y-1.5">
@@ -260,7 +260,7 @@ export function DiagnosticDistributionBar({
           return (
             <li key={`${it.label}-${i}`} className="text-sm">
               <div className="flex items-center gap-3">
-                <span className={cn("w-20 sm:w-28 shrink-0 truncate text-content-secondary", isDominant && "font-medium text-content-primary")}>
+                <span className={cn("min-w-[4.5rem] w-auto sm:min-w-[7rem] shrink-0 text-[12px] sm:text-sm leading-tight text-content-secondary", isDominant && "font-medium text-content-primary")}>
                   {it.label}
                 </span>
                 <div className={cn("flex-1 overflow-hidden rounded-full bg-surface-muted", isDominant ? "h-2.5" : "h-2")}>
