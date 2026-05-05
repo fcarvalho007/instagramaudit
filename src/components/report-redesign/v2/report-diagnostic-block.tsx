@@ -377,12 +377,13 @@ function renderAudienceCard(
       <ReportDiagnosticCard
         key="q05"
         number="05"
-        label="Resposta"
+        label="Conversa"
         question="O público responde ou só consome?"
         answer={r.label}
         tone="slate"
         span="full"
         body={r.explanation}
+        sourceType="auto"
       >
         <div className="rounded-md border border-dashed border-border-default bg-surface-muted px-3 py-3">
           <p className="text-[12.5px] text-content-secondary leading-relaxed">
@@ -407,12 +408,13 @@ function renderAudienceCard(
     <ReportDiagnosticCard
       key="q05"
       number="05"
-      label="Resposta"
+      label="Conversa"
       question="O público responde ou só consome?"
       answer={r.label}
       tone={tone}
       span="full"
       body={r.explanation}
+      sourceType="auto"
       sourceDetail="Gostos + comentários"
     >
       <DiagnosticAudienceHighlight
