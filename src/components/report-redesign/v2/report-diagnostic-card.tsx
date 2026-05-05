@@ -548,6 +548,7 @@ interface AudienceHighlightProps {
   avgComments: number;
   sampleSize?: number;
   totalLikes?: number | null;
+  totalComments?: number | null;
   postsWithComments?: number;
   topConversationPost?: {
     index: number;
