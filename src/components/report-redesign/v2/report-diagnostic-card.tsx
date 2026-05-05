@@ -13,6 +13,10 @@ import {
 
   MessageSquare,
   Users,
+  HelpCircle,
+  ThumbsUp,
+  AlertTriangle,
+  ShoppingCart,
 } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import type { CommentIntelligence } from "@/lib/analysis/types";
