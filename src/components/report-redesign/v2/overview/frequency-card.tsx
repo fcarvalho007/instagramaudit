@@ -5,6 +5,12 @@
 import { CalendarDays, Check } from "lucide-react";
 import { computeFrequencia } from "./score-utils";
 
+function getFrequencyStatus(score: number): string {
+  if (score >= 70) return "Alta";
+  if (score >= 40) return "Média";
+  return "Baixa";
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 const PT_MONTHS = [
@@ -115,6 +121,10 @@ export function FrequencyCard({
   const headline = getFrequencyHeadline(postsPerDay);
   const score = computeFrequencia(postingFrequencyWeekly);
   const verdict = getFrequencyVerdict(score);
+  const frequencyStatus = getFrequencyStatus(score);
+
+  // Dynamic subtitle: "1 post a cada 1–2 dias · 12 publicações em 18 dias"
+  const subtitleLine = `${headline} · ${postsAnalyzed} publicações em ${windowDays} dias`;
 
   const publishedCount = calendarDays.filter((d) => d.published).length;
   const pausedCount = calendarDays.length - publishedCount;
@@ -129,24 +139,19 @@ export function FrequencyCard({
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary p-4 md:p-5 shadow-card flex flex-col gap-3">
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-[11px] font-medium text-content-secondary">
-          <CalendarDays className="size-3.5" aria-hidden="true" />
-          Frequência de publicação
-        </span>
-        <span className="text-[9px] text-content-tertiary tracking-[0.06em]">
-          ✦ AUTO
-        </span>
-      </div>
-
-      {/* Hero headline */}
-      <div>
-        <p className="font-display text-[1.35rem] md:text-[1.5rem] font-semibold text-content-primary leading-[1.15] tracking-tight">
-          {headline}
-        </p>
-        <p className="text-[11px] text-content-secondary mt-1">
-          {statsLine}
+      {/* Header */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-tight">
+            Frequência de publicação{" "}
+            <span className="font-bold">{frequencyStatus}</span>
+          </h3>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-content-tertiary shrink-0">
+            ✦ AUTO
+          </span>
+        </div>
+        <p className="text-[13px] text-content-secondary leading-snug">
+          {subtitleLine}
         </p>
       </div>
 

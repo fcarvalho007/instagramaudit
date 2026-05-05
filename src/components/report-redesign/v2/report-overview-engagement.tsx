@@ -12,7 +12,7 @@
  *   Success: bg rgba(29,158,117,0.04), left-border rgba(29,158,117,0.45)
  */
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
-import { Activity, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   getConsolidatedBenchmarkSeries,
@@ -38,6 +38,15 @@ export function EngagementCardRefined({ result }: Props) {
   const benchmarkVal = k.engagementBenchmark;
   const gapPp = k.engagementRate - benchmarkVal;
   const isPositive = gapPp >= 0;
+
+  // Dynamic engagement status word
+  const engagementStatus: string = (() => {
+    if (benchmarkVal <= 0) return "Baixa";
+    const pctDiff = ((k.engagementRate - benchmarkVal) / benchmarkVal) * 100;
+    if (pctDiff >= 0) return "Alta";
+    if (pctDiff >= -30) return "Média";
+    return "Baixa";
+  })();
 
   // KPI 3: percentage difference vs benchmark
   let pctDiffLabel = "—";
@@ -90,25 +99,19 @@ export function EngagementCardRefined({ result }: Props) {
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 md:px-6 pt-5 md:pt-6 pb-0">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center size-9 rounded-xl bg-tint-primary text-accent-primary">
-            <Activity className="size-4" strokeWidth={2.2} aria-hidden="true" />
-          </div>
-          <div>
-            <span className="font-display text-lg sm:text-xl font-semibold text-content-primary block tracking-tight">
-              Taxa de <em className="not-italic font-display italic">Engagement</em>
-            </span>
-            <span className="text-[11px] text-content-secondary">
-              posição face ao mercado por escalão
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] text-accent-primary font-semibold tracking-[0.04em]">
+      <div className="px-5 md:px-6 pt-5 md:pt-6 pb-0 space-y-1">
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-tight">
+            Taxa de Engagement{" "}
+            <span className="font-bold">{engagementStatus}</span>
+          </h3>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-content-tertiary shrink-0">
             ✦ MERCADO
           </span>
         </div>
+        <p className="text-[13px] text-content-secondary leading-snug">
+          Média de gostos + comentários + partilhas (÷) seguidores.
+        </p>
       </div>
 
       {/* Hero row — 3 KPI cards */}
@@ -146,7 +149,7 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <span className="block text-[11px] text-content-secondary mt-1.5 leading-snug">
-              Gostos, comentários, partilhas a dividir por seguidores.
+              interação com o conteúdo
             </span>
           </div>
 

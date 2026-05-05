@@ -9,7 +9,7 @@
  *   Video legend dot:    bg-sky-200
  */
 import { useState } from "react";
-import { Layers, Check, Play, Image, GalleryHorizontalEnd } from "lucide-react";
+import { Check, Play, Image, GalleryHorizontalEnd } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -79,6 +79,31 @@ export function getFormatHeadline(formats: FormatEntry[]): string {
   return "Formato pouco definido";
 }
 
+/** Variation status for the new editorial headline */
+export function getFormatVariationStatus(formats: FormatEntry[]): string {
+  if (!formats.length) return "Pouco variado";
+  const sorted = [...formats].sort((a, b) => b.sharePct - a.sharePct);
+  const top = sorted[0];
+  const meaningful = sorted.filter((f) => f.count > 0);
+  if (top.sharePct >= 60) return "Pouco variado";
+  if (meaningful.length >= 3 || top.sharePct < 40) return "Muito variado";
+  return "Variado";
+}
+
+/** Build the dynamic subtitle: "Carrosséis mais frequentes · 8 em cada 12 são carrosséis · 4 são reels" */
+function buildSubtitleLine(formats: FormatEntry[], postsAnalyzed: number): string {
+  const sorted = [...formats].filter((f) => f.count > 0).sort((a, b) => b.count - a.count);
+  if (!sorted.length) return `${postsAnalyzed} publicações analisadas`;
+  const topLabel = FORMAT_PT[sorted[0].format] ?? sorted[0].format;
+  const capitalised = topLabel.charAt(0).toUpperCase() + topLabel.slice(1);
+  let line = `${capitalised} mais frequentes · ${sorted[0].count} em cada ${postsAnalyzed} são ${topLabel}`;
+  if (sorted.length > 1) {
+    const rest = sorted.slice(1).map((f) => `${f.count} são ${FORMAT_PT[f.format] ?? f.format}`);
+    line += ` · ${rest.join(" · ")}`;
+  }
+  return line;
+}
+
 type DominantKey = "carousel" | "reel" | "image" | "mixed";
 
 export function toDominantKey(format: string, share: number): DominantKey {
@@ -135,6 +160,8 @@ export function FormatCard({
   analysedPostFormats,
 }: FormatCardProps) {
   const headline = getFormatHeadline(formats);
+  const variationStatus = getFormatVariationStatus(formats);
+  const subtitleLine = buildSubtitleLine(formats, postsAnalyzed);
   const dk = toDominantKey(dominantFormat, dominantFormatShare);
   const verdict = getFormatVerdict(dk);
   const statsLine = buildStatsLine(formats, postsAnalyzed);
@@ -161,24 +188,19 @@ export function FormatCard({
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary p-4 md:p-5 shadow-card flex flex-col gap-3">
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-[11px] font-medium text-content-secondary">
-          <Layers className="size-3.5" aria-hidden="true" />
-          Tipo de conteúdo
-        </span>
-        <span className="text-[9px] text-content-tertiary tracking-[0.06em]">
-          ✦ DADOS
-        </span>
-      </div>
-
-      {/* Hero headline */}
-      <div>
-        <p className="font-display text-[1.35rem] md:text-[1.5rem] font-semibold text-content-primary leading-[1.15] tracking-tight">
-          {headline}
-        </p>
-        <p className="text-[11px] text-content-secondary mt-1">
-          {statsLine}
+      {/* Header */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-tight">
+            Formato de Posts{" "}
+            <span className="font-bold">{variationStatus}</span>
+          </h3>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-content-tertiary shrink-0">
+            ✦ DADOS
+          </span>
+        </div>
+        <p className="text-[13px] text-content-secondary leading-snug">
+          {subtitleLine}
         </p>
       </div>
 
