@@ -493,9 +493,9 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       {/* ── 4b. Comment engagement ── */}
       <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
         <p className="text-eyebrow-sm text-content-tertiary mb-2">PEDE COMENTÁRIOS NOS POSTS?</p>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
           <span className={cn(
-            "text-[28px] font-mono font-bold tabular-nums leading-none",
+            "text-[22px] sm:text-[28px] font-mono font-bold tabular-nums leading-none shrink-0",
             data.commentEngagement.asksForCommentsPct >= 50 ? "text-signal-success" :
             data.commentEngagement.asksForCommentsPct >= 25 ? "text-signal-warning" :
             "text-signal-danger",
@@ -606,7 +606,7 @@ function CardShell({
   return (
     <section
       aria-label="Pergunta 04 · Diagnóstico de legendas"
-      className="rounded-2xl border border-border-subtle bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden p-5 md:p-7 flex flex-col gap-6 md:col-span-2"
+      className="rounded-2xl border border-border-subtle bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden p-4 sm:p-5 md:p-7 flex flex-col gap-5 sm:gap-6 md:col-span-2"
     >
       {/* Header */}
       <header>
@@ -616,14 +616,15 @@ function CardShell({
               <FileText className="w-3 h-3 text-content-tertiary/70" />
             </span>
             <span className="text-[10px] md:text-[11px] tracking-[0.16em] text-content-tertiary uppercase font-sans">
-              04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS
+              <span className="hidden sm:inline">04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS</span>
+              <span className="sm:hidden">04 · LEGENDAS · {sampleSize} · {fmt(totalWords)} PAL.</span>
             </span>
           </div>
           <span className="text-[9px] md:text-[10px] font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
             DIAGNÓSTICO
           </span>
         </div>
-        <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight mt-5">
+        <h3 className="font-display text-[1.2rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight mt-4 sm:mt-5 break-words">
           O que as legendas revelam sobre a estratégia de conteúdo?
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
