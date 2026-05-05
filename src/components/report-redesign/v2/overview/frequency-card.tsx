@@ -213,7 +213,7 @@ export function FrequencyCard({
                   return (
                     <span
                       key={`pad-${wi}-${di}`}
-                      className="aspect-square rounded-md"
+                      className="aspect-[7/4] rounded-md"
                     />
                   );
                 }
@@ -221,7 +221,7 @@ export function FrequencyCard({
                   <span
                     key={day.date}
                     title={`${fmtPtDate(day.date)} · ${day.postCount > 0 ? `${day.postCount} post${day.postCount > 1 ? "s" : ""}` : "sem publicação"}`}
-                    className="relative aspect-square rounded-md flex items-center justify-center transition-colors"
+                    className="relative aspect-[7/4] rounded-md flex items-center justify-center transition-colors"
                     style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
                   >
                     {day.postCount > 1 && (
