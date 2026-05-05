@@ -85,17 +85,38 @@ export function ReportEngagementBenchmarkChart({
   const successPill = "rgba(29,158,117,0.12)";
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Chart header */}
-      <div className="flex items-baseline justify-between flex-wrap gap-1">
+    <div className="flex flex-col gap-3">
+      {/* Chart header + inline legend */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <span className="text-eyebrow-sm text-content-secondary">
-          Comparação por escalão de seguidores
+          Comparação com escalões semelhantes
         </span>
+        <div className="flex items-center gap-3 text-[10px]">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="w-2.5 h-[7px] rounded-sm"
+              aria-hidden="true"
+              style={{ background: isPositive ? successBar : dangerBar }}
+            />
+            <span className="text-content-secondary">O teu perfil</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-2.5 h-[7px] rounded-sm bg-content-secondary/10" aria-hidden="true" />
+            <span className="text-content-secondary">Outros escalões</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="h-2.5 w-px border-l border-dashed border-content-secondary/40"
+              aria-hidden="true"
+            />
+            <span className="text-content-secondary">Benchmark do tier</span>
+          </span>
+        </div>
       </div>
 
       {/* Tier rows */}
       <div
-        className="relative flex flex-col gap-2"
+        className="relative flex flex-col gap-1.5"
         role="list"
         aria-label="Comparação de taxa de engagement por escalão"
       >
@@ -103,7 +124,7 @@ export function ReportEngagementBenchmarkChart({
         {benchmarkVal > 0 && (
           <>
             {/* Label above bars */}
-            <div className="relative h-5 ml-[calc(12px+70px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)]">
+            <div className="relative h-4 ml-[calc(8px+64px+8px)] sm:ml-[calc(12px+100px+12px)] mr-[calc(8px+52px+8px)] sm:mr-[calc(12px+56px+12px)]">
               <span
                 className="absolute bottom-0 text-[10px] text-content-secondary font-medium whitespace-nowrap -translate-x-1/2 bg-surface-secondary px-1 rounded"
                 style={{ left: `max(${benchmarkPct}%, 28px)` }}
@@ -113,7 +134,7 @@ export function ReportEngagementBenchmarkChart({
             </div>
             {/* Full-height vertical dashed line */}
             <div
-              className="absolute inset-0 top-[20px] ml-[calc(12px+70px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)] pointer-events-none z-10"
+              className="absolute inset-0 top-[16px] ml-[calc(8px+64px+8px)] sm:ml-[calc(12px+100px+12px)] mr-[calc(8px+52px+8px)] sm:mr-[calc(12px+56px+12px)] pointer-events-none z-10"
               aria-hidden="true"
             >
               <div
@@ -140,7 +161,7 @@ export function ReportEngagementBenchmarkChart({
                 key={tier.tierLabel}
                 role="listitem"
                 aria-label={`Escalão ${tier.tierLabel}: referência ${fmtRate(tier.engagementRatePct)}, este perfil ${fmtRate(profileVal)}`}
-                className="relative rounded-xl px-3 py-3 sm:px-4 sm:py-4"
+                className="relative rounded-xl px-2 py-2.5 sm:px-3 sm:py-3"
                 style={{
                   border: `2px solid ${isPositive ? successBorder : dangerBorder}`,
                   background: isPositive ? successBg : dangerBg,
@@ -148,7 +169,7 @@ export function ReportEngagementBenchmarkChart({
               >
                 {/* Badge: ESTÁS AQUI */}
                 <span
-                  className="absolute -top-2.5 left-3 sm:left-4 text-[9px] font-bold tracking-[0.08em] bg-surface-secondary rounded px-1.5 py-0.5 uppercase"
+                  className="absolute -top-2.5 left-2 sm:left-3 text-[9px] font-bold tracking-[0.08em] bg-surface-secondary rounded px-1.5 py-0.5 uppercase"
                   style={{
                     color: isPositive ? "rgb(29,158,117)" : "rgb(163,45,45)",
                     border: `1px solid ${isPositive ? successBorder : dangerBorder}`,
@@ -157,26 +178,24 @@ export function ReportEngagementBenchmarkChart({
                   ESTÁS AQUI
                 </span>
 
-                <div className="flex items-center gap-3 sm:gap-4 mt-1">
-                  {/* Label */}
-                  <div className="flex items-baseline gap-1.5 min-w-[70px] sm:min-w-[110px] shrink-0">
-                    <span className="text-[11px] tabular-nums text-content-secondary font-medium">
-                      {String(i + 1).padStart(2, "0")}
+                <div className="flex items-center gap-2 sm:gap-3 mt-0.5">
+                  {/* Label — no numbering */}
+                  <div className="flex flex-col leading-tight min-w-[64px] sm:min-w-[100px] shrink-0">
+                    <span className="text-[13px] font-bold text-content-primary">
+                      {tier.tierLabel}
                     </span>
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-[13px] font-semibold text-content-primary">
-                        {tier.tierLabel}
+                    {sub && (
+                      <span
+                        className="text-[10px] font-semibold tracking-[0.06em]"
+                        style={{ color: isPositive ? "rgb(29,158,117)" : "rgb(163,45,45)" }}
+                      >
+                        {sub} · TEU TIER
                       </span>
-                      {sub && (
-                        <span className="text-[10px] text-content-secondary font-semibold tracking-[0.06em]">
-                          {sub} · TEU TIER
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
 
                   {/* Bar area */}
-                  <div className="relative flex-1 h-8 sm:h-9">
+                  <div className="relative flex-1 h-7 sm:h-8">
                     {/* Base track */}
                     <div className="absolute inset-y-0 left-0 right-0 rounded-md bg-content-secondary/5" />
 
@@ -225,9 +244,14 @@ export function ReportEngagementBenchmarkChart({
                     )}
                   </div>
 
-                  {/* Value — benchmark of this tier */}
-                  <span className="text-[13px] tabular-nums font-semibold shrink-0 min-w-[48px] text-right text-content-primary">
-                    {fmtRate(tier.engagementRatePct)}
+                  {/* Value — profile rate in signal colour */}
+                  <span
+                    className={cn(
+                      "font-mono text-[14px] sm:text-[15px] tabular-nums font-bold shrink-0 min-w-[52px] sm:min-w-[56px] text-right",
+                      isPositive ? "text-signal-success" : "text-signal-danger"
+                    )}
+                  >
+                    {fmtRate(profileVal)}
                   </span>
                 </div>
               </div>
@@ -240,28 +264,23 @@ export function ReportEngagementBenchmarkChart({
               key={tier.tierLabel}
               role="listitem"
               aria-label={`Escalão ${tier.tierLabel}: referência ${fmtRate(tier.engagementRatePct)}`}
-              className="relative rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 border border-transparent"
+              className="relative rounded-xl px-2 py-2 sm:px-3 sm:py-2.5 border border-transparent"
             >
-              <div className="flex items-center gap-3 sm:gap-4">
-                {/* Label */}
-                <div className="flex items-baseline gap-1.5 min-w-[70px] sm:min-w-[110px] shrink-0">
-                  <span className="text-[11px] tabular-nums text-content-secondary/50 font-medium">
-                    {String(i + 1).padStart(2, "0")}
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Label — no numbering */}
+                <div className="flex flex-col leading-tight min-w-[64px] sm:min-w-[100px] shrink-0">
+                  <span className="text-[13px] font-semibold text-content-secondary">
+                    {tier.tierLabel}
                   </span>
-                  <div className="flex flex-col leading-tight">
-                    <span className="text-[13px] font-semibold text-content-secondary">
-                      {tier.tierLabel}
+                  {sub && (
+                    <span className="text-[10px] text-content-secondary/50 font-semibold tracking-[0.06em]">
+                      {sub}
                     </span>
-                    {sub && (
-                      <span className="text-[10px] text-content-secondary/50 font-semibold tracking-[0.06em]">
-                        {sub}
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
 
                 {/* Bar area */}
-                <div className="relative flex-1 h-6 sm:h-7">
+                <div className="relative flex-1 h-5 sm:h-6">
                   <div
                     className="absolute inset-y-0 left-0 rounded-md bg-content-secondary/8"
                     style={{ width: `${Math.max(tierPct, 1)}%` }}
@@ -269,7 +288,7 @@ export function ReportEngagementBenchmarkChart({
                 </div>
 
                 {/* Value */}
-                <span className="text-[13px] tabular-nums font-semibold shrink-0 min-w-[48px] text-right text-content-secondary">
+                <span className="text-[13px] tabular-nums font-semibold shrink-0 min-w-[52px] sm:min-w-[56px] text-right text-content-secondary">
                   {fmtRate(tier.engagementRatePct)}
                 </span>
               </div>
@@ -280,7 +299,7 @@ export function ReportEngagementBenchmarkChart({
 
       {/* X-axis footer */}
       <div
-        className="flex justify-between ml-[calc(12px+70px+12px)] sm:ml-[calc(16px+110px+16px)] mr-[calc(12px+48px+12px)] sm:mr-[calc(16px+48px+16px)]"
+        className="flex justify-between ml-[calc(8px+64px+8px)] sm:ml-[calc(12px+100px+12px)] mr-[calc(8px+52px+8px)] sm:mr-[calc(12px+56px+12px)]"
         aria-hidden="true"
       >
         {axisSteps.map((v) => (
@@ -290,52 +309,26 @@ export function ReportEngagementBenchmarkChart({
         ))}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center justify-between flex-wrap gap-3 text-[11px] border-t border-border-subtle pt-3">
-        <div className="flex items-center gap-4">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="w-3 h-2 rounded-sm"
-              aria-hidden="true"
-              style={{ background: isPositive ? successBar : dangerBar }}
-            />
-            <span className="text-content-secondary font-medium">O teu perfil</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-content-secondary/8" aria-hidden="true" />
-            <span className="text-content-secondary">Outros escalões</span>
-          </span>
-          <span className="text-content-secondary/50">|</span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-3 w-px border-l border-dashed border-content-secondary/40"
-              aria-hidden="true"
-            />
-            <span className="text-content-secondary">Benchmark do tier</span>
-          </span>
+      {/* Sources — compact footnote */}
+      {sourceReferences.length > 0 && (
+        <div className="text-[9px] text-content-tertiary pt-1">
+          Fontes:{" "}
+          {sourceReferences.map((ref, i) => (
+            <span key={ref.url}>
+              {i > 0 && " · "}
+              <a
+                href={ref.url}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-accent-primary hover:underline transition-colors"
+                aria-label={`Fonte ${i + 1}: ${ref.name}`}
+              >
+                [{i + 1}] {ref.name}
+              </a>
+            </span>
+          ))}
         </div>
-
-        {/* Sources */}
-        {sourceReferences.length > 0 && (
-          <div className="text-[10px] text-content-secondary">
-            Fontes:{" "}
-            {sourceReferences.map((ref, i) => (
-              <span key={ref.url}>
-                {i > 0 && " · "}
-                <a
-                  href={ref.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-accent-primary hover:underline transition-colors"
-                  aria-label={`Fonte ${i + 1}: ${ref.name}`}
-                >
-                  [{i + 1}] {ref.name}
-                </a>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Pro competitor slot */}
       {showProSlot && !competitor ? (
