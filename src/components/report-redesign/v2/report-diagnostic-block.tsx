@@ -11,13 +11,10 @@ import {
   classifyAudienceResponse,
   classifyChannelIntegration,
   classifyHashtags,
-  inferProbableObjective,
   type ContentTypeResult,
   type FunnelStageResult,
   type AudienceResponseResult, 
   type IntegrationResult,
-  type ObjectiveResult,
-  type HashtagsResult,
 } from "@/lib/report/block02-diagnostic";
 
 import { ReportDiagnosticGroup } from "./report-diagnostic-group";
@@ -27,7 +24,6 @@ import {
   DiagnosticChecklist,
   DiagnosticFunnelStack,
   DiagnosticAudienceHighlight,
-  DiagnosticObjectiveSynthesis,
   type DiagnosticTone,
 } from "./report-diagnostic-card";
 import { InsightCallout } from "./insight-callout";
@@ -38,6 +34,7 @@ import {
   CommentIntelligenceUnavailable,
 } from "./report-comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
+import { VisualCoverAnalysisCard } from "./visual-cover-analysis-card";
 
 interface Props {
   result: AdapterResult;
@@ -73,13 +70,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
       result.enriched.aiInsightsV2?.sections.language?.text ?? null,
   });
   const integration = classifyChannelIntegration(bio, externalUrls, posts);
-  const objective = inferProbableObjective({
-    contentType,
-    funnel,
-    integration,
-    bio,
-    audience,
-  });
 
   const aiLanguageText =
     result.enriched.aiInsightsV2?.sections.language?.text ?? null;
@@ -108,7 +98,6 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   // D · Contexto estratégico: Q06 + Q07
   const groupD = compact([
     renderIntegrationCard(integration),
-    renderObjectiveCard(objective, contentType, funnel, integration),
   ]);
 
   const totalCards = groupA.length + groupB.length + 1 + groupC.length + groupD.length;
@@ -134,6 +123,18 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           >
             {groupB}
             <CaptionDiagnosticsCard data={captionIntel} />
+          </ReportDiagnosticGroup>
+
+          {/* E · Análise visual */}
+          <ReportDiagnosticGroup
+            letter="E"
+            label="Análise visual"
+            questionsCount={1}
+          >
+            <VisualCoverAnalysisCard
+              posts={posts}
+              analysis={null}
+            />
           </ReportDiagnosticGroup>
 
           {groupC.length > 0 ? (
@@ -382,7 +383,7 @@ function renderAudienceCard(
   );
 }
 
-function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild {
+function renderIntegrationCard(r: IntegrationResult): ReactNode | null {
   if (!r.available || r.label === "Sem sinais suficientes") return null;
   const tone: DiagnosticTone =
     r.label === "Integração clara"
@@ -440,86 +441,6 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
   );
 }
 
-type ReportDiagnosticCardChild = ReactNode | null;
-
-function renderObjectiveCard(
-  r: ObjectiveResult,
-  contentType: ContentTypeResult,
-  funnel: FunnelStageResult,
-  integration: IntegrationResult,
-): ReportDiagnosticCardChild {
-  if (!r.available || !r.primary) return null;
-
-  // Build support signal chips from detected data
-  const supportSignals: string[] = [];
-  if (contentType.available && contentType.label && contentType.label !== "Misto / pouco claro") {
-    supportSignals.push(`Conteúdo ${contentType.label.toLowerCase()}`);
-  }
-  if (funnel.available && funnel.label && funnel.label !== "Comunicação dispersa") {
-    supportSignals.push(funnel.label);
-  }
-  if (integration.available) {
-    if (integration.signals.bioLink.detected) supportSignals.push("Link na bio");
-    if (integration.signals.siteOrNewsletter.detected) supportSignals.push("CTA para site/newsletter");
-  }
-
-  // Show secondary objective if close to primary
-  const secondary =
-    r.ranking.length >= 2 && r.ranking[1].score >= r.ranking[0].score * 0.6
-      ? r.ranking[1].label
-      : null;
-
-  // Short answer: first part before " · "
-  const shortAnswer = r.primary.includes(" · ") ? r.primary.split(" · ")[0] : r.primary;
-  // Short subtitle from secondary or primary detail
-  const primaryDetail = r.primary.includes(" · ") ? r.primary.split(" · ")[1] : null;
-  const shortBody = secondary
-    ? `${primaryDetail ?? shortAnswer} acima de ${secondary.toLowerCase().split(" · ")[0]}.`
-    : primaryDetail
-      ? `Foco principal: ${primaryDetail.toLowerCase()}.`
-      : buildObjectiveBody(r.primary, contentType, funnel);
-
-  return (
-    <ReportDiagnosticCard
-      key="q07"
-      number="07"
-      label="Objetivo · Síntese"
-      question="Que objetivo estratégico parece estar por trás?"
-      answer={shortAnswer}
-      tone="blue"
-      body={shortBody}
-      sourceDetail="Conteúdo + funil + bio · síntese"
-    >
-      <DiagnosticObjectiveSynthesis
-        primary={r.primary}
-        secondary={secondary}
-        confidence={r.confidence}
-        supportSignals={supportSignals.slice(0, 4)}
-        ranking={r.ranking.slice(0, 4)}
-      />
-    </ReportDiagnosticCard>
-  );
-}
-
 function shortenUrl(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
-}
-
-function buildObjectiveBody(
-  primary: string,
-  contentType: ContentTypeResult,
-  funnel: FunnelStageResult,
-): string {
-  const parts: string[] = [];
-  if (contentType.available && contentType.label && contentType.label !== "Misto / pouco claro") {
-    parts.push(`conteúdo predominantemente ${contentType.label.toLowerCase()}`);
-  }
-  if (funnel.available && funnel.label && funnel.label !== "Comunicação dispersa") {
-    parts.push(`posição de ${funnel.label.toLowerCase()}`);
-  }
-  if (parts.length === 0) {
-    return "Síntese provável com base no tipo de conteúdo, funil, bio e ligação entre canais.";
-  }
-  const joined = parts.join(" e ");
-  return `A combinação de ${joined} sugere que o foco principal é ${primary.toLowerCase()}.`;
 }
