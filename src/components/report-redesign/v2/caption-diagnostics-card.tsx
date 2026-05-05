@@ -392,9 +392,7 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-1">COMO COMEÇAM AS LEGENDAS?</p>
           <p className="text-[11px] text-content-tertiary mb-3">primeiras 8 palavras</p>
-          <DistributionBar
-            items={data.distributions.openings.map((o) => ({ ...o, type: o.type }))}
-          />
+          <OpeningsDistribution items={data.distributions.openings} />
         </div>
 
         {/* Length */}
