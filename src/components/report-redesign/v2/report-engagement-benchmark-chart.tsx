@@ -251,7 +251,7 @@ export function ReportEngagementBenchmarkChart({
                       isPositive ? "text-signal-success" : "text-signal-danger"
                     )}
                   >
-                    {fmtRate(profileVal)}
+                    {fmtRate(tier.engagementRatePct)}
                   </span>
                 </div>
               </div>
