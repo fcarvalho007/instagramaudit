@@ -22,14 +22,14 @@ interface Props {
  * mutam dados — apenas formatação na camada de apresentação.
  */
 const TECH_REPLACEMENTS: Array<[RegExp, string]> = [
-  [/engagement_pct/gi, "envolvimento médio"],
+  [/engagement_pct/gi, "engagement médio"],
   [/benchmark_value_pct/gi, "referência esperada"],
   [/profile_value_pct/gi, "valor do perfil"],
   [/difference_pct/gi, "diferença face à referência"],
   [/position\s+below/gi, "abaixo da referência"],
   [/position\s+above/gi, "acima da referência"],
   [/dominant_format/gi, "formato dominante"],
-  [/avg_engagement/gi, "envolvimento médio"],
+  [/avg_engagement/gi, "engagement médio"],
   [/posts_per_week/gi, "ritmo de publicação"],
   [/reach_rate/gi, "alcance médio"],
   [/bench_vs_market/gi, "comparação com o mercado"],
@@ -64,7 +64,7 @@ export function ReportAiReading({ data, enriched, compact = false }: Props) {
     <ReportSectionFrame
       eyebrow="Leitura estratégica · IA editorial"
       title="O que estes dados dizem sobre o perfil"
-      subtitle="Síntese editorial gerada a partir das métricas observadas, do envolvimento médio e da diferença face à referência de mercado."
+      subtitle="Síntese editorial gerada a partir das métricas observadas, do engagement médio e da diferença face à referência de mercado."
       tone="white"
       ariaLabel="Leitura estratégica do relatório"
       compact={compact}

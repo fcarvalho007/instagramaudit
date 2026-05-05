@@ -47,7 +47,7 @@ function buildFallbackSentence(
 /* ── Strength / Weakness derivation ────────────────────────────────── */
 
 const SCORE_LABELS: Record<ScoreKey, string> = {
-  envolvimento: "Envolvimento",
+  envolvimento: "Engagement",
   frequencia: "Cadência editorial",
   interaccao: "Conversa pública",
 };

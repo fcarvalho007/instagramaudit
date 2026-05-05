@@ -50,7 +50,7 @@ export function ReportKpiGrid({ result }: Props) {
         <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <KpiCard
             icon={<Activity className="h-4 w-4" aria-hidden="true" />}
-            label="Envolvimento médio"
+            label="Engagement médio"
             value={`${k.engagementRate.toFixed(2)}%`}
             help={`vs. ${k.engagementBenchmark.toFixed(2)}% de referência`}
           />

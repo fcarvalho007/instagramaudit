@@ -235,8 +235,8 @@ function buildEngagementGapCard(
   const Icon = above ? TrendingUp : TrendingDown;
 
   const title = above
-    ? "Envolvimento acima da referência"
-    : "Envolvimento abaixo da referência";
+    ? "Engagement acima da referência"
+    : "Engagement abaixo da referência";
 
   return {
     key: "engagement-gap",
