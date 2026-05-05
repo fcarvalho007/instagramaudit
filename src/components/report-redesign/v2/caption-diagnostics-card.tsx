@@ -6,11 +6,13 @@
  * All data is real or deterministically derived — nothing invented.
  */
 import type { ReactNode } from "react";
-import { FileText, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
+import { FileText, CheckCircle2, AlertTriangle, Eye, Type, Zap, HelpCircle, BookOpen } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   CaptionIntelligence,
   CaptionLengthDistribution,
+  CaptionOpeningType,
 } from "@/lib/report/caption-intelligence";
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 
@@ -94,7 +96,7 @@ function buildToWatch(data: CaptionIntelligence): string {
 
 function KpiCard({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border-subtle bg-surface-muted/40 p-4 md:p-5 flex flex-col gap-2">
+    <div className="rounded-2xl border border-border-subtle bg-surface-muted/40 p-4 md:p-5 flex flex-col gap-2.5">
       <p className="text-eyebrow-sm text-content-tertiary">{label}</p>
       <div className="text-sm text-content-primary leading-relaxed">{children}</div>
     </div>
@@ -186,7 +188,86 @@ function DistributionBar({
   );
 }
 
-function StackedLengthBar({ items }: { items: CaptionLengthDistribution[] }) {
+// ---------------------------------------------------------------------------
+// Opening icon map
+// ---------------------------------------------------------------------------
+
+const OPENING_ICONS: Record<CaptionOpeningType, LucideIcon> = {
+  bold_statement: Type,
+  news_or_update: Zap,
+  question: HelpCircle,
+  story: BookOpen,
+};
+
+function OpeningsDistribution({ items }: { items: Array<{ type: CaptionOpeningType; label: string; pct: number }> }) {
+  return (
+    <div className="space-y-2.5">
+      {items.map((it) => {
+        const Icon = OPENING_ICONS[it.type];
+        return (
+          <div key={it.label}>
+            <div className="flex items-center justify-between text-[12px] mb-1">
+              <span className="flex items-center gap-1.5 text-content-secondary">
+                {Icon && <Icon className="w-3.5 h-3.5 text-content-tertiary/70 shrink-0" />}
+                {it.label}
+              </span>
+              <span className="font-mono text-[11px] tabular-nums text-content-tertiary">
+                {it.pct}%
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-accent-primary/50"
+                style={{ width: `${Math.max(3, it.pct)}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EndingsDistribution({ items }: { items: Array<{ type: string; label: string; pct: number }> }) {
+  return (
+    <div className="space-y-2.5">
+      {items.map((it) => {
+        const isQuestionLow = it.type === "question" && it.pct < 20;
+        const isQuestionOk = it.type === "question" && it.pct >= 20;
+        return (
+          <div key={it.label} className={cn("rounded-lg px-2 py-1.5 -mx-2", isQuestionLow && "bg-rose-50")}>
+            <div className="flex items-center justify-between text-[12px] mb-1">
+              <span className={cn(
+                "text-content-secondary",
+                isQuestionLow && "text-rose-600 font-medium",
+                isQuestionOk && "text-signal-success font-medium",
+              )}>
+                {it.label}
+              </span>
+              <span className={cn(
+                "font-mono text-[11px] tabular-nums text-content-tertiary",
+                isQuestionLow && "text-rose-500",
+              )}>
+                {it.pct}%
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full",
+                  isQuestionLow ? "bg-rose-400" : "bg-accent-primary/50",
+                )}
+                style={{ width: `${Math.max(3, it.pct)}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StackedLengthBar({ items, dominantBucket }: { items: CaptionLengthDistribution[]; dominantBucket?: string }) {
   const COLORS: Record<string, string> = {
     short: "bg-accent-primary/30",
     medium: "bg-accent-primary/60",
@@ -194,11 +275,14 @@ function StackedLengthBar({ items }: { items: CaptionLengthDistribution[] }) {
   };
   return (
     <div className="space-y-3">
-      <div className="h-3 rounded-full bg-surface-muted overflow-hidden flex">
+      <div className="h-4 rounded-full bg-surface-muted overflow-hidden flex items-end">
         {items.map((it) => (
           <div
             key={it.bucket}
-            className={cn("h-full", COLORS[it.bucket] ?? "bg-accent-primary/40")}
+            className={cn(
+              COLORS[it.bucket] ?? "bg-accent-primary/40",
+              it.bucket === dominantBucket ? "h-full" : "h-2.5",
+            )}
             style={{ width: `${Math.max(2, it.pct)}%` }}
           />
         ))}
@@ -305,10 +389,20 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         </KpiCard>
 
         <KpiCard label="CARACTERÍSTICAS">
-          <ul className="space-y-0.5">
-            <li>~{fmt(stats.avgWordsPerCaption)} palavras / post</li>
-            <li>{stats.avgEmojisPerCaption.toFixed(1).replace(".", ",")} emojis / post</li>
-          </ul>
+          <div className="flex flex-col gap-3">
+            <div>
+              <span className="text-[22px] font-semibold tabular-nums text-content-primary leading-none">
+                ~{fmt(stats.avgWordsPerCaption)}
+              </span>
+              <span className="text-[12px] text-content-tertiary ml-1.5">palavras / post</span>
+            </div>
+            <div>
+              <span className="text-[22px] font-semibold tabular-nums text-content-primary leading-none">
+                {stats.avgEmojisPerCaption.toFixed(1).replace(".", ",")}
+              </span>
+              <span className="text-[12px] text-content-tertiary ml-1.5">emojis / post</span>
+            </div>
+          </div>
         </KpiCard>
       </div>
 
@@ -370,11 +464,7 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         {/* Endings */}
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-3">COMO ACABAM AS LEGENDAS?</p>
-          <DistributionBar
-            items={data.distributions.endings.map((e) => ({ ...e, type: e.type }))}
-            highlightType="question"
-            highlightClass="text-signal-danger font-medium"
-          />
+          <EndingsDistribution items={data.distributions.endings} />
         </div>
       </div>
 
@@ -384,22 +474,20 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-1">COMO COMEÇAM AS LEGENDAS?</p>
           <p className="text-[11px] text-content-tertiary mb-3">primeiras 8 palavras</p>
-          <DistributionBar
-            items={data.distributions.openings.map((o) => ({ ...o, type: o.type }))}
-          />
+          <OpeningsDistribution items={data.distributions.openings} />
         </div>
 
         {/* Length */}
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-3">DISTRIBUIÇÃO DE COMPRIMENTO</p>
-          <StackedLengthBar items={data.distributions.length} />
+          <StackedLengthBar items={data.distributions.length} dominantBucket={data.distributions.length.reduce((a, b) => b.pct > a.pct ? b : a, data.distributions.length[0])?.bucket} />
         </div>
       </div>
 
       {/* ── 6. Diagnostic box ── */}
       <div className="rounded-xl bg-[rgb(var(--tint-primary))] ring-1 ring-accent-primary/20 p-5 md:p-6 space-y-5">
         <p className="text-eyebrow-sm text-accent-primary">DIAGNÓSTICO EDITORIAL</p>
-        <p className="text-[15px] md:text-base text-content-primary leading-relaxed font-medium">
+        <p className="text-[15px] md:text-base text-content-primary leading-relaxed font-medium font-sans">
           {buildDiagnosticStatement(data)}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-accent-primary/20">
