@@ -571,17 +571,17 @@ export function DiagnosticAudienceHighlight({
   return (
     <div className="space-y-4">
       {/* ── Z2: Three KPI cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
         {/* KPI 1 — Gostos / post (neutral) */}
-        <div className="rounded-[14px] border border-border-subtle bg-surface-muted/70 px-4 py-3.5 flex flex-col gap-1.5">
+        <div className="rounded-[14px] border border-border-subtle bg-surface-muted/70 px-2.5 py-3 sm:px-4 sm:py-3.5 flex flex-col gap-1 sm:gap-1.5">
           <div className="flex items-center gap-1.5">
             <Heart size={14} className="text-content-tertiary" strokeWidth={1.5} />
-            <span className="text-eyebrow-sm text-content-tertiary">Gostos / post</span>
+            <span className="text-eyebrow-sm text-content-tertiary text-[8px] sm:text-[10px]">Gostos / post</span>
           </div>
-          <span className="font-mono text-[28px] font-semibold tabular-nums text-content-primary leading-none">
+          <span className="font-mono text-[20px] sm:text-[28px] font-semibold tabular-nums text-content-primary leading-none">
             {avgLikes.toLocaleString("pt-PT")}
           </span>
-          <span className="text-[11px] text-content-tertiary">
+          <span className="text-[9px] sm:text-[11px] text-content-tertiary">
             {totalLikes != null
               ? `${totalLikes.toLocaleString("pt-PT")} gostos no total`
               : "por publicação"}
@@ -591,7 +591,7 @@ export function DiagnosticAudienceHighlight({
         {/* KPI 2 — Comentários / post (alert when < 1) */}
         <div
           className={cn(
-            "rounded-[14px] border px-4 py-3.5 flex flex-col gap-1.5",
+            "rounded-[14px] border px-2.5 py-3 sm:px-4 sm:py-3.5 flex flex-col gap-1 sm:gap-1.5",
             commentsIsAlert
               ? "border-signal-danger/20 bg-tint-danger"
               : "border-border-subtle bg-surface-muted/70",
@@ -603,7 +603,7 @@ export function DiagnosticAudienceHighlight({
               className={commentsIsAlert ? "text-signal-danger" : "text-content-tertiary"}
               strokeWidth={1.5}
             />
-            <span className="text-eyebrow-sm text-content-tertiary">Coment. / post</span>
+            <span className="text-eyebrow-sm text-content-tertiary text-[8px] sm:text-[10px]">Coment. / post</span>
             {commentsIsAlert && (
               <span className="ml-auto text-[9px] font-semibold uppercase tracking-wider text-signal-danger bg-signal-danger/10 rounded-full px-1.5 py-0.5">
                 Alerta
@@ -612,13 +612,13 @@ export function DiagnosticAudienceHighlight({
           </div>
           <span
             className={cn(
-              "font-mono text-[28px] font-semibold tabular-nums leading-none",
+              "font-mono text-[20px] sm:text-[28px] font-semibold tabular-nums leading-none",
               commentsIsAlert ? "text-signal-danger" : "text-content-primary",
             )}
           >
             {avgComments.toLocaleString("pt-PT")}
           </span>
-          <span className="text-[11px] text-content-tertiary">
+          <span className="text-[9px] sm:text-[11px] text-content-tertiary">
             {sampleSize ? `em ${sampleSize} publicações` : "por publicação"}
           </span>
         </div>
@@ -626,7 +626,7 @@ export function DiagnosticAudienceHighlight({
         {/* KPI 3 — Respostas da marca (alert when 0) */}
         <div
           className={cn(
-            "rounded-[14px] border px-4 py-3.5 flex flex-col gap-1.5",
+            "rounded-[14px] border px-2.5 py-3 sm:px-4 sm:py-3.5 flex flex-col gap-1 sm:gap-1.5",
             repliesIsAlert
               ? "border-signal-danger/20 bg-tint-danger"
               : "border-border-subtle bg-surface-muted/70",
@@ -638,7 +638,10 @@ export function DiagnosticAudienceHighlight({
               className={repliesIsAlert ? "text-signal-danger" : "text-content-tertiary"}
               strokeWidth={1.5}
             />
-            <span className="text-eyebrow-sm text-content-tertiary">Respostas da marca</span>
+            <span className="text-eyebrow-sm text-content-tertiary text-[8px] sm:text-[10px]">
+              <span className="hidden sm:inline">Respostas da marca</span>
+              <span className="sm:hidden">Respostas</span>
+            </span>
             {repliesIsAlert && (
               <span className="ml-auto text-[9px] font-semibold uppercase tracking-wider text-signal-danger bg-signal-danger/10 rounded-full px-1.5 py-0.5">
                 Alerta
@@ -647,13 +650,13 @@ export function DiagnosticAudienceHighlight({
           </div>
           <span
             className={cn(
-              "font-mono text-[28px] font-semibold tabular-nums leading-none",
+              "font-mono text-[20px] sm:text-[28px] font-semibold tabular-nums leading-none",
               repliesIsAlert ? "text-signal-danger" : "text-content-primary",
             )}
           >
             {ownerReplies}
           </span>
-          <span className="text-[11px] text-content-tertiary">
+          <span className="text-[9px] sm:text-[11px] text-content-tertiary">
             {ownerReplies === 0 ? "a marca não conversa" : "respostas públicas detetadas"}
           </span>
         </div>
