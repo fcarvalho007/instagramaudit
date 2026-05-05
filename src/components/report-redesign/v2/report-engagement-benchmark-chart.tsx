@@ -244,14 +244,14 @@ export function ReportEngagementBenchmarkChart({
                     )}
                   </div>
 
-                  {/* Value — profile rate in signal colour */}
+                  {/* Value — tier reference (consistent with inactive rows) */}
                   <span
                     className={cn(
                       "font-mono text-[14px] sm:text-[15px] tabular-nums font-bold shrink-0 min-w-[52px] sm:min-w-[56px] text-right",
                       isPositive ? "text-signal-success" : "text-signal-danger"
                     )}
                   >
-                    {fmtRate(profileVal)}
+                    {fmtRate(tier.engagementRatePct)}
                   </span>
                 </div>
               </div>
