@@ -117,6 +117,8 @@ export interface CaptionIntelligence {
   available: boolean;
   /** 3 insights de topo para leitura rápida (< 5 s). */
   snapshot: SnapshotRow;
+  /** Aggregate caption stats for KPI display. */
+  captionStats: CaptionStats;
   themes: { source: CaptionSourceKind; items: CaptionThemeItem[] };
   contentTypeMix: { source: CaptionSourceKind; items: ContentTypeMixItem[]; dominant: ContentTypeMixLabel | null };
   recurringExpressions: { source: CaptionSourceKind; items: RecurringExpressionItem[] };
@@ -124,6 +126,56 @@ export interface CaptionIntelligence {
   editorialReading: EditorialReadingBlock;
   /** Strip de ação sugerida no final do cartão. */
   actionBridge: ActionBridge;
+  /** Caption length, opening and ending distributions. */
+  distributions: CaptionDistributions;
+}
+
+export interface CaptionStats {
+  totalWords: number;
+  avgWordsPerCaption: number;
+  avgCharsPerCaption: number;
+  avgEmojisPerCaption: number;
+}
+
+export type CaptionLengthBucket = "short" | "medium" | "long";
+
+export interface CaptionLengthDistribution {
+  bucket: CaptionLengthBucket;
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export type CaptionOpeningType =
+  | "question"
+  | "news_or_update"
+  | "story"
+  | "bold_statement";
+
+export interface CaptionOpeningDistribution {
+  type: CaptionOpeningType;
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export type CaptionEndingType =
+  | "explicit_cta"
+  | "question"
+  | "hashtags_only"
+  | "statement";
+
+export interface CaptionEndingDistribution {
+  type: CaptionEndingType;
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export interface CaptionDistributions {
+  length: CaptionLengthDistribution[];
+  openings: CaptionOpeningDistribution[];
+  endings: CaptionEndingDistribution[];
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -157,6 +209,121 @@ function cleanCaption(raw: string): string {
     .replace(/[#@][\p{L}\p{N}_]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function countWords(text: string): number {
+  const cleaned = cleanCaption(text);
+  if (!cleaned) return 0;
+  return cleaned.split(/\s+/).filter(Boolean).length;
+}
+
+const EMOJI_RE = /\p{Extended_Pictographic}/gu;
+
+function countEmojis(text: string): number {
+  return (text.match(EMOJI_RE) ?? []).length;
+}
+
+function classifyCaptionLengthBucket(chars: number): CaptionLengthBucket {
+  if (chars < 50) return "short";
+  if (chars <= 150) return "medium";
+  return "long";
+}
+
+const OPENING_NEWS_TERMS = [
+  "novo", "nova", "novidade", "lancamento", "lançamento",
+  "chegou", "ja disponivel", "já disponível", "acabou de",
+  "anuncio", "anúncio",
+];
+
+const OPENING_STORY_TERMS = [
+  "quando ", "ha uns anos", "há uns anos", "a primeira vez",
+  "descobri", "aprendi", "lembro-me", "lembro me",
+  "era uma vez", "naquele dia", "nesse dia",
+];
+
+function classifyOpening(caption: string): CaptionOpeningType {
+  const first = caption.split(/[.!?\n]/)[0]?.trim() ?? "";
+  const norm = normalize(first);
+  if (first.endsWith("?")) return "question";
+  if (OPENING_NEWS_TERMS.some((t) => norm.includes(t))) return "news_or_update";
+  if (OPENING_STORY_TERMS.some((t) => norm.includes(t))) return "story";
+  return "bold_statement";
+}
+
+function classifyEnding(caption: string): CaptionEndingType {
+  const trimmed = caption.trim();
+  // Check if ends mostly with hashtags
+  const lines = trimmed.split("\n").filter(Boolean);
+  const lastLine = (lines[lines.length - 1] ?? "").trim();
+  const hashtagOnly = /^[#\s\p{L}\p{N}_]+$/u.test(lastLine) && (lastLine.match(/#/g) ?? []).length >= 1 && lastLine.replace(/#[\p{L}\p{N}_]+/gu, "").trim().length < 5;
+  if (hashtagOnly) return "hashtags_only";
+
+  // Strip trailing hashtags for analysis
+  const withoutTrailingTags = trimmed.replace(/(\s*#[\p{L}\p{N}_]+)+\s*$/u, "").trim();
+  const sentences = withoutTrailingTags.split(/[.!?\n]/).filter((s) => s.trim().length > 0);
+  const lastSentence = (sentences[sentences.length - 1] ?? "").trim();
+  const endsWithQuestion = withoutTrailingTags.trimEnd().endsWith("?");
+  if (endsWithQuestion) return "question";
+
+  // Check for CTA verbs near the end
+  const normEnd = normalize(lastSentence);
+  const ctaVerbs = ["subscreve", "inscreve", "comenta", "guarda", "partilha", "clica", "envia", "reserva", "marca", "link na bio"];
+  if (ctaVerbs.some((v) => normEnd.includes(v))) return "explicit_cta";
+
+  return "statement";
+}
+
+function buildCaptionStats(posts: readonly SnapshotPost[]): CaptionStats {
+  if (posts.length === 0) {
+    return { totalWords: 0, avgWordsPerCaption: 0, avgCharsPerCaption: 0, avgEmojisPerCaption: 0 };
+  }
+  let totalWords = 0;
+  let totalChars = 0;
+  let totalEmojis = 0;
+  for (const p of posts) {
+    const cap = p.caption ?? "";
+    totalWords += countWords(cap);
+    totalChars += captionLen(p);
+    totalEmojis += countEmojis(cap);
+  }
+  const n = posts.length;
+  return {
+    totalWords,
+    avgWordsPerCaption: Math.round(totalWords / n),
+    avgCharsPerCaption: Math.round(totalChars / n),
+    avgEmojisPerCaption: Math.round((totalEmojis / n) * 10) / 10,
+  };
+}
+
+function buildDistributions(posts: readonly SnapshotPost[]): CaptionDistributions {
+  const lengthCounts: Record<CaptionLengthBucket, number> = { short: 0, medium: 0, long: 0 };
+  const openingCounts: Record<CaptionOpeningType, number> = { question: 0, news_or_update: 0, story: 0, bold_statement: 0 };
+  const endingCounts: Record<CaptionEndingType, number> = { explicit_cta: 0, question: 0, hashtags_only: 0, statement: 0 };
+
+  for (const p of posts) {
+    const cap = p.caption ?? "";
+    if (!cap.trim()) continue;
+    lengthCounts[classifyCaptionLengthBucket(captionLen(p))]++;
+    openingCounts[classifyOpening(cap)]++;
+    endingCounts[classifyEnding(cap)]++;
+  }
+
+  const n = Math.max(1, posts.length);
+  const LENGTH_LABELS: Record<CaptionLengthBucket, string> = { short: "Curtas (<50 car.)", medium: "Médias (50–150 car.)", long: "Longas (150+ car.)" };
+  const OPENING_LABELS: Record<CaptionOpeningType, string> = { question: "Pergunta direta", news_or_update: "Anúncio de novidade", story: "História / experiência", bold_statement: "Afirmação direta" };
+  const ENDING_LABELS: Record<CaptionEndingType, string> = { explicit_cta: "Com CTA explícito", question: "Com pergunta", hashtags_only: "Só hashtags", statement: "Com afirmação" };
+
+  return {
+    length: (["short", "medium", "long"] as const).map((b) => ({
+      bucket: b, label: LENGTH_LABELS[b], count: lengthCounts[b], pct: Math.round((lengthCounts[b] / n) * 100),
+    })),
+    openings: (["bold_statement", "question", "news_or_update", "story"] as const).map((t) => ({
+      type: t, label: OPENING_LABELS[t], count: openingCounts[t], pct: Math.round((openingCounts[t] / n) * 100),
+    })).sort((a, b) => b.count - a.count),
+    endings: (["explicit_cta", "statement", "hashtags_only", "question"] as const).map((t) => ({
+      type: t, label: ENDING_LABELS[t], count: endingCounts[t], pct: Math.round((endingCounts[t] / n) * 100),
+    })),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -601,6 +768,9 @@ export function buildCaptionIntelligence(
       ? Math.round(posts.reduce((acc, p) => acc + captionLen(p), 0) / posts.length)
       : 0;
 
+  const captionStats = buildCaptionStats(posts);
+  const distributions = buildDistributions(posts);
+
   const editorialReading = available
     ? buildEditorialReading({
         dominantType: mix.dominant,
@@ -642,12 +812,14 @@ export function buildCaptionIntelligence(
     sampleSize,
     available,
     snapshot,
+    captionStats,
     themes: { source: "auto", items: themes },
-    contentTypeMix: { source: "auto", items: mix.items, dominant: mix.dominant },
+    contentTypeMix: { source: "auto" as const, items: mix.items, dominant: mix.dominant },
     recurringExpressions: { source: "extracted", items: expressions },
     ctaPatterns: cta,
     editorialReading,
     actionBridge,
+    distributions,
   };
 }
 
