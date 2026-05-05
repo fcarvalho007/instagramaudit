@@ -187,19 +187,30 @@ export function FormatCard({
   const activeFormats = sortedFormats;
 
   return (
-    <article className="rounded-2xl border border-border-default bg-surface-secondary p-4 md:p-5 shadow-card flex flex-col gap-3">
+    <article className="rounded-2xl border border-border-default bg-surface-secondary p-4 md:p-5 shadow-card flex flex-col gap-4">
       {/* Header */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <h3 className="font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-tight">
-            Formato de Posts{" "}
-            <span className="font-bold">{variationStatus}</span>
+      <div className="space-y-2.5">
+        <div className="flex items-start gap-3">
+          <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
+            Formato{" "}
+            <span
+              className="font-semibold"
+              style={{
+                borderBottom: `2px solid ${
+                  variationStatus === "Muito variado"
+                    ? "rgba(29,158,117,0.50)"
+                    : variationStatus === "Variado"
+                      ? "rgba(37,99,217,0.40)"
+                      : "rgba(217,119,6,0.50)"
+                }`,
+                paddingBottom: "1px",
+              }}
+            >
+              {variationStatus}
+            </span>
           </h3>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-content-tertiary shrink-0">
-            ✦ DADOS
-          </span>
         </div>
-        <p className="text-[13px] text-content-secondary leading-snug">
+        <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
           {subtitleLine}
         </p>
       </div>

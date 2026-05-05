@@ -99,23 +99,34 @@ export function EngagementCardRefined({ result }: Props) {
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
-      <div className="px-5 md:px-6 pt-5 md:pt-6 pb-0 space-y-1.5">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-tight">
+      <div className="px-5 md:px-6 pt-6 md:pt-8 pb-0 space-y-2.5">
+        <div className="flex items-start gap-3">
+          <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
             Taxa de Engagement{" "}
-            <span className="font-bold">{engagementStatus}</span>
+            <span
+              className="font-semibold"
+              style={{
+                borderBottom: `2px solid ${
+                  engagementStatus === "Alta"
+                    ? "rgba(29,158,117,0.50)"
+                    : engagementStatus === "Média"
+                      ? "rgba(217,119,6,0.50)"
+                      : "rgba(163,45,45,0.50)"
+                }`,
+                paddingBottom: "1px",
+              }}
+            >
+              {engagementStatus}
+            </span>
           </h3>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-content-tertiary shrink-0">
-            ✦ MERCADO
-          </span>
         </div>
-        <p className="text-[13px] text-content-secondary leading-snug">
+        <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
           Média de gostos + comentários + partilhas (÷) seguidores.
         </p>
       </div>
 
       {/* Hero row — 3 KPI cards */}
-      <div className="px-5 md:px-6 pt-4 pb-5">
+      <div className="px-5 md:px-6 pt-5 md:pt-6 pb-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
           {/* KPI 1 — Profile engagement */}
