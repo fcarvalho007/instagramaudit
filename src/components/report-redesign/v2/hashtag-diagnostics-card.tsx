@@ -7,6 +7,10 @@
 import type { ReactNode } from "react";
 import { Hash, Info } from "lucide-react";
 import { InsightCallout } from "./insight-callout";
+import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
+
+const KB_HASHTAGS = INSTAGRAM_CAPTION_CONTEXT.hashtagGuidelines;
+const KB_SOURCES = INSTAGRAM_CAPTION_CONTEXT.sources;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,14 +48,15 @@ function computeStats(
 }
 
 function avgBadge(avg: number): { label: string; className: string } {
-  if (avg >= 3 && avg <= 5) {
+  const { min, max } = KB_HASHTAGS.recommendedRange;
+  if (avg >= min && avg <= max) {
     return {
       label: "DENTRO DO IDEAL",
       className:
         "bg-tint-success/60 text-signal-success border border-signal-success/20",
     };
   }
-  if (avg < 3) {
+  if (avg < min) {
     return {
       label: "ABAIXO DO IDEAL",
       className:
@@ -70,6 +75,8 @@ function buildDiagnosticText(
   avg: number,
   postsAnalyzed: number,
 ): string {
+  const { min, max } = KB_HASHTAGS.recommendedRange;
+
   if (items.length === 0) {
     return "Sem hashtags públicas detectadas na amostra. Isto pode ser uma escolha editorial, mas limita a leitura dos territórios temáticos associados ao conteúdo.";
   }
@@ -84,25 +91,25 @@ function buildDiagnosticText(
     top2.every((t) => t.weight / postsAnalyzed > 0.5);
 
   const rangePart =
-    avg < 3
-      ? "abaixo da recomendação de 3–5 por post"
-      : avg <= 5
-        ? "dentro da recomendação de 3–5 por post"
-        : "acima da recomendação de 3–5 por post";
+    avg < min
+      ? `abaixo da recomendação de ${min}–${max} por post`
+      : avg <= max
+        ? `dentro da recomendação de ${min}–${max} por post`
+        : `acima da recomendação de ${min}–${max} por post`;
 
   if (top2InMajority) {
     return `As 2 hashtags principais (${top2[0].text}, ${top2[1].text}) aparecem em mais de metade dos posts. A média de ${avgFormatted} hashtags por post está ${rangePart}.`;
   }
 
-  if (avg < 3) {
-    return `O perfil usa poucas hashtags por post (média ${avgFormatted}). Pode haver margem para testar combinações mais específicas sem aumentar ruído na legenda.`;
+  if (avg < min) {
+    return `O perfil usa poucas hashtags por post (média ${avgFormatted}). Pode haver margem para testar combinações mais específicas, mantendo a legenda limpa.`;
   }
 
-  if (avg > 5) {
-    return `O perfil usa muitas hashtags por post (média ${avgFormatted}). Pode ser útil reduzir volume e privilegiar hashtags mais específicas.`;
+  if (avg > max) {
+    return `O perfil usa muitas hashtags por post (média ${avgFormatted}). Pode ser útil reduzir volume e privilegiar hashtags mais relevantes.`;
   }
 
-  return `A utilização de hashtags está equilibrada (média ${avgFormatted} por post). O próximo passo é testar combinações mais específicas por tema e formato.`;
+  return `A utilização de hashtags está equilibrada (média ${avgFormatted} por post). O próximo passo é variar combinações por tema e formato.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -265,7 +272,7 @@ export function HashtagDiagnosticsCard({
           <KpiCard
             label="MÉDIA POR POST"
             value={avgPerPost.toFixed(1).replace(".", ",")}
-            sub="recomendado: 3–5"
+            sub={`recomendado: ${KB_HASHTAGS.recommendedRange.min}–${KB_HASHTAGS.recommendedRange.max}`}
             badge={postsAnalyzed > 0 ? badge : undefined}
           />
         </div>
@@ -316,35 +323,22 @@ export function HashtagDiagnosticsCard({
           <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-content-quaternary" />
           <p>
             Apenas hashtags públicas dos {postsAnalyzed} posts analisados.
-            Recomendação 3–5 hashtags: referência editorial.
+            Recomendação {KB_HASHTAGS.recommendedRange.min}–{KB_HASHTAGS.recommendedRange.max} hashtags: referência editorial.
             <br />
-            Fontes:{" "}
-            <a
-              href="https://www.castmagic.io/post/how-to-write-instagram-captions"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-primary hover:underline"
-            >
-              Castmagic
-            </a>
-            {" · "}
-            <a
-              href="https://later.com/blog/social-media-captions/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-primary hover:underline"
-            >
-              Later
-            </a>
-            {" · "}
-            <a
-              href="https://www.shopify.com/blog/instagram-captions"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-primary hover:underline"
-            >
-              Shopify
-            </a>
+            Fontes de referência editorial:{" "}
+            {KB_SOURCES.map((src, i) => (
+              <span key={src.name}>
+                {i > 0 && " · "}
+                <a
+                  href={src.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-primary hover:underline"
+                >
+                  {src.name}
+                </a>
+              </span>
+            ))}
           </p>
         </div>
       </div>
