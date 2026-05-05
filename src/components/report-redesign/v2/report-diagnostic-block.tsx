@@ -29,6 +29,7 @@ import {
 import { InsightCallout } from "./insight-callout";
 import { CaptionDiagnosticsCard } from "./caption-diagnostics-card";
 import { buildCaptionIntelligence } from "@/lib/report/caption-intelligence";
+import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 import { HashtagDiagnosticsCard } from "./hashtag-diagnostics-card";
 import {
   CommentIntelligenceUnavailable,
@@ -48,6 +49,17 @@ function parseVisualCoverAnalysis(
     return null;
   }
   return raw as VisualCoverAnalysis;
+}
+
+/** Parse persisted caption_semantic_analysis from snapshot payload. */
+function parseCaptionSemanticAnalysis(
+  payload?: SnapshotPayload,
+): CaptionSemanticAnalysis | null {
+  const raw = payload?.caption_semantic_analysis;
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (r.source !== "openai" || typeof r.analyzedCaptions !== "number") return null;
+  return raw as CaptionSemanticAnalysis;
 }
 
 interface Props {
@@ -136,7 +148,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             questionsCount={groupB.length + 1}
           >
             {groupB}
-            <CaptionDiagnosticsCard data={captionIntel} />
+            <CaptionDiagnosticsCard data={captionIntel} semantic={parseCaptionSemanticAnalysis(payload)} />
           </ReportDiagnosticGroup>
 
           {/* E · Análise visual */}
