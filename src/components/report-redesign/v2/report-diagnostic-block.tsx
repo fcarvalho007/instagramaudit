@@ -35,6 +35,7 @@ import {
 } from "./report-comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 import { VisualCoverAnalysisCard } from "./visual-cover-analysis-card";
+import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 
 interface Props {
   result: AdapterResult;
@@ -133,7 +134,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           >
             <VisualCoverAnalysisCard
               posts={posts}
-              analysis={null}
+              analysis={parseVisualCoverAnalysis(payload)}
             />
           </ReportDiagnosticGroup>
 
