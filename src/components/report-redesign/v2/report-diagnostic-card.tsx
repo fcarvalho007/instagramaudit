@@ -666,64 +666,17 @@ export function DiagnosticAudienceHighlight({
         </div>
       </div>
 
-      {/* ── Z3: Conversation flow diagram ── */}
-      <div
-        className="rounded-[14px] border border-border-default px-5 py-5 space-y-4"
-        /* Decorative horizontal gradient: danger-tint → surface → primary-tint.
-         * No semantic token exists for this multi-stop decorative gradient. */
-        style={{
-          background: "linear-gradient(90deg, var(--tint-danger) 0%, var(--surface-secondary) 45%, var(--tint-primary) 100%)",
-        }}
-      >
-        <p className="text-eyebrow text-content-tertiary">Diagnóstico da conversa</p>
-
-        {/* 3-node flow: Audience → Comments → Brand */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-0">
-          {/* Node 1 — Audience */}
-          <div className="flex-1 rounded-xl border border-signal-success/20 bg-tint-success px-3.5 py-3 flex flex-col items-center gap-1.5 text-center">
-            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center">
-              <Users size={16} className="text-signal-success" strokeWidth={1.5} />
-            </div>
-            <span className="text-[12px] font-semibold text-content-primary">Audiência</span>
-            <span className="text-[11px] text-content-secondary leading-snug">vê e reage com gostos</span>
-          </div>
-
-          {/* Arrow 1 */}
-          <div className="flex items-center justify-center sm:px-1.5 py-1 sm:py-0">
-            <ArrowRight size={14} className="text-content-tertiary/50 hidden sm:block" />
-            <svg className="sm:hidden text-content-tertiary/50" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
-          </div>
-
-          {/* Node 2 — Comments ("Elo perdido") */}
-          <div className="flex-1 rounded-xl border-2 border-dashed border-signal-danger/40 bg-tint-danger px-3.5 py-3 flex flex-col items-center gap-1.5 text-center relative">
-            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-widest text-signal-danger bg-surface-secondary border border-signal-danger/20 rounded-full px-2 py-0.5 whitespace-nowrap">
-              Elo perdido
-            </span>
-            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center mt-1">
-              <MessageCircle size={16} className="text-signal-danger" strokeWidth={1.5} />
-            </div>
-            <span className="text-[12px] font-semibold text-content-primary">Comentários</span>
-            <span className="text-[11px] text-content-secondary leading-snug">{commentSubcopy}</span>
-          </div>
-
-          {/* Arrow 2 */}
-          <div className="flex items-center justify-center sm:px-1.5 py-1 sm:py-0">
-            <ArrowRight size={14} className="text-content-tertiary/50 hidden sm:block" />
-            <svg className="sm:hidden text-content-tertiary/50" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
-          </div>
-
-          {/* Node 3 — Brand */}
-          <div className="flex-1 rounded-xl border border-border-default bg-surface-muted px-3.5 py-3 flex flex-col items-center gap-1.5 text-center opacity-70">
-            <div className="size-9 rounded-full bg-surface-secondary flex items-center justify-center">
-              <MessageCircleReply size={16} className="text-content-tertiary" strokeWidth={1.5} />
-            </div>
-            <span className="text-[12px] font-semibold text-content-primary">Marca</span>
-            <span className="text-[11px] text-content-secondary leading-snug">
-              {ownerReplies === 0 ? "não responde publicamente" : "responde pontualmente"}
-            </span>
-          </div>
+      {/* ── Z3: Voz da audiência — o que dizem nos comentários ── */}
+      {commentIntel?.available && (commentIntel.questionsFromAudienceCount > 0 || commentIntel.praiseCount > 0 || commentIntel.buyingIntentCount > 0 || commentIntel.complaintOrIssueCount > 0) ? (
+        <AudienceVoiceBreakdown commentIntel={commentIntel} />
+      ) : (
+        <div className="rounded-[14px] border border-border-subtle bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
+          <p className="text-eyebrow text-content-tertiary mb-2">Voz da audiência</p>
+          <p className="text-[13px] text-content-secondary leading-relaxed">
+            Quando a análise de comentários estiver disponível, este bloco mostra o que a audiência mais pede, elogia e questiona nos comentários públicos.
+          </p>
         </div>
-      </div>
+      )}
 
       {/* ── Z4: Top conversation post highlight ── */}
       {topConversationPost && topConversationPost.comments > 0 && (
