@@ -314,7 +314,7 @@ function AiReading({
   return (
     <InsightCallout
       tone="ai"
-      label="LEITURA IA"
+      label="DIAGNÓSTICO COMPARATIVO"
     >
       {hasChildren ? (
         <div>{children}</div>
