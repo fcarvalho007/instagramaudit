@@ -17,15 +17,6 @@ import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
 import { PostComparisonBlock } from "./report-post-comparison";
-import {
-  classifyContentType,
-  classifyFunnelStage,
-  classifyAudienceResponse,
-  classifyChannelIntegration,
-  inferProbableObjective,
-} from "@/lib/report/block02-diagnostic";
-import { buildDiagnosticCards } from "./overview/diagnostic-summary";
-import type { SummaryCardData } from "./overview/diagnostic-summary";
 
 export interface Props {
   result: AdapterResult;
@@ -58,18 +49,6 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
     },
   }), [k, avgComments]);
 
-  const diagnosticCards = useMemo(() => {
-    const posts = payload?.posts ?? [];
-    const bio = enriched.profile.bio ?? null;
-    const externalUrls = enriched.profile.externalUrls ?? [];
-    const contentType = classifyContentType(posts);
-    const funnel = classifyFunnelStage(posts);
-    const audience = classifyAudienceResponse(posts);
-    const integration = classifyChannelIntegration(bio, externalUrls, posts);
-    const objective = inferProbableObjective({ contentType, funnel, integration, bio, audience });
-    return buildDiagnosticCards(contentType, funnel, objective);
-  }, [payload?.posts, enriched.profile.bio, enriched.profile.externalUrls]);
-
   const formatEntries: FormatEntry[] = useMemo(() => {
     return result.data.formatBreakdown.map((f) => ({
       format: f.format as "Reels" | "Carousels" | "Imagens",
@@ -85,7 +64,6 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
       {/* Zona B — Editorial Identity Card (replaces 6-card grid) */}
       <EditorialIdentityCard
         scores={scores}
-        diagnosticCards={diagnosticCards}
         aiHeroText={enriched.aiInsightsV2?.sections.hero?.text ?? null}
       />
 

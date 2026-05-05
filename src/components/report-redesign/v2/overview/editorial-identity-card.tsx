@@ -1,7 +1,7 @@
 /**
  * Editorial Identity Card — single cohesive 2-band overview card.
  *
- * Band 1: Editorial Portrait (sentence + territory chips + global ring)
+ * Band 1: Editorial Portrait (hero sentence + global ring)
  * Band 2: Action Summary (principal ponto forte + principal ponto fraco)
  */
 import { cn } from "@/lib/utils";
@@ -9,19 +9,16 @@ import { ScoreRing } from "./score-ring";
 import { ScoreOrbitBackground } from "./score-orbit-background";
 import {
   getScoreFamily,
-  SCORE_COLORS,
   computeGlobalScore,
   type ScoreKey,
   type ScoreFamily,
 } from "./score-utils";
-import type { SummaryCardData } from "./diagnostic-summary";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
 interface EditorialIdentityCardProps {
   scores: Record<ScoreKey, { value: number; subtitle: string }>;
-  diagnosticCards: SummaryCardData[];
   /** AI hero insight text, if available */
   aiHeroText?: string | null;
 }
@@ -93,7 +90,6 @@ const FAMILY_DOT: Record<ScoreFamily, string> = {
 
 export function EditorialIdentityCard({
   scores,
-  diagnosticCards,
   aiHeroText,
 }: EditorialIdentityCardProps) {
   const globalScore = computeGlobalScore(
@@ -104,12 +100,8 @@ export function EditorialIdentityCard({
   const globalFamily = getScoreFamily(globalScore);
 
   const sentence = aiHeroText || buildFallbackSentence(scores);
-  const isAi = !!aiHeroText;
 
   const { strength, weakness } = deriveStrengthWeakness(scores);
-
-  // Territory chips from diagnostic cards
-  const chips = diagnosticCards.map((c) => c.headline).filter(Boolean);
 
   return (
     <article
@@ -127,40 +119,9 @@ export function EditorialIdentityCard({
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-8">
           {/* Left — text */}
           <div className="flex-1 min-w-0 text-center sm:text-left">
-            <div className="flex items-center gap-2 justify-center sm:justify-start mb-3">
-              <span className="text-eyebrow-sm text-content-secondary">
-                Retrato editorial
-              </span>
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-full px-2 py-0.5",
-                  "text-[9px] font-bold uppercase tracking-widest",
-                  isAi
-                    ? "bg-violet-100 text-violet-700"
-                    : "bg-slate-100 text-slate-500",
-                )}
-              >
-                {isAi ? "IA" : "Auto"}
-              </span>
-            </div>
-
-            <p className="font-display text-xl sm:text-[1.35rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary max-w-xl">
+            <p className="font-display text-[1.35rem] sm:text-[1.5rem] md:text-[1.65rem] font-semibold leading-snug tracking-tight text-content-primary max-w-xl">
               {sentence}
             </p>
-
-            {/* Territory chips */}
-            {chips.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
-                {chips.map((chip) => (
-                  <span
-                    key={chip}
-                    className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium bg-white/80 text-content-secondary ring-1 ring-border-default/40 backdrop-blur-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
-                  >
-                    {chip}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Right — global score ring */}
@@ -191,29 +152,28 @@ export function EditorialIdentityCard({
 
       {/* ═══ BAND 2 — Action Summary ═══ */}
       <div className="border-t border-border-default bg-slate-50/60">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center">
+        <div className="flex flex-col sm:flex-row items-stretch">
           {/* Strength */}
-          <div className="flex items-center gap-3 px-5 py-4 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-subtle">
-            <span className="flex items-center justify-center size-9 rounded-full bg-emerald-50 shrink-0">
-              <CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />
+          <div className="flex items-center gap-3.5 px-5 py-5 sm:px-6 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-subtle">
+            <span className="flex items-center justify-center size-10 rounded-full bg-emerald-50 shrink-0">
+              <CheckCircle2 className="size-[18px] text-emerald-600" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <span className="text-eyebrow-sm text-emerald-600 block">Principal ponto forte</span>
-              <span className="text-sm font-medium text-content-primary">{strength}</span>
+              <span className="text-eyebrow-sm text-emerald-600 block mb-0.5">Principal ponto forte</span>
+              <span className="text-[15px] font-semibold text-content-primary">{strength}</span>
             </div>
           </div>
 
           {/* Weakness */}
-          <div className="flex items-center gap-3 px-5 py-4 sm:flex-1">
-            <span className="flex items-center justify-center size-9 rounded-full bg-rose-50 shrink-0">
-              <AlertCircle className="size-4 text-rose-600" aria-hidden="true" />
+          <div className="flex items-center gap-3.5 px-5 py-5 sm:px-6 sm:flex-1">
+            <span className="flex items-center justify-center size-10 rounded-full bg-rose-50 shrink-0">
+              <AlertCircle className="size-[18px] text-rose-600" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <span className="text-eyebrow-sm text-rose-600 block">Principal ponto fraco</span>
-              <span className="text-sm font-medium text-content-primary">{weakness}</span>
+              <span className="text-eyebrow-sm text-rose-600 block mb-0.5">Principal ponto fraco</span>
+              <span className="text-[15px] font-semibold text-content-primary">{weakness}</span>
             </div>
           </div>
-
         </div>
       </div>
     </article>
