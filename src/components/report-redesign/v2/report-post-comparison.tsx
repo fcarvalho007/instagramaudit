@@ -81,7 +81,7 @@ export function PostComparisonBlock({
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
       <div className="px-5 md:px-6 pt-6 md:pt-8 pb-4 space-y-2.5">
-        <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
+        <h3 className="font-display text-[1.2rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
           Melhores e Piores Publicações
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
@@ -163,7 +163,7 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
       }}
     >
       {/* Best side */}
-      <div className="flex flex-col items-start gap-0.5 min-w-[70px] md:min-w-[100px]">
+      <div className="flex flex-col items-start gap-0.5 min-w-[60px] sm:min-w-[70px] md:min-w-[100px]">
         <div className="flex items-center gap-1.5">
           <TrendingUp className="size-3 text-accent-primary" aria-hidden="true" />
           <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">Melhor</span>
@@ -184,7 +184,7 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
       </div>
 
       {/* Worst side */}
-      <div className="flex flex-col items-end gap-0.5 min-w-[70px] md:min-w-[100px]">
+      <div className="flex flex-col items-end gap-0.5 min-w-[60px] sm:min-w-[70px] md:min-w-[100px]">
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-bold uppercase tracking-widest text-signal-warning">Pior</span>
           <TrendingDown className="size-3 text-signal-warning" aria-hidden="true" />
