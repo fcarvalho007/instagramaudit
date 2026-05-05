@@ -828,3 +828,149 @@ export function DiagnosticObjectiveSynthesis({
     </div>
   );
 }
+
+// ─── Z3 replacement: Audience Voice Breakdown ───────────────────────
+
+function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelligence }) {
+  const ci = commentIntel;
+  const totalSignals = ci.questionsFromAudienceCount + ci.praiseCount + ci.buyingIntentCount + ci.complaintOrIssueCount;
+
+  const items: Array<{
+    key: string;
+    label: string;
+    sublabel: string;
+    count: number;
+    pct: number;
+    Icon: typeof HelpCircle;
+    toneClass: string;
+    barClass: string;
+  }> = [];
+
+  if (ci.questionsFromAudienceCount > 0) {
+    items.push({
+      key: "questions",
+      label: "Perguntas",
+      sublabel: "Dúvidas, pedidos de informação, \"como faço?\"",
+      count: ci.questionsFromAudienceCount,
+      pct: totalSignals > 0 ? Math.round((ci.questionsFromAudienceCount / totalSignals) * 100) : 0,
+      Icon: HelpCircle,
+      toneClass: "text-accent-primary",
+      barClass: "bg-accent-primary",
+    });
+  }
+  if (ci.praiseCount > 0) {
+    items.push({
+      key: "praise",
+      label: "Elogios e apoio",
+      sublabel: "Parabéns, emojis positivos, incentivos",
+      count: ci.praiseCount,
+      pct: totalSignals > 0 ? Math.round((ci.praiseCount / totalSignals) * 100) : 0,
+      Icon: ThumbsUp,
+      toneClass: "text-signal-success",
+      barClass: "bg-signal-success",
+    });
+  }
+  if (ci.buyingIntentCount > 0) {
+    items.push({
+      key: "buying",
+      label: "Intenção de compra",
+      sublabel: "\"Onde compro?\", \"Qual o preço?\", pedidos de link",
+      count: ci.buyingIntentCount,
+      pct: totalSignals > 0 ? Math.round((ci.buyingIntentCount / totalSignals) * 100) : 0,
+      Icon: ShoppingCart,
+      toneClass: "text-accent-primary",
+      barClass: "bg-accent-primary/70",
+    });
+  }
+  if (ci.complaintOrIssueCount > 0) {
+    items.push({
+      key: "complaints",
+      label: "Problemas ou queixas",
+      sublabel: "Reclamações, insatisfação, pedidos de suporte",
+      count: ci.complaintOrIssueCount,
+      pct: totalSignals > 0 ? Math.round((ci.complaintOrIssueCount / totalSignals) * 100) : 0,
+      Icon: AlertTriangle,
+      toneClass: "text-signal-warning",
+      barClass: "bg-signal-warning",
+    });
+  }
+
+  // Sort by count descending
+  items.sort((a, b) => b.count - a.count);
+
+  const max = Math.max(1, ...items.map((i) => i.count));
+
+  return (
+    <div className="rounded-[14px] border border-border-default bg-surface-secondary px-4 py-4 sm:px-5 sm:py-5 space-y-4">
+      <div>
+        <p className="text-eyebrow text-content-tertiary">O que a audiência mais diz</p>
+        <p className="text-[11px] text-content-tertiary mt-0.5">
+          Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários públicos
+        </p>
+      </div>
+
+      <ul className="space-y-3">
+        {items.map((it, i) => {
+          const barW = Math.max(8, (it.count / max) * 100);
+          return (
+            <li key={it.key}>
+              <div className="flex items-start gap-2.5">
+                <div className={cn("size-7 sm:size-8 rounded-lg flex items-center justify-center shrink-0 bg-surface-muted")}>
+                  <it.Icon className={cn("size-3.5 sm:size-4", it.toneClass)} strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[13px] sm:text-[14px] font-semibold text-content-primary">{it.label}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="font-mono text-[13px] sm:text-[15px] font-bold tabular-nums text-content-primary">{it.count}</span>
+                      <span className="font-mono text-[10px] tabular-nums text-content-tertiary">({it.pct}%)</span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] sm:text-[12px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</p>
+                  <div className="h-1.5 sm:h-2 rounded-full bg-surface-muted mt-2 overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full", it.barClass, i > 0 && "opacity-60")}
+                      style={{ width: `${barW}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {ci.dominantConversationSignals.length > 0 && (
+        <div className="pt-2 border-t border-border-subtle">
+          <p className="text-eyebrow-sm text-content-tertiary mb-1.5">Sinais dominantes</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ci.dominantConversationSignals.map((signal) => {
+              const SIGNAL_LABELS: Record<string, string> = {
+                questions: "Perguntas",
+                praise: "Elogios",
+                complaint: "Queixas",
+                buying_intent: "Compra",
+                spam: "Ruído",
+              };
+              return (
+                <span
+                  key={signal}
+                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-border-default bg-surface-muted text-content-secondary"
+                >
+                  {SIGNAL_LABELS[signal] ?? signal}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {ci.recommendedConversationAction && (
+        <div className="rounded-lg bg-tint-primary px-3.5 py-3 border border-accent-primary/15">
+          <p className="text-eyebrow-sm text-accent-primary mb-1">Ação recomendada</p>
+          <p className="text-[13px] text-content-secondary leading-relaxed">{ci.recommendedConversationAction}</p>
+        </div>
+      )}
+    </div>
+  );
+}
