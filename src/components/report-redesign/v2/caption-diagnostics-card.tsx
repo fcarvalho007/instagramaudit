@@ -391,16 +391,16 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         <KpiCard label="CARACTERÍSTICAS">
           <div className="flex flex-col gap-3">
             <div>
-              <span className="text-[22px] font-semibold tabular-nums text-content-primary leading-none">
+              <p className="text-[12px] text-content-tertiary mb-0.5">Média de palavras por legenda</p>
+              <span className="text-[22px] font-mono font-semibold tabular-nums text-content-primary leading-none">
                 ~{fmt(stats.avgWordsPerCaption)}
               </span>
-              <span className="text-[12px] text-content-tertiary ml-1.5">palavras / post</span>
             </div>
             <div>
-              <span className="text-[22px] font-semibold tabular-nums text-content-primary leading-none">
+              <p className="text-[12px] text-content-tertiary mb-0.5">Média de emojis por post</p>
+              <span className="text-[22px] font-mono font-semibold tabular-nums text-content-primary leading-none">
                 {stats.avgEmojisPerCaption.toFixed(1).replace(".", ",")}
               </span>
-              <span className="text-[12px] text-content-tertiary ml-1.5">emojis / post</span>
             </div>
           </div>
         </KpiCard>
@@ -440,21 +440,43 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-3">EXPRESSÕES RECORRENTES</p>
           {expressions.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {expressions.map((it, i) => (
-                <span
-                  key={it.expression}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] ring-1",
-                    i < 2
-                      ? "bg-tint-primary ring-accent-primary/15 text-accent-primary"
-                      : "bg-surface-muted ring-border-default text-content-secondary",
-                  )}
-                >
-                  {it.expression}
-                  <span className="font-mono text-[10px] tabular-nums opacity-70">×{it.count}</span>
-                </span>
-              ))}
+            <div className="space-y-1.5">
+              {expressions.map((it, i) => {
+                const TYPE_LABEL: Record<string, string> = {
+                  topic: "Tema",
+                  cta: "CTA",
+                  brand: "Marca",
+                  product: "Produto",
+                  community: "Comunidade",
+                  other: "Outro",
+                };
+                return (
+                  <div
+                    key={it.expression}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg px-3 py-2 ring-1",
+                      i < 2
+                        ? "bg-tint-primary ring-accent-primary/15"
+                        : "bg-surface-muted ring-border-default",
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={cn(
+                        "text-[13px] font-medium",
+                        i < 2 ? "text-accent-primary" : "text-content-secondary",
+                      )}>
+                        {it.expression}
+                      </span>
+                      <span className="text-[10px] text-content-tertiary rounded-full bg-surface-muted px-1.5 py-0.5 ring-1 ring-border-default">
+                        {TYPE_LABEL[it.type] ?? "Outro"}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[11px] tabular-nums text-content-tertiary shrink-0 ml-2">
+                      ×{it.count}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-[13px] text-content-tertiary">Dados insuficientes para esta leitura.</p>
@@ -465,6 +487,38 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-3">COMO ACABAM AS LEGENDAS?</p>
           <EndingsDistribution items={data.distributions.endings} />
+        </div>
+      </div>
+
+      {/* ── 4b. Comment engagement ── */}
+      <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
+        <p className="text-eyebrow-sm text-content-tertiary mb-2">PEDE COMENTÁRIOS NOS POSTS?</p>
+        <div className="flex items-center gap-4">
+          <span className={cn(
+            "text-[28px] font-mono font-bold tabular-nums leading-none",
+            data.commentEngagement.asksForCommentsPct >= 50 ? "text-signal-success" :
+            data.commentEngagement.asksForCommentsPct >= 25 ? "text-signal-warning" :
+            "text-signal-danger",
+          )}>
+            {data.commentEngagement.asksForCommentsPct}%
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] text-content-secondary leading-relaxed">
+              {data.commentEngagement.summary}
+            </p>
+            {data.commentEngagement.examples.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {data.commentEngagement.examples.map((ex) => (
+                  <span
+                    key={ex}
+                    className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ring-1 bg-surface-muted ring-border-default text-content-secondary"
+                  >
+                    «{ex}»
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

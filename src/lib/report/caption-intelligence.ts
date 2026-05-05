@@ -128,6 +128,21 @@ export interface CaptionIntelligence {
   actionBridge: ActionBridge;
   /** Caption length, opening and ending distributions. */
   distributions: CaptionDistributions;
+  /** Whether posts actively ask for comments/engagement. */
+  commentEngagement: CommentEngagementBlock;
+}
+
+export interface CommentEngagementBlock {
+  /** Percentage of posts that explicitly ask for comments. */
+  asksForCommentsPct: number;
+  /** Number of posts that ask for comments. */
+  asksForCommentsCount: number;
+  /** Total posts analyzed. */
+  totalPosts: number;
+  /** Example phrases found. */
+  examples: string[];
+  /** Human-readable summary. */
+  summary: string;
 }
 
 export interface CaptionStats {
@@ -731,6 +746,82 @@ function describeImprovement(cta: {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Bloco 6 · Comment engagement detection
+// ─────────────────────────────────────────────────────────────────────
+
+const COMMENT_ENGAGEMENT_TERMS: ReadonlyArray<{ pattern: string; display: string }> = [
+  { pattern: "comenta", display: "Comenta" },
+  { pattern: "comenta abaixo", display: "Comenta abaixo" },
+  { pattern: "diz-me", display: "Diz-me" },
+  { pattern: "diz me", display: "Diz-me" },
+  { pattern: "conta-me", display: "Conta-me" },
+  { pattern: "conta me", display: "Conta-me" },
+  { pattern: "responde", display: "Responde" },
+  { pattern: "o que achas", display: "O que achas?" },
+  { pattern: "o que pensas", display: "O que pensas?" },
+  { pattern: "concordas", display: "Concordas?" },
+  { pattern: "ja usaste", display: "Já usaste?" },
+  { pattern: "já usaste", display: "Já usaste?" },
+  { pattern: "jogavas contra", display: "Jogavas contra isto?" },
+  { pattern: "qual delas", display: "Qual delas?" },
+  { pattern: "qual preferes", display: "Qual preferes?" },
+  { pattern: "ja tinhas visto", display: "Já tinhas visto?" },
+  { pattern: "já tinhas visto", display: "Já tinhas visto?" },
+];
+
+function buildCommentEngagement(posts: readonly SnapshotPost[]): CommentEngagementBlock {
+  if (posts.length === 0) {
+    return { asksForCommentsPct: 0, asksForCommentsCount: 0, totalPosts: 0, examples: [], summary: "Sem posts para analisar." };
+  }
+  let count = 0;
+  const examples: string[] = [];
+  const seenDisplays = new Set<string>();
+
+  for (const p of posts) {
+    const cap = (p.caption ?? "").toLowerCase();
+    if (!cap.trim()) continue;
+    let matched = false;
+    for (const term of COMMENT_ENGAGEMENT_TERMS) {
+      if (cap.includes(term.pattern)) {
+        matched = true;
+        if (!seenDisplays.has(term.display) && examples.length < 4) {
+          examples.push(term.display);
+          seenDisplays.add(term.display);
+        }
+      }
+    }
+    // Also check for questions directed at reader (ending with ?)
+    const lines = cap.split("\n").filter(Boolean);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.endsWith("?") && trimmed.length > 10 && trimmed.length < 80) {
+        matched = true;
+        break;
+      }
+    }
+    if (matched) count++;
+  }
+
+  const pct = Math.round((count / posts.length) * 100);
+  let summary: string;
+  if (pct >= 60) {
+    summary = `${pct}% das publicações pedem interação direta nos comentários — estratégia ativa de engagement.`;
+  } else if (pct >= 30) {
+    summary = `${pct}% das publicações incluem convites à interação. Há espaço para reforçar.`;
+  } else {
+    summary = `Apenas ${pct}% das publicações pedem comentários. Estratégia de engagement passiva.`;
+  }
+
+  return {
+    asksForCommentsPct: pct,
+    asksForCommentsCount: count,
+    totalPosts: posts.length,
+    examples,
+    summary,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Builder principal
 // ─────────────────────────────────────────────────────────────────────
 
@@ -820,6 +911,7 @@ export function buildCaptionIntelligence(
     editorialReading,
     actionBridge,
     distributions,
+    commentEngagement: buildCommentEngagement(posts),
   };
 }
 
