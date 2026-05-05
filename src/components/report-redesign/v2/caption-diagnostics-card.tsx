@@ -188,7 +188,6 @@ function DistributionBar({
   );
 }
 
-function StackedLengthBar({ items }: { items: CaptionLengthDistribution[] }) {
 // ---------------------------------------------------------------------------
 // Opening icon map
 // ---------------------------------------------------------------------------
