@@ -9,7 +9,8 @@
  *   Video legend dot:    bg-sky-200
  */
 import { useState } from "react";
-import { Check, Play, Image, GalleryHorizontalEnd } from "lucide-react";
+import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
+import { InsightCallout, type InsightTone } from "./insight-callout";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -165,6 +166,9 @@ export function FormatCard({
   const dk = toDominantKey(dominantFormat, dominantFormatShare);
   const verdict = getFormatVerdict(dk);
   const statsLine = buildStatsLine(formats, postsAnalyzed);
+  // Determine callout tone based on format variation
+  const calloutTone: InsightTone = dk === "mixed" ? "neutral" : dominantFormatShare >= 80 ? "warning" : "positive";
+  const calloutLabel = calloutTone === "positive" ? "PONTO FORTE" : calloutTone === "warning" ? "A MELHORAR" : "DIAGNÓSTICO";
 
   // Build thumbnails from literal per-post data, grouped by dominant format first
   const sortedFormats = [...formats].filter((f) => f.count > 0).sort((a, b) => b.count - a.count);
@@ -274,13 +278,12 @@ export function FormatCard({
       )}
 
       {/* Verdict */}
-      <div className="mt-auto rounded-lg bg-tint-success border border-border-subtle px-3 py-2 flex items-start gap-2">
-        <Check className="size-3.5 text-signal-success shrink-0 mt-0.5" aria-hidden="true" />
-        <p className="text-[11px] text-content-primary leading-[1.4]">
-          <span className="font-medium">{verdict.strong}</span>{" "}
+      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-auto">
+        <p>
+          <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
         </p>
-      </div>
+      </InsightCallout>
     </article>
   );
 }

@@ -1,7 +1,8 @@
-import { Heart, MessageCircle, ImageOff, Sparkles, TrendingUp, TrendingDown } from "lucide-react";
+import { Heart, MessageCircle, ImageOff, TrendingUp, TrendingDown } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
+import { InsightCallout } from "./overview/insight-callout";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
 
@@ -132,7 +133,7 @@ export function PostComparisonBlock({
           </div>
 
           {/* AI / Editorial reading */}
-          <AiReadingCard fallback={aiFallback}>{renderInsight()}</AiReadingCard>
+          <AiReading fallback={aiFallback}>{renderInsight()}</AiReading>
         </div>
       ) : (
         <div className="px-5 md:px-6 pb-5 md:pb-6">
@@ -298,44 +299,32 @@ function MobileDifferenceMarker({
   );
 }
 
-// ─── AI Reading Card ────────────────────────────────────────────────
+// ─── AI Reading (unified InsightCallout) ────────────────────────────
 
-function AiReadingCard({
+function AiReading({
   children,
   fallback,
 }: {
   children: ReactNode;
   fallback: { headline: string; body: string } | null;
 }) {
+  // Show AI insight if provided, otherwise deterministic fallback — never both.
+  const hasChildren = children !== null && children !== undefined && children !== false;
+
   return (
-    <div
-      className="rounded-xl border border-border-subtle px-4 py-3.5 space-y-2"
-      style={{
-        borderLeftWidth: 3,
-        borderLeftColor: "rgba(37,99,217,0.35)",
-        background: "rgba(37,99,217,0.03)",
-      }}
+    <InsightCallout
+      tone="ai"
+      label="LEITURA IA"
     >
-      <div className="flex items-center gap-2">
-        <Sparkles className="size-3.5 text-accent-primary shrink-0" />
-        <span className="text-[9px] font-bold uppercase tracking-widest text-content-secondary">
-          Comparação de extremos
-        </span>
-      </div>
-      {/* Render the AI insight if provided */}
-      {children && <div>{children}</div>}
-      {/* Deterministic fallback always shown as supporting context */}
-      {fallback && (
-        <div className="space-y-1">
-          <p className="font-display text-[15px] md:text-[16px] font-semibold text-content-primary leading-snug">
-            {fallback.headline}
-          </p>
-          <p className="text-[12px] text-content-secondary leading-relaxed max-w-3xl">
-            {fallback.body}
-          </p>
+      {hasChildren ? (
+        <div>{children}</div>
+      ) : fallback ? (
+        <div className="space-y-0.5">
+          <p className="font-semibold">{fallback.headline}</p>
+          <p className="text-content-secondary">{fallback.body}</p>
         </div>
-      )}
-    </div>
+      ) : null}
+    </InsightCallout>
   );
 }
 
