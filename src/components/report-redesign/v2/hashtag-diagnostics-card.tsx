@@ -5,7 +5,7 @@
  * no AI suggestions. Uses only extracted hashtag data from analyzed posts.
  */
 import type { ReactNode } from "react";
-import { Hash, Info } from "lucide-react";
+import { Hash } from "lucide-react";
 import { InsightCallout } from "./insight-callout";
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 
@@ -139,7 +139,7 @@ function KpiCard({
           </span>
         )}
       </div>
-      <p className="font-heading text-2xl md:text-3xl text-content-primary leading-none">
+      <p className="font-display text-2xl md:text-3xl text-content-primary leading-none">
         {value}
       </p>
       <p className="text-xs text-content-tertiary">{sub}</p>
@@ -219,7 +219,7 @@ export function HashtagDiagnosticsCard({
   const diagnosticText = buildDiagnosticText(items, avgPerPost, postsAnalyzed);
 
   return (
-    <div className="rounded-2xl border border-border-subtle bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+    <div className="rounded-2xl border border-border-subtle bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden md:col-span-2">
       {/* ── Header ── */}
       <div className="px-5 pt-5 md:px-7 md:pt-7 pb-4">
         {/* top metadata row */}
@@ -229,7 +229,7 @@ export function HashtagDiagnosticsCard({
               <Hash className="w-3.5 h-3.5 text-accent-primary" />
             </span>
             <span className="text-eyebrow-sm">
-              P03 · HASHTAGS · {postsAnalyzed} POSTS ANALISADOS
+              03 · HASHTAGS · {postsAnalyzed} POSTS ANALISADOS
             </span>
           </div>
           <span className="text-[10px] font-semibold tracking-wide text-content-tertiary border border-border-subtle rounded-full px-2.5 py-0.5 bg-surface-muted/50">
@@ -238,7 +238,7 @@ export function HashtagDiagnosticsCard({
         </div>
 
         {/* title */}
-        <h3 className="font-heading text-xl md:text-2xl text-content-primary leading-snug mb-1">
+        <h3 className="font-display text-xl md:text-2xl text-content-primary leading-snug mb-1">
           Que hashtags etiquetam o conteúdo?
         </h3>
         <p className="text-sm text-content-secondary leading-relaxed">
@@ -255,19 +255,9 @@ export function HashtagDiagnosticsCard({
             sub="no total"
           />
           <KpiCard
-            label="TODOS OS POSTS TÊM HASHTAGS?"
-            value={
-              postsAnalyzed === 0
-                ? "—"
-                : allPostsHaveHashtags
-                  ? "Sim"
-                  : "Não"
-            }
-            sub={
-              postsAnalyzed === 0
-                ? "sem dados suficientes"
-                : `${postsWithHashtags}/${postsAnalyzed} posts`
-            }
+            label="USOS REGISTADOS"
+            value={computeStats(posts, postsAnalyzed).totalHashtagUses}
+            sub={`em ${postsAnalyzed} posts`}
           />
           <KpiCard
             label="MÉDIA POR POST"
@@ -317,30 +307,25 @@ export function HashtagDiagnosticsCard({
         </InsightCallout>
       </div>
 
-      {/* ── Sources footer ── */}
-      <div className="px-5 md:px-7 py-4 border-t border-border-subtle">
-        <div className="flex items-start gap-1.5 text-[11px] text-content-tertiary leading-relaxed">
-          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-content-quaternary" />
-          <p>
-            Apenas hashtags públicas dos {postsAnalyzed} posts analisados.
-            Recomendação {KB_HASHTAGS.recommendedRange.min}–{KB_HASHTAGS.recommendedRange.max} hashtags: referência editorial.
-            <br />
-            Fontes de referência editorial:{" "}
-            {KB_SOURCES.map((src, i) => (
-              <span key={src.name}>
-                {i > 0 && " · "}
-                <a
-                  href={src.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent-primary hover:underline"
-                >
-                  {src.name}
-                </a>
-              </span>
-            ))}
-          </p>
-        </div>
+      {/* ── Footer ── */}
+      <div className="px-5 md:px-7 py-4 border-t border-border-subtle flex items-center gap-2 text-[11px] leading-relaxed">
+        <span className="text-eyebrow-sm text-content-secondary shrink-0">FONTES:</span>
+        <span className="text-content-tertiary">
+          {KB_SOURCES.map((src, i) => (
+            <span key={src.name}>
+              {i > 0 && " · "}
+              [{i + 1}]{" "}
+              <a
+                href={src.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                {src.name}
+              </a>
+            </span>
+          ))}
+        </span>
       </div>
     </div>
   );

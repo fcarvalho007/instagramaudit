@@ -6,7 +6,7 @@
  * All data is real or deterministically derived — nothing invented.
  */
 import type { ReactNode } from "react";
-import { FileText, Info, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
+import { FileText, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   CaptionIntelligence,
@@ -427,29 +427,24 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       </div>
 
       {/* ── 7. Footer ── */}
-      <div className="pt-4 border-t border-border-subtle">
-        <div className="flex items-start gap-1.5 text-[11px] text-content-tertiary leading-relaxed">
-          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-content-quaternary" />
-          <p>
-            Análise baseada apenas em legendas públicas. Não inclui áudio, vídeo ou transcrição de Reels.
-            <br />
-            Fontes editoriais:{" "}
-            {KB_SOURCES.map((src, i) => (
-              <span key={src.name}>
-                {i > 0 && " · "}
-                [{i + 1}]{" "}
-                <a
-                  href={src.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent-primary hover:underline"
-                >
-                  {src.name}
-                </a>
-              </span>
-            ))}
-          </p>
-        </div>
+      <div className="pt-4 border-t border-border-subtle flex items-center gap-2 text-[11px] leading-relaxed">
+        <span className="text-eyebrow-sm text-content-secondary shrink-0">FONTES:</span>
+        <span className="text-content-tertiary">
+          {KB_SOURCES.map((src, i) => (
+            <span key={src.name}>
+              {i > 0 && " · "}
+              [{i + 1}]{" "}
+              <a
+                href={src.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                {src.name}
+              </a>
+            </span>
+          ))}
+        </span>
       </div>
     </CardShell>
   );
