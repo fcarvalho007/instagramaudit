@@ -167,8 +167,15 @@ export function FormatCard({
   const verdict = getFormatVerdict(dk);
   const statsLine = buildStatsLine(formats, postsAnalyzed);
   // Determine callout tone based on format variation
-  const calloutTone: InsightTone = dk === "mixed" ? "neutral" : dominantFormatShare >= 80 ? "warning" : "positive";
-  const calloutLabel = calloutTone === "positive" ? "PONTO FORTE" : calloutTone === "warning" ? "A MELHORAR" : "DIAGNÓSTICO";
+  const calloutTone: InsightTone =
+    variationStatus === "Muito variado" ? "positive"
+    : variationStatus === "Variado" ? "neutral"
+    : dk === "mixed" ? "neutral"
+    : "warning";
+  const calloutLabel =
+    calloutTone === "positive" ? "PONTO FORTE"
+    : calloutTone === "warning" ? "A MELHORAR"
+    : "DIAGNÓSTICO";
 
   // Build thumbnails from literal per-post data, grouped by dominant format first
   const sortedFormats = [...formats].filter((f) => f.count > 0).sort((a, b) => b.count - a.count);
