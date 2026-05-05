@@ -228,6 +228,9 @@ export function EngagementCardRefined({ result }: Props) {
                 </span>
               )}
             </div>
+            <span className="block text-[11px] text-content-secondary mt-1.5 leading-snug">
+              {gapPp >= 0 ? "+" : "−"}{Math.abs(gapPp).toFixed(2).replace(".", ",")} p.p. {gapPp >= 0 ? "acima" : "abaixo"} da referência
+            </span>
           </div>
         </div>
       </div>

@@ -138,7 +138,7 @@ export function ReportEngagementBenchmarkChart({
               aria-hidden="true"
             >
               <div
-                className="absolute top-0 bottom-0 w-px border-l border-dashed border-content-secondary/25"
+                className="absolute top-0 bottom-0 w-px border-l-2 border-dashed border-content-secondary/30"
                 style={{ left: `${benchmarkPct}%` }}
               />
             </div>
