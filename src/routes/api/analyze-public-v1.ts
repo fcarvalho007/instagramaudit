@@ -1021,7 +1021,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   handle: primaryProfile.username,
                   thumbnailUrls: thumbPosts.map((p) => p.thumbnail_url!),
                   postIds: thumbPosts.map((p) =>
-                    p.id ?? p.shortCode ?? "",
+                    p.id ?? p.shortcode ?? "",
                   ),
                 });
                 if (result.ok && result.analysis) {
