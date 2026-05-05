@@ -127,7 +127,7 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Hero row — 3 KPI cards */}
-      <div className="px-5 md:px-6 pt-5 md:pt-6 pb-5">
+      <div className="px-5 md:px-6 mt-6 pb-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
           {/* KPI 1 — Profile engagement */}
@@ -248,7 +248,7 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Chart */}
-      <div className="px-5 md:px-6 pb-5 md:pb-6">
+      <div className="px-5 md:px-6 pb-6 md:pb-8">
         <ReportEngagementBenchmarkChart
           profileEngagementRatePct={k.engagementRate}
           followersCount={followers}
@@ -261,7 +261,7 @@ export function EngagementCardRefined({ result }: Props) {
 
       {/* Diagnostic reading box */}
       {readingText && (
-        <div className="px-5 md:px-6 pb-5 md:pb-6">
+        <div className="px-5 md:px-6 pb-6 md:pb-8">
           <InsightCallout
             tone={isBelowBenchmark ? "danger" : "positive"}
             label="DIAGNÓSTICO"
