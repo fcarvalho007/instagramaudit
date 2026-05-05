@@ -243,6 +243,9 @@ export function EngagementCardRefined({ result }: Props) {
                 </span>
               )}
             </div>
+            <span className="block text-[11px] text-content-secondary mt-1.5 leading-snug">
+              face ao benchmark do escalão
+            </span>
           </div>
         </div>
       </div>
