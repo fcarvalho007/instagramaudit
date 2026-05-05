@@ -858,22 +858,22 @@ export function DiagnosticObjectiveSynthesis({
       {ranking && ranking.length > 1 ? (
         <div className="space-y-2">
           <p className="text-eyebrow-sm text-content-tertiary">Ranking de objetivos</p>
-          <ul className="space-y-1.5">
+          <ul className="space-y-1">
             {ranking.map((item) => {
               const pct = Math.round((item.score / maxScore) * 100);
               const isPrimary = item.label === primary;
               return (
                 <li key={item.label} className="text-sm">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span className={cn(
-                      "w-[7.5rem] sm:w-40 shrink-0 truncate",
-                      isPrimary ? "font-medium text-content-primary" : "text-content-secondary",
+                      "w-[6rem] sm:w-32 shrink-0 truncate text-[12px]",
+                      isPrimary ? "font-medium text-content-primary" : "text-content-tertiary",
                     )}>
                       {item.label}
                     </span>
                     <div className={cn(
                       "flex-1 overflow-hidden rounded-full",
-                      isPrimary ? "h-2.5 bg-purple-100" : "h-2 bg-surface-muted",
+                      isPrimary ? "h-2 bg-purple-100" : "h-1.5 bg-surface-muted",
                     )}>
                       <div
                         className={cn(
@@ -884,7 +884,7 @@ export function DiagnosticObjectiveSynthesis({
                         aria-hidden
                       />
                     </div>
-                    <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-content-tertiary">
+                    <span className="w-6 shrink-0 text-right font-mono text-[10px] tabular-nums text-content-tertiary">
                       {item.score}
                     </span>
                   </div>
@@ -895,20 +895,9 @@ export function DiagnosticObjectiveSynthesis({
         </div>
       ) : null}
 
-      {/* Secondary objective */}
-      {secondary ? (
-        <div className="rounded-lg bg-surface-muted/60 ring-1 ring-border-default px-4 py-3 space-y-1">
-          <p className="text-eyebrow-sm text-content-tertiary">Objetivo secundário</p>
-          <p className="text-[15px] font-medium text-content-primary">
-            {secondary}
-          </p>
-        </div>
-      ) : null}
-
       {/* Support signals */}
       {supportSignals.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-eyebrow-sm text-content-tertiary">Sinais de suporte</p>
+        <div className="space-y-1.5">
           <div className="flex flex-wrap gap-2">
             {supportSignals.map((signal) => (
               <span
@@ -938,11 +927,10 @@ export function DiagnosticObjectiveSynthesis({
         {conf.label}
       </span>
 
-      {/* Disclaimer */}
-      <InsightCallout tone="suggestion" label="Nota metodológica">
-        Esta hipótese é derivada dos sinais públicos analisados e não substitui
-        o objetivo real definido pela marca ou criador.
-      </InsightCallout>
+      {/* Methodology footer */}
+      <p className="text-[10.5px] text-content-tertiary italic leading-relaxed">
+        Hipótese derivada dos sinais públicos analisados.
+      </p>
     </div>
   );
 }
