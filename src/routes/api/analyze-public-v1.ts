@@ -87,7 +87,9 @@ import {
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import { generateVisualCoverAnalysis } from "@/lib/report/visual-cover-analysis.server";
+import { generateCaptionSemanticAnalysis } from "@/lib/report/caption-semantic-analysis.server";
 import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
+import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
 import {
   shouldRunCommentScraper,
@@ -1048,6 +1050,40 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             }
           }
 
+          // ─── Caption semantic analysis (OpenAI text, gated) ────────────
+          // Runs AFTER visual cover. Uses the same gates.
+          let captionSemanticAnalysis: CaptionSemanticAnalysis | null = null;
+          const cachedCaptionSemantic = (existing?.normalized_payload as Record<string, unknown> | undefined)?.caption_semantic_analysis;
+          if (
+            cachedCaptionSemantic &&
+            typeof cachedCaptionSemantic === "object" &&
+            typeof (cachedCaptionSemantic as Record<string, unknown>).source === "string"
+          ) {
+            captionSemanticAnalysis = cachedCaptionSemantic as CaptionSemanticAnalysis;
+            console.info("[analyze-public-v1] reused cached caption_semantic_analysis");
+          } else if (isOpenAiAllowed(primaryProfile.username)) {
+            try {
+              const captionTexts = primaryEnriched.posts
+                .filter((p) => typeof p.caption === "string" && p.caption.trim().length > 0)
+                .slice(0, 12)
+                .map((p) => p.caption!);
+
+              if (captionTexts.length >= 4) {
+                const result = await generateCaptionSemanticAnalysis({
+                  handle: primaryProfile.username,
+                  captions: captionTexts,
+                });
+                if (result.ok && result.analysis) {
+                  captionSemanticAnalysis = result.analysis;
+                } else if (result.reason && result.reason !== "DISABLED" && result.reason !== "NOT_ALLOWED") {
+                  console.warn("[analyze-public-v1] caption semantic analysis soft-failed", result.reason);
+                }
+              }
+            } catch (err) {
+              console.error("[analyze-public-v1] caption semantic analysis threw", err);
+            }
+          }
+
           // Only re-write when we have AI insights to attach. The upsert
           // collapses to an UPDATE on the existing cache_key — Apify and
           // DataForSEO are NOT called again. If OpenAI failed/timed out,
@@ -1072,7 +1108,13 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               visual_cover_analysis: visualCoverAnalysis,
             };
           }
-          if (aiInsights || aiInsightsV2 || visualCoverAnalysis) {
+          if (captionSemanticAnalysis) {
+            normalizedPayload = {
+              ...normalizedPayload,
+              caption_semantic_analysis: captionSemanticAnalysis,
+            };
+          }
+          if (aiInsights || aiInsightsV2 || visualCoverAnalysis || captionSemanticAnalysis) {
             const enrichedSnapshotId = await storeSnapshot({
               cacheKey,
               instagramUsername: primaryProfile.username,
@@ -1085,6 +1127,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 v1: !!aiInsights,
                 v2: !!aiInsightsV2,
                 visualCover: !!visualCoverAnalysis,
+                captionSemantic: !!captionSemanticAnalysis,
               },
               enrichedSnapshotId ?? snapshotId ?? "(null)",
             );
