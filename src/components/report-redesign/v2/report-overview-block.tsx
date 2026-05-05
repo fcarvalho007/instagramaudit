@@ -1,7 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 
 import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
-import type { AiInsightV2Section } from "@/lib/insights/types";
 
 import {
   computeEnvolvimento,
@@ -20,7 +19,7 @@ import { PostComparisonBlock } from "./report-post-comparison";
 
 export interface Props {
   result: AdapterResult;
-  renderInsight: (key: AiInsightV2Section) => ReactNode;
+  renderInsight: (key: string) => ReactNode;
   payload?: SnapshotPayload;
 }
 
@@ -91,7 +90,7 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
       <PostComparisonBlock
         topPosts={result.enriched.topPosts}
         bottomPosts={result.enriched.bottomPosts}
-        renderInsight={() => renderInsight("topPosts")}
+        aiInsightText={result.enriched.aiInsightsV2?.sections.topPosts?.text ?? null}
         windowLabel={result.data.meta?.windowShortLabel}
       />
     </div>
