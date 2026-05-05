@@ -24,7 +24,6 @@ import {
   DiagnosticChecklist,
   DiagnosticFunnelStack,
   DiagnosticAudienceHighlight,
-  DiagnosticObjectiveSynthesis,
   type DiagnosticTone,
 } from "./report-diagnostic-card";
 import { InsightCallout } from "./insight-callout";
