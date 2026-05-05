@@ -232,48 +232,6 @@ function injectCaptionImprovement(
   ];
 }
 
-function buildVerdictText(args: {
-  aiHero: string | null;
-  contentType: ContentTypeResult;
-  funnel: FunnelStageResult;
-  caption: CaptionPatternResult;
-  audience: AudienceResponseResult;
-  dominantFormat: string | null;
-  dominantFormatShare: number;
-}): string {
-  if (args.aiHero && args.aiHero.trim().length > 30) {
-    return args.aiHero.trim();
-  }
-  const parts: string[] = [];
-  if (
-    args.contentType.available &&
-    args.contentType.label &&
-    args.contentType.label !== "Misto / pouco claro"
-  ) {
-    parts.push(`perfil ${args.contentType.label.toLowerCase()}`);
-  }
-  if (args.funnel.available && args.funnel.label && args.funnel.label !== "Comunicação dispersa") {
-    parts.push(`com sinais de ${args.funnel.label.toLowerCase()}`);
-  }
-  if (args.dominantFormat && args.dominantFormatShare >= 50) {
-    parts.push(
-      `apoiado em ${args.dominantFormat.toLowerCase()} (${Math.round(
-        args.dominantFormatShare,
-      )} % da amostra)`,
-    );
-  }
-  if (args.audience.available && args.audience.label === "Audiência silenciosa") {
-    parts.push("sinais de audiência silenciosa — likes consistentes, conversa rara");
-  } else if (args.audience.available && args.audience.label === "Audiência ativa") {
-    parts.push("sinais de audiência ativa");
-  }
-
-  if (parts.length < 2) {
-    return "Com base na amostra analisada, ainda não há sinal suficiente para um veredicto editorial — a amostra é pequena ou pouco diferenciada.";
-  }
-  return "Com base na amostra analisada, " + parts.join(", ") + ".";
-}
-
 // ─────────────────────────────────────────────────────────────────────
 // Card builders
 // ─────────────────────────────────────────────────────────────────────
