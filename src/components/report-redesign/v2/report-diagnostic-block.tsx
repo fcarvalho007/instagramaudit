@@ -257,8 +257,6 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         tone="slate"
         span="half"
         body={body}
-       sourceType="auto"
-      sourceDetail="Legendas · classificação"
       >
         {r.distribution.length >= 2 && (
           <DiagnosticDistributionBar
@@ -279,7 +277,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
     );
   }
   const colorByIndex = (i: number) =>
-    i === 0 ? "bg-signal-success" : i === 1 ? "bg-signal-success/50" : "bg-content-tertiary/30";
+    i === 0 ? "bg-accent-primary" : i === 1 ? "bg-accent-primary/50" : "bg-content-tertiary/30";
   return (
     <ReportDiagnosticCard
       key="q01"
@@ -287,11 +285,9 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
       label="Tipo de conteúdo · Classificação"
       question="Que natureza de conteúdo aparece mais?"
       answer={r.label}
-      tone="emerald"
+      tone="blue"
         span="half"
       body={`Classificação do tipo de conteúdo publicado nas legendas e padrões editoriais. Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}.`}
-      sourceType="auto"
-      sourceDetail="Legendas · classificação"
     >
       {r.distribution.length >= 2 && (
         <DiagnosticDistributionBar
@@ -337,10 +333,8 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
       label="Funil · Mapeamento"
       question="Atrai, educa, converte ou fideliza?"
       answer={r.label ?? "—"}
-      tone={isFocused ? "blue" : "amber"}
+      tone={isFocused ? "emerald" : "amber"}
       body={`Mapeamento da função do conteúdo na jornada — atenção, educação, decisão ou relação. ${bodyByLabel[r.label ?? "Comunicação dispersa"]}`}
-      sourceType="auto"
-      sourceDetail="Legendas · mapeamento"
     >
       <div className="flex flex-col gap-4">
         {r.breakdown.length > 0 ? (
@@ -507,7 +501,6 @@ function renderAudienceCard(
       tone={tone}
       span="full"
       body={r.explanation}
-      sourceType="auto"
       sourceDetail="Gostos + comentários"
     >
       <DiagnosticAudienceHighlight
@@ -544,7 +537,6 @@ function renderIntegrationCard(r: IntegrationResult): ReportDiagnosticCardChild 
       answer={r.label}
       tone={tone}
       body="Há infraestrutura cross-canal quando a bio aponta para fora e as captions reforçam a saída do Instagram. Sem isso, a audiência fica presa à plataforma."
-      sourceType="auto"
       sourceDetail="Bio + legendas"
     >
       <DiagnosticChecklist
@@ -620,7 +612,6 @@ function renderObjectiveCard(
       tone="blue"
       span="full"
       body={buildObjectiveBody(r.primary, contentType, funnel)}
-      sourceType="auto"
       sourceDetail="Conteúdo + funil + bio · síntese"
     >
       <DiagnosticObjectiveSynthesis
