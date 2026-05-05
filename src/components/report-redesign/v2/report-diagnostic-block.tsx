@@ -488,7 +488,7 @@ function renderHashtagsCard(r: HashtagsResult): ReactNode | null {
 
         {/* Right — frequency + engagement */}
         <div>
-          <p className="text-eyebrow-sm text-content-tertiary mb-3">Frequência e envolvimento</p>
+          <p className="text-eyebrow-sm text-content-tertiary mb-3">Frequência e engagement</p>
           <ul className="space-y-3">
             {r.items.map((it, i) => {
               // Bar uses engagement when all weights are tied, otherwise weight

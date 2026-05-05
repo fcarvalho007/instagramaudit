@@ -96,7 +96,7 @@ export function ReportEngagementHistory({ handle, current }: Props) {
           Histórico das últimas {ordered.length} análises
         </p>
         <p className="text-eyebrow-sm text-content-tertiary/80">
-          envolvimento médio
+          engagement médio
         </p>
       </div>
       <ul className="space-y-2.5">

@@ -150,7 +150,7 @@ function computeSignals(result: AdapterResult): Signal[] {
     out.push({
       key: "engagement-gap",
       icon: TrendingDown,
-      title: "Envolvimento abaixo da referência",
+      title: "Engagement abaixo da referência",
       body: `O perfil está em ${formatPct(k.engagementRate)}, abaixo da referência de ${formatPct(k.engagementBenchmark)}.`,
       tone,
     });

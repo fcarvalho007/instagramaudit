@@ -300,7 +300,7 @@ function EngagementInfoTooltip() {
     <span
       className="relative group/info inline-flex"
       tabIndex={0}
-      aria-label="Como é calculada a taxa de envolvimento"
+      aria-label="Como é calculada a taxa de engagement"
     >
       <Info className="size-3.5 text-slate-400 cursor-help" aria-hidden />
       <span
@@ -316,7 +316,7 @@ function EngagementInfoTooltip() {
           "transition-all duration-150",
         )}
       >
-        A taxa de envolvimento compara gostos e comentários com a dimensão da
+        A taxa de engagement compara gostos e comentários com a dimensão da
         audiência. É uma referência direcional e pode variar por setor,
         dimensão da conta e método de cálculo.
       </span>

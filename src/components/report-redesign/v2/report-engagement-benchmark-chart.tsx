@@ -97,7 +97,7 @@ export function ReportEngagementBenchmarkChart({
       <div
         className="relative flex flex-col gap-2"
         role="list"
-        aria-label="Comparação de taxa de envolvimento por escalão"
+        aria-label="Comparação de taxa de engagement por escalão"
       >
         {/* Full-height benchmark reference line + label */}
         {benchmarkVal > 0 && (

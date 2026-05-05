@@ -61,13 +61,13 @@ export function PostComparisonBlock({
     if (bestFormat === "Reel" && worstFormat !== "Reel") {
       headline = "Reels superam formatos estáticos nesta conta.";
     } else if (bestFormat === "Carousel" && worstFormat !== "Carousel") {
-      headline = "Carrosséis geram mais envolvimento do que posts simples.";
+      headline = "Carrosséis geram mais engagement do que posts simples.";
     } else if (bestHasCaption && !worstHasCaption) {
       headline = "Legendas descritivas vencem publicações sem contexto.";
     }
 
     const body =
-      `O conteúdo com melhor desempenho atingiu ${bestEng.toString().replace(".", ",")}% de envolvimento` +
+      `O conteúdo com melhor desempenho atingiu ${bestEng.toString().replace(".", ",")}% de engagement` +
       (multiplierLabel
         ? `, ${multiplierLabel} acima do pior resultado.`
         : ` contra ${worstEng.toString().replace(".", ",")}% do pior.`);

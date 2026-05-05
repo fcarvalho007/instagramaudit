@@ -40,7 +40,7 @@ export function ReportKpiGridV2({ result }: Props) {
     <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <KpiCard
         icon={<Activity className="h-4 w-4" aria-hidden="true" />}
-        label="Envolvimento médio"
+        label="Engagement médio"
         value={`${k.engagementRate.toFixed(2)}%`}
         sourceBadge={<ReportSourceLabel type="auto" detail="Gostos + comentários" />}
         help={

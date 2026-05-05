@@ -78,13 +78,13 @@ export function EngagementCardRefined({ result }: Props) {
     const highMultLabel = highMult >= 10
       ? `${Math.round(highMult)}×`
       : `${highMult.toFixed(1).replace(".", ",")}×`;
-    readingText = `Mesmo perfis com ${highestTierLabel} seguidores têm ${highMultLabel} mais envolvimento do que este perfil — o problema não é a dimensão da audiência, é como ela reage.`;
+    readingText = `Mesmo perfis com ${highestTierLabel} seguidores têm ${highMultLabel} mais engagement do que este perfil — o problema não é a dimensão da audiência, é como ela reage.`;
   } else if (isPositive && benchmarkVal > 0 && k.engagementRate > 0) {
     const aboveMult = k.engagementRate / benchmarkVal;
     const aboveMultLabel = aboveMult >= 10
       ? `${Math.round(aboveMult)}×`
       : `${aboveMult.toFixed(1).replace(".", ",")}×`;
-    readingText = `Este perfil supera a média do seu escalão em ${aboveMultLabel} — há sinais de envolvimento acima da referência.`;
+    readingText = `Este perfil supera a média do seu escalão em ${aboveMultLabel} — há sinais de engagement acima da referência.`;
   }
 
   return (
