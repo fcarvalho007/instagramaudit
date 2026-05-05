@@ -1,6 +1,12 @@
 /**
  * Zone D — Card 2: Tipo de conteúdo.
- * Human-readable headline → stats → visual thumbnails → verdict.
+ * Human-readable headline → stats → thumbnail grid → verdict.
+ *
+ * Decorative colours (local to this component):
+ *   Carousel legend dot: bg-emerald-200
+ *   Reel legend dot:     bg-sky-200
+ *   Image legend dot:    bg-amber-200
+ *   Video legend dot:    bg-sky-200
  */
 import { useState } from "react";
 import { Layers, Check, Play, Image, GalleryHorizontalEnd } from "lucide-react";
@@ -45,12 +51,12 @@ const TYPE_TO_FORMAT_KEY: Record<string, FormatKey> = {
   video: "Video",
 };
 
-const FORMAT_STYLE: Record<string, { bg: string; iconColor: string; icon: typeof Play }> = {
-  Reels: { bg: "bg-sky-100", iconColor: "text-sky-700", icon: Play },
-  Carousels: { bg: "bg-emerald-100", iconColor: "text-emerald-700", icon: GalleryHorizontalEnd },
-  Imagens: { bg: "bg-amber-100", iconColor: "text-amber-700", icon: Image },
-  Video: { bg: "bg-sky-100", iconColor: "text-sky-700", icon: Play },
-  unknown: { bg: "bg-slate-100", iconColor: "text-slate-500", icon: Image },
+const FORMAT_STYLE: Record<string, { dot: string; iconColor: string; icon: typeof Play }> = {
+  Reels: { dot: "bg-sky-300", iconColor: "text-sky-600", icon: Play },
+  Carousels: { dot: "bg-emerald-300", iconColor: "text-emerald-600", icon: GalleryHorizontalEnd },
+  Imagens: { dot: "bg-amber-300", iconColor: "text-amber-600", icon: Image },
+  Video: { dot: "bg-sky-300", iconColor: "text-sky-600", icon: Play },
+  unknown: { dot: "bg-slate-300", iconColor: "text-slate-500", icon: Image },
 };
 
 const TYPE_PT: Record<string, string> = {
@@ -151,15 +157,14 @@ export function FormatCard({
   const ariaFormatParts = sortedFormats.map((f) => `${f.count} ${FORMAT_PT[f.format]}`);
   const ariaLabel = `Distribuição dos ${postsAnalyzed} posts analisados: ${ariaFormatParts.join(" e ")}`;
 
-  // Active formats for legend
   const activeFormats = sortedFormats;
 
   return (
-    <article className="rounded-2xl border border-border-default bg-surface-secondary p-5 md:p-6 shadow-card flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="flex items-center gap-1.5 text-[13px] font-medium text-content-primary">
-          <Layers className="size-4 text-content-secondary" aria-hidden="true" />
+    <article className="rounded-2xl border border-border-default bg-surface-secondary p-4 md:p-5 shadow-card flex flex-col gap-3">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-[11px] font-medium text-content-secondary">
+          <Layers className="size-3.5" aria-hidden="true" />
           Tipo de conteúdo
         </span>
         <span className="text-[9px] text-content-tertiary tracking-[0.06em]">
@@ -167,26 +172,29 @@ export function FormatCard({
         </span>
       </div>
 
-      {/* Human headline */}
-      <p className="font-display text-[22px] font-medium text-content-primary leading-[1.2] mb-1.5">
-        {headline}
-      </p>
+      {/* Hero headline */}
+      <div>
+        <p className="font-display text-[1.35rem] md:text-[1.5rem] font-semibold text-content-primary leading-[1.15] tracking-tight">
+          {headline}
+        </p>
+        <p className="text-[11px] text-content-secondary mt-1">
+          {statsLine}
+        </p>
+      </div>
 
-      {/* Stats line */}
-      <p className="text-[12px] text-content-secondary mb-5">
-        {statsLine}
-      </p>
-
-      {/* Thumbnails visualisation */}
+      {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
-        <div className="mb-5">
-          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-2">
-            {`OS ${postsAnalyzed} POSTS ANALISADOS`}
+        <div>
+          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-1.5">
+            {postsAnalyzed} posts analisados
           </span>
           <div
             role="img"
             aria-label={ariaLabel}
-            className="flex flex-wrap gap-1.5"
+            className="grid gap-1"
+            style={{
+              gridTemplateColumns: `repeat(${Math.min(sortedPosts.length, 6)}, 1fr)`,
+            }}
           >
             {sortedPosts.map((post, idx) => {
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
@@ -196,27 +204,34 @@ export function FormatCard({
               return (
                 <span
                   key={`${post.date}-${idx}`}
-                  title={`Post de ${post.date} · ${label}`}
-                  className="relative flex items-center justify-center rounded-[4px] shrink-0 overflow-hidden bg-slate-100"
-                  style={{ width: 36, height: 48 }}
+                  title={`${label} · ${post.date}`}
+                  className="relative rounded-[4px] overflow-hidden bg-slate-50 border border-border-subtle/40"
+                  style={{ aspectRatio: "3/4" }}
                 >
                   {post.thumbnailUrl ? (
                     <PostThumb src={post.thumbnailUrl} alt={label} />
                   ) : (
-                    <Icon className={`size-3.5 ${style.iconColor}`} aria-hidden="true" />
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <Icon className={`size-3.5 ${style.iconColor}`} aria-hidden="true" />
+                    </span>
                   )}
+                  {/* Small format dot indicator — bottom-right */}
+                  <span
+                    className={`absolute bottom-0.5 right-0.5 size-[6px] rounded-full ring-1 ring-white ${style.dot}`}
+                    aria-hidden="true"
+                  />
                 </span>
               );
             })}
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-2">
+          <div className="flex items-center gap-3 mt-1.5">
             {activeFormats.map((f) => {
               const style = FORMAT_STYLE[f.format];
               return (
-                <span key={f.format} className="inline-flex items-center gap-1.5 text-[10px] text-content-secondary">
-                  <span className={`size-2 rounded-full ${style.bg} shrink-0`} aria-hidden="true" />
+                <span key={f.format} className="inline-flex items-center gap-1 text-[9px] text-content-secondary">
+                  <span className={`size-[7px] rounded-full ${style.dot} shrink-0`} aria-hidden="true" />
                   {FORMAT_PT[f.format]} ({f.count})
                 </span>
               );
@@ -226,9 +241,9 @@ export function FormatCard({
       )}
 
       {/* Verdict */}
-      <div className="mt-auto rounded-lg bg-tint-success border border-border-subtle px-3 py-2.5 flex items-start gap-2">
+      <div className="mt-auto rounded-lg bg-tint-success border border-border-subtle px-3 py-2 flex items-start gap-2">
         <Check className="size-3.5 text-signal-success shrink-0 mt-0.5" aria-hidden="true" />
-        <p className="text-[12px] text-content-primary leading-[1.4]">
+        <p className="text-[11px] text-content-primary leading-[1.4]">
           <span className="font-medium">{verdict.strong}</span>{" "}
           {verdict.rest}
         </p>
