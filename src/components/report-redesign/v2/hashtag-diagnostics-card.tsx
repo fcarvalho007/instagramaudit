@@ -304,26 +304,6 @@ export function HashtagDiagnosticsCard({
         </InsightCallout>
       </div>
 
-      {/* ── Footer ── */}
-      <div className="px-5 md:px-7 py-4 border-t border-border-subtle flex items-center gap-2 text-[11px] leading-relaxed">
-        <span className="text-eyebrow-sm text-content-secondary shrink-0">FONTES:</span>
-        <span className="text-content-tertiary">
-          {KB_SOURCES.map((src, i) => (
-            <span key={src.name}>
-              {i > 0 && " · "}
-              [{i + 1}]{" "}
-              <a
-                href={src.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline"
-              >
-                {src.name}
-              </a>
-            </span>
-          ))}
-        </span>
-      </div>
     </div>
   );
 }
