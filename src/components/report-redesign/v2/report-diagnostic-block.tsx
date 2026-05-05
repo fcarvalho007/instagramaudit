@@ -35,6 +35,20 @@ import {
 } from "./report-comment-intelligence";
 import type { CommentIntelligence } from "@/lib/analysis/types";
 import { VisualCoverAnalysisCard } from "./visual-cover-analysis-card";
+import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
+
+/** Parse persisted visual_cover_analysis from snapshot payload. */
+function parseVisualCoverAnalysis(
+  payload?: SnapshotPayload,
+): VisualCoverAnalysis | null {
+  const raw = payload?.visual_cover_analysis;
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.overallScore !== "number" || typeof r.status !== "string") {
+    return null;
+  }
+  return raw as VisualCoverAnalysis;
+}
 
 interface Props {
   result: AdapterResult;
@@ -133,7 +147,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           >
             <VisualCoverAnalysisCard
               posts={posts}
-              analysis={null}
+              analysis={parseVisualCoverAnalysis(payload)}
             />
           </ReportDiagnosticGroup>
 
