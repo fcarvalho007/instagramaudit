@@ -15,6 +15,7 @@ import type {
   CaptionOpeningType,
 } from "@/lib/report/caption-intelligence";
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
+import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 
 const KB_SOURCES = INSTAGRAM_CAPTION_CONTEXT.sources;
 
@@ -24,6 +25,8 @@ const KB_SOURCES = INSTAGRAM_CAPTION_CONTEXT.sources;
 
 export interface CaptionDiagnosticsCardProps {
   data: CaptionIntelligence;
+  /** OpenAI semantic analysis — null when not available. */
+  semantic?: CaptionSemanticAnalysis | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -326,15 +329,18 @@ function DiagnosticMicro({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
+export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCardProps) {
   const CONFIDENCE_STYLE = {
     high: { label: "SINAL FORTE", cls: "text-signal-success bg-tint-success ring-signal-success/15" },
     medium: { label: "SINAL MÉDIO", cls: "text-accent-primary bg-tint-primary ring-accent-primary/15" },
     low: { label: "SINAL FRACO", cls: "text-content-secondary bg-surface-muted ring-border-default" },
   } as const;
 
+  const hasSemantic = semantic != null;
   const themes = data.themes.items.slice(0, 3);
+  const semanticThemes = semantic?.dominantThemes?.slice(0, 3) ?? [];
   const expressions = data.recurringExpressions.items;
+  const semanticExpressions = semantic?.recurringExpressionsInterpretation ?? [];
   const stats = data.captionStats;
 
   if (!data.available) {
@@ -359,7 +365,16 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       {/* ── 2. KPI row ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <KpiCard label="TEMAS DOMINANTES">
-          {themes.length > 0 ? (
+          {hasSemantic && semanticThemes.length > 0 ? (
+            <ul className="space-y-0.5">
+              {semanticThemes.slice(0, 2).map((t) => (
+                <li key={t.label} className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-accent-primary shrink-0" />
+                  {t.label}
+                </li>
+              ))}
+            </ul>
+          ) : themes.length > 0 ? (
             <ul className="space-y-0.5">
               {themes.slice(0, 2).map((t) => (
                 <li key={t.label} className="flex items-center gap-1.5">
@@ -374,7 +389,20 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         </KpiCard>
 
         <KpiCard label="INTENÇÃO PRINCIPAL">
-          {intentLabels.length > 0 ? (
+          {hasSemantic && semantic.contentIntent ? (
+            <ul className="space-y-0.5">
+              <li className="flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-accent-primary shrink-0" />
+                {semantic.contentIntent.primary}
+              </li>
+              {semantic.contentIntent.secondary && (
+                <li className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-accent-primary shrink-0" />
+                  {semantic.contentIntent.secondary}
+                </li>
+              )}
+            </ul>
+          ) : intentLabels.length > 0 ? (
             <ul className="space-y-0.5">
               {intentLabels.slice(0, 2).map((l) => (
                 <li key={l} className="flex items-center gap-1.5">
@@ -407,29 +435,46 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       </div>
 
       {/* ── 3. Recurring topics ── */}
-      {themes.length > 0 && (
+      {(hasSemantic ? semanticThemes.length > 0 : themes.length > 0) && (
         <div>
           <p className="text-eyebrow-sm text-content-tertiary mb-1">
             ASSUNTOS MAIS RECORRENTES NO TEXTO DAS LEGENDAS
           </p>
           <p className="text-[12px] text-content-tertiary mb-3">
-            Temas extraídos do corpo das legendas — não confundir com hashtags.
+            {hasSemantic
+              ? "Temas identificados por análise semântica das legendas."
+              : "Temas extraídos do corpo das legendas — não confundir com hashtags."}
           </p>
           <div className="space-y-2.5">
-            {themes.map((t, i) => {
-              const conf = CONFIDENCE_STYLE[t.confidence];
-              return (
-                <ThemeRow
-                  key={`${t.label}-${i}`}
-                  rank={i + 1}
-                  label={t.label}
-                  postsCount={t.postsCount}
-                  evidence={t.evidence}
-                  confidenceLabel={conf.label}
-                  confidenceClass={conf.cls}
-                />
-              );
-            })}
+            {hasSemantic
+              ? semanticThemes.map((t, i) => {
+                  const conf = CONFIDENCE_STYLE[t.confidence];
+                  return (
+                    <ThemeRow
+                      key={`${t.label}-${i}`}
+                      rank={i + 1}
+                      label={t.label}
+                      postsCount={t.postsCount}
+                      evidence={t.evidence[0] ?? null}
+                      confidenceLabel={conf.label}
+                      confidenceClass={conf.cls}
+                    />
+                  );
+                })
+              : themes.map((t, i) => {
+                  const conf = CONFIDENCE_STYLE[t.confidence];
+                  return (
+                    <ThemeRow
+                      key={`${t.label}-${i}`}
+                      rank={i + 1}
+                      label={t.label}
+                      postsCount={t.postsCount}
+                      evidence={t.evidence}
+                      confidenceLabel={conf.label}
+                      confidenceClass={conf.cls}
+                    />
+                  );
+                })}
           </div>
         </div>
       )}
@@ -439,7 +484,37 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
         {/* Expressions */}
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-3">EXPRESSÕES RECORRENTES</p>
-          {expressions.length > 0 ? (
+          {hasSemantic && semanticExpressions.length > 0 ? (
+            <div className="space-y-1.5">
+              {semanticExpressions.map((it, i) => (
+                <div
+                  key={it.expression}
+                  className={cn(
+                    "rounded-lg px-3 py-2 ring-1",
+                    i < 2
+                      ? "bg-tint-primary ring-accent-primary/15"
+                      : "bg-surface-muted ring-border-default",
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      "text-[13px] font-medium",
+                      i < 2 ? "text-accent-primary" : "text-content-secondary",
+                    )}>
+                      {it.expression}
+                    </span>
+                    <span className="font-mono text-[11px] tabular-nums text-content-tertiary shrink-0 ml-2">
+                      ×{it.count}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-content-tertiary mt-1 leading-relaxed">{it.meaning}</p>
+                  {it.risk && (
+                    <p className="text-[10px] text-signal-danger mt-0.5">⚠ {it.risk}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : expressions.length > 0 ? (
             <div className="space-y-1.5">
               {expressions.map((it, i) => {
                 const TYPE_LABEL: Record<string, string> = {
@@ -493,33 +568,54 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       {/* ── 4b. Comment engagement ── */}
       <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
         <p className="text-eyebrow-sm text-content-tertiary mb-2">PEDE COMENTÁRIOS NOS POSTS?</p>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-          <span className={cn(
-            "text-[22px] sm:text-[28px] font-mono font-bold tabular-nums leading-none shrink-0",
-            data.commentEngagement.asksForCommentsPct >= 50 ? "text-signal-success" :
-            data.commentEngagement.asksForCommentsPct >= 25 ? "text-signal-warning" :
-            "text-signal-danger",
-          )}>
-            {data.commentEngagement.asksForCommentsPct}%
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] text-content-secondary leading-relaxed">
-              {data.commentEngagement.summary}
-            </p>
-            {data.commentEngagement.examples.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {data.commentEngagement.examples.map((ex) => (
-                  <span
-                    key={ex}
-                    className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ring-1 bg-surface-muted ring-border-default text-content-secondary"
-                  >
-                    «{ex}»
-                  </span>
-                ))}
+        {(() => {
+          const ce = hasSemantic && semantic.commentEngagement ? semantic.commentEngagement : null;
+          const pct = ce ? ce.asksForCommentsPct : data.commentEngagement.asksForCommentsPct;
+          const summary = ce ? ce.explanation : data.commentEngagement.summary;
+          const examples = ce ? ce.examples : data.commentEngagement.examples;
+          const strategyBadge = ce ? (
+            <span className={cn(
+              "text-[10px] font-medium rounded-full px-2 py-0.5 ring-1 shrink-0",
+              ce.strategyLabel === "active" ? "text-signal-success bg-tint-success ring-signal-success/15" :
+              ce.strategyLabel === "occasional" ? "text-signal-warning bg-amber-50 ring-signal-warning/15" :
+              "text-signal-danger bg-rose-50 ring-signal-danger/15",
+            )}>
+              {ce.strategyLabel === "active" ? "ATIVA" : ce.strategyLabel === "occasional" ? "OCASIONAL" : "PASSIVA"}
+            </span>
+          ) : null;
+          return (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={cn(
+                  "text-[22px] sm:text-[28px] font-mono font-bold tabular-nums leading-none",
+                  pct >= 50 ? "text-signal-success" :
+                  pct >= 25 ? "text-signal-warning" :
+                  "text-signal-danger",
+                )}>
+                  {pct}%
+                </span>
+                {strategyBadge}
               </div>
-            )}
-          </div>
-        </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] text-content-secondary leading-relaxed">
+                  {summary}
+                </p>
+                {examples.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {examples.map((ex) => (
+                      <span
+                        key={ex}
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ring-1 bg-surface-muted ring-border-default text-content-secondary"
+                      >
+                        «{ex}»
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── 5. Openings + Length distribution ── */}
@@ -542,24 +638,24 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       <div className="rounded-xl bg-[rgb(var(--tint-primary))] ring-1 ring-accent-primary/20 p-5 md:p-6 space-y-5">
         <p className="text-eyebrow-sm text-accent-primary">DIAGNÓSTICO EDITORIAL</p>
         <p className="text-[15px] md:text-base text-content-primary leading-relaxed font-medium font-sans">
-          {buildDiagnosticStatement(data)}
+          {hasSemantic && semantic.diagnostic ? semantic.diagnostic.main : buildDiagnosticStatement(data)}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-accent-primary/20">
           <DiagnosticMicro
             label="FUNCIONA"
-            text={buildWhatWorks(data)}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.works : buildWhatWorks(data)}
             icon={CheckCircle2}
             toneClass="text-signal-success"
           />
           <DiagnosticMicro
             label="PONTO CRÍTICO"
-            text={buildCriticalPoint(data)}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.critical : buildCriticalPoint(data)}
             icon={AlertTriangle}
             toneClass="text-signal-danger"
           />
           <DiagnosticMicro
             label="A OBSERVAR"
-            text={buildToWatch(data)}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data)}
             icon={Eye}
             toneClass="text-amber-600"
           />
