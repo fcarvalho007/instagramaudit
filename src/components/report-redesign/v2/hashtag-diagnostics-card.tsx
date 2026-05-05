@@ -139,7 +139,7 @@ function KpiCard({
           </span>
         )}
       </div>
-      <p className="font-heading text-2xl md:text-3xl text-content-primary leading-none">
+      <p className="font-display text-2xl md:text-3xl text-content-primary leading-none">
         {value}
       </p>
       <p className="text-xs text-content-tertiary">{sub}</p>
@@ -238,7 +238,7 @@ export function HashtagDiagnosticsCard({
         </div>
 
         {/* title */}
-        <h3 className="font-heading text-xl md:text-2xl text-content-primary leading-snug mb-1">
+        <h3 className="font-display text-xl md:text-2xl text-content-primary leading-snug mb-1">
           Que hashtags etiquetam o conteúdo?
         </h3>
         <p className="text-sm text-content-secondary leading-relaxed">
