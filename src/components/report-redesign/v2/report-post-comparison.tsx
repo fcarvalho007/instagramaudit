@@ -414,6 +414,11 @@ function PostCard({
 
         {/* Metrics */}
         <div className="flex items-center gap-3 pt-1.5 mt-auto border-t border-border-subtle">
+          <span className="inline-flex items-center gap-1 text-[11px] text-accent-primary font-semibold">
+            <span className="tabular-nums font-mono">
+              {post.engagementPct.toFixed(2).replace(".", ",")}%
+            </span>
+          </span>
           <span className="inline-flex items-center gap-1 text-[11px] text-content-secondary">
             <Heart className="size-3" aria-hidden="true" />
             <span className="tabular-nums font-mono">

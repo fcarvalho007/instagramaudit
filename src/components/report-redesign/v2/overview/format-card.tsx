@@ -163,7 +163,7 @@ export function FormatCard({
           Tipo de conteúdo
         </span>
         <span className="text-[9px] text-content-tertiary tracking-[0.06em]">
-          ⬡ DADOS
+          ✦ DADOS
         </span>
       </div>
 
