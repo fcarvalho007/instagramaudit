@@ -298,7 +298,7 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
         question="Que natureza de conteúdo aparece mais?"
         answer="Padrão misto"
         tone="slate"
-        span="full"
+        span="half"
         body={body}
        sourceType="auto"
       sourceDetail="Legendas · classificação"
