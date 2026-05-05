@@ -125,7 +125,7 @@ function ThemeRow({
           {String(rank).padStart(2, "0")}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-heading text-[15px] md:text-[17px] text-content-primary leading-snug">
+          <p className="font-display text-[15px] md:text-[17px] text-content-primary leading-snug">
             {label}
           </p>
           <p className="text-[12px] text-content-tertiary mt-0.5">
@@ -401,7 +401,7 @@ export function CaptionDiagnosticsCard({ data }: CaptionDiagnosticsCardProps) {
       {/* ── 6. Diagnostic box ── */}
       <div className="rounded-xl bg-violet-50/60 ring-1 ring-violet-200/40 p-5 md:p-6 space-y-5">
         <p className="text-eyebrow-sm text-violet-700">DIAGNÓSTICO EDITORIAL</p>
-        <p className="font-heading text-[15px] md:text-[17px] text-content-primary leading-relaxed">
+        <p className="font-display text-[15px] md:text-[17px] text-content-primary leading-relaxed">
           {buildDiagnosticStatement(data)}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-violet-200/30">
@@ -484,15 +484,15 @@ function CardShell({
               04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS
             </span>
           </div>
-          <span className="text-[10px] font-semibold tracking-wide text-content-tertiary border border-border-subtle rounded-full px-2.5 py-0.5 bg-surface-muted/50">
-            DADOS
+          <span className="text-[10px] font-semibold tracking-wide text-violet-600 border border-violet-200 rounded-full px-2.5 py-0.5 bg-violet-50">
+            DIAGNÓSTICO
           </span>
         </div>
-        <h3 className="font-heading text-xl md:text-2xl text-content-primary leading-snug mb-1">
+        <h3 className="font-display text-xl md:text-2xl text-content-primary leading-snug mb-1">
           O que as legendas revelam sobre a estratégia de conteúdo?
         </h3>
         <p className="text-[13px] text-content-secondary leading-relaxed">
-          Leitura editorial das legendas públicas dos posts analisados.
+          Padrões extraídos das legendas públicas dos posts analisados.
         </p>
       </header>
       {children}
