@@ -124,13 +124,13 @@ export function ReportDiagnosticCard({
         "flex flex-col gap-5",
         isFull && "md:col-span-2",
         "rounded-2xl border border-border-default bg-surface-secondary",
-        "p-5 md:p-7",
+        "p-4 sm:p-5 md:p-7",
         "shadow-card",
         ACCENT_BORDER[tone],
       )}
     >
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-eyebrow-sm text-content-tertiary min-w-0 tracking-[0.06em]">
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-wrap">
+        <p className="text-eyebrow-sm text-content-tertiary min-w-0 tracking-[0.06em] text-[9px] sm:text-[10px]">
           P{number}
           <span className="mx-1.5 text-content-tertiary/40">·</span>
           <span className="text-content-tertiary">{label.toUpperCase()}</span>
@@ -146,10 +146,10 @@ export function ReportDiagnosticCard({
       {/* Full-width: vertical stack — answer block then children full-width */}
       {isFull ? (
         <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-4 max-w-2xl">
+          <div className="flex flex-col gap-3 sm:gap-4 max-w-2xl">
             <h3
               className={cn(
-                "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-content-primary",
+                "font-display text-[1.1rem] sm:text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-content-primary break-words",
                 "min-w-0",
               )}
             >
@@ -185,17 +185,17 @@ export function ReportDiagnosticCard({
         <>
           <h3
             className={cn(
-              "font-display text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-content-primary",
+              "font-display text-[1rem] sm:text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-content-primary break-words",
               "min-w-0",
             )}
           >
             {question}
           </h3>
 
-          <div className={cn("rounded-xl ring-1 px-4 py-3", t.box)} aria-label={answerLabel}>
+          <div className={cn("rounded-xl ring-1 px-3 py-2.5 sm:px-4 sm:py-3", t.box)} aria-label={answerLabel}>
             <p
               className={cn(
-                "mt-1 font-display text-[1.5rem] md:text-[1.75rem] font-semibold tracking-[-0.015em] leading-tight",
+                "mt-1 font-display text-[1.25rem] sm:text-[1.5rem] md:text-[1.75rem] font-semibold tracking-[-0.015em] leading-tight",
                 t.answerText,
               )}
             >
@@ -246,17 +246,17 @@ export function DiagnosticDistributionBar({
   if (variant === "vertical-list") {
     const max = Math.max(1, ...items.map((it) => it.value));
     return (
-      <ul className="space-y-2">
+      <ul className="space-y-1.5 sm:space-y-2">
         {items.map((it, i) => {
           const pct = (Math.max(0, it.value) / max) * 100;
           const isDominant = i === 0;
           return (
-            <li key={`${it.label}-${i}`} className="text-sm">
+            <li key={`${it.label}-${i}`} className="text-xs sm:text-sm">
               <div className="flex items-center gap-3">
-                <span className={cn("min-w-[5.5rem] w-auto sm:min-w-[8.5rem] shrink-0 leading-tight text-content-secondary", isDominant && "font-medium text-content-primary")}>
-                  <span className="text-[12px] sm:text-sm">{it.label}</span>
+                <span className={cn("min-w-[4.5rem] w-auto sm:min-w-[8.5rem] shrink-0 leading-tight text-content-secondary", isDominant && "font-medium text-content-primary")}>
+                  <span className="text-[11px] sm:text-sm">{it.label}</span>
                   {it.sublabel && (
-                    <span className="block text-[10px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</span>
+                    <span className="hidden sm:block text-[10px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</span>
                   )}
                 </span>
                 <div className={cn("flex-1 overflow-hidden rounded-full bg-surface-muted", isDominant ? "h-2.5" : "h-2")}>
@@ -382,16 +382,16 @@ export function DiagnosticMiniStats({
   items: Array<{ value: string; label: string }>;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
       {items.map((it, i) => (
         <div
           key={`${it.label}-${i}`}
-          className="rounded-lg border border-border-subtle bg-surface-muted/60 px-3 py-2.5 text-center"
+          className="rounded-lg border border-border-subtle bg-surface-muted/60 px-2 py-2 sm:px-3 sm:py-2.5 text-center"
         >
-          <p className="font-mono text-[15px] font-semibold text-content-primary tabular-nums leading-none">
+          <p className="font-mono text-[13px] sm:text-[15px] font-semibold text-content-primary tabular-nums leading-none">
             {it.value}
           </p>
-          <p className="text-eyebrow-sm mt-1 text-content-tertiary">
+          <p className="text-eyebrow-sm mt-0.5 sm:mt-1 text-content-tertiary text-[8px] sm:text-[10px]">
             {it.label}
           </p>
         </div>
