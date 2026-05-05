@@ -189,6 +189,86 @@ function DistributionBar({
 }
 
 function StackedLengthBar({ items }: { items: CaptionLengthDistribution[] }) {
+// ---------------------------------------------------------------------------
+// Opening icon map
+// ---------------------------------------------------------------------------
+
+const OPENING_ICONS: Record<CaptionOpeningType, LucideIcon> = {
+  bold_statement: Type,
+  news_or_update: Zap,
+  question: HelpCircle,
+  story: BookOpen,
+};
+
+function OpeningsDistribution({ items }: { items: Array<{ type: CaptionOpeningType; label: string; pct: number }> }) {
+  return (
+    <div className="space-y-2.5">
+      {items.map((it) => {
+        const Icon = OPENING_ICONS[it.type];
+        return (
+          <div key={it.label}>
+            <div className="flex items-center justify-between text-[12px] mb-1">
+              <span className="flex items-center gap-1.5 text-content-secondary">
+                {Icon && <Icon className="w-3.5 h-3.5 text-content-tertiary/70 shrink-0" />}
+                {it.label}
+              </span>
+              <span className="font-mono text-[11px] tabular-nums text-content-tertiary">
+                {it.pct}%
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-accent-primary/50"
+                style={{ width: `${Math.max(3, it.pct)}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EndingsDistribution({ items }: { items: Array<{ type: string; label: string; pct: number }> }) {
+  return (
+    <div className="space-y-2.5">
+      {items.map((it) => {
+        const isQuestionLow = it.type === "question" && it.pct < 20;
+        const isQuestionOk = it.type === "question" && it.pct >= 20;
+        return (
+          <div key={it.label} className={cn("rounded-lg px-2 py-1.5 -mx-2", isQuestionLow && "bg-rose-50")}>
+            <div className="flex items-center justify-between text-[12px] mb-1">
+              <span className={cn(
+                "text-content-secondary",
+                isQuestionLow && "text-rose-600 font-medium",
+                isQuestionOk && "text-signal-success font-medium",
+              )}>
+                {it.label}
+              </span>
+              <span className={cn(
+                "font-mono text-[11px] tabular-nums text-content-tertiary",
+                isQuestionLow && "text-rose-500",
+              )}>
+                {it.pct}%
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full",
+                  isQuestionLow ? "bg-rose-400" : "bg-accent-primary/50",
+                )}
+                style={{ width: `${Math.max(3, it.pct)}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StackedLengthBar({ items, dominantBucket }: { items: CaptionLengthDistribution[]; dominantBucket?: string }) {
   const COLORS: Record<string, string> = {
     short: "bg-accent-primary/30",
     medium: "bg-accent-primary/60",
@@ -196,11 +276,14 @@ function StackedLengthBar({ items }: { items: CaptionLengthDistribution[] }) {
   };
   return (
     <div className="space-y-3">
-      <div className="h-3 rounded-full bg-surface-muted overflow-hidden flex">
+      <div className="h-4 rounded-full bg-surface-muted overflow-hidden flex items-end">
         {items.map((it) => (
           <div
             key={it.bucket}
-            className={cn("h-full", COLORS[it.bucket] ?? "bg-accent-primary/40")}
+            className={cn(
+              COLORS[it.bucket] ?? "bg-accent-primary/40",
+              it.bucket === dominantBucket ? "h-full" : "h-2.5",
+            )}
             style={{ width: `${Math.max(2, it.pct)}%` }}
           />
         ))}
