@@ -121,7 +121,11 @@ function buildAudienceCard(r: AudienceResponseResult): SummaryCard {
   const subtitle =
     !r.available
       ? "Dados insuficientes"
-      : `${avg} comentários médios por post`;
+      : avg > 0 && avg < 0.1
+        ? "<0,1 comentários médios por post"
+        : avg < 10
+          ? `${avg.toLocaleString("pt-PT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} comentários médios por post`
+          : `${Math.round(avg)} comentários médios por post`;
   const isSilent = r.status === "silent" || avg === 0;
   return {
     label: "Resposta do público",

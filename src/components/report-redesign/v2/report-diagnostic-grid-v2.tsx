@@ -437,7 +437,7 @@ function buildAudienceCard(r: AudienceResponseResult): CardModel {
     tone,
     title: "Resposta do público",
     primary: r.label,
-    micro: `~${r.avgComments} comentários · ${r.commentsToLikesPct} % do total de likes`,
+    micro: `~${r.avgComments < 0.1 && r.avgComments > 0 ? "<0,1" : r.avgComments < 10 ? r.avgComments.toLocaleString("pt-PT", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : Math.round(r.avgComments).toLocaleString("pt-PT")} comentários · ${r.commentsToLikesPct} % do total de likes`,
     body: <>{bodyByLabel[r.label]}</>,
   };
 }

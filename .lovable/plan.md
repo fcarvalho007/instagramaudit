@@ -1,69 +1,129 @@
 
-## Problemas identificados no código (mobile @ 375px)
+# P05 Conversation — Full Audit Report
 
-### Bloco 1 — Overview
+## Files Inspected
 
-1. **EditorialIdentityCard**: O título `font-display text-[1.35rem]` e o score ring ficam empilhados com `flex-col` em mobile — ok, mas o padding `px-5 py-6` pode ser reduzido para `px-4 py-5` para ganhar espaço.
+| File | Role |
+|------|------|
+| `src/lib/report/block02-diagnostic.ts` (L499-604) | `classifyAudienceResponse()` — computes avgLikes, avgComments, totals, topConversationPost |
+| `src/components/report-redesign/v2/report-diagnostic-card.tsx` (L520-716) | `DiagnosticAudienceHighlight` — renders P05 KPIs, subcopy, methodology footer |
+| `src/components/report-redesign/v2/report-diagnostic-block.tsx` (L319-383) | `renderAudienceCard()` — wires data into the card |
+| `src/components/report-redesign/v2/report-comment-intelligence.tsx` (L141-177) | `TransparencyStrip` — separate comment intel sample display |
+| `src/lib/analysis/types.ts` (L135-189) | `CommentIntelligence` interface |
+| `src/lib/report/snapshot-to-report-data.ts` (L71-84) | `SnapshotPost` interface |
 
-2. **EngagementCardRefined**: Os 3 KPI cards usam `grid-cols-1 sm:grid-cols-3` — em mobile ficam empilhados verticalmente, o que ocupa demasiado espaço vertical. Os valores `text-[1.6rem]` são adequados mas os cards poderiam usar `grid-cols-3` já a partir de mobile (são compactos o suficiente).
+---
 
-3. **FrequencyCard**: O título `text-[1.5rem]` combinado com o status inline pode quebrar linha de forma estranha em ecrãs pequenos. O calendário está bem com `grid-cols-7`.
+## 1. Data Source Trace
 
-4. **FormatCard**: Similar ao FrequencyCard — título grande pode quebrar.
+| Field | Source file | Source field | Transformation |
+|-------|-----------|-------------|----------------|
+| `avgLikes` | `block02-diagnostic.ts:552,593` | `sum(post.likes) / postsWithData` | `Math.round()` |
+| `avgComments` | `block02-diagnostic.ts:551,593` | `sum(post.comments) / postsWithData` | `Math.round()` |
+| `totals.likes` | `block02-diagnostic.ts:597` | `totalLikes` (raw sum) | None |
+| `totals.comments` | `block02-diagnostic.ts:598` | `totalComments` (raw sum) | None |
+| `totals.postsWithComments` | `block02-diagnostic.ts:599` | `count(comments >= 1)` | None |
+| `commentIntel.*` | `result.enriched.commentIntelligence` | Separate Apify comment scraper pipeline | Aggregated in `comment-intelligence.ts` |
+| `topConversationPost` | `block02-diagnostic.ts:583-586` | Post with highest comments count | caption sliced to 90 chars |
 
-5. **PostComparisonBlock**: A VS Bar tem `min-w-[70px]` nos lados — ok para 375px mas apertado. Os PostCards com thumbnail `w-[72px]` + texto ficam bem.
+All fields come from `normalized_payload.posts` in `analysis_snapshots`. Comment intelligence comes from a separate enrichment pipeline and is independent from the post-level comments count.
 
-6. **Títulos H3 dos cards grandes** (`text-[1.5rem] md:text-[2rem]`): Em mobile 1.5rem (24px) é adequado mas com tracking-tight e palavras longas em pt-PT pode causar overflow.
+---
 
-### Bloco 2 — Diagnóstico Editorial
+## 2. Manual Verification (frederico.m.carvalho, 12 posts)
 
-7. **DiagnosticDistributionBar (vertical-list)**: Labels com `min-w-[5.5rem]` em mobile podem comprimir demasiado a barra. Com sublabels de texto longo (ex: "quem somos, missão, valores, bastidores") o layout fica apertado.
+| Metric | Raw value | Formula | Result |
+|--------|-----------|---------|--------|
+| Posts analysed | 12 | `posts.length` | 12 |
+| Total likes | 87 | `sum(post.likes)` | 87 |
+| Avg likes/post | 7.25 | `87 / 12` | `Math.round(7.25)` = **7** |
+| Total comments | 1 | `sum(post.comments)` | 1 |
+| Avg comments/post | 0.0833 | `1 / 12` | `Math.round(0.0833)` = **0** |
+| Posts with comments | 1 | `count(comments >= 1)` | 1 |
 
-8. **DiagnosticFunnelStack**: Barras com `width: ${sharePct}%` e labels dentro ficam cortadas quando a percentagem é baixa. O `minWidth: fit-content` ajuda mas o `text-eyebrow-sm` pode não caber.
+---
 
-9. **CaptionDiagnosticsCard**: O grid `grid-cols-1 sm:grid-cols-3` nos KPI cards (TEMAS DOMINANTES, INTENÇÃO, CARACTERÍSTICAS) empilha em mobile — correto. Mas o grid `grid-cols-1 md:grid-cols-2` nas secções Expressões/Endings e Openings/Length empilha — correto. O diagnóstico editorial final usa `grid-cols-1 sm:grid-cols-3` para os 3 micro-diagnostics — em mobile ficam empilhados, ok.
+## 3. PASS/FAIL Table
 
-10. **HashtagDiagnosticsCard**: Precisa verificação mas segue o mesmo padrão.
+| Check | Status | Detail |
+|-------|--------|--------|
+| avgLikes correct | **PASS** | 87/12 = 7.25, rounds to 7 |
+| avgComments correct | **FAIL — Rounding** | 1/12 = 0.083, `Math.round()` produces **0**, hiding real activity |
+| totalLikes correct | **PASS** | 87 |
+| totalComments correct | **PASS** | 1 |
+| postsWithComments correct | **PASS** | 1 |
+| topConversationPost correct | **PASS** | Post index 1 (6 likes, 1 comment) |
+| Methodology footer label | **FAIL — Copy** | Shows `{sampleComments} comentários públicos` where `sampleComments` is from CommentIntelligence (number of scraped comments), NOT from the post-level totals. When commentIntel is unavailable, shows "comentários públicos visíveis" which is fine. When available, if `sampleComments = 12`, it reads "12 comentários públicos" — which could be confused with post count. |
+| "1 de 12 posts com comentários" subcopy | **PASS** | Correctly sourced from `postsWithComments` and `sampleSize` |
+| Cache staleness | **PASS** | Data comes from latest `analysis_snapshots` row; no secondary cache involved for P05 base metrics |
 
-11. **DiagnosticAudienceHighlight (P05)**: Os 3 KPI cards `grid-cols-1 sm:grid-cols-3` empilham em mobile. O diagrama de conversa Z3 com 3 nodes usa `flex-col sm:flex-row` — correto para mobile. Valores `text-[28px]` nos KPIs são grandes em mobile.
+---
 
-12. **ReportDiagnosticGroup**: O grid dos filhos `grid-cols-1 md:grid-cols-2` está correto para mobile.
+## 4. Root Causes
 
-13. **"PEDE COMENTÁRIOS NOS POSTS?"**: O layout flex com `text-[28px]` + texto ao lado pode comprimir o texto em mobile.
+### Issue A — Rounding avgComments to 0 (BUG)
 
-## Alterações propostas
+**File:** `src/lib/report/block02-diagnostic.ts`, line 593
+**Code:** `avgComments: Math.round(avgComments)`
 
-### A. Ajustes de espaçamento e tipografia mobile
+`Math.round(0.083)` = 0. The UI shows "0" in the KPI card, making it look like there are zero comments when there is actually 1 comment across 12 posts.
 
-| Ficheiro | Alteração |
-|----------|-----------|
-| `editorial-identity-card.tsx` | Reduzir padding mobile para `px-4 py-5`, Band 2 padding para `px-4 py-4` |
-| `report-overview-engagement.tsx` | KPI grid: `grid-cols-3` em vez de `grid-cols-1 sm:grid-cols-3` (cards compactos) |
-| `frequency-card.tsx` | Título: adicionar `break-words` para evitar overflow |
-| `report-diagnostic-card.tsx` | DiagnosticDistributionBar vertical-list: reduzir `min-w-[5.5rem]` para `min-w-[4.5rem]`, sublabel truncar a 1 linha em mobile |
-| `report-diagnostic-card.tsx` | DiagnosticAudienceHighlight: KPIs `text-[28px]` → `text-[22px] sm:text-[28px]` |
-| `caption-diagnostics-card.tsx` | "PEDE COMENTÁRIOS": layout `flex-col sm:flex-row` em vez de `flex` para mobile |
-| `caption-diagnostics-card.tsx` | CardShell header eyebrow: `text-[9px] sm:text-[10px]` para não truncar em mobile |
-| `report-post-comparison.tsx` | VS Bar: reduzir min-width mobile `min-w-[60px]` |
+**Current formula:** `Math.round(totalComments / postsWithData)`
+**Recommended formula:** Smart rounding:
+- If raw value === 0 → `"0"`
+- If raw value > 0 and < 0.1 → `"<0,1"`
+- If raw value >= 0.1 and < 10 → one decimal (`0,1`)
+- If raw value >= 10 → whole number
 
-### B. Consistência visual
+This rounding should happen at the **display layer** (report-diagnostic-card.tsx), not in the classifier. The classifier should return the unrounded float so the UI can format it correctly.
 
-- Uniformizar padding horizontal: `px-4 md:px-6` em todos os cards de ambos os blocos
-- Garantir que nenhum texto overflow horizontal (adicionar `overflow-hidden` ou `break-words` onde necessário)
-- Reduzir font-size dos KPI numbers em mobile para manter proporção
+### Issue B — "12 comentários públicos" footer (COPY)
 
-### Ficheiros a editar (7)
+**File:** `src/components/report-redesign/v2/report-diagnostic-card.tsx`, line 712
+**Code:** `` `${sampleComments} comentários públicos` ``
 
-1. `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
-2. `src/components/report-redesign/v2/report-overview-engagement.tsx`
-3. `src/components/report-redesign/v2/overview/frequency-card.tsx`
-4. `src/components/report-redesign/v2/report-diagnostic-card.tsx`
-5. `src/components/report-redesign/v2/caption-diagnostics-card.tsx`
-6. `src/components/report-redesign/v2/report-post-comparison.tsx`
-7. `src/components/report-redesign/v2/hashtag-diagnostics-card.tsx`
+`sampleComments` comes from `commentIntel.sampleComments` — the total comments scraped by the comment intelligence pipeline. When this value coincidentally equals the number of posts (12), the footer reads "12 comentários públicos", which is ambiguous.
 
-### Validação
+**Recommended fix:** Make the footer explicit:
+```
+Análise sobre {sampleSize} publicações · {sampleComments} comentários recolhidos · sem DMs nem comentários ocultos
+```
+Or, when commentIntel is unavailable, just show:
+```
+Análise sobre {sampleSize} publicações · comentários do feed · sem DMs nem comentários ocultos
+```
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Screenshot a 375px nos blocos 1 e 2
+---
+
+## 5. Proposed Changes
+
+### Change 1 — Return raw float in classifier
+
+**File:** `src/lib/report/block02-diagnostic.ts`, line 593
+- Change `avgComments: Math.round(avgComments)` → `avgComments: avgComments` (raw float)
+- Similarly for `avgLikes`: `avgLikes: avgLikes` (raw float)
+
+### Change 2 — Smart formatting helper
+
+**File:** `src/components/report-redesign/v2/report-diagnostic-card.tsx`
+- Add a `formatAvg(value: number): string` utility that applies the rounding rules above
+- Use it at lines 586, 623 where `.toLocaleString("pt-PT")` is called
+
+### Change 3 — Fix methodology footer copy
+
+**File:** `src/components/report-redesign/v2/report-diagnostic-card.tsx`, line 712
+- Replace `${sampleComments} comentários públicos` with `${sampleComments} comentários recolhidos`
+
+---
+
+## 6. Summary
+
+| Category | Verdict |
+|----------|---------|
+| Data issue | No — raw data is correct (1 comment across 12 posts) |
+| Rounding issue | **Yes** — `Math.round()` kills sub-1 averages |
+| Copy issue | **Yes** — footer label "comentários públicos" is ambiguous |
+| Cache issue | No — data flows directly from snapshot |
+| UI issue | No — UI faithfully renders what it receives |
+
+No code changes in this pass. Awaiting approval to implement.
