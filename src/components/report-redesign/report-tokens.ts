@@ -34,7 +34,7 @@ export const REDESIGN_TOKENS = {
   h1Hero:
     "font-display text-[1.25rem] sm:text-[2rem] md:text-[2.5rem] lg:text-[2.75rem] font-semibold tracking-[-0.02em] text-slate-900 leading-[1.15] break-words [word-break:normal] [hyphens:none]",
   h2Section:
-    "font-display text-[2.25rem] sm:text-[2.75rem] md:text-[3.25rem] lg:text-[4.25rem] font-semibold tracking-[-0.035em] text-slate-900 leading-[0.95]",
+    "font-display text-[2.25rem] md:text-[3rem] lg:text-[3.4rem] font-semibold tracking-[-0.035em] text-slate-900 leading-[1.02]",
   eyebrow:
     "text-eyebrow-sm text-slate-500",
   eyebrowAccent:
@@ -95,10 +95,10 @@ export const REDESIGN_TOKENS = {
     "text-eyebrow-sm inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1",
   /** Número do capítulo no chapter marker editorial. */
   chapterNumber:
-    "font-display text-[5rem] md:text-[7rem] lg:text-[8.5rem] font-semibold leading-none tracking-tighter text-blue-100/80 select-none",
-  /** Linha ordinal: "CAPÍTULO PRIMEIRO". */
+    "font-display text-[6rem] md:text-[8rem] lg:text-[9rem] font-semibold leading-none tracking-tighter text-blue-100/90 select-none",
+  /** Label do bloco: OVERVIEW, DIAGNÓSTICO EDITORIAL, etc. */
   chapterLabel:
-    "text-[13px] md:text-[14px] font-semibold uppercase tracking-[0.12em] text-blue-600",
+    "text-[11px] md:text-xs font-semibold uppercase tracking-[0.22em] text-blue-600",
   /** Subtítulo do capítulo — Inter, tamanho editorial. */
   chapterSubtitle:
     "text-[15px] sm:text-[17px] md:text-[20px] text-slate-500 leading-relaxed max-w-[900px]",
