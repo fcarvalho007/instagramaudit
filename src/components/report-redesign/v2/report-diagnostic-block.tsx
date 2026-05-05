@@ -15,7 +15,6 @@ import {
   derivePriorities,
   type ContentTypeResult,
   type FunnelStageResult,
-  type CaptionPatternResult,
   type AudienceResponseResult, 
   type IntegrationResult,
   type ObjectiveResult,
