@@ -125,7 +125,7 @@ function ThemeRow({
           {String(rank).padStart(2, "0")}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[15px] md:text-[17px] text-content-primary leading-snug">
+          <p className="text-[15px] md:text-base font-semibold text-content-primary leading-snug">
             {label}
           </p>
           <p className="text-[12px] text-content-tertiary mt-0.5">
