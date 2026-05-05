@@ -154,9 +154,9 @@ export function FrequencyCard({
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-5 md:px-6 pt-6 md:pt-8 space-y-2.5">
+      <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 md:pt-8 space-y-2.5">
         <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
+          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
             Frequência de publicação{" "}
             <span
               className="font-semibold"
@@ -182,7 +182,7 @@ export function FrequencyCard({
 
       {/* Calendar grid */}
       {weeks.length > 0 && (
-        <div className="px-5 md:px-6 mt-6">
+        <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6">
           <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-2">
             Quando publicou
           </span>
@@ -274,7 +274,7 @@ export function FrequencyCard({
       )}
 
       {/* Verdict */}
-      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-auto mx-5 md:mx-6 mb-6 md:mb-8">
+      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-auto mx-4 sm:mx-5 md:mx-6 mb-5 sm:mb-6 md:mb-8">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}

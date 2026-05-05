@@ -110,7 +110,7 @@ export function EditorialIdentityCard({
     >
       {/* ═══ BAND 1 — Editorial Portrait ═══ */}
       <div
-        className="relative px-5 py-6 sm:px-7 sm:py-7 md:px-8 md:py-8"
+        className="relative px-4 py-5 sm:px-7 sm:py-7 md:px-8 md:py-8"
         style={{
           background:
             "linear-gradient(135deg, rgba(219,234,254,0.35) 0%, rgba(221,214,254,0.22) 50%, rgba(209,250,229,0.18) 100%)",
@@ -118,8 +118,8 @@ export function EditorialIdentityCard({
       >
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-8">
           {/* Left — text */}
-          <div className="flex-1 min-w-0 text-center sm:text-left">
-            <p className="font-display text-[1.35rem] sm:text-[1.5rem] md:text-[1.65rem] font-semibold leading-snug tracking-tight text-content-primary max-w-xl">
+          <div className="flex-1 min-w-0 text-center sm:text-left overflow-hidden">
+            <p className="font-display text-[1.2rem] sm:text-[1.5rem] md:text-[1.65rem] font-semibold leading-snug tracking-tight text-content-primary max-w-xl break-words">
               {sentence}
             </p>
           </div>
@@ -154,24 +154,24 @@ export function EditorialIdentityCard({
       <div className="border-t border-border-default bg-slate-50/60">
         <div className="flex flex-col sm:flex-row items-stretch">
           {/* Strength */}
-          <div className="flex items-center gap-3.5 px-5 py-5 sm:px-6 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-subtle">
-            <span className="flex items-center justify-center size-10 rounded-full bg-emerald-50 shrink-0">
-              <CheckCircle2 className="size-[18px] text-emerald-600" aria-hidden="true" />
+          <div className="flex items-center gap-3 px-4 py-4 sm:px-6 sm:py-5 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-subtle">
+            <span className="flex items-center justify-center size-8 sm:size-10 rounded-full bg-emerald-50 shrink-0">
+              <CheckCircle2 className="size-4 sm:size-[18px] text-emerald-600" aria-hidden="true" />
             </span>
             <div className="min-w-0">
               <span className="text-eyebrow-sm text-emerald-600 block mb-0.5">Principal ponto forte</span>
-              <span className="text-[15px] font-semibold text-content-primary">{strength}</span>
+              <span className="text-[14px] sm:text-[15px] font-semibold text-content-primary">{strength}</span>
             </div>
           </div>
 
           {/* Weakness */}
-          <div className="flex items-center gap-3.5 px-5 py-5 sm:px-6 sm:flex-1">
-            <span className="flex items-center justify-center size-10 rounded-full bg-rose-50 shrink-0">
-              <AlertCircle className="size-[18px] text-rose-600" aria-hidden="true" />
+          <div className="flex items-center gap-3 px-4 py-4 sm:px-6 sm:py-5 sm:flex-1">
+            <span className="flex items-center justify-center size-8 sm:size-10 rounded-full bg-rose-50 shrink-0">
+              <AlertCircle className="size-4 sm:size-[18px] text-rose-600" aria-hidden="true" />
             </span>
             <div className="min-w-0">
               <span className="text-eyebrow-sm text-rose-600 block mb-0.5">Principal ponto fraco</span>
-              <span className="text-[15px] font-semibold text-content-primary">{weakness}</span>
+              <span className="text-[14px] sm:text-[15px] font-semibold text-content-primary">{weakness}</span>
             </div>
           </div>
         </div>
