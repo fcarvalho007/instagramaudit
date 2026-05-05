@@ -109,4 +109,8 @@ export const ADMIN_LITERAL = {
   apifyActorComments: "#E8A838",
   apifyActorScraper: "#BA7517",
   apifyActorDefault: "#C78A30",
+  // ===== OpenAI atores (sub-barras despesa) =====
+  openaiActorInsights: "#185FA5",
+  openaiActorVisualCover: "#3B82F6",
+  openaiActorDefault: "#2563EB",
 } as const;
