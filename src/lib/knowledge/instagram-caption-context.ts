@@ -17,19 +17,19 @@ export const INSTAGRAM_CAPTION_CONTEXT = {
   // ─────────────────────────────────────────────────────────────────────
   sources: [
     {
+      name: "Castmagic",
+      url: "https://www.castmagic.io/post/how-to-write-instagram-captions",
+      role: "hook types, caption structure, brand voice consistency, common caption mistakes",
+    },
+    {
       name: "Later",
       url: "https://later.com/blog/social-media-captions/",
-      role: "caption writing, hooks, CTAs, conversation triggers",
+      role: "caption goals, hooks, CTAs, keywords, hashtags and conversation triggers",
     },
     {
       name: "Shopify",
       url: "https://www.shopify.com/blog/instagram-captions",
-      role: "caption length, first sentence, CTAs, hashtags, ecommerce-oriented captions",
-    },
-    {
-      name: "Castmagic",
-      url: "https://www.castmagic.io/post/how-to-write-instagram-captions",
-      role: "hook types, caption structure, AI-assisted caption workflows, common mistakes",
+      role: "caption length, first sentence, CTAs, hashtags and ecommerce-oriented caption guidance",
     },
   ],
 
@@ -39,19 +39,22 @@ export const INSTAGRAM_CAPTION_CONTEXT = {
   captionLength: {
     short: {
       maxCharacters: 50,
+      label: "Curta",
       description:
-        "Short captions are useful for punchy one-liners, quick reactions or simple CTAs.",
+        "Useful for punchy one-liners, fast reactions, product drops or simple CTAs.",
     },
     medium: {
       minCharacters: 50,
       maxCharacters: 150,
+      label: "Média",
       description:
-        "Medium captions are useful for context, emotion or concise explanation.",
+        "Useful for context, emotion or concise explanation.",
     },
     long: {
       minCharacters: 150,
+      label: "Longa",
       description:
-        "Long captions are useful for storytelling, tutorials, founder notes or educational posts.",
+        "Useful for storytelling, education, tutorials, founder notes or detailed explanations.",
     },
   },
 
@@ -59,27 +62,9 @@ export const INSTAGRAM_CAPTION_CONTEXT = {
   // First-line rule
   // ─────────────────────────────────────────────────────────────────────
   firstLineRule: {
-    thresholdCharacters: 125,
+    visibleCharacters: 125,
     description:
-      "The first ~125 characters are especially important because they often appear before the 'more' truncation point. The first sentence should clarify value, emotion or curiosity.",
-  },
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Goal per post
-  // ─────────────────────────────────────────────────────────────────────
-  goalPerPost: {
-    description:
-      "Each post should have one main communication goal. The caption should support that goal instead of trying to drive multiple actions at once.",
-    possibleGoals: [
-      "generate comments",
-      "drive saves",
-      "drive shares",
-      "send traffic to link in bio",
-      "promote a product or offer",
-      "educate",
-      "build trust",
-      "create community",
-    ],
+      "The first ~125 characters are especially important because captions are commonly truncated after the opening text. The first sentence should clarify value, emotion, curiosity or the reason to keep reading.",
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -88,27 +73,68 @@ export const INSTAGRAM_CAPTION_CONTEXT = {
   hookTypes: [
     {
       type: "question",
+      label: "Pergunta direta",
       description:
-        "Opens a loop and invites the audience to think or respond.",
+        "Invites the audience to think or respond.",
     },
     {
       type: "surprising_fact",
+      label: "Facto surpreendente",
       description:
-        "Uses a data point or unexpected statement to stop scrolling.",
+        "Uses a data point or unexpected idea to stop scrolling.",
     },
     {
       type: "emotion",
+      label: "Emoção",
       description:
-        "Uses vulnerability, humour, frustration, aspiration or shared feeling.",
+        "Uses vulnerability, humour, aspiration, frustration or shared feeling.",
     },
     {
       type: "bold_statement",
+      label: "Afirmação direta",
       description:
-        "Makes a strong claim that creates curiosity or disagreement.",
+        "Makes a clear statement that creates curiosity, agreement or disagreement.",
     },
     {
-      type: "pain_point",
-      description: "Starts from a problem the audience recognises.",
+      type: "news_or_update",
+      label: "Anúncio de novidade",
+      description:
+        "Signals a new launch, feature, event or timely update.",
+    },
+    {
+      type: "story",
+      label: "História / experiência",
+      description:
+        "Uses narrative context or a real situation to create connection.",
+    },
+  ],
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Ending types
+  // ─────────────────────────────────────────────────────────────────────
+  endingTypes: [
+    {
+      type: "explicit_cta",
+      label: "Com CTA explícito",
+      description: "Ends with a clear action request.",
+    },
+    {
+      type: "statement",
+      label: "Com afirmação",
+      description:
+        "Ends with a closed statement rather than inviting response.",
+    },
+    {
+      type: "hashtags_only",
+      label: "Só hashtags",
+      description:
+        "Ends mainly with hashtags, without conversational close.",
+    },
+    {
+      type: "question",
+      label: "Com pergunta",
+      description:
+        "Ends with an open question that can trigger comments.",
     },
   ],
 
@@ -120,13 +146,14 @@ export const INSTAGRAM_CAPTION_CONTEXT = {
       "one clear action",
       "specific next step",
       "value-driven wording",
-      "placed clearly, often near the end or separated by a line break",
+      "clear line break before CTA when needed",
+      "clarity over cleverness",
     ],
     weak: [
       "vague CTA",
       "multiple competing actions",
       "CTA hidden in a long paragraph",
-      "generic wording such as 'check it out' without context",
+      "generic wording without clear value",
     ],
   },
 
@@ -143,7 +170,16 @@ export const INSTAGRAM_CAPTION_CONTEXT = {
   ],
 
   // ─────────────────────────────────────────────────────────────────────
-  // Hashtag guidelines
+  // Value / promotion balance
+  // ─────────────────────────────────────────────────────────────────────
+  valuePromotionBalance: {
+    rule: "80/20",
+    description:
+      "As an editorial reference, content should prioritise value, usefulness or relationship-building before promotional requests.",
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Hashtag guidelines (used by P03 card)
   // ─────────────────────────────────────────────────────────────────────
   hashtagGuidelines: {
     recommendedRange: {
@@ -169,59 +205,19 @@ export const INSTAGRAM_CAPTION_CONTEXT = {
   },
 
   // ─────────────────────────────────────────────────────────────────────
-  // Brand voice
+  // Common caption issues
   // ─────────────────────────────────────────────────────────────────────
-  brandVoice: {
-    description:
-      "Captions should maintain a consistent voice that reflects the brand personality while adapting to different content formats.",
-    signals: [
-      "consistent tone",
-      "recognisable perspective",
-      "natural language",
-      "appropriate emoji usage",
-      "clear point of view",
-    ],
-    issues: [
-      "robotic wording",
-      "generic phrases",
-      "inconsistent tone",
-      "inside jokes without context",
-      "excessive emojis",
-    ],
-  },
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Formatting guidelines
-  // ─────────────────────────────────────────────────────────────────────
-  formattingGuidelines: {
-    good: [
-      "short paragraphs",
-      "line breaks between ideas",
-      "clear CTA separation",
-      "scannable structure",
-      "hashtags placed cleanly",
-    ],
-    issues: [
-      "dense wall of text",
-      "unclear punctuation",
-      "missing context",
-      "too many ideas in one caption",
-    ],
-  },
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Common caption mistakes
-  // ─────────────────────────────────────────────────────────────────────
-  commonCaptionMistakes: [
+  commonCaptionIssues: [
     "generic phrases",
-    "weak hooks",
+    "weak opening hook",
     "missing CTA",
     "too many CTAs",
     "brand voice inconsistency",
     "hashtag misuse",
     "missing context",
-    "poor formatting",
+    "dense formatting",
     "weak first sentence",
+    "no open-ended ending",
   ],
 } as const;
 
