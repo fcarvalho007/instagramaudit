@@ -146,10 +146,10 @@ export function ReportDiagnosticCard({
         ) : null}
       </div>
 
-      {/* Full-width: horizontal layout with question+answer left, evidence right */}
+      {/* Full-width: vertical stack — answer block then children full-width */}
       {isFull ? (
-        <div className="flex flex-col md:flex-row md:gap-8">
-          <div className="flex-1 min-w-0 flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4 max-w-2xl">
             <h3
               className={cn(
                 "font-display text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-content-primary",
@@ -181,11 +181,7 @@ export function ReportDiagnosticCard({
               </div>
             ) : null}
           </div>
-          {children ? (
-            <div className="mt-4 md:mt-0 md:w-[40%] shrink-0 min-w-0">
-              {children}
-            </div>
-          ) : null}
+          {children ? <div className="min-w-0">{children}</div> : null}
         </div>
       ) : (
         /* Half-width: vertical stack (original layout with enlarged answer) */
