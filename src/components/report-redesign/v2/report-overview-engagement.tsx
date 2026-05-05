@@ -1,5 +1,5 @@
 /**
- * Zona C — Card de Taxa de Envolvimento.
+ * Zona C — Card de Taxa de Engagement.
  * Premium Iconosquare-style KPI row + benchmark chart + diagnostic reading.
  *
  * KPI accent colours (local decorative values):
@@ -117,7 +117,7 @@ export function EngagementCardRefined({ result }: Props) {
 
           {/* KPI 1 — Profile engagement */}
           <div
-            className="rounded-xl border px-4 py-4"
+            className="rounded-xl border px-4 py-3.5"
             style={{
               borderColor: isBelowBenchmark ? "rgba(163,45,45,0.15)" : "rgba(37,99,217,0.12)",
               borderLeftWidth: 3,
@@ -125,7 +125,7 @@ export function EngagementCardRefined({ result }: Props) {
               background: isBelowBenchmark ? "rgba(163,45,45,0.04)" : "rgba(37,99,217,0.03)",
             }}
           >
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
               <span
                 className="size-2 rounded-full shrink-0"
                 aria-hidden="true"
@@ -138,10 +138,10 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <div className="flex items-baseline">
-              <span className="font-mono text-[1.75rem] sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+              <span className="font-mono text-[1.6rem] sm:text-[1.85rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
                 {fmtPctHero(k.engagementRate)}
               </span>
-              <span className="font-mono text-[1.75rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
+              <span className="font-mono text-[1.6rem] sm:text-[1.85rem] font-light text-content-secondary/50 ml-0.5">
                 %
               </span>
             </div>
@@ -152,7 +152,7 @@ export function EngagementCardRefined({ result }: Props) {
 
           {/* KPI 2 — Tier benchmark */}
           <div
-            className="rounded-xl border px-4 py-4"
+            className="rounded-xl border px-4 py-3.5"
             style={{
               borderColor: "rgba(37,99,217,0.10)",
               borderLeftWidth: 3,
@@ -160,7 +160,7 @@ export function EngagementCardRefined({ result }: Props) {
               background: "rgba(37,99,217,0.03)",
             }}
           >
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
               <span
                 className="size-2 rounded-full shrink-0"
                 aria-hidden="true"
@@ -171,10 +171,10 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <div className="flex items-baseline">
-              <span className="font-mono text-[1.75rem] sm:text-[2rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+              <span className="font-mono text-[1.6rem] sm:text-[1.85rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
                 {fmtPctHero(benchmarkVal)}
               </span>
-              <span className="font-mono text-[1.75rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
+              <span className="font-mono text-[1.6rem] sm:text-[1.85rem] font-light text-content-secondary/50 ml-0.5">
                 %
               </span>
             </div>
@@ -185,7 +185,7 @@ export function EngagementCardRefined({ result }: Props) {
 
           {/* KPI 3 — Distance to benchmark */}
           <div
-            className="rounded-xl border px-4 py-4"
+            className="rounded-xl border px-4 py-3.5"
             style={{
               borderColor: isPositive ? "rgba(29,158,117,0.15)" : "rgba(163,45,45,0.15)",
               borderLeftWidth: 3,
@@ -193,7 +193,7 @@ export function EngagementCardRefined({ result }: Props) {
               background: isPositive ? "rgba(29,158,117,0.04)" : "rgba(163,45,45,0.04)",
             }}
           >
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
               <span
                 className="size-2 rounded-full shrink-0"
                 aria-hidden="true"
@@ -208,7 +208,7 @@ export function EngagementCardRefined({ result }: Props) {
             <div className="flex items-baseline gap-1.5">
               <span
                 className={cn(
-                  "font-mono text-[1.75rem] sm:text-[2rem] font-bold tabular-nums leading-none tracking-tight",
+                  "font-mono text-[1.6rem] sm:text-[1.85rem] font-bold tabular-nums leading-none tracking-tight",
                   isPositive ? "text-signal-success" : "text-signal-danger"
                 )}
               >
@@ -225,15 +225,6 @@ export function EngagementCardRefined({ result }: Props) {
                 </span>
               )}
             </div>
-            <span
-              className={cn(
-                "block text-[11px] mt-1.5 leading-snug",
-                isPositive ? "text-signal-success/70" : "text-signal-danger/70"
-              )}
-            >
-              {fmtPpSigned(gapPp)} p.p. {isPositive ? "acima" : "abaixo"} da
-              referência
-            </span>
           </div>
         </div>
       </div>
@@ -294,8 +285,3 @@ function fmtPctHero(n: number): string {
   return n.toFixed(2).replace(".", ",");
 }
 
-function fmtPpSigned(n: number): string {
-  const abs = Math.abs(n);
-  const s = abs.toFixed(2).replace(".", ",");
-  return n < 0 ? `−${s}` : `+${s}`;
-}
