@@ -12,7 +12,6 @@ import {
   classifyChannelIntegration,
   classifyHashtags,
   inferProbableObjective,
-  derivePriorities,
   type ContentTypeResult,
   type FunnelStageResult,
   type AudienceResponseResult, 
