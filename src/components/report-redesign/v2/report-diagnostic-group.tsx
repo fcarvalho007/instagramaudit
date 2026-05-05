@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 
 interface Props {
-  letter: "A" | "B" | "C" | "D";
-  | "E";
+  letter: "A" | "B" | "C" | "D" | "E";
   label: string;
   questionsCount: number;
   children: ReactNode;
