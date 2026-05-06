@@ -222,6 +222,7 @@ function cleanCaption(raw: string): string {
     .replace(/https?:\/\/\S+/gi, " ")
     .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, " ")
     .replace(/[#@][\p{L}\p{N}_]+/gu, " ")
+    .replace(/\p{Extended_Pictographic}/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
