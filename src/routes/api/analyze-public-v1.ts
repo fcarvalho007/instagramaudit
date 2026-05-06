@@ -658,95 +658,13 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           );
 
           // ─── Market signals (free DataForSEO Trends) ────────────────
-          // Inline as part of the snapshot so the report, OpenAI insights
-          // and PDF all read from the same persisted source of truth.
-          // Triple-gated: cache → kill-switch → allowlist. NEVER throws —
-          // failure here must not break the Instagram analysis.
+          // Reuse cached summary from previous snapshot if still valid.
+          // Fresh DataForSEO calls are now handled asynchronously via
+          // enrichment_jobs to avoid Worker timeout.
           let marketSignalsFree: PersistedMarketSignals | null = null;
-
-          // 1. Reuse cached summary from the previous snapshot if still
-          //    valid. Avoids any DataForSEO call (and any new
-          //    provider_call_logs row) when the same handle is re-analysed
-          //    within TTL — for example via ?refresh=1.
           if (existing) {
             const cached = readCachedSummary(existing.normalized_payload, "free");
             if (cached) marketSignalsFree = cached;
-          }
-
-          // 2. Cache miss → attempt one orchestration if both gates pass.
-          if (
-            !marketSignalsFree &&
-            isDataForSeoEnabled() &&
-            isDfsAllowed(primaryProfile.username)
-          ) {
-            const dfsStartedAt = new Date();
-            const tentativeSnapshot = {
-              profile: primaryProfile,
-              content_summary: primarySummary,
-              competitors: competitorResults,
-              posts: primaryEnriched.posts,
-              format_stats: primaryEnriched.format_stats,
-            } as unknown as SnapshotPayload;
-            try {
-              const result = await buildMarketSignals(tentativeSnapshot, {
-                ownerHandle: primaryProfile.username,
-                plan: "free",
-                totalTimeoutMs: 20_000,
-              });
-              // Collect provider cost + log ids written during this call.
-              let providerCostUsd = 0;
-              let providerCallLogIds: string[] = [];
-              try {
-                const { data: logs } = await supabaseAdmin
-                  .from("provider_call_logs")
-                  .select("id, actual_cost_usd")
-                  .eq("provider", "dataforseo")
-                  .eq("handle", primaryProfile.username.toLowerCase())
-                  .gte("created_at", dfsStartedAt.toISOString());
-                if (Array.isArray(logs)) {
-                  providerCallLogIds = logs.map((l) => l.id as string);
-                  providerCostUsd = logs.reduce(
-                    (sum, l) =>
-                      sum +
-                      (typeof l.actual_cost_usd === "number"
-                        ? l.actual_cost_usd
-                        : 0),
-                    0,
-                  );
-                }
-              } catch (err) {
-                console.warn(
-                  "[analyze-public-v1] failed to read dataforseo provider_call_logs",
-                  err,
-                );
-              }
-              const ttl = decideCacheTtlSeconds(result);
-              if (ttl !== null) {
-                marketSignalsFree = buildPersistedSummary({
-                  result,
-                  plan: "free",
-                  ttlSeconds: ttl,
-                  providerCostUsd,
-                  providerCallLogIds,
-                  now: dfsStartedAt,
-                });
-              }
-            } catch (err) {
-              // Defence in depth — buildMarketSignals already swallows.
-              console.warn(
-                "[analyze-public-v1] inline market signals threw",
-                err,
-              );
-            }
-          } else if (!isDataForSeoEnabled()) {
-            console.info(
-              "[analyze-public-v1] DataForSEO disabled — skipping market signals",
-            );
-          } else if (!marketSignalsFree) {
-            console.info(
-              "[analyze-public-v1] handle not on DataForSEO allowlist — skipping market signals",
-              primaryProfile.username,
-            );
           }
 
           // Compute benchmark positioning early so it can be embedded both
