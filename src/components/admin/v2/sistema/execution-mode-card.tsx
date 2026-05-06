@@ -57,64 +57,58 @@ export function ExecutionModeCard() {
 
   return (
     <>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider">
           Modo de execução
         </p>
 
-        {/* ── Segmented control ── */}
-        <div className="grid grid-cols-2 gap-2 rounded-xl bg-admin-surface-muted p-1.5">
-          <button
-            type="button"
-            onClick={() => handleToggle("cache_only")}
-            disabled={busy}
-            className={`flex flex-col items-center gap-1 px-4 py-3.5 text-center rounded-lg transition-all duration-200 ${
-              isCacheOnly
-                ? "bg-white text-[rgb(var(--admin-revenue-500))] shadow-admin-card"
-                : "text-admin-text-tertiary hover:text-admin-text-secondary hover:bg-white/50"
-            }`}
-          >
-            <span className="text-[13px] font-semibold tracking-wide">CACHE-ONLY</span>
-            <span className="text-[10px] leading-tight opacity-60">
-              Não chama APIs externas
+        {/* ── Horizontal: segmented + badge ── */}
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="inline-flex gap-1 rounded-lg bg-admin-surface-muted p-1">
+            <button
+              type="button"
+              onClick={() => handleToggle("cache_only")}
+              disabled={busy}
+              className={`px-3.5 py-2 text-[12px] font-semibold rounded-md transition-all duration-200 ${
+                isCacheOnly
+                  ? "bg-white text-[rgb(var(--admin-revenue-500))] shadow-sm"
+                  : "text-admin-text-tertiary hover:text-admin-text-secondary"
+              }`}
+            >
+              CACHE-ONLY
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggle("fresh")}
+              disabled={busy}
+              className={`px-3.5 py-2 text-[12px] font-semibold rounded-md transition-all duration-200 ${
+                !isCacheOnly
+                  ? "bg-white text-[rgb(var(--admin-expense-500))] shadow-sm"
+                  : "text-admin-text-tertiary hover:text-admin-text-secondary"
+              }`}
+            >
+              FRESH
+            </button>
+          </div>
+
+          {isCacheOnly ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--admin-revenue-500))]/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[rgb(var(--admin-revenue-500))]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--admin-revenue-500))] admin-pulse-dot" />
+              SEM CUSTOS
             </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleToggle("fresh")}
-            disabled={busy}
-            className={`flex flex-col items-center gap-1 px-4 py-3.5 text-center rounded-lg transition-all duration-200 ${
-              !isCacheOnly
-                ? "bg-white text-[rgb(var(--admin-expense-500))] shadow-admin-card"
-                : "text-admin-text-tertiary hover:text-admin-text-secondary hover:bg-white/50"
-            }`}
-          >
-            <span className="text-[13px] font-semibold tracking-wide">FRESH</span>
-            <span className="text-[10px] leading-tight opacity-60">
-              Pode gerar custos reais
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--admin-expense-400))]/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[rgb(var(--admin-expense-500))]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--admin-expense-500))] admin-pulse-dot" />
+              CUSTOS ATIVOS
             </span>
-          </button>
+          )}
+
+          <p className="text-[11px] text-admin-text-tertiary leading-tight">
+            {isCacheOnly
+              ? "Nenhuma API paga será chamada."
+              : "Pode chamar Apify, OpenAI e DataForSEO."}
+          </p>
         </div>
-
-        {/* ── Status badge ── */}
-        {isCacheOnly ? (
-          <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-[rgb(var(--admin-revenue-500))]/12 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-[rgb(var(--admin-revenue-500))]">
-            <span className="h-2 w-2 rounded-full bg-[rgb(var(--admin-revenue-500))] admin-pulse-dot" />
-            MODO SEGURO · SEM CUSTOS
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-[rgb(var(--admin-expense-400))]/12 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-[rgb(var(--admin-expense-500))]">
-            <span className="h-2 w-2 rounded-full bg-[rgb(var(--admin-expense-500))] admin-pulse-dot" />
-            MODO FRESH · CUSTOS ATIVOS
-          </span>
-        )}
-
-        {/* ── Explanatory copy ── */}
-        <p className="text-[12px] text-admin-text-secondary leading-relaxed">
-          {isCacheOnly
-            ? "Usa apenas snapshots e dados já guardados. Nenhuma API paga será chamada."
-            : "Pode chamar Apify, OpenAI e DataForSEO. Utilizar apenas quando necessário atualizar dados reais."}
-        </p>
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
