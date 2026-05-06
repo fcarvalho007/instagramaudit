@@ -56,6 +56,7 @@ export async function generateCaptionSemanticAnalysis(
   input: CaptionSemanticInput,
 ): Promise<CaptionSemanticResult> {
   const { handle, captions } = input;
+  const _eventId = input.analysisEventId ?? null;
 
   if (captions.length === 0) return fail("NO_CAPTIONS");
 
