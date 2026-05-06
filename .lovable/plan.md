@@ -1,63 +1,28 @@
-## Goal
+## Current state
 
-Eliminate the race condition where concurrent enrichment jobs overwrite each other's `enrichment_status` entries via the read-merge-write pattern in `patchSnapshotPayload`.
+The API (`/api/admin/analysis-cost-breakdown`) already groups by enrichment_type and picks the latest job status (line 125-133: ordered DESC by `created_at`, first-wins per type). This is correct.
 
-## Race condition explained
-
-1. Job A (insights_v1) reads `normalized_payload` — sees `{enrichment_status: {dataforseo: "success", insights_v1: "pending", ...}}`
-2. Job B (insights_v2) reads `normalized_payload` — same snapshot, same state
-3. Job A writes merged payload with `insights_v1: "success"`
-4. Job B writes merged payload with `insights_v2: "success"` — but its copy didn't have Job A's update, so `insights_v1` reverts to `"pending"`
-
-## Solution
-
-Create a PostgreSQL function `set_enrichment_status(p_snapshot_id, p_key, p_value)` that uses a single atomic `jsonb_set` UPDATE. Call it via `supabaseAdmin.rpc()` from a new helper `setEnrichmentStatusAtomic()` in `cache.ts`.
+What's missing: visibility into historical failures when the latest job succeeded.
 
 ## Changes
 
-### 1. Database migration — create `set_enrichment_status` RPC
+### 1. API — add `enrichment_history` to response
 
-```sql
-CREATE OR REPLACE FUNCTION public.set_enrichment_status(
-  p_snapshot_id uuid,
-  p_key text,
-  p_value text
-) RETURNS void
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  UPDATE analysis_snapshots
-  SET normalized_payload = jsonb_set(
-        jsonb_set(normalized_payload, '{enrichment_status}', COALESCE(normalized_payload->'enrichment_status', '{}'::jsonb)),
-        ARRAY['enrichment_status', p_key],
-        to_jsonb(p_value)
-      ),
-      updated_at = now()
-  WHERE id = p_snapshot_id;
-$$;
-```
+In `src/routes/api/admin/analysis-cost-breakdown.ts`, after building `enrichmentSummary`, also compute a `enrichment_history` map: `Record<string, { total_attempts: number; failed_attempts: number }>`.
 
-### 2. `src/lib/analysis/cache.ts` — add `setEnrichmentStatusAtomic`
+Count all jobs per type and how many had `status = 'error'`. Only include types where `failed_attempts > 0`.
 
-```ts
-export async function setEnrichmentStatusAtomic(
-  snapshotId: string,
-  key: string,
-  value: string,
-): Promise<boolean>
-```
+### 2. UI — show history indicator in `EnrichmentDots`
 
-Calls `supabaseAdmin.rpc('set_enrichment_status', { p_snapshot_id, p_key, p_value })`.
+In `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx`:
 
-### 3. `src/routes/api/public/enrich-snapshot.ts` — replace enrichment_status patches
+- Accept `enrichment_history` as optional prop on `EnrichmentDots`
+- For each type with previous failures, show a small superscript number (e.g. `×2`) or tooltip text like "2 tentativas falhadas anteriores"
+- Use `text-foreground-muted` for the indicator so it doesn't compete with the current status dot
 
-Replace the two `patchSnapshotPayload` calls for `enrichment_status` (success on line 179 and error on line 201) with `setEnrichmentStatusAtomic`.
-
-## Files changed
+### Files changed
 
 | File | Change |
 |------|--------|
-| Migration | New `set_enrichment_status` function |
-| `src/lib/analysis/cache.ts` | Add `setEnrichmentStatusAtomic` helper |
-| `src/routes/api/public/enrich-snapshot.ts` | Use atomic helper for enrichment_status updates |
+| `src/routes/api/admin/analysis-cost-breakdown.ts` | Add `enrichment_history` field |
+| `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx` | Display history indicator in EnrichmentDots |
