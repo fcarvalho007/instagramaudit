@@ -110,6 +110,10 @@ export interface Expense30d {
   fresh_linked_provider_calls: number;
   /** Confidence level of the fresh estimate */
   confidence: "alta" | "media" | "baixa";
+  /** Total provider calls (success) in the period */
+  fresh_total_provider_calls: number;
+  /** Provider calls with analysis_event_id linked */
+  fresh_calls_with_event_id: number;
 }
 
 export interface CostCaps {
