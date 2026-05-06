@@ -63,40 +63,19 @@ import type { BenchmarkData } from "@/lib/benchmark/reference-data";
 import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 import {
-  generateInsights,
-  generateInsightsV2,
-} from "@/lib/insights/openai-insights.server";
-import type {
-  AiInsightsV1,
-  AiInsightsV2,
-  InsightsContext,
-} from "@/lib/insights/types";
-import { isOpenAiAllowed } from "@/lib/security/openai-allowlist";
-import {
-  isAllowed as isDfsAllowed,
-  isDataForSeoEnabled,
-} from "@/lib/security/dataforseo-allowlist";
-import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
-import { buildInsightsCtx } from "@/lib/insights/build-context";
-import {
-  buildPersistedSummary,
-  decideCacheTtlSeconds,
   readCachedSummary,
   type PersistedMarketSignals,
 } from "@/lib/market-signals/cache";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
-import { generateVisualCoverAnalysis } from "@/lib/report/visual-cover-analysis.server";
-import { generateCaptionSemanticAnalysis } from "@/lib/report/caption-semantic-analysis.server";
-import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
-import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
-import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
 import {
   shouldRunCommentScraper,
   isValidInstagramPostUrl,
 } from "@/lib/analysis/comment-scraper.server";
-import { buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
 import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
+import {
+  ALL_ENRICHMENT_TYPES,
+  ENRICHMENT_PRIORITY,
+} from "@/lib/enrichment/types";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
