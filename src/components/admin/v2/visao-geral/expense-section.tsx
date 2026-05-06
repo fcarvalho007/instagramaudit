@@ -893,6 +893,8 @@ function ReportCostCards({
   freshAvgCost,
   freshLinkedReports,
   confidence,
+  freshTotalCalls,
+  freshLinkedCalls,
 }: {
   total: number;
   apifyShare: number;
