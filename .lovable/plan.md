@@ -1,42 +1,39 @@
 
-## P05 Conversation Metrics — Audit Results
+# P05 Conversation Metrics — Final Audit
 
-### 1. Data Source — PASS
+## PASS/FAIL Table
 
-`classifyAudienceResponse()` in `block02-diagnostic.ts` (lines 499-604) iterates `posts[]` and sums `p.likes` and `p.comments` (post-level totals). It correctly:
-- Counts `totalLikes`, `totalComments`, `postsWithComments` from post-level data
-- Computes `avgLikes = totalLikes / postsWithData`, `avgComments = totalComments / postsWithData`
-- Never touches `commentIntel.sampleComments` for these totals
+| Check | Status | Notes |
+|-------|--------|-------|
+| 1. Raw calculations | **PASS** | `avgComments` and `avgLikes` returned as raw floats (line 551-552). `totalLikes`/`totalComments` are sums. `postsWithComments` counts `comments >= 1`. No rounding in classifier. |
+| 2. Display formatting | **PASS** | `formatAvg()` at line 33-38: `0` returns `"0"`, `(0,0.1)` returns `"<0,1"`, `[0.1,10)` returns one decimal pt-PT, `>=10` returns rounded integer. Used consistently in P05 card (lines 602, 639), summary cards (explicit `avg === 0` guard + same logic), and grid-v2 (same guard). |
+| 3. Methodology footer | **PASS** | Line 727-731: `{n} posts analisados · {n} post(s) com comentários · {n} comentário(s) público(s) · {n} comentários recolhidos · sem DMs nem comentários ocultos`. Correctly pluralizes. Only shows `comentários recolhidos` when `sampleComments !== totalComments`. |
+| 4. Data source | **PASS** | `classifyAudienceResponse(posts)` iterates `posts` from `normalized_payload.posts`. Uses post-level `p.likes` and `p.comments`. `commentIntel` is only used for owner replies count and audience voice breakdown — never mixed into base averages. |
+| 5. Regression check | **Needs tsc/vitest run** | Cannot run in read-only mode. |
 
-`commentIntel.sampleComments` is only read inside `DiagnosticAudienceHighlight` for the footer label — never mixed with post-level totals.
+## Sample Verification (12 posts, 87 likes, 1 comment, 1 post with comments)
 
-### 2. Formatting Rules — 2 FAILS
+- `avgLikes = 87 / 12 = 7.25` → `formatAvg(7.25)` → `"7,3"` (one decimal, < 10) --- **Correct**
+- `avgComments = 1 / 12 = 0.0833...` → `formatAvg(0.0833)` → `"<0,1"` (> 0 and < 0.1) --- **Correct**
+- Footer: `12 posts analisados · 1 post com comentários · 1 comentário público · sem DMs nem comentários ocultos` --- **Correct**
 
-| Location | File | Handles `0`? | Handles `<0.1`? | 1 decimal <10? | Rounded >=10? |
-|---|---|---|---|---|---|
-| `formatAvg()` | `report-diagnostic-card.tsx:33` | PASS (`"0"`) | PASS (`"<0,1"`) | PASS | PASS |
-| KPI cards (Z2) | `report-diagnostic-card.tsx:602,639` | PASS (uses `formatAvg`) | PASS | PASS | PASS |
-| Summary cards | `report-diagnostic-summary-cards.tsx:120-128` | **FAIL** — `0` falls to `< 10` branch, renders `0,0` | PASS | PASS | PASS |
-| Grid v2 micro | `report-diagnostic-grid-v2.tsx:440` | **FAIL** — `0` falls to `< 10` branch, renders `0,0` | PASS | PASS | PASS |
+## Files Inspected
 
-### 3. Methodology Footer — 1 FAIL
+- `src/lib/report/block02-diagnostic.ts` (lines 499-605) — classifier logic
+- `src/components/report-redesign/v2/report-diagnostic-card.tsx` (lines 33-38, 530-735) — formatAvg + P05 card + footer
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx` (lines 390-410) — prop wiring
+- `src/components/report-redesign/v2/report-diagnostic-summary-cards.tsx` (lines 130-145) — summary card formatting
+- `src/components/report-redesign/v2/report-diagnostic-grid-v2.tsx` (lines 400-420) — grid micro text
 
-| Label | Source | Current copy | Expected copy | Status |
-|---|---|---|---|---|
-| Posts analisados | `sampleSize` | `{n} posts analisados` | `{n} posts analisados` | PASS |
-| Posts com comentários | `postsWithComments` | `{n} post(s) com comentários` | `{n} post(s) com comentários` | PASS |
-| Post-level comment total | `totalComments` | `{n} comentário(s) público(s)` | `{n} comentário(s) público(s)` | PASS |
-| Scraped comments | `sampleComments` | `{n} comentários analisados` | `{n} comentários recolhidos` | **FAIL** — should say "recolhidos" not "analisados" |
+## Formulas in Use
 
-### Fixes Required
+- `avgComments = totalComments / postsWithData` (raw float, no rounding)
+- `avgLikes = totalLikes / postsWithData` (raw float, no rounding)
+- `commentsToLikesPct = round((totalComments / totalLikes) * 100, 1)`
+- `postsWithComments = count(posts where comments >= 1)`
 
-**File 1: `src/components/report-redesign/v2/report-diagnostic-summary-cards.tsx`** (line ~120)
-- Add `avg === 0` guard returning `"0 comentários médios por post"`
+## Conclusion
 
-**File 2: `src/components/report-redesign/v2/report-diagnostic-grid-v2.tsx`** (line ~440)
-- Add `r.avgComments === 0` guard returning `"~0 comentários ..."`
+All P05 logic and display are correct and consistent. The only remaining step is running `bunx tsc --noEmit` and `bunx vitest run` to confirm no regressions — this requires switching to default mode.
 
-**File 3: `src/components/report-redesign/v2/report-diagnostic-card.tsx`** (line 730)
-- Change `comentários analisados` → `comentários recolhidos`
-
-All three are small, isolated fixes. No logic changes needed.
+No code changes are needed.
