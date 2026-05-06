@@ -1049,8 +1049,18 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
       <div>
         <p className="text-eyebrow text-content-tertiary">O que a audiência mais diz</p>
         <p className="text-[11px] text-content-tertiary mt-0.5">
-          Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários · percentagens sobre sinais classificados
+          Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários
+          {ci.uniqueAudienceCommentersCount > 0 && ` de ${ci.uniqueAudienceCommentersCount.toLocaleString("pt-PT")} pessoas`}
+          {" "}· percentagens sobre sinais classificados
         </p>
+        {ci.postsWithConversationPct > 0 && (
+          <p className="text-[10px] text-content-tertiary/70 mt-0.5">
+            Conversa presente em {Math.round(ci.postsWithConversationPct)}% dos posts analisados
+            {ci.uniqueAudienceCommentersCount > 1 && ci.audienceCommentsCount > ci.uniqueAudienceCommentersCount
+              ? ` · ~${(ci.audienceCommentsCount / ci.uniqueAudienceCommentersCount).toFixed(1).replace(".", ",")} comentários por pessoa`
+              : ""}
+          </p>
+        )}
       </div>
 
       <ul className="space-y-3">
