@@ -59,6 +59,7 @@ export interface CaptionSemanticFormulaicPatterns {
 
 export interface CaptionSemanticAnalysis {
   source: "openai";
+  schemaVersion: number;
   analyzedCaptions: number;
   dominantThemes: CaptionSemanticTheme[];
   contentIntent: CaptionSemanticIntent;
