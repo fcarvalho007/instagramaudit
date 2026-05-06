@@ -38,6 +38,8 @@ interface AnalysisBreakdown {
     actual_usd: number | null;
     has_actual: boolean;
     call_count: number;
+    linked_count: number;
+    linkage_pct: number;
     apify_base_usd: number;
     comment_scraper_usd: number;
     openai_usd: number;
@@ -45,6 +47,9 @@ interface AnalysisBreakdown {
     comment_scraper_status: "success" | "error" | "not_run";
     comments_returned: number;
   };
+  enrichment_summary: Record<string, string> | null;
+  all_enrichments_complete: boolean;
+  snapshot_expires_at: string | null;
 }
 
 export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
@@ -78,6 +83,7 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
         for (const ev of events ?? []) {
           // Strategy: first try analysis_event_id link, fallback to time-window
           let calls: ProviderCallRow[] = [];
+          let linkedCount = 0;
 
           const { data: linked } = await supabaseAdmin
             .from("provider_call_logs")
@@ -87,6 +93,7 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
 
           if (linked && linked.length > 0) {
             calls = linked as ProviderCallRow[];
+            linkedCount = calls.length;
           } else {
             // Fallback: time-window correlation (±60s)
             const evTime = new Date(ev.created_at);
@@ -102,6 +109,41 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
               .order("created_at", { ascending: true });
 
             if (correlated) calls = correlated as ProviderCallRow[];
+            linkedCount = 0; // fallback = unlinked
+          }
+
+          // Enrichment summary from enrichment_jobs for this snapshot
+          let enrichmentSummary: Record<string, string> | null = null;
+          let allEnrichmentsComplete = false;
+          let snapshotExpiresAt: string | null = null;
+
+          if (ev.analysis_snapshot_id) {
+            const { data: ejRows } = await supabaseAdmin
+              .from("enrichment_jobs")
+              .select("enrichment_type, status")
+              .eq("snapshot_id", ev.analysis_snapshot_id)
+              .order("created_at", { ascending: false });
+
+            if (ejRows && ejRows.length > 0) {
+              // Take latest status per type
+              const map: Record<string, string> = {};
+              for (const r of ejRows) {
+                const t = r.enrichment_type as string;
+                if (!map[t]) map[t] = r.status as string;
+              }
+              enrichmentSummary = map;
+              const statuses = Object.values(map);
+              allEnrichmentsComplete =
+                statuses.length >= 5 &&
+                statuses.every((s) => s === "success" || s === "skipped");
+            }
+
+            const { data: snapRow } = await supabaseAdmin
+              .from("analysis_snapshots")
+              .select("expires_at")
+              .eq("id", ev.analysis_snapshot_id)
+              .maybeSingle();
+            snapshotExpiresAt = snapRow?.expires_at ?? null;
           }
 
           // Compute totals
@@ -150,6 +192,8 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
               actual_usd: hasActual ? actualTotal : null,
               has_actual: hasActual,
               call_count: calls.length,
+              linked_count: linkedCount,
+              linkage_pct: calls.length > 0 ? Math.round((linkedCount / calls.length) * 100) : 100,
               apify_base_usd: apifyBase,
               comment_scraper_usd: commentScraper,
               openai_usd: openai,
@@ -157,6 +201,9 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
               comment_scraper_status: commentScraperStatus,
               comments_returned: commentsReturned,
             },
+            enrichment_summary: enrichmentSummary,
+            all_enrichments_complete: allEnrichmentsComplete,
+            snapshot_expires_at: snapshotExpiresAt,
           });
         }
 
