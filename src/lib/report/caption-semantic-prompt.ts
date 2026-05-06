@@ -49,6 +49,20 @@ diagnostic:
 - works: uma frase sobre o que funciona bem
 - critical: uma frase sobre o ponto mais crítico
 - watch: uma frase sobre o que observar a médio prazo`;
+- watch: uma frase sobre o que observar a médio prazo
+
+hookQuality: qualidade dos primeiros segundos / abertura das legendas
+- rating: "strong" (≥50% aberturas fortes), "moderate" (25–49%), "weak" (<25%)
+- explanation: uma frase a descrever a eficácia dos hooks usados
+
+brandVoice: consistência da voz editorial ao longo das legendas
+- rating: "consistent" (tom e registo uniformes), "mixed" (varia mas com identidade), "inconsistent" (sem identidade reconhecível)
+- explanation: uma frase a avaliar a coerência da voz
+
+formulaicPatterns: padrões repetitivos / fórmulas rígidas
+- hasFormulas: true se ≥3 legendas seguem a mesma estrutura ou fecham com a mesma frase
+- examples: até 3 excertos que ilustram a repetição (≤ 80 chars cada)
+- explanation: uma frase a explicar o impacto da repetição`;
 
 export const CAPTION_SEMANTIC_JSON_SCHEMA = {
   name: "caption_semantic_analysis",
@@ -63,6 +77,17 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
       "commentEngagement",
       "recurringExpressionsInterpretation",
       "diagnostic",
+    ],
+    required: [
+      "analyzedCaptions",
+      "dominantThemes",
+      "contentIntent",
+      "commentEngagement",
+      "recurringExpressionsInterpretation",
+      "diagnostic",
+      "hookQuality",
+      "brandVoice",
+      "formulaicPatterns",
     ],
     properties: {
       analyzedCaptions: { type: "integer", minimum: 1, maximum: 12 },
