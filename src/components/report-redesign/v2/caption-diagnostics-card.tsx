@@ -8,7 +8,7 @@
  * All data is real or deterministically derived — nothing invented.
  * Evidence is matched client-side from the posts array.
  */
-import { type ReactNode, useState, useCallback, useMemo } from "react";
+import { type ReactNode, useState } from "react";
 import {
   FileText, AlertTriangle, Type, Zap, HelpCircle,
   BookOpen, Sparkles, Mic, Repeat, ChevronDown, ChevronUp,
@@ -59,7 +59,7 @@ const GENERIC_THEME_LABELS = new Set([
 function isWeakThemeLabel(label: string): boolean {
   const words = label.trim().split(/\s+/);
   if (words.length >= 2) return false;
-  const lower = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const lower = label.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   if (GENERIC_THEME_LABELS.has(lower)) return true;
   if (lower.length < 6) return true;
   return false;
@@ -92,20 +92,20 @@ function buildDiagnosticStatement(data: CaptionIntelligence): string {
   const longPct = distributions.length.find((l) => l.bucket === "long")?.pct ?? 0;
 
   const openingPart = dominantOpening
-    ? `A maioria das legendas abre com ${dominantOpening.label.toLowerCase()}`
+    ? `O perfil tende a abrir as legendas com ${dominantOpening.label.toLowerCase()}`
     : "As legendas não revelam um padrão de abertura dominante";
 
   const lengthPart = longPct >= 60
-    ? "e tende a ser longa e explicativa"
+    ? "— a escrita tende a ser longa e explicativa"
     : longPct >= 30
-      ? "com comprimento variável"
-      : "e tende a ser curta e direta";
+      ? "— com comprimento variável entre posts"
+      : "— a escrita tende a ser curta e direta";
 
   const endPart = (questionEnding?.pct ?? 0) < 20
-    ? ". Poucas terminam com pergunta, o que pode limitar a conversa pública nos comentários."
-    : ". Há boa presença de perguntas no final, o que favorece interação nos comentários.";
+    ? ". Poucas legendas terminam com pergunta, o que sugere menor estímulo à conversa nos comentários."
+    : ". A presença de perguntas no final indica um padrão orientado para interação nos comentários.";
 
-  const ctaPart = ctaPatterns.hasCtaPct >= 40 ? "" : " A presença de CTAs explícitos é baixa.";
+  const ctaPart = ctaPatterns.hasCtaPct >= 40 ? "" : " A presença de CTAs explícitos é reduzida nesta amostra.";
 
   return `${openingPart} ${lengthPart}${endPart}${ctaPart}`;
 }
@@ -114,7 +114,7 @@ function buildWhatWorks(data: CaptionIntelligence): string {
   if (data.editorialReading.whatWorks && data.editorialReading.whatWorks !== "—") {
     return data.editorialReading.whatWorks;
   }
-  return "Há consistência editorial — o leitor reconhece a voz entre posts.";
+  return "O perfil mantém consistência editorial — a voz é reconhecível entre posts.";
 }
 
 function buildCriticalPoint(data: CaptionIntelligence): string {
@@ -123,20 +123,20 @@ function buildCriticalPoint(data: CaptionIntelligence): string {
   }
   const questionPct = data.distributions.endings.find((e) => e.type === "question")?.pct ?? 0;
   if (questionPct < 20) {
-    return "Poucas legendas terminam com pergunta — o leitor sai sem ser convidado a responder.";
+    return "A baixa frequência de perguntas no final das legendas pode limitar o estímulo à conversa pública.";
   }
-  return "Sem ponto crítico identificado na amostra atual.";
+  return "Sem risco editorial identificado na amostra atual.";
 }
 
 function buildToWatch(data: CaptionIntelligence): string {
   const topExpr = data.recurringExpressions.items.slice(0, 2);
   if (topExpr.length >= 2) {
-    return `Repetição de expressões como "${topExpr[0].expression.toLowerCase()}" ou "${topExpr[1].expression.toLowerCase()}" pode indicar estrutura demasiado previsível.`;
+    return `Repetição de expressões como "${topExpr[0].expression.toLowerCase()}" ou "${topExpr[1].expression.toLowerCase()}" sugere uma estrutura que pode tornar-se previsível.`;
   }
   if (data.editorialReading.recommendedImprovement) {
     return data.editorialReading.recommendedImprovement;
   }
-  return "Monitorizar a diversidade de estrutura entre posts.";
+  return "A diversidade de estrutura entre posts é um sinal a acompanhar ao longo do tempo.";
 }
 
 // ---------------------------------------------------------------------------
@@ -272,7 +272,7 @@ function EvidenceRow({ match }: { match: MatchedEvidence }) {
     : null;
   return (
     <div className="rounded-xl border border-border-subtle bg-surface-muted/30 p-3 flex items-start gap-3">
-      {p.thumbnail_url && (
+      {p.thumbnail_url && p.thumbnail_url.length > 0 && (
         <img
           src={p.thumbnail_url}
           alt=""
@@ -479,7 +479,7 @@ function SectionThemes({
                         </>
                       ) : (
                         <p className="text-[12px] text-content-tertiary italic py-2">
-                          Evidência não disponível no payload atual.
+                          Evidência detalhada em desenvolvimento.
                         </p>
                       )}
                     </div>
@@ -494,11 +494,13 @@ function SectionThemes({
   );
 }
 
+
 // ---------------------------------------------------------------------------
-// Section B — Expressões recorrentes + Comment engagement
+// Section C — Como escreve (Openings, Endings, Length)
 // ---------------------------------------------------------------------------
 
-function SectionExpressions({
+function SectionWritingAndExpressions({
+  data,
   hasSemantic,
   semanticExpressions,
   deterministicExpressions,
@@ -506,6 +508,7 @@ function SectionExpressions({
   semanticCommentEngagement,
   posts,
 }: {
+  data: CaptionIntelligence;
   hasSemantic: boolean;
   semanticExpressions: Array<{ expression: string; count: number; meaning: string; risk?: string }>;
   deterministicExpressions: Array<{ expression: string; count: number; type: string }>;
@@ -524,9 +527,94 @@ function SectionExpressions({
   const summary = ce ? ce.explanation : commentEngagement.summary;
   const examples = ce ? ce.examples : commentEngagement.examples;
 
+  const patternCount = [
+    data.distributions.openings.length > 0,
+    data.distributions.endings.length > 0,
+    data.distributions.length.length > 0,
+    hasSemanticExpr || hasDetExpr,
+  ].filter(Boolean).length;
+
   return (
     <div className="space-y-4">
-      {/* Expressions */}
+      <SectionHeader
+        letter="B"
+        label="COMO ESCREVE"
+        badge={
+          <span className="text-[10px] text-content-tertiary border border-border-subtle rounded-full px-2 py-0.5">
+            {patternCount} {patternCount === 1 ? "padrão estrutural" : "padrões estruturais"}
+          </span>
+        }
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Openings */}
+        <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
+          <p className="text-eyebrow-sm text-content-tertiary mb-0.5">COMO COMEÇAM</p>
+          <p className="text-[10px] text-content-tertiary mb-3">primeiras 8 palavras</p>
+          <div className="space-y-2">
+            {data.distributions.openings.map((it) => {
+              const Icon = OPENING_ICONS[it.type];
+              return (
+                <div key={it.label} className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[12px] text-content-secondary">
+                    {Icon && <Icon className="w-3.5 h-3.5 text-content-tertiary/70 shrink-0" />}
+                    {it.label}
+                  </span>
+                  <span className="font-mono text-[11px] tabular-nums text-content-tertiary font-semibold">
+                    {it.pct}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Endings */}
+        <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
+          <p className="text-eyebrow-sm text-content-tertiary mb-0.5">COMO ACABAM</p>
+          <p className="text-[10px] text-content-tertiary mb-3">últimas linhas da legenda</p>
+          <div className="space-y-2">
+            {data.distributions.endings.map((it) => {
+              const isQuestionLow = it.type === "question" && it.pct < 20;
+              const isQuestionOk = it.type === "question" && it.pct >= 20;
+              return (
+                <div
+                  key={it.label}
+                  className={cn(
+                    "flex items-center justify-between rounded-md px-1.5 py-1 -mx-1.5",
+                    isQuestionLow && "bg-tint-danger",
+                  )}
+                >
+                  <span className={cn(
+                    "text-[12px] text-content-secondary",
+                    isQuestionLow && "text-signal-danger font-medium",
+                    isQuestionOk && "text-signal-success font-medium",
+                  )}>
+                    {it.label}
+                  </span>
+                  <span className={cn(
+                    "font-mono text-[11px] tabular-nums font-semibold",
+                    isQuestionLow ? "text-signal-danger" : "text-content-tertiary",
+                  )}>
+                    {it.pct}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Length distribution */}
+        <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
+          <p className="text-eyebrow-sm text-content-tertiary mb-0.5">DISTRIBUIÇÃO COMPRIMENTO</p>
+          <p className="text-[10px] text-content-tertiary mb-3">
+            {data.sampleSize} legendas analisadas
+          </p>
+          <LengthBarCompact items={data.distributions.length} />
+        </div>
+      </div>
+
+      {/* Expressões recorrentes */}
       {(hasSemanticExpr || hasDetExpr) && (
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5 space-y-3">
           <div className="flex items-center justify-between">
@@ -606,7 +694,7 @@ function SectionExpressions({
                               ))
                             ) : (
                               <p className="text-[11px] text-content-tertiary italic py-1">
-                                Evidência não disponível no payload atual.
+                                Evidência detalhada em desenvolvimento.
                               </p>
                             )}
                           </div>
@@ -698,100 +786,7 @@ function SectionExpressions({
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// Section C — Como escreve (Openings, Endings, Length)
-// ---------------------------------------------------------------------------
-
-function SectionWritingPatterns({ data }: { data: CaptionIntelligence }) {
-  const patternCount = [
-    data.distributions.openings.length > 0,
-    data.distributions.endings.length > 0,
-    data.distributions.length.length > 0,
-  ].filter(Boolean).length;
-
-  return (
-    <div className="space-y-4">
-      <SectionHeader
-        letter="B"
-        label="COMO ESCREVE"
-        badge={
-          <span className="text-[10px] text-content-tertiary border border-border-subtle rounded-full px-2 py-0.5">
-            {patternCount} {patternCount === 1 ? "padrão estrutural" : "padrões estruturais"}
-          </span>
-        }
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Openings */}
-        <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
-          <p className="text-eyebrow-sm text-content-tertiary mb-0.5">COMO COMEÇAM</p>
-          <p className="text-[10px] text-content-tertiary mb-3">primeiras 8 palavras</p>
-          <div className="space-y-2">
-            {data.distributions.openings.map((it) => {
-              const Icon = OPENING_ICONS[it.type];
-              return (
-                <div key={it.label} className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-[12px] text-content-secondary">
-                    {Icon && <Icon className="w-3.5 h-3.5 text-content-tertiary/70 shrink-0" />}
-                    {it.label}
-                  </span>
-                  <span className="font-mono text-[11px] tabular-nums text-content-tertiary font-semibold">
-                    {it.pct}%
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Endings */}
-        <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
-          <p className="text-eyebrow-sm text-content-tertiary mb-0.5">COMO ACABAM</p>
-          <p className="text-[10px] text-content-tertiary mb-3">últimas linhas da legenda</p>
-          <div className="space-y-2">
-            {data.distributions.endings.map((it) => {
-              const isQuestionLow = it.type === "question" && it.pct < 20;
-              const isQuestionOk = it.type === "question" && it.pct >= 20;
-              return (
-                <div
-                  key={it.label}
-                  className={cn(
-                    "flex items-center justify-between rounded-md px-1.5 py-1 -mx-1.5",
-                    isQuestionLow && "bg-tint-danger",
-                  )}
-                >
-                  <span className={cn(
-                    "text-[12px] text-content-secondary",
-                    isQuestionLow && "text-signal-danger font-medium",
-                    isQuestionOk && "text-signal-success font-medium",
-                  )}>
-                    {it.label}
-                  </span>
-                  <span className={cn(
-                    "font-mono text-[11px] tabular-nums font-semibold",
-                    isQuestionLow ? "text-signal-danger" : "text-content-tertiary",
-                  )}>
-                    {it.pct}%
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Length distribution */}
-        <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
-          <p className="text-eyebrow-sm text-content-tertiary mb-0.5">DISTRIBUIÇÃO COMPRIMENTO</p>
-          <p className="text-[10px] text-content-tertiary mb-3">
-            {data.sampleSize} legendas analisadas
-          </p>
-          <LengthBarCompact items={data.distributions.length} />
-        </div>
-      </div>
     </div>
   );
 }
@@ -868,10 +863,10 @@ function BoldableParagraph({ text }: { text: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Section D — Diagnóstico editorial
+// Section C — Leitura editorial (merged D + E)
 // ---------------------------------------------------------------------------
 
-function SectionDiagnostic({
+function SectionEditorialReading({
   data,
   semantic,
 }: {
@@ -884,7 +879,7 @@ function SectionDiagnostic({
     <div className="space-y-4">
       <SectionHeader
         letter="C"
-        label="DIAGNÓSTICO EDITORIAL"
+        label="LEITURA EDITORIAL"
         badge={
           <span className="text-[10px] text-content-tertiary italic">
             síntese gerada por IA
@@ -909,24 +904,61 @@ function SectionDiagnostic({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-accent-primary/20">
           <DiagnosticColumn
             symbol="✓"
-            label="FUNCIONA"
+            label="PADRÃO FORTE"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.works : buildWhatWorks(data)}
             toneClass="text-signal-success"
           />
           <DiagnosticColumn
             symbol="✕"
-            label="PONTO CRÍTICO"
+            label="RISCO EDITORIAL"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.critical : buildCriticalPoint(data)}
             toneClass="text-signal-danger"
           />
           <DiagnosticColumn
             symbol="◎"
-            label="A OBSERVAR"
+            label="SINAL A ACOMPANHAR"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data)}
             toneClass="text-signal-warning"
           />
         </div>
       </div>
+
+      {/* Quality cards (semantic-only) */}
+      {hasSemantic && (semantic.hookQuality || semantic.brandVoice || semantic.formulaicPatterns) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {semantic.hookQuality && (
+            <SemanticPill
+              icon={Sparkles}
+              label="Qualidade do hook"
+              rating={semantic.hookQuality.rating}
+              ratingLabels={{ strong: "Forte", moderate: "Moderado", weak: "Fraco" }}
+              explanation={semantic.hookQuality.explanation}
+              tone={semantic.hookQuality.rating === "strong" ? "success" : semantic.hookQuality.rating === "weak" ? "danger" : "neutral"}
+            />
+          )}
+          {semantic.brandVoice && (
+            <SemanticPill
+              icon={Mic}
+              label="Voz da marca"
+              rating={semantic.brandVoice.rating}
+              ratingLabels={{ consistent: "Consistente", mixed: "Mista", inconsistent: "Inconsistente" }}
+              explanation={semantic.brandVoice.explanation}
+              tone={semantic.brandVoice.rating === "consistent" ? "success" : semantic.brandVoice.rating === "inconsistent" ? "danger" : "neutral"}
+            />
+          )}
+          {semantic.formulaicPatterns && (
+            <SemanticPill
+              icon={Repeat}
+              label="Padrões repetitivos"
+              rating={semantic.formulaicPatterns.hasFormulas ? "alert" : "ok"}
+              ratingLabels={{ alert: "Detetados", ok: "Sem repetição" }}
+              explanation={semantic.formulaicPatterns.explanation}
+              tone={semantic.formulaicPatterns.hasFormulas ? "danger" : "success"}
+              examples={semantic.formulaicPatterns.hasFormulas ? semantic.formulaicPatterns.examples : undefined}
+            />
+          )}
+        </div>
+      )}
 
       {/* Footer note */}
       <div className="flex items-start gap-2 text-[10px] text-content-tertiary leading-relaxed">
@@ -1068,8 +1100,9 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
         semanticAnalysisCount={hasSemantic ? semantic.analyzedCaptions : undefined}
       />
 
-      {/* ── B · Expressões recorrentes ── */}
-      <SectionExpressions
+      {/* ── B · Como escreve ── */}
+      <SectionWritingAndExpressions
+        data={data}
         hasSemantic={hasSemantic}
         semanticExpressions={semanticExpressions}
         deterministicExpressions={expressions}
@@ -1078,48 +1111,8 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
         posts={posts}
       />
 
-      {/* ── C · Como escreve ── */}
-      <SectionWritingPatterns data={data} />
-
-      {/* ── D · Diagnóstico editorial ── */}
-      <SectionDiagnostic data={data} semantic={semantic} />
-
-      {/* ── E · Quality cards (semantic-only) ── */}
-      {hasSemantic && (semantic.hookQuality || semantic.brandVoice || semantic.formulaicPatterns) && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {semantic.hookQuality && (
-            <SemanticPill
-              icon={Sparkles}
-              label="Qualidade do hook"
-              rating={semantic.hookQuality.rating}
-              ratingLabels={{ strong: "Forte", moderate: "Moderado", weak: "Fraco" }}
-              explanation={semantic.hookQuality.explanation}
-              tone={semantic.hookQuality.rating === "strong" ? "success" : semantic.hookQuality.rating === "weak" ? "danger" : "neutral"}
-            />
-          )}
-          {semantic.brandVoice && (
-            <SemanticPill
-              icon={Mic}
-              label="Voz da marca"
-              rating={semantic.brandVoice.rating}
-              ratingLabels={{ consistent: "Consistente", mixed: "Mista", inconsistent: "Inconsistente" }}
-              explanation={semantic.brandVoice.explanation}
-              tone={semantic.brandVoice.rating === "consistent" ? "success" : semantic.brandVoice.rating === "inconsistent" ? "danger" : "neutral"}
-            />
-          )}
-          {semantic.formulaicPatterns && (
-            <SemanticPill
-              icon={Repeat}
-              label="Padrões repetitivos"
-              rating={semantic.formulaicPatterns.hasFormulas ? "alert" : "ok"}
-              ratingLabels={{ alert: "Detetados", ok: "Sem repetição" }}
-              explanation={semantic.formulaicPatterns.explanation}
-              tone={semantic.formulaicPatterns.hasFormulas ? "danger" : "success"}
-              examples={semantic.formulaicPatterns.hasFormulas ? semantic.formulaicPatterns.examples : undefined}
-            />
-          )}
-        </div>
-      )}
+      {/* ── C · Leitura editorial ── */}
+      <SectionEditorialReading data={data} semantic={semantic} />
     </CardShell>
   );
 }
