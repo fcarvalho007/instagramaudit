@@ -275,6 +275,7 @@ async function logCall(
   completionTokens: number,
   errorMessage?: string,
   estimatedCostUsd?: number,
+  analysisEventId?: string | null,
 ): Promise<void> {
   try {
     await recordProviderCall({
@@ -290,6 +291,7 @@ async function logCall(
       model: VISION_MODEL,
       estimatedCostUsd: estimatedCostUsd ?? null,
       errorMessage: errorMessage ?? null,
+      analysisEventId: analysisEventId ?? null,
     });
   } catch (err) {
     console.error(LOG_PREFIX, "failed to log provider call", err);
