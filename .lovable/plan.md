@@ -1,98 +1,120 @@
-## Avaliação de prontidão
 
-**PASS** — ambos os perfis têm snapshots completos e o sistema está em cache_only.
+## Auditoria Read-Only: Admin Custos `/admin/receita`
 
-### Correção importante à auditoria
+### Valores reais da base de dados (últimos 30 dias)
 
-Após inspecção directa ao código, a maioria dos campos listados como "não renderizados" **já estão activos no report**:
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    provider_call_logs (success)                         │
+├────────────┬──────────┬───────────┬───────────┬─────────┬──────────────┤
+│ Provider   │ Calls    │ estimated │ actual    │ Linked  │ Unlinked     │
+├────────────┼──────────┼───────────┼───────────┼─────────┼──────────────┤
+│ Apify      │ 42       │ $0.3605   │ $0.4991   │ 20      │ 22           │
+│ OpenAI     │ 45       │ $0.2679   │ $0.0000   │ 16      │ 29           │
+│ DataForSEO │ 12       │ $0.0996   │ $0.1080   │ 1       │ 11           │
+├────────────┼──────────┼───────────┼───────────┼─────────┼──────────────┤
+│ TOTAL      │ 99       │ $0.7280   │ $0.6071   │ 37      │ 62           │
+└────────────┴──────────┴───────────┴───────────┴─────────┴──────────────┘
+```
 
-| Campo | Estado real |
-|-------|-------------|
-| `ai_insights_v2.sections.formats` | Renderizado (shell-v2 L196) |
-| `ai_insights_v2.sections.heatmap` | Renderizado (shell-v2 L174) |
-| `ai_insights_v2.sections.benchmark` | Renderizado (shell-v2 L235) |
-| `ai_insights_v2.sections.daysOfWeek` | Renderizado (shell-v2 L176) |
-| `ai_insights_v2.sections.marketSignals` | Renderizado (shell-v2 L225) |
-| `ai_insights_v2.sections.evolutionChart` | Renderizado (shell-v2 L166) |
-| `caption_semantic_analysis.hookQuality` | Renderizado (caption-diagnostics-card L697-704) |
-| `caption_semantic_analysis.brandVoice` | Renderizado (caption-diagnostics-card L707-714) |
-| `caption_semantic_analysis.formulaicPatterns` | Renderizado (caption-diagnostics-card L717-725) |
-| `caption_semantic_analysis.dominantThemes` | Renderizado (caption-diagnostics-card L367) |
-| `comment_intelligence.sampleComments` | Renderizado (TransparencyStrip L144) |
-| `comment_intelligence.recommendedConversationAction` | Renderizado (CommentIntelligenceSection L421) |
-| `comment_intelligence.uniqueAudienceCommentersCount` | Renderizado (AudienceVoiceBreakdown L1072) |
+### O que o UI mostra vs o que deveria mostrar
 
-### Campos genuinamente não renderizados
+```text
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                           ZONA 1 — Custo Interno Atribuído                    │
+│ Fórmula actual: COALESCE(actual_cost_usd, estimated_cost_usd, 0)             │
+├────────────┬──────────────────┬──────────────────────────────────────────────┤
+│ Provider   │ Valor no UI      │ Fonte                                        │
+├────────────┼──────────────────┼──────────────────────────────────────────────┤
+│ Apify      │ ~$0.52           │ actual($0.4991) para comment-scraper,        │
+│            │                  │ estimated($0.3605) para scraper              │
+│ OpenAI     │ ~$0.27           │ estimated only (actual=0 everywhere)         │
+│ DataForSEO │ ~$0.11           │ actual($0.108) mostly                        │
+│ TOTAL      │ ~$0.90           │ Mistura de actual + estimated                │
+└────────────┴──────────────────┴──────────────────────────────────────────────┘
+```
 
-| Campo | Componente existente | Risco |
-|-------|---------------------|-------|
-| `ai_insights_v2.priorities` | `report-diagnostic-priorities.tsx` existe mas **nunca é importado** | Baixo — basta ligar |
-| `comment_intelligence.dominantConversationSignals` | Nenhum | Baixo — array de strings |
+```text
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                    ZONA 3 — Reconciliação (interno vs externo)                 │
+│ Fórmula internal: SUM(estimated_cost_usd) APENAS                             │
+├────────────┬──────────────┬──────────────┬───────────────────────────────────┤
+│ Provider   │ Interno recon│ Externo imp. │ Nota                              │
+├────────────┼──────────────┼──────────────┼───────────────────────────────────┤
+│ Apify      │ $0.36        │ $0.66        │ Batch importado correctamente     │
+│ OpenAI     │ $0.27        │ —            │ Sem importação externa            │
+│ DataForSEO │ $0.10        │ —            │ Sem importação externa            │
+└────────────┴──────────────┴──────────────┴───────────────────────────────────┘
+```
 
----
+### PASS/FAIL por item
 
-## Plano de implementação
+| # | Verificação | Resultado | Detalhe |
+|---|-------------|-----------|---------|
+| 1 | Valores Apify/OpenAI/DFS visíveis | **PASS** | 3 provider cards + total renderizam correctamente |
+| 2 | Apify external billing match | **PASS** | Batch `92ec4b06` tem `dashboard_total=0.66`, `raw=0.6601`, `displayed=0.67`, `rounding_delta=-0.01` — tudo correcto |
+| 3 | Apify UI $0.52 = que valor? | **WARN** | Mistura: `actual_cost_usd` (comment-scraper $0.497) + `estimated_cost_usd` (scraper $0.361). Label diz "interno atribuído" mas usa actual quando disponível |
+| 4 | "Apify faturou $0.36" | **BUG** | A coluna "Interno atribuído" na reconciliação usa **SUM(estimated_cost_usd)** = $0.36, mas Zona 1 usa **COALESCE(actual, estimated)** = $0.52. Inconsistência de $0.16 |
+| 5 | `provider_billing_imports` correcto | **PASS** | 2 rows: scraper ($0.0851 raw, $0.09 displayed) + comments ($0.575 raw, $0.58 displayed) — match exact |
+| 6 | `provider_call_logs` vs external | **WARN** | Internal estimated = $0.36, Internal actual = $0.50, External dashboard = $0.66. Delta expectável: estimated subestima (usa preço fixo $0.0023/event por scraper), actual mais próximo mas comment-scraper não tem estimated |
+| 7 | OpenAI e DFS | **PASS** | Mostrados como estimativas internas. Sem importação externa — status "PENDENTE" na reconciliação |
+| 8 | Daily charts | **PASS** | Usa `aggregateCostsFromLogs` = COALESCE(actual, estimated). Consistente com Zona 1 |
+| 9 | Cost per report | **PASS** | Usa fresh events linked — correctamente filtrado |
+| 10 | Attribution confidence | **PASS** | Card mostra %, total e breakdown por provider. Suficientemente claro |
 
-### Prompt 1 — Ligar prioridades de ação ao diagnóstico
+### Apify reconciliation detalhada
 
-**Valor:** Alto — as prioridades são o bloco de maior impacto editorial, já com componente pronto mas desligado.
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Apify Billing Reconciliation                     │
+├─────────────────────────────────────┬───────────────────────────────┤
+│ Dashboard total (user screenshot)   │ $0.66                         │
+│ Batch dashboard_total_actual_cost   │ $0.66 ✓                       │
+│ imported_total_raw_cost_usd         │ $0.6601 ✓                     │
+│ imported_total_displayed_cost_usd   │ $0.67 ✓                       │
+│ rounding_delta_usd                  │ -$0.01 ✓                      │
+│ raw_delta_usd                       │ -$0.0001 ✓                    │
+│ reconciliation_status               │ "Rounding difference" ✓       │
+├─────────────────────────────────────┼───────────────────────────────┤
+│ Internal ESTIMATED (recon formula)  │ $0.3605                       │
+│ Internal COALESCE (expense formula) │ $0.5211                       │
+│ Internal ACTUAL only                │ $0.4991                       │
+│ cost_daily Apify 30d                │ $0.3592                       │
+├─────────────────────────────────────┼───────────────────────────────┤
+│ MISMATCH                            │ Zona 1 diz $0.52,            │
+│                                     │ Zona 3 interno diz $0.36     │
+│                                     │ Diferença: $0.16             │
+│                                     │ Causa: fórmulas diferentes   │
+└─────────────────────────────────────┴───────────────────────────────┘
+```
 
-**Ficheiros a editar:**
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — importar `ReportDiagnosticPriorities`, mapear `ai_insights_v2.priorities` para `PriorityItem[]`, renderizar após o último grupo (D), com fallback determinístico existente.
+### Root causes identificadas
 
-**Ficheiros bloqueados (não tocar):**
-- `report-diagnostic-priorities.tsx` (componente visual já está pronto)
-- Todos os ficheiros em LOCKED_FILES.md
-- Nenhum endpoint, nenhum provider, nenhum pipeline PDF
+**BUG 1 — Fórmula inconsistente entre Zona 1 e Zona 3**
 
-**Risco:** Mínimo — o componente já está testado visualmente; o único trabalho é a conversão de tipos `AiPriorityItem → PriorityItem` e o render condicional.
+- `aggregateCostsFromLogs()` (Zona 1, Zona 6): `COALESCE(actual_cost_usd, estimated_cost_usd, 0)`
+- `getReconciliationData()` (Zona 3): `SUM(estimated_cost_usd)` only
+- O mesmo provider mostra $0.52 num sítio e $0.36 noutro
 
----
+**BUG 2 — buildReconRows usa Zona 1 totals MAS reconciliation API usa fórmula diferente**
 
-### Prompt 2 — Mostrar dominantConversationSignals no card Q05
+- A tabela de reconciliação no UI chama `buildReconRows(data, reconByProvider)` que usa `data.apify_total` (COALESCE) para "interno" mas `reconByProvider.external` para externo
+- Mas `reconByProvider.internal` (da API) usa estimated_only
+- Resultado: a coluna "Interno atribuído" mostra o valor da Zona 1 ($0.52), mas se fosse da API mostraria $0.36
 
-**Valor:** Médio — enriquece o diagnóstico de audiência com o sinal de conversa dominante (ex.: "praise", "questions").
+**BUG 3 — Batch Apify tem período parcial**
 
-**Ficheiros a editar:**
-- `src/components/report-redesign/v2/report-diagnostic-card.tsx` — na zona Z3 do `DiagnosticAudienceHighlight`, após o `AudienceVoiceBreakdown`, adicionar uma linha com os sinais dominantes de conversa vindos de `comment_intelligence.dominantConversationSignals`. Usar chips semelhantes aos já existentes em `buildSignalChips`.
+- `period_start: 2026-05-01`, `period_end: 2026-05-06` mas o batch cobre **todo** o dashboard billing cycle
+- Não é grave agora, mas quando houver mais importações pode causar sobreposição
 
-**Ficheiros bloqueados:**
-- `report-comment-intelligence.tsx` (componente standalone, não duplicar lógica)
-- Todos os ficheiros em LOCKED_FILES.md
+### Recomendações (não implementar ainda)
 
-**Risco:** Baixo — campo é um `string[]` simples; fallback vazio (não renderizar quando array vazio ou ausente).
+1. **Unificar fórmula interna**: Decidir se "interno" é `estimated_cost_usd` ou `COALESCE(actual, estimated)`. Recomendo usar sempre COALESCE para consistência — é a mesma lógica que alimenta totais e gráficos.
 
----
+2. **Corrigir reconciliation server**: `billing-reconciliation.server.ts` L82-84 deve seleccionar `actual_cost_usd` além de `estimated_cost_usd` e usar a mesma fórmula COALESCE.
 
-### Prompt 3 — Fallback states defensivos
+3. **Clarificar labels no UI**: Na Zona 3, a coluna "Interno atribuído" deveria ter nota "(actual quando disponível, estimado quando não)". Na Zona 1, manter "Custo interno atribuído" que já é claro.
 
-**Valor:** Médio — protege contra snapshots incompletos futuros.
+4. **Importar OpenAI e DataForSEO**: Criar batches para estes providers quando houver dados do dashboard. Status "PENDENTE" é correcto por agora.
 
-**Ficheiros a editar:**
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — garantir que a secção de prioridades (Prompt 1) tem fallback gracioso quando `priorities` é `undefined`.
-- `src/components/report-redesign/v2/report-diagnostic-card.tsx` — garantir que `dominantConversationSignals` (Prompt 2) não rebenta com `undefined`.
-
-**Nota:** Os restantes campos (hookQuality, brandVoice, etc.) **já têm fallback** — renderizam condicionalmente com `&&`.
-
----
-
-## Ficheiros que NÃO devem ser tocados
-
-- `src/lib/enrichment/run-enrichment.server.ts`
-- `src/lib/insights/openai-insights.server.ts`
-- `src/lib/analysis/comment-intelligence.ts`
-- `src/lib/report/block02-diagnostic.ts` (salvo se necessário para mapear priorities)
-- Todos os endpoints `/api/`
-- Todos os ficheiros de LOCKED_FILES.md
-- Pipeline PDF
-- Admin / custos
-- `report-shell-v2.tsx` (as 9 sections de insights V2 já estão ligadas)
-
-## Riscos e mitigações
-
-| Risco | Mitigação |
-|-------|-----------|
-| Tipo mismatch entre `AiPriorityItem` e `PriorityItem` | Criar mapper inline, verificar com tsc |
-| Snapshot antigo sem `priorities` | Fallback para derivador determinístico já existente em block02 |
-| Snapshot sem `dominantConversationSignals` | Render condicional — vazio = não mostrar |
-| Alterar acidentalmente provider logic | Scope restrito a componentes de report-redesign/v2 |
+5. **Corrigir período do batch Apify**: Quando re-importar, usar o ciclo completo de faturação (mês inteiro ou o período real do dashboard).
