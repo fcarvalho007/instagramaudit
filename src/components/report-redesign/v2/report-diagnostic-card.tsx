@@ -969,6 +969,15 @@ export function DiagnosticObjectiveSynthesis({
 function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelligence }) {
   const ci = commentIntel;
   const totalSignals = ci.questionsFromAudienceCount + ci.praiseCount + ci.buyingIntentCount + ci.complaintOrIssueCount;
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  // Map signal keys to excerpt arrays
+  const excerptMap: Record<string, Array<{ username: string; text: string }>> = {
+    questions: ci.classifiedExcerpts?.questions ?? [],
+    praise: ci.classifiedExcerpts?.praise ?? [],
+    complaints: ci.classifiedExcerpts?.complaints ?? [],
+    buying: ci.classifiedExcerpts?.buyingIntent ?? [],
+  };
 
   const items: Array<{
     key: string;
@@ -1047,18 +1056,31 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
       <ul className="space-y-3">
         {items.map((it, i) => {
           const barW = Math.max(8, (it.count / max) * 100);
+          const excerpts = excerptMap[it.key] ?? [];
+          const isExpanded = expandedKey === it.key;
+          const hasExcerpts = excerpts.length > 0;
           return (
             <li key={it.key}>
-              <div className="flex items-start gap-2.5">
+              <button
+                type="button"
+                className={cn("flex items-start gap-2.5 w-full text-left", hasExcerpts && "cursor-pointer")}
+                onClick={() => hasExcerpts && setExpandedKey(isExpanded ? null : it.key)}
+                disabled={!hasExcerpts}
+              >
                 <div className={cn("size-7 sm:size-8 rounded-lg flex items-center justify-center shrink-0 bg-surface-muted")}>
                   <it.Icon className={cn("size-3.5 sm:size-4", it.toneClass)} strokeWidth={1.5} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[13px] sm:text-[14px] font-semibold text-content-primary">{it.label}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <span className="font-mono text-[13px] sm:text-[15px] font-bold tabular-nums text-content-primary">{it.count}</span>
                       <span className="font-mono text-[10px] tabular-nums text-content-tertiary">({it.pct}%)</span>
+                      {hasExcerpts && (
+                        isExpanded
+                          ? <ChevronUp size={14} className="text-content-tertiary ml-1" strokeWidth={1.5} />
+                          : <ChevronDown size={14} className="text-content-tertiary ml-1" strokeWidth={1.5} />
+                      )}
                     </div>
                   </div>
                   <p className="text-[11px] sm:text-[12px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</p>
@@ -1069,36 +1091,21 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
                     />
                   </div>
                 </div>
-              </div>
+              </button>
+              {isExpanded && excerpts.length > 0 && (
+                <ul className="mt-2 ml-[36px] sm:ml-[40px] space-y-1.5 rounded-lg bg-surface-muted/60 border border-border-subtle px-3 py-2.5">
+                  {excerpts.map((ex, j) => (
+                    <li key={j} className="text-[12px] leading-snug">
+                      <span className="font-semibold text-content-secondary">@{ex.username}</span>
+                      <span className="text-content-tertiary ml-1">«{ex.text}»</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           );
         })}
       </ul>
-
-      {ci.dominantConversationSignals.length > 0 && (
-        <div className="pt-2 border-t border-border-subtle">
-          <p className="text-eyebrow-sm text-content-tertiary mb-1.5">Sinais dominantes</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ci.dominantConversationSignals.map((signal) => {
-              const SIGNAL_LABELS: Record<string, string> = {
-                questions: "Perguntas",
-                praise: "Elogios",
-                complaint: "Queixas",
-                buying_intent: "Compra",
-                spam: "Ruído",
-              };
-              return (
-                <span
-                  key={signal}
-                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-border-default bg-surface-muted text-content-secondary"
-                >
-                  {SIGNAL_LABELS[signal] ?? signal}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {ci.recommendedConversationAction && (
         <div className="rounded-lg bg-tint-primary px-3.5 py-3 border border-accent-primary/15">
@@ -1107,25 +1114,41 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
         </div>
       )}
 
-      {/* Actionable comments summary */}
+      {/* Comentários que pedem ação */}
       {(() => {
-        const actionable = ci.questionsFromAudienceCount + ci.buyingIntentCount + ci.complaintOrIssueCount;
-        if (actionable <= 0) return null;
+        const qCount = ci.questionsFromAudienceCount;
+        const bCount = ci.buyingIntentCount;
+        const cCount = ci.complaintOrIssueCount;
+        const actionable = qCount + bCount + cCount;
+        if (actionable <= 0 || totalSignals <= 0) return null;
+
+        // Determine dominant category for insight
+        const dominant = [
+          { key: "questions", count: qCount, insight: "A maioria dos comentários acionáveis são perguntas — considere um FAQ nos destaques." },
+          { key: "buying", count: bCount, insight: "Há intenção de compra nos comentários — facilite o acesso ao produto ou serviço." },
+          { key: "complaints", count: cCount, insight: "Existem queixas nos comentários — priorize resposta para proteger a reputação." },
+        ].sort((a, b) => b.count - a.count)[0];
+
+        const parts: string[] = [];
+        if (qCount > 0) parts.push(`${qCount} ${qCount === 1 ? "pergunta" : "perguntas"}`);
+        if (bCount > 0) parts.push(`${bCount} intenção de compra`);
+        if (cCount > 0) parts.push(`${cCount} ${cCount === 1 ? "problema" : "problemas"}`);
+
         return (
           <div className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-muted/60 px-3.5 py-2.5">
             <Zap size={13} className="text-accent-primary shrink-0" strokeWidth={1.5} />
             <div>
               <p className="text-[13px] font-semibold text-content-primary">
-                {actionable} {actionable === 1 ? "comentário acionável" : "comentários acionáveis"}
-                {ci.audienceCommentsCount > 0 && (
-                  <span className="font-normal text-[11px] text-content-tertiary ml-1.5">
-                    ({Math.round((actionable / ci.audienceCommentsCount) * 100)}% da amostra)
-                  </span>
-                )}
+                Comentários que pedem ação
               </p>
               <p className="text-[10px] text-content-tertiary">
-                perguntas + intenção de compra + problemas
+                {parts.join(" · ")}
               </p>
+              {dominant && dominant.count > 0 && (
+                <p className="text-[11px] text-content-secondary leading-snug mt-1">
+                  {dominant.insight}
+                </p>
+              )}
             </div>
           </div>
         );
