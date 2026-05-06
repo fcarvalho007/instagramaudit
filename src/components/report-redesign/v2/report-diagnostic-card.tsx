@@ -667,11 +667,13 @@ export function DiagnosticAudienceHighlight({
             {formatAvg(avgComments)}
           </span>
           <span className="text-[9px] sm:text-[11px] text-content-tertiary">
-            {commentsToLikesPct != null && commentsToLikesPct > 0
-              ? commentsToLikesPct < 0.5
-                ? "baixa conversão de gostos em comentários"
-                : `${commentsToLikesPct < 0.1 ? "<0,1" : commentsToLikesPct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% dos gostos geraram comentário`
-              : sampleSize ? `em ${sampleSize} publicações` : "por publicação"}
+            {sampleSize != null && sampleSize < 5
+              ? "Base pequena para avaliar conversão de gostos em comentários."
+              : commentsToLikesPct != null && commentsToLikesPct > 0
+                ? commentsToLikesPct < 0.5
+                  ? "baixa conversão de gostos em comentários"
+                  : `${commentsToLikesPct < 0.1 ? "<0,1" : commentsToLikesPct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% dos gostos geraram comentário`
+                : sampleSize ? `em ${sampleSize} publicações` : "por publicação"}
           </span>
         </div>
 
@@ -1054,12 +1056,21 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
           {ci.uniqueAudienceCommentersCount > 0 && ` de ${ci.uniqueAudienceCommentersCount.toLocaleString("pt-PT")} pessoas`}
           {" "}· percentagens sobre sinais classificados
         </p>
-        {ci.postsWithConversationPct > 0 && (
+        {ci.postsWithConversationPct > 0 && ci.samplePosts >= 3 ? (
           <p className="text-[10px] text-content-tertiary/70 mt-0.5">
             Conversa presente em {Math.round(ci.postsWithConversationPct)}% dos posts analisados
             {ci.uniqueAudienceCommentersCount > 1 && ci.audienceCommentsCount > ci.uniqueAudienceCommentersCount
               ? ` · ~${(ci.audienceCommentsCount / ci.uniqueAudienceCommentersCount).toFixed(1).replace(".", ",")} comentários por pessoa`
               : ""}
+          </p>
+        ) : ci.samplePosts < 3 ? (
+          <p className="text-[10px] text-content-tertiary/70 mt-0.5">
+            Amostra de comentários curta — leitura qualitativa.
+          </p>
+        ) : null}
+        {totalSignals < 5 && totalSignals > 0 && (
+          <p className="text-[10px] text-content-tertiary/70 mt-0.5 italic">
+            Percentagens baseadas numa amostra pequena de sinais classificados.
           </p>
         )}
       </div>
