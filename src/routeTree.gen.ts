@@ -52,6 +52,7 @@ import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/re
 import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/force-refresh'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
+import { Route as ApiAdminBillingReconciliationRouteImport } from './routes/api/admin/billing-reconciliation'
 import { Route as ApiAdminAnalysisCostBreakdownRouteImport } from './routes/api/admin/analysis-cost-breakdown'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
@@ -306,6 +307,12 @@ const ApiAdminDataforseoDiagnosticsRoute =
     path: '/api/admin/dataforseo-diagnostics',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminBillingReconciliationRoute =
+  ApiAdminBillingReconciliationRouteImport.update({
+    id: '/api/admin/billing-reconciliation',
+    path: '/api/admin/billing-reconciliation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminAnalysisCostBreakdownRoute =
   ApiAdminAnalysisCostBreakdownRouteImport.update({
     id: '/api/admin/analysis-cost-breakdown',
@@ -548,6 +555,7 @@ export interface FileRoutesByFullPath {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -628,6 +636,7 @@ export interface FileRoutesByTo {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -710,6 +719,7 @@ export interface FileRoutesById {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -793,6 +803,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
@@ -873,6 +884,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
@@ -954,6 +966,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
@@ -1023,6 +1036,7 @@ export interface RootRouteChildren {
   ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
   ReportExampleRoute: typeof ReportExampleRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
+  ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
@@ -1366,6 +1380,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/dataforseo-diagnostics'
       fullPath: '/api/admin/dataforseo-diagnostics'
       preLoaderRoute: typeof ApiAdminDataforseoDiagnosticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/billing-reconciliation': {
+      id: '/api/admin/billing-reconciliation'
+      path: '/api/admin/billing-reconciliation'
+      fullPath: '/api/admin/billing-reconciliation'
+      preLoaderRoute: typeof ApiAdminBillingReconciliationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/analysis-cost-breakdown': {
@@ -1790,6 +1811,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSendReportEmailRoute: ApiSendReportEmailRoute,
   ReportExampleRoute: ReportExampleRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
+  ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,
