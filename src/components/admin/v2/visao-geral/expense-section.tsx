@@ -23,6 +23,7 @@ import { AdminSectionHeader } from "../admin-section-header";
 import { AdminCard } from "../admin-card";
 import { ProgressBar } from "../progress-bar";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
+import { KPICard } from "../kpi-card";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { SectionError, SectionSkeleton } from "../section-state";
 import { DAILY_COST_LIMIT } from "@/lib/admin/mock-data";
