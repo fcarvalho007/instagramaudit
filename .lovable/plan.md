@@ -1,109 +1,32 @@
 
-# Admin Execution Mode: Cache-Only / Fresh
+# QA Validation — P04 Caption Diagnostics Robustness
 
-## Audit Summary
+## Preliminary Audit Results
 
-| File | Provider | Current gate | Blockable? |
-|------|----------|-------------|------------|
-| `analyze-public-v1.ts` | Apify | `isApifyEnabled()` + allowlist | Yes |
-| `analyze-public-v1.ts` | OpenAI (insights v1/v2) | `isOpenAiAllowed()` | Yes |
-| `analyze-public-v1.ts` | OpenAI (visual cover) | `isOpenAiAllowed()` | Yes |
-| `analyze-public-v1.ts` | OpenAI (caption semantic) | `isOpenAiAllowed()` | Yes |
-| `analyze-public-v1.ts` | DataForSEO (market signals) | `isDataForSeoEnabled()` + allowlist | Yes |
-| `analyze-public-v1.ts` | Apify (comment scraper) | `COMMENT_SCRAPER_ENABLED` | Yes |
-| `enrich-comments` endpoint | Apify | `COMMENT_SCRAPER_ENABLED` | Yes |
+| # | Case | Status | Evidence |
+|---|------|--------|----------|
+| 1 | Old semantic cache (no schemaVersion) | **PASS** | `parseCaptionSemanticAnalysis` at line 62 returns `null` when `r.schemaVersion !== 2`. Card falls back to deterministic rendering. |
+| 2 | Valid semantic cache (schemaVersion: 2) | **PASS** | Line 62 accepts `schemaVersion === 2`. Lines 396-416, 420-444, 477-505, 515-543, 669, 674, 680, 686, 695-728 all check `hasSemantic` and render semantic fields when present. |
+| 3 | Emoji-only captions | **PASS** | `cleanCaption` at line 225 strips `\p{Extended_Pictographic}`. `countWords` at line 230-233 calls `cleanCaption` first. "🔥🔥🔥" becomes empty string, word count = 0. "#ai #marketing 🔥🔥" becomes empty (hashtags + emojis stripped), word count = 0. |
+| 4 | Very short captions (avgWordsPerCaption < 5) | **PASS** | `tooShortForThemes` guard at line 372. When true, line 405 skips deterministic themes and shows "Sem tema dominante claro" (line 415). |
+| 5 | English captions | **PASS** | `classifyOpening` at line 265 handles `what/why/how/do you/have you/would you/can you`. `COMMENT_ENGAGEMENT_TERMS` at lines 773-780 include English patterns: "tell me", "let me know", "what do you think", "have you tried", "which one", "would you use", "drop a comment". `OPENING_NEWS_TERMS` and `OPENING_STORY_TERMS` include English terms. |
+| 6 | Visual regression | **PASS** | Zero hardcoded `rose-*`, `amber-*`, `red-*`, `green-*`, `yellow-*` classes. All tone indicators use semantic tokens: `text-signal-danger`, `text-signal-success`, `text-signal-warning`, `bg-tint-danger`, `bg-tint-success`, `bg-tint-warning`, `bg-tint-primary`. |
 
-Existing config pattern: `app_config` table with `key/value/updated_by/updated_at`, used for cost caps. Same pattern will be reused.
+## Remaining Robustness Issues
 
----
+None identified. All 6 cases pass static audit. One quality improvement would be to detect English question endings ("?") in `classifyOpening` — already handled via the `first.endsWith("?")` check at line 265.
 
-## Changes
+## Plan
 
-### 1. Server-side guard (`src/lib/admin/execution-mode.server.ts` — new)
+**Single deliverable**: Add a new test file `src/lib/report/__tests__/caption-intelligence-robustness.test.ts` covering:
 
-- `getAnalysisExecutionMode()`: reads `app_config` key `analysis_execution_mode`, returns `"cache_only"` (default) or `"fresh"`.
-- `assertFreshModeAllowed(provider, context)`: throws a typed `CacheOnlyBlockedError` if mode is `cache_only`.
-- Short in-memory TTL (~30s) so the setting is responsive without hammering the DB on every request.
+1. `cleanCaption` — emoji stripping, hashtag removal, URL removal, mixed content
+2. `countWords` via `buildCaptionStats` — emoji-only, hashtag-only, short captions
+3. `classifyOpening` — English question patterns, "What do you think?", "Have you tried this?"
+4. `buildCommentEngagement` — English engagement terms: "let me know", "what do you think"
+5. `parseCaptionSemanticAnalysis` — old cache (no schemaVersion), valid cache (schemaVersion: 2), missing source
+6. `tooShortForThemes` guard behavior (tested via `buildCaptionIntelligence` output)
 
-### 2. Update `analyze-public-v1.ts`
+Then run `bunx tsc --noEmit` and `bunx vitest run`.
 
-Insert a single early check after cache lookup (line ~600):
-- If mode is `cache_only`:
-  - If fresh snapshot exists, return it (cache hit path unchanged).
-  - If stale snapshot exists, serve stale.
-  - If no snapshot at all, return `{ success: false, error_code: "CACHE_ONLY_NO_DATA", message: "Sem snapshot disponível em modo cache-only..." }`.
-  - Skip ALL provider calls (Apify, OpenAI, DataForSEO, comment scraper).
-  - Log event with `outcome: "blocked_cache_only"`, `estimated_cost_usd: 0`.
-- If mode is `fresh`: continue with existing flow unchanged.
-
-Add `"CACHE_ONLY_NO_DATA"` to the error code union and HTTP status map (503).
-
-### 3. Server function for reading/writing mode (`src/server/admin/execution-mode.functions.ts` — new)
-
-- `getExecutionMode`: createServerFn, reads current mode from `app_config`.
-- `setExecutionMode`: createServerFn, upserts `app_config` key, requires admin auth.
-
-### 4. Admin UI — Execution Mode Card (`src/components/admin/v2/visao-geral/execution-mode-card.tsx` — new)
-
-Compact card in Visão Geral, placed before expense section:
-- Title: "Modo de análise"
-- Segmented control: "Cache-only" / "Fresh"
-- Status badge: green "Cache-only · sem custos" or amber "Fresh · pode gerar custos"
-- Descriptive copy per state
-- Confirmation dialog when switching to Fresh: "Ativar modo Fresh pode gerar custos de API. Confirmar?"
-
-### 5. Test Profile Status Panel (`src/components/admin/v2/visao-geral/test-profiles-card.tsx` — new)
-
-For `frederico.m.carvalho` and `martimsilvai`:
-- Latest snapshot date
-- Cached report exists (yes/no)
-- Caption semantic analysis exists
-- Comment intelligence exists
-- Visual cover analysis exists
-- Last estimated cost
-- "Abrir report em cache" link
-- "Reanalisar fresh" button (disabled in cache_only mode with tooltip)
-
-Server function to fetch this data from `analysis_snapshots`.
-
-### 6. Cache Maintenance (`src/components/admin/v2/visao-geral/cache-maintenance-card.tsx` — new)
-
-- "Limpar cache deste perfil" — deletes specific snapshot by handle (with confirmation)
-- "Forçar próxima análise fresh" — expires the snapshot for a selected handle
-- No global delete button
-
-### 7. Logging
-
-When `cache_only` blocks a provider call, record via `recordProviderCall` with:
-- `actor`: provider name + context
-- `status`: `"blocked_cache_only"`
-- `estimated_cost_usd`: 0
-
-### 8. Integration in Visão Geral page
-
-Update `src/components/admin/v2/visao-geral/` parent to include the three new cards in order:
-1. Execution Mode Card
-2. Test Profiles Card
-3. Cache Maintenance Card
-(before existing expense section)
-
----
-
-## Files changed
-
-- **New**: `src/lib/admin/execution-mode.server.ts`
-- **New**: `src/server/admin/execution-mode.functions.ts`
-- **New**: `src/components/admin/v2/visao-geral/execution-mode-card.tsx`
-- **New**: `src/components/admin/v2/visao-geral/test-profiles-card.tsx`
-- **New**: `src/components/admin/v2/visao-geral/cache-maintenance-card.tsx`
-- **Edited**: `src/routes/api/analyze-public-v1.ts` (early cache_only guard + new error code)
-- **Edited**: `src/lib/analysis/types.ts` (add CACHE_ONLY_NO_DATA error code)
-- **Edited**: Visão Geral parent component (import new cards)
-
-## Not touched
-
-- Public report card design (P04, P05, P07)
-- PDF pipeline
-- Auth/admin access rules
-- Global design tokens
-- Locked files
+**No files modified** except the new test file. No changes to P05, P07, or any other components.
