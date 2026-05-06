@@ -97,12 +97,16 @@ function SistemaPage() {
              info="Modo de execução, perfis de teste e gestão de cache para desenvolvimento."
            />
            <div className="rounded-2xl border border-admin-border bg-admin-surface p-6 shadow-admin-card">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <ExecutionModeCard />
-               <TestProfilesCard />
-             </div>
-             <div className="mt-5 pt-5 border-t border-admin-border">
+             <div className="flex flex-col divide-y divide-admin-border">
+               <div className="pb-5">
+                 <ExecutionModeCard />
+               </div>
+               <div className="py-5">
+                 <TestProfilesCard />
+               </div>
+               <div className="pt-5">
                <CacheMaintenanceCard />
+               </div>
              </div>
            </div>
          </section>
