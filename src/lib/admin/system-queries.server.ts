@@ -1141,14 +1141,21 @@ export async function fetchCommentScraperMetrics(
 
 export interface EnrichmentJobSummary {
   pending: number;
-  processing: number;
-  completed: number;
-  failed: number;
+  running: number;
+  success: number;
+  error: number;
   total: number;
+  comment_jobs: {
+    pending: number;
+    completed: number;
+    failed: number;
+    total: number;
+  };
   recent_failures: Array<{
     id: string;
     handle: string;
-    last_error: string | null;
+    enrichment_type: string;
+    error_message: string | null;
     attempts: number;
     created_at: string;
     updated_at: string;
@@ -1156,34 +1163,53 @@ export interface EnrichmentJobSummary {
 }
 
 export async function fetchEnrichmentJobSummary(): Promise<EnrichmentJobSummary> {
-  // Count by status
+  // Query the enrichment_jobs table (async pipeline jobs)
   const { data: allJobs } = await supabaseAdmin
-    .from("comment_enrichment_jobs")
-    .select("id, status, handle, last_error, attempts, created_at, updated_at")
+    .from("enrichment_jobs")
+    .select("id, status, handle, enrichment_type, error_message, attempts, created_at, updated_at")
     .order("created_at", { ascending: false })
     .limit(200);
 
   const rows = allJobs ?? [];
   let pending = 0;
-  let processing = 0;
-  let completed = 0;
-  let failed = 0;
+  let running = 0;
+  let success = 0;
+  let error = 0;
 
   for (const r of rows) {
     const s = String(r.status);
     if (s === "pending") pending++;
-    else if (s === "processing") processing++;
-    else if (s === "completed") completed++;
-    else if (s === "failed") failed++;
+    else if (s === "running") running++;
+    else if (s === "success") success++;
+    else if (s === "error") error++;
+  }
+
+  // Also query comment_enrichment_jobs for the comment scraper summary
+  const { data: commentJobs } = await supabaseAdmin
+    .from("comment_enrichment_jobs")
+    .select("id, status")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const commentRows = commentJobs ?? [];
+  let cPending = 0;
+  let cCompleted = 0;
+  let cFailed = 0;
+  for (const r of commentRows) {
+    const s = String(r.status);
+    if (s === "pending") cPending++;
+    else if (s === "completed") cCompleted++;
+    else if (s === "failed") cFailed++;
   }
 
   const recentFailures = rows
-    .filter((r) => String(r.status) === "failed")
+    .filter((r) => String(r.status) === "error")
     .slice(0, 5)
     .map((r) => ({
       id: String(r.id),
       handle: String(r.handle),
-      last_error: r.last_error ? String(r.last_error) : null,
+      enrichment_type: String((r as any).enrichment_type ?? "unknown"),
+      error_message: (r as any).error_message ? String((r as any).error_message) : null,
       attempts: Number(r.attempts ?? 0),
       created_at: String(r.created_at),
       updated_at: String(r.updated_at),
@@ -1191,10 +1217,16 @@ export async function fetchEnrichmentJobSummary(): Promise<EnrichmentJobSummary>
 
   return {
     pending,
-    processing,
-    completed,
-    failed,
+    running,
+    success,
+    error,
     total: rows.length,
+    comment_jobs: {
+      pending: cPending,
+      completed: cCompleted,
+      failed: cFailed,
+      total: commentRows.length,
+    },
     recent_failures: recentFailures,
   };
 }
