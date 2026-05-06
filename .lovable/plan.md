@@ -1,50 +1,63 @@
 ## Goal
 
-Strip `_thumbnail_base64` from `analysis_snapshots.normalized_payload` immediately after `visual_cover` enrichment completes successfully, reclaiming ~1.4 MB per snapshot.
+Eliminate the race condition where concurrent enrichment jobs overwrite each other's `enrichment_status` entries via the read-merge-write pattern in `patchSnapshotPayload`.
+
+## Race condition explained
+
+1. Job A (insights_v1) reads `normalized_payload` — sees `{enrichment_status: {dataforseo: "success", insights_v1: "pending", ...}}`
+2. Job B (insights_v2) reads `normalized_payload` — same snapshot, same state
+3. Job A writes merged payload with `insights_v1: "success"`
+4. Job B writes merged payload with `insights_v2: "success"` — but its copy didn't have Job A's update, so `insights_v1` reverts to `"pending"`
+
+## Solution
+
+Create a PostgreSQL function `set_enrichment_status(p_snapshot_id, p_key, p_value)` that uses a single atomic `jsonb_set` UPDATE. Call it via `supabaseAdmin.rpc()` from a new helper `setEnrichmentStatusAtomic()` in `cache.ts`.
 
 ## Changes
 
-### 1. Add `removePayloadKey` helper to `src/lib/analysis/cache.ts`
+### 1. Database migration — create `set_enrichment_status` RPC
 
-A new exported function that removes a top-level key from a snapshot's `normalized_payload` using a direct SQL `jsonb - 'key'` operation (atomic, no read-merge-write needed):
-
-```ts
-export async function removePayloadKey(snapshotId: string, key: string): Promise<boolean>
-```
-
-Uses raw `.rpc` or a direct SQL update via supabaseAdmin:
 ```sql
-UPDATE analysis_snapshots
-SET normalized_payload = normalized_payload - '_thumbnail_base64',
-    updated_at = now()
-WHERE id = $1
+CREATE OR REPLACE FUNCTION public.set_enrichment_status(
+  p_snapshot_id uuid,
+  p_key text,
+  p_value text
+) RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE analysis_snapshots
+  SET normalized_payload = jsonb_set(
+        jsonb_set(normalized_payload, '{enrichment_status}', COALESCE(normalized_payload->'enrichment_status', '{}'::jsonb)),
+        ARRAY['enrichment_status', p_key],
+        to_jsonb(p_value)
+      ),
+      updated_at = now()
+  WHERE id = p_snapshot_id;
+$$;
 ```
 
-### 2. Call cleanup in `src/routes/api/public/enrich-snapshot.ts`
-
-After line 193 (where `visual_cover` job succeeds), add:
+### 2. `src/lib/analysis/cache.ts` — add `setEnrichmentStatusAtomic`
 
 ```ts
-if (job.enrichment_type === "visual_cover") {
-  await removePayloadKey(job.snapshot_id, "_thumbnail_base64");
-}
+export async function setEnrichmentStatusAtomic(
+  snapshotId: string,
+  key: string,
+  value: string,
+): Promise<boolean>
 ```
 
-### 3. Validation
+Calls `supabaseAdmin.rpc('set_enrichment_status', { p_snapshot_id, p_key, p_value })`.
 
-- `bunx tsc --noEmit` passes
-- `bunx vitest run` passes
-- Query payload size before/after for both test profiles to confirm reduction
+### 3. `src/routes/api/public/enrich-snapshot.ts` — replace enrichment_status patches
+
+Replace the two `patchSnapshotPayload` calls for `enrichment_status` (success on line 179 and error on line 201) with `setEnrichmentStatusAtomic`.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/lib/analysis/cache.ts` | Add `removePayloadKey` function |
-| `src/routes/api/public/enrich-snapshot.ts` | Call cleanup after visual_cover success |
-
-## Risks
-
-- None: `_thumbnail_base64` is only consumed by `run-enrichment.server.ts` during visual_cover processing, which has already completed before removal.
-- `visual_cover_analysis` is persisted via `payloadPatch` before this cleanup runs.
-- Cache-only report rendering does not use `_thumbnail_base64`.
+| Migration | New `set_enrichment_status` function |
+| `src/lib/analysis/cache.ts` | Add `setEnrichmentStatusAtomic` helper |
+| `src/routes/api/public/enrich-snapshot.ts` | Use atomic helper for enrichment_status updates |
