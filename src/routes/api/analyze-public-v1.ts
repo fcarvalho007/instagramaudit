@@ -885,6 +885,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               if (snapshotId) await setEnrichmentStatusAtomic(snapshotId, "comments", "disabled");
             }
 
+          } // end try-block inner scope
+
           // Reuse the positioning already computed above for the AI
           // context — single source of truth, no duplicate dataset reads.
           const benchmarkPositioning: BenchmarkPositioning = benchmarkPositioningEarly;
