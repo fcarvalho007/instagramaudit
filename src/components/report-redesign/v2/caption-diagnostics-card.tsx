@@ -282,14 +282,14 @@ function EvidenceRow({ match }: { match: MatchedEvidence }) {
       )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1.5">
-          <FormatBadge format={p.format} />
+          <FormatBadge format={p.format ?? "Imagens"} />
           {date && (
             <span className="text-[10px] text-content-tertiary flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" />{date}
             </span>
           )}
           <span className="text-[10px] text-content-tertiary">
-            {fmt(p.likes)} gostos
+            {fmt(p.likes ?? 0)} gostos
           </span>
         </div>
         <p className="text-[12px] text-content-secondary leading-relaxed line-clamp-3">
