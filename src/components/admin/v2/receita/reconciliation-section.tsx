@@ -4,8 +4,7 @@
  * with rounding-aware reconciliation status.
  */
 
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Line,
   LineChart,
@@ -22,7 +21,6 @@ import { AdminCard } from "../admin-card";
 import { KPICard } from "../kpi-card";
 import { SectionError, SectionSkeleton } from "../section-state";
 import { adminFetch } from "@/lib/admin/fetch";
-import { BillingImportForm } from "./billing-import-form";
 import type { AdminPeriod } from "../period-select";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -115,8 +113,7 @@ function statusBadge(status: string) {
 
 export function ReconciliationSection({ period }: { period: AdminPeriod }) {
   const days = PERIOD_DAYS[period] ?? 30;
-  const queryClient = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
+
 
   const { data, isLoading, error } = useQuery<ReconciliationData>({
     queryKey: ["billing-reconciliation", days],
@@ -366,26 +363,6 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
         </AdminCard>
       )}
 
-      {/* Import form toggle */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowForm((v) => !v)}
-          className="text-sm text-accent-cyan hover:underline"
-        >
-          {showForm ? "Fechar formulário" : "+ Registar custo externo"}
-        </button>
-        {showForm && (
-          <BillingImportForm
-            onSuccess={() => {
-              queryClient.invalidateQueries({
-                queryKey: ["billing-reconciliation"],
-              });
-              setShowForm(false);
-            }}
-          />
-        )}
-      </div>
     </section>
   );
 }
