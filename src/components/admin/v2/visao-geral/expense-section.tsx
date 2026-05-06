@@ -309,6 +309,23 @@ export function ExpenseSection() {
           </ExpenseColumn>
         </div>
 
+        {/* ── Custo por report gerado ─────────────────────── */}
+        <div className="border-t border-admin-border" />
+        <div className="px-6 py-4">
+          <p className="mb-3 text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
+            Custo por report gerado
+          </p>
+          <ReportCostCards
+            total={data.total}
+            apifyShare={apifyShare}
+            openaiShare={openaiShare}
+            dfsShare={dfsShare}
+            completedReports={data.completed_reports}
+            freshReports={data.fresh_reports}
+            freshTotalSpend={data.fresh_total_spend_usd}
+          />
+        </div>
+
         {/* Actor breakdown table — faixa horizontal */}
         {data.apify_actors.length > 0 && (
           <>
