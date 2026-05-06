@@ -974,7 +974,7 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
       <div>
         <p className="text-eyebrow text-content-tertiary">O que a audiência mais diz</p>
         <p className="text-[11px] text-content-tertiary mt-0.5">
-          Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários públicos
+          Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários · percentagens sobre sinais classificados
         </p>
       </div>
 
@@ -1040,6 +1040,25 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
           <p className="text-[13px] text-content-secondary leading-relaxed">{ci.recommendedConversationAction}</p>
         </div>
       )}
+
+      {/* Actionable comments summary */}
+      {(() => {
+        const actionable = ci.questionsFromAudienceCount + ci.buyingIntentCount + ci.complaintOrIssueCount;
+        if (actionable <= 0) return null;
+        return (
+          <div className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-muted/60 px-3.5 py-2.5">
+            <Zap size={13} className="text-accent-primary shrink-0" strokeWidth={1.5} />
+            <div>
+              <p className="text-[13px] font-semibold text-content-primary">
+                {actionable} {actionable === 1 ? "comentário acionável" : "comentários acionáveis"}
+              </p>
+              <p className="text-[10px] text-content-tertiary">
+                perguntas + intenção de compra + problemas
+              </p>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
