@@ -58,24 +58,24 @@ export function ExecutionModeCard() {
   return (
     <>
       <div className="rounded-xl border border-admin-border bg-admin-surface-secondary p-5 flex flex-col gap-4">
-        <p className="text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
+        <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider">
           Modo de execução
         </p>
 
         {/* ── Segmented control ── */}
-        <div className="grid grid-cols-2 gap-0 rounded-xl border border-admin-border overflow-hidden">
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-admin-surface-muted p-1.5">
           <button
             type="button"
             onClick={() => handleToggle("cache_only")}
             disabled={busy}
-            className={`flex flex-col items-center gap-1 px-4 py-3.5 text-center transition-colors ${
+            className={`flex flex-col items-center gap-1 px-4 py-3.5 text-center rounded-lg transition-all duration-200 ${
               isCacheOnly
-                ? "bg-[rgb(var(--admin-revenue-500))]/15 text-[rgb(var(--admin-revenue-400))]"
-                : "text-admin-text-tertiary hover:text-admin-text-secondary hover:bg-admin-surface-elevated/40"
+                ? "bg-white text-[rgb(var(--admin-revenue-500))] shadow-admin-card"
+                : "text-admin-text-tertiary hover:text-admin-text-secondary hover:bg-white/50"
             }`}
           >
-            <span className="text-sm font-semibold tracking-wide">CACHE-ONLY</span>
-            <span className="text-[10px] leading-tight opacity-70">
+            <span className="text-[13px] font-semibold tracking-wide">CACHE-ONLY</span>
+            <span className="text-[10px] leading-tight opacity-60">
               Não chama APIs externas
             </span>
           </button>
@@ -83,14 +83,14 @@ export function ExecutionModeCard() {
             type="button"
             onClick={() => handleToggle("fresh")}
             disabled={busy}
-            className={`flex flex-col items-center gap-1 px-4 py-3.5 text-center transition-colors border-l border-admin-border ${
+            className={`flex flex-col items-center gap-1 px-4 py-3.5 text-center rounded-lg transition-all duration-200 ${
               !isCacheOnly
-                ? "bg-[rgb(var(--admin-expense-400))]/15 text-[rgb(var(--admin-expense-400))]"
-                : "text-admin-text-tertiary hover:text-admin-text-secondary hover:bg-admin-surface-elevated/40"
+                ? "bg-white text-[rgb(var(--admin-expense-500))] shadow-admin-card"
+                : "text-admin-text-tertiary hover:text-admin-text-secondary hover:bg-white/50"
             }`}
           >
-            <span className="text-sm font-semibold tracking-wide">FRESH</span>
-            <span className="text-[10px] leading-tight opacity-70">
+            <span className="text-[13px] font-semibold tracking-wide">FRESH</span>
+            <span className="text-[10px] leading-tight opacity-60">
               Pode gerar custos reais
             </span>
           </button>
@@ -98,19 +98,19 @@ export function ExecutionModeCard() {
 
         {/* ── Status badge ── */}
         {isCacheOnly ? (
-          <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-[rgb(var(--admin-revenue-500))]/15 px-3 py-1 text-[11px] font-semibold tracking-wide text-[rgb(var(--admin-revenue-400))]">
-            <span className="h-2 w-2 rounded-full bg-[rgb(var(--admin-revenue-400))] animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-[rgb(var(--admin-revenue-500))]/12 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-[rgb(var(--admin-revenue-500))]">
+            <span className="h-2 w-2 rounded-full bg-[rgb(var(--admin-revenue-500))] admin-pulse-dot" />
             MODO SEGURO · SEM CUSTOS
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-[rgb(var(--admin-expense-400))]/15 px-3 py-1 text-[11px] font-semibold tracking-wide text-[rgb(var(--admin-expense-400))]">
-            <span className="h-2 w-2 rounded-full bg-[rgb(var(--admin-expense-400))] animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-[rgb(var(--admin-expense-400))]/12 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-[rgb(var(--admin-expense-500))]">
+            <span className="h-2 w-2 rounded-full bg-[rgb(var(--admin-expense-500))] admin-pulse-dot" />
             MODO FRESH · CUSTOS ATIVOS
           </span>
         )}
 
         {/* ── Explanatory copy ── */}
-        <p className="text-[11px] text-admin-text-tertiary leading-relaxed">
+        <p className="text-[12px] text-admin-text-secondary leading-relaxed">
           {isCacheOnly
             ? "Usa apenas snapshots e dados já guardados. Nenhuma API paga será chamada."
             : "Pode chamar Apify, OpenAI e DataForSEO. Utilizar apenas quando necessário atualizar dados reais."}
