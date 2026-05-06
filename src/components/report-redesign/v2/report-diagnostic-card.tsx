@@ -1158,6 +1158,21 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
         </div>
       )}
 
+      {/* Sinais dominantes de conversa */}
+      {ci.dominantConversationSignals?.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+          <span className="text-[10px] text-content-tertiary mr-1">Sinais dominantes:</span>
+          {ci.dominantConversationSignals.map((signal) => (
+            <span
+              key={signal}
+              className="inline-flex items-center rounded-full bg-surface-muted border border-border-subtle px-2 py-0.5 text-[10px] font-medium text-content-secondary"
+            >
+              {CONVERSATION_SIGNAL_LABELS[signal] ?? signal}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Comentários que pedem ação */}
       {(() => {
         const qCount = ci.questionsFromAudienceCount;
