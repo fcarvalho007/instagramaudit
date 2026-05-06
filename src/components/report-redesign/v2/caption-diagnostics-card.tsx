@@ -6,7 +6,7 @@
  * All data is real or deterministically derived — nothing invented.
  */
 import type { ReactNode } from "react";
-import { FileText, CheckCircle2, AlertTriangle, Eye, Type, Zap, HelpCircle, BookOpen } from "lucide-react";
+import { FileText, CheckCircle2, AlertTriangle, Eye, Type, Zap, HelpCircle, BookOpen, Sparkles, Mic, Repeat } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
@@ -663,6 +663,44 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
       </div>
 
       {/* ── 7. Footer ── */}
+      {/* ── 7. Hook / Voice / Formulaic (semantic-only) ── */}
+      {hasSemantic && (semantic.hookQuality || semantic.brandVoice || semantic.formulaicPatterns) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {semantic.hookQuality && (
+            <SemanticPill
+              icon={Sparkles}
+              label="Qualidade do hook"
+              rating={semantic.hookQuality.rating}
+              ratingLabels={{ strong: "Forte", moderate: "Moderado", weak: "Fraco" }}
+              explanation={semantic.hookQuality.explanation}
+              tone={semantic.hookQuality.rating === "strong" ? "success" : semantic.hookQuality.rating === "weak" ? "danger" : "neutral"}
+            />
+          )}
+          {semantic.brandVoice && (
+            <SemanticPill
+              icon={Mic}
+              label="Voz da marca"
+              rating={semantic.brandVoice.rating}
+              ratingLabels={{ consistent: "Consistente", mixed: "Mista", inconsistent: "Inconsistente" }}
+              explanation={semantic.brandVoice.explanation}
+              tone={semantic.brandVoice.rating === "consistent" ? "success" : semantic.brandVoice.rating === "inconsistent" ? "danger" : "neutral"}
+            />
+          )}
+          {semantic.formulaicPatterns && (
+            <SemanticPill
+              icon={Repeat}
+              label="Padrões repetitivos"
+              rating={semantic.formulaicPatterns.hasFormulas ? "alert" : "ok"}
+              ratingLabels={{ alert: "Detetados", ok: "Sem repetição" }}
+              explanation={semantic.formulaicPatterns.explanation}
+              tone={semantic.formulaicPatterns.hasFormulas ? "danger" : "success"}
+              examples={semantic.formulaicPatterns.hasFormulas ? semantic.formulaicPatterns.examples : undefined}
+            />
+          )}
+        </div>
+      )}
+
+      {/* ── 8. Footer ── */}
       <div className="pt-4 border-t border-border-subtle flex items-center gap-2 text-[11px] leading-relaxed">
         <span className="text-eyebrow-sm text-content-secondary shrink-0">FONTES:</span>
         <span className="text-content-tertiary">
@@ -683,6 +721,64 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
         </span>
       </div>
     </CardShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Semantic Pill (hook / voice / formulaic)
+// ---------------------------------------------------------------------------
+
+function SemanticPill({
+  icon: Icon,
+  label,
+  rating,
+  ratingLabels,
+  explanation,
+  tone,
+  examples,
+}: {
+  icon: LucideIcon;
+  label: string;
+  rating: string;
+  ratingLabels: Record<string, string>;
+  explanation: string;
+  tone: "success" | "danger" | "neutral";
+  examples?: string[];
+}) {
+  const toneClasses =
+    tone === "success"
+      ? "border-signal-success/20 bg-signal-success/5"
+      : tone === "danger"
+        ? "border-signal-danger/20 bg-signal-danger/5"
+        : "border-border-subtle bg-surface-muted/50";
+  const ratingColor =
+    tone === "success"
+      ? "text-signal-success"
+      : tone === "danger"
+        ? "text-signal-danger"
+        : "text-content-secondary";
+  return (
+    <div className={cn("rounded-xl border p-4 space-y-2", toneClasses)}>
+      <div className="flex items-center gap-2">
+        <Icon size={14} className="text-content-tertiary" strokeWidth={1.5} />
+        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
+      </div>
+      <p className={cn("text-[13px] font-semibold", ratingColor)}>
+        {ratingLabels[rating] ?? rating}
+      </p>
+      <p className="text-[12px] text-content-secondary leading-relaxed">
+        {explanation}
+      </p>
+      {examples && examples.length > 0 && (
+        <ul className="space-y-1 pt-1">
+          {examples.map((ex, i) => (
+            <li key={i} className="text-[11px] text-content-tertiary italic leading-relaxed">
+              «{ex}»
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

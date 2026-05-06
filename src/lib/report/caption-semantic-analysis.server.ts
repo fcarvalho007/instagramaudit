@@ -189,6 +189,9 @@ function validateResult(raw: Record<string, unknown>): CaptionSemanticAnalysis |
         expression: string; count: number; meaning: string; risk?: string | null;
       }>;
       diagnostic: { main: string; works: string; critical: string; watch: string };
+      hookQuality?: { rating: string; explanation: string };
+      brandVoice?: { rating: string; explanation: string };
+      formulaicPatterns?: { hasFormulas: boolean; examples: string[]; explanation: string };
     };
 
     if (typeof r.analyzedCaptions !== "number") return null;
@@ -234,6 +237,15 @@ function validateResult(raw: Record<string, unknown>): CaptionSemanticAnalysis |
         risk: e.risk ?? undefined,
       })),
       diagnostic: r.diagnostic,
+      hookQuality: r.hookQuality && ["strong", "moderate", "weak"].includes(r.hookQuality.rating)
+        ? { rating: r.hookQuality.rating as "strong" | "moderate" | "weak", explanation: r.hookQuality.explanation }
+        : undefined,
+      brandVoice: r.brandVoice && ["consistent", "mixed", "inconsistent"].includes(r.brandVoice.rating)
+        ? { rating: r.brandVoice.rating as "consistent" | "mixed" | "inconsistent", explanation: r.brandVoice.explanation }
+        : undefined,
+      formulaicPatterns: r.formulaicPatterns
+        ? { hasFormulas: !!r.formulaicPatterns.hasFormulas, examples: r.formulaicPatterns.examples ?? [], explanation: r.formulaicPatterns.explanation }
+        : undefined,
     };
   } catch {
     return null;

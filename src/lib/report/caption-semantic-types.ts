@@ -41,6 +41,22 @@ export interface CaptionSemanticDiagnostic {
   watch: string;
 }
 
+export interface CaptionSemanticHookQuality {
+  rating: "strong" | "moderate" | "weak";
+  explanation: string;
+}
+
+export interface CaptionSemanticBrandVoice {
+  rating: "consistent" | "mixed" | "inconsistent";
+  explanation: string;
+}
+
+export interface CaptionSemanticFormulaicPatterns {
+  hasFormulas: boolean;
+  examples: string[];
+  explanation: string;
+}
+
 export interface CaptionSemanticAnalysis {
   source: "openai";
   analyzedCaptions: number;
@@ -49,4 +65,7 @@ export interface CaptionSemanticAnalysis {
   commentEngagement: CaptionSemanticCommentEngagement;
   recurringExpressionsInterpretation: CaptionSemanticExpression[];
   diagnostic: CaptionSemanticDiagnostic;
+  hookQuality?: CaptionSemanticHookQuality;
+  brandVoice?: CaptionSemanticBrandVoice;
+  formulaicPatterns?: CaptionSemanticFormulaicPatterns;
 }
