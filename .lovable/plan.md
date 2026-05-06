@@ -1,69 +1,56 @@
 
-# Refinamento visual dos gráficos P01 e P02
+# Refinamento UX do Controlo Operacional (Sistema)
 
-**Ficheiro a editar:** `src/components/report-redesign/v2/report-diagnostic-card.tsx`
+A estrutura base já está correcta: os 3 cards vivem em `/admin/sistema`, a Visão Geral tem apenas um strip compacto e o badge global existe no header. O que falta é polish visual e de copy.
 
-Nenhum outro ficheiro é alterado. Nenhum dado, lógica, ordenação, percentagem ou copy é modificado.
+**Ficheiros a editar:**
+- `src/components/admin/v2/visao-geral/execution-mode-card.tsx`
+- `src/components/admin/v2/visao-geral/test-profiles-card.tsx`
+- `src/components/admin/v2/visao-geral/cache-maintenance-card.tsx`
+- `src/routes/admin.sistema.tsx` (layout do grid)
 
----
-
-## Task 1 — P01 `DiagnosticDistributionBar` (variant `vertical-list`)
-
-Melhorias na lista vertical de barras horizontais:
-
-1. **Hierarquia visual da barra dominante**
-   - Barra dominante (i===0): altura `h-3`, opacidade plena, `font-semibold` na percentagem.
-   - Restantes barras: altura `h-1.5`, opacidade `opacity-30`.
-
-2. **Espaçamento entre linhas**
-   - De `space-y-1.5 sm:space-y-2` para `space-y-2.5 sm:space-y-3` — mais ar entre categorias.
-
-3. **Percentagens**
-   - Dominante: `text-content-primary font-semibold` (em vez de `text-content-tertiary`).
-   - Restantes: mantêm `text-content-tertiary`.
-
-4. **Sublabels**
-   - Já visíveis apenas em `sm:`. Reduzir para `text-[9px]` e `text-content-tertiary/70` para ficarem mais secundárias.
-
-5. **Largura mínima para valores baixos**
-   - Alterar `pct` para garantir um mínimo visual: `Math.max(3, pct)` — suficiente para que barras de 1-2% sejam visíveis sem parecerem equivalentes a 20%.
+**Ficheiros que NÃO mudam:** Visão Geral, admin.tsx (badge global), backend, tokens, locked files.
 
 ---
 
-## Task 2 — P02 `DiagnosticFunnelStack`
+## Task 1 — Layout do painel no Sistema
 
-Melhorias nas barras do funil:
+Alterar o grid em `admin.sistema.tsx`:
+- Linha superior: 2 colunas — ExecutionModeCard (col-span-1) + TestProfilesCard (col-span-1)
+- Linha inferior: CacheMaintenanceCard ocupa 2 colunas, mas com altura reduzida e aspecto secundário
+- Em mobile: stack vertical normal
 
-1. **Altura das linhas**
-   - De `h-7` para `h-8` — ligeiramente mais respiração.
+## Task 2 — Redesenhar o switcher (ExecutionModeCard)
 
-2. **Dominância visual**
-   - Fase activa: adicionar `ring-1 ring-signal-success/20` para destaque subtil.
-   - Fases inactivas: manter aspecto actual.
+- Segmented control maior com estados mais distintos:
+  - Cache-only activo: fundo verde suave, texto "CACHE-ONLY", copy "Não chama APIs externas", secondary "Usa apenas snapshots e dados já guardados."
+  - Fresh activo: fundo amber, texto "FRESH", copy "Pode gerar custos reais", secondary "Pode chamar Apify, OpenAI e DataForSEO."
+- Badge de estado:
+  - `MODO SEGURO · SEM CUSTOS` (verde)
+  - `MODO FRESH · CUSTOS ATIVOS` (amber)
 
-3. **Coluna de percentagens**
-   - Mover a `<span>` de percentagem para fora do `position: absolute` e usar um layout `flex` com a barra e o valor, evitando sobreposição com labels longos.
-   - Estrutura: `<li class="flex items-center gap-2">` → barra (flex-1, max-width baseado em %) → percentagem (w-10, text-right).
+## Task 3 — Copy do diálogo de confirmação
 
-4. **Estado 0% / ghost**
-   - Quando `sharePct === 0`: barra com `w-0` mas linha mantém altura, percentagem mostra `0%` em `text-content-tertiary/50`, e a label aparece fora da barra (à esquerda).
+- Título: "Ativar modo Fresh?"
+- Body: "Este modo pode gerar chamadas pagas a APIs externas. Deve ser usado apenas quando for necessário atualizar dados reais."
+- Confirmar: "Ativar Fresh"
+- Cancelar: "Manter Cache-only"
 
-5. **Espaçamento**
-   - De `space-y-1.5` para `space-y-2`.
+## Task 4 — Perfis de teste compactos
 
----
+Substituir os cards verticais por linhas horizontais compactas:
+- Uma linha por perfil: `@handle` + 4 status dots inline (Report cache, Legendas IA, Comentários, Capas) + data + acções
+- Remover os borders/cards individuais; usar linhas separadas por border-bottom
+- Manter "Abrir cache" e "Reanalisar fresh" como links inline
 
-## Task 3 — Responsividade
+## Task 5 — Cache maintenance secundário
 
-- P01: `min-w-[4.5rem]` nos labels já funciona a 375px; manter.
-- P02: o novo layout flex garante que label e percentagem não se sobrepõem a 375px (a barra encolhe, o texto fica fora).
-- Verificação visual implícita pela estrutura flex; sem media queries adicionais.
+- Reduzir padding e tornar visualmente mais leve (border mais subtil, sem header grande)
+- Inline: input + botão na mesma linha, label acima em eyebrow
 
----
-
-## Task 4 — Validação
+## Task 6 — Validação
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Confirmar que apenas `report-diagnostic-card.tsx` foi editado.
-- Confirmar que P03-P07, backend, tokens globais e ficheiros locked não foram tocados.
+- Confirmar que lógica de execução não mudou
+- Confirmar que Visão Geral não foi tocada
