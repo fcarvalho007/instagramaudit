@@ -546,7 +546,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       {/* ════ RODAPÉ METODOLÓGICO ═════════════════════════════════════ */}
       <p className="text-[11px] text-admin-text-tertiary leading-relaxed border-t border-admin-border pt-4">
         Custos internos atribuídos provêm de <code className="font-mono text-[10px]">provider_call_logs</code> ligados a análises.
-        Faturação real importada manualmente do dashboard de cada fornecedor.
+        Faturação real importada do dashboard de cada fornecedor.
         {lastApifyBatch && (
           <> Última importação: Apify · {new Date(lastApifyBatch.created_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })} {new Date(lastApifyBatch.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}.</>
         )}
@@ -567,7 +567,7 @@ function SectionHeader() {
       </p>
       <h2 className="text-xl font-semibold text-admin-text-primary leading-tight">Custos da plataforma</h2>
       <p className="text-[13px] text-admin-text-tertiary mt-0.5">
-        Custos internos atribuídos · faturação externa importada · reconciliação
+        Custos internos atribuídos · reconciliação automática
       </p>
     </div>
   );
