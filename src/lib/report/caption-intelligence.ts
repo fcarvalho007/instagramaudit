@@ -222,6 +222,7 @@ function cleanCaption(raw: string): string {
     .replace(/https?:\/\/\S+/gi, " ")
     .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, " ")
     .replace(/[#@][\p{L}\p{N}_]+/gu, " ")
+    .replace(/\p{Extended_Pictographic}/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -248,18 +249,20 @@ const OPENING_NEWS_TERMS = [
   "novo", "nova", "novidade", "lancamento", "lançamento",
   "chegou", "ja disponivel", "já disponível", "acabou de",
   "anuncio", "anúncio",
+  "new ", "launch", "update", "announcing", "just launched",
 ];
 
 const OPENING_STORY_TERMS = [
   "quando ", "ha uns anos", "há uns anos", "a primeira vez",
   "descobri", "aprendi", "lembro-me", "lembro me",
   "era uma vez", "naquele dia", "nesse dia",
+  "today ", "yesterday", "last week", "i tried", "we tested",
 ];
 
 function classifyOpening(caption: string): CaptionOpeningType {
   const first = caption.split(/[.!?\n]/)[0]?.trim() ?? "";
   const norm = normalize(first);
-  if (first.endsWith("?")) return "question";
+  if (first.endsWith("?") || /^(what |why |how |do you|have you|would you|can you)/i.test(norm)) return "question";
   if (OPENING_NEWS_TERMS.some((t) => norm.includes(t))) return "news_or_update";
   if (OPENING_STORY_TERMS.some((t) => norm.includes(t))) return "story";
   return "bold_statement";
@@ -767,6 +770,14 @@ const COMMENT_ENGAGEMENT_TERMS: ReadonlyArray<{ pattern: string; display: string
   { pattern: "qual preferes", display: "Qual preferes?" },
   { pattern: "ja tinhas visto", display: "Já tinhas visto?" },
   { pattern: "já tinhas visto", display: "Já tinhas visto?" },
+  { pattern: "comment", display: "Comment" },
+  { pattern: "tell me", display: "Tell me" },
+  { pattern: "let me know", display: "Let me know" },
+  { pattern: "what do you think", display: "What do you think?" },
+  { pattern: "have you tried", display: "Have you tried?" },
+  { pattern: "which one", display: "Which one?" },
+  { pattern: "would you use", display: "Would you use?" },
+  { pattern: "drop a comment", display: "Drop a comment" },
 ];
 
 function buildCommentEngagement(posts: readonly SnapshotPost[]): CommentEngagementBlock {

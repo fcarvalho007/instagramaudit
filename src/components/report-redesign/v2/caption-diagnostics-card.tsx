@@ -262,18 +262,18 @@ function EndingsDistribution({ items }: { items: Array<{ type: string; label: st
         const isQuestionLow = it.type === "question" && it.pct < 20;
         const isQuestionOk = it.type === "question" && it.pct >= 20;
         return (
-          <div key={it.label} className={cn("rounded-lg px-2 py-1.5 -mx-2", isQuestionLow && "bg-rose-50")}>
+          <div key={it.label} className={cn("rounded-lg px-2 py-1.5 -mx-2", isQuestionLow && "bg-tint-danger")}>
             <div className="flex items-center justify-between text-[12px] mb-1">
               <span className={cn(
                 "text-content-secondary",
-                isQuestionLow && "text-rose-600 font-medium",
+                isQuestionLow && "text-signal-danger font-medium",
                 isQuestionOk && "text-signal-success font-medium",
               )}>
                 {it.label}
               </span>
               <span className={cn(
                 "font-mono text-[11px] tabular-nums text-content-tertiary",
-                isQuestionLow && "text-rose-500",
+                isQuestionLow && "text-signal-danger",
               )}>
                 {it.pct}%
               </span>
@@ -282,7 +282,7 @@ function EndingsDistribution({ items }: { items: Array<{ type: string; label: st
               <div
                 className={cn(
                   "h-full rounded-full",
-                  isQuestionLow ? "bg-rose-400" : "bg-accent-primary/50",
+                  isQuestionLow ? "bg-signal-danger" : "bg-accent-primary/50",
                 )}
                 style={{ width: `${Math.max(3, it.pct)}%` }}
               />
@@ -368,6 +368,8 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
   const expressions = data.recurringExpressions.items;
   const semanticExpressions = semantic?.recurringExpressionsInterpretation ?? [];
   const stats = data.captionStats;
+  // When captions are extremely short, deterministic themes are unreliable
+  const tooShortForThemes = !hasSemantic && stats.avgWordsPerCaption < 5;
 
   if (!data.available) {
     return (
@@ -400,7 +402,7 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
                 </li>
               ))}
             </ul>
-          ) : themes.length > 0 ? (
+          ) : !tooShortForThemes && themes.length > 0 ? (
             <ul className="space-y-0.5">
               {themes.slice(0, 2).map((t) => (
                 <li key={t.label} className="flex items-center gap-1.5">
@@ -603,8 +605,8 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
             <span className={cn(
               "text-[10px] font-medium rounded-full px-2 py-0.5 ring-1 shrink-0",
               ce.strategyLabel === "active" ? "text-signal-success bg-tint-success ring-signal-success/15" :
-              ce.strategyLabel === "occasional" ? "text-signal-warning bg-amber-50 ring-signal-warning/15" :
-              "text-signal-danger bg-rose-50 ring-signal-danger/15",
+              ce.strategyLabel === "occasional" ? "text-signal-warning bg-tint-warning ring-signal-warning/15" :
+              "text-signal-danger bg-tint-danger ring-signal-danger/15",
             )}>
               {ce.strategyLabel === "active" ? "ATIVA" : ce.strategyLabel === "occasional" ? "OCASIONAL" : "PASSIVA"}
             </span>
@@ -683,7 +685,7 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
             label="A OBSERVAR"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data)}
             icon={Eye}
-            toneClass="text-amber-600"
+            toneClass="text-signal-warning"
           />
         </div>
       </div>
