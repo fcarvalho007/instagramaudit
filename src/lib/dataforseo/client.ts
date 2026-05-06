@@ -47,6 +47,8 @@ interface CallOptions {
   skipAllowlist?: boolean;
   /** Override fetch timeout. */
   timeoutMs?: number;
+  /** Link cost to analysis event. */
+  analysisEventId?: string | null;
 }
 
 /**
