@@ -61,6 +61,7 @@ export async function fetchGoogleTrends(
       type: input.type ?? "web",
     },
     { ownerHandle: input.ownerHandle, queryLabel },
-    input.analysisEventId ? { analysisEventId: input.analysisEventId } : undefined,
-  ) as Promise<DataForSeoEnvelope<GoogleTrendsResult>>;
+    ...(input.analysisEventId ? { analysisEventId: input.analysisEventId } : {}),
+    },
+  );
 }
