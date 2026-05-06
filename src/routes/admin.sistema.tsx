@@ -28,6 +28,10 @@ import { CostsDetailSection } from "@/components/admin/v2/sistema/costs-detail-s
 import { LegacyAccessSection } from "@/components/admin/v2/sistema/legacy-access-section";
 import { AnalysisCostBreakdown } from "@/components/admin/v2/sistema/analysis-cost-breakdown";
 import { adminFetch } from "@/lib/admin/fetch";
+ import { ExecutionModeCard } from "@/components/admin/v2/visao-geral/execution-mode-card";
+ import { TestProfilesCard } from "@/components/admin/v2/visao-geral/test-profiles-card";
+ import { CacheMaintenanceCard } from "@/components/admin/v2/visao-geral/cache-maintenance-card";
+ import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
 
 export const Route = createFileRoute("/admin/sistema")({
   component: SistemaPage,
@@ -85,6 +89,19 @@ function SistemaPage() {
         }
       />
       <div className="flex flex-col gap-14">
+         <section>
+           <AdminSectionHeader
+             title="Controlo operacional"
+             subtitle="modo, perfis e cache"
+             accent="expense"
+             info="Modo de execução, perfis de teste e gestão de cache para desenvolvimento."
+           />
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+             <ExecutionModeCard />
+             <TestProfilesCard />
+             <CacheMaintenanceCard />
+           </div>
+         </section>
         <HealthSection />
         <SecretsConfigSection />
         <CostsDetailSection />
