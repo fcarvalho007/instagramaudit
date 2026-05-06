@@ -322,7 +322,6 @@ export function ExpenseSection() {
                   <thead>
                     <tr className="text-left text-admin-text-tertiary border-b border-admin-border">
                       <th className="pb-1.5 pr-4 font-medium">Ator</th>
-                      <th className="pb-1.5 pr-4 font-medium">Input</th>
                       <th className="pb-1.5 pr-4 font-medium text-right">Custo</th>
                       <th className="pb-1.5 pr-4 font-medium text-right">Runs</th>
                       <th className="pb-1.5 pr-4 font-medium text-right">Resultados</th>
