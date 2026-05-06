@@ -320,9 +320,9 @@ export function CostsDetailSection() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <KPICard eyebrow="Pendente" value={String(enrichmentJobs.data!.pending)} size="sm" accent="signal" />
-              <KPICard eyebrow="Em processamento" value={String(enrichmentJobs.data!.processing)} size="sm" accent="info" />
-              <KPICard eyebrow="Concluído" value={String(enrichmentJobs.data!.completed)} size="sm" accent="revenue" />
-              <KPICard eyebrow="Falhado" value={String(enrichmentJobs.data!.failed)} size="sm" accent="danger" />
+              <KPICard eyebrow="Em execução" value={String(enrichmentJobs.data!.running)} size="sm" accent="info" />
+              <KPICard eyebrow="Concluído" value={String(enrichmentJobs.data!.success)} size="sm" accent="revenue" />
+              <KPICard eyebrow="Erro" value={String(enrichmentJobs.data!.error)} size="sm" accent="danger" />
             </div>
             {enrichmentJobs.data!.recent_failures.length > 0 && (
               <div className="space-y-2">
@@ -330,9 +330,10 @@ export function CostsDetailSection() {
                 {enrichmentJobs.data!.recent_failures.map((f) => (
                   <div key={f.id} className="rounded-md border border-admin-border bg-admin-surface-muted/40 px-3 py-2 text-[12px]">
                     <span className="font-mono text-admin-text-primary">@{f.handle}</span>
+                    <span className="ml-2 text-admin-text-secondary">{f.enrichment_type}</span>
                     <span className="ml-2 text-admin-text-tertiary">tentativas: {f.attempts}</span>
-                    {f.last_error && (
-                      <p className="mt-1 text-admin-danger-700 text-[11px] truncate">{f.last_error}</p>
+                    {f.error_message && (
+                      <p className="mt-1 text-admin-danger-700 text-[11px] truncate">{f.error_message}</p>
                     )}
                   </div>
                 ))}
