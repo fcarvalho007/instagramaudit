@@ -1196,6 +1196,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           }
 
           // ─── Comment Intelligence (free report, gated by feature flag) ──────
+          // ─── Final provider call linkage ──────────────────────────────
+          // Re-link any provider_call_logs rows created AFTER the initial
+          // linkProviderCallsToEvent (e.g. DataForSEO calls that ran before
+          // the event, or any edge cases). Best-effort, never blocks.
+          if (analysisEventId) {
+            await linkProviderCallsToEvent(
+              primary,
+              providerCallsStartedAt,
+              analysisEventId,
+            );
+          }
+
+          // ─── Comment Intelligence (free report, gated by feature flag) ──────
           // Disabled by default via COMMENT_SCRAPER_ENABLED secret.
           // Never blocks the base report. Failures are swallowed.
           const commentScraperEnabled =
