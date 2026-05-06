@@ -86,6 +86,15 @@
   --color-admin-canvas: rgb(var(--admin-neutral-50));
   --color-admin-surface: #ffffff;
   --color-admin-surface-muted: rgb(var(--admin-neutral-50));
+  --color-admin-surface-elevated: rgb(var(--admin-neutral-100));
+
+  /* Glassmorphism */
+  --shadow-admin-glass:
+    0 1px 3px rgb(var(--admin-border-rgb) / 0.06),
+    0 8px 24px rgb(var(--admin-border-rgb) / 0.08);
+  --shadow-admin-glass-active:
+    0 2px 6px rgb(var(--admin-border-rgb) / 0.08),
+    0 12px 32px rgb(var(--admin-border-rgb) / 0.12);
 
   /* Text */
   --color-admin-text-primary: rgb(var(--admin-neutral-900));
