@@ -1,90 +1,45 @@
 
-# P04 Caption Diagnostics — Refinamentos
+# P05 — Refinamentos incrementais
 
-## Auditoria (estado atual)
+## Avaliação do prompt
 
-### Secções que JÁ usam dados semânticos quando disponíveis
+A maioria das funcionalidades pedidas **já está implementada**:
 
-| Secção | Semantic? | Fallback? |
-|--------|-----------|-----------|
-| Temas Dominantes (KPI) | ✅ `semantic.dominantThemes` | ✅ `data.themes` |
-| Assuntos Recorrentes (lista) | ✅ `semanticThemes` | ✅ `themes` |
-| Intenção Principal (KPI) | ✅ `semantic.contentIntent` | ✅ `data.contentTypeMix` |
-| Expressões Recorrentes | ✅ `semantic.recurringExpressionsInterpretation` | ✅ `data.recurringExpressions` |
-| Diagnóstico Editorial | ✅ `semantic.diagnostic` | ✅ `buildDiagnosticStatement()` |
-| Comment Engagement | ✅ `semantic.commentEngagement` | ✅ `data.commentEngagement` |
-| Hook / Voice / Formulaic | ✅ semantic-only pills | N/A (só semantic) |
+| Pedido | Estado |
+|--------|--------|
+| Categorias expandíveis com excertos | ✅ Feito — chevron + `classifiedExcerpts` |
+| Remover "Sinais dominantes" | ✅ Já removido |
+| Top 2 posts por comentários | ✅ Feito — thumbnails, formato, data, legenda, permalink |
+| Rodapé de metodologia completo | ✅ Feito — posts, comentários, amostra parcial, DMs |
+| Robustez / fallback | ✅ Feito — handles missing data gracefully |
 
-**Conclusão:** A prioridade semantic > fallback está correta em todas as secções.
-
-### Problema: temas genéricos no fallback determinístico
-
-`text-extract.ts` filtra palavras com `< 5` chars e usa `STOP_WORDS_PT`. Mas faltam contrações preposicionais comuns com 5+ chars que passam o filtro:
-
-- "neste", "nesta", "nestes", "nestas"
-- "deste", "desta", "destes", "destas"
-- "nesse", "nessa", "nesses", "nessas"
-- "desse", "dessa", "desses", "dessas"
-- "naquele", "naquela", "daquele", "daquela"
-- "nisso", "disso", "disto"
-- "ainda" (duplicado, já está)
-- "sobre" (já está)
-- Adverbiais/pronominais genéricos: "muito", "quando", "onde", "como" (curtos, já filtrados)
-
-Também faltam palavras de 5+ chars com zero valor temático:
-- "neste", "nesta", "deste", "desta" — contrações preposicionais
-- "dessa", "nessa" — idem
-- "então", "entao" — advérbios
-- "agora" (já está), "sendo", "fazer" (já está)
-- "apenas" (já está), "tambem" (já está)
-- "aonde", "donde", "nesse" — locativos/conectores
-- "tinha", "tinham" (já está parcialmente)
-- "seria", "teria", "devem", "podem" (já está `poder/podem`)
-- "vezes", "verem", "certo", "certa"
-- "grande", "maior", "melhor", "pior" — adjetivos genéricos
-- "parte", "mundo", "lugar", "ponto" — substantivos genéricos
-
-### P05 cross-reference
-
-Já funciona: `report-diagnostic-block.tsx` lê `captionSemantic?.commentEngagement?.asksForCommentsPct` e `strategyLabel` e passa para `DiagnosticAudienceHighlight`. Sem alterações necessárias.
+Restam **3 refinamentos úteis** que melhoram clareza sem alterar estrutura:
 
 ---
 
-## Plano de implementação
+## Plano (apenas o que falta)
 
-### 1. Expandir `STOP_WORDS_PT` em `text-extract.ts`
+### 1. Feedback quando excertos não existem (cache antigo)
 
-Adicionar contrações preposicionais e substantivos/adjetivos genéricos sem valor temático:
+Quando `classifiedExcerpts` é `undefined` mas existem contagens > 0, mostrar uma nota muted abaixo da lista de categorias:
 
-```
-"neste", "nesta", "nestes", "nestas",
-"deste", "desta", "destes", "destas",
-"nesse", "nessa", "nesses", "nessas",
-"desse", "dessa", "desses", "dessas",
-"naquele", "naquela", "daquele", "daquela",
-"nisso", "disso", "disto", "nisto",
-"entao", "sendo", "seria", "teria",
-"devem", "devemos", "deveria",
-"vezes", "certo", "certa", "certos", "certas",
-"grande", "grandes", "maior", "melhor", "pior",
-"parte", "mundo", "lugar", "ponto",
-"video", "videos", "post", "posts", "semana",
-"preciso", "precisa", "importante", "consegue",
-"quais", "onde", "aonde"
-```
+`Exemplos de comentários disponíveis apenas em novas análises.`
 
-### 2. Adicionar guard de qualidade de tema em `caption-diagnostics-card.tsx`
+Isto explica ao utilizador porque não há chevron de expansão.
 
-Na renderização fallback de temas (quando `hasSemantic` é false), filtrar labels que sejam:
-- Palavra única com menos de 6 chars (fraca especificidade)
-- Pertencente a uma lista de genéricos conhecidos mesmo com 6+ chars
+### 2. Renomear "Comentários que pedem ação" → "Comentários com oportunidade"
 
-Se após filtragem restarem menos temas, mostrar "Tema pouco específico detetado" como fallback, ou simplesmente omitir o item.
+Alterações:
+- Título: `Comentários com oportunidade`
+- Adicionar contagem total e percentagem: `11 de 73 comentários (15%)`
+- Subtítulo breakdown: `perguntas + intenção de compra + problemas`
+- Manter o insight dominante existente
+- Substituir copy "acionáveis" no insight por linguagem mais clara
 
-### 3. Validação
+### 3. Secção top posts — título e subtítulo
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
+- Título: `Posts que geraram mais conversa`
+- Subtítulo: `Ordenado por comentários públicos — não por gostos ou performance geral.`
 
 ---
 
@@ -92,12 +47,11 @@ Se após filtragem restarem menos temas, mostrar "Tema pouco específico detetad
 
 | Ficheiro | Alteração |
 |----------|-----------|
-| `src/lib/report/text-extract.ts` | Expandir `STOP_WORDS_PT` |
-| `src/components/report-redesign/v2/caption-diagnostics-card.tsx` | Guard de qualidade no fallback de temas |
+| `src/components/report-redesign/v2/report-diagnostic-card.tsx` | 3 mudanças de copy + nota de cache |
 
-## Resultado esperado
+Nenhum outro ficheiro é tocado.
 
-- "Neste" deixa de aparecer como tema (filtrado na extração)
-- Temas genéricos de uma só palavra são omitidos ou substituídos
-- Dados semânticos continuam prioritários (sem alteração)
-- P05 mantém-se intacto e funcional
+## Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`

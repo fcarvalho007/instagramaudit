@@ -768,7 +768,8 @@ export function DiagnosticAudienceHighlight({
       {/* ── Z4: Top 2 posts by comments ── */}
       {topCommentPosts && topCommentPosts.length > 0 && (
         <div className="space-y-2.5">
-          <p className="text-eyebrow text-content-tertiary">Posts que geraram mais comentários</p>
+          <p className="text-eyebrow text-content-tertiary">Posts que geraram mais conversa</p>
+          <p className="text-[10px] text-content-tertiary/60 mt-0.5">Ordenado por comentários públicos — não por gostos ou performance geral.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {topCommentPosts.map((post, idx) => {
               const cardContent = (
@@ -1117,6 +1118,12 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
         })}
       </ul>
 
+      {!ci.classifiedExcerpts && totalSignals > 0 && (
+        <p className="text-[10px] text-content-tertiary/60 italic">
+          Exemplos de comentários disponíveis apenas em novas análises.
+        </p>
+      )}
+
       {ci.recommendedConversationAction && (
         <div className="rounded-lg bg-tint-primary px-3.5 py-3 border border-accent-primary/15">
           <p className="text-eyebrow-sm text-accent-primary mb-1">Ação recomendada</p>
@@ -1134,7 +1141,7 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
 
         // Determine dominant category for insight
         const dominant = [
-          { key: "questions", count: qCount, insight: "A maioria dos comentários acionáveis são perguntas — considere um FAQ nos destaques." },
+          { key: "questions", count: qCount, insight: "A maioria são perguntas — considere um FAQ nos destaques ou respostas públicas." },
           { key: "buying", count: bCount, insight: "Há intenção de compra nos comentários — facilite o acesso ao produto ou serviço." },
           { key: "complaints", count: cCount, insight: "Existem queixas nos comentários — priorize resposta para proteger a reputação." },
         ].sort((a, b) => b.count - a.count)[0];
@@ -1149,9 +1156,10 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
             <Zap size={13} className="text-accent-primary shrink-0" strokeWidth={1.5} />
             <div>
               <p className="text-[13px] font-semibold text-content-primary">
-                Comentários que pedem ação
+                {actionable} {actionable === 1 ? "comentário" : "comentários"} com oportunidade
               </p>
               <p className="text-[10px] text-content-tertiary">
+                {ci.audienceCommentsCount > 0 && `${Math.round((actionable / ci.audienceCommentsCount) * 100)}% dos comentários da audiência · `}
                 {parts.join(" · ")}
               </p>
               {dominant && dominant.count > 0 && (
