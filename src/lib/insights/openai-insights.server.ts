@@ -171,6 +171,7 @@ function failResult(
 export async function generateInsights(
   ctx: InsightsContext,
 ): Promise<InsightsGenerationResult> {
+  // Options placeholder — analysisEventId propagated via closure below.
   // 1. Gate: kill-switch + allowlist.
   if (!isOpenAiEnabled()) return failResult("DISABLED");
   if (!isOpenAiAllowed(ctx.profile.username)) return failResult("NOT_ALLOWED");
@@ -462,7 +463,7 @@ function formatToKbFormat(
 
 export async function generateInsightsV2(
   ctx: InsightsContext,
-  options?: { previous?: AiInsightsV2 | null },
+  options?: { previous?: AiInsightsV2 | null; analysisEventId?: string | null },
 ): Promise<InsightsV2GenerationResult> {
   if (!isOpenAiEnabled()) return { ok: false, insights: null, reason: "DISABLED" };
   if (!isOpenAiAllowed(ctx.profile.username)) {
