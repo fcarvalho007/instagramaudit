@@ -326,6 +326,8 @@ export function ExpenseSection() {
             freshAvgCost={data.fresh_avg_cost_per_report}
             freshLinkedReports={data.fresh_linked_reports}
             confidence={data.confidence}
+            freshTotalCalls={data.fresh_total_provider_calls}
+            freshLinkedCalls={data.fresh_calls_with_event_id}
           />
         </div>
 
@@ -891,6 +893,8 @@ function ReportCostCards({
   freshAvgCost,
   freshLinkedReports,
   confidence,
+  freshTotalCalls,
+  freshLinkedCalls,
 }: {
   total: number;
   apifyShare: number;
@@ -901,6 +905,8 @@ function ReportCostCards({
   freshAvgCost: number | null;
   freshLinkedReports: number;
   confidence: "alta" | "media" | "baixa";
+  freshTotalCalls: number;
+  freshLinkedCalls: number;
 }) {
   const avgCost = completedReports > 0 ? total / completedReports : null;
 
@@ -957,8 +963,8 @@ function ReportCostCards({
         value={<span className={confidenceColor}>{confidenceLabel}</span>}
         sub={
           freshLinkedReports > 0
-            ? `${freshLinkedReports} report${freshLinkedReports !== 1 ? "s" : ""} com custos ligados · ${freshReports} eventos fresh total`
-            : "Falta ligar custos por provider ao ID do report/run"
+            ? `${freshLinkedReports} report${freshLinkedReports !== 1 ? "s" : ""} com custos ligados · ${freshLinkedCalls}/${freshTotalCalls} chamadas com event_id`
+            : `${freshLinkedCalls}/${freshTotalCalls} chamadas com event_id · falta ligar custos`
         }
         size="md"
       />

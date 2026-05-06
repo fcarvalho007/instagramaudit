@@ -34,6 +34,8 @@ export interface CaptionSemanticInput {
   handle: string;
   /** Cleaned caption texts, max 12. */
   captions: string[];
+  /** Link cost to analysis event. */
+  analysisEventId?: string | null;
 }
 
 export interface CaptionSemanticResult {
@@ -54,6 +56,7 @@ export async function generateCaptionSemanticAnalysis(
   input: CaptionSemanticInput,
 ): Promise<CaptionSemanticResult> {
   const { handle, captions } = input;
+  const _eventId = input.analysisEventId ?? null;
 
   if (captions.length === 0) return fail("NO_CAPTIONS");
 
@@ -101,7 +104,7 @@ export async function generateCaptionSemanticAnalysis(
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.error(LOG_PREFIX, "OpenAI HTTP error", res.status, errText.slice(0, 300));
-      await logCall(handle, "http_error", res.status, Date.now() - startedAt, 0, 0, errText.slice(0, 200));
+      await logCall(handle, "http_error", res.status, Date.now() - startedAt, 0, 0, errText.slice(0, 200), undefined, _eventId);
       return fail(`OPENAI_ERROR_HTTP_${res.status}`);
     }
 
@@ -120,7 +123,7 @@ export async function generateCaptionSemanticAnalysis(
 
     const rawContent = json.choices?.[0]?.message?.content;
     if (!rawContent) {
-      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "empty_response");
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "empty_response", undefined, _eventId);
       return fail("EMPTY_RESPONSE");
     }
 
@@ -129,13 +132,13 @@ export async function generateCaptionSemanticAnalysis(
       parsed = JSON.parse(rawContent);
     } catch {
       console.error(LOG_PREFIX, "JSON parse failed", rawContent.slice(0, 200));
-      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "parse_error");
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "parse_error", undefined, _eventId);
       return fail("PARSE_ERROR");
     }
 
     const analysis = validateResult(parsed);
     if (!analysis) {
-      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "validation_error");
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "validation_error", undefined, _eventId);
       return fail("VALIDATION_ERROR");
     }
 
@@ -145,7 +148,7 @@ export async function generateCaptionSemanticAnalysis(
       completionTokens,
       cachedTokens,
     });
-    await logCall(handle, "success", 200, Date.now() - startedAt, promptTokens, completionTokens, undefined, cost.estimatedCostUsd);
+    await logCall(handle, "success", 200, Date.now() - startedAt, promptTokens, completionTokens, undefined, cost.estimatedCostUsd, _eventId);
 
     console.info(LOG_PREFIX, "analysis complete", {
       handle,
@@ -159,11 +162,11 @@ export async function generateCaptionSemanticAnalysis(
     const msg = err instanceof Error ? err.message : "unknown";
     if (msg.includes("abort")) {
       console.error(LOG_PREFIX, "timeout after", REQUEST_TIMEOUT_MS, "ms");
-      await logCall(handle, "timeout", null, Date.now() - startedAt, 0, 0, "timeout");
+      await logCall(handle, "timeout", null, Date.now() - startedAt, 0, 0, "timeout", undefined, _eventId);
       return fail("TIMEOUT");
     }
     console.error(LOG_PREFIX, "unexpected error", err);
-    await logCall(handle, "network_error", null, Date.now() - startedAt, 0, 0, msg.slice(0, 200));
+    await logCall(handle, "network_error", null, Date.now() - startedAt, 0, 0, msg.slice(0, 200), undefined, _eventId);
     return fail("EXCEPTION");
   } finally {
     clearTimeout(timeout);
@@ -262,6 +265,7 @@ async function logCall(
   completionTokens: number,
   errorMessage?: string,
   estimatedCostUsd?: number,
+  analysisEventId?: string | null,
 ): Promise<void> {
   try {
     await recordProviderCall({
@@ -277,6 +281,7 @@ async function logCall(
       model: MODEL,
       estimatedCostUsd: estimatedCostUsd ?? null,
       errorMessage: errorMessage ?? null,
+      analysisEventId: analysisEventId ?? null,
     });
   } catch (err) {
     console.error(LOG_PREFIX, "failed to log provider call", err);

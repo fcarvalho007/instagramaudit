@@ -110,6 +110,10 @@ export interface Expense30d {
   fresh_linked_provider_calls: number;
   /** Confidence level of the fresh estimate */
   confidence: "alta" | "media" | "baixa";
+  /** Total provider calls (success) in the period */
+  fresh_total_provider_calls: number;
+  /** Provider calls with analysis_event_id linked */
+  fresh_calls_with_event_id: number;
 }
 
 export interface CostCaps {
@@ -798,6 +802,8 @@ async function fetchReportCounts(sinceIso: string): Promise<{
   fresh_linked_reports: number;
   fresh_linked_provider_calls: number;
   confidence: "alta" | "media" | "baixa";
+  fresh_total_provider_calls: number;
+  fresh_calls_with_event_id: number;
 }> {
   // Count completed snapshots in the period
   const { count: snapshotCount } = await supabaseAdmin
@@ -823,28 +829,39 @@ async function fetchReportCounts(sinceIso: string): Promise<{
   let freshLinkedReports = 0;
   let freshLinkedTotal = 0;
   let freshLinkedCalls = 0;
+  let freshCompleteReports = 0;
 
   if (freshEventIds.length > 0) {
     // Fetch all provider_call_logs linked to these events
     const { data: linkedCalls } = await supabaseAdmin
       .from("provider_call_logs")
-      .select("analysis_event_id, estimated_cost_usd")
+      .select("analysis_event_id, estimated_cost_usd, provider")
       .in("analysis_event_id", freshEventIds)
       .eq("status", "success");
 
     if (linkedCalls && linkedCalls.length > 0) {
       freshLinkedCalls = linkedCalls.length;
-      // Group by analysis_event_id and sum costs
-      const costByEvent = new Map<string, number>();
+      // Group by analysis_event_id and sum costs + track provider groups
+      const costByEvent = new Map<string, { cost: number; providers: Set<string> }>();
       for (const call of linkedCalls) {
         const eid = call.analysis_event_id as string;
-        costByEvent.set(
-          eid,
-          (costByEvent.get(eid) ?? 0) + Number(call.estimated_cost_usd ?? 0),
-        );
+        const existing = costByEvent.get(eid);
+        if (existing) {
+          existing.cost += Number(call.estimated_cost_usd ?? 0);
+          existing.providers.add(call.provider as string);
+        } else {
+          costByEvent.set(eid, {
+            cost: Number(call.estimated_cost_usd ?? 0),
+            providers: new Set([call.provider as string]),
+          });
+        }
       }
       freshLinkedReports = costByEvent.size;
-      freshLinkedTotal = [...costByEvent.values()].reduce((s, v) => s + v, 0);
+      freshLinkedTotal = [...costByEvent.values()].reduce((s, v) => s + v.cost, 0);
+      // "Complete" = has at least 2 distinct provider groups (Apify + OpenAI minimum)
+      freshCompleteReports = [...costByEvent.values()].filter(
+        (v) => v.providers.size >= 2,
+      ).length;
     }
   }
 
@@ -855,8 +872,27 @@ async function fetchReportCounts(sinceIso: string): Promise<{
 
   // Confidence: based on how many fresh events have complete provider linkage
   let confidence: "alta" | "media" | "baixa" = "baixa";
-  if (freshLinkedReports >= 20) confidence = "alta";
-  else if (freshLinkedReports >= 5) confidence = "media";
+  if (freshCompleteReports >= 20) confidence = "alta";
+  else if (freshCompleteReports >= 5) confidence = "media";
+
+  // Count total provider calls and how many have event IDs (for transparency)
+  let freshTotalProviderCalls = 0;
+  let freshCallsWithEventId = 0;
+  {
+    const { count: totalCount } = await supabaseAdmin
+      .from("provider_call_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "success")
+      .gte("created_at", sinceIso);
+    const { count: linkedCount } = await supabaseAdmin
+      .from("provider_call_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "success")
+      .gte("created_at", sinceIso)
+      .not("analysis_event_id", "is", null);
+    freshTotalProviderCalls = totalCount ?? 0;
+    freshCallsWithEventId = linkedCount ?? 0;
+  }
 
   return {
     completed_reports: snapshotCount ?? 0,
@@ -866,6 +902,8 @@ async function fetchReportCounts(sinceIso: string): Promise<{
     fresh_linked_reports: freshLinkedReports,
     fresh_linked_provider_calls: freshLinkedCalls,
     confidence,
+    fresh_total_provider_calls: freshTotalProviderCalls,
+    fresh_calls_with_event_id: freshCallsWithEventId,
   };
 }
 

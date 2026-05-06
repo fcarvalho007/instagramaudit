@@ -167,7 +167,15 @@ export async function recordProviderCall(
       console.error("[analytics] provider_call_logs insert failed", error.message);
       return null;
     }
-    return data?.id ?? null;
+    const id = data?.id ?? null;
+    if (!input.analysisEventId) {
+      console.warn("[analytics] provider call without analysis_event_id", {
+        actor: input.actor,
+        handle: input.handle,
+        provider: input.provider ?? "apify",
+      });
+    }
+    return id;
   } catch (err) {
     console.error("[analytics] provider_call_logs insert threw", err);
     return null;

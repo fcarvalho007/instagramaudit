@@ -170,6 +170,7 @@ function failResult(
  */
 export async function generateInsights(
   ctx: InsightsContext,
+  options?: { analysisEventId?: string | null },
 ): Promise<InsightsGenerationResult> {
   // 1. Gate: kill-switch + allowlist.
   if (!isOpenAiEnabled()) return failResult("DISABLED");
@@ -199,6 +200,10 @@ export async function generateInsights(
   const inputsHash = hashInsightsPrompt(INSIGHTS_SYSTEM_PROMPT, userPayload);
   const handle = ctx.profile.username.toLowerCase();
   const startedAt = Date.now();
+
+  const eventId = options?.analysisEventId ?? null;
+  const log = (input: Omit<LogCallInput, "analysisEventId">) =>
+    logCall({ ...input, analysisEventId: eventId });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -234,7 +239,7 @@ export async function generateInsights(
       const errText = await safeText(res);
       const parsed = parseOpenAiError(errText);
       const cost = calculateOpenAiCost({ model, promptTokens: 0, completionTokens: 0 });
-      await logCall({
+      await log({
         handle,
         model,
         status: "http_error",
@@ -262,7 +267,7 @@ export async function generateInsights(
 
     const content = json.choices?.[0]?.message?.content;
     if (!content) {
-      await logCall({
+      await log({
         handle,
         model,
         status: "http_error",
@@ -278,7 +283,7 @@ export async function generateInsights(
     try {
       parsed = JSON.parse(content);
     } catch (err) {
-      await logCall({
+      await log({
         handle,
         model,
         status: "http_error",
@@ -292,7 +297,7 @@ export async function generateInsights(
 
     const validation = validateInsights(parsed, ctx);
     if (!validation.ok) {
-      await logCall({
+      await log({
         handle,
         model,
         status: "http_error",
@@ -304,7 +309,7 @@ export async function generateInsights(
       return failResult("SCHEMA_INVALID", `${validation.reason}: ${validation.detail}`);
     }
 
-    await logCall({
+    await log({
       handle,
       model,
       status: "success",
@@ -336,7 +341,7 @@ export async function generateInsights(
   } catch (err) {
     const isAbort = (err as { name?: string })?.name === "AbortError";
     const cost = calculateOpenAiCost({ model, promptTokens, completionTokens });
-    await logCall({
+    await log({
       handle,
       model,
       status: isAbort ? "timeout" : "network_error",
@@ -409,6 +414,7 @@ interface LogCallInput {
   durationMs: number;
   cost: ReturnType<typeof calculateOpenAiCost>;
   errorMessage: string | null;
+  analysisEventId?: string | null;
 }
 
 async function logCall(input: LogCallInput): Promise<void> {
@@ -426,6 +432,7 @@ async function logCall(input: LogCallInput): Promise<void> {
     completionTokens: input.cost.completionTokens,
     totalTokens: input.cost.totalTokens,
     errorMessage: input.errorMessage ?? undefined,
+    analysisEventId: input.analysisEventId ?? null,
   });
 }
 
@@ -460,7 +467,7 @@ function formatToKbFormat(
 
 export async function generateInsightsV2(
   ctx: InsightsContext,
-  options?: { previous?: AiInsightsV2 | null },
+  options?: { previous?: AiInsightsV2 | null; analysisEventId?: string | null },
 ): Promise<InsightsV2GenerationResult> {
   if (!isOpenAiEnabled()) return { ok: false, insights: null, reason: "DISABLED" };
   if (!isOpenAiAllowed(ctx.profile.username)) {
@@ -540,6 +547,10 @@ export async function generateInsightsV2(
   const handle = ctx.profile.username.toLowerCase();
   const startedAt = Date.now();
 
+  const eventIdV2 = options?.analysisEventId ?? null;
+  const logV2 = (input: Omit<LogCallInput, "analysisEventId">) =>
+    logCall({ ...input, analysisEventId: eventIdV2 });
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -572,7 +583,7 @@ export async function generateInsightsV2(
       const errText = await safeText(res);
       const parsedErr = parseOpenAiError(errText);
       const cost = calculateOpenAiCost({ model, promptTokens: 0, completionTokens: 0 });
-      await logCall({
+      await logV2({
         handle,
         model,
         status: "http_error",
@@ -602,7 +613,7 @@ export async function generateInsightsV2(
 
     const content = json.choices?.[0]?.message?.content;
     if (!content) {
-      await logCall({
+      await logV2({
         handle,
         model,
         status: "http_error",
@@ -618,7 +629,7 @@ export async function generateInsightsV2(
     try {
       parsed = JSON.parse(content);
     } catch (err) {
-      await logCall({
+      await logV2({
         handle,
         model,
         status: "http_error",
@@ -632,7 +643,7 @@ export async function generateInsightsV2(
 
     const validation = validateInsightsV2(parsed);
     if (!validation.ok) {
-      await logCall({
+      await logV2({
         handle,
         model,
         status: "http_error",
@@ -675,7 +686,7 @@ export async function generateInsightsV2(
       );
     }
 
-    await logCall({
+    await logV2({
       handle,
       model,
       status: "success",
@@ -715,7 +726,7 @@ export async function generateInsightsV2(
   } catch (err) {
     const isAbort = (err as { name?: string })?.name === "AbortError";
     const cost = calculateOpenAiCost({ model, promptTokens, completionTokens });
-    await logCall({
+    await logV2({
       handle,
       model,
       status: isAbort ? "timeout" : "network_error",
