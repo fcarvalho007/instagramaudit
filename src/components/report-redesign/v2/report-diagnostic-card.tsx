@@ -278,7 +278,7 @@ export function DiagnosticDistributionBar({
           return (
             <li key={`${it.label}-${i}`} className="text-xs sm:text-sm">
               <div className="flex items-center gap-3">
-                <span className={cn("min-w-[4.5rem] w-auto sm:min-w-[8.5rem] shrink-0 leading-tight text-content-secondary transition-colors", isDominant && "font-medium text-content-primary")}>
+                <span className={cn("min-w-[5.5rem] w-auto sm:min-w-[8.5rem] shrink-0 leading-tight text-content-secondary transition-colors", isDominant && "font-medium text-content-primary")}>
                   <span className="text-[11px] sm:text-sm">{it.label}</span>
                   {it.sublabel && (
                     <span className="hidden sm:block text-[9px] text-content-tertiary/70 leading-snug mt-0.5">{it.sublabel}</span>
