@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { AdminCard } from "../admin-card";
 import { ProgressBar } from "../progress-bar";
@@ -114,7 +114,7 @@ const COST_SOURCE_LABEL: Record<ApifyActorBreakdown["cost_source"], { text: stri
 
 export function ExpenseSection({ period = "30d" }: { period?: string }) {
   const days = period === "90d" ? 90 : period === "ytd" ? 365 : 30;
-  const queryClient = useQueryClient();
+
 
 
   const expense = useQuery({
