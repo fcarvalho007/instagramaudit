@@ -260,10 +260,16 @@ export function AnalysisCostBreakdown() {
               <Link2 size={10} /> Chamadas ligadas ao evento
             </span>
             <span className="flex items-center gap-1">
-              <CheckCircle2 size={10} className="text-signal-success" />
-              <Clock size={10} className="text-signal-warning" />
-              <XCircle size={10} className="text-signal-error" />
-              Enriquecimentos
+              <CheckCircle2 size={10} className="text-signal-success" /> Concluído
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock size={10} className="text-signal-warning" /> Em processamento
+            </span>
+            <span className="flex items-center gap-1">
+              <XCircle size={10} className="text-signal-error" /> Falhou
+            </span>
+            <span className="flex items-center gap-1">
+              <CheckCircle2 size={10} className="text-foreground-muted opacity-50" /> Não aplicável / Desativado
             </span>
           </div>
         </div>
