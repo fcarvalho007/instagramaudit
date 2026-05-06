@@ -121,3 +121,42 @@ export async function storeSnapshot(params: {
     return null;
   }
 }
+
+/**
+ * Merge a partial patch into an existing snapshot's `normalized_payload`.
+ * Uses read-merge-write to preserve all existing fields. Returns true on
+ * success, false on failure. Never throws.
+ */
+export async function patchSnapshotPayload(
+  snapshotId: string,
+  patch: Record<string, unknown>,
+): Promise<boolean> {
+  try {
+    const { data: snapshot, error: fetchErr } = await supabaseAdmin
+      .from("analysis_snapshots")
+      .select("normalized_payload")
+      .eq("id", snapshotId)
+      .single();
+    if (fetchErr || !snapshot) {
+      console.error("[analysis/cache] patchSnapshotPayload fetch error", fetchErr?.message);
+      return false;
+    }
+    const existing = (snapshot.normalized_payload ?? {}) as Record<string, unknown>;
+    const merged = { ...existing, ...patch };
+    const { error: updateErr } = await supabaseAdmin
+      .from("analysis_snapshots")
+      .update({
+        normalized_payload: merged as never,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", snapshotId);
+    if (updateErr) {
+      console.error("[analysis/cache] patchSnapshotPayload update error", updateErr.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[analysis/cache] patchSnapshotPayload exception", err);
+    return false;
+  }
+}
