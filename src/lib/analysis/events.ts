@@ -17,7 +17,8 @@ export type AnalysisOutcome =
   | "not_found"
   | "blocked_allowlist"
   | "provider_disabled"
-  | "invalid_input";
+  | "invalid_input"
+  | "blocked_cache_only";
 
 export type AnalysisDataSource = "fresh" | "cache" | "stale" | "none";
 
