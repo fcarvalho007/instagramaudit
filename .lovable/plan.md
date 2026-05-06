@@ -1,66 +1,57 @@
 
-## Problem
+## Summary
 
-The "Estimativa por novo report" card shows **$0.01** because:
-
-1. `analysis_events.estimated_cost_usd` only records **Apify scraping cost** (set via `estimateApifyCost`), ignoring OpenAI and DataForSEO costs
-2. `fresh_total_spend_usd` sums only this partial Apify cost from `analysis_events`
-3. The real per-report cost should include ALL provider calls: Apify profile+posts, Apify comments, OpenAI insights, OpenAI visual cover, DataForSEO
-
-**Good news**: `provider_call_logs.analysis_event_id` already links provider calls to analysis events. We can compute accurate per-report cost by summing `provider_call_logs.estimated_cost_usd` grouped by `analysis_event_id`.
+Move the three operational cards (Execution Mode, Test Profiles, Cache Maintenance) from Visao Geral to Sistema. Replace them in Visao Geral with a slim status strip. Add a persistent execution-mode indicator in the admin layout header.
 
 ---
 
 ## Changes
 
-### 1. Fix `fetchReportCounts` in `src/lib/admin/system-queries.server.ts`
+### 1. Move cards to Sistema (`src/routes/admin.sistema.tsx`)
 
-Replace the current query that sums `analysis_events.estimated_cost_usd` (Apify-only) with:
+Import `ExecutionModeCard`, `TestProfilesCard`, `CacheMaintenanceCard` from their current location. Place them at the top of Sistema in a responsive 3-column grid before HealthSection.
 
-- Query `provider_call_logs` grouped by `analysis_event_id` where the linked `analysis_event` has `data_source=fresh` and `outcome=success`
-- Sum ALL provider costs per event (Apify + OpenAI + DataForSEO)
-- Count distinct `analysis_event_id` as `fresh_full_reports_30d`
-- Compute `fresh_avg_cost_per_report = total_provider_cost / fresh_full_reports_count`
-- Add a `confidence` field: `"alta"` (>=20), `"media"` (5-19), `"baixa"` (<5 or missing grouping)
+Wrap the three cards in a section with header "Controlo operacional" and a `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4` layout.
 
-Updated return type adds:
-```
-fresh_avg_cost_per_report: number | null;
-fresh_linked_provider_calls: number;
-confidence: "alta" | "media" | "baixa";
-```
+### 2. Redesign ExecutionModeCard for Sistema
 
-### 2. Update `Expense30d` interface
+Replace the current compact toggle with a larger, unmistakable segmented control:
+- Two large pill buttons: `Cache-only` and `Fresh`
+- Active state uses full background fill (green for cache-only, amber for fresh)
+- Status badge inside the card
+- Explanatory copy below the switcher
+- Confirmation dialog copy updated per spec:
+  - Title: "Ativar modo Fresh?"
+  - Body: "Este modo pode chamar APIs pagas, incluindo Apify, OpenAI e DataForSEO. Usa apenas quando quiseres gerar uma nova análise real."
 
-Add the new fields to the exported type.
+### 3. Replace Visao Geral cards with status strip (`src/routes/admin.visao-geral.tsx`)
 
-### 3. Redesign `ReportCostCards` in `expense-section.tsx`
+Remove the three card imports and the `<div>` containing them. Add a new inline `ExecutionModeStrip` component — a single-line alert bar that:
+- Queries `getExecutionMode()`
+- Shows green strip for cache-only, amber strip for fresh
+- Includes badge + description + "Abrir Sistema" link
+- Uses admin tokens: `--admin-revenue-*` for green, `--admin-expense-*` for amber
 
-Replace the 3 current cards with:
+### 4. Persistent indicator in admin layout (`src/routes/admin.tsx`)
 
-**Card 1 — "Custo médio histórico/report"**
-- Value: `total_api_spend_30d / completed_reports_30d` (same as current `avgCost`)
-- Sub: `"{n} reports gerados · inclui testes/cache · últimos 30 dias"`
+Add a small execution-mode badge next to the DemoModeSwitch in the top-right header area. Uses the same `getExecutionMode()` query. Shows:
+- Cache-only: green dot + "Cache-only · sem custos"
+- Fresh: amber dot + "Fresh · APIs pagas ativas"
 
-**Card 2 — "Estimativa/report fresh"**
-- Value: `fresh_avg_cost_per_report` if available, otherwise `"—"`
-- Sub if reliable: `"{n} reports fresh · sem cache · últimos 30 dias"`
-- Sub if not: `"Sem amostra fiável por report completo"`
+### 5. Refine Test Profiles Card labels
 
-**Card 3 — "Despesa acumulada"**
-- Value: `total_api_spend_30d`
-- Sub: `"Apify {x}% · OpenAI {y}% · DFS {z}%"`
+Update labels per spec:
+- "Report" → "Report cache"
+- "Caption semantic" → "Legendas IA"
+- "Comment intel" → "Comentários"
+- "Visual cover" → "Capas visuais"
+- "Abrir report em cache" → "Abrir cache"
+- Tooltip on disabled "Reanalisar fresh": "Ativa Fresh para gerar nova análise."
 
-**Card 4 — "Confiança da estimativa"**
-- Value: `"Baixa"` / `"Média"` / `"Alta"`
-- Rules: Alta >=20 fresh linked reports, Média 5-19, Baixa <5
+### 6. Refine Cache Maintenance Card
 
-### 4. Add tooltips to each card
-
-- Historical: "Inclui todos os custos registados nos últimos 30 dias, incluindo testes e eventuais leituras em cache."
-- Fresh estimate: "Custo real de todos os providers (Apify + OpenAI + DataForSEO) agrupados por report. Só é fiável com amostra suficiente."
-- Accumulated: "Soma total dos custos de APIs registados no período."
-- Confidence: "Baseado no número de reports fresh com custos agrupados por provider."
+Update button label: "Forçar próxima análise fresh" → "Expirar cache"
+Add helper text: "A expiração da cache não chama APIs automaticamente."
 
 ---
 
@@ -68,16 +59,13 @@ Replace the 3 current cards with:
 
 | File | Action |
 |------|--------|
-| `src/lib/admin/system-queries.server.ts` | Fix `fetchReportCounts` query + update `Expense30d` type |
-| `src/components/admin/v2/visao-geral/expense-section.tsx` | Redesign `ReportCostCards` (4 cards + tooltips) |
+| `src/routes/admin.visao-geral.tsx` | Remove 3 card imports, add inline status strip |
+| `src/routes/admin.sistema.tsx` | Add 3 card imports at top in grid section |
+| `src/routes/admin.tsx` | Add persistent execution-mode badge in header |
+| `src/components/admin/v2/visao-geral/execution-mode-card.tsx` | Redesign switcher (larger segmented control, updated copy) |
+| `src/components/admin/v2/visao-geral/test-profiles-card.tsx` | Update labels per spec |
+| `src/components/admin/v2/visao-geral/cache-maintenance-card.tsx` | Update button label + helper text |
 
 ## Not touched
 
-P04, P05, P07, PDF pipeline, auth, global tokens, locked files, public report UI.
-
-## Validation
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Confirm `provider_call_logs` grouped by `analysis_event_id` includes all providers
-- Confirm $0.01 value is replaced with accurate or explicitly unavailable estimate
+P04, P05, P07 report cards, PDF pipeline, auth, global tokens, locked files, provider pipeline logic.
