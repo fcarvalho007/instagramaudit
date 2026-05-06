@@ -421,9 +421,15 @@ async function runVisualCover(
       return { ok: true, payloadPatch: null };
     }
 
+    // Prefer pre-cached base64 thumbnails (CDN URLs expire before async runs)
+    const base64Map = (ctx.previousPayload._thumbnail_base64 ?? {}) as Record<string, string>;
+
     const result = await generateVisualCoverAnalysis({
       handle: ctx.profile.username,
-      thumbnailUrls: thumbPosts.map((p) => p.thumbnail_url as string),
+      thumbnailUrls: thumbPosts.map((p) => {
+        const cdnUrl = p.thumbnail_url as string;
+        return base64Map[cdnUrl] ?? cdnUrl;
+      }),
       postIds: thumbPosts.map((p) => (p.id ?? p.shortcode ?? "") as string),
       analysisEventId: analysisEventId ?? undefined,
     });
