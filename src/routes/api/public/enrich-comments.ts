@@ -24,6 +24,7 @@ import {
 import { recordProviderCall } from "@/lib/analysis/events";
 import { ApifyConfigError, ApifyUpstreamError } from "@/lib/analysis/apify-client";
 import type { CommentIntelligence } from "@/lib/analysis/types";
+import { setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
 
 const LOG = "[enrich-comments]";
 const MAX_ATTEMPTS = 3;
@@ -92,6 +93,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
       job.snapshot_id,
       buildUnavailableCommentIntelligence(job.handle, "comment_scraper_failed"),
     );
+    await setEnrichmentStatusAtomic(job.snapshot_id, "comments", "error");
     return { ok: false, error: "max_attempts_exceeded" };
   }
 
@@ -117,6 +119,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
       job.snapshot_id,
       buildUnavailableCommentIntelligence(job.handle, "no_valid_post_urls"),
     );
+    await setEnrichmentStatusAtomic(job.snapshot_id, "comments", "skipped");
     return { ok: true };
   }
 
@@ -170,6 +173,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
       } as never)
       .eq("id", job.id);
 
+    await setEnrichmentStatusAtomic(job.snapshot_id, "comments", patched ? "success" : "error");
     return { ok: patched, error: patched ? undefined : "snapshot_patch_failed" };
   } catch (err) {
     console.error(LOG, "comment scraper failed", err);
@@ -219,6 +223,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
       } as never)
       .eq("id", job.id);
 
+    await setEnrichmentStatusAtomic(job.snapshot_id, "comments", "error");
     return { ok: false, error: failReason };
   }
 }
