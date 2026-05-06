@@ -220,7 +220,15 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
   const pendingCount = reconRows.filter((r) => r.status === "PENDENTE").length;
 
   return (
-    <section className="space-y-8">
+    <section
+      className="space-y-8"
+      style={{
+        background: "#F7F6F2",
+        border: "1px solid #E5E3D9",
+        borderRadius: 20,
+        padding: "32px 28px",
+      }}
+    >
       <SectionHeader />
 
       {/* ════ BANNER DE FIABILIDADE ════════════════════════════════════ */}
