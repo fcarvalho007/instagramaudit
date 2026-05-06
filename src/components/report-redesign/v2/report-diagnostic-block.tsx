@@ -20,7 +20,6 @@ import {
   derivePriorities,
   type PriorityItem,
 } from "@/lib/report/block02-diagnostic";
-import type { AiPriorityItem } from "@/lib/insights/types";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 
 import { ReportDiagnosticGroup } from "./report-diagnostic-group";
