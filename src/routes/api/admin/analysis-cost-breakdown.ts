@@ -50,6 +50,7 @@ interface AnalysisBreakdown {
   enrichment_summary: Record<string, string> | null;
   all_enrichments_complete: boolean;
   snapshot_expires_at: string | null;
+  enrichment_history: Record<string, { total: number; failed: number }> | null;
 }
 
 export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
@@ -116,6 +117,7 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
           let enrichmentSummary: Record<string, string> | null = null;
           let allEnrichmentsComplete = false;
           let snapshotExpiresAt: string | null = null;
+          let enrichmentHistory: Record<string, { total: number; failed: number }> | null = null;
 
           if (ev.analysis_snapshot_id) {
             const { data: ejRows } = await supabaseAdmin
@@ -127,15 +129,24 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
             if (ejRows && ejRows.length > 0) {
               // Take latest status per type
               const map: Record<string, string> = {};
+              const histMap: Record<string, { total: number; failed: number }> = {};
               for (const r of ejRows) {
                 const t = r.enrichment_type as string;
                 if (!map[t]) map[t] = r.status as string;
+                if (!histMap[t]) histMap[t] = { total: 0, failed: 0 };
+                histMap[t].total += 1;
+                if (r.status === "error") histMap[t].failed += 1;
               }
               enrichmentSummary = map;
               const statuses = Object.values(map);
               allEnrichmentsComplete =
                 statuses.length >= 5 &&
                 statuses.every((s) => s === "success" || s === "skipped");
+              // Only keep types with past failures
+              for (const k of Object.keys(histMap)) {
+                if (histMap[k].failed === 0) delete histMap[k];
+              }
+              enrichmentHistory = Object.keys(histMap).length > 0 ? histMap : null;
             }
 
             const { data: snapRow } = await supabaseAdmin
@@ -204,6 +215,7 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
             enrichment_summary: enrichmentSummary,
             all_enrichments_complete: allEnrichmentsComplete,
             snapshot_expires_at: snapshotExpiresAt,
+            enrichment_history: enrichmentHistory,
           });
         }
 
