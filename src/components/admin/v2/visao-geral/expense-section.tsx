@@ -596,7 +596,7 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
 /* ── Provider Card (Zona 1) ────────────────────────────────────────── */
 
 function ProviderCard({
-  color, label, pctLabel, value, capLabel, note, progressValue, progressMax, progressColor,
+  color, label, pctLabel, value, capLabel, note, progressValue, progressMax, progressColor, accent,
 }: {
   color: string;
   label: string;
@@ -607,9 +607,10 @@ function ProviderCard({
   progressValue: number;
   progressMax: number;
   progressColor: "expense" | "info" | "signal";
+  accent?: "expense" | "info" | "signal" | "neutral";
 }) {
   return (
-    <AdminCard className="relative">
+    <AdminCard className="relative" variant="accent-left" accent={accent ?? "neutral"}>
       <div className="flex items-center gap-2 mb-2">
         <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
         <span className="text-[11px] font-medium uppercase tracking-wider text-admin-text-tertiary">{label}</span>
