@@ -1,53 +1,127 @@
 
-## Objetivo
+## Audit Results
 
-Dar ao bloco "Custos da plataforma" em `/admin/receita` uma identidade visual mais clara — cada zona com fundo/caixa diferenciada — e remover permanentemente o formulário de importação manual de faturação.
+### 1. Database State
 
-## Alterações
+**`provider_billing_import_batches` (batch 92ec4b06):**
 
-### 1. Wrapper visual para toda a secção de custos
+| Field | Value | Correct? |
+|---|---|---|
+| `dashboard_total_actual_cost_usd` | 0.66 | PASS |
+| `imported_total_raw_cost_usd` | 0.6601 | PASS |
+| `imported_total_displayed_cost_usd` | 0.67 | PASS |
+| `rounding_delta_usd` | -0.01 | PASS |
+| `raw_delta_usd` | -0.0001 | PASS |
+| `reconciliation_status` | Rounding difference | PASS |
 
-Envolver a `<section>` da `ExpenseSection` num contentor com fundo ligeiramente diferente do fundo da página (ex.: `#FAFAF6` vs `#FFFFFF`), borda subtil e `border-radius: 20px`, para isolar visualmente o bloco de custos do resto do admin.
+**`provider_billing_imports` (2 rows):**
 
-### 2. Zona 1 (Provider cards) — accent-left
+| actor | actual_cost_usd | displayed_cost_usd | raw_calculated_cost_usd |
+|---|---|---|---|
+| instagram-scraper | 0.09 | 0.09 | 0.0851 |
+| instagram-comment-scraper | 0.58 | 0.58 | 0.575 |
+| **SUM** | **0.67** | **0.67** | **0.6601** |
 
-Aplicar `variant="accent-left"` aos 3 ProviderCards com o accent da família respetiva (`expense` para Apify, `info` para OpenAI, `signal` para DataForSEO). A borda lateral colorida cria hierarquia visual imediata.
+Row-level `actual_cost_usd` was previously updated to match `displayed_cost_usd`. Both sum to $0.67, not $0.66.
 
-### 3. Zona 2 (Custo por análise) — fundo levemente tintado
+### 2. Server Query Logic (`billing-reconciliation.server.ts`)
 
-Adicionar fundo subtil ao grupo de Zona 2 (caixa ligeiramente amarelada/neutral) para separar do resto.
+**Line 98 — FAIL:**
+```ts
+const externalTotal = ext.reduce((s, r) => s + Number(r.actual_cost_usd ?? 0), 0);
+```
+Sums row-level `actual_cost_usd` = $0.67. Should use `dashboard_total_actual_cost_usd` from the batch = $0.66.
 
-### 4. Zona 3 (Reconciliação) — accent-left expense
+**Lines 116, 136-139 — FAIL:**
+Daily and provider breakdowns also sum row-level `actual_cost_usd`, producing $0.67 for Apify external.
 
-Usar `variant="accent-left" accent="expense"` no AdminCard da reconciliação para o distinguir das tabelas normais.
+**Batch summary (lines 191-219) — PASS:**
+Correctly uses `b.dashboard_total_actual_cost_usd` for `dashboard_total`.
 
-### 5. Zonas 4/5 (Apify/OpenAI detalhe) — accent-left por fornecedor
+### 3. UI Display (`expense-section.tsx`)
 
-Cada tabela recebe `accent-left` com a cor do fornecedor correspondente.
+**Reconciliation table (Zona 3) — FAIL:**
+`buildReconRows()` line 730 shows `ext.external` from `byProvider`, which comes from the flawed row-sum ($0.67). Label says "Faturado real" but value is the rounded-row sum.
 
-### 6. Zona 6 (Gráfico diário) — sem mudança (já está distinto pelo gráfico)
+**Actor detail table (Zona 4) — PASS:**
+Uses `provider_call_logs.actual_cost_usd` (internal), not billing imports.
 
-### 7. Remover formulário de importação manual
+**Provider cards (Zona 1) — PASS:**
+Shows internal attributed costs only.
 
-- Remover o botão "+ Importar faturação" e o toggle `showImportForm` da `expense-section.tsx`
-- Remover a referência ao `BillingImportForm` da `reconciliation-section.tsx`
-- Remover o import e o state `showImportForm` de ambos os ficheiros
-- Manter o ficheiro `billing-import-form.tsx` no disco (não apagar, apenas desligar) — caso futuro
-- Ajustar o texto do rodapé da reconciliação: remover "Importa para calcular o custo real total" e substituir por nota informativa
+### 4. Summary
 
-### 8. Refinamentos de copy
+| Check | Result |
+|---|---|
+| Batch-level dashboard total | PASS ($0.66) |
+| Row-level actual_cost_usd semantic | FAIL (ambiguous — holds displayed-rounded value, not dashboard total) |
+| KPI externalTotal source | FAIL (row-sum $0.67, not batch $0.66) |
+| Provider breakdown external | FAIL (same row-sum path) |
+| Daily chart external | FAIL (same row-sum path) |
+| Reconciliation table "Faturado real" | FAIL (shows $0.67) |
+| Labels distinguish internal/external/rounded | FAIL (no separation) |
+| Rounding delta visible in UI | FAIL (not shown) |
 
-- Rodapé da Zona 3: "X fornecedor(es) sem faturação externa. Dados baseados em estimativas internas." em vez do CTA para importar
-- Subtítulo do SectionHeader: "Custos internos atribuídos · reconciliação automática" (sem mencionar importação manual)
+---
 
-## Ficheiros alterados
+## Proposed Correction Plan
 
-- `src/components/admin/v2/visao-geral/expense-section.tsx` — wrapper visual, accent-left nos cards, remover import form
-- `src/components/admin/v2/receita/reconciliation-section.tsx` — remover import form reference
+### A. Data Correction
 
-## Não alterado
+**Revert row-level `actual_cost_usd` back to raw values** (undo the previous rounding update):
 
-- `src/components/admin/v2/receita/billing-import-form.tsx` — mantém-se no disco, não é apagado
-- Nenhum ficheiro locked
-- Nenhuma lógica de backend
-- Nenhum token CSS novo necessário (usa accent-left existente)
+```
+UPDATE provider_billing_imports SET actual_cost_usd = 0.0851
+WHERE id = 'e65d64f7-...' AND provider = 'apify';
+
+UPDATE provider_billing_imports SET actual_cost_usd = 0.575
+WHERE id = 'cf5a09ab-...' AND provider = 'apify';
+```
+
+After this:
+- `actual_cost_usd` = raw calculated (0.0851 + 0.575 = 0.6601)
+- `displayed_cost_usd` = dashboard-rounded (0.09 + 0.58 = 0.67)
+- Batch `dashboard_total_actual_cost_usd` = 0.66 (authoritative)
+
+**Semantic rule going forward:** `actual_cost_usd` at row level stores the raw calculated value. `displayed_cost_usd` stores the dashboard-rounded value. The batch-level `dashboard_total_actual_cost_usd` is the single source of truth for the provider total.
+
+### B. Server Logic Fix (`billing-reconciliation.server.ts`)
+
+1. **Provider external total** must come from `dashboard_total_actual_cost_usd` in the batch table, not from summing import rows.
+2. Build a `Map<provider, dashboardTotal>` from batches, use it for KPIs and `byProvider`.
+3. Daily chart: keep row-level granularity but use `raw_calculated_cost_usd` (not `actual_cost_usd` which is ambiguous after correction).
+4. Add `displayedRowSum` and `roundingDelta` to the provider breakdown response so the UI can show all three values.
+
+### C. UI Fix (`expense-section.tsx`)
+
+Update Zona 3 reconciliation table columns:
+
+| Fornecedor | Interno registado | Faturado externo (dashboard) | Soma linhas arredondadas | Δ arredondamento | Δ interno vs externo | Estado |
+|---|---|---|---|---|---|---|
+
+- "Faturado externo (dashboard)" = batch `dashboard_total`
+- "Soma linhas arredondadas" = `displayed_total` from batch
+- "Δ arredondamento" = `rounding_delta` from batch
+- "Δ interno vs externo" = dashboard_total - internal
+
+### D. Files to Change
+
+| File | Change |
+|---|---|
+| `src/lib/admin/billing-reconciliation.server.ts` | Use batch dashboard_total for provider external; add rounding breakdown to response |
+| `src/components/admin/v2/visao-geral/expense-section.tsx` | Update reconciliation table columns and labels |
+| DB migration | Revert `actual_cost_usd` on 2 rows |
+
+### E. Files NOT to Touch
+
+- `src/lib/admin/system-queries.server.ts` (internal cost logic is correct)
+- `src/components/admin/v2/receita/billing-import-form.tsx` (already disconnected)
+- Any public report UI
+- Any PDF pipeline
+- Any provider execution logic
+- `src/integrations/supabase/client.ts` / `types.ts`
+
+### F. Risks and Rollback
+
+- **Risk:** If other queries depend on row-level `actual_cost_usd` being rounded, they will see different values. Audit found no other consumers.
+- **Rollback:** Re-run the previous UPDATE to set actual_cost_usd = displayed_cost_usd values.
