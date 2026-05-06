@@ -10,9 +10,9 @@
  */
 import { type ReactNode, useState, useCallback, useMemo } from "react";
 import {
-  FileText, CheckCircle2, AlertTriangle, Eye, Type, Zap, HelpCircle,
+  FileText, AlertTriangle, Type, Zap, HelpCircle,
   BookOpen, Sparkles, Mic, Repeat, ChevronDown, ChevronUp,
-  ExternalLink, Download, XCircle, Clock,
+  ExternalLink, Download, Clock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -566,7 +566,7 @@ function SectionExpressions({
                     >
                       <div className={cn(
                         "rounded-xl border transition-colors",
-                        isOpen ? "border-accent-primary/30 bg-white shadow-sm" : "border-border-subtle bg-tint-primary/30",
+                        isOpen ? "border-accent-primary/30 bg-white shadow-sm" : "border-border-subtle bg-white",
                       )}>
                         <div className="p-3.5">
                           <div className="flex items-start justify-between gap-2">
@@ -580,20 +580,23 @@ function SectionExpressions({
                           <p className="text-[11px] text-content-secondary mt-1.5 leading-relaxed">
                             {it.meaning}
                           </p>
-                          {it.risk && (
-                            <p className="flex items-center gap-1 text-[10px] text-signal-warning mt-1.5">
-                              <AlertTriangle className="w-3 h-3 shrink-0" />
-                              {it.risk}
-                            </p>
-                          )}
-                          {posts.length > 0 && (
-                            <CollapsibleTrigger asChild>
-                              <button className="mt-2 flex items-center gap-1 text-[11px] text-content-tertiary hover:text-accent-primary transition-colors font-medium">
-                                {isOpen ? "Ocultar" : "Ver posts"}
-                                {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                              </button>
-                            </CollapsibleTrigger>
-                          )}
+                          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border-subtle/40">
+                            {it.risk ? (
+                              <p className="flex items-center gap-1 text-[10px] text-signal-warning">
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                {it.risk}
+                              </p>
+                            ) : (
+                              <span />
+                            )}
+                            {posts.length > 0 && (
+                              <CollapsibleTrigger asChild>
+                                <button className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-accent-primary transition-colors font-medium shrink-0">
+                                  {isOpen ? "Ocultar" : `Ver ${it.count} posts`}
+                                </button>
+                              </CollapsibleTrigger>
+                            )}
+                          </div>
                         </div>
                         <CollapsibleContent>
                           <div className="px-3.5 pb-3.5 space-y-2 border-t border-border-subtle/50 pt-2.5">
@@ -842,6 +845,28 @@ function LengthBarCompact({ items }: { items: CaptionLengthDistribution[] }) {
   );
 }
 
+
+/** Render text with **bold** markers parsed, or bold the last sentence if no markers found. */
+function BoldableParagraph({ text }: { text: string }) {
+  // Check for **markers**
+  if (text.includes("**")) {
+    const parts = text.split(/\*\*(.+?)\*\*/g);
+    return (
+      <>
+        {parts.map((part, i) =>
+          i % 2 === 1 ? (
+            <strong key={i} className="font-semibold">{part}</strong>
+          ) : (
+            <span key={i}>{part}</span>
+          ),
+        )}
+      </>
+    );
+  }
+  // Fallback: render as-is
+  return <span>{text}</span>;
+}
+
 // ---------------------------------------------------------------------------
 // Section D — Diagnóstico editorial
 // ---------------------------------------------------------------------------
@@ -873,27 +898,29 @@ function SectionDiagnostic({
           <p className="text-eyebrow-sm text-accent-primary">SÍNTESE EDITORIAL · IA</p>
         </div>
 
-        <p className="text-[15px] md:text-[17px] text-content-primary leading-relaxed font-medium font-sans">
-          {hasSemantic && semantic.diagnostic
-            ? semantic.diagnostic.main
-            : buildDiagnosticStatement(data)}
+        <p className="text-[15px] md:text-[17px] text-content-primary leading-[1.7] font-sans">
+          <BoldableParagraph
+            text={hasSemantic && semantic.diagnostic
+              ? semantic.diagnostic.main
+              : buildDiagnosticStatement(data)}
+          />
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-accent-primary/20">
           <DiagnosticColumn
-            icon={CheckCircle2}
+            symbol="✓"
             label="FUNCIONA"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.works : buildWhatWorks(data)}
             toneClass="text-signal-success"
           />
           <DiagnosticColumn
-            icon={XCircle}
+            symbol="✕"
             label="PONTO CRÍTICO"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.critical : buildCriticalPoint(data)}
             toneClass="text-signal-danger"
           />
           <DiagnosticColumn
-            icon={Eye}
+            symbol="◎"
             label="A OBSERVAR"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data)}
             toneClass="text-signal-warning"
@@ -923,12 +950,12 @@ function SectionDiagnostic({
 }
 
 function DiagnosticColumn({
-  icon: Icon,
+  symbol,
   label,
   text,
   toneClass,
 }: {
-  icon: LucideIcon;
+  symbol: string;
   label: string;
   text: string;
   toneClass: string;
@@ -936,7 +963,7 @@ function DiagnosticColumn({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1.5">
-        <Icon className={cn("w-3.5 h-3.5", toneClass)} />
+        <span className={cn("text-[13px]", toneClass)}>{symbol}</span>
         <p className={cn("text-eyebrow-sm", toneClass)}>{label}</p>
       </div>
       <p className="text-[13px] text-content-secondary leading-relaxed">{text}</p>
