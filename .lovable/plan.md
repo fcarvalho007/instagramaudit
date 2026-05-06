@@ -1,60 +1,44 @@
 
-## Audit: Provider Call Attribution Status
+## Functional QA — Admin Execution Mode (Cache-only vs Fresh)
 
-### Current state in codebase (not yet published)
+### Code Audit Summary
 
-| Provider | Actor | File | Passes analysisEventId directly? | Caught by linkProviderCallsToEvent? | Status |
-|----------|-------|------|----------------------------------|-------------------------------------|--------|
-| Apify | instagram-scraper | analyze-public-v1.ts (L367/395) | NO (runs before event created) | YES (time-window link at L1203) | OK |
-| Apify | comment-scraper | enrich-comments.ts (L130/190) | YES (from job row) | N/A | OK |
-| OpenAI | insights v1 | openai-insights.server.ts | YES (L1000 passes it) | Also caught by link | OK |
-| OpenAI | insights v2 | openai-insights.server.ts | YES (L1039 passes it) | Also caught by link | OK |
-| OpenAI | visual-cover | visual-cover-analysis.server.ts | YES (L1093 passes it) | Also caught by link | OK |
-| OpenAI | caption-semantic | caption-semantic-analysis.server.ts | YES (L1132 passes it) | Also caught by link | OK |
-| DataForSEO | google_trends | market-signals.ts → client.ts | **NO** — not passed through | **PARTIAL** — linkProviderCallsToEvent catches by handle+time, but DFS runs BEFORE event exists | **GAP** |
+The execution mode feature is **fully implemented** at the code level:
 
-### Production DB evidence (not yet published)
+| Component | Status | Details |
+|-----------|--------|---------|
+| `execution-mode.server.ts` | OK | `getAnalysisExecutionMode()`, `assertFreshModeAllowed()`, `CacheOnlyBlockedError` |
+| `execution-mode.functions.ts` | OK | Server fns: get/set mode, expire snapshot, test profile statuses |
+| `analyze-public-v1.ts` L604-649 | OK | Cache-only guard blocks fresh API calls; logs `blocked_cache_only` with `estimated_cost_usd=0` |
+| `execution-mode-card.tsx` | OK | Segmented control with confirmation dialog for Fresh toggle |
+| `admin.tsx` L90-122 | OK | Persistent `ExecutionModeBadge` in header |
+| `test-profiles-card.tsx` L101 | OK | "Fresh" button `disabled={isCacheOnly}` |
+| `cache-maintenance-card.tsx` L55 | OK | "Invalida o snapshot — não chama APIs" — only updates `expires_at` |
+| `admin.sistema.tsx` | OK | Renders `ExecutionModeCard` |
 
-- OpenAI: 0% linked (28/28 calls without event_id) — code fix exists but isn't deployed
-- DataForSEO: 0% linked (11/11 calls without event_id) — code fix partially exists (client.ts accepts it, but `buildMarketSignals` doesn't propagate it)
-- Apify scraper: 26.7% linked — older calls pre-fix, recent ones ARE linked via time-window
-- Apify comments: 100% linked
+**Current DB state:** `analysis_execution_mode = cache_only`
 
-### Remaining gaps to fix
+### One potential gap found
 
-**Gap 1 — DataForSEO: `buildMarketSignals` doesn't accept or propagate `analysisEventId`**
+`assertFreshModeAllowed()` exists in `execution-mode.server.ts` but is **never called** anywhere. The cache-only guard works via the top-level check in `analyze-public-v1.ts` (L606-649), which blocks the entire flow early. This is actually correct — the guard at the API entry point is more reliable than per-provider guards. But `assertFreshModeAllowed` is dead code.
 
-The `callDataForSeo` client already accepts `analysisEventId` (added in previous session). But `buildMarketSignals` → `buildSignalsInner` → endpoint functions (`fetchGoogleTrends`, `fetchKeywordIdeas`, `fetchSerpOrganic`) don't pass it through.
+### QA Plan
 
-Since DFS runs BEFORE `analysisEventId` exists (line ~833 vs event creation at ~967), direct propagation isn't possible. However, `linkProviderCallsToEvent` (line 1203) should catch these by time-window. The fact that production shows 0% linked means either:
-- The link call wasn't in the deployed code yet, OR
-- DFS `handle` doesn't match (need to verify)
+All tests require **browser-based validation** against the live preview:
 
-Fix: Verify `linkProviderCallsToEvent` correctly matches DFS calls. The DFS client stores `handle` as `ownerHandle` — check it's lowercase and matches.
+1. **Verify cache-only blocks fresh calls** — navigate to `/analyze/frederico.m.carvalho`, check DB for `blocked_cache_only` event, confirm no new `provider_call_logs`
+2. **Verify cache-only with no snapshot** — request a handle with no snapshot, confirm `CACHE_ONLY_NO_DATA` response
+3. **Verify admin UI** — check badge, Sistema page, button states
+4. **Verify fresh mode** — toggle to fresh, expire cache, trigger analysis, confirm provider calls are created
+5. **Clean up** — restore `cache_only` mode after testing
 
-**Gap 2 — `linkProviderCallsToEvent` may not catch all OpenAI/DFS calls**
+### Files that may change
 
-Even though OpenAI calls now pass `analysisEventId` directly, the `linkProviderCallsToEvent` fallback at L1203 should also catch them. The fact that production shows 0% means the published code doesn't include the changes yet.
+- None expected — the feature looks correctly implemented
+- If issues found, only execution-mode related files will be touched
 
-### Implementation
+### What will NOT be changed
 
-1. **Add `analysisEventId` propagation to `buildMarketSignals`** — accept it in `BuildMarketSignalsOptions`, pass it through `buildSignalsInner` to each endpoint call. This is belt-and-suspenders alongside `linkProviderCallsToEvent`.
-
-2. **Pass `analysisEventId` from `analyze-public-v1.ts` to `buildMarketSignals`** — but since DFS runs before event creation, use `linkProviderCallsToEvent` as primary mechanism (already exists at L1203).
-
-3. **Add a legacy-data comment** in `fetchReportCounts` explaining old logs may have null `analysis_event_id`.
-
-4. **No changes needed** to: expense-section UI, confidence logic, P04/P05/P07, report UI, pricing.
-
-### Files to change
-
-- `src/lib/dataforseo/market-signals.ts` — add `analysisEventId` to options, propagate to endpoint calls
-- `src/lib/dataforseo/endpoints/google-trends.ts` — accept and pass `analysisEventId`
-- `src/lib/dataforseo/endpoints/keyword-ideas.ts` — accept and pass `analysisEventId`
-- `src/lib/dataforseo/endpoints/serp-organic.ts` — accept and pass `analysisEventId`
-- `src/lib/admin/system-queries.server.ts` — add legacy-data comment
-- Validate with `tsc --noEmit` and `vitest run`
-
-### Key conclusion
-
-The previous session's changes (OpenAI/visual-cover/caption-semantic `analysisEventId` propagation + `linkProviderCallsToEvent` fallback + defensive warn) are correct in the codebase but **not yet published**. Once published, OpenAI and Apify calls will be linked. The only remaining code gap is DataForSEO endpoint propagation for belt-and-suspenders coverage.
+- Public report cards (P01-P07)
+- PDF, auth, global tokens
+- Any non-execution-mode files
