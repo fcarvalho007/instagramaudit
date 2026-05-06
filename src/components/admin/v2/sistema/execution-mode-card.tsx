@@ -1,10 +1,11 @@
 /**
- * Admin card — Modo de execução (cache_only / fresh segmented control).
- * Lives in visao-geral/ but is rendered inside Sistema page.
+ * Admin card — Modo de execução (cache_only / fresh).
+ * Redesigned with human-vocabulary switch, status panel, and cost badge.
  */
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Database, RefreshCw, CheckCircle2 } from "lucide-react";
 import {
   getExecutionMode,
   setExecutionMode,
@@ -58,72 +59,115 @@ export function ExecutionModeCard() {
   return (
     <>
       <div className="flex flex-col gap-3">
-        <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider">
+        <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+          <span className="text-amber-500">✦</span>
           Modo de execução
         </p>
 
-        {/* ── Horizontal: segmented + badge ── */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="inline-flex gap-1 rounded-lg bg-admin-surface-muted p-1">
+        <div className="flex items-stretch gap-4 flex-wrap">
+          {/* Switch pill */}
+          <div
+            className="relative inline-flex rounded-xl p-1 shrink-0"
+            style={{
+              backgroundColor: "#F3F2EE",
+              border: "1px solid #E5E3D9",
+              minHeight: 56,
+            }}
+          >
             <button
               type="button"
               onClick={() => handleToggle("cache_only")}
               disabled={busy}
-              className={`px-3.5 py-2 text-[12px] font-semibold rounded-md transition-all duration-200 ${
-                isCacheOnly
-                  ? "bg-white text-[rgb(var(--admin-revenue-500))] shadow-sm"
-                  : "text-admin-text-tertiary hover:text-admin-text-secondary"
-              }`}
+              className="relative z-10 flex items-center gap-2 rounded-lg px-5 py-2.5 text-[12px] font-semibold transition-all duration-200"
+              style={{
+                backgroundColor: isCacheOnly ? "#FFFFFF" : "transparent",
+                color: isCacheOnly ? "#1D9E75" : "#888780",
+                boxShadow: isCacheOnly ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+              }}
             >
-              CACHE-ONLY
+              <Database size={14} />
+              <div className="flex flex-col items-start">
+                <span>Usar dados guardados</span>
+                <span className="text-[9px] font-medium uppercase tracking-wider opacity-70">
+                  sem custos
+                </span>
+              </div>
             </button>
             <button
               type="button"
               onClick={() => handleToggle("fresh")}
               disabled={busy}
-              className={`px-3.5 py-2 text-[12px] font-semibold rounded-md transition-all duration-200 ${
-                !isCacheOnly
-                  ? "bg-white text-[rgb(var(--admin-expense-500))] shadow-sm"
-                  : "text-admin-text-tertiary hover:text-admin-text-secondary"
-              }`}
+              className="relative z-10 flex items-center gap-2 rounded-lg px-5 py-2.5 text-[12px] font-semibold transition-all duration-200"
+              style={{
+                backgroundColor: !isCacheOnly ? "#FFFFFF" : "transparent",
+                color: !isCacheOnly ? "#BA7517" : "#888780",
+                boxShadow: !isCacheOnly ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+              }}
             >
-              FRESH
+              <RefreshCw size={14} />
+              <div className="flex flex-col items-start">
+                <span>Buscar dados novos</span>
+                <span className="text-[9px] font-medium uppercase tracking-wider opacity-70">
+                  com custos
+                </span>
+              </div>
             </button>
           </div>
 
-          {isCacheOnly ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--admin-revenue-500))]/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[rgb(var(--admin-revenue-500))]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--admin-revenue-500))] admin-pulse-dot" />
-              SEM CUSTOS
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--admin-expense-400))]/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[rgb(var(--admin-expense-500))]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--admin-expense-500))] admin-pulse-dot" />
-              CUSTOS ATIVOS
-            </span>
-          )}
-
-          <p className="text-[11px] text-admin-text-tertiary leading-tight">
-            {isCacheOnly
-              ? "Nenhuma API paga será chamada."
-              : "Pode chamar Apify, OpenAI e DataForSEO."}
-          </p>
+          {/* Status panel */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div
+              className="flex items-center justify-center shrink-0 rounded-full"
+              style={{
+                width: 36,
+                height: 36,
+                backgroundColor: isCacheOnly ? "#E8F5EE" : "#FFF3E0",
+              }}
+            >
+              <CheckCircle2
+                size={18}
+                style={{ color: isCacheOnly ? "#1D9E75" : "#BA7517" }}
+              />
+            </div>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[13px] font-semibold text-admin-text-primary">
+                  Modo activo: {isCacheOnly ? "dados guardados" : "buscar novos"}
+                </span>
+                <span
+                  className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+                  style={{
+                    backgroundColor: isCacheOnly ? "#E8F5EE" : "#FFF3E0",
+                    color: isCacheOnly ? "#1D9E75" : "#BA7517",
+                  }}
+                >
+                  {isCacheOnly ? "$0 / análise" : "custos variáveis"}
+                </span>
+              </div>
+              <p className="text-[11px] text-admin-text-tertiary leading-snug">
+                {isCacheOnly
+                  ? "A aplicação só lê informação já recolhida. Nenhuma API paga (Apify, OpenAI, DataForSEO) será chamada."
+                  : "Pode chamar Apify, OpenAI e DataForSEO conforme necessário. Utilizar apenas quando for necessário atualizar dados reais."}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ativar modo Fresh?</AlertDialogTitle>
+            <AlertDialogTitle>Ativar modo &ldquo;Buscar dados novos&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
-              Este modo pode gerar chamadas pagas a APIs externas. Deve ser
-              usado apenas quando for necessário atualizar dados reais.
+              Este modo pode gerar chamadas pagas a APIs externas (Apify, OpenAI,
+              DataForSEO). Deve ser usado apenas quando for necessário atualizar
+              dados reais.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Manter Cache-only</AlertDialogCancel>
+            <AlertDialogCancel>Manter dados guardados</AlertDialogCancel>
             <AlertDialogAction onClick={confirmFresh}>
-              Ativar Fresh
+              Ativar busca de dados novos
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
