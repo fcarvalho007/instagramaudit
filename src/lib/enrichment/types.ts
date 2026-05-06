@@ -14,7 +14,8 @@ export type EnrichmentStatus =
   | "running"
   | "success"
   | "error"
-  | "skipped";
+  | "skipped"
+  | "disabled";
 
 /** Per-enrichment-type status map embedded in normalized_payload. */
 export type EnrichmentStatusMap = Record<
