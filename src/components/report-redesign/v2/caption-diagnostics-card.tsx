@@ -28,10 +28,10 @@ import type { EnrichedPost } from "@/lib/analysis/normalize";
 /** Accept both EnrichedPost and the looser SnapshotPost shape. */
 type PostLike = {
   id?: string | null;
-  format: string;
+  format?: string | null;
   caption?: string | null;
-  likes: number;
-  comments: number;
+  likes?: number | null;
+  comments?: number | null;
   taken_at_iso?: string | null;
   permalink?: string | null;
   thumbnail_url?: string | null;
