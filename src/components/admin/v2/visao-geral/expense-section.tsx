@@ -359,9 +359,10 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
               <thead>
                 <tr className="text-left text-[11px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
                   <th className="pb-2 pr-4 font-medium">Fornecedor</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Interno atribuído</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Faturado real</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Diferença</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Interno registado</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Externo (dashboard)</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Δ arredondamento</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Δ interno vs externo</th>
                   <th className="pb-2 font-medium text-right">Estado</th>
                 </tr>
               </thead>
@@ -382,13 +383,27 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
                         <div>
                           <span className="tabular-nums text-admin-text-primary">${row.external!.toFixed(2)}</span>
                           <br />
-                          <span className="text-[10px] text-admin-text-tertiary">{row.externalLabel}</span>
+                          <span className="text-[10px] text-admin-text-tertiary">
+                            {row.externalLabel}
+                            {row.displayedRowSum != null && row.displayedRowSum !== row.external && (
+                              <> · linhas ${row.displayedRowSum.toFixed(2)}</>
+                            )}
+                          </span>
                         </div>
                       ) : (
-                        <span className="text-admin-text-tertiary">— por importar</span>
+                        <span className="text-admin-text-tertiary">— pendente</span>
                       )}
                     </td>
-                    <td className="py-3 pr-4 text-right">
+                    <td className="py-3 pr-4 text-right tabular-nums">
+                      {row.roundingDelta != null ? (
+                        <span className={`font-medium ${Math.abs(row.roundingDelta) >= 0.005 ? "text-amber-600" : "text-admin-text-tertiary"}`}>
+                          {row.roundingDelta < 0 ? "−" : "+"}${Math.abs(row.roundingDelta).toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-admin-text-tertiary">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4 text-right tabular-nums">
                       {row.delta != null ? (
                         <div>
                           <span className={`tabular-nums font-medium ${row.delta < 0 ? "text-red-600" : "text-admin-text-primary"}`}>
