@@ -40,6 +40,9 @@ interface ProviderBreakdown {
   external: number;
   internal: number;
   variance: number;
+  displayedRowSum: number | null;
+  roundingDelta: number | null;
+  source: "batch" | "row-sum";
 }
 
 interface ReconciliationData {
@@ -356,9 +359,10 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
               <thead>
                 <tr className="text-left text-[11px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
                   <th className="pb-2 pr-4 font-medium">Fornecedor</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Interno atribuído</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Faturado real</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Diferença</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Interno registado</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Externo (dashboard)</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Δ arredondamento</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Δ interno vs externo</th>
                   <th className="pb-2 font-medium text-right">Estado</th>
                 </tr>
               </thead>
@@ -379,13 +383,27 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
                         <div>
                           <span className="tabular-nums text-admin-text-primary">${row.external!.toFixed(2)}</span>
                           <br />
-                          <span className="text-[10px] text-admin-text-tertiary">{row.externalLabel}</span>
+                          <span className="text-[10px] text-admin-text-tertiary">
+                            {row.externalLabel}
+                            {row.displayedRowSum != null && row.displayedRowSum !== row.external && (
+                              <> · linhas ${row.displayedRowSum.toFixed(2)}</>
+                            )}
+                          </span>
                         </div>
                       ) : (
-                        <span className="text-admin-text-tertiary">— por importar</span>
+                        <span className="text-admin-text-tertiary">— pendente</span>
                       )}
                     </td>
-                    <td className="py-3 pr-4 text-right">
+                    <td className="py-3 pr-4 text-right tabular-nums">
+                      {row.roundingDelta != null ? (
+                        <span className={`font-medium ${Math.abs(row.roundingDelta) >= 0.005 ? "text-amber-600" : "text-admin-text-tertiary"}`}>
+                          {row.roundingDelta < 0 ? "−" : "+"}${Math.abs(row.roundingDelta).toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-admin-text-tertiary">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4 text-right tabular-nums">
                       {row.delta != null ? (
                         <div>
                           <span className={`tabular-nums font-medium ${row.delta < 0 ? "text-red-600" : "text-admin-text-primary"}`}>
@@ -705,9 +723,11 @@ interface ReconRow {
   internal: number;
   external: number | null;
   externalLabel: string | null;
+  displayedRowSum: number | null;
+  roundingDelta: number | null;
   delta: number | null;
   deltaPct: number | null;
-  status: "REVER" | "PENDENTE" | "OK";
+  status: "REVER" | "PENDENTE" | "OK" | "ARRED";
 }
 
 function buildReconRows(data: Expense30d, reconByProvider: ProviderBreakdown[]): ReconRow[] {
@@ -723,25 +743,35 @@ function buildReconRows(data: Expense30d, reconByProvider: ProviderBreakdown[]):
     const delta = hasExternal ? ext.external - p.internal : null;
     const deltaPct = hasExternal && p.internal > 0 ? ((ext.external - p.internal) / p.internal) * 100 : null;
     const needsReview = delta != null && Math.abs(delta) > 0.01;
+    const hasRounding = ext?.roundingDelta != null && Math.abs(ext.roundingDelta) >= 0.005;
+    let status: ReconRow["status"];
+    if (!hasExternal) status = "PENDENTE";
+    else if (needsReview) status = "REVER";
+    else if (hasRounding) status = "ARRED";
+    else status = "OK";
     return {
       provider: p.label,
       color: p.color,
       internal: p.internal,
       external: hasExternal ? ext.external : null,
       externalLabel: hasExternal ? `dashboard ${p.label}` : null,
+      displayedRowSum: ext?.displayedRowSum ?? null,
+      roundingDelta: ext?.roundingDelta ?? null,
       delta,
       deltaPct,
-      status: hasExternal ? (needsReview ? "REVER" as const : "OK" as const) : "PENDENTE" as const,
+      status,
     };
   });
 }
 
-function ReconStatusBadge({ status }: { status: "REVER" | "PENDENTE" | "OK" }) {
+function ReconStatusBadge({ status }: { status: "REVER" | "PENDENTE" | "OK" | "ARRED" }) {
   const cls = status === "REVER"
     ? "bg-red-500/15 text-red-700"
     : status === "OK"
       ? "bg-emerald-500/15 text-emerald-700"
-      : "bg-neutral-200 text-neutral-500";
+      : status === "ARRED"
+        ? "bg-amber-500/15 text-amber-700"
+        : "bg-neutral-200 text-neutral-500";
   return (
     <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold tracking-wider ${cls}`}>
       {status}
