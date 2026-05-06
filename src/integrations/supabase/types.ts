@@ -590,21 +590,78 @@ export type Database = {
           },
         ]
       }
+      provider_billing_import_batches: {
+        Row: {
+          created_at: string
+          currency: string
+          dashboard_total_actual_cost_usd: number
+          id: string
+          imported_total_displayed_cost_usd: number | null
+          imported_total_raw_cost_usd: number | null
+          period_end: string
+          period_start: string
+          provider: string
+          raw_delta_usd: number | null
+          reconciliation_status: string
+          rounding_delta_usd: number | null
+          source_note: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          dashboard_total_actual_cost_usd?: number
+          id?: string
+          imported_total_displayed_cost_usd?: number | null
+          imported_total_raw_cost_usd?: number | null
+          period_end: string
+          period_start: string
+          provider: string
+          raw_delta_usd?: number | null
+          reconciliation_status?: string
+          rounding_delta_usd?: number | null
+          source_note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          dashboard_total_actual_cost_usd?: number
+          id?: string
+          imported_total_displayed_cost_usd?: number | null
+          imported_total_raw_cost_usd?: number | null
+          period_end?: string
+          period_start?: string
+          provider?: string
+          raw_delta_usd?: number | null
+          reconciliation_status?: string
+          rounding_delta_usd?: number | null
+          source_note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       provider_billing_imports: {
         Row: {
           actor_or_model: string | null
           actual_cost_usd: number
+          batch_id: string | null
           created_at: string
           currency: string
+          displayed_cost_usd: number | null
           estimated_cost_usd: number | null
           id: string
+          label: string | null
           metric_name: string | null
           notes: string | null
           period_end: string
           period_start: string
           provider: string
           quantity: number | null
+          raw_calculated_cost_usd: number | null
+          reconciliation_note: string | null
           service: string | null
+          service_group: string | null
           source: string
           source_reference: string | null
           unit_price_usd: number | null
@@ -613,17 +670,23 @@ export type Database = {
         Insert: {
           actor_or_model?: string | null
           actual_cost_usd?: number
+          batch_id?: string | null
           created_at?: string
           currency?: string
+          displayed_cost_usd?: number | null
           estimated_cost_usd?: number | null
           id?: string
+          label?: string | null
           metric_name?: string | null
           notes?: string | null
           period_end: string
           period_start: string
           provider: string
           quantity?: number | null
+          raw_calculated_cost_usd?: number | null
+          reconciliation_note?: string | null
           service?: string | null
+          service_group?: string | null
           source: string
           source_reference?: string | null
           unit_price_usd?: number | null
@@ -632,23 +695,37 @@ export type Database = {
         Update: {
           actor_or_model?: string | null
           actual_cost_usd?: number
+          batch_id?: string | null
           created_at?: string
           currency?: string
+          displayed_cost_usd?: number | null
           estimated_cost_usd?: number | null
           id?: string
+          label?: string | null
           metric_name?: string | null
           notes?: string | null
           period_end?: string
           period_start?: string
           provider?: string
           quantity?: number | null
+          raw_calculated_cost_usd?: number | null
+          reconciliation_note?: string | null
           service?: string | null
+          service_group?: string | null
           source?: string
           source_reference?: string | null
           unit_price_usd?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_billing_imports_batch"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "provider_billing_import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provider_call_logs: {
         Row: {

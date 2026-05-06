@@ -1,6 +1,8 @@
 /**
- * GET /api/admin/billing-reconciliation?days=30
- * POST /api/admin/billing-reconciliation  (insert import row)
+ * GET  /api/admin/billing-reconciliation?days=30
+ * POST /api/admin/billing-reconciliation          (single row or batch)
+ *
+ * Batch mode: body has { batch: true, ... }
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -8,7 +10,9 @@ import { requireAdminSession } from "@/lib/admin/session";
 import {
   getReconciliationData,
   insertBillingImportRow,
+  insertBillingBatch,
   type BillingImportInput,
+  type BatchInput,
 } from "@/lib/admin/billing-reconciliation.server";
 
 function json(body: unknown, status = 200): Response {
@@ -30,7 +34,10 @@ export const Route = createFileRoute("/api/admin/billing-reconciliation")({
         }
 
         const url = new URL(request.url);
-        const days = Math.min(Number(url.searchParams.get("days")) || 30, 365);
+        const days = Math.min(
+          Number(url.searchParams.get("days")) || 30,
+          365,
+        );
 
         const data = await getReconciliationData(days);
         return json(data);
@@ -43,10 +50,43 @@ export const Route = createFileRoute("/api/admin/billing-reconciliation")({
           return json({ success: false, message: "Não autorizado" }, 401);
         }
 
-        const body = (await request.json()) as BillingImportInput;
+        const raw = (await request.json()) as Record<string, unknown>;
 
-        if (!body.provider || !body.period_start || !body.period_end || body.actual_cost_usd == null) {
-          return json({ success: false, message: "Campos obrigatórios em falta" }, 400);
+        // Batch mode
+        if (raw.batch === true) {
+          const body = raw as unknown as BatchInput;
+          if (
+            !body.provider ||
+            !body.period_start ||
+            !body.period_end ||
+            body.dashboard_total_actual_cost_usd == null
+          ) {
+            return json(
+              { success: false, message: "Campos obrigatórios em falta" },
+              400,
+            );
+          }
+          try {
+            const result = await insertBillingBatch(body);
+            return json(result, 201);
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Erro desconhecido";
+            return json({ success: false, message: msg }, 500);
+          }
+        }
+
+        // Single row mode
+        const body = raw as unknown as BillingImportInput;
+        if (
+          !body.provider ||
+          !body.period_start ||
+          !body.period_end ||
+          body.actual_cost_usd == null
+        ) {
+          return json(
+            { success: false, message: "Campos obrigatórios em falta" },
+            400,
+          );
         }
 
         try {

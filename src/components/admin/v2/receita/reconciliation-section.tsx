@@ -1,6 +1,7 @@
 /**
  * Secção "Reconciliação de custos" — compara custos externos (billing imports)
- * com custos internos (provider_call_logs).
+ * com custos internos (provider_call_logs). Includes batch-level summaries
+ * with rounding-aware reconciliation status.
  */
 
 import { useState } from "react";
@@ -23,6 +24,8 @@ import { SectionError, SectionSkeleton } from "../section-state";
 import { adminFetch } from "@/lib/admin/fetch";
 import { BillingImportForm } from "./billing-import-form";
 import type { AdminPeriod } from "../period-select";
+
+/* ── Types ─────────────────────────────────────────────────────────── */
 
 interface ReconciliationKPIs {
   externalTotal: number;
@@ -54,12 +57,32 @@ interface ActorBreakdown {
   variance: number;
 }
 
+interface BatchSummary {
+  id: string;
+  provider: string;
+  period_start: string;
+  period_end: string;
+  currency: string;
+  dashboard_total: number;
+  raw_total: number | null;
+  displayed_total: number | null;
+  rounding_delta: number | null;
+  raw_delta: number | null;
+  reconciliation_status: string;
+  source_note: string | null;
+  internal_total: number;
+  created_at: string;
+}
+
 interface ReconciliationData {
   kpis: ReconciliationKPIs;
   daily: DailyPoint[];
   byProvider: ProviderBreakdown[];
   byActor: ActorBreakdown[];
+  batches: BatchSummary[];
 }
+
+/* ── Helpers ───────────────────────────────────────────────────────── */
 
 const PERIOD_DAYS: Record<AdminPeriod, number> = {
   "30d": 30,
@@ -67,9 +90,28 @@ const PERIOD_DAYS: Record<AdminPeriod, number> = {
   ytd: 365,
 };
 
-function fmt(v: number): string {
-  return `$${v.toFixed(3)}`;
+function fmt(v: number, decimals = 4): string {
+  return `$${v.toFixed(decimals)}`;
 }
+
+function statusBadge(status: string) {
+  const map: Record<string, { bg: string; text: string }> = {
+    OK: { bg: "bg-emerald-500/15", text: "text-emerald-400" },
+    "Rounding difference": { bg: "bg-amber-500/15", text: "text-amber-400" },
+    "Needs review": { bg: "bg-red-500/15", text: "text-red-400" },
+    pending: { bg: "bg-neutral-500/15", text: "text-neutral-400" },
+  };
+  const s = map[status] ?? map.pending!;
+  return (
+    <span
+      className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${s.bg} ${s.text}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+/* ── Component ─────────────────────────────────────────────────────── */
 
 export function ReconciliationSection({ period }: { period: AdminPeriod }) {
   const days = PERIOD_DAYS[period] ?? 30;
@@ -79,7 +121,9 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
   const { data, isLoading, error } = useQuery<ReconciliationData>({
     queryKey: ["billing-reconciliation", days],
     queryFn: async () => {
-      const res = await adminFetch(`/api/admin/billing-reconciliation?days=${days}`);
+      const res = await adminFetch(
+        `/api/admin/billing-reconciliation?days=${days}`,
+      );
       if (!res.ok) throw new Error("Erro ao carregar reconciliação");
       return res.json();
     },
@@ -88,7 +132,7 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
   if (isLoading) return <SectionSkeleton />;
   if (error || !data) return <SectionError error={error} />;
 
-  const { kpis, daily, byProvider, byActor } = data;
+  const { kpis, daily, byProvider, byActor, batches } = data;
 
   return (
     <section className="space-y-6">
@@ -100,25 +144,123 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard eyebrow="Custo real externo" value={fmt(kpis.externalTotal)} />
-        <KPICard eyebrow="Custo interno registado" value={fmt(kpis.internalTotal)} />
+        <KPICard
+          eyebrow="Custo real externo"
+          value={fmt(kpis.externalTotal, 2)}
+        />
+        <KPICard
+          eyebrow="Custo interno registado"
+          value={fmt(kpis.internalTotal, 2)}
+        />
         <KPICard
           eyebrow="Diferença"
-          value={fmt(kpis.variance)}
-          sub={kpis.variancePct != null ? `${kpis.variancePct.toFixed(1)}%` : "—"}
+          value={fmt(kpis.variance, 2)}
+          sub={
+            kpis.variancePct != null
+              ? `${kpis.variancePct.toFixed(1)}%`
+              : "—"
+          }
         />
         <KPICard eyebrow="Estado" value={kpis.state} />
       </div>
 
+      {/* Batch summary table */}
+      {batches.length > 0 && (
+        <AdminCard>
+          <p className="text-eyebrow-sm mb-3">
+            Importações por batch (dashboard)
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-left text-foreground-muted border-b border-border-subtle">
+                  <th className="pb-2 pr-3">Provider</th>
+                  <th className="pb-2 pr-3">Período</th>
+                  <th className="pb-2 pr-3 text-right">Dashboard total</th>
+                  <th className="pb-2 pr-3 text-right">Raw total</th>
+                  <th className="pb-2 pr-3 text-right">Displayed total</th>
+                  <th className="pb-2 pr-3 text-right">Δ rounding</th>
+                  <th className="pb-2 pr-3 text-right">Δ raw</th>
+                  <th className="pb-2 pr-3 text-right">Interno</th>
+                  <th className="pb-2">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batches.map((b) => (
+                  <tr
+                    key={b.id}
+                    className="border-b border-border-subtle/50"
+                  >
+                    <td className="py-1.5 pr-3 font-medium">{b.provider}</td>
+                    <td className="py-1.5 pr-3 text-foreground-muted">
+                      {b.period_start.slice(0, 10)} → {b.period_end.slice(0, 10)}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-mono">
+                      {fmt(b.dashboard_total, 2)}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-mono">
+                      {b.raw_total != null ? fmt(b.raw_total, 4) : "—"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-mono">
+                      {b.displayed_total != null
+                        ? fmt(b.displayed_total, 2)
+                        : "—"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-mono">
+                      {b.rounding_delta != null
+                        ? fmt(b.rounding_delta, 2)
+                        : "—"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-mono">
+                      {b.raw_delta != null ? fmt(b.raw_delta, 4) : "—"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-mono">
+                      {fmt(b.internal_total, 4)}
+                    </td>
+                    <td className="py-1.5">
+                      {statusBadge(b.reconciliation_status)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Rounding explanation */}
+          {batches.some(
+            (b) => b.reconciliation_status === "Rounding difference",
+          ) && (
+            <p className="mt-3 text-[11px] text-foreground-muted/70 leading-relaxed">
+              ⓘ Diferença de arredondamento: o dashboard do fornecedor
+              arredonda cada linha individualmente antes de somar. O total
+              raw (calculado a partir de quantidade × preço unitário sem
+              arredondamento) reconcilia com o valor do dashboard (Δ raw
+              &lt; $0.01). A diferença aparente no total displayed é
+              esperada e não representa uma discrepância real.
+            </p>
+          )}
+        </AdminCard>
+      )}
+
       {/* Chart */}
       {daily.length > 0 && (
         <AdminCard>
-          <p className="text-eyebrow-sm mb-3">Custo diário — interno vs externo</p>
+          <p className="text-eyebrow-sm mb-3">
+            Custo diário — interno vs externo
+          </p>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={daily} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+            <LineChart
+              data={daily}
+              margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--border-subtle)"
+              />
               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => `$${v}`} />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                tickFormatter={(v: number) => `$${v}`}
+              />
               <Tooltip formatter={(v: number) => `$${v.toFixed(4)}`} />
               <Legend />
               <Line
@@ -158,11 +300,20 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
               </thead>
               <tbody>
                 {byProvider.map((r) => (
-                  <tr key={r.provider} className="border-b border-border-subtle/50">
+                  <tr
+                    key={r.provider}
+                    className="border-b border-border-subtle/50"
+                  >
                     <td className="py-1.5 font-medium">{r.provider}</td>
-                    <td className="py-1.5 text-right font-mono text-xs">{fmt(r.external)}</td>
-                    <td className="py-1.5 text-right font-mono text-xs">{fmt(r.internal)}</td>
-                    <td className="py-1.5 text-right font-mono text-xs">{fmt(r.variance)}</td>
+                    <td className="py-1.5 text-right font-mono text-xs">
+                      {fmt(r.external)}
+                    </td>
+                    <td className="py-1.5 text-right font-mono text-xs">
+                      {fmt(r.internal)}
+                    </td>
+                    <td className="py-1.5 text-right font-mono text-xs">
+                      {fmt(r.variance)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -188,12 +339,25 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
               </thead>
               <tbody>
                 {byActor.map((r) => (
-                  <tr key={r.actor_or_model} className="border-b border-border-subtle/50">
-                    <td className="py-1.5 font-medium text-xs">{r.actor_or_model}</td>
-                    <td className="py-1.5 text-xs text-foreground-muted">{r.provider}</td>
-                    <td className="py-1.5 text-right font-mono text-xs">{fmt(r.external)}</td>
-                    <td className="py-1.5 text-right font-mono text-xs">{fmt(r.internal)}</td>
-                    <td className="py-1.5 text-right font-mono text-xs">{fmt(r.variance)}</td>
+                  <tr
+                    key={r.actor_or_model}
+                    className="border-b border-border-subtle/50"
+                  >
+                    <td className="py-1.5 font-medium text-xs">
+                      {r.actor_or_model}
+                    </td>
+                    <td className="py-1.5 text-xs text-foreground-muted">
+                      {r.provider}
+                    </td>
+                    <td className="py-1.5 text-right font-mono text-xs">
+                      {fmt(r.external)}
+                    </td>
+                    <td className="py-1.5 text-right font-mono text-xs">
+                      {fmt(r.internal)}
+                    </td>
+                    <td className="py-1.5 text-right font-mono text-xs">
+                      {fmt(r.variance)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -214,7 +378,9 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
         {showForm && (
           <BillingImportForm
             onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ["billing-reconciliation"] });
+              queryClient.invalidateQueries({
+                queryKey: ["billing-reconciliation"],
+              });
               setShowForm(false);
             }}
           />
