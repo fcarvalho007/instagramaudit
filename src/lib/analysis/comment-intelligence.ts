@@ -136,6 +136,25 @@ export function aggregateCommentIntelligence(
   let buyingIntentCount = 0;
   let spamCount = 0;
 
+  // Excerpt collectors (max 5 per category)
+  const MAX_EXCERPTS = 5;
+  const excerptQuestions: Array<{ username: string; text: string }> = [];
+  const excerptPraise: Array<{ username: string; text: string }> = [];
+  const excerptComplaints: Array<{ username: string; text: string }> = [];
+  const excerptBuyingIntent: Array<{ username: string; text: string }> = [];
+
+  function pushExcerpt(
+    arr: Array<{ username: string; text: string }>,
+    username: string,
+    text: string | undefined,
+  ) {
+    if (arr.length >= MAX_EXCERPTS || !text) return;
+    arr.push({ username, text: text.slice(0, 120) });
+  }
+
+  // Top 2 posts by audience comment count
+  let topCommentPostsList: Array<{ postUrl: string; commentsCount: number }> = [];
+
   let topPost: {
     postUrl: string;
     commentsCount: number;
@@ -159,10 +178,10 @@ export function aggregateCommentIntelligence(
 
         // Classify signal (text used transiently, never persisted)
         const signal = classifySignal(comment.text);
-        if (signal === "question") questionsCount++;
-        else if (signal === "praise") praiseCount++;
-        else if (signal === "complaint") complaintCount++;
-        else if (signal === "buying_intent") buyingIntentCount++;
+        if (signal === "question") { questionsCount++; pushExcerpt(excerptQuestions, comment.ownerUsername ?? "", comment.text); }
+        else if (signal === "praise") { praiseCount++; pushExcerpt(excerptPraise, comment.ownerUsername ?? "", comment.text); }
+        else if (signal === "complaint") { complaintCount++; pushExcerpt(excerptComplaints, comment.ownerUsername ?? "", comment.text); }
+        else if (signal === "buying_intent") { buyingIntentCount++; pushExcerpt(excerptBuyingIntent, comment.ownerUsername ?? "", comment.text); }
         else if (signal === "spam") spamCount++;
       }
       postCommentCount++;
@@ -183,10 +202,10 @@ export function aggregateCommentIntelligence(
             if (replyOwner) uniqueCommenters.add(replyOwner);
 
             const signal = classifySignal(reply.text);
-            if (signal === "question") questionsCount++;
-            else if (signal === "praise") praiseCount++;
-            else if (signal === "complaint") complaintCount++;
-            else if (signal === "buying_intent") buyingIntentCount++;
+            if (signal === "question") { questionsCount++; pushExcerpt(excerptQuestions, reply.ownerUsername ?? "", reply.text); }
+            else if (signal === "praise") { praiseCount++; pushExcerpt(excerptPraise, reply.ownerUsername ?? "", reply.text); }
+            else if (signal === "complaint") { complaintCount++; pushExcerpt(excerptComplaints, reply.ownerUsername ?? "", reply.text); }
+            else if (signal === "buying_intent") { buyingIntentCount++; pushExcerpt(excerptBuyingIntent, reply.ownerUsername ?? "", reply.text); }
             else if (signal === "spam") spamCount++;
           }
         }
@@ -211,8 +230,17 @@ export function aggregateCommentIntelligence(
           ownerRepliesCount: postOwnerReplies,
         };
       }
+      // Track top 2 by audience comment count
+      const audienceCommentsInPost = postCommentCount - postOwnerReplies;
+      topCommentPostsList.push({ postUrl: batch.postUrl, commentsCount: audienceCommentsInPost });
     }
   }
+
+  // Sort and keep top 2
+  topCommentPostsList = topCommentPostsList
+    .filter((p) => p.commentsCount > 0)
+    .sort((a, b) => b.commentsCount - a.commentsCount)
+    .slice(0, 2);
 
   const samplePosts = batches.length;
   const ownerReplyRatePct =
@@ -281,6 +309,11 @@ export function aggregateCommentIntelligence(
     recommendedConversationAction,
     topConversationPost:
       topPost && topPost.ownerRepliesCount > 0 ? topPost : undefined,
+    classifiedExcerpts:
+      (excerptQuestions.length > 0 || excerptPraise.length > 0 || excerptComplaints.length > 0 || excerptBuyingIntent.length > 0)
+        ? { questions: excerptQuestions, praise: excerptPraise, complaints: excerptComplaints, buyingIntent: excerptBuyingIntent }
+        : undefined,
+    topCommentPosts: topCommentPostsList.length > 0 ? topCommentPostsList : undefined,
     limitations,
   };
 }

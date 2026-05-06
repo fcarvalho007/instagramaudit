@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -20,6 +20,9 @@ import {
   Zap,
   Calendar,
   Film,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import type { CommentIntelligence } from "@/lib/analysis/types";
@@ -563,6 +566,15 @@ interface AudienceHighlightProps {
     date?: string | null;
     commentsToLikesPct?: number;
   } | null;
+  topCommentPosts?: Array<{
+    index: number;
+    comments: number;
+    captionExcerpt: string;
+    format?: string | null;
+    date?: string | null;
+    thumbnailUrl?: string | null;
+    permalink?: string | null;
+  }>;
   status?: AudienceResponseStatus;
   commentIntel?: CommentIntelligence | null;
   /** P04 cross-reference: caption comment engagement strategy */
@@ -580,6 +592,7 @@ export function DiagnosticAudienceHighlight({
   totalComments,
   postsWithComments,
   topConversationPost,
+  topCommentPosts,
   status = "silent",
   commentIntel,
   captionEngagementStrategy,
@@ -752,46 +765,75 @@ export function DiagnosticAudienceHighlight({
         </div>
       )}
 
-      {/* ── Z4: Top conversation post highlight ── */}
-      {topConversationPost && topConversationPost.comments > 0 && (
-        <div className="rounded-[14px] border border-border-subtle bg-tint-primary/60 px-4 py-3.5 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="size-7 rounded-full bg-surface-secondary flex items-center justify-center shrink-0">
-              <MessageSquare size={13} className="text-accent-primary" strokeWidth={1.5} />
-            </div>
-            <span className="text-eyebrow-sm text-content-tertiary">Post que gerou mais conversa</span>
-            {topConversationPost.format && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-surface-secondary px-2 py-0.5 text-[10px] text-content-tertiary ring-1 ring-border-subtle">
-                <Film size={9} strokeWidth={1.5} />
-                {topConversationPost.format}
-              </span>
-            )}
-          </div>
-          {topConversationPost.date && (
-            <div className="flex items-center gap-1 text-[11px] text-content-tertiary">
-              <Calendar size={10} strokeWidth={1.5} />
-              <span>{new Date(topConversationPost.date).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })}</span>
-            </div>
-          )}
-          {topConversationPost.captionExcerpt && (
-            <p className="font-display text-[14px] font-medium text-content-primary leading-relaxed line-clamp-2">
-              «{topConversationPost.captionExcerpt.slice(0, 120)}»
-            </p>
-          )}
-          <div className="flex items-center gap-3 text-[12px]">
-            <span className="flex items-center gap-1 text-content-secondary">
-              <Heart size={11} strokeWidth={1.5} />
-              <span className="tabular-nums">{topConversationPost.likes.toLocaleString("pt-PT")}</span>
-            </span>
-            <span className="flex items-center gap-1 text-accent-primary font-semibold">
-              <MessageCircle size={11} strokeWidth={1.5} />
-              <span className="tabular-nums">{topConversationPost.comments.toLocaleString("pt-PT")}</span>
-            </span>
-            {topConversationPost.commentsToLikesPct != null && (
-              <span className="text-content-tertiary tabular-nums">
-                {topConversationPost.commentsToLikesPct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% coment./gosto
-              </span>
-            )}
+      {/* ── Z4: Top 2 posts by comments ── */}
+      {topCommentPosts && topCommentPosts.length > 0 && (
+        <div className="space-y-2.5">
+          <p className="text-eyebrow text-content-tertiary">Posts que geraram mais comentários</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {topCommentPosts.map((post, idx) => {
+              const cardContent = (
+                <>
+                  <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-cyan-300 via-blue-400 to-indigo-500 rounded-t-[12px]">
+                    {post.thumbnailUrl && (
+                      <img
+                        src={post.thumbnailUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    )}
+                    {post.format && (
+                      <span className="text-eyebrow-sm absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-md bg-white/90 backdrop-blur text-content-primary font-semibold text-[9px]">
+                        {post.format}
+                      </span>
+                    )}
+                    {post.permalink && (
+                      <ExternalLink className="absolute top-2 left-2 z-10 size-3 text-white drop-shadow" />
+                    )}
+                  </div>
+                  <div className="p-3 flex flex-col gap-1.5 flex-1">
+                    {post.date && (
+                      <span className="text-eyebrow-sm text-content-tertiary text-[9px]">
+                        {new Date(post.date).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                    )}
+                    {post.captionExcerpt && (
+                      <p className="text-[12px] text-content-primary leading-snug line-clamp-2">
+                        {post.captionExcerpt}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1.5 pt-1 mt-auto border-t border-border-subtle/30">
+                      <MessageCircle size={12} className="text-accent-primary" strokeWidth={1.5} />
+                      <span className="font-mono text-[14px] font-bold tabular-nums text-accent-primary">
+                        {post.comments.toLocaleString("pt-PT")}
+                      </span>
+                      <span className="text-[10px] text-content-tertiary">comentários</span>
+                    </div>
+                  </div>
+                </>
+              );
+              if (post.permalink) {
+                return (
+                  <a
+                    key={idx}
+                    href={post.permalink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group bg-surface-secondary border border-border-default rounded-[14px] shadow-card overflow-hidden flex flex-col transition-shadow duration-200 hover:shadow-md hover:border-accent-primary/40"
+                  >
+                    {cardContent}
+                  </a>
+                );
+              }
+              return (
+                <article key={idx} className="bg-surface-secondary border border-border-default rounded-[14px] shadow-card overflow-hidden flex flex-col">
+                  {cardContent}
+                </article>
+              );
+            })}
           </div>
         </div>
       )}
@@ -927,6 +969,15 @@ export function DiagnosticObjectiveSynthesis({
 function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelligence }) {
   const ci = commentIntel;
   const totalSignals = ci.questionsFromAudienceCount + ci.praiseCount + ci.buyingIntentCount + ci.complaintOrIssueCount;
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  // Map signal keys to excerpt arrays
+  const excerptMap: Record<string, Array<{ username: string; text: string }>> = {
+    questions: ci.classifiedExcerpts?.questions ?? [],
+    praise: ci.classifiedExcerpts?.praise ?? [],
+    complaints: ci.classifiedExcerpts?.complaints ?? [],
+    buying: ci.classifiedExcerpts?.buyingIntent ?? [],
+  };
 
   const items: Array<{
     key: string;
@@ -1005,18 +1056,31 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
       <ul className="space-y-3">
         {items.map((it, i) => {
           const barW = Math.max(8, (it.count / max) * 100);
+          const excerpts = excerptMap[it.key] ?? [];
+          const isExpanded = expandedKey === it.key;
+          const hasExcerpts = excerpts.length > 0;
           return (
             <li key={it.key}>
-              <div className="flex items-start gap-2.5">
+              <button
+                type="button"
+                className={cn("flex items-start gap-2.5 w-full text-left", hasExcerpts && "cursor-pointer")}
+                onClick={() => hasExcerpts && setExpandedKey(isExpanded ? null : it.key)}
+                disabled={!hasExcerpts}
+              >
                 <div className={cn("size-7 sm:size-8 rounded-lg flex items-center justify-center shrink-0 bg-surface-muted")}>
                   <it.Icon className={cn("size-3.5 sm:size-4", it.toneClass)} strokeWidth={1.5} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[13px] sm:text-[14px] font-semibold text-content-primary">{it.label}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <span className="font-mono text-[13px] sm:text-[15px] font-bold tabular-nums text-content-primary">{it.count}</span>
                       <span className="font-mono text-[10px] tabular-nums text-content-tertiary">({it.pct}%)</span>
+                      {hasExcerpts && (
+                        isExpanded
+                          ? <ChevronUp size={14} className="text-content-tertiary ml-1" strokeWidth={1.5} />
+                          : <ChevronDown size={14} className="text-content-tertiary ml-1" strokeWidth={1.5} />
+                      )}
                     </div>
                   </div>
                   <p className="text-[11px] sm:text-[12px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</p>
@@ -1027,36 +1091,21 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
                     />
                   </div>
                 </div>
-              </div>
+              </button>
+              {isExpanded && excerpts.length > 0 && (
+                <ul className="mt-2 ml-[36px] sm:ml-[40px] space-y-1.5 rounded-lg bg-surface-muted/60 border border-border-subtle px-3 py-2.5">
+                  {excerpts.map((ex, j) => (
+                    <li key={j} className="text-[12px] leading-snug">
+                      <span className="font-semibold text-content-secondary">@{ex.username}</span>
+                      <span className="text-content-tertiary ml-1">«{ex.text}»</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           );
         })}
       </ul>
-
-      {ci.dominantConversationSignals.length > 0 && (
-        <div className="pt-2 border-t border-border-subtle">
-          <p className="text-eyebrow-sm text-content-tertiary mb-1.5">Sinais dominantes</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ci.dominantConversationSignals.map((signal) => {
-              const SIGNAL_LABELS: Record<string, string> = {
-                questions: "Perguntas",
-                praise: "Elogios",
-                complaint: "Queixas",
-                buying_intent: "Compra",
-                spam: "Ruído",
-              };
-              return (
-                <span
-                  key={signal}
-                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-border-default bg-surface-muted text-content-secondary"
-                >
-                  {SIGNAL_LABELS[signal] ?? signal}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {ci.recommendedConversationAction && (
         <div className="rounded-lg bg-tint-primary px-3.5 py-3 border border-accent-primary/15">
@@ -1065,25 +1114,41 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
         </div>
       )}
 
-      {/* Actionable comments summary */}
+      {/* Comentários que pedem ação */}
       {(() => {
-        const actionable = ci.questionsFromAudienceCount + ci.buyingIntentCount + ci.complaintOrIssueCount;
-        if (actionable <= 0) return null;
+        const qCount = ci.questionsFromAudienceCount;
+        const bCount = ci.buyingIntentCount;
+        const cCount = ci.complaintOrIssueCount;
+        const actionable = qCount + bCount + cCount;
+        if (actionable <= 0 || totalSignals <= 0) return null;
+
+        // Determine dominant category for insight
+        const dominant = [
+          { key: "questions", count: qCount, insight: "A maioria dos comentários acionáveis são perguntas — considere um FAQ nos destaques." },
+          { key: "buying", count: bCount, insight: "Há intenção de compra nos comentários — facilite o acesso ao produto ou serviço." },
+          { key: "complaints", count: cCount, insight: "Existem queixas nos comentários — priorize resposta para proteger a reputação." },
+        ].sort((a, b) => b.count - a.count)[0];
+
+        const parts: string[] = [];
+        if (qCount > 0) parts.push(`${qCount} ${qCount === 1 ? "pergunta" : "perguntas"}`);
+        if (bCount > 0) parts.push(`${bCount} intenção de compra`);
+        if (cCount > 0) parts.push(`${cCount} ${cCount === 1 ? "problema" : "problemas"}`);
+
         return (
           <div className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-muted/60 px-3.5 py-2.5">
             <Zap size={13} className="text-accent-primary shrink-0" strokeWidth={1.5} />
             <div>
               <p className="text-[13px] font-semibold text-content-primary">
-                {actionable} {actionable === 1 ? "comentário acionável" : "comentários acionáveis"}
-                {ci.audienceCommentsCount > 0 && (
-                  <span className="font-normal text-[11px] text-content-tertiary ml-1.5">
-                    ({Math.round((actionable / ci.audienceCommentsCount) * 100)}% da amostra)
-                  </span>
-                )}
+                Comentários que pedem ação
               </p>
               <p className="text-[10px] text-content-tertiary">
-                perguntas + intenção de compra + problemas
+                {parts.join(" · ")}
               </p>
+              {dominant && dominant.count > 0 && (
+                <p className="text-[11px] text-content-secondary leading-snug mt-1">
+                  {dominant.insight}
+                </p>
+              )}
             </div>
           </div>
         );

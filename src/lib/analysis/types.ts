@@ -186,4 +186,16 @@ export interface CommentIntelligence {
   };
   /** Transparency disclaimers shown in the UI. */
   limitations: string[];
+  /** Up to 5 classified comment excerpts per signal category (public data). */
+  classifiedExcerpts?: {
+    questions: Array<{ username: string; text: string }>;
+    praise: Array<{ username: string; text: string }>;
+    complaints: Array<{ username: string; text: string }>;
+    buyingIntent: Array<{ username: string; text: string }>;
+  };
+  /** Top 2 posts by audience comment count. */
+  topCommentPosts?: Array<{
+    postUrl: string;
+    commentsCount: number;
+  }>;
 }
