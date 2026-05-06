@@ -20,6 +20,30 @@ import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-type
 const KB_SOURCES = INSTAGRAM_CAPTION_CONTEXT.sources;
 
 // ---------------------------------------------------------------------------
+// Theme quality guard — prevents generic single-word labels in fallback mode
+// ---------------------------------------------------------------------------
+
+const GENERIC_THEME_LABELS = new Set([
+  "neste", "nesta", "dicas", "melhores", "post", "hoje",
+  "semana", "conteudo", "conteúdo", "vídeo", "video", "ferramentas",
+  "resultado", "resultados", "trabalho", "pessoas", "parte",
+  "momento", "forma", "tempo", "sempre", "grande", "mundo",
+  "importante", "preciso", "precisa", "certo", "certa",
+]);
+
+function isWeakThemeLabel(label: string): boolean {
+  const words = label.trim().split(/\s+/);
+  // Multi-word labels are generally meaningful enough
+  if (words.length >= 2) return false;
+  const lower = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // Single word in generic set
+  if (GENERIC_THEME_LABELS.has(lower)) return true;
+  // Single word under 6 chars with low confidence is likely noise
+  if (lower.length < 6) return true;
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -337,7 +361,9 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
   } as const;
 
   const hasSemantic = semantic != null;
-  const themes = data.themes.items.slice(0, 3);
+  const themes = data.themes.items
+    .filter((t) => !isWeakThemeLabel(t.label))
+    .slice(0, 3);
   const semanticThemes = semantic?.dominantThemes?.slice(0, 3) ?? [];
   const expressions = data.recurringExpressions.items;
   const semanticExpressions = semantic?.recurringExpressionsInterpretation ?? [];

@@ -103,6 +103,23 @@ const STOP_WORDS_PT = new Set<string>([
   // temático que aparecem em frases tipo "dicas sobre as melhores ferramentas"
   "melhores", "dicas", "perderes", "segue", "mostro",
   "resultado", "resultados", "trabalho",
+  // contrações preposicionais (em+/de+ demonstrativos) — 5+ chars, zero valor temático
+  "neste", "nesta", "nestes", "nestas",
+  "deste", "desta", "destes", "destas",
+  "nesse", "nessa", "nesses", "nessas",
+  "desse", "dessa", "desses", "dessas",
+  "naquele", "naquela", "daquele", "daquela",
+  "nisso", "disso", "disto", "nisto",
+  // advérbios / verbos auxiliares genéricos
+  "entao", "sendo", "seria", "teria",
+  "devem", "devemos", "deveria",
+  // substantivos / adjetivos genéricos sem valor temático
+  "vezes", "certo", "certa", "certos", "certas",
+  "grande", "grandes", "maior", "melhor", "pior",
+  "parte", "mundo", "lugar", "ponto",
+  "video", "videos", "posts", "semana",
+  "preciso", "precisa", "importante", "consegue",
+  "quais", "onde", "aonde",
 ]);
 
 // ---------- helpers ----------
