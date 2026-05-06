@@ -805,6 +805,12 @@ async function fetchReportCounts(sinceIso: string): Promise<{
   fresh_total_provider_calls: number;
   fresh_calls_with_event_id: number;
 }> {
+  // LEGACY NOTE: provider_call_logs rows created before the analysis_event_id
+  // propagation was deployed (May 2026) will have analysis_event_id = NULL.
+  // linkProviderCallsToEvent back-fills via time-window correlation, but
+  // historical data may still show low confidence until enough fresh reports
+  // are generated with the updated code.
+
   // Count completed snapshots in the period
   const { count: snapshotCount } = await supabaseAdmin
     .from("analysis_snapshots")
