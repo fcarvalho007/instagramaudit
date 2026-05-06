@@ -575,6 +575,13 @@ const COST_SOURCE_LABEL: Record<ApifyActorBreakdown["cost_source"], { text: stri
   unavailable: { text: "Indisponível", cls: "text-admin-text-tertiary" },
 };
 
+/* ── OpenAI actor input type ───────────────────────────────────────── */
+
+function openaiActorInputType(actor: string): "texto" | "imagens" {
+  if (actor === "visual-cover-analysis") return "imagens";
+  return "texto";
+}
+
 /* ── Custom tooltip ────────────────────────────────────────────────── */
 
 function ExpenseTooltipContent({
