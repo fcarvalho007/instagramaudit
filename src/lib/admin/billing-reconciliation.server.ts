@@ -97,14 +97,29 @@ export async function getReconciliationData(
   const ext = extRows ?? [];
   const int = intRows ?? [];
 
-  // KPIs
-  const externalTotal = ext.reduce((s, r) => s + Number(r.actual_cost_usd ?? 0), 0);
+  // Build batch-level dashboard totals per provider (authoritative external cost)
+  const batchByProvider = new Map<string, { dashboardTotal: number; displayedTotal: number | null; roundingDelta: number | null }>();
+  for (const b of (batchRows ?? [])) {
+    const prev = batchByProvider.get(b.provider) ?? { dashboardTotal: 0, displayedTotal: null, roundingDelta: null };
+    prev.dashboardTotal += Number(b.dashboard_total_actual_cost_usd ?? 0);
+    if (b.imported_total_displayed_cost_usd != null) {
+      prev.displayedTotal = (prev.displayedTotal ?? 0) + Number(b.imported_total_displayed_cost_usd);
+    }
+    if (b.rounding_delta_usd != null) {
+      prev.roundingDelta = (prev.roundingDelta ?? 0) + Number(b.rounding_delta_usd);
+    }
+    batchByProvider.set(b.provider, prev);
+  }
+
+  // KPIs — external total from batch dashboard totals (not row sums)
+  let externalTotal = 0;
+  for (const v of batchByProvider.values()) externalTotal += v.dashboardTotal;
   const internalTotal = int.reduce((s, r) => s + Number(r.estimated_cost_usd ?? 0), 0);
   const variance = externalTotal - internalTotal;
   const variancePct = externalTotal > 0 ? (variance / externalTotal) * 100 : null;
 
   let state: ReconciliationKPIs["state"] = "sem dados";
-  if (ext.length > 0) {
+  if (batchByProvider.size > 0 || ext.length > 0) {
     state =
       Math.abs(variance) / Math.max(externalTotal, 0.001) < 0.1
         ? "reconciliado"
@@ -116,7 +131,7 @@ export async function getReconciliationData(
   for (const r of ext) {
     const d = (r.period_start as string).slice(0, 10);
     const entry = dailyMap.get(d) ?? { internal: 0, external: 0 };
-    entry.external += Number(r.actual_cost_usd ?? 0);
+    entry.external += Number(r.raw_calculated_cost_usd ?? r.actual_cost_usd ?? 0);
     dailyMap.set(d, entry);
   }
   for (const r of int) {
@@ -134,26 +149,31 @@ export async function getReconciliationData(
       variance: Number((v.external - v.internal).toFixed(4)),
     }));
 
-  // Provider breakdown
-  const provMap = new Map<string, { external: number; internal: number }>();
-  for (const r of ext) {
-    const entry = provMap.get(r.provider) ?? { external: 0, internal: 0 };
-    entry.external += Number(r.actual_cost_usd ?? 0);
-    provMap.set(r.provider, entry);
-  }
+  // Provider breakdown — external from batch dashboard totals
+  const provMap = new Map<string, { internal: number }>();
   for (const r of int) {
-    const entry = provMap.get(r.provider) ?? { external: 0, internal: 0 };
+    const entry = provMap.get(r.provider) ?? { internal: 0 };
     entry.internal += Number(r.estimated_cost_usd ?? 0);
     provMap.set(r.provider, entry);
   }
-  const byProvider: ProviderBreakdown[] = [...provMap.entries()].map(
-    ([provider, v]) => ({
+
+  // Merge providers from both internal logs and batches
+  const allProviders = new Set([...provMap.keys(), ...batchByProvider.keys()]);
+  const byProvider: ProviderBreakdown[] = [...allProviders].map((provider) => {
+    const intData = provMap.get(provider);
+    const batchData = batchByProvider.get(provider);
+    const ext = batchData?.dashboardTotal ?? 0;
+    const intVal = intData?.internal ?? 0;
+    return {
       provider,
-      external: Number(v.external.toFixed(4)),
-      internal: Number(v.internal.toFixed(4)),
-      variance: Number((v.external - v.internal).toFixed(4)),
-    }),
-  );
+      external: Number(ext.toFixed(4)),
+      internal: Number(intVal.toFixed(4)),
+      variance: Number((ext - intVal).toFixed(4)),
+      displayedRowSum: batchData?.displayedTotal != null ? Number(batchData.displayedTotal.toFixed(4)) : null,
+      roundingDelta: batchData?.roundingDelta != null ? Number(batchData.roundingDelta.toFixed(4)) : null,
+      source: batchData ? "batch" as const : "row-sum" as const,
+    };
+  });
 
   // Actor/model breakdown
   const actorMap = new Map<
