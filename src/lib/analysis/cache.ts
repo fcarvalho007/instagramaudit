@@ -77,6 +77,32 @@ export async function removePayloadKey(
   }
 }
 
+/**
+ * Atomically set a single enrichment_status key using jsonb_set via RPC.
+ * Safe against concurrent writers — no read-merge-write.
+ */
+export async function setEnrichmentStatusAtomic(
+  snapshotId: string,
+  key: string,
+  value: string,
+): Promise<boolean> {
+  try {
+    const { error } = await supabaseAdmin.rpc("set_enrichment_status", {
+      p_snapshot_id: snapshotId,
+      p_key: key,
+      p_value: value,
+    });
+    if (error) {
+      console.error("[analysis/cache] setEnrichmentStatusAtomic error", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[analysis/cache] setEnrichmentStatusAtomic exception", err);
+    return false;
+  }
+}
+
 export interface SnapshotRow {
   id: string;
   cache_key: string;

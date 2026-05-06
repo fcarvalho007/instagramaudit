@@ -11,7 +11,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { patchSnapshotPayload, removePayloadKey } from "@/lib/analysis/cache";
+import { patchSnapshotPayload, removePayloadKey, setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
 import { linkProviderCallsToEvent } from "@/lib/analysis/events";
 import { runEnrichment } from "@/lib/enrichment/run-enrichment.server";
 import type { EnrichmentType, EnrichmentJobRow } from "@/lib/enrichment/types";
@@ -176,11 +176,7 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
             }
 
             // Update enrichment_status in the snapshot payload
-            await patchSnapshotPayload(job.snapshot_id, {
-              enrichment_status: {
-                [job.enrichment_type]: "success",
-              },
-            });
+            await setEnrichmentStatusAtomic(job.snapshot_id, job.enrichment_type, "success");
 
             await supabaseAdmin
               .from("enrichment_jobs")
@@ -200,11 +196,7 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
             const finalFailure = job.attempts + 1 >= job.max_attempts;
             // Update enrichment_status on final failure
             if (finalFailure) {
-              await patchSnapshotPayload(job.snapshot_id, {
-                enrichment_status: {
-                  [job.enrichment_type]: "error",
-                },
-              });
+              await setEnrichmentStatusAtomic(job.snapshot_id, job.enrichment_type, "error");
             }
 
             await supabaseAdmin
