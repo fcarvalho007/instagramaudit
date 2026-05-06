@@ -76,6 +76,9 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
       "commentEngagement",
       "recurringExpressionsInterpretation",
       "diagnostic",
+      "hookQuality",
+      "brandVoice",
+      "formulaicPatterns",
     ],
     properties: {
       analyzedCaptions: { type: "integer", minimum: 1, maximum: 12 },
