@@ -567,6 +567,8 @@ interface AudienceHighlightProps {
   commentIntel?: CommentIntelligence | null;
   /** P04 cross-reference: caption comment engagement strategy */
   captionEngagementStrategy?: "active" | "occasional" | "passive" | null;
+  /** P04 cross-reference: % of posts that explicitly ask for comments */
+  captionAsksForCommentsPct?: number | null;
 }
 
 export function DiagnosticAudienceHighlight({
@@ -581,6 +583,7 @@ export function DiagnosticAudienceHighlight({
   status = "silent",
   commentIntel,
   captionEngagementStrategy,
+  captionAsksForCommentsPct,
 }: AudienceHighlightProps) {
   const ownerReplies = commentIntel?.available ? commentIntel.ownerRepliesCount : 0;
   const sampleComments = commentIntel?.available ? commentIntel.sampleComments : null;
@@ -652,7 +655,9 @@ export function DiagnosticAudienceHighlight({
           </span>
           <span className="text-[9px] sm:text-[11px] text-content-tertiary">
             {commentsToLikesPct != null && commentsToLikesPct > 0
-              ? `${commentsToLikesPct < 0.1 ? "<0,1" : commentsToLikesPct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% dos gostos geraram comentário`
+              ? commentsToLikesPct < 0.5
+                ? "baixa conversão de gostos em comentários"
+                : `${commentsToLikesPct < 0.1 ? "<0,1" : commentsToLikesPct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% dos gostos geraram comentário`
               : sampleSize ? `em ${sampleSize} publicações` : "por publicação"}
           </span>
         </div>
@@ -716,15 +721,34 @@ export function DiagnosticAudienceHighlight({
 
       {/* ── P04 cross-reference: caption engagement strategy ── */}
       {captionEngagementStrategy && (
-        <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-muted/50 px-3.5 py-2.5">
-          <Zap size={13} className="text-content-tertiary shrink-0" strokeWidth={1.5} />
-          <p className="text-[12px] text-content-secondary leading-snug">
-            {captionEngagementStrategy === "active"
-              ? "As legendas pedem comentários de forma ativa"
-              : captionEngagementStrategy === "passive"
-                ? "As legendas raramente pedem comentários"
-                : "Convite à conversa ocasional"}
-          </p>
+        <div className="rounded-lg border border-border-subtle bg-surface-muted/50 px-3.5 py-2.5 space-y-1">
+          <div className="flex items-center gap-2">
+            <Zap size={13} className="text-content-tertiary shrink-0" strokeWidth={1.5} />
+            <p className="text-[12px] text-content-secondary leading-snug">
+              {captionAsksForCommentsPct != null
+                ? `As legendas pedem comentários em ${Math.round(captionAsksForCommentsPct)}% dos posts.`
+                : captionEngagementStrategy === "active"
+                  ? "As legendas pedem comentários de forma ativa."
+                  : captionEngagementStrategy === "passive"
+                    ? "As legendas raramente pedem comentários."
+                    : "Convite à conversa ocasional."}
+            </p>
+          </div>
+          {(() => {
+            const asksPctLow = captionAsksForCommentsPct == null || captionAsksForCommentsPct < 25;
+            const hasConversation = postsWithComments != null && sampleSize != null && sampleSize > 0 && postsWithComments / sampleSize > 0.4;
+            const lowConversation = avgComments < 2;
+            if (asksPctLow && hasConversation) {
+              return <p className="text-[11px] text-content-tertiary leading-snug pl-[21px]">A conversa surge mesmo sem convite explícito nas legendas.</p>;
+            }
+            if (asksPctLow && lowConversation) {
+              return <p className="text-[11px] text-content-tertiary leading-snug pl-[21px]">Há margem para testar perguntas finais nas legendas.</p>;
+            }
+            if (!asksPctLow && lowConversation) {
+              return <p className="text-[11px] text-content-tertiary leading-snug pl-[21px]">O convite existe, mas ainda não gera resposta consistente.</p>;
+            }
+            return null;
+          })()}
         </div>
       )}
 
@@ -778,7 +802,7 @@ export function DiagnosticAudienceHighlight({
           {sampleSize ?? "—"} posts analisados
           {postsWithComments != null && ` · ${postsWithComments} ${postsWithComments === 1 ? "post com comentários" : "posts com comentários"}`}
           {totalComments != null && totalComments > 0 && ` · ${totalComments} ${totalComments === 1 ? "comentário público" : "comentários públicos"}`}
-          {sampleComments != null && totalComments != null && sampleComments !== totalComments && ` · ${sampleComments} recolhidos para análise`}
+          {sampleComments != null && totalComments != null && sampleComments !== totalComments && ` · ${sampleComments} recolhidos para análise · amostra parcial`}
           {" "}· sem DMs nem comentários ocultos
         </p>
       )}
@@ -1051,6 +1075,11 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
             <div>
               <p className="text-[13px] font-semibold text-content-primary">
                 {actionable} {actionable === 1 ? "comentário acionável" : "comentários acionáveis"}
+                {ci.audienceCommentsCount > 0 && (
+                  <span className="font-normal text-[11px] text-content-tertiary ml-1.5">
+                    ({Math.round((actionable / ci.audienceCommentsCount) * 100)}% da amostra)
+                  </span>
+                )}
               </p>
               <p className="text-[10px] text-content-tertiary">
                 perguntas + intenção de compra + problemas

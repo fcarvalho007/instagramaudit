@@ -120,8 +120,9 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   // C · Resposta do público: Q05 (audience) — full width
   const captionSemantic = parseCaptionSemanticAnalysis(payload);
   const captionEngagementStrategy = captionSemantic?.commentEngagement?.strategyLabel ?? null;
+  const captionAsksForCommentsPct = captionSemantic?.commentEngagement?.asksForCommentsPct ?? null;
   const groupC = compact([
-    renderAudienceCard(audience, result.enriched.commentIntelligence, captionEngagementStrategy),
+    renderAudienceCard(audience, result.enriched.commentIntelligence, captionEngagementStrategy, captionAsksForCommentsPct),
   ]);
   // D · Contexto estratégico: Q06 + Q07
   const groupD = compact([
@@ -348,6 +349,7 @@ function renderAudienceCard(
   r: AudienceResponseResult,
   commentIntel: CommentIntelligence | null,
   captionEngagementStrategy?: "active" | "occasional" | "passive" | null,
+  captionAsksForCommentsPct?: number | null,
 ): ReactNode | null {
   // — State B: data unavailable —
   if (!r.available) {
@@ -407,6 +409,7 @@ function renderAudienceCard(
         status={r.status}
         commentIntel={commentIntel?.available ? commentIntel : null}
         captionEngagementStrategy={captionEngagementStrategy}
+        captionAsksForCommentsPct={captionAsksForCommentsPct}
       />
       {!commentIntel?.available && (
         <CommentIntelligenceUnavailable data={commentIntel} />
