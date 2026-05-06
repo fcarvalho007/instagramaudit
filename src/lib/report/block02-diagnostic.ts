@@ -121,6 +121,16 @@ export interface AudienceResponseResult {
     date?: string | null;
     commentsToLikesPct?: number;
   } | null;
+  /** Top 2 posts sorted by comment count, with thumbnail/permalink for card display. */
+  topCommentPosts?: Array<{
+    index: number;
+    comments: number;
+    captionExcerpt: string;
+    format?: string | null;
+    date?: string | null;
+    thumbnailUrl?: string | null;
+    permalink?: string | null;
+  }>;
   explanation: string;
 }
 
