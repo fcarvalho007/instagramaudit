@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -20,6 +20,9 @@ import {
   Zap,
   Calendar,
   Film,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import type { CommentIntelligence } from "@/lib/analysis/types";
@@ -563,6 +566,15 @@ interface AudienceHighlightProps {
     date?: string | null;
     commentsToLikesPct?: number;
   } | null;
+  topCommentPosts?: Array<{
+    index: number;
+    comments: number;
+    captionExcerpt: string;
+    format?: string | null;
+    date?: string | null;
+    thumbnailUrl?: string | null;
+    permalink?: string | null;
+  }>;
   status?: AudienceResponseStatus;
   commentIntel?: CommentIntelligence | null;
   /** P04 cross-reference: caption comment engagement strategy */
@@ -580,6 +592,7 @@ export function DiagnosticAudienceHighlight({
   totalComments,
   postsWithComments,
   topConversationPost,
+  topCommentPosts,
   status = "silent",
   commentIntel,
   captionEngagementStrategy,
