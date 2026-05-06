@@ -96,12 +96,14 @@ function SistemaPage() {
              accent="expense"
              info="Modo de execução, perfis de teste e gestão de cache para desenvolvimento."
            />
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <ExecutionModeCard />
-             <TestProfilesCard />
-           </div>
-           <div className="mt-3">
-              <CacheMaintenanceCard />
+           <div className="rounded-2xl border border-admin-border bg-admin-surface p-6 shadow-admin-card">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <ExecutionModeCard />
+               <TestProfilesCard />
+             </div>
+             <div className="mt-5 pt-5 border-t border-admin-border">
+               <CacheMaintenanceCard />
+             </div>
            </div>
          </section>
         <HealthSection />
