@@ -885,6 +885,15 @@ function OpenAiActorTableRow({ actor }: { actor: OpenAiActorBreakdown }) {
 
 /* ======================================== Report Cost Cards ======== */
 
+const PROVIDER_SHORT: Record<string, string> = {
+  apify: "Apify",
+  openai: "OpenAI",
+  dataforseo: "DFS",
+};
+function providerShortName(p: string): string {
+  return PROVIDER_SHORT[p] ?? p;
+}
+
 function ReportCostCards({
   total,
   apifyShare,
