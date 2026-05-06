@@ -21,6 +21,7 @@ import { PlansSection } from "@/components/admin/v2/receita/plans-section";
 import { CohortSection } from "@/components/admin/v2/receita/cohort-section";
 import { InvoicesSection } from "@/components/admin/v2/receita/invoices-section";
 import { ExpenseSection } from "@/components/admin/v2/visao-geral/expense-section";
+import { ReconciliationSection } from "@/components/admin/v2/receita/reconciliation-section";
 
 export const Route = createFileRoute("/admin/receita")({
   component: ReceitaPage,
@@ -49,6 +50,7 @@ function ReceitaPage() {
         <MetricsSection />
         <WaterfallSection />
         <ExpenseSection />
+        <ReconciliationSection period={period} />
         <PlansSection />
         <CohortSection />
         <InvoicesSection />
