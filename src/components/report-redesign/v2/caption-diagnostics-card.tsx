@@ -24,6 +24,18 @@ import type {
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 import type { EnrichedPost } from "@/lib/analysis/normalize";
+
+/** Accept both EnrichedPost and the looser SnapshotPost shape. */
+type PostLike = {
+  id?: string | null;
+  format: string;
+  caption?: string | null;
+  likes: number;
+  comments: number;
+  taken_at_iso?: string | null;
+  permalink?: string | null;
+  thumbnail_url?: string | null;
+};
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -62,7 +74,7 @@ export interface CaptionDiagnosticsCardProps {
   /** OpenAI semantic analysis — null when not available. */
   semantic?: CaptionSemanticAnalysis | null;
   /** Enriched posts for evidence matching. */
-  posts?: EnrichedPost[];
+  posts?: PostLike[];
 }
 
 // ---------------------------------------------------------------------------
@@ -132,13 +144,13 @@ function buildToWatch(data: CaptionIntelligence): string {
 // ---------------------------------------------------------------------------
 
 interface MatchedEvidence {
-  post: EnrichedPost;
+  post: PostLike;
   excerpt: string;
   matchTerms: string[];
 }
 
 function matchPostsByTerms(
-  posts: EnrichedPost[],
+  posts: PostLike[],
   searchTerms: string[],
 ): MatchedEvidence[] {
   if (!posts.length || !searchTerms.length) return [];
@@ -160,7 +172,7 @@ function matchPostsByTerms(
 }
 
 function matchPostsByTheme(
-  posts: EnrichedPost[],
+  posts: PostLike[],
   themeLabel: string,
   evidence: string[],
 ): MatchedEvidence[] {
@@ -349,7 +361,7 @@ function SectionThemes({
   semanticThemes: Array<{ label: string; postsCount: number; evidence: string[]; confidence: "high" | "medium" | "low" }>;
   deterministicThemes: Array<{ label: string; postsCount: number; evidence: string | null; confidence: "high" | "medium" | "low" }>;
   tooShortForThemes: boolean;
-  posts: EnrichedPost[];
+  posts: PostLike[];
   semanticAnalysisCount?: number;
 }) {
   const [openTheme, setOpenTheme] = useState<number | null>(null);
@@ -499,7 +511,7 @@ function SectionExpressions({
   deterministicExpressions: Array<{ expression: string; count: number; type: string }>;
   commentEngagement: { asksForCommentsPct: number; summary: string; examples: string[] };
   semanticCommentEngagement?: { asksForCommentsPct: number; strategyLabel: string; explanation: string; examples: string[] } | null;
-  posts: EnrichedPost[];
+  posts: PostLike[];
 }) {
   const [openExpr, setOpenExpr] = useState<number | null>(null);
   const expressions = hasSemantic ? semanticExpressions : [];
