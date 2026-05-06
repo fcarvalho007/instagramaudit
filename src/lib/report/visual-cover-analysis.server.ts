@@ -36,6 +36,8 @@ export interface VisualCoverInput {
   thumbnailUrls: string[];
   /** Post IDs matching thumbnailUrls order, for mapping results. */
   postIds: string[];
+  /** Link cost to analysis event. */
+  analysisEventId?: string | null;
 }
 
 export interface VisualCoverResult {
