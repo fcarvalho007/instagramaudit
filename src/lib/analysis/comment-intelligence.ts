@@ -149,7 +149,8 @@ export function aggregateCommentIntelligence(
     text: string | undefined,
   ) {
     if (arr.length >= MAX_EXCERPTS || !text) return;
-    arr.push({ username, text: text.slice(0, 120) });
+    const safeUsername = username && username.trim().length > 0 ? username.trim() : "utilizador";
+    arr.push({ username: safeUsername, text: text.slice(0, 120) });
   }
 
   // Top 2 posts by audience comment count
