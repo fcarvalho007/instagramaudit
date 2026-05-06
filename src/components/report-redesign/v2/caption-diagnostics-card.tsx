@@ -8,7 +8,7 @@
  * All data is real or deterministically derived — nothing invented.
  * Evidence is matched client-side from the posts array.
  */
-import { type ReactNode, useState, useCallback, useMemo } from "react";
+import { type ReactNode, useState } from "react";
 import {
   FileText, AlertTriangle, Type, Zap, HelpCircle,
   BookOpen, Sparkles, Mic, Repeat, ChevronDown, ChevronUp,
