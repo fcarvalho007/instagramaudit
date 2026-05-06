@@ -401,27 +401,10 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
           <div className="flex items-center justify-between border-t border-admin-border px-0 pt-4 pb-1">
             <p className="text-[12px] text-admin-text-tertiary">
               {pendingCount > 0
-                ? `${pendingCount} fornecedor${pendingCount > 1 ? "es" : ""} com faturação por importar. Importa para calcular o custo real total.`
-                : "Todos os fornecedores têm faturação importada."}
+                ? `${pendingCount} fornecedor${pendingCount > 1 ? "es" : ""} sem faturação externa. Dados baseados em estimativas internas.`
+                : "Todos os fornecedores têm faturação externa reconciliada."}
             </p>
-            <button
-              type="button"
-              onClick={() => setShowImportForm((v) => !v)}
-              className="shrink-0 rounded-lg bg-gray-900 px-4 py-2 text-[12px] font-medium text-white hover:bg-gray-800 transition-colors"
-            >
-              + Importar faturação
-            </button>
           </div>
-          {showImportForm && (
-            <div className="border-t border-admin-border pt-4">
-              <BillingImportForm
-                onSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ["billing-reconciliation"] });
-                  setShowImportForm(false);
-                }}
-              />
-            </div>
-          )}
         </AdminCard>
       </div>
 
