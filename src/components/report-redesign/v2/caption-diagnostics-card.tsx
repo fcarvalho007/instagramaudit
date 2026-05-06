@@ -92,20 +92,20 @@ function buildDiagnosticStatement(data: CaptionIntelligence): string {
   const longPct = distributions.length.find((l) => l.bucket === "long")?.pct ?? 0;
 
   const openingPart = dominantOpening
-    ? `A maioria das legendas abre com ${dominantOpening.label.toLowerCase()}`
+    ? `O perfil tende a abrir as legendas com ${dominantOpening.label.toLowerCase()}`
     : "As legendas não revelam um padrão de abertura dominante";
 
   const lengthPart = longPct >= 60
-    ? "e tende a ser longa e explicativa"
+    ? "— a escrita tende a ser longa e explicativa"
     : longPct >= 30
-      ? "com comprimento variável"
-      : "e tende a ser curta e direta";
+      ? "— com comprimento variável entre posts"
+      : "— a escrita tende a ser curta e direta";
 
   const endPart = (questionEnding?.pct ?? 0) < 20
-    ? ". Poucas terminam com pergunta, o que pode limitar a conversa pública nos comentários."
-    : ". Há boa presença de perguntas no final, o que favorece interação nos comentários.";
+    ? ". Poucas legendas terminam com pergunta, o que sugere menor estímulo à conversa nos comentários."
+    : ". A presença de perguntas no final indica um padrão orientado para interação nos comentários.";
 
-  const ctaPart = ctaPatterns.hasCtaPct >= 40 ? "" : " A presença de CTAs explícitos é baixa.";
+  const ctaPart = ctaPatterns.hasCtaPct >= 40 ? "" : " A presença de CTAs explícitos é reduzida nesta amostra.";
 
   return `${openingPart} ${lengthPart}${endPart}${ctaPart}`;
 }
@@ -114,7 +114,7 @@ function buildWhatWorks(data: CaptionIntelligence): string {
   if (data.editorialReading.whatWorks && data.editorialReading.whatWorks !== "—") {
     return data.editorialReading.whatWorks;
   }
-  return "Há consistência editorial — o leitor reconhece a voz entre posts.";
+  return "O perfil mantém consistência editorial — a voz é reconhecível entre posts.";
 }
 
 function buildCriticalPoint(data: CaptionIntelligence): string {
@@ -123,9 +123,9 @@ function buildCriticalPoint(data: CaptionIntelligence): string {
   }
   const questionPct = data.distributions.endings.find((e) => e.type === "question")?.pct ?? 0;
   if (questionPct < 20) {
-    return "Poucas legendas terminam com pergunta — o leitor sai sem ser convidado a responder.";
+    return "A baixa frequência de perguntas no final das legendas pode limitar o estímulo à conversa pública.";
   }
-  return "Sem ponto crítico identificado na amostra atual.";
+  return "Sem risco editorial identificado na amostra atual.";
 }
 
 function buildToWatch(data: CaptionIntelligence): string {
@@ -136,7 +136,7 @@ function buildToWatch(data: CaptionIntelligence): string {
   if (data.editorialReading.recommendedImprovement) {
     return data.editorialReading.recommendedImprovement;
   }
-  return "Monitorizar a diversidade de estrutura entre posts.";
+  return "A diversidade de estrutura entre posts é um sinal a acompanhar ao longo do tempo.";
 }
 
 // ---------------------------------------------------------------------------
@@ -272,7 +272,7 @@ function EvidenceRow({ match }: { match: MatchedEvidence }) {
     : null;
   return (
     <div className="rounded-xl border border-border-subtle bg-surface-muted/30 p-3 flex items-start gap-3">
-      {p.thumbnail_url && (
+      {p.thumbnail_url && p.thumbnail_url.length > 0 && (
         <img
           src={p.thumbnail_url}
           alt=""
@@ -479,7 +479,7 @@ function SectionThemes({
                         </>
                       ) : (
                         <p className="text-[12px] text-content-tertiary italic py-2">
-                          Evidência não disponível no payload atual.
+                          Evidência detalhada em desenvolvimento.
                         </p>
                       )}
                     </div>
@@ -606,7 +606,7 @@ function SectionExpressions({
                               ))
                             ) : (
                               <p className="text-[11px] text-content-tertiary italic py-1">
-                                Evidência não disponível no payload atual.
+                                Evidência detalhada em desenvolvimento.
                               </p>
                             )}
                           </div>
@@ -884,7 +884,7 @@ function SectionDiagnostic({
     <div className="space-y-4">
       <SectionHeader
         letter="C"
-        label="DIAGNÓSTICO EDITORIAL"
+        label="LEITURA EDITORIAL"
         badge={
           <span className="text-[10px] text-content-tertiary italic">
             síntese gerada por IA
@@ -909,19 +909,19 @@ function SectionDiagnostic({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-accent-primary/20">
           <DiagnosticColumn
             symbol="✓"
-            label="FUNCIONA"
+            label="PADRÃO FORTE"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.works : buildWhatWorks(data)}
             toneClass="text-signal-success"
           />
           <DiagnosticColumn
             symbol="✕"
-            label="PONTO CRÍTICO"
+            label="RISCO EDITORIAL"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.critical : buildCriticalPoint(data)}
             toneClass="text-signal-danger"
           />
           <DiagnosticColumn
             symbol="◎"
-            label="A OBSERVAR"
+            label="SINAL A ACOMPANHAR"
             text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data)}
             toneClass="text-signal-warning"
           />
