@@ -893,6 +893,10 @@ export type Database = {
         Returns: string
       }
       set_admin_email_session: { Args: { p_email: string }; Returns: undefined }
+      set_enrichment_status: {
+        Args: { p_key: string; p_snapshot_id: string; p_value: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
