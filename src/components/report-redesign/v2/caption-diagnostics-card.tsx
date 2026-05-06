@@ -368,6 +368,8 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
   const expressions = data.recurringExpressions.items;
   const semanticExpressions = semantic?.recurringExpressionsInterpretation ?? [];
   const stats = data.captionStats;
+  // When captions are extremely short, deterministic themes are unreliable
+  const tooShortForThemes = !hasSemantic && stats.avgWordsPerCaption < 5;
 
   if (!data.available) {
     return (
@@ -400,7 +402,7 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
                 </li>
               ))}
             </ul>
-          ) : themes.length > 0 ? (
+          ) : !tooShortForThemes && themes.length > 0 ? (
             <ul className="space-y-0.5">
               {themes.slice(0, 2).map((t) => (
                 <li key={t.label} className="flex items-center gap-1.5">
