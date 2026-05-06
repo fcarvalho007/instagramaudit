@@ -239,7 +239,7 @@ export async function generateInsights(
       const errText = await safeText(res);
       const parsed = parseOpenAiError(errText);
       const cost = calculateOpenAiCost({ model, promptTokens: 0, completionTokens: 0 });
-      await logCall({
+      await log({
         handle,
         model,
         status: "http_error",
@@ -267,7 +267,7 @@ export async function generateInsights(
 
     const content = json.choices?.[0]?.message?.content;
     if (!content) {
-      await logCall({
+      await log({
         handle,
         model,
         status: "http_error",
@@ -283,7 +283,7 @@ export async function generateInsights(
     try {
       parsed = JSON.parse(content);
     } catch (err) {
-      await logCall({
+      await log({
         handle,
         model,
         status: "http_error",
@@ -297,7 +297,7 @@ export async function generateInsights(
 
     const validation = validateInsights(parsed, ctx);
     if (!validation.ok) {
-      await logCall({
+      await log({
         handle,
         model,
         status: "http_error",
@@ -309,7 +309,7 @@ export async function generateInsights(
       return failResult("SCHEMA_INVALID", `${validation.reason}: ${validation.detail}`);
     }
 
-    await logCall({
+    await log({
       handle,
       model,
       status: "success",
@@ -341,7 +341,7 @@ export async function generateInsights(
   } catch (err) {
     const isAbort = (err as { name?: string })?.name === "AbortError";
     const cost = calculateOpenAiCost({ model, promptTokens, completionTokens });
-    await logCall({
+    await log({
       handle,
       model,
       status: isAbort ? "timeout" : "network_error",
