@@ -345,6 +345,7 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
 function renderAudienceCard(
   r: AudienceResponseResult,
   commentIntel: CommentIntelligence | null,
+  captionEngagementStrategy?: "active" | "occasional" | "passive" | null,
 ): ReactNode | null {
   // — State B: data unavailable —
   if (!r.available) {
@@ -395,6 +396,7 @@ function renderAudienceCard(
       <DiagnosticAudienceHighlight
         avgLikes={r.avgLikes}
         avgComments={r.avgComments}
+        commentsToLikesPct={r.commentsToLikesPct}
         sampleSize={r.sampleSize}
         totalLikes={r.totals.likes}
         totalComments={r.totals.comments}
@@ -402,6 +404,7 @@ function renderAudienceCard(
         topConversationPost={r.topConversationPost}
         status={r.status}
         commentIntel={commentIntel?.available ? commentIntel : null}
+        captionEngagementStrategy={captionEngagementStrategy}
       />
       {!commentIntel?.available && (
         <CommentIntelligenceUnavailable data={commentIntel} />
