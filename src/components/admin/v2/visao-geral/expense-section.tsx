@@ -266,6 +266,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             progressValue={data.apify_total}
             progressMax={c.apify}
             progressColor="expense"
+            accent="expense"
           />
           <ProviderCard
             color={ADMIN_LITERAL.expenseChartOpenAI}
@@ -277,6 +278,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             progressValue={data.openai_total}
             progressMax={c.openai}
             progressColor="info"
+            accent="info"
           />
           <ProviderCard
             color={ADMIN_LITERAL.expenseChartDataForSeo}
@@ -288,6 +290,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             progressValue={data.dataforseo_total}
             progressMax={c.dataforseo}
             progressColor="signal"
+            accent="signal"
           />
           {/* TOTAL — premium dark card */}
           <div className="rounded-xl p-5 text-white" style={{ background: "linear-gradient(135deg, #1a1f2e 0%, #0f172a 100%)" }}>
