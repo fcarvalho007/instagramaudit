@@ -1,70 +1,84 @@
 
-# Auditoria P05 Conversation Card — Resultados
+# Auditoria P07 — Visual Cover Analysis
 
-## PASS/FAIL
+## Status actual: **Fully implemented, never executed**
 
-| Dimensão | Status | Detalhe |
-|----------|--------|---------|
-| 1. classifiedExcerpts — geração | PASS | `aggregateCommentIntelligence` recolhe até 5 por categoria, com username + texto truncado a 120 chars |
-| 1. classifiedExcerpts — persistência | **FAIL** | O código persiste, mas os 2 snapshots existentes foram criados antes da feature — não contêm `classifiedExcerpts`. Só aparecerão em novas análises |
-| 1. classifiedExcerpts — agrupamento | PASS | Correctamente agrupados em `questions`, `praise`, `complaints`, `buyingIntent` |
-| 1. classifiedExcerpts — username vazio | **WARN** | `pushExcerpt` usa `comment.ownerUsername ?? ""` — pode guardar username vazio. A UI renderiza `@` sem nome |
-| 1. classifiedExcerpts — duplicados | PASS | Sem deduplicação explícita, mas limitado a max 5 por categoria — risco aceitável |
-| 1. classifiedExcerpts — truncação | PASS | `.slice(0, 120)` no texto |
-| 2. Expandable UI — affordance | PASS | Chevron down/up só quando `hasExcerpts = true` |
-| 2. Expandable UI — username + texto | PASS | `@{ex.username} «{ex.text}»` |
-| 2. Expandable UI — fallback cache antigo | PASS | `!ci.classifiedExcerpts && totalSignals > 0` mostra "Exemplos disponíveis apenas em novas análises" |
-| 3. Top 2 posts — título | PASS | "Posts que geraram mais conversa" |
-| 3. Top 2 posts — ordenação | PASS | Ordenado por `comments` desc (determinístico, não por gostos) |
-| 3. Top 2 posts — thumbnail | PASS | Proxy via `/api/public/ig-thumb`, com `onError` hide |
-| 3. Top 2 posts — format badge | PASS | `post.format` badge no canto superior direito |
-| 3. Top 2 posts — data | PASS | `post.date` formatada em pt-PT |
-| 3. Top 2 posts — legenda | PASS | `post.captionExcerpt` com `line-clamp-2`, truncada a 120 chars |
-| 3. Top 2 posts — contagem | PASS | `post.comments` com ícone MessageCircle |
-| 3. Top 2 posts — não implica best | PASS | Subtítulo explícito: "Ordenado por comentários públicos — não por gostos ou performance geral" |
-| 4. Methodology footer | PASS | Posts analisados, posts com comentários, comentários públicos, recolhidos para análise, amostra parcial, sem DMs |
-| 5. Privacy — excerpts | **WARN** | Usernames e texto de comentários públicos são dados pessoais. Aceitável para dados públicos do Instagram, mas merece atenção |
-| 6. TypeScript | *A verificar na implementação* | |
+A cadeia completa existe:
+- Tipos (`visual-cover-types.ts`) — completos
+- Prompt (`visual-cover-prompt.ts`) — existe
+- Server call (`visual-cover-analysis.server.ts`) — OpenAI vision API com gating, timeout, cost logging, error handling
+- Integração no pipeline (`analyze-public-v1.ts` linhas 1009-1051) — gated, com cache reuse
+- Snapshot mapping (`visual_cover_analysis` no payload) — persiste quando gerado
+- Parsing no bloco (`report-diagnostic-block.tsx` linha 165) — lê do snapshot
+- Card UI (`visual-cover-analysis-card.tsx`) — 460 linhas, completo com thumbnails, scores, sub-scores, diagnóstico, metodologia
 
-## Problemas concretos encontrados
+**Zero execuções**: `provider_call_logs WHERE actor = 'visual-cover-analysis'` retorna 0 registos.
 
-### 1. Username vazio nos excertos (baixo impacto, fácil de corrigir)
+## 1. Dados dos posts
 
-Em `comment-intelligence.ts` linha 181:
+| Campo | Disponível |
+|-------|-----------|
+| `thumbnail_url` | Sim — posts têm thumbnails (o card já os mostra) |
+| `permalink` / `shortcode` | Sim |
+| `format` | Sim |
+| `caption` | Sim |
+| `date` / `taken_at_iso` | Sim |
+
+## 2. Porquê "Score visual indisponível"
+
+O card recebe `analysis={parseVisualCoverAnalysis(payload)}`, que retorna `null` porque nenhum snapshot contém `visual_cover_analysis`.
+
+A cadeia de gating no `analyze-public-v1.ts` (linha 1023):
+
 ```
-pushExcerpt(excerptQuestions, comment.ownerUsername ?? "", comment.text);
+if (isOpenAiAllowed(handle)) { ... }
 ```
-Quando `ownerUsername` é `undefined`, guarda `""`. A UI renderiza `@` sem nome visível.
 
-**Fix**: Filtrar excertos com username vazio, ou usar "anónimo" como fallback.
+Que por sua vez chama:
+1. `isOpenAiEnabled()` → `process.env.OPENAI_ENABLED === "true"` 
+2. `isOpenAiTestingModeActive()` → default ON
+3. `getOpenAiAllowlist().includes(handle)` → handle must be in `OPENAI_ALLOWLIST`
 
-### 2. Snapshots existentes sem excerpts (esperado, não é bug)
+Os secrets `OPENAI_ENABLED`, `OPENAI_ALLOWLIST`, `OPENAI_API_KEY` e `OPENAI_TESTING_MODE` existem no Lovable Cloud. **Se `OPENAI_ENABLED` for `"true"` e o handle estiver na allowlist, a próxima análise gerará P07.**
 
-Os 2 snapshots com `comment_intelligence` foram criados antes da adição de `classifiedExcerpts` e `topCommentPosts`. O código já os produz — basta correr uma nova análise para validar end-to-end.
+O blocker exacto é: **os snapshots existentes foram gerados quando a gate não passou** (OPENAI_ENABLED não era "true", ou o handle não estava na allowlist, ou o visual cover code ainda não existia nessa versão).
 
-### 3. `topCommentPosts` no CommentIntelligence vs no block02-diagnostic (duplicação)
+## 3. Infraestrutura OpenAI
 
-Existem **dois `topCommentPosts` independentes**:
-- Um em `CommentIntelligence.topCommentPosts` (gerado pelo comment scraper, só tem `postUrl` + `commentsCount`)
-- Outro em `block02-diagnostic.ts` (gerado a partir dos posts do perfil, com thumbnails, captions, formato, data, permalink)
+| Dimensão | Estado |
+|----------|--------|
+| API key | `OPENAI_API_KEY` — secret existe |
+| Model | `gpt-5.4-mini` (hardcoded) |
+| Provider call logs | Sim — `recordProviderCall` com actor `visual-cover-analysis` |
+| Timeout | 45s |
+| Cost logging | Sim — `calculateOpenAiCost` |
+| Gating | `OPENAI_ENABLED` + `OPENAI_TESTING_MODE` + `OPENAI_ALLOWLIST` |
+| Cache reuse | Sim — reutiliza `visual_cover_analysis` de snapshot anterior se existir |
 
-A UI do P05 usa o do `block02-diagnostic` (que é o completo). O do `CommentIntelligence` **nunca é usado pela UI** — é redundante.
+## 4. O que NÃO precisa de ser editado
 
-**Recomendação**: Remover `topCommentPosts` da interface `CommentIntelligence` e do `aggregateCommentIntelligence` para evitar confusão. Não é urgente.
+- `visual-cover-analysis.server.ts` — funcional
+- `visual-cover-analysis-card.tsx` — funcional
+- `visual-cover-types.ts` — completo
+- `visual-cover-prompt.ts` — existe
+- `report-diagnostic-block.tsx` — já parseia e passa ao card
+- `analyze-public-v1.ts` — já chama `generateVisualCoverAnalysis`
 
----
+## 5. O que é preciso para activar
 
-## P05 pode ser considerado fechado?
+**Nenhuma edição de código.** Apenas:
 
-**Sim, com uma ressalva menor.** O card está funcional, auditável, e com fallbacks correctos. O único fix concreto é o username vazio nos excertos (cosmético até haver dados novos). Proponho:
+1. Confirmar que `OPENAI_ENABLED` = `"true"` no Lovable Cloud
+2. Confirmar que o handle de teste está na `OPENAI_ALLOWLIST`
+3. Executar uma nova análise para o handle (forçar refresh, não cache)
+4. O snapshot resultante terá `visual_cover_analysis` e o card renderiza automaticamente
 
-1. **Fix username vazio** — se `ownerUsername` é falsy, usar `"utilizador"` como fallback no `pushExcerpt`
-2. Nada mais precisa de edição para fechar P05
+## 6. Riscos
 
-## Ficheiros a editar (se aprovado)
+- **Model `gpt-5.4-mini`**: Se o nome do modelo mudou na API da OpenAI, a chamada falhará com HTTP 404. Verificar nos logs após a primeira execução.
+- **Thumbnail URLs**: O servidor OpenAI precisa de aceder às URLs dos thumbnails. Se passarem por proxy (`/api/public/ig-thumb`), as URLs não são acessíveis externamente. Verificar se as URLs raw são usadas (linha 1034 usa `p.thumbnail_url!` directamente — são os URLs raw do Apify, não proxied).
+- **Custo**: `detail: "low"` minimiza tokens de imagem. 12 imagens × low detail ≈ 85 tokens/imagem ≈ 1020 tokens de imagem + prompt + completion ≈ ~$0.01-0.02 por análise.
 
-1. `src/lib/analysis/comment-intelligence.ts` — fallback username nos pushExcerpt
+## Próximo passo recomendado
 
-## Ficheiros NÃO tocados
-
-P04, P07, Block 1, PDF, auth/admin, global tokens, locked files
+Confirmar os valores das env vars e executar uma nova análise. Se falhar, consultar `provider_call_logs WHERE actor = 'visual-cover-analysis'` para o código de erro exacto.
