@@ -1,6 +1,7 @@
 /**
  * Admin card — Test profile status panel (rendered in Sistema).
- * Compact horizontal rows with inline status dots.
+ * Redesigned with avatar circles, PRONTO/PARCIAL badges, dual buttons,
+ * cache breakdown dots, and "+ Adicionar perfil" header.
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +13,7 @@ import {
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ExternalLink, RefreshCw, CheckCircle2, Clock, ShieldCheck } from "lucide-react";
+import { ExternalLink, RefreshCw, Clock, Plus, DollarSign } from "lucide-react";
 
 const STATUS_ITEMS: Array<{
   key: keyof Pick<
@@ -23,15 +24,37 @@ const STATUS_ITEMS: Array<{
   short: string;
 }> = [
   { key: "hasCachedReport", label: "Report cache", short: "Report" },
-  { key: "hasInsightsV1", label: "Insights v1", short: "v1" },
-  { key: "hasInsightsV2", label: "Insights v2", short: "v2" },
+  { key: "hasInsightsV1", label: "Insights v1", short: "Insights v1" },
+  { key: "hasInsightsV2", label: "Insights v2", short: "Insights v2" },
   { key: "hasCaptionSemantic", label: "Legendas IA", short: "Legendas" },
   { key: "hasVisualCover", label: "Capas visuais", short: "Capas" },
   { key: "hasMarketSignals", label: "Market signals", short: "Mercado" },
-  { key: "hasCommentIntelligence", label: "Comentários", short: "Coment." },
+  { key: "hasCommentIntelligence", label: "Comentários", short: "Comentários" },
 ];
 
-function ProfileRow({ p, isLast }: { p: TestProfileStatus; isLast: boolean }) {
+/* ── Avatar with gradient ── */
+function ProfileAvatar({ handle }: { handle: string }) {
+  const initials = handle
+    .split(".")
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .slice(0, 2)
+    .join("");
+
+  return (
+    <div
+      className="flex items-center justify-center shrink-0 rounded-full text-white font-semibold text-[13px]"
+      style={{
+        width: 42,
+        height: 42,
+        background: "linear-gradient(135deg, #1D9E75, #378ADD)",
+      }}
+    >
+      {initials || "?"}
+    </div>
+  );
+}
+
+function ProfileRow({ p }: { p: TestProfileStatus }) {
   const qc = useQueryClient();
   const [expiring, setExpiring] = useState(false);
 
@@ -56,95 +79,118 @@ function ProfileRow({ p, isLast }: { p: TestProfileStatus; isLast: boolean }) {
     ? Math.max(0, Math.round((new Date(p.snapshotExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60)))
     : null;
 
+  const allComplete = STATUS_ITEMS.every((s) => p[s.key]);
+  const someComplete = STATUS_ITEMS.some((s) => p[s.key]);
+
   return (
     <div
-      className="flex flex-col gap-2 rounded-lg border border-admin-border/40 bg-admin-surface-muted/30 p-3"
+      className="rounded-xl border bg-white p-4"
+      style={{ borderColor: "#E5E3D9" }}
     >
-      {/* Row 1: Handle + cache readiness + actions */}
+      {/* Row 1: Avatar + info + actions */}
       <div className="flex items-center gap-3">
-        <span className="font-mono text-xs text-admin-text-primary shrink-0">
-          @{p.handle}
-        </span>
+        <ProfileAvatar handle={p.handle} />
 
-        {/* Cache readiness badge */}
-        {p.cacheReady && isCacheOnly ? (
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[rgb(var(--admin-revenue-500))]/10 text-[rgb(var(--admin-revenue-700))]">
-            <ShieldCheck size={10} />
-            Pronto para testes sem custos
-          </span>
-        ) : p.allEnrichmentsComplete ? (
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-[rgb(var(--admin-info-500))]/10 text-[rgb(var(--admin-info-700))]">
-            <CheckCircle2 size={10} />
-            Enriquecimentos completos
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-admin-surface-muted text-admin-text-tertiary">
-            <Clock size={10} />
-            Enriquecimentos pendentes
-          </span>
-        )}
-
-        {/* Cost */}
-        {p.latestFreshCostTotal != null && (
-          <span className="font-mono text-[11px] text-admin-text-secondary tabular-nums shrink-0">
-            ${p.latestFreshCostTotal.toFixed(3)}
-          </span>
-        )}
-
-        {/* Expiry */}
-        {expiresIn !== null && (
-          <span className="text-[10px] text-admin-text-tertiary shrink-0 hidden md:inline tabular-nums">
-            expira em {expiresIn}h
-          </span>
-        )}
-
-        <div className="flex-1" />
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[14px] font-semibold text-admin-text-primary">
+              @{p.handle}
+            </span>
+            {allComplete ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                style={{ backgroundColor: "#E8F5EE", color: "#1D9E75" }}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Pronto
+              </span>
+            ) : someComplete ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                style={{ backgroundColor: "#FFF3E0", color: "#BA7517" }}
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "#BA7517" }} />
+                Parcial
+              </span>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-admin-text-tertiary">
+            {p.latestFreshCostTotal != null && (
+              <span className="inline-flex items-center gap-1">
+                <DollarSign size={10} />
+                <span className="font-mono tabular-nums">${p.latestFreshCostTotal.toFixed(3)}</span>
+                <span>custo cache</span>
+              </span>
+            )}
+            {expiresIn !== null && (
+              <span className="inline-flex items-center gap-1">
+                <Clock size={10} />
+                expira em {expiresIn}h
+              </span>
+            )}
+          </div>
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
           <Link
             to="/analyze/$username"
             params={{ username: p.handle }}
-            className="inline-flex items-center gap-1 rounded-md border border-admin-border px-2.5 py-1 text-[10px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted hover:text-admin-text-primary transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted hover:text-admin-text-primary transition-colors"
+            style={{ borderColor: "#E5E3D9" }}
           >
-            <ExternalLink size={10} />
-            Abrir
+            <ExternalLink size={12} />
+            Abrir relatório
           </Link>
           <button
             type="button"
             onClick={handleForceRefresh}
             disabled={isCacheOnly || expiring}
-            className="inline-flex items-center gap-1 rounded-md border border-[rgb(var(--admin-expense-400))]/30 px-2.5 py-1 text-[10px] font-medium text-[rgb(var(--admin-expense-500))] hover:bg-[rgb(var(--admin-expense-400))]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              borderColor: isCacheOnly ? "#E5E3D9" : "rgba(186,117,23,0.3)",
+              color: isCacheOnly ? "#888780" : "#BA7517",
+              backgroundColor: isCacheOnly ? "transparent" : "rgba(186,117,23,0.05)",
+            }}
             title={
               isCacheOnly
-                ? "Ativa Fresh para gerar nova análise."
-                : "Expira o snapshot e força análise fresh na próxima visita."
+                ? "Troca para \"Buscar dados novos\" para ativar esta ação."
+                : "Expira o snapshot e força análise nova na próxima visita."
             }
           >
-            <RefreshCw size={10} className={expiring ? "animate-spin" : ""} />
-            {expiring ? "…" : "Fresh"}
+            <RefreshCw size={12} className={expiring ? "animate-spin" : ""} />
+            {expiring ? "A processar…" : "Buscar novo"}
           </button>
         </div>
       </div>
 
-      {/* Row 2: Status chips */}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Row 2: Cache breakdown chips */}
+      <div className="flex items-center gap-1.5 flex-wrap mt-3 pl-[54px]">
+        <span className="text-[10px] text-admin-text-tertiary uppercase tracking-wider font-medium mr-1">
+          Em cache:
+        </span>
         {STATUS_ITEMS.map((s) => {
           const ok = p[s.key];
           return (
             <span
               key={s.key}
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                ok
-                  ? "bg-[rgb(var(--admin-revenue-500))]/10 text-[rgb(var(--admin-revenue-700))]"
-                  : "bg-admin-surface-muted text-admin-text-tertiary"
-              }`}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+              style={{
+                backgroundColor: ok ? "#E8F5EE" : "#F3F2EE",
+                color: ok ? "#1D9E75" : "#888780",
+              }}
               title={s.label}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full shrink-0 ${ok ? "bg-[rgb(var(--admin-revenue-500))]" : "bg-admin-text-tertiary/30"}`}
+                className="h-1.5 w-1.5 rounded-full shrink-0"
+                style={{
+                  backgroundColor: ok ? "#1D9E75" : "transparent",
+                  border: ok ? "none" : "1.5px solid #C4C3BC",
+                }}
               />
-              <span>{s.short}</span>
+              {s.short}
             </span>
           );
         })}
@@ -161,18 +207,50 @@ export function TestProfilesCard() {
   });
 
   const profiles = data?.profiles ?? [];
+  const readyCount = profiles.filter((p) =>
+    STATUS_ITEMS.every((s) => p[s.key])
+  ).length;
+
+  const firstExpiry = profiles
+    .map((p) => p.snapshotExpiresAt)
+    .filter(Boolean)
+    .sort()[0];
+  const cacheHours = firstExpiry
+    ? Math.max(0, Math.round((new Date(firstExpiry).getTime() - Date.now()) / (1000 * 60 * 60)))
+    : null;
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider">
-        Perfis de teste
-      </p>
+      {/* Header with counter and add button */}
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+          <span className="text-admin-text-tertiary">◎</span>
+          Perfis de teste
+        </p>
+        <div className="flex items-center gap-3">
+          {profiles.length > 0 && (
+            <span className="text-[11px] text-admin-text-tertiary">
+              {readyCount} perfis prontos
+              {cacheHours != null && <> · cache válida {cacheHours}h</>}
+            </span>
+          )}
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted transition-colors"
+            style={{ borderColor: "#E5E3D9" }}
+          >
+            <Plus size={12} />
+            Adicionar perfil
+          </button>
+        </div>
+      </div>
+
       {isLoading && (
         <p className="text-[11px] text-admin-text-tertiary">A carregar...</p>
       )}
-      <div className="flex flex-col gap-2">
-        {profiles.map((p, i) => (
-          <ProfileRow key={p.handle} p={p} isLast={i === profiles.length - 1} />
+      <div className="flex flex-col gap-3">
+        {profiles.map((p) => (
+          <ProfileRow key={p.handle} p={p} />
         ))}
       </div>
     </div>
