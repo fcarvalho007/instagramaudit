@@ -729,6 +729,69 @@ export function CaptionDiagnosticsCard({ data, semantic }: CaptionDiagnosticsCar
 // ---------------------------------------------------------------------------
 
 function CardShell({
+// ---------------------------------------------------------------------------
+// Semantic Pill (hook / voice / formulaic)
+// ---------------------------------------------------------------------------
+
+function SemanticPill({
+  icon: Icon,
+  label,
+  rating,
+  ratingLabels,
+  explanation,
+  tone,
+  examples,
+}: {
+  icon: LucideIcon;
+  label: string;
+  rating: string;
+  ratingLabels: Record<string, string>;
+  explanation: string;
+  tone: "success" | "danger" | "neutral";
+  examples?: string[];
+}) {
+  const toneClasses =
+    tone === "success"
+      ? "border-signal-success/20 bg-signal-success/5"
+      : tone === "danger"
+        ? "border-signal-danger/20 bg-signal-danger/5"
+        : "border-border-subtle bg-surface-muted/50";
+  const ratingColor =
+    tone === "success"
+      ? "text-signal-success"
+      : tone === "danger"
+        ? "text-signal-danger"
+        : "text-content-secondary";
+  return (
+    <div className={cn("rounded-xl border p-4 space-y-2", toneClasses)}>
+      <div className="flex items-center gap-2">
+        <Icon size={14} className="text-content-tertiary" strokeWidth={1.5} />
+        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
+      </div>
+      <p className={cn("text-[13px] font-semibold", ratingColor)}>
+        {ratingLabels[rating] ?? rating}
+      </p>
+      <p className="text-[12px] text-content-secondary leading-relaxed">
+        {explanation}
+      </p>
+      {examples && examples.length > 0 && (
+        <ul className="space-y-1 pt-1">
+          {examples.map((ex, i) => (
+            <li key={i} className="text-[11px] text-content-tertiary italic leading-relaxed">
+              «{ex}»
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shell
+// ---------------------------------------------------------------------------
+
+function CardShell({
   sampleSize,
   totalWords,
   children,
