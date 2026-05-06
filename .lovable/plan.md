@@ -1,120 +1,98 @@
 
-# Audit: Bloco 04 — Diagnóstico de Legendas
+# Redesign P04 — Diagnóstico de Legendas
 
-## Readiness Assessment: PASS
+## What changes
 
-Both profiles (`frederico.m.carvalho` and `martimsilvai`) have all caption-related payload areas fully populated. The UI component (`caption-diagnostics-card.tsx`) already consumes every field from both the deterministic layer (`CaptionIntelligence`) and the semantic layer (`CaptionSemanticAnalysis`). No data is being silently dropped.
+Rewrite the content body of `caption-diagnostics-card.tsx` (below the existing CardShell header) into five visually distinct sections: A through E, matching the mockup references. The header (CardShell) remains untouched.
 
----
+## Files to edit
 
-## Payload-to-UI Mapping
+| File | Action |
+|---|---|
+| `src/components/report-redesign/v2/caption-diagnostics-card.tsx` | Major rewrite of content body |
+| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Pass `posts` array as new prop to CaptionDiagnosticsCard |
 
-### A. `caption_semantic_analysis` (OpenAI semantic layer)
+No other files will be touched.
 
-| # | Field path | Both profiles? | Rendered? | Where in UI | Notes |
-|---|-----------|----------------|-----------|-------------|-------|
-| 1 | `.source` | Yes (`openai`) | No | — | Internal metadata. **Ignore.** |
-| 2 | `.schemaVersion` | Yes | No | — | Internal metadata. **Ignore.** |
-| 3 | `.analyzedCaptions` | Yes (12 each) | Indirectly | Header shows `sampleSize` from deterministic layer, same value | Already covered. |
-| 4 | `.dominantThemes[]` (5 each) | Yes | Yes (top 3) | "Assuntos mais recorrentes" section | Only top 3 shown; 4-5 intentionally trimmed. OK. |
-| 5 | `.contentIntent.primary` | Yes | Yes | "Intenção principal" KPI card | |
-| 6 | `.contentIntent.secondary` | Yes | Yes | "Intenção principal" KPI card (2nd bullet) | |
-| 7 | `.contentIntent.explanation` | Yes | **No** | — | See recommendation below. |
-| 8 | `.commentEngagement.asksForCommentsPct` | Yes | Yes | "Pede comentários nos posts?" section | |
-| 9 | `.commentEngagement.strategyLabel` | Yes | Yes | Badge (ATIVA/OCASIONAL/PASSIVA) | |
-| 10 | `.commentEngagement.examples[]` | Yes | Yes | Pill tags below % | |
-| 11 | `.commentEngagement.explanation` | Yes | Yes | Summary paragraph | |
-| 12 | `.recurringExpressionsInterpretation[]` | Yes (6 each) | Yes | "Expressões recorrentes" panel | Shows `.expression`, `.count`, `.meaning`, `.risk` |
-| 13 | `.diagnostic.main` | Yes | Yes | "Diagnóstico editorial" blue box | |
-| 14 | `.diagnostic.works` | Yes | Yes | "Funciona" micro | |
-| 15 | `.diagnostic.critical` | Yes | Yes | "Ponto crítico" micro | |
-| 16 | `.diagnostic.watch` | Yes | Yes | "A observar" micro | |
-| 17 | `.hookQuality.rating` | Yes (`strong`) | Yes | "Qualidade do hook" pill | |
-| 18 | `.hookQuality.explanation` | Yes | Yes | Pill description | |
-| 19 | `.brandVoice.rating` | Yes (`consistent`) | Yes | "Voz da marca" pill | |
-| 20 | `.brandVoice.explanation` | Yes | Yes | Pill description | |
-| 21 | `.formulaicPatterns.hasFormulas` | Yes (`true`) | Yes | "Padrões repetitivos" pill | |
-| 22 | `.formulaicPatterns.examples[]` | Yes | Yes | Italic quotes in pill | |
-| 23 | `.formulaicPatterns.explanation` | Yes | Yes | Pill description | |
+## New props
 
-### B. `ai_insights_v2.sections.language`
+Add `posts?: EnrichedPost[]` to `CaptionDiagnosticsCardProps`. The parent (`report-diagnostic-block.tsx`) already has the `posts` array — just pass it through.
 
-| # | Field path | Both profiles? | Rendered? | Where | Notes |
-|---|-----------|----------------|-----------|-------|-------|
-| 24 | `.text` | Yes | Yes (indirectly) | Fed into `buildCaptionIntelligence()` as `aiLanguageText` for editorial reading fallback | Already consumed. |
-| 25 | `.emphasis` | Yes (`default`) | No | — | Only value is `default`. **Ignore.** |
+## Section-by-section design
 
-### C. Post-level caption fields (`posts[].caption`, `posts[].caption_length`)
+### A. SOBRE O QUE FALA
 
-| # | Field path | Both profiles? | Rendered? | Where | Notes |
-|---|-----------|----------------|-----------|-------|-------|
-| 26 | `posts[].caption` | Yes (12 each) | Yes (indirectly) | Raw text feeds `buildCaptionIntelligence()` for all deterministic metrics | |
-| 27 | `posts[].caption_length` | Yes | Yes (indirectly) | Used for length distribution, avgWords calculation | |
+- Section eyebrow: "A · SOBRE O QUE FALA"
+- Right-aligned badge: "N temas detetados" + "N analises semanticas"
+- Sub-header: "ASSUNTOS MAIS RECORRENTES" with subtitle
+- Each theme as a numbered row with:
+  - Rank number in accent circle
+  - Theme label (bold)
+  - "Identificado em N posts · sinal mais forte da grelha" (contextual subtitle)
+  - Signal badge: "SINAL FORTE" (green), "SINAL MEDIO" (blue/purple), "SINAL FRACO" (grey)
+  - Collapsible "Ver evidencia" / "Ocultar" button
+- When expanded, show matching posts from the `posts` prop:
+  - Match by searching each post's caption for theme keywords (from `evidence` array for semantic themes)
+  - Each evidence row: format badge (REEL / CARROSSEL / IMAGEM), date, likes count, caption excerpt with highlighted matching terms, "Abrir" permalink link
+  - Bottom of expanded area: "Ver os N posts · descarregar CSV com excertos" link row
+- Use `Collapsible` from radix (already in project). Only one theme expanded at a time via local state.
+- CSV download: client-side blob export of matching posts (caption, date, likes, permalink). No backend needed.
 
-### D. `content_summary` (no caption-specific fields)
+### B. EXPRESSOES RECORRENTES
 
-| # | Field | Caption-relevant? | Notes |
-|---|-------|-------------------|-------|
-| 28 | `posts_analyzed`, `average_engagement_rate`, etc. | No | These are engagement/format metrics, not caption data. |
+- Section eyebrow: "EXPRESSOES RECORRENTES" with subtitle
+- Optional "Descarregar CSV" button (top-right)
+- 2-column grid (desktop), 1-column (mobile)
+- Each expression card:
+  - Expression in quotes (bold)
+  - Count badge "xN" (top-right)
+  - Short interpretation text
+  - Warning note if risk exists (triangle icon)
+  - Collapsible "Ver posts" button
+  - When expanded: show posts whose caption contains the expression, same evidence row format as section A
 
----
+### Comment engagement sub-section
 
-## Fields Already Covered (17 rendered)
+- "PEDE COMENTARIOS NOS POSTS?"
+- Large percentage, strategy badge (ATIVA/OCASIONAL/PASSIVA)
+- Explanation text
+- Example phrases as pills
+- "EXEMPLOS DETETADOS" label above examples
 
-All core semantic and deterministic caption fields are rendered:
-- Dominant themes (top 3 of 5)
-- Content intent (primary + secondary)
-- Comment engagement (%, strategy, examples, explanation)
-- Recurring expressions (with meaning + risk)
-- Opening patterns distribution
-- Ending patterns distribution
-- Length distribution
-- Editorial diagnostic (main + 3 sub-diagnostics)
-- Hook quality
-- Brand voice
-- Formulaic patterns
-- Avg words per caption
-- Avg emojis per post
-- Sample size + total words (header)
-- Knowledge base sources (footer)
+### C. COMO ESCREVE
 
-## Fields Not Rendered But Present (3)
+- Section eyebrow: "B · COMO ESCREVE" with "N padroes estruturais" badge
+- Three cards in a row (desktop), stacked (mobile):
+  1. **COMO COMECAM** — openings distribution with icons and horizontal bars, "primeiras 8 palavras" subtitle
+  2. **COMO ACABAM** — endings distribution with bars, highlight dangerous "Com pergunta 0%" in red/green
+  3. **DISTRIBUICAO COMPRIMENTO** — stacked horizontal bar with legend, "N legendas analisadas" subtitle
 
-| Field | Current status | Recommendation | Risk |
-|-------|---------------|----------------|------|
-| `.contentIntent.explanation` | Available in both profiles | **Add as small inline detail** — a single line of muted text below the intent bullets in the KPI card | Very low. Pure text addition, no layout shift. |
-| `.dominantThemes[3-4]` (themes 4-5) | Available (5 total, only 3 shown) | **Reserve for later** — expandable "Ver mais" toggle | Low, but adds visual noise. Better as optional expansion. |
-| `.source` / `.schemaVersion` | Internal | **Ignore** — no user value | N/A |
+### D. DIAGNOSTICO EDITORIAL
 
-## Fields That Should Remain Hidden
+- Section eyebrow: "C · DIAGNOSTICO EDITORIAL" with "sintese gerada por IA" right-aligned
+- Sparkles icon + "SINTESE EDITORIAL · IA" label
+- Main diagnosis paragraph (larger text, bold key phrases via `<strong>`)
+- 3-column grid below: Funciona (green check), Ponto critico (red X), A observar (amber circle)
+- Footer note about public captions, hashtags, and knowledge sources
 
-- `source`, `schemaVersion` — internal metadata
-- `ai_insights_v2.sections.language.emphasis` — only holds `default`, no semantic value
-- Raw `posts[].caption` text — already consumed by deterministic extraction; showing raw captions would bloat the card
+### E. Quality cards (Hook / Voice / Formulaic)
 
----
+- Keep existing SemanticPill pattern
+- Improve spacing: consistent gap, slightly larger padding
+- These remain visually secondary to the diagnostic
 
-## Recommended Next Safe UI Improvements
+## Evidence matching logic
 
-1. **Show `contentIntent.explanation`** — one line of muted text (`text-content-tertiary text-[12px]`) under the intent KPI card bullets. Zero layout risk.
+Pure client-side function: given a search term (theme label or expression string) and the posts array, filter posts whose `caption` includes the term (case-insensitive). For semantic themes, also check against the `evidence[]` strings. Highlight matching substring in the excerpt using a `<mark>` tag with subtle background.
 
-2. **Expandable themes (4-5)** — a "Mostrar todos" link at the bottom of the themes section. Only if there's user demand. Reserve for now.
+Fallback: if no posts match, show "Evidencia nao disponivel no payload atual."
 
-3. No other caption fields are missing or underutilized.
+## Technical notes
 
----
-
-## Files Involved (if changes are approved)
-
-- `src/components/report-redesign/v2/caption-diagnostics-card.tsx` — only file that would change (for intent explanation)
-
-## Files NOT to Touch
-
-- `src/lib/report/caption-intelligence.ts`
-- `src/lib/report/caption-semantic-types.ts`
-- `src/lib/report/caption-semantic-analysis.server.ts`
-- `src/lib/report/caption-semantic-prompt.ts`
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx`
-- `src/lib/pdf/report-document.tsx`
-- Any admin, cost, or snapshot files
-- Any server function or provider logic
+- Use `useState` for tracking which collapsible is open (one per section)
+- Reuse existing design tokens (surface-muted, border-subtle, accent-primary, signal-success/danger/warning, tint-*)
+- CSV export: `URL.createObjectURL(new Blob([csvContent]))` with download attribute
+- File stays as single module — extract small helpers only if needed for readability
+- Mobile-first: all grids collapse to single column on small screens
+- No new dependencies
+- No provider calls, no backend changes, no PDF changes

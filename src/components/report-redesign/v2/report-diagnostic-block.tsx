@@ -184,7 +184,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             questionsCount={groupB.length + 1}
           >
             {groupB}
-            <CaptionDiagnosticsCard data={captionIntel} semantic={captionSemantic} />
+            <CaptionDiagnosticsCard data={captionIntel} semantic={captionSemantic} posts={posts} />
           </ReportDiagnosticGroup>
 
           {/* E · Análise visual */}
