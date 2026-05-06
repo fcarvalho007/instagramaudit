@@ -769,7 +769,7 @@ export function DiagnosticAudienceHighlight({
       {topCommentPosts && topCommentPosts.length > 0 && (
         <div className="space-y-2.5">
           <p className="text-eyebrow text-content-tertiary">Posts que geraram mais conversa</p>
-          <p className="text-[10px] text-content-tertiary/60 mt-0.5">Ordenado por comentários públicos — não por gostos ou performance geral.</p>
+          <p className="text-[10px] text-content-tertiary/60 mt-0.5">Classificação exclusiva por volume de conversa pública.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {topCommentPosts.map((post, idx) => {
               const cardContent = (
