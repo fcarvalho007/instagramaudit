@@ -409,6 +409,7 @@ interface LogCallInput {
   durationMs: number;
   cost: ReturnType<typeof calculateOpenAiCost>;
   errorMessage: string | null;
+  analysisEventId?: string | null;
 }
 
 async function logCall(input: LogCallInput): Promise<void> {
@@ -426,6 +427,7 @@ async function logCall(input: LogCallInput): Promise<void> {
     completionTokens: input.cost.completionTokens,
     totalTokens: input.cost.totalTokens,
     errorMessage: input.errorMessage ?? undefined,
+    analysisEventId: input.analysisEventId ?? null,
   });
 }
 
