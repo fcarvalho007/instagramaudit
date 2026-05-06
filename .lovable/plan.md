@@ -1,68 +1,69 @@
 
-# Admin UI Polish: Glassmorphism Tabs + Sistema Section Redesign
+# Tighten Cache-Only Guard Order
 
-Two distinct improvements based on the screenshot and your feedback.
+## Problem
 
----
+In `src/routes/api/analyze-public-v1.ts`, the execution order is:
 
-## 1. Glassmorphism Admin Tab Navigation
+```text
+BEFORE:
+1. Parse input
+2. Dedup competitors
+3. Allowlist gate ← creates analysis_events with blocked_allowlist
+4. Cache lookup
+5. cache_only guard ← too late
+6. Apify kill-switch
+7. Provider calls
+```
 
-Replace the current plain underlined text tabs with frosted-glass pill buttons.
+A non-allowlisted handle in cache_only mode hits the allowlist block (step 3) before the cache_only guard (step 5), creating an `analysis_events` row with `outcome=blocked_allowlist`. This pollutes the audit trail — cache_only should never reach allowlist logic.
 
-**Design:**
-- Each tab: `backdrop-blur-md`, semi-transparent white background (`bg-white/60`), subtle border (`border-white/30`), soft shadow
-- Active tab: solid white with stronger shadow + accent left border
-- Hover: lift effect via brighter bg
-- Rounded pill shape (`rounded-xl`)
-- Sticky nav bar with its own glassmorphism background
+## Fix
 
-**File:** `src/components/admin/v2/admin-tabs-nav.tsx`
+Restructure the order to:
 
----
+```text
+AFTER:
+1. Parse input
+2. Dedup competitors
+3. Cache lookup (moved up)
+4. cache_only guard (moved up, right after cache lookup)
+5. Allowlist gate (unchanged, only reached in fresh mode)
+6. Apify kill-switch
+7. Provider calls
+```
 
-## 2. Sistema "Controlo Operacional" Section Redesign
+The cache lookup doesn't depend on the allowlist — it only needs `cacheKey`. Moving it before the allowlist check means cache_only can short-circuit immediately.
 
-The current section feels flat and hard to parse. Problems visible in the screenshot:
-- No white card container -- content floats directly on the cream canvas
-- The "Modo de Execução" and "Perfis de Teste" cards lack visual hierarchy
-- Status dots are tiny and hard to read
-- "Expirar cache" section blends into the background
-- Action buttons ("Abrir", "Fresh", "Expirar") are tiny text links, not obvious as interactive
+## Changes
 
-**Redesign approach:**
+**File: `src/routes/api/analyze-public-v1.ts`**
 
-### a) Wrap in a white card container
-All three sub-cards (execution mode, test profiles, cache maintenance) go inside one unified white card with the shadow token `shadow-admin-card`. This creates the same visual treatment as other admin sections.
+1. Move the `cacheKey` computation, benchmark loading, and cache lookup block (L555-602) to just after competitor dedup (after L519).
+2. Move the cache_only guard block (L604-649) to immediately follow the cache lookup.
+3. Leave the allowlist gate, Apify kill-switch, and all fresh-mode logic untouched in sequence after the cache_only guard.
+4. The `forceRefresh` logic (L555-573) stays between cache lookup and allowlist since it's only relevant for fresh mode — but it must move together with cache lookup since `isFresh(existing)` references `forceRefresh`.
 
-### b) Execution Mode Card improvements
-- Larger, more distinct segmented control with rounded pills
-- Active state uses a filled pill (not just tinted bg)
-- Status badge below stays but gets a slightly larger font
+Concretely the new order after competitor dedup will be:
 
-### c) Test Profiles Card improvements
-- Status items use labelled chips (coloured pill with text) instead of tiny dots
-- "Abrir" and "Fresh" become small outlined buttons with icons, not bare text links
-- Add a subtle divider between the two cards
+```
+cacheKey = buildCacheKey(...)
+benchmarkData = await loadBenchmarkReferences()
+existing = await lookupSnapshot(cacheKey)
+forceRefresh logic
+if (existing && !forceRefresh && isFresh(existing)) → serve cache
+executionMode = await getAnalysisExecutionMode()
+if (executionMode === "cache_only") → serve stale or CACHE_ONLY_NO_DATA
+// --- only fresh mode reaches here ---
+allowlist gate
+apify kill-switch
+provider calls...
+```
 
-### d) Cache Maintenance improvements
-- Input + button get a more prominent treatment inside the card
-- "Expirar" button styled as a small outlined destructive button (amber border)
-- Result message gets a toast-like inline alert style
+No other files need changes. No UI changes. Fresh mode behaviour is identical.
 
-### e) Visual separator
-A thin `border-t` divider between the Execution Mode row and the Cache Maintenance row.
+## Validation
 
----
-
-## Files to change
-
-1. `src/styles/admin-tokens.css` -- add glassmorphism utility tokens (blur, bg opacity, border)
-2. `src/components/admin/v2/admin-tabs-nav.tsx` -- glassmorphism pill tabs
-3. `src/routes/admin.sistema.tsx` -- wrap Controlo Operacional in white card
-4. `src/components/admin/v2/sistema/execution-mode-card.tsx` -- improved segmented control
-5. `src/components/admin/v2/sistema/test-profiles-card.tsx` -- chips + button actions
-6. `src/components/admin/v2/sistema/cache-maintenance-card.tsx` -- input/button styling
-
-## Not touched
-- No locked files modified
-- No public report cards, PDF, auth, global tokens, P04/P05/P07 UI
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Confirm no `blocked_allowlist` events can occur during cache_only mode by code inspection
