@@ -118,8 +118,10 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     ) : null,
   ]);
   // C · Resposta do público: Q05 (audience) — full width
+  const captionSemantic = parseCaptionSemanticAnalysis(payload);
+  const captionEngagementStrategy = captionSemantic?.commentEngagement?.strategyLabel ?? null;
   const groupC = compact([
-    renderAudienceCard(audience, result.enriched.commentIntelligence),
+    renderAudienceCard(audience, result.enriched.commentIntelligence, captionEngagementStrategy),
   ]);
   // D · Contexto estratégico: Q06 + Q07
   const groupD = compact([
