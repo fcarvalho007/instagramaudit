@@ -583,7 +583,7 @@ export async function generateInsightsV2(
       const errText = await safeText(res);
       const parsedErr = parseOpenAiError(errText);
       const cost = calculateOpenAiCost({ model, promptTokens: 0, completionTokens: 0 });
-      await logCall({
+      await logV2({
         handle,
         model,
         status: "http_error",
@@ -613,7 +613,7 @@ export async function generateInsightsV2(
 
     const content = json.choices?.[0]?.message?.content;
     if (!content) {
-      await logCall({
+      await logV2({
         handle,
         model,
         status: "http_error",
@@ -629,7 +629,7 @@ export async function generateInsightsV2(
     try {
       parsed = JSON.parse(content);
     } catch (err) {
-      await logCall({
+      await logV2({
         handle,
         model,
         status: "http_error",
@@ -643,7 +643,7 @@ export async function generateInsightsV2(
 
     const validation = validateInsightsV2(parsed);
     if (!validation.ok) {
-      await logCall({
+      await logV2({
         handle,
         model,
         status: "http_error",
@@ -686,7 +686,7 @@ export async function generateInsightsV2(
       );
     }
 
-    await logCall({
+    await logV2({
       handle,
       model,
       status: "success",
@@ -726,7 +726,7 @@ export async function generateInsightsV2(
   } catch (err) {
     const isAbort = (err as { name?: string })?.name === "AbortError";
     const cost = calculateOpenAiCost({ model, promptTokens, completionTokens });
-    await logCall({
+    await logV2({
       handle,
       model,
       status: isAbort ? "timeout" : "network_error",
