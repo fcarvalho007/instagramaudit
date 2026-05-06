@@ -17,6 +17,9 @@ import {
   ThumbsUp,
   AlertTriangle,
   ShoppingCart,
+  Zap,
+  Calendar,
+  Film,
 } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import type { CommentIntelligence } from "@/lib/analysis/types";
@@ -546,6 +549,7 @@ export function DiagnosticRanking({
 interface AudienceHighlightProps {
   avgLikes: number;
   avgComments: number;
+  commentsToLikesPct?: number;
   sampleSize?: number;
   totalLikes?: number | null;
   totalComments?: number | null;
@@ -555,14 +559,20 @@ interface AudienceHighlightProps {
     comments: number;
     likes: number;
     captionExcerpt: string;
+    format?: string | null;
+    date?: string | null;
+    commentsToLikesPct?: number;
   } | null;
   status?: AudienceResponseStatus;
   commentIntel?: CommentIntelligence | null;
+  /** P04 cross-reference: caption comment engagement strategy */
+  captionEngagementStrategy?: "active" | "occasional" | "passive" | null;
 }
 
 export function DiagnosticAudienceHighlight({
   avgLikes,
   avgComments,
+  commentsToLikesPct,
   sampleSize,
   totalLikes,
   totalComments,
@@ -570,9 +580,11 @@ export function DiagnosticAudienceHighlight({
   topConversationPost,
   status = "silent",
   commentIntel,
+  captionEngagementStrategy,
 }: AudienceHighlightProps) {
   const ownerReplies = commentIntel?.available ? commentIntel.ownerRepliesCount : 0;
   const sampleComments = commentIntel?.available ? commentIntel.sampleComments : null;
+  const ownerReplyRatePct = commentIntel?.available ? commentIntel.ownerReplyRatePct : null;
 
   /* Determine if KPI 2 and KPI 3 are in alert state */
   const commentsIsAlert = avgComments < 1;
@@ -639,7 +651,9 @@ export function DiagnosticAudienceHighlight({
             {formatAvg(avgComments)}
           </span>
           <span className="text-[9px] sm:text-[11px] text-content-tertiary">
-            {sampleSize ? `em ${sampleSize} publicações` : "por publicação"}
+            {commentsToLikesPct != null && commentsToLikesPct > 0
+              ? `${commentsToLikesPct < 0.1 ? "<0,1" : commentsToLikesPct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% dos gostos geraram comentário`
+              : sampleSize ? `em ${sampleSize} publicações` : "por publicação"}
           </span>
         </div>
 
@@ -674,10 +688,16 @@ export function DiagnosticAudienceHighlight({
               repliesIsAlert ? "text-signal-danger" : "text-content-primary",
             )}
           >
-            {ownerReplies}
+            {ownerReplyRatePct != null && ownerReplyRatePct > 0
+              ? `${Math.round(ownerReplyRatePct)}%`
+              : ownerReplies}
           </span>
           <span className="text-[9px] sm:text-[11px] text-content-tertiary">
-            {ownerReplies === 0 ? "a marca não conversa" : "respostas públicas detetadas"}
+            {ownerReplies === 0
+              ? "a marca não conversa"
+              : ownerReplyRatePct != null && ownerReplyRatePct > 0
+                ? `${ownerReplies} respostas públicas`
+                : "respostas públicas detetadas"}
           </span>
         </div>
       </div>
@@ -694,6 +714,20 @@ export function DiagnosticAudienceHighlight({
         </div>
       )}
 
+      {/* ── P04 cross-reference: caption engagement strategy ── */}
+      {captionEngagementStrategy && (
+        <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-muted/50 px-3.5 py-2.5">
+          <Zap size={13} className="text-content-tertiary shrink-0" strokeWidth={1.5} />
+          <p className="text-[12px] text-content-secondary leading-snug">
+            {captionEngagementStrategy === "active"
+              ? "As legendas pedem comentários de forma ativa"
+              : captionEngagementStrategy === "passive"
+                ? "As legendas raramente pedem comentários"
+                : "Convite à conversa ocasional"}
+          </p>
+        </div>
+      )}
+
       {/* ── Z4: Top conversation post highlight ── */}
       {topConversationPost && topConversationPost.comments > 0 && (
         <div className="rounded-[14px] border border-border-subtle bg-tint-primary/60 px-4 py-3.5 space-y-2">
@@ -702,7 +736,19 @@ export function DiagnosticAudienceHighlight({
               <MessageSquare size={13} className="text-accent-primary" strokeWidth={1.5} />
             </div>
             <span className="text-eyebrow-sm text-content-tertiary">Post que gerou mais conversa</span>
+            {topConversationPost.format && (
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-surface-secondary px-2 py-0.5 text-[10px] text-content-tertiary ring-1 ring-border-subtle">
+                <Film size={9} strokeWidth={1.5} />
+                {topConversationPost.format}
+              </span>
+            )}
           </div>
+          {topConversationPost.date && (
+            <div className="flex items-center gap-1 text-[11px] text-content-tertiary">
+              <Calendar size={10} strokeWidth={1.5} />
+              <span>{new Date(topConversationPost.date).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })}</span>
+            </div>
+          )}
           {topConversationPost.captionExcerpt && (
             <p className="font-display text-[14px] font-medium text-content-primary leading-relaxed line-clamp-2">
               «{topConversationPost.captionExcerpt.slice(0, 120)}»
@@ -717,6 +763,11 @@ export function DiagnosticAudienceHighlight({
               <MessageCircle size={11} strokeWidth={1.5} />
               <span className="tabular-nums">{topConversationPost.comments.toLocaleString("pt-PT")}</span>
             </span>
+            {topConversationPost.commentsToLikesPct != null && (
+              <span className="text-content-tertiary tabular-nums">
+                {topConversationPost.commentsToLikesPct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% coment./gosto
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -727,7 +778,7 @@ export function DiagnosticAudienceHighlight({
           {sampleSize ?? "—"} posts analisados
           {postsWithComments != null && ` · ${postsWithComments} ${postsWithComments === 1 ? "post com comentários" : "posts com comentários"}`}
           {totalComments != null && totalComments > 0 && ` · ${totalComments} ${totalComments === 1 ? "comentário público" : "comentários públicos"}`}
-          {sampleComments != null && sampleComments !== totalComments && ` · ${sampleComments} comentários recolhidos`}
+          {sampleComments != null && totalComments != null && sampleComments !== totalComments && ` · ${sampleComments} recolhidos para análise`}
           {" "}· sem DMs nem comentários ocultos
         </p>
       )}
@@ -923,7 +974,7 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
       <div>
         <p className="text-eyebrow text-content-tertiary">O que a audiência mais diz</p>
         <p className="text-[11px] text-content-tertiary mt-0.5">
-          Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários públicos
+          Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários · percentagens sobre sinais classificados
         </p>
       </div>
 
@@ -989,6 +1040,25 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
           <p className="text-[13px] text-content-secondary leading-relaxed">{ci.recommendedConversationAction}</p>
         </div>
       )}
+
+      {/* Actionable comments summary */}
+      {(() => {
+        const actionable = ci.questionsFromAudienceCount + ci.buyingIntentCount + ci.complaintOrIssueCount;
+        if (actionable <= 0) return null;
+        return (
+          <div className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-muted/60 px-3.5 py-2.5">
+            <Zap size={13} className="text-accent-primary shrink-0" strokeWidth={1.5} />
+            <div>
+              <p className="text-[13px] font-semibold text-content-primary">
+                {actionable} {actionable === 1 ? "comentário acionável" : "comentários acionáveis"}
+              </p>
+              <p className="text-[10px] text-content-tertiary">
+                perguntas + intenção de compra + problemas
+              </p>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

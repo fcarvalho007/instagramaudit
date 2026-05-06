@@ -1,114 +1,68 @@
 
-# P04 Caption Diagnostics — Audit & Implementation Plan
+# P05 Conversation Card Refinement
 
-## Current State Summary
+## What changes
 
-The P04 implementation is **already 90% complete**. A previous iteration created the full OpenAI semantic layer:
+### 1. KPI 2 subcopy — comment-to-like ratio
+Add `commentsToLikesPct` below the avg comments value. Already available in `AudienceResponseResult` but not passed to `DiagnosticAudienceHighlight`.
 
-- **Types**: `src/lib/report/caption-semantic-types.ts` — `CaptionSemanticAnalysis` interface with themes, intent, engagement, expressions, diagnostic
-- **Prompt**: `src/lib/report/caption-semantic-prompt.ts` — system prompt + JSON schema (pt-PT, neutral tone, no fabricated numbers)
-- **Server**: `src/lib/report/caption-semantic-analysis.server.ts` — direct `fetch` to OpenAI (`gpt-5.4-mini`), with allowlist gating, timeout, validation, cost logging
-- **Pipeline**: `src/routes/api/analyze-public-v1.ts` — calls `generateCaptionSemanticAnalysis`, caches result in `analysis_snapshots.normalized_payload.caption_semantic_analysis`
-- **UI**: `src/components/report-redesign/v2/caption-diagnostics-card.tsx` — hybrid rendering: uses `semantic` when available, falls back to deterministic `data`
+- Pass `commentsToLikesPct` as new prop
+- Subcopy: `"X% dos gostos geraram comentário"` (smart formatting for values < 0.1: `"<0,1%"`)
 
----
+### 2. KPI 3 — reply rate instead of raw count
+When `commentIntel.ownerReplyRatePct` is available:
+- Primary value: `ownerReplyRatePct` (e.g. `"82%"`)
+- Subcopy: `"N respostas públicas"`
+- Fallback to current raw count when commentIntel is unavailable
 
-## PASS/FAIL Audit
+### 3. Actionable comments summary strip
+Below AudienceVoiceBreakdown, add a compact summary:
+- `actionableComments = questions + buyingIntent + complaints`
+- Line: `"N comentários acionáveis"`
+- Subcopy: `"perguntas + intenção de compra + problemas"`
+- Only shown when commentIntel is available and actionableComments > 0
 
-| Check | Status | Detail |
-|-------|--------|--------|
-| Deterministic metrics preserved | **PASS** | `captionStats` (totalWords, avgWords, avgEmojis), distributions (length/openings/endings), CTA counts, question counts, recurring expressions — all computed in `caption-intelligence.ts`, never from OpenAI |
-| OpenAI only classifies/labels | **PASS** | Prompt explicitly forbids inventing metrics. JSON schema enforces structure. Validation in `validateResult()` checks ranges. |
-| Data sent to OpenAI | **PASS** | Only caption text (max 12), no profile data, no likes/comments/followers |
-| Cache in snapshot | **PASS** | Stored as `normalized_payload.caption_semantic_analysis`; reused when `existing` snapshot has it |
-| No re-call on render | **PASS** | Analysis runs once in `analyze-public-v1.ts` pipeline; UI reads from snapshot payload |
-| Fallback when OpenAI fails | **PASS** | `CaptionDiagnosticsCard` checks `hasSemantic`; all blocks fall back to deterministic `data` |
-| Cost logging | **PASS** | `recordProviderCall` with actor `"caption-semantic-analysis"`, model, tokens, cost |
-| Frontend never sees API key | **PASS** | `.server.ts` suffix; key read inside handler |
-| Model name | **ISSUE** | Uses `gpt-5.4-mini` — needs verification this is a valid model. Other project files use same model, so likely intentional. |
+### 4. Percentage base clarification
+Add muted label in AudienceVoiceBreakdown header:
+`"percentagens sobre sinais classificados"`
 
----
+### 5. Coverage transparency in methodology footer
+When `sampleComments` and `totalComments` are both available and differ:
+`"1.378 comentários públicos · 104 recolhidos para análise"`
+(Already partially implemented — just ensure the wording is precise)
 
-## What Remains To Do
+### 6. Enriched top conversation post
+In `block02-diagnostic.ts`, expand `topConversationPost` to include `format`, `date`, and `commentsToLikesPct`:
+- `format`: from `posts[index].format`
+- `date`: from `posts[index].taken_at_iso`
+- Per-post comment/like ratio
 
-### 1. Prompt refinement (optional)
+In UI: add format badge, date, and comment-to-like ratio alongside existing likes/comments.
 
-The current prompt is solid but could be improved:
-- Add explicit instruction about **hook quality** assessment (not currently in schema)
-- Add **brand voice consistency** field
-- Add **formulaic endings / weak CTAs** field
-- These are mentioned in the user's goals but missing from current `CaptionSemanticAnalysis` type and prompt
+### 7. P04 cross-reference — comment engagement strategy
+In `report-diagnostic-block.tsx`:
+- Parse `captionSemantic.commentEngagement.strategyLabel` (already available via `parseCaptionSemanticAnalysis`)
+- Pass as optional prop to `DiagnosticAudienceHighlight`
 
-### 2. Schema expansion
+In `DiagnosticAudienceHighlight`:
+- Render small insight line based on strategyLabel:
+  - `"active"` → `"As legendas pedem comentários de forma ativa"`
+  - `"passive"` → `"As legendas raramente pedem comentários"`
+  - `"occasional"` → `"Convite à conversa ocasional"`
+- Only shown when data is available. No OpenAI call from P05.
 
-Add to `CaptionSemanticAnalysis`:
-- `hookQuality`: { rating: "strong" | "moderate" | "weak", explanation: string }
-- `brandVoiceConsistency`: { rating: "consistent" | "mixed" | "inconsistent", explanation: string }
-- `formulaicPatterns`: { hasFormulas: boolean, examples: string[], explanation: string }
+## Files to edit
 
-### 3. UI rendering for new fields
+1. **`src/lib/report/block02-diagnostic.ts`** — Expand `topConversationPost` type and data to include `format`, `date`, per-post ratio
+2. **`src/components/report-redesign/v2/report-diagnostic-card.tsx`** — All UI changes in `DiagnosticAudienceHighlight` and `AudienceVoiceBreakdown`
+3. **`src/components/report-redesign/v2/report-diagnostic-block.tsx`** — Pass `commentsToLikesPct` and `captionSemantic.commentEngagement.strategyLabel` to P05
 
-Update `CaptionDiagnosticsCard` to display:
-- Hook quality badge/section
-- Brand voice consistency indicator
-- Formulaic pattern warnings
+## Files NOT touched
+- Block 1, P03, P04, P06/P07, visual cover analysis
+- Backend auth/admin, PDF pipeline
+- Global tokens, locked files
+- OpenAI/semantic caption pipeline (only reading existing data)
 
-### 4. No other files need changes
-
-The pipeline, caching, fallback, cost logging, and data flow are all correct.
-
----
-
-## Files To Edit in Implementation
-
-| File | Change |
-|------|--------|
-| `src/lib/report/caption-semantic-types.ts` | Add `hookQuality`, `brandVoiceConsistency`, `formulaicPatterns` interfaces |
-| `src/lib/report/caption-semantic-prompt.ts` | Extend system prompt and JSON schema with new fields |
-| `src/lib/report/caption-semantic-analysis.server.ts` | Update `validateResult()` to handle new optional fields |
-| `src/components/report-redesign/v2/caption-diagnostics-card.tsx` | Render new semantic fields with fallback |
-
-No changes to: Block 1, P03, P05, P06/P07, visual covers, backend auth/admin, PDF, global tokens, locked files.
-
----
-
-## Architecture Diagram
-
-```text
-normalized_payload.posts[].caption
-        │
-        ├──► caption-intelligence.ts (deterministic)
-        │       → sampleSize, totalWords, avgWords, avgEmojis
-        │       → distributions (length, openings, endings)
-        │       → CTA counts, question counts
-        │       → recurring expressions (keyword match)
-        │       → themes (keyword-based, low quality)
-        │       → editorial reading (template text)
-        │
-        └──► caption-semantic-analysis.server.ts (OpenAI)
-                → dominant themes (with evidence + explanation)
-                → content intent
-                → comment engagement strategy
-                → recurring expressions (with meaning + risk)
-                → editorial diagnostic (main/works/critical/watch)
-                → [NEW] hook quality
-                → [NEW] brand voice consistency
-                → [NEW] formulaic patterns
-                │
-                ▼
-        analysis_snapshots.normalized_payload.caption_semantic_analysis
-                │
-                ▼
-        CaptionDiagnosticsCard
-            hasSemantic? → render OpenAI interpretation
-            !hasSemantic → render deterministic fallback
-```
-
----
-
-## Cost Considerations
-
-- Model: `gpt-5.4-mini` (~12 captions, ~1500 input tokens, ~800 output tokens)
-- Estimated cost per analysis: ~$0.002–0.005
-- Already gated by `isOpenAiEnabled()` + `isOpenAiAllowed(handle)`
-- Already logged in `provider_call_logs` with token counts and cost
+## Validation
+- `bunx tsc --noEmit`
+- `bunx vitest run`
