@@ -36,15 +36,13 @@ import type { ApifyActorBreakdown, OpenAiActorBreakdown } from "@/lib/admin/syst
 /* ── Actor color mapping ───────────────────────────────────────────── */
 
 const ACTOR_COLOR: Record<string, string> = {
-  "apify/instagram-profile-scraper": ADMIN_LITERAL.apifyActorProfile,
   "apify/instagram-comment-scraper": ADMIN_LITERAL.apifyActorComments,
   "apify/instagram-scraper": ADMIN_LITERAL.apifyActorScraper,
 };
 
 const ACTOR_SHORT_LABEL: Record<string, string> = {
-  "apify/instagram-profile-scraper": "Perfil",
+  "apify/instagram-scraper": "Posts + perfil",
   "apify/instagram-comment-scraper": "Comentários",
-  "apify/instagram-scraper": "Scraper",
 };
 
 function actorColor(actor: string): string {
@@ -58,13 +56,18 @@ function actorShortLabel(actor: string): string {
 
 function openaiActorColor(actor: string): string {
   if (actor === "visual-cover-analysis") return ADMIN_LITERAL.openaiActorVisualCover;
+  if (actor === "caption-semantic-analysis") return ADMIN_LITERAL.openaiActorInsights;
   if (actor.startsWith("insights:")) return ADMIN_LITERAL.openaiActorInsights;
   return ADMIN_LITERAL.openaiActorDefault;
 }
 
 function openaiActorShortLabel(actor: string): string {
-  if (actor === "visual-cover-analysis") return "Visual covers";
-  if (actor.startsWith("insights:")) return "Insights (texto)";
+  if (actor === "visual-cover-analysis") return "Visual (imagens)";
+  if (actor === "caption-semantic-analysis") return "Legendas (texto)";
+  if (actor.startsWith("insights:")) {
+    const model = actor.replace("insights:", "");
+    return `Insights (texto · ${model})`;
+  }
   return actor;
 }
 
@@ -98,9 +101,8 @@ export function ExpenseSection() {
       }
     }
     const known = [
-      "apify/instagram-profile-scraper",
-      "apify/instagram-comment-scraper",
       "apify/instagram-scraper",
+      "apify/instagram-comment-scraper",
     ].filter((a) => set.has(a));
     const rest = [...set].filter((a) => !known.includes(a)).sort();
     return [...known, ...rest];
