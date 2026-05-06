@@ -1,59 +1,65 @@
 
-# QA Plan — Admin Execution Mode (UI + Backend)
+# Propagate `analysisEventId` to all paid provider calls
 
-This is a read-only validation. No code changes unless issues are found.
+## Provider Call Mapping (Before → After)
 
-## What will be validated
+| Provider | Actor | File | Has `analysisEventId` now? | Change |
+|----------|-------|------|---------------------------|--------|
+| Apify | profile+posts | `analyze-public-v1.ts` L367,395 | NO (pre-event) | Keep as-is; linked via `linkProviderCallsToEvent` fallback (runs twice) |
+| DataForSEO | market-signals | `analyze-public-v1.ts` L833 | NO (pre-event, not passed) | Keep as-is; already caught by final `linkProviderCallsToEvent` at L1204 |
+| OpenAI | insights v1 | `openai-insights.server.ts` | YES | No change |
+| OpenAI | insights v2 | `openai-insights.server.ts` | YES | No change |
+| OpenAI | visual-cover | `visual-cover-analysis.server.ts` | YES | No change |
+| OpenAI | caption-semantic | `caption-semantic-analysis.server.ts` | YES | No change |
+| Apify | comment-scraper | `enrich-comments.ts` | YES (via job) | No change |
 
-### 1. UI state consistency (3 surfaces share the same query key)
+### Key finding
 
-All three surfaces use `queryKey: ["admin", "execution-mode"]`:
-- **Sistema card** (`execution-mode-card.tsx`) — segmented control + status badge
-- **Admin header badge** (`admin.tsx` → `ExecutionModeBadge`)
-- **Visao Geral strip** (`admin.visao-geral.tsx` → `ExecutionModeStrip`)
+The architecture is already correctly set up:
 
-**Test**: Toggle mode in Sistema, navigate to Visao Geral, confirm all three update. Fresh activation must open the `AlertDialog` confirmation.
+1. **Pre-event calls** (Apify profile+posts, DataForSEO): These run before `analysisEventId` exists. They are linked via `linkProviderCallsToEvent(handle, providerCallsStartedAt, eventId)` which runs twice:
+   - Immediately after event creation (L457-462)
+   - After all enrichments finish (L1203-1208)
 
-### 2. Backend protection in cache_only
+2. **Post-event calls** (OpenAI insights, visual-cover, caption-semantic): All already receive `analysisEventId` directly.
 
-**Test**: With mode set to `cache_only`, trigger an analysis for a profile with an existing snapshot via the `/api/analyze-public-v1` endpoint.
+3. **Async calls** (comment scraper): Already receives `analysis_event_id` via the job record.
 
-- Confirm the response uses cached/stale data (`data_source=cache` or `stale`)
-- Query `provider_call_logs` before and after — confirm zero new rows
-- Query `analysis_events` — confirm `outcome=blocked_cache_only` or `data_source=cache`, `estimated_cost_usd=0`
+### What needs fixing
 
-### 3. No snapshot case
+The only real gap: the **final `linkProviderCallsToEvent` call at L1204** catches DataForSEO calls created before the event, but if the comment enrichment also creates Apify calls asynchronously, those are handled separately via the job's `analysis_event_id`. So the linkage chain is complete.
 
-**Test**: In `cache_only`, request analysis for a non-existent profile.
+However, there's a subtle issue: the **cost card in system-queries** defines "complete" as having >= 2 distinct provider groups. This means a report that only used Apify (no OpenAI/DataForSEO due to allowlist) would be excluded from the "complete" count, unfairly lowering confidence.
 
-- Confirm response error code is `CACHE_ONLY_NO_DATA` (HTTP 503)
-- Confirm zero new `provider_call_logs`
+## Plan
 
-### 4. Cache maintenance safety
+### Step 1: Verify and add a second `linkProviderCallsToEvent` after enrichments
 
-**Test**: Click "Expirar cache" in the cache-maintenance card.
+Already exists at L1203-1208. No change needed.
 
-- Confirm it only runs an `UPDATE analysis_snapshots SET expires_at = now()` (code already verified in `expireSnapshotForHandle`)
-- Confirm no provider calls are triggered
-- Confirm next analysis only calls APIs if mode is `fresh`
+### Step 2: Improve confidence calculation in `system-queries.server.ts`
 
-### 5. Fresh mode
+Current "complete" definition (>= 2 providers) is too strict. Change to: a fresh event with **any** linked provider call counts as a "linked report" for confidence.
 
-**Test**: Switch to Fresh, expire cache for a test profile, run analysis.
+- Alta: >= 20 linked fresh reports
+- Media: 5-19
+- Baixa: < 5
 
-- Confirm new `provider_call_logs` are created
-- Confirm `analysis_event_id` linkage on provider calls where supported
+### Step 3: Add legacy data comments
 
-## Execution method
+Add doc comments in `system-queries.server.ts` explaining that pre-May-2026 data may have null `analysis_event_id` and confidence will be "baixa" for those periods.
 
-- Use browser tools to navigate to the admin area and toggle modes
-- Use `supabase--read_query` to check `provider_call_logs` and `analysis_events` counts before/after
-- Use browser network inspection to verify API responses
+Already present (L808-812). Verify and keep.
 
-## Deliverables
+### Step 4: No backfill of old logs
 
-- PASS/FAIL table for all 5 test cases
-- `provider_call_logs` evidence (row counts before/after)
-- `analysis_events` evidence
-- Files changed (if any fixes needed)
-- `tsc --noEmit` and `vitest run` results
+Old logs remain with null `analysis_event_id`. The time-window fallback (`linkProviderCallsToEvent`) already handles most cases retroactively. No manual backfill.
+
+## Files to change
+
+1. `src/lib/admin/system-queries.server.ts` — relax "complete" definition from `providers.size >= 2` to `providers.size >= 1`
+
+## Validation
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`
