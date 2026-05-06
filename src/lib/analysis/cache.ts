@@ -38,8 +38,8 @@ export function buildCacheKey(
 }
 
 /**
- * Atomically remove a top-level key from a snapshot's normalized_payload.
- * Uses PostgreSQL's JSONB `-` operator so no read-merge-write is needed.
+ * Remove a top-level key from a snapshot's normalized_payload.
+ * Uses read-delete-write via PostgREST.
  * Returns true on success, false on failure. Never throws.
  */
 export async function removePayloadKey(
@@ -47,10 +47,6 @@ export async function removePayloadKey(
   key: string,
 ): Promise<boolean> {
   try {
-    const { error } = await supabaseAdmin.rpc("exec_sql" as any, {} as any);
-    // rpc not available; use raw update with jsonb operator via .update workaround
-    // Actually we need to use the PostgREST approach — but PostgREST doesn't support
-    // jsonb minus operator directly. Use read-merge-write minus the key instead.
     const { data: snapshot, error: fetchErr } = await supabaseAdmin
       .from("analysis_snapshots")
       .select("normalized_payload")
