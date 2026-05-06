@@ -122,7 +122,7 @@ export async function generateVisualCoverAnalysis(
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.error(LOG_PREFIX, "OpenAI HTTP error", res.status, errText.slice(0, 300));
-      await logCall(handle, "http_error", res.status, Date.now() - startedAt, 0, 0, errText.slice(0, 200), undefined);
+      await logCall(handle, "http_error", res.status, Date.now() - startedAt, 0, 0, errText.slice(0, 200), undefined, _eventId);
       return fail(`OPENAI_ERROR_HTTP_${res.status}`);
     }
 
@@ -141,7 +141,7 @@ export async function generateVisualCoverAnalysis(
 
     const rawContent = json.choices?.[0]?.message?.content;
     if (!rawContent) {
-      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "empty_response");
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "empty_response", undefined, _eventId);
       return fail("EMPTY_RESPONSE");
     }
 
@@ -150,14 +150,14 @@ export async function generateVisualCoverAnalysis(
       parsed = JSON.parse(rawContent);
     } catch {
       console.error(LOG_PREFIX, "JSON parse failed", rawContent.slice(0, 200));
-      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "parse_error");
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "parse_error", undefined, _eventId);
       return fail("PARSE_ERROR");
     }
 
     // Map postIndex → postId in thumbnails
     const analysis = mapAnalysisResult(parsed, postIds);
     if (!analysis) {
-      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "validation_error");
+      await logCall(handle, "http_error", 200, Date.now() - startedAt, promptTokens, completionTokens, "validation_error", undefined, _eventId);
       return fail("VALIDATION_ERROR");
     }
 
@@ -168,7 +168,7 @@ export async function generateVisualCoverAnalysis(
       completionTokens,
       cachedTokens,
     });
-    await logCall(handle, "success", 200, Date.now() - startedAt, promptTokens, completionTokens, undefined, cost.estimatedCostUsd);
+    await logCall(handle, "success", 200, Date.now() - startedAt, promptTokens, completionTokens, undefined, cost.estimatedCostUsd, _eventId);
 
     console.info(LOG_PREFIX, "analysis complete", {
       handle,
@@ -183,11 +183,11 @@ export async function generateVisualCoverAnalysis(
     const msg = err instanceof Error ? err.message : "unknown";
     if (msg.includes("abort")) {
       console.error(LOG_PREFIX, "timeout after", REQUEST_TIMEOUT_MS, "ms");
-      await logCall(handle, "timeout", null, Date.now() - startedAt, 0, 0, "timeout", undefined);
+      await logCall(handle, "timeout", null, Date.now() - startedAt, 0, 0, "timeout", undefined, _eventId);
       return fail("TIMEOUT");
     }
     console.error(LOG_PREFIX, "unexpected error", err);
-    await logCall(handle, "network_error", null, Date.now() - startedAt, 0, 0, msg.slice(0, 200), undefined);
+    await logCall(handle, "network_error", null, Date.now() - startedAt, 0, 0, msg.slice(0, 200), undefined, _eventId);
     return fail("EXCEPTION");
   } finally {
     clearTimeout(timeout);
