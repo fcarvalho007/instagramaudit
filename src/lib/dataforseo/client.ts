@@ -245,6 +245,7 @@ interface LogInput {
   estimatedCostUsd: number;
   actualCostUsd: number;
   errorExcerpt: string | null;
+  analysisEventId?: string | null;
 }
 
 async function logCall(input: LogInput): Promise<void> {
@@ -261,6 +262,7 @@ async function logCall(input: LogInput): Promise<void> {
       estimated_cost_usd: input.estimatedCostUsd,
       actual_cost_usd: input.actualCostUsd,
       error_excerpt: input.errorExcerpt,
+      ...(input.analysisEventId ? { analysis_event_id: input.analysisEventId } : {}),
     });
   } catch (err) {
     // Never let logging failures break the caller.
