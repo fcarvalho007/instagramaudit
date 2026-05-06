@@ -150,7 +150,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             questionsCount={groupB.length + 1}
           >
             {groupB}
-            <CaptionDiagnosticsCard data={captionIntel} semantic={parseCaptionSemanticAnalysis(payload)} />
+            <CaptionDiagnosticsCard data={captionIntel} semantic={captionSemantic} />
           </ReportDiagnosticGroup>
 
           {/* E · Análise visual */}
