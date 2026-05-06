@@ -1,92 +1,49 @@
 
-# P04 Caption Diagnostics — Robustness Fixes
+# Custo por Report Gerado — Admin Despesa Section
 
-No locked files are affected. Changes limited to the 3 allowed files that need edits.
+## What changes
 
-## 1. Enforce schemaVersion in semantic parsing
+Add a new subsection with 3 KPI cards inside the existing `ExpenseSection` (Visão Geral > Despesa), placed directly after the 4-column provider summary and before the actor breakdown tables.
 
-**File**: `src/components/report-redesign/v2/report-diagnostic-block.tsx` (line 61)
+### Data source
 
-Add `schemaVersion` check to `parseCaptionSemanticAnalysis`:
+**Completed reports**: Count from `analysis_snapshots` created in the last 30 days (same window as existing expense data). Each snapshot = 1 generated report.
 
-```
-// Before:
-if (r.source !== "openai" || typeof r.analyzedCaptions !== "number") return null;
+**Fresh reports** (non-cache): Count from `analysis_events` where `data_source = 'fresh'` AND `outcome = 'success'` in the same 30-day window.
 
-// After:
-if (r.source !== "openai" || typeof r.analyzedCaptions !== "number" || r.schemaVersion !== 2) return null;
-```
+**Total API spend**: Already available in `Expense30d.total` (Apify + OpenAI + DataForSEO from `provider_call_logs`).
 
-Old cached data without `schemaVersion` (or version 1) returns `null` -- card falls back to deterministic rendering. Next OpenAI call will regenerate with v2.
+**Provider shares**: Already available as `apify_total`, `openai_total`, `dataforseo_total`.
 
-## 2. Emoji-only caption word count fix
+### Three cards
 
-**File**: `src/lib/report/caption-intelligence.ts` (lines 220-233)
+| Card | Value | Formula |
+|------|-------|---------|
+| Custo medio por report | `$X.XX` | `total / completed_reports` (0-safe) |
+| Despesa acumulada | `$Y.YY` | `total` + report count + provider % breakdown |
+| Estimativa por novo report | `$Z.ZZ` | `fresh_total_spend / fresh_reports` if available, else fallback to avg |
 
-Update `cleanCaption` to strip emojis before splitting:
+### Files to edit
 
-```
-function cleanCaption(raw: string): string {
-  return raw
-    .replace(/https?:\/\/\S+/gi, " ")
-    .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, " ")
-    .replace(/[#@][\p{L}\p{N}_]+/gu, " ")
-    .replace(/\p{Extended_Pictographic}/gu, " ")   // <-- NEW: strip emojis
-    .replace(/\s+/g, " ")
-    .trim();
-}
-```
+1. **`src/lib/admin/system-queries.server.ts`** — Extend `fetchExpense30d` to also query `analysis_snapshots` count and `analysis_events` (fresh+success count). Add fields to `Expense30d` interface: `completed_reports`, `fresh_reports`, `fresh_total_spend_usd`.
 
-Result: "fire fire fire" -> 0 words. "Grande novidade fire" -> 2 words.
+2. **`src/components/admin/v2/visao-geral/expense-section.tsx`** — Add `ReportCostSection` component rendering 3 `KPICard`s between the provider columns and actor breakdown. Uses existing `KPICard`, `AdminInfoTooltip`, `AdminSectionHeader` patterns. All copy in pt-PT per spec.
 
-## 3. Basic English opening + engagement patterns
+### Data details
 
-**File**: `src/lib/report/caption-intelligence.ts`
+- `completed_reports`: `SELECT COUNT(*) FROM analysis_snapshots WHERE created_at >= sinceIso`
+- `fresh_reports` and `fresh_total_spend_usd`: Derived from `analysis_events` joined concept — actually, the existing `aggregateCostsFromLogs` already tracks `apifyFreshSum`/`apifyFreshCount` but only for Apify. We need total fresh spend across all providers. We will count unique `analysis_snapshot_id` values from `analysis_events` where `data_source='fresh' AND outcome='success'` and sum their `estimated_cost_usd`.
+- Simpler approach: use `analysis_snapshots` count for completed reports, and for fresh cost use the total spend (since all spend comes from fresh calls — cache calls have $0 cost by definition in the current logic).
 
-Add EN patterns to the existing arrays:
+### Robustness
 
-`OPENING_NEWS_TERMS`: add `"new ", "launch", "update", "announcing", "just launched"`
+- Division by zero: show "—" with "sem reports concluidos neste periodo"
+- Missing data: graceful fallback labels
+- All values in USD, 2 decimal places, consistent with existing cards
+- Period label: "ultimos 30 dias"
 
-`OPENING_STORY_TERMS`: add `"today ", "yesterday", "last week", "i tried", "we tested"`
+### No changes to
 
-`classifyOpening`: add EN question starts: `"what ", "why ", "how ", "do you", "have you", "would you", "can you"`
-
-`COMMENT_ENGAGEMENT_TERMS`: add:
-- `"comment"`, `"tell me"`, `"let me know"`, `"what do you think"`, `"have you tried"`, `"which one"`, `"would you use"`, `"drop a comment"`
-
-## 4. Replace hardcoded P04 colors
-
-**File**: `src/components/report-redesign/v2/caption-diagnostics-card.tsx`
-
-| Line | Before | After |
-|------|--------|-------|
-| 265 | `bg-rose-50` | `bg-tint-danger` |
-| 269 | `text-rose-600 font-medium` | `text-signal-danger font-medium` |
-| 276 | `text-rose-500` | `text-signal-danger` |
-| 285 | `bg-rose-400` | `bg-signal-danger` |
-| 606 | `bg-amber-50` | `bg-tint-warning` |
-| 607 | `bg-rose-50` | `bg-tint-danger` |
-| 686 | `text-amber-600` | `text-signal-warning` |
-
-## 5. Theme reliability guard
-
-**File**: `src/components/report-redesign/v2/caption-diagnostics-card.tsx` (around line 364)
-
-When `avgWordsPerCaption < 5` and no semantic data, filter deterministic themes more aggressively -- show "Sem tema dominante claro" if remaining themes after filtering are empty. The existing `isWeakThemeLabel` + fallback on line 413 already handles the display; we just need to widen the guard when captions are very short.
-
-Add after line 364:
-```typescript
-// When captions are extremely short, deterministic themes are unreliable
-const tooShortForThemes = !hasSemantic && data.captionStats.avgWordsPerCaption < 5;
-```
-Then on line 403, add `!tooShortForThemes &&` before `themes.length > 0`.
-
-## Files changed
-
-1. `src/components/report-redesign/v2/report-diagnostic-block.tsx` -- schemaVersion check (1 line)
-2. `src/lib/report/caption-intelligence.ts` -- emoji cleanup + EN patterns (~20 lines)
-3. `src/components/report-redesign/v2/caption-diagnostics-card.tsx` -- token colors + theme guard (~10 lines)
-
-## Files NOT touched
-
-P05, P07, Block 1, P03, PDF, auth/admin, global tokens, locked files, OpenAI prompts, Apify logic.
+- Existing provider cards, actor breakdowns, charts
+- Public report UI, P04, P05, P07, PDF, auth
+- Locked files
