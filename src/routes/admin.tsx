@@ -17,6 +17,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { AdminTabsNav } from "@/components/admin/v2/admin-tabs-nav";
 import { DemoModeSwitch } from "@/components/admin/v2/demo-mode-switch";
 import { useDemoMode } from "@/lib/admin/demo-mode";
+ import { useQuery } from "@tanstack/react-query";
+ import { getExecutionMode } from "@/server/admin/execution-mode.functions";
 
 // Side-effect import: garante que os tokens v2 estão disponíveis em todas as
 // sub-rotas sem tocar em `src/styles.css` (locked).
@@ -47,6 +49,7 @@ function AdminLayout() {
           }}
         >
           <div className="flex justify-end items-center gap-2 mb-2">
+             <ExecutionModeBadge />
             <DemoModeSwitch />
             {logout && (
               <Button
@@ -83,3 +86,37 @@ function AdminLayout() {
     </AdminAuthShell>
   );
 }
+
+ function ExecutionModeBadge() {
+   const { data } = useQuery({
+     queryKey: ["admin", "execution-mode"],
+     queryFn: () => getExecutionMode(),
+     staleTime: 10_000,
+   });
+   const mode = data?.mode ?? "cache_only";
+   const isCacheOnly = mode === "cache_only";
+
+   return (
+     <span
+       className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+       style={{
+         background: isCacheOnly
+           ? "rgb(var(--admin-revenue-500) / 0.12)"
+           : "rgb(var(--admin-expense-400) / 0.12)",
+         color: isCacheOnly
+           ? "rgb(var(--admin-revenue-400))"
+           : "rgb(var(--admin-expense-400))",
+       }}
+     >
+       <span
+         className="h-1.5 w-1.5 rounded-full"
+         style={{
+           background: isCacheOnly
+             ? "rgb(var(--admin-revenue-400))"
+             : "rgb(var(--admin-expense-400))",
+         }}
+       />
+       {isCacheOnly ? "Cache-only · sem custos" : "Fresh · APIs pagas ativas"}
+     </span>
+   );
+ }
