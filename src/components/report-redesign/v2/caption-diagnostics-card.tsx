@@ -131,7 +131,7 @@ function buildCriticalPoint(data: CaptionIntelligence): string {
 function buildToWatch(data: CaptionIntelligence): string {
   const topExpr = data.recurringExpressions.items.slice(0, 2);
   if (topExpr.length >= 2) {
-    return `Repetição de expressões como "${topExpr[0].expression.toLowerCase()}" ou "${topExpr[1].expression.toLowerCase()}" pode indicar estrutura demasiado previsível.`;
+    return `Repetição de expressões como "${topExpr[0].expression.toLowerCase()}" ou "${topExpr[1].expression.toLowerCase()}" sugere uma estrutura que pode tornar-se previsível.`;
   }
   if (data.editorialReading.recommendedImprovement) {
     return data.editorialReading.recommendedImprovement;
