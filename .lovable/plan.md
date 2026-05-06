@@ -1,35 +1,98 @@
-## Objectivo
+## Avaliação de prontidão
 
-Redesenhar a zona Z4 da Q05 (secção "Posts que geraram mais conversa") no relatório. Actualmente mostra 2 cards com imagem quadrada (1:1) numa grid de 2 colunas. O resultado ficará com 3 cards na proporção 3:4, layout mais limpo e link visível para o post original.
+**PASS** — ambos os perfis têm snapshots completos e o sistema está em cache_only.
 
-## Alterações
+### Correção importante à auditoria
 
-### 1. Dados — aumentar de 2 para 3 posts
+Após inspecção directa ao código, a maioria dos campos listados como "não renderizados" **já estão activos no report**:
 
-**Ficheiro:** `src/lib/report/block02-diagnostic.ts` (linha 618)
+| Campo | Estado real |
+|-------|-------------|
+| `ai_insights_v2.sections.formats` | Renderizado (shell-v2 L196) |
+| `ai_insights_v2.sections.heatmap` | Renderizado (shell-v2 L174) |
+| `ai_insights_v2.sections.benchmark` | Renderizado (shell-v2 L235) |
+| `ai_insights_v2.sections.daysOfWeek` | Renderizado (shell-v2 L176) |
+| `ai_insights_v2.sections.marketSignals` | Renderizado (shell-v2 L225) |
+| `ai_insights_v2.sections.evolutionChart` | Renderizado (shell-v2 L166) |
+| `caption_semantic_analysis.hookQuality` | Renderizado (caption-diagnostics-card L697-704) |
+| `caption_semantic_analysis.brandVoice` | Renderizado (caption-diagnostics-card L707-714) |
+| `caption_semantic_analysis.formulaicPatterns` | Renderizado (caption-diagnostics-card L717-725) |
+| `caption_semantic_analysis.dominantThemes` | Renderizado (caption-diagnostics-card L367) |
+| `comment_intelligence.sampleComments` | Renderizado (TransparencyStrip L144) |
+| `comment_intelligence.recommendedConversationAction` | Renderizado (CommentIntelligenceSection L421) |
+| `comment_intelligence.uniqueAudienceCommentersCount` | Renderizado (AudienceVoiceBreakdown L1072) |
 
-- Alterar `.slice(0, 2)` → `.slice(0, 3)`
+### Campos genuinamente não renderizados
 
-### 2. UI — redesenhar os cards
+| Campo | Componente existente | Risco |
+|-------|---------------------|-------|
+| `ai_insights_v2.priorities` | `report-diagnostic-priorities.tsx` existe mas **nunca é importado** | Baixo — basta ligar |
+| `comment_intelligence.dominantConversationSignals` | Nenhum | Baixo — array de strings |
 
-**Ficheiro:** `src/components/report-redesign/v2/report-diagnostic-card.tsx` (linhas 792-864)
+---
 
-- Grid passa de `grid-cols-1 sm:grid-cols-2` → `grid-cols-1 sm:grid-cols-3`
-- Imagem: `aspect-square` → `aspect-[3/4]` (proporção 3:4, mais vertical e elegante)
-- Remover gradiente placeholder (`bg-gradient-to-br from-cyan-300...`) — usar fundo neutro `bg-surface-muted` quando não há thumbnail
-- Badge do formato (REELS, CARROSSEL) mais subtil — manter posição top-right
-- Link para o original: adicionar ícone de link externo subtil no canto superior esquerdo + tornar todo o card clicável (já implementado, mas melhorar hover state com `ring` em vez de `shadow`)
-- Footer com contagem de comentários mais limpo
-- Espaçamento e bordas refinados
+## Plano de implementação
 
-### Sem alterações a
+### Prompt 1 — Ligar prioridades de ação ao diagnóstico
 
-- Nenhuma tabela, RLS, migração ou endpoint
-- Nenhum ficheiro bloqueado
-- Nenhuma alteração ao report UI fora desta secção Z4
+**Valor:** Alto — as prioridades são o bloco de maior impacto editorial, já com componente pronto mas desligado.
 
-### Checklist
+**Ficheiros a editar:**
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — importar `ReportDiagnosticPriorities`, mapear `ai_insights_v2.priorities` para `PriorityItem[]`, renderizar após o último grupo (D), com fallback determinístico existente.
 
-- ☐ `block02-diagnostic.ts` — slice(0, 3)
-- ☐ `report-diagnostic-card.tsx` — grid 3-col, aspect-[3/4], hover ring, fundo neutro fallback
-- ☐ Verificar build (tsc)
+**Ficheiros bloqueados (não tocar):**
+- `report-diagnostic-priorities.tsx` (componente visual já está pronto)
+- Todos os ficheiros em LOCKED_FILES.md
+- Nenhum endpoint, nenhum provider, nenhum pipeline PDF
+
+**Risco:** Mínimo — o componente já está testado visualmente; o único trabalho é a conversão de tipos `AiPriorityItem → PriorityItem` e o render condicional.
+
+---
+
+### Prompt 2 — Mostrar dominantConversationSignals no card Q05
+
+**Valor:** Médio — enriquece o diagnóstico de audiência com o sinal de conversa dominante (ex.: "praise", "questions").
+
+**Ficheiros a editar:**
+- `src/components/report-redesign/v2/report-diagnostic-card.tsx` — na zona Z3 do `DiagnosticAudienceHighlight`, após o `AudienceVoiceBreakdown`, adicionar uma linha com os sinais dominantes de conversa vindos de `comment_intelligence.dominantConversationSignals`. Usar chips semelhantes aos já existentes em `buildSignalChips`.
+
+**Ficheiros bloqueados:**
+- `report-comment-intelligence.tsx` (componente standalone, não duplicar lógica)
+- Todos os ficheiros em LOCKED_FILES.md
+
+**Risco:** Baixo — campo é um `string[]` simples; fallback vazio (não renderizar quando array vazio ou ausente).
+
+---
+
+### Prompt 3 — Fallback states defensivos
+
+**Valor:** Médio — protege contra snapshots incompletos futuros.
+
+**Ficheiros a editar:**
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — garantir que a secção de prioridades (Prompt 1) tem fallback gracioso quando `priorities` é `undefined`.
+- `src/components/report-redesign/v2/report-diagnostic-card.tsx` — garantir que `dominantConversationSignals` (Prompt 2) não rebenta com `undefined`.
+
+**Nota:** Os restantes campos (hookQuality, brandVoice, etc.) **já têm fallback** — renderizam condicionalmente com `&&`.
+
+---
+
+## Ficheiros que NÃO devem ser tocados
+
+- `src/lib/enrichment/run-enrichment.server.ts`
+- `src/lib/insights/openai-insights.server.ts`
+- `src/lib/analysis/comment-intelligence.ts`
+- `src/lib/report/block02-diagnostic.ts` (salvo se necessário para mapear priorities)
+- Todos os endpoints `/api/`
+- Todos os ficheiros de LOCKED_FILES.md
+- Pipeline PDF
+- Admin / custos
+- `report-shell-v2.tsx` (as 9 sections de insights V2 já estão ligadas)
+
+## Riscos e mitigações
+
+| Risco | Mitigação |
+|-------|-----------|
+| Tipo mismatch entre `AiPriorityItem` e `PriorityItem` | Criar mapper inline, verificar com tsc |
+| Snapshot antigo sem `priorities` | Fallback para derivador determinístico já existente em block02 |
+| Snapshot sem `dominantConversationSignals` | Render condicional — vazio = não mostrar |
+| Alterar acidentalmente provider logic | Scope restrito a componentes de report-redesign/v2 |

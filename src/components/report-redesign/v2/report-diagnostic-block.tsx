@@ -16,6 +16,11 @@ import {
   type AudienceResponseResult, 
   type IntegrationResult,
 } from "@/lib/report/block02-diagnostic";
+import {
+  derivePriorities,
+  type PriorityItem,
+} from "@/lib/report/block02-diagnostic";
+import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 
 import { ReportDiagnosticGroup } from "./report-diagnostic-group";
 import {
@@ -100,6 +105,33 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
   const aiLanguageText =
     result.enriched.aiInsightsV2?.sections.language?.text ?? null;
+
+  // ── Prioridades de ação ──────────────────────────────────────────
+  const aiPriorities = result.enriched.aiInsightsV2?.priorities;
+  const dominantFormat = contentType.available
+    ? contentType.distribution[0]
+    : null;
+
+  const prioritySource: "ai" | "deterministic" = aiPriorities?.length
+    ? "ai"
+    : "deterministic";
+
+  const priorityItems: PriorityItem[] = aiPriorities?.length
+    ? aiPriorities.map((p) => ({
+        level: p.level,
+        title: p.title,
+        body: p.body,
+        resolves: p.resolves,
+      }))
+    : derivePriorities({
+        contentType,
+        funnel,
+        caption,
+        audience,
+        integration,
+        dominantFormatShare: dominantFormat?.sharePct ?? 0,
+        dominantFormatLabel: dominantFormat?.label ?? null,
+      });
 
   // Build cards as nullable list, then split into groups
   // A · Identidade editorial: Q01 + Q02
@@ -186,6 +218,14 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
               {groupD}
             </ReportDiagnosticGroup>
           ) : null}
+
+          {/* Prioridades de ação (AI ou determinísticas) */}
+          {priorityItems.length > 0 && (
+            <ReportDiagnosticPriorities
+              items={priorityItems}
+              source={prioritySource}
+            />
+          )}
         </>
       ) : (
         <p className="text-sm text-content-secondary leading-relaxed max-w-2xl">
