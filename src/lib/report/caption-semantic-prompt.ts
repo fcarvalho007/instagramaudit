@@ -122,7 +122,7 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
       contentIntent: {
         type: "object",
         additionalProperties: false,
-        required: ["primary", "explanation"],
+        required: ["primary", "secondary", "explanation"],
         properties: {
           primary: { type: "string" },
           secondary: { type: ["string", "null"] },
@@ -162,7 +162,7 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["expression", "count", "meaning"],
+          required: ["expression", "count", "meaning", "risk"],
           properties: {
             expression: { type: "string" },
             count: { type: "integer", minimum: 1 },
