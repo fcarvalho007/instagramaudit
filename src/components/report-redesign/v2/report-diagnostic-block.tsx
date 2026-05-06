@@ -59,6 +59,7 @@ function parseCaptionSemanticAnalysis(
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   if (r.source !== "openai" || typeof r.analyzedCaptions !== "number") return null;
+  if (r.schemaVersion !== 2) return null;
   return raw as CaptionSemanticAnalysis;
 }
 
