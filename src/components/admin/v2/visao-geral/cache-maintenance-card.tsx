@@ -1,11 +1,9 @@
 /**
- * Admin card — Cache maintenance actions.
+ * Admin card — Cache maintenance actions (rendered in Sistema).
  */
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AdminCard } from "../admin-card";
-import { AdminSectionHeader } from "../admin-section-header";
 import { expireSnapshotForHandle } from "@/server/admin/execution-mode.functions";
 import {
   AlertDialog,
@@ -43,34 +41,35 @@ export function CacheMaintenanceCard() {
 
   return (
     <>
-      <AdminSectionHeader title="Manutenção de cache" accent="danger" />
-      <AdminCard>
-        <div className="flex flex-col gap-3 p-4">
-          <p className="text-xs text-muted-foreground">
-            Expirar o snapshot de um perfil para forçar análise fresh na próxima visita.
-          </p>
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-              placeholder="username"
-              className="flex-1 rounded-md border border-border/50 bg-transparent px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
-            />
-            <button
-              type="button"
-              disabled={!handle.trim() || loading}
-              onClick={() => setConfirmOpen(true)}
-              className="rounded-md bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? "A processar…" : "Forçar próxima análise fresh"}
-            </button>
-          </div>
-          {result && (
-            <p className="text-[11px] text-muted-foreground">{result}</p>
-          )}
+       <div className="rounded-xl border border-admin-border bg-admin-surface-secondary p-4 flex flex-col gap-3">
+         <p className="text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
+           Manutenção de cache
+         </p>
+         <p className="text-[11px] text-admin-text-tertiary leading-relaxed">
+           Expirar o snapshot de um perfil para forçar análise fresh na próxima visita.
+           A expiração da cache não chama APIs automaticamente.
+         </p>
+         <div className="flex gap-2 items-center">
+           <input
+             type="text"
+             value={handle}
+             onChange={(e) => setHandle(e.target.value)}
+             placeholder="username"
+             className="flex-1 rounded-md border border-admin-border bg-transparent px-2 py-1.5 text-xs text-admin-text-primary placeholder:text-admin-text-tertiary focus:outline-none focus:ring-1 focus:ring-[rgb(var(--admin-info-500))]/40"
+           />
+           <button
+             type="button"
+             disabled={!handle.trim() || loading}
+             onClick={() => setConfirmOpen(true)}
+             className="rounded-md bg-[rgb(var(--admin-expense-400))]/15 px-3 py-1.5 text-xs font-medium text-[rgb(var(--admin-expense-400))] hover:bg-[rgb(var(--admin-expense-400))]/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+           >
+             {loading ? "A processar…" : "Expirar cache"}
+           </button>
         </div>
-      </AdminCard>
+         {result && (
+           <p className="text-[11px] text-admin-text-tertiary">{result}</p>
+         )}
+       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

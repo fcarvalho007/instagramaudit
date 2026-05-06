@@ -1,10 +1,8 @@
 /**
- * Admin card — Test profile status panel.
+ * Admin card — Test profile status panel (rendered in Sistema).
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AdminCard } from "../admin-card";
-import { AdminSectionHeader } from "../admin-section-header";
 import {
   getExecutionMode,
   getTestProfileStatuses,
@@ -61,16 +59,16 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          <StatusDot ok={p.hasCachedReport} /> Report
+           <StatusDot ok={p.hasCachedReport} /> Report cache
         </span>
         <span className="flex items-center gap-1">
-          <StatusDot ok={p.hasCaptionSemantic} /> Caption semantic
+           <StatusDot ok={p.hasCaptionSemantic} /> Legendas IA
         </span>
         <span className="flex items-center gap-1">
-          <StatusDot ok={p.hasCommentIntelligence} /> Comment intel
+           <StatusDot ok={p.hasCommentIntelligence} /> Comentários
         </span>
         <span className="flex items-center gap-1">
-          <StatusDot ok={p.hasVisualCover} /> Visual cover
+           <StatusDot ok={p.hasVisualCover} /> Capas visuais
         </span>
         {p.estimatedLastCostUsd !== null && (
           <span>
@@ -85,14 +83,14 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
           params={{ username: p.handle }}
           className="text-[11px] text-cyan-400 hover:underline"
         >
-          Abrir report em cache
+           Abrir cache
         </Link>
         <button
           type="button"
           onClick={handleForceRefresh}
           disabled={isCacheOnly || expiring}
           className="text-[11px] text-amber-400 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-          title={isCacheOnly ? "Ative o modo Fresh para gerar nova análise." : "Expira o snapshot e força análise fresh na próxima visita."}
+           title={isCacheOnly ? "Ativa Fresh para gerar nova análise." : "Expira o snapshot e força análise fresh na próxima visita."}
         >
           {expiring ? "A expirar…" : "Reanalisar fresh"}
         </button>
@@ -109,18 +107,16 @@ export function TestProfilesCard() {
   });
 
   return (
-    <>
-      <AdminSectionHeader title="Perfis de teste" accent="info" />
-      <AdminCard>
-        <div className="flex flex-col gap-3 p-4">
-          {isLoading && (
-            <p className="text-xs text-muted-foreground">A carregar...</p>
-          )}
-          {data?.profiles.map((p) => (
-            <ProfileRow key={p.handle} p={p} />
-          ))}
-        </div>
-      </AdminCard>
-    </>
+     <div className="rounded-xl border border-admin-border bg-admin-surface-secondary p-4 flex flex-col gap-3">
+       <p className="text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
+         Perfis de teste
+       </p>
+       {isLoading && (
+         <p className="text-xs text-admin-text-tertiary">A carregar...</p>
+       )}
+       {data?.profiles.map((p) => (
+         <ProfileRow key={p.handle} p={p} />
+       ))}
+     </div>
   );
 }
