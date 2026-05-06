@@ -346,7 +346,7 @@ export function ExpenseSection() {
             <div className="border-t border-admin-border" />
             <div className="px-6 py-4">
               <p className="mb-3 text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
-                Breakdown por ator OpenAI
+                Breakdown por ator OpenAI · análises de IA
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px]">
