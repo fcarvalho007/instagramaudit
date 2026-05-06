@@ -29,6 +29,14 @@ import type { CommentIntelligence } from "@/lib/analysis/types";
 import { ReportSourceLabel, type ReportSourceType } from "./report-source-label";
 import { InsightCallout } from "./insight-callout";
 
+const CONVERSATION_SIGNAL_LABELS: Record<string, string> = {
+  questions: "Perguntas",
+  praise: "Elogios",
+  buying: "Intenção de compra",
+  complaints: "Problemas",
+  spam: "Spam / baixa qualidade",
+};
+
 /**
  * Smart average formatting for PT locale:
  * 0        → "0"
