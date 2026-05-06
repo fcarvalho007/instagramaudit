@@ -75,6 +75,7 @@ import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
 import {
   ALL_ENRICHMENT_TYPES,
   ENRICHMENT_PRIORITY,
+  buildInitialEnrichmentStatus,
 } from "@/lib/enrichment/types";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
@@ -701,6 +702,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             ...(marketSignalsFree
               ? { market_signals_free: marketSignalsFree }
               : {}),
+            enrichment_status: buildInitialEnrichmentStatus(),
           };
 
           const snapshotId = await storeSnapshot({
@@ -984,6 +986,7 @@ function buildCachedResponse(
     competitors: CompetitorAnalysis[];
     posts?: unknown;
     format_stats?: unknown;
+    enrichment_status?: unknown;
   };
   const enrichedPosts = Array.isArray(payload.posts)
     ? (payload.posts as PublicAnalysisSuccess["posts"])
@@ -1013,6 +1016,10 @@ function buildCachedResponse(
     competitors: payload.competitors ?? [],
     ...(enrichedPosts ? { posts: enrichedPosts } : {}),
     ...(enrichedFormatStats ? { format_stats: enrichedFormatStats } : {}),
+    ...(payload.enrichment_status &&
+    typeof payload.enrichment_status === "object"
+      ? { enrichment_status: payload.enrichment_status }
+      : {}),
     status: {
       success: true,
       data_source: source,
