@@ -659,7 +659,7 @@ function SectionWritingAndExpressions({
                         <div className="p-3.5">
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-[13px] font-semibold text-content-primary leading-snug">
-                              “{it.expression}”
+                              "{it.expression}"
                             </p>
                             <span className="font-mono text-[12px] font-semibold tabular-nums text-accent-primary shrink-0">
                               ×{it.count}
@@ -722,7 +722,7 @@ function SectionWritingAndExpressions({
                             "text-[13px] font-semibold leading-snug",
                             i < 2 ? "text-accent-primary" : "text-content-secondary",
                           )}>
-                            “{it.expression}”
+                            "{it.expression}"
                           </p>
                           <span className="text-[9px] text-content-tertiary rounded-full bg-surface-muted px-1.5 py-0.5 ring-1 ring-border-default shrink-0">
                             {TYPE_LABEL[it.type] ?? "Outro"}
