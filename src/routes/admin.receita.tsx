@@ -48,7 +48,7 @@ function ReceitaPage() {
       <div className="flex flex-col gap-14">
         <MetricsSection />
         <WaterfallSection />
-        <ExpenseSection />
+        <ExpenseSection period={period} />
         <PlansSection />
         <CohortSection />
         <InvoicesSection />
