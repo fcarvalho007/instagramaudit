@@ -547,6 +547,10 @@ export async function generateInsightsV2(
   const handle = ctx.profile.username.toLowerCase();
   const startedAt = Date.now();
 
+  const eventIdV2 = options?.analysisEventId ?? null;
+  const logV2 = (input: Omit<LogCallInput, "analysisEventId">) =>
+    logCall({ ...input, analysisEventId: eventIdV2 });
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
