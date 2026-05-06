@@ -494,11 +494,13 @@ function SectionThemes({
   );
 }
 
+
 // ---------------------------------------------------------------------------
-// Section B — Expressões recorrentes + Comment engagement
+// Section C — Como escreve (Openings, Endings, Length)
 // ---------------------------------------------------------------------------
 
-function SectionExpressions({
+function SectionWritingAndExpressions({
+  data,
   hasSemantic,
   semanticExpressions,
   deterministicExpressions,
@@ -506,6 +508,7 @@ function SectionExpressions({
   semanticCommentEngagement,
   posts,
 }: {
+  data: CaptionIntelligence;
   hasSemantic: boolean;
   semanticExpressions: Array<{ expression: string; count: number; meaning: string; risk?: string }>;
   deterministicExpressions: Array<{ expression: string; count: number; type: string }>;
@@ -524,193 +527,11 @@ function SectionExpressions({
   const summary = ce ? ce.explanation : commentEngagement.summary;
   const examples = ce ? ce.examples : commentEngagement.examples;
 
-  return (
-    <div className="space-y-4">
-      {/* Expressions */}
-      {(hasSemanticExpr || hasDetExpr) && (
-        <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-eyebrow-sm text-content-tertiary">EXPRESSÕES RECORRENTES</p>
-              <p className="text-[11px] text-content-tertiary mt-0.5">
-                Frases e formulações que aparecem em múltiplos posts
-              </p>
-            </div>
-            {hasSemanticExpr && posts.length > 0 && (
-              <button
-                onClick={() => {
-                  const allMatches: MatchedEvidence[] = [];
-                  for (const ex of expressions) {
-                    allMatches.push(...matchPostsByTerms(posts, [ex.expression]));
-                  }
-                  if (allMatches.length > 0) downloadEvidenceCsv(allMatches, "expressoes-recorrentes.csv");
-                }}
-                className="flex items-center gap-1.5 text-[11px] text-content-tertiary hover:text-accent-primary transition-colors"
-              >
-                <Download className="w-3 h-3" />
-                Descarregar CSV
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {hasSemanticExpr
-              ? expressions.map((it, i) => {
-                  const isOpen = openExpr === i;
-                  const matched = isOpen ? matchPostsByTerms(posts, [it.expression]) : [];
-                  return (
-                    <Collapsible
-                      key={it.expression}
-                      open={isOpen}
-                      onOpenChange={(open) => setOpenExpr(open ? i : null)}
-                    >
-                      <div className={cn(
-                        "rounded-xl border transition-colors",
-                        isOpen ? "border-accent-primary/30 bg-white shadow-sm" : "border-border-subtle bg-white",
-                      )}>
-                        <div className="p-3.5">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-[13px] font-semibold text-content-primary leading-snug">
-                              "{it.expression}"
-                            </p>
-                            <span className="font-mono text-[12px] font-semibold tabular-nums text-accent-primary shrink-0">
-                              ×{it.count}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-content-secondary mt-1.5 leading-relaxed">
-                            {it.meaning}
-                          </p>
-                          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border-subtle/40">
-                            {it.risk ? (
-                              <p className="flex items-center gap-1 text-[10px] text-signal-warning">
-                                <AlertTriangle className="w-3 h-3 shrink-0" />
-                                {it.risk}
-                              </p>
-                            ) : (
-                              <span />
-                            )}
-                            {posts.length > 0 && (
-                              <CollapsibleTrigger asChild>
-                                <button className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-accent-primary transition-colors font-medium shrink-0">
-                                  {isOpen ? "Ocultar" : `Ver ${it.count} posts`}
-                                </button>
-                              </CollapsibleTrigger>
-                            )}
-                          </div>
-                        </div>
-                        <CollapsibleContent>
-                          <div className="px-3.5 pb-3.5 space-y-2 border-t border-border-subtle/50 pt-2.5">
-                            {matched.length > 0 ? (
-                              matched.slice(0, 3).map((m, mi) => (
-                                <EvidenceRow key={m.post.id ?? mi} match={m} />
-                              ))
-                            ) : (
-                              <p className="text-[11px] text-content-tertiary italic py-1">
-                                Evidência detalhada em desenvolvimento.
-                              </p>
-                            )}
-                          </div>
-                        </CollapsibleContent>
-                      </div>
-                    </Collapsible>
-                  );
-                })
-              : detExpressions.map((it, i) => {
-                  const TYPE_LABEL: Record<string, string> = {
-                    topic: "Tema", cta: "CTA", brand: "Marca",
-                    product: "Produto", community: "Comunidade", other: "Outro",
-                  };
-                  return (
-                    <div
-                      key={it.expression}
-                      className={cn(
-                        "rounded-xl border p-3.5",
-                        i < 2 ? "border-accent-primary/20 bg-tint-primary/30" : "border-border-subtle bg-surface-muted/30",
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <p className={cn(
-                            "text-[13px] font-semibold leading-snug",
-                            i < 2 ? "text-accent-primary" : "text-content-secondary",
-                          )}>
-                            "{it.expression}"
-                          </p>
-                          <span className="text-[9px] text-content-tertiary rounded-full bg-surface-muted px-1.5 py-0.5 ring-1 ring-border-default shrink-0">
-                            {TYPE_LABEL[it.type] ?? "Outro"}
-                          </span>
-                        </div>
-                        <span className="font-mono text-[12px] font-semibold tabular-nums text-content-tertiary shrink-0">
-                          ×{it.count}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-          </div>
-        </div>
-      )}
-
-      {/* Comment engagement */}
-      <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
-        <p className="text-eyebrow-sm text-content-tertiary mb-1">PEDE COMENTÁRIOS NOS POSTS?</p>
-        <p className="text-[11px] text-content-tertiary mb-3">
-          Frequência de chamadas explícitas a comentar
-        </p>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={cn(
-              "text-[28px] sm:text-[32px] font-mono font-bold tabular-nums leading-none",
-              pct >= 50 ? "text-signal-success" :
-              pct >= 25 ? "text-signal-warning" :
-              "text-signal-danger",
-            )}>
-              {pct}%
-            </span>
-            {ce && (
-              <span className={cn(
-                "text-[10px] font-semibold tracking-wider rounded-full px-2 py-0.5 ring-1 shrink-0",
-                ce.strategyLabel === "active" ? "text-signal-success bg-tint-success ring-signal-success/15" :
-                ce.strategyLabel === "occasional" ? "text-signal-warning bg-tint-warning ring-signal-warning/15" :
-                "text-signal-danger bg-tint-danger ring-signal-danger/15",
-              )}>
-                {ce.strategyLabel === "active" ? "ATIVA" : ce.strategyLabel === "occasional" ? "OCASIONAL" : "PASSIVA"}
-              </span>
-            )}
-          </div>
-          <p className="text-[13px] text-content-secondary leading-relaxed flex-1">
-            {summary}
-          </p>
-        </div>
-        {examples.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-border-subtle/50">
-            <p className="text-eyebrow-sm text-content-tertiary mb-2">EXEMPLOS DETETADOS</p>
-            <div className="flex flex-wrap gap-1.5">
-              {examples.map((ex) => (
-                <span
-                  key={ex}
-                  className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] ring-1 bg-tint-primary/30 ring-accent-primary/15 text-content-secondary"
-                >
-                  «{ex}»
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section C — Como escreve (Openings, Endings, Length)
-// ---------------------------------------------------------------------------
-
-function SectionWritingPatterns({ data }: { data: CaptionIntelligence }) {
   const patternCount = [
     data.distributions.openings.length > 0,
     data.distributions.endings.length > 0,
     data.distributions.length.length > 0,
+    hasSemanticExpr || hasDetExpr,
   ].filter(Boolean).length;
 
   return (
@@ -792,6 +613,180 @@ function SectionWritingPatterns({ data }: { data: CaptionIntelligence }) {
           <LengthBarCompact items={data.distributions.length} />
         </div>
       </div>
+
+      {/* Expressões recorrentes */}
+      {(hasSemanticExpr || hasDetExpr) && (
+        <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-eyebrow-sm text-content-tertiary">EXPRESSÕES RECORRENTES</p>
+              <p className="text-[11px] text-content-tertiary mt-0.5">
+                Frases e formulações que aparecem em múltiplos posts
+              </p>
+            </div>
+            {hasSemanticExpr && posts.length > 0 && (
+              <button
+                onClick={() => {
+                  const allMatches: MatchedEvidence[] = [];
+                  for (const ex of expressions) {
+                    allMatches.push(...matchPostsByTerms(posts, [ex.expression]));
+                  }
+                  if (allMatches.length > 0) downloadEvidenceCsv(allMatches, "expressoes-recorrentes.csv");
+                }}
+                className="flex items-center gap-1.5 text-[11px] text-content-tertiary hover:text-accent-primary transition-colors"
+              >
+                <Download className="w-3 h-3" />
+                Descarregar CSV
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {hasSemanticExpr
+              ? expressions.map((it, i) => {
+                  const isOpen = openExpr === i;
+                  const matched = isOpen ? matchPostsByTerms(posts, [it.expression]) : [];
+                  return (
+                    <Collapsible
+                      key={it.expression}
+                      open={isOpen}
+                      onOpenChange={(open) => setOpenExpr(open ? i : null)}
+                    >
+                      <div className={cn(
+                        "rounded-xl border transition-colors",
+                        isOpen ? "border-accent-primary/30 bg-white shadow-sm" : "border-border-subtle bg-white",
+                      )}>
+                        <div className="p-3.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-[13px] font-semibold text-content-primary leading-snug">
+                              \u201c{it.expression}\u201d
+                            </p>
+                            <span className="font-mono text-[12px] font-semibold tabular-nums text-accent-primary shrink-0">
+                              \u00d7{it.count}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-content-secondary mt-1.5 leading-relaxed">
+                            {it.meaning}
+                          </p>
+                          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border-subtle/40">
+                            {it.risk ? (
+                              <p className="flex items-center gap-1 text-[10px] text-signal-warning">
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                {it.risk}
+                              </p>
+                            ) : (
+                              <span />
+                            )}
+                            {posts.length > 0 && (
+                              <CollapsibleTrigger asChild>
+                                <button className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-accent-primary transition-colors font-medium shrink-0">
+                                  {isOpen ? "Ocultar" : `Ver ${it.count} posts`}
+                                </button>
+                              </CollapsibleTrigger>
+                            )}
+                          </div>
+                        </div>
+                        <CollapsibleContent>
+                          <div className="px-3.5 pb-3.5 space-y-2 border-t border-border-subtle/50 pt-2.5">
+                            {matched.length > 0 ? (
+                              matched.slice(0, 3).map((m, mi) => (
+                                <EvidenceRow key={m.post.id ?? mi} match={m} />
+                              ))
+                            ) : (
+                              <p className="text-[11px] text-content-tertiary italic py-1">
+                                Evid\u00eancia detalhada em desenvolvimento.
+                              </p>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  );
+                })
+              : detExpressions.map((it, i) => {
+                  const TYPE_LABEL: Record<string, string> = {
+                    topic: "Tema", cta: "CTA", brand: "Marca",
+                    product: "Produto", community: "Comunidade", other: "Outro",
+                  };
+                  return (
+                    <div
+                      key={it.expression}
+                      className={cn(
+                        "rounded-xl border p-3.5",
+                        i < 2 ? "border-accent-primary/20 bg-tint-primary/30" : "border-border-subtle bg-surface-muted/30",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className={cn(
+                            "text-[13px] font-semibold leading-snug",
+                            i < 2 ? "text-accent-primary" : "text-content-secondary",
+                          )}>
+                            \u201c{it.expression}\u201d
+                          </p>
+                          <span className="text-[9px] text-content-tertiary rounded-full bg-surface-muted px-1.5 py-0.5 ring-1 ring-border-default shrink-0">
+                            {TYPE_LABEL[it.type] ?? "Outro"}
+                          </span>
+                        </div>
+                        <span className="font-mono text-[12px] font-semibold tabular-nums text-content-tertiary shrink-0">
+                          \u00d7{it.count}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+          </div>
+        </div>
+      )}
+
+      {/* Comment engagement */}
+      <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
+        <p className="text-eyebrow-sm text-content-tertiary mb-1">PEDE COMENT\u00c1RIOS NOS POSTS?</p>
+        <p className="text-[11px] text-content-tertiary mb-3">
+          Frequ\u00eancia de chamadas expl\u00edcitas a comentar
+        </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={cn(
+              "text-[28px] sm:text-[32px] font-mono font-bold tabular-nums leading-none",
+              pct >= 50 ? "text-signal-success" :
+              pct >= 25 ? "text-signal-warning" :
+              "text-signal-danger",
+            )}>
+              {pct}%
+            </span>
+            {ce && (
+              <span className={cn(
+                "text-[10px] font-semibold tracking-wider rounded-full px-2 py-0.5 ring-1 shrink-0",
+                ce.strategyLabel === "active" ? "text-signal-success bg-tint-success ring-signal-success/15" :
+                ce.strategyLabel === "occasional" ? "text-signal-warning bg-tint-warning ring-signal-warning/15" :
+                "text-signal-danger bg-tint-danger ring-signal-danger/15",
+              )}>
+                {ce.strategyLabel === "active" ? "ATIVA" : ce.strategyLabel === "occasional" ? "OCASIONAL" : "PASSIVA"}
+              </span>
+            )}
+          </div>
+          <p className="text-[13px] text-content-secondary leading-relaxed flex-1">
+            {summary}
+          </p>
+        </div>
+        {examples.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border-subtle/50">
+            <p className="text-eyebrow-sm text-content-tertiary mb-2">EXEMPLOS DETETADOS</p>
+            <div className="flex flex-wrap gap-1.5">
+              {examples.map((ex) => (
+                <span
+                  key={ex}
+                  className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] ring-1 bg-tint-primary/30 ring-accent-primary/15 text-content-secondary"
+                >
+                  \u00ab{ex}\u00bb
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
