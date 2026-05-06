@@ -323,7 +323,9 @@ export function ExpenseSection() {
             dfsShare={dfsShare}
             completedReports={data.completed_reports}
             freshReports={data.fresh_reports}
-            freshTotalSpend={data.fresh_total_spend_usd}
+            freshAvgCost={data.fresh_avg_cost_per_report}
+            freshLinkedReports={data.fresh_linked_reports}
+            confidence={data.confidence}
           />
         </div>
 
@@ -886,7 +888,9 @@ function ReportCostCards({
   dfsShare,
   completedReports,
   freshReports,
-  freshTotalSpend,
+  freshAvgCost,
+  freshLinkedReports,
+  confidence,
 }: {
   total: number;
   apifyShare: number;
@@ -894,65 +898,70 @@ function ReportCostCards({
   dfsShare: number;
   completedReports: number;
   freshReports: number;
-  freshTotalSpend: number;
+  freshAvgCost: number | null;
+  freshLinkedReports: number;
+  confidence: "alta" | "media" | "baixa";
 }) {
   const avgCost = completedReports > 0 ? total / completedReports : null;
-  const freshAvg =
-    freshReports > 0 ? freshTotalSpend / freshReports : null;
-  const estimateValue = freshAvg ?? avgCost;
-  const estimateIsReliable = freshAvg != null;
+
+  const confidenceLabel =
+    confidence === "alta" ? "Alta" : confidence === "media" ? "Média" : "Baixa";
+  const confidenceColor =
+    confidence === "alta"
+      ? "text-admin-success"
+      : confidence === "media"
+        ? "text-admin-warning"
+        : "text-admin-text-tertiary";
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {/* Card 1 — Custo médio por report */}
       <KPICard
-        eyebrow="Custo médio por report"
-        info="Inclui custos de Apify, OpenAI e DataForSEO no período selecionado. Divide a despesa total pelo número de reports concluídos."
+        eyebrow="Custo médio histórico/report"
+        info="Inclui todos os custos registados nos últimos 30 dias, incluindo testes e eventuais leituras em cache."
         value={avgCost != null ? `$${avgCost.toFixed(2)}` : "—"}
         sub={
           avgCost != null
-            ? "média por report gerado"
-            : "sem reports concluídos neste período"
+            ? `${completedReports} report${completedReports !== 1 ? "s" : ""} gerado${completedReports !== 1 ? "s" : ""} · inclui testes/cache · últimos 30 dias`
+            : "Sem reports concluídos neste período"
         }
         size="md"
       />
 
-      {/* Card 2 — Despesa acumulada em reports */}
+      {/* Card 2 — Estimativa/report fresh */}
       <KPICard
-        eyebrow="Despesa acumulada em reports"
-        info="Despesa total de APIs associada aos reports gerados no período selecionado."
+        eyebrow="Estimativa/report fresh"
+        info="Custo real de todos os providers (Apify + OpenAI + DataForSEO) agrupados por report. Só é fiável com amostra suficiente de reports com custos ligados."
+        value={freshAvgCost != null ? `$${freshAvgCost.toFixed(2)}` : "—"}
+        sub={
+          freshAvgCost != null
+            ? `${freshLinkedReports} report${freshLinkedReports !== 1 ? "s" : ""} fresh · sem cache · últimos 30 dias`
+            : "Sem amostra fiável por report completo"
+        }
+        size="md"
+      />
+
+      {/* Card 3 — Despesa acumulada */}
+      <KPICard
+        eyebrow="Despesa acumulada"
+        info="Soma total dos custos de APIs registados no período."
         value={`$${total.toFixed(2)}`}
-        sub={
-          <span>
-            {completedReports} report{completedReports !== 1 ? "s" : ""} gerado{completedReports !== 1 ? "s" : ""}
-            <br />
-            <span className="text-[10px] text-admin-text-tertiary">
-              Apify {apifyShare.toFixed(0)}% · OpenAI {openaiShare.toFixed(0)}% · DFS {dfsShare.toFixed(0)}%
-            </span>
-          </span>
-        }
+        sub={`Apify ${apifyShare.toFixed(0)}% · OpenAI ${openaiShare.toFixed(0)}% · DFS ${dfsShare.toFixed(0)}%`}
         size="md"
       />
 
-      {/* Card 3 — Estimativa por novo report */}
+      {/* Card 4 — Confiança da estimativa */}
       <KPICard
-        eyebrow="Estimativa por novo report"
-        info="Estimativa útil para prever margem e pricing. Deve ser interpretada com cautela se o histórico incluir testes, erros ou reports servidos por cache."
-        value={estimateValue != null ? `$${estimateValue.toFixed(2)}` : "—"}
+        eyebrow="Confiança da estimativa"
+        info="Baseado no número de reports fresh com custos agrupados por provider. Alta ≥20, Média 5–19, Baixa <5."
+        value={<span className={confidenceColor}>{confidenceLabel}</span>}
         sub={
-          estimateValue != null
-            ? "estimativa para novo report"
-            : "sem dados suficientes"
+          freshLinkedReports > 0
+            ? `${freshLinkedReports} report${freshLinkedReports !== 1 ? "s" : ""} com custos ligados · ${freshReports} eventos fresh total`
+            : "Falta ligar custos por provider ao ID do report/run"
         }
         size="md"
       />
-      {estimateValue != null && (
-        <p className="col-span-full mt-0 text-[10px] text-admin-text-tertiary">
-          {estimateIsReliable
-            ? `Baseado em ${freshReports} report${freshReports !== 1 ? "s" : ""} completo${freshReports !== 1 ? "s" : ""} sem cache · últimos 30 dias · inclui testes`
-            : "Estimativa baseada no histórico · pode incluir testes/cache · últimos 30 dias"}
-        </p>
-      )}
     </div>
   );
 }
