@@ -102,6 +102,12 @@ export interface BuildMarketSignalsOptions {
   plan: MarketSignalsPlan;
   /** Hard cap for the whole orchestration. Default 60_000 ms. */
   totalTimeoutMs?: number;
+  /**
+   * Optional — link all DataForSEO provider_call_logs to this analysis event.
+   * When null/undefined, linkProviderCallsToEvent provides fallback linkage
+   * via time-window correlation (handles legacy and pre-event-creation calls).
+   */
+  analysisEventId?: string | null;
 }
 
 function timeoutPromise(ms: number, plan: MarketSignalsPlan): Promise<MarketSignalsFail> {
@@ -203,6 +209,7 @@ async function buildSignalsInner(
   payload: SnapshotPayload,
   plan: MarketSignalsPlan,
   ownerHandle: string,
+  analysisEventId?: string | null,
 ): Promise<MarketSignalsResult> {
   const cap = maxQueriesFor(plan);
   if (cap <= 0) {
@@ -229,6 +236,7 @@ async function buildSignalsInner(
       const env = await fetchGoogleTrends({
         ownerHandle,
         keywords: keywords.slice(0, 5),
+        analysisEventId,
       });
       trends = firstResultOrNull<GoogleTrendsResult>(env);
     } catch (err) {
@@ -258,6 +266,7 @@ async function buildSignalsInner(
         ownerHandle,
         keywords: [keywords[0]],
         limit: 50,
+        analysisEventId,
       });
       keyword_ideas = firstResultOrNull<KeywordIdeasResult>(env);
     } catch (err) {
@@ -275,6 +284,7 @@ async function buildSignalsInner(
         ownerHandle,
         keyword: kw,
         depth: 10,
+        analysisEventId,
       });
       serp.push({ keyword: kw, result: firstResultOrNull<SerpOrganicResult>(env) });
     } catch (err) {
@@ -375,6 +385,7 @@ export async function buildMarketSignals(
     payload,
     plan,
     ownerHandle,
+    options.analysisEventId,
   ).catch(
     (err): MarketSignalsFail => ({
       status: "error",
