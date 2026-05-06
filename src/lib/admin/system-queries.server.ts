@@ -864,9 +864,13 @@ async function fetchReportCounts(sinceIso: string): Promise<{
       }
       freshLinkedReports = costByEvent.size;
       freshLinkedTotal = [...costByEvent.values()].reduce((s, v) => s + v.cost, 0);
-      // "Complete" = has at least 2 distinct provider groups (Apify + OpenAI minimum)
+      // "Complete" = has at least 1 linked provider call.
+      // Previously required >= 2 distinct providers, but reports that only
+      // used Apify (e.g. OpenAI/DataForSEO gated by allowlist) were unfairly
+      // excluded, depressing confidence. Any linked call proves the linkage
+      // pipeline is working for that event.
       freshCompleteReports = [...costByEvent.values()].filter(
-        (v) => v.providers.size >= 2,
+        (v) => v.providers.size >= 1,
       ).length;
     }
   }
