@@ -610,6 +610,43 @@ export function classifyAudienceResponse(
         }
       : null;
 
+  // Build top 2 posts by comment count (for the conversation highlight)
+  const postsByComments = posts
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => typeof p.comments === "number" && p.comments! >= 1)
+    .sort((a, b) => (b.p.comments ?? 0) - (a.p.comments ?? 0))
+    .slice(0, 2);
+
+  const topCommentPosts = postsByComments.map(({ p, i }) => {
+    const rawThumb =
+      typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
+        ? p.thumbnail_url
+        : undefined;
+    const thumbnailUrl = rawThumb
+      ? `/api/public/ig-thumb?url=${encodeURIComponent(rawThumb)}`
+      : null;
+    const permalinkRaw =
+      typeof p.permalink === "string" && p.permalink.trim().length > 0
+        ? p.permalink.trim()
+        : null;
+    const shortcode =
+      typeof p.shortcode === "string" && p.shortcode.trim().length > 0
+        ? p.shortcode.trim()
+        : null;
+    const permalink =
+      permalinkRaw ??
+      (shortcode ? `https://www.instagram.com/p/${shortcode}/` : null);
+    return {
+      index: i,
+      comments: p.comments ?? 0,
+      captionExcerpt: (p.caption ?? "").slice(0, 120).trim(),
+      format: p.format ?? null,
+      date: p.taken_at_iso ?? null,
+      thumbnailUrl,
+      permalink,
+    };
+  });
+
   return {
     available: true,
     label,
@@ -625,6 +662,7 @@ export function classifyAudienceResponse(
       analysedPosts: posts.length,
     },
     topConversationPost,
+    topCommentPosts: topCommentPosts.length > 0 ? topCommentPosts : undefined,
     explanation,
   };
 }
