@@ -34,6 +34,8 @@ export interface CaptionSemanticInput {
   handle: string;
   /** Cleaned caption texts, max 12. */
   captions: string[];
+  /** Link cost to analysis event. */
+  analysisEventId?: string | null;
 }
 
 export interface CaptionSemanticResult {
