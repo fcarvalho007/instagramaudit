@@ -770,6 +770,14 @@ const COMMENT_ENGAGEMENT_TERMS: ReadonlyArray<{ pattern: string; display: string
   { pattern: "qual preferes", display: "Qual preferes?" },
   { pattern: "ja tinhas visto", display: "Já tinhas visto?" },
   { pattern: "já tinhas visto", display: "Já tinhas visto?" },
+  { pattern: "comment", display: "Comment" },
+  { pattern: "tell me", display: "Tell me" },
+  { pattern: "let me know", display: "Let me know" },
+  { pattern: "what do you think", display: "What do you think?" },
+  { pattern: "have you tried", display: "Have you tried?" },
+  { pattern: "which one", display: "Which one?" },
+  { pattern: "would you use", display: "Would you use?" },
+  { pattern: "drop a comment", display: "Drop a comment" },
 ];
 
 function buildCommentEngagement(posts: readonly SnapshotPost[]): CommentEngagementBlock {
