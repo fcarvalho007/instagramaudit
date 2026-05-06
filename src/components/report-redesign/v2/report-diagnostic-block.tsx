@@ -406,6 +406,7 @@ function renderAudienceCard(
         totalComments={r.totals.comments}
         postsWithComments={r.totals.postsWithComments}
         topConversationPost={r.topConversationPost}
+        topCommentPosts={r.topCommentPosts}
         status={r.status}
         commentIntel={commentIntel?.available ? commentIntel : null}
         captionEngagementStrategy={captionEngagementStrategy}
