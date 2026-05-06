@@ -249,18 +249,20 @@ const OPENING_NEWS_TERMS = [
   "novo", "nova", "novidade", "lancamento", "lançamento",
   "chegou", "ja disponivel", "já disponível", "acabou de",
   "anuncio", "anúncio",
+  "new ", "launch", "update", "announcing", "just launched",
 ];
 
 const OPENING_STORY_TERMS = [
   "quando ", "ha uns anos", "há uns anos", "a primeira vez",
   "descobri", "aprendi", "lembro-me", "lembro me",
   "era uma vez", "naquele dia", "nesse dia",
+  "today ", "yesterday", "last week", "i tried", "we tested",
 ];
 
 function classifyOpening(caption: string): CaptionOpeningType {
   const first = caption.split(/[.!?\n]/)[0]?.trim() ?? "";
   const norm = normalize(first);
-  if (first.endsWith("?")) return "question";
+  if (first.endsWith("?") || /^(what |why |how |do you|have you|would you|can you)/i.test(norm)) return "question";
   if (OPENING_NEWS_TERMS.some((t) => norm.includes(t))) return "news_or_update";
   if (OPENING_STORY_TERMS.some((t) => norm.includes(t))) return "story";
   return "bold_statement";
