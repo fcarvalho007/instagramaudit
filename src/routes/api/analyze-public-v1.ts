@@ -77,6 +77,7 @@ import {
   ENRICHMENT_PRIORITY,
   buildInitialEnrichmentStatus,
 } from "@/lib/enrichment/types";
+import { prefetchThumbnailsAsBase64 } from "@/lib/analysis/thumbnail-cache.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -681,6 +682,13 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               benchmarkData,
             );
 
+            // ─── Prefetch thumbnails as base64 (for async visual_cover) ───
+            const thumbUrls = (primaryEnriched.posts ?? [])
+              .map((p) => (p as any).thumbnail_url as string | undefined)
+              .filter((u): u is string => typeof u === "string" && u.length > 0)
+              .slice(0, 12);
+            const thumbnailBase64Map = await prefetchThumbnailsAsBase64(thumbUrls);
+
           // ─── Resilient persistence (Step 1: BASE snapshot) ────────────
           // Persist the Apify + DataForSEO result BEFORE calling OpenAI.
           // If the Worker is killed by an invoker timeout while OpenAI is
@@ -703,6 +711,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               ? { market_signals_free: marketSignalsFree }
               : {}),
             enrichment_status: buildInitialEnrichmentStatus(),
+            ...(Object.keys(thumbnailBase64Map).length > 0
+              ? { _thumbnail_base64: thumbnailBase64Map }
+              : {}),
           };
 
           const snapshotId = await storeSnapshot({
