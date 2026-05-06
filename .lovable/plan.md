@@ -1,21 +1,35 @@
-## Alteração
+## Current State (verified via read queries)
 
-Adicionar uma micro-legenda abaixo dos dots de enriquecimento na secção "Custos por análise fresh" em `/admin/sistema`.
+| Check | Result |
+|-------|--------|
+| `analysis_execution_mode` | Already `cache_only` — no change needed |
+| `frederico.m.carvalho` (683e4c21) | comments = "pending", has all enrichments, no thumbnail |
+| `martimsilvai` (883cf964) | comments = "pending", has all enrichments, no thumbnail |
 
-### Conteúdo da legenda
+## Plan
 
-| Ícone | Significado |
-|-------|-------------|
-| ● verde | Concluído |
-| ● amarelo | Em processamento |
-| ● vermelho | Falhou |
-| ● cinza 50% | Não aplicável |
-| ● cinza 50% | Desativado |
+### Task 1 — Skip (already done)
+`analysis_execution_mode` is already `cache_only`. No action required.
 
-### Ficheiro
+### Task 2 — Reconcile comments status
+Call the existing `set_enrichment_status` RPC for each snapshot:
 
-| Ficheiro | Alteração |
-|----------|-----------|
-| `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx` | Adicionar legenda compacta no bloco de legenda existente (linha ~250) |
+```sql
+SELECT set_enrichment_status('683e4c21-60e0-4045-b43a-dfcd85fe9896', 'comments', 'success');
+SELECT set_enrichment_status('883cf964-fb76-4237-bc0a-8924ec901c1f', 'comments', 'success');
+```
 
-Apenas texto + ícones no footer da secção. Zero alterações de backend.
+This uses the atomic `jsonb_set` function already in the database — no direct payload manipulation.
+
+### Task 3 — Validation
+Run read-only queries to confirm:
+- Both snapshots now show `enrichment_status.comments = "success"`
+- No `_thumbnail_base64` key present
+- All enrichment keys intact
+- No new rows in `provider_call_logs` created during this window
+
+## Safety
+- No providers called (pure SQL update via existing RPC)
+- No cache expiry
+- No snapshot deletion
+- No report UI changes
