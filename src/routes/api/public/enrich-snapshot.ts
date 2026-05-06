@@ -12,6 +12,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { patchSnapshotPayload } from "@/lib/analysis/cache";
+import { removePayloadKey } from "@/lib/analysis/cache";
 import { linkProviderCallsToEvent } from "@/lib/analysis/events";
 import { runEnrichment } from "@/lib/enrichment/run-enrichment.server";
 import type { EnrichmentType, EnrichmentJobRow } from "@/lib/enrichment/types";
@@ -191,6 +192,11 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
               })
               .eq("id", job.id);
             succeeded += 1;
+
+            // After visual_cover succeeds, remove bulky base64 thumbnails
+            if (job.enrichment_type === "visual_cover") {
+              await removePayloadKey(job.snapshot_id, "_thumbnail_base64");
+            }
           } else {
             const finalFailure = job.attempts + 1 >= job.max_attempts;
             // Update enrichment_status on final failure
