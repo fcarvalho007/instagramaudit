@@ -122,7 +122,7 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
       contentIntent: {
         type: "object",
         additionalProperties: false,
-        required: ["primary", "explanation"],
+        required: ["primary", "secondary", "explanation"],
         properties: {
           primary: { type: "string" },
           secondary: { type: ["string", "null"] },
@@ -163,13 +163,14 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
           type: "object",
           additionalProperties: false,
           required: ["expression", "count", "meaning"],
+          // risk is nullable, must be in required for strict mode
           properties: {
             expression: { type: "string" },
             count: { type: "integer", minimum: 1 },
             meaning: { type: "string" },
-            risk: { type: ["string", "null"] },
+            risk: { type: ["string", "null"], default: null },
           },
-        },
+        } as Record<string, unknown>,
       },
       diagnostic: {
         type: "object",
