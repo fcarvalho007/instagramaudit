@@ -16,6 +16,8 @@ export interface GoogleTrendsInput {
                "past_5_years" | "all_time";
   category_code?: number;
   type?: "web" | "news" | "youtube" | "images" | "froogle";
+  /** Optional — link cost to an analysis event for per-report cost tracking. */
+  analysisEventId?: string | null;
 }
 
 export interface GoogleTrendsResult {
@@ -58,6 +60,6 @@ export async function fetchGoogleTrends(
       category_code: input.category_code,
       type: input.type ?? "web",
     },
-    { ownerHandle: input.ownerHandle, queryLabel },
+    { ownerHandle: input.ownerHandle, queryLabel, analysisEventId: input.analysisEventId ?? null },
   );
 }

@@ -17,6 +17,8 @@ export interface SerpOrganicInput {
   language_code?: string;
   depth?: number;          // default 10, max 30
   device?: "desktop" | "mobile";
+  /** Optional — link cost to an analysis event for per-report cost tracking. */
+  analysisEventId?: string | null;
 }
 
 export interface SerpOrganicItem {
@@ -66,6 +68,6 @@ export async function fetchSerpOrganic(
       depth,
       device: input.device ?? "desktop",
     },
-    { ownerHandle: input.ownerHandle, queryLabel: keyword },
+    { ownerHandle: input.ownerHandle, queryLabel: keyword, analysisEventId: input.analysisEventId ?? null },
   );
 }

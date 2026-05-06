@@ -1,42 +1,60 @@
 
-## Visual QA — P01 and P02 Chart Treatments
+## Audit: Provider Call Attribution Status
 
-### Findings
+### Current state in codebase (not yet published)
 
-**P01 — Content type distribution (vertical-list variant)**
+| Provider | Actor | File | Passes analysisEventId directly? | Caught by linkProviderCallsToEvent? | Status |
+|----------|-------|------|----------------------------------|-------------------------------------|--------|
+| Apify | instagram-scraper | analyze-public-v1.ts (L367/395) | NO (runs before event created) | YES (time-window link at L1203) | OK |
+| Apify | comment-scraper | enrich-comments.ts (L130/190) | YES (from job row) | N/A | OK |
+| OpenAI | insights v1 | openai-insights.server.ts | YES (L1000 passes it) | Also caught by link | OK |
+| OpenAI | insights v2 | openai-insights.server.ts | YES (L1039 passes it) | Also caught by link | OK |
+| OpenAI | visual-cover | visual-cover-analysis.server.ts | YES (L1093 passes it) | Also caught by link | OK |
+| OpenAI | caption-semantic | caption-semantic-analysis.server.ts | YES (L1132 passes it) | Also caught by link | OK |
+| DataForSEO | google_trends | market-signals.ts → client.ts | **NO** — not passed through | **PARTIAL** — linkProviderCallsToEvent catches by handle+time, but DFS runs BEFORE event exists | **GAP** |
 
-Desktop (1280px):
-- Dominant bar visually distinct (h-3 vs h-1.5, full opacity vs 30%)
-- Percentages aligned right in mono font, legible
-- Labels readable, no overlap
-- Sublabels not visible in "misto" variant (correct — sublabels only passed in the focused variant via `CONTENT_TYPE_SUBLABELS`)
+### Production DB evidence (not yet published)
 
-Mobile (375px):
-- **Issue found**: Labels truncate at 375px — "Prova social" becomes "Prova soc...", "Promocional" becomes "Promocio..." because `min-w-[4.5rem]` (72px) is too narrow for these labels. The flex layout gives too much space to the bar track vs the label.
+- OpenAI: 0% linked (28/28 calls without event_id) — code fix exists but isn't deployed
+- DataForSEO: 0% linked (11/11 calls without event_id) — code fix partially exists (client.ts accepts it, but `buildMarketSignals` doesn't propagate it)
+- Apify scraper: 26.7% linked — older calls pre-fix, recent ones ARE linked via time-window
+- Apify comments: 100% linked
 
-**P02 — Funnel stack**
+### Remaining gaps to fix
 
-Desktop (1280px):
-- Active bar (TOPO) has green tint + ring — visually clear
-- Bars use `minWidth: fit-content` preventing label crop
-- Percentages aligned right, no overlap
-- 8% bars are small but intentional
+**Gap 1 — DataForSEO: `buildMarketSignals` doesn't accept or propagate `analysisEventId`**
 
-Mobile (375px):
-- Labels and percentages do not overlap
-- 0% row not present in this data, but code uses dashed border treatment — intentional
-- Active/ring treatment: only the dominant stage gets `active` (passed explicitly), not all >=25%. This is correct per the code in `report-diagnostic-block.tsx` line 333.
-- No issues found
+The `callDataForSeo` client already accepts `analysisEventId` (added in previous session). But `buildMarketSignals` → `buildSignalsInner` → endpoint functions (`fetchGoogleTrends`, `fetchKeywordIdeas`, `fetchSerpOrganic`) don't pass it through.
 
-### Refinement
+Since DFS runs BEFORE `analysisEventId` exists (line ~833 vs event creation at ~967), direct propagation isn't possible. However, `linkProviderCallsToEvent` (line 1203) should catch these by time-window. The fact that production shows 0% linked means either:
+- The link call wasn't in the deployed code yet, OR
+- DFS `handle` doesn't match (need to verify)
 
-One CSS-only change in `report-diagnostic-card.tsx`:
+Fix: Verify `linkProviderCallsToEvent` correctly matches DFS calls. The DFS client stores `handle` as `ownerHandle` — check it's lowercase and matches.
 
-**P01 vertical-list**: Increase mobile label min-width from `min-w-[4.5rem]` to `min-w-[5.5rem]` (88px) to prevent truncation of "Prova social" and "Promocional" at 375px. This still leaves sufficient space for the bar track.
+**Gap 2 — `linkProviderCallsToEvent` may not catch all OpenAI/DFS calls**
 
-### Scope
+Even though OpenAI calls now pass `analysisEventId` directly, the `linkProviderCallsToEvent` fallback at L1203 should also catch them. The fact that production shows 0% means the published code doesn't include the changes yet.
 
-- Only file touched: `src/components/report-redesign/v2/report-diagnostic-card.tsx`
-- Only CSS class change, no data logic
-- P03-P07, backend, tokens, locked files untouched
-- Will run `bunx tsc --noEmit` and `bunx vitest run` to validate
+### Implementation
+
+1. **Add `analysisEventId` propagation to `buildMarketSignals`** — accept it in `BuildMarketSignalsOptions`, pass it through `buildSignalsInner` to each endpoint call. This is belt-and-suspenders alongside `linkProviderCallsToEvent`.
+
+2. **Pass `analysisEventId` from `analyze-public-v1.ts` to `buildMarketSignals`** — but since DFS runs before event creation, use `linkProviderCallsToEvent` as primary mechanism (already exists at L1203).
+
+3. **Add a legacy-data comment** in `fetchReportCounts` explaining old logs may have null `analysis_event_id`.
+
+4. **No changes needed** to: expense-section UI, confidence logic, P04/P05/P07, report UI, pricing.
+
+### Files to change
+
+- `src/lib/dataforseo/market-signals.ts` — add `analysisEventId` to options, propagate to endpoint calls
+- `src/lib/dataforseo/endpoints/google-trends.ts` — accept and pass `analysisEventId`
+- `src/lib/dataforseo/endpoints/keyword-ideas.ts` — accept and pass `analysisEventId`
+- `src/lib/dataforseo/endpoints/serp-organic.ts` — accept and pass `analysisEventId`
+- `src/lib/admin/system-queries.server.ts` — add legacy-data comment
+- Validate with `tsc --noEmit` and `vitest run`
+
+### Key conclusion
+
+The previous session's changes (OpenAI/visual-cover/caption-semantic `analysisEventId` propagation + `linkProviderCallsToEvent` fallback + defensive warn) are correct in the codebase but **not yet published**. Once published, OpenAI and Apify calls will be linked. The only remaining code gap is DataForSEO endpoint propagation for belt-and-suspenders coverage.

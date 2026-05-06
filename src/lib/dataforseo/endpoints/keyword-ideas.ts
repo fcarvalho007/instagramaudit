@@ -18,6 +18,8 @@ export interface KeywordIdeasInput {
   limit?: number;               // default 50, max 100
   include_seed_keyword?: boolean;
   include_serp_info?: boolean;
+  /** Optional — link cost to an analysis event for per-report cost tracking. */
+  analysisEventId?: string | null;
 }
 
 export interface KeywordIdeasItem {
@@ -67,6 +69,6 @@ export async function fetchKeywordIdeas(
       include_seed_keyword: input.include_seed_keyword ?? true,
       include_serp_info: input.include_serp_info ?? false,
     },
-    { ownerHandle: input.ownerHandle, queryLabel },
+    { ownerHandle: input.ownerHandle, queryLabel, analysisEventId: input.analysisEventId ?? null },
   );
 }
