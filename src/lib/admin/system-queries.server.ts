@@ -95,10 +95,21 @@ export interface Expense30d {
   openai_actors: OpenAiActorBreakdown[];
   /** Number of completed reports (analysis_snapshots) in the period */
   completed_reports: number;
-  /** Number of fresh (non-cache) successful reports in the period */
+  /** Number of fresh (non-cache) successful analysis events in the period */
   fresh_reports: number;
-  /** Total API spend attributed to fresh successful reports */
-  fresh_total_spend_usd: number;
+  /**
+   * Average cost per fresh report, computed from provider_call_logs
+   * grouped by analysis_event_id. null if linkage is insufficient.
+   */
+  fresh_avg_cost_per_report: number | null;
+  /** Total provider cost linked to fresh reports (only linked calls) */
+  fresh_linked_total_usd: number;
+  /** Number of fresh events that have linked provider_call_logs */
+  fresh_linked_reports: number;
+  /** Number of provider_call_logs linked to fresh events */
+  fresh_linked_provider_calls: number;
+  /** Confidence level of the fresh estimate */
+  confidence: "alta" | "media" | "baixa";
 }
 
 export interface CostCaps {
@@ -782,7 +793,11 @@ export async function fetchExpense30d(): Promise<Expense30d> {
 async function fetchReportCounts(sinceIso: string): Promise<{
   completed_reports: number;
   fresh_reports: number;
-  fresh_total_spend_usd: number;
+  fresh_avg_cost_per_report: number | null;
+  fresh_linked_total_usd: number;
+  fresh_linked_reports: number;
+  fresh_linked_provider_calls: number;
+  confidence: "alta" | "media" | "baixa";
 }> {
   // Count completed snapshots in the period
   const { count: snapshotCount } = await supabaseAdmin
@@ -790,24 +805,67 @@ async function fetchReportCounts(sinceIso: string): Promise<{
     .select("id", { count: "exact", head: true })
     .gte("created_at", sinceIso);
 
-  // Count fresh successful analysis events and sum their cost
-  const { data: freshEvents } = await supabaseAdmin
+  // Count fresh successful analysis events
+  const { data: freshEvents, count: freshEventCount } = await supabaseAdmin
     .from("analysis_events")
-    .select("estimated_cost_usd")
+    .select("id", { count: "exact" })
     .eq("data_source", "fresh")
     .eq("outcome", "success")
     .gte("created_at", sinceIso);
 
-  const freshReports = freshEvents?.length ?? 0;
-  const freshSpend = (freshEvents ?? []).reduce(
-    (sum, e) => sum + Number(e.estimated_cost_usd ?? 0),
-    0,
-  );
+  const freshReports = freshEventCount ?? 0;
+
+  // Get provider_call_logs linked to fresh successful events,
+  // grouped by analysis_event_id, to compute per-report cost
+  // including ALL providers (Apify + OpenAI + DataForSEO).
+  const freshEventIds = (freshEvents ?? []).map((e) => e.id);
+
+  let freshLinkedReports = 0;
+  let freshLinkedTotal = 0;
+  let freshLinkedCalls = 0;
+
+  if (freshEventIds.length > 0) {
+    // Fetch all provider_call_logs linked to these events
+    const { data: linkedCalls } = await supabaseAdmin
+      .from("provider_call_logs")
+      .select("analysis_event_id, estimated_cost_usd")
+      .in("analysis_event_id", freshEventIds)
+      .eq("status", "success");
+
+    if (linkedCalls && linkedCalls.length > 0) {
+      freshLinkedCalls = linkedCalls.length;
+      // Group by analysis_event_id and sum costs
+      const costByEvent = new Map<string, number>();
+      for (const call of linkedCalls) {
+        const eid = call.analysis_event_id as string;
+        costByEvent.set(
+          eid,
+          (costByEvent.get(eid) ?? 0) + Number(call.estimated_cost_usd ?? 0),
+        );
+      }
+      freshLinkedReports = costByEvent.size;
+      freshLinkedTotal = [...costByEvent.values()].reduce((s, v) => s + v, 0);
+    }
+  }
+
+  const freshAvg =
+    freshLinkedReports > 0
+      ? Number((freshLinkedTotal / freshLinkedReports).toFixed(4))
+      : null;
+
+  // Confidence: based on how many fresh events have complete provider linkage
+  let confidence: "alta" | "media" | "baixa" = "baixa";
+  if (freshLinkedReports >= 20) confidence = "alta";
+  else if (freshLinkedReports >= 5) confidence = "media";
 
   return {
     completed_reports: snapshotCount ?? 0,
     fresh_reports: freshReports,
-    fresh_total_spend_usd: Number(freshSpend.toFixed(4)),
+    fresh_avg_cost_per_report: freshAvg,
+    fresh_linked_total_usd: Number(freshLinkedTotal.toFixed(4)),
+    fresh_linked_reports: freshLinkedReports,
+    fresh_linked_provider_calls: freshLinkedCalls,
+    confidence,
   };
 }
 
