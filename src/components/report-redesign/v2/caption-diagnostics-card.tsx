@@ -59,7 +59,7 @@ const GENERIC_THEME_LABELS = new Set([
 function isWeakThemeLabel(label: string): boolean {
   const words = label.trim().split(/\s+/);
   if (words.length >= 2) return false;
-  const lower = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const lower = label.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   if (GENERIC_THEME_LABELS.has(lower)) return true;
   if (lower.length < 6) return true;
   return false;
@@ -659,10 +659,10 @@ function SectionWritingAndExpressions({
                         <div className="p-3.5">
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-[13px] font-semibold text-content-primary leading-snug">
-                              \u201c{it.expression}\u201d
+                              “{it.expression}”
                             </p>
                             <span className="font-mono text-[12px] font-semibold tabular-nums text-accent-primary shrink-0">
-                              \u00d7{it.count}
+                              ×{it.count}
                             </span>
                           </div>
                           <p className="text-[11px] text-content-secondary mt-1.5 leading-relaxed">
@@ -694,7 +694,7 @@ function SectionWritingAndExpressions({
                               ))
                             ) : (
                               <p className="text-[11px] text-content-tertiary italic py-1">
-                                Evid\u00eancia detalhada em desenvolvimento.
+                                Evidência detalhada em desenvolvimento.
                               </p>
                             )}
                           </div>
@@ -722,14 +722,14 @@ function SectionWritingAndExpressions({
                             "text-[13px] font-semibold leading-snug",
                             i < 2 ? "text-accent-primary" : "text-content-secondary",
                           )}>
-                            \u201c{it.expression}\u201d
+                            “{it.expression}”
                           </p>
                           <span className="text-[9px] text-content-tertiary rounded-full bg-surface-muted px-1.5 py-0.5 ring-1 ring-border-default shrink-0">
                             {TYPE_LABEL[it.type] ?? "Outro"}
                           </span>
                         </div>
                         <span className="font-mono text-[12px] font-semibold tabular-nums text-content-tertiary shrink-0">
-                          \u00d7{it.count}
+                          ×{it.count}
                         </span>
                       </div>
                     </div>
@@ -741,9 +741,9 @@ function SectionWritingAndExpressions({
 
       {/* Comment engagement */}
       <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
-        <p className="text-eyebrow-sm text-content-tertiary mb-1">PEDE COMENT\u00c1RIOS NOS POSTS?</p>
+        <p className="text-eyebrow-sm text-content-tertiary mb-1">PEDE COMENTÁRIOS NOS POSTS?</p>
         <p className="text-[11px] text-content-tertiary mb-3">
-          Frequ\u00eancia de chamadas expl\u00edcitas a comentar
+          Frequência de chamadas explícitas a comentar
         </p>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
@@ -779,7 +779,7 @@ function SectionWritingAndExpressions({
                   key={ex}
                   className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] ring-1 bg-tint-primary/30 ring-accent-primary/15 text-content-secondary"
                 >
-                  \u00ab{ex}\u00bb
+                  «{ex}»
                 </span>
               ))}
             </div>
