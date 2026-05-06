@@ -57,6 +57,7 @@ export async function generateVisualCoverAnalysis(
   input: VisualCoverInput,
 ): Promise<VisualCoverResult> {
   const { handle, thumbnailUrls, postIds } = input;
+  const _eventId = input.analysisEventId ?? null;
 
   if (thumbnailUrls.length === 0) {
     return fail("NO_THUMBNAILS");
