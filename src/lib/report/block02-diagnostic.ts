@@ -522,7 +522,7 @@ export function classifyAudienceResponse(
   let totalComments = 0;
   let postsWithData = 0;        // posts where at least one field is a number
   let postsWithComments = 0;    // posts where comments >= 1
-  let topPost: { index: number; comments: number; likes: number; caption: string } | null = null;
+  let topPost: { index: number; comments: number; likes: number; caption: string; format: string | null; date: string | null } | null = null;
 
   for (let i = 0; i < posts.length; i++) {
     const p = posts[i];
