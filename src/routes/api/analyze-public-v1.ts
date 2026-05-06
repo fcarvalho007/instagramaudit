@@ -131,6 +131,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   UPSTREAM_FAILED:
     "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes.",
   NETWORK_ERROR: "Falha de ligação. Tentar novamente.",
+  CACHE_ONLY_NO_DATA:
+    "Sem snapshot disponível em modo cache-only. Ative o modo Fresh para gerar dados novos.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -141,6 +143,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   UPSTREAM_UNAVAILABLE: 503,
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
+  CACHE_ONLY_NO_DATA: 503,
 };
 
 const corsHeaders = {
