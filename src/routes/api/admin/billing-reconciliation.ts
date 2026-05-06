@@ -22,8 +22,12 @@ export const Route = createFileRoute("/api/admin/billing-reconciliation")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const denied = await requireAdminSession(request);
-        if (denied) return denied;
+        try {
+          await requireAdminSession();
+        } catch (res) {
+          if (res instanceof Response) return res;
+          return json({ success: false, message: "Não autorizado" }, 401);
+        }
 
         const url = new URL(request.url);
         const days = Math.min(Number(url.searchParams.get("days")) || 30, 365);
@@ -32,8 +36,12 @@ export const Route = createFileRoute("/api/admin/billing-reconciliation")({
         return json(data);
       },
       POST: async ({ request }) => {
-        const denied = await requireAdminSession(request);
-        if (denied) return denied;
+        try {
+          await requireAdminSession();
+        } catch (res) {
+          if (res instanceof Response) return res;
+          return json({ success: false, message: "Não autorizado" }, 401);
+        }
 
         const body = (await request.json()) as BillingImportInput;
 
