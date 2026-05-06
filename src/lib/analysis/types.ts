@@ -116,7 +116,8 @@ export type PublicAnalysisErrorCode =
   | "PROVIDER_DISABLED"
   | "UPSTREAM_FAILED"
   | "UPSTREAM_UNAVAILABLE"
-  | "NETWORK_ERROR";
+  | "NETWORK_ERROR"
+  | "CACHE_ONLY_NO_DATA";
 
 export interface PublicAnalysisFailure {
   success: false;

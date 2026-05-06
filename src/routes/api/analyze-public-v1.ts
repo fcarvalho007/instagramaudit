@@ -96,6 +96,7 @@ import {
   isValidInstagramPostUrl,
 } from "@/lib/analysis/comment-scraper.server";
 import { buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
+import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -131,6 +132,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   UPSTREAM_FAILED:
     "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes.",
   NETWORK_ERROR: "Falha de ligação. Tentar novamente.",
+  CACHE_ONLY_NO_DATA:
+    "Sem snapshot disponível em modo cache-only. Ative o modo Fresh para gerar dados novos.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -141,6 +144,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   UPSTREAM_UNAVAILABLE: 503,
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
+  CACHE_ONLY_NO_DATA: 503,
 };
 
 const corsHeaders = {
@@ -595,6 +599,53 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             buildCachedResponse(existing, "cache", benchmarkData),
             200,
           );
+        }
+
+        // 1b) Execution mode guard. In cache_only mode, serve existing
+        // snapshot (fresh or stale) but NEVER call any paid provider.
+        const executionMode = await getAnalysisExecutionMode();
+        if (executionMode === "cache_only") {
+          // Serve stale snapshot if available
+          if (existing && isWithinStaleWindow(existing)) {
+            console.info(
+              "[analyze-public-v1] cache_only mode — serving existing snapshot",
+              cacheKey,
+            );
+            const stalePayload = existing.normalized_payload as unknown as {
+              profile?: { display_name?: string; followers_count?: number };
+            };
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "stale",
+              outcome: "blocked_cache_only",
+              analysisSnapshotId: existing.id,
+              estimatedCostUsd: 0,
+              displayName: stalePayload.profile?.display_name ?? null,
+              followersLastSeen: stalePayload.profile?.followers_count ?? null,
+            });
+            return jsonResponse(
+              buildCachedResponse(existing, "stale", benchmarkData),
+              200,
+            );
+          }
+
+          // No snapshot at all — inform the user
+          console.info(
+            "[analyze-public-v1] cache_only mode — no snapshot available",
+            primary,
+          );
+          await logEvent({
+            handle: primary,
+            competitorHandles: competitors,
+            cacheKey,
+            dataSource: "none",
+            outcome: "blocked_cache_only",
+            errorCode: "CACHE_ONLY_NO_DATA",
+            estimatedCostUsd: 0,
+          });
+          return failure("CACHE_ONLY_NO_DATA");
         }
 
         // 2) Hard kill-switch. After the cache lookup so cached snapshots

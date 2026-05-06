@@ -1,49 +1,109 @@
 
-# Custo por Report Gerado — Admin Despesa Section
+# Admin Execution Mode: Cache-Only / Fresh
 
-## What changes
+## Audit Summary
 
-Add a new subsection with 3 KPI cards inside the existing `ExpenseSection` (Visão Geral > Despesa), placed directly after the 4-column provider summary and before the actor breakdown tables.
+| File | Provider | Current gate | Blockable? |
+|------|----------|-------------|------------|
+| `analyze-public-v1.ts` | Apify | `isApifyEnabled()` + allowlist | Yes |
+| `analyze-public-v1.ts` | OpenAI (insights v1/v2) | `isOpenAiAllowed()` | Yes |
+| `analyze-public-v1.ts` | OpenAI (visual cover) | `isOpenAiAllowed()` | Yes |
+| `analyze-public-v1.ts` | OpenAI (caption semantic) | `isOpenAiAllowed()` | Yes |
+| `analyze-public-v1.ts` | DataForSEO (market signals) | `isDataForSeoEnabled()` + allowlist | Yes |
+| `analyze-public-v1.ts` | Apify (comment scraper) | `COMMENT_SCRAPER_ENABLED` | Yes |
+| `enrich-comments` endpoint | Apify | `COMMENT_SCRAPER_ENABLED` | Yes |
 
-### Data source
+Existing config pattern: `app_config` table with `key/value/updated_by/updated_at`, used for cost caps. Same pattern will be reused.
 
-**Completed reports**: Count from `analysis_snapshots` created in the last 30 days (same window as existing expense data). Each snapshot = 1 generated report.
+---
 
-**Fresh reports** (non-cache): Count from `analysis_events` where `data_source = 'fresh'` AND `outcome = 'success'` in the same 30-day window.
+## Changes
 
-**Total API spend**: Already available in `Expense30d.total` (Apify + OpenAI + DataForSEO from `provider_call_logs`).
+### 1. Server-side guard (`src/lib/admin/execution-mode.server.ts` — new)
 
-**Provider shares**: Already available as `apify_total`, `openai_total`, `dataforseo_total`.
+- `getAnalysisExecutionMode()`: reads `app_config` key `analysis_execution_mode`, returns `"cache_only"` (default) or `"fresh"`.
+- `assertFreshModeAllowed(provider, context)`: throws a typed `CacheOnlyBlockedError` if mode is `cache_only`.
+- Short in-memory TTL (~30s) so the setting is responsive without hammering the DB on every request.
 
-### Three cards
+### 2. Update `analyze-public-v1.ts`
 
-| Card | Value | Formula |
-|------|-------|---------|
-| Custo medio por report | `$X.XX` | `total / completed_reports` (0-safe) |
-| Despesa acumulada | `$Y.YY` | `total` + report count + provider % breakdown |
-| Estimativa por novo report | `$Z.ZZ` | `fresh_total_spend / fresh_reports` if available, else fallback to avg |
+Insert a single early check after cache lookup (line ~600):
+- If mode is `cache_only`:
+  - If fresh snapshot exists, return it (cache hit path unchanged).
+  - If stale snapshot exists, serve stale.
+  - If no snapshot at all, return `{ success: false, error_code: "CACHE_ONLY_NO_DATA", message: "Sem snapshot disponível em modo cache-only..." }`.
+  - Skip ALL provider calls (Apify, OpenAI, DataForSEO, comment scraper).
+  - Log event with `outcome: "blocked_cache_only"`, `estimated_cost_usd: 0`.
+- If mode is `fresh`: continue with existing flow unchanged.
 
-### Files to edit
+Add `"CACHE_ONLY_NO_DATA"` to the error code union and HTTP status map (503).
 
-1. **`src/lib/admin/system-queries.server.ts`** — Extend `fetchExpense30d` to also query `analysis_snapshots` count and `analysis_events` (fresh+success count). Add fields to `Expense30d` interface: `completed_reports`, `fresh_reports`, `fresh_total_spend_usd`.
+### 3. Server function for reading/writing mode (`src/server/admin/execution-mode.functions.ts` — new)
 
-2. **`src/components/admin/v2/visao-geral/expense-section.tsx`** — Add `ReportCostSection` component rendering 3 `KPICard`s between the provider columns and actor breakdown. Uses existing `KPICard`, `AdminInfoTooltip`, `AdminSectionHeader` patterns. All copy in pt-PT per spec.
+- `getExecutionMode`: createServerFn, reads current mode from `app_config`.
+- `setExecutionMode`: createServerFn, upserts `app_config` key, requires admin auth.
 
-### Data details
+### 4. Admin UI — Execution Mode Card (`src/components/admin/v2/visao-geral/execution-mode-card.tsx` — new)
 
-- `completed_reports`: `SELECT COUNT(*) FROM analysis_snapshots WHERE created_at >= sinceIso`
-- `fresh_reports` and `fresh_total_spend_usd`: Derived from `analysis_events` joined concept — actually, the existing `aggregateCostsFromLogs` already tracks `apifyFreshSum`/`apifyFreshCount` but only for Apify. We need total fresh spend across all providers. We will count unique `analysis_snapshot_id` values from `analysis_events` where `data_source='fresh' AND outcome='success'` and sum their `estimated_cost_usd`.
-- Simpler approach: use `analysis_snapshots` count for completed reports, and for fresh cost use the total spend (since all spend comes from fresh calls — cache calls have $0 cost by definition in the current logic).
+Compact card in Visão Geral, placed before expense section:
+- Title: "Modo de análise"
+- Segmented control: "Cache-only" / "Fresh"
+- Status badge: green "Cache-only · sem custos" or amber "Fresh · pode gerar custos"
+- Descriptive copy per state
+- Confirmation dialog when switching to Fresh: "Ativar modo Fresh pode gerar custos de API. Confirmar?"
 
-### Robustness
+### 5. Test Profile Status Panel (`src/components/admin/v2/visao-geral/test-profiles-card.tsx` — new)
 
-- Division by zero: show "—" with "sem reports concluidos neste periodo"
-- Missing data: graceful fallback labels
-- All values in USD, 2 decimal places, consistent with existing cards
-- Period label: "ultimos 30 dias"
+For `frederico.m.carvalho` and `martimsilvai`:
+- Latest snapshot date
+- Cached report exists (yes/no)
+- Caption semantic analysis exists
+- Comment intelligence exists
+- Visual cover analysis exists
+- Last estimated cost
+- "Abrir report em cache" link
+- "Reanalisar fresh" button (disabled in cache_only mode with tooltip)
 
-### No changes to
+Server function to fetch this data from `analysis_snapshots`.
 
-- Existing provider cards, actor breakdowns, charts
-- Public report UI, P04, P05, P07, PDF, auth
+### 6. Cache Maintenance (`src/components/admin/v2/visao-geral/cache-maintenance-card.tsx` — new)
+
+- "Limpar cache deste perfil" — deletes specific snapshot by handle (with confirmation)
+- "Forçar próxima análise fresh" — expires the snapshot for a selected handle
+- No global delete button
+
+### 7. Logging
+
+When `cache_only` blocks a provider call, record via `recordProviderCall` with:
+- `actor`: provider name + context
+- `status`: `"blocked_cache_only"`
+- `estimated_cost_usd`: 0
+
+### 8. Integration in Visão Geral page
+
+Update `src/components/admin/v2/visao-geral/` parent to include the three new cards in order:
+1. Execution Mode Card
+2. Test Profiles Card
+3. Cache Maintenance Card
+(before existing expense section)
+
+---
+
+## Files changed
+
+- **New**: `src/lib/admin/execution-mode.server.ts`
+- **New**: `src/server/admin/execution-mode.functions.ts`
+- **New**: `src/components/admin/v2/visao-geral/execution-mode-card.tsx`
+- **New**: `src/components/admin/v2/visao-geral/test-profiles-card.tsx`
+- **New**: `src/components/admin/v2/visao-geral/cache-maintenance-card.tsx`
+- **Edited**: `src/routes/api/analyze-public-v1.ts` (early cache_only guard + new error code)
+- **Edited**: `src/lib/analysis/types.ts` (add CACHE_ONLY_NO_DATA error code)
+- **Edited**: Visão Geral parent component (import new cards)
+
+## Not touched
+
+- Public report card design (P04, P05, P07)
+- PDF pipeline
+- Auth/admin access rules
+- Global design tokens
 - Locked files
