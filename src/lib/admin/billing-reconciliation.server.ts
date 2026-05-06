@@ -30,6 +30,9 @@ export interface ProviderBreakdown {
   external: number;
   internal: number;
   variance: number;
+  displayedRowSum: number | null;
+  roundingDelta: number | null;
+  source: "batch" | "row-sum";
 }
 
 export interface ActorBreakdown {
