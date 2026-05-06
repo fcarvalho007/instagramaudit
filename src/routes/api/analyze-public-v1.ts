@@ -684,8 +684,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
             // ─── Prefetch thumbnails as base64 (for async visual_cover) ───
             const thumbUrls = (primaryEnriched.posts ?? [])
-              .map((p: Record<string, unknown>) => p.thumbnail_url as string)
-              .filter((u: string | undefined): u is string => typeof u === "string" && u.length > 0)
+              .map((p) => (p as any).thumbnail_url as string | undefined)
+              .filter((u): u is string => typeof u === "string" && u.length > 0)
               .slice(0, 12);
             const thumbnailBase64Map = await prefetchThumbnailsAsBase64(thumbUrls);
 
