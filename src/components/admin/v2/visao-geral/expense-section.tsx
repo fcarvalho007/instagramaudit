@@ -875,3 +875,83 @@ function OpenAiActorTableRow({ actor }: { actor: OpenAiActorBreakdown }) {
     </tr>
   );
 }
+
+/* ======================================== Report Cost Cards ======== */
+
+function ReportCostCards({
+  total,
+  apifyShare,
+  openaiShare,
+  dfsShare,
+  completedReports,
+  freshReports,
+  freshTotalSpend,
+}: {
+  total: number;
+  apifyShare: number;
+  openaiShare: number;
+  dfsShare: number;
+  completedReports: number;
+  freshReports: number;
+  freshTotalSpend: number;
+}) {
+  const avgCost = completedReports > 0 ? total / completedReports : null;
+  const freshAvg =
+    freshReports > 0 ? freshTotalSpend / freshReports : null;
+  const estimateValue = freshAvg ?? avgCost;
+  const estimateIsReliable = freshAvg != null;
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Card 1 — Custo médio por report */}
+      <KPICard
+        eyebrow="Custo médio por report"
+        info="Inclui custos de Apify, OpenAI e DataForSEO no período selecionado. Divide a despesa total pelo número de reports concluídos."
+        value={avgCost != null ? `$${avgCost.toFixed(2)}` : "—"}
+        sub={
+          avgCost != null
+            ? "média por report gerado"
+            : "sem reports concluídos neste período"
+        }
+        size="md"
+      />
+
+      {/* Card 2 — Despesa acumulada em reports */}
+      <KPICard
+        eyebrow="Despesa acumulada em reports"
+        info="Despesa total de APIs associada aos reports gerados no período selecionado."
+        value={`$${total.toFixed(2)}`}
+        sub={
+          <span>
+            {completedReports} report{completedReports !== 1 ? "s" : ""} gerado{completedReports !== 1 ? "s" : ""}
+            <br />
+            <span className="text-[10px] text-admin-text-tertiary">
+              Apify {apifyShare.toFixed(0)}% · OpenAI {openaiShare.toFixed(0)}% · DFS {dfsShare.toFixed(0)}%
+            </span>
+          </span>
+        }
+        size="md"
+      />
+
+      {/* Card 3 — Estimativa por novo report */}
+      <KPICard
+        eyebrow="Estimativa por novo report"
+        info="Estimativa útil para prever margem e pricing. Deve ser interpretada com cautela se o histórico incluir testes, erros ou reports servidos por cache."
+        value={estimateValue != null ? `$${estimateValue.toFixed(2)}` : "—"}
+        sub={
+          estimateValue != null
+            ? "estimativa para novo report"
+            : "sem dados suficientes"
+        }
+        size="md"
+      />
+      {estimateValue != null && (
+        <p className="col-span-full mt-0 text-[10px] text-admin-text-tertiary">
+          {estimateIsReliable
+            ? `Baseado em ${freshReports} report${freshReports !== 1 ? "s" : ""} completo${freshReports !== 1 ? "s" : ""} sem cache · últimos 30 dias · inclui testes`
+            : "Estimativa baseada no histórico · pode incluir testes/cache · últimos 30 dias"}
+        </p>
+      )}
+    </div>
+  );
+}
