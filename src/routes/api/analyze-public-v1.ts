@@ -997,7 +997,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 benchmark: benchmarkPositioningEarly,
                 marketSignals: summarizeMarketSignalsForInsights(marketSignalsFree),
               });
-              const result = await generateInsights(ctx);
+              const result = await generateInsights(ctx, { analysisEventId: analysisEventId ?? undefined });
               if (result.ok && result.insights) {
                 aiInsights = result.insights;
               } else if (result.reason && result.reason !== "DISABLED" && result.reason !== "NOT_ALLOWED") {
@@ -1036,6 +1036,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               });
               const resultV2 = await generateInsightsV2(ctxV2, {
                 previous: previousV2,
+                analysisEventId: analysisEventId ?? undefined,
               });
               if (resultV2.ok && resultV2.insights) {
                 aiInsightsV2 = resultV2.insights;
@@ -1089,6 +1090,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   postIds: thumbPosts.map((p) =>
                     p.id ?? p.shortcode ?? "",
                   ),
+                  analysisEventId: analysisEventId ?? undefined,
                 });
                 if (result.ok && result.analysis) {
                   visualCoverAnalysis = result.analysis;
@@ -1127,6 +1129,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 const result = await generateCaptionSemanticAnalysis({
                   handle: primaryProfile.username,
                   captions: captionTexts,
+                  analysisEventId: analysisEventId ?? undefined,
                 });
                 if (result.ok && result.analysis) {
                   captionSemanticAnalysis = result.analysis;
