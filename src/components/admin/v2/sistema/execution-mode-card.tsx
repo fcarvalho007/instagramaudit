@@ -57,7 +57,7 @@ export function ExecutionModeCard() {
 
   return (
     <>
-      <div className="rounded-xl border border-admin-border bg-admin-surface-secondary p-5 flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider">
           Modo de execução
         </p>
