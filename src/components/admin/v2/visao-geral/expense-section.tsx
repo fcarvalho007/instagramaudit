@@ -36,15 +36,13 @@ import type { ApifyActorBreakdown, OpenAiActorBreakdown } from "@/lib/admin/syst
 /* ── Actor color mapping ───────────────────────────────────────────── */
 
 const ACTOR_COLOR: Record<string, string> = {
-  "apify/instagram-profile-scraper": ADMIN_LITERAL.apifyActorProfile,
   "apify/instagram-comment-scraper": ADMIN_LITERAL.apifyActorComments,
   "apify/instagram-scraper": ADMIN_LITERAL.apifyActorScraper,
 };
 
 const ACTOR_SHORT_LABEL: Record<string, string> = {
-  "apify/instagram-profile-scraper": "Perfil",
+  "apify/instagram-scraper": "Posts + perfil",
   "apify/instagram-comment-scraper": "Comentários",
-  "apify/instagram-scraper": "Scraper",
 };
 
 function actorColor(actor: string): string {
@@ -58,13 +56,18 @@ function actorShortLabel(actor: string): string {
 
 function openaiActorColor(actor: string): string {
   if (actor === "visual-cover-analysis") return ADMIN_LITERAL.openaiActorVisualCover;
+  if (actor === "caption-semantic-analysis") return ADMIN_LITERAL.openaiActorInsights;
   if (actor.startsWith("insights:")) return ADMIN_LITERAL.openaiActorInsights;
   return ADMIN_LITERAL.openaiActorDefault;
 }
 
 function openaiActorShortLabel(actor: string): string {
-  if (actor === "visual-cover-analysis") return "Visual covers";
-  if (actor.startsWith("insights:")) return "Insights (texto)";
+  if (actor === "visual-cover-analysis") return "Visual (imagens)";
+  if (actor === "caption-semantic-analysis") return "Legendas (texto)";
+  if (actor.startsWith("insights:")) {
+    const model = actor.replace("insights:", "");
+    return `Insights (texto · ${model})`;
+  }
   return actor;
 }
 
@@ -98,9 +101,8 @@ export function ExpenseSection() {
       }
     }
     const known = [
-      "apify/instagram-profile-scraper",
-      "apify/instagram-comment-scraper",
       "apify/instagram-scraper",
+      "apify/instagram-comment-scraper",
     ].filter((a) => set.has(a));
     const rest = [...set].filter((a) => !known.includes(a)).sort();
     return [...known, ...rest];
@@ -344,13 +346,14 @@ export function ExpenseSection() {
             <div className="border-t border-admin-border" />
             <div className="px-6 py-4">
               <p className="mb-3 text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
-                Breakdown por ator OpenAI
+                Breakdown por ator OpenAI · análises de IA
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px]">
                   <thead>
                     <tr className="text-left text-admin-text-tertiary border-b border-admin-border">
                       <th className="pb-1.5 pr-4 font-medium">Ator</th>
+                      <th className="pb-1.5 pr-4 font-medium">Input</th>
                       <th className="pb-1.5 pr-4 font-medium text-right">Custo</th>
                       <th className="pb-1.5 pr-4 font-medium text-right">Chamadas</th>
                       <th className="pb-1.5 pr-4 font-medium text-right">Tokens (P+C)</th>
@@ -573,6 +576,13 @@ const COST_SOURCE_LABEL: Record<ApifyActorBreakdown["cost_source"], { text: stri
   unavailable: { text: "Indisponível", cls: "text-admin-text-tertiary" },
 };
 
+/* ── OpenAI actor input type ───────────────────────────────────────── */
+
+function openaiActorInputType(actor: string): "texto" | "imagens" {
+  if (actor === "visual-cover-analysis") return "imagens";
+  return "texto";
+}
+
 /* ── Custom tooltip ────────────────────────────────────────────────── */
 
 function ExpenseTooltipContent({
@@ -794,7 +804,8 @@ function ApifyActorTableRow({ actor }: { actor: ApifyActorBreakdown }) {
 function OpenAiActorTableRow({ actor }: { actor: OpenAiActorBreakdown }) {
   const noCalls = actor.call_count === 0 && actor.error_count === 0;
   const color = openaiActorColor(actor.actor);
-  const totalTokens = actor.total_prompt_tokens + actor.total_completion_tokens;
+  const inputType = openaiActorInputType(actor.actor);
+  const mostlyFailed = actor.error_count >= 3 && actor.call_count <= 1;
 
   return (
     <tr className={noCalls ? "text-admin-text-tertiary/60" : "text-admin-text-secondary"}>
@@ -804,7 +815,26 @@ function OpenAiActorTableRow({ actor }: { actor: OpenAiActorBreakdown }) {
             className="inline-block h-2 w-2 rounded-sm shrink-0"
             style={{ backgroundColor: color }}
           />
-          <span className={noCalls ? "italic" : ""}>{actor.label}</span>
+          <span className={noCalls ? "italic" : ""}>
+            {actor.label}
+            {mostlyFailed && (
+              <span
+                className="ml-1.5 text-[9px] text-admin-danger-700"
+                title={`${actor.error_count} de ${actor.error_count + actor.call_count} chamadas falharam — modelo usado em testes iniciais`}
+              >
+                (teste falhado)
+              </span>
+            )}
+          </span>
+        </span>
+      </td>
+      <td className="py-1.5 pr-4">
+        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
+          inputType === "imagens"
+            ? "bg-admin-info-500/10 text-admin-info-700"
+            : "bg-admin-neutral-400/10 text-admin-text-tertiary"
+        }`}>
+          {inputType === "imagens" ? "🖼 Imagens" : "Aa Texto"}
         </span>
       </td>
       <td className="py-1.5 pr-4 text-right tabular-nums font-semibold text-admin-text-primary">

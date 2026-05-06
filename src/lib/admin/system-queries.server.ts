@@ -138,12 +138,16 @@ export interface OpenAiActorBreakdown {
 }
 
 const OPENAI_ACTOR_LABELS: Record<string, string> = {
-  "visual-cover-analysis": "Análise visual (covers)",
+  "visual-cover-analysis": "Análise visual — imagens",
+  "caption-semantic-analysis": "Legendas — texto",
 };
 
 function openaiActorLabel(actor: string): string {
   if (OPENAI_ACTOR_LABELS[actor]) return OPENAI_ACTOR_LABELS[actor];
-  if (actor.startsWith("insights:")) return `Insights (${actor.replace("insights:", "")})`;
+  if (actor.startsWith("insights:")) {
+    const model = actor.replace("insights:", "");
+    return `Insights — texto (${model})`;
+  }
   return actor;
 }
 
@@ -213,13 +217,12 @@ export async function aggregateOpenAiActorBreakdown(
 }
 
 const APIFY_ACTOR_LABELS: Record<string, string> = {
-  "apify/instagram-profile-scraper": "Scraper de perfil Instagram",
-  "apify/instagram-post-scraper": "Scraper de posts Instagram",
-  "apify/instagram-comment-scraper": "Scraper de comentários Instagram",
+  "apify/instagram-scraper": "Scraper Instagram (perfil + posts)",
+  "apify/instagram-comment-scraper": "Scraper de comentários",
 };
 
 const KNOWN_APIFY_ACTORS = [
-  "apify/instagram-profile-scraper",
+  "apify/instagram-scraper",
   "apify/instagram-comment-scraper",
 ];
 
