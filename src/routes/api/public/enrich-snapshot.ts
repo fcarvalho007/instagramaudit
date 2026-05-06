@@ -33,10 +33,14 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
         }),
 
       POST: async ({ request }) => {
-        // Auth gate
+        // Auth gate — accepts INTERNAL_API_TOKEN (Bearer) or apikey header (for pg_cron sweep)
         const internalToken = process.env.INTERNAL_API_TOKEN;
         const authHeader = request.headers.get("authorization") ?? "";
-        if (!internalToken || authHeader !== `Bearer ${internalToken}`) {
+        const apikey = request.headers.get("apikey") ?? "";
+        const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
+        const validBearer = internalToken && authHeader === `Bearer ${internalToken}`;
+        const validApikey = anonKey && apikey === anonKey;
+        if (!validBearer && !validApikey) {
           return new Response(JSON.stringify({ error: "unauthorized" }), {
             status: 401,
             headers: { "Content-Type": "application/json" },
