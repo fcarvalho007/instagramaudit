@@ -863,10 +863,10 @@ function BoldableParagraph({ text }: { text: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Section D — Diagnóstico editorial
+// Section C — Leitura editorial (merged D + E)
 // ---------------------------------------------------------------------------
 
-function SectionDiagnostic({
+function SectionEditorialReading({
   data,
   semantic,
 }: {
@@ -922,6 +922,43 @@ function SectionDiagnostic({
           />
         </div>
       </div>
+
+      {/* Quality cards (semantic-only) */}
+      {hasSemantic && (semantic.hookQuality || semantic.brandVoice || semantic.formulaicPatterns) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {semantic.hookQuality && (
+            <SemanticPill
+              icon={Sparkles}
+              label="Qualidade do hook"
+              rating={semantic.hookQuality.rating}
+              ratingLabels={{ strong: "Forte", moderate: "Moderado", weak: "Fraco" }}
+              explanation={semantic.hookQuality.explanation}
+              tone={semantic.hookQuality.rating === "strong" ? "success" : semantic.hookQuality.rating === "weak" ? "danger" : "neutral"}
+            />
+          )}
+          {semantic.brandVoice && (
+            <SemanticPill
+              icon={Mic}
+              label="Voz da marca"
+              rating={semantic.brandVoice.rating}
+              ratingLabels={{ consistent: "Consistente", mixed: "Mista", inconsistent: "Inconsistente" }}
+              explanation={semantic.brandVoice.explanation}
+              tone={semantic.brandVoice.rating === "consistent" ? "success" : semantic.brandVoice.rating === "inconsistent" ? "danger" : "neutral"}
+            />
+          )}
+          {semantic.formulaicPatterns && (
+            <SemanticPill
+              icon={Repeat}
+              label="Padrões repetitivos"
+              rating={semantic.formulaicPatterns.hasFormulas ? "alert" : "ok"}
+              ratingLabels={{ alert: "Detetados", ok: "Sem repetição" }}
+              explanation={semantic.formulaicPatterns.explanation}
+              tone={semantic.formulaicPatterns.hasFormulas ? "danger" : "success"}
+              examples={semantic.formulaicPatterns.hasFormulas ? semantic.formulaicPatterns.examples : undefined}
+            />
+          )}
+        </div>
+      )}
 
       {/* Footer note */}
       <div className="flex items-start gap-2 text-[10px] text-content-tertiary leading-relaxed">
@@ -1063,8 +1100,9 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
         semanticAnalysisCount={hasSemantic ? semantic.analyzedCaptions : undefined}
       />
 
-      {/* ── B · Expressões recorrentes ── */}
-      <SectionExpressions
+      {/* ── B · Como escreve ── */}
+      <SectionWritingAndExpressions
+        data={data}
         hasSemantic={hasSemantic}
         semanticExpressions={semanticExpressions}
         deterministicExpressions={expressions}
@@ -1073,48 +1111,8 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
         posts={posts}
       />
 
-      {/* ── C · Como escreve ── */}
-      <SectionWritingPatterns data={data} />
-
-      {/* ── D · Diagnóstico editorial ── */}
-      <SectionDiagnostic data={data} semantic={semantic} />
-
-      {/* ── E · Quality cards (semantic-only) ── */}
-      {hasSemantic && (semantic.hookQuality || semantic.brandVoice || semantic.formulaicPatterns) && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {semantic.hookQuality && (
-            <SemanticPill
-              icon={Sparkles}
-              label="Qualidade do hook"
-              rating={semantic.hookQuality.rating}
-              ratingLabels={{ strong: "Forte", moderate: "Moderado", weak: "Fraco" }}
-              explanation={semantic.hookQuality.explanation}
-              tone={semantic.hookQuality.rating === "strong" ? "success" : semantic.hookQuality.rating === "weak" ? "danger" : "neutral"}
-            />
-          )}
-          {semantic.brandVoice && (
-            <SemanticPill
-              icon={Mic}
-              label="Voz da marca"
-              rating={semantic.brandVoice.rating}
-              ratingLabels={{ consistent: "Consistente", mixed: "Mista", inconsistent: "Inconsistente" }}
-              explanation={semantic.brandVoice.explanation}
-              tone={semantic.brandVoice.rating === "consistent" ? "success" : semantic.brandVoice.rating === "inconsistent" ? "danger" : "neutral"}
-            />
-          )}
-          {semantic.formulaicPatterns && (
-            <SemanticPill
-              icon={Repeat}
-              label="Padrões repetitivos"
-              rating={semantic.formulaicPatterns.hasFormulas ? "alert" : "ok"}
-              ratingLabels={{ alert: "Detetados", ok: "Sem repetição" }}
-              explanation={semantic.formulaicPatterns.explanation}
-              tone={semantic.formulaicPatterns.hasFormulas ? "danger" : "success"}
-              examples={semantic.formulaicPatterns.hasFormulas ? semantic.formulaicPatterns.examples : undefined}
-            />
-          )}
-        </div>
-      )}
+      {/* ── C · Leitura editorial ── */}
+      <SectionEditorialReading data={data} semantic={semantic} />
     </CardShell>
   );
 }
