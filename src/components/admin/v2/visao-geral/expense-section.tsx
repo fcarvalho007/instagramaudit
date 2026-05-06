@@ -15,8 +15,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { AdminCard } from "../admin-card";
 import { ProgressBar } from "../progress-bar";
@@ -24,7 +24,7 @@ import { ADMIN_LITERAL } from "../admin-tokens";
 import { SectionError, SectionSkeleton } from "../section-state";
 import { DAILY_COST_LIMIT } from "@/lib/admin/mock-data";
 import { adminFetch } from "@/lib/admin/fetch";
-import { BillingImportForm } from "../receita/billing-import-form";
+
 import type {
   CostCaps,
   Expense30d,
@@ -114,8 +114,8 @@ const COST_SOURCE_LABEL: Record<ApifyActorBreakdown["cost_source"], { text: stri
 
 export function ExpenseSection({ period = "30d" }: { period?: string }) {
   const days = period === "90d" ? 90 : period === "ytd" ? 365 : 30;
-  const queryClient = useQueryClient();
-  const [showImportForm, setShowImportForm] = useState(false);
+
+
 
   const expense = useQuery({
     queryKey: ["admin", "sistema", "expense-30d"],
@@ -220,7 +220,15 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
   const pendingCount = reconRows.filter((r) => r.status === "PENDENTE").length;
 
   return (
-    <section className="space-y-8">
+    <section
+      className="space-y-8"
+      style={{
+        background: "#F7F6F2",
+        border: "1px solid #E5E3D9",
+        borderRadius: 20,
+        padding: "32px 28px",
+      }}
+    >
       <SectionHeader />
 
       {/* ════ BANNER DE FIABILIDADE ════════════════════════════════════ */}
@@ -258,6 +266,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             progressValue={data.apify_total}
             progressMax={c.apify}
             progressColor="expense"
+            accent="expense"
           />
           <ProviderCard
             color={ADMIN_LITERAL.expenseChartOpenAI}
@@ -269,6 +278,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             progressValue={data.openai_total}
             progressMax={c.openai}
             progressColor="info"
+            accent="info"
           />
           <ProviderCard
             color={ADMIN_LITERAL.expenseChartDataForSeo}
@@ -280,6 +290,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             progressValue={data.dataforseo_total}
             progressMax={c.dataforseo}
             progressColor="signal"
+            accent="signal"
           />
           {/* TOTAL — premium dark card */}
           <div className="rounded-xl p-5 text-white" style={{ background: "linear-gradient(135deg, #1a1f2e 0%, #0f172a 100%)" }}>
@@ -337,9 +348,9 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       <div>
         <div className="flex items-baseline justify-between">
           <ZoneLabel symbol="⇆" label="RECONCILIAÇÃO · INTERNO ESTIMADO vs FATURAÇÃO REAL" />
-          <span className="text-[11px] text-admin-text-tertiary">faturação importada manualmente</span>
+          <span className="text-[11px] text-admin-text-tertiary">reconciliação automática</span>
         </div>
-        <AdminCard className="mt-3 overflow-hidden">
+        <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="expense">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
@@ -401,27 +412,10 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
           <div className="flex items-center justify-between border-t border-admin-border px-0 pt-4 pb-1">
             <p className="text-[12px] text-admin-text-tertiary">
               {pendingCount > 0
-                ? `${pendingCount} fornecedor${pendingCount > 1 ? "es" : ""} com faturação por importar. Importa para calcular o custo real total.`
-                : "Todos os fornecedores têm faturação importada."}
+                ? `${pendingCount} fornecedor${pendingCount > 1 ? "es" : ""} sem faturação externa. Dados baseados em estimativas internas.`
+                : "Todos os fornecedores têm faturação externa reconciliada."}
             </p>
-            <button
-              type="button"
-              onClick={() => setShowImportForm((v) => !v)}
-              className="shrink-0 rounded-lg bg-gray-900 px-4 py-2 text-[12px] font-medium text-white hover:bg-gray-800 transition-colors"
-            >
-              + Importar faturação
-            </button>
           </div>
-          {showImportForm && (
-            <div className="border-t border-admin-border pt-4">
-              <BillingImportForm
-                onSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ["billing-reconciliation"] });
-                  setShowImportForm(false);
-                }}
-              />
-            </div>
-          )}
         </AdminCard>
       </div>
 
@@ -429,7 +423,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       {data.apify_actors.length > 0 && (
         <div>
           <ZoneLabel symbol="⊙" label="APIFY · DETALHE POR ACTOR" />
-          <AdminCard className="mt-3 overflow-hidden">
+          <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="expense">
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
@@ -457,7 +451,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       {data.openai_actors && data.openai_actors.length > 0 && (
         <div>
           <ZoneLabel symbol="⊙" label="OPENAI · DETALHE POR OPERAÇÃO" />
-          <AdminCard className="mt-3 overflow-hidden">
+          <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="info">
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
@@ -555,7 +549,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       {/* ════ RODAPÉ METODOLÓGICO ═════════════════════════════════════ */}
       <p className="text-[11px] text-admin-text-tertiary leading-relaxed border-t border-admin-border pt-4">
         Custos internos atribuídos provêm de <code className="font-mono text-[10px]">provider_call_logs</code> ligados a análises.
-        Faturação real importada manualmente do dashboard de cada fornecedor.
+        Faturação real importada do dashboard de cada fornecedor.
         {lastApifyBatch && (
           <> Última importação: Apify · {new Date(lastApifyBatch.created_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })} {new Date(lastApifyBatch.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}.</>
         )}
@@ -576,7 +570,7 @@ function SectionHeader() {
       </p>
       <h2 className="text-xl font-semibold text-admin-text-primary leading-tight">Custos da plataforma</h2>
       <p className="text-[13px] text-admin-text-tertiary mt-0.5">
-        Custos internos atribuídos · faturação externa importada · reconciliação
+        Custos internos atribuídos · reconciliação automática
       </p>
     </div>
   );
@@ -602,7 +596,7 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
 /* ── Provider Card (Zona 1) ────────────────────────────────────────── */
 
 function ProviderCard({
-  color, label, pctLabel, value, capLabel, note, progressValue, progressMax, progressColor,
+  color, label, pctLabel, value, capLabel, note, progressValue, progressMax, progressColor, accent,
 }: {
   color: string;
   label: string;
@@ -613,9 +607,10 @@ function ProviderCard({
   progressValue: number;
   progressMax: number;
   progressColor: "expense" | "info" | "signal";
+  accent?: "expense" | "info" | "signal" | "neutral";
 }) {
   return (
-    <AdminCard className="relative">
+    <AdminCard className="relative" variant="accent-left" accent={accent ?? "neutral"}>
       <div className="flex items-center gap-2 mb-2">
         <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
         <span className="text-[11px] font-medium uppercase tracking-wider text-admin-text-tertiary">{label}</span>

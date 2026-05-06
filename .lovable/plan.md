@@ -1,49 +1,53 @@
 
-## Existing Data Found
+## Objetivo
 
-**Batch** `92ec4b06` already exists with correct period, totals, and reconciliation metadata. No new batch needed.
+Dar ao bloco "Custos da plataforma" em `/admin/receita` uma identidade visual mais clara — cada zona com fundo/caixa diferenciada — e remover permanentemente o formulário de importação manual de faturação.
 
-**2 import rows** already exist and are correctly linked to the batch. The only discrepancy:
+## Alterações
 
-| Field | Row 1 (scraper) current | Requested | Row 2 (comments) current | Requested |
-|-------|------------------------|-----------|--------------------------|-----------|
-| `actual_cost_usd` | 0.0851 (raw) | **0.09** (displayed) | 0.575 (raw) | **0.58** (displayed) |
-| `raw_calculated_cost_usd` | 0.0851 | 0.0851 | 0.575 | 0.5750 |
-| `displayed_cost_usd` | 0.09 | 0.09 | 0.58 | 0.58 |
+### 1. Wrapper visual para toda a secção de custos
 
-Everything else (batch totals, quantities, labels, notes) is already correct.
+Envolver a `<section>` da `ExpenseSection` num contentor com fundo ligeiramente diferente do fundo da página (ex.: `#FAFAF6` vs `#FFFFFF`), borda subtil e `border-radius: 20px`, para isolar visualmente o bloco de custos do resto do admin.
 
-## Proposed Operations
+### 2. Zona 1 (Provider cards) — accent-left
 
-**UPDATE 2 rows** in `provider_billing_imports` — set `actual_cost_usd` to the displayed/rounded value (what Apify actually charges), since the raw value is already stored in `raw_calculated_cost_usd`.
+Aplicar `variant="accent-left"` aos 3 ProviderCards com o accent da família respetiva (`expense` para Apify, `info` para OpenAI, `signal` para DataForSEO). A borda lateral colorida cria hierarquia visual imediata.
 
-```sql
--- Row 1: apify/instagram-scraper
-UPDATE provider_billing_imports
-SET actual_cost_usd = 0.09, updated_at = now()
-WHERE id = 'e65d64f7-67d5-4d4f-9e9e-3774b04190d1';
+### 3. Zona 2 (Custo por análise) — fundo levemente tintado
 
--- Row 2: apify/instagram-comment-scraper
-UPDATE provider_billing_imports
-SET actual_cost_usd = 0.58, updated_at = now()
-WHERE id = 'cf5a09ab-340f-4af0-8366-56cef223ba93';
-```
+Adicionar fundo subtil ao grupo de Zona 2 (caixa ligeiramente amarelada/neutral) para separar do resto.
 
-No batch update needed — all batch-level values already match.
+### 4. Zona 3 (Reconciliação) — accent-left expense
 
-## Expected UI Values After Update
+Usar `variant="accent-left" accent="expense"` no AdminCard da reconciliação para o distinguir das tabelas normais.
 
-| Card / Zone | Before | After |
-|-------------|--------|-------|
-| Reconciliation: Apify external total | $0.66 (from batch) | $0.66 (unchanged) |
-| Reconciliation: Apify import rows sum | $0.6601 (0.0851 + 0.575) | **$0.67** (0.09 + 0.58) — matches `imported_total_displayed_cost_usd` |
-| Import row detail: scraper actual | $0.0851 | **$0.09** |
-| Import row detail: comments actual | $0.575 | **$0.58** |
+### 5. Zonas 4/5 (Apify/OpenAI detalhe) — accent-left por fornecedor
 
-The reconciliation view will now show `actual_cost_usd` aligned with the Apify dashboard displayed values. The `raw_calculated_cost_usd` column preserves the pre-rounding arithmetic.
+Cada tabela recebe `accent-left` com a cor do fornecedor correspondente.
 
-## Risks and Rollback
+### 6. Zona 6 (Gráfico diário) — sem mudança (já está distinto pelo gráfico)
 
-- **Risk**: Minimal — only 2 field updates on billing import rows, no structural change.
-- **Rollback**: Set `actual_cost_usd` back to raw values (0.0851 and 0.575).
-- **No impact** on `provider_call_logs`, snapshots, report UI, or analysis execution.
+### 7. Remover formulário de importação manual
+
+- Remover o botão "+ Importar faturação" e o toggle `showImportForm` da `expense-section.tsx`
+- Remover a referência ao `BillingImportForm` da `reconciliation-section.tsx`
+- Remover o import e o state `showImportForm` de ambos os ficheiros
+- Manter o ficheiro `billing-import-form.tsx` no disco (não apagar, apenas desligar) — caso futuro
+- Ajustar o texto do rodapé da reconciliação: remover "Importa para calcular o custo real total" e substituir por nota informativa
+
+### 8. Refinamentos de copy
+
+- Rodapé da Zona 3: "X fornecedor(es) sem faturação externa. Dados baseados em estimativas internas." em vez do CTA para importar
+- Subtítulo do SectionHeader: "Custos internos atribuídos · reconciliação automática" (sem mencionar importação manual)
+
+## Ficheiros alterados
+
+- `src/components/admin/v2/visao-geral/expense-section.tsx` — wrapper visual, accent-left nos cards, remover import form
+- `src/components/admin/v2/receita/reconciliation-section.tsx` — remover import form reference
+
+## Não alterado
+
+- `src/components/admin/v2/receita/billing-import-form.tsx` — mantém-se no disco, não é apagado
+- Nenhum ficheiro locked
+- Nenhuma lógica de backend
+- Nenhum token CSS novo necessário (usa accent-left existente)
