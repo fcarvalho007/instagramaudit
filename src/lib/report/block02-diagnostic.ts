@@ -615,7 +615,7 @@ export function classifyAudienceResponse(
     .map((p, i) => ({ p, i }))
     .filter(({ p }) => typeof p.comments === "number" && p.comments! >= 1)
     .sort((a, b) => (b.p.comments ?? 0) - (a.p.comments ?? 0))
-    .slice(0, 2);
+    .slice(0, 3);
 
   const topCommentPosts = postsByComments.map(({ p, i }) => {
     const rawThumb =

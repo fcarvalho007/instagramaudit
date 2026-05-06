@@ -1,121 +1,35 @@
+## Objectivo
 
-# Redesign da secção "Custos da plataforma" em /admin/receita
+Redesenhar a zona Z4 da Q05 (secção "Posts que geraram mais conversa") no relatório. Actualmente mostra 2 cards com imagem quadrada (1:1) numa grid de 2 colunas. O resultado ficará com 3 cards na proporção 3:4, layout mais limpo e link visível para o post original.
 
-Substituição completa da `ExpenseSection` e fusão com a `ReconciliationSection` existente, seguindo pixel-a-pixel os 3 mockups fornecidos.
+## Alterações
 
----
+### 1. Dados — aumentar de 2 para 3 posts
 
-## Estrutura visual (de cima para baixo)
+**Ficheiro:** `src/lib/report/block02-diagnostic.ts` (linha 618)
 
-### Header da secção
-- Eyebrow: `SISTEMA · DESPESA`
-- Titulo: "Custos da plataforma"
-- Subtitulo: "Custos internos atribuídos · faturação externa importada · reconciliação"
-- Ações à direita: 3 botões (30 dias / Mês / Custom) + Exportar CSV
+- Alterar `.slice(0, 2)` → `.slice(0, 3)`
 
-### Banner de fiabilidade (zona 0 — condicional)
-- Full-width, fundo âmbar subtil, ícone de aviso
-- Texto: "Fiabilidade do histórico ainda baixa · **37,4%**" + detalhe "62 chamadas (de 99) ainda não estão associadas a uma análise."
-- CTA: "Ver chamadas órfãs →"
-- Visível apenas quando `linkageRatePct < 80%`
+### 2. UI — redesenhar os cards
 
-### Zona 1 — `⊙ CUSTO INTERNO ATRIBUÍDO · ÚLTIMOS 30 DIAS`
-- 4 cards em grid:
-  - **Apify** — valor grande, percentagem do cap, cap absoluto, nota "scrapers de Instagram", progress bar
-  - **OpenAI** — idem, nota "insights · visão · legendas", soft cap
-  - **DataForSEO** — idem, nota "N chamadas SERP", saldo
-  - **TOTAL ATRIBUÍDO** — card premium com fundo escuro/gradiente, "30 DIAS", mini-barra empilhada (58% / 30% / 12%)
-- Nota informativa em rodapé: "Estes valores refletem chamadas internas atribuídas a análises. A faturação real dos fornecedores aparece abaixo na zona de reconciliação."
+**Ficheiro:** `src/components/report-redesign/v2/report-diagnostic-card.tsx` (linhas 792-864)
 
-### Zona 2 — `⌗ CUSTO POR ANÁLISE`
-- 3 cards:
-  - **Médio histórico** — custo/análise, N análises geradas, inclui testes e cache
-  - **Estimativa fresh** — badge FRESH, custo/análise, N análises fresh, "em validação"
-  - **Fiabilidade dos custos** — valor grande percentual (rosa se baixo), badge BAIXA/MÉDIA/ALTA, breakdown por provider inline (OpenAI 16/45 · Apify 20/42 · DFS 1/12)
+- Grid passa de `grid-cols-1 sm:grid-cols-2` → `grid-cols-1 sm:grid-cols-3`
+- Imagem: `aspect-square` → `aspect-[3/4]` (proporção 3:4, mais vertical e elegante)
+- Remover gradiente placeholder (`bg-gradient-to-br from-cyan-300...`) — usar fundo neutro `bg-surface-muted` quando não há thumbnail
+- Badge do formato (REELS, CARROSSEL) mais subtil — manter posição top-right
+- Link para o original: adicionar ícone de link externo subtil no canto superior esquerdo + tornar todo o card clicável (já implementado, mas melhorar hover state com `ring` em vez de `shadow`)
+- Footer com contagem de comentários mais limpo
+- Espaçamento e bordas refinados
 
-### Zona 3 — `⇆ RECONCILIAÇÃO · INTERNO ESTIMADO vs FATURAÇÃO REAL`
-- Nota à direita: "faturação importada manualmente"
-- Tabela 5 colunas: Fornecedor | Interno atribuído | Faturado real | Diferença | Estado
-  - Apify: valores reais, diferença com %, badge REVER (rosa)
-  - OpenAI: interno, "— por importar", "—", badge PENDENTE
-  - DataForSEO: idem PENDENTE
-- Nota: "N fornecedores com faturação por importar. Importa para calcular o custo real total."
-- CTA: "+ Importar faturação" (abre o form existente de billing-import)
+### Sem alterações a
 
-### Zona 4 — `⊙ APIFY · DETALHE POR ACTOR`
-- Tabela com colunas: Actor · nome amigável | Eventos | €/Evento | Calculado | Real Apify | Origem
-- Actor com nome amigável ("Scraper Instagram · perfil + posts") e detalhe técnico em mono pequeno
-- Badge ORIGEM: REAL (verde), ESTIM. + REAL (âmbar)
+- Nenhuma tabela, RLS, migração ou endpoint
+- Nenhum ficheiro bloqueado
+- Nenhuma alteração ao report UI fora desta secção Z4
 
-### Zona 5 — `⊙ OPENAI · DETALHE POR OPERAÇÃO`
-- Tabela: Operação · modelo | Chamadas | Custo | Tokens (P+C) | $/Chamada | Falhas
-- Linha com `mostlyFailed` ganha fundo amarelo subtil + badge "TESTE FALHADO"
-- Badge IMG para visual-cover-analysis
-- Falhas coloridas (rosa quando criticas)
+### Checklist
 
-### Zona 6 — `⟨ EVOLUÇÃO DIÁRIA · ÚLTIMOS 30 DIAS`
-- Texto explicativo: "Custos internos atribuídos por dia. Linha horizontal mostra o limite diário equivalente ($0,97) calculado a partir do total mensal de $29."
-- Legenda visual: 3 swatches (Apify âmbar, OpenAI azul, DataForSEO indigo) + linha tracejada "Limite diário $0,97"
-- Gráfico BarChart (stacked) — mantém lógica actual mas com legenda acima
-- Tooltip preto premium com breakdown por provider
-
-### Rodapé metodológico
-- Linha discreta: "Custos internos atribuídos provêm de provider_call_logs ligados a análises. Faturação real importada manualmente do dashboard de cada fornecedor. Última importação: Apify · 06 mai 18h12."
-
----
-
-## Implementação
-
-### Ficheiro principal
-**Reescrever `src/components/admin/v2/visao-geral/expense-section.tsx`** — o ficheiro actual (998 linhas) será substituído por uma versão reestruturada com as 6 zonas + banner + rodapé. Componentes internos (ExpenseColumn, tooltips, table rows) mantêm-se mas adaptados ao novo layout.
-
-### Fusão com reconciliação
-A `ReconciliationSection` separada é absorvida na nova `ExpenseSection` como Zona 3. O import form existente (`billing-import-form.tsx`) mantém-se e é invocado pelo CTA "+ Importar faturação".
-
-### Dados necessários (sem novas APIs)
-Tudo o que os mockups mostram já está disponível nos endpoints existentes:
-- `/api/admin/sistema/expense-30d` — custos internos, actors, linkage, confidence
-- `/api/admin/sistema/caps` — caps por provider
-- `/api/admin/billing-reconciliation` — dados externos, batches
-
-A `ExpenseSection` fará 3 queries (expense, caps, reconciliation).
-
-### Alteração em `admin.receita.tsx`
-Remover o `<ReconciliationSection>` separado — fica tudo dentro de `<ExpenseSection>`.
-
-### Card "Total" premium
-- Fundo escuro (utilizar token `--admin-surface-elevated` ou inline gradient)
-- Texto branco, mini stacked bar, "30 DIAS" em badge
-
-### Badges de estado na reconciliação
-- REVER: `bg-admin-danger-500/15 text-admin-danger-700`
-- PENDENTE: `bg-admin-neutral-400/15 text-admin-text-tertiary`
-- OK: `bg-admin-success/15 text-admin-success`
-
-### Tooltip do gráfico
-- Fundo escuro (`bg-gray-900 text-white`) em vez do actual branco
-- Swatches coloridos por provider com valor
-
----
-
-## O que NÃO muda
-- Nenhum endpoint de API modificado
-- Nenhum provider chamado
-- Nenhum snapshot alterado
-- Report UI intacto
-- `provider_call_logs` intacto
-- `billing-import-form.tsx` mantém-se (apenas invocado de local diferente)
-- `billing-reconciliation.server.ts` mantém-se
-
-## Ficheiros alterados
-1. `src/components/admin/v2/visao-geral/expense-section.tsx` — reescrita completa
-2. `src/routes/admin.receita.tsx` — remover ReconciliationSection, passar period ao ExpenseSection
-
-## Validação
-- tsc --noEmit passa
-- vitest passa
-- Todos os dados pré-existentes continuam visíveis
-- Banner de fiabilidade aparece quando linkage < 80%
-- Tabela de reconciliação mostra Apify com dados reais e OpenAI/DFS como "pendente"
-- Card total premium com fundo escuro
-- Gráfico com legenda explícita e tooltip preto
+- ☐ `block02-diagnostic.ts` — slice(0, 3)
+- ☐ `report-diagnostic-card.tsx` — grid 3-col, aspect-[3/4], hover ring, fundo neutro fallback
+- ☐ Verificar build (tsc)
