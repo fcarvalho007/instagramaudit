@@ -3,7 +3,7 @@
  * com custos internos (provider_call_logs).
  */
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Line,
@@ -62,10 +62,8 @@ interface ReconciliationData {
 }
 
 const PERIOD_DAYS: Record<AdminPeriod, number> = {
-  "7d": 7,
   "30d": 30,
   "90d": 90,
-  mtd: 30,
   ytd: 365,
 };
 
@@ -87,35 +85,29 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
     },
   });
 
-  if (isLoading) return <SectionSkeleton lines={4} />;
-  if (error || !data) return <SectionError message="Falha ao carregar reconciliação" />;
+  if (isLoading) return <SectionSkeleton />;
+  if (error || !data) return <SectionError />;
 
   const { kpis, daily, byProvider, byActor } = data;
-
-  const stateColor =
-    kpis.state === "reconciliado"
-      ? "text-signal-success"
-      : kpis.state === "divergência"
-        ? "text-signal-warning"
-        : "text-foreground-muted";
 
   return (
     <section className="space-y-6">
       <AdminSectionHeader
         title="Reconciliação de custos"
         subtitle="Comparação entre custos reais dos fornecedores e custos registados internamente"
+        accent="expense"
       />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard label="Custo real externo" value={fmt(kpis.externalTotal)} />
-        <KPICard label="Custo interno registado" value={fmt(kpis.internalTotal)} />
+        <KPICard eyebrow="Custo real externo" value={fmt(kpis.externalTotal)} />
+        <KPICard eyebrow="Custo interno registado" value={fmt(kpis.internalTotal)} />
         <KPICard
-          label="Diferença"
+          eyebrow="Diferença"
           value={fmt(kpis.variance)}
-          sublabel={kpis.variancePct != null ? `${kpis.variancePct.toFixed(1)}%` : "—"}
+          sub={kpis.variancePct != null ? `${kpis.variancePct.toFixed(1)}%` : "—"}
         />
-        <KPICard label="Estado" value={kpis.state} className={stateColor} />
+        <KPICard eyebrow="Estado" value={kpis.state} />
       </div>
 
       {/* Chart */}
