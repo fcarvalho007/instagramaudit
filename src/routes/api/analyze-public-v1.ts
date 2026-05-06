@@ -78,6 +78,7 @@ import {
   buildInitialEnrichmentStatus,
 } from "@/lib/enrichment/types";
 import { prefetchThumbnailsAsBase64 } from "@/lib/analysis/thumbnail-cache.server";
+import { setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -856,6 +857,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                     .single();
                   if (jobErr) {
                     console.error("[analyze-public-v1] failed to create comment enrichment job", jobErr.message);
+                    if (snapshotId) await setEnrichmentStatusAtomic(snapshotId, "comments", "error");
                   } else {
                     const commentToken = process.env.INTERNAL_API_TOKEN;
                     if (commentToken) {
@@ -872,10 +874,16 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   }
                 } catch (err) {
                   console.error("[analyze-public-v1] comment enrichment job creation failed", err);
+                  if (snapshotId) await setEnrichmentStatusAtomic(snapshotId, "comments", "error");
                 }
+              } else {
+                // No valid post URLs for comments
+                if (snapshotId) await setEnrichmentStatusAtomic(snapshotId, "comments", "skipped");
               }
+            } else {
+              // Comment scraper disabled
+              if (snapshotId) await setEnrichmentStatusAtomic(snapshotId, "comments", "disabled");
             }
-          }
 
           // Reuse the positioning already computed above for the AI
           // context — single source of truth, no duplicate dataset reads.
