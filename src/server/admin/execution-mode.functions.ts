@@ -51,6 +51,15 @@ export interface TestProfileStatus {
   hasCommentIntelligence: boolean;
   hasVisualCover: boolean;
   estimatedLastCostUsd: number | null;
+  hasInsightsV1: boolean;
+  hasInsightsV2: boolean;
+  hasMarketSignals: boolean;
+  enrichmentStatus: Record<string, string> | null;
+  allEnrichmentsComplete: boolean;
+  cacheReady: boolean;
+  snapshotExpiresAt: string | null;
+  latestFreshCostTotal: number | null;
+  latestEventId: string | null;
 }
 
 export const getTestProfileStatuses = createServerFn({ method: "GET" }).handler(
@@ -62,24 +71,53 @@ export const getTestProfileStatuses = createServerFn({ method: "GET" }).handler(
       // Find latest snapshot for this handle
       const { data: snap } = await supabaseAdmin
         .from("analysis_snapshots")
-        .select("id, updated_at, normalized_payload")
+        .select("id, updated_at, expires_at, normalized_payload")
         .eq("instagram_username", handle)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       const payload = snap?.normalized_payload as Record<string, unknown> | null;
+      const enrichmentStatus = (payload?.enrichment_status as Record<string, string> | undefined) ?? null;
+      const snapshotExpiresAt = snap?.expires_at ?? null;
+      const notExpired = snapshotExpiresAt ? new Date(snapshotExpiresAt) > new Date() : false;
+
+      // Check all enrichments complete
+      let allEnrichmentsComplete = false;
+      if (enrichmentStatus) {
+        const coreTypes = ["dataforseo", "insights_v1", "insights_v2", "visual_cover", "caption_semantic"];
+        allEnrichmentsComplete = coreTypes.every(
+          (t) => enrichmentStatus[t] === "success" || enrichmentStatus[t] === "skipped",
+        );
+      }
 
       // Get latest event cost
       const { data: evt } = await supabaseAdmin
         .from("analysis_events")
-        .select("estimated_cost_usd")
+        .select("id, estimated_cost_usd")
         .eq("handle", handle)
         .eq("data_source", "fresh")
         .eq("outcome", "success")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      // Total cost from provider_call_logs for this event
+      let latestFreshCostTotal: number | null = null;
+      if (evt?.id) {
+        const { data: costRows } = await supabaseAdmin
+          .from("provider_call_logs")
+          .select("estimated_cost_usd, actual_cost_usd")
+          .eq("analysis_event_id", evt.id);
+        if (costRows && costRows.length > 0) {
+          latestFreshCostTotal = costRows.reduce((sum, r) => {
+            const c =
+              typeof r.actual_cost_usd === "number" ? r.actual_cost_usd :
+              typeof r.estimated_cost_usd === "number" ? r.estimated_cost_usd : 0;
+            return sum + c;
+          }, 0);
+        }
+      }
 
       results.push({
         handle,
@@ -97,6 +135,15 @@ export const getTestProfileStatuses = createServerFn({ method: "GET" }).handler(
           payload?.visual_cover_analysis &&
           typeof payload.visual_cover_analysis === "object"
         ),
+        hasInsightsV1: !!(payload?.ai_insights_v1 && typeof payload.ai_insights_v1 === "object"),
+        hasInsightsV2: !!(payload?.ai_insights_v2 && typeof payload.ai_insights_v2 === "object"),
+        hasMarketSignals: !!(payload?.market_signals_free && typeof payload.market_signals_free === "object"),
+        enrichmentStatus,
+        allEnrichmentsComplete,
+        cacheReady: notExpired && allEnrichmentsComplete && !!snap,
+        snapshotExpiresAt,
+        latestFreshCostTotal,
+        latestEventId: evt?.id ?? null,
         estimatedLastCostUsd:
           typeof evt?.estimated_cost_usd === "number"
             ? evt.estimated_cost_usd

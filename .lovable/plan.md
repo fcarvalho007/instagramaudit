@@ -1,86 +1,77 @@
 
-# Cache Warming — frederico.m.carvalho & martimsilvai
+# Custos por perfil — clareza no admin
 
-## Pre-check Summary
+## Audit of Current State
 
-| | frederico.m.carvalho | martimsilvai |
-|---|---|---|
-| snapshot_id | `683e4c21` | `883cf964` |
-| updated_at | 2026-05-06 16:21 | 2026-05-04 17:08 |
-| expires_at | 2026-05-07 16:17 | 2027-01-01 |
-| enrichment_status | Yes (all success) | No |
-| market_signals_free | Yes | No |
-| ai_insights_v1 | Yes | No |
-| ai_insights_v2 | Yes | No |
-| visual_cover | Yes | No |
-| caption_semantic | Yes | No |
-| _thumbnail_base64 | Yes (12) | No |
+The admin already has two cost-related sections:
 
-**frederico.m.carvalho** is already fully enriched from the latest run. A re-warm is optional — its snapshot expires tomorrow.
+1. **CostsDetailSection** — 24h KPIs (Apify/OpenAI/DFS totals), last 20 provider calls table, alerts, enrichment jobs summary
+2. **AnalysisCostBreakdown** — per-analysis expandable rows with provider decomposition (Apify base, comments, OpenAI, DFS)
 
-**martimsilvai** has a stale snapshot from May 4 with no enrichment layers. It needs a full fresh run + enrichment.
-
-## Critical Finding: `cache_only` is NOT enforced
-
-The `analysis_execution_mode` value exists in `app_config` but **no code reads it to block API calls**. The functions in `execution-mode.server.ts` (`getAnalysisExecutionMode`, `assertFreshModeAllowed`) are defined but never imported or called by the analyze endpoint or enrichment runner.
-
-This means toggling `cache_only` provides zero protection. Any request hitting `/api/analyze-public-v1` with an expired snapshot will trigger a fresh Apify call regardless.
+**What's missing (per your requirements):**
+- Enrichment status summary per analysis row
+- Linkage rate (linked vs total calls)
+- Confidence of attribution
+- Cache readiness per profile
+- `analysis_event_id` / `snapshot_id` display
+- "Pronto em cache" indicator for test profiles
+- Warning when costs may still change (pending enrichments)
 
 ## Plan
 
-### Step 1 — Wire execution mode enforcement (critical fix)
+### 1. Enhance the backend endpoint (`analysis-cost-breakdown.ts`)
 
-Add the `assertFreshModeAllowed` guard to the analyze endpoint at the point where it would make a fresh Apify call. This is a small surgical change:
+Add to each `AnalysisBreakdown` result:
+- `linked_count` / `total_count` — linkage rate
+- `enrichment_summary` — { type: status } map from `enrichment_jobs` for this snapshot
+- `all_enrichments_complete` — boolean
+- `snapshot_expires_at` — from `analysis_snapshots`
 
-- In `src/routes/api/analyze-public-v1.ts`, import `assertFreshModeAllowed` and call it before `runActorWithMetadata`
-- On `CacheOnlyBlockedError`, return the stale/expired snapshot if available, or a clear error
+### 2. Enhance `AnalysisCostBreakdown` component
 
-This ensures `cache_only` actually works before we proceed.
+Per analysis row, add:
+- Shortened `event_id` and `snapshot_id` (first 8 chars, monospace)
+- Enrichment status dots (5 dots: DFS, v1, v2, visual, caption)
+- Linkage rate badge: "6/6 ligadas" or "4/6 ⚠️"
+- If any enrichment is pending: amber "Custo pode aumentar" badge
 
-### Step 2 — Switch to `fresh` mode
+### 3. Enhance `TestProfilesCard`
 
-Update `app_config` to `fresh`.
+Expand the server function `getTestProfileStatuses` to return:
+- `enrichmentStatus` map (from snapshot payload)
+- `allEnrichmentsComplete` boolean
+- `marketSignalsFree` present/absent
+- `insightsV1` / `insightsV2` present
+- `latestFreshCostTotal` — sum of all provider_call_logs for latest fresh event
+- `cacheReady` — snapshot not expired + all enrichments success
+- `snapshotExpiresAt`
 
-### Step 3 — Warm frederico.m.carvalho
+Update the card UI:
+- Add more status chips: Insights v1, Insights v2, Market signals, enrichment_status
+- Show "Pronto para testes sem custos" when cacheReady + cache_only mode
+- Show latest fresh cost total
+- Show expiration countdown
 
-- Use admin force-refresh to expire the current snapshot
-- Trigger a fresh analysis via the published analyze endpoint
-- Wait for enrichment_jobs to complete (sweep or direct trigger)
-- Verify all 5 enrichments succeed
+### 4. Copy (pt-PT)
 
-### Step 4 — Warm martimsilvai
+All new labels:
+- "Custo total", "Última análise fresh", "Chamadas ligadas", "Confiança da atribuição"
+- "Pronto em cache", "Enriquecimentos completos"
+- "Custo pode aumentar" (when pending enrichments)
+- "Sem análise fresh registada" (when no fresh event)
 
-- Verify `martimsilvai` is on all three allowlists (APIFY_ALLOWLIST, OPENAI_ALLOWLIST, DATAFORSEO_ALLOWLIST). If not, this will be flagged before proceeding.
-- Use admin force-refresh to expire the current snapshot
-- Trigger a fresh analysis
-- Wait for enrichment_jobs to complete
-- Verify all 5 enrichments succeed
+## Files Changed
 
-### Step 5 — Switch back to `cache_only`
+| File | Change |
+|---|---|
+| `src/routes/api/admin/analysis-cost-breakdown.ts` | Add enrichment summary, linkage rate, snapshot expiry |
+| `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx` | Show enrichment dots, linkage rate, event/snapshot IDs |
+| `src/server/admin/execution-mode.functions.ts` | Expand TestProfileStatus with enrichment + cost + cache readiness |
+| `src/components/admin/v2/sistema/test-profiles-card.tsx` | Add enrichment status chips, cost, cache readiness |
 
-Update `app_config` to `cache_only`. With Step 1 in place, this now actually blocks fresh API calls.
+## No changes to
 
-### Step 6 — Final validation
-
-For each profile:
-- Confirm payload completeness (13 keys)
-- Confirm enrichment_status all success
-- Provider cost breakdown with attribution
-- Confirm cache serves without provider calls
-
-## Output
-
-- PASS/FAIL table per profile
-- Cost breakdown per profile
-- Mode confirmation
-- Any issues found
-
-## Technical Details
-
-### Files modified
-- `src/routes/api/analyze-public-v1.ts` — add execution mode guard (Step 1)
-
-### No other changes
-- No UI changes
-- No new features
-- No locked file modifications
+- Public report UI
+- Provider execution logic
+- Pricing / cost calculation
+- P01-P07 locked files
