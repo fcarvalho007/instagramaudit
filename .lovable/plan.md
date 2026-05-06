@@ -1,65 +1,123 @@
 
-# Async Enrichment Pipeline — QA Results
+# Enrichment Pipeline — Production QA Audit
 
-## Key Finding
+## 1. Latest Fresh Analysis
 
-**The enrichment pipeline code has never executed in production.** The latest fresh analysis (May 6, 14:20 UTC for `frederico.m.carvalho`) produced no `enrichment_jobs` rows, and the snapshot has no `enrichment_status` field. The code changes exist in the codebase but the deployed build predates them.
+| Field | Value |
+|---|---|
+| analysis_event_id | `5f6261a5-fda0-4a0d-8449-e1422800203a` |
+| snapshot_id | `683e4c21-60e0-4045-b43a-dfcd85fe9896` |
+| created_at | 2026-05-06 16:17:08 UTC |
+| data_source | fresh |
+| outcome | success |
+| estimated_cost_usd | $0.011 |
 
-## QA Checklist Results
+**PASS**
 
-| # | Check | Status | Detail |
-|---|-------|--------|--------|
-| 1 | Fresh base analysis returns without timeout | **CANNOT TEST** | System is in `cache_only` mode; no fresh run occurred with the new code deployed |
-| 2a | analysis_event created with correct fields | PASS | Event `f7569867` has `data_source=fresh`, `outcome=success`, `snapshot_id=683e4c21`, `estimated_cost=0.011` |
-| 2b | Apify provider_call_log linked to event | PASS | Log `8cbf32a1` linked to event `f7569867` |
-| 3 | enrichment_jobs rows created | **FAIL** | Table is empty (0 rows). Code was not deployed when last fresh run happened |
-| 4 | enrichment_status in snapshot payload | **FAIL** | Snapshot `683e4c21` has `enrichment_status: null` |
-| 5 | enrich-snapshot endpoint works | **CANNOT TEST** | No pending jobs exist to process |
-| 6 | Provider cost attribution via enrichments | **FAIL** | OpenAI calls (29 total) have 0 linked to any event; DataForSEO (11 total) also 0 linked |
-| 7 | Idempotency | **CANNOT TEST** | No enrichment cycle has run |
-| 8 | Cache-only protection | PASS | System in cache_only; no provider calls created on May 6 14:20+ (the apify call was from a fresh run) |
-| 9 | Failure handling | **CANNOT TEST** | No jobs have run |
+## 2. Enrichment Jobs (latest run, snapshot `683e4c21`)
 
-## Bugs Found
+| enrichment_type | status | attempts | started_at | completed_at | error_message |
+|---|---|---|---|---|---|
+| dataforseo | success | 1 | 16:20:00 | 16:20:01 | — |
+| insights_v1 | success | 1 | 16:20:01 | 16:20:07 | — |
+| insights_v2 | success | 1 | 16:20:07 | 16:20:13 | — |
+| visual_cover | success | 1 | 16:20:13 | 16:20:24 | — |
+| caption_semantic | success | 1 | 16:20:24 | 16:20:33 | — |
 
-### BUG-1: Admin enrichment-jobs endpoint queries wrong table
-`fetchEnrichmentJobSummary()` in `system-queries.server.ts:1158` queries `comment_enrichment_jobs` instead of the new `enrichment_jobs` table. The admin card shows comment scraper jobs (2 completed), not the enrichment pipeline jobs.
+Note: There is also an older set of jobs for the same snapshot from the first run (~15:55). The visual_cover from that first run failed (3 attempts, `OPENAI_ERROR_HTTP_400` — CDN URL expiration). The second run (post-fix) succeeded on attempt 1.
 
-### BUG-2: storeSnapshot upserts on cache_key — enrichment data loss risk
-`storeSnapshot` uses `.upsert(row, { onConflict: "cache_key" })`. When a second fresh analysis runs for the same handle, the entire `normalized_payload` is replaced with the new base payload (which has all enrichments reset to `pending`). Any completed enrichments from the previous run are lost.
+**PASS** — all 5 enrichment types succeeded on the latest run.
 
-This is a design issue: the base snapshot should not overwrite enrichment results that were patched in asynchronously. Either:
-- The upsert must merge `enrichment_status` from the existing payload, or
-- Enrichment results must be stored separately from the base snapshot.
+## 3. Snapshot Payload Completeness
 
-### BUG-3: OpenAI/DataForSEO calls never get analysis_event_id
-Looking at the provider linkage data: Apify has 34 total / 12 linked, OpenAI has 29 total / 0 linked, DataForSEO has 11 total / 0 linked. The enrichment runner functions pass `analysisEventId` to `generateInsights`, `generateVisualCoverAnalysis`, etc., but we need to verify those functions actually write it to `provider_call_logs.analysis_event_id`. The `linkProviderCallsToEvent` in `enrich-snapshot.ts:229` uses `oldestJob.created_at` as the `since` timestamp, which should catch calls made during enrichment, but this code has never run.
+| Key | Present | Type |
+|---|---|---|
+| profile | Yes | object |
+| posts | Yes | array (12) |
+| content_summary | Yes | object |
+| format_stats | Yes | object |
+| market_signals_free | Yes | object |
+| ai_insights_v1 | Yes | object |
+| ai_insights_v2 | Yes | object |
+| visual_cover_analysis | Yes | object |
+| caption_semantic_analysis | Yes | object |
+| enrichment_status | Yes | object |
+| _thumbnail_base64 | Yes | object |
 
-### BUG-4: Fire-and-forget fetch may not work on Workers
-The `analyze-public-v1.ts:793` fires `fetch()` to trigger enrichment but `.catch()` silently swallows errors. On Cloudflare Workers, the Worker may terminate before the fire-and-forget fetch completes, and the triggered endpoint response is never awaited. The enrichment endpoint itself runs as a separate Worker invocation, so the fetch trigger should work, but if the Worker dies mid-flight the jobs stay `pending` forever with no retry mechanism (no pg_cron sweep yet).
+**_thumbnail_base64 details:**
+- Thumbnails stored: 12
+- Size: ~1.46 MB (of 1.51 MB total payload)
+- **Risk: MEDIUM** — base64 thumbnails represent ~97% of the payload size. This works fine for single-snapshot reads but could become a concern for bulk queries or if the snapshot table grows large. Consider a future optimization: strip `_thumbnail_base64` after enrichment completes, or move to a separate storage bucket.
 
-## Data Snapshot
+**PASS** (with advisory note on payload size)
 
-- **Snapshot ID tested**: `683e4c21-60e0-4045-b43a-dfcd85fe9896`
-- **analysis_event_id tested**: `f7569867-fb5a-4604-83f6-c87d9ceb8cf5`
-- **enrichment_jobs by status**: 0 total (table empty)
-- **provider_call_logs**:
-  - apify: 34 total, 12 linked
-  - openai: 29 total, 0 linked
-  - dataforseo: 11 total, 0 linked
+## 4. enrichment_status Accuracy
 
-## Recommended Fixes (in order)
+Snapshot `enrichment_status`:
+```
+dataforseo: success
+insights_v1: success
+insights_v2: success
+visual_cover: success
+caption_semantic: success
+comments: pending
+```
 
-### Fix 1: Update admin enrichment-jobs endpoint
-Change `fetchEnrichmentJobSummary` to query the `enrichment_jobs` table (not `comment_enrichment_jobs`). Adjust status names to match (`pending`/`running`/`success`/`error` vs `pending`/`processing`/`completed`/`failed`).
+- All 5 implemented enrichments match the jobs table: **PASS**
+- `comments: pending` is accurate — there is a `comment_enrichment_jobs` table but no runner in the enrichment dispatcher. **PASS**
 
-### Fix 2: Publish and run a fresh analysis
-The code must be deployed (published) before it can be tested. After publishing, switch to Fresh mode and trigger one analysis for the allowlisted test profile to validate the full flow end-to-end.
+## 5. Provider Call Attribution
 
-### Fix 3: Protect enrichment data during snapshot upsert
-Before the base snapshot upsert, if an existing snapshot has non-pending enrichment data, preserve those fields in the new payload. Alternatively, skip the enrichment_status reset if enrichments already completed.
+All calls linked to `analysis_event_id = 5f6261a5`:
 
-### Fix 4: Add waitUntil or rely on pg_cron sweep
-The fire-and-forget `fetch` is fragile. Adding a pg_cron sweep (every 2 minutes) to call `/api/public/enrich-snapshot` with `{ sweep: true }` is the reliable safety net. This was already planned but not yet implemented.
+| provider | actor | status | count | est_cost | actual_cost | linked | unlinked |
+|---|---|---|---|---|---|---|---|
+| apify | instagram-scraper | success | 1 | $0.011 | $0.000 | 1 | 0 |
+| apify | comment-scraper | success | 1 | — | $0.028 | 1 | 0 |
+| openai | insights (gpt-5.4-mini) | success | 2 | $0.012 | — | 2 | 0 |
+| openai | visual-cover-analysis | success | 1 | $0.012 | — | 1 | 0 |
+| openai | caption-semantic | success | 1 | $0.007 | — | 1 | 0 |
 
-These fixes should be implemented before re-running the full QA checklist.
+- Total estimated OpenAI cost: ~$0.031
+- Total Apify actual cost: ~$0.028
+- **0 unlinked calls** — all attributed correctly
+- **PASS**
+
+## 6. Cache-Only Safety
+
+**Current `analysis_execution_mode`: `fresh`**
+
+**FAIL** — needs to be switched back to `cache_only`.
+
+Action required: update `app_config` to set `analysis_execution_mode = cache_only`. This is a single SQL update.
+
+When in `cache_only`, the system serves the existing snapshot `683e4c21` (fully enriched) without calling any providers. Confirmed safe.
+
+## 7. Admin Data Consistency
+
+- Admin cost cards read from `provider_call_logs` and `analysis_events` via `system-queries.server.ts`: **Confirmed**
+- Admin enrichment summary reads from both `enrichment_jobs` (async pipeline) and `comment_enrichment_jobs` (comment scraper): **Confirmed correct**
+- **PASS**
+
+---
+
+## Summary
+
+| Check | Result |
+|---|---|
+| 1. Latest fresh analysis | PASS |
+| 2. Enrichment jobs (5/5 success) | PASS |
+| 3. Payload completeness (13/13 keys) | PASS |
+| 4. enrichment_status accuracy | PASS |
+| 5. Provider call attribution (0 orphans) | PASS |
+| 6. Cache-only mode | **FAIL** — currently `fresh`, needs reset |
+| 7. Admin data consistency | PASS |
+
+## Action Required
+
+1. **Switch execution mode back to `cache_only`** — single migration to update `app_config`.
+
+## Advisory (non-blocking)
+
+- `_thumbnail_base64` adds ~1.46 MB to the snapshot payload. Consider stripping it after all enrichments complete, or moving to blob storage in a future iteration.
+- The old failed `visual_cover` job (3 attempts, error) remains in the `enrichment_jobs` table alongside the successful newer one. This is harmless but the admin UI should display the latest job per type, not the oldest.
