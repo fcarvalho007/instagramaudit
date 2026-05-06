@@ -590,6 +590,66 @@ export type Database = {
           },
         ]
       }
+      provider_billing_imports: {
+        Row: {
+          actor_or_model: string | null
+          actual_cost_usd: number
+          created_at: string
+          currency: string
+          estimated_cost_usd: number | null
+          id: string
+          metric_name: string | null
+          notes: string | null
+          period_end: string
+          period_start: string
+          provider: string
+          quantity: number | null
+          service: string | null
+          source: string
+          source_reference: string | null
+          unit_price_usd: number | null
+          updated_at: string
+        }
+        Insert: {
+          actor_or_model?: string | null
+          actual_cost_usd?: number
+          created_at?: string
+          currency?: string
+          estimated_cost_usd?: number | null
+          id?: string
+          metric_name?: string | null
+          notes?: string | null
+          period_end: string
+          period_start: string
+          provider: string
+          quantity?: number | null
+          service?: string | null
+          source: string
+          source_reference?: string | null
+          unit_price_usd?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actor_or_model?: string | null
+          actual_cost_usd?: number
+          created_at?: string
+          currency?: string
+          estimated_cost_usd?: number | null
+          id?: string
+          metric_name?: string | null
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          provider?: string
+          quantity?: number | null
+          service?: string | null
+          source?: string
+          source_reference?: string | null
+          unit_price_usd?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       provider_call_logs: {
         Row: {
           actor: string
