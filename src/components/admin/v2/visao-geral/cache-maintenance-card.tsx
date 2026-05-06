@@ -31,7 +31,7 @@ export function CacheMaintenanceCard() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await expireSnapshotForHandle({ handle: handle.trim().toLowerCase() });
+      const res = await expireSnapshotForHandle({ data: { handle: handle.trim().toLowerCase() } });
       setResult(res.success ? "Cache expirada com sucesso." : `Erro: ${res.error}`);
       qc.invalidateQueries({ queryKey: ["admin", "test-profiles"] });
     } catch (err) {
@@ -43,7 +43,7 @@ export function CacheMaintenanceCard() {
 
   return (
     <>
-      <AdminSectionHeader title="Manutenção de cache" />
+      <AdminSectionHeader title="Manutenção de cache" accent="danger" />
       <AdminCard>
         <div className="flex flex-col gap-3 p-4">
           <p className="text-xs text-muted-foreground">

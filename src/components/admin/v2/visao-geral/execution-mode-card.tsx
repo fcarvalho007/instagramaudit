@@ -32,7 +32,7 @@ export function ExecutionModeCard() {
   });
 
   const mutation = useMutation({
-    mutationFn: (mode: "cache_only" | "fresh") => setExecutionMode({ mode }),
+    mutationFn: (mode: "cache_only" | "fresh") => setExecutionMode({ data: { mode } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] }),
   });
 
@@ -54,7 +54,7 @@ export function ExecutionModeCard() {
 
   return (
     <>
-      <AdminSectionHeader title="Modo de análise" />
+      <AdminSectionHeader title="Modo de análise" accent="expense" />
       <AdminCard>
         <div className="flex items-center justify-between gap-4 p-4">
           <div className="flex-1">

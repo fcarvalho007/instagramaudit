@@ -36,7 +36,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
   const handleForceRefresh = async () => {
     setExpiring(true);
     try {
-      await expireSnapshotForHandle({ handle: p.handle });
+      await expireSnapshotForHandle({ data: { handle: p.handle } });
       qc.invalidateQueries({ queryKey: ["admin", "test-profiles"] });
     } finally {
       setExpiring(false);
@@ -110,7 +110,7 @@ export function TestProfilesCard() {
 
   return (
     <>
-      <AdminSectionHeader title="Perfis de teste" />
+      <AdminSectionHeader title="Perfis de teste" accent="info" />
       <AdminCard>
         <div className="flex flex-col gap-3 p-4">
           {isLoading && (
