@@ -1,17 +1,12 @@
 /**
  * /admin/sistema — tab Sistema do admin v2.
  *
- * Vista operacional/técnica que consolida o que está hoje espalhado pelo
- * cockpit legado em quatro secções verticais:
- *   1. Estado do sistema (readiness strip + smoke test)
- *   2. Segredos e configuração (presença de secrets + Apify config + allowlist)
- *   3. Custos detalhados (KPIs + últimas chamadas + alertas operacionais)
- *   4. Cockpit legado (acordeão com link em nova aba)
- *
- * Esta é a última tab do redesign — todas as 6 tabs do `/admin` v2 ficam
- * completas. As pendências funcionais transversais (ligação Supabase,
- * estados loading/erro/vazio, responsivo mobile profundo, auditoria a11y)
- * ficam para uma fase seguinte do projecto.
+ * Vista operacional/técnica que consolida:
+ *   1. Controlo operacional (modo, perfis, cache)
+ *   2. Estado do sistema (readiness strip + smoke test)
+ *   3. Segredos e configuração
+ *   4. Custos detalhados
+ *   5. Cockpit legado
  */
 
 import { RotateCw } from "lucide-react";
@@ -28,10 +23,10 @@ import { CostsDetailSection } from "@/components/admin/v2/sistema/costs-detail-s
 import { LegacyAccessSection } from "@/components/admin/v2/sistema/legacy-access-section";
 import { AnalysisCostBreakdown } from "@/components/admin/v2/sistema/analysis-cost-breakdown";
 import { adminFetch } from "@/lib/admin/fetch";
- import { ExecutionModeCard } from "@/components/admin/v2/sistema/execution-mode-card";
- import { TestProfilesCard } from "@/components/admin/v2/sistema/test-profiles-card";
- import { CacheMaintenanceCard } from "@/components/admin/v2/sistema/cache-maintenance-card";
- import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
+import { ExecutionModeCard } from "@/components/admin/v2/sistema/execution-mode-card";
+import { TestProfilesCard } from "@/components/admin/v2/sistema/test-profiles-card";
+import { CacheMaintenanceCard } from "@/components/admin/v2/sistema/cache-maintenance-card";
+import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
 
 export const Route = createFileRoute("/admin/sistema")({
   component: SistemaPage,
@@ -89,27 +84,58 @@ function SistemaPage() {
         }
       />
       <div className="flex flex-col gap-14">
-         <section>
-           <AdminSectionHeader
-             title="Controlo operacional"
-             subtitle="modo, perfis e cache"
-             accent="expense"
-             info="Modo de execução, perfis de teste e gestão de cache para desenvolvimento."
-           />
-           <div className="rounded-2xl border border-admin-border bg-admin-surface p-6 shadow-admin-card">
-             <div className="flex flex-col divide-y divide-admin-border">
-               <div className="pb-5">
-                 <ExecutionModeCard />
-               </div>
-               <div className="py-5">
-                 <TestProfilesCard />
-               </div>
-               <div className="pt-5">
-               <CacheMaintenanceCard />
-               </div>
-             </div>
-           </div>
-         </section>
+        {/* ═══ CONTROLO OPERACIONAL ════════════════════════════════════ */}
+        <section>
+          <AdminSectionHeader
+            title="Controlo operacional"
+            subtitle="Modo, perfis e cache"
+            accent="expense"
+            info="Modo de execução, perfis de teste e gestão de cache para desenvolvimento."
+          />
+
+          {/* Section header + subtitle */}
+          <div className="mb-5">
+            <h3
+              className="text-[20px] font-semibold"
+              style={{ color: "#2C2C2A" }}
+            >
+              Modo, perfis e cache
+            </h3>
+            <p className="text-[13px] mt-0.5" style={{ color: "#888780" }}>
+              Define como a aplicação trata pedidos de análise e gere os perfis em teste.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-8">
+            {/* Modo de execução — inside card */}
+            <div
+              className="rounded-2xl border p-6"
+              style={{ borderColor: "#E5E3D9", backgroundColor: "#FAFAF7" }}
+            >
+              <ExecutionModeCard />
+            </div>
+
+            {/* Perfis de teste */}
+            <TestProfilesCard />
+
+            {/* Zona de risco */}
+            <CacheMaintenanceCard />
+          </div>
+
+          {/* Footer note */}
+          <p
+            className="mt-6 text-[11px] leading-relaxed flex items-start gap-1.5"
+            style={{ color: "#A8A7A0" }}
+          >
+            <span className="shrink-0 mt-px">◌</span>
+            Modo &ldquo;dados guardados&rdquo; não chama APIs pagas. Modo &ldquo;buscar novo&rdquo; chama Apify, OpenAI e DataForSEO conforme necessário e regista o custo em{" "}
+            <span className="font-mono text-[10px]" style={{ color: "#888780" }}>
+              provider_call_logs
+            </span>
+            .
+          </p>
+        </section>
+
         <HealthSection />
         <SecretsConfigSection />
         <CostsDetailSection />
