@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AdminCard } from "../admin-card";
@@ -24,7 +24,7 @@ import { ADMIN_LITERAL } from "../admin-tokens";
 import { SectionError, SectionSkeleton } from "../section-state";
 import { DAILY_COST_LIMIT } from "@/lib/admin/mock-data";
 import { adminFetch } from "@/lib/admin/fetch";
-import { BillingImportForm } from "../receita/billing-import-form";
+
 import type {
   CostCaps,
   Expense30d,
@@ -115,7 +115,7 @@ const COST_SOURCE_LABEL: Record<ApifyActorBreakdown["cost_source"], { text: stri
 export function ExpenseSection({ period = "30d" }: { period?: string }) {
   const days = period === "90d" ? 90 : period === "ytd" ? 365 : 30;
   const queryClient = useQueryClient();
-  const [showImportForm, setShowImportForm] = useState(false);
+
 
   const expense = useQuery({
     queryKey: ["admin", "sistema", "expense-30d"],
