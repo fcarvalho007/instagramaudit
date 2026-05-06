@@ -765,46 +765,75 @@ export function DiagnosticAudienceHighlight({
         </div>
       )}
 
-      {/* ── Z4: Top conversation post highlight ── */}
-      {topConversationPost && topConversationPost.comments > 0 && (
-        <div className="rounded-[14px] border border-border-subtle bg-tint-primary/60 px-4 py-3.5 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="size-7 rounded-full bg-surface-secondary flex items-center justify-center shrink-0">
-              <MessageSquare size={13} className="text-accent-primary" strokeWidth={1.5} />
-            </div>
-            <span className="text-eyebrow-sm text-content-tertiary">Post que gerou mais conversa</span>
-            {topConversationPost.format && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-surface-secondary px-2 py-0.5 text-[10px] text-content-tertiary ring-1 ring-border-subtle">
-                <Film size={9} strokeWidth={1.5} />
-                {topConversationPost.format}
-              </span>
-            )}
-          </div>
-          {topConversationPost.date && (
-            <div className="flex items-center gap-1 text-[11px] text-content-tertiary">
-              <Calendar size={10} strokeWidth={1.5} />
-              <span>{new Date(topConversationPost.date).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })}</span>
-            </div>
-          )}
-          {topConversationPost.captionExcerpt && (
-            <p className="font-display text-[14px] font-medium text-content-primary leading-relaxed line-clamp-2">
-              «{topConversationPost.captionExcerpt.slice(0, 120)}»
-            </p>
-          )}
-          <div className="flex items-center gap-3 text-[12px]">
-            <span className="flex items-center gap-1 text-content-secondary">
-              <Heart size={11} strokeWidth={1.5} />
-              <span className="tabular-nums">{topConversationPost.likes.toLocaleString("pt-PT")}</span>
-            </span>
-            <span className="flex items-center gap-1 text-accent-primary font-semibold">
-              <MessageCircle size={11} strokeWidth={1.5} />
-              <span className="tabular-nums">{topConversationPost.comments.toLocaleString("pt-PT")}</span>
-            </span>
-            {topConversationPost.commentsToLikesPct != null && (
-              <span className="text-content-tertiary tabular-nums">
-                {topConversationPost.commentsToLikesPct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% coment./gosto
-              </span>
-            )}
+      {/* ── Z4: Top 2 posts by comments ── */}
+      {topCommentPosts && topCommentPosts.length > 0 && (
+        <div className="space-y-2.5">
+          <p className="text-eyebrow text-content-tertiary">Posts que geraram mais comentários</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {topCommentPosts.map((post, idx) => {
+              const cardContent = (
+                <>
+                  <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-cyan-300 via-blue-400 to-indigo-500 rounded-t-[12px]">
+                    {post.thumbnailUrl && (
+                      <img
+                        src={post.thumbnailUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    )}
+                    {post.format && (
+                      <span className="text-eyebrow-sm absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-md bg-white/90 backdrop-blur text-content-primary font-semibold text-[9px]">
+                        {post.format}
+                      </span>
+                    )}
+                    {post.permalink && (
+                      <ExternalLink className="absolute top-2 left-2 z-10 size-3 text-white drop-shadow" />
+                    )}
+                  </div>
+                  <div className="p-3 flex flex-col gap-1.5 flex-1">
+                    {post.date && (
+                      <span className="text-eyebrow-sm text-content-tertiary text-[9px]">
+                        {new Date(post.date).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                    )}
+                    {post.captionExcerpt && (
+                      <p className="text-[12px] text-content-primary leading-snug line-clamp-2">
+                        {post.captionExcerpt}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1.5 pt-1 mt-auto border-t border-border-subtle/30">
+                      <MessageCircle size={12} className="text-accent-primary" strokeWidth={1.5} />
+                      <span className="font-mono text-[14px] font-bold tabular-nums text-accent-primary">
+                        {post.comments.toLocaleString("pt-PT")}
+                      </span>
+                      <span className="text-[10px] text-content-tertiary">comentários</span>
+                    </div>
+                  </div>
+                </>
+              );
+              if (post.permalink) {
+                return (
+                  <a
+                    key={idx}
+                    href={post.permalink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group bg-surface-secondary border border-border-default rounded-[14px] shadow-card overflow-hidden flex flex-col transition-shadow duration-200 hover:shadow-md hover:border-accent-primary/40"
+                  >
+                    {cardContent}
+                  </a>
+                );
+              }
+              return (
+                <article key={idx} className="bg-surface-secondary border border-border-default rounded-[14px] shadow-card overflow-hidden flex flex-col">
+                  {cardContent}
+                </article>
+              );
+            })}
           </div>
         </div>
       )}
