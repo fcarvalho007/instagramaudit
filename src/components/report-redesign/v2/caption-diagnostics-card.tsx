@@ -222,7 +222,7 @@ function downloadEvidenceCsv(matches: MatchedEvidence[], filename: string) {
     const p = m.post;
     const date = p.taken_at_iso ? new Date(p.taken_at_iso).toLocaleDateString("pt-PT") : "";
     const caption = (p.caption ?? "").replace(/"/g, '""');
-    return `"${p.format}","${date}","${p.likes}","${p.comments}","${caption}","${p.permalink ?? ""}"`;
+    return `"${p.format ?? ""}","${date}","${p.likes ?? 0}","${p.comments ?? 0}","${caption}","${p.permalink ?? ""}"`;
   });
   const csv = header + rows.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
