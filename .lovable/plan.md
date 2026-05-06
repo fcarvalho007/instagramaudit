@@ -1,77 +1,50 @@
+## Goal
 
-# Custos por perfil — clareza no admin
+Strip `_thumbnail_base64` from `analysis_snapshots.normalized_payload` immediately after `visual_cover` enrichment completes successfully, reclaiming ~1.4 MB per snapshot.
 
-## Audit of Current State
+## Changes
 
-The admin already has two cost-related sections:
+### 1. Add `removePayloadKey` helper to `src/lib/analysis/cache.ts`
 
-1. **CostsDetailSection** — 24h KPIs (Apify/OpenAI/DFS totals), last 20 provider calls table, alerts, enrichment jobs summary
-2. **AnalysisCostBreakdown** — per-analysis expandable rows with provider decomposition (Apify base, comments, OpenAI, DFS)
+A new exported function that removes a top-level key from a snapshot's `normalized_payload` using a direct SQL `jsonb - 'key'` operation (atomic, no read-merge-write needed):
 
-**What's missing (per your requirements):**
-- Enrichment status summary per analysis row
-- Linkage rate (linked vs total calls)
-- Confidence of attribution
-- Cache readiness per profile
-- `analysis_event_id` / `snapshot_id` display
-- "Pronto em cache" indicator for test profiles
-- Warning when costs may still change (pending enrichments)
+```ts
+export async function removePayloadKey(snapshotId: string, key: string): Promise<boolean>
+```
 
-## Plan
+Uses raw `.rpc` or a direct SQL update via supabaseAdmin:
+```sql
+UPDATE analysis_snapshots
+SET normalized_payload = normalized_payload - '_thumbnail_base64',
+    updated_at = now()
+WHERE id = $1
+```
 
-### 1. Enhance the backend endpoint (`analysis-cost-breakdown.ts`)
+### 2. Call cleanup in `src/routes/api/public/enrich-snapshot.ts`
 
-Add to each `AnalysisBreakdown` result:
-- `linked_count` / `total_count` — linkage rate
-- `enrichment_summary` — { type: status } map from `enrichment_jobs` for this snapshot
-- `all_enrichments_complete` — boolean
-- `snapshot_expires_at` — from `analysis_snapshots`
+After line 193 (where `visual_cover` job succeeds), add:
 
-### 2. Enhance `AnalysisCostBreakdown` component
+```ts
+if (job.enrichment_type === "visual_cover") {
+  await removePayloadKey(job.snapshot_id, "_thumbnail_base64");
+}
+```
 
-Per analysis row, add:
-- Shortened `event_id` and `snapshot_id` (first 8 chars, monospace)
-- Enrichment status dots (5 dots: DFS, v1, v2, visual, caption)
-- Linkage rate badge: "6/6 ligadas" or "4/6 ⚠️"
-- If any enrichment is pending: amber "Custo pode aumentar" badge
+### 3. Validation
 
-### 3. Enhance `TestProfilesCard`
+- `bunx tsc --noEmit` passes
+- `bunx vitest run` passes
+- Query payload size before/after for both test profiles to confirm reduction
 
-Expand the server function `getTestProfileStatuses` to return:
-- `enrichmentStatus` map (from snapshot payload)
-- `allEnrichmentsComplete` boolean
-- `marketSignalsFree` present/absent
-- `insightsV1` / `insightsV2` present
-- `latestFreshCostTotal` — sum of all provider_call_logs for latest fresh event
-- `cacheReady` — snapshot not expired + all enrichments success
-- `snapshotExpiresAt`
-
-Update the card UI:
-- Add more status chips: Insights v1, Insights v2, Market signals, enrichment_status
-- Show "Pronto para testes sem custos" when cacheReady + cache_only mode
-- Show latest fresh cost total
-- Show expiration countdown
-
-### 4. Copy (pt-PT)
-
-All new labels:
-- "Custo total", "Última análise fresh", "Chamadas ligadas", "Confiança da atribuição"
-- "Pronto em cache", "Enriquecimentos completos"
-- "Custo pode aumentar" (when pending enrichments)
-- "Sem análise fresh registada" (when no fresh event)
-
-## Files Changed
+## Files changed
 
 | File | Change |
-|---|---|
-| `src/routes/api/admin/analysis-cost-breakdown.ts` | Add enrichment summary, linkage rate, snapshot expiry |
-| `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx` | Show enrichment dots, linkage rate, event/snapshot IDs |
-| `src/server/admin/execution-mode.functions.ts` | Expand TestProfileStatus with enrichment + cost + cache readiness |
-| `src/components/admin/v2/sistema/test-profiles-card.tsx` | Add enrichment status chips, cost, cache readiness |
+|------|--------|
+| `src/lib/analysis/cache.ts` | Add `removePayloadKey` function |
+| `src/routes/api/public/enrich-snapshot.ts` | Call cleanup after visual_cover success |
 
-## No changes to
+## Risks
 
-- Public report UI
-- Provider execution logic
-- Pricing / cost calculation
-- P01-P07 locked files
+- None: `_thumbnail_base64` is only consumed by `run-enrichment.server.ts` during visual_cover processing, which has already completed before removal.
+- `visual_cover_analysis` is persisted via `payloadPatch` before this cleanup runs.
+- Cache-only report rendering does not use `_thumbnail_base64`.

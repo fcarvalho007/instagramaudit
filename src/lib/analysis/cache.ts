@@ -37,6 +37,46 @@ export function buildCacheKey(
   return `${CACHE_KEY_VERSION}:${p}|${c.join(",")}`;
 }
 
+/**
+ * Remove a top-level key from a snapshot's normalized_payload.
+ * Uses read-delete-write via PostgREST.
+ * Returns true on success, false on failure. Never throws.
+ */
+export async function removePayloadKey(
+  snapshotId: string,
+  key: string,
+): Promise<boolean> {
+  try {
+    const { data: snapshot, error: fetchErr } = await supabaseAdmin
+      .from("analysis_snapshots")
+      .select("normalized_payload")
+      .eq("id", snapshotId)
+      .single();
+    if (fetchErr || !snapshot) {
+      console.error("[analysis/cache] removePayloadKey fetch error", fetchErr?.message);
+      return false;
+    }
+    const payload = { ...(snapshot.normalized_payload as Record<string, unknown>) };
+    if (!(key in payload)) return true; // already absent
+    delete payload[key];
+    const { error: updateErr } = await supabaseAdmin
+      .from("analysis_snapshots")
+      .update({
+        normalized_payload: payload as never,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", snapshotId);
+    if (updateErr) {
+      console.error("[analysis/cache] removePayloadKey update error", updateErr.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[analysis/cache] removePayloadKey exception", err);
+    return false;
+  }
+}
+
 export interface SnapshotRow {
   id: string;
   cache_key: string;
