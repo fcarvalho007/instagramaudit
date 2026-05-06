@@ -65,6 +65,8 @@ export async function callDataForSeo<T = unknown>(
   const queryLabel = options.queryLabel.trim().slice(0, 120);
   const actorLabel = `${endpoint}:${queryLabel}`.slice(0, 200);
 
+  const _eventId = options.analysisEventId ?? null;
+
   // 1. Kill-switch
   if (!isDataForSeoEnabled()) {
     await logCall({
@@ -77,6 +79,7 @@ export async function callDataForSeo<T = unknown>(
       estimatedCostUsd: 0,
       actualCostUsd: 0,
       errorExcerpt: "kill_switch_off",
+      analysisEventId: _eventId,
     });
     throw new DataForSeoBlockedError(
       "kill_switch",
@@ -96,6 +99,7 @@ export async function callDataForSeo<T = unknown>(
       estimatedCostUsd: 0,
       actualCostUsd: 0,
       errorExcerpt: "allowlist_miss",
+      analysisEventId: _eventId,
     });
     throw new DataForSeoBlockedError(
       "allowlist",
@@ -157,6 +161,7 @@ export async function callDataForSeo<T = unknown>(
         estimatedCostUsd: ESTIMATED_COST_USD[endpoint],
         actualCostUsd: 0,
         errorExcerpt: text.slice(0, 500),
+        analysisEventId: _eventId,
       });
       throw new DataForSeoUpstreamError(
         `DataForSEO HTTP ${res.status}`,
@@ -179,6 +184,7 @@ export async function callDataForSeo<T = unknown>(
         estimatedCostUsd: ESTIMATED_COST_USD[endpoint],
         actualCostUsd: extractActualCost(envelope),
         errorExcerpt: `${envelope.status_code}: ${envelope.status_message}`,
+        analysisEventId: _eventId,
       });
       throw new DataForSeoUpstreamError(
         `DataForSEO API ${envelope.status_code}: ${envelope.status_message}`,
@@ -198,6 +204,7 @@ export async function callDataForSeo<T = unknown>(
       estimatedCostUsd: ESTIMATED_COST_USD[endpoint],
       actualCostUsd: extractActualCost(envelope),
       errorExcerpt: null,
+      analysisEventId: _eventId,
     });
 
     return envelope;
@@ -216,6 +223,7 @@ export async function callDataForSeo<T = unknown>(
       estimatedCostUsd: ESTIMATED_COST_USD[endpoint],
       actualCostUsd: 0,
       errorExcerpt: message.slice(0, 500),
+      analysisEventId: _eventId,
     });
     throw new DataForSeoUpstreamError(message, 0);
   } finally {
