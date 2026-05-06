@@ -1,69 +1,69 @@
 
-# Tighten Cache-Only Guard Order
+## Current State
 
-## Problem
+**Confidence formula (before):**
+- Alta: `freshCompleteReports >= 20`
+- Media: `freshCompleteReports >= 5`
+- Baixa: otherwise
+- `freshCompleteReports` = events with `providers.size >= 1` (any single linked call counts)
+- No linkage rate check — confidence is purely sample-size based
 
-In `src/routes/api/analyze-public-v1.ts`, the execution order is:
-
-```text
-BEFORE:
-1. Parse input
-2. Dedup competitors
-3. Allowlist gate ← creates analysis_events with blocked_allowlist
-4. Cache lookup
-5. cache_only guard ← too late
-6. Apify kill-switch
-7. Provider calls
-```
-
-A non-allowlisted handle in cache_only mode hits the allowlist block (step 3) before the cache_only guard (step 5), creating an `analysis_events` row with `outcome=blocked_allowlist`. This pollutes the audit trail — cache_only should never reach allowlist logic.
-
-## Fix
-
-Restructure the order to:
-
-```text
-AFTER:
-1. Parse input
-2. Dedup competitors
-3. Cache lookup (moved up)
-4. cache_only guard (moved up, right after cache lookup)
-5. Allowlist gate (unchanged, only reached in fresh mode)
-6. Apify kill-switch
-7. Provider calls
-```
-
-The cache lookup doesn't depend on the allowlist — it only needs `cacheKey`. Moving it before the allowlist check means cache_only can short-circuit immediately.
+**Expense30d fields (before):**
+Already has `fresh_total_provider_calls`, `fresh_calls_with_event_id`, `fresh_linked_reports`, but no per-provider linkage breakdown.
 
 ## Changes
 
-**File: `src/routes/api/analyze-public-v1.ts`**
+### 1. Backend: `system-queries.server.ts`
 
-1. Move the `cacheKey` computation, benchmark loading, and cache lookup block (L555-602) to just after competitor dedup (after L519).
-2. Move the cache_only guard block (L604-649) to immediately follow the cache lookup.
-3. Leave the allowlist gate, Apify kill-switch, and all fresh-mode logic untouched in sequence after the cache_only guard.
-4. The `forceRefresh` logic (L555-573) stays between cache lookup and allowlist since it's only relevant for fresh mode — but it must move together with cache lookup since `isFresh(existing)` references `forceRefresh`.
-
-Concretely the new order after competitor dedup will be:
-
+**Add to `Expense30d` interface:**
 ```
-cacheKey = buildCacheKey(...)
-benchmarkData = await loadBenchmarkReferences()
-existing = await lookupSnapshot(cacheKey)
-forceRefresh logic
-if (existing && !forceRefresh && isFresh(existing)) → serve cache
-executionMode = await getAnalysisExecutionMode()
-if (executionMode === "cache_only") → serve stale or CACHE_ONLY_NO_DATA
-// --- only fresh mode reaches here ---
-allowlist gate
-apify kill-switch
-provider calls...
+provider_calls_total_30d: number
+provider_calls_linked_30d: number
+provider_calls_unlinked_30d: number
+provider_linkage_rate_pct: number
+provider_linkage_by_provider: {
+  provider: string
+  total: number
+  linked: number
+}[]
 ```
 
-No other files need changes. No UI changes. Fresh mode behaviour is identical.
+**Compute per-provider linkage** from the existing `provider_call_logs` query (30d, status=success), grouped by provider, partitioned by `analysis_event_id IS NOT NULL`.
 
-## Validation
+**New confidence formula (after):**
+```
+linkage_rate = provider_calls_linked_30d / provider_calls_total_30d * 100
+
+Alta:  freshCompleteReports >= 20 AND linkage_rate >= 95
+Media: freshCompleteReports >= 5  AND linkage_rate >= 85
+Baixa: otherwise
+```
+
+**Populate new fields** from counts already queried (reuse `freshTotalProviderCalls` / `freshCallsWithEventId` as `provider_calls_total_30d` / `provider_calls_linked_30d`).
+
+### 2. UI: `expense-section.tsx` — ReportCostCards
+
+**Card 1 — "Custo médio histórico/report"**: unchanged.
+
+**Card 2 — "Estimativa/report fresh"**: add warning sub-text when confidence is "baixa":
+> "Estimativa em validacao — alguns custos podem ainda nao estar atribuidos ao report."
+
+**Card 3 — "Despesa acumulada"**: unchanged.
+
+**Card 4 — "Confianca da atribuicao"**: replace current sub with:
+- Primary: linkage percentage + "X/Y chamadas ligadas"
+- Secondary line: per-provider breakdown (compact, e.g. "Apify 3/3 · OpenAI 5/8 · DFS 2/2")
+
+### 3. Validation
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Confirm no `blocked_allowlist` events can occur during cache_only mode by code inspection
+
+### Files changed
+
+- `src/lib/admin/system-queries.server.ts` — new fields + confidence formula
+- `src/components/admin/v2/visao-geral/expense-section.tsx` — updated ReportCostCards
+
+### What will NOT change
+
+P01-P07 report UI, public pages, provider execution logic, pricing formulas, cache/fresh execution mode, PDF pipeline, auth/admin permissions.

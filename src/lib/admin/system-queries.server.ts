@@ -114,6 +114,18 @@ export interface Expense30d {
   fresh_total_provider_calls: number;
   /** Provider calls with analysis_event_id linked */
   fresh_calls_with_event_id: number;
+  /** === Attribution coverage metrics (30d) === */
+  provider_calls_total_30d: number;
+  provider_calls_linked_30d: number;
+  provider_calls_unlinked_30d: number;
+  provider_linkage_rate_pct: number;
+  provider_linkage_by_provider: ProviderLinkageRow[];
+}
+
+export interface ProviderLinkageRow {
+  provider: string;
+  total: number;
+  linked: number;
 }
 
 export interface CostCaps {
@@ -804,6 +816,11 @@ async function fetchReportCounts(sinceIso: string): Promise<{
   confidence: "alta" | "media" | "baixa";
   fresh_total_provider_calls: number;
   fresh_calls_with_event_id: number;
+  provider_calls_total_30d: number;
+  provider_calls_linked_30d: number;
+  provider_calls_unlinked_30d: number;
+  provider_linkage_rate_pct: number;
+  provider_linkage_by_provider: ProviderLinkageRow[];
 }> {
   // LEGACY NOTE: provider_call_logs rows created before the analysis_event_id
   // propagation was deployed (May 2026) will have analysis_event_id = NULL.
@@ -880,28 +897,45 @@ async function fetchReportCounts(sinceIso: string): Promise<{
       ? Number((freshLinkedTotal / freshLinkedReports).toFixed(4))
       : null;
 
-  // Confidence: based on how many fresh events have complete provider linkage
-  let confidence: "alta" | "media" | "baixa" = "baixa";
-  if (freshCompleteReports >= 20) confidence = "alta";
-  else if (freshCompleteReports >= 5) confidence = "media";
+  // ── Attribution coverage: total / linked / per-provider (30d) ──
+  const { data: allProviderCalls } = await supabaseAdmin
+    .from("provider_call_logs")
+    .select("provider, analysis_event_id")
+    .eq("status", "success")
+    .gte("created_at", sinceIso);
 
-  // Count total provider calls and how many have event IDs (for transparency)
-  let freshTotalProviderCalls = 0;
-  let freshCallsWithEventId = 0;
-  {
-    const { count: totalCount } = await supabaseAdmin
-      .from("provider_call_logs")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "success")
-      .gte("created_at", sinceIso);
-    const { count: linkedCount } = await supabaseAdmin
-      .from("provider_call_logs")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "success")
-      .gte("created_at", sinceIso)
-      .not("analysis_event_id", "is", null);
-    freshTotalProviderCalls = totalCount ?? 0;
-    freshCallsWithEventId = linkedCount ?? 0;
+  const freshTotalProviderCalls = allProviderCalls?.length ?? 0;
+  const freshCallsWithEventId = allProviderCalls?.filter(
+    (c) => c.analysis_event_id != null,
+  ).length ?? 0;
+
+  // Per-provider linkage breakdown
+  const providerMap = new Map<string, { total: number; linked: number }>();
+  for (const call of allProviderCalls ?? []) {
+    const p = (call.provider as string) ?? "unknown";
+    const entry = providerMap.get(p) ?? { total: 0, linked: 0 };
+    entry.total += 1;
+    if (call.analysis_event_id != null) entry.linked += 1;
+    providerMap.set(p, entry);
+  }
+  const providerLinkageByProvider: ProviderLinkageRow[] = [...providerMap.entries()]
+    .map(([provider, v]) => ({ provider, total: v.total, linked: v.linked }))
+    .sort((a, b) => b.total - a.total);
+
+  const providerCallsTotal30d = freshTotalProviderCalls;
+  const providerCallsLinked30d = freshCallsWithEventId;
+  const providerCallsUnlinked30d = providerCallsTotal30d - providerCallsLinked30d;
+  const providerLinkageRatePct =
+    providerCallsTotal30d > 0
+      ? Number(((providerCallsLinked30d / providerCallsTotal30d) * 100).toFixed(1))
+      : 0;
+
+  // Confidence: based on sample size AND linkage rate
+  let confidence: "alta" | "media" | "baixa" = "baixa";
+  if (freshCompleteReports >= 20 && providerLinkageRatePct >= 95) {
+    confidence = "alta";
+  } else if (freshCompleteReports >= 5 && providerLinkageRatePct >= 85) {
+    confidence = "media";
   }
 
   return {
@@ -914,6 +948,11 @@ async function fetchReportCounts(sinceIso: string): Promise<{
     confidence,
     fresh_total_provider_calls: freshTotalProviderCalls,
     fresh_calls_with_event_id: freshCallsWithEventId,
+    provider_calls_total_30d: providerCallsTotal30d,
+    provider_calls_linked_30d: providerCallsLinked30d,
+    provider_calls_unlinked_30d: providerCallsUnlinked30d,
+    provider_linkage_rate_pct: providerLinkageRatePct,
+    provider_linkage_by_provider: providerLinkageByProvider,
   };
 }
 
