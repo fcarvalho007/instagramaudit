@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { AdminCard } from "@/components/admin/v2/admin-card";
+import { VisualCoverDebugCard } from "@/components/admin/v2/sistema/visual-cover-debug-card";
 import { AdminBadge } from "@/components/admin/v2/admin-badge";
 import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
 import { KPICard } from "@/components/admin/v2/kpi-card";
@@ -340,6 +341,9 @@ export function CostsDetailSection() {
           </div>
         )}
       </AdminCard>
+
+      {/* ─── P07 Visual Cover Debug ──────────────────────── */}
+      <VisualCoverDebugCard />
 
     </section>
   );
