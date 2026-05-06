@@ -14,6 +14,9 @@ import { RevenueSection } from "@/components/admin/v2/visao-geral/revenue-sectio
 import { ExpenseSection } from "@/components/admin/v2/visao-geral/expense-section";
 import { KanbanSection } from "@/components/admin/v2/visao-geral/kanban-section";
 import { IntentSection } from "@/components/admin/v2/visao-geral/intent-section";
+import { ExecutionModeCard } from "@/components/admin/v2/visao-geral/execution-mode-card";
+import { TestProfilesCard } from "@/components/admin/v2/visao-geral/test-profiles-card";
+import { CacheMaintenanceCard } from "@/components/admin/v2/visao-geral/cache-maintenance-card";
 
 export const Route = createFileRoute("/admin/visao-geral")({
   component: VisaoGeralPage,
@@ -34,6 +37,11 @@ function VisaoGeralPage() {
         }
       />
       <div className="flex flex-col gap-14">
+        <div className="flex flex-col gap-6">
+          <ExecutionModeCard />
+          <TestProfilesCard />
+          <CacheMaintenanceCard />
+        </div>
         <FunnelSection />
         <RevenueSection />
         <ExpenseSection />
