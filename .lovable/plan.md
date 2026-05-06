@@ -1,84 +1,92 @@
 
-# Auditoria P07 — Visual Cover Analysis
+# P04 Caption Diagnostics — Robustness Fixes
 
-## Status actual: **Fully implemented, never executed**
+No locked files are affected. Changes limited to the 3 allowed files that need edits.
 
-A cadeia completa existe:
-- Tipos (`visual-cover-types.ts`) — completos
-- Prompt (`visual-cover-prompt.ts`) — existe
-- Server call (`visual-cover-analysis.server.ts`) — OpenAI vision API com gating, timeout, cost logging, error handling
-- Integração no pipeline (`analyze-public-v1.ts` linhas 1009-1051) — gated, com cache reuse
-- Snapshot mapping (`visual_cover_analysis` no payload) — persiste quando gerado
-- Parsing no bloco (`report-diagnostic-block.tsx` linha 165) — lê do snapshot
-- Card UI (`visual-cover-analysis-card.tsx`) — 460 linhas, completo com thumbnails, scores, sub-scores, diagnóstico, metodologia
+## 1. Enforce schemaVersion in semantic parsing
 
-**Zero execuções**: `provider_call_logs WHERE actor = 'visual-cover-analysis'` retorna 0 registos.
+**File**: `src/components/report-redesign/v2/report-diagnostic-block.tsx` (line 61)
 
-## 1. Dados dos posts
-
-| Campo | Disponível |
-|-------|-----------|
-| `thumbnail_url` | Sim — posts têm thumbnails (o card já os mostra) |
-| `permalink` / `shortcode` | Sim |
-| `format` | Sim |
-| `caption` | Sim |
-| `date` / `taken_at_iso` | Sim |
-
-## 2. Porquê "Score visual indisponível"
-
-O card recebe `analysis={parseVisualCoverAnalysis(payload)}`, que retorna `null` porque nenhum snapshot contém `visual_cover_analysis`.
-
-A cadeia de gating no `analyze-public-v1.ts` (linha 1023):
+Add `schemaVersion` check to `parseCaptionSemanticAnalysis`:
 
 ```
-if (isOpenAiAllowed(handle)) { ... }
+// Before:
+if (r.source !== "openai" || typeof r.analyzedCaptions !== "number") return null;
+
+// After:
+if (r.source !== "openai" || typeof r.analyzedCaptions !== "number" || r.schemaVersion !== 2) return null;
 ```
 
-Que por sua vez chama:
-1. `isOpenAiEnabled()` → `process.env.OPENAI_ENABLED === "true"` 
-2. `isOpenAiTestingModeActive()` → default ON
-3. `getOpenAiAllowlist().includes(handle)` → handle must be in `OPENAI_ALLOWLIST`
+Old cached data without `schemaVersion` (or version 1) returns `null` -- card falls back to deterministic rendering. Next OpenAI call will regenerate with v2.
 
-Os secrets `OPENAI_ENABLED`, `OPENAI_ALLOWLIST`, `OPENAI_API_KEY` e `OPENAI_TESTING_MODE` existem no Lovable Cloud. **Se `OPENAI_ENABLED` for `"true"` e o handle estiver na allowlist, a próxima análise gerará P07.**
+## 2. Emoji-only caption word count fix
 
-O blocker exacto é: **os snapshots existentes foram gerados quando a gate não passou** (OPENAI_ENABLED não era "true", ou o handle não estava na allowlist, ou o visual cover code ainda não existia nessa versão).
+**File**: `src/lib/report/caption-intelligence.ts` (lines 220-233)
 
-## 3. Infraestrutura OpenAI
+Update `cleanCaption` to strip emojis before splitting:
 
-| Dimensão | Estado |
-|----------|--------|
-| API key | `OPENAI_API_KEY` — secret existe |
-| Model | `gpt-5.4-mini` (hardcoded) |
-| Provider call logs | Sim — `recordProviderCall` com actor `visual-cover-analysis` |
-| Timeout | 45s |
-| Cost logging | Sim — `calculateOpenAiCost` |
-| Gating | `OPENAI_ENABLED` + `OPENAI_TESTING_MODE` + `OPENAI_ALLOWLIST` |
-| Cache reuse | Sim — reutiliza `visual_cover_analysis` de snapshot anterior se existir |
+```
+function cleanCaption(raw: string): string {
+  return raw
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/\b[\w-]+(?:\.[\w-]+){1,}(?:\/\S*)?/g, " ")
+    .replace(/[#@][\p{L}\p{N}_]+/gu, " ")
+    .replace(/\p{Extended_Pictographic}/gu, " ")   // <-- NEW: strip emojis
+    .replace(/\s+/g, " ")
+    .trim();
+}
+```
 
-## 4. O que NÃO precisa de ser editado
+Result: "fire fire fire" -> 0 words. "Grande novidade fire" -> 2 words.
 
-- `visual-cover-analysis.server.ts` — funcional
-- `visual-cover-analysis-card.tsx` — funcional
-- `visual-cover-types.ts` — completo
-- `visual-cover-prompt.ts` — existe
-- `report-diagnostic-block.tsx` — já parseia e passa ao card
-- `analyze-public-v1.ts` — já chama `generateVisualCoverAnalysis`
+## 3. Basic English opening + engagement patterns
 
-## 5. O que é preciso para activar
+**File**: `src/lib/report/caption-intelligence.ts`
 
-**Nenhuma edição de código.** Apenas:
+Add EN patterns to the existing arrays:
 
-1. Confirmar que `OPENAI_ENABLED` = `"true"` no Lovable Cloud
-2. Confirmar que o handle de teste está na `OPENAI_ALLOWLIST`
-3. Executar uma nova análise para o handle (forçar refresh, não cache)
-4. O snapshot resultante terá `visual_cover_analysis` e o card renderiza automaticamente
+`OPENING_NEWS_TERMS`: add `"new ", "launch", "update", "announcing", "just launched"`
 
-## 6. Riscos
+`OPENING_STORY_TERMS`: add `"today ", "yesterday", "last week", "i tried", "we tested"`
 
-- **Model `gpt-5.4-mini`**: Se o nome do modelo mudou na API da OpenAI, a chamada falhará com HTTP 404. Verificar nos logs após a primeira execução.
-- **Thumbnail URLs**: O servidor OpenAI precisa de aceder às URLs dos thumbnails. Se passarem por proxy (`/api/public/ig-thumb`), as URLs não são acessíveis externamente. Verificar se as URLs raw são usadas (linha 1034 usa `p.thumbnail_url!` directamente — são os URLs raw do Apify, não proxied).
-- **Custo**: `detail: "low"` minimiza tokens de imagem. 12 imagens × low detail ≈ 85 tokens/imagem ≈ 1020 tokens de imagem + prompt + completion ≈ ~$0.01-0.02 por análise.
+`classifyOpening`: add EN question starts: `"what ", "why ", "how ", "do you", "have you", "would you", "can you"`
 
-## Próximo passo recomendado
+`COMMENT_ENGAGEMENT_TERMS`: add:
+- `"comment"`, `"tell me"`, `"let me know"`, `"what do you think"`, `"have you tried"`, `"which one"`, `"would you use"`, `"drop a comment"`
 
-Confirmar os valores das env vars e executar uma nova análise. Se falhar, consultar `provider_call_logs WHERE actor = 'visual-cover-analysis'` para o código de erro exacto.
+## 4. Replace hardcoded P04 colors
+
+**File**: `src/components/report-redesign/v2/caption-diagnostics-card.tsx`
+
+| Line | Before | After |
+|------|--------|-------|
+| 265 | `bg-rose-50` | `bg-tint-danger` |
+| 269 | `text-rose-600 font-medium` | `text-signal-danger font-medium` |
+| 276 | `text-rose-500` | `text-signal-danger` |
+| 285 | `bg-rose-400` | `bg-signal-danger` |
+| 606 | `bg-amber-50` | `bg-tint-warning` |
+| 607 | `bg-rose-50` | `bg-tint-danger` |
+| 686 | `text-amber-600` | `text-signal-warning` |
+
+## 5. Theme reliability guard
+
+**File**: `src/components/report-redesign/v2/caption-diagnostics-card.tsx` (around line 364)
+
+When `avgWordsPerCaption < 5` and no semantic data, filter deterministic themes more aggressively -- show "Sem tema dominante claro" if remaining themes after filtering are empty. The existing `isWeakThemeLabel` + fallback on line 413 already handles the display; we just need to widen the guard when captions are very short.
+
+Add after line 364:
+```typescript
+// When captions are extremely short, deterministic themes are unreliable
+const tooShortForThemes = !hasSemantic && data.captionStats.avgWordsPerCaption < 5;
+```
+Then on line 403, add `!tooShortForThemes &&` before `themes.length > 0`.
+
+## Files changed
+
+1. `src/components/report-redesign/v2/report-diagnostic-block.tsx` -- schemaVersion check (1 line)
+2. `src/lib/report/caption-intelligence.ts` -- emoji cleanup + EN patterns (~20 lines)
+3. `src/components/report-redesign/v2/caption-diagnostics-card.tsx` -- token colors + theme guard (~10 lines)
+
+## Files NOT touched
+
+P05, P07, Block 1, P03, PDF, auth/admin, global tokens, locked files, OpenAI prompts, Apify logic.
