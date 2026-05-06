@@ -17,6 +17,9 @@ import {
   ThumbsUp,
   AlertTriangle,
   ShoppingCart,
+  Zap,
+  Calendar,
+  Film,
 } from "lucide-react";
 import type { AudienceResponseStatus } from "@/lib/report/block02-diagnostic";
 import type { CommentIntelligence } from "@/lib/analysis/types";
@@ -546,6 +549,7 @@ export function DiagnosticRanking({
 interface AudienceHighlightProps {
   avgLikes: number;
   avgComments: number;
+  commentsToLikesPct?: number;
   sampleSize?: number;
   totalLikes?: number | null;
   totalComments?: number | null;
@@ -555,14 +559,20 @@ interface AudienceHighlightProps {
     comments: number;
     likes: number;
     captionExcerpt: string;
+    format?: string | null;
+    date?: string | null;
+    commentsToLikesPct?: number;
   } | null;
   status?: AudienceResponseStatus;
   commentIntel?: CommentIntelligence | null;
+  /** P04 cross-reference: caption comment engagement strategy */
+  captionEngagementStrategy?: "active" | "occasional" | "passive" | null;
 }
 
 export function DiagnosticAudienceHighlight({
   avgLikes,
   avgComments,
+  commentsToLikesPct,
   sampleSize,
   totalLikes,
   totalComments,
@@ -570,9 +580,11 @@ export function DiagnosticAudienceHighlight({
   topConversationPost,
   status = "silent",
   commentIntel,
+  captionEngagementStrategy,
 }: AudienceHighlightProps) {
   const ownerReplies = commentIntel?.available ? commentIntel.ownerRepliesCount : 0;
   const sampleComments = commentIntel?.available ? commentIntel.sampleComments : null;
+  const ownerReplyRatePct = commentIntel?.available ? commentIntel.ownerReplyRatePct : null;
 
   /* Determine if KPI 2 and KPI 3 are in alert state */
   const commentsIsAlert = avgComments < 1;
