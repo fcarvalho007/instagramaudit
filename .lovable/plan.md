@@ -1,32 +1,83 @@
 
-# QA Validation — P04 Caption Diagnostics Robustness
+## Problem
 
-## Preliminary Audit Results
+The "Estimativa por novo report" card shows **$0.01** because:
 
-| # | Case | Status | Evidence |
-|---|------|--------|----------|
-| 1 | Old semantic cache (no schemaVersion) | **PASS** | `parseCaptionSemanticAnalysis` at line 62 returns `null` when `r.schemaVersion !== 2`. Card falls back to deterministic rendering. |
-| 2 | Valid semantic cache (schemaVersion: 2) | **PASS** | Line 62 accepts `schemaVersion === 2`. Lines 396-416, 420-444, 477-505, 515-543, 669, 674, 680, 686, 695-728 all check `hasSemantic` and render semantic fields when present. |
-| 3 | Emoji-only captions | **PASS** | `cleanCaption` at line 225 strips `\p{Extended_Pictographic}`. `countWords` at line 230-233 calls `cleanCaption` first. "🔥🔥🔥" becomes empty string, word count = 0. "#ai #marketing 🔥🔥" becomes empty (hashtags + emojis stripped), word count = 0. |
-| 4 | Very short captions (avgWordsPerCaption < 5) | **PASS** | `tooShortForThemes` guard at line 372. When true, line 405 skips deterministic themes and shows "Sem tema dominante claro" (line 415). |
-| 5 | English captions | **PASS** | `classifyOpening` at line 265 handles `what/why/how/do you/have you/would you/can you`. `COMMENT_ENGAGEMENT_TERMS` at lines 773-780 include English patterns: "tell me", "let me know", "what do you think", "have you tried", "which one", "would you use", "drop a comment". `OPENING_NEWS_TERMS` and `OPENING_STORY_TERMS` include English terms. |
-| 6 | Visual regression | **PASS** | Zero hardcoded `rose-*`, `amber-*`, `red-*`, `green-*`, `yellow-*` classes. All tone indicators use semantic tokens: `text-signal-danger`, `text-signal-success`, `text-signal-warning`, `bg-tint-danger`, `bg-tint-success`, `bg-tint-warning`, `bg-tint-primary`. |
+1. `analysis_events.estimated_cost_usd` only records **Apify scraping cost** (set via `estimateApifyCost`), ignoring OpenAI and DataForSEO costs
+2. `fresh_total_spend_usd` sums only this partial Apify cost from `analysis_events`
+3. The real per-report cost should include ALL provider calls: Apify profile+posts, Apify comments, OpenAI insights, OpenAI visual cover, DataForSEO
 
-## Remaining Robustness Issues
+**Good news**: `provider_call_logs.analysis_event_id` already links provider calls to analysis events. We can compute accurate per-report cost by summing `provider_call_logs.estimated_cost_usd` grouped by `analysis_event_id`.
 
-None identified. All 6 cases pass static audit. One quality improvement would be to detect English question endings ("?") in `classifyOpening` — already handled via the `first.endsWith("?")` check at line 265.
+---
 
-## Plan
+## Changes
 
-**Single deliverable**: Add a new test file `src/lib/report/__tests__/caption-intelligence-robustness.test.ts` covering:
+### 1. Fix `fetchReportCounts` in `src/lib/admin/system-queries.server.ts`
 
-1. `cleanCaption` — emoji stripping, hashtag removal, URL removal, mixed content
-2. `countWords` via `buildCaptionStats` — emoji-only, hashtag-only, short captions
-3. `classifyOpening` — English question patterns, "What do you think?", "Have you tried this?"
-4. `buildCommentEngagement` — English engagement terms: "let me know", "what do you think"
-5. `parseCaptionSemanticAnalysis` — old cache (no schemaVersion), valid cache (schemaVersion: 2), missing source
-6. `tooShortForThemes` guard behavior (tested via `buildCaptionIntelligence` output)
+Replace the current query that sums `analysis_events.estimated_cost_usd` (Apify-only) with:
 
-Then run `bunx tsc --noEmit` and `bunx vitest run`.
+- Query `provider_call_logs` grouped by `analysis_event_id` where the linked `analysis_event` has `data_source=fresh` and `outcome=success`
+- Sum ALL provider costs per event (Apify + OpenAI + DataForSEO)
+- Count distinct `analysis_event_id` as `fresh_full_reports_30d`
+- Compute `fresh_avg_cost_per_report = total_provider_cost / fresh_full_reports_count`
+- Add a `confidence` field: `"alta"` (>=20), `"media"` (5-19), `"baixa"` (<5 or missing grouping)
 
-**No files modified** except the new test file. No changes to P05, P07, or any other components.
+Updated return type adds:
+```
+fresh_avg_cost_per_report: number | null;
+fresh_linked_provider_calls: number;
+confidence: "alta" | "media" | "baixa";
+```
+
+### 2. Update `Expense30d` interface
+
+Add the new fields to the exported type.
+
+### 3. Redesign `ReportCostCards` in `expense-section.tsx`
+
+Replace the 3 current cards with:
+
+**Card 1 — "Custo médio histórico/report"**
+- Value: `total_api_spend_30d / completed_reports_30d` (same as current `avgCost`)
+- Sub: `"{n} reports gerados · inclui testes/cache · últimos 30 dias"`
+
+**Card 2 — "Estimativa/report fresh"**
+- Value: `fresh_avg_cost_per_report` if available, otherwise `"—"`
+- Sub if reliable: `"{n} reports fresh · sem cache · últimos 30 dias"`
+- Sub if not: `"Sem amostra fiável por report completo"`
+
+**Card 3 — "Despesa acumulada"**
+- Value: `total_api_spend_30d`
+- Sub: `"Apify {x}% · OpenAI {y}% · DFS {z}%"`
+
+**Card 4 — "Confiança da estimativa"**
+- Value: `"Baixa"` / `"Média"` / `"Alta"`
+- Rules: Alta >=20 fresh linked reports, Média 5-19, Baixa <5
+
+### 4. Add tooltips to each card
+
+- Historical: "Inclui todos os custos registados nos últimos 30 dias, incluindo testes e eventuais leituras em cache."
+- Fresh estimate: "Custo real de todos os providers (Apify + OpenAI + DataForSEO) agrupados por report. Só é fiável com amostra suficiente."
+- Accumulated: "Soma total dos custos de APIs registados no período."
+- Confidence: "Baseado no número de reports fresh com custos agrupados por provider."
+
+---
+
+## Files changed
+
+| File | Action |
+|------|--------|
+| `src/lib/admin/system-queries.server.ts` | Fix `fetchReportCounts` query + update `Expense30d` type |
+| `src/components/admin/v2/visao-geral/expense-section.tsx` | Redesign `ReportCostCards` (4 cards + tooltips) |
+
+## Not touched
+
+P04, P05, P07, PDF pipeline, auth, global tokens, locked files, public report UI.
+
+## Validation
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Confirm `provider_call_logs` grouped by `analysis_event_id` includes all providers
+- Confirm $0.01 value is replaced with accurate or explicitly unavailable estimate
