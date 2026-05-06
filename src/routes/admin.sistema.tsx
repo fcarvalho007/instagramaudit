@@ -28,9 +28,9 @@ import { CostsDetailSection } from "@/components/admin/v2/sistema/costs-detail-s
 import { LegacyAccessSection } from "@/components/admin/v2/sistema/legacy-access-section";
 import { AnalysisCostBreakdown } from "@/components/admin/v2/sistema/analysis-cost-breakdown";
 import { adminFetch } from "@/lib/admin/fetch";
- import { ExecutionModeCard } from "@/components/admin/v2/visao-geral/execution-mode-card";
- import { TestProfilesCard } from "@/components/admin/v2/visao-geral/test-profiles-card";
- import { CacheMaintenanceCard } from "@/components/admin/v2/visao-geral/cache-maintenance-card";
+ import { ExecutionModeCard } from "@/components/admin/v2/sistema/execution-mode-card";
+ import { TestProfilesCard } from "@/components/admin/v2/sistema/test-profiles-card";
+ import { CacheMaintenanceCard } from "@/components/admin/v2/sistema/cache-maintenance-card";
  import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
 
 export const Route = createFileRoute("/admin/sistema")({
