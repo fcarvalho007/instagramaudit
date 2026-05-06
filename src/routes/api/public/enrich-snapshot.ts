@@ -171,6 +171,13 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
               }
             }
 
+            // Update enrichment_status in the snapshot payload
+            await patchSnapshotPayload(job.snapshot_id, {
+              enrichment_status: {
+                [job.enrichment_type]: "success",
+              },
+            });
+
             await supabaseAdmin
               .from("enrichment_jobs")
               .update({
@@ -181,10 +188,20 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
               .eq("id", job.id);
             succeeded += 1;
           } else {
+            const finalFailure = job.attempts + 1 >= job.max_attempts;
+            // Update enrichment_status on final failure
+            if (finalFailure) {
+              await patchSnapshotPayload(job.snapshot_id, {
+                enrichment_status: {
+                  [job.enrichment_type]: "error",
+                },
+              });
+            }
+
             await supabaseAdmin
               .from("enrichment_jobs")
               .update({
-                status: job.attempts + 1 >= job.max_attempts ? "error" : "pending",
+                status: finalFailure ? "error" : "pending",
                 error_message: result.error ?? "unknown error",
                 completed_at: new Date().toISOString(),
               })
