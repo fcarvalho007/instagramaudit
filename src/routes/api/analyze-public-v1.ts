@@ -63,40 +63,19 @@ import type { BenchmarkData } from "@/lib/benchmark/reference-data";
 import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 import {
-  generateInsights,
-  generateInsightsV2,
-} from "@/lib/insights/openai-insights.server";
-import type {
-  AiInsightsV1,
-  AiInsightsV2,
-  InsightsContext,
-} from "@/lib/insights/types";
-import { isOpenAiAllowed } from "@/lib/security/openai-allowlist";
-import {
-  isAllowed as isDfsAllowed,
-  isDataForSeoEnabled,
-} from "@/lib/security/dataforseo-allowlist";
-import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
-import { buildInsightsCtx } from "@/lib/insights/build-context";
-import {
-  buildPersistedSummary,
-  decideCacheTtlSeconds,
   readCachedSummary,
   type PersistedMarketSignals,
 } from "@/lib/market-signals/cache";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
-import { generateVisualCoverAnalysis } from "@/lib/report/visual-cover-analysis.server";
-import { generateCaptionSemanticAnalysis } from "@/lib/report/caption-semantic-analysis.server";
-import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
-import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
-import type { GoogleTrendsResult } from "@/lib/dataforseo/endpoints/google-trends";
 import {
   shouldRunCommentScraper,
   isValidInstagramPostUrl,
 } from "@/lib/analysis/comment-scraper.server";
-import { buildUnavailableCommentIntelligence } from "@/lib/analysis/comment-intelligence";
 import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
+import {
+  ALL_ENRICHMENT_TYPES,
+  ENRICHMENT_PRIORITY,
+} from "@/lib/enrichment/types";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -181,129 +160,6 @@ function competitorFailure(
     username,
     error_code: code,
     message: messages[code],
-  };
-}
-
-/**
- * Derive the compact `market_signals` summary the OpenAI prompt expects
- * from the persisted DataForSEO Trends envelope. Pure: no IO. When the
- * envelope is null or non-usable, returns the disabled shape so the
- * model is instructed to ignore the market-signals axis entirely.
- */
-function summarizeMarketSignalsForInsights(
-  ms: PersistedMarketSignals | null,
-): InsightsContext["market_signals"] {
-  if (!ms) return { has_free: false, has_paid: false };
-  const usable = ms.status === "ready" || ms.status === "partial";
-  if (!usable) return { has_free: false, has_paid: false };
-
-  const usableRaw = ms.trends_usable_keywords ?? [];
-  const dropped = (ms.trends_dropped_keywords ?? []).slice(0, 5);
-
-  // Compute the per-keyword mean across the Trends series. Anything with
-  // mean > 0 is considered "usable demand"; the rest is exposed as
-  // `zero_signal_keywords` so the prompt can frame it as absence of demand
-  // instead of opportunity.
-  const trends = ms.trends as GoogleTrendsResult | null;
-  let strongest: string | null = null;
-  let strongestScore: number | null = null;
-  let direction: "up" | "flat" | "down" | null = null;
-  let trendDeltaPct: number | null = null;
-
-  // Default fallback when Trends graph is missing: keep the raw usable
-  // list as `top_keywords` so we still have something to send. We will
-  // overwrite this once we can compute means.
-  let topKeywords: string[] = usableRaw.slice(0, 5);
-  let zeroSignal: string[] = [];
-
-  const graph = trends?.items?.find(
-    (it) => Array.isArray(it.keywords) && Array.isArray(it.data),
-  );
-  if (graph?.keywords && graph.data) {
-    const kws = graph.keywords;
-    const sums = new Array<number>(kws.length).fill(0);
-    const counts = new Array<number>(kws.length).fill(0);
-    for (const row of graph.data) {
-      const values = Array.isArray(row.values) ? row.values : [];
-      for (let i = 0; i < kws.length; i += 1) {
-        const v = values[i];
-        if (typeof v === "number" && Number.isFinite(v)) {
-          sums[i] += v;
-          counts[i] += 1;
-        }
-      }
-    }
-    // Build a {keyword, mean} table restricted to keywords originally
-    // present in the usable list.
-    const usableSet = new Set(usableRaw);
-    const table: Array<{ keyword: string; mean: number }> = [];
-    for (let i = 0; i < kws.length; i += 1) {
-      if (!usableSet.has(kws[i])) continue;
-      const mean = counts[i] > 0 ? sums[i] / counts[i] : 0;
-      table.push({ keyword: kws[i], mean });
-    }
-    // Strong = mean > 0, ordered desc by mean (cap 5).
-    const strong = table
-      .filter((t) => t.mean > 0)
-      .sort((a, b) => b.mean - a.mean);
-    topKeywords = strong.slice(0, 5).map((t) => t.keyword);
-    zeroSignal = table
-      .filter((t) => t.mean === 0)
-      .slice(0, 5)
-      .map((t) => t.keyword);
-
-    const bestIdx =
-      strong.length > 0 ? kws.indexOf(strong[0].keyword) : -1;
-    if (bestIdx >= 0) {
-      strongest = kws[bestIdx];
-      strongestScore = Math.round(strong[0].mean);
-      // Trend direction: compare mean of first quartile vs last quartile of
-      // non-null values for the strongest keyword.
-      const series: number[] = [];
-      for (const row of graph.data) {
-        const v = row.values?.[bestIdx];
-        if (typeof v === "number" && Number.isFinite(v)) series.push(v);
-      }
-      if (series.length >= 8) {
-        const window = Math.max(4, Math.floor(series.length / 4));
-        const head = series.slice(0, window);
-        const tail = series.slice(-window);
-        const headMean = head.reduce((a, b) => a + b, 0) / head.length;
-        const tailMean = tail.reduce((a, b) => a + b, 0) / tail.length;
-        if (headMean > 0) {
-          const delta = (tailMean - headMean) / headMean;
-          trendDeltaPct = Math.round(delta * 100);
-          if (delta > 0.05) direction = "up";
-          else if (delta < -0.05) direction = "down";
-          else direction = "flat";
-        } else if (tailMean > 0) {
-          direction = "up";
-          trendDeltaPct = 100;
-        } else {
-          direction = "flat";
-          trendDeltaPct = 0;
-        }
-      }
-    }
-  }
-
-  // No measurable demand at all → disable the market-signals axis so the
-  // model is instructed to ignore it entirely (avoids pseudo-insights).
-  if (topKeywords.length === 0) {
-    return { has_free: false, has_paid: false };
-  }
-
-  return {
-    has_free: true,
-    has_paid: false,
-    top_keywords: topKeywords,
-    strongest_keyword: strongest,
-    strongest_score: strongestScore,
-    trend_direction: direction,
-    trend_delta_pct: trendDeltaPct,
-    usable_keyword_count: topKeywords.length,
-    zero_signal_keywords: zeroSignal,
-    dropped_keywords: dropped,
   };
 }
 
@@ -802,95 +658,13 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           );
 
           // ─── Market signals (free DataForSEO Trends) ────────────────
-          // Inline as part of the snapshot so the report, OpenAI insights
-          // and PDF all read from the same persisted source of truth.
-          // Triple-gated: cache → kill-switch → allowlist. NEVER throws —
-          // failure here must not break the Instagram analysis.
+          // Reuse cached summary from previous snapshot if still valid.
+          // Fresh DataForSEO calls are now handled asynchronously via
+          // enrichment_jobs to avoid Worker timeout.
           let marketSignalsFree: PersistedMarketSignals | null = null;
-
-          // 1. Reuse cached summary from the previous snapshot if still
-          //    valid. Avoids any DataForSEO call (and any new
-          //    provider_call_logs row) when the same handle is re-analysed
-          //    within TTL — for example via ?refresh=1.
           if (existing) {
             const cached = readCachedSummary(existing.normalized_payload, "free");
             if (cached) marketSignalsFree = cached;
-          }
-
-          // 2. Cache miss → attempt one orchestration if both gates pass.
-          if (
-            !marketSignalsFree &&
-            isDataForSeoEnabled() &&
-            isDfsAllowed(primaryProfile.username)
-          ) {
-            const dfsStartedAt = new Date();
-            const tentativeSnapshot = {
-              profile: primaryProfile,
-              content_summary: primarySummary,
-              competitors: competitorResults,
-              posts: primaryEnriched.posts,
-              format_stats: primaryEnriched.format_stats,
-            } as unknown as SnapshotPayload;
-            try {
-              const result = await buildMarketSignals(tentativeSnapshot, {
-                ownerHandle: primaryProfile.username,
-                plan: "free",
-                totalTimeoutMs: 20_000,
-              });
-              // Collect provider cost + log ids written during this call.
-              let providerCostUsd = 0;
-              let providerCallLogIds: string[] = [];
-              try {
-                const { data: logs } = await supabaseAdmin
-                  .from("provider_call_logs")
-                  .select("id, actual_cost_usd")
-                  .eq("provider", "dataforseo")
-                  .eq("handle", primaryProfile.username.toLowerCase())
-                  .gte("created_at", dfsStartedAt.toISOString());
-                if (Array.isArray(logs)) {
-                  providerCallLogIds = logs.map((l) => l.id as string);
-                  providerCostUsd = logs.reduce(
-                    (sum, l) =>
-                      sum +
-                      (typeof l.actual_cost_usd === "number"
-                        ? l.actual_cost_usd
-                        : 0),
-                    0,
-                  );
-                }
-              } catch (err) {
-                console.warn(
-                  "[analyze-public-v1] failed to read dataforseo provider_call_logs",
-                  err,
-                );
-              }
-              const ttl = decideCacheTtlSeconds(result);
-              if (ttl !== null) {
-                marketSignalsFree = buildPersistedSummary({
-                  result,
-                  plan: "free",
-                  ttlSeconds: ttl,
-                  providerCostUsd,
-                  providerCallLogIds,
-                  now: dfsStartedAt,
-                });
-              }
-            } catch (err) {
-              // Defence in depth — buildMarketSignals already swallows.
-              console.warn(
-                "[analyze-public-v1] inline market signals threw",
-                err,
-              );
-            }
-          } else if (!isDataForSeoEnabled()) {
-            console.info(
-              "[analyze-public-v1] DataForSEO disabled — skipping market signals",
-            );
-          } else if (!marketSignalsFree) {
-            console.info(
-              "[analyze-public-v1] handle not on DataForSEO allowlist — skipping market signals",
-              primaryProfile.username,
-            );
           }
 
           // Compute benchmark positioning early so it can be embedded both
@@ -982,359 +756,111 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           });
 
           // ─── OpenAI insights (gated, fresh-only, best-effort) ─────────
-          // Triple-gated inside `generateInsights`: OPENAI_ENABLED kill
-          // switch + testing-mode allowlist + OPENAI_API_KEY presence.
-          // Runs AFTER the base snapshot is persisted, so any failure or
-          // timeout here cannot prevent the report from existing.
-          let aiInsights: AiInsightsV1 | null = null;
-          if (isOpenAiAllowed(primaryProfile.username)) {
-            try {
-              const { ctx } = buildInsightsCtx({
-                profile: primaryProfile,
-                summary: primarySummary,
-                posts: primaryEnriched.posts,
-                formatStats: primaryEnriched.format_stats,
-                marketSignalsFree,
-                competitorResults,
-                benchmark: benchmarkPositioningEarly,
-                marketSignals: summarizeMarketSignalsForInsights(marketSignalsFree),
-              });
-              const result = await generateInsights(ctx, { analysisEventId: analysisEventId ?? undefined });
-              if (result.ok && result.insights) {
-                aiInsights = result.insights;
-              } else if (result.reason && result.reason !== "DISABLED" && result.reason !== "NOT_ALLOWED") {
-                console.warn(
-                  "[analyze-public-v1] generateInsights soft-failed",
-                  result.reason,
-                  result.detail ?? "",
-                );
-              }
-            } catch (err) {
-              // Hard guarantee: AI insights never break the analysis.
-              console.error("[analyze-public-v1] generateInsights threw", err);
-            }
-          }
-
-          // ─── OpenAI insights v2 (R3): inline por secção, KB-aware ─────
-          // Geração independente da v1 (cache por inputs_hash + kb_version
-          // dentro de `generateInsightsV2`). Falha silenciosa: o report
-          // continua a renderizar mesmo se a v2 não responder.
-          let aiInsightsV2: AiInsightsV2 | null = null;
-          if (isOpenAiAllowed(primaryProfile.username)) {
-            try {
-              const previousV2 =
-                (existing?.normalized_payload as unknown as {
-                  ai_insights_v2?: AiInsightsV2 | null;
-                } | null)?.ai_insights_v2 ?? null;
-              const { ctx: ctxV2 } = buildInsightsCtx({
-                profile: primaryProfile,
-                summary: primarySummary,
-                posts: primaryEnriched.posts,
-                formatStats: primaryEnriched.format_stats,
-                marketSignalsFree,
-                competitorResults,
-                benchmark: benchmarkPositioningEarly,
-                marketSignals: summarizeMarketSignalsForInsights(marketSignalsFree),
-              });
-              const resultV2 = await generateInsightsV2(ctxV2, {
-                previous: previousV2,
-                analysisEventId: analysisEventId ?? undefined,
-              });
-              if (resultV2.ok && resultV2.insights) {
-                aiInsightsV2 = resultV2.insights;
-              } else if (
-                resultV2.reason &&
-                resultV2.reason !== "DISABLED" &&
-                resultV2.reason !== "NOT_ALLOWED"
-              ) {
-                console.warn(
-                  "[analyze-public-v1] generateInsightsV2 soft-failed",
-                  resultV2.reason,
-                  resultV2.detail ?? "",
-                );
-              }
-            } catch (err) {
-              console.error("[analyze-public-v1] generateInsightsV2 threw", err);
-            }
-          }
-
-          // ─── Resilient persistence (Step 2: enrich snapshot) ──────────
-
-          // ─── Visual cover analysis (OpenAI vision, gated) ─────────────
-          // Runs AFTER text insights so the daily cap accounts for text
-          // costs first. Uses the same gates (OPENAI_ENABLED + allowlist).
-          let visualCoverAnalysis: VisualCoverAnalysis | null = null;
-          console.info("[analyze-public-v1] entering visual cover section", { handle: primaryProfile.username });
-          // Reuse cached visual cover from previous snapshot to avoid
-          // redundant OpenAI vision calls on the same post set.
-          const cachedVisualCover = (existing?.normalized_payload as Record<string, unknown> | undefined)?.visual_cover_analysis;
-          if (
-            cachedVisualCover &&
-            typeof cachedVisualCover === "object" &&
-            typeof (cachedVisualCover as Record<string, unknown>).overallScore === "number"
-          ) {
-            visualCoverAnalysis = cachedVisualCover as VisualCoverAnalysis;
-            console.info("[analyze-public-v1] reused cached visual_cover_analysis");
-          } else if (!isOpenAiAllowed(primaryProfile.username)) {
-            console.info("[analyze-public-v1] visual cover skipped — OpenAI not allowed for", primaryProfile.username);
-          } else if (isOpenAiAllowed(primaryProfile.username)) {
-            try {
-              const thumbPosts = primaryEnriched.posts
-                .filter((p) =>
-                  typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0,
-                )
-                .slice(0, 12);
-
-              if (thumbPosts.length > 0) {
-                const result = await generateVisualCoverAnalysis({
-                  handle: primaryProfile.username,
-                  thumbnailUrls: thumbPosts.map((p) => p.thumbnail_url!),
-                  postIds: thumbPosts.map((p) =>
-                    p.id ?? p.shortcode ?? "",
-                  ),
-                  analysisEventId: analysisEventId ?? undefined,
-                });
-                if (result.ok && result.analysis) {
-                  visualCoverAnalysis = result.analysis;
-                } else if (result.reason && result.reason !== "DISABLED" && result.reason !== "NOT_ALLOWED") {
-                  console.warn(
-                    "[analyze-public-v1] visual cover analysis soft-failed",
-                    result.reason,
-                  );
-                }
-              }
-            } catch (err) {
-              console.error("[analyze-public-v1] visual cover analysis threw", err);
-            }
-          }
-
-          // ─── Caption semantic analysis (OpenAI text, gated) ────────────
-          // Runs AFTER visual cover. Uses the same gates.
-          let captionSemanticAnalysis: CaptionSemanticAnalysis | null = null;
-          const cachedCaptionSemantic = (existing?.normalized_payload as Record<string, unknown> | undefined)?.caption_semantic_analysis;
-          if (
-            cachedCaptionSemantic &&
-            typeof cachedCaptionSemantic === "object" &&
-            typeof (cachedCaptionSemantic as Record<string, unknown>).source === "string" &&
-            (cachedCaptionSemantic as Record<string, unknown>).schemaVersion === 2
-          ) {
-            captionSemanticAnalysis = cachedCaptionSemantic as CaptionSemanticAnalysis;
-            console.info("[analyze-public-v1] reused cached caption_semantic_analysis");
-          } else if (isOpenAiAllowed(primaryProfile.username)) {
-            try {
-              const captionTexts = primaryEnriched.posts
-                .filter((p) => typeof p.caption === "string" && p.caption.trim().length > 0)
-                .slice(0, 12)
-                .map((p) => p.caption!);
-
-              if (captionTexts.length >= 4) {
-                const result = await generateCaptionSemanticAnalysis({
-                  handle: primaryProfile.username,
-                  captions: captionTexts,
-                  analysisEventId: analysisEventId ?? undefined,
-                });
-                if (result.ok && result.analysis) {
-                  captionSemanticAnalysis = result.analysis;
-                } else if (result.reason && result.reason !== "DISABLED" && result.reason !== "NOT_ALLOWED") {
-                  console.warn("[analyze-public-v1] caption semantic analysis soft-failed", result.reason);
-                }
-              }
-            } catch (err) {
-              console.error("[analyze-public-v1] caption semantic analysis threw", err);
-            }
-          }
-
-          // Only re-write when we have AI insights to attach. The upsert
-          // collapses to an UPDATE on the existing cache_key — Apify and
-          // DataForSEO are NOT called again. If OpenAI failed/timed out,
-          // the base snapshot from Step 1 is left intact.
-          let normalizedPayload: Record<string, unknown> =
+          // ─── Async enrichment jobs ────────────────────────────────────
+          // Create enrichment_jobs for all enrichment types. These run
+          // asynchronously in a separate Worker via /api/public/enrich-snapshot
+          // so the main request completes within the Worker timeout budget.
+          const normalizedPayload: Record<string, unknown> =
             baseNormalizedPayload as unknown as Record<string, unknown>;
-          if (aiInsights) {
-            normalizedPayload = {
-              ...normalizedPayload,
-              ai_insights_v1: aiInsights,
-            };
-          }
-          if (aiInsightsV2) {
-            normalizedPayload = {
-              ...normalizedPayload,
-              ai_insights_v2: aiInsightsV2,
-            };
-          }
-          if (visualCoverAnalysis) {
-            normalizedPayload = {
-              ...normalizedPayload,
-              visual_cover_analysis: visualCoverAnalysis,
-            };
-          }
-          if (captionSemanticAnalysis) {
-            normalizedPayload = {
-              ...normalizedPayload,
-              caption_semantic_analysis: captionSemanticAnalysis,
-            };
-          }
-          if (aiInsights || aiInsightsV2 || visualCoverAnalysis || captionSemanticAnalysis) {
-            const enrichedSnapshotId = await storeSnapshot({
-              cacheKey,
-              instagramUsername: primaryProfile.username,
-              competitorUsernames: competitors,
-              normalizedPayload,
-            });
-            console.info(
-              "[analyze-public-v1] snapshot enriched",
-              {
-                v1: !!aiInsights,
-                v2: !!aiInsightsV2,
-                visualCover: !!visualCoverAnalysis,
-                captionSemantic: !!captionSemanticAnalysis,
-              },
-              enrichedSnapshotId ?? snapshotId ?? "(null)",
-            );
-          } else {
-            console.info(
-              "[analyze-public-v1] snapshot kept without enrichment (OpenAI unavailable or failed)",
-            );
-          }
 
-          // ─── Comment Intelligence (free report, gated by feature flag) ──────
-          // ─── Final provider call linkage ──────────────────────────────
-          // Re-link any provider_call_logs rows created AFTER the initial
-          // linkProviderCallsToEvent (e.g. DataForSEO calls that ran before
-          // the event, or any edge cases). Best-effort, never blocks.
-          if (analysisEventId) {
-            await linkProviderCallsToEvent(
-              primary,
-              providerCallsStartedAt,
-              analysisEventId,
-            );
-          }
-
-          // ─── Comment Intelligence (free report, gated by feature flag) ──────
-          // Disabled by default via COMMENT_SCRAPER_ENABLED secret.
-          // Never blocks the base report. Failures are swallowed.
-          const commentScraperEnabled =
-            (process.env.COMMENT_SCRAPER_ENABLED ?? "false").toLowerCase() === "true";
-
-          const commentScraperInternalTest =
-            (process.env.COMMENT_SCRAPER_INTERNAL_TEST ?? "false").toLowerCase() === "true";
-
-          const runComments = shouldRunCommentScraper({
-            featureEnabled: commentScraperEnabled,
-            isInternalTest: commentScraperInternalTest,
-          });
-
-          console.info("[analyze-public-v1] comment scraper gate", {
-            COMMENT_SCRAPER_ENABLED: process.env.COMMENT_SCRAPER_ENABLED ?? "(unset)",
-            COMMENT_SCRAPER_INTERNAL_TEST: process.env.COMMENT_SCRAPER_INTERNAL_TEST ?? "(unset)",
-            commentScraperEnabled,
-            commentScraperInternalTest,
-            runComments,
-          });
-
-          // Async comment enrichment — creates a job and triggers fire-and-forget.
-          // The main response is returned immediately; enrichment runs in a
-          // separate Worker invocation via /api/public/enrich-comments.
-          if (runComments && snapshotId) {
-            const postsWithUrl = primaryEnriched.posts
-              .filter((p) => !!p.permalink)
-              .sort((a, b) => {
-                const ca = a.comments ?? 0;
-                const cb = b.comments ?? 0;
-                if (cb !== ca) return cb - ca;
-                if (b.engagement_pct !== a.engagement_pct) return b.engagement_pct - a.engagement_pct;
-                return (b.taken_at_iso ?? "").localeCompare(a.taken_at_iso ?? "");
-              });
-
-            const postUrls = postsWithUrl
-              .slice(0, 12)
-              .map((p) => p.permalink!)
-              .filter((u) => isValidInstagramPostUrl(u));
-
-            if (postUrls.length > 0) {
-              // 1. Set processing placeholder in snapshot payload
-              const processingPlaceholder = buildUnavailableCommentIntelligence(primary, "processing");
-              // Override samplePosts with known count for transparency
-              processingPlaceholder.samplePosts = postUrls.length;
-              normalizedPayload = {
-                ...normalizedPayload,
-                comment_intelligence: processingPlaceholder as unknown as Record<string, unknown>,
-              };
-
-              console.info("[analyze-public-v1] creating comment enrichment job", {
-                snapshotId,
-                postUrlCount: postUrls.length,
-              });
-
-              // 2. Insert job into comment_enrichment_jobs
-              try {
-                const { data: jobRow, error: jobErr } = await supabaseAdmin
-                  .from("comment_enrichment_jobs")
-                  .insert({
-                    snapshot_id: snapshotId,
-                    analysis_event_id: analysisEventId ?? null,
-                    handle: primary,
-                    post_urls: postUrls,
-                    status: "pending",
-                  } as never)
-                  .select("id")
-                  .single();
-
-                if (jobErr) {
-                  console.error("[analyze-public-v1] failed to create enrichment job", jobErr.message);
-                } else {
-                  console.info("[analyze-public-v1] enrichment job created", jobRow.id);
-
-                  // 3. Fire-and-forget trigger to the enrichment endpoint
-                  const internalToken = process.env.INTERNAL_API_TOKEN;
-                  if (internalToken) {
-                    const origin = new URL(request.url).origin;
-                    fetch(`${origin}/api/public/enrich-comments`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${internalToken}`,
-                      },
-                      body: JSON.stringify({ job_id: jobRow.id }),
-                    }).catch((triggerErr) => {
-                      console.warn("[analyze-public-v1] fire-and-forget trigger failed (job table ensures delivery)", triggerErr);
-                    });
-                  }
-                }
-              } catch (err) {
-                console.error("[analyze-public-v1] enrichment job creation failed", err);
-              }
-            } else {
-              // No valid URLs — store unavailable state
-              const noUrlsPlaceholder = buildUnavailableCommentIntelligence(primary, "no_valid_post_urls");
-              normalizedPayload = {
-                ...normalizedPayload,
-                comment_intelligence: noUrlsPlaceholder as unknown as Record<string, unknown>,
-              };
-            }
-          } else if (!runComments) {
-            // Comment scraper disabled — store disabled state in payload
-            const disabledPlaceholder = buildUnavailableCommentIntelligence(primary, "comment_scraper_disabled");
-            normalizedPayload = {
-              ...normalizedPayload,
-              comment_intelligence: disabledPlaceholder as unknown as Record<string, unknown>,
-            };
-          }
-
-          // ─── Final snapshot persist (comment_intelligence placeholder) ────
-          // Re-persist the snapshot with the comment_intelligence placeholder
-          // so the report shows "processing" / "disabled" / "no_valid_post_urls"
-          // immediately, even before the async enrichment completes.
-          if ((normalizedPayload as Record<string, unknown>).comment_intelligence) {
+          if (snapshotId) {
             try {
-              await storeSnapshot({
-                cacheKey,
-                instagramUsername: primaryProfile.username,
-                competitorUsernames: competitors,
-                normalizedPayload,
-              });
-            } catch (persistErr) {
-              console.error("[analyze-public-v1] failed to persist comment_intelligence placeholder", persistErr);
+              const enrichmentRows = ALL_ENRICHMENT_TYPES.map((type) => ({
+                snapshot_id: snapshotId,
+                analysis_event_id: analysisEventId ?? null,
+                handle: primary,
+                enrichment_type: type,
+                status: "pending" as const,
+                priority: ENRICHMENT_PRIORITY[type],
+              }));
+
+              const { error: insertErr } = await supabaseAdmin
+                .from("enrichment_jobs")
+                .insert(enrichmentRows as never);
+
+              if (insertErr) {
+                console.error("[analyze-public-v1] failed to create enrichment_jobs", insertErr.message);
+              } else {
+                console.info("[analyze-public-v1] created", enrichmentRows.length, "enrichment_jobs for snapshot", snapshotId);
+              }
+
+              // Fire-and-forget: trigger the async enrichment endpoint
+              const internalToken = process.env.INTERNAL_API_TOKEN;
+              if (internalToken) {
+                const origin = new URL(request.url).origin;
+                fetch(`${origin}/api/public/enrich-snapshot`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${internalToken}`,
+                  },
+                  body: JSON.stringify({ snapshot_id: snapshotId }),
+                }).catch((triggerErr) => {
+                  console.warn("[analyze-public-v1] enrich-snapshot trigger failed (job table ensures delivery)", triggerErr);
+                });
+              }
+            } catch (err) {
+              console.error("[analyze-public-v1] enrichment job creation failed", err);
+            }
+
+            // ─── Comment Intelligence (async, kept separate) ──────────────
+            const commentScraperEnabled =
+              (process.env.COMMENT_SCRAPER_ENABLED ?? "false").toLowerCase() === "true";
+            const commentScraperInternalTest =
+              (process.env.COMMENT_SCRAPER_INTERNAL_TEST ?? "false").toLowerCase() === "true";
+            const runComments = shouldRunCommentScraper({
+              featureEnabled: commentScraperEnabled,
+              isInternalTest: commentScraperInternalTest,
+            });
+
+            if (runComments) {
+              const postsWithUrl = primaryEnriched.posts
+                .filter((p) => !!p.permalink)
+                .sort((a, b) => {
+                  const ca = a.comments ?? 0;
+                  const cb = b.comments ?? 0;
+                  if (cb !== ca) return cb - ca;
+                  if (b.engagement_pct !== a.engagement_pct) return b.engagement_pct - a.engagement_pct;
+                  return (b.taken_at_iso ?? "").localeCompare(a.taken_at_iso ?? "");
+                });
+              const postUrls = postsWithUrl
+                .slice(0, 12)
+                .map((p) => p.permalink!)
+                .filter((u) => isValidInstagramPostUrl(u));
+
+              if (postUrls.length > 0) {
+                try {
+                  const { data: jobRow, error: jobErr } = await supabaseAdmin
+                    .from("comment_enrichment_jobs")
+                    .insert({
+                      snapshot_id: snapshotId,
+                      analysis_event_id: analysisEventId ?? null,
+                      handle: primary,
+                      post_urls: postUrls,
+                      status: "pending",
+                    } as never)
+                    .select("id")
+                    .single();
+                  if (jobErr) {
+                    console.error("[analyze-public-v1] failed to create comment enrichment job", jobErr.message);
+                  } else {
+                    const commentToken = process.env.INTERNAL_API_TOKEN;
+                    if (commentToken) {
+                      const origin = new URL(request.url).origin;
+                      fetch(`${origin}/api/public/enrich-comments`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${commentToken}`,
+                        },
+                        body: JSON.stringify({ job_id: jobRow.id }),
+                      }).catch(() => {});
+                    }
+                  }
+                } catch (err) {
+                  console.error("[analyze-public-v1] comment enrichment job creation failed", err);
+                }
+              }
             }
           }
 

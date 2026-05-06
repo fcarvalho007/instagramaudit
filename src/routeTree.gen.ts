@@ -41,6 +41,7 @@ import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print
 import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
+import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminSimpleLoginRouteImport } from './routes/api/admin/simple-login'
@@ -247,6 +248,11 @@ const ApiPublicPublicReportPdfRoute =
 const ApiPublicIgThumbRoute = ApiPublicIgThumbRouteImport.update({
   id: '/api/public/ig-thumb',
   path: '/api/public/ig-thumb',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicEnrichSnapshotRoute = ApiPublicEnrichSnapshotRouteImport.update({
+  id: '/api/public/enrich-snapshot',
+  path: '/api/public/enrich-snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicEnrichCommentsRoute = ApiPublicEnrichCommentsRouteImport.update({
@@ -552,6 +558,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
+  '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
@@ -631,6 +638,7 @@ export interface FileRoutesByTo {
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
+  '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
@@ -712,6 +720,7 @@ export interface FileRoutesById {
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
+  '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
@@ -794,6 +803,7 @@ export interface FileRouteTypes {
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
     | '/api/public/enrich-comments'
+    | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
@@ -873,6 +883,7 @@ export interface FileRouteTypes {
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
     | '/api/public/enrich-comments'
+    | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
@@ -953,6 +964,7 @@ export interface FileRouteTypes {
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
     | '/api/public/enrich-comments'
+    | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
@@ -1021,6 +1033,7 @@ export interface RootRouteChildren {
   ApiAdminSimpleLoginRoute: typeof ApiAdminSimpleLoginRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiPublicEnrichCommentsRoute: typeof ApiPublicEnrichCommentsRoute
+  ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
   ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
   ReportPrintSnapshotIdRoute: typeof ReportPrintSnapshotIdRoute
@@ -1276,6 +1289,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/ig-thumb'
       fullPath: '/api/public/ig-thumb'
       preLoaderRoute: typeof ApiPublicIgThumbRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/enrich-snapshot': {
+      id: '/api/public/enrich-snapshot'
+      path: '/api/public/enrich-snapshot'
+      fullPath: '/api/public/enrich-snapshot'
+      preLoaderRoute: typeof ApiPublicEnrichSnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/enrich-comments': {
@@ -1780,6 +1800,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSimpleLoginRoute: ApiAdminSimpleLoginRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiPublicEnrichCommentsRoute: ApiPublicEnrichCommentsRoute,
+  ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
   ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
   ReportPrintSnapshotIdRoute: ReportPrintSnapshotIdRoute,

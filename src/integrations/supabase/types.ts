@@ -254,6 +254,60 @@ export type Database = {
         }
         Relationships: []
       }
+      enrichment_jobs: {
+        Row: {
+          analysis_event_id: string | null
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          enrichment_type: string
+          error_message: string | null
+          handle: string
+          id: string
+          input_hash: string | null
+          max_attempts: number
+          priority: number
+          snapshot_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          analysis_event_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          enrichment_type: string
+          error_message?: string | null
+          handle: string
+          id?: string
+          input_hash?: string | null
+          max_attempts?: number
+          priority?: number
+          snapshot_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          analysis_event_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          enrichment_type?: string
+          error_message?: string | null
+          handle?: string
+          id?: string
+          input_hash?: string | null
+          max_attempts?: number
+          priority?: number
+          snapshot_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       knowledge_benchmarks: {
         Row: {
           created_at: string
