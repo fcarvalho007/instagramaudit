@@ -58,7 +58,7 @@ function ProfileRow({ p, isLast }: { p: TestProfileStatus; isLast: boolean }) {
 
   return (
     <div
-      className={`flex flex-col gap-2 py-3 ${!isLast ? "border-b border-admin-border/50" : ""}`}
+      className="flex flex-col gap-2 rounded-lg border border-admin-border/40 bg-admin-surface-muted/30 p-3"
     >
       {/* Row 1: Handle + cache readiness + actions */}
       <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export function TestProfilesCard() {
       {isLoading && (
         <p className="text-[11px] text-admin-text-tertiary">A carregar...</p>
       )}
-      <div>
+      <div className="flex flex-col gap-2">
         {profiles.map((p, i) => (
           <ProfileRow key={p.handle} p={p} isLast={i === profiles.length - 1} />
         ))}
