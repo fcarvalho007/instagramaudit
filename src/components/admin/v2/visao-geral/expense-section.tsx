@@ -423,7 +423,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       {data.apify_actors.length > 0 && (
         <div>
           <ZoneLabel symbol="⊙" label="APIFY · DETALHE POR ACTOR" />
-          <AdminCard className="mt-3 overflow-hidden">
+          <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="expense">
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
@@ -451,7 +451,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       {data.openai_actors && data.openai_actors.length > 0 && (
         <div>
           <ZoneLabel symbol="⊙" label="OPENAI · DETALHE POR OPERAÇÃO" />
-          <AdminCard className="mt-3 overflow-hidden">
+          <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="info">
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
