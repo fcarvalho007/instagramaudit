@@ -1,28 +1,26 @@
-## Current state
+## Problem
 
-The API (`/api/admin/analysis-cost-breakdown`) already groups by enrichment_type and picks the latest job status (line 125-133: ordered DESC by `created_at`, first-wins per type). This is correct.
-
-What's missing: visibility into historical failures when the latest job succeeded.
+`enrichment_status.comments` is always initialized as `"pending"` but never updated — neither when comment scraper is disabled, nor when the job completes/fails.
 
 ## Changes
 
-### 1. API — add `enrichment_history` to response
+### 1. `src/routes/api/analyze-public-v1.ts` — set correct initial comments status
 
-In `src/routes/api/admin/analysis-cost-breakdown.ts`, after building `enrichmentSummary`, also compute a `enrichment_history` map: `Record<string, { total_attempts: number; failed_attempts: number }>`.
+After the comment job creation block (~line 876), use `setEnrichmentStatusAtomic` to set:
+- `"disabled"` if `runComments` is false
+- `"skipped"` if `postUrls.length === 0`
+- keep `"pending"` only when a job is actually created
 
-Count all jobs per type and how many had `status = 'error'`. Only include types where `failed_attempts > 0`.
+### 2. `src/routes/api/public/enrich-comments.ts` — update status on completion
 
-### 2. UI — show history indicator in `EnrichmentDots`
+Add `setEnrichmentStatusAtomic` calls:
+- `"success"` when job completes successfully (after snapshot patch)
+- `"error"` when max attempts exceeded or scraper fails
+- `"skipped"` when no valid post URLs
 
-In `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx`:
-
-- Accept `enrichment_history` as optional prop on `EnrichmentDots`
-- For each type with previous failures, show a small superscript number (e.g. `×2`) or tooltip text like "2 tentativas falhadas anteriores"
-- Use `text-foreground-muted` for the indicator so it doesn't compete with the current status dot
-
-### Files changed
+### Files
 
 | File | Change |
 |------|--------|
-| `src/routes/api/admin/analysis-cost-breakdown.ts` | Add `enrichment_history` field |
-| `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx` | Display history indicator in EnrichmentDots |
+| `src/routes/api/analyze-public-v1.ts` | Set initial comments status based on actual state |
+| `src/routes/api/public/enrich-comments.ts` | Update comments status on job completion |
