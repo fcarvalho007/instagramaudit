@@ -1,68 +1,28 @@
 
-# P05 Conversation Card Refinement
+## Overview
 
-## What changes
+Add `schemaVersion: 2` to the caption semantic analysis pipeline to invalidate stale cached results, and tighten prompt rules so hookQuality, brandVoice, and formulaicPatterns explanations must reference concrete caption evidence.
 
-### 1. KPI 2 subcopy — comment-to-like ratio
-Add `commentsToLikesPct` below the avg comments value. Already available in `AudienceResponseResult` but not passed to `DiagnosticAudienceHighlight`.
+## Changes
 
-- Pass `commentsToLikesPct` as new prop
-- Subcopy: `"X% dos gostos geraram comentário"` (smart formatting for values < 0.1: `"<0,1%"`)
+### 1. `src/lib/report/caption-semantic-types.ts`
+- Add `schemaVersion: number` to `CaptionSemanticAnalysis` interface.
 
-### 2. KPI 3 — reply rate instead of raw count
-When `commentIntel.ownerReplyRatePct` is available:
-- Primary value: `ownerReplyRatePct` (e.g. `"82%"`)
-- Subcopy: `"N respostas públicas"`
-- Fallback to current raw count when commentIntel is unavailable
+### 2. `src/lib/report/caption-semantic-prompt.ts`
+- Add `schemaVersion` (const integer = 2) to the JSON schema `required` array and `properties`.
+- Append evidence rules to the system prompt for hookQuality, brandVoice, and formulaicPatterns explanations (must cite observed patterns, no generic advice, cautious fallback when evidence is weak).
+- Add a global anti-generic rule paragraph.
 
-### 3. Actionable comments summary strip
-Below AudienceVoiceBreakdown, add a compact summary:
-- `actionableComments = questions + buyingIntent + complaints`
-- Line: `"N comentários acionáveis"`
-- Subcopy: `"perguntas + intenção de compra + problemas"`
-- Only shown when commentIntel is available and actionableComments > 0
+### 3. `src/lib/report/caption-semantic-analysis.server.ts`
+- In `validateResult`, set `schemaVersion: 2` on the returned object (hardcoded, not trusting model output).
+- No other changes. Model name stays as-is.
 
-### 4. Percentage base clarification
-Add muted label in AudienceVoiceBreakdown header:
-`"percentagens sobre sinais classificados"`
+### 4. `src/routes/api/analyze-public-v1.ts`
+- In the cache reuse block (line ~1057), add a check: only reuse cached semantic analysis when `(cachedCaptionSemantic as any).schemaVersion === 2`. If missing or lower, fall through to re-run the analysis.
 
-### 5. Coverage transparency in methodology footer
-When `sampleComments` and `totalComments` are both available and differ:
-`"1.378 comentários públicos · 104 recolhidos para análise"`
-(Already partially implemented — just ensure the wording is precise)
-
-### 6. Enriched top conversation post
-In `block02-diagnostic.ts`, expand `topConversationPost` to include `format`, `date`, and `commentsToLikesPct`:
-- `format`: from `posts[index].format`
-- `date`: from `posts[index].taken_at_iso`
-- Per-post comment/like ratio
-
-In UI: add format badge, date, and comment-to-like ratio alongside existing likes/comments.
-
-### 7. P04 cross-reference — comment engagement strategy
-In `report-diagnostic-block.tsx`:
-- Parse `captionSemantic.commentEngagement.strategyLabel` (already available via `parseCaptionSemanticAnalysis`)
-- Pass as optional prop to `DiagnosticAudienceHighlight`
-
-In `DiagnosticAudienceHighlight`:
-- Render small insight line based on strategyLabel:
-  - `"active"` → `"As legendas pedem comentários de forma ativa"`
-  - `"passive"` → `"As legendas raramente pedem comentários"`
-  - `"occasional"` → `"Convite à conversa ocasional"`
-- Only shown when data is available. No OpenAI call from P05.
-
-## Files to edit
-
-1. **`src/lib/report/block02-diagnostic.ts`** — Expand `topConversationPost` type and data to include `format`, `date`, per-post ratio
-2. **`src/components/report-redesign/v2/report-diagnostic-card.tsx`** — All UI changes in `DiagnosticAudienceHighlight` and `AudienceVoiceBreakdown`
-3. **`src/components/report-redesign/v2/report-diagnostic-block.tsx`** — Pass `commentsToLikesPct` and `captionSemantic.commentEngagement.strategyLabel` to P05
-
-## Files NOT touched
-- Block 1, P03, P04, P06/P07, visual cover analysis
-- Backend auth/admin, PDF pipeline
-- Global tokens, locked files
-- OpenAI/semantic caption pipeline (only reading existing data)
-
-## Validation
+### 5. Validation
 - `bunx tsc --noEmit`
 - `bunx vitest run`
+
+## Files NOT touched
+Block 1, P03, P05, P06/P07, visual cover analysis, PDF pipeline, auth/admin, global tokens, locked files, UI components.

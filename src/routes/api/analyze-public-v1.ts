@@ -1057,7 +1057,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           if (
             cachedCaptionSemantic &&
             typeof cachedCaptionSemantic === "object" &&
-            typeof (cachedCaptionSemantic as Record<string, unknown>).source === "string"
+            typeof (cachedCaptionSemantic as Record<string, unknown>).source === "string" &&
+            (cachedCaptionSemantic as Record<string, unknown>).schemaVersion === 2
           ) {
             captionSemanticAnalysis = cachedCaptionSemantic as CaptionSemanticAnalysis;
             console.info("[analyze-public-v1] reused cached caption_semantic_analysis");

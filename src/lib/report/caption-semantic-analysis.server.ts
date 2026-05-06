@@ -210,6 +210,7 @@ function validateResult(raw: Record<string, unknown>): CaptionSemanticAnalysis |
 
     return {
       source: "openai",
+      schemaVersion: 2,
       analyzedCaptions: r.analyzedCaptions,
       dominantThemes: r.dominantThemes.map((t) => ({
         label: t.label,

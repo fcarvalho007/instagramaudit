@@ -61,7 +61,17 @@ brandVoice: consistência da voz editorial ao longo das legendas
 formulaicPatterns: padrões repetitivos / fórmulas rígidas
 - hasFormulas: true se ≥3 legendas seguem a mesma estrutura ou fecham com a mesma frase
 - examples: até 3 excertos que ilustram a repetição (≤ 80 chars cada)
-- explanation: uma frase a explicar o impacto da repetição`;
+- explanation: uma frase a explicar o impacto da repetição, referenciando os excertos concretos
+
+Regras globais anti-genérico (OBRIGATÓRIAS):
+- NÃO dar conselhos genéricos de marketing. Cada afirmação qualitativa DEVE ser fundamentada nas legendas fornecidas.
+- hookQuality.explanation DEVE referir padrões de abertura observados nas legendas (ex.: perguntas iniciais, afirmações diretas, anúncios de novidade, ganchos emocionais, ou padrões repetidos na primeira linha). NÃO dar conselhos genéricos.
+- brandVoice.explanation DEVE referir padrões concretos de tom/registo observados (ex.: consistência ou variação de estilo, vocabulário, estrutura de CTA, tom emocional/educativo/promocional, frases repetidas). NÃO fazer afirmações sobre a marca que não estejam nas legendas.
+- formulaicPatterns.examples DEVEM ser excertos reais das legendas, nunca exemplos inventados.
+- Se a evidência for insuficiente para uma avaliação segura, devolver uma frase cautelosa indicando que o sinal é fraco (ex.: "A amostra não é suficiente para avaliar com confiança").
+
+schemaVersion: versão fixa do esquema de saída
+- Devolver sempre schemaVersion: 2`;
 
 export const CAPTION_SEMANTIC_JSON_SCHEMA = {
   name: "caption_semantic_analysis",
@@ -71,6 +81,7 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
     additionalProperties: false,
     required: [
       "analyzedCaptions",
+      "schemaVersion",
       "dominantThemes",
       "contentIntent",
       "commentEngagement",
@@ -82,6 +93,7 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
     ],
     properties: {
       analyzedCaptions: { type: "integer", minimum: 1, maximum: 12 },
+      schemaVersion: { type: "integer", const: 2 },
       dominantThemes: {
         type: "array",
         minItems: 1,
