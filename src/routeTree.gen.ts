@@ -60,6 +60,7 @@ import { Route as ApiPublicHooksSyncApifyCostsRouteImport } from './routes/api/p
 import { Route as ApiPublicAnalysisSnapshotUsernameRouteImport } from './routes/api/public/analysis-snapshot.$username'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api/admin/snapshot-by-id.$snapshotId'
+import { Route as ApiAdminSistemaVisualCoverDebugRouteImport } from './routes/api/admin/sistema.visual-cover-debug'
 import { Route as ApiAdminSistemaSyncNowRouteImport } from './routes/api/admin/sistema.sync-now'
 import { Route as ApiAdminSistemaSecretsRouteImport } from './routes/api/admin/sistema.secrets'
 import { Route as ApiAdminSistemaRuntimeChecksRouteImport } from './routes/api/admin/sistema.runtime-checks'
@@ -353,6 +354,12 @@ const ApiAdminSnapshotByIdSnapshotIdRoute =
     path: '/api/admin/snapshot-by-id/$snapshotId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminSistemaVisualCoverDebugRoute =
+  ApiAdminSistemaVisualCoverDebugRouteImport.update({
+    id: '/api/admin/sistema/visual-cover-debug',
+    path: '/api/admin/sistema/visual-cover-debug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminSistemaSyncNowRoute = ApiAdminSistemaSyncNowRouteImport.update({
   id: '/api/admin/sistema/sync-now',
   path: '/api/admin/sistema/sync-now',
@@ -569,6 +576,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
   '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
   '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
+  '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
@@ -647,6 +655,7 @@ export interface FileRoutesByTo {
   '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
   '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
   '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
+  '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
@@ -727,6 +736,7 @@ export interface FileRoutesById {
   '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
   '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
   '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
+  '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
@@ -808,6 +818,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/runtime-checks'
     | '/api/admin/sistema/secrets'
     | '/api/admin/sistema/sync-now'
+    | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
@@ -886,6 +897,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/runtime-checks'
     | '/api/admin/sistema/secrets'
     | '/api/admin/sistema/sync-now'
+    | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
@@ -965,6 +977,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/runtime-checks'
     | '/api/admin/sistema/secrets'
     | '/api/admin/sistema/sync-now'
+    | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
@@ -1028,6 +1041,7 @@ export interface RootRouteChildren {
   ApiAdminSistemaRuntimeChecksRoute: typeof ApiAdminSistemaRuntimeChecksRoute
   ApiAdminSistemaSecretsRoute: typeof ApiAdminSistemaSecretsRoute
   ApiAdminSistemaSyncNowRoute: typeof ApiAdminSistemaSyncNowRoute
+  ApiAdminSistemaVisualCoverDebugRoute: typeof ApiAdminSistemaVisualCoverDebugRoute
   ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
   ApiPublicAnalysisSnapshotUsernameRoute: typeof ApiPublicAnalysisSnapshotUsernameRoute
@@ -1395,6 +1409,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/snapshot-by-id/$snapshotId'
       fullPath: '/api/admin/snapshot-by-id/$snapshotId'
       preLoaderRoute: typeof ApiAdminSnapshotByIdSnapshotIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sistema/visual-cover-debug': {
+      id: '/api/admin/sistema/visual-cover-debug'
+      path: '/api/admin/sistema/visual-cover-debug'
+      fullPath: '/api/admin/sistema/visual-cover-debug'
+      preLoaderRoute: typeof ApiAdminSistemaVisualCoverDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/sistema/sync-now': {
@@ -1781,6 +1802,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSistemaRuntimeChecksRoute: ApiAdminSistemaRuntimeChecksRoute,
   ApiAdminSistemaSecretsRoute: ApiAdminSistemaSecretsRoute,
   ApiAdminSistemaSyncNowRoute: ApiAdminSistemaSyncNowRoute,
+  ApiAdminSistemaVisualCoverDebugRoute: ApiAdminSistemaVisualCoverDebugRoute,
   ApiAdminSnapshotByIdSnapshotIdRoute: ApiAdminSnapshotByIdSnapshotIdRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
   ApiPublicAnalysisSnapshotUsernameRoute:
@@ -1796,3 +1818,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
