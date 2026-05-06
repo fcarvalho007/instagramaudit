@@ -32,7 +32,7 @@ import type {
   CostCaps,
   Expense30d,
 } from "@/lib/admin/system-queries.server";
-import type { ApifyActorBreakdown, OpenAiActorBreakdown } from "@/lib/admin/system-queries.server";
+import type { ApifyActorBreakdown, OpenAiActorBreakdown, ProviderLinkageRow } from "@/lib/admin/system-queries.server";
 
 /* ── Actor color mapping ───────────────────────────────────────────── */
 
@@ -328,6 +328,8 @@ export function ExpenseSection() {
             confidence={data.confidence}
             freshTotalCalls={data.fresh_total_provider_calls}
             freshLinkedCalls={data.fresh_calls_with_event_id}
+            linkageRatePct={data.provider_linkage_rate_pct}
+            linkageByProvider={data.provider_linkage_by_provider}
           />
         </div>
 
@@ -895,6 +897,8 @@ function ReportCostCards({
   confidence,
   freshTotalCalls,
   freshLinkedCalls,
+  linkageRatePct,
+  linkageByProvider,
 }: {
   total: number;
   apifyShare: number;
@@ -907,6 +911,8 @@ function ReportCostCards({
   confidence: "alta" | "media" | "baixa";
   freshTotalCalls: number;
   freshLinkedCalls: number;
+  linkageRatePct: number;
+  linkageByProvider: ProviderLinkageRow[];
 }) {
   const avgCost = completedReports > 0 ? total / completedReports : null;
 
@@ -941,7 +947,9 @@ function ReportCostCards({
         value={freshAvgCost != null ? `$${freshAvgCost.toFixed(2)}` : "—"}
         sub={
           freshAvgCost != null
-            ? `${freshLinkedReports} report${freshLinkedReports !== 1 ? "s" : ""} fresh · sem cache · últimos 30 dias`
+            ? confidence === "baixa"
+              ? `${freshLinkedReports} report${freshLinkedReports !== 1 ? "s" : ""} fresh · Estimativa em validação — alguns custos podem ainda não estar atribuídos ao report.`
+              : `${freshLinkedReports} report${freshLinkedReports !== 1 ? "s" : ""} fresh · sem cache · últimos 30 dias`
             : "Sem amostra fiável por report completo"
         }
         size="md"
@@ -958,13 +966,21 @@ function ReportCostCards({
 
       {/* Card 4 — Confiança da estimativa */}
       <KPICard
-        eyebrow="Confiança da estimativa"
-        info="Baseado no número de reports fresh com custos agrupados por provider. Alta ≥20, Média 5–19, Baixa <5."
+        eyebrow="Confiança da atribuição"
+        info={`Baseado no número de reports fresh com custos ligados e na taxa de linkagem de chamadas. Alta: ≥20 reports + ≥95% linkagem. Média: ≥5 reports + ≥85% linkagem. Baixa: caso contrário.`}
         value={<span className={confidenceColor}>{confidenceLabel}</span>}
         sub={
-          freshLinkedReports > 0
-            ? `${freshLinkedReports} report${freshLinkedReports !== 1 ? "s" : ""} com custos ligados · ${freshLinkedCalls}/${freshTotalCalls} chamadas com event_id`
-            : `${freshLinkedCalls}/${freshTotalCalls} chamadas com event_id · falta ligar custos`
+          <>
+            {`${freshLinkedCalls}/${freshTotalCalls} chamadas ligadas (${linkageRatePct}%)`}
+            {linkageByProvider.length > 0 && (
+              <>
+                {" · "}
+                {linkageByProvider
+                  .map((p) => `${providerShortName(p.provider)} ${p.linked}/${p.total}`)
+                  .join(" · ")}
+              </>
+            )}
+          </>
         }
         size="md"
       />
