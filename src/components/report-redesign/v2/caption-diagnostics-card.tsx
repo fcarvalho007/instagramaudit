@@ -10,9 +10,9 @@
  */
 import { type ReactNode, useState, useCallback, useMemo } from "react";
 import {
-  FileText, CheckCircle2, AlertTriangle, Eye, Type, Zap, HelpCircle,
+  FileText, AlertTriangle, Type, Zap, HelpCircle,
   BookOpen, Sparkles, Mic, Repeat, ChevronDown, ChevronUp,
-  ExternalLink, Download, XCircle, Clock,
+  ExternalLink, Download, Clock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
