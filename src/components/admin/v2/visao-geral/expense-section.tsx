@@ -348,9 +348,9 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       <div>
         <div className="flex items-baseline justify-between">
           <ZoneLabel symbol="⇆" label="RECONCILIAÇÃO · INTERNO ESTIMADO vs FATURAÇÃO REAL" />
-          <span className="text-[11px] text-admin-text-tertiary">faturação importada manualmente</span>
+          <span className="text-[11px] text-admin-text-tertiary">reconciliação automática</span>
         </div>
-        <AdminCard className="mt-3 overflow-hidden">
+        <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="expense">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
