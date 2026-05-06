@@ -708,9 +708,11 @@ interface ReconRow {
   internal: number;
   external: number | null;
   externalLabel: string | null;
+  displayedRowSum: number | null;
+  roundingDelta: number | null;
   delta: number | null;
   deltaPct: number | null;
-  status: "REVER" | "PENDENTE" | "OK";
+  status: "REVER" | "PENDENTE" | "OK" | "ARRED";
 }
 
 function buildReconRows(data: Expense30d, reconByProvider: ProviderBreakdown[]): ReconRow[] {
@@ -726,25 +728,35 @@ function buildReconRows(data: Expense30d, reconByProvider: ProviderBreakdown[]):
     const delta = hasExternal ? ext.external - p.internal : null;
     const deltaPct = hasExternal && p.internal > 0 ? ((ext.external - p.internal) / p.internal) * 100 : null;
     const needsReview = delta != null && Math.abs(delta) > 0.01;
+    const hasRounding = ext?.roundingDelta != null && Math.abs(ext.roundingDelta) >= 0.005;
+    let status: ReconRow["status"];
+    if (!hasExternal) status = "PENDENTE";
+    else if (needsReview) status = "REVER";
+    else if (hasRounding) status = "ARRED";
+    else status = "OK";
     return {
       provider: p.label,
       color: p.color,
       internal: p.internal,
       external: hasExternal ? ext.external : null,
       externalLabel: hasExternal ? `dashboard ${p.label}` : null,
+      displayedRowSum: ext?.displayedRowSum ?? null,
+      roundingDelta: ext?.roundingDelta ?? null,
       delta,
       deltaPct,
-      status: hasExternal ? (needsReview ? "REVER" as const : "OK" as const) : "PENDENTE" as const,
+      status,
     };
   });
 }
 
-function ReconStatusBadge({ status }: { status: "REVER" | "PENDENTE" | "OK" }) {
+function ReconStatusBadge({ status }: { status: "REVER" | "PENDENTE" | "OK" | "ARRED" }) {
   const cls = status === "REVER"
     ? "bg-red-500/15 text-red-700"
     : status === "OK"
       ? "bg-emerald-500/15 text-emerald-700"
-      : "bg-neutral-200 text-neutral-500";
+      : status === "ARRED"
+        ? "bg-amber-500/15 text-amber-700"
+        : "bg-neutral-200 text-neutral-500";
   return (
     <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold tracking-wider ${cls}`}>
       {status}
