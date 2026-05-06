@@ -68,6 +68,6 @@ export async function fetchSerpOrganic(
       depth,
       device: input.device ?? "desktop",
     },
-    { ownerHandle: input.ownerHandle, queryLabel: keyword },
-  ) as Promise<DataForSeoEnvelope<SerpOrganicResult>>;
+    { ownerHandle: input.ownerHandle, queryLabel: keyword, analysisEventId: input.analysisEventId ?? null },
+  );
 }

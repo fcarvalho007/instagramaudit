@@ -69,6 +69,6 @@ export async function fetchKeywordIdeas(
       include_seed_keyword: input.include_seed_keyword ?? true,
       include_serp_info: input.include_serp_info ?? false,
     },
-    { ownerHandle: input.ownerHandle, queryLabel },
-  ) as Promise<DataForSeoEnvelope<KeywordIdeasResult>>;
+    { ownerHandle: input.ownerHandle, queryLabel, analysisEventId: input.analysisEventId ?? null },
+  );
 }

@@ -60,8 +60,6 @@ export async function fetchGoogleTrends(
       category_code: input.category_code,
       type: input.type ?? "web",
     },
-    { ownerHandle: input.ownerHandle, queryLabel },
-    ...(input.analysisEventId ? { analysisEventId: input.analysisEventId } : {}),
-    },
+    { ownerHandle: input.ownerHandle, queryLabel, analysisEventId: input.analysisEventId ?? null },
   );
 }
