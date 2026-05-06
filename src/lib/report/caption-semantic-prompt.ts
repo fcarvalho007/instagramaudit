@@ -162,15 +162,14 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["expression", "count", "meaning"],
-          // risk is nullable, must be in required for strict mode
+          required: ["expression", "count", "meaning", "risk"],
           properties: {
             expression: { type: "string" },
             count: { type: "integer", minimum: 1 },
             meaning: { type: "string" },
-            risk: { type: ["string", "null"], default: null },
+            risk: { type: ["string", "null"] },
           },
-        } as Record<string, unknown>,
+        },
       },
       diagnostic: {
         type: "object",
