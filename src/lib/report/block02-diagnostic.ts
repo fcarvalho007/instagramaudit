@@ -117,6 +117,9 @@ export interface AudienceResponseResult {
     comments: number;
     likes: number;
     captionExcerpt: string;
+    format?: string | null;
+    date?: string | null;
+    commentsToLikesPct?: number;
   } | null;
   explanation: string;
 }
@@ -539,6 +542,8 @@ export function classifyAudienceResponse(
         comments,
         likes,
         caption: (p.caption ?? "").slice(0, 90).trim(),
+        format: p.format ?? null,
+        date: p.taken_at_iso ?? null,
       };
     }
   }
@@ -582,7 +587,17 @@ export function classifyAudienceResponse(
 
   const topConversationPost =
     topPost && topPost.comments >= 1
-      ? { index: topPost.index, comments: topPost.comments, likes: topPost.likes, captionExcerpt: topPost.caption }
+      ? {
+          index: topPost.index,
+          comments: topPost.comments,
+          likes: topPost.likes,
+          captionExcerpt: topPost.caption,
+          format: topPost.format,
+          date: topPost.date,
+          commentsToLikesPct: topPost.likes > 0
+            ? Math.round((topPost.comments / topPost.likes) * 1000) / 10
+            : undefined,
+        }
       : null;
 
   return {
