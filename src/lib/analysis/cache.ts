@@ -8,6 +8,8 @@
  * Never import from client code — uses the service-role Supabase client.
  */
 
+import type { EnrichmentStatusMap } from "@/lib/enrichment/types";
+
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /** Cache TTL: snapshots are reused for 24h before triggering a new scrape. */
@@ -142,7 +144,19 @@ export async function patchSnapshotPayload(
       return false;
     }
     const existing = (snapshot.normalized_payload ?? {}) as Record<string, unknown>;
+    // Deep-merge enrichment_status so individual keys aren't overwritten
     const merged = { ...existing, ...patch };
+    if (
+      patch.enrichment_status &&
+      typeof patch.enrichment_status === "object" &&
+      existing.enrichment_status &&
+      typeof existing.enrichment_status === "object"
+    ) {
+      merged.enrichment_status = {
+        ...(existing.enrichment_status as Record<string, unknown>),
+        ...(patch.enrichment_status as Record<string, unknown>),
+      };
+    }
     const { error: updateErr } = await supabaseAdmin
       .from("analysis_snapshots")
       .update({

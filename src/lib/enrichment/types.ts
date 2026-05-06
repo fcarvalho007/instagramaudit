@@ -16,6 +16,24 @@ export type EnrichmentStatus =
   | "error"
   | "skipped";
 
+/** Per-enrichment-type status map embedded in normalized_payload. */
+export type EnrichmentStatusMap = Record<
+  EnrichmentType | "comments",
+  EnrichmentStatus
+>;
+
+/** Build a fresh enrichment_status with all types set to "pending". */
+export function buildInitialEnrichmentStatus(): EnrichmentStatusMap {
+  return {
+    dataforseo: "pending",
+    insights_v1: "pending",
+    insights_v2: "pending",
+    visual_cover: "pending",
+    caption_semantic: "pending",
+    comments: "pending",
+  };
+}
+
 export interface EnrichmentJobRow {
   id: string;
   snapshot_id: string;
