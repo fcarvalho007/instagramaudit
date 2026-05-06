@@ -108,7 +108,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     result.enriched.aiInsightsV2?.sections.language?.text ?? null;
 
   // ── Prioridades de ação ──────────────────────────────────────────
-  const aiPriorities = result.enriched.aiInsightsV2?.priorities?.items;
+  const aiPriorities = result.enriched.aiInsightsV2?.priorities;
   const dominantFormat = contentType.available
     ? contentType.distribution[0]
     : null;
@@ -118,7 +118,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     : "deterministic";
 
   const priorityItems: PriorityItem[] = aiPriorities?.length
-    ? aiPriorities.map((p: AiPriorityItem) => ({
+    ? aiPriorities.map((p) => ({
         level: p.level,
         title: p.title,
         body: p.body,
