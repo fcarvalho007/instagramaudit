@@ -109,13 +109,14 @@ function ExpandedRow({ calls }: { calls: ProviderCall[] }) {
   );
 }
 
-const ENRICHMENT_TYPES = ["dataforseo", "insights_v1", "insights_v2", "visual_cover", "caption_semantic"] as const;
+const ENRICHMENT_TYPES = ["dataforseo", "insights_v1", "insights_v2", "visual_cover", "caption_semantic", "comments"] as const;
 const ENRICHMENT_SHORT: Record<string, string> = {
   dataforseo: "DFS",
   insights_v1: "v1",
   insights_v2: "v2",
   visual_cover: "Vis",
   caption_semantic: "Cap",
+  comments: "Com",
 };
 
 function EnrichmentDots({ summary, history }: { summary: Record<string, string> | null; history?: Record<string, { total: number; failed: number }> | null }) {
@@ -128,8 +129,9 @@ function EnrichmentDots({ summary, history }: { summary: Record<string, string> 
           s === "success" ? "text-signal-success" :
           s === "error" ? "text-signal-error" :
           s === "pending" || s === "running" ? "text-signal-warning" :
+          s === "disabled" || s === "skipped" ? "text-foreground-muted opacity-50" :
           "text-foreground-muted";
-        const Icon = s === "success" ? CheckCircle2 : s === "error" ? XCircle : Clock;
+        const Icon = s === "success" ? CheckCircle2 : s === "error" ? XCircle : s === "disabled" || s === "skipped" ? CheckCircle2 : Clock;
         const failCount = history?.[t]?.failed ?? 0;
         return (
           <span key={t} className={`relative ${color}`} title={`${ENRICHMENT_SHORT[t]}: ${s ?? "?"}${failCount > 0 ? ` (${failCount} falha${failCount > 1 ? "s" : ""} anterior${failCount > 1 ? "es" : ""})` : ""}`}>
