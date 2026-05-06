@@ -1,5 +1,6 @@
 /**
  * Admin card — Test profile status panel (rendered in Sistema).
+ * Compact horizontal rows with inline status dots.
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,15 +13,21 @@ import {
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
-function StatusDot({ ok }: { ok: boolean }) {
-  return (
-    <span
-      className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-emerald-400" : "bg-zinc-600"}`}
-    />
-  );
-}
+const STATUS_ITEMS: Array<{
+  key: keyof Pick<
+    TestProfileStatus,
+    "hasCachedReport" | "hasCaptionSemantic" | "hasCommentIntelligence" | "hasVisualCover"
+  >;
+  label: string;
+  short: string;
+}> = [
+  { key: "hasCachedReport", label: "Report cache", short: "Report" },
+  { key: "hasCaptionSemantic", label: "Legendas IA", short: "Legendas" },
+  { key: "hasCommentIntelligence", label: "Comentários", short: "Coment." },
+  { key: "hasVisualCover", label: "Capas visuais", short: "Capas" },
+];
 
-function ProfileRow({ p }: { p: TestProfileStatus }) {
+function ProfileRow({ p, isLast }: { p: TestProfileStatus; isLast: boolean }) {
   const qc = useQueryClient();
   const [expiring, setExpiring] = useState(false);
 
@@ -42,57 +49,64 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border/30 p-3">
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-sm text-foreground">@{p.handle}</span>
-        {p.latestSnapshotDate && (
-          <span className="text-[10px] text-muted-foreground">
-            {new Date(p.latestSnapshotDate).toLocaleDateString("pt-PT", {
-              day: "2-digit",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        )}
+    <div
+      className={`flex items-center gap-3 py-2.5 ${!isLast ? "border-b border-admin-border/50" : ""}`}
+    >
+      {/* Handle */}
+      <span className="font-mono text-xs text-admin-text-primary shrink-0">
+        @{p.handle}
+      </span>
+
+      {/* Status chips */}
+      <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+        {STATUS_ITEMS.map((s) => {
+          const ok = p[s.key];
+          return (
+            <span
+              key={s.key}
+              className="inline-flex items-center gap-1 text-[10px] text-admin-text-tertiary"
+              title={s.label}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full shrink-0 ${ok ? "bg-[rgb(var(--admin-revenue-400))]" : "bg-admin-text-tertiary/30"}`}
+              />
+              <span className="hidden sm:inline">{s.short}</span>
+            </span>
+          );
+        })}
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1">
-           <StatusDot ok={p.hasCachedReport} /> Report cache
+      {/* Date */}
+      {p.latestSnapshotDate && (
+        <span className="text-[10px] text-admin-text-tertiary shrink-0 hidden md:inline tabular-nums">
+          {new Date(p.latestSnapshotDate).toLocaleDateString("pt-PT", {
+            day: "2-digit",
+            month: "short",
+          })}
         </span>
-        <span className="flex items-center gap-1">
-           <StatusDot ok={p.hasCaptionSemantic} /> Legendas IA
-        </span>
-        <span className="flex items-center gap-1">
-           <StatusDot ok={p.hasCommentIntelligence} /> Comentários
-        </span>
-        <span className="flex items-center gap-1">
-           <StatusDot ok={p.hasVisualCover} /> Capas visuais
-        </span>
-        {p.estimatedLastCostUsd !== null && (
-          <span>
-            Último custo: ${p.estimatedLastCostUsd.toFixed(4)}
-          </span>
-        )}
-      </div>
+      )}
 
-      <div className="flex gap-2 mt-1">
+      {/* Actions */}
+      <div className="flex items-center gap-2 shrink-0">
         <Link
           to="/analyze/$username"
           params={{ username: p.handle }}
-          className="text-[11px] text-cyan-400 hover:underline"
+          className="text-[10px] text-[rgb(var(--admin-info-400))] hover:underline"
         >
-           Abrir cache
+          Abrir
         </Link>
         <button
           type="button"
           onClick={handleForceRefresh}
           disabled={isCacheOnly || expiring}
-          className="text-[11px] text-amber-400 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-           title={isCacheOnly ? "Ativa Fresh para gerar nova análise." : "Expira o snapshot e força análise fresh na próxima visita."}
+          className="text-[10px] text-[rgb(var(--admin-expense-400))] hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
+          title={
+            isCacheOnly
+              ? "Ativa Fresh para gerar nova análise."
+              : "Expira o snapshot e força análise fresh na próxima visita."
+          }
         >
-          {expiring ? "A expirar…" : "Reanalisar fresh"}
+          {expiring ? "…" : "Fresh"}
         </button>
       </div>
     </div>
@@ -106,17 +120,21 @@ export function TestProfilesCard() {
     staleTime: 30_000,
   });
 
+  const profiles = data?.profiles ?? [];
+
   return (
-     <div className="rounded-xl border border-admin-border bg-admin-surface-secondary p-4 flex flex-col gap-3">
-       <p className="text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
-         Perfis de teste
-       </p>
-       {isLoading && (
-         <p className="text-xs text-admin-text-tertiary">A carregar...</p>
-       )}
-       {data?.profiles.map((p) => (
-         <ProfileRow key={p.handle} p={p} />
-       ))}
-     </div>
+    <div className="rounded-xl border border-admin-border bg-admin-surface-secondary p-5 flex flex-col gap-3">
+      <p className="text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
+        Perfis de teste
+      </p>
+      {isLoading && (
+        <p className="text-[11px] text-admin-text-tertiary">A carregar...</p>
+      )}
+      <div>
+        {profiles.map((p, i) => (
+          <ProfileRow key={p.handle} p={p} isLast={i === profiles.length - 1} />
+        ))}
+      </div>
+    </div>
   );
 }
