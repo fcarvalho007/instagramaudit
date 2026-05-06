@@ -270,27 +270,31 @@ export function DiagnosticDistributionBar({
   if (variant === "vertical-list") {
     const max = Math.max(1, ...items.map((it) => it.value));
     return (
-      <ul className="space-y-1.5 sm:space-y-2">
+      <ul className="space-y-2.5 sm:space-y-3">
         {items.map((it, i) => {
-          const pct = (Math.max(0, it.value) / max) * 100;
+          const rawPct = (Math.max(0, it.value) / max) * 100;
+          const pct = it.value > 0 ? Math.max(3, rawPct) : 0;
           const isDominant = i === 0;
           return (
             <li key={`${it.label}-${i}`} className="text-xs sm:text-sm">
               <div className="flex items-center gap-3">
-                <span className={cn("min-w-[4.5rem] w-auto sm:min-w-[8.5rem] shrink-0 leading-tight text-content-secondary", isDominant && "font-medium text-content-primary")}>
+                <span className={cn("min-w-[4.5rem] w-auto sm:min-w-[8.5rem] shrink-0 leading-tight text-content-secondary transition-colors", isDominant && "font-medium text-content-primary")}>
                   <span className="text-[11px] sm:text-sm">{it.label}</span>
                   {it.sublabel && (
-                    <span className="hidden sm:block text-[10px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</span>
+                    <span className="hidden sm:block text-[9px] text-content-tertiary/70 leading-snug mt-0.5">{it.sublabel}</span>
                   )}
                 </span>
-                <div className={cn("flex-1 overflow-hidden rounded-full bg-surface-muted", isDominant ? "h-2.5" : "h-2")}>
+                <div className={cn("flex-1 overflow-hidden rounded-full bg-surface-muted transition-all", isDominant ? "h-3" : "h-1.5")}>
                   <div
-                    className={cn("h-full", it.color ?? "bg-accent-primary", !isDominant && "opacity-25")}
+                    className={cn("h-full rounded-full transition-all", it.color ?? "bg-accent-primary", !isDominant && "opacity-30")}
                     style={{ width: `${pct}%` }}
                     aria-hidden
                   />
                 </div>
-                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-content-tertiary">
+                <span className={cn(
+                  "w-10 shrink-0 text-right font-mono text-[11px] tabular-nums transition-colors",
+                  isDominant ? "text-content-primary font-semibold" : "text-content-tertiary",
+                )}>
                   {Math.round(it.value)}%
                 </span>
               </div>
@@ -370,24 +374,42 @@ export function DiagnosticFunnelStack({
     pos: { active: "bg-surface-muted text-content-secondary", idle: "bg-surface-muted text-content-tertiary" },
   };
   return (
-    <ul className="space-y-1.5">
+    <ul className="space-y-2">
       {items.map((it) => {
         const tone = STAGE_TONE[it.stage];
         const active = it.active ?? it.sharePct >= 25;
-        const width = Math.max(8, it.sharePct);
+        const isEmpty = it.sharePct === 0;
         return (
-          <li key={it.stage} className="relative">
-            <div
-              className={cn(
-                "h-7 rounded-md flex items-center px-2.5",
-                "text-eyebrow-sm",
-                active ? tone.active : tone.idle,
-              )}
-              style={{ width: `${width}%`, minWidth: "fit-content" }}
-            >
-              {it.label}
-            </div>
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 font-mono text-[11px] tabular-nums text-content-tertiary">
+          <li key={it.stage} className="flex items-center gap-2.5">
+            {isEmpty ? (
+              <div
+                className={cn(
+                  "h-8 rounded-md flex items-center px-2.5 flex-1",
+                  "text-eyebrow-sm",
+                  "border border-dashed border-border-subtle text-content-tertiary/60",
+                )}
+              >
+                {it.label}
+              </div>
+            ) : (
+              <div className="flex-1 relative">
+                <div
+                  className={cn(
+                    "h-8 rounded-md flex items-center px-2.5 transition-all",
+                    "text-eyebrow-sm",
+                    active ? tone.active : tone.idle,
+                    active && "ring-1 ring-signal-success/20",
+                  )}
+                  style={{ width: `${Math.max(8, it.sharePct)}%`, minWidth: "fit-content" }}
+                >
+                  {it.label}
+                </div>
+              </div>
+            )}
+            <span className={cn(
+              "w-10 shrink-0 text-right font-mono text-[11px] tabular-nums",
+              isEmpty ? "text-content-tertiary/50" : "text-content-tertiary",
+            )}>
               {it.sharePct}%
             </span>
           </li>
