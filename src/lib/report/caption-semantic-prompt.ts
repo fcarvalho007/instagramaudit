@@ -48,7 +48,6 @@ diagnostic:
 - main: parágrafo de 2-3 frases com diagnóstico editorial geral
 - works: uma frase sobre o que funciona bem
 - critical: uma frase sobre o ponto mais crítico
-- watch: uma frase sobre o que observar a médio prazo`;
 - watch: uma frase sobre o que observar a médio prazo
 
 hookQuality: qualidade dos primeiros segundos / abertura das legendas
@@ -77,17 +76,6 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
       "commentEngagement",
       "recurringExpressionsInterpretation",
       "diagnostic",
-    ],
-    required: [
-      "analyzedCaptions",
-      "dominantThemes",
-      "contentIntent",
-      "commentEngagement",
-      "recurringExpressionsInterpretation",
-      "diagnostic",
-      "hookQuality",
-      "brandVoice",
-      "formulaicPatterns",
     ],
     properties: {
       analyzedCaptions: { type: "integer", minimum: 1, maximum: 12 },
@@ -177,6 +165,39 @@ export const CAPTION_SEMANTIC_JSON_SCHEMA = {
           works: { type: "string" },
           critical: { type: "string" },
           watch: { type: "string" },
+        },
+      },
+      hookQuality: {
+        type: "object",
+        additionalProperties: false,
+        required: ["rating", "explanation"],
+        properties: {
+          rating: { type: "string", enum: ["strong", "moderate", "weak"] },
+          explanation: { type: "string" },
+        },
+      },
+      brandVoice: {
+        type: "object",
+        additionalProperties: false,
+        required: ["rating", "explanation"],
+        properties: {
+          rating: { type: "string", enum: ["consistent", "mixed", "inconsistent"] },
+          explanation: { type: "string" },
+        },
+      },
+      formulaicPatterns: {
+        type: "object",
+        additionalProperties: false,
+        required: ["hasFormulas", "examples", "explanation"],
+        properties: {
+          hasFormulas: { type: "boolean" },
+          examples: {
+            type: "array",
+            minItems: 0,
+            maxItems: 3,
+            items: { type: "string" },
+          },
+          explanation: { type: "string" },
         },
       },
     },
