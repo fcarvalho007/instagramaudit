@@ -86,7 +86,7 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
   });
 
   if (isLoading) return <SectionSkeleton />;
-  if (error || !data) return <SectionError />;
+  if (error || !data) return <SectionError error={error} />;
 
   const { kpis, daily, byProvider, byActor } = data;
 
