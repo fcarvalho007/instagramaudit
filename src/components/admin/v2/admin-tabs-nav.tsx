@@ -1,9 +1,8 @@
 /**
- * AdminTabsNav — navegação principal das 6 tabs do admin v2.
+ * AdminTabsNav — glassmorphism pill navigation for admin v2.
  *
- * Mono: o sublinhado da tab activa é sempre `text-primary`, sem cores
- * temáticas (a cor temática vive dentro da tab, na barra do
- * `AdminSectionHeader`). Reduz ruído visual e foco no que importa.
+ * Frosted-glass pills with backdrop-blur. Active tab gets solid white
+ * with stronger shadow. Hover lifts brightness.
  */
 
 import { Link } from "@tanstack/react-router";
@@ -30,23 +29,26 @@ const TABS: TabDef[] = [
   { to: "/admin/sistema", label: "Sistema" },
 ];
 
-const TAB_BASE =
-  "inline-block py-2.5 text-[13px] no-underline transition-colors hover:text-admin-text-primary -mb-px border-b-2 border-transparent";
+const TAB_INACTIVE =
+  "inline-flex items-center px-4 py-2 rounded-xl text-[13px] no-underline transition-all duration-200 backdrop-blur-md bg-white/45 border border-white/50 text-admin-text-secondary hover:bg-white/70 hover:text-admin-text-primary hover:shadow-[var(--shadow-admin-glass)]";
+
+const TAB_ACTIVE =
+  "inline-flex items-center px-4 py-2 rounded-xl text-[13px] no-underline transition-all duration-200 backdrop-blur-md bg-white/90 border border-white/70 text-admin-text-primary font-medium shadow-[var(--shadow-admin-glass-active)]";
 
 export function AdminTabsNav() {
   return (
     <nav
       aria-label="Secções do admin"
-      className="mb-7 border-b border-admin-border"
+      className="mb-7 -mx-2 px-2 py-2 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30"
     >
-      <ul className="m-0 flex flex-wrap gap-6 list-none p-0">
+      <ul className="m-0 flex flex-wrap gap-1.5 list-none p-0">
         {TABS.map((tab) => (
           <li key={tab.to}>
             <Link
               to={tab.to}
-              className={`${TAB_BASE} text-admin-text-secondary`}
+              className={TAB_INACTIVE}
               activeProps={{
-                className: `${TAB_BASE} font-medium text-admin-text-primary !border-admin-text-primary`,
+                className: TAB_ACTIVE,
               }}
             >
               {tab.label}

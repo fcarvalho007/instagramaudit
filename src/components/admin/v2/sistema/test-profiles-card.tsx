@@ -12,6 +12,7 @@ import {
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { ExternalLink, RefreshCw } from "lucide-react";
 
 const STATUS_ITEMS: Array<{
   key: keyof Pick<
@@ -58,19 +59,23 @@ function ProfileRow({ p, isLast }: { p: TestProfileStatus; isLast: boolean }) {
       </span>
 
       {/* Status chips */}
-      <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+      <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
         {STATUS_ITEMS.map((s) => {
           const ok = p[s.key];
           return (
             <span
               key={s.key}
-              className="inline-flex items-center gap-1 text-[10px] text-admin-text-tertiary"
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                ok
+                  ? "bg-[rgb(var(--admin-revenue-500))]/10 text-[rgb(var(--admin-revenue-700))]"
+                  : "bg-admin-surface-muted text-admin-text-tertiary"
+              }`}
               title={s.label}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full shrink-0 ${ok ? "bg-[rgb(var(--admin-revenue-400))]" : "bg-admin-text-tertiary/30"}`}
+                className={`h-1.5 w-1.5 rounded-full shrink-0 ${ok ? "bg-[rgb(var(--admin-revenue-500))]" : "bg-admin-text-tertiary/30"}`}
               />
-              <span className="hidden sm:inline">{s.short}</span>
+              <span>{s.short}</span>
             </span>
           );
         })}
@@ -91,21 +96,23 @@ function ProfileRow({ p, isLast }: { p: TestProfileStatus; isLast: boolean }) {
         <Link
           to="/analyze/$username"
           params={{ username: p.handle }}
-          className="text-[10px] text-[rgb(var(--admin-info-400))] hover:underline"
+          className="inline-flex items-center gap-1 rounded-md border border-admin-border px-2.5 py-1 text-[10px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted hover:text-admin-text-primary transition-colors"
         >
+          <ExternalLink size={10} />
           Abrir
         </Link>
         <button
           type="button"
           onClick={handleForceRefresh}
           disabled={isCacheOnly || expiring}
-          className="text-[10px] text-[rgb(var(--admin-expense-400))] hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1 rounded-md border border-[rgb(var(--admin-expense-400))]/30 px-2.5 py-1 text-[10px] font-medium text-[rgb(var(--admin-expense-500))] hover:bg-[rgb(var(--admin-expense-400))]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           title={
             isCacheOnly
               ? "Ativa Fresh para gerar nova análise."
               : "Expira o snapshot e força análise fresh na próxima visita."
           }
         >
+          <RefreshCw size={10} className={expiring ? "animate-spin" : ""} />
           {expiring ? "…" : "Fresh"}
         </button>
       </div>
@@ -123,8 +130,8 @@ export function TestProfilesCard() {
   const profiles = data?.profiles ?? [];
 
   return (
-    <div className="rounded-xl border border-admin-border bg-admin-surface-secondary p-5 flex flex-col gap-3">
-      <p className="text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
+    <div className="flex flex-col gap-3">
+      <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider">
         Perfis de teste
       </p>
       {isLoading && (

@@ -1,65 +1,68 @@
 
-# Propagate `analysisEventId` to all paid provider calls
+# Admin UI Polish: Glassmorphism Tabs + Sistema Section Redesign
 
-## Provider Call Mapping (Before → After)
+Two distinct improvements based on the screenshot and your feedback.
 
-| Provider | Actor | File | Has `analysisEventId` now? | Change |
-|----------|-------|------|---------------------------|--------|
-| Apify | profile+posts | `analyze-public-v1.ts` L367,395 | NO (pre-event) | Keep as-is; linked via `linkProviderCallsToEvent` fallback (runs twice) |
-| DataForSEO | market-signals | `analyze-public-v1.ts` L833 | NO (pre-event, not passed) | Keep as-is; already caught by final `linkProviderCallsToEvent` at L1204 |
-| OpenAI | insights v1 | `openai-insights.server.ts` | YES | No change |
-| OpenAI | insights v2 | `openai-insights.server.ts` | YES | No change |
-| OpenAI | visual-cover | `visual-cover-analysis.server.ts` | YES | No change |
-| OpenAI | caption-semantic | `caption-semantic-analysis.server.ts` | YES | No change |
-| Apify | comment-scraper | `enrich-comments.ts` | YES (via job) | No change |
+---
 
-### Key finding
+## 1. Glassmorphism Admin Tab Navigation
 
-The architecture is already correctly set up:
+Replace the current plain underlined text tabs with frosted-glass pill buttons.
 
-1. **Pre-event calls** (Apify profile+posts, DataForSEO): These run before `analysisEventId` exists. They are linked via `linkProviderCallsToEvent(handle, providerCallsStartedAt, eventId)` which runs twice:
-   - Immediately after event creation (L457-462)
-   - After all enrichments finish (L1203-1208)
+**Design:**
+- Each tab: `backdrop-blur-md`, semi-transparent white background (`bg-white/60`), subtle border (`border-white/30`), soft shadow
+- Active tab: solid white with stronger shadow + accent left border
+- Hover: lift effect via brighter bg
+- Rounded pill shape (`rounded-xl`)
+- Sticky nav bar with its own glassmorphism background
 
-2. **Post-event calls** (OpenAI insights, visual-cover, caption-semantic): All already receive `analysisEventId` directly.
+**File:** `src/components/admin/v2/admin-tabs-nav.tsx`
 
-3. **Async calls** (comment scraper): Already receives `analysis_event_id` via the job record.
+---
 
-### What needs fixing
+## 2. Sistema "Controlo Operacional" Section Redesign
 
-The only real gap: the **final `linkProviderCallsToEvent` call at L1204** catches DataForSEO calls created before the event, but if the comment enrichment also creates Apify calls asynchronously, those are handled separately via the job's `analysis_event_id`. So the linkage chain is complete.
+The current section feels flat and hard to parse. Problems visible in the screenshot:
+- No white card container -- content floats directly on the cream canvas
+- The "Modo de Execução" and "Perfis de Teste" cards lack visual hierarchy
+- Status dots are tiny and hard to read
+- "Expirar cache" section blends into the background
+- Action buttons ("Abrir", "Fresh", "Expirar") are tiny text links, not obvious as interactive
 
-However, there's a subtle issue: the **cost card in system-queries** defines "complete" as having >= 2 distinct provider groups. This means a report that only used Apify (no OpenAI/DataForSEO due to allowlist) would be excluded from the "complete" count, unfairly lowering confidence.
+**Redesign approach:**
 
-## Plan
+### a) Wrap in a white card container
+All three sub-cards (execution mode, test profiles, cache maintenance) go inside one unified white card with the shadow token `shadow-admin-card`. This creates the same visual treatment as other admin sections.
 
-### Step 1: Verify and add a second `linkProviderCallsToEvent` after enrichments
+### b) Execution Mode Card improvements
+- Larger, more distinct segmented control with rounded pills
+- Active state uses a filled pill (not just tinted bg)
+- Status badge below stays but gets a slightly larger font
 
-Already exists at L1203-1208. No change needed.
+### c) Test Profiles Card improvements
+- Status items use labelled chips (coloured pill with text) instead of tiny dots
+- "Abrir" and "Fresh" become small outlined buttons with icons, not bare text links
+- Add a subtle divider between the two cards
 
-### Step 2: Improve confidence calculation in `system-queries.server.ts`
+### d) Cache Maintenance improvements
+- Input + button get a more prominent treatment inside the card
+- "Expirar" button styled as a small outlined destructive button (amber border)
+- Result message gets a toast-like inline alert style
 
-Current "complete" definition (>= 2 providers) is too strict. Change to: a fresh event with **any** linked provider call counts as a "linked report" for confidence.
+### e) Visual separator
+A thin `border-t` divider between the Execution Mode row and the Cache Maintenance row.
 
-- Alta: >= 20 linked fresh reports
-- Media: 5-19
-- Baixa: < 5
-
-### Step 3: Add legacy data comments
-
-Add doc comments in `system-queries.server.ts` explaining that pre-May-2026 data may have null `analysis_event_id` and confidence will be "baixa" for those periods.
-
-Already present (L808-812). Verify and keep.
-
-### Step 4: No backfill of old logs
-
-Old logs remain with null `analysis_event_id`. The time-window fallback (`linkProviderCallsToEvent`) already handles most cases retroactively. No manual backfill.
+---
 
 ## Files to change
 
-1. `src/lib/admin/system-queries.server.ts` — relax "complete" definition from `providers.size >= 2` to `providers.size >= 1`
+1. `src/styles/admin-tokens.css` -- add glassmorphism utility tokens (blur, bg opacity, border)
+2. `src/components/admin/v2/admin-tabs-nav.tsx` -- glassmorphism pill tabs
+3. `src/routes/admin.sistema.tsx` -- wrap Controlo Operacional in white card
+4. `src/components/admin/v2/sistema/execution-mode-card.tsx` -- improved segmented control
+5. `src/components/admin/v2/sistema/test-profiles-card.tsx` -- chips + button actions
+6. `src/components/admin/v2/sistema/cache-maintenance-card.tsx` -- input/button styling
 
-## Validation
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
+## Not touched
+- No locked files modified
+- No public report cards, PDF, auth, global tokens, P04/P05/P07 UI

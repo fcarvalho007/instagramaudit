@@ -46,12 +46,12 @@ export function CacheMaintenanceCard() {
 
   return (
     <>
-      <div className="rounded-lg border border-admin-border/60 bg-admin-surface-secondary/60 px-4 py-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-eyebrow-sm text-admin-text-tertiary uppercase tracking-wider">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider">
             Expirar cache
           </p>
-          <p className="text-[10px] text-admin-text-tertiary leading-tight hidden sm:block">
+          <p className="text-[11px] text-admin-text-tertiary leading-tight hidden sm:block">
             Invalida o snapshot — não chama APIs.
           </p>
         </div>
@@ -61,19 +61,21 @@ export function CacheMaintenanceCard() {
             value={handle}
             onChange={(e) => setHandle(e.target.value)}
             placeholder="username"
-            className="flex-1 rounded-md border border-admin-border bg-transparent px-2 py-1.5 text-xs text-admin-text-primary placeholder:text-admin-text-tertiary focus:outline-none focus:ring-1 focus:ring-[rgb(var(--admin-info-500))]/40"
+            className="flex-1 rounded-lg border border-admin-border bg-admin-surface-muted/50 px-3 py-2 text-xs text-admin-text-primary placeholder:text-admin-text-tertiary focus:outline-none focus:ring-2 focus:ring-[rgb(var(--admin-info-500))]/30 focus:border-[rgb(var(--admin-info-500))]/40 transition-all"
           />
           <button
             type="button"
             disabled={!handle.trim() || loading}
             onClick={() => setConfirmOpen(true)}
-            className="rounded-md bg-[rgb(var(--admin-expense-400))]/10 px-3 py-1.5 text-[11px] font-medium text-[rgb(var(--admin-expense-400))] hover:bg-[rgb(var(--admin-expense-400))]/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            className="rounded-lg border border-[rgb(var(--admin-expense-400))]/30 bg-[rgb(var(--admin-expense-400))]/8 px-4 py-2 text-[11px] font-semibold text-[rgb(var(--admin-expense-500))] hover:bg-[rgb(var(--admin-expense-400))]/18 disabled:opacity-30 disabled:cursor-not-allowed transition-all whitespace-nowrap"
           >
             {loading ? "…" : "Expirar"}
           </button>
         </div>
         {result && (
-          <p className="text-[10px] text-admin-text-tertiary">{result}</p>
+          <p className="text-[11px] text-admin-text-secondary bg-admin-surface-muted rounded-md px-3 py-2">
+            {result}
+          </p>
         )}
       </div>
 
