@@ -93,6 +93,12 @@ export interface Expense30d {
   apify_actors: ApifyActorBreakdown[];
   /** Actor-level breakdown within OpenAI costs */
   openai_actors: OpenAiActorBreakdown[];
+  /** Number of completed reports (analysis_snapshots) in the period */
+  completed_reports: number;
+  /** Number of fresh (non-cache) successful reports in the period */
+  fresh_reports: number;
+  /** Total API spend attributed to fresh successful reports */
+  fresh_total_spend_usd: number;
 }
 
 export interface CostCaps {
@@ -767,10 +773,44 @@ export async function fetchExpense30d(): Promise<Expense30d> {
       : null,
     apify_actors: apifyActors,
     openai_actors: await aggregateOpenAiActorBreakdown(sinceIso),
+    ...(await fetchReportCounts(sinceIso)),
   };
 }
 
 /* ============================================================ Caps -- */
+
+async function fetchReportCounts(sinceIso: string): Promise<{
+  completed_reports: number;
+  fresh_reports: number;
+  fresh_total_spend_usd: number;
+}> {
+  // Count completed snapshots in the period
+  const { count: snapshotCount } = await supabaseAdmin
+    .from("analysis_snapshots")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", sinceIso);
+
+  // Count fresh successful analysis events and sum their cost
+  const { data: freshEvents } = await supabaseAdmin
+    .from("analysis_events")
+    .select("estimated_cost_usd")
+    .eq("data_source", "fresh")
+    .eq("outcome", "success")
+    .gte("created_at", sinceIso);
+
+  const freshReports = freshEvents?.length ?? 0;
+  const freshSpend = (freshEvents ?? []).reduce(
+    (sum, e) => sum + Number(e.estimated_cost_usd ?? 0),
+    0,
+  );
+
+  return {
+    completed_reports: snapshotCount ?? 0,
+    fresh_reports: freshReports,
+    fresh_total_spend_usd: Number(freshSpend.toFixed(4)),
+  };
+}
+
 
 export async function fetchCostCaps(): Promise<CostCaps> {
   const { data } = await supabaseAdmin
