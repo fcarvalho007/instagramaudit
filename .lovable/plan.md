@@ -1,118 +1,164 @@
-## Overview
 
-Add a billing reconciliation layer that compares **externally reported costs** (from provider dashboards/CSVs) against **internally logged costs** (from `provider_call_logs`). This creates a new table, a server query, a chart, a breakdown table, and a compact entry form — all inside the existing `/admin/receita` page.
+# Billing Reconciliation Upgrade — Financial Accuracy Layer
+
+## Current State
+
+**What exists:**
+- `provider_billing_imports` table — basic schema (no `service_group`, `label`, `raw_calculated_cost_usd`, `displayed_cost_usd`, `reconciliation_note`; no batch concept). Table is empty (0 rows).
+- `billing-reconciliation.server.ts` — simple aggregation comparing `actual_cost_usd` from imports vs `estimated_cost_usd` from `provider_call_logs`.
+- `reconciliation-section.tsx` — basic KPIs + chart + provider/actor tables.
+- `expense-section.tsx` — mature internal cost view from `provider_call_logs` (Apify/OpenAI/DataForSEO breakdowns, actor tables, daily chart).
+
+**What is missing:**
+- Row-level precision: `raw_calculated_cost_usd` vs `displayed_cost_usd` distinction (rounding transparency).
+- Batch grouping: no way to tie rows to a single dashboard export and compare batch totals.
+- Rounding-aware reconciliation: the current logic flags any difference as "divergência" without distinguishing rounding from real discrepancies.
+- `service_group` and `label` fields for structured provider data.
 
 ---
 
 ## 1. Database Migration
 
-**New table: `provider_billing_imports`**
+### A. ALTER `provider_billing_imports` — add missing columns
 
 ```sql
-CREATE TABLE public.provider_billing_imports (
+ALTER TABLE provider_billing_imports
+  ADD COLUMN IF NOT EXISTS service_group text,
+  ADD COLUMN IF NOT EXISTS label text,
+  ADD COLUMN IF NOT EXISTS raw_calculated_cost_usd numeric,
+  ADD COLUMN IF NOT EXISTS displayed_cost_usd numeric,
+  ADD COLUMN IF NOT EXISTS reconciliation_note text,
+  ADD COLUMN IF NOT EXISTS batch_id uuid;
+```
+
+Rename existing `service` → keep as-is (it can coexist; `service_group` is the structured field).
+
+### B. CREATE `provider_billing_import_batches`
+
+```sql
+CREATE TABLE public.provider_billing_import_batches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  provider text NOT NULL,            -- openai | apify | dataforseo
-  source text NOT NULL,              -- dashboard | csv | xlsx | manual
+  provider text NOT NULL,
   period_start timestamptz NOT NULL,
   period_end timestamptz NOT NULL,
-  service text,                      -- Actors, Completions, SERP, Functions
-  actor_or_model text,               -- apify/instagram-scraper, gpt-5.4-mini
-  metric_name text,                  -- events, tokens, requests, tasks
-  quantity numeric,
-  unit_price_usd numeric,
-  estimated_cost_usd numeric,
-  actual_cost_usd numeric NOT NULL DEFAULT 0,
   currency text NOT NULL DEFAULT 'USD',
-  source_reference text,
-  notes text,
+  dashboard_total_actual_cost_usd numeric NOT NULL DEFAULT 0,
+  imported_total_raw_cost_usd numeric,
+  imported_total_displayed_cost_usd numeric,
+  rounding_delta_usd numeric,
+  raw_delta_usd numeric,
+  reconciliation_status text NOT NULL DEFAULT 'pending',
+  source_note text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-
-ALTER TABLE public.provider_billing_imports ENABLE ROW LEVEL SECURITY;
-
-CREATE INDEX idx_billing_imports_provider_period ON public.provider_billing_imports (provider, period_start);
-CREATE INDEX idx_billing_imports_actor ON public.provider_billing_imports (actor_or_model);
-CREATE INDEX idx_billing_imports_created ON public.provider_billing_imports (created_at);
-
-CREATE TRIGGER set_updated_at_billing_imports
-  BEFORE UPDATE ON public.provider_billing_imports
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+ALTER TABLE provider_billing_import_batches ENABLE ROW LEVEL SECURITY;
+CREATE INDEX idx_billing_batches_provider ON provider_billing_import_batches (provider, period_start);
 ```
 
-No RLS policies (admin-only table, accessed via `supabaseAdmin`).
+Add FK from `provider_billing_imports.batch_id` → `provider_billing_import_batches.id`.
+
+Add `set_updated_at` trigger on the new table.
 
 ---
 
-## 2. Server Function (read + insert)
+## 2. Server Logic Changes
 
 **File: `src/lib/admin/billing-reconciliation.server.ts`**
 
-Queries:
-- External total: `SUM(actual_cost_usd)` from `provider_billing_imports` for the period
-- Internal total: `SUM(estimated_cost_usd)` from `provider_call_logs` for the period
-- Variance = external − internal
-- Variance % = variance / external × 100
-- Daily aggregation (both sources grouped by day)
-- Provider breakdown
-- Actor/model breakdown
+- New function `insertBillingBatch(...)` — creates a batch row + N import rows in a single call, then auto-computes:
+  - `imported_total_raw_cost_usd` = SUM(raw_calculated_cost_usd)
+  - `imported_total_displayed_cost_usd` = SUM(displayed_cost_usd)
+  - `rounding_delta_usd` = dashboard_total - imported_total_displayed
+  - `raw_delta_usd` = dashboard_total - imported_total_raw
+  - `reconciliation_status`: "OK" if raw_delta < 0.01, "Rounding difference" if raw_delta < 0.01 but displayed_delta > 0, "Needs review" otherwise.
 
-**File: `src/server/admin/billing-reconciliation.functions.ts`**
+- Update `getReconciliationData(...)` to include batch-level summaries with rounding explanation.
 
-Two server functions:
-- `getBillingReconciliation({ periodDays })` — returns all reconciliation data
-- `insertBillingImport({ ...fields })` — inserts one row
-
-Both protected by existing admin auth middleware.
+- Update `insertBillingImportRow(...)` to accept new fields.
 
 ---
 
-## 3. Admin UI Components
+## 3. API Route Changes
 
-**Location: `src/components/admin/v2/receita/reconciliation-section.tsx`**
+**File: `src/routes/api/admin/billing-reconciliation.ts`**
 
-Contains:
-- 4 KPI cards: Custo real externo | Custo interno registado | Diferença | Estado
-- Line/dot chart (Recharts): daily internal vs external vs variance
-- Provider breakdown table
-- Actor/model breakdown table
-
-**Location: `src/components/admin/v2/receita/billing-import-form.tsx`**
-
-Compact form with fields: provider, period_start, period_end, service, actor_or_model, metric_name, quantity, unit_price_usd, actual_cost_usd, notes. Submits via `insertBillingImport`.
+- Add `POST /api/admin/billing-reconciliation/batch` handler for batch import.
+- Existing single-row POST remains for ad-hoc entries.
 
 ---
 
-## 4. Integration into `/admin/receita`
+## 4. Admin UI Changes
 
-Add `<ReconciliationSection period={period} />` after the existing `<ExpenseSection />` in `src/routes/admin.receita.tsx`.
+### A. `reconciliation-section.tsx` — upgrade
+
+- **Batch summary table**: provider, period, dashboard total, raw total, displayed total, rounding delta, status badge (OK / Rounding difference / Needs review).
+- **Rounding explanation**: when status is "Rounding difference", show inline note explaining row-level rounding vs dashboard total.
+- **Internal vs external comparison**: add row showing internal `provider_call_logs` total for the same provider+period.
+
+### B. `billing-import-form.tsx` — upgrade
+
+- Add fields: `service_group`, `label`, `raw_calculated_cost_usd`, `displayed_cost_usd`, `reconciliation_note`.
+- Add batch mode: enter dashboard total, then add N rows. On submit, creates batch + rows together.
 
 ---
 
-## 5. Labels (pt-PT)
+## 5. Insert Apify Sample Data
 
-All UI labels in European Portuguese as specified.
+Using the insert tool (not migration), insert one batch + two rows:
+
+**Batch:**
+- provider: apify, period: placeholder (2026-05-01 → 2026-05-06)
+- dashboard_total_actual_cost_usd: 0.66
+- Auto-computed after row insert
+
+**Row 1:** apify/instagram-scraper, 37 events × $0.0023, raw: 0.0851, displayed: 0.09
+**Row 2:** apify/instagram-comment-scraper, 250 events × $0.0023, raw: 0.575, displayed: 0.58
 
 ---
 
-## 6. What does NOT happen
+## 6. What Does NOT Change
 
 - No provider API calls
-- No backfilling from external data
-- No modification to `provider_call_logs` or `analysis_events`
-- No changes to report UI
+- No snapshot modifications
+- No changes to `provider_call_logs`
+- No changes to public report UI
 - No changes to `analysis_execution_mode`
+- `expense-section.tsx` continues showing internal costs unchanged
 
 ---
 
-## How to insert your first billing rows
+## 7. Validation Checklist
 
-After implementation, navigate to `/admin/receita`, scroll to "Reconciliação de custos", and use the form. Example first entry:
+| Check | Expected |
+|---|---|
+| Apify batch dashboard total | $0.66 |
+| Apify imported raw total | $0.6601 |
+| Apify imported displayed total | $0.67 |
+| Rounding delta | -$0.01 |
+| Raw delta | -$0.0001 |
+| Reconciliation status | "Rounding difference" |
+| UI explains rounding | Yes |
+| provider_call_logs unchanged | Yes |
+| analysis_snapshots unchanged | Yes |
+| No provider calls created | Yes |
+| Existing expense cards work | Yes |
+| tsc passes | Yes |
+| vitest passes | Yes |
 
-- Provider: `apify`
-- Período: 2026-05-01 → 2026-05-06
-- Service: `Actors`
-- Actor/modelo: `apify/instagram-scraper`
-- Quantidade: 4
-- Custo real: 0.18
-- Notes: "Dashboard Apify maio 2026"
+### Apify Financial Reconciliation Table
+
+```text
+Metric                          Value
+─────────────────────────────── ──────────
+Dashboard total (actual)        $0.6600
+Row 1 raw (37 × 0.0023)        $0.0851
+Row 2 raw (250 × 0.0023)       $0.5750
+Imported raw total              $0.6601
+Row 1 displayed                 $0.0900
+Row 2 displayed                 $0.5800
+Imported displayed total        $0.6700
+Rounding delta (dash - disp)    -$0.0100
+Raw delta (dash - raw)          -$0.0001
+Status                          Rounding difference
+```
