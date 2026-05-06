@@ -518,40 +518,6 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           if (competitors.length >= MAX_COMPETITORS) break;
         }
 
-        // Allowlist gate (smoke-test mode). When testing mode is active, the
-        // primary handle MUST be on the allowlist or the request is rejected
-        // before any cache lookup or provider call. Competitors that are not
-        // allowlisted are silently dropped — the primary analysis still runs.
-        const testingMode = isTestingModeActive();
-        if (testingMode) {
-          if (!isAllowed(primary)) {
-            console.info(
-              "[analyze-public-v1] blocked by allowlist",
-              primary,
-              "allowlist:",
-              getAllowlist().join(","),
-            );
-            await logEvent({
-              handle: primary,
-              competitorHandles: competitors,
-              cacheKey: null,
-              dataSource: "none",
-              outcome: "blocked_allowlist",
-              errorCode: "PROFILE_NOT_ALLOWED",
-            });
-            return failure("PROFILE_NOT_ALLOWED");
-          }
-          const allowedCompetitors = competitors.filter((c) => isAllowed(c));
-          if (allowedCompetitors.length !== competitors.length) {
-            console.info(
-              "[analyze-public-v1] dropped non-allowlisted competitors",
-              competitors.filter((c) => !isAllowed(c)).join(","),
-            );
-          }
-          competitors.length = 0;
-          for (const c of allowedCompetitors) competitors.push(c);
-        }
-
         // Server-side escape hatch: ?refresh=1 bypasses cache and forces a
         // fresh provider call. While the smoke-test layer is active, this
         // requires `Authorization: Bearer ${INTERNAL_API_TOKEN}` so a public
@@ -579,7 +545,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // computed against the cloud-managed dataset.
         const benchmarkData = await loadBenchmarkReferences();
 
-        // 1) Cache lookup. A non-expired snapshot short-circuits the provider.
+        // 1) Cache lookup. A non-expired snapshot short-circuits everything.
         const existing = await lookupSnapshot(cacheKey);
         if (existing && !forceRefresh && isFresh(existing)) {
           const cachedPayload = existing.normalized_payload as unknown as {
@@ -601,8 +567,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           );
         }
 
-        // 1b) Execution mode guard. In cache_only mode, serve existing
-        // snapshot (fresh or stale) but NEVER call any paid provider.
+        // 1b) Execution mode guard. In cache_only mode, short-circuit before
+        // any allowlist check, provider call, or provider-related logging.
+        // This guarantees cache_only never creates provider_call_logs or
+        // analysis_events with allowlist/provider outcomes.
         const executionMode = await getAnalysisExecutionMode();
         if (executionMode === "cache_only") {
           // Serve stale snapshot if available
@@ -648,7 +616,41 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           return failure("CACHE_ONLY_NO_DATA");
         }
 
-        // 2) Hard kill-switch. After the cache lookup so cached snapshots
+        // 2) Allowlist gate (smoke-test mode). Only reached in fresh mode.
+        // When testing mode is active, the primary handle MUST be on the
+        // allowlist or the request is rejected before any provider call.
+        // Competitors not on the allowlist are silently dropped.
+        const testingMode = isTestingModeActive();
+        if (testingMode) {
+          if (!isAllowed(primary)) {
+            console.info(
+              "[analyze-public-v1] blocked by allowlist",
+              primary,
+              "allowlist:",
+              getAllowlist().join(","),
+            );
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "none",
+              outcome: "blocked_allowlist",
+              errorCode: "PROFILE_NOT_ALLOWED",
+            });
+            return failure("PROFILE_NOT_ALLOWED");
+          }
+          const allowedCompetitors = competitors.filter((c) => isAllowed(c));
+          if (allowedCompetitors.length !== competitors.length) {
+            console.info(
+              "[analyze-public-v1] dropped non-allowlisted competitors",
+              competitors.filter((c) => !isAllowed(c)).join(","),
+            );
+          }
+          competitors.length = 0;
+          for (const c of allowedCompetitors) competitors.push(c);
+        }
+
+        // 3) Hard kill-switch. After the cache lookup so cached snapshots
         // remain serveable, before any provider call so disabled mode never
         // burns Apify credits. Stale fallback below is also bypassed because
         // we never reach the provider try/catch.
