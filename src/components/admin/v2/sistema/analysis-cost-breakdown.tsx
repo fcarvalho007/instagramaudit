@@ -52,6 +52,7 @@ interface AnalysisBreakdown {
   enrichment_summary: Record<string, string> | null;
   all_enrichments_complete: boolean;
   snapshot_expires_at: string | null;
+  enrichment_history: Record<string, { total: number; failed: number }> | null;
 }
 
 const COMMENT_HARD_MAX = 0.20;
@@ -117,7 +118,7 @@ const ENRICHMENT_SHORT: Record<string, string> = {
   caption_semantic: "Cap",
 };
 
-function EnrichmentDots({ summary }: { summary: Record<string, string> | null }) {
+function EnrichmentDots({ summary, history }: { summary: Record<string, string> | null; history?: Record<string, { total: number; failed: number }> | null }) {
   if (!summary) return <span className="text-[10px] text-foreground-muted italic">—</span>;
   return (
     <span className="inline-flex items-center gap-0.5">
@@ -129,9 +130,15 @@ function EnrichmentDots({ summary }: { summary: Record<string, string> | null })
           s === "pending" || s === "running" ? "text-signal-warning" :
           "text-foreground-muted";
         const Icon = s === "success" ? CheckCircle2 : s === "error" ? XCircle : Clock;
+        const failCount = history?.[t]?.failed ?? 0;
         return (
-          <span key={t} className={color} title={`${ENRICHMENT_SHORT[t]}: ${s ?? "?"}`}>
+          <span key={t} className={`relative ${color}`} title={`${ENRICHMENT_SHORT[t]}: ${s ?? "?"}${failCount > 0 ? ` (${failCount} falha${failCount > 1 ? "s" : ""} anterior${failCount > 1 ? "es" : ""})` : ""}`}>
             <Icon size={10} />
+            {failCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 text-[7px] font-bold text-signal-warning leading-none">
+                {failCount}
+              </span>
+            )}
           </span>
         );
       })}
@@ -179,7 +186,7 @@ function AnalysisRow({ a }: { a: AnalysisBreakdown }) {
         </div>
         <div className="hidden sm:contents">
           <div className="text-center">
-            <EnrichmentDots summary={a.enrichment_summary} />
+            <EnrichmentDots summary={a.enrichment_summary} history={a.enrichment_history} />
             <div className={`text-[9px] mt-0.5 flex items-center justify-center gap-0.5 ${linkageWarn ? "text-signal-warning" : "text-foreground-muted"}`}>
               <Link2 size={8} />
               <span>{t.linked_count}/{t.call_count}</span>
