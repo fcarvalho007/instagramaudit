@@ -1010,6 +1010,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // Runs AFTER text insights so the daily cap accounts for text
           // costs first. Uses the same gates (OPENAI_ENABLED + allowlist).
           let visualCoverAnalysis: VisualCoverAnalysis | null = null;
+          console.info("[analyze-public-v1] entering visual cover section", { handle: primaryProfile.username });
           // Reuse cached visual cover from previous snapshot to avoid
           // redundant OpenAI vision calls on the same post set.
           const cachedVisualCover = (existing?.normalized_payload as Record<string, unknown> | undefined)?.visual_cover_analysis;
@@ -1020,6 +1021,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           ) {
             visualCoverAnalysis = cachedVisualCover as VisualCoverAnalysis;
             console.info("[analyze-public-v1] reused cached visual_cover_analysis");
+          } else if (!isOpenAiAllowed(primaryProfile.username)) {
+            console.info("[analyze-public-v1] visual cover skipped — OpenAI not allowed for", primaryProfile.username);
           } else if (isOpenAiAllowed(primaryProfile.username)) {
             try {
               const thumbPosts = primaryEnriched.posts
