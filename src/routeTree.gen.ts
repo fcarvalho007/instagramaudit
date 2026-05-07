@@ -39,6 +39,7 @@ import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
 import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
+import { Route as AdminBetaRequestsRouteImport } from './routes/admin.beta-requests'
 import { Route as AdminBetaLeadsRouteImport } from './routes/admin.beta-leads'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
 import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
@@ -244,6 +245,11 @@ const AdminConhecimentoRoute = AdminConhecimentoRouteImport.update({
 const AdminClientesRoute = AdminClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBetaRequestsRoute = AdminBetaRequestsRouteImport.update({
+  id: '/beta-requests',
+  path: '/beta-requests',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminBetaLeadsRoute = AdminBetaLeadsRouteImport.update({
@@ -571,6 +577,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
+  '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
@@ -658,6 +665,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
+  '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
@@ -747,6 +755,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
+  '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
@@ -837,6 +846,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/termos'
     | '/admin/beta-leads'
+    | '/admin/beta-requests'
     | '/admin/clientes'
     | '/admin/conhecimento'
     | '/admin/perfis'
@@ -924,6 +934,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/termos'
     | '/admin/beta-leads'
+    | '/admin/beta-requests'
     | '/admin/clientes'
     | '/admin/conhecimento'
     | '/admin/perfis'
@@ -1012,6 +1023,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/termos'
     | '/admin/beta-leads'
+    | '/admin/beta-requests'
     | '/admin/clientes'
     | '/admin/conhecimento'
     | '/admin/perfis'
@@ -1364,6 +1376,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes'
       fullPath: '/admin/clientes'
       preLoaderRoute: typeof AdminClientesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/beta-requests': {
+      id: '/admin/beta-requests'
+      path: '/beta-requests'
+      fullPath: '/admin/beta-requests'
+      preLoaderRoute: typeof AdminBetaRequestsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/beta-leads': {
@@ -1775,6 +1794,7 @@ const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminBetaLeadsRoute: typeof AdminBetaLeadsRoute
+  AdminBetaRequestsRoute: typeof AdminBetaRequestsRoute
   AdminClientesRoute: typeof AdminClientesRoute
   AdminConhecimentoRoute: typeof AdminConhecimentoRoute
   AdminPerfisRoute: typeof AdminPerfisRoute
@@ -1790,6 +1810,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBetaLeadsRoute: AdminBetaLeadsRoute,
+  AdminBetaRequestsRoute: AdminBetaRequestsRoute,
   AdminClientesRoute: AdminClientesRoute,
   AdminConhecimentoRoute: AdminConhecimentoRoute,
   AdminPerfisRoute: AdminPerfisRoute,

@@ -1,10 +1,21 @@
 /**
- * GET /api/admin/report-requests/$id — full detail for one row.
+ * GET  /api/admin/report-requests/$id — full detail for one row.
+ * PATCH /api/admin/report-requests/$id — update request status.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import type { Json } from "@/integrations/supabase/types";
+
+const VALID_STATUSES = [
+  "pending_review",
+  "approved",
+  "rejected",
+  "processing",
+  "completed",
+  "archived",
+] as const;
 
 interface LeadJoin {
   id: string;
@@ -70,6 +81,75 @@ export const Route = createFileRoute("/api/admin/report-requests/$id")({
             lead,
           },
         });
+      },
+
+      PATCH: async ({ request, params }) => {
+        try {
+          await requireAdminSession();
+        } catch (res) {
+          if (res instanceof Response) return res;
+          throw res;
+        }
+
+        let body: Record<string, unknown>;
+        try {
+          body = await request.json();
+        } catch {
+          return jsonResponse({ success: false, error: "Invalid JSON" }, 400);
+        }
+
+        // Build update payload
+        const updates: { request_status?: string; updated_at: string } = {
+          updated_at: new Date().toISOString(),
+        };
+
+        if (typeof body.request_status === "string") {
+          if (!VALID_STATUSES.includes(body.request_status as (typeof VALID_STATUSES)[number])) {
+            return jsonResponse({ success: false, error: "Invalid status" }, 400);
+          }
+          updates.request_status = body.request_status;
+        }
+
+        if (!updates.request_status) {
+          return jsonResponse({ success: false, error: "No valid fields" }, 400);
+        }
+
+        const { data: updated, error } = await supabaseAdmin
+          .from("report_requests")
+          .update(updates)
+          .eq("id", params.id)
+          .select("id, request_status, lead_id")
+          .maybeSingle();
+
+        if (error) {
+          console.error("[admin/report-requests/$id] PATCH failed", error);
+          return jsonResponse({ success: false, error: error.message }, 500);
+        }
+        if (!updated) {
+          return jsonResponse({ success: false, error: "Not found" }, 404);
+        }
+
+        // If mark_contacted, update leads table
+        if (body.mark_contacted === true && updated.lead_id) {
+          await supabaseAdmin
+            .from("leads")
+            .update({ contacted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            .eq("id", updated.lead_id);
+        }
+
+        // Track event (fire-and-forget)
+        try {
+          await supabaseAdmin.from("product_events").insert([{
+            event_type: "request_status_changed",
+            lead_id: updated.lead_id,
+            metadata: {
+              request_id: params.id,
+              new_status: updates.request_status,
+            } as { [key: string]: Json | undefined },
+          }]);
+        } catch { /* non-critical */ }
+
+        return jsonResponse({ success: true, row: updated });
       },
     },
   },

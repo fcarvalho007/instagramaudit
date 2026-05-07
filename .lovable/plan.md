@@ -1,165 +1,109 @@
 
-# Admin Commercial Kanban — Beta Leads
+# Admin Beta Request Queue
 
-## Data Model Changes
+## Data Model Audit
 
-### New columns on `leads` table
+No schema changes needed. Everything required already exists:
 
-| Column | Type | Default | Purpose |
-|--------|------|---------|---------|
-| `commercial_status` | text | `'novo_pedido'` | Kanban column position |
-| `internal_notes` | text | `NULL` | Free-text admin notes |
-| `contacted_at` | timestamptz | `NULL` | When admin marked as contacted |
-| `archived_at` | timestamptz | `NULL` | Soft archive timestamp |
+- `report_requests`: `request_status`, `request_source`, `lead_id`, `instagram_username`, `analysis_snapshot_id`, `metadata` (contains `user_type`, `purpose`, `profile_ownership` from beta submissions)
+- `leads`: `email`, `name`, `user_type`, `purpose`, `profile_ownership`, `commercial_status`, `internal_notes`, `contacted_at`
 
-**Allowed values for `commercial_status`:**
-`novo_pedido`, `em_analise`, `relatorio_gerado`, `relatorio_visto`, `feedback_pedido`, `interessado`, `potencial_cliente`, `convertido`, `arquivado`
+The existing `GET /api/admin/report-requests` already queries this data with pagination, filters, and lead joins. However it only returns `lead.id`, `lead.name`, `lead.email` — we need to extend the select to include the beta fields (`user_type`, `purpose`, `profile_ownership`, `source`).
 
-### Migration
+## API Plan
 
-```sql
-ALTER TABLE public.leads
-  ADD COLUMN IF NOT EXISTS commercial_status text NOT NULL DEFAULT 'novo_pedido',
-  ADD COLUMN IF NOT EXISTS internal_notes text,
-  ADD COLUMN IF NOT EXISTS contacted_at timestamptz,
-  ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+### Extend existing `GET /api/admin/report-requests`
 
-CREATE INDEX IF NOT EXISTS idx_leads_commercial_status ON public.leads (commercial_status);
-```
+Add `user_type`, `purpose`, `profile_ownership`, `source` to the lead join select. Add `request_source` filter param so we can filter to `beta_form` requests only.
 
-No new tables needed. All card data is assembled by joining `leads` + `report_requests` + `product_events` (aggregated) + `analysis_snapshots` (for cost).
+### Add `PATCH /api/admin/report-requests/$id`
 
----
+New handler on the existing `report-requests.$id.ts` route. Accepts:
+- `request_status` — approve/reject/archive
+- Server-side validation of allowed transitions
 
-## API Endpoints
+Also updates `leads.contacted_at` if action is "mark contacted", and fires a `product_event` for audit.
 
-### 1. `GET /api/admin/leads-kanban`
-
-Returns all non-archived leads enriched with:
-- Latest `report_requests` row (status, snapshot_id, pdf_status)
-- Report view count from `product_events` WHERE `event_type = 'report_viewed'` AND `handle` matches
-- Estimated cost from `analysis_snapshots` or `provider_call_logs`
-- Last interaction = MAX of (lead.updated_at, last product_event.created_at)
-
-Response shape per lead:
-```json
-{
-  "id": "uuid",
-  "email": "...",
-  "handle": "...",
-  "user_type": "...",
-  "purpose": "...",
-  "commercial_status": "novo_pedido",
-  "internal_notes": "...",
-  "report_status": "pending",
-  "report_cost_usd": 0.12,
-  "report_views": 3,
-  "feedback_score": null,
-  "last_interaction": "2026-05-07T...",
-  "created_at": "..."
-}
-```
-
-### 2. `PATCH /api/admin/leads-kanban/$id`
-
-Body: `{ commercial_status?, internal_notes?, contacted_at? }`
-
-Updates the lead row. Fires `product_event` with type `lead_status_changed` for audit.
-
----
+No new API files — extend the two existing ones.
 
 ## UI Structure
 
-### Route: `src/routes/admin.beta-leads.tsx`
+### Route: `src/routes/admin.beta-requests.tsx`
 
-Replaces or sits alongside `admin.clientes` (the current clientes page is mock-only). New dedicated page for real beta lead management.
-
-### Layout
+New admin tab page. Structure:
 
 ```text
-┌─────────────────────────────────────────────────────┐
-│  Beta Leads · Kanban          [Pesquisar] [Filtrar]  │
-├─────────────────────────────────────────────────────┤
-│  Novo │ Análise │ Gerado │ Visto │ Feedback │ ...   │
-│  ┌──┐ │  ┌──┐   │  ┌──┐  │       │          │       │
-│  │  │ │  │  │   │  │  │  │       │          │       │
-│  └──┘ │  └──┘   │  └──┘  │       │          │       │
-│  ┌──┐ │         │        │       │          │       │
-│  │  │ │         │        │       │          │       │
-│  └──┘ │         │        │       │          │       │
-└─────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│  Beta Requests        [Filtro status ▾] [Pesquisar]   │
+│  12 pendentes · 3 aprovados · 1 rejeitado             │
+├───────────────────────────────────────────────────────┤
+│  Tabela                                               │
+│  ┌─────┬──────┬──────┬──────┬──────┬──────┬────────┐  │
+│  │ Data│Handle│Email │Tipo  │Obj.  │Status│ Ações  │  │
+│  ├─────┼──────┼──────┼──────┼──────┼──────┼────────┤  │
+│  │ ... │ ...  │ ...  │ ...  │ ...  │ ...  │ ...    │  │
+│  └─────┴──────┴──────┴──────┴──────┴──────┴────────┘  │
+│  [← Anterior]                    [Seguinte →]         │
+└───────────────────────────────────────────────────────┘
 ```
 
-- Horizontal scroll for 9 columns
-- Each column has a header with count badge
-- Cards are vertically stacked within each column
+### Components (new, under `src/components/admin/v2/beta-requests/`)
 
-### Card Content
+1. **`beta-requests-table.tsx`** — Table with columns: data, handle (link to IG), email (copy button), nome, tipo utilizador, objetivo, propriedade do perfil, status (badge), ações (dropdown)
+2. **`beta-request-actions.tsx`** — DropdownMenu with: aprovar, rejeitar, marcar contactado, arquivar, abrir Instagram, copiar email, copiar handle, notas (opens sheet)
+3. **`beta-request-filters.tsx`** — Pill/select filters for status + source
 
-Each card shows:
-- **Email** (truncated)
-- **@handle** (link to public report)
-- **User type** badge (e.g. "Marca", "Freelancer")
-- **Purpose** (one-liner)
-- **Report status** badge (pending / generated / viewed)
-- **Cost** if available (e.g. "€0.12")
-- **Views** count
-- **Last interaction** relative time
-- **Internal notes** preview (first line, expandable)
+### Detail sheet
 
-### Card Actions (dropdown or icon row)
+Reuse the existing `RequestDetailSheet` pattern but enriched with beta fields. Or, for simplicity in phase 1, the actions dropdown handles everything inline without a separate sheet.
 
-- **Abrir relatório** — opens `/analyze/{handle}` in new tab
-- **Copiar link** — copies public report URL
-- **Marcar contactado** — sets `contacted_at = now()`
-- **Arquivar** — moves to `arquivado` column
-- **Editar notas** — inline textarea or sheet
+### Navigation
 
-### Drag-and-drop
+Add "Beta Requests" tab to `AdminTabsNav` at `/admin/beta-requests`.
 
-Not in phase 1. Status changes via a dropdown select on each card or via the detail sheet. Drag can be added later with `@hello-pangea/dnd`.
+## Files to Create
 
----
+| File | Purpose |
+|------|---------|
+| `src/routes/admin.beta-requests.tsx` | Route page |
+| `src/components/admin/v2/beta-requests/beta-requests-table.tsx` | Table component |
+| `src/components/admin/v2/beta-requests/beta-request-actions.tsx` | Actions dropdown |
+| `src/components/admin/v2/beta-requests/beta-request-filters.tsx` | Status filter pills |
 
-## Admin Workflow
+## Files to Modify
 
-1. New beta request arrives → card appears in **Novo pedido**
-2. Admin reviews → moves to **Em análise** (manual)
-3. Admin triggers analysis → system moves to **Relatório gerado** (can be automated later via `report_requests.request_status`)
-4. User views report → system could auto-advance to **Relatório visto** (via `report_viewed` event count > 0)
-5. Admin requests feedback → **Feedback pedido**
-6. Lead shows interest → **Interessado** / **Potencial cliente** / **Convertido** (manual)
-7. Dead leads → **Arquivado**
+| File | Change |
+|------|--------|
+| `src/routes/api/admin/report-requests.ts` | Extend lead join to include beta fields; add `request_source` filter |
+| `src/routes/api/admin/report-requests.$id.ts` | Add PATCH handler for status changes |
+| `src/components/admin/v2/admin-tabs-nav.tsx` | Add "Beta Requests" tab |
 
----
+## Files NOT to Touch
 
-## Implementation Phases
+- `src/routes/analyze.$username.tsx` (locked)
+- `src/lib/beta.functions.ts` (no changes needed)
+- `src/lib/tracking.functions.ts` / `src/lib/tracking.server.ts`
+- `src/styles/tokens.css` / `src/styles/tokens-light.css` (locked)
+- `src/integrations/supabase/client.ts` / `types.ts` (auto-generated)
+- Any provider logic (Apify, OpenAI, DataForSEO)
+- PDF pipeline files
+- Cost/revenue admin files
 
-### Phase 1 — Schema + API (this prompt)
-- Migration adding 4 columns to `leads`
-- Server route `GET /api/admin/leads-kanban` with joined query
-- Server route `PATCH /api/admin/leads-kanban/$id` for status/notes updates
+## Risks and Mitigations
 
-### Phase 2 — Kanban UI
-- Route `admin.beta-leads.tsx`
-- Kanban column layout with horizontal scroll
-- Lead cards with badges, actions dropdown
-- Status change via select dropdown
-- Notes editing via sheet/dialog
-- Quick actions (open report, copy link, mark contacted, archive)
+| Risk | Mitigation |
+|------|-----------|
+| PATCH on report_requests could accidentally trigger analysis | PATCH only updates `request_status` field — no analysis pipeline call. Report generation will be a separate, explicit future prompt |
+| Extending the lead join select could break existing cockpit consumers | The existing cockpit `RequestsPanel` uses the same endpoint but only reads `id`, `name`, `email` from the lead — additional fields are ignored by existing consumers |
+| Adding a tab to AdminTabsNav changes a shared component | Low risk — only adds one entry to the TABS array, no layout changes |
+| Large number of requests could slow the table | Already paginated (existing API supports `page` + `pageSize`). Default 25 rows |
 
-### Phase 3 — Automation (future)
-- Auto-advance status based on product events
-- Drag-and-drop reordering
-- Filters by date, status, user_type
-- Export CSV
+## Implementation Order
 
----
-
-## Technical Notes
-
-- No new npm dependencies in phase 1-2 (uses existing shadcn components: Card, Badge, Select, Sheet, DropdownMenu, ScrollArea)
-- Admin auth gate already exists via `AdminGate` component
-- Design tokens from `tokens.css` — admin surfaces use `--admin-*` variables
-- All queries use `supabaseAdmin` (server-side, bypasses RLS)
-- `product_events` query is aggregated server-side to avoid N+1
+1. Extend `GET /api/admin/report-requests` (lead join + source filter)
+2. Add `PATCH` to `report-requests.$id.ts`
+3. Create filter pills component
+4. Create actions dropdown component
+5. Create table component
+6. Create route page
+7. Add tab to nav

@@ -5,6 +5,7 @@
  *   status   — request_status filter
  *   pdf      — pdf_status filter
  *   email    — delivery_status filter
+ *   source   — request_source filter (e.g. "beta_form")
  *   q        — search by username or lead email (ilike)
  *   page     — 1-indexed (default 1)
  *   pageSize — default 25, max 100
@@ -21,6 +22,11 @@ interface LeadJoin {
   id: string;
   name: string | null;
   email: string | null;
+  user_type: string | null;
+  purpose: string | null;
+  profile_ownership: string | null;
+  source: string | null;
+  company: string | null;
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -45,6 +51,7 @@ export const Route = createFileRoute("/api/admin/report-requests")({
         const status = url.searchParams.get("status") ?? undefined;
         const pdf = url.searchParams.get("pdf") ?? undefined;
         const email = url.searchParams.get("email") ?? undefined;
+        const source = url.searchParams.get("source") ?? undefined;
         const q = url.searchParams.get("q")?.trim() ?? "";
 
         const pageRaw = Number(url.searchParams.get("page") ?? "1");
@@ -63,8 +70,8 @@ export const Route = createFileRoute("/api/admin/report-requests")({
           .select(
             `id, instagram_username, request_status, pdf_status, delivery_status,
              pdf_storage_path, email_sent_at, pdf_generated_at, is_free_request,
-             analysis_snapshot_id, created_at, updated_at,
-             lead:lead_id ( id, name, email )`,
+             analysis_snapshot_id, request_source, created_at, updated_at,
+             lead:lead_id ( id, name, email, user_type, purpose, profile_ownership, source, company )`,
             { count: "exact" },
           )
           .order("created_at", { ascending: false })
@@ -73,6 +80,7 @@ export const Route = createFileRoute("/api/admin/report-requests")({
         if (status) query = query.eq("request_status", status);
         if (pdf) query = query.eq("pdf_status", pdf);
         if (email) query = query.eq("delivery_status", email);
+        if (source) query = query.eq("request_source", source);
         if (q) {
           // Match by username (on the row) OR by lead email.
           // Supabase JS does not support ORs across joins easily — apply on the
@@ -123,6 +131,7 @@ export const Route = createFileRoute("/api/admin/report-requests")({
           pdf_generated_at: string | null;
           is_free_request: boolean;
           analysis_snapshot_id: string | null;
+          request_source: string;
           created_at: string;
           updated_at: string;
           lead: LeadJoin | LeadJoin[] | null;
@@ -141,6 +150,7 @@ export const Route = createFileRoute("/api/admin/report-requests")({
             pdf_generated_at: r.pdf_generated_at,
             is_free_request: r.is_free_request,
             analysis_snapshot_id: r.analysis_snapshot_id,
+            request_source: r.request_source,
             created_at: r.created_at,
             updated_at: r.updated_at,
             lead: leadValue
@@ -148,6 +158,11 @@ export const Route = createFileRoute("/api/admin/report-requests")({
                   id: leadValue.id,
                   name: leadValue.name,
                   email: leadValue.email,
+                  user_type: leadValue.user_type,
+                  purpose: leadValue.purpose,
+                  profile_ownership: leadValue.profile_ownership,
+                  source: leadValue.source,
+                  company: leadValue.company,
                 }
               : null,
           };
