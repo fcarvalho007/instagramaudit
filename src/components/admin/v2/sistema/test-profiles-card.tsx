@@ -5,6 +5,7 @@
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
   getExecutionMode,
   getTestProfileStatuses,
@@ -13,7 +14,18 @@ import {
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ExternalLink, RefreshCw, Clock, Plus, DollarSign } from "lucide-react";
+import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STATUS_ITEMS: Array<{
   key: keyof Pick<
@@ -57,6 +69,7 @@ function ProfileAvatar({ handle }: { handle: string }) {
 function ProfileRow({ p }: { p: TestProfileStatus }) {
   const qc = useQueryClient();
   const [expiring, setExpiring] = useState(false);
+  const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
 
   const { data: modeData } = useQuery({
     queryKey: ["admin", "execution-mode"],
@@ -64,6 +77,36 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
     staleTime: 10_000,
   });
   const isCacheOnly = (modeData?.mode ?? "cache_only") === "cache_only";
+
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/refresh-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Email": localStorage.getItem("admin_email") ?? "",
+        },
+        body: JSON.stringify({ handle: p.handle }),
+      });
+      const body = await res.json();
+      if (!res.ok || !body.success) {
+        throw new Error(body.error ?? "Falha na atualização");
+      }
+      return body as { success: boolean; restore_warning?: string | null };
+    },
+    onSuccess: (data) => {
+      toast.success(`Dados atualizados para @${p.handle}`);
+      if (data.restore_warning) {
+        toast.warning(data.restore_warning);
+      }
+      qc.invalidateQueries({ queryKey: ["admin", "test-profiles"] });
+      qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+      qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
+    },
+  });
 
   const handleForceRefresh = async () => {
     setExpiring(true);
@@ -135,6 +178,21 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setRefreshConfirmOpen(true)}
+            disabled={refreshMutation.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              borderColor: "rgba(55,114,229,0.3)",
+              color: "#3772E5",
+              backgroundColor: "rgba(55,114,229,0.05)",
+            }}
+            title="Busca dados novos ao fornecedor e volta a cache_only automaticamente."
+          >
+            <Zap size={12} className={refreshMutation.isPending ? "animate-pulse" : ""} />
+            {refreshMutation.isPending ? "A atualizar…" : "Atualizar agora"}
+          </button>
           <Link
             to="/analyze/$username"
             params={{ username: p.handle }}
@@ -195,6 +253,36 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
           );
         })}
       </div>
+
+      {/* Confirm dialog for one-shot refresh */}
+      <AlertDialog open={refreshConfirmOpen} onOpenChange={setRefreshConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Atualizar dados agora?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  Vai buscar dados novos ao fornecedor para <strong>@{p.handle}</strong>.
+                </p>
+                <p className="text-admin-text-tertiary">
+                  Custo estimado: ~$0.02–0.05 USD
+                </p>
+                <p className="text-admin-text-tertiary">
+                  O sistema volta a <em>cache_only</em> automaticamente após a operação.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => refreshMutation.mutate()}
+            >
+              Atualizar agora
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
