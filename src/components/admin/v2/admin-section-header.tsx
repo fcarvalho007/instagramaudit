@@ -52,14 +52,7 @@ export function AdminSectionHeader({
         }}
       />
       <h2
-        style={{
-          margin: 0,
-          fontSize: 13,
-          fontWeight: 500,
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          color: "#2C2C2A",
-        }}
+        className="admin-section-title"
       >
         {title}
         {subtitle ? (
