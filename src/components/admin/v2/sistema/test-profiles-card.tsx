@@ -7,9 +7,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import {
-  getExecutionMode,
   getTestProfileStatuses,
-  expireSnapshotForHandle,
   type TestProfileStatus,
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
@@ -27,7 +25,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { adminFetch } from "@/lib/admin/fetch";
-import type { RuntimeCheck } from "@/lib/admin/system-queries.server";
 
 /* ── Error mapping ── */
 
@@ -81,6 +78,27 @@ interface LastAttempt {
   reason?: string;
 }
 
+/* ── Preflight types ── */
+
+interface PreflightCheck {
+  key: string;
+  label: string;
+  status: "ok" | "fail" | "warn";
+  message: string;
+}
+
+interface PreflightResult {
+  can_refresh: boolean;
+  blocking_reason: string | null;
+  estimated_cost_usd: string;
+  checks: PreflightCheck[];
+  cache_status: {
+    has_snapshot: boolean;
+    expired: boolean;
+    expires_at: string | null;
+  };
+}
+
 const STATUS_ITEMS: Array<{
   key: keyof Pick<
     TestProfileStatus,
@@ -122,78 +140,41 @@ function ProfileAvatar({ handle }: { handle: string }) {
 
 /* ── Pre-flight status helpers ── */
 
-async function fetchRuntimeChecks(): Promise<RuntimeCheck[]> {
-  const res = await adminFetch("/api/admin/sistema/runtime-checks");
-  if (!res.ok) return [];
-  return (await res.json()) as RuntimeCheck[];
+async function fetchPreflight(handle: string): Promise<PreflightResult> {
+  const res = await adminFetch(
+    `/api/admin/refresh-profile-preflight?handle=${encodeURIComponent(handle)}`,
+  );
+  if (!res.ok) {
+    throw new Error(`Preflight HTTP ${res.status}`);
+  }
+  return (await res.json()) as PreflightResult;
 }
 
-function PreflightStrip({
-  handle,
-  profile,
-}: {
-  handle: string;
-  profile: TestProfileStatus;
-}) {
-  const { data: checks } = useQuery({
-    queryKey: ["admin", "sistema", "runtime-checks"],
-    queryFn: fetchRuntimeChecks,
-    staleTime: 30_000,
-  });
-
-  const find = (name: string) => checks?.find((c) => c.name === name);
-  const tokenOk = find("INTERNAL_API_TOKEN")?.status === "ok" ||
-    // fallback: if no explicit check, check general token check
-    Boolean(checks?.some((c) => c.name.toLowerCase().includes("internal") && c.status === "ok"));
-  const apifyOk = find("APIFY_ENABLED")?.status === "ok";
-  const allowlistCheck = find("Modo de teste Apify");
-  const allowlistOk = allowlistCheck?.status === "ok";
-  const cacheValid = profile.hasCachedReport;
-  const cacheExpired = profile.snapshotExpiresAt
-    ? new Date(profile.snapshotExpiresAt).getTime() < Date.now()
-    : false;
-
-  const items: Array<{ label: string; ok: boolean; detail: string }> = [
-    {
-      label: "Token interno",
-      ok: tokenOk,
-      detail: tokenOk ? "configurado" : "em falta",
-    },
-    {
-      label: "Apify",
-      ok: apifyOk,
-      detail: apifyOk ? "ativo" : "inativo",
-    },
-    {
-      label: "Allowlist",
-      ok: allowlistOk,
-      detail: allowlistOk ? "autorizado" : "não autorizado",
-    },
-    {
-      label: "Cache",
-      ok: cacheValid && !cacheExpired,
-      detail: !cacheValid ? "sem dados" : cacheExpired ? "expirada" : "válida",
-    },
-  ];
-
+function PreflightChecklist({ checks }: { checks: PreflightCheck[] }) {
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 text-[12px]">
-      {items.map((item) => (
-        <div key={item.label} className="flex items-center gap-1.5">
-          {item.ok ? (
+      {checks.map((c) => (
+        <div key={c.key} className="flex items-center gap-1.5">
+          {c.status === "ok" ? (
             <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+          ) : c.status === "warn" ? (
+            <AlertTriangle size={12} className="text-amber-500 shrink-0" />
           ) : (
             <XCircle size={12} className="text-red-500 shrink-0" />
           )}
           <span className="text-admin-text-secondary font-medium">
-            {item.label}:
+            {c.label}:
           </span>
           <span
             className={
-              item.ok ? "text-admin-text-tertiary" : "text-red-600 font-medium"
+              c.status === "ok"
+                ? "text-admin-text-tertiary"
+                : c.status === "warn"
+                  ? "text-amber-600"
+                  : "text-red-600 font-medium"
             }
           >
-            {item.detail}
+            {c.message}
           </span>
         </div>
       ))}
@@ -207,12 +188,26 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
   const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
   const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
 
-  const { data: modeData } = useQuery({
-    queryKey: ["admin", "execution-mode"],
-    queryFn: () => getExecutionMode(),
-    staleTime: 10_000,
+  // Preflight query — only runs when modal opens
+  const {
+    data: preflight,
+    isLoading: preflightLoading,
+    refetch: refetchPreflight,
+  } = useQuery({
+    queryKey: ["admin", "preflight", p.handle],
+    queryFn: () => fetchPreflight(p.handle),
+    enabled: refreshConfirmOpen,
+    staleTime: 5_000,
   });
-  const isCacheOnly = (modeData?.mode ?? "cache_only") === "cache_only";
+
+  // Also fetch preflight lazily for the row status badge
+  const { data: rowPreflight } = useQuery({
+    queryKey: ["admin", "preflight", p.handle],
+    queryFn: () => fetchPreflight(p.handle),
+    staleTime: 30_000,
+  });
+
+  const canRefresh = preflight?.can_refresh ?? true;
 
   const refreshMutation = useMutation({
     mutationFn: async () => {
@@ -247,24 +242,14 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
       }
       setLastAttempt({ timestamp: new Date(), success: true });
       qc.invalidateQueries({ queryKey: ["admin", "test-profiles"] });
-      qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
+      qc.invalidateQueries({ queryKey: ["admin", "preflight", p.handle] });
     },
     onError: (err: Error) => {
       toast.error(err.message);
       setLastAttempt({ timestamp: new Date(), success: false, reason: err.message });
-      qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
+      qc.invalidateQueries({ queryKey: ["admin", "preflight", p.handle] });
     },
   });
-
-  const handleForceRefresh = async () => {
-    setExpiring(true);
-    try {
-      await expireSnapshotForHandle({ data: { handle: p.handle } });
-      qc.invalidateQueries({ queryKey: ["admin", "test-profiles"] });
-    } finally {
-      setExpiring(false);
-    }
-  };
 
   const expiresIn = p.snapshotExpiresAt
     ? Math.max(0, Math.round((new Date(p.snapshotExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60)))
@@ -321,6 +306,32 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
                 expira em {expiresIn}h
               </span>
             )}
+            {/* Row-level refresh readiness badge */}
+            {rowPreflight && (
+              <span
+                className="inline-flex items-center gap-1"
+                style={{
+                  color: rowPreflight.can_refresh ? "#1D9E75" : "#BA7517",
+                }}
+              >
+                {rowPreflight.can_refresh ? (
+                  <>
+                    <CheckCircle2 size={10} />
+                    <span>Pronto para atualizar</span>
+                  </>
+                ) : refreshMutation.isPending ? (
+                  <>
+                    <RefreshCw size={10} className="animate-spin" />
+                    <span>Atualização em curso</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle size={10} />
+                    <span>Bloqueado: {rowPreflight.blocking_reason}</span>
+                  </>
+                )}
+              </span>
+            )}
           </div>
         </div>
 
@@ -328,7 +339,10 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => setRefreshConfirmOpen(true)}
+            onClick={() => {
+              setRefreshConfirmOpen(true);
+              refetchPreflight();
+            }}
             disabled={refreshMutation.isPending}
             className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
@@ -350,25 +364,6 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
             <ExternalLink size={12} />
             Abrir relatório
           </Link>
-          <button
-            type="button"
-            onClick={handleForceRefresh}
-            disabled={isCacheOnly || expiring}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              borderColor: isCacheOnly ? "#E5E3D9" : "rgba(186,117,23,0.3)",
-              color: isCacheOnly ? "#888780" : "#BA7517",
-              backgroundColor: isCacheOnly ? "transparent" : "rgba(186,117,23,0.05)",
-            }}
-            title={
-              isCacheOnly
-                ? "Troca para \"Buscar dados novos\" para ativar esta ação."
-                : "Expira o snapshot e força análise nova na próxima visita."
-            }
-          >
-            <RefreshCw size={12} className={expiring ? "animate-spin" : ""} />
-            {expiring ? "A processar…" : "Buscar novo"}
-          </button>
         </div>
       </div>
 
@@ -444,12 +439,30 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
                 <p>
                   Vai buscar dados novos ao fornecedor para <strong>@{p.handle}</strong>.
                 </p>
-                <PreflightStrip handle={p.handle} profile={p} />
+                {preflightLoading ? (
+                  <p className="text-admin-text-tertiary text-[12px]">A verificar pré-condições…</p>
+                ) : preflight ? (
+                  <>
+                    <PreflightChecklist checks={preflight.checks} />
+                    {!preflight.can_refresh && preflight.blocking_reason && (
+                      <div
+                        className="flex items-center gap-2 mt-2 rounded-lg px-3 py-2 text-[12px] font-medium"
+                        style={{ backgroundColor: "#FFF3E0", color: "#BA7517" }}
+                      >
+                        <AlertTriangle size={14} className="shrink-0" />
+                        <span>Bloqueado: {preflight.blocking_reason}</span>
+                      </div>
+                    )}
+                  </>
+                ) : null}
                 <p className="text-admin-text-tertiary">
-                  Custo estimado: ~$0.02–0.05 USD
+                  Custo estimado: {preflight?.estimated_cost_usd ?? "~$0.02–0.05"} USD
                 </p>
                 <p className="text-admin-text-tertiary">
                   O sistema volta a <em>cache_only</em> automaticamente após a operação.
+                </p>
+                <p className="text-admin-text-tertiary">
+                  Utilizadores públicos não podem acionar esta ação.
                 </p>
               </div>
             </AlertDialogDescription>
@@ -458,6 +471,8 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => refreshMutation.mutate()}
+              disabled={!canRefresh || preflightLoading}
+              className={!canRefresh ? "opacity-50 cursor-not-allowed" : ""}
             >
               Atualizar agora
             </AlertDialogAction>
