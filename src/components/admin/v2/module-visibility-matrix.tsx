@@ -22,7 +22,7 @@ import {
   resetVariantDefaults,
 } from "@/server/admin/variant-overrides.functions";
 import { cn } from "@/lib/utils";
-import { Lock, Save, Upload, Trash2, RotateCcw, Loader2 } from "lucide-react";
+import { Lock, Save, Upload, Trash2, RotateCcw, Loader2, ExternalLink, Eye, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 const VARIANTS: { value: ReportVariant; label: string }[] = [
@@ -31,11 +31,11 @@ const VARIANTS: { value: ReportVariant; label: string }[] = [
   { value: "pro_preview", label: "Pro Preview" },
 ];
 
-const VIS_OPTIONS: { value: FeatureVisibility; label: string; cls: string }[] = [
-  { value: "full", label: "Full", cls: "text-green-700" },
-  { value: "lightweight", label: "Lightweight", cls: "text-blue-700" },
-  { value: "teaser", label: "Teaser", cls: "text-purple-700" },
-  { value: "hidden", label: "Hidden", cls: "text-gray-500" },
+const VIS_OPTIONS: { value: FeatureVisibility; label: string }[] = [
+  { value: "full", label: "Full" },
+  { value: "lightweight", label: "Lightweight" },
+  { value: "teaser", label: "Teaser" },
+  { value: "hidden", label: "Hidden" },
 ];
 
 type OverrideMap = Record<ReportVariant, {
@@ -49,12 +49,15 @@ const emptyMap = (): OverrideMap => ({
   pro_preview: { draft: null, published: null },
 });
 
+type CellSource = "locked" | "draft" | "published" | "static";
+
 interface Props {
   adminEmail: string;
   onPreviewDraft?: (variant: ReportVariant) => void;
+  onOpenPublic?: (variant: ReportVariant) => void;
 }
 
-export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
+export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPublic }: Props) {
   const [overrides, setOverrides] = useState<OverrideMap>(emptyMap());
   const [localDrafts, setLocalDrafts] = useState<Record<ReportVariant, Partial<VariantFeatures>>>({
     public_mvp: {},
@@ -70,6 +73,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
   const [saving, setSaving] = useState<ReportVariant | null>(null);
   const [publishing, setPublishing] = useState<ReportVariant | null>(null);
   const [confirmPublish, setConfirmPublish] = useState<ReportVariant | null>(null);
+  const [confirmReset, setConfirmReset] = useState<ReportVariant | null>(null);
 
   const featureKeys = Object.keys(FEATURE_LABELS) as (keyof VariantFeatures)[];
 
@@ -90,7 +94,6 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
         }
       }
       setOverrides(map);
-      // Initialize local drafts from server drafts or published
       const newLocal: Record<ReportVariant, Partial<VariantFeatures>> = {
         public_mvp: {},
         internal_lab: {},
@@ -101,7 +104,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
       }
       setLocalDrafts(newLocal);
       setDirty({ public_mvp: false, internal_lab: false, pro_preview: false });
-    } catch (e) {
+    } catch {
       toast.error("Erro ao carregar overrides.");
     } finally {
       setLoading(false);
@@ -109,6 +112,17 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // ── Determine cell source ──────────────────────────────────────
+  const getCellSource = (key: keyof VariantFeatures, variant: ReportVariant): CellSource => {
+    if (isModuleLocked(key, variant)) return "locked";
+    const localVal = localDrafts[variant]?.[key];
+    if (localVal && localVal !== getVariantFeatures(variant)[key]) {
+      return hasDraft(variant) || dirty[variant] ? "draft" : "published";
+    }
+    if (overrides[variant].published?.[key] !== undefined) return "published";
+    return "static";
+  };
 
   // ── Get effective value for display ─────────────────────────────
   const getDisplayValue = (key: keyof VariantFeatures, variant: ReportVariant): FeatureVisibility => {
@@ -153,7 +167,6 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
   const handlePublish = async (variant: ReportVariant) => {
     setPublishing(variant);
     try {
-      // Save draft first if dirty
       if (dirty[variant]) {
         await saveVariantDraft({ data: { variant, features: localDrafts[variant], adminEmail } });
       }
@@ -184,6 +197,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
     try {
       await resetVariantDefaults({ data: { variant } });
       toast.success("Reset para defaults estáticos.");
+      setConfirmReset(null);
       await refresh();
     } catch {
       toast.error("Erro ao fazer reset.");
@@ -204,13 +218,36 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Explanatory copy */}
+      <div className="mx-4 mt-2 space-y-1.5">
+        <div className="flex flex-wrap gap-3 text-[11px] text-admin-text-secondary">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+            Draft — só afeta previews com <code className="rounded bg-white/20 px-1 font-mono text-[10px]">draft=true</code>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+            Publicado — afeta o relatório público real
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Lock className="h-2.5 w-2.5 text-admin-text-tertiary" />
+            Locked — não pode ser alterado neste painel
+          </span>
+        </div>
+      </div>
+
       {/* Publish confirmation dialog */}
       {confirmPublish && (
-        <div className="mx-4 mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <p className="font-medium">Isto altera o que os utilizadores públicos veem.</p>
-          <p className="mt-1 text-xs text-amber-600">
-            A variante <strong>{confirmPublish}</strong> será atualizada publicamente.
-          </p>
+        <div className="mx-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-medium">Isto altera o que utilizadores públicos veem.</p>
+              <p className="mt-1 text-xs text-amber-600">
+                A variante <strong>{confirmPublish}</strong> será atualizada. As alterações ficam visíveis imediatamente em <code className="rounded bg-amber-100 px-1 font-mono text-[10px]">/analyze/</code>.
+              </p>
+            </div>
+          </div>
           <div className="mt-2 flex gap-2">
             <button
               onClick={() => handlePublish(confirmPublish)}
@@ -230,6 +267,36 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
         </div>
       )}
 
+      {/* Reset confirmation dialog */}
+      {confirmReset && (
+        <div className="mx-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+            <div>
+              <p className="font-medium">Apagar todos os overrides de {confirmReset}?</p>
+              <p className="mt-1 text-xs text-red-600">
+                Isto remove o draft e o override publicado. O relatório público volta aos defaults estáticos definidos no código.
+              </p>
+            </div>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={() => handleReset(confirmReset)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Confirmar reset
+            </button>
+            <button
+              onClick={() => setConfirmReset(null)}
+              className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Matrix table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
@@ -240,124 +307,175 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft }: Props) {
                 <th key={v.value} className="px-4 py-2 font-medium text-admin-text-secondary">
                   <div className="flex items-center gap-2">
                     {v.label}
-                    {hasDraft(v.value) && (
-                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-700">
-                        draft
-                      </span>
-                    )}
-                    {hasPublished(v.value) && (
-                      <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-green-700">
-                        pub
-                      </span>
-                    )}
+                    <VariantStatusBadges hasDraft={hasDraft(v.value)} hasPublished={hasPublished(v.value)} />
                   </div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {featureKeys.map((key) => (
-              <tr key={key} className="border-t border-white/10">
-                <td className="px-4 py-2 text-admin-text-primary">
-                  <span className="flex items-center gap-1.5">
-                    {FEATURE_LABELS[key]}
-                    {featureKeys.some(() => isModuleLocked(key, "public_mvp") || isModuleLocked(key, "pro_preview")) && (
-                      <Lock className="h-3 w-3 text-admin-text-tertiary" />
-                    )}
-                  </span>
-                </td>
-                {VARIANTS.map((v) => {
-                  const locked = isModuleLocked(key, v.value);
-                  const val = getDisplayValue(key, v.value);
-                  const staticVal = getVariantFeatures(v.value)[key];
-                  const isOverridden = val !== staticVal;
+            {featureKeys.map((key) => {
+              const anyLocked = VARIANTS.some((v) => isModuleLocked(key, v.value));
+              return (
+                <tr key={key} className="border-t border-white/10">
+                  <td className="px-4 py-2 text-admin-text-primary">
+                    <span className="flex items-center gap-1.5">
+                      {FEATURE_LABELS[key]}
+                      {anyLocked && <Lock className="h-3 w-3 text-admin-text-tertiary" />}
+                    </span>
+                  </td>
+                  {VARIANTS.map((v) => {
+                    const source = getCellSource(key, v.value);
+                    const val = getDisplayValue(key, v.value);
+                    const staticVal = getVariantFeatures(v.value)[key];
 
-                  return (
-                    <td key={v.value} className="px-4 py-2">
-                      {locked ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-[10px] font-semibold uppercase text-gray-500">
-                          <Lock className="h-2.5 w-2.5" />
-                          {val}
-                        </span>
-                      ) : (
-                        <select
-                          value={val}
-                          onChange={(e) => handleChange(key, v.value, e.target.value as FeatureVisibility)}
-                          className={cn(
-                            "rounded border px-2 py-1 text-[11px] font-medium",
-                            isOverridden
-                              ? "border-amber-300 bg-amber-50 text-amber-800"
-                              : "border-white/30 bg-white/50 text-admin-text-primary",
+                    return (
+                      <td key={v.value} className="px-4 py-2">
+                        <div className="flex items-center gap-1.5">
+                          {source === "locked" ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-[10px] font-semibold uppercase text-gray-500">
+                              <Lock className="h-2.5 w-2.5" />
+                              {val}
+                            </span>
+                          ) : (
+                            <select
+                              value={val}
+                              onChange={(e) => handleChange(key, v.value, e.target.value as FeatureVisibility)}
+                              className={cn(
+                                "rounded border px-2 py-1 text-[11px] font-medium",
+                                source === "draft"
+                                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                                  : source === "published"
+                                    ? "border-green-300 bg-green-50 text-green-800"
+                                    : "border-white/30 bg-white/50 text-admin-text-primary",
+                              )}
+                            >
+                              {VIS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}{opt.value === staticVal ? " (default)" : ""}
+                                </option>
+                              ))}
+                            </select>
                           )}
-                        >
-                          {VIS_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+                          {source !== "locked" && source !== "static" && (
+                            <CellSourceDot source={source} />
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Action buttons per variant */}
-      <div className="grid grid-cols-1 gap-3 px-4 pb-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 px-4 pb-4 sm:grid-cols-3">
         {VARIANTS.map((v) => (
-          <div key={v.value} className="flex flex-wrap gap-1.5">
-            <span className="w-full text-[10px] font-semibold uppercase tracking-wider text-admin-text-tertiary mb-1">
-              {v.label}
-            </span>
-            <button
-              onClick={() => handleSaveDraft(v.value)}
-              disabled={!dirty[v.value] || saving !== null}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/50 px-2.5 py-1 text-[10px] font-medium text-admin-text-secondary hover:bg-white/70 disabled:opacity-40"
-            >
-              {saving === v.value ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Guardar draft
-            </button>
-            <button
-              onClick={() => setConfirmPublish(v.value)}
-              disabled={!hasDraft(v.value) && !dirty[v.value]}
-              className="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-green-50 px-2.5 py-1 text-[10px] font-medium text-green-700 hover:bg-green-100 disabled:opacity-40"
-            >
-              <Upload className="h-3 w-3" />
-              Publicar
-            </button>
-            {onPreviewDraft && (
+          <div key={v.value} className="rounded-lg border border-white/20 bg-white/10 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-admin-text-tertiary">
+                {v.label}
+              </span>
+              <VariantStatusBadges hasDraft={hasDraft(v.value)} hasPublished={hasPublished(v.value)} />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               <button
-                onClick={() => onPreviewDraft(v.value)}
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100"
+                onClick={() => handleSaveDraft(v.value)}
+                disabled={!dirty[v.value] || saving !== null}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/50 px-2.5 py-1 text-[10px] font-medium text-admin-text-secondary hover:bg-white/70 disabled:opacity-40"
               >
-                Preview draft
+                {saving === v.value ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Guardar draft
               </button>
-            )}
-            {hasDraft(v.value) && (
               <button
-                onClick={() => handleDiscard(v.value)}
-                className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-[10px] font-medium text-red-600 hover:bg-red-50"
+                onClick={() => setConfirmPublish(v.value)}
+                disabled={!hasDraft(v.value) && !dirty[v.value]}
+                className="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-green-50 px-2.5 py-1 text-[10px] font-medium text-green-700 hover:bg-green-100 disabled:opacity-40"
               >
-                <Trash2 className="h-3 w-3" />
-                Descartar
+                <Upload className="h-3 w-3" />
+                Publicar
               </button>
-            )}
-            {hasPublished(v.value) && (
-              <button
-                onClick={() => handleReset(v.value)}
-                className="inline-flex items-center gap-1 rounded-lg border border-white/30 px-2.5 py-1 text-[10px] font-medium text-admin-text-tertiary hover:bg-white/30"
-              >
-                <RotateCcw className="h-3 w-3" />
-                Reset defaults
-              </button>
+              {onPreviewDraft && (
+                <button
+                  onClick={() => onPreviewDraft(v.value)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  <Eye className="h-3 w-3" />
+                  Preview draft
+                </button>
+              )}
+              {onOpenPublic && v.value === "public_mvp" && (
+                <button
+                  onClick={() => onOpenPublic(v.value)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/50 px-2.5 py-1 text-[10px] font-medium text-admin-text-secondary hover:bg-white/70"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Ver público
+                </button>
+              )}
+            </div>
+            {(hasDraft(v.value) || hasPublished(v.value)) && (
+              <div className="flex flex-wrap gap-1.5 border-t border-white/10 pt-2">
+                {hasDraft(v.value) && (
+                  <button
+                    onClick={() => handleDiscard(v.value)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-[10px] font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Descartar draft
+                  </button>
+                )}
+                {hasPublished(v.value) && (
+                  <button
+                    onClick={() => setConfirmReset(v.value)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/30 px-2.5 py-1 text-[10px] font-medium text-admin-text-tertiary hover:bg-white/30"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Reset defaults
+                  </button>
+                )}
+              </div>
             )}
           </div>
         ))}
       </div>
     </div>
   );
+}
+
+// ── Subcomponents ──────────────────────────────────────────────────
+
+function VariantStatusBadges({ hasDraft, hasPublished }: { hasDraft: boolean; hasPublished: boolean }) {
+  return (
+    <>
+      {hasDraft && (
+        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-700">
+          draft
+        </span>
+      )}
+      {hasPublished && (
+        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-green-700">
+          publicado
+        </span>
+      )}
+      {!hasDraft && !hasPublished && (
+        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-gray-500">
+          defaults
+        </span>
+      )}
+    </>
+  );
+}
+
+function CellSourceDot({ source }: { source: CellSource }) {
+  const cls = source === "draft"
+    ? "bg-amber-400"
+    : source === "published"
+      ? "bg-green-500"
+      : "bg-transparent";
+  const title = source === "draft" ? "Valor de draft" : source === "published" ? "Override publicado" : "";
+  return <span className={cn("inline-block h-1.5 w-1.5 rounded-full shrink-0", cls)} title={title} />;
 }
