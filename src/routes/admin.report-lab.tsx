@@ -536,6 +536,159 @@ function ModuleVisibilityTable({
   );
 }
 
+
+// ── Read-only visibility resolver ──────────────────────────────────
+
+function VisibilityResolverTable({
+  activeVariant,
+}: {
+  activeVariant: ReportVariant;
+}) {
+  const VARIANTS: ReportVariant[] = ["public_mvp", "internal_lab", "pro_preview"];
+  const featureKeys = Object.keys(FEATURE_LABELS) as (keyof typeof FEATURE_LABELS)[];
+  const [overrideStatus, setOverrideStatus] = useState<
+    Record<string, { hasDraft: boolean; hasPublished: boolean }> | null
+  >(null);
+  const [loadingOverrides, setLoadingOverrides] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { rows } = await getAllOverrides();
+        const status: Record<string, { hasDraft: boolean; hasPublished: boolean }> = {};
+        for (const v of VARIANTS) {
+          status[v] = { hasDraft: false, hasPublished: false };
+        }
+        for (const row of rows) {
+          if (status[row.variant]) {
+            if (row.is_draft) status[row.variant].hasDraft = true;
+            else status[row.variant].hasPublished = true;
+          }
+        }
+        if (!cancelled) setOverrideStatus(status);
+      } catch {
+        if (!cancelled) setOverrideStatus(null);
+      } finally {
+        if (!cancelled) setLoadingOverrides(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const visLabel = (val: FeatureVisibility) => {
+    if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
+    if (val === "lightweight") return { text: "Light", cls: "text-blue-700 bg-blue-50" };
+    if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
+    return { text: "Hidden", cls: "text-gray-500 bg-gray-100" };
+  };
+
+  const overrideLabel = (v: ReportVariant) => {
+    if (loadingOverrides) return { text: "…", cls: "text-gray-400 bg-gray-50" };
+    if (!overrideStatus) return { text: "Erro", cls: "text-red-500 bg-red-50" };
+    const s = overrideStatus[v];
+    if (s?.hasPublished) return { text: "Publicado", cls: "text-green-700 bg-green-50" };
+    if (s?.hasDraft) return { text: "Draft", cls: "text-amber-700 bg-amber-50" };
+    return { text: "Não configurado", cls: "text-gray-500 bg-gray-100" };
+  };
+
+  return (
+    <div className="space-y-3 pb-4">
+      {/* Override status per variant */}
+      <div className="px-4 pt-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-admin-text-tertiary mb-2">
+          Estado dos overrides por variante
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {VARIANTS.map((v) => {
+            const { text, cls } = overrideLabel(v);
+            return (
+              <span key={v} className="inline-flex items-center gap-1.5 text-xs text-admin-text-secondary">
+                {VARIANT_OPTIONS.find((o) => o.value === v)?.label}:
+                <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", cls)}>
+                  {text}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+        {!loadingOverrides && overrideStatus && Object.values(overrideStatus).every((s) => !s.hasDraft && !s.hasPublished) && (
+          <p className="mt-2 text-xs text-admin-text-tertiary">
+            Sem overrides configurados — a usar defaults estáticos de <code className="text-admin-text-secondary">report-variant.ts</code>.
+          </p>
+        )}
+      </div>
+
+      {/* Resolver table: shows static default + lock status + effective value */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-t border-white/20 bg-white/10">
+              <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
+              {VARIANT_OPTIONS.map((v) => (
+                <th
+                  key={v.value}
+                  className={cn(
+                    "px-4 py-2 font-medium text-admin-text-secondary",
+                    v.value === activeVariant && "bg-white/20",
+                  )}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span>{v.label}</span>
+                    <span className="text-[9px] font-normal text-admin-text-tertiary">
+                      default estático
+                    </span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {featureKeys.map((key) => (
+              <tr key={key} className="border-t border-white/10">
+                <td className="px-4 py-2 text-admin-text-primary">
+                  <span className="flex items-center gap-1.5">
+                    {FEATURE_LABELS[key]}
+                    {(isModuleLocked(key, "public_mvp") || isModuleLocked(key, "pro_preview") || isModuleLocked(key, "internal_lab")) && (
+                      <Lock className="h-3 w-3 text-admin-text-tertiary" />
+                    )}
+                  </span>
+                </td>
+                {VARIANTS.map((v) => {
+                  const features = getVariantFeatures(v);
+                  const { text, cls } = visLabel(features[key]);
+                  const locked = isModuleLocked(key, v);
+                  return (
+                    <td
+                      key={v}
+                      className={cn("px-4 py-2", v === activeVariant && "bg-white/20")}
+                    >
+                      <span className={cn(
+                        "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                        cls,
+                      )}>
+                        {locked && <Lock className="h-2.5 w-2.5" />}
+                        {text}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="px-4">
+        <p className="text-[10px] text-admin-text-tertiary">
+          <Lock className="mr-1 inline h-3 w-3" />
+          Módulos com cadeado não podem ser alterados via overrides — lock rules aplicadas automaticamente.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Readiness checklist ────────────────────────────────────────────
 
 const READINESS_BADGE: Record<ReadinessStatus, { cls: string }> = {
