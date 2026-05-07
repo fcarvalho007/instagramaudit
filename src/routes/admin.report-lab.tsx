@@ -44,8 +44,9 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { isModuleLocked } from "@/lib/report/effective-features";
-import { getAllOverrides } from "@/server/admin/variant-overrides.functions";
 import { Loader2, Lock } from "lucide-react";
+import { ModuleVisibilityMatrix } from "@/components/admin/v2/module-visibility-matrix";
+import { readAdminEmail } from "@/lib/admin/simple-gate";
 import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
@@ -356,36 +357,30 @@ function ReportLabPage() {
         </div>
       )}
 
-      {/* Module visibility table */}
+      {/* Module visibility manager */}
       <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
         <button
           onClick={() => setShowModules(!showModules)}
           className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
         >
-          <span>Visibilidade de módulos por variante</span>
+          <span>Gestor de visibilidade de módulos</span>
           {showModules ? (
             <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
           ) : (
             <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
           )}
         </button>
-        {showModules && <ModuleVisibilityTable activeVariant={variant} />}
-      </div>
-
-      {/* Read-only visibility resolver */}
-      <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
-        <button
-          onClick={() => setShowResolver(!showResolver)}
-          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
-        >
-          <span>Resolução de visibilidade (read-only)</span>
-          {showResolver ? (
-            <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
-          )}
-        </button>
-        {showResolver && <VisibilityResolverTable activeVariant={variant} />}
+        {showModules && (
+          <ModuleVisibilityMatrix
+            adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
+            onPreviewDraft={(v) =>
+              window.open(
+                `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
+                "_blank",
+              )
+            }
+          />
+        )}
       </div>
 
       {/* Public readiness checklist */}
