@@ -39,7 +39,7 @@ export function ReportThemeWrapper({ children }: ReportThemeWrapperProps) {
   return (
     <>
       <ScriptOnce>
-        {`document.body.setAttribute("data-theme","light")`}
+        {`document.body&&document.body.setAttribute("data-theme","light")`}
       </ScriptOnce>
       {children}
     </>

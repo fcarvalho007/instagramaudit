@@ -63,7 +63,7 @@ export const Route = createFileRoute("/analyze/$username")({
         // Pré-hidratação: paleta clara antes do primeiro paint em hard reloads,
         // espelhando o comportamento do `/report/example` para evitar flicker
         // dark→light na entrada por SSR-off.
-        { children: `document.body.setAttribute("data-theme","light")` },
+        { children: `document.body&&document.body.setAttribute("data-theme","light")` },
       ],
     };
   },
@@ -110,6 +110,8 @@ const ANALYSIS_ERROR_COPY: Record<string, string> = {
     "Ainda não temos um relatório guardado para este perfil. Tenta novamente dentro de instantes.",
   PROFILE_PRIVATE:
     "Este perfil é privado. Só conseguimos analisar perfis públicos.",
+  CACHE_ONLY_NO_DATA:
+    "Este relatório ainda não tem dados públicos disponíveis. A equipa está a preparar uma nova análise.",
 };
 
 const FALLBACK_ERROR_MESSAGE =

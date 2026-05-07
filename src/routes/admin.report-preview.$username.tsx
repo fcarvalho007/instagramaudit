@@ -63,7 +63,7 @@ export const Route = createFileRoute("/admin/report-preview/$username")({
     ],
     scripts: [
       // Pré-hidratação: paleta clara antes do primeiro paint em hard reloads.
-      { children: `document.body.setAttribute("data-theme","light")` },
+      { children: `document.body&&document.body.setAttribute("data-theme","light")` },
     ],
   }),
 });
