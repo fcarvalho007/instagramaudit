@@ -14,7 +14,7 @@ import {
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap } from "lucide-react";
+import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -26,6 +26,60 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { adminFetch } from "@/lib/admin/fetch";
+import type { RuntimeCheck } from "@/lib/admin/system-queries.server";
+
+/* ── Error mapping ── */
+
+interface RefreshErrorBody {
+  success?: boolean;
+  error?: string;
+  error_code?: string;
+  preflight_blocked?: string;
+  details?: string;
+  restore_warning?: string | null;
+}
+
+const PREFLIGHT_MESSAGES: Record<string, string> = {
+  internal_token_missing:
+    "INTERNAL_API_TOKEN não está configurado. Configura o segredo antes de atualizar dados.",
+  apify_disabled:
+    "APIFY_ENABLED não está ativo. Ativa o fornecedor antes de atualizar dados.",
+  allowlist:
+    "Este perfil não está autorizado para atualização. Adiciona-o à allowlist.",
+  concurrent_refresh:
+    "Já existe uma atualização em curso para este perfil.",
+};
+
+function mapRefreshError(status: number, body: RefreshErrorBody | null): string {
+  if (status === 401 || status === 403) {
+    return "Sessão admin inválida ou expirada. Inicia sessão novamente.";
+  }
+  if (status === 503) {
+    return "Servidor indisponível. Tenta dentro de instantes.";
+  }
+  if (body?.preflight_blocked && PREFLIGHT_MESSAGES[body.preflight_blocked]) {
+    return PREFLIGHT_MESSAGES[body.preflight_blocked];
+  }
+  if (body?.error_code === "provider_failure" || status === 502) {
+    return "O fornecedor falhou ao obter dados. A cache anterior foi mantida.";
+  }
+  if (body?.error_code === "snapshot_save_failed") {
+    return "Os dados foram obtidos, mas não foi possível guardar o snapshot.";
+  }
+  if (body?.error) {
+    return body.error;
+  }
+  return "Falha na atualização. Verifica os logs para mais detalhes.";
+}
+
+/* ── Last attempt state ── */
+
+interface LastAttempt {
+  timestamp: Date;
+  success: boolean;
+  reason?: string;
+}
 
 const STATUS_ITEMS: Array<{
   key: keyof Pick<
@@ -66,10 +120,92 @@ function ProfileAvatar({ handle }: { handle: string }) {
   );
 }
 
+/* ── Pre-flight status helpers ── */
+
+async function fetchRuntimeChecks(): Promise<RuntimeCheck[]> {
+  const res = await adminFetch("/api/admin/sistema/runtime-checks");
+  if (!res.ok) return [];
+  return (await res.json()) as RuntimeCheck[];
+}
+
+function PreflightStrip({
+  handle,
+  profile,
+}: {
+  handle: string;
+  profile: TestProfileStatus;
+}) {
+  const { data: checks } = useQuery({
+    queryKey: ["admin", "sistema", "runtime-checks"],
+    queryFn: fetchRuntimeChecks,
+    staleTime: 30_000,
+  });
+
+  const find = (name: string) => checks?.find((c) => c.name === name);
+  const tokenOk = find("INTERNAL_API_TOKEN")?.status === "ok" ||
+    // fallback: if no explicit check, check general token check
+    Boolean(checks?.some((c) => c.name.toLowerCase().includes("internal") && c.status === "ok"));
+  const apifyOk = find("APIFY_ENABLED")?.status === "ok";
+  const allowlistCheck = find("Modo de teste Apify");
+  const allowlistOk = allowlistCheck?.status === "ok";
+  const cacheValid = profile.hasCachedReport;
+  const cacheExpired = profile.snapshotExpiresAt
+    ? new Date(profile.snapshotExpiresAt).getTime() < Date.now()
+    : false;
+
+  const items: Array<{ label: string; ok: boolean; detail: string }> = [
+    {
+      label: "Token interno",
+      ok: tokenOk,
+      detail: tokenOk ? "configurado" : "em falta",
+    },
+    {
+      label: "Apify",
+      ok: apifyOk,
+      detail: apifyOk ? "ativo" : "inativo",
+    },
+    {
+      label: "Allowlist",
+      ok: allowlistOk,
+      detail: allowlistOk ? "autorizado" : "não autorizado",
+    },
+    {
+      label: "Cache",
+      ok: cacheValid && !cacheExpired,
+      detail: !cacheValid ? "sem dados" : cacheExpired ? "expirada" : "válida",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 text-[12px]">
+      {items.map((item) => (
+        <div key={item.label} className="flex items-center gap-1.5">
+          {item.ok ? (
+            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+          ) : (
+            <XCircle size={12} className="text-red-500 shrink-0" />
+          )}
+          <span className="text-admin-text-secondary font-medium">
+            {item.label}:
+          </span>
+          <span
+            className={
+              item.ok ? "text-admin-text-tertiary" : "text-red-600 font-medium"
+            }
+          >
+            {item.detail}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProfileRow({ p }: { p: TestProfileStatus }) {
   const qc = useQueryClient();
   const [expiring, setExpiring] = useState(false);
   const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
+  const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
 
   const { data: modeData } = useQuery({
     queryKey: ["admin", "execution-mode"],
@@ -80,30 +216,42 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
 
   const refreshMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/admin/refresh-profile", {
+      const res = await adminFetch("/api/admin/refresh-profile", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Admin-Email": localStorage.getItem("admin_email") ?? "",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ handle: p.handle }),
       });
-      const body = await res.json();
-      if (!res.ok || !body.success) {
-        throw new Error(body.error ?? "Falha na atualização");
+
+      let body: RefreshErrorBody | null = null;
+      try {
+        body = (await res.json()) as RefreshErrorBody;
+      } catch {
+        // Non-JSON response (e.g. HTML 503 page)
       }
-      return body as { success: boolean; restore_warning?: string | null };
+
+      if (!res.ok || !body?.success) {
+        const msg = body
+          ? mapRefreshError(res.status, body)
+          : res.status === 503
+            ? "Servidor indisponível. Tenta dentro de instantes."
+            : `Resposta inesperada do servidor (HTTP ${res.status}).`;
+        throw new Error(msg);
+      }
+
+      return body as { success: boolean; restore_warning?: string | null; details?: string };
     },
     onSuccess: (data) => {
-      toast.success(`Dados atualizados para @${p.handle}`);
+      toast.success(`Dados atualizados com sucesso para @${p.handle}`);
       if (data.restore_warning) {
         toast.warning(data.restore_warning);
       }
+      setLastAttempt({ timestamp: new Date(), success: true });
       qc.invalidateQueries({ queryKey: ["admin", "test-profiles"] });
       qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
     },
     onError: (err: Error) => {
       toast.error(err.message);
+      setLastAttempt({ timestamp: new Date(), success: false, reason: err.message });
       qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
     },
   });
@@ -226,6 +374,38 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
 
       {/* Row 2: Cache breakdown chips */}
       <div className="flex items-center gap-1.5 flex-wrap mt-3 pl-[54px]">
+        {/* Last attempt indicator */}
+        {lastAttempt && (
+          <div
+            className="flex items-center gap-1.5 w-full mb-1 text-[12px]"
+          >
+            {lastAttempt.success ? (
+              <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle size={12} className="text-amber-600 shrink-0" />
+            )}
+            <span className="text-admin-text-tertiary">
+              Última tentativa:{" "}
+              {lastAttempt.timestamp.toLocaleTimeString("pt-PT", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+              {" — "}
+              {lastAttempt.success ? (
+                <span className="text-emerald-600 font-medium">sucesso</span>
+              ) : (
+                <span className="text-red-600 font-medium">
+                  falhou
+                  {lastAttempt.reason && (
+                    <span className="text-admin-text-tertiary font-normal">
+                      {" "}· {lastAttempt.reason}
+                    </span>
+                  )}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
         <span className="text-[12px] text-admin-text-tertiary uppercase tracking-wider font-medium mr-1">
           Em cache:
         </span>
@@ -264,6 +444,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
                 <p>
                   Vai buscar dados novos ao fornecedor para <strong>@{p.handle}</strong>.
                 </p>
+                <PreflightStrip handle={p.handle} profile={p} />
                 <p className="text-admin-text-tertiary">
                   Custo estimado: ~$0.02–0.05 USD
                 </p>
