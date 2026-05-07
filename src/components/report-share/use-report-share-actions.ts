@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SHARE_COPY } from "./share-copy";
+import { trackEvent } from "@/lib/tracking.functions";
 
 type PdfErrorCode = keyof typeof SHARE_COPY.toast.pdfErrors;
 
@@ -167,6 +168,14 @@ export function useReportShareActions(args: {
           if (!ok) throw new Error("execCommand-failed");
         }
         toast.success(SHARE_COPY.toast.success);
+        // Track share/copy event (fire-and-forget)
+        trackEvent({
+          data: {
+            eventType: "public_report_link_copied",
+            snapshotId: snapshotId ?? undefined,
+            metadata: {},
+          },
+        }).catch(() => {});
       } catch {
         toast.error(SHARE_COPY.toast.error);
       }
