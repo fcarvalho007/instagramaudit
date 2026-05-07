@@ -19,7 +19,7 @@ import {
 } from "@/lib/security/apify-allowlist";
 import type { Json } from "@/integrations/supabase/types";
 
-const ALLOWED_SOURCE_STATUSES = ["approved", "pending_review"] as const;
+const ALLOWED_SOURCE_STATUSES = ["approved", "pending_review", "failed"] as const;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -72,7 +72,7 @@ export const Route = createFileRoute("/api/admin/generate-beta-report")({
         if (!ALLOWED_SOURCE_STATUSES.includes(rr.request_status as typeof ALLOWED_SOURCE_STATUSES[number])) {
           return jsonResponse({
             success: false,
-            error: `Cannot generate from status '${rr.request_status}'. Must be approved or pending_review.`,
+            error: `Cannot generate from status '${rr.request_status}'. Must be approved, pending_review or failed.`,
           }, 400);
         }
 

@@ -68,7 +68,7 @@ export function BetaRequestActions({ row, onStatusChange, onGenerateReport }: Pr
   };
 
   const canGenerate =
-    row.request_status === "approved" || row.request_status === "pending_review";
+    row.request_status === "approved" || row.request_status === "pending_review" || row.request_status === "failed";
 
   return (
     <DropdownMenu>
