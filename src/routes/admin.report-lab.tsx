@@ -26,7 +26,13 @@ import {
   getVariantFeatures,
   type FeatureVisibility,
 } from "@/lib/report/report-variant";
-import { FEATURE_LABELS } from "@/lib/report/report-variant";
+import {
+  FEATURE_LABELS,
+  MODULE_READINESS,
+  READINESS_STATUS_LABELS,
+  type ReadinessStatus,
+  type RiskLevel,
+} from "@/lib/report/report-variant";
 import { cn } from "@/lib/utils";
 import {
   FlaskConical,
@@ -36,6 +42,7 @@ import {
   ChevronDown,
   ChevronUp,
   Link2,
+  ClipboardCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
@@ -348,6 +355,9 @@ function ReportLabPage() {
         {showModules && <ModuleVisibilityTable activeVariant={variant} />}
       </div>
 
+      {/* Public readiness checklist */}
+      <ReadinessChecklist />
+
       {/* Snapshot status */}
       {load.kind === "loading" && (
         <StatusBox tone="neutral">A carregar snapshot de @{activeProfile}…</StatusBox>
@@ -489,7 +499,7 @@ function ModuleVisibilityTable({
                     key={v}
                     className={cn("px-4 py-2", v === activeVariant && "bg-white/20")}
                   >
-                    <span className={cn("inline-block rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>
+                    <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", cls)}>
                       {text}
                     </span>
                   </td>
@@ -499,6 +509,99 @@ function ModuleVisibilityTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── Readiness checklist ────────────────────────────────────────────
+
+const READINESS_BADGE: Record<ReadinessStatus, { cls: string }> = {
+  ready:          { cls: "text-green-700 bg-green-50" },
+  needs_review:   { cls: "text-amber-700 bg-amber-50" },
+  internal_only:  { cls: "text-gray-600 bg-gray-100" },
+  pro_candidate:  { cls: "text-purple-700 bg-purple-50" },
+  hidden:         { cls: "text-gray-400 bg-gray-50" },
+};
+
+const RISK_DOT: Record<RiskLevel, string> = {
+  low: "bg-green-500",
+  medium: "bg-amber-500",
+  high: "bg-red-500",
+};
+
+function ReadinessChecklist() {
+  const [open, setOpen] = useState(false);
+  const featureKeys = Object.keys(FEATURE_LABELS) as (keyof typeof FEATURE_LABELS)[];
+  const mvpFeatures = getVariantFeatures("public_mvp");
+
+  const visLabel = (val: FeatureVisibility) => {
+    if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
+    if (val === "lightweight") return { text: "Lightweight", cls: "text-blue-700 bg-blue-50" };
+    if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
+    return { text: "Hidden", cls: "text-gray-500 bg-gray-100" };
+  };
+
+  return (
+    <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <ClipboardCheck className="h-4 w-4 text-admin-text-tertiary" />
+          Checklist de prontidão pública
+        </span>
+        {open ? (
+          <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
+        )}
+      </button>
+      {open && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-t border-white/20 bg-white/10">
+                <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
+                <th className="px-4 py-2 font-medium text-admin-text-secondary">MVP</th>
+                <th className="px-4 py-2 font-medium text-admin-text-secondary">Estado</th>
+                <th className="px-4 py-2 font-medium text-admin-text-secondary">Risco</th>
+                <th className="px-4 py-2 font-medium text-admin-text-secondary">Nota</th>
+              </tr>
+            </thead>
+            <tbody>
+              {featureKeys.map((key) => {
+                const readiness = MODULE_READINESS[key];
+                const mvpVis = visLabel(mvpFeatures[key]);
+                const badge = READINESS_BADGE[readiness.status];
+                const dot = RISK_DOT[readiness.risk];
+                return (
+                  <tr key={key} className="border-t border-white/10">
+                    <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
+                    <td className="px-4 py-2">
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", mvpVis.cls)}>
+                        {mvpVis.text}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", badge.cls)}>
+                        {READINESS_STATUS_LABELS[readiness.status]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className={cn("inline-block h-2 w-2 rounded-full", dot)} />
+                        <span className="text-admin-text-secondary capitalize">{readiness.risk}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-admin-text-secondary max-w-xs">{readiness.note}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
