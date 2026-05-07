@@ -525,13 +525,13 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
                   <CartesianGrid strokeDasharray="2 4" stroke="rgba(136,135,128,0.18)" vertical={false} />
                   <XAxis
                     dataKey="day"
-                    tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                    tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                     tickLine={false}
                     axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                     interval={2}
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                    tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v) => `$${(v as number).toFixed(2)}`}
@@ -886,7 +886,7 @@ function DarkTooltip({
   const total = apifyTotal + openaiTotal + dfsVal;
 
   return (
-    <div className="rounded-lg bg-gray-900 px-3 py-2.5 shadow-lg text-white" style={{ fontSize: 11, minWidth: 200 }}>
+    <div className="rounded-lg bg-gray-900 px-3 py-2.5 shadow-lg text-white" style={{ fontSize: 12, minWidth: 200 }}>
       <p className="mb-2 font-medium text-white/70">{label}</p>
       {apifyTotal > 0 && (
         <div className="flex items-center justify-between gap-4 mb-0.5">

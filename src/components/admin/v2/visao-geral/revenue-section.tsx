@@ -129,13 +129,13 @@ export function RevenueSection() {
               />
               <XAxis
                 dataKey="day"
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                 tickLine={false}
                 axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                 interval={2}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `€${v}`}
@@ -146,7 +146,7 @@ export function RevenueSection() {
                 contentStyle={{
                   border: "1px solid rgb(44 44 42 / 0.14)",
                   borderRadius: 8,
-                  fontSize: 11,
+                  fontSize: 12,
                   padding: "6px 10px",
                   boxShadow: "none",
                 }}

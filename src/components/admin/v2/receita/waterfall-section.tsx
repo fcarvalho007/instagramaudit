@@ -114,7 +114,7 @@ export function WaterfallSection() {
               />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-600))" }}
+                tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-600))" }}
                 tickLine={false}
                 axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                 interval={0}
@@ -122,7 +122,7 @@ export function WaterfallSection() {
               <YAxis
                 domain={[0, 800]}
                 tick={{
-                  fontSize: 10,
+                  fontSize: 12,
                   fill: "#888780",
                   fontFamily: "JetBrains Mono, monospace",
                 }}

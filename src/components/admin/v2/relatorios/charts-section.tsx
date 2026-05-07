@@ -101,13 +101,13 @@ export function ChartsSection() {
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                  tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                   tickLine={false}
                   axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                   interval={2}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                  tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                   tickLine={false}
                   axisLine={false}
                   width={28}
@@ -185,13 +185,13 @@ export function ChartsSection() {
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                  tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                   tickLine={false}
                   axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                   interval={2}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                  tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                   tickLine={false}
                   axisLine={false}
                   width={48}
@@ -225,7 +225,7 @@ export function ChartsSection() {
                     value: `SLA · ${Math.round(REPORT_SLA_SECONDS / 60)}min`,
                     position: "insideTopRight",
                     fill: ADMIN_LITERAL.slaLine,
-                    fontSize: 10,
+                    fontSize: 12,
                   }}
                 />
                 <Line

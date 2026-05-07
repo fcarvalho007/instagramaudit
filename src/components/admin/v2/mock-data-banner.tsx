@@ -41,7 +41,7 @@ export function MockDataBanner({
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: 600,
           fontFamily: "JetBrains Mono, monospace",
           marginTop: 1,

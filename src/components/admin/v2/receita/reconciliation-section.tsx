@@ -253,9 +253,9 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
                 strokeDasharray="3 3"
                 stroke="var(--border-subtle)"
               />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} />
               <YAxis
-                tick={{ fontSize: 10 }}
+                tick={{ fontSize: 12 }}
                 tickFormatter={(v: number) => `$${v}`}
               />
               <Tooltip formatter={(v: number) => `$${v.toFixed(4)}`} />
