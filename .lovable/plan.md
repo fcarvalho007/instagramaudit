@@ -1,54 +1,113 @@
 
-# Fullscreen Admin Report Preview — Readiness Assessment
+# Module Visibility Manager — Readiness & Implementation Plan
 
-## PASS — Already Implemented (95%)
+## PASS — Infrastructure Already Built (90%)
 
-The fullscreen admin-protected report preview **already exists** at:
+An earlier implementation created the full stack but left it **disconnected**. No new architecture is needed — just wiring.
 
-```
-/admin/report-preview/{username}?variant=public_mvp&draft=false
-```
+### What already exists
 
-### What exists today
-
-| Requirement | Status |
-|------------|--------|
-| Fullscreen route outside admin layout | Done — `admin.report-preview.$username.tsx` |
-| Uses `ReportShellV2` + `ReportThemeWrapper` | Done |
-| Uses existing snapshot loading logic | Done |
-| Supports `?variant=` param (public_mvp, internal_lab, pro_preview) | Done |
-| Supports `?draft=` param for visibility overrides | Done |
-| Admin auth gate (simple-gate localStorage) | Done |
-| No admin nav/tabs/container | Done |
-| `noindex, nofollow` | Done |
-| Snapshot-by-ID route | Done — `admin.report-preview.snapshot.$snapshotId.tsx` |
-| "Open fullscreen current variant" button in Report Lab | Done |
-| "Copy fullscreen URL" button in Report Lab | Done |
-| "Open public report" button | Done |
-| "Copy public report URL" button | Done |
+| Layer | Status |
+|-------|--------|
+| DB table `report_variant_overrides` (variant, is_draft, features_json) | Done |
+| Server CRUD: saveDraft, publishDraft, discardDraft, resetToDefaults | Done |
+| Server functions: getPublishedFeatures, getDraftFeatures, getAllOverrides, etc. | Done |
+| `getEffectiveFeatures()` — merges static + override + LOCKED_MODULES | Done |
+| `VariantFeaturesOverrideProvider` context | Done (exported, never used) |
+| `ModuleVisibilityMatrix` interactive UI (draft/publish/discard/reset) | Done (never imported) |
+| Fullscreen preview `?draft=true` support | Done |
+| Read-only tables in Report Lab (ModuleVisibilityTable, VisibilityResolverTable) | Done |
 
 ### What is missing
 
-One small gap: the Report Lab has a single "Open fullscreen" button for the **currently selected** variant. The request asks for **separate buttons per variant** (Public MVP, Internal Lab, Pro Preview) so the admin can jump to any variant without switching the selector first.
+1. **Report Lab**: `ModuleVisibilityMatrix` is not imported — the interactive editor is invisible.
+2. **Public route**: `/analyze/$username` uses static `getVariantFeatures()` directly, never calls `getPublishedFeatures()` or wraps with `VariantFeaturesOverrideProvider`.
+3. **ReportShellV2**: does not accept or pass `VariantFeaturesOverrideProvider`.
 
-### Proposed change
+### Locked modules (enforced by `LOCKED_MODULES` in `effective-features.ts`)
 
-In `src/routes/admin.report-lab.tsx`, replace the single "Abrir fullscreen" button (line ~320-323) with three per-variant buttons:
+| Module | Lock | Rationale |
+|--------|------|-----------|
+| `overviewHeroKpis` | All variants → `full` | Core identity, cannot hide |
+| `debugLabels` | public_mvp + pro_preview → `hidden` | Internal only |
 
-- "Fullscreen · Public MVP" -> opens `/admin/report-preview/{profile}?variant=public_mvp`
-- "Fullscreen · Internal Lab" -> opens `/admin/report-preview/{profile}?variant=internal_lab`
-- "Fullscreen · Pro Preview" -> opens `/admin/report-preview/{profile}?variant=pro_preview`
+Additional modules to lock (to be added):
 
-Keep the existing "Copy fullscreen URL" button (copies the currently selected variant).
+| Module | Lock | Rationale |
+|--------|------|-----------|
+| `diagnosticQ01Q07` | All variants → `full` | Core diagnostics, cannot hide |
+| `methodology` | public_mvp + pro_preview → `full` | Credibility anchor |
 
-### Files to touch
+### Editable modules
 
-- `src/routes/admin.report-lab.tsx` — replace single fullscreen button with three per-variant buttons
+All others: `conversationPostLevel`, `commentIntelligence`, `captionsDiagnostics`, `marketSignals`, `benchmarkGauge`, `betaFeedbackBanner`.
+
+### Module visibility lifecycle
+
+```text
+Static defaults (code)
+  └─► Admin edits → local changes (unsaved)
+        └─► "Guardar draft" → DB row (is_draft=true)
+              └─► "Preview draft" → fullscreen ?draft=true
+              └─► "Publicar" → confirmation → DB row (is_draft=false), draft deleted
+                    └─► Public route serves published config
+              └─► "Descartar" → deletes draft row, reverts to published or static
+              └─► "Reset defaults" → deletes both draft + published rows
+```
+
+### Fallback behavior
+
+- If DB query fails → `getEffectiveFeatures` catches and returns static defaults.
+- If no published override exists → static defaults used.
+- Public users never see broken state.
+
+### Storage recommendation
+
+**Supabase table `report_variant_overrides`** (already exists). No localStorage needed for production visibility. The existing table with `(variant, is_draft)` unique constraint is the correct model.
+
+### Draft vs Published recommendation
+
+Already implemented correctly:
+- Draft: `is_draft=true` row, visible only in admin preview with `?draft=true`
+- Published: `is_draft=false` row, served to public route
+- Confirmation dialog already says "Isto altera o que os utilizadores públicos veem."
+
+---
+
+## File-by-file implementation plan
+
+### 1. `src/lib/report/effective-features.ts`
+Add two new lock rules:
+- `diagnosticQ01Q07: { variants: "*", value: "full" }`
+- `methodology: { variants: ["public_mvp", "pro_preview"], value: "full" }`
+
+### 2. `src/routes/admin.report-lab.tsx`
+- Import `ModuleVisibilityMatrix` from `@/components/admin/v2/module-visibility-matrix`
+- Replace or augment the read-only "Visibilidade de módulos" collapsible section with the interactive `ModuleVisibilityMatrix`
+- Pass `adminEmail` and `onPreviewDraft` (opens fullscreen with `?draft=true`)
+
+### 3. `src/components/report-redesign/v2/report-shell-v2.tsx`
+- Accept optional `featuresOverride?: VariantFeatures` prop
+- Wrap children with `VariantFeaturesOverrideProvider` when override is provided
+
+### 4. `src/routes/admin.report-preview.$username.tsx`
+- When `?draft=true`, call `getDraftFeatures()` and pass result as `featuresOverride` to `ReportShellV2`
+
+### 5. Public route integration (future, minimal)
+- In the route/component that renders the public report, call `getPublishedFeatures({ variant: "public_mvp" })` and pass as `featuresOverride` to `ReportShellV2`
+- Fallback: if fetch fails, static defaults apply (already handled in server function)
 
 ### Files NOT to touch
+- `report-variant.ts` (static defaults stay as-is, only effective-features changes)
+- Report card components (no design changes)
+- Provider logic, cost tracking, PDF pipeline
+- `client.ts`, `types.ts`, `.env`
 
-Everything else. No new routes needed. No component changes. No backend changes.
+### Risks and mitigations
 
-### Risks
-
-None. This is a UI-only change to add two extra buttons.
+| Risk | Mitigation |
+|------|-----------|
+| Accidental public publish | Confirmation dialog exists; locked modules prevent catastrophic changes |
+| DB failure on public route | `getPublishedFeatures` catches errors and returns static defaults |
+| Admin publishes then wants rollback | "Reset defaults" deletes overrides, restoring static config instantly |
+| Module matrix confusing for non-technical admin | Labels, lock icons, and draft/pub badges already in the UI |
