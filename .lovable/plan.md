@@ -1,43 +1,19 @@
 
-# Harden `generate-beta-report`: Remove Global Fresh Mode Dependency
+# Provider Call Path Audit — Final Results
 
-## Problem
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | Public users cannot trigger providers | **PASS** | `analyze-public-v1` L437: `if (!forceRefresh)` enforces `cache_only` guard. `forceRefresh` requires valid `INTERNAL_API_TOKEN` (L387-398). Additional gates: allowlist (L488-506), APIFY_ENABLED kill-switch (L522-558). |
+| 2 | Admin refresh uses internal token | **PASS** | `refresh-profile` L54: `Authorization: Bearer ${internalToken}`. Pre-flight at L116-123. No global mode mutation. |
+| 3 | Admin beta report uses internal token | **PASS** | `generate-beta-report` L135: `Authorization: Bearer ${internalToken}`. Pre-flight at L78-86. No execution mode check. |
+| 4 | Global Fresh mode no longer required | **PASS** | Neither `refresh-profile` nor `generate-beta-report` import or check `getAnalysisExecutionMode`. Both use `?refresh=1` + internal token to bypass `cache_only` inside `analyze-public-v1`. |
+| 5 | `cache_only` is the safe steady-state | **PASS** | Global mode defaults to `cache_only`. Public requests obey it. Admin requests bypass via authenticated `forceRefresh` only. |
+| 6 | Provider kill switches respected | **PASS** | `APIFY_ENABLED` checked in `refresh-profile` (L126), `generate-beta-report` (L88-94), and `analyze-public-v1` (L522). `DATAFORSEO_ENABLED` gated in its own allowlist module. |
+| 7 | `COMMENT_SCRAPER_ENABLED=false` | **PASS** | `analyze-public-v1` L828: defaults to `"false"`, requires explicit `"true"`. |
+| 8 | Missing `INTERNAL_API_TOKEN` fails safely | **PASS** | `refresh-profile` returns 409 `internal_token_missing` (L117-123). `generate-beta-report` returns 409 `internal_token_missing` (L80-86). `analyze-public-v1` silently ignores `?refresh=1` (L394-397), falls through to `cache_only` guard. |
+| 9 | Failed provider calls don't overwrite cached snapshots | **PASS** | `analyze-public-v1` only upserts snapshot on success. `generate-beta-report` marks report_request as `failed` with error metadata on failure (L159-170, L227-238) — does not touch `analysis_snapshots`. |
+| 10 | No other routes trigger providers | **PASS** | `force-refresh` only expires snapshots (DB update, no provider call). `generate-report-pdf`, `request-full-report`, `send-report-email` operate on existing snapshots/PDFs. No other route calls `analyze-public-v1` or provider adapters directly. |
 
-`generate-beta-report` (L79-87) blocks unless `executionMode === "fresh"`, forcing the admin to manually toggle the global mode. But the endpoint already calls `analyze-public-v1?refresh=1` with `Authorization: Bearer ${INTERNAL_API_TOKEN}` (L146-151), which bypasses `cache_only` server-side. The execution mode check is redundant and forces the risky global toggle.
+## Summary
 
-## Old Behavior
-
-1. Admin must go to `/admin/sistema` and switch global mode to "fresh"
-2. Call `generate-beta-report`
-3. Go back and switch to "cache_only"
-4. Risk: forgetting step 3 exposes public users to provider calls
-
-## New Behavior
-
-1. Admin calls `generate-beta-report` directly
-2. Internal token auth bypasses `cache_only` inside `analyze-public-v1`
-3. Global mode stays `cache_only` throughout
-4. Zero risk window
-
-## Changes
-
-### `src/routes/api/admin/generate-beta-report.ts`
-
-1. **Remove** the `getAnalysisExecutionMode` import (L14)
-2. **Remove** the execution mode pre-flight block (L79-87)
-3. **Move** the `INTERNAL_API_TOKEN` check (currently L125-139) up to the pre-flight section (before setting status to "processing"), so it fails fast before any DB mutation
-4. Keep everything else unchanged: admin auth, status validation, APIFY kill-switch, allowlist check, status transitions, failure handling, product event logging
-
-One file changed. No schema changes. No public route changes. No PDF changes. No provider calls triggered.
-
-## Validation
-
-- `tsc --noEmit`
-- `vitest run`
-- Confirm no `getAnalysisExecutionMode` import remains
-- Confirm `INTERNAL_API_TOKEN` is still required (409 if missing)
-- Confirm public users cannot reach this endpoint
-
-## Remaining Risks
-
-- **Low**: The execution mode toggle UI in `/admin/sistema` is now only useful for the manual `analyze-public-v1` flow (direct browser testing). Consider removing it entirely in a future pass, since both admin refresh endpoints now use internal token auth.
+All provider call paths are properly gated. The system is safe with `cache_only` as steady-state. No code changes needed.
