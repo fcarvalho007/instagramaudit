@@ -26,6 +26,7 @@ import {
   getVariantFeatures,
   type FeatureVisibility,
 } from "@/lib/report/report-variant";
+import { FEATURE_LABELS } from "@/lib/report/report-variant";
 import { cn } from "@/lib/utils";
 import {
   FlaskConical,
@@ -62,28 +63,6 @@ const MODE_TONES: Record<ReportVariant, string> = {
   internal_lab: "bg-amber-50 border-amber-200 text-amber-700",
   pro_preview: "bg-purple-50 border-purple-200 text-purple-700",
 };
-
-// ── Module visibility reference ────────────────────────────────────
-
-interface ModuleRow {
-  name: string;
-  public_mvp: string;
-  internal_lab: string;
-  pro_preview: string;
-}
-
-const MODULE_VISIBILITY: ModuleRow[] = [
-  { name: "Overview (Hero + KPIs)", public_mvp: "Full", internal_lab: "Full", pro_preview: "Full" },
-  { name: "Diagnostic (Q01–Q07)", public_mvp: "Full", internal_lab: "Full", pro_preview: "Full" },
-  { name: "P05 Conversa (post-level)", public_mvp: "Full", internal_lab: "Full", pro_preview: "Full" },
-  { name: "P05 Comment Intelligence", public_mvp: "Hidden", internal_lab: "Full", pro_preview: "Teaser" },
-  { name: "Captions (P04)", public_mvp: "Lightweight", internal_lab: "Full", pro_preview: "Lightweight" },
-  { name: "Market Signals", public_mvp: "Full", internal_lab: "Full", pro_preview: "Full" },
-  { name: "Benchmark Gauge", public_mvp: "Full", internal_lab: "Full", pro_preview: "Full" },
-  { name: "Methodology", public_mvp: "Full", internal_lab: "Full", pro_preview: "Full" },
-  { name: "Beta Feedback", public_mvp: "Full", internal_lab: "Hidden", pro_preview: "Hidden" },
-  { name: "Debug labels", public_mvp: "Hidden", internal_lab: "Full", pro_preview: "Hidden" },
-];
 
 // ── Snapshot loading ───────────────────────────────────────────────
 
@@ -384,12 +363,19 @@ function StatusBox({
   );
 }
 
-function ModuleVisibilityTable({ activeVariant }: { activeVariant: ReportVariant }) {
-  const visLabel = (val: string) => {
-    if (val === "Full") return { text: val, cls: "text-green-700 bg-green-50" };
-    if (val === "Teaser") return { text: val, cls: "text-purple-700 bg-purple-50" };
-    if (val === "Lightweight") return { text: val, cls: "text-blue-700 bg-blue-50" };
-    return { text: val, cls: "text-gray-500 bg-gray-100" };
+function ModuleVisibilityTable({
+  activeVariant,
+}: {
+  activeVariant: ReportVariant;
+}) {
+  const VARIANTS: ReportVariant[] = ["public_mvp", "internal_lab", "pro_preview"];
+  const featureKeys = Object.keys(FEATURE_LABELS) as (keyof typeof FEATURE_LABELS)[];
+
+  const visLabel = (val: FeatureVisibility) => {
+    if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
+    if (val === "lightweight") return { text: "Lightweight", cls: "text-blue-700 bg-blue-50" };
+    if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
+    return { text: "Hidden", cls: "text-gray-500 bg-gray-100" };
   };
 
   return (
@@ -412,11 +398,12 @@ function ModuleVisibilityTable({ activeVariant }: { activeVariant: ReportVariant
           </tr>
         </thead>
         <tbody>
-          {MODULE_VISIBILITY.map((row) => (
-            <tr key={row.name} className="border-t border-white/10">
-              <td className="px-4 py-2 text-admin-text-primary">{row.name}</td>
-              {(["public_mvp", "internal_lab", "pro_preview"] as const).map((v) => {
-                const { text, cls } = visLabel(row[v]);
+          {featureKeys.map((key) => (
+            <tr key={key} className="border-t border-white/10">
+              <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
+              {VARIANTS.map((v) => {
+                const features = getVariantFeatures(v);
+                const { text, cls } = visLabel(features[key]);
                 return (
                   <td
                     key={v}
