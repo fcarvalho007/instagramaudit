@@ -116,7 +116,7 @@ export function ReportShellV2({
             <ReportBlockSidebar />
             <main className="min-w-0 flex-1">
               {/* 01 · Overview (redesigned) */}
-              <ReportBlockSection block={overview} tone="canvas">
+              <ReportBlockSection block={overview} tone="canvas" first>
                 <ReportOverviewBlock
                   result={result}
                   renderInsight={renderInsight}
