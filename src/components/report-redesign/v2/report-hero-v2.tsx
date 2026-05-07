@@ -17,7 +17,7 @@ interface ReportHeroV2Props {
 /**
  * Hero v2 — Clean compact first fold (Iconosquare-inspired).
  *
- *   Top bar: logo + breadcrumb + status pill + actions + CTA
+ *   Top bar: logo · breadcrumb + status pill + actions + CTA
  *   Hero card: profile identity + KPI strip + meta footer
  *
  * Zone 3 (auxiliary action row) is rendered separately by ComparisonHeader
@@ -52,11 +52,14 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
     >
       <div className="mx-auto max-w-[1380px]">
         {/* ── TOP BAR ────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 flex-wrap mb-3">
+        <div className="flex items-center gap-2 flex-wrap mb-3">
           {/* Logo */}
-          <Link to="/" className="text-sm font-semibold text-content-primary tracking-tight hover:text-accent-primary transition-colors">
+          <Link to="/" className="text-[13px] font-bold text-content-primary tracking-tight hover:text-accent-primary transition-colors">
             InstaBench
           </Link>
+
+          {/* Separator */}
+          <span className="text-border-default select-none text-xs" aria-hidden="true">·</span>
 
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-content-tertiary">
@@ -70,7 +73,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
 
           {/* Status pill */}
           {analysisMeta.dateLabel && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-content-secondary">
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-content-tertiary">
               <span className="size-1.5 rounded-full bg-signal-success shrink-0" aria-hidden="true" />
               {analysisMeta.dateLabel}
             </span>
@@ -98,8 +101,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               triggerLabel=""
               aria-label="Partilhar relatório"
               className={cn(
-                "inline-flex items-center justify-center size-[34px] rounded-lg",
-                "bg-surface-secondary border border-border-default text-content-secondary",
+                "inline-flex items-center justify-center size-9 rounded-lg",
+                "bg-white border border-border-default text-content-secondary",
                 "transition-colors duration-150",
                 "hover:border-accent-primary/30 hover:text-accent-primary",
               )}
@@ -108,8 +111,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             <Link
               to="/"
               className={cn(
-              "hidden sm:inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5",
-                "bg-accent-primary text-white text-xs font-bold shadow-sm",
+                "hidden sm:inline-flex items-center gap-1.5 rounded-lg h-9 px-4",
+                "bg-accent-primary text-white text-[13px] font-semibold shadow-sm",
                 "transition-colors duration-150 hover:bg-accent-primary/90",
               )}
             >
@@ -120,12 +123,12 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
         </div>
 
         {/* ── HERO CARD ──────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-border-default bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
+        <div className="rounded-xl border border-border-default bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
           {/* Profile area */}
           <div className="flex flex-col items-center gap-3 px-5 py-4 sm:px-6 sm:py-5 md:flex-row md:items-start md:gap-5">
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
 
-            <div className="min-w-0 flex-1 space-y-1 text-center md:text-left">
+            <div className="min-w-0 flex-1 space-y-0.5 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 min-w-0 flex-wrap">
                 <h1 className="font-display text-2xl sm:text-[28px] font-semibold tracking-[-0.02em] text-content-primary leading-tight break-words">
                   {handle}
@@ -140,7 +143,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </p>
               )}
               {bio && (
-                <p className="text-sm text-content-tertiary leading-relaxed line-clamp-2 max-w-xl">
+                <p className="text-[13px] text-content-tertiary leading-relaxed line-clamp-2 max-w-xl mt-0.5">
                   {bio}
                 </p>
               )}
@@ -148,14 +151,14 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
           </div>
 
           {/* KPI strip */}
-          <div className="border-t border-border-default px-5 sm:px-6 py-4">
-            <div className="grid grid-cols-3 gap-y-4 gap-x-0">
+          <div className="border-t border-border-default px-5 sm:px-6 py-3.5">
+            <div className="grid grid-cols-3">
               {profileStats.map((s, i) => (
                 <div
                   key={s.label}
                   className={cn(
-                    "flex flex-col items-center gap-1",
-                    i > 0 && "border-l border-border-subtle",
+                    "flex flex-col items-center gap-0.5",
+                    i > 0 && "border-l border-border-default",
                   )}
                 >
                   <span className="tabular-nums text-xl sm:text-2xl font-bold text-content-primary leading-none">
@@ -282,7 +285,7 @@ function Avatar({
           alt={`Avatar de ${fullName}`}
           loading="eager"
           decoding="async"
-          className={cn("rounded-full object-cover bg-white", sizeMobile)}
+          className={cn("rounded-full object-cover bg-surface-muted", sizeMobile)}
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = "none";
           }}
@@ -345,8 +348,8 @@ function IconButton({
       type="button"
       aria-busy={busy}
       className={cn(
-        "inline-flex items-center justify-center size-[34px] rounded-lg",
-        "bg-surface-secondary border border-border-default text-content-secondary",
+        "inline-flex items-center justify-center size-9 rounded-lg",
+        "bg-white border border-border-default text-content-secondary",
         "transition-colors duration-150",
         "hover:border-accent-primary/30 hover:text-accent-primary",
         "disabled:cursor-not-allowed disabled:opacity-50",
