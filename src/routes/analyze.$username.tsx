@@ -63,7 +63,7 @@ export const Route = createFileRoute("/analyze/$username")({
         // Pré-hidratação: paleta clara antes do primeiro paint em hard reloads,
         // espelhando o comportamento do `/report/example` para evitar flicker
         // dark→light na entrada por SSR-off.
-        { children: `document.body.setAttribute("data-theme","light")` },
+        { children: `document.body&&document.body.setAttribute("data-theme","light")` },
       ],
     };
   },
