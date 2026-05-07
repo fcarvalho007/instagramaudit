@@ -174,7 +174,8 @@
  */
 .admin-v2 {
   color-scheme: light;
-  background-color: #FBF8F3;
+  --admin-surface-base: 251 248 243;
+  background-color: rgb(var(--admin-surface-base));
   color: rgb(var(--text-primary));
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   font-weight: 400;
