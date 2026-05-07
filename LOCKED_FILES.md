@@ -75,6 +75,9 @@ explicitly asks for a modification in a new prompt.
 ## Knowledge Base Policy (Sprint Knowledge, R-policy)
 - /KNOWLEDGE.md
 
+## Report Variant System (MVP variant architecture)
+- /src/lib/report/report-variant.ts
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,
