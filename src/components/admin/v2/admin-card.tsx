@@ -40,9 +40,9 @@ const ACCENT_HEX: Record<AdminAccent, string> = {
   neutral: "#888780",
 };
 
-const BASE_BG = "#FFFFFF";
-const BASE_BORDER = "#D3D1C7";
-const BASE_TEXT = "#2C2C2A";
+const BASE_BG = "rgb(255,255,255)";
+const BASE_BORDER = "rgb(211,209,199)";
+const BASE_TEXT = "rgb(44,44,42)";
 const BASE_RADIUS = 16;
 const BASE_SHADOW =
   "0 1px 2px rgba(44,44,42,0.06), 0 8px 24px rgba(44,44,42,0.08)";
