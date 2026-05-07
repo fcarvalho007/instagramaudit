@@ -1,174 +1,86 @@
 
-# Admin & CRM Visual Audit — Typography, Readability, Consistency
+# Premium Lead Detail Sheet — Upgrade Plan
 
-## 1. Typography Issues Found
+## Current State
 
-### 1.1 Sub-12px Violations (Hard Rule Breach)
+The `LeadDetailSheet` already exists with 6 sections (Header, Perfil, Relatório, Inteligência comercial, Timeline, Notas & Ações). It covers most of the requested fields. This plan focuses on **visual polish, density improvements, and minor data enrichments** — not a rebuild.
 
-**AdminBadge** (`admin-badge.tsx` line 22): `text-[11px]` — this is the global badge component used across all admin areas. It is technically an eyebrow-class element, but at 11px with `font-normal` weight it often feels too small for status information that users need to scan quickly (e.g. "completed", "Marca", "pending").
+## Data Availability
 
-**Report Lab** (`admin.report-lab.tsx`): 11 instances of `text-[10px]` and `text-[11px]` — override badges, readiness checklist items, variant diff table badges. These are functional status indicators, not decorative eyebrows.
+| Requested field | Available in `EnrichedLead`? | Source |
+|---|---|---|
+| Name | Yes | `lead.name` |
+| Email | Yes | `lead.email` |
+| Instagram handle | Yes | `lead.handle` |
+| User type | Yes | `lead.user_type` |
+| Purpose | Yes | `lead.purpose` |
+| Profile ownership | Yes | `lead.profile_ownership` |
+| Commercial status | Yes | `lead.commercial_status` |
+| Request status | Yes | `lead.report_status` |
+| Report status (PDF) | Yes | `lead.pdf_status` |
+| Report views | Yes | `lead.report_views` |
+| Report cost | Yes | `lead.report_cost_usd` |
+| Last interaction | Yes | `lead.last_interaction` |
+| Product events timeline | Yes | fetched via `/api/admin/lead-timeline` |
+| Internal notes | Yes | `lead.internal_notes` |
+| Quick actions | Yes | already implemented |
 
-**Report Preview** (2 route files): ~18 instances of `text-[10px]` and `text-[11px]` in admin toolbar overlays.
+**Missing fields**: None. All requested data is already available. No DB migration needed.
 
-**Visao Geral** (`admin.visao-geral.tsx`): `text-[11px]` on the demo-mode badge and the "Carregar dados reais" button — both interactive elements.
+## Visual Upgrade Plan
 
-**Sistema** (`admin.sistema.tsx`): `text-[10px]` on a mono span and `text-[11px]` on an info box.
+### 1. Header — Premium profile hero
+- Add a large avatar placeholder (initials circle, 48px, using lead name initials)
+- Make name 22px semibold (upgrade from `admin-panel-title` 20px)
+- Email as a clickable `mailto:` link with subtle hover
+- Handle as a clickable Instagram link
+- Status badge with column color — already present, keep
 
-### 1.2 `text-xs` Usage (Borderline)
+### 2. KPI summary strip (NEW)
+- Add a horizontal 3-column KPI row below the header: **Views**, **Custo**, **Dias desde criação**
+- Use `admin-code` for numbers, `admin-eyebrow` for labels
+- Subtle card background with rounded corners
 
-7 files use `text-xs` (= 12px in Tailwind v4). These are technically compliant but often feel tight when paired with mono weights or uppercase tracking. The worst offender is `report-lab.tsx` with 7 occurrences, mostly on labels and timestamp metadata.
+### 3. Perfil section
+- Increase `DetailRow` vertical padding from `py-1.5` to `py-2.5` (audit fix already recommended)
+- Add icons to each row (User, Target, Globe, Shield) for scanability
 
-### 1.3 Missing Typography Token Usage
+### 4. Relatório section
+- Show badges inline with labels instead of a separate badge row
+- Add progress indicator: a simple 3-step tracker (Pedido → Geração → Entrega) with active state
 
-- **Lead Detail Sheet** (`lead-detail-sheet.tsx` lines 348, 352): raw `font-mono` instead of `.admin-code` class — inconsistent size/weight.
-- **Kanban Board** (`kanban-board.tsx` line 86): hardcoded hex `#D3D1C7` for empty state border instead of admin token.
-- **Report Lab** action buttons (lines 488-494): local `AdminActionButton` component with `text-xs` that duplicates and diverges from the shared `admin-action-button.tsx`.
+### 5. Inteligência comercial
+- Intent signal box: upgrade to a card with colored left border accent
+- Suggested step box: add a subtle icon (Lightbulb)
+- Status selector: increase height to `h-10` for touch targets
 
----
+### 6. Timeline
+- Add event-type-specific icons (Eye for viewed, FileText for generated, etc.)
+- Add relative time ("há 2h") alongside absolute date
+- Limit to 10 events with "Ver mais" expansion
 
-## 2. Density Issues
+### 7. Notas & Ações
+- Upgrade textarea with a counter (chars used)
+- Group action buttons in a 2x2 grid instead of flex-wrap for cleaner layout
+- Add WhatsApp action button (opens `wa.me/` if phone available — future-proof)
 
-### 2.1 Lead Card (`lead-card.tsx`)
+### 8. Sheet chrome
+- Increase sheet width from `sm:max-w-[480px]` to `sm:max-w-[520px]`
+- Add a subtle top-border accent line using the column color
+- Smooth scroll with `scroll-smooth` class
+- Add a sticky header with lead name visible while scrolling
 
-- **Good**: padding increased to 16px, card title at 15px, meta at 12px.
-- **Issue**: 7 distinct content zones (header, badges, purpose, stats, notes, status selector) in a narrow 290px card creates visual clutter. The `gap-1.5` on badge row and `mb-3` repetition produces a slightly mechanical stacking rhythm.
-- **Recommendation**: Group badges + purpose into one zone with `mb-4`. Use `gap-2` for badge row. Remove notes preview from card (it's already in the detail sheet). This would cut the card height by ~20px and reduce information density.
+## Files to modify
 
-### 2.2 Lead Detail Sheet (`lead-detail-sheet.tsx`)
+1. **`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`** — all visual upgrades above
+2. **`src/styles/admin-tokens.css`** — add `.admin-kpi-strip` utility if needed
 
-- **Good**: Clear 6-section structure, section titles using `.admin-section-title`.
-- **Issue**: `DetailRow` component uses `py-1.5` (6px vertical) — too tight for a "premium cinematic CRM." The label-value pairs feel like a debug inspector, not a client portfolio.
-- **Recommendation**: Increase `DetailRow` to `py-2.5` (10px). Consider a stacked label-value layout instead of inline justify-between for key fields.
+## Files NOT touched
+- No DB migrations
+- No public report changes
+- No provider/cost/PDF logic
+- No kanban-board.tsx changes (card already opens the sheet)
 
-### 2.3 Kanban Column Headers
-
-- **Good**: 290px width, 13px label, left accent bar.
-- **Issue**: `py-1.5` on header is too tight. The count badge sits inline and gets lost.
-- **Recommendation**: `py-2.5` + count badge on new line or visually stronger.
-
-### 2.4 Notes Sheet
-
-- **Issue**: The notes editing sheet (`kanban-board.tsx` lines 111-136) is minimal — just a title, textarea, and button. No metadata context about the lead. The `admin-card-title` class on the sheet title works but feels generic.
-- **Recommendation**: Add lead name + handle + status badge above the textarea. Use a slightly larger heading.
-
----
-
-## 3. Visual Hierarchy Problems
-
-### 3.1 Admin Navigation (`admin-tabs-nav.tsx`)
-
-- **Good**: Glassmorphism styling, 13px labels.
-- **Issue**: 10 tabs at 13px with `px-4 py-2` are too uniform — no hierarchy between primary sections (Visão geral, Beta Leads) and secondary ones (Sistema, Conhecimento). All tabs look identical.
-- **Recommendation**: Consider grouping or adding subtle section dividers. Or differentiate primary tabs with slightly bolder weight.
-
-### 3.2 Section Headers (`admin-section-header.tsx`)
-
-- **Good**: Accent bar + uppercase title.
-- **Issue**: `admin-section-title` is only 14px uppercase — it reads as a label, not a section header. Inside the lead detail sheet, `SectionTitle` reuses this class, which means every section header across kanban, detail, and report-lab looks the same despite different hierarchy levels.
-- **Recommendation**: Consider 15-16px for major section headers, keeping 14px for sub-sections.
-
-### 3.3 Page Header vs Section Header Contrast
-
-The page title is 36px and the next heading level drops to 14px — a 2.57x ratio. That gap is too steep. There is no intermediate heading (e.g. 20-24px) for card titles or panel headings.
-
----
-
-## 4. Components to Improve First (Priority Order)
-
-| Priority | Component | Impact | Effort |
-|----------|-----------|--------|--------|
-| 1 | `AdminBadge` | Global — every card, sheet, table | Small |
-| 2 | `lead-detail-sheet.tsx` — DetailRow density | CRM feel | Small |
-| 3 | Report Lab sub-12px violations | 11+ instances | Medium |
-| 4 | Lead card notes preview removal | Card clarity | Small |
-| 5 | Notes sheet enrichment | CRM context | Small |
-| 6 | Report Preview admin toolbar | 18 violations | Medium |
-| 7 | `admin-section-title` scale | Global hierarchy | Small |
-
----
-
-## 5. Recommended Admin Typography Scale (Revised)
-
-```text
-Page title (h1) ......... 36px  Inter 500  -0.02em  (unchanged)
-Panel heading ........... 20px  Inter 500  -0.01em  (NEW — for sheets, modals)
-Section title (h2) ...... 15px  Inter 500  uppercase 0.05em  (was 14px)
-Card title .............. 15px  Inter 500  -0.01em  (unchanged)
-Body text ............... 13px  Inter 400  (unchanged)
-Table cell .............. 13px  Inter 400  (unchanged)
-Metadata ................ 12px  Inter 400  (unchanged)
-Badge ................... 12px  Inter 500  (was 11px normal)
-Code / mono ............. 12px  JBM  400   (unchanged)
-Eyebrow ................. 11px  JBM  400   uppercase (unchanged, decorative only)
-```
-
-Key changes:
-- **Badge**: 11px → 12px, weight 400 → 500 (better legibility at small size)
-- **Section title**: 14px → 15px (less gap from card title, more weight as header)
-- **Panel heading** (new): 20px for sheet/modal titles (fills the 36→14 gap)
-
----
-
-## 6. Implementation Prompts (Copy-Paste Ready)
-
-### Prompt 1 — Badge and Section Title Scale
-```
-Upgrade AdminBadge from text-[11px] font-normal to text-[12px] font-medium.
-Upgrade .admin-section-title from 14px to 15px.
-Add .admin-panel-title class at 20px 500 weight to admin-tokens.css.
-Apply admin-panel-title to LeadDetailSheet main heading (h2).
-Do not touch public report. bunx tsc --noEmit. bunx vitest run.
-```
-
-### Prompt 2 — Lead Detail Sheet Density
-```
-In lead-detail-sheet.tsx:
-- Increase DetailRow vertical padding from py-1.5 to py-2.5.
-- Replace raw font-mono on report_views and cost with admin-code class.
-- Add lead name + handle context to the notes editing sheet in kanban-board.tsx.
-Do not touch public report. bunx tsc --noEmit. bunx vitest run.
-```
-
-### Prompt 3 — Report Lab Sub-12px Cleanup
-```
-In admin.report-lab.tsx:
-- Replace all text-[10px] with text-[12px].
-- Replace all text-[11px] with text-[12px].
-- Replace the local AdminActionButton with the shared one from admin-action-button.tsx.
-Do not touch public report. bunx tsc --noEmit. bunx vitest run.
-```
-
-### Prompt 4 — Report Preview Toolbar Cleanup
-```
-In admin.report-preview.$username.tsx and admin.report-preview.snapshot.$snapshotId.tsx:
-- Replace all text-[10px] with text-[12px].
-- Replace all text-[11px] with text-[12px].
-Do not touch public report. bunx tsc --noEmit. bunx vitest run.
-```
-
-### Prompt 5 — Lead Card Simplification
-```
-In lead-card.tsx:
-- Remove the notes preview line (it's already visible in the detail sheet).
-- Increase badge row gap from gap-1.5 to gap-2.
-- Group badges + purpose with mb-4 instead of mb-3.
-Do not touch public report. bunx tsc --noEmit. bunx vitest run.
-```
-
----
-
-## Files That Would Be Touched
-
-| File | Prompts |
-|------|---------|
-| `src/styles/admin-tokens.css` | 1 |
-| `src/components/admin/v2/admin-badge.tsx` | 1 |
-| `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` | 1, 2 |
-| `src/components/admin/v2/beta-leads/kanban-board.tsx` | 2, 5 |
-| `src/components/admin/v2/beta-leads/lead-card.tsx` | 5 |
-| `src/routes/admin.report-lab.tsx` | 3 |
-| `src/routes/admin.report-preview.$username.tsx` | 4 |
-| `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` | 4 |
-| `src/routes/admin.sistema.tsx` | 3 (bonus) |
-| `src/routes/admin.visao-geral.tsx` | 3 (bonus) |
+## Validation
+- `bunx tsc --noEmit`
+- `bunx vitest run`
