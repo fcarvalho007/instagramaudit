@@ -1,106 +1,27 @@
 
-# Report Lab — Admin Variant Preview Page
+# QA Audit — Report Lab & Report Variant System
 
-## Readiness Assessment: PASS
+## PASS/FAIL Table
 
-All prerequisites are in place:
-- Variant system (`report-variant.ts`) with `ReportVariantProvider` context
-- `ReportShellV2` accepts `variant` prop
-- Existing admin snapshot API (`/api/admin/snapshot/$username`)
-- Existing admin auth gate and layout (`admin.tsx`)
-- Existing admin preview route provides a proven pattern for loading snapshots
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | `/admin/report-lab` is admin-only | **PASS** | Route is `admin.report-lab.tsx` — child of `/admin` layout (`admin.tsx`), which wraps all children in `AdminAuthShell` (email allowlist gate). No public path exposes this component. |
+| 2 | Report Lab switcher changes only local state | **PASS** | `useState<ReportVariant>("internal_lab")` at line 123 of `admin.report-lab.tsx`. The selected variant is passed as a prop to `ReportShellV2`; no global store, no URL param, no context mutation. |
+| 3 | Switching variants does not affect public route | **PASS** | Public route hardcodes `variant="public_mvp"` (line 271 of `analyze.$username.tsx`). Report Lab uses its own local state. `ReportVariantProvider` is scoped inside each `ReportShellV2` instance (lines 92-274 of `report-shell-v2.tsx`). |
+| 4 | `/analyze/$username` fixed to `public_mvp` | **PASS** | Line 271: `variant="public_mvp"` — hardcoded string literal, no conditional. |
+| 5 | `/admin/report-preview/$username` fixed to `internal_lab` | **PASS** | Line 201: `variant="internal_lab"`. |
+| 6 | `/admin/report-preview/snapshot/$snapshotId` fixed to `internal_lab` | **PASS** | Line 223: `variant="internal_lab"`. |
+| 7 | Public report never shows admin/debug UI | **PASS** | No references to Report Lab, variant switcher, module visibility table, or admin controls exist in `analyze.$username.tsx` or any report-redesign component. `debugLabels` feature is `"hidden"` for `public_mvp` (in `report-variant.ts`), gating all debug labels in `caption-diagnostics-card.tsx`, `visual-cover-analysis-card.tsx`, and `report-comment-intelligence.tsx`. |
+| 8 | `public_mvp` hides detailed comment intelligence | **PASS** | `commentIntelligence` is `"hidden"` for `public_mvp`. When unavailable, `CommentIntelligenceUnavailable` checks `features.debugLabels === "hidden"` (line 287-291) and renders the Pro teaser instead of technical details. |
+| 9 | `internal_lab` shows full comment intelligence | **PASS** | `commentIntelligence` is `"full"` for `internal_lab`. `debugLabels` is `"full"`, so the component renders full technical detail (lines 310-340). |
+| 10 | No provider calls during QA | **PASS** | This audit was read-only code inspection. No browser navigation, no API calls, no snapshot fetches. Network requests in context are pre-existing admin expense queries unrelated to this audit. |
 
----
+## Issues Found
 
-## Architecture
+None.
 
-A new admin sub-route `/admin/report-lab` renders inside the admin layout (`admin.tsx`). It contains:
+## Recommended Next Implementation Prompt
 
-1. **Profile selector** — dropdown with known test profiles + manual input
-2. **Variant switcher** — 3 segmented pills (Public MVP / Internal Lab / Pro Preview)
-3. **Mode label** — contextual banner below the switcher
-4. **Admin actions** — Open/copy public and internal links
-5. **Module visibility table** — small reference grid showing feature visibility per variant
-6. **Report render area** — `ReportShellV2` wrapped in `ReportThemeWrapper`, variant driven by switcher state
+The variant system and Report Lab are solid. Suggested next step:
 
-The report renders inside the admin layout chrome. No duplicate report components. The `ReportVariantProvider` in `ReportShellV2` handles all downstream feature gating.
-
----
-
-## Existing Components to Reuse
-
-| Component | Purpose |
-|---|---|
-| `ReportShellV2` | Full report renderer |
-| `ReportThemeWrapper` | Light-theme wrapper |
-| `ReportVariantProvider` | Context for variant features |
-| `snapshotToReportData` | Snapshot-to-report adapter |
-| `adminFetch` | Auth-aware admin API fetch |
-| `AdminAuthShell` / admin layout | Auth gate (already in `admin.tsx`) |
-| Snapshot API `/api/admin/snapshot/$username` | Loads latest cached snapshot |
-
----
-
-## Module Visibility Reference Table
-
-Static data derived from `VARIANT_FEATURES` in `report-variant.ts` + block-level logic:
-
-| Module | public_mvp | internal_lab | pro_preview |
-|---|---|---|---|
-| Overview (Hero + KPIs) | Full | Full | Full |
-| Diagnostic (Q01-Q07) | Full | Full | Full |
-| P05 Conversa (post-level) | Full | Full | Full |
-| P05 Comment Intelligence | Hidden | Full | Teaser |
-| Captions (P04) | Lightweight | Full | Lightweight |
-| Market Signals | Full | Full | Full |
-| Benchmark Gauge | Full | Full | Full |
-| Methodology | Full | Full | Full |
-| Beta Feedback | Full | Hidden | Hidden |
-| Debug labels | Hidden | Full | Hidden |
-
-This table will be rendered as a small collapsible section on the Report Lab page.
-
----
-
-## Files to Create
-
-| File | Description |
-|---|---|
-| `src/routes/admin.report-lab.tsx` | New route — Report Lab page with switcher, profile selector, module table, report area |
-
-## Files to Modify
-
-| File | Change |
-|---|---|
-| `src/components/admin/v2/admin-tabs-nav.tsx` | Add "Report Lab" tab to the nav (type union + TABS array) |
-
-## Files NOT to Touch
-
-- `src/lib/report/report-variant.ts` (locked foundation)
-- `src/components/report-redesign/v2/report-shell-v2.tsx`
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx`
-- `src/components/report-redesign/v2/report-comment-intelligence.tsx`
-- `src/styles/tokens.css`, `src/styles.css`
-- Any provider/scraper/PDF/cost/revenue files
-- Supabase schema — no changes needed
-
----
-
-## Implementation Order
-
-1. **Create `src/routes/admin.report-lab.tsx`** — profile selector (dropdown with frederico.m.carvalho, martimsilvai, and custom input), variant switcher (segmented control), mode label, admin action buttons, module visibility table, snapshot loading (reuse pattern from existing admin preview route), report render area with `ReportShellV2` inside `ReportThemeWrapper`.
-
-2. **Update `src/components/admin/v2/admin-tabs-nav.tsx`** — add `/admin/report-lab` to the `TabDef` type union and `TABS` array as "Report Lab".
-
-3. **Validate** — `tsc --noEmit` + `vitest run`. Confirm public route `/analyze/$username` still uses `public_mvp` only.
-
----
-
-## Risks and Mitigations
-
-| Risk | Mitigation |
-|---|---|
-| Report Lab accidentally visible to public users | Route lives under `/admin` layout which has auth gate; `noindex, nofollow` meta |
-| Variant switcher leaks into public report | Switcher is local state in the admin route, never touches `ReportShellV2` internals |
-| Light theme CSS conflicts with admin dark chrome | `ReportThemeWrapper` scopes `data-theme="light"` to the report container only |
-| Snapshot loading duplicates code from admin preview | Extract the snapshot-loading pattern into the route directly (same pattern, not shared abstraction yet — avoids touching locked/existing files) |
+> **Full public_mvp string audit** — Open the public report in Report Lab with `public_mvp` selected and visually scan every section for any remaining technical/internal strings (e.g. "enrichment", "em desenvolvimento", "payload", raw JSON labels, English fallback copy). This requires navigating the browser to `/admin/report-lab`, selecting Public MVP, and inspecting the rendered output for a real cached profile.
