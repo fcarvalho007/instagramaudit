@@ -252,6 +252,22 @@
   margin: 0;
 }
 
+.admin-v2 .admin-code {
+  font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.admin-v2 .admin-table-header {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgb(var(--admin-neutral-600));
+  line-height: 1;
+}
+
 /**
  * Limpa o título interno duplicado do `CockpitShell` quando renderizado
  * dentro do wrapper `.admin-cockpit-legacy`.
