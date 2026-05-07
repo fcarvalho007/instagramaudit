@@ -174,7 +174,7 @@ export function BetaRequestForm() {
       {step === 1 && (
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <Badge variant="outline" className="text-eyebrow-sm border-accent-primary/30 text-accent-primary">
+            <Badge variant="accent" className="text-eyebrow-sm">
               Beta privada
             </Badge>
             <h1 className="font-display text-2xl sm:text-3xl font-semibold text-text-primary">
