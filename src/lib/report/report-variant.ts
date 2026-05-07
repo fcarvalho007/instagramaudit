@@ -123,3 +123,41 @@ export function useReportVariant(): ReportVariant {
 export function useVariantFeatures(): VariantFeatures {
   return getVariantFeatures(useReportVariant());
 }
+
+// ── Public readiness checklist (admin-only, informational) ────────
+
+export type ReadinessStatus =
+  | "ready"
+  | "needs_review"
+  | "internal_only"
+  | "pro_candidate"
+  | "hidden";
+
+export type RiskLevel = "low" | "medium" | "high";
+
+export interface ModuleReadiness {
+  status: ReadinessStatus;
+  risk: RiskLevel;
+  note: string;
+}
+
+export const READINESS_STATUS_LABELS: Record<ReadinessStatus, string> = {
+  ready: "Ready",
+  needs_review: "Needs review",
+  internal_only: "Internal only",
+  pro_candidate: "Pro candidate",
+  hidden: "Hidden",
+};
+
+export const MODULE_READINESS: Record<keyof VariantFeatures, ModuleReadiness> = {
+  overviewHeroKpis:      { status: "ready",         risk: "low",    note: "Estável. KPIs derivados do scraper principal." },
+  diagnosticQ01Q07:      { status: "ready",         risk: "low",    note: "Cards Q01–Q07 validados com dados reais." },
+  conversationPostLevel: { status: "ready",         risk: "low",    note: "Métricas de conversa por post, sem comment scraper." },
+  commentIntelligence:   { status: "pro_candidate", risk: "low",    note: "Depende do comment scraper (desativado). Pro teaser ativo." },
+  captionsDiagnostics:   { status: "needs_review",  risk: "medium", note: "Lightweight em MVP. Rever copy e fallback sem dados." },
+  marketSignals:         { status: "needs_review",  risk: "medium", note: "Depende de DataForSEO. Verificar fallback quando bloqueado." },
+  benchmarkGauge:        { status: "needs_review",  risk: "medium", note: "Funcional, mas rever labels e fallback sem reference data." },
+  methodology:           { status: "ready",         risk: "low",    note: "Secção informativa estática." },
+  betaFeedbackBanner:    { status: "ready",         risk: "low",    note: "Banner de feedback. Remover quando sair de beta." },
+  debugLabels:           { status: "hidden",         risk: "low",    note: "Interno. Nunca visível em public_mvp." },
+};
