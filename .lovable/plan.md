@@ -1,141 +1,47 @@
 
-# Admin Typography and Density System — Audit and Plan
+# InstaBench Report — Premium Editorial Dashboard Mockup (PDF)
 
-## Typography Audit Summary
+## What
 
-### Current State
+A high-fidelity PDF (1440×900 landscape, A3-ish) recreating Page 1 of the `/analyze/$username` report with improved visual quality. This serves as a design spec you can reference or replicate in Figma.
 
-The admin already has a well-defined typography scale in `admin-tokens.css` with utility classes (`.admin-section-title`, `.admin-card-title`, `.admin-body`, `.admin-table-cell`, `.admin-meta`, `.admin-eyebrow`), plus the hard rule: **nothing interactive/informational below 12px; 11px only for decorative eyebrows and badge pills.**
+## Design philosophy
 
-**Problem:** the rule is widely violated. **39 files** contain **~170 occurrences** of `text-[10px]` or `text-[11px]` used on operational/interactive text (table cells, button labels, status badges inline, metadata rows, action buttons, code blocks, pipeline counters, etc.).
+**"Iconosquare Editorial"** — light, airy, strategic. White card surfaces on a near-white (#FAFBFD) page. One accent blue (#2563D9). Serif headlines (InstrumentSerif) for editorial warmth, WorkSans for body/labels/numbers (closest available to Inter), JetBrainsMono only for raw metric values. Generous padding (24–32px inside cards), consistent 16px border-radius, subtle 1px borders at 8% opacity, soft drop shadows.
 
-### Violation Breakdown by Severity
+## Page 1 structure preserved
 
-**Heavy violators (6+ sub-12px occurrences):**
+1. **Profile hero card** — avatar circle, @handle (serif, 28px), platform pill, bio, follower/posts/following stats row
+2. **Action row** — 3 small action cards (Comparar, Exportar PDF, Partilhar) with icons
+3. **Left sidebar nav** — 6 section labels (Visão geral, Diagnóstico, Desempenho, Conteúdo, Referências, Mercado) with active indicator
+4. **Section heading** — "Como está o perfil em geral?" in serif, large (32px)
+5. **Editorial Identity Card** — global score ring + editorial sentence + strength/weakness chips
+6. **Engagement card** — 3 KPI pills (taxa, benchmark, diferença) + horizontal benchmark bar chart + diagnostic reading box
+7. **Two bottom cards** — Frequência de publicação (mini calendar heatmap + weekly rate) and Variedade de formatos (Reels/Carousels/Imagens breakdown)
 
-| File | Count | What's wrong |
-|---|---|---|
-| `visao-geral/expense-section.tsx` | 29 | Table cells, row labels, all at 10-11px |
-| `sistema/visual-cover-debug-card.tsx` | 12 | Debug grid all at 10-11px |
-| `module-visibility-matrix.tsx` | 12 | Toggle buttons, column headers at 10px |
-| `sistema/test-profiles-card.tsx` | 9 | Table rows at 11px |
-| `clientes/customers-table-section.tsx` | 9 | Table cells at 11px |
-| `report-drawer.tsx` | 8 | Detail rows at 11px |
-| `sistema/costs-detail-section.tsx` | 7 | Cost table at 10-11px |
-| `sistema/analysis-cost-breakdown.tsx` | 6 | Breakdown table at 10px |
+## Improvements over current
 
-**Medium violators (3-5):** 12 files (pipeline, charts, reconciliation, notes, profiles, etc.)
+- Headlines 30–40% larger, serif font for editorial tone
+- Card internal padding: 24px minimum (was ~16–20px)
+- Consistent 16px border-radius on all cards
+- Metric numbers in WorkSans 600 weight at 24–28px (was 18–20px)
+- KPI pills with tinted backgrounds and 2px left accent borders
+- Chart labels at 12px minimum, axis ticks at 11px
+- Section eyebrows: 11px uppercase tracking-wider WorkSans
+- Generous 24px gaps between cards (was 16px)
+- Subtle shadow (`0 1px 3px rgba(0,0,0,0.04)`) on all cards
+- Diagnostic reading boxes with coloured left border (emerald/rose)
+- Sidebar nav uses 13px WorkSans with a 3px blue left-border on active item
 
-**Light violators (1-2):** 19 files (scattered eyebrow misuse or single labels)
+## Technical approach
 
-Additionally, **inline `fontSize` at 10-11px** exists in 8 files (waterfall, funnel, revenue, charts sections).
+Python script using `reportlab` to generate a pixel-precise PDF at 1440×900. Fonts: InstrumentSerif-Regular, WorkSans-Regular/Bold, JetBrainsMono-Regular copied from canvas-fonts. All text editable in the PDF (not rasterized). Geometric shapes for charts (rounded rects, circles for score ring). Real Portuguese copy from the codebase (not lorem ipsum).
 
-### Also Noted
+## Output
 
-- The legacy cockpit (`src/components/admin/cockpit/`) uses `text-xs` / `text-sm` Tailwind utilities rather than the admin token classes — inconsistent with v2 but lower priority since it's being wrapped/replaced.
-- `AdminBadge` at 11px is correct per the design rule.
-- `.admin-eyebrow` at 11px is correct per the design rule.
+- `/mnt/documents/instabench-report-v1-mockup.pdf` — the design spec
+- `/mnt/documents/instabench-design-philosophy.md` — the design philosophy document
 
----
+## QA
 
-## Recommended Typography Scale (confirmed, already in tokens)
-
-The existing scale is correct and complete. No new sizes needed.
-
-| Role | Size | Weight | Class |
-|---|---|---|---|
-| Page title | 36px | 600 | Inline in `AdminPageHeader` |
-| Section title | 14px | 500 uppercase | `.admin-section-title` |
-| Card title | 15px | 500 | `.admin-card-title` |
-| Body / card content | 13px | 400 | `.admin-body` |
-| Table cell | 13px | 400 | `.admin-table-cell` |
-| Metadata | 12px | 400 | `.admin-meta` |
-| Eyebrow (decorative only) | 11px | 400 uppercase mono | `.admin-eyebrow` |
-| Badge pill (decorative only) | 11px | 400 | `AdminBadge` component |
-
-**New utility class to add:**
-
-| Class | Size | Purpose |
-|---|---|---|
-| `.admin-code` | 12px | Inline code/mono snippets (replaces `font-mono text-[10px]` / `text-[11px]` patterns) |
-| `.admin-table-header` | 12px | Table `th` — uppercase, medium weight, tertiary color |
-
----
-
-## Components/Classes to Create or Update
-
-### In `admin-tokens.css` — add 2 classes:
-
-```css
-.admin-v2 .admin-code {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.4;
-}
-
-.admin-v2 .admin-table-header {
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgb(var(--admin-neutral-600));
-  line-height: 1;
-}
-```
-
-### No new React components needed
-The existing `AdminBadge`, `AdminActionButton`, `AdminCard`, `AdminStat`, `AdminSectionHeader`, `AdminPageHeader` are sufficient.
-
----
-
-## Files to Touch
-
-**39 files** in `src/components/admin/v2/` (listed above in audit).
-
-## Files NOT to Touch
-
-- `src/styles/tokens.css`, `tokens-light.css` (public report)
-- `src/components/report/` (public report rendering)
-- `src/components/admin/v2/admin-badge.tsx` (11px is correct for badge)
-- All provider/cost/PDF pipeline logic
-- `LOCKED_FILES.md` files
-- `src/integrations/supabase/client.ts`, `types.ts`
-
----
-
-## Implementation Phases
-
-### Phase 1 — Token additions (1 file)
-Add `.admin-code` and `.admin-table-header` to `admin-tokens.css`. Update `mem://design/admin-typography.md`.
-
-### Phase 2 — Heavy violators (8 files, ~90 occurrences)
-Fix the 8 files with 6+ violations: `expense-section`, `visual-cover-debug-card`, `module-visibility-matrix`, `test-profiles-card`, `customers-table-section`, `report-drawer`, `costs-detail-section`, `analysis-cost-breakdown`.
-
-### Phase 3 — Medium violators (12 files, ~48 occurrences)
-Fix files with 3-5 violations across pipeline, charts, reconciliation, notes, profiles sections.
-
-### Phase 4 — Light violators + inline fontSize (19 files + 8 files, ~32 occurrences)
-Fix remaining scattered 1-2 violation files and convert inline `fontSize: 10/11` to token classes.
-
-### Phase 5 — Validation
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Visual review of each admin tab
-
----
-
-## Transformation Rules (for implementation)
-
-| Current pattern | Replace with |
-|---|---|
-| `text-[10px]` on table cells / data | `admin-table-cell` class or `text-[12px]` min |
-| `text-[10px]` on buttons / actions | `text-[12px]` minimum |
-| `text-[10px]` on `<code>` / mono | `admin-code` class |
-| `text-[11px]` on table headers | `admin-table-header` class |
-| `text-[11px]` on metadata / timestamps | `admin-meta` class |
-| `text-[11px]` on interactive labels | `text-[12px]` or `admin-meta` |
-| `font-mono text-[10px]` | `admin-code` |
-| `fontSize: 10` / `fontSize: 11` inline | Remove, use token class |
-
-All phases can be done in a single implementation prompt if approved.
+Convert each page to PNG, inspect for overlaps, clipped text, alignment issues, and colour consistency before delivering.
