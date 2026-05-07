@@ -98,7 +98,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
             </span>
             {allComplete ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
                 style={{ backgroundColor: "#E8F5EE", color: "#1D9E75" }}
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -108,7 +108,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
               </span>
             ) : someComplete ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
                 style={{ backgroundColor: "#FFF3E0", color: "#BA7517" }}
               >
                 <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "#BA7517" }} />
@@ -168,7 +168,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
 
       {/* Row 2: Cache breakdown chips */}
       <div className="flex items-center gap-1.5 flex-wrap mt-3 pl-[54px]">
-        <span className="text-[10px] text-admin-text-tertiary uppercase tracking-wider font-medium mr-1">
+        <span className="text-[11px] text-admin-text-tertiary uppercase tracking-wider font-medium mr-1">
           Em cache:
         </span>
         {STATUS_ITEMS.map((s) => {
@@ -176,7 +176,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
           return (
             <span
               key={s.key}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
               style={{
                 backgroundColor: ok ? "#E8F5EE" : "#F3F2EE",
                 color: ok ? "#1D9E75" : "#888780",

@@ -192,7 +192,7 @@ export function WaterfallSection() {
               >
                 {cell.value}
               </p>
-              <p className="mt-1.5 text-[10px] text-admin-text-tertiary">
+              <p className="mt-1.5 text-[11px] text-admin-text-tertiary">
                 {cell.sub}
               </p>
             </div>

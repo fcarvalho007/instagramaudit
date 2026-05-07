@@ -32,18 +32,7 @@ export function AdminPageHeader({
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
-          <p
-            style={{
-              fontFamily: '"JetBrains Mono", Menlo, Consolas, monospace',
-              fontSize: 11,
-              fontWeight: 400,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "#5F5E5A",
-              lineHeight: 1,
-              margin: 0,
-            }}
-          >
+          <p className="admin-eyebrow">
             InstaBench · Admin
           </p>
           <h1
@@ -52,14 +41,14 @@ export function AdminPageHeader({
               fontWeight: 500,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
-              color: "#2C2C2A",
               margin: 0,
             }}
+            className="text-admin-text-primary"
           >
             {title}
           </h1>
           {subtitle ? (
-            <p style={{ fontSize: 13, color: "#5F5E5A", margin: 0 }}>
+            <p className="admin-body text-admin-text-secondary">
               {subtitle}
             </p>
           ) : null}

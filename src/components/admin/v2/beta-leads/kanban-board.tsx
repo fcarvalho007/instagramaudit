@@ -47,8 +47,8 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
             return (
               <div
                 key={col.key}
-                className="flex flex-col gap-2 shrink-0"
-                style={{ width: 240 }}
+                className="flex flex-col gap-2.5 shrink-0"
+                style={{ width: 270 }}
               >
                 {/* Column header */}
                 <div
@@ -59,13 +59,13 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
                   }}
                 >
                   <span
-                    className="text-[11px] font-medium"
+                    className="text-[12px] font-medium"
                     style={{ color: col.color }}
                   >
                     {col.label}
                   </span>
                   <span
-                    className="ml-auto text-[10px] font-mono rounded-full px-1.5 py-0.5"
+                    className="ml-auto text-[11px] font-mono rounded-full px-1.5 py-0.5"
                     style={{
                       backgroundColor: `${col.color}18`,
                       color: col.color,
@@ -79,7 +79,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
                 <div className="flex flex-col gap-2">
                   {colLeads.length === 0 && (
                     <div
-                      className="rounded-lg border border-dashed py-6 text-center text-[10px]"
+                      className="rounded-lg border border-dashed py-6 text-center text-[12px]"
                       style={{
                         borderColor: "#D3D1C7",
                         color: "#B4B2A9",

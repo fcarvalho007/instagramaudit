@@ -20,8 +20,8 @@ interface AdminActionButtonProps
 }
 
 const SIZE_CLS: Record<AdminActionButtonSize, string> = {
-  sm: "h-[26px] px-2 text-[11px]",
-  md: "h-8 px-3 text-[12px]",
+  sm: "h-7 px-2.5 text-[12px]",
+  md: "h-8 px-3 text-[13px]",
 };
 
 export const AdminActionButton = forwardRef<

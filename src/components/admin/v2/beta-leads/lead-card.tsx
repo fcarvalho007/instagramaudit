@@ -83,20 +83,20 @@ export function LeadCard({ lead, onUpdate, onEditNotes }: LeadCardProps) {
   return (
     <AdminCard
       className="!p-3 !rounded-xl"
-      style={{ fontSize: 12 }}
+      style={{ fontSize: 13 }}
     >
       {/* Header: email + actions */}
-      <div className="flex items-start justify-between gap-1 mb-1.5">
+      <div className="flex items-start justify-between gap-1 mb-2">
         <div className="min-w-0">
           <p
-            className="m-0 text-[11px] font-medium truncate"
+            className="m-0 text-[13px] font-medium truncate"
             style={{ color: "#2C2C2A" }}
             title={lead.email}
           >
             {lead.email}
           </p>
           {lead.handle && (
-            <p className="m-0 text-[11px]" style={{ color: "#888780" }}>
+            <p className="m-0 text-[12px]" style={{ color: "#888780" }}>
               @{lead.handle}
             </p>
           )}
@@ -145,7 +145,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes }: LeadCardProps) {
       </div>
 
       {/* Badges row */}
-      <div className="flex flex-wrap gap-1 mb-1.5">
+      <div className="flex flex-wrap gap-1 mb-2">
         {lead.user_type && (
           <AdminBadge
             variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}
@@ -163,7 +163,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes }: LeadCardProps) {
       {/* Purpose */}
       {lead.purpose && (
         <p
-          className="m-0 text-[10px] mb-1 line-clamp-2"
+          className="m-0 text-[12px] mb-1.5 line-clamp-2"
           style={{ color: "#6B6B66" }}
         >
           {lead.purpose}
@@ -172,7 +172,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes }: LeadCardProps) {
 
       {/* Stats row */}
       <div
-        className="flex items-center gap-2 text-[10px] mb-2"
+        className="flex items-center gap-2 text-[12px] mb-2"
         style={{ color: "#888780" }}
       >
         {lead.report_cost_usd != null && (
@@ -186,7 +186,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes }: LeadCardProps) {
       {/* Notes preview */}
       {lead.internal_notes && (
         <p
-          className="m-0 text-[10px] italic truncate mb-2"
+          className="m-0 text-[12px] italic truncate mb-2"
           style={{ color: "#A3A29B" }}
           title={lead.internal_notes}
         >
@@ -200,7 +200,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes }: LeadCardProps) {
         onValueChange={handleStatusChange}
         disabled={statusChanging}
       >
-        <SelectTrigger className="h-6 text-[10px] rounded-lg">
+        <SelectTrigger className="h-7 text-[12px] rounded-lg">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
