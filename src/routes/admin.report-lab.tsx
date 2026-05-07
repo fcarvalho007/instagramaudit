@@ -564,6 +564,48 @@ function StatusBox({
   );
 }
 
+// ── Collapsible card with icon + title + subtitle ──────────────────
+
+function CollapsibleCard({
+  icon,
+  title,
+  subtitle,
+  badge,
+  open,
+  onToggle,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  badge?: React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-admin-border bg-white overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-3.5 px-5 py-4 text-left hover:bg-admin-surface-muted/50 transition-colors"
+      >
+        {icon}
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium text-admin-text-primary block">{title}</span>
+          <span className="text-[12px] text-admin-text-secondary">{subtitle}</span>
+        </div>
+        {badge && <div className="shrink-0">{badge}</div>}
+        {open ? (
+          <ChevronUp className="h-4 w-4 text-admin-text-tertiary shrink-0" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-admin-text-tertiary shrink-0" />
+        )}
+      </button>
+      {open && <div className="border-t border-admin-border">{children}</div>}
+    </div>
+  );
+}
+
 // ── Readiness checklist ────────────────────────────────────────────
 
 // ── Override source badge ──────────────────────────────────────────
