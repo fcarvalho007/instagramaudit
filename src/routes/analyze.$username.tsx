@@ -142,6 +142,7 @@ function AnalyzePage() {
 
   // Clean up report-view body attribute when leaving the page
   useEffect(() => {
+    document.body.setAttribute("data-report-view", "true");
     return () => {
       document.body.removeAttribute("data-report-view");
     };
