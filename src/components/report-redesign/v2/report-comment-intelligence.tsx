@@ -23,6 +23,7 @@ import {
   Ban,
   Loader2,
   BarChart3,
+  Sparkles,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -283,9 +284,31 @@ const TECHNICAL_REASONS = new Set([
 
 export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {
   const features = useVariantFeatures();
+  const isPublic = features.debugLabels === "hidden";
   const reason = data?.reason;
-  // In public_mvp, suppress technical pipeline reasons — show the generic default instead
-  const effectiveReason = (features.debugLabels === "hidden" && reason && TECHNICAL_REASONS.has(reason))
+
+  // ── public_mvp: Pro teaser ──
+  if (isPublic) {
+    return (
+      <div className="mt-5">
+        <div className="rounded-lg border border-accent-gold/20 bg-accent-gold/5 px-4 py-3.5 space-y-1">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent-gold" aria-hidden="true" />
+            <p className="text-[12.5px] font-semibold text-content-secondary">
+              Análise aprofundada de comentários
+            </p>
+          </div>
+          <p className="text-[12px] leading-relaxed text-content-tertiary">
+            Disponível em relatórios avançados. Analisa perguntas, objeções,
+            elogios e sinais reais da audiência.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── internal_lab: full technical detail ──
+  const effectiveReason = (reason && TECHNICAL_REASONS.has(reason))
     ? undefined
     : reason;
   const info = effectiveReason ? UNAVAILABLE_REASONS[effectiveReason] : undefined;
