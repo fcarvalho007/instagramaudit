@@ -146,9 +146,22 @@ export function EditorialIdentityCard({
   const globalFamily = getScoreFamily(globalScore);
 
   const fallback = buildFallbackSentence(scores);
-  // AI text: use as headline directly; fallback provides structured headline + description
-  const headlineText = aiHeroText || fallback.headline;
-  const descriptionText = aiHeroText ? null : fallback.description;
+  // AI text: split first sentence as headline, rest as description
+  let headlineText: string;
+  let descriptionText: string | null;
+  if (aiHeroText) {
+    const match = aiHeroText.match(/^(.+?[.!?])\s+(.+)$/s);
+    if (match) {
+      headlineText = match[1];
+      descriptionText = match[2];
+    } else {
+      headlineText = aiHeroText;
+      descriptionText = null;
+    }
+  } else {
+    headlineText = fallback.headline;
+    descriptionText = fallback.description;
+  }
 
   const { strengthKey, weaknessKey } = deriveStrengthWeaknessKeys(scores);
 
