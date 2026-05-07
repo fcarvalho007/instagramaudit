@@ -407,6 +407,9 @@ function ReportLabPage() {
                 "_blank",
               )
             }
+            onOpenPublic={() =>
+              window.open(`/analyze/${activeProfile}`, "_blank")
+            }
           />
         )}
       </div>
