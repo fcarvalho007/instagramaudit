@@ -314,16 +314,16 @@ function ReportLabPage() {
             copyMode
           />
           <AdminActionButton
-            label="Abrir preview interno"
+            label={`Abrir fullscreen · ${variant === "public_mvp" ? "Public MVP" : variant === "pro_preview" ? "Pro Preview" : "Internal Lab"}`}
             icon={<ExternalLink className="h-3.5 w-3.5" />}
-            onClick={() => window.open(`/admin/report-preview/${activeProfile}`, "_blank")}
+            onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}`, "_blank")}
           />
           <AdminActionButton
-            label="Copiar link interno"
+            label="Copiar link fullscreen"
             icon={<Copy className="h-3.5 w-3.5" />}
             onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}`);
-              toast.success("Link interno copiado.");
+              navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}?variant=${variant}`);
+              toast.success("Link fullscreen copiado.");
             }}
             copyMode
           />
