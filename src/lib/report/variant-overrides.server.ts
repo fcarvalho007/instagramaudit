@@ -5,6 +5,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { ReportVariant, VariantFeatures } from "./report-variant";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface VariantOverrideRow {
   id: string;
@@ -63,7 +64,7 @@ export async function saveDraft(
         {
           variant,
           is_draft: true,
-          features_json: features as Record<string, unknown>,
+          features_json: features as unknown as Json,
           updated_by: adminEmail,
         },
       ],
@@ -92,7 +93,7 @@ export async function publishDraft(
         {
           variant,
           is_draft: false,
-          features_json: draft as Record<string, unknown>,
+          features_json: draft as unknown as Json,
           updated_by: adminEmail,
         },
       ],
