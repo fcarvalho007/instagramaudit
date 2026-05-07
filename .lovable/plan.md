@@ -1,109 +1,100 @@
 
-# Admin Beta Request Queue
+# Admin Report Generation for Beta Requests
 
-## Data Model Audit
+## Architecture
 
-No schema changes needed. Everything required already exists:
+The action triggers a **server-to-server call** to the existing `/api/analyze-public-v1` endpoint, which already handles:
+- Apify calls with cost guards
+- Kill-switch checks (`APIFY_ENABLED`, allowlist, `execution_mode`)
+- Snapshot creation/caching
+- Provider call logging + analysis event recording
 
-- `report_requests`: `request_status`, `request_source`, `lead_id`, `instagram_username`, `analysis_snapshot_id`, `metadata` (contains `user_type`, `purpose`, `profile_ownership` from beta submissions)
-- `leads`: `email`, `name`, `user_type`, `purpose`, `profile_ownership`, `commercial_status`, `internal_notes`, `contacted_at`
-
-The existing `GET /api/admin/report-requests` already queries this data with pagination, filters, and lead joins. However it only returns `lead.id`, `lead.name`, `lead.email` — we need to extend the select to include the beta fields (`user_type`, `purpose`, `profile_ownership`, `source`).
-
-## API Plan
-
-### Extend existing `GET /api/admin/report-requests`
-
-Add `user_type`, `purpose`, `profile_ownership`, `source` to the lead join select. Add `request_source` filter param so we can filter to `beta_form` requests only.
-
-### Add `PATCH /api/admin/report-requests/$id`
-
-New handler on the existing `report-requests.$id.ts` route. Accepts:
-- `request_status` — approve/reject/archive
-- Server-side validation of allowed transitions
-
-Also updates `leads.contacted_at` if action is "mark contacted", and fires a `product_event` for audit.
-
-No new API files — extend the two existing ones.
-
-## UI Structure
-
-### Route: `src/routes/admin.beta-requests.tsx`
-
-New admin tab page. Structure:
+This avoids duplicating any provider logic. The new code only orchestrates the request lifecycle around it.
 
 ```text
-┌───────────────────────────────────────────────────────┐
-│  Beta Requests        [Filtro status ▾] [Pesquisar]   │
-│  12 pendentes · 3 aprovados · 1 rejeitado             │
-├───────────────────────────────────────────────────────┤
-│  Tabela                                               │
-│  ┌─────┬──────┬──────┬──────┬──────┬──────┬────────┐  │
-│  │ Data│Handle│Email │Tipo  │Obj.  │Status│ Ações  │  │
-│  ├─────┼──────┼──────┼──────┼──────┼──────┼────────┤  │
-│  │ ... │ ...  │ ...  │ ...  │ ...  │ ...  │ ...    │  │
-│  └─────┴──────┴──────┴──────┴──────┴──────┴────────┘  │
-│  [← Anterior]                    [Seguinte →]         │
-└───────────────────────────────────────────────────────┘
+Admin UI (button)
+  → POST /api/admin/generate-beta-report
+    → Pre-flight checks (status, kill switches)
+    → POST /api/analyze-public-v1 (server-to-server, with INTERNAL_API_TOKEN + ?refresh=1)
+    → Link snapshot_id to report_request
+    → Update request_status (processing → completed / failed)
+    → Record product_event (report_generated)
+  ← Response with result
 ```
 
-### Components (new, under `src/components/admin/v2/beta-requests/`)
+## Cost-Control Plan
 
-1. **`beta-requests-table.tsx`** — Table with columns: data, handle (link to IG), email (copy button), nome, tipo utilizador, objetivo, propriedade do perfil, status (badge), ações (dropdown)
-2. **`beta-request-actions.tsx`** — DropdownMenu with: aprovar, rejeitar, marcar contactado, arquivar, abrir Instagram, copiar email, copiar handle, notas (opens sheet)
-3. **`beta-request-filters.tsx`** — Pill/select filters for status + source
+1. **Execution mode guard** — if `cache_only`, block with clear error message.
+2. **APIFY_ENABLED** — checked by `analyze-public-v1`; if disabled, the call returns `PROVIDER_DISABLED` and the admin sees an explicit error.
+3. **Allowlist** — if testing mode is active and the handle is not allowlisted, the call returns `PROFILE_NOT_ALLOWED`.
+4. **Confirmation dialog** — UI shows a warning before triggering: "Esta acao pode gerar custos reais (Apify). Confirmar?"
+5. **No PDF/email** — this action only generates the analysis snapshot. PDF and email remain separate admin actions.
 
-### Detail sheet
+## Status Lifecycle
 
-Reuse the existing `RequestDetailSheet` pattern but enriched with beta fields. Or, for simplicity in phase 1, the actions dropdown handles everything inline without a separate sheet.
+```text
+pending_review → (admin approves) → approved
+approved → (admin clicks "Gerar relatório") → processing
+processing → completed (snapshot linked)
+processing → failed (error recorded in metadata)
+```
 
-### Navigation
+Also allowed: `pending_review` + explicit confirmation → `processing` (skip approval step).
 
-Add "Beta Requests" tab to `AdminTabsNav` at `/admin/beta-requests`.
+## DB Fields Needed
+
+No schema changes. Existing fields suffice:
+- `report_requests.analysis_snapshot_id` — links to the generated snapshot
+- `report_requests.request_status` — lifecycle transitions
+- `report_requests.metadata` — store generation errors, cost info
+- `product_events` — `report_generated` event type
 
 ## Files to Create
 
 | File | Purpose |
-|------|---------|
-| `src/routes/admin.beta-requests.tsx` | Route page |
-| `src/components/admin/v2/beta-requests/beta-requests-table.tsx` | Table component |
-| `src/components/admin/v2/beta-requests/beta-request-actions.tsx` | Actions dropdown |
-| `src/components/admin/v2/beta-requests/beta-request-filters.tsx` | Status filter pills |
+|---|---|
+| `src/routes/api/admin/generate-beta-report.ts` | POST endpoint: validates request, calls analyze-public-v1, updates report_request |
 
 ## Files to Modify
 
 | File | Change |
-|------|--------|
-| `src/routes/api/admin/report-requests.ts` | Extend lead join to include beta fields; add `request_source` filter |
-| `src/routes/api/admin/report-requests.$id.ts` | Add PATCH handler for status changes |
-| `src/components/admin/v2/admin-tabs-nav.tsx` | Add "Beta Requests" tab |
+|---|---|
+| `src/components/admin/v2/beta-requests/beta-request-actions.tsx` | Add "Gerar relatório" menu item (only for approved/pending_review) |
+| `src/routes/admin.beta-requests.tsx` | Add `handleGenerateReport` callback with confirmation dialog |
+| `src/routes/api/admin/report-requests.$id.ts` | Add `failed` to VALID_STATUSES |
 
 ## Files NOT to Touch
 
-- `src/routes/analyze.$username.tsx` (locked)
-- `src/lib/beta.functions.ts` (no changes needed)
-- `src/lib/tracking.functions.ts` / `src/lib/tracking.server.ts`
-- `src/styles/tokens.css` / `src/styles/tokens-light.css` (locked)
-- `src/integrations/supabase/client.ts` / `types.ts` (auto-generated)
-- Any provider logic (Apify, OpenAI, DataForSEO)
-- PDF pipeline files
-- Cost/revenue admin files
+- `src/routes/api/analyze-public-v1.ts` (provider logic)
+- Any locked file in `LOCKED_FILES.md`
+- PDF pipeline (`generate-report-pdf`, `run-report-pipeline`)
+- Email pipeline (`send-report-email`)
+- Public routes (`/beta/request`, `/analyze/$username`)
+- `src/integrations/supabase/client.ts`, `types.ts`
+
+## Implementation Detail
+
+**POST `/api/admin/generate-beta-report`:**
+1. `requireAdminSession()`
+2. Read `report_request` by ID, validate status is `approved` or `pending_review`
+3. Pre-flight: check `getAnalysisExecutionMode()` is `fresh`, check `isApifyEnabled()`
+4. Set `request_status = 'processing'`
+5. Call `POST /api/analyze-public-v1` with `{ instagram_username, competitor_usernames }` and `Authorization: Bearer $INTERNAL_API_TOKEN` + `?refresh=1` (force fresh)
+6. On success: extract `snapshot_id` from response, update `report_requests.analysis_snapshot_id` and `request_status = 'completed'`
+7. On failure: set `request_status = 'failed'`, store error in `metadata`
+8. Insert `product_event` with type `report_generated`
+
+**UI confirmation dialog:**
+- Uses existing `ConfirmDialog` component (`src/components/admin/v2/confirm-dialog.tsx`)
+- Title: "Gerar relatório"
+- Body: "Esta acao vai gerar uma analise Fresh para @{handle}. Pode gerar custos reais (Apify). Continuar?"
+- Destructive styling on confirm button
 
 ## Risks and Mitigations
 
 | Risk | Mitigation |
-|------|-----------|
-| PATCH on report_requests could accidentally trigger analysis | PATCH only updates `request_status` field — no analysis pipeline call. Report generation will be a separate, explicit future prompt |
-| Extending the lead join select could break existing cockpit consumers | The existing cockpit `RequestsPanel` uses the same endpoint but only reads `id`, `name`, `email` from the lead — additional fields are ignored by existing consumers |
-| Adding a tab to AdminTabsNav changes a shared component | Low risk — only adds one entry to the TABS array, no layout changes |
-| Large number of requests could slow the table | Already paginated (existing API supports `page` + `pageSize`). Default 25 rows |
-
-## Implementation Order
-
-1. Extend `GET /api/admin/report-requests` (lead join + source filter)
-2. Add `PATCH` to `report-requests.$id.ts`
-3. Create filter pills component
-4. Create actions dropdown component
-5. Create table component
-6. Create route page
-7. Add tab to nav
+|---|---|
+| Apify cost from accidental double-click | Processing status blocks re-entry; analyze-public-v1 has its own cache |
+| analyze-public-v1 timeout (60s Apify) | Admin endpoint has 90s timeout; failure status recorded |
+| Kill switches bypass | Pre-flight checks in admin endpoint + analyze-public-v1's own checks = double layer |
+| Allowlist blocks the handle | Pre-flight warning if testing mode active and handle not in allowlist |
