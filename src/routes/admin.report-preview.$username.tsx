@@ -216,12 +216,14 @@ interface ChromeProps {
   variant: ReportVariant;
   load: LoadState;
   onLogout: () => void;
+  featuresOverride?: VariantFeatures | null;
+  isDraft?: boolean;
 }
 
-function AdminPreviewChrome({ username, variant, load, onLogout }: ChromeProps) {
+function AdminPreviewChrome({ username, variant, load, onLogout, featuresOverride, isDraft }: ChromeProps) {
   return (
     <div className="bg-surface-base min-h-screen">
-      <AdminBanner username={username} variant={variant} load={load} onLogout={onLogout} />
+      <AdminBanner username={username} variant={variant} load={load} onLogout={onLogout} isDraft={isDraft} />
       {load.kind === "loading" || load.kind === "idle" ? (
         <PreviewMessage
           title="A carregar snapshot…"
@@ -247,6 +249,7 @@ function AdminPreviewChrome({ username, variant, load, onLogout }: ChromeProps) 
             payload={load.payload}
             analyzedAtIso={load.snapshotMeta.created_at}
             variant={variant}
+            featuresOverride={featuresOverride}
             actions={{}}
           />
           <CoverageNotice load={load} />
@@ -257,7 +260,7 @@ function AdminPreviewChrome({ username, variant, load, onLogout }: ChromeProps) 
   );
 }
 
-function AdminBanner({ username, variant, load, onLogout }: ChromeProps) {
+function AdminBanner({ username, variant, load, onLogout, isDraft }: ChromeProps) {
   const generated =
     load.kind === "ready"
       ? new Date(load.snapshotMeta.created_at).toLocaleString("pt-PT", {
@@ -274,6 +277,11 @@ function AdminBanner({ username, variant, load, onLogout }: ChromeProps) {
             <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VARIANT_BADGE_TONES[variant]}`}>
               {VARIANT_LABELS[variant]}
             </span>
+            {isDraft && (
+              <span className="ml-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                DRAFT
+              </span>
+            )}
           </p>
           <p className="text-sm text-content-primary">
             @{username}
