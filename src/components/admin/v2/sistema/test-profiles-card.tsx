@@ -48,6 +48,29 @@ const PREFLIGHT_MESSAGES: Record<string, string> = {
     "Já existe uma atualização em curso para este perfil.",
 };
 
+const ERROR_CODE_MESSAGES: Record<string, string> = {
+  internal_fetch_failed:
+    "Falha de rede interna. O servidor não conseguiu contactar o endpoint de análise. Tenta na versão publicada.",
+  internal_parse_failed:
+    "Resposta inesperada do servidor (não-JSON).",
+  UPSTREAM_FAILED:
+    "O fornecedor de dados falhou ao processar o pedido.",
+  UPSTREAM_UNAVAILABLE:
+    "Serviço de análise temporariamente indisponível.",
+  PROFILE_NOT_FOUND:
+    "Perfil não encontrado no Instagram.",
+  PROVIDER_DISABLED:
+    "O fornecedor de dados está desativado.",
+  CACHE_ONLY_NO_DATA:
+    "Sem snapshot disponível em modo cache-only.",
+  PROFILE_NOT_ALLOWED:
+    "Este perfil não está autorizado para análise.",
+  provider_failure:
+    "O fornecedor falhou ao obter dados. A cache anterior foi mantida.",
+  snapshot_save_failed:
+    "Os dados foram obtidos, mas não foi possível guardar o snapshot.",
+};
+
 function mapRefreshError(status: number, body: RefreshErrorBody | null): string {
   if (status === 401 || status === 403) {
     return "Sessão admin inválida ou expirada. Inicia sessão novamente.";
@@ -58,11 +81,14 @@ function mapRefreshError(status: number, body: RefreshErrorBody | null): string 
   if (body?.preflight_blocked && PREFLIGHT_MESSAGES[body.preflight_blocked]) {
     return PREFLIGHT_MESSAGES[body.preflight_blocked];
   }
-  if (body?.error_code === "provider_failure" || status === 502) {
-    return "O fornecedor falhou ao obter dados. A cache anterior foi mantida.";
-  }
-  if (body?.error_code === "snapshot_save_failed") {
-    return "Os dados foram obtidos, mas não foi possível guardar o snapshot.";
+  // Structured error code from analyze-public-v1
+  if (body?.error_code && ERROR_CODE_MESSAGES[body.error_code]) {
+    const base = ERROR_CODE_MESSAGES[body.error_code];
+    // Append provider message if available for richer diagnostics
+    if (body.details) {
+      return `${base} (${body.details})`;
+    }
+    return base;
   }
   if (body?.error) {
     return body.error;

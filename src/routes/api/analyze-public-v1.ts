@@ -142,9 +142,9 @@ function jsonResponse(body: PublicAnalysisResponse, status: number): Response {
   });
 }
 
-function failure(code: PublicAnalysisErrorCode): Response {
+function failure(code: PublicAnalysisErrorCode, extra?: Record<string, unknown>): Response {
   return jsonResponse(
-    { success: false, error_code: code, message: ERROR_MESSAGES[code] },
+    { success: false, error_code: code, message: ERROR_MESSAGES[code], ...extra } as PublicAnalysisResponse,
     HTTP_STATUS[code],
   );
 }
@@ -949,7 +949,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               outcome: "provider_error",
               errorCode: "UPSTREAM_UNAVAILABLE",
             });
-            return failure("UPSTREAM_UNAVAILABLE");
+            return failure("UPSTREAM_UNAVAILABLE", {
+              provider: "apify",
+              details: err.message,
+            });
           }
           if (err instanceof ApifyUpstreamError) {
             console.error(
@@ -976,7 +979,17 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               outcome: "provider_error",
               errorCode: "UPSTREAM_FAILED",
             });
-            return failure("UPSTREAM_FAILED");
+            const partial = err as ApifyUpstreamError & {
+              runId?: string;
+              actualCostUsd?: number;
+            };
+            return failure("UPSTREAM_FAILED", {
+              provider: "apify",
+              provider_status: err.status,
+              provider_message: err.message,
+              run_id: partial.runId ?? undefined,
+              details: err.message,
+            });
           }
           console.error("[analyze-public-v1] unexpected", err);
           await logEvent({
@@ -987,7 +1000,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             outcome: "provider_error",
             errorCode: "UPSTREAM_FAILED",
           });
-          return failure("UPSTREAM_FAILED");
+          return failure("UPSTREAM_FAILED", {
+            details: err instanceof Error ? err.message : String(err),
+          });
         }
       },
     },

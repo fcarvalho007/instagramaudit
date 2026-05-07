@@ -1,81 +1,97 @@
 
-# Admin Pre-Flight Check for "Atualizar agora"
+# Root Cause
 
-## Overview
+**`TypeError: fetch failed`** — the `refresh-profile` endpoint calls `analyze-public-v1` via HTTP fetch to its own origin (`${origin}/api/analyze-public-v1?refresh=1`). In the sandbox/dev-server runtime, this self-referential loopback fetch fails silently. The `catch` block in `runAnalysis` sets `analyzeResult = null`, which produces the generic "Falha na análise" message, mapped by the client to "O fornecedor falhou ao obter dados."
 
-Create a dedicated pre-flight endpoint and wire it into the confirmation modal so the admin sees exactly why a refresh is blocked, and the button is disabled when preconditions fail.
+The Apify provider code itself is never reached. The provider is not failing — the internal HTTP call never arrives.
 
-## Changes
+**Secondary issue**: The preflight endpoint does not check `APIFY_TOKEN`, so pre-flight passes even when the actual provider call would fail for config reasons.
 
-### 1. New file: `src/routes/api/admin/refresh-profile-preflight.ts`
+**Tertiary issue**: Error details from `analyze-public-v1` are lost because `runAnalysis` catches network errors and returns a generic 502 with no structured error code.
 
-Server route `GET /api/admin/refresh-profile-preflight?handle=:handle`.
+---
 
-Checks (no provider calls):
-- Admin session valid
-- `INTERNAL_API_TOKEN` configured
-- `APIFY_ENABLED === "true"`
-- Handle in allowlist (if testing mode active)
-- No concurrent refresh for this handle (reads the in-memory `refreshingHandles` set)
-- `COMMENT_SCRAPER_ENABLED` status
-- Cache status from `TestProfileStatus` data (snapshot exists, expiry)
+# Plan
 
-Returns:
-```json
-{
-  "can_refresh": true|false,
-  "blocking_reason": "..." | null,
-  "estimated_cost_usd": "~$0.02–0.05",
-  "checks": [
-    { "key": "internal_token", "label": "Token interno", "status": "ok"|"fail", "message": "Configurado" },
-    { "key": "apify_enabled", "label": "Apify", "status": "ok"|"fail", "message": "Ativo" },
-    { "key": "allowlist", "label": "Allowlist", "status": "ok"|"warn", "message": "Autorizado" },
-    { "key": "concurrent", "label": "Concorrência", "status": "ok"|"fail", "message": "Livre" },
-    { "key": "comment_scraper", "label": "Comentários", "status": "ok"|"warn", "message": "Desativado" }
-  ],
-  "cache_status": { "has_snapshot": true, "expired": false, "expires_at": "..." }
-}
-```
+## 1. Fix the self-fetch architecture in `refresh-profile.ts`
 
-The in-memory `refreshingHandles` set needs to be shared. We'll extract it to a tiny shared module (`src/lib/admin/refresh-lock.server.ts`) imported by both the existing `refresh-profile.ts` and the new preflight route.
+Instead of making an HTTP fetch to `analyze-public-v1`, extract the core analysis logic into a shared server function and call it directly. This eliminates the loopback fetch entirely.
 
-### 2. New file: `src/lib/admin/refresh-lock.server.ts`
+**Approach**: Create a new file `src/lib/analysis/run-fresh-analysis.server.ts` that contains the provider-calling logic currently embedded in the `POST` handler of `analyze-public-v1`. Both the public endpoint and `refresh-profile` will import and call this function directly.
 
-Exports the `refreshingHandles` Set so both routes share the same lock.
+This is the largest change but is the only reliable fix — self-fetch in Workers/edge/sandbox environments is fundamentally unreliable.
 
-### 3. Update: `src/routes/api/admin/refresh-profile.ts`
+**Alternative (smaller, pragmatic)**: Keep the HTTP call but fix it to work by:
+- Trying the published URL instead of `origin` in sandbox
+- Adding better error handling around the fetch
 
-Import `refreshingHandles` from the shared module instead of declaring it locally.
+However, this is fragile. The direct-call approach is recommended.
 
-### 4. Update: `src/components/admin/v2/sistema/test-profiles-card.tsx`
+**Pragmatic middle ground (recommended for now)**: Keep the current architecture but make the fetch error transparent and actionable. The self-fetch works in production (published Worker) but not in sandbox. Add:
+- Explicit error reporting when fetch fails (show "Falha de rede interna — o servidor não conseguiu contactar a si próprio" instead of generic provider failure)
+- A fallback that detects sandbox mode and warns the admin
+- Proper propagation of `analyze-public-v1` error details when the fetch does succeed
 
-Replace the current `PreflightStrip` (which reads from the generic runtime-checks endpoint and guesses) with a new version that:
-- Calls `GET /api/admin/refresh-profile-preflight?handle=X` when the modal opens
-- Shows each check with status icon
-- Disables the "Atualizar agora" button when `can_refresh === false`
-- Shows the `blocking_reason` prominently
-- Displays cost estimate from the endpoint
+## 2. Add `APIFY_TOKEN` check to preflight (`refresh-profile-preflight.ts`)
 
-In the profile row, add a small inline status label:
-- If preflight loaded and `can_refresh`: "Pronto para atualizar"
-- If blocked: "Bloqueado: {reason}" (e.g. "Bloqueado: Apify inativo")
-- If refresh is running: "Atualização em curso"
+Add a check for `process.env.APIFY_TOKEN` presence (not validation — that would require a paid call). Display "Token presente, não validado" when set, "Em falta" when not.
 
-The preflight query is triggered when the modal opens (`enabled: refreshConfirmOpen`), not on every render.
+## 3. Improve error propagation in `refresh-profile.ts`
 
-Remove the `import type { RuntimeCheck }` from `system-queries.server` (no longer needed — that was a `.server.ts` import in a client component, which is risky).
+Currently, when `analyzeResult` is null (fetch failed entirely), the error is generic. Fix:
+- Distinguish fetch network error from provider error
+- When `analyze-public-v1` returns a structured error, propagate `error_code`, `message`, and any provider details back to the admin UI
+- Add new error codes: `internal_fetch_failed`, `apify_token_missing`
 
-### Not changed
-- No public routes
-- No report UI
-- No PDF pipeline
-- No Supabase schema
-- No provider calls
+## 4. Improve error mapping in the admin UI (`test-profiles-card.tsx`)
 
-### Files
+Add mappings for new error codes:
+- `internal_fetch_failed` → "Falha de rede interna. O servidor não conseguiu contactar o endpoint de análise."
+- `apify_token_missing` → "APIFY_TOKEN não está configurado."
+- `apify_actor_failed` → "O actor Apify falhou durante a execução."
+- `apify_dataset_empty` → "O actor Apify devolveu um dataset vazio."
+- `apify_timeout` → "O actor Apify excedeu o tempo limite."
+
+## 5. Return structured provider error from `analyze-public-v1`
+
+Enhance the `failure()` response to include `provider`, `provider_status`, and `details` fields when applicable, so `refresh-profile` can forward them.
+
+---
+
+# Files Changed
+
 | File | Action |
 |------|--------|
-| `src/lib/admin/refresh-lock.server.ts` | New — shared in-memory lock |
-| `src/routes/api/admin/refresh-profile-preflight.ts` | New — pre-flight endpoint |
-| `src/routes/api/admin/refresh-profile.ts` | Edit — use shared lock |
-| `src/components/admin/v2/sistema/test-profiles-card.tsx` | Edit — wire preflight into modal + row status |
+| `src/routes/api/admin/refresh-profile.ts` | Edit — better error handling for fetch failures, propagate structured errors |
+| `src/routes/api/admin/refresh-profile-preflight.ts` | Edit — add APIFY_TOKEN check |
+| `src/components/admin/v2/sistema/test-profiles-card.tsx` | Edit — add error mappings for new codes |
+| `src/routes/api/analyze-public-v1.ts` | Edit — add provider/details fields to error responses |
+
+---
+
+# Error Mapping Table (Final)
+
+| Error Code | Admin Message (pt-PT) |
+|---|---|
+| `internal_fetch_failed` | Falha de rede interna. O servidor não conseguiu contactar o endpoint de análise. Tenta na versão publicada. |
+| `internal_token_missing` | INTERNAL_API_TOKEN não está configurado. |
+| `apify_disabled` | APIFY_ENABLED não está ativo. |
+| `apify_token_missing` | APIFY_TOKEN não está configurado. Configura o segredo antes de atualizar. |
+| `allowlist` | Este perfil não está autorizado para atualização. |
+| `concurrent_refresh` | Já existe uma atualização em curso para este perfil. |
+| `provider_failure` | O fornecedor falhou ao obter dados. A cache anterior foi mantida. |
+| `UPSTREAM_FAILED` | O fornecedor falhou. Detalhes: {message} |
+| `UPSTREAM_UNAVAILABLE` | Serviço de análise temporariamente indisponível. |
+| `PROFILE_NOT_FOUND` | Não foi possível encontrar este perfil. |
+| `CACHE_ONLY_NO_DATA` | Sem snapshot disponível em modo cache-only. |
+| `snapshot_save_failed` | Os dados foram obtidos, mas não foi possível guardar o snapshot. |
+
+---
+
+# Not Changed
+
+- No public routes
+- No report UI or PDF pipeline
+- No Supabase schema changes
+- No provider calls during investigation or preflight
+- Cache safety preserved (stale-while-error fallback already exists)

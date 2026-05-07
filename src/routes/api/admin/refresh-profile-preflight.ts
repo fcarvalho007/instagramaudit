@@ -123,6 +123,20 @@ export const Route = createFileRoute("/api/admin/refresh-profile-preflight")({
           message: commentScraperOn ? "Ativo" : "Desativado",
         });
 
+        // APIFY_TOKEN presence
+        const hasApifyToken = Boolean(
+          process.env.APIFY_TOKEN && process.env.APIFY_TOKEN.length > 0,
+        );
+        checks.push({
+          key: "apify_token",
+          label: "Apify Token",
+          status: hasApifyToken ? "ok" : "fail",
+          message: hasApifyToken ? "Token presente, não validado" : "Em falta",
+        });
+        if (!hasApifyToken && !blockingReason) {
+          blockingReason = "APIFY_TOKEN em falta";
+        }
+
         // 4. Cache status (lightweight DB read)
         let cacheStatus = {
           has_snapshot: false,
