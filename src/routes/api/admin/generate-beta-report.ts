@@ -109,7 +109,7 @@ export const Route = createFileRoute("/api/admin/generate-beta-report")({
         }
 
         // 8. Set status to processing
-         const { error: updateErr } = await supabaseAdmin
+        const { error: updateErr } = await supabaseAdmin
           .from("report_requests")
           .update({ request_status: "processing", updated_at: new Date().toISOString() })
           .eq("id", requestId);
