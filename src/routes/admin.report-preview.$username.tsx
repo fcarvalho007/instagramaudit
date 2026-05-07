@@ -22,6 +22,8 @@ import { clearAdminEmail, readAdminEmail } from "@/lib/admin/simple-gate";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import type { ReportVariant } from "@/lib/report/report-variant";
+import type { VariantFeatures } from "@/lib/report/report-variant";
+import { getDraftFeatures, getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -36,6 +38,7 @@ const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
 
 const previewSearchSchema = z.object({
   variant: fallback(z.enum(VALID_VARIANTS), "public_mvp").default("public_mvp"),
+  draft: fallback(z.boolean(), false).default(false),
 });
 
 const VARIANT_LABELS: Record<ReportVariant, string> = {
