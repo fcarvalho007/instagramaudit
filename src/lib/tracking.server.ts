@@ -5,6 +5,8 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+import type { Json } from "@/integrations/supabase/types";
+
 export interface TrackEventPayload {
   eventType: string;
   leadId?: string | null;
@@ -20,13 +22,13 @@ export interface TrackEventPayload {
  */
 export async function recordProductEvent(payload: TrackEventPayload): Promise<void> {
   try {
-    await supabaseAdmin.from("product_events").insert({
+    await (supabaseAdmin as any).from("product_events").insert({
       event_type: payload.eventType,
       lead_id: payload.leadId ?? null,
       snapshot_id: payload.snapshotId ?? null,
       handle: payload.handle?.toLowerCase() ?? null,
       actor_hash: payload.actorHash ?? null,
-      metadata: payload.metadata ?? {},
+      metadata: (payload.metadata ?? {}) as Json,
     });
   } catch (err) {
     console.error("[tracking] Failed to record event:", payload.eventType, err);
