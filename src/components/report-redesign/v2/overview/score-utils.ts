@@ -28,9 +28,14 @@ export function computeEnvolvimento(engagementRate: number, tierBenchmark: numbe
 
 export function envolvimentoSubtitle(engagementRate: number, tierBenchmark: number): string {
   if (tierBenchmark <= 0) return "sem referência";
-  const er = engagementRate.toFixed(2).replace(".", ",");
-  const bm = tierBenchmark.toFixed(2).replace(".", ",");
-  return `${er}% vs ${bm}%`;
+  const er = engagementRate.toFixed(2).replace(".", ",") + "%";
+  const diff = tierBenchmark > 0
+    ? Math.round(((engagementRate - tierBenchmark) / tierBenchmark) * 100)
+    : 0;
+  if (diff >= 0) {
+    return `↗ ${er} · +${diff}% vs benchmark`;
+  }
+  return `↘ ${er} · ${diff}% vs benchmark`;
 }
 
 // ─── Score 2: Frequência de Posts ───────────────────────────────────
@@ -72,8 +77,9 @@ export function computeInteraccao(
 }
 
 export function interaccaoSubtitle(avgComments: number): string {
-  if (avgComments <= 0) return "0 coment. médios";
-  return `${avgComments.toFixed(1).replace(".", ",")} coment./post`;
+  if (avgComments <= 0) return "↘ 0 · sem dados";
+  const val = avgComments.toFixed(1).replace(".", ",");
+  return `${val} coment./post`;
 }
 
 // ─── Score metadata ─────────────────────────────────────────────────
