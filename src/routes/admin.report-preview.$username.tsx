@@ -22,6 +22,8 @@ import { clearAdminEmail, readAdminEmail } from "@/lib/admin/simple-gate";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import type { ReportVariant } from "@/lib/report/report-variant";
+import type { VariantFeatures } from "@/lib/report/report-variant";
+import { getDraftFeatures, getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -36,6 +38,7 @@ const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
 
 const previewSearchSchema = z.object({
   variant: fallback(z.enum(VALID_VARIANTS), "public_mvp").default("public_mvp"),
+  draft: fallback(z.boolean(), false).default(false),
 });
 
 const VARIANT_LABELS: Record<ReportVariant, string> = {
@@ -97,14 +100,30 @@ type LoadState =
 
 function AdminReportPreviewPage() {
   const { username } = Route.useParams();
-  const { variant } = Route.useSearch();
+  const { variant, draft } = Route.useSearch();
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
+  const [featuresOverride, setFeaturesOverride] = useState<VariantFeatures | null>(null);
 
   // ---------- Admin gate simples (localStorage) ----------
   useEffect(() => {
     setAuthState(readAdminEmail() ? "in" : "signed_out");
   }, []);
+
+  // ---------- Load effective features ----------
+  useEffect(() => {
+    if (authState !== "in") return;
+    (async () => {
+      try {
+        const features = draft
+          ? await getDraftFeatures({ data: { variant } })
+          : await getPublishedFeatures({ data: { variant } });
+        setFeaturesOverride(features);
+      } catch {
+        setFeaturesOverride(null);
+      }
+    })();
+  }, [authState, variant, draft]);
 
   // ---------- Load snapshot once admin is in ----------
   useEffect(() => {
@@ -185,6 +204,8 @@ function AdminReportPreviewPage() {
         variant={variant}
         load={load}
         onLogout={handleLogout}
+        featuresOverride={featuresOverride}
+        isDraft={draft}
       />
     </ReportThemeWrapper>
   );
@@ -195,12 +216,14 @@ interface ChromeProps {
   variant: ReportVariant;
   load: LoadState;
   onLogout: () => void;
+  featuresOverride?: VariantFeatures | null;
+  isDraft?: boolean;
 }
 
-function AdminPreviewChrome({ username, variant, load, onLogout }: ChromeProps) {
+function AdminPreviewChrome({ username, variant, load, onLogout, featuresOverride, isDraft }: ChromeProps) {
   return (
     <div className="bg-surface-base min-h-screen">
-      <AdminBanner username={username} variant={variant} load={load} onLogout={onLogout} />
+      <AdminBanner username={username} variant={variant} load={load} onLogout={onLogout} isDraft={isDraft} />
       {load.kind === "loading" || load.kind === "idle" ? (
         <PreviewMessage
           title="A carregar snapshot…"
@@ -226,6 +249,7 @@ function AdminPreviewChrome({ username, variant, load, onLogout }: ChromeProps) 
             payload={load.payload}
             analyzedAtIso={load.snapshotMeta.created_at}
             variant={variant}
+            featuresOverride={featuresOverride}
             actions={{}}
           />
           <CoverageNotice load={load} />
@@ -236,7 +260,7 @@ function AdminPreviewChrome({ username, variant, load, onLogout }: ChromeProps) 
   );
 }
 
-function AdminBanner({ username, variant, load, onLogout }: ChromeProps) {
+function AdminBanner({ username, variant, load, onLogout, isDraft }: ChromeProps) {
   const generated =
     load.kind === "ready"
       ? new Date(load.snapshotMeta.created_at).toLocaleString("pt-PT", {
@@ -253,6 +277,11 @@ function AdminBanner({ username, variant, load, onLogout }: ChromeProps) {
             <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VARIANT_BADGE_TONES[variant]}`}>
               {VARIANT_LABELS[variant]}
             </span>
+            {isDraft && (
+              <span className="ml-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                DRAFT
+              </span>
+            )}
           </p>
           <p className="text-sm text-content-primary">
             @{username}

@@ -28,6 +28,8 @@ import {
   type ReportVariant,
   ReportVariantProvider,
   getVariantFeatures,
+  VariantFeaturesOverrideProvider,
+  type VariantFeatures,
 } from "@/lib/report/report-variant";
 
 import { ReportFramedBlock } from "../report-framed-block";
@@ -54,6 +56,8 @@ interface ReportShellV2Props {
   analyzedAtIso?: string | null;
   /** Report variant — controls feature visibility. Defaults to public_mvp. */
   variant?: ReportVariant;
+  /** Optional resolved features override (from admin visibility manager). */
+  featuresOverride?: VariantFeatures | null;
 }
 
 /**
@@ -74,9 +78,10 @@ export function ReportShellV2({
   payload,
   analyzedAtIso,
   variant = "public_mvp",
+  featuresOverride,
 }: ReportShellV2Props) {
   const v2 = result.enriched.aiInsightsV2;
-  const features = getVariantFeatures(variant);
+  const features = featuresOverride ?? getVariantFeatures(variant);
 
   /** Insight v2 dentro de um container já com padding (block content). */
   const renderInsight = (key: AiInsightV2Section) => {
@@ -90,6 +95,7 @@ export function ReportShellV2({
 
   return (
     <ReportVariantProvider value={variant}>
+    <VariantFeaturesOverrideProvider value={featuresOverride ?? null}>
     <ReportDataProvider data={result.data}>
       <div
         className={cn(
@@ -271,6 +277,7 @@ export function ReportShellV2({
         <div className="h-20 lg:hidden" aria-hidden="true" />
       </div>
     </ReportDataProvider>
+    </VariantFeaturesOverrideProvider>
     </ReportVariantProvider>
   );
 }

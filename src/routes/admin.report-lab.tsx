@@ -43,6 +43,8 @@ import {
   Link2,
   ClipboardCheck,
 } from "lucide-react";
+import { ModuleVisibilityMatrix } from "@/components/admin/v2/module-visibility-matrix";
+import { readAdminEmail } from "@/lib/admin/simple-gate";
 import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
@@ -160,6 +162,7 @@ function ReportLabPage() {
   const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
+  const [showVisManager, setShowVisManager] = useState(false);
 
   const activeProfile = committedCustom.trim() || profile;
 
@@ -356,6 +359,32 @@ function ReportLabPage() {
           )}
         </button>
         {showModules && <ModuleVisibilityTable activeVariant={variant} />}
+      </div>
+
+      {/* Module visibility manager (interactive) */}
+      <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
+        <button
+          onClick={() => setShowVisManager(!showVisManager)}
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
+        >
+          <span>Gestor de visibilidade (draft → publicar)</span>
+          {showVisManager ? (
+            <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
+          )}
+        </button>
+        {showVisManager && (
+          <ModuleVisibilityMatrix
+            adminEmail={readAdminEmail() ?? "admin"}
+            onPreviewDraft={(v) => {
+              window.open(
+                `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
+                "_blank",
+              );
+            }}
+          />
+        )}
       </div>
 
       {/* Public readiness checklist */}
