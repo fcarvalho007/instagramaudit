@@ -1,75 +1,54 @@
 
-# First Fold UI Refinement — Typography, Spacing & Hierarchy
+# Reorganização do menu /admin
 
-Three files to edit. No data/logic changes.
+## Problema actual
 
----
+10 pills numa linha flat sem qualquer agrupamento — difícil de perceber o que pertence a quê. À medida que o viewport encolhe, as pills fazem wrap sem lógica visual.
 
-## 1. `report-hero-v2.tsx` — Hero card & top bar
+## Proposta: agrupar por domínio funcional
 
-### Top bar
-- Reduce `mb-4` → `mb-3` for tighter connection to hero card
-- "Novo relatório" CTA: bump to `font-bold`, add `shadow-sm`, slightly larger padding `px-4 py-2.5`
-- Breadcrumb: keep as-is (already light `text-xs text-content-tertiary`)
-- Status pill: keep as-is (already secondary)
+Organizar as tabs em 3-4 grupos visuais com separadores subtis (linha vertical fina ou espaço extra) e etiquetas de grupo opcionais em eyebrow discreto (10px, uppercase, tertiary):
 
-### Profile area (identity block)
-- **Handle (`h1`)**: increase to `text-2xl sm:text-[28px]`, keep `font-display font-semibold` — this becomes the clear visual anchor
-- **Full name + bio**: split into two lines instead of joining with " · "
-  - Full name: `text-sm font-medium text-content-secondary`
-  - Bio: `text-sm font-normal text-content-tertiary leading-relaxed` (lighter, clearly secondary)
-- Avatar: keep current size (`size-14 md:size-[72px]`), simplify ring to single `border-2 border-border-default` instead of double-wrap gradient ring (cleaner)
-- Reduce profile area padding: `py-5 sm:py-6` → `py-4 sm:py-5`, `px-5 sm:px-7` → `px-5 sm:px-6`
-- Better vertical alignment: ensure `md:items-start` instead of `md:items-center` for text block beside avatar
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  GERAL                    │  PIPELINE              │  PRODUTO  │
+│  Visão geral              │  Leads                 │  Perfis   │
+│  Receita                  │  Pedidos               │  Relatórios│
+│  Clientes                 │                        │  Report Lab│
+│                           │                        │  Conhecimento│
+│                                                    │  Sistema  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### KPI strip
-- Reduce padding: `py-5` → `py-4`, `px-5 sm:px-7` → `px-5 sm:px-6`
-- Numbers: `text-2xl sm:text-3xl` → `text-xl sm:text-2xl font-bold` — strong but not oversized
-- Labels: keep `text-eyebrow-sm text-content-tertiary` (already understated)
-- Vertical dividers: add `pl-4` on divider columns for balanced spacing
-- Border: `border-border-subtle` → `border-border-default` for consistency
+Layout final em pills (como aparece no ecrã):
 
-### Meta footer
-- Reduce padding: `py-3` → `py-2.5`
-- Keep as-is otherwise (already subtle)
+```text
+  NEGÓCIO                      PIPELINE             PRODUTO & SISTEMA
+  [Visão geral] [Receita] [Clientes]  |  [Leads] [Pedidos]  |  [Relatórios] [Perfis] [Conhecimento] [Report Lab] [Sistema]
+```
 
-### Card container
-- Border: unified `border-border-default` (already correct)
-- Shadow: keep current `shadow-[0_1px_3px_rgba(15,23,42,0.04)]` (very subtle)
-- Radius: keep `rounded-2xl`
+### Mudanças nos labels
 
----
+| Actual              | Novo            | Razão                              |
+|---------------------|-----------------|------------------------------------|
+| Receita e despesas  | Receita         | Mais curto, "despesas" implícito   |
+| Beta Leads          | Leads           | Remover "Beta" — já não é beta     |
+| Beta Requests       | Pedidos         | Mais claro em pt-PT                |
 
-## 2. `comparison-header.tsx` — Lower action cards
+### Alterações de design
 
-### Both cards
-- Unify border: both use `border border-border-default` (remove `border-dashed` from card 2)
-- Both use `bg-white` instead of `bg-surface-secondary` for consistency with hero card
-- Reduce padding: `p-4` → `p-3.5`
-- Icon containers: reduce from `size-10 rounded-xl` → `size-9 rounded-lg` (subtler)
-- `gap-3 mt-3` → `gap-3 mt-2` (tighter connection to hero card)
+- Separadores entre grupos: `border-r border-admin-border` fino (1px, 14% opacity) com `mx-2` de espaçamento
+- Etiquetas de grupo (eyebrow): opcionais, 10px uppercase em `admin-text-tertiary`, acima de cada grupo de pills — só aparecem em desktop (`hidden sm:block`)
+- Pills mantêm o mesmo estilo glassmorphism actual (inactiva/activa)
+- Em mobile, as etiquetas de grupo desaparecem e as pills fazem wrap normalmente — mas os separadores visuais (linha ou espaço) mantêm alguma estrutura
 
-### Card 2 (roadmap)
-- Fix `text-[11px]` → `text-xs` (12px minimum rule)
+## Ficheiros alterados
 
-### CTA pill in card 1
-- Keep dark primary styling but reduce padding slightly for balance
+1. **`src/components/admin/v2/admin-tabs-nav.tsx`** — refactoring completo: tabs agrupadas por secção, separadores, labels de grupo, nomes actualizados
+2. **Rotas `/admin/beta-leads` e `/admin/beta-requests`** — sem alteração de ficheiro (as rotas mantêm os mesmos paths, só o label muda no nav)
 
----
+## Sem alterações
 
-## 3. `report-shell-v2.tsx` — Hero section wrapper
-
-- `pb-4` → `pb-3` on the ComparisonHeader wrapper (tighter fold)
-- No other changes needed (wrapper is already clean `bg-surface-base`)
-
----
-
-## Risks
-- Minimal: pure CSS class changes, no data/logic affected
-- Avatar ring simplification needs careful JSX restructure (two wrapper divs → one)
-- `text-[11px]` fix in comparison-header addresses existing minimum-size violation
-
-## Responsive
-- All changes use existing responsive breakpoints (`sm:`, `md:`)
-- Mobile-first approach preserved
-- KPI strip remains 3-col grid at all sizes
+- Sem mudança de lógica, rotas, ou dados
+- Sem novos ficheiros
+- Sem alteração nos tokens CSS
