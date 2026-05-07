@@ -9,8 +9,8 @@
  * - Loads cached snapshots via existing admin API.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { adminFetch } from "@/lib/admin/fetch";
@@ -35,12 +35,49 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
+
+// ── Search params schema ───────────────────────────────────────────
+
+const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
+
+const labSearchSchema = z.object({
+  profile: fallback(z.string(), "").default(""),
+  variant: fallback(z.enum(VALID_VARIANTS), "internal_lab").default("internal_lab"),
+});
 
 export const Route = createFileRoute("/admin/report-lab")({
+  validateSearch: zodValidator(labSearchSchema),
   component: ReportLabPage,
 });
+
+// ── localStorage persistence ───────────────────────────────────────
+
+const LS_KEY = "admin.report-lab.last";
+
+interface LabPrefs { profile: string; variant: ReportVariant }
+
+function readLabPrefs(): LabPrefs | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.profile === "string" && VALID_VARIANTS.includes(parsed.variant)) {
+      return parsed as LabPrefs;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function writeLabPrefs(prefs: LabPrefs): void {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(LS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ }
+}
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -97,13 +134,44 @@ type LoadState =
 // ── Main page ──────────────────────────────────────────────────────
 
 function ReportLabPage() {
-  const [profile, setProfile] = useState<string>(TEST_PROFILES[0]);
-  const [customProfile, setCustomProfile] = useState("");
-  const [variant, setVariant] = useState<ReportVariant>("internal_lab");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const initialised = useRef(false);
+
+  // ── Resolve initial values: query > localStorage > defaults ──
+  const resolved = (() => {
+    const saved = readLabPrefs();
+    const p = search.profile || saved?.profile || TEST_PROFILES[0];
+    const v = (search.profile ? search.variant : null) ?? saved?.variant ?? "internal_lab";
+    return { profile: p, variant: v };
+  })();
+
+  const isPreset = (TEST_PROFILES as readonly string[]).includes(resolved.profile);
+
+  const [profile, setProfile] = useState<string>(isPreset ? resolved.profile : TEST_PROFILES[0]);
+  const [customProfile, setCustomProfile] = useState(isPreset ? "" : resolved.profile);
+  const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
 
   const activeProfile = customProfile.trim() || profile;
+
+  // ── Sync state → URL + localStorage ──
+  useEffect(() => {
+    // Skip the very first render to avoid replacing URL on mount when
+    // state already matches the resolved search params.
+    if (!initialised.current) {
+      initialised.current = true;
+      // But still persist to localStorage on first load
+      writeLabPrefs({ profile: activeProfile, variant });
+      return;
+    }
+    writeLabPrefs({ profile: activeProfile, variant });
+    navigate({
+      search: { profile: activeProfile, variant },
+      replace: true,
+    });
+  }, [activeProfile, variant, navigate]);
 
   const loadSnapshot = useCallback(async (handle: string) => {
     setLoad({ kind: "loading" });
@@ -246,6 +314,18 @@ function ReportLabPage() {
             onClick={() => {
               navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}`);
               toast.success("Link interno copiado.");
+            }}
+            copyMode
+          />
+          <AdminActionButton
+            label="Copiar URL deste lab"
+            icon={<Link2 className="h-3.5 w-3.5" />}
+            onClick={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.set("profile", activeProfile);
+              url.searchParams.set("variant", variant);
+              navigator.clipboard.writeText(url.toString());
+              toast.success("URL do lab copiado.");
             }}
             copyMode
           />
