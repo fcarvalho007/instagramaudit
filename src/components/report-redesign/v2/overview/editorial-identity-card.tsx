@@ -1,12 +1,11 @@
 /**
  * Editorial Identity Card — single cohesive 2-band overview card.
  *
- * Band 1: Editorial Portrait (hero sentence + global ring)
- * Band 2: Action Summary (principal ponto forte + principal ponto fraco)
+ * Band 1: Editorial Portrait (eyebrow + hero headline + supporting text + global ring)
+ * Band 2: Action Summary (2 mini-cards: ponto forte + a melhorar)
  */
 import { cn } from "@/lib/utils";
 import { ScoreRing } from "./score-ring";
-import { ScoreOrbitBackground } from "./score-orbit-background";
 import {
   getScoreFamily,
   computeGlobalScore,
@@ -44,7 +43,7 @@ function buildFallbackSentence(
   return "Perfil com sinais editoriais claros e margem para crescer.";
 }
 
-/* ── Strength / Weakness derivation ────────────────────────────────── */
+/* ── Strength / Weakness derivation (returns key so we can get subtitle) ── */
 
 const SCORE_LABELS: Record<ScoreKey, string> = {
   envolvimento: "Engagement",
@@ -52,17 +51,17 @@ const SCORE_LABELS: Record<ScoreKey, string> = {
   interaccao: "Conversa pública",
 };
 
-function deriveStrengthWeakness(
+function deriveStrengthWeaknessKeys(
   scores: Record<ScoreKey, { value: number; subtitle: string }>,
-): { strength: string; weakness: string } {
+): { strengthKey: ScoreKey; weaknessKey: ScoreKey } {
   const entries = (Object.keys(scores) as ScoreKey[]).map((k) => ({
     key: k,
     value: scores[k].value,
   }));
   entries.sort((a, b) => b.value - a.value);
   return {
-    strength: SCORE_LABELS[entries[0].key],
-    weakness: SCORE_LABELS[entries[entries.length - 1].key],
+    strengthKey: entries[0].key,
+    weaknessKey: entries[entries.length - 1].key,
   };
 }
 
@@ -86,6 +85,18 @@ const FAMILY_DOT: Record<ScoreFamily, string> = {
   success: "bg-emerald-500",
 };
 
+/* ── Sentence splitter ─────────────────────────────────────────────── */
+
+/** Split a sentence into headline (first sentence) + supporting rest. */
+function splitSentence(text: string): { headline: string; supporting: string | null } {
+  // Split on first period/exclamation/question followed by a space
+  const match = text.match(/^(.+?[.!?])\s+(.+)$/s);
+  if (match) {
+    return { headline: match[1], supporting: match[2] };
+  }
+  return { headline: text, supporting: null };
+}
+
 /* ── Main Component ────────────────────────────────────────────────── */
 
 export function EditorialIdentityCard({
@@ -100,8 +111,9 @@ export function EditorialIdentityCard({
   const globalFamily = getScoreFamily(globalScore);
 
   const sentence = aiHeroText || buildFallbackSentence(scores);
+  const { headline, supporting } = splitSentence(sentence);
 
-  const { strength, weakness } = deriveStrengthWeakness(scores);
+  const { strengthKey, weaknessKey } = deriveStrengthWeaknessKeys(scores);
 
   return (
     <article
@@ -110,68 +122,76 @@ export function EditorialIdentityCard({
     >
       {/* ═══ BAND 1 — Editorial Portrait ═══ */}
       <div
-        className="relative px-4 py-5 sm:px-7 sm:py-7 md:px-8 md:py-8"
+        className="relative px-5 py-6 sm:px-8 sm:py-8 md:px-10 md:py-9"
         style={{
           background:
             "linear-gradient(135deg, rgba(219,234,254,0.35) 0%, rgba(221,214,254,0.22) 50%, rgba(209,250,229,0.18) 100%)",
         }}
       >
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-8">
-          {/* Left — text */}
-          <div className="flex-1 min-w-0 text-center sm:text-left overflow-hidden">
-            <p className="font-display text-[1.2rem] sm:text-[1.5rem] md:text-[1.65rem] font-semibold leading-snug tracking-tight text-content-primary max-w-xl break-words">
-              {sentence}
-            </p>
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
+          {/* Left — editorial text */}
+          <div className="flex-1 min-w-0 text-center sm:text-left overflow-hidden space-y-3">
+            <p className="text-eyebrow text-accent-primary">Resumo executivo</p>
+            <h2 className="font-display text-[1.35rem] sm:text-[1.65rem] md:text-[1.85rem] font-semibold leading-snug tracking-tight text-content-primary max-w-xl break-words">
+              {headline}
+            </h2>
+            {supporting && (
+              <p className="text-sm sm:text-base leading-relaxed text-content-secondary max-w-xl">
+                {supporting}
+              </p>
+            )}
           </div>
 
           {/* Right — global score ring */}
-          <div className="relative flex flex-col items-center shrink-0">
-            <ScoreOrbitBackground family={globalFamily} />
-            <div className="relative z-10 flex flex-col items-center">
-              <ScoreRing score={globalScore} size={100} label="Pontuação global" />
-              <span className="mt-1 text-[11px] font-sans text-content-secondary/60">
-                de 100
-              </span>
+          <div className="flex flex-col items-center shrink-0">
+            <ScoreRing score={globalScore} size={110} label="Pontuação global" />
+            <span className="mt-1.5 text-xs font-sans font-medium text-content-tertiary tabular-nums">
+              /100
+            </span>
+            <span
+              className={cn(
+                "mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1",
+                "text-xs font-semibold tracking-wide uppercase",
+                FAMILY_CHIP[globalFamily],
+              )}
+            >
               <span
-                className={cn(
-                  "mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                  "text-[11px] font-semibold tracking-wide uppercase",
-                  FAMILY_CHIP[globalFamily],
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn("size-1.5 rounded-full shrink-0", FAMILY_DOT[globalFamily])}
-                />
-                {GLOBAL_LABEL[globalFamily]}
-              </span>
-            </div>
+                aria-hidden="true"
+                className={cn("size-1.5 rounded-full shrink-0", FAMILY_DOT[globalFamily])}
+              />
+              {GLOBAL_LABEL[globalFamily]}
+            </span>
+            <span className="mt-1.5 text-xs font-sans text-content-tertiary">
+              Pontuação InstaBench
+            </span>
           </div>
         </div>
       </div>
 
       {/* ═══ BAND 2 — Action Summary ═══ */}
-      <div className="border-t border-border-default bg-slate-50/60">
-        <div className="flex flex-col sm:flex-row items-stretch">
-          {/* Strength */}
-          <div className="flex items-center gap-3 px-4 py-4 sm:px-6 sm:py-5 sm:flex-1 border-b sm:border-b-0 sm:border-r border-border-subtle">
-            <span className="flex items-center justify-center size-8 sm:size-10 rounded-full bg-emerald-50 shrink-0">
-              <CheckCircle2 className="size-4 sm:size-[18px] text-emerald-600" aria-hidden="true" />
+      <div className="border-t border-border-default bg-surface-muted px-5 py-5 sm:px-8 sm:py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {/* Strength mini-card */}
+          <div className="flex items-start gap-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100 px-5 py-4">
+            <span className="flex items-center justify-center size-9 rounded-full bg-emerald-100 shrink-0 mt-0.5">
+              <CheckCircle2 className="size-[18px] text-emerald-600" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <span className="text-eyebrow-sm text-emerald-600 block mb-0.5">Principal ponto forte</span>
-              <span className="text-[14px] sm:text-[15px] font-semibold text-content-primary">{strength}</span>
+              <span className="text-eyebrow-sm text-emerald-600 block mb-1">Ponto forte</span>
+              <span className="text-[15px] font-semibold text-content-primary block">{SCORE_LABELS[strengthKey]}</span>
+              <span className="text-xs text-content-secondary mt-0.5 block">{scores[strengthKey].subtitle}</span>
             </div>
           </div>
 
-          {/* Weakness */}
-          <div className="flex items-center gap-3 px-4 py-4 sm:px-6 sm:py-5 sm:flex-1">
-            <span className="flex items-center justify-center size-8 sm:size-10 rounded-full bg-rose-50 shrink-0">
-              <AlertCircle className="size-4 sm:size-[18px] text-rose-600" aria-hidden="true" />
+          {/* Weakness mini-card */}
+          <div className="flex items-start gap-3.5 rounded-xl bg-rose-50/70 border border-rose-100 px-5 py-4">
+            <span className="flex items-center justify-center size-9 rounded-full bg-rose-100 shrink-0 mt-0.5">
+              <AlertCircle className="size-[18px] text-rose-600" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <span className="text-eyebrow-sm text-rose-600 block mb-0.5">Principal ponto fraco</span>
-              <span className="text-[14px] sm:text-[15px] font-semibold text-content-primary">{weakness}</span>
+              <span className="text-eyebrow-sm text-rose-600 block mb-1">A melhorar</span>
+              <span className="text-[15px] font-semibold text-content-primary block">{SCORE_LABELS[weaknessKey]}</span>
+              <span className="text-xs text-content-secondary mt-0.5 block">{scores[weaknessKey].subtitle}</span>
             </div>
           </div>
         </div>
