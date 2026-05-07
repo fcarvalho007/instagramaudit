@@ -50,6 +50,66 @@ interface AnalyzeResult {
   snapshot_id?: string;
 }
 
+async function runAnalysisAndRestore(
+  request: Request,
+  handle: string,
+  internalToken: string,
+): Promise<Response> {
+  let analyzeResult: AnalyzeResult | null = null;
+  let restoreWarning: string | null = null;
+
+  try {
+    const origin = new URL(request.url).origin;
+    const analyzeUrl = `${origin}/api/analyze-public-v1?refresh=1`;
+
+    console.info(`[refresh-profile] calling analyze for @${handle}`);
+
+    const analyzeRes = await fetch(analyzeUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${internalToken}`,
+      },
+      body: JSON.stringify({
+        instagram_username: handle,
+        competitor_usernames: [],
+      }),
+    });
+
+    analyzeResult = (await analyzeRes.json().catch(() => null)) as AnalyzeResult | null;
+
+    if (!analyzeRes.ok || !analyzeResult?.success) {
+      console.warn(`[refresh-profile] analyze failed for @${handle}`, analyzeResult);
+    } else {
+      console.info(`[refresh-profile] analyze success for @${handle}`);
+    }
+  } catch (err) {
+    console.error(`[refresh-profile] analyze threw for @${handle}`, err);
+  } finally {
+    const restored = await setMode("cache_only");
+    if (!restored) {
+      console.error("[refresh-profile] CRITICAL: failed to restore cache_only!");
+      restoreWarning = "Atenção: não foi possível restaurar o modo cache_only. Verifique em Sistema.";
+    }
+  }
+
+  if (!analyzeResult?.success) {
+    return jsonResponse({
+      success: false,
+      error: analyzeResult?.message ?? "Falha na análise.",
+      error_code: analyzeResult?.error_code,
+      restore_warning: restoreWarning,
+    }, 502);
+  }
+
+  return jsonResponse({
+    success: true,
+    handle,
+    snapshot_id: analyzeResult.snapshot_id,
+    restore_warning: restoreWarning,
+  });
+}
+
 export const Route = createFileRoute("/api/admin/refresh-profile")({
   server: {
     handlers: {
