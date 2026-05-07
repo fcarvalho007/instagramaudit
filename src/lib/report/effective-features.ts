@@ -18,6 +18,8 @@ type LockRule = {
 const LOCKED_MODULES: Partial<Record<keyof VariantFeatures, LockRule>> = {
   debugLabels: { variants: ["public_mvp", "pro_preview"], value: "hidden" },
   overviewHeroKpis: { variants: "*", value: "full" },
+  diagnosticQ01Q07: { variants: "*", value: "full" },
+  methodology: { variants: ["public_mvp", "pro_preview"], value: "full" },
 };
 
 export { LOCKED_MODULES };
