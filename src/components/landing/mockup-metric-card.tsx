@@ -81,7 +81,7 @@ export function MockupMetricCard({
         {suffix ? (
           <span
             className={cn(
-              "font-mono text-xs",
+              "text-xs font-medium",
               isLight ? "text-on-light-tertiary" : "text-content-tertiary",
             )}
           >
@@ -97,7 +97,7 @@ export function MockupMetricCard({
       {trend ? (
         <div
           className={cn(
-            "flex items-center gap-1 font-mono text-[0.6875rem]",
+            "flex items-center gap-1 text-xs font-medium",
             isLight ? trendColorMapLight[variant] : trendColorMapDark[variant],
           )}
         >

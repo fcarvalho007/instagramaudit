@@ -30,7 +30,7 @@ export function MockupBenchmarkGauge({
           <span className="text-eyebrow-sm text-[0.625rem] text-on-light-tertiary">
             Atual
           </span>
-          <span className="font-mono text-xs text-on-light-primary">
+          <span className="text-xs font-semibold tabular-nums text-on-light-primary">
             {value.toFixed(2).replace(".", ",")}%
           </span>
         </div>
@@ -38,7 +38,7 @@ export function MockupBenchmarkGauge({
           <span className="text-eyebrow-sm text-[0.625rem] text-on-light-tertiary">
             Benchmark
           </span>
-          <span className="font-mono text-xs text-on-light-primary">
+          <span className="text-xs font-semibold tabular-nums text-on-light-primary">
             {benchmark.toFixed(2).replace(".", ",")}%
           </span>
         </div>
