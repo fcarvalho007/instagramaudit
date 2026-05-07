@@ -1,87 +1,165 @@
 
-# Product Event Tracking for Beta
+# Admin Commercial Kanban — Beta Leads
 
-## 1. Schema
+## Data Model Changes
 
-Single table `product_events`:
+### New columns on `leads` table
 
+| Column | Type | Default | Purpose |
+|--------|------|---------|---------|
+| `commercial_status` | text | `'novo_pedido'` | Kanban column position |
+| `internal_notes` | text | `NULL` | Free-text admin notes |
+| `contacted_at` | timestamptz | `NULL` | When admin marked as contacted |
+| `archived_at` | timestamptz | `NULL` | Soft archive timestamp |
+
+**Allowed values for `commercial_status`:**
+`novo_pedido`, `em_analise`, `relatorio_gerado`, `relatorio_visto`, `feedback_pedido`, `interessado`, `potencial_cliente`, `convertido`, `arquivado`
+
+### Migration
+
+```sql
+ALTER TABLE public.leads
+  ADD COLUMN IF NOT EXISTS commercial_status text NOT NULL DEFAULT 'novo_pedido',
+  ADD COLUMN IF NOT EXISTS internal_notes text,
+  ADD COLUMN IF NOT EXISTS contacted_at timestamptz,
+  ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+
+CREATE INDEX IF NOT EXISTS idx_leads_commercial_status ON public.leads (commercial_status);
 ```
-product_events
-├── id              uuid PK default gen_random_uuid()
-├── event_type      text NOT NULL
-├── lead_id         uuid nullable
-├── snapshot_id     uuid nullable
-├── handle          text nullable (Instagram handle, lowercased)
-├── actor_hash      text nullable (SHA-256 of email — no raw PII)
-├── metadata        jsonb NOT NULL default '{}'
-├── created_at      timestamptz NOT NULL default now()
+
+No new tables needed. All card data is assembled by joining `leads` + `report_requests` + `product_events` (aggregated) + `analysis_snapshots` (for cost).
+
+---
+
+## API Endpoints
+
+### 1. `GET /api/admin/leads-kanban`
+
+Returns all non-archived leads enriched with:
+- Latest `report_requests` row (status, snapshot_id, pdf_status)
+- Report view count from `product_events` WHERE `event_type = 'report_viewed'` AND `handle` matches
+- Estimated cost from `analysis_snapshots` or `provider_call_logs`
+- Last interaction = MAX of (lead.updated_at, last product_event.created_at)
+
+Response shape per lead:
+```json
+{
+  "id": "uuid",
+  "email": "...",
+  "handle": "...",
+  "user_type": "...",
+  "purpose": "...",
+  "commercial_status": "novo_pedido",
+  "internal_notes": "...",
+  "report_status": "pending",
+  "report_cost_usd": 0.12,
+  "report_views": 3,
+  "feedback_score": null,
+  "last_interaction": "2026-05-07T...",
+  "created_at": "..."
+}
 ```
 
-RLS disabled (admin-only table, accessed via `supabaseAdmin` in server functions). No user-facing reads.
+### 2. `PATCH /api/admin/leads-kanban/$id`
 
-Index on `(event_type, created_at DESC)` for admin queries.
+Body: `{ commercial_status?, internal_notes?, contacted_at? }`
 
-## 2. Event catalogue
+Updates the lead row. Fires `product_event` with type `lead_status_changed` for audit.
 
-| Event | Fires where | lead_id | snapshot_id | handle | metadata |
-|---|---|---|---|---|---|
-| `beta_request_created` | `submitBetaRequest` server fn | ✓ | — | ✓ | `{user_type, purpose, profile_ownership}` |
-| `report_generated` | analysis pipeline (after snapshot created) | ✓ if exists | ✓ | ✓ | `{data_source, duration_ms}` |
-| `report_viewed` | `analyze.$username.tsx` on successful render | — | ✓ | ✓ | `{variant, referrer}` |
-| `public_report_link_copied` | share action in ReportShellV2 | — | ✓ | ✓ | `{}` |
-| `pro_teaser_clicked` | Pro teaser CTA click | — | ✓ | ✓ | `{module}` |
-| `feedback_started` | feedback banner open | — | ✓ | ✓ | `{}` |
-| `feedback_submitted` | feedback form submit | — | ✓ | ✓ | `{rating, comment_length}` |
-| `pricing_clicked` | beta form step 3 pricing section click | ✓ | — | ✓ | `{plan_clicked}` |
-| `email_clicked` | email CTA in report | — | ✓ | ✓ | `{cta_location}` |
-| `module_visibility_published` | admin publish override action | — | — | — | `{variant, changed_modules}` |
+---
 
-## 3. Where each event fires
+## UI Structure
 
-**Server-side (in server functions, via `supabaseAdmin`):**
-- `beta_request_created` — inside `submitBetaRequest` after successful insert
-- `report_generated` — in analysis pipeline after snapshot creation
-- `module_visibility_published` — in `publishDraft` server function
+### Route: `src/routes/admin.beta-leads.tsx`
 
-**Client-side (fire-and-forget `fetch` to a lightweight server function):**
-- `report_viewed` — `useEffect` in `AnalyzePage` after report renders
-- `public_report_link_copied` — in share action handler
-- `pro_teaser_clicked` — in Pro teaser CTA `onClick`
-- `feedback_started` / `feedback_submitted` — in feedback banner handlers
-- `pricing_clicked` — in beta form pricing card click
-- `email_clicked` — in report email CTA
+Replaces or sits alongside `admin.clientes` (the current clientes page is mock-only). New dedicated page for real beta lead management.
 
-Client events call a single `trackEvent` server function that accepts `{event_type, snapshot_id?, handle?, metadata?}` and writes via `supabaseAdmin`. No auth required — the function is public but write-only, rate-limited by event type.
+### Layout
 
-## 4. Privacy notes
+```text
+┌─────────────────────────────────────────────────────┐
+│  Beta Leads · Kanban          [Pesquisar] [Filtrar]  │
+├─────────────────────────────────────────────────────┤
+│  Novo │ Análise │ Gerado │ Visto │ Feedback │ ...   │
+│  ┌──┐ │  ┌──┐   │  ┌──┐  │       │          │       │
+│  │  │ │  │  │   │  │  │  │       │          │       │
+│  └──┘ │  └──┘   │  └──┘  │       │          │       │
+│  ┌──┐ │         │        │       │          │       │
+│  │  │ │         │        │       │          │       │
+│  └──┘ │         │        │       │          │       │
+└─────────────────────────────────────────────────────┘
+```
 
-- **No raw email stored** in `product_events`. Use `actor_hash` (SHA-256 of lowercased email) for correlation without PII.
-- `handle` is public Instagram data, not PII under GDPR for public profiles.
-- `metadata` must never contain email, IP, or user agent — only behavioral signals.
-- `lead_id` links to `leads` table which does store email — access restricted to admin.
-- Retention: add a `expires_at` or periodic cleanup policy (e.g. 12 months) before public launch.
-- Privacy policy already covers analytics data collection for service improvement.
+- Horizontal scroll for 9 columns
+- Each column has a header with count badge
+- Cards are vertically stacked within each column
 
-## 5. Implementation plan
+### Card Content
 
-**Prompt 1** — Migration: create `product_events` table with index. No RLS (admin-only).
+Each card shows:
+- **Email** (truncated)
+- **@handle** (link to public report)
+- **User type** badge (e.g. "Marca", "Freelancer")
+- **Purpose** (one-liner)
+- **Report status** badge (pending / generated / viewed)
+- **Cost** if available (e.g. "€0.12")
+- **Views** count
+- **Last interaction** relative time
+- **Internal notes** preview (first line, expandable)
 
-**Prompt 2** — Server function: `trackEvent` in `src/lib/tracking.functions.ts` — accepts event data, validates with Zod, writes via `supabaseAdmin`. Fire-and-forget pattern (no await on client side).
+### Card Actions (dropdown or icon row)
 
-**Prompt 3** — Wire server-side events: add `trackEvent` calls to `submitBetaRequest`, analysis pipeline, and `publishDraft`.
+- **Abrir relatório** — opens `/analyze/{handle}` in new tab
+- **Copiar link** — copies public report URL
+- **Marcar contactado** — sets `contacted_at = now()`
+- **Arquivar** — moves to `arquivado` column
+- **Editar notas** — inline textarea or sheet
 
-**Prompt 4** — Wire client-side events: add `trackEvent` calls to report view, share, Pro teaser, feedback, pricing click.
+### Drag-and-drop
 
-**Prompt 5** — Admin query panel: simple event log viewer in `/admin` (optional, can defer).
+Not in phase 1. Status changes via a dropdown select on each card or via the detail sheet. Drag can be added later with `@hello-pangea/dnd`.
 
-## 6. Files to create/modify
+---
 
-| File | Action |
-|---|---|
-| Migration | New `product_events` table |
-| `src/lib/tracking.functions.ts` | New — `trackEvent` server function |
-| `src/lib/tracking.server.ts` | New — server-side helper for direct inserts |
-| `src/lib/beta.functions.ts` | Add `beta_request_created` event |
-| `src/routes/analyze.$username.tsx` | Add `report_viewed` event |
-| `src/components/report-share/use-report-share-actions.ts` | Add `public_report_link_copied` event |
-| `src/components/beta/beta-request-form.tsx` | Add `pricing_clicked` event |
+## Admin Workflow
+
+1. New beta request arrives → card appears in **Novo pedido**
+2. Admin reviews → moves to **Em análise** (manual)
+3. Admin triggers analysis → system moves to **Relatório gerado** (can be automated later via `report_requests.request_status`)
+4. User views report → system could auto-advance to **Relatório visto** (via `report_viewed` event count > 0)
+5. Admin requests feedback → **Feedback pedido**
+6. Lead shows interest → **Interessado** / **Potencial cliente** / **Convertido** (manual)
+7. Dead leads → **Arquivado**
+
+---
+
+## Implementation Phases
+
+### Phase 1 — Schema + API (this prompt)
+- Migration adding 4 columns to `leads`
+- Server route `GET /api/admin/leads-kanban` with joined query
+- Server route `PATCH /api/admin/leads-kanban/$id` for status/notes updates
+
+### Phase 2 — Kanban UI
+- Route `admin.beta-leads.tsx`
+- Kanban column layout with horizontal scroll
+- Lead cards with badges, actions dropdown
+- Status change via select dropdown
+- Notes editing via sheet/dialog
+- Quick actions (open report, copy link, mark contacted, archive)
+
+### Phase 3 — Automation (future)
+- Auto-advance status based on product events
+- Drag-and-drop reordering
+- Filters by date, status, user_type
+- Export CSV
+
+---
+
+## Technical Notes
+
+- No new npm dependencies in phase 1-2 (uses existing shadcn components: Card, Badge, Select, Sheet, DropdownMenu, ScrollArea)
+- Admin auth gate already exists via `AdminGate` component
+- Design tokens from `tokens.css` — admin surfaces use `--admin-*` variables
+- All queries use `supabaseAdmin` (server-side, bypasses RLS)
+- `product_events` query is aggregated server-side to avoid N+1
