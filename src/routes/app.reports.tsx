@@ -252,14 +252,14 @@ function ReportsPage() {
       <h1 className="text-xl font-semibold tracking-tight text-slate-900">
         Relatórios
       </h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-content-secondary">
         Análises pedidas e relatórios disponíveis para download.
       </p>
 
       {/* Stats */}
       {!loading && !error && reports.length > 0 && (
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Total" value={stats.total} icon={FileText} color="text-slate-600" />
+          <StatCard label="Total" value={stats.total} icon={FileText} color="text-content-secondary" />
           <StatCard label="Prontos" value={stats.ready} icon={CheckCircle2} color="text-emerald-600" />
           <StatCard label="A processar" value={stats.processing} icon={Loader2} color="text-blue-600" />
           <StatCard label="A rever" value={stats.failed} icon={AlertTriangle} color="text-amber-600" />
@@ -269,7 +269,7 @@ function ReportsPage() {
       {/* Loading */}
       {loading && (
         <div className="mt-10 flex items-center justify-center">
-          <Loader2 className="size-5 animate-spin text-slate-400" />
+          <Loader2 className="size-5 animate-spin text-content-tertiary" />
         </div>
       )}
 
@@ -282,19 +282,19 @@ function ReportsPage() {
 
       {/* Empty state */}
       {!loading && !error && reports.length === 0 && (
-        <div className="mt-8 rounded-xl border border-slate-200/70 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-slate-100">
-            <Search className="size-5 text-slate-400" />
+        <div className="mt-8 rounded-xl border border-border-default/20 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-muted">
+            <Search className="size-5 text-content-tertiary" />
           </div>
-          <h2 className="mt-4 text-sm font-semibold text-slate-700">
+          <h2 className="mt-4 text-sm font-semibold text-content-primary">
             Ainda não há relatórios
           </h2>
-          <p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed text-slate-400">
+          <p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed text-content-tertiary">
             Analisar um perfil público para começar a construir o histórico de análises.
           </p>
           <Link
             to="/"
-            className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+            className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-content-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-content-primary/90"
           >
             <Search className="size-3.5" />
             Analisar perfil
