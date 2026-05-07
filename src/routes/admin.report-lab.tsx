@@ -488,8 +488,9 @@ function AdminActionButton({
     <button
       onClick={handleClick}
       className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/50 px-3 py-1.5 text-xs font-medium text-admin-text-secondary backdrop-blur-sm transition-colors hover:bg-white/70 hover:text-admin-text-primary"
+
     >
-      {copyMode && copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : icon}
+      {copyMode && copied ? <Check className="h-4 w-4 text-green-600" /> : icon}
       {copyMode && copied ? "Copiado" : label}
     </button>
   );
