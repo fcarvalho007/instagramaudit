@@ -32,6 +32,7 @@ interface AnalyzeResult {
   snapshot_id?: string;
   // Structured provider detail fields
   provider?: string;
+  provider_error_code?: string;
   provider_status?: number;
   provider_message?: string;
   run_id?: string;
@@ -135,6 +136,7 @@ async function runAnalysis(
       error: analyzeResult?.message ?? "Falha na análise.",
       error_code: analyzeResult?.error_code ?? "provider_failure",
       provider: analyzeResult?.provider,
+      provider_error_code: analyzeResult?.provider_error_code,
       provider_status: analyzeResult?.provider_status,
       provider_message: analyzeResult?.provider_message,
       run_id: analyzeResult?.run_id,

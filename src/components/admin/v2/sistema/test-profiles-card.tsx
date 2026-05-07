@@ -33,6 +33,9 @@ interface RefreshErrorBody {
   error?: string;
   error_code?: string;
   preflight_blocked?: string;
+  provider_error_code?: string;
+  provider_message?: string;
+  run_id?: string;
   details?: string;
   restore_warning?: string | null;
 }
@@ -71,6 +74,26 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
     "Os dados foram obtidos, mas não foi possível guardar o snapshot.",
 };
 
+/** Apify-specific semantic codes from the provider adapter. */
+const PROVIDER_ERROR_MESSAGES: Record<string, string> = {
+  apify_token_missing:
+    "APIFY_TOKEN não está configurado. Configura o segredo antes de atualizar.",
+  apify_token_invalid:
+    "APIFY_TOKEN foi rejeitado pela Apify (401). Verifica se o token é válido.",
+  apify_actor_failed:
+    "O actor Apify terminou com erro. Verifica o estado do actor no painel Apify.",
+  apify_dataset_empty:
+    "O actor Apify terminou sem devolver dados (dataset vazio).",
+  apify_timeout:
+    "O actor Apify excedeu o tempo limite. O perfil pode ser demasiado grande ou o serviço estar lento.",
+  apify_http_error:
+    "Erro HTTP ao comunicar com a Apify.",
+  apify_parse_failed:
+    "A resposta da Apify não pôde ser interpretada (formato inesperado).",
+  apify_network_error:
+    "Falha de rede ao contactar a Apify.",
+};
+
 function mapRefreshError(status: number, body: RefreshErrorBody | null): string {
   if (status === 401 || status === 403) {
     return "Sessão admin inválida ou expirada. Inicia sessão novamente.";
@@ -81,11 +104,21 @@ function mapRefreshError(status: number, body: RefreshErrorBody | null): string 
   if (body?.preflight_blocked && PREFLIGHT_MESSAGES[body.preflight_blocked]) {
     return PREFLIGHT_MESSAGES[body.preflight_blocked];
   }
+  // Provider-specific semantic code (most specific)
+  if (body?.provider_error_code && PROVIDER_ERROR_MESSAGES[body.provider_error_code]) {
+    const base = PROVIDER_ERROR_MESSAGES[body.provider_error_code];
+    const extra: string[] = [];
+    if (body.run_id) extra.push(`Run: ${body.run_id}`);
+    if (body.details && !body.details.includes("APIFY_TOKEN")) {
+      extra.push(body.details);
+    }
+    return extra.length > 0 ? `${base} (${extra.join(" · ")})` : base;
+  }
+
   // Structured error code from analyze-public-v1
   if (body?.error_code && ERROR_CODE_MESSAGES[body.error_code]) {
     const base = ERROR_CODE_MESSAGES[body.error_code];
-    // Append provider message if available for richer diagnostics
-    if (body.details) {
+    if (body.details && !body.details.includes("APIFY_TOKEN")) {
       return `${base} (${body.details})`;
     }
     return base;

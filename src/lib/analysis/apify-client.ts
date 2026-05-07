@@ -15,19 +15,43 @@ const APIFY_BASE = "https://api.apify.com/v2/acts";
 const APIFY_RUNS_BASE = "https://api.apify.com/v2/actor-runs";
 const DEFAULT_TIMEOUT_MS = 60_000;
 
+/**
+ * Semantic error codes for admin-facing diagnostics.
+ * These surface all the way to the admin UI toast and "Última tentativa" row.
+ */
+export type ApifySemanticCode =
+  | "apify_token_missing"
+  | "apify_token_invalid"
+  | "apify_actor_failed"
+  | "apify_dataset_empty"
+  | "apify_timeout"
+  | "apify_http_error"
+  | "apify_parse_failed"
+  | "apify_network_error";
+
 export class ApifyConfigError extends Error {
-  constructor(message: string) {
+  code: ApifySemanticCode;
+  constructor(message: string, code: ApifySemanticCode = "apify_token_missing") {
     super(message);
     this.name = "ApifyConfigError";
+    this.code = code;
   }
 }
 
 export class ApifyUpstreamError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  code: ApifySemanticCode;
+  runId?: string;
+  actualCostUsd?: number;
+  constructor(
+    message: string,
+    status: number,
+    code?: ApifySemanticCode,
+  ) {
     super(message);
     this.name = "ApifyUpstreamError";
     this.status = status;
+    this.code = code ?? (status === 504 ? "apify_timeout" : "apify_http_error");
   }
 }
 
@@ -51,7 +75,7 @@ export async function runActor<T = unknown>(
 ): Promise<T[]> {
   const token = process.env.APIFY_TOKEN;
   if (!token) {
-    throw new ApifyConfigError("APIFY_TOKEN is not configured");
+    throw new ApifyConfigError("APIFY_TOKEN is not configured", "apify_token_missing");
   }
 
   const {
@@ -107,6 +131,7 @@ export async function runActor<T = unknown>(
       throw new ApifyUpstreamError(
         `Apify actor ${actorId} returned non-array payload`,
         502,
+        "apify_parse_failed",
       );
     }
     return data as T[];
@@ -118,11 +143,13 @@ export async function runActor<T = unknown>(
       throw new ApifyUpstreamError(
         `Apify actor ${actorId} timed out after ${timeoutMs}ms`,
         504,
+        "apify_timeout",
       );
     }
     throw new ApifyUpstreamError(
       `Apify actor ${actorId} fetch failed: ${(err as Error).message}`,
       502,
+      "apify_network_error",
     );
   } finally {
     clearTimeout(timer);
@@ -192,7 +219,7 @@ export async function runActorWithMetadata<T = unknown>(
 ): Promise<RunActorWithMetadataResult<T>> {
   const token = process.env.APIFY_TOKEN;
   if (!token) {
-    throw new ApifyConfigError("APIFY_TOKEN is not configured");
+    throw new ApifyConfigError("APIFY_TOKEN is not configured", "apify_token_missing");
   }
 
   const {
@@ -232,9 +259,12 @@ export async function runActorWithMetadata<T = unknown>(
 
   if (!startRes.ok) {
     const text = await startRes.text().catch(() => "");
+    const startCode: ApifySemanticCode =
+      startRes.status === 401 ? "apify_token_invalid" : "apify_http_error";
     throw new ApifyUpstreamError(
       `Apify actor ${actorId} start returned ${startRes.status}: ${text.slice(0, 200)}`,
       startRes.status,
+      startCode,
     );
   }
 
@@ -255,6 +285,7 @@ export async function runActorWithMetadata<T = unknown>(
       throw new ApifyUpstreamError(
         `Apify run ${runId} polling timed out after ${timeoutMs}ms`,
         504,
+        "apify_timeout",
       );
     }
     await new Promise((r) => setTimeout(r, 1500));
@@ -279,9 +310,10 @@ export async function runActorWithMetadata<T = unknown>(
     const err = new ApifyUpstreamError(
       `Apify run ${runId} ended with status ${run.status}`,
       502,
+      run.status === "TIMED-OUT" ? "apify_timeout" : "apify_actor_failed",
     );
-    (err as ApifyUpstreamError & { runId?: string }).runId = runId;
-    (err as ApifyUpstreamError & { actualCostUsd?: number }).actualCostUsd =
+    err.runId = runId;
+    err.actualCostUsd =
       typeof run.usageTotalUsd === "number" ? run.usageTotalUsd : undefined;
     throw err;
   }
@@ -310,6 +342,7 @@ export async function runActorWithMetadata<T = unknown>(
     throw new ApifyUpstreamError(
       `Apify run ${runId} dataset returned non-array payload`,
       502,
+      "apify_parse_failed",
     );
   }
 

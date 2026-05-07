@@ -57,6 +57,8 @@ export const Route = createFileRoute("/api/admin/refresh-profile-preflight")({
         const checks: PreflightCheck[] = [];
         let blockingReason: string | null = null;
 
+        // ── Infrastructure ──
+
         // INTERNAL_API_TOKEN
         const hasToken = Boolean(
           process.env.INTERNAL_API_TOKEN &&
@@ -72,7 +74,9 @@ export const Route = createFileRoute("/api/admin/refresh-profile-preflight")({
           blockingReason = "Token interno em falta";
         }
 
-        // APIFY_ENABLED
+        // ── Provider: Apify (granular) ──
+
+        // APIFY_ENABLED kill-switch
         const apifyOn = isApifyEnabled();
         checks.push({
           key: "apify_enabled",
@@ -83,6 +87,41 @@ export const Route = createFileRoute("/api/admin/refresh-profile-preflight")({
         if (!apifyOn && !blockingReason) {
           blockingReason = "Apify inativo";
         }
+
+        // APIFY_TOKEN presence (cannot validate without a paid call)
+        const hasApifyToken = Boolean(
+          process.env.APIFY_TOKEN && process.env.APIFY_TOKEN.length > 0,
+        );
+        checks.push({
+          key: "apify_token",
+          label: "APIFY_TOKEN",
+          status: hasApifyToken ? "ok" : "fail",
+          message: hasApifyToken ? "Presente, não validado" : "Em falta",
+        });
+        if (!hasApifyToken && !blockingReason) {
+          blockingReason = "APIFY_TOKEN em falta";
+        }
+
+        // Actor Instagram — the unified actor constant used in
+        // analyze-public-v1. Build-time constant, always present.
+        checks.push({
+          key: "actor_instagram",
+          label: "Actor Instagram",
+          status: "ok",
+          message: "Configurado (apify/instagram-scraper)",
+        });
+
+        // Comment scraper (actor for comments enrichment)
+        const commentScraperOn =
+          process.env.COMMENT_SCRAPER_ENABLED === "true";
+        checks.push({
+          key: "actor_comments",
+          label: "Actor comentários",
+          status: commentScraperOn ? "ok" : "warn",
+          message: commentScraperOn ? "Ativo" : "Desativado",
+        });
+
+        // ── Access control ──
 
         // Allowlist
         const testingMode = isTestingModeActive();
@@ -101,6 +140,8 @@ export const Route = createFileRoute("/api/admin/refresh-profile-preflight")({
           blockingReason = "Fora da allowlist";
         }
 
+        // ── Runtime ──
+
         // Concurrent refresh
         const isRefreshing = refreshingHandles.has(handle);
         checks.push({
@@ -111,30 +152,6 @@ export const Route = createFileRoute("/api/admin/refresh-profile-preflight")({
         });
         if (isRefreshing && !blockingReason) {
           blockingReason = "Atualização em curso";
-        }
-
-        // Comment scraper
-        const commentScraperOn =
-          process.env.COMMENT_SCRAPER_ENABLED === "true";
-        checks.push({
-          key: "comment_scraper",
-          label: "Comentários",
-          status: commentScraperOn ? "ok" : "warn",
-          message: commentScraperOn ? "Ativo" : "Desativado",
-        });
-
-        // APIFY_TOKEN presence
-        const hasApifyToken = Boolean(
-          process.env.APIFY_TOKEN && process.env.APIFY_TOKEN.length > 0,
-        );
-        checks.push({
-          key: "apify_token",
-          label: "Apify Token",
-          status: hasApifyToken ? "ok" : "fail",
-          message: hasApifyToken ? "Token presente, não validado" : "Em falta",
-        });
-        if (!hasApifyToken && !blockingReason) {
-          blockingReason = "APIFY_TOKEN em falta";
         }
 
         // 4. Cache status (lightweight DB read)
