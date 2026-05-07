@@ -1,17 +1,16 @@
 /**
  * POST /api/admin/refresh-profile
  *
- * One-shot fresh analysis for a single profile. Temporarily sets execution
- * mode to "fresh", calls analyze-public-v1?refresh=1 server-to-server,
- * then restores "cache_only" in a finally block — even on failure.
+ * One-shot fresh analysis for a single profile. Calls
+ * analyze-public-v1?refresh=1 with INTERNAL_API_TOKEN — the authenticated
+ * forceRefresh path bypasses the execution mode guard, so the global mode
+ * stays cache_only throughout. No global state mutation needed.
  *
  * Admin-only. Requires INTERNAL_API_TOKEN. Respects all provider kill switches.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
-import { invalidateExecutionModeCache } from "@/lib/admin/execution-mode.server";
 import {
   isApifyEnabled,
   isTestingModeActive,
@@ -25,24 +24,6 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-async function setMode(mode: "cache_only" | "fresh"): Promise<boolean> {
-  const { error } = await supabaseAdmin.from("app_config").upsert(
-    {
-      key: "analysis_execution_mode",
-      value: mode,
-      updated_at: new Date().toISOString(),
-      updated_by: "admin:refresh-profile",
-    },
-    { onConflict: "key" },
-  );
-  invalidateExecutionModeCache();
-  if (error) {
-    console.error(`[refresh-profile] failed to set mode to ${mode}`, error);
-    return false;
-  }
-  return true;
-}
-
 interface AnalyzeResult {
   success: boolean;
   error_code?: string;
@@ -50,13 +31,15 @@ interface AnalyzeResult {
   snapshot_id?: string;
 }
 
-async function runAnalysisAndRestore(
+/** In-memory lock to prevent concurrent refreshes for the same handle. */
+const refreshingHandles = new Set<string>();
+
+async function runAnalysis(
   request: Request,
   handle: string,
   internalToken: string,
 ): Promise<Response> {
   let analyzeResult: AnalyzeResult | null = null;
-  let restoreWarning: string | null = null;
 
   try {
     const origin = new URL(request.url).origin;
@@ -86,11 +69,7 @@ async function runAnalysisAndRestore(
   } catch (err) {
     console.error(`[refresh-profile] analyze threw for @${handle}`, err);
   } finally {
-    const restored = await setMode("cache_only");
-    if (!restored) {
-      console.error("[refresh-profile] CRITICAL: failed to restore cache_only!");
-      restoreWarning = "Atenção: não foi possível restaurar o modo cache_only. Verifique em Sistema.";
-    }
+    refreshingHandles.delete(handle);
   }
 
   if (!analyzeResult?.success) {
@@ -98,7 +77,6 @@ async function runAnalysisAndRestore(
       success: false,
       error: analyzeResult?.message ?? "Falha na análise.",
       error_code: analyzeResult?.error_code,
-      restore_warning: restoreWarning,
     }, 502);
   }
 
@@ -106,7 +84,6 @@ async function runAnalysisAndRestore(
     success: true,
     handle,
     snapshot_id: analyzeResult.snapshot_id,
-    restore_warning: restoreWarning,
   });
 }
 
@@ -154,7 +131,7 @@ export const Route = createFileRoute("/api/admin/refresh-profile")({
           }, 409);
         }
 
-        // 5. Pre-flight: allowlist
+        // 5. Pre-flight: allowlist check
         if (isTestingModeActive() && !isAllowed(handle)) {
           return jsonResponse({
             success: false,
@@ -163,17 +140,18 @@ export const Route = createFileRoute("/api/admin/refresh-profile")({
           }, 409);
         }
 
-        // 6. Set execution mode to fresh
-        const freshSet = await setMode("fresh");
-        if (!freshSet) {
+        // 6. Concurrency lock
+        if (refreshingHandles.has(handle)) {
           return jsonResponse({
             success: false,
-            error: "Falha ao ativar modo fresh.",
-          }, 500);
+            error: `Atualização já em curso para @${handle}.`,
+            preflight_blocked: "concurrent_refresh",
+          }, 409);
         }
+        refreshingHandles.add(handle);
 
-        // 7. Run analysis and always restore mode
-        return await runAnalysisAndRestore(request, handle, internalToken);
+        // 7. Run analysis (lock released in finally inside runAnalysis)
+        return await runAnalysis(request, handle, internalToken);
       },
     },
   },

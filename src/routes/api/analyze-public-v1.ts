@@ -430,49 +430,55 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // any allowlist check, provider call, or provider-related logging.
         // This guarantees cache_only never creates provider_call_logs or
         // analysis_events with allowlist/provider outcomes.
-        const executionMode = await getAnalysisExecutionMode();
-        if (executionMode === "cache_only") {
-          // Serve stale snapshot if available
-          if (existing && isWithinStaleWindow(existing)) {
+        // When forceRefresh is true (authenticated via INTERNAL_API_TOKEN),
+        // skip the mode guard entirely — the admin action is already gated
+        // by token verification, so the global mode stays cache_only and
+        // public users are never exposed to fresh provider calls.
+        if (!forceRefresh) {
+          const executionMode = await getAnalysisExecutionMode();
+          if (executionMode === "cache_only") {
+            // Serve stale snapshot if available
+            if (existing && isWithinStaleWindow(existing)) {
+              console.info(
+                "[analyze-public-v1] cache_only mode — serving existing snapshot",
+                cacheKey,
+              );
+              const stalePayload = existing.normalized_payload as unknown as {
+                profile?: { display_name?: string; followers_count?: number };
+              };
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "stale",
+                outcome: "blocked_cache_only",
+                analysisSnapshotId: existing.id,
+                estimatedCostUsd: 0,
+                displayName: stalePayload.profile?.display_name ?? null,
+                followersLastSeen: stalePayload.profile?.followers_count ?? null,
+              });
+              return jsonResponse(
+                buildCachedResponse(existing, "stale", benchmarkData),
+                200,
+              );
+            }
+
+            // No snapshot at all — inform the user
             console.info(
-              "[analyze-public-v1] cache_only mode — serving existing snapshot",
-              cacheKey,
+              "[analyze-public-v1] cache_only mode — no snapshot available",
+              primary,
             );
-            const stalePayload = existing.normalized_payload as unknown as {
-              profile?: { display_name?: string; followers_count?: number };
-            };
             await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey,
-              dataSource: "stale",
+              dataSource: "none",
               outcome: "blocked_cache_only",
-              analysisSnapshotId: existing.id,
+              errorCode: "CACHE_ONLY_NO_DATA",
               estimatedCostUsd: 0,
-              displayName: stalePayload.profile?.display_name ?? null,
-              followersLastSeen: stalePayload.profile?.followers_count ?? null,
             });
-            return jsonResponse(
-              buildCachedResponse(existing, "stale", benchmarkData),
-              200,
-            );
+            return failure("CACHE_ONLY_NO_DATA");
           }
-
-          // No snapshot at all — inform the user
-          console.info(
-            "[analyze-public-v1] cache_only mode — no snapshot available",
-            primary,
-          );
-          await logEvent({
-            handle: primary,
-            competitorHandles: competitors,
-            cacheKey,
-            dataSource: "none",
-            outcome: "blocked_cache_only",
-            errorCode: "CACHE_ONLY_NO_DATA",
-            estimatedCostUsd: 0,
-          });
-          return failure("CACHE_ONLY_NO_DATA");
         }
 
         // 2) Allowlist gate (smoke-test mode). Only reached in fresh mode.
