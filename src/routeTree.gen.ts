@@ -39,6 +39,7 @@ import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
 import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
+import { Route as AdminBetaLeadsRouteImport } from './routes/admin.beta-leads'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
 import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
 import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
@@ -243,6 +244,11 @@ const AdminConhecimentoRoute = AdminConhecimentoRouteImport.update({
 const AdminClientesRoute = AdminClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBetaLeadsRoute = AdminBetaLeadsRouteImport.update({
+  id: '/beta-leads',
+  path: '/beta-leads',
   getParentRoute: () => AdminRoute,
 } as any)
 const ReportPrintSnapshotIdRoute = ReportPrintSnapshotIdRouteImport.update({
@@ -564,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
@@ -650,6 +657,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
@@ -738,6 +746,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/perfis': typeof AdminPerfisRoute
@@ -827,6 +836,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/beta-leads'
     | '/admin/clientes'
     | '/admin/conhecimento'
     | '/admin/perfis'
@@ -913,6 +923,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/beta-leads'
     | '/admin/clientes'
     | '/admin/conhecimento'
     | '/admin/perfis'
@@ -1000,6 +1011,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/beta-leads'
     | '/admin/clientes'
     | '/admin/conhecimento'
     | '/admin/perfis'
@@ -1352,6 +1364,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes'
       fullPath: '/admin/clientes'
       preLoaderRoute: typeof AdminClientesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/beta-leads': {
+      id: '/admin/beta-leads'
+      path: '/beta-leads'
+      fullPath: '/admin/beta-leads'
+      preLoaderRoute: typeof AdminBetaLeadsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/report/print/$snapshotId': {
@@ -1755,6 +1774,7 @@ const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminBetaLeadsRoute: typeof AdminBetaLeadsRoute
   AdminClientesRoute: typeof AdminClientesRoute
   AdminConhecimentoRoute: typeof AdminConhecimentoRoute
   AdminPerfisRoute: typeof AdminPerfisRoute
@@ -1769,6 +1789,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminBetaLeadsRoute: AdminBetaLeadsRoute,
   AdminClientesRoute: AdminClientesRoute,
   AdminConhecimentoRoute: AdminConhecimentoRoute,
   AdminPerfisRoute: AdminPerfisRoute,
