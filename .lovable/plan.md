@@ -1,49 +1,123 @@
 
-# Report Lab — Variant Differences Panel & Override Status
+# Public MVP Lock Plan
 
-## What will be added
+## 1. Current `public_mvp` module visibility (static defaults)
 
-Three new UI sections in `/admin/report-lab`, all read-only, no behavior changes:
+| Module | Visibility | Status |
+|---|---|---|
+| overviewHeroKpis | **full** | Ready, locked `full` on all variants |
+| diagnosticQ01Q07 | **full** | Ready, locked `full` on all variants |
+| conversationPostLevel | **full** | Ready (post-level metrics only, no comment scraper) |
+| commentIntelligence | **hidden** | Pro candidate, comment scraper disabled |
+| captionsDiagnostics | **lightweight** | Needs review (simplified version) |
+| marketSignals | **full** | Needs review (DataForSEO fallback) |
+| benchmarkGauge | **full** | Needs review (reference data fallback) |
+| methodology | **full** | Ready, locked `full` on public_mvp + pro_preview |
+| betaFeedbackBanner | **full** | Ready (remove post-beta) |
+| debugLabels | **hidden** | Locked `hidden` on public_mvp + pro_preview |
 
-### 1. Variant mode explanation (enhance existing)
+## 2. Modules hidden from `public_mvp`
 
-Replace the single-line `MODE_LABELS` banner with richer copy:
-- **Public MVP:** "Isto é o que utilizadores públicos verão."
-- **Internal Lab:** "Isto é a versão de trabalho, com módulos completos e experimentais."
-- **Pro Preview:** "Isto simula funcionalidades futuras/pagas."
+| Module | Reason |
+|---|---|
+| commentIntelligence | Comment scraper disabled; Pro-only feature |
+| debugLabels | Internal diagnostics; hard-locked hidden |
 
-This already exists (lines 101-105). Will keep as-is since the copy matches the requirement.
+## 3. Modules shown as lightweight
 
-### 2. Override source badge
+| Module | Variant |
+|---|---|
+| captionsDiagnostics | public_mvp, pro_preview |
 
-Add a badge next to the mode label showing whether the active preview uses:
-- **Defaults estáticos** — no override rows exist for this variant
-- **Draft pendente** — a draft row exists (not yet published)
-- **Override publicado** — a published row exists
+## 4. Modules shown as Pro teaser
 
-This calls `getAllOverrides` (already imported via `ModuleVisibilityMatrix`) to check which rows exist for the current variant. Lightweight — reuses the same server function.
+| Module | Variant |
+|---|---|
+| commentIntelligence | pro_preview (teaser) |
 
-### 3. "Diferenças entre variantes" collapsible panel
+## 5. Verification checklist
 
-New collapsible section (same accordion style as the readiness checklist) showing only modules where at least one variant differs. For each:
+| # | Check | Result |
+|---|---|---|
+| 5 | Advanced comment intelligence is Pro/internal only | PASS — `hidden` in public_mvp, `teaser` in pro_preview, `full` only in internal_lab |
+| 6 | P05 public uses only lightweight post-level metrics | PASS — `conversationPostLevel` is `full` (post-level metrics without comment scraper); `commentIntelligence` is `hidden` |
+| 7 | No debug/internal strings in public_mvp | PASS — `debugLabels` is `hidden` and hard-locked |
+| 8 | No admin controls can appear publicly | PASS — admin routes are under `/admin` with gate; public route is `/analyze/$username` |
+| 9 | Public route fixed to `variant="public_mvp"` | PASS — hardcoded in `analyze.$username.tsx` line 282 |
+| 10 | Public route consumes published overrides only, never draft | PASS — calls `getPublishedFeatures` (not `getDraftFeatures`) at line 271 |
+| 11 | Locked modules cannot be accidentally changed | PASS — `effective-features.ts` enforces lock rules AFTER merge; `debugLabels` locked hidden on public_mvp; `overviewHeroKpis` and `diagnosticQ01Q07` locked full on all variants; `methodology` locked full on public_mvp |
 
-| Módulo | Public MVP | Internal Lab | Pro Preview | Interpretação |
-|--------|-----------|-------------|-------------|---------------|
+## 6. Recommended published visibility configuration
 
-Interpretations are static strings derived from the visibility pattern. A small map of known interpretations for each module key, with a generic fallback.
+Publish these exact values to `report_variant_overrides` for `public_mvp` (matches current static defaults — establishes an explicit baseline):
 
-## Files to edit
+```
+overviewHeroKpis:      full
+diagnosticQ01Q07:      full
+conversationPostLevel: full
+commentIntelligence:   hidden
+captionsDiagnostics:   lightweight
+marketSignals:         full
+benchmarkGauge:        full
+methodology:           full
+betaFeedbackBanner:    full
+debugLabels:           hidden
+```
 
-- `src/routes/admin.report-lab.tsx` — add the two new sections (override badge + differences panel)
+This makes the public MVP deterministic — even if static defaults change in code, the published override holds.
 
-## Files NOT to touch
+## 7. Files to protect
 
-- Report components, report-variant.ts, effective-features.ts, provider logic, PDF, cost, variant-overrides server functions
+Add a **PUBLIC_MVP_LOCK** section to `LOCKED_FILES.md` (preferred over a new doc — single source of truth):
 
-## Technical approach
+```
+## Public MVP Lock (pre-beta freeze)
+- /src/lib/report/report-variant.ts (already locked)
+- /src/lib/report/effective-features.ts
+- /src/routes/analyze.$username.tsx (variant="public_mvp" hardcoded)
+- /src/server/admin/variant-overrides.functions.ts
+```
 
-1. Import `getAllOverrides` from the server functions file (already used by `ModuleVisibilityMatrix`).
-2. Add a `useEffect` in `ReportLabPage` that calls `getAllOverrides()` once on mount to determine override status per variant.
-3. Add a `VariantDiffPanel` component that computes diffs from static defaults (`getVariantFeatures` for each variant) and renders the table.
-4. Add an `OverrideSourceBadge` component next to the mode label.
-5. Both new sections are pure read-only, derived from existing data. No new server functions needed.
+Also lock `effective-features.ts` — it contains the lock rules that prevent accidental exposure.
+
+## 8. Future change workflow
+
+```text
+1. Develop in internal_lab
+   └─ Toggle modules freely in Module Visibility Manager
+   └─ Preview via fullscreen internal_lab preview
+
+2. When satisfied, switch to public_mvp in Report Lab
+   └─ Save draft override
+   └─ Preview draft in fullscreen public_mvp preview
+   └─ Confirm no debug strings, no Pro-only content leaking
+
+3. Publish override
+   └─ Confirm dialog in Module Visibility Manager
+   └─ /analyze/$username immediately reflects the change
+
+4. Rollback
+   └─ Discard published override → reverts to static defaults
+   └─ Or publish a new override that restores previous values
+```
+
+## 9. Risks and mitigations
+
+| Risk | Mitigation |
+|---|---|
+| `marketSignals` depends on DataForSEO — may show empty state publicly | Verify fallback UI renders cleanly when DataForSEO is blocked/empty |
+| `benchmarkGauge` without reference data | Verify gauge shows graceful "sem dados de referência" state |
+| `captionsDiagnostics` lightweight mode has unreviewed copy | Review before launch; safe to iterate in internal_lab first |
+| Future code change to static defaults could silently alter behavior if no published override exists | Mitigated by publishing the explicit baseline (step 6) |
+| `betaFeedbackBanner` left visible post-beta | Add a reminder to hide it via override when exiting beta |
+
+## 10. Recommended implementation prompt
+
+Once approved, a single prompt should:
+
+1. Add the `PUBLIC_MVP_LOCK` section to `LOCKED_FILES.md`
+2. Lock `effective-features.ts` in that section
+3. Publish the baseline `public_mvp` override via Module Visibility Manager (manual admin action, not code)
+4. No code changes to report components, provider logic, PDF pipeline, or cost tracking
+
+No code changes are included in this plan — it is a documentation and operational freeze only.
