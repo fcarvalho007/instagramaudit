@@ -42,6 +42,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
     <>
       <ScrollArea className="w-full">
         <div className="flex gap-3 pb-4" style={{ minWidth: "fit-content" }}>
+
           {KANBAN_COLUMNS.map((col) => {
             const colLeads = leads.filter(
               (l) => l.commercial_status === col.key
@@ -54,7 +55,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
               >
                 {/* Column header */}
                 <div
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
                   style={{
                     borderLeft: `3px solid ${col.color}`,
                     backgroundColor: `${col.color}10`,
@@ -83,8 +84,8 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
                     <div
                       className="rounded-lg border border-dashed py-8 text-center admin-body"
                       style={{
-                        borderColor: "#D3D1C7",
-                        color: "#B4B2A9",
+                        borderColor: "rgb(var(--admin-neutral-100))",
+                        color: "rgb(var(--admin-neutral-400))",
                       }}
                     >
                       Sem leads
