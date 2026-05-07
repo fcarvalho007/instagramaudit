@@ -94,6 +94,7 @@ function Header() {
             >
               Analisar agora
             </Button>
+            {/* data-header-cta: used by report pages to hide this CTA via CSS */}
 
             {/* Mobile drawer trigger */}
             <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
