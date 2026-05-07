@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useVariantFeatures } from "@/lib/report/report-variant";
 import { cn } from "@/lib/utils";
 import {
   Eye,
@@ -206,14 +207,7 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-border-default bg-surface-muted px-4 py-5 text-center">
-          <p className="text-[13px] text-content-secondary leading-relaxed">
-            Análise visual indisponível — aguarda processamento IA.
-          </p>
-          <p className="text-[11px] text-content-tertiary mt-1">
-            Os thumbnails acima serão analisados por visão computacional numa próxima atualização.
-          </p>
-        </div>
+        <VisualAnalysisFallback />
       )}
     </article>
   );
@@ -345,15 +339,38 @@ function ScorePanel({ analysis }: { analysis: VisualCoverAnalysis }) {
   );
 }
 
+function VisualAnalysisFallback() {
+  const features = useVariantFeatures();
+  const isPublic = features.debugLabels === "hidden";
+  return (
+    <div className="rounded-xl border border-dashed border-border-default bg-surface-muted px-4 py-5 text-center">
+      <p className="text-[13px] text-content-secondary leading-relaxed">
+        {isPublic
+          ? "Análise visual disponível na versão Pro."
+          : "Análise visual indisponível — aguarda processamento IA."}
+      </p>
+      <p className="text-[11px] text-content-tertiary mt-1">
+        {isPublic
+          ? "As capas dos posts são avaliadas por inteligência artificial para consistência visual, presença de texto e diversidade de formatos."
+          : "Os thumbnails acima serão analisados por visão computacional numa próxima atualização."}
+      </p>
+    </div>
+  );
+}
+
 function ScorePanelUnavailable() {
+  const features = useVariantFeatures();
+  const isPublic = features.debugLabels === "hidden";
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default bg-surface-muted p-6 text-center space-y-2">
       <Eye className="size-8 text-content-tertiary/30" aria-hidden />
       <p className="text-[13px] text-content-secondary font-medium">
-        Score visual indisponível
+        {isPublic ? "Score visual \u00b7 Pro" : "Score visual indisponível"}
       </p>
       <p className="text-[11px] text-content-tertiary max-w-[16rem] leading-relaxed">
-        Será calculado automaticamente quando a análise por visão computacional estiver ativa.
+        {isPublic
+          ? "Disponível na versão completa do relatório."
+          : "Será calculado automaticamente quando a análise por visão computacional estiver ativa."}
       </p>
     </div>
   );
