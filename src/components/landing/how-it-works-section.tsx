@@ -55,8 +55,7 @@ export function HowItWorksSection() {
           {/* Node on step 02 icon */}
           <div
             aria-hidden="true"
-            className="hidden md:block absolute top-[30px] left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-accent-violet-luminous pointer-events-none"
-            style={{ boxShadow: "var(--shadow-glow-violet)" }}
+            className="hidden md:block absolute top-[30px] left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-accent-violet pointer-events-none"
           />
           {/* Node on step 03 icon */}
           <div
