@@ -880,6 +880,36 @@ export type Database = {
           },
         ]
       }
+      report_variant_overrides: {
+        Row: {
+          created_at: string
+          features_json: Json
+          id: string
+          is_draft: boolean
+          updated_at: string
+          updated_by: string | null
+          variant: string
+        }
+        Insert: {
+          created_at?: string
+          features_json: Json
+          id?: string
+          is_draft?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          variant: string
+        }
+        Update: {
+          created_at?: string
+          features_json?: Json
+          id?: string
+          is_draft?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          variant?: string
+        }
+        Relationships: []
+      }
       social_profiles: {
         Row: {
           analyses_blocked: number
