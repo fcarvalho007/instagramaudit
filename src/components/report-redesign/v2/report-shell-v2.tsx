@@ -24,6 +24,11 @@ import type {
   SnapshotPayload,
 } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
+import {
+  type ReportVariant,
+  ReportVariantProvider,
+  getVariantFeatures,
+} from "@/lib/report/report-variant";
 
 import { ReportFramedBlock } from "../report-framed-block";
 import { ReportMethodology } from "../report-methodology";
@@ -47,6 +52,8 @@ interface ReportShellV2Props {
   actions: ReportPageActions;
   payload?: SnapshotPayload;
   analyzedAtIso?: string | null;
+  /** Report variant — controls feature visibility. Defaults to public_mvp. */
+  variant?: ReportVariant;
 }
 
 /**
@@ -66,8 +73,10 @@ export function ReportShellV2({
   actions,
   payload,
   analyzedAtIso,
+  variant = "public_mvp",
 }: ReportShellV2Props) {
   const v2 = result.enriched.aiInsightsV2;
+  const features = getVariantFeatures(variant);
 
   /** Insight v2 dentro de um container já com padding (block content). */
   const renderInsight = (key: AiInsightV2Section) => {
@@ -80,6 +89,7 @@ export function ReportShellV2({
     BLOCKS;
 
   return (
+    <ReportVariantProvider value={variant}>
     <ReportDataProvider data={result.data}>
       <div
         className={cn(
@@ -255,12 +265,13 @@ export function ReportShellV2({
         <ReportTierTeaser />
         <TierComparisonBlock />
         <ReportFinalBlock snapshotId={snapshotId} result={result} />
-        <BetaFeedbackBannerV2 />
+        {features.betaFeedbackBanner !== "hidden" && <BetaFeedbackBannerV2 />}
 
         {/* Espaço inferior mobile para a bottom nav bar não tapar conteúdo */}
         <div className="h-20 lg:hidden" aria-hidden="true" />
       </div>
     </ReportDataProvider>
+    </ReportVariantProvider>
   );
 }
 

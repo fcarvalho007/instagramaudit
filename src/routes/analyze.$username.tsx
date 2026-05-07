@@ -268,6 +268,7 @@ function AnalyzeReady({
       snapshotId={snapshotId}
       payload={payload}
       analyzedAtIso={analyzedAtIso}
+      variant="public_mvp"
       actions={{
         onExportPdf: () => void shareActions.exportPdf(),
         onShare: () => void shareActions.share(),

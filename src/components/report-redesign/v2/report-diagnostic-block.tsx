@@ -42,6 +42,7 @@ import {
 import type { CommentIntelligence } from "@/lib/analysis/types";
 import { VisualCoverAnalysisCard } from "./visual-cover-analysis-card";
 import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
+import { useVariantFeatures } from "@/lib/report/report-variant";
 
 /** Parse persisted visual_cover_analysis from snapshot payload. */
 function parseVisualCoverAnalysis(
@@ -82,6 +83,7 @@ interface Props {
  */
 export function ReportDiagnosticBlock({ result, payload }: Props) {
   const posts = payload?.posts ?? [];
+  const features = useVariantFeatures();
   const km = result.data.keyMetrics;
   const topHashtags = result.data.topHashtags ?? [];
   const topKeywords = result.data.topKeywords ?? [];
@@ -154,8 +156,13 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const captionSemantic = parseCaptionSemanticAnalysis(payload);
   const captionEngagementStrategy = captionSemantic?.commentEngagement?.strategyLabel ?? null;
   const captionAsksForCommentsPct = captionSemantic?.commentEngagement?.asksForCommentsPct ?? null;
+  // In public_mvp, suppress detailed comment intelligence even if cached
+  const effectiveCommentIntel =
+    features.commentIntelligence === "full"
+      ? result.enriched.commentIntelligence
+      : null;
   const groupC = compact([
-    renderAudienceCard(audience, result.enriched.commentIntelligence, captionEngagementStrategy, captionAsksForCommentsPct),
+    renderAudienceCard(audience, effectiveCommentIntel, captionEngagementStrategy, captionAsksForCommentsPct),
   ]);
   // D · Contexto estratégico: Q06 + Q07
   const groupD = compact([
