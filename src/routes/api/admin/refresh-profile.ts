@@ -16,6 +16,7 @@ import {
   isTestingModeActive,
   isAllowed,
 } from "@/lib/security/apify-allowlist";
+import { refreshingHandles } from "@/lib/admin/refresh-lock.server";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -30,9 +31,6 @@ interface AnalyzeResult {
   message?: string;
   snapshot_id?: string;
 }
-
-/** In-memory lock to prevent concurrent refreshes for the same handle. */
-const refreshingHandles = new Set<string>();
 
 async function runAnalysis(
   request: Request,
