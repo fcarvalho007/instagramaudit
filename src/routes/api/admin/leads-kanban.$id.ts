@@ -6,6 +6,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 
+import type { Json } from "@/integrations/supabase/types";
+
 const VALID_STATUSES = [
   "novo_pedido",
   "em_analise",
@@ -115,8 +117,8 @@ export const Route = createFileRoute("/api/admin/leads-kanban/$id")({
             handle: null,
             metadata: {
               changes: Object.keys(updates).filter((k) => k !== "updated_at"),
-              new_status: (updates.commercial_status as string) ?? null,
-            } as Record<string, unknown>,
+              new_status: (updates.commercial_status as string | undefined) ?? null,
+            } as { [key: string]: Json | undefined },
           }]);
         } catch {
           // non-critical
