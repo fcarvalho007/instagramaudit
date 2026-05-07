@@ -77,15 +77,15 @@ const GLOBAL_LABEL: Record<ScoreFamily, string> = {
 };
 
 const FAMILY_CHIP: Record<ScoreFamily, string> = {
-  danger: "bg-rose-50 text-rose-700",
-  warning: "bg-amber-50 text-amber-700",
-  success: "bg-emerald-50 text-emerald-700",
+  danger: "bg-rose-50 text-rose-600",
+  warning: "bg-amber-50 text-amber-600",
+  success: "bg-emerald-50 text-emerald-600",
 };
 
 const FAMILY_DOT: Record<ScoreFamily, string> = {
-  danger: "bg-rose-500",
-  warning: "bg-amber-500",
-  success: "bg-emerald-500",
+  danger: "bg-rose-400",
+  warning: "bg-amber-400",
+  success: "bg-emerald-400",
 };
 
 /* ── Sentence splitter ─────────────────────────────────────────────── */
@@ -122,35 +122,35 @@ export function EditorialIdentityCard({
       className="rounded-xl border border-border-default bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden"
     >
       {/* ═══ BAND 1 — Editorial Portrait + Score ═══ */}
-      <div className="px-5 py-5 sm:px-6 sm:py-6">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-8">
+      <div className="px-5 py-5 sm:px-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-center gap-5 sm:gap-6">
           {/* Left — editorial text */}
-          <div className="flex-1 min-w-0 text-center sm:text-left space-y-2">
+          <div className="flex-1 min-w-0 text-center sm:text-left space-y-1.5">
             <p className="text-eyebrow-sm text-accent-primary">Resumo executivo</p>
 
-            <h2 className="font-display text-xl sm:text-2xl font-semibold leading-snug tracking-tight text-content-primary max-w-lg">
+            <h2 className="font-display text-lg sm:text-xl font-semibold leading-[1.35] tracking-[-0.01em] text-content-primary max-w-md">
               {headline}
             </h2>
 
             {supporting && (
-              <p className="text-sm leading-relaxed text-content-secondary max-w-lg">
+              <p className="text-[13px] leading-relaxed text-content-tertiary max-w-md">
                 {supporting}
               </p>
             )}
           </div>
 
           {/* Right — score ring module */}
-          <div className="flex flex-col items-center shrink-0 gap-1.5">
-            <ScoreRing score={globalScore} size={100} label="Pontuação global" />
+          <div className="flex flex-col items-center shrink-0 gap-1">
+            <ScoreRing score={globalScore} size={88} label="Pontuação global" />
 
-            <span className="text-xs font-medium text-content-tertiary tabular-nums">
+            <span className="text-xs font-medium text-content-tertiary tabular-nums leading-none">
               /100
             </span>
 
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5",
-                "text-xs font-semibold tracking-wide uppercase",
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 mt-0.5",
+                "text-xs font-semibold tracking-wide uppercase leading-none",
                 FAMILY_CHIP[globalFamily],
               )}
             >
@@ -161,7 +161,7 @@ export function EditorialIdentityCard({
               {GLOBAL_LABEL[globalFamily]}
             </span>
 
-            <span className="text-xs text-content-tertiary">
+            <span className="text-xs text-content-tertiary leading-none mt-1">
               Pontuação InstaBench
             </span>
           </div>
@@ -169,29 +169,29 @@ export function EditorialIdentityCard({
       </div>
 
       {/* ═══ BAND 2 — Insight Cards ═══ */}
-      <div className="border-t border-border-default px-5 py-4 sm:px-6 sm:py-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="border-t border-border-default px-5 py-3.5 sm:px-6 sm:py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {/* Strength mini-card */}
-          <div className="flex items-start gap-3 rounded-lg bg-emerald-50/60 border border-emerald-100/80 px-4 py-3.5">
-            <span className="flex items-center justify-center size-8 rounded-full bg-emerald-100 shrink-0 mt-0.5">
-              <CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />
+          <div className="flex items-start gap-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100/60 px-3.5 py-3">
+            <span className="flex items-center justify-center size-7 rounded-full bg-emerald-100/70 shrink-0 mt-px">
+              <CheckCircle2 className="size-3.5 text-emerald-500" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <span className="text-eyebrow-sm text-emerald-600 block mb-0.5">Ponto forte</span>
-              <span className="text-sm font-semibold text-content-primary block leading-snug">{SCORE_LABELS[strengthKey]}</span>
-              <span className="text-xs text-content-secondary mt-0.5 block leading-relaxed">{scores[strengthKey].subtitle}</span>
+              <span className="text-eyebrow-sm text-emerald-600 block">Ponto forte</span>
+              <span className="text-sm font-semibold text-content-primary block leading-snug mt-px">{SCORE_LABELS[strengthKey]}</span>
+              <span className="text-xs text-content-secondary block leading-relaxed mt-0.5">{scores[strengthKey].subtitle}</span>
             </div>
           </div>
 
           {/* Weakness mini-card */}
-          <div className="flex items-start gap-3 rounded-lg bg-rose-50/60 border border-rose-100/80 px-4 py-3.5">
-            <span className="flex items-center justify-center size-8 rounded-full bg-rose-100 shrink-0 mt-0.5">
-              <AlertCircle className="size-4 text-rose-600" aria-hidden="true" />
+          <div className="flex items-start gap-2.5 rounded-lg bg-rose-50/50 border border-rose-100/60 px-3.5 py-3">
+            <span className="flex items-center justify-center size-7 rounded-full bg-rose-100/70 shrink-0 mt-px">
+              <AlertCircle className="size-3.5 text-rose-400" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <span className="text-eyebrow-sm text-rose-600 block mb-0.5">A melhorar</span>
-              <span className="text-sm font-semibold text-content-primary block leading-snug">{SCORE_LABELS[weaknessKey]}</span>
-              <span className="text-xs text-content-secondary mt-0.5 block leading-relaxed">{scores[weaknessKey].subtitle}</span>
+              <span className="text-eyebrow-sm text-rose-500 block">A melhorar</span>
+              <span className="text-sm font-semibold text-content-primary block leading-snug mt-px">{SCORE_LABELS[weaknessKey]}</span>
+              <span className="text-xs text-content-secondary block leading-relaxed mt-0.5">{scores[weaknessKey].subtitle}</span>
             </div>
           </div>
         </div>
