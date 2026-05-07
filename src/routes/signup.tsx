@@ -86,8 +86,8 @@ function SignupPage() {
 
   if (checkingSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F0F4FA]">
-        <Loader2 className="size-5 animate-spin text-slate-400" />
+      <div className="flex min-h-screen items-center justify-center bg-surface-muted">
+        <Loader2 className="size-5 animate-spin text-content-tertiary" />
       </div>
     );
   }
@@ -100,7 +100,7 @@ function SignupPage() {
       >
         <div className="flex flex-col items-center gap-4 py-4">
           <CheckCircle2 className="size-12 text-emerald-600" />
-          <p className="text-sm text-slate-500 text-center">
+          <p className="text-sm text-content-secondary text-center">
             O email pode demorar alguns minutos. Verifica também a pasta de spam.
           </p>
           <Link
@@ -160,10 +160,10 @@ function SignupPage() {
 
       <div className="relative my-5">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200" />
+           <div className="w-full border-t border-border-default/20" />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="bg-white px-3 text-slate-400">
+           <span className="bg-white px-3 text-content-tertiary">
             ou
           </span>
         </div>
@@ -184,7 +184,7 @@ function SignupPage() {
         Continuar com Google
       </Button>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <p className="mt-6 text-center text-sm text-content-secondary">
         Já tens conta?{" "}
         <Link to="/login" className="font-medium text-blue-600 hover:underline">
           Entrar
