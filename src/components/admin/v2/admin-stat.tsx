@@ -86,14 +86,14 @@ export function AdminStat({
       </div>
       {highlightSub ? (
         <p
-          className={`text-xs ${highlightMt}`.trim()}
+          className={`text-[12px] ${highlightMt}`.trim()}
           style={{ color: ACCENT_TEXT[highlightSub.accent] }}
         >
           {highlightSub.text}
         </p>
       ) : null}
       {sub ? (
-        <p className={`text-[11px] ${subClassName} ${subMt}`.trim()}>
+        <p className={`text-[12px] ${subClassName} ${subMt}`.trim()}>
           {sub}
         </p>
       ) : null}
