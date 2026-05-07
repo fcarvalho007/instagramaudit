@@ -293,7 +293,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -635,7 +634,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         }
       }}
     />
-  );
     </>
   );
 }
