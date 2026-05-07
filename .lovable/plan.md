@@ -1,21 +1,43 @@
 
-# Audit: "Atualizar agora" Refresh Flow
+# Harden `generate-beta-report`: Remove Global Fresh Mode Dependency
 
-## Results
+## Problem
 
-| # | Check | Result | Evidence |
-|---|-------|--------|----------|
-| 1 | `refresh-profile` does not change global execution mode | **PASS** | No `setMode`, `setExecutionMode`, or `execution_mode` references in file. Zero imports from execution-mode modules. |
-| 2 | Public `/analyze/:username` remains cache-only | **PASS** | `analyze-public-v1` L437-482: when `forceRefresh` is false, the execution mode guard applies. `cache_only` blocks all provider paths. |
-| 3 | `refresh=1` bypasses cache-only only with valid internal token | **PASS** | L387-398: `forceRefresh` is set to true only when `Authorization: Bearer $INTERNAL_API_TOKEN` matches. Otherwise the param is silently ignored. |
-| 4 | Missing/expired cache shows pt-PT empty state | **PASS** | `CACHE_ONLY_NO_DATA` error code returned at L480. `analysis-error-state.tsx` renders pt-PT copy ("Este relatorio ainda nao tem dados...") with "Voltar ao inicio" CTA. |
-| 5 | Provider calls impossible from public unauthenticated requests | **PASS** | Three independent gates: (a) `forceRefresh` token check, (b) execution mode guard, (c) allowlist gate. All must be passed to reach providers. |
-| 6 | Concurrent admin refreshes for same handle blocked | **PASS** | `refreshingHandles` Set at L35. Checked at L144, returns 409 with `preflight_blocked: "concurrent_refresh"`. Released in `finally` at L72. |
-| 7 | `INTERNAL_API_TOKEN` required | **PASS** | Pre-flight check at L116-123 returns 409 with `preflight_blocked: "internal_token_missing"` if absent. |
-| 8 | APIFY/provider kill switches respected | **PASS** | `isApifyEnabled()` checked at L126. `isTestingModeActive()` + `isAllowed()` checked at L135. All return 409 before any analysis runs. |
-| 9 | `COMMENT_SCRAPER_ENABLED=false` | **PASS** | L828 of `analyze-public-v1.ts`: defaults to `"false"`, requires explicit `"true"` to activate. |
-| 10 | No PDF pipeline involved | **PASS** | Zero references to PDF, pdfshift, or generate-report-pdf in either file. |
+`generate-beta-report` (L79-87) blocks unless `executionMode === "fresh"`, forcing the admin to manually toggle the global mode. But the endpoint already calls `analyze-public-v1?refresh=1` with `Authorization: Bearer ${INTERNAL_API_TOKEN}` (L146-151), which bypasses `cache_only` server-side. The execution mode check is redundant and forces the risky global toggle.
 
-## Summary
+## Old Behavior
 
-The refresh flow is correctly hardened. No code changes required.
+1. Admin must go to `/admin/sistema` and switch global mode to "fresh"
+2. Call `generate-beta-report`
+3. Go back and switch to "cache_only"
+4. Risk: forgetting step 3 exposes public users to provider calls
+
+## New Behavior
+
+1. Admin calls `generate-beta-report` directly
+2. Internal token auth bypasses `cache_only` inside `analyze-public-v1`
+3. Global mode stays `cache_only` throughout
+4. Zero risk window
+
+## Changes
+
+### `src/routes/api/admin/generate-beta-report.ts`
+
+1. **Remove** the `getAnalysisExecutionMode` import (L14)
+2. **Remove** the execution mode pre-flight block (L79-87)
+3. **Move** the `INTERNAL_API_TOKEN` check (currently L125-139) up to the pre-flight section (before setting status to "processing"), so it fails fast before any DB mutation
+4. Keep everything else unchanged: admin auth, status validation, APIFY kill-switch, allowlist check, status transitions, failure handling, product event logging
+
+One file changed. No schema changes. No public route changes. No PDF changes. No provider calls triggered.
+
+## Validation
+
+- `tsc --noEmit`
+- `vitest run`
+- Confirm no `getAnalysisExecutionMode` import remains
+- Confirm `INTERNAL_API_TOKEN` is still required (409 if missing)
+- Confirm public users cannot reach this endpoint
+
+## Remaining Risks
+
+- **Low**: The execution mode toggle UI in `/admin/sistema` is now only useful for the manual `analyze-public-v1` flow (direct browser testing). Consider removing it entirely in a future pass, since both admin refresh endpoints now use internal token auth.
