@@ -204,6 +204,8 @@ function AdminReportPreviewPage() {
         variant={variant}
         load={load}
         onLogout={handleLogout}
+        featuresOverride={featuresOverride}
+        isDraft={draft}
       />
     </ReportThemeWrapper>
   );
