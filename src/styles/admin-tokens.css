@@ -63,17 +63,17 @@
   --admin-revenue-alt-700: 59 109 17;
   --admin-revenue-alt-900: 23 52 4;
 
-  /* === Neutros (cinza-pedra editorial) === */
-  --admin-neutral-50: 241 239 232;
-  --admin-neutral-100: 211 209 199;
-  --admin-neutral-200: 180 178 169;
-  --admin-neutral-400: 136 135 128;
-  --admin-neutral-600: 95 94 90;
-  --admin-neutral-800: 68 68 65;
-  --admin-neutral-900: 44 44 42;
+  /* === Neutros (cinza-azulado, alinhado com Iconosquare) === */
+  --admin-neutral-50: 246 248 251;   /* #F6F8FB cool off-white */
+  --admin-neutral-100: 228 232 240;  /* #E4E8F0 */
+  --admin-neutral-200: 199 207 220;  /* #C7CFDC */
+  --admin-neutral-400: 138 152 178;  /* #8A98B2 */
+  --admin-neutral-600: 90 107 140;   /* #5A6B8C */
+  --admin-neutral-800: 42 56 80;     /* #2A3850 */
+  --admin-neutral-900: 15 27 61;     /* #0F1B3D */
 
-  /* === Bordas (1px com baixa opacidade — sempre visíveis em 1x DPR) === */
-  --admin-border-rgb: 44 44 42;
+  /* === Bordas (alinhado com tokens globais) === */
+  --admin-border-rgb: 15 27 61;
 }
 
 /**
