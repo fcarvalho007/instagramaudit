@@ -21,6 +21,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ReportExampleRouteImport } from './routes/report.example'
+import { Route as BetaRequestRouteImport } from './routes/beta.request'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as AppPlanRouteImport } from './routes/app.plan'
 import { Route as AppAccountRouteImport } from './routes/app.account'
@@ -39,6 +40,7 @@ import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
 import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
+import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
 import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
@@ -151,6 +153,11 @@ const ReportExampleRoute = ReportExampleRouteImport.update({
   path: '/report/example',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BetaRequestRoute = BetaRequestRouteImport.update({
+  id: '/beta/request',
+  path: '/beta/request',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppReportsRoute = AppReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -239,6 +246,11 @@ const AdminClientesRoute = AdminClientesRouteImport.update({
 const ReportPrintSnapshotIdRoute = ReportPrintSnapshotIdRouteImport.update({
   id: '/report/print/$snapshotId',
   path: '/report/print/$snapshotId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BetaSubmittedRequestIdRoute = BetaSubmittedRequestIdRouteImport.update({
+  id: '/beta/submitted/$requestId',
+  path: '/beta/submitted/$requestId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppReportsIdRoute = AppReportsIdRouteImport.update({
@@ -557,6 +569,7 @@ export interface FileRoutesByFullPath {
   '/app/account': typeof AppAccountRoute
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
+  '/beta/request': typeof BetaRequestRoute
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -577,6 +590,7 @@ export interface FileRoutesByFullPath {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
+  '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -639,6 +653,7 @@ export interface FileRoutesByTo {
   '/app/account': typeof AppAccountRoute
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
+  '/beta/request': typeof BetaRequestRoute
   '/report/example': typeof ReportExampleRoute
   '/admin': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -659,6 +674,7 @@ export interface FileRoutesByTo {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
+  '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -723,6 +739,7 @@ export interface FileRoutesById {
   '/app/account': typeof AppAccountRoute
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
+  '/beta/request': typeof BetaRequestRoute
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -743,6 +760,7 @@ export interface FileRoutesById {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
+  '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -808,6 +826,7 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/plan'
     | '/app/reports'
+    | '/beta/request'
     | '/report/example'
     | '/admin/'
     | '/admin/report-preview/$username'
@@ -828,6 +847,7 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
+    | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -890,6 +910,7 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/plan'
     | '/app/reports'
+    | '/beta/request'
     | '/report/example'
     | '/admin'
     | '/admin/report-preview/$username'
@@ -910,6 +931,7 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
+    | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -973,6 +995,7 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/plan'
     | '/app/reports'
+    | '/beta/request'
     | '/report/example'
     | '/admin/'
     | '/admin/report-preview/$username'
@@ -993,6 +1016,7 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
+    | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -1046,6 +1070,7 @@ export interface RootRouteChildren {
   ApiMarketSignalsRoute: typeof ApiMarketSignalsRoute
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
   ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
+  BetaRequestRoute: typeof BetaRequestRoute
   ReportExampleRoute: typeof ReportExampleRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
@@ -1062,6 +1087,7 @@ export interface RootRouteChildren {
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
   ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
+  BetaSubmittedRequestIdRoute: typeof BetaSubmittedRequestIdRoute
   ReportPrintSnapshotIdRoute: typeof ReportPrintSnapshotIdRoute
   ApiAdminKnowledgeBenchmarksRoute: typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   ApiAdminKnowledgeExportRoute: typeof ApiAdminKnowledgeExportRoute
@@ -1175,6 +1201,13 @@ declare module '@tanstack/react-router' {
       path: '/report/example'
       fullPath: '/report/example'
       preLoaderRoute: typeof ReportExampleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/beta/request': {
+      id: '/beta/request'
+      path: '/beta/request'
+      fullPath: '/beta/request'
+      preLoaderRoute: typeof BetaRequestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/reports': {
@@ -1301,6 +1334,13 @@ declare module '@tanstack/react-router' {
       path: '/report/print/$snapshotId'
       fullPath: '/report/print/$snapshotId'
       preLoaderRoute: typeof ReportPrintSnapshotIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/beta/submitted/$requestId': {
+      id: '/beta/submitted/$requestId'
+      path: '/beta/submitted/$requestId'
+      fullPath: '/beta/submitted/$requestId'
+      preLoaderRoute: typeof BetaSubmittedRequestIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/reports/$id': {
@@ -1830,6 +1870,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMarketSignalsRoute: ApiMarketSignalsRoute,
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
   ApiSendReportEmailRoute: ApiSendReportEmailRoute,
+  BetaRequestRoute: BetaRequestRoute,
   ReportExampleRoute: ReportExampleRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
@@ -1846,6 +1887,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
   ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
+  BetaSubmittedRequestIdRoute: BetaSubmittedRequestIdRoute,
   ReportPrintSnapshotIdRoute: ReportPrintSnapshotIdRoute,
   ApiAdminKnowledgeBenchmarksRoute:
     ApiAdminKnowledgeBenchmarksRouteWithChildren,

@@ -518,34 +518,49 @@ export type Database = {
       }
       leads: {
         Row: {
+          beta_consent: boolean
+          beta_consent_at: string | null
           company: string | null
           created_at: string
           email: string
           email_normalized: string
           id: string
           name: string
+          profile_ownership: string | null
+          purpose: string | null
           source: string
           updated_at: string
+          user_type: string | null
         }
         Insert: {
+          beta_consent?: boolean
+          beta_consent_at?: string | null
           company?: string | null
           created_at?: string
           email: string
           email_normalized: string
           id?: string
           name: string
+          profile_ownership?: string | null
+          purpose?: string | null
           source?: string
           updated_at?: string
+          user_type?: string | null
         }
         Update: {
+          beta_consent?: boolean
+          beta_consent_at?: string | null
           company?: string | null
           created_at?: string
           email?: string
           email_normalized?: string
           id?: string
           name?: string
+          profile_ownership?: string | null
+          purpose?: string | null
           source?: string
           updated_at?: string
+          user_type?: string | null
         }
         Relationships: []
       }
