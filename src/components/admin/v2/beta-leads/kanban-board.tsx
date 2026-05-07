@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { LeadCard } from "./lead-card";
+import { LeadDetailSheet } from "./lead-detail-sheet";
 
 interface KanbanBoardProps {
   leads: EnrichedLead[];
@@ -23,6 +24,7 @@ interface KanbanBoardProps {
 export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
   const [editingLead, setEditingLead] = useState<EnrichedLead | null>(null);
   const [notesText, setNotesText] = useState("");
+  const [detailLead, setDetailLead] = useState<EnrichedLead | null>(null);
 
   const openNotes = (lead: EnrichedLead) => {
     setEditingLead(lead);
@@ -94,6 +96,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
                       lead={lead}
                       onUpdate={onUpdate}
                       onEditNotes={openNotes}
+                      onOpenDetail={setDetailLead}
                     />
                   ))}
                 </div>
@@ -131,6 +134,16 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Lead detail sheet */}
+      <LeadDetailSheet
+        open={!!detailLead}
+        onOpenChange={(open) => {
+          if (!open) setDetailLead(null);
+        }}
+        lead={detailLead}
+        onUpdate={onUpdate}
+      />
     </>
   );
 }

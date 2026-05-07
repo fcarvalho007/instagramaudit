@@ -84,6 +84,7 @@ import { Route as ApiAdminSistemaAlertsRouteImport } from './routes/api/admin/si
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 import { Route as ApiAdminLeadsKanbanIdRouteImport } from './routes/api/admin/leads-kanban.$id'
+import { Route as ApiAdminLeadTimelineIdRouteImport } from './routes/api/admin/lead-timeline.$id'
 import { Route as ApiAdminKnowledgeSuggestionsRouteImport } from './routes/api/admin/knowledge.suggestions'
 import { Route as ApiAdminKnowledgeSourcesRouteImport } from './routes/api/admin/knowledge.sources'
 import { Route as ApiAdminKnowledgeOverviewRouteImport } from './routes/api/admin/knowledge.overview'
@@ -495,6 +496,11 @@ const ApiAdminLeadsKanbanIdRoute = ApiAdminLeadsKanbanIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiAdminLeadsKanbanRoute,
 } as any)
+const ApiAdminLeadTimelineIdRoute = ApiAdminLeadTimelineIdRouteImport.update({
+  id: '/api/admin/lead-timeline/$id',
+  path: '/api/admin/lead-timeline/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminKnowledgeSuggestionsRoute =
   ApiAdminKnowledgeSuggestionsRouteImport.update({
     id: '/api/admin/knowledge/suggestions',
@@ -634,6 +640,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
@@ -723,6 +730,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
@@ -814,6 +822,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
@@ -906,6 +915,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
@@ -995,6 +1005,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
@@ -1085,6 +1096,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
@@ -1158,6 +1170,7 @@ export interface RootRouteChildren {
   ApiAdminKnowledgeOverviewRoute: typeof ApiAdminKnowledgeOverviewRoute
   ApiAdminKnowledgeSourcesRoute: typeof ApiAdminKnowledgeSourcesRoute
   ApiAdminKnowledgeSuggestionsRoute: typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  ApiAdminLeadTimelineIdRoute: typeof ApiAdminLeadTimelineIdRoute
   ApiAdminSistemaAlertsRoute: typeof ApiAdminSistemaAlertsRouteWithChildren
   ApiAdminSistemaCapsRoute: typeof ApiAdminSistemaCapsRoute
   ApiAdminSistemaCommentScraperRoute: typeof ApiAdminSistemaCommentScraperRoute
@@ -1707,6 +1720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminLeadsKanbanIdRouteImport
       parentRoute: typeof ApiAdminLeadsKanbanRoute
     }
+    '/api/admin/lead-timeline/$id': {
+      id: '/api/admin/lead-timeline/$id'
+      path: '/api/admin/lead-timeline/$id'
+      fullPath: '/api/admin/lead-timeline/$id'
+      preLoaderRoute: typeof ApiAdminLeadTimelineIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/knowledge/suggestions': {
       id: '/api/admin/knowledge/suggestions'
       path: '/api/admin/knowledge/suggestions'
@@ -2012,6 +2032,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminKnowledgeSourcesRoute: ApiAdminKnowledgeSourcesRoute,
   ApiAdminKnowledgeSuggestionsRoute:
     ApiAdminKnowledgeSuggestionsRouteWithChildren,
+  ApiAdminLeadTimelineIdRoute: ApiAdminLeadTimelineIdRoute,
   ApiAdminSistemaAlertsRoute: ApiAdminSistemaAlertsRouteWithChildren,
   ApiAdminSistemaCapsRoute: ApiAdminSistemaCapsRoute,
   ApiAdminSistemaCommentScraperRoute: ApiAdminSistemaCommentScraperRoute,

@@ -29,6 +29,7 @@ interface LeadCardProps {
   lead: EnrichedLead;
   onUpdate: (id: string, updates: Record<string, unknown>) => void;
   onEditNotes: (lead: EnrichedLead) => void;
+  onOpenDetail: (lead: EnrichedLead) => void;
 }
 
 const USER_TYPE_ACCENT: Record<string, "leads" | "revenue" | "expense" | "info" | "signal" | "neutral"> = {
@@ -56,7 +57,7 @@ function reportStatusAccent(status: string | null): "info" | "revenue" | "signal
   return "signal";
 }
 
-export function LeadCard({ lead, onUpdate, onEditNotes }: LeadCardProps) {
+export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCardProps) {
   const [statusChanging, setStatusChanging] = useState(false);
 
   const handleStatusChange = (newStatus: string) => {
@@ -82,12 +83,15 @@ export function LeadCard({ lead, onUpdate, onEditNotes }: LeadCardProps) {
 
   return (
     <AdminCard
-      className="!p-3 !rounded-xl"
+      className="!p-3 !rounded-xl cursor-pointer hover:shadow-[var(--shadow-admin-glass-active)] transition-shadow"
       style={{ fontSize: 13 }}
     >
-      {/* Header: email + actions */}
-      <div className="flex items-start justify-between gap-1 mb-2">
-        <div className="min-w-0">
+      {/* Header: email + actions — clicking the card body opens detail */}
+      <div
+        className="flex items-start justify-between gap-1 mb-2"
+        onClick={() => onOpenDetail(lead)}
+      >
+        <div className="min-w-0 cursor-pointer">
           <p
             className="m-0 text-[13px] font-medium truncate"
             style={{ color: "#2C2C2A" }}
