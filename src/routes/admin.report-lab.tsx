@@ -359,22 +359,22 @@ function ReportLabPage() {
                   <AdminActionButton
                     label="Público"
                     icon={<ExternalLink className="h-3.5 w-3.5" />}
-                    onClick={() => window.open(\`/analyze/\${activeProfile}\`, "_blank")}
+                    onClick={() => window.open(`/analyze/${activeProfile}`, "_blank")}
                   />
                   <AdminActionButton
                     label="Public MVP"
                     icon={<FlaskConical className="h-3.5 w-3.5" />}
-                    onClick={() => window.open(\`/admin/report-preview/\${activeProfile}?variant=public_mvp\`, "_blank")}
+                    onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=public_mvp`, "_blank")}
                   />
                   <AdminActionButton
                     label="Internal Lab"
                     icon={<FlaskConical className="h-3.5 w-3.5" />}
-                    onClick={() => window.open(\`/admin/report-preview/\${activeProfile}?variant=internal_lab\`, "_blank")}
+                    onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=internal_lab`, "_blank")}
                   />
                   <AdminActionButton
                     label="Pro Preview"
                     icon={<FlaskConical className="h-3.5 w-3.5" />}
-                    onClick={() => window.open(\`/admin/report-preview/\${activeProfile}?variant=pro_preview\`, "_blank")}
+                    onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=pro_preview`, "_blank")}
                   />
                 </div>
               </div>
@@ -389,7 +389,7 @@ function ReportLabPage() {
                     label="Público"
                     icon={<Copy className="h-3.5 w-3.5" />}
                     onClick={() => {
-                      navigator.clipboard.writeText(\`\${window.location.origin}/analyze/\${activeProfile}\`);
+                      navigator.clipboard.writeText(`${window.location.origin}/analyze/${activeProfile}`);
                       toast.success("Link público copiado.");
                     }}
                     copyMode
@@ -398,7 +398,7 @@ function ReportLabPage() {
                     label="Fullscreen"
                     icon={<Copy className="h-3.5 w-3.5" />}
                     onClick={() => {
-                      navigator.clipboard.writeText(\`\${window.location.origin}/admin/report-preview/\${activeProfile}?variant=\${variant}\`);
+                      navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}?variant=${variant}`);
                       toast.success("Link fullscreen copiado.");
                     }}
                     copyMode
@@ -441,12 +441,12 @@ function ReportLabPage() {
               adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
               onPreviewDraft={(v) =>
                 window.open(
-                  \`/admin/report-preview/\${activeProfile}?variant=\${v}&draft=true\`,
+                  `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
                   "_blank",
                 )
               }
               onOpenPublic={() =>
-                window.open(\`/analyze/\${activeProfile}\`, "_blank")
+                window.open(`/analyze/${activeProfile}`, "_blank")
               }
             />
           </CollapsibleCard>
