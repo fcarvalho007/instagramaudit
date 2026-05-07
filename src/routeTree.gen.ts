@@ -32,6 +32,7 @@ import { Route as ApiAnalyzePublicV1RouteImport } from './routes/api/analyze-pub
 import { Route as AnalyzeUsernameRouteImport } from './routes/analyze.$username'
 import { Route as AdminVisaoGeralRouteImport } from './routes/admin.visao-geral'
 import { Route as AdminSistemaRouteImport } from './routes/admin.sistema'
+import { Route as AdminReportLabRouteImport } from './routes/admin.report-lab'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
@@ -203,6 +204,11 @@ const AdminVisaoGeralRoute = AdminVisaoGeralRouteImport.update({
 const AdminSistemaRoute = AdminSistemaRouteImport.update({
   id: '/sistema',
   path: '/sistema',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportLabRoute = AdminReportLabRouteImport.update({
+  id: '/report-lab',
+  path: '/report-lab',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminRelatoriosRoute = AdminRelatoriosRouteImport.update({
@@ -539,6 +545,7 @@ export interface FileRoutesByFullPath {
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
+  '/admin/report-lab': typeof AdminReportLabRoute
   '/admin/sistema': typeof AdminSistemaRouteWithChildren
   '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
@@ -620,6 +627,7 @@ export interface FileRoutesByTo {
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
+  '/admin/report-lab': typeof AdminReportLabRoute
   '/admin/sistema': typeof AdminSistemaRouteWithChildren
   '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
@@ -703,6 +711,7 @@ export interface FileRoutesById {
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
+  '/admin/report-lab': typeof AdminReportLabRoute
   '/admin/sistema': typeof AdminSistemaRouteWithChildren
   '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/analyze/$username': typeof AnalyzeUsernameRoute
@@ -787,6 +796,7 @@ export interface FileRouteTypes {
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
+    | '/admin/report-lab'
     | '/admin/sistema'
     | '/admin/visao-geral'
     | '/analyze/$username'
@@ -868,6 +878,7 @@ export interface FileRouteTypes {
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
+    | '/admin/report-lab'
     | '/admin/sistema'
     | '/admin/visao-geral'
     | '/analyze/$username'
@@ -950,6 +961,7 @@ export interface FileRouteTypes {
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
+    | '/admin/report-lab'
     | '/admin/sistema'
     | '/admin/visao-geral'
     | '/analyze/$username'
@@ -1240,6 +1252,13 @@ declare module '@tanstack/react-router' {
       path: '/sistema'
       fullPath: '/admin/sistema'
       preLoaderRoute: typeof AdminSistemaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/report-lab': {
+      id: '/admin/report-lab'
+      path: '/report-lab'
+      fullPath: '/admin/report-lab'
+      preLoaderRoute: typeof AdminReportLabRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/relatorios': {
@@ -1662,6 +1681,7 @@ interface AdminRouteChildren {
   AdminPerfisRoute: typeof AdminPerfisRoute
   AdminReceitaRoute: typeof AdminReceitaRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
+  AdminReportLabRoute: typeof AdminReportLabRoute
   AdminSistemaRoute: typeof AdminSistemaRouteWithChildren
   AdminVisaoGeralRoute: typeof AdminVisaoGeralRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1675,6 +1695,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminPerfisRoute: AdminPerfisRoute,
   AdminReceitaRoute: AdminReceitaRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
+  AdminReportLabRoute: AdminReportLabRoute,
   AdminSistemaRoute: AdminSistemaRouteWithChildren,
   AdminVisaoGeralRoute: AdminVisaoGeralRoute,
   AdminIndexRoute: AdminIndexRoute,

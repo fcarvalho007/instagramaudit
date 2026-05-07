@@ -15,7 +15,8 @@ interface TabDef {
     | "/admin/relatorios"
     | "/admin/perfis"
     | "/admin/conhecimento"
-    | "/admin/sistema";
+    | "/admin/sistema"
+    | "/admin/report-lab";
   label: string;
 }
 
@@ -27,6 +28,7 @@ const TABS: TabDef[] = [
   { to: "/admin/perfis", label: "Perfis" },
   { to: "/admin/conhecimento", label: "Conhecimento" },
   { to: "/admin/sistema", label: "Sistema" },
+  { to: "/admin/report-lab", label: "Report Lab" },
 ];
 
 const TAB_INACTIVE =
