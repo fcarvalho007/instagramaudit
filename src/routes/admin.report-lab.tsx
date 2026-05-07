@@ -139,6 +139,7 @@ type LoadState =
       snapshotId: string;
       payload: SnapshotPayload;
       createdAt: string;
+      expiresAt: string | null;
     };
 
 // ── Main page ──────────────────────────────────────────────────────
@@ -215,6 +216,7 @@ function ReportLabPage() {
         snapshotId: body.snapshot.id,
         payload: body.snapshot.payload ?? {},
         createdAt: body.snapshot.created_at,
+        expiresAt: body.snapshot.expires_at ?? null,
       });
     } catch (e) {
       setLoad({
@@ -348,63 +350,66 @@ function ReportLabPage() {
             <span className="text-admin-text-tertiary">✦</span> Ações de partilha
           </h2>
           <div className="rounded-xl border border-admin-border bg-white p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Open report */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-admin-text-primary">Abrir relatório</span>
-                  <span className="text-[11px] text-admin-text-tertiary">3 variantes disponíveis</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
+            {/* Snapshot status banner */}
+            <SnapshotStatusBanner expiresAt={load.expiresAt} />
+
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* 1 — Relatório público */}
+              <LinkBlock
+                title="Relatório público"
+                subtitle="Visível para qualquer pessoa"
+                url={`/analyze/${activeProfile}`}
+                actions={
+                  <>
+                    <AdminActionButton
+                      label="Abrir público"
+                      icon={<ExternalLink className="h-3.5 w-3.5" />}
+                      onClick={() => window.open(`/analyze/${activeProfile}`, "_blank")}
+                    />
+                    <AdminActionButton
+                      label="Copiar URL"
+                      icon={<Copy className="h-3.5 w-3.5" />}
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/analyze/${activeProfile}`);
+                        toast.success("Link público copiado.");
+                      }}
+                      copyMode
+                    />
+                  </>
+                }
+              />
+              {/* 2 — Preview fullscreen admin */}
+              <LinkBlock
+                title="Preview fullscreen (admin)"
+                subtitle={`Variante: ${variant}`}
+                url={`/admin/report-preview/${activeProfile}?variant=${variant}`}
+                actions={
+                  <>
+                    <AdminActionButton
+                      label="Abrir preview"
+                      icon={<FlaskConical className="h-3.5 w-3.5" />}
+                      onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}`, "_blank")}
+                    />
+                    <AdminActionButton
+                      label="Copiar URL"
+                      icon={<Copy className="h-3.5 w-3.5" />}
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}?variant=${variant}`);
+                        toast.success("Link de preview copiado.");
+                      }}
+                      copyMode
+                    />
+                  </>
+                }
+              />
+              {/* 3 — URL deste Lab */}
+              <LinkBlock
+                title="URL deste Lab"
+                subtitle="Estado de configuração"
+                url={`/admin/report-lab?profile=${activeProfile}&variant=${variant}`}
+                actions={
                   <AdminActionButton
-                    label="Público"
-                    icon={<ExternalLink className="h-3.5 w-3.5" />}
-                    onClick={() => window.open(`/analyze/${activeProfile}`, "_blank")}
-                  />
-                  <AdminActionButton
-                    label="Public MVP"
-                    icon={<FlaskConical className="h-3.5 w-3.5" />}
-                    onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=public_mvp`, "_blank")}
-                  />
-                  <AdminActionButton
-                    label="Internal Lab"
-                    icon={<FlaskConical className="h-3.5 w-3.5" />}
-                    onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=internal_lab`, "_blank")}
-                  />
-                  <AdminActionButton
-                    label="Pro Preview"
-                    icon={<FlaskConical className="h-3.5 w-3.5" />}
-                    onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=pro_preview`, "_blank")}
-                  />
-                </div>
-              </div>
-              {/* Copy links */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-admin-text-primary">Copiar links</span>
-                  <span className="text-[11px] text-admin-text-tertiary">3 formatos</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <AdminActionButton
-                    label="Público"
-                    icon={<Copy className="h-3.5 w-3.5" />}
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/analyze/${activeProfile}`);
-                      toast.success("Link público copiado.");
-                    }}
-                    copyMode
-                  />
-                  <AdminActionButton
-                    label="Fullscreen"
-                    icon={<Copy className="h-3.5 w-3.5" />}
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}?variant=${variant}`);
-                      toast.success("Link fullscreen copiado.");
-                    }}
-                    copyMode
-                  />
-                  <AdminActionButton
-                    label="URL Lab"
+                    label="Copiar URL"
                     icon={<Link2 className="h-3.5 w-3.5" />}
                     onClick={() => {
                       const url = new URL(window.location.href);
@@ -415,8 +420,8 @@ function ReportLabPage() {
                     }}
                     copyMode
                   />
-                </div>
-              </div>
+                }
+              />
             </div>
           </div>
         </section>
@@ -510,6 +515,62 @@ function ReportLabPage() {
 }
 
 // ── Subcomponents ──────────────────────────────────────────────────
+
+function SnapshotStatusBanner({ expiresAt }: { expiresAt: string | null }) {
+  if (!expiresAt) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+        Sem data de expiração definida — o relatório público pode não estar disponível.
+      </div>
+    );
+  }
+  const exp = new Date(expiresAt);
+  const now = new Date();
+  const isValid = exp.getTime() > now.getTime();
+  const staleLimit = new Date(exp.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const isStale = !isValid && now.getTime() < staleLimit.getTime();
+  const expStr = exp.toLocaleString("pt-PT", { dateStyle: "medium", timeStyle: "short" });
+
+  if (isValid) {
+    return (
+      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-xs text-green-700">
+        ✓ Relatório público disponível — snapshot válido até {expStr}.
+      </div>
+    );
+  }
+  if (isStale) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+        Snapshot expirado a {expStr} — dados stale podem ser servidos, mas não haverá dados novos sem modo Fresh.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
+      Snapshot demasiado antigo (expirou a {expStr}) — o relatório público mostrará erro. Ative o modo Fresh.
+    </div>
+  );
+}
+
+function LinkBlock({ title, subtitle, url, actions }: {
+  title: string;
+  subtitle: string;
+  url: string;
+  actions: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <span className="text-sm font-medium text-admin-text-primary">{title}</span>
+        <span className="ml-2 text-[11px] text-admin-text-tertiary">{subtitle}</span>
+      </div>
+      <div className="rounded-lg border border-admin-border/50 bg-admin-bg/30 px-3 py-1.5">
+        <code className="admin-code text-[11px] break-all select-all">{url}</code>
+      </div>
+      <div className="flex flex-wrap gap-1.5">{actions}</div>
+    </div>
+  );
+}
 
 function AdminActionButton({
   label,
