@@ -18,7 +18,7 @@ function PipelineConnector({ qty }: { qty: number }) {
       className="flex flex-col items-center justify-center gap-[2px]"
     >
       <span
-        className="text-[10px] font-medium leading-none"
+        className="text-[12px] font-medium leading-none"
         style={{ color: "#3B6D11" }}
       >
         {qty}
@@ -80,7 +80,7 @@ export function PipelineSection() {
                   {s.value}
                 </p>
                 <p
-                  className="mt-1 mb-0 text-[11px]"
+                  className="mt-1 mb-0 text-[12px]"
                   style={{ color: s.subColor }}
                 >
                   {s.sub}
@@ -94,7 +94,7 @@ export function PipelineSection() {
         </div>
 
         <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-admin-border-strong pt-3.5">
-          <p className="m-0 text-[11px] text-admin-text-tertiary">
+          <p className="m-0 text-[12px] text-admin-text-tertiary">
             Conversão {" "}
             {MOCK_PIPELINE_FOOTER.conversions.map((c, i) => (
               <span key={c.label}>
@@ -107,7 +107,7 @@ export function PipelineSection() {
             ))}
           </p>
           <p
-            className="m-0 text-[11px]"
+            className="m-0 text-[12px]"
             style={{ color: "#A32D2D" }}
           >
             Churn este mês:{" "}

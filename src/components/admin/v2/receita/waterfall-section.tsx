@@ -146,7 +146,7 @@ export function WaterfallSection() {
                   }
                   return (
                     <div
-                      className="rounded-lg px-3.5 py-2.5 text-[11px]"
+                      className="rounded-lg px-3.5 py-2.5 text-[12px]"
                       style={{
                         background: "#1F1E1B",
                         color: "#FAF9F5",
@@ -192,7 +192,7 @@ export function WaterfallSection() {
               >
                 {cell.value}
               </p>
-              <p className="mt-1.5 text-[11px] text-admin-text-tertiary">
+              <p className="mt-1.5 text-[12px] text-admin-text-tertiary">
                 {cell.sub}
               </p>
             </div>

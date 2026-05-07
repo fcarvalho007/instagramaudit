@@ -70,14 +70,14 @@ export function ErrorInvestigationModal({
           </Field>
           {detail.errorStack ? (
             <Field label="Stack trace">
-              <pre className="m-0 max-h-40 overflow-auto rounded-md border border-admin-border bg-[var(--color-admin-surface-muted)] p-3 font-mono text-[11px] leading-relaxed text-admin-text-secondary">
+              <pre className="m-0 max-h-40 overflow-auto rounded-md border border-admin-border bg-[var(--color-admin-surface-muted)] p-3 font-mono text-[12px] leading-relaxed text-admin-text-secondary">
                 {detail.errorStack}
               </pre>
             </Field>
           ) : null}
           {detail.errorResponse ? (
             <Field label={`Resposta HTTP (${detail.errorResponse.status})`}>
-              <pre className="m-0 max-h-32 overflow-auto rounded-md border border-admin-border bg-[var(--color-admin-surface-muted)] p-3 font-mono text-[11px] leading-relaxed text-admin-text-secondary">
+              <pre className="m-0 max-h-32 overflow-auto rounded-md border border-admin-border bg-[var(--color-admin-surface-muted)] p-3 font-mono text-[12px] leading-relaxed text-admin-text-secondary">
                 {detail.errorResponse.body}
               </pre>
             </Field>

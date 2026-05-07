@@ -66,7 +66,7 @@ export function BenchmarksSection() {
         info="Estes valores fundamentam comparações nos relatórios. Cada linha guarda histórico completo de alterações."
       />
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
+        <span className="text-[12px] uppercase tracking-wider text-admin-text-tertiary">
           Filtrar formato:
         </span>
         {(["all", ...FORMATS] as FormatFilter[]).map((f) => (
@@ -74,7 +74,7 @@ export function BenchmarksSection() {
             key={f}
             type="button"
             onClick={() => setFilter(f)}
-            className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+            className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ${
               filter === f
                 ? "border-admin-leads-500 bg-admin-leads-50 text-admin-leads-800"
                 : "border-admin-border text-admin-text-secondary hover:bg-admin-bg-hover"

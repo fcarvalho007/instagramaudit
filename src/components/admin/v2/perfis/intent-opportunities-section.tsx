@@ -76,7 +76,7 @@ function RepeatedRow({ item }: { item: MockRepeatedSearch }) {
         <p className="m-0 truncate text-[13px] text-admin-text-primary">
           {item.profile}
         </p>
-        <p className="mt-0.5 text-[11px] text-admin-text-secondary">
+        <p className="mt-0.5 text-[12px] text-admin-text-secondary">
           por <strong className="font-medium">{item.user}</strong>
         </p>
       </div>
@@ -87,7 +87,7 @@ function RepeatedRow({ item }: { item: MockRepeatedSearch }) {
         >
           {item.count}
         </p>
-        <p className="mt-1 text-[10px] text-admin-text-tertiary">
+        <p className="mt-1 text-[12px] text-admin-text-tertiary">
           {item.window}
         </p>
       </div>
@@ -144,7 +144,7 @@ function FunnelRow({
           {funnel.handle}
         </span>
         <span className="flex items-baseline gap-1.5">
-          <span className="text-[10px] uppercase tracking-[0.06em] text-admin-text-tertiary">
+          <span className="text-[12px] uppercase tracking-[0.06em] text-admin-text-tertiary">
             conv.
           </span>
           <span
@@ -191,7 +191,7 @@ function FunnelBar({
         className="h-1.5 rounded-full"
         style={{ width: `${pct}%`, backgroundColor: color, minWidth: 4 }}
       />
-      <p className="m-0 mt-1 text-[11px] tabular-nums text-admin-text-tertiary">
+      <p className="m-0 mt-1 text-[12px] tabular-nums text-admin-text-tertiary">
         {label}
       </p>
     </div>

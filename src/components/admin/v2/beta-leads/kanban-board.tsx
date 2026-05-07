@@ -67,7 +67,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
                     {col.label}
                   </span>
                   <span
-                    className="ml-auto text-[11px] font-mono rounded-full px-1.5 py-0.5"
+                    className="ml-auto text-[12px] font-mono rounded-full px-1.5 py-0.5"
                     style={{
                       backgroundColor: `${col.color}18`,
                       color: col.color,

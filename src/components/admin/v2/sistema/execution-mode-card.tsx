@@ -59,7 +59,7 @@ export function ExecutionModeCard() {
   return (
     <>
       <div className="flex flex-col gap-3">
-        <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+        <p className="text-[12px] font-semibold text-admin-text-secondary uppercase tracking-wider flex items-center gap-1.5">
           <span className="text-amber-500">✦</span>
           Modo de execução
         </p>
@@ -135,7 +135,7 @@ export function ExecutionModeCard() {
                   Modo activo: {isCacheOnly ? "dados guardados" : "buscar novos"}
                 </span>
                 <span
-                  className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+                  className="inline-flex items-center rounded-md px-2 py-0.5 text-[12px] font-semibold tabular-nums"
                   style={{
                     backgroundColor: isCacheOnly ? "#E8F5EE" : "#FFF3E0",
                     color: isCacheOnly ? "#1D9E75" : "#BA7517",
@@ -144,7 +144,7 @@ export function ExecutionModeCard() {
                   {isCacheOnly ? "$0 / análise" : "custos variáveis"}
                 </span>
               </div>
-              <p className="text-[11px] text-admin-text-tertiary leading-snug">
+              <p className="text-[12px] text-admin-text-tertiary leading-snug">
                 {isCacheOnly
                   ? "A aplicação só lê informação já recolhida. Nenhuma API paga (Apify, OpenAI, DataForSEO) será chamada."
                   : "Pode chamar Apify, OpenAI e DataForSEO conforme necessário. Utilizar apenas quando for necessário atualizar dados reais."}

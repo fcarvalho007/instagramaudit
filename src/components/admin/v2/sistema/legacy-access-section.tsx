@@ -70,7 +70,7 @@ export function LegacyAccessSection() {
               Abrir cockpit legado em nova aba
               <ExternalLink size={14} />
             </a>
-            <p className="m-0 mt-2 text-[11px] text-admin-text-tertiary">
+            <p className="m-0 mt-2 text-[12px] text-admin-text-tertiary">
               A página abre num separador novo para preservar o estado desta vista.
             </p>
           </div>

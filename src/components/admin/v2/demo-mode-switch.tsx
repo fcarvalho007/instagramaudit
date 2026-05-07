@@ -25,7 +25,7 @@ export function DemoModeSwitch() {
           ? "Modo demonstração ativo — secções sem integração real mostram dados fictícios. Clica para voltar a dados reais. Custos são sempre reais."
           : "Ativar modo demonstração para preencher secções ainda não ligadas a dados reais (Receita, Clientes, etc.). Custos permanecem sempre reais."
       }
-      className="group inline-flex items-center gap-2 rounded-md border border-admin-border bg-admin-surface px-2.5 py-1.5 text-[11px] font-medium text-admin-text-secondary transition-colors hover:border-admin-text-tertiary hover:text-admin-text-primary"
+      className="group inline-flex items-center gap-2 rounded-md border border-admin-border bg-admin-surface px-2.5 py-1.5 text-[12px] font-medium text-admin-text-secondary transition-colors hover:border-admin-text-tertiary hover:text-admin-text-primary"
     >
       <span
         aria-hidden="true"

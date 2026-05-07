@@ -52,7 +52,7 @@ export function MetricsSection() {
           value={
             <span className="inline-flex items-baseline gap-2">
               {m.churn.value}
-              <span className="font-sans text-[11px] font-normal text-admin-danger-700">
+              <span className="font-sans text-[12px] font-normal text-admin-danger-700">
                 {m.churn.suffix}
               </span>
             </span>

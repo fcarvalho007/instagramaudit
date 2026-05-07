@@ -220,10 +220,10 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
     <div className="space-y-4">
       {/* Explanatory copy */}
       <div className="mx-4 mt-2 space-y-1.5">
-        <div className="flex flex-wrap gap-3 text-[11px] text-admin-text-secondary">
+        <div className="flex flex-wrap gap-3 text-[12px] text-admin-text-secondary">
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
-            Draft — só afeta previews com <code className="rounded bg-white/20 px-1 font-mono text-[10px]">draft=true</code>
+            Draft — só afeta previews com <code className="rounded bg-white/20 px-1 font-mono text-[12px]">draft=true</code>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
@@ -244,7 +244,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
             <div>
               <p className="font-medium">Isto altera o que utilizadores públicos veem.</p>
               <p className="mt-1 text-xs text-amber-600">
-                A variante <strong>{confirmPublish}</strong> será atualizada. As alterações ficam visíveis imediatamente em <code className="rounded bg-amber-100 px-1 font-mono text-[10px]">/analyze/</code>.
+                A variante <strong>{confirmPublish}</strong> será atualizada. As alterações ficam visíveis imediatamente em <code className="rounded bg-amber-100 px-1 font-mono text-[12px]">/analyze/</code>.
               </p>
             </div>
           </div>
@@ -333,7 +333,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
                       <td key={v.value} className="px-4 py-2">
                         <div className="flex items-center gap-1.5">
                           {source === "locked" ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-[10px] font-semibold uppercase text-gray-500">
+                            <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-[12px] font-semibold uppercase text-gray-500">
                               <Lock className="h-2.5 w-2.5" />
                               {val}
                             </span>
@@ -342,7 +342,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
                               value={val}
                               onChange={(e) => handleChange(key, v.value, e.target.value as FeatureVisibility)}
                               className={cn(
-                                "rounded border px-2 py-1 text-[11px] font-medium",
+                                "rounded border px-2 py-1 text-[12px] font-medium",
                                 source === "draft"
                                   ? "border-amber-300 bg-amber-50 text-amber-800"
                                   : source === "published"
@@ -376,7 +376,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
         {VARIANTS.map((v) => (
           <div key={v.value} className="rounded-lg border border-white/20 bg-white/10 p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-admin-text-tertiary">
+              <span className="text-[12px] font-semibold uppercase tracking-wider text-admin-text-tertiary">
                 {v.label}
               </span>
               <VariantStatusBadges hasDraft={hasDraft(v.value)} hasPublished={hasPublished(v.value)} />
@@ -385,7 +385,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
               <button
                 onClick={() => handleSaveDraft(v.value)}
                 disabled={!dirty[v.value] || saving !== null}
-                className="inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/50 px-2.5 py-1 text-[10px] font-medium text-admin-text-secondary hover:bg-white/70 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/50 px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:bg-white/70 disabled:opacity-40"
               >
                 {saving === v.value ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                 Guardar draft
@@ -393,7 +393,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
               <button
                 onClick={() => setConfirmPublish(v.value)}
                 disabled={!hasDraft(v.value) && !dirty[v.value]}
-                className="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-green-50 px-2.5 py-1 text-[10px] font-medium text-green-700 hover:bg-green-100 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-green-50 px-2.5 py-1 text-[12px] font-medium text-green-700 hover:bg-green-100 disabled:opacity-40"
               >
                 <Upload className="h-3 w-3" />
                 Publicar
@@ -401,7 +401,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
               {onPreviewDraft && (
                 <button
                   onClick={() => onPreviewDraft(v.value)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100"
+                  className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-[12px] font-medium text-blue-700 hover:bg-blue-100"
                 >
                   <Eye className="h-3 w-3" />
                   Preview draft
@@ -410,7 +410,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
               {onOpenPublic && v.value === "public_mvp" && (
                 <button
                   onClick={() => onOpenPublic(v.value)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/50 px-2.5 py-1 text-[10px] font-medium text-admin-text-secondary hover:bg-white/70"
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/50 px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:bg-white/70"
                 >
                   <ExternalLink className="h-3 w-3" />
                   Ver público
@@ -422,7 +422,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
                 {hasDraft(v.value) && (
                   <button
                     onClick={() => handleDiscard(v.value)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-[10px] font-medium text-red-600 hover:bg-red-50"
+                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-[12px] font-medium text-red-600 hover:bg-red-50"
                   >
                     <Trash2 className="h-3 w-3" />
                     Descartar draft
@@ -431,7 +431,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
                 {hasPublished(v.value) && (
                   <button
                     onClick={() => setConfirmReset(v.value)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/30 px-2.5 py-1 text-[10px] font-medium text-admin-text-tertiary hover:bg-white/30"
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/30 px-2.5 py-1 text-[12px] font-medium text-admin-text-tertiary hover:bg-white/30"
                   >
                     <RotateCcw className="h-3 w-3" />
                     Reset defaults

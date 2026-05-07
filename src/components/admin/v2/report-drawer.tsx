@@ -149,13 +149,13 @@ function DrawerHeader({ detail }: { detail: MockReportDetail }) {
           <p className="m-0 mt-1 text-[13px] text-admin-text-secondary">
             {detail.handle} · {detail.customer.name}
           </p>
-          <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">
+          <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
             {detail.customer.email}
           </p>
         </div>
         <StatusBadge status={detail.status} />
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-admin-text-secondary">
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-admin-text-secondary">
         <Meta label="Iniciado">{detail.startedAtLabel}</Meta>
         {detail.deliveredAtLabel ? (
           <Meta label="Entregue">{detail.deliveredAtLabel}</Meta>
@@ -204,18 +204,18 @@ function PhasesGrid({ phases }: { phases: ReportPhase[] }) {
             className="flex flex-col gap-1.5 rounded-md border border-admin-border bg-[var(--color-admin-surface-muted)] px-3 py-2.5"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-admin-text-secondary">{p.name}</span>
+              <span className="text-[12px] text-admin-text-secondary">{p.name}</span>
               <PhaseIcon status={p.status} />
             </div>
             <span className="font-mono text-[12px] text-admin-text-primary">
               {p.timestamp ?? "—"}
             </span>
             {p.durationMs != null ? (
-              <span className="text-[11px] text-admin-text-tertiary">
+              <span className="text-[12px] text-admin-text-tertiary">
                 {(p.durationMs / 1000).toFixed(1)}s
               </span>
             ) : (
-              <span className="text-[11px] text-admin-text-tertiary">
+              <span className="text-[12px] text-admin-text-tertiary">
                 {p.status === "queued" ? "em fila" : p.status === "running" ? "em curso" : "—"}
               </span>
             )}
@@ -340,7 +340,7 @@ function EventsTimeline({ events }: { events: ReportEvent[] }) {
               }}
             />
             <div className="flex items-baseline gap-2">
-              <span className="shrink-0 font-mono text-[11px] text-admin-text-tertiary">
+              <span className="shrink-0 font-mono text-[12px] text-admin-text-tertiary">
                 {ev.timestamp}
               </span>
               <span className="text-[12px] text-admin-text-primary">{ev.message}</span>
@@ -521,7 +521,7 @@ function AuditSection({ log }: { log: AdminActionLog[] }) {
           {log.map((entry, i) => (
             <li
               key={i}
-              className="flex items-baseline gap-2 text-[11px]"
+              className="flex items-baseline gap-2 text-[12px]"
             >
               <span className="font-mono text-admin-text-tertiary">{entry.ts}</span>
               <span className="text-admin-text-primary">
@@ -551,7 +551,7 @@ function SnapshotAccordion({ snapshot }: { snapshot: Record<string, unknown> }) 
         <summary className="cursor-pointer list-none text-[12px] font-medium text-admin-text-primary marker:hidden">
           Ver dados do snapshot original
         </summary>
-        <pre className="m-0 mt-3 max-h-72 overflow-auto rounded-md border border-admin-border bg-admin-surface p-3 font-mono text-[11px] leading-relaxed text-admin-text-secondary">
+        <pre className="m-0 mt-3 max-h-72 overflow-auto rounded-md border border-admin-border bg-admin-surface p-3 font-mono text-[12px] leading-relaxed text-admin-text-secondary">
           {JSON.stringify(snapshot, null, 2)}
         </pre>
       </details>

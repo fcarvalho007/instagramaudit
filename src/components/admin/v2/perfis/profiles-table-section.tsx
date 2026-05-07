@@ -348,7 +348,7 @@ function ActionIcon({
       </TooltipTrigger>
       <TooltipContent
         side="top"
-        className="bg-admin-neutral-900 text-[11px] text-white"
+        className="bg-admin-neutral-900 text-[12px] text-white"
       >
         {label}
       </TooltipContent>

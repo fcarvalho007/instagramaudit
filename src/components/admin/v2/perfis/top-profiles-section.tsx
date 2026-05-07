@@ -86,7 +86,7 @@ function RankingRow({ profile }: { profile: MockTopProfile }) {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="w-6 shrink-0 text-right font-mono text-[11px] tabular-nums tracking-[0.04em] text-admin-text-tertiary">
+      <span className="w-6 shrink-0 text-right font-mono text-[12px] tabular-nums tracking-[0.04em] text-admin-text-tertiary">
         {String(profile.rank).padStart(2, "0")}
       </span>
       <AdminAvatar
@@ -101,7 +101,7 @@ function RankingRow({ profile }: { profile: MockTopProfile }) {
           <span className="text-[13px] font-medium text-admin-text-primary">
             {profile.handle}
           </span>
-          <span className="text-[11px] text-admin-text-tertiary">
+          <span className="text-[12px] text-admin-text-tertiary">
             {meta.label} · {profile.sub}
           </span>
         </p>
@@ -194,7 +194,7 @@ function CategoryColumn() {
           >
             {TOTAL_PROFILES}
           </span>
-          <span className="mt-1 text-[10px] uppercase tracking-[0.08em] text-admin-text-tertiary">
+          <span className="mt-1 text-[12px] uppercase tracking-[0.08em] text-admin-text-tertiary">
             perfis
           </span>
         </div>
@@ -217,7 +217,7 @@ function CategoryColumn() {
             <span className="w-10 text-right font-mono text-[12px] tabular-nums text-admin-text-primary">
               {c.pct}%
             </span>
-            <span className="w-10 text-right font-mono text-[11px] tabular-nums text-admin-text-tertiary">
+            <span className="w-10 text-right font-mono text-[12px] tabular-nums text-admin-text-tertiary">
               {c.count}
             </span>
           </li>

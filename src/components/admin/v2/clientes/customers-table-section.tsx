@@ -41,7 +41,7 @@ function SignalCell({ signal }: { signal: CustomerRow["signal"] }) {
   if (signal.kind === "active") {
     return (
       <span
-        className="text-[11px]"
+        className="text-[12px]"
         style={{ color: "#0F6E56" }}
       >
         activo
@@ -121,22 +121,22 @@ export function CustomersTableSection() {
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr>
-              <th className="py-2 text-left text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-left text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Cliente
               </th>
-              <th className="py-2 text-left text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-left text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Estado
               </th>
-              <th className="py-2 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-right text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 LTV
               </th>
-              <th className="py-2 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-right text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Reports
               </th>
-              <th className="py-2 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-right text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Última actividade
               </th>
-              <th className="py-2 text-right text-[11px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-right text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
                 Sinal
               </th>
             </tr>
@@ -165,7 +165,7 @@ export function CustomersTableSection() {
                       >
                         {c.name}
                       </p>
-                      <p className="m-0 text-[11px] text-admin-text-secondary">
+                      <p className="m-0 text-[12px] text-admin-text-secondary">
                         {c.email}
                       </p>
                     </div>
@@ -227,7 +227,7 @@ export function CustomersTableSection() {
         </table>
 
         <div className="mt-3 flex items-center justify-between border-t border-admin-border-strong pt-3">
-          <p className="m-0 text-[11px] text-admin-text-tertiary">
+          <p className="m-0 text-[12px] text-admin-text-tertiary">
             A mostrar {rows.length} de {totalsByKey.all ?? MOCK_CUSTOMERS_LIST.length} · ordenado por última actividade
           </p>
           <div className="flex items-center gap-1.5">

@@ -71,7 +71,7 @@ export function ChartsSection() {
               <p className="m-0 text-[15px] font-medium text-admin-text-primary">
                 Volume diário
               </p>
-              <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
+              <p className="mt-0.5 text-[12px] text-admin-text-tertiary">
                 Relatórios entregues, falhados e em fila · últimos 30 dias
               </p>
             </div>
@@ -124,7 +124,7 @@ export function ChartsSection() {
                     };
                     return (
                       <div
-                        className="rounded-lg px-3.5 py-2.5 text-[11px]"
+                        className="rounded-lg px-3.5 py-2.5 text-[12px]"
                         style={DARK_TOOLTIP_STYLE}
                       >
                         <p className="m-0 mb-1 opacity-70">Dia {label}</p>
@@ -160,7 +160,7 @@ export function ChartsSection() {
             <p className="m-0 text-[15px] font-medium text-admin-text-primary">
               Tempo médio · diário
             </p>
-            <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
+            <p className="mt-0.5 text-[12px] text-admin-text-tertiary">
               Pedido → email entregue · linha tracejada cinza = SLA{" "}
               {Math.round(REPORT_SLA_SECONDS / 60)} min
             </p>
@@ -205,7 +205,7 @@ export function ChartsSection() {
                     const seconds = typeof v === "number" ? v : Number(v);
                     return (
                       <div
-                        className="rounded-lg px-3.5 py-2.5 text-[11px]"
+                        className="rounded-lg px-3.5 py-2.5 text-[12px]"
                         style={DARK_TOOLTIP_STYLE}
                       >
                         <p className="m-0 mb-1 opacity-70">Dia {label}</p>
@@ -256,7 +256,7 @@ function Legend({
       {items.map((it) => (
         <li
           key={it.label}
-          className="inline-flex items-center gap-1.5 text-[11px] text-admin-text-secondary"
+          className="inline-flex items-center gap-1.5 text-[12px] text-admin-text-secondary"
         >
           <span
             aria-hidden="true"

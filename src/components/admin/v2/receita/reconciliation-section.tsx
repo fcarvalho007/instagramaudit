@@ -102,7 +102,7 @@ function statusBadge(status: string) {
   const s = map[status] ?? map.pending!;
   return (
     <span
-      className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${s.bg} ${s.text}`}
+      className={`inline-block rounded px-1.5 py-0.5 text-[12px] font-medium ${s.bg} ${s.text}`}
     >
       {status}
     </span>
@@ -168,7 +168,7 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
             Importações por batch (dashboard)
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
+            <table className="w-full text-[12px]">
               <thead>
                 <tr className="text-left text-foreground-muted border-b border-border-subtle">
                   <th className="pb-2 pr-3">Provider</th>
@@ -226,7 +226,7 @@ export function ReconciliationSection({ period }: { period: AdminPeriod }) {
           {batches.some(
             (b) => b.reconciliation_status === "Rounding difference",
           ) && (
-            <p className="mt-3 text-[11px] text-foreground-muted/70 leading-relaxed">
+            <p className="mt-3 text-[12px] text-foreground-muted/70 leading-relaxed">
               ⓘ Diferença de arredondamento: o dashboard do fornecedor
               arredonda cada linha individualmente antes de somar. O total
               raw (calculado a partir de quantidade × preço unitário sem

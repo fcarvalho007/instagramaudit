@@ -47,7 +47,7 @@ function KanbanColumn({ col }: { col: (typeof MOCK_KANBAN)[number] }) {
           <p className="m-0 text-[13px] font-medium text-admin-text-primary">
             {col.title}
           </p>
-          <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
+          <p className="mt-0.5 text-[12px] text-admin-text-tertiary">
             {col.subtitle}
           </p>
         </div>
@@ -63,7 +63,7 @@ function KanbanColumn({ col }: { col: (typeof MOCK_KANBAN)[number] }) {
             <p className="m-0 text-xs font-medium text-admin-text-primary">
               {item.name}
             </p>
-            <p className="mt-px text-[11px] text-admin-text-secondary">
+            <p className="mt-px text-[12px] text-admin-text-secondary">
               {item.meta}
             </p>
           </li>

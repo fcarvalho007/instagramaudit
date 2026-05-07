@@ -102,7 +102,7 @@ export function RevenueSection() {
             <p className="m-0 text-sm font-medium text-admin-text-primary">
               Receita diária · últimos 30 dias
             </p>
-            <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
+            <p className="mt-0.5 text-[12px] text-admin-text-tertiary">
               Subscrições estáveis · avulso a crescer
             </p>
           </div>
@@ -178,7 +178,7 @@ export function RevenueSection() {
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] text-admin-text-secondary">
+    <span className="inline-flex items-center gap-1.5 text-[12px] text-admin-text-secondary">
       <span
         aria-hidden="true"
         className="block h-2 w-2 rounded-full"

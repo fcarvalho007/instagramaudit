@@ -75,7 +75,7 @@ function CostCell({ value, warn, danger }: { value: number | null | undefined; w
 function ExpandedRow({ calls }: { calls: ProviderCall[] }) {
   return (
     <div className="bg-surface-secondary/50 rounded-lg p-2 sm:p-3 mt-1 mb-2 space-y-1 overflow-x-auto">
-      <div className="grid grid-cols-[1fr_80px_80px_80px_60px_60px] gap-2 text-[10px] text-foreground-muted uppercase tracking-wider font-medium px-1 min-w-[420px]">
+      <div className="grid grid-cols-[1fr_80px_80px_80px_60px_60px] gap-2 text-[12px] text-foreground-muted uppercase tracking-wider font-medium px-1 min-w-[420px]">
         <span>Actor</span>
         <span className="text-right">Est.</span>
         <span className="text-right">Real</span>
@@ -100,7 +100,7 @@ function ExpandedRow({ calls }: { calls: ProviderCall[] }) {
             {c.duration_ms != null ? `${(c.duration_ms / 1000).toFixed(1)}s` : "—"}
           </span>
           <span className="text-right font-mono text-foreground-muted">{c.posts_returned}</span>
-          <span className={`text-right text-[10px] ${c.status === "success" ? "text-signal-success" : "text-signal-error"}`}>
+          <span className={`text-right text-[12px] ${c.status === "success" ? "text-signal-success" : "text-signal-error"}`}>
             {c.status}
           </span>
         </div>
@@ -120,7 +120,7 @@ const ENRICHMENT_SHORT: Record<string, string> = {
 };
 
 function EnrichmentDots({ summary, history }: { summary: Record<string, string> | null; history?: Record<string, { total: number; failed: number }> | null }) {
-  if (!summary) return <span className="text-[10px] text-foreground-muted italic">—</span>;
+  if (!summary) return <span className="text-[12px] text-foreground-muted italic">—</span>;
   return (
     <span className="inline-flex items-center gap-0.5">
       {ENRICHMENT_TYPES.map((t) => {
@@ -168,7 +168,7 @@ function AnalysisRow({ a }: { a: AnalysisBreakdown }) {
       >
         <div className="min-w-0">
           <span className="text-sm font-medium text-foreground-primary truncate block">@{a.handle}</span>
-          <div className="flex items-center gap-2 text-[10px] text-foreground-muted">
+          <div className="flex items-center gap-2 text-[12px] text-foreground-muted">
             <span>
               {new Date(a.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
             </span>
@@ -240,7 +240,7 @@ export function AnalysisCostBreakdown() {
       {data && data.analyses.length > 0 && (
         <div className="space-y-1">
           {/* Header */}
-          <div className="hidden sm:grid grid-cols-[1fr_100px_80px_70px_70px_70px_70px_70px_30px] gap-2 px-3 py-1 text-[10px] text-foreground-muted uppercase tracking-wider font-medium">
+          <div className="hidden sm:grid grid-cols-[1fr_100px_80px_70px_70px_70px_70px_70px_30px] gap-2 px-3 py-1 text-[12px] text-foreground-muted uppercase tracking-wider font-medium">
             <span>Perfil</span><span className="text-right">Custo total</span><span className="text-center">Enriq. / Ligação</span><span className="text-right">Apify</span><span className="text-right">Coment.</span><span className="text-right">OpenAI</span><span className="text-right">DFS</span><span className="text-right">Calls</span><span />
           </div>
 
@@ -249,7 +249,7 @@ export function AnalysisCostBreakdown() {
           ))}
 
           {/* Legend */}
-          <div className="hidden sm:flex gap-4 pt-2 text-[10px] text-foreground-muted flex-wrap">
+          <div className="hidden sm:flex gap-4 pt-2 text-[12px] text-foreground-muted flex-wrap">
             <span className="flex items-center gap-1">
               <AlertTriangle size={10} className="text-signal-warning" /> Custo real indisponível
             </span>

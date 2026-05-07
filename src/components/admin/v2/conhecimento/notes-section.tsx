@@ -77,7 +77,7 @@ export function NotesSection() {
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
+          <span className="text-[12px] uppercase tracking-wider text-admin-text-tertiary">
             Categoria:
           </span>
           {FILTERS.map((f) => (
@@ -85,7 +85,7 @@ export function NotesSection() {
               key={f}
               type="button"
               onClick={() => setFilter(f)}
-              className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+              className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ${
                 filter === f
                   ? "border-admin-leads-500 bg-admin-leads-50 text-admin-leads-800"
                   : "border-admin-border text-admin-text-secondary hover:bg-admin-bg-hover"
@@ -127,14 +127,14 @@ export function NotesSection() {
                   <button
                     type="button"
                     onClick={() => { setEditing(n); setCreateOpen(true); }}
-                    className="text-[10px] uppercase tracking-wider text-admin-text-tertiary hover:text-admin-leads-700"
+                    className="text-[12px] uppercase tracking-wider text-admin-text-tertiary hover:text-admin-leads-700"
                   >
                     Editar
                   </button>
                   <button
                     type="button"
                     onClick={() => setArchiveTarget(n)}
-                    className="text-[10px] uppercase tracking-wider text-admin-text-tertiary hover:text-admin-danger-700"
+                    className="text-[12px] uppercase tracking-wider text-admin-text-tertiary hover:text-admin-danger-700"
                   >
                     Arquivar
                   </button>
@@ -146,7 +146,7 @@ export function NotesSection() {
               <p className="text-[12px] text-admin-text-secondary line-clamp-4">
                 {n.body}
               </p>
-              <div className="mt-3 flex items-center justify-between text-[10px] text-admin-text-tertiary">
+              <div className="mt-3 flex items-center justify-between text-[12px] text-admin-text-tertiary">
                 <span>{n.source_name ?? "Sem fonte"}</span>
                 <span>{new Date(n.updated_at).toLocaleDateString("pt-PT")}</span>
               </div>
