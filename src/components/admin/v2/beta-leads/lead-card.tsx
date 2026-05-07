@@ -147,7 +147,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
       </div>
 
       {/* Badges row */}
-      <div className="flex flex-wrap gap-1.5 mb-3">
+      <div className="flex flex-wrap gap-2 mb-1">
         {lead.user_type && (
           <AdminBadge
             variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}
@@ -164,13 +164,13 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
 
       {/* Purpose */}
       {lead.purpose && (
-        <p className="admin-body m-0 mb-2 line-clamp-2 text-admin-text-secondary">
+        <p className="admin-body m-0 mb-4 line-clamp-2 text-admin-text-secondary">
           {lead.purpose}
         </p>
       )}
 
       {/* Stats row */}
-      <div className="flex items-center gap-2.5 admin-meta text-admin-text-tertiary mb-3">
+      <div className="flex items-center gap-2.5 admin-meta text-admin-text-tertiary mb-3.5">
         {lead.report_cost_usd != null && (
           <span className="admin-code tabular-nums">€{lead.report_cost_usd.toFixed(2)}</span>
         )}
@@ -178,16 +178,6 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
         <span title={lead.last_interaction}>{timeAgo(lead.last_interaction)}</span>
         {lead.contacted_at && <span title="Contactado">📞</span>}
       </div>
-
-      {/* Notes preview */}
-      {lead.internal_notes && (
-        <p
-          className="admin-meta m-0 italic truncate mb-3 text-admin-text-tertiary"
-          title={lead.internal_notes}
-        >
-          {lead.internal_notes}
-        </p>
-      )}
 
       {/* Status selector */}
       <Select

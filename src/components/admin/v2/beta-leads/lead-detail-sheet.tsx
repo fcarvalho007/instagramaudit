@@ -252,8 +252,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate }: LeadDeta
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0">
               <h2
-                className="m-0 truncate text-admin-text-primary"
-                style={{ fontSize: 20, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.2 }}
+                className="admin-panel-title m-0 truncate text-admin-text-primary"
               >
                 {lead.name}
               </h2>
@@ -345,11 +344,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate }: LeadDeta
           </div>
 
           <DetailRow label="Visualizações">
-            <span className="font-mono">{lead.report_views}</span>
+            <span className="admin-code">{lead.report_views}</span>
           </DetailRow>
           {lead.report_cost_usd != null && (
             <DetailRow label="Custo estimado">
-              <span className="font-mono">€{lead.report_cost_usd.toFixed(2)}</span>
+              <span className="admin-code">€{lead.report_cost_usd.toFixed(2)}</span>
             </DetailRow>
           )}
           <DetailRow label="Última interação">

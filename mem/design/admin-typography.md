@@ -1,40 +1,29 @@
 ---
 name: Admin typography scale
-description: Consistent sizing scale for the admin cockpit — min 12px for interactive/informational, 11px only for eyebrows/badges
+description: Admin v2 typography hierarchy, density rules, utility classes
 type: design
 ---
 
-## Admin Typography Scale (admin-tokens.css)
+## Admin Typography Scale (v2 — May 2026)
 
-| Role | Size | Class/token |
-|---|---|---|
-| Page title (h1) | 36px | inline in AdminPageHeader |
-| Section title (h2) | 14px uppercase | `.admin-section-title` |
-| Card title | 15px | `.admin-card-title` |
-| Body text | 13px | `.admin-body` |
-| Table cell | 13px | `.admin-table-cell` |
-| Table header | 12px uppercase | `.admin-table-header` |
-| Metadata / sub-line | 12px | `.admin-meta` |
-| Code / mono snippets | 12px | `.admin-code` |
-| Eyebrow / label | 11px uppercase mono | `.admin-eyebrow` |
-| Badge pill | 11px | AdminBadge component |
-| Button sm | 12px, h-28px | AdminActionButton sm |
-| Button md | 13px, h-32px | AdminActionButton md |
-| Tab pill | 13px | AdminTabsNav |
+| Role | Size | Font | Weight | Class | Notes |
+|------|------|------|--------|-------|-------|
+| Page title (h1) | 36px | Inter | 500 | inline | AdminPageHeader |
+| Panel heading | 20px | Inter | 500 | `.admin-panel-title` | Sheets, modals, drawers |
+| Section title (h2) | 15px | Inter | 500 | `.admin-section-title` | Uppercase, 0.05em tracking |
+| Card title | 15px | Inter | 500 | `.admin-card-title` | -0.01em tracking |
+| Body text | 13px | Inter | 400 | `.admin-body` | |
+| Table cell | 13px | Inter | 400 | `.admin-table-cell` | |
+| Metadata | 12px | Inter | 400 | `.admin-meta` | |
+| Badge | 12px | Inter | 500 | AdminBadge component | Was 11px/400 |
+| Code / mono | 12px | JBM | 400 | `.admin-code` | |
+| Table header | 12px | Inter | 500 | `.admin-table-header` | Uppercase |
+| Eyebrow | 11px | JBM | 400 | `.admin-eyebrow` | Decorative only |
 
-**Hard rule**: nothing interactive or informational below 12px.
-11px floor reserved exclusively for decorative eyebrows and badge pills only.
+## Hard Rules
 
-## Density Rules
-
-- Card default padding: 24px
-- Card compact (kanban): 16px
-- Kanban column width: 270px
-- Select trigger min height: 28px
-- Table th: px-16 py-12; Table td: px-16 py-10
-
-## Enforcement
-
-All `text-[10px]` and `text-[11px]` violations in admin v2 components were
-cleaned in the May 2026 typography pass. New code must use `.admin-meta` (12px)
-as the minimum for any readable/interactive text.
+- Nothing interactive or informational below 12px.
+- 11px reserved ONLY for decorative eyebrows.
+- Use `.admin-code` instead of raw `font-mono` in admin components.
+- No hardcoded hex colors — use admin tokens from admin-tokens.css.
+- DetailRow in sheets uses py-2.5 minimum for premium density.

@@ -124,12 +124,12 @@ function SistemaPage() {
 
           {/* Footer note */}
           <p
-            className="mt-6 text-[11px] leading-relaxed flex items-start gap-1.5"
+            className="mt-6 text-[12px] leading-relaxed flex items-start gap-1.5"
             style={{ color: "#A8A7A0" }}
           >
             <span className="shrink-0 mt-px">◌</span>
             Modo &ldquo;dados guardados&rdquo; não chama APIs pagas. Modo &ldquo;buscar novo&rdquo; chama Apify, OpenAI e DataForSEO conforme necessário e regista o custo em{" "}
-            <span className="font-mono text-[10px]" style={{ color: "#888780" }}>
+            <span className="font-mono text-[12px]" style={{ color: "#888780" }}>
               provider_call_logs
             </span>
             .
