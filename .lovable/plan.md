@@ -1,33 +1,41 @@
-## Bugs encontrados
 
-### Bug 1 — `INTERNAL_API_TOKEN` não é obrigatório em `generate-beta-report.ts`
-**Ficheiro:** `src/routes/api/admin/generate-beta-report.ts` (L125)
-**Problema:** Se o token não existir, a chamada a `analyze-public-v1?refresh=1` é feita sem auth → o refresh é silenciosamente ignorado → relatório pode ser marcado como "completed" com dados stale/vazios.
-**Fix:** Adicionar pre-flight check antes da chamada (L122). Se `INTERNAL_API_TOKEN` não existir → rollback status para o original → devolver 409 com `preflight_blocked: "internal_token_missing"`.
+## Problem
 
-### Bug 2 — Erro ortográfico "activo" (pré-AO90)
-**Ficheiro:** `src/components/admin/v2/sistema/execution-mode-card.tsx` (L135)
-**Problema:** "Modo activo" deveria ser "Modo ativo" (Acordo Ortográfico pós-1990).
-**Fix:** Substituir `activo` por `ativo`.
+When `/analyze/frederico.m.carvalho` gets a 503 `CACHE_ONLY_NO_DATA` response, the error state does eventually render (~6s after navigation) but:
 
-### Bug 3 — 20+ classes `slate-*` em `report-methodology.tsx`
-**Ficheiro:** `src/components/report-redesign/report-methodology.tsx`
-**Problema:** Usa `text-slate-500`, `text-slate-600`, `border-slate-200`, `bg-slate-50` — viola a regra de design tokens semânticos.
-**Fix:** Substituir por tokens: `slate-500` → `content-tertiary`, `slate-600` → `content-secondary`, `slate-800` → `content-primary`, `slate-200` → `border-default`, `slate-400` → `content-tertiary`, `slate-50` → `surface-muted`.
+1. The first ~3-6s show a blank page (SSR returns empty shell since `ssr: false`, then 3s minimum skeleton timer runs)
+2. The error state uses a generic heading ("Não foi possível concluir a análise") for all errors — no distinction for `CACHE_ONLY_NO_DATA`
+3. No "Voltar ao início" secondary CTA as requested
+4. The supporting copy doesn't match the requirement
 
-### Não é bug (confirmados OK)
-- Build TypeScript: limpo ✓
-- Testes: 124 passam ✓
-- `ALLOWED_SOURCE_STATUSES`: inclui `failed` ✓
-- `AnalysisErrorState`: componente existe e é importado corretamente — a página em branco no browser QA anterior foi provavelmente o delay de 3s do skeleton ✓
-- `CACHE_ONLY_NO_DATA` mapping: existe em pt-PT ✓
+## Plan
 
-## Alterações
+### 1. Pass `errorCode` through to `AnalysisErrorState`
 
-| Ficheiro | Tipo |
-|---|---|
-| `src/routes/api/admin/generate-beta-report.ts` | Pre-flight token check |
-| `src/components/admin/v2/sistema/execution-mode-card.tsx` | Ortografia |
-| `src/components/report-redesign/report-methodology.tsx` | Tokens semânticos |
+**File: `src/routes/analyze.$username.tsx`**
+- When setting error state, also store `errorCode` from the API response
+- Pass it to `<AnalysisErrorState>`
 
-Zero alteração a rotas públicas, lógica de providers, schema ou PDF pipeline.
+**File: `src/components/product/analysis-error-state.tsx`**
+- Add optional `errorCode?: string` prop
+- When `errorCode === "CACHE_ONLY_NO_DATA"`:
+  - Heading: "Este relatório ainda não tem dados públicos disponíveis."
+  - Body: "Os dados deste perfil ainda não foram gerados ou a versão guardada expirou. Tenta novamente mais tarde ou solicita uma nova análise."
+  - Show two CTAs: "Tentar novamente" + "Voltar ao início" (link to `/`)
+- For all other errors: keep current generic heading + "Tentar novamente" only
+
+### 2. Reduce blank-page window
+
+**File: `src/routes/analyze.$username.tsx`**
+- Reduce `MIN_DISPLAY_MS` from 3000 to 0 specifically for error responses (keep 3s only for success path). This way error states render immediately after the API responds (~1s) instead of waiting the full 3s skeleton.
+
+### Files changed
+- `src/routes/analyze.$username.tsx` — pass `errorCode` to error state; skip min-display on errors
+- `src/components/product/analysis-error-state.tsx` — add `errorCode` prop with `CACHE_ONLY_NO_DATA`-specific heading, body, and secondary CTA
+
+### Constraints respected
+- No fetching logic changes beyond error rendering
+- No provider calls, no schema changes, no PDF pipeline changes
+- No fresh analysis triggered
+- pt-PT copy only
+- Light-first Iconosquare design tokens
