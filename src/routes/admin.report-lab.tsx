@@ -25,8 +25,7 @@ import {
   type ReportVariant,
   getVariantFeatures,
   type FeatureVisibility,
-} from "@/lib/report/report-variant";
-import {
+  type VariantFeatures,
   FEATURE_LABELS,
   MODULE_READINESS,
   READINESS_STATUS_LABELS,
@@ -529,9 +528,13 @@ const RISK_DOT: Record<RiskLevel, string> = {
   high: "bg-red-500",
 };
 
+// Keys visible in readiness checklist (exclude internal-only flags like debugLabels)
+const READINESS_VISIBLE_KEYS = (Object.keys(FEATURE_LABELS) as (keyof VariantFeatures)[]).filter(
+  (k) => MODULE_READINESS[k].status !== "hidden",
+);
+
 function ReadinessChecklist() {
   const [open, setOpen] = useState(false);
-  const featureKeys = Object.keys(FEATURE_LABELS) as (keyof typeof FEATURE_LABELS)[];
   const mvpFeatures = getVariantFeatures("public_mvp");
 
   const visLabel = (val: FeatureVisibility) => {
@@ -541,15 +544,45 @@ function ReadinessChecklist() {
     return { text: "Hidden", cls: "text-gray-500 bg-gray-100" };
   };
 
+  const counts = READINESS_VISIBLE_KEYS.reduce(
+    (acc, key) => {
+      const s = MODULE_READINESS[key].status;
+      acc[s] = (acc[s] || 0) + 1;
+      return acc;
+    },
+    {} as Partial<Record<ReadinessStatus, number>>,
+  );
+
+  const summaryItems = (
+    [
+      ["ready", "Ready", "text-green-700"],
+      ["needs_review", "Needs review", "text-amber-700"],
+      ["pro_candidate", "Pro", "text-purple-700"],
+      ["internal_only", "Internal", "text-gray-500"],
+    ] as const
+  ).filter(([key]) => counts[key]);
+
   return (
     <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
       >
-        <span className="flex items-center gap-2">
-          <ClipboardCheck className="h-4 w-4 text-admin-text-tertiary" />
-          Checklist de prontidão pública
+        <span className="flex items-center gap-3">
+          <span className="flex items-center gap-2">
+            <ClipboardCheck className="h-4 w-4 text-admin-text-tertiary" />
+            Checklist de prontidão pública
+          </span>
+          {!open && summaryItems.length > 0 && (
+            <span className="flex items-center gap-2 text-[11px]">
+              {summaryItems.map(([key, label, cls], i) => (
+                <span key={key} className="flex items-center gap-1">
+                  {i > 0 && <span className="text-admin-text-tertiary">·</span>}
+                  <span className={cn("font-semibold", cls)}>{counts[key]} {label}</span>
+                </span>
+              ))}
+            </span>
+          )}
         </span>
         {open ? (
           <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
@@ -570,7 +603,7 @@ function ReadinessChecklist() {
               </tr>
             </thead>
             <tbody>
-              {featureKeys.map((key) => {
+              {READINESS_VISIBLE_KEYS.map((key) => {
                 const readiness = MODULE_READINESS[key];
                 const mvpVis = visLabel(mvpFeatures[key]);
                 const badge = READINESS_BADGE[readiness.status];
