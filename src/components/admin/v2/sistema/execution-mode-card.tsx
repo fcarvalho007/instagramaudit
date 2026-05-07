@@ -132,7 +132,7 @@ export function ExecutionModeCard() {
             <div className="flex flex-col gap-0.5 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[13px] font-semibold text-admin-text-primary">
-                  Modo activo: {isCacheOnly ? "dados guardados" : "buscar novos"}
+                  Modo ativo: {isCacheOnly ? "dados guardados" : "buscar novos"}
                 </span>
                 <span
                   className="inline-flex items-center rounded-md px-2 py-0.5 text-[12px] font-semibold tabular-nums"
