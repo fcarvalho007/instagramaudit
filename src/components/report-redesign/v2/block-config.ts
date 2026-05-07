@@ -31,7 +31,8 @@ export const BLOCKS: readonly BlockConfig[] = [
   {
     id: "overview",
     number: "01",
-    shortLabel: "Overview",
+    shortLabel: "Visão geral",
+    eyebrowOverride: "Visão geral",
     question: "Como está o perfil em geral?",
     subtitle:
       "Identidade do perfil, indicadores principais e enquadramento do que este relatório mostra.",
@@ -50,7 +51,8 @@ export const BLOCKS: readonly BlockConfig[] = [
   {
     id: "performance",
     number: "03",
-    shortLabel: "Performance",
+    shortLabel: "Desempenho",
+    eyebrowOverride: "Desempenho",
     question: "Quando e como reage o público?",
     subtitle:
       "Evolução ao longo do tempo, ritmo de publicação e melhores momentos para chegar à audiência.",
@@ -77,7 +79,8 @@ export const BLOCKS: readonly BlockConfig[] = [
   {
     id: "benchmark",
     number: "06",
-    shortLabel: "Benchmark",
+    shortLabel: "Comparação",
+    eyebrowOverride: "Comparação",
     question: "Como se compara com perfis semelhantes?",
     subtitle:
       "Posição face a referências de mercado e a perfis pares quando disponíveis.",
