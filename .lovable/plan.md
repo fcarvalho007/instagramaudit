@@ -1,109 +1,97 @@
 
-# Refinar o Editorial Identity Card (Executive Summary)
+# Redesign do first fold do relatório público
 
-## Ficheiro alvo
+## Scope
 
-`src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
+Ficheiros a alterar:
+1. **`src/components/report-redesign/v2/report-hero-v2.tsx`** — reescrever o hero card
+2. **`src/components/report-redesign/v2/report-shell-v2.tsx`** — simplificar o wrapper do hero (remover grids/gradientes decorativos)
+3. **`src/components/report-redesign/v2/overview/comparison-header.tsx`** — corrigir violações slate-*
 
-## Dependências de dados actuais (não mudam)
+Ficheiros **não** alterados: lógica de dados, report-shell routing, módulos de visibilidade, PDF pipeline, providers, Supabase schema.
 
-- `scores: Record<ScoreKey, { value; subtitle }>` — 3 sub-scores (envolvimento, frequência, interação)
-- `aiHeroText?: string` — frase AI hero ou fallback determinístico
-- Derivados internos: `globalScore` (0–100), `globalFamily` (danger/warning/success), `strength`, `weakness`
+## Current state
 
-Todos os dados já existem — não é preciso alterar cálculos, props ou tipos.
+O hero actual tem:
+- Wrapper com grid subtil (#F8FBFF), 3 radial gradients decorativos, bottom fade
+- Hero card com 2 zonas (identity + stats)
+- ComparisonHeader com 2 action cards abaixo
+- Avatar ring com `slate-*` gradient, CTA com `bg-slate-900`
+- Sem breadcrumb, sem top bar, sem status pill "Atualizado"
 
-## Problemas actuais identificados
-
-1. **`bg-slate-50/60`** no Band 2 — viola regra "never use slate-*"
-2. **`text-[11px]`** em dois sítios (score "de 100" e badge) — abaixo do mínimo 12px
-3. Frase hero sem eyebrow "RESUMO EXECUTIVO" acima
-4. Band 2 (strength/weakness) visualmente rígido, sem subtítulo explicativo
-5. Gradient decorativo subtil mas frase hero podia ter mais impacto (tamanho)
-6. Score ring "de 100" e badge label ficam demasiado pequenos
-
-## Layout proposto
+## Proposed layout
 
 ```text
-Desktop (sm+):
-┌─────────────────────────────────────────────────────────────┐
-│  ┌─ Left (flex-1) ──────────────────┐ ┌─ Right ─────────┐  │
-│  │  RESUMO EXECUTIVO (eyebrow)      │ │                  │  │
-│  │                                  │ │   ┌──────────┐   │  │
-│  │  "Perfil com bom potencial..."   │ │   │  Score    │   │  │
-│  │  (Fraunces, 1.5–1.75rem)         │ │   │   67     │   │  │
-│  │                                  │ │   └──────────┘   │  │
-│  │  Supporting sentence (Inter)     │ │   /100           │  │
-│  │  (text-sm/base, text-secondary)  │ │   [A MELHORAR]   │  │
-│  │                                  │ │   Pontuação      │  │
-│  └──────────────────────────────────┘ │   InstaBench     │  │
-│                                       └──────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─ Ponto forte ──────────┐ ┌─ A melhorar ────────────────┐│
-│  │ ✓ PONTO FORTE          │ │ ⚠ A MELHORAR               ││
-│  │   Engagement           │ │   Conversa pública          ││
-│  │   (subtitle from score)│ │   (subtitle from score)     ││
-│  │   soft green bg        │ │   soft rose/amber bg        ││
-│  └────────────────────────┘ └──────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
+┌─ TOP BAR (lightweight) ───────────────────────────────────────┐
+│  InstaBench logo │ Relatórios > @handle │ Atualizado Mai 2026 │
+│                                          [PDF] [Share] [+ Novo]│
+└───────────────────────────────────────────────────────────────┘
 
-Mobile:
-┌──────────────────────────┐
-│  RESUMO EXECUTIVO        │
-│  "Perfil com bom..."     │
-│                          │
-│      ┌──────────┐        │
-│      │  Score 67 │        │
-│      └──────────┘        │
-│      /100  [A MELHORAR]  │
-│      Pontuação InstaBench│
-│                          │
-│  Supporting sentence...  │
-├──────────────────────────┤
-│  ✓ Ponto forte           │
-│    Engagement · subtitle │
-├──────────────────────────┤
-│  ⚠ A melhorar            │
-│    Conversa · subtitle   │
-└──────────────────────────┘
+┌─ HERO CARD (single unified card) ─────────────────────────────┐
+│                                                               │
+│  ┌ avatar ┐  @martimsilvai ✓  Instagram                      │
+│  │        │  Martim Silva                         [⬡] [⬡]    │
+│  └────────┘  Creative Director · Lisbon                       │
+│                                                               │
+│  ─────────────────────────────────────────────────────────────│
+│                                                               │
+│   Seguidores        Publicações         A seguir              │
+│     12.4K              847               1.234                │
+│                                                               │
+│  ─────────────────────────────────────────────────────────────│
+│  ● 25 posts em 90 dias  ·  Analisado 4 Mai 2026              │
+└───────────────────────────────────────────────────────────────┘
+
+┌─ Action card ─────────┐  ┌─ Action card ─────────────────────┐
+│ 👥 Comparar com       │  │ 🌐 Adicionar outra rede           │
+│    concorrentes       │  │    (em breve)                     │
+└───────────────────────┘  └───────────────────────────────────┘
 ```
 
-## Alterações concretas
+## Changes detail
 
-### 1. Band 1 — Editorial Portrait
-- Adicionar eyebrow "RESUMO EXECUTIVO" com classe `text-eyebrow` acima da frase
-- Aumentar frase hero para `text-[1.35rem] sm:text-[1.65rem] md:text-[1.85rem]`
-- Separar a frase AI em headline (1ª frase) + supporting text (resto), quando possível
-- Score ring: aumentar size para 110px, "de 100" para `text-xs` (12px), badge para `text-xs`
-- Adicionar "Pontuação InstaBench" abaixo do badge em `text-xs text-content-tertiary`
-- Remover `ScoreOrbitBackground` canvas (over-decorative para estilo Iconosquare)
+### 1. report-hero-v2.tsx — full rewrite
 
-### 2. Band 2 — Strength/Weakness
-- Substituir `bg-slate-50/60` por `bg-surface-muted` (token semântico)
-- Converter de row rígida para 2 mini-cards com `rounded-xl` dentro de um grid
-- Cada card: fundo soft (emerald-50 / rose-50), ícone, eyebrow label, título, e subtítulo do score
-- Adicionar `scores[key].subtitle` como linha explicativa (já existe nos dados)
-- Padding mais generoso: `px-5 py-4`
+**Top bar** (new, inside the hero section):
+- Flex row: logo text "InstaBench" (Inter SemiBold) | breadcrumb "Relatórios > @handle" (Inter, text-sm) | status pill "Atualizado {date}" (rounded-full, soft bg) | PDF/Share icon buttons (already exist) | "+ Novo relatório" primary CTA button
+- Clean, minimal, `border-b border-border-subtle`
 
-### 3. Token compliance
-- Eliminar `bg-slate-50/60` → `bg-surface-muted`
-- Todos os `text-[11px]` → `text-xs` (12px mínimo)
-- Manter `font-display` (Fraunces) apenas na frase hero
-- Todos os números, labels e metadata em Inter (`font-sans`)
+**Hero card body:**
+- **Profile area**: avatar left, handle as `font-display text-xl sm:text-2xl` (Fraunces), verified badge, Instagram pill, real name + bio in Inter text-sm
+- Remove icon-only action buttons from card (moved to top bar)
+- **KPI strip**: 3-column grid, `font-semibold tabular-nums text-2xl sm:text-3xl` for numbers, `text-eyebrow-sm` for labels, subtle `border-l` dividers
+- **Meta footer**: slim row, text-xs, content-tertiary, dot separators
 
-## Ficheiros afectados
+**Avatar ring**: replace `from-slate-300 via-slate-200 to-slate-300` with `from-border-default via-surface-muted to-border-default`
 
-- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` — alteração principal
-- Nenhum outro ficheiro precisa de mudar (props e tipos mantêm-se)
+**Wrapper simplification**: remove the 4 decorative BG layers (grid, radials, bottom fade). Use a clean `bg-surface-base` or very subtle gradient.
 
-## Riscos
+### 2. report-shell-v2.tsx — hero section wrapper
 
-- **Nenhum** — alteração puramente visual, dados e lógica intactos
-- O component é usado apenas via `ReportOverviewBlock`, que não muda
-- Não afecta PDF pipeline (PDF usa componentes próprios)
+- Remove the `<section>` with hardcoded `#F8FBFF`, grid background, 3 radial gradients, and bottom fade
+- Replace with a simple `<section className="bg-surface-base">` wrapper
+- Keep `ReportHeroV2` and `ComparisonHeader` rendering unchanged
 
-## Não se altera
+### 3. comparison-header.tsx — slate fixes
 
-- Cálculos de score, fallback sentence, strength/weakness derivation
-- Provider logic, report generation, module visibility, Supabase schema
-- Nenhuma análise fresh, nenhuma chamada a providers
+- `bg-slate-900` → `bg-content-primary` (or a semantic dark CTA token)
+- `hover:bg-slate-800` → `hover:bg-content-primary/90`
+- `SocialCircle bg="bg-slate-900"` → `bg-content-primary`
+
+## Token compliance
+
+- Zero `slate-*` classes in modified files
+- Zero `font-mono` in public-facing components
+- All text ≥ 12px (`text-xs` minimum)
+- Numbers in Inter with `tabular-nums`
+- Headings in Fraunces (`font-display`)
+- All colours via semantic tokens
+
+## What does NOT change
+
+- Data logic, score calculations, adapter types
+- Module visibility, variant features
+- Provider logic, Supabase schema
+- PDF pipeline, report generation
+- ComparisonHeader modal logic (just style fixes)
+- Blocks below the first fold
