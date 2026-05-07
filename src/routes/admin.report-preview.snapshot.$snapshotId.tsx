@@ -16,7 +16,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { ReportPage } from "@/components/report/report-page";
+import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { AdminGate } from "@/components/admin/admin-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { adminFetch } from "@/lib/admin/fetch";
@@ -78,6 +78,7 @@ type LoadState =
   | {
       kind: "ready";
       result: AdapterResult;
+      payload: SnapshotPayload;
       snapshotMeta: {
         id: string;
         instagram_username: string;
@@ -129,6 +130,7 @@ function AdminSnapshotPreviewPage() {
         setLoad({
           kind: "ready",
           result,
+          payload: body.snapshot.payload ?? {},
           snapshotMeta: {
             id: body.snapshot.id,
             instagram_username: body.snapshot.instagram_username,
@@ -213,7 +215,14 @@ function AdminPreviewChrome({ snapshotId, load, onLogout }: ChromeProps) {
       ) : (
         <>
           <CoverageStrip load={load} />
-          <ReportPage data={load.result.data} />
+          <ReportShellV2
+            result={load.result}
+            snapshotId={load.snapshotMeta.id}
+            payload={load.payload}
+            analyzedAtIso={load.snapshotMeta.created_at}
+            variant="internal_lab"
+            actions={{}}
+          />
           <CoverageNotice load={load} />
           {load.costSummary ? (
             <CostBreakdownPanel

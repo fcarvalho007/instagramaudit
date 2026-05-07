@@ -5,7 +5,7 @@
  * - Acesso restrito: mesma lógica do gate de /admin (Google Sign-in + allowlist).
  * - NÃO chama Apify, NÃO regenera, NÃO altera a snapshot.
  * - Renderiza o mesmo layout do mock (`/report/example`) substituindo apenas
- *   a fonte de dados via <ReportPage data={...} />.
+ *   variant="internal_lab" para mostrar todos os blocos enriquecidos.
  * - Usa o mesmo `ReportThemeWrapper` (paleta clara) do exemplo.
  * - `noindex, nofollow`.
  */
@@ -14,7 +14,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { ReportPage } from "@/components/report/report-page";
+import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { AdminGate } from "@/components/admin/admin-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { adminFetch } from "@/lib/admin/fetch";
@@ -63,7 +63,13 @@ type LoadState =
   | { kind: "loading" }
   | { kind: "missing" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; result: AdapterResult; snapshotMeta: { created_at: string } };
+  | {
+      kind: "ready";
+      result: AdapterResult;
+      snapshotId: string;
+      payload: SnapshotPayload;
+      snapshotMeta: { created_at: string };
+    };
 
 function AdminReportPreviewPage() {
   const { username } = Route.useParams();
@@ -106,6 +112,8 @@ function AdminReportPreviewPage() {
         setLoad({
           kind: "ready",
           result,
+          snapshotId: body.snapshot.id,
+          payload: body.snapshot.payload ?? {},
           snapshotMeta: { created_at: body.snapshot.created_at },
         });
       } catch (e) {
@@ -185,7 +193,14 @@ function AdminPreviewChrome({ username, load, onLogout }: ChromeProps) {
       ) : (
         <>
           <CoverageStrip load={load} />
-          <ReportPage data={load.result.data} />
+          <ReportShellV2
+            result={load.result}
+            snapshotId={load.snapshotId}
+            payload={load.payload}
+            analyzedAtIso={load.snapshotMeta.created_at}
+            variant="internal_lab"
+            actions={{}}
+          />
           <CoverageNotice load={load} />
         </>
       )}
