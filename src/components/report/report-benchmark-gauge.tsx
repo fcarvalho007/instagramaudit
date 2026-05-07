@@ -135,7 +135,7 @@ export function ReportBenchmarkGauge() {
             {deltaSign}
             {absDeltaPp}pp
           </span>
-          <span className="font-mono text-xs text-content-tertiary">
+          <span className="tabular-nums text-xs text-content-tertiary">
             ({deltaSign}
             {absDelta}%)
           </span>

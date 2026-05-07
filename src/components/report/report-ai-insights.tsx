@@ -43,7 +43,7 @@ export function ReportAiInsights() {
               )}
               <div className="flex gap-4 md:gap-5">
                 <div className="shrink-0 h-9 w-9 rounded-md border border-border-default flex items-center justify-center">
-                  <span className="font-mono text-xs font-semibold text-content-primary">
+                  <span className="tabular-nums text-xs font-semibold text-content-primary">
                     {ins.number}
                   </span>
                 </div>

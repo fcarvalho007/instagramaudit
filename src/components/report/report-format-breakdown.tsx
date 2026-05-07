@@ -110,7 +110,7 @@ export function ReportFormatBreakdown() {
                     <span className="text-eyebrow-sm text-content-tertiary">
                       Benchmark
                     </span>
-                    <span className="font-mono text-[13px] font-medium text-content-secondary tabular-nums">
+                    <span className="tabular-nums text-[13px] font-medium text-content-secondary tabular-nums">
                       {f.benchmark.toString().replace(".", ",")}%
                     </span>
                   </div>

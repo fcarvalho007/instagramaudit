@@ -42,7 +42,7 @@ export function ReportChartTooltip({
               />
               <span className="text-content-secondary">{entry.name}</span>
             </div>
-            <span className="font-mono font-medium text-content-primary">
+            <span className="tabular-nums font-medium text-content-primary">
               {formatter && entry.value !== undefined
                 ? formatter(entry.value, entry.name)
                 : `${entry.value?.toLocaleString("pt-PT")}${valueSuffix}`}

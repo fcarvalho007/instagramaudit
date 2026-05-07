@@ -32,16 +32,16 @@ export function ReportHashtagsKeywords() {
               return (
                 <li key={h.tag} className="space-y-1.5">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-mono text-sm font-medium text-content-primary">
+                    <span className="tabular-nums text-sm font-medium text-content-primary">
                       {h.tag}
                     </span>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="font-mono text-xs text-content-tertiary">
+                      <span className="tabular-nums text-xs text-content-tertiary">
                         {h.uses} usos
                       </span>
                       <span className="inline-flex items-center gap-1.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
-                        <span className="font-mono text-xs font-medium text-content-primary">
+                        <span className="tabular-nums text-xs font-medium text-content-primary">
                           {h.avgEngagement.toString().replace(".", ",")}%
                         </span>
                       </span>
@@ -76,7 +76,7 @@ export function ReportHashtagsKeywords() {
                     <span className="font-sans text-[15px] font-medium text-content-primary">
                       {k.word}
                     </span>
-                    <span className="font-mono text-xs text-content-tertiary">
+                    <span className="tabular-nums text-xs text-content-tertiary">
                       {k.count} ocorrências
                     </span>
                   </div>
