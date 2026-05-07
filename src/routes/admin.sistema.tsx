@@ -129,7 +129,7 @@ function SistemaPage() {
           >
             <span className="shrink-0 mt-px">◌</span>
             Modo &ldquo;dados guardados&rdquo; não chama APIs pagas. Modo &ldquo;buscar novo&rdquo; chama Apify, OpenAI e DataForSEO conforme necessário e regista o custo em{" "}
-            <span className="font-mono text-[12px]" style={{ color: "#888780" }}>
+            <span className="font-mono text-xs text-admin-text-tertiary">
               provider_call_logs
             </span>
             .
