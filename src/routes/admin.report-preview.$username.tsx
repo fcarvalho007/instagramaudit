@@ -11,7 +11,7 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
@@ -19,6 +19,9 @@ import { AdminGate } from "@/components/admin/admin-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { adminFetch } from "@/lib/admin/fetch";
 import { clearAdminEmail, readAdminEmail } from "@/lib/admin/simple-gate";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
+import type { ReportVariant } from "@/lib/report/report-variant";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -27,7 +30,28 @@ import {
   type ReportBenchmarkInput,
 } from "@/lib/report/snapshot-to-report-data";
 
+// ── Search params schema ───────────────────────────────────────────
+
+const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
+
+const previewSearchSchema = z.object({
+  variant: fallback(z.enum(VALID_VARIANTS), "public_mvp").default("public_mvp"),
+});
+
+const VARIANT_LABELS: Record<ReportVariant, string> = {
+  public_mvp: "Public MVP",
+  internal_lab: "Internal Lab",
+  pro_preview: "Pro Preview",
+};
+
+const VARIANT_BADGE_TONES: Record<ReportVariant, string> = {
+  public_mvp: "bg-blue-50 text-blue-700 border-blue-200",
+  internal_lab: "bg-amber-50 text-amber-700 border-amber-200",
+  pro_preview: "bg-purple-50 text-purple-700 border-purple-200",
+};
+
 export const Route = createFileRoute("/admin/report-preview/$username")({
+  validateSearch: zodValidator(previewSearchSchema),
   component: AdminReportPreviewPage,
   head: () => ({
     meta: [
@@ -73,6 +97,7 @@ type LoadState =
 
 function AdminReportPreviewPage() {
   const { username } = Route.useParams();
+  const { variant } = Route.useSearch();
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
 
@@ -157,6 +182,7 @@ function AdminReportPreviewPage() {
     <ReportThemeWrapper>
       <AdminPreviewChrome
         username={username}
+        variant={variant}
         load={load}
         onLogout={handleLogout}
       />
@@ -166,14 +192,15 @@ function AdminReportPreviewPage() {
 
 interface ChromeProps {
   username: string;
+  variant: ReportVariant;
   load: LoadState;
   onLogout: () => void;
 }
 
-function AdminPreviewChrome({ username, load, onLogout }: ChromeProps) {
+function AdminPreviewChrome({ username, variant, load, onLogout }: ChromeProps) {
   return (
     <div className="bg-surface-base min-h-screen">
-      <AdminBanner username={username} load={load} onLogout={onLogout} />
+      <AdminBanner username={username} variant={variant} load={load} onLogout={onLogout} />
       {load.kind === "loading" || load.kind === "idle" ? (
         <PreviewMessage
           title="A carregar snapshot…"
@@ -198,7 +225,7 @@ function AdminPreviewChrome({ username, load, onLogout }: ChromeProps) {
             snapshotId={load.snapshotId}
             payload={load.payload}
             analyzedAtIso={load.snapshotMeta.created_at}
-            variant="internal_lab"
+            variant={variant}
             actions={{}}
           />
           <CoverageNotice load={load} />
@@ -209,7 +236,7 @@ function AdminPreviewChrome({ username, load, onLogout }: ChromeProps) {
   );
 }
 
-function AdminBanner({ username, load, onLogout }: ChromeProps) {
+function AdminBanner({ username, variant, load, onLogout }: ChromeProps) {
   const generated =
     load.kind === "ready"
       ? new Date(load.snapshotMeta.created_at).toLocaleString("pt-PT", {
@@ -222,7 +249,10 @@ function AdminBanner({ username, load, onLogout }: ChromeProps) {
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-3 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
-            InstaBench · Admin · Pré-visualização de relatório real
+            InstaBench · Admin · Pré-visualização
+            <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VARIANT_BADGE_TONES[variant]}`}>
+              {VARIANT_LABELS[variant]}
+            </span>
           </p>
           <p className="text-sm text-content-primary">
             @{username}
