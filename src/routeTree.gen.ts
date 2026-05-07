@@ -40,6 +40,7 @@ import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
 import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
+import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
 import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
@@ -245,6 +246,11 @@ const AdminClientesRoute = AdminClientesRouteImport.update({
 const ReportPrintSnapshotIdRoute = ReportPrintSnapshotIdRouteImport.update({
   id: '/report/print/$snapshotId',
   path: '/report/print/$snapshotId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BetaSubmittedRequestIdRoute = BetaSubmittedRequestIdRouteImport.update({
+  id: '/beta/submitted/$requestId',
+  path: '/beta/submitted/$requestId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppReportsIdRoute = AppReportsIdRouteImport.update({
@@ -584,6 +590,7 @@ export interface FileRoutesByFullPath {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
+  '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -667,6 +674,7 @@ export interface FileRoutesByTo {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
+  '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -752,6 +760,7 @@ export interface FileRoutesById {
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/app/reports/$id': typeof AppReportsIdRoute
+  '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -838,6 +847,7 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
+    | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -921,6 +931,7 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
+    | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -1005,6 +1016,7 @@ export interface FileRouteTypes {
     | '/api/public/ig-thumb'
     | '/api/public/public-report-pdf'
     | '/app/reports/$id'
+    | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/knowledge/benchmarks'
@@ -1075,6 +1087,7 @@ export interface RootRouteChildren {
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
   ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
+  BetaSubmittedRequestIdRoute: typeof BetaSubmittedRequestIdRoute
   ReportPrintSnapshotIdRoute: typeof ReportPrintSnapshotIdRoute
   ApiAdminKnowledgeBenchmarksRoute: typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   ApiAdminKnowledgeExportRoute: typeof ApiAdminKnowledgeExportRoute
@@ -1321,6 +1334,13 @@ declare module '@tanstack/react-router' {
       path: '/report/print/$snapshotId'
       fullPath: '/report/print/$snapshotId'
       preLoaderRoute: typeof ReportPrintSnapshotIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/beta/submitted/$requestId': {
+      id: '/beta/submitted/$requestId'
+      path: '/beta/submitted/$requestId'
+      fullPath: '/beta/submitted/$requestId'
+      preLoaderRoute: typeof BetaSubmittedRequestIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/reports/$id': {
@@ -1867,6 +1887,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
   ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
+  BetaSubmittedRequestIdRoute: BetaSubmittedRequestIdRoute,
   ReportPrintSnapshotIdRoute: ReportPrintSnapshotIdRoute,
   ApiAdminKnowledgeBenchmarksRoute:
     ApiAdminKnowledgeBenchmarksRouteWithChildren,
