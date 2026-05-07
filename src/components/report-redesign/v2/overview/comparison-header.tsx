@@ -16,21 +16,21 @@ export function ComparisonHeader() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-3 mt-3">
+      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-3 mt-2">
         {/* ── Card 1: Competitor comparison ──────────────────────── */}
         <button
           type="button"
           onClick={() => setModalOpen(true)}
           aria-label="Comparar com concorrentes diretos"
           className={cn(
-            "flex items-center gap-4 rounded-xl border border-border-default bg-surface-secondary p-4 text-left shadow-card",
+            "flex items-center gap-4 rounded-xl border border-border-default bg-white p-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.04)]",
             "transition-all duration-200 hover:border-accent-primary/30",
             "cursor-pointer",
           )}
         >
           {/* Icon */}
-          <div className="shrink-0 flex items-center justify-center size-10 rounded-xl bg-tint-primary text-accent-primary">
-            <Users className="size-5" strokeWidth={2} aria-hidden="true" />
+          <div className="shrink-0 flex items-center justify-center size-9 rounded-lg bg-tint-primary text-accent-primary">
+            <Users className="size-[18px]" strokeWidth={2} aria-hidden="true" />
           </div>
 
           {/* Copy */}
@@ -44,7 +44,7 @@ export function ComparisonHeader() {
           </div>
 
           {/* CTA pill — intentional dark primary CTA */}
-          <div className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-full bg-content-primary text-white px-3.5 py-2 text-[13px] font-medium shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-colors duration-150 hover:bg-content-primary/90">
+          <div className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-full bg-content-primary text-white px-3 py-1.5 text-xs font-medium shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-colors duration-150 hover:bg-content-primary/90">
             <Plus className="size-3.5" aria-hidden="true" />
             <span>Adicionar</span>
             {/* PRO badge — local decorative amber/gold accent */}
@@ -66,7 +66,7 @@ export function ComparisonHeader() {
           aria-label="Funcionalidade em breve: análise de outras redes"
           title="Em breve: análise de outras redes"
           className={cn(
-            "flex items-center gap-3 rounded-xl border border-dashed border-border-default bg-surface-secondary p-4 text-left",
+            "flex items-center gap-3 rounded-xl border border-border-default bg-white p-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.04)]",
             "transition-all duration-200 hover:border-border-strong",
             "cursor-pointer",
           )}
@@ -93,7 +93,7 @@ export function ComparisonHeader() {
                 Em breve
               </span>
             </div>
-            <p className="text-[11px] text-content-tertiary mt-0.5 leading-relaxed">
+            <p className="text-xs text-content-tertiary mt-0.5 leading-relaxed">
               Facebook · TikTok · YouTube
             </p>
           </div>

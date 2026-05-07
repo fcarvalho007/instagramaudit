@@ -106,7 +106,7 @@ export function ReportShellV2({
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
         <section className="bg-surface-base">
           <ReportHeroV2 result={result} actions={actions} />
-          <div className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-8 pb-4">
+          <div className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-8 pb-3">
             <ComparisonHeader />
           </div>
         </section>
@@ -186,7 +186,7 @@ export function ReportShellV2({
 
               {/* 05 · Procura fora do Instagram */}
               <ReportBlockSection block={procura} tone="canvas">
-                <p className="text-sm md:text-[15px] text-slate-600 leading-relaxed max-w-3xl">
+                <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
                   O Instagram mostra como a audiência atual reage. A procura
                   fora da plataforma ajuda a perceber se os mesmos temas também
                   despertam interesse em pesquisa. Os valores atuais são
