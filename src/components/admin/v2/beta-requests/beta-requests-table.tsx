@@ -22,6 +22,7 @@ const STATUS_ACCENT: Record<string, "revenue" | "info" | "danger" | "signal" | "
   processing: "signal",
   completed: "revenue",
   archived: "neutral",
+  failed: "danger",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -31,6 +32,7 @@ const STATUS_LABEL: Record<string, string> = {
   processing: "Em processamento",
   completed: "Concluído",
   archived: "Arquivado",
+  failed: "Falhou",
 };
 
 const USER_TYPE_LABEL: Record<string, string> = {

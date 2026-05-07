@@ -10,6 +10,7 @@ const STATUSES = [
   { value: "processing", label: "Em processamento" },
   { value: "completed", label: "Concluído" },
   { value: "archived", label: "Arquivado" },
+  { value: "failed", label: "Falhou" },
 ] as const;
 
 interface BetaRequestFiltersProps {
