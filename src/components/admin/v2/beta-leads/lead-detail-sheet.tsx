@@ -344,11 +344,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate }: LeadDeta
           </div>
 
           <DetailRow label="Visualizações">
-            <span className="font-mono">{lead.report_views}</span>
+            <span className="admin-code">{lead.report_views}</span>
           </DetailRow>
           {lead.report_cost_usd != null && (
             <DetailRow label="Custo estimado">
-              <span className="font-mono">€{lead.report_cost_usd.toFixed(2)}</span>
+              <span className="admin-code">€{lead.report_cost_usd.toFixed(2)}</span>
             </DetailRow>
           )}
           <DetailRow label="Última interação">
