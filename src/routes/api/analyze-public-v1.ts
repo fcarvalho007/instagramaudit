@@ -951,6 +951,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             });
             return failure("UPSTREAM_UNAVAILABLE", {
               provider: "apify",
+              provider_error_code: err.code,
               details: err.message,
             });
           }
@@ -979,15 +980,12 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               outcome: "provider_error",
               errorCode: "UPSTREAM_FAILED",
             });
-            const partial = err as ApifyUpstreamError & {
-              runId?: string;
-              actualCostUsd?: number;
-            };
             return failure("UPSTREAM_FAILED", {
               provider: "apify",
+              provider_error_code: err.code,
               provider_status: err.status,
               provider_message: err.message,
-              run_id: partial.runId ?? undefined,
+              run_id: err.runId ?? undefined,
               details: err.message,
             });
           }
