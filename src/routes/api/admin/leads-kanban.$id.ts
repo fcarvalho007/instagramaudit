@@ -77,11 +77,20 @@ export const Route = createFileRoute("/api/admin/leads-kanban/$id")({
           );
         }
 
-        updates.updated_at = new Date().toISOString();
+        const updatePayload = {
+          ...updates,
+          updated_at: new Date().toISOString(),
+        } as {
+          commercial_status?: string;
+          internal_notes?: string;
+          contacted_at?: string;
+          archived_at?: string;
+          updated_at: string;
+        };
 
         const { data, error } = await supabaseAdmin
           .from("leads")
-          .update(updates)
+          .update(updatePayload)
           .eq("id", params.id)
           .select()
           .maybeSingle();
@@ -100,15 +109,15 @@ export const Route = createFileRoute("/api/admin/leads-kanban/$id")({
 
         // Fire tracking event
         try {
-          await supabaseAdmin.from("product_events").insert({
+          await supabaseAdmin.from("product_events").insert([{
             event_type: "lead_status_changed",
             lead_id: params.id,
             handle: null,
             metadata: {
               changes: Object.keys(updates).filter((k) => k !== "updated_at"),
-              new_status: updates.commercial_status ?? undefined,
+              new_status: updates.commercial_status ?? null,
             },
-          });
+          }]);
         } catch {
           // non-critical
         }

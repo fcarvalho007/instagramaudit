@@ -80,6 +80,7 @@ import { Route as ApiAdminSistemaCapsRouteImport } from './routes/api/admin/sist
 import { Route as ApiAdminSistemaAlertsRouteImport } from './routes/api/admin/sistema.alerts'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
+import { Route as ApiAdminLeadsKanbanIdRouteImport } from './routes/api/admin/leads-kanban.$id'
 import { Route as ApiAdminKnowledgeSuggestionsRouteImport } from './routes/api/admin/knowledge.suggestions'
 import { Route as ApiAdminKnowledgeSourcesRouteImport } from './routes/api/admin/knowledge.sources'
 import { Route as ApiAdminKnowledgeOverviewRouteImport } from './routes/api/admin/knowledge.overview'
@@ -470,6 +471,11 @@ const ApiAdminReportRequestsIdRoute =
     path: '/$id',
     getParentRoute: () => ApiAdminReportRequestsRoute,
   } as any)
+const ApiAdminLeadsKanbanIdRoute = ApiAdminLeadsKanbanIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiAdminLeadsKanbanRoute,
+} as any)
 const ApiAdminKnowledgeSuggestionsRoute =
   ApiAdminKnowledgeSuggestionsRouteImport.update({
     id: '/api/admin/knowledge/suggestions',
@@ -585,7 +591,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
-  '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRoute
+  '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
@@ -606,6 +612,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -670,7 +677,7 @@ export interface FileRoutesByTo {
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
-  '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRoute
+  '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
@@ -691,6 +698,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -757,7 +765,7 @@ export interface FileRoutesById {
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
-  '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRoute
+  '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
@@ -778,6 +786,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -866,6 +875,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -951,6 +961,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -1037,6 +1048,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -1089,7 +1101,7 @@ export interface RootRouteChildren {
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
-  ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRoute
+  ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
   ApiAdminRegeneratePdfRoute: typeof ApiAdminRegeneratePdfRoute
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
   ApiAdminReportsRoute: typeof ApiAdminReportsRouteWithChildren
@@ -1629,6 +1641,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminReportRequestsIdRouteImport
       parentRoute: typeof ApiAdminReportRequestsRoute
     }
+    '/api/admin/leads-kanban/$id': {
+      id: '/api/admin/leads-kanban/$id'
+      path: '/$id'
+      fullPath: '/api/admin/leads-kanban/$id'
+      preLoaderRoute: typeof ApiAdminLeadsKanbanIdRouteImport
+      parentRoute: typeof ApiAdminLeadsKanbanRoute
+    }
     '/api/admin/knowledge/suggestions': {
       id: '/api/admin/knowledge/suggestions'
       path: '/api/admin/knowledge/suggestions'
@@ -1792,6 +1811,17 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiAdminLeadsKanbanRouteChildren {
+  ApiAdminLeadsKanbanIdRoute: typeof ApiAdminLeadsKanbanIdRoute
+}
+
+const ApiAdminLeadsKanbanRouteChildren: ApiAdminLeadsKanbanRouteChildren = {
+  ApiAdminLeadsKanbanIdRoute: ApiAdminLeadsKanbanIdRoute,
+}
+
+const ApiAdminLeadsKanbanRouteWithChildren =
+  ApiAdminLeadsKanbanRoute._addFileChildren(ApiAdminLeadsKanbanRouteChildren)
+
 interface ApiAdminReportRequestsRouteChildren {
   ApiAdminReportRequestsIdRoute: typeof ApiAdminReportRequestsIdRoute
 }
@@ -1897,7 +1927,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,
-  ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRoute,
+  ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
   ApiAdminRegeneratePdfRoute: ApiAdminRegeneratePdfRoute,
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,
   ApiAdminReportsRoute: ApiAdminReportsRouteWithChildren,
