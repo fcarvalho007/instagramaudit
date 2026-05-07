@@ -69,7 +69,7 @@ export function DemoOnlySection({
           <button
             type="button"
             onClick={() => set(true)}
-            className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-admin-border bg-admin-surface px-2.5 py-1.5 text-[11px] font-medium text-admin-text-secondary transition-colors hover:border-admin-text-tertiary hover:text-admin-text-primary"
+            className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-admin-border bg-admin-surface px-2.5 py-1.5 text-[12px] font-medium text-admin-text-secondary transition-colors hover:border-admin-text-tertiary hover:text-admin-text-primary"
           >
             <span
               aria-hidden="true"

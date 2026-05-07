@@ -102,7 +102,7 @@ export function RevenueSection() {
             <p className="m-0 text-sm font-medium text-admin-text-primary">
               Receita diária · últimos 30 dias
             </p>
-            <p className="mt-0.5 text-[11px] text-admin-text-tertiary">
+            <p className="mt-0.5 text-[12px] text-admin-text-tertiary">
               Subscrições estáveis · avulso a crescer
             </p>
           </div>
@@ -129,13 +129,13 @@ export function RevenueSection() {
               />
               <XAxis
                 dataKey="day"
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                 tickLine={false}
                 axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                 interval={2}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `€${v}`}
@@ -146,7 +146,7 @@ export function RevenueSection() {
                 contentStyle={{
                   border: "1px solid rgb(44 44 42 / 0.14)",
                   borderRadius: 8,
-                  fontSize: 11,
+                  fontSize: 12,
                   padding: "6px 10px",
                   boxShadow: "none",
                 }}
@@ -178,7 +178,7 @@ export function RevenueSection() {
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] text-admin-text-secondary">
+    <span className="inline-flex items-center gap-1.5 text-[12px] text-admin-text-secondary">
       <span
         aria-hidden="true"
         className="block h-2 w-2 rounded-full"

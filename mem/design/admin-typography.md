@@ -13,7 +13,9 @@ type: design
 | Card title | 15px | `.admin-card-title` |
 | Body text | 13px | `.admin-body` |
 | Table cell | 13px | `.admin-table-cell` |
+| Table header | 12px uppercase | `.admin-table-header` |
 | Metadata / sub-line | 12px | `.admin-meta` |
+| Code / mono snippets | 12px | `.admin-code` |
 | Eyebrow / label | 11px uppercase mono | `.admin-eyebrow` |
 | Badge pill | 11px | AdminBadge component |
 | Button sm | 12px, h-28px | AdminActionButton sm |
@@ -21,7 +23,7 @@ type: design
 | Tab pill | 13px | AdminTabsNav |
 
 **Hard rule**: nothing interactive or informational below 12px.
-11px floor reserved exclusively for decorative eyebrows and badge pills.
+11px floor reserved exclusively for decorative eyebrows and badge pills only.
 
 ## Density Rules
 
@@ -30,3 +32,9 @@ type: design
 - Kanban column width: 270px
 - Select trigger min height: 28px
 - Table th: px-16 py-12; Table td: px-16 py-10
+
+## Enforcement
+
+All `text-[10px]` and `text-[11px]` violations in admin v2 components were
+cleaned in the May 2026 typography pass. New code must use `.admin-meta` (12px)
+as the minimum for any readable/interactive text.

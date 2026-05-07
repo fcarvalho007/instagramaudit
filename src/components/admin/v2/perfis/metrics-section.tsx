@@ -119,7 +119,7 @@ function ProfileKpi({
         ) : null}
       </div>
       {sub ? (
-        <p className="mt-2 text-[11px] text-admin-text-tertiary">{sub}</p>
+        <p className="mt-2 text-[12px] text-admin-text-tertiary">{sub}</p>
       ) : null}
     </AdminCard>
   );

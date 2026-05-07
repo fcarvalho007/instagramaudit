@@ -61,7 +61,7 @@ function MiniDonut({
         />
       </svg>
       <span
-        className="absolute font-mono text-[11px] font-medium"
+        className="absolute font-mono text-[12px] font-medium"
         style={{ color }}
       >
         {label}
@@ -119,7 +119,7 @@ export function PlansSection() {
                       <span className="text-[13px] font-medium text-admin-text-primary">
                         {plan.name}
                       </span>
-                      <span className="text-[11px] text-admin-text-tertiary">
+                      <span className="text-[12px] text-admin-text-tertiary">
                         {plan.price}
                       </span>
                     </div>
@@ -127,7 +127,7 @@ export function PlansSection() {
                       <span className="font-mono text-[13px] font-medium text-admin-text-primary">
                         €{plan.mrr}
                       </span>
-                      <span className="ml-2 text-[11px] text-admin-text-tertiary">
+                      <span className="ml-2 text-[12px] text-admin-text-tertiary">
                         {plan.subs} subs · {plan.pct}%
                       </span>
                     </div>
@@ -192,7 +192,7 @@ export function PlansSection() {
             </h3>
             <AdminInfoTooltip label="Concentração de receita em escalões de clientes. Permite identificar dependência de poucos clientes grandes." />
           </div>
-          <p className="mt-1 text-[11px] text-admin-text-tertiary">
+          <p className="mt-1 text-[12px] text-admin-text-tertiary">
             Receita por escalão de cliente
           </p>
 
@@ -208,7 +208,7 @@ export function PlansSection() {
                   <p className="m-0 text-[13px] font-medium text-admin-text-primary">
                     {tier.title}
                   </p>
-                  <p className="m-0 text-[11px] text-admin-text-tertiary">
+                  <p className="m-0 text-[12px] text-admin-text-tertiary">
                     {tier.sub}
                   </p>
                 </div>

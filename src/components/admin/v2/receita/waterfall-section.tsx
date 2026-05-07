@@ -114,7 +114,7 @@ export function WaterfallSection() {
               />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-600))" }}
+                tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-600))" }}
                 tickLine={false}
                 axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                 interval={0}
@@ -122,7 +122,7 @@ export function WaterfallSection() {
               <YAxis
                 domain={[0, 800]}
                 tick={{
-                  fontSize: 10,
+                  fontSize: 12,
                   fill: "#888780",
                   fontFamily: "JetBrains Mono, monospace",
                 }}
@@ -146,7 +146,7 @@ export function WaterfallSection() {
                   }
                   return (
                     <div
-                      className="rounded-lg px-3.5 py-2.5 text-[11px]"
+                      className="rounded-lg px-3.5 py-2.5 text-[12px]"
                       style={{
                         background: "#1F1E1B",
                         color: "#FAF9F5",
@@ -192,7 +192,7 @@ export function WaterfallSection() {
               >
                 {cell.value}
               </p>
-              <p className="mt-1.5 text-[11px] text-admin-text-tertiary">
+              <p className="mt-1.5 text-[12px] text-admin-text-tertiary">
                 {cell.sub}
               </p>
             </div>

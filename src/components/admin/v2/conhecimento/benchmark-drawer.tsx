@@ -249,7 +249,7 @@ export function BenchmarkDrawer({ open, onClose, tier, format, benchmark }: Prop
 
           {benchmark?.id ? (
             <div className="mt-6 border-t border-admin-border pt-4">
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-admin-text-tertiary">
+              <h4 className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-admin-text-tertiary">
                 Histórico
               </h4>
               {historyQuery.isLoading ? (
@@ -261,7 +261,7 @@ export function BenchmarkDrawer({ open, onClose, tier, format, benchmark }: Prop
                   {(historyQuery.data ?? []).map((h) => (
                     <li
                       key={h.id}
-                      className="rounded border border-admin-border px-3 py-2 text-[11px]"
+                      className="rounded border border-admin-border px-3 py-2 text-[12px]"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium text-admin-text-primary">

@@ -136,7 +136,7 @@ export function ReportsTableSection() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-admin-border px-6 py-3.5">
-          <p className="m-0 text-[11px] text-admin-text-tertiary">
+          <p className="m-0 text-[12px] text-admin-text-tertiary">
             A mostrar {rows.length} de {counts.all} · ordenado por mais recente
           </p>
           <div className="flex items-center gap-1.5">
@@ -306,7 +306,7 @@ function ActionIcon({
       </TooltipTrigger>
       <TooltipContent
         side="top"
-        className="bg-admin-neutral-900 text-[11px] text-white"
+        className="bg-admin-neutral-900 text-[12px] text-white"
       >
         {label}
       </TooltipContent>

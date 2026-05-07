@@ -170,7 +170,7 @@ function AggregateStat({
       >
         {value}
       </p>
-      <p className="mt-1 text-[11px] text-admin-text-tertiary">{sub}</p>
+      <p className="mt-1 text-[12px] text-admin-text-tertiary">{sub}</p>
     </div>
   );
 }

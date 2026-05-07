@@ -138,7 +138,7 @@ export function VisualCoverDebugCard() {
           {/* OpenAI Gate */}
           <div className="rounded-lg border border-admin-border bg-admin-surface-muted/40 p-3 space-y-1.5">
             <p className="text-eyebrow-sm text-admin-text-tertiary">OpenAI Gate</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
               <span className="text-admin-text-tertiary">OPENAI_ENABLED</span>
               <span className={d.openai.enabled ? "text-admin-revenue-700 font-medium" : "text-admin-danger-700 font-medium"}>
                 {d.openai.enabled ? "true" : "false"}
@@ -154,7 +154,7 @@ export function VisualCoverDebugCard() {
                 {d.openai.handleAllowed === null ? "—" : d.openai.handleAllowed ? "sim" : "não"}
               </span>
               <span className="text-admin-text-tertiary">Allowlist</span>
-              <span className="text-admin-text-primary font-mono text-[10px] break-all">
+              <span className="text-admin-text-primary font-mono text-[12px] break-all">
                 {d.openai.allowlist.length > 0 ? d.openai.allowlist.join(", ") : "(vazia)"}
               </span>
             </div>
@@ -164,7 +164,7 @@ export function VisualCoverDebugCard() {
           {d.snapshot && (
             <div className="rounded-lg border border-admin-border bg-admin-surface-muted/40 p-3 space-y-1.5">
               <p className="text-eyebrow-sm text-admin-text-tertiary">Snapshot</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
                 <span className="text-admin-text-tertiary">visual_cover_analysis</span>
                 <span className={d.snapshot.has_visual_cover ? "text-admin-revenue-700 font-medium" : "text-admin-danger-700 font-medium"}>
                   {d.snapshot.has_visual_cover ? "presente" : "ausente"}
@@ -178,7 +178,7 @@ export function VisualCoverDebugCard() {
                   </>
                 )}
                 <span className="text-admin-text-tertiary">Criado</span>
-                <span className="text-admin-text-primary font-mono text-[10px]">{d.snapshot.created_at}</span>
+                <span className="text-admin-text-primary font-mono text-[12px]">{d.snapshot.created_at}</span>
               </div>
             </div>
           )}
@@ -187,12 +187,12 @@ export function VisualCoverDebugCard() {
           {d.thumbnails && (
             <div className="rounded-lg border border-admin-border bg-admin-surface-muted/40 p-3 space-y-1.5">
               <p className="text-eyebrow-sm text-admin-text-tertiary">Thumbnails ({d.thumbnails.total})</p>
-              <div className="text-[10px] text-admin-text-secondary space-y-0.5">
+              <div className="text-[12px] text-admin-text-secondary space-y-0.5">
                 {d.thumbnails.urls.map((u, i) => (
                   <p key={i} className="font-mono break-all">{u}</p>
                 ))}
               </div>
-              <p className="text-[10px] text-admin-text-tertiary">
+              <p className="text-[12px] text-admin-text-tertiary">
                 {d.thumbnails.allRaw ? "URLs diretas (raw)" : "Contém URLs proxy"}
               </p>
             </div>
@@ -202,7 +202,7 @@ export function VisualCoverDebugCard() {
           {d.lastProviderCall ? (
             <div className="rounded-lg border border-admin-border bg-admin-surface-muted/40 p-3 space-y-1.5">
               <p className="text-eyebrow-sm text-admin-text-tertiary">Última chamada OpenAI (visual)</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
                 <span className="text-admin-text-tertiary">Estado</span>
                 <span className="text-admin-text-primary">{d.lastProviderCall.status}</span>
                 <span className="text-admin-text-tertiary">Modelo</span>
@@ -218,13 +218,13 @@ export function VisualCoverDebugCard() {
                 {d.lastProviderCall.error && (
                   <>
                     <span className="text-admin-text-tertiary">Erro</span>
-                    <span className="text-admin-danger-700 text-[10px] break-all">{d.lastProviderCall.error}</span>
+                    <span className="text-admin-danger-700 text-[12px] break-all">{d.lastProviderCall.error}</span>
                   </>
                 )}
               </div>
             </div>
           ) : (
-            <p className="text-[11px] text-admin-text-tertiary italic">
+            <p className="text-[12px] text-admin-text-tertiary italic">
               Nenhuma chamada OpenAI registada para visual-cover-analysis.
             </p>
           )}
@@ -235,16 +235,16 @@ export function VisualCoverDebugCard() {
               type="button"
               onClick={() => refreshMut.mutate()}
               disabled={refreshMut.isPending || !queryHandle}
-              className="rounded-md bg-admin-expense-700 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-admin-expense-700/80 disabled:opacity-50"
+              className="rounded-md bg-admin-expense-700 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-admin-expense-700/80 disabled:opacity-50"
             >
               {refreshMut.isPending ? "A expirar cache…" : "Forçar refresh (expira cache do handle)"}
             </button>
             {refreshMut.isSuccess && (
-              <p className="mt-1 text-[10px] text-admin-revenue-700">
+              <p className="mt-1 text-[12px] text-admin-revenue-700">
                 Cache expirado. A próxima análise fará chamada fresh com visual cover.
               </p>
             )}
-            <p className="mt-1 text-[10px] text-admin-text-tertiary">
+            <p className="mt-1 text-[12px] text-admin-text-tertiary">
               Após expirar, visita /analyze/{queryHandle || "handle"} para desencadear nova análise com P07.
             </p>
           </div>

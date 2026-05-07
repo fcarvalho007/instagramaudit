@@ -298,8 +298,8 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
           {/* TOTAL — premium dark card */}
           <div className="rounded-xl p-5 text-white" style={{ background: "linear-gradient(135deg, #1a1f2e 0%, #0f172a 100%)" }}>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-medium uppercase tracking-widest text-white/60">Total atribuído</span>
-              <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/80">30 DIAS</span>
+              <span className="text-[12px] font-medium uppercase tracking-widest text-white/60">Total atribuído</span>
+              <span className="rounded bg-white/10 px-2 py-0.5 text-[12px] font-medium text-white/80">30 DIAS</span>
             </div>
             <p className="font-mono text-[2.5rem] font-semibold tracking-[-0.03em] leading-none mb-3">
               ${data.total.toFixed(2)}
@@ -309,12 +309,12 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
               <div style={{ width: `${openaiShare}%`, backgroundColor: ADMIN_LITERAL.expenseChartOpenAI }} />
               <div style={{ width: `${dfsShare}%`, backgroundColor: ADMIN_LITERAL.expenseChartDataForSeo }} />
             </div>
-            <p className="mt-2 text-[11px] text-white/50">
+            <p className="mt-2 text-[12px] text-white/50">
               · {apifyShare.toFixed(0)}% · {openaiShare.toFixed(0)}% · {dfsShare.toFixed(0)}%
             </p>
           </div>
         </div>
-        <p className="mt-3 flex items-start gap-1.5 text-[11px] text-admin-text-tertiary leading-relaxed">
+        <p className="mt-3 flex items-start gap-1.5 text-[12px] text-admin-text-tertiary leading-relaxed">
           <span className="text-admin-info-500">ⓘ</span>
           Estes valores refletem chamadas <strong className="font-medium text-admin-text-secondary">internas atribuídas a análises</strong>. A faturação real dos fornecedores aparece abaixo na zona de reconciliação.
         </p>
@@ -351,13 +351,13 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       <div>
         <div className="flex items-baseline justify-between">
           <ZoneLabel symbol="⇆" label="RECONCILIAÇÃO · INTERNO ESTIMADO vs FATURAÇÃO REAL" />
-          <span className="text-[11px] text-admin-text-tertiary">reconciliação automática</span>
+          <span className="text-[12px] text-admin-text-tertiary">reconciliação automática</span>
         </div>
         <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="expense">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="text-left text-[11px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
                   <th className="pb-2 pr-4 font-medium">Fornecedor</th>
                   <th className="pb-2 pr-4 font-medium text-right">Interno registado</th>
                   <th className="pb-2 pr-4 font-medium text-right">Externo (dashboard)</th>
@@ -383,7 +383,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
                         <div>
                           <span className="tabular-nums text-admin-text-primary">${row.external!.toFixed(2)}</span>
                           <br />
-                          <span className="text-[10px] text-admin-text-tertiary">
+                          <span className="text-[12px] text-admin-text-tertiary">
                             {row.externalLabel}
                             {row.displayedRowSum != null && row.displayedRowSum !== row.external && (
                               <> · linhas ${row.displayedRowSum.toFixed(2)}</>
@@ -410,7 +410,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
                             {row.delta < 0 ? "−" : "+"}${Math.abs(row.delta).toFixed(2)}
                           </span>
                           {row.deltaPct != null && (
-                            <span className="ml-1 text-[11px] text-admin-text-tertiary">
+                            <span className="ml-1 text-[12px] text-admin-text-tertiary">
                               {row.deltaPct < 0 ? "−" : "+"}{Math.abs(row.deltaPct).toFixed(0)}%
                             </span>
                           )}
@@ -445,7 +445,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
-                  <tr className="text-left text-[10px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                  <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
                     <th className="pb-2 pr-4 font-medium">Actor · nome amigável</th>
                     <th className="pb-2 pr-4 font-medium text-right">Eventos</th>
                     <th className="pb-2 pr-4 font-medium text-right">€/Evento</th>
@@ -473,7 +473,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
-                  <tr className="text-left text-[10px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                  <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
                     <th className="pb-2 pr-4 font-medium">Operação · modelo</th>
                     <th className="pb-2 pr-4 font-medium text-right">Chamadas</th>
                     <th className="pb-2 pr-4 font-medium text-right">Custo</th>
@@ -511,7 +511,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             <span>Limite diário <span className="font-medium text-red-600">${DAILY_COST_LIMIT.toFixed(2)}</span></span>
           </span>
         </div>
-        <p className="mt-1 text-[10px] text-admin-text-tertiary italic">tooltip por barra ao passar com o rato</p>
+        <p className="mt-1 text-[12px] text-admin-text-tertiary italic">tooltip por barra ao passar com o rato</p>
 
         <AdminCard className="mt-3">
           {!hasChartData ? (
@@ -525,13 +525,13 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
                   <CartesianGrid strokeDasharray="2 4" stroke="rgba(136,135,128,0.18)" vertical={false} />
                   <XAxis
                     dataKey="day"
-                    tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                    tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                     tickLine={false}
                     axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
                     interval={2}
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: "rgb(var(--admin-neutral-400))" }}
+                    tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v) => `$${(v as number).toFixed(2)}`}
@@ -565,8 +565,8 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       </div>
 
       {/* ════ RODAPÉ METODOLÓGICO ═════════════════════════════════════ */}
-      <p className="text-[11px] text-admin-text-tertiary leading-relaxed border-t border-admin-border pt-4">
-        Custos internos atribuídos provêm de <code className="font-mono text-[10px]">provider_call_logs</code> ligados a análises.
+      <p className="text-[12px] text-admin-text-tertiary leading-relaxed border-t border-admin-border pt-4">
+        Custos internos atribuídos provêm de <code className="font-mono text-[12px]">provider_call_logs</code> ligados a análises.
         Faturação real importada do dashboard de cada fornecedor.
         {lastApifyBatch && (
           <> Última importação: Apify · {new Date(lastApifyBatch.created_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })} {new Date(lastApifyBatch.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}.</>
@@ -596,7 +596,7 @@ function SectionHeader() {
 
 function ZoneLabel({ symbol, label }: { symbol: string; label: string }) {
   return (
-    <p className="text-[11px] font-medium uppercase tracking-widest text-admin-text-tertiary">
+    <p className="text-[12px] font-medium uppercase tracking-widest text-admin-text-tertiary">
       <span className="mr-1.5">{symbol}</span>{label}
     </p>
   );
@@ -631,17 +631,17 @@ function ProviderCard({
     <AdminCard className="relative" variant="accent-left" accent={accent ?? "neutral"}>
       <div className="flex items-center gap-2 mb-2">
         <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-        <span className="text-[11px] font-medium uppercase tracking-wider text-admin-text-tertiary">{label}</span>
-        <span className="ml-auto rounded bg-admin-neutral-50 px-1.5 py-0.5 text-[10px] font-medium text-admin-text-tertiary">{pctLabel}</span>
+        <span className="text-[12px] font-medium uppercase tracking-wider text-admin-text-tertiary">{label}</span>
+        <span className="ml-auto rounded bg-admin-neutral-50 px-1.5 py-0.5 text-[12px] font-medium text-admin-text-tertiary">{pctLabel}</span>
       </div>
       <div className="flex items-baseline gap-1.5 mb-2">
         <span className="font-mono text-[2rem] font-medium tracking-[-0.03em] leading-none text-admin-text-primary">
           ${value.toFixed(2)}
         </span>
-        <span className="text-[11px] text-admin-text-tertiary">{capLabel}</span>
+        <span className="text-[12px] text-admin-text-tertiary">{capLabel}</span>
       </div>
       <ProgressBar value={progressValue} max={progressMax} color={progressColor} />
-      <p className="mt-2 text-[11px] text-admin-text-tertiary">{note}</p>
+      <p className="mt-2 text-[12px] text-admin-text-tertiary">{note}</p>
     </AdminCard>
   );
 }
@@ -658,7 +658,7 @@ function CostPerAnalysisCard({ title, badge, value, sub, suffix }: {
   return (
     <AdminCard>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-admin-text-tertiary">{title}</span>
+        <span className="text-[12px] font-medium uppercase tracking-wider text-admin-text-tertiary">{title}</span>
         {badge && (
           <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 uppercase tracking-wider">
             {badge}
@@ -667,9 +667,9 @@ function CostPerAnalysisCard({ title, badge, value, sub, suffix }: {
       </div>
       <div className="flex items-baseline gap-1">
         <span className="font-mono text-[2rem] font-medium tracking-[-0.03em] leading-none text-admin-text-primary">{value}</span>
-        <span className="text-[11px] text-admin-text-tertiary">{suffix}</span>
+        <span className="text-[12px] text-admin-text-tertiary">{suffix}</span>
       </div>
-      <p className="mt-2 text-[11px] text-admin-text-tertiary leading-relaxed">{sub}</p>
+      <p className="mt-2 text-[12px] text-admin-text-tertiary leading-relaxed">{sub}</p>
     </AdminCard>
   );
 }
@@ -695,7 +695,7 @@ function ReliabilityCard({ linkageRatePct, totalCalls, linkedCalls, confidence, 
     <AdminCard>
       <div className="flex items-center gap-2 mb-2">
         <span className="h-2 w-2 rounded-full bg-red-400 shrink-0" />
-        <span className="text-[11px] font-medium uppercase tracking-wider text-admin-text-tertiary">Fiabilidade dos custos</span>
+        <span className="text-[12px] font-medium uppercase tracking-wider text-admin-text-tertiary">Fiabilidade dos custos</span>
         <span className={`ml-auto rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${badgeCls}`}>
           {badgeLabel}
         </span>
@@ -704,10 +704,10 @@ function ReliabilityCard({ linkageRatePct, totalCalls, linkedCalls, confidence, 
         <span className={`font-mono text-[2rem] font-medium tracking-[-0.03em] leading-none ${valueCls}`}>
           {linkageRatePct.toFixed(1)}%
         </span>
-        <span className="text-[11px] text-admin-text-tertiary">{linkedCalls} de {totalCalls} chamadas</span>
+        <span className="text-[12px] text-admin-text-tertiary">{linkedCalls} de {totalCalls} chamadas</span>
       </div>
       {linkageByProvider.length > 0 && (
-        <p className="mt-2 text-[11px] font-mono text-admin-text-tertiary">
+        <p className="mt-2 text-[12px] font-mono text-admin-text-tertiary">
           {linkageByProvider.map((p) => `${providerShortName(p.provider)} ${p.linked}/${p.total}`).join(" · ")}
         </p>
       )}
@@ -773,7 +773,7 @@ function ReconStatusBadge({ status }: { status: "REVER" | "PENDENTE" | "OK" | "A
         ? "bg-amber-500/15 text-amber-700"
         : "bg-neutral-200 text-neutral-500";
   return (
-    <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold tracking-wider ${cls}`}>
+    <span className={`inline-block rounded px-2 py-0.5 text-[12px] font-semibold tracking-wider ${cls}`}>
       {status}
     </span>
   );
@@ -796,7 +796,7 @@ function ApifyActorRow({ actor }: { actor: ApifyActorBreakdown }) {
           </span>
           {friendly?.desc && <span className="text-admin-text-tertiary"> · {friendly.desc}</span>}
         </div>
-        <div className="mt-0.5 font-mono text-[10px] text-admin-text-tertiary">
+        <div className="mt-0.5 font-mono text-[12px] text-admin-text-tertiary">
           {actor.actor} · {actor.run_count} runs
         </div>
       </td>
@@ -808,9 +808,9 @@ function ApifyActorRow({ actor }: { actor: ApifyActorBreakdown }) {
       <td className="py-3 pr-4 text-right tabular-nums">{noRuns ? "—" : `$${actor.actual_total_usd.toFixed(2)}`}</td>
       <td className="py-3 text-right">
         {noRuns ? (
-          <span className="text-admin-text-tertiary text-[10px]">—</span>
+          <span className="text-admin-text-tertiary text-[12px]">—</span>
         ) : (
-          <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wider ${source.cls}`}>
+          <span className={`inline-block rounded px-1.5 py-0.5 text-[12px] font-semibold tracking-wider ${source.cls}`}>
             {source.text}
           </span>
         )}
@@ -841,7 +841,7 @@ function OpenAiActorRow({ actor }: { actor: OpenAiActorBreakdown }) {
             </span>
           )}
         </div>
-        <div className="mt-0.5 font-mono text-[10px] text-admin-text-tertiary">{actor.model ?? "—"}</div>
+        <div className="mt-0.5 font-mono text-[12px] text-admin-text-tertiary">{actor.model ?? "—"}</div>
       </td>
       <td className="py-3 pr-4 text-right tabular-nums">{noCalls ? "—" : actor.call_count}</td>
       <td className="py-3 pr-4 text-right tabular-nums font-semibold text-admin-text-primary">
@@ -886,7 +886,7 @@ function DarkTooltip({
   const total = apifyTotal + openaiTotal + dfsVal;
 
   return (
-    <div className="rounded-lg bg-gray-900 px-3 py-2.5 shadow-lg text-white" style={{ fontSize: 11, minWidth: 200 }}>
+    <div className="rounded-lg bg-gray-900 px-3 py-2.5 shadow-lg text-white" style={{ fontSize: 12, minWidth: 200 }}>
       <p className="mb-2 font-medium text-white/70">{label}</p>
       {apifyTotal > 0 && (
         <div className="flex items-center justify-between gap-4 mb-0.5">

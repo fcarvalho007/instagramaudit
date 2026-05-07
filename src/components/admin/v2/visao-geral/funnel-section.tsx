@@ -157,7 +157,7 @@ function FunnelText({
         y={y}
         fill={eyebrowFill}
         fontFamily="JetBrains Mono, monospace"
-        fontSize={10}
+        fontSize={12}
         letterSpacing="0.08em"
         style={{ textTransform: "uppercase" }}
       >
@@ -179,7 +179,7 @@ function FunnelText({
         y={y}
         fill={eyebrowFill}
         fontFamily="JetBrains Mono, monospace"
-        fontSize={10}
+        fontSize={12}
         letterSpacing="0.08em"
         textAnchor="end"
       >

@@ -168,7 +168,7 @@ export function SecretsConfigSection() {
               />
             </div>
           )}
-          <p className="mt-3 text-[11px] text-admin-text-tertiary">
+          <p className="mt-3 text-[12px] text-admin-text-tertiary">
             Caps guardados em <code>app_config</code>. "Editar caps" atualiza
             os valores em tempo real.
           </p>
@@ -208,7 +208,7 @@ function ConfigCell({
         {eyebrow}
       </p>
       <p className={`m-0 mt-1 font-mono text-[14px] ${valueClass}`}>{value}</p>
-      <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">{sub}</p>
+      <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">{sub}</p>
     </div>
   );
 }

@@ -54,7 +54,7 @@ export function IntentSection() {
                   <p className="m-0 text-[13px] font-medium text-admin-text-primary">
                     {row.profile}
                   </p>
-                  <p className="mt-px text-[11px] text-admin-text-secondary">
+                  <p className="mt-px text-[12px] text-admin-text-secondary">
                     por{" "}
                     <span className="text-admin-text-primary">{row.lead}</span>
                   </p>
@@ -63,7 +63,7 @@ export function IntentSection() {
                   <p className="m-0 text-sm font-medium text-admin-signal-500">
                     {row.count}
                   </p>
-                  <p className="mt-px text-[10px] text-admin-text-tertiary">
+                  <p className="mt-px text-[12px] text-admin-text-tertiary">
                     {row.time}
                   </p>
                 </div>
@@ -107,7 +107,7 @@ export function IntentSection() {
                       <p className="m-0 truncate text-[13px] font-medium text-admin-text-primary">
                         {row.profile}
                       </p>
-                      <p className="mt-px truncate text-[11px] text-admin-text-secondary">
+                      <p className="mt-px truncate text-[12px] text-admin-text-secondary">
                         <span className="text-admin-text-primary">
                           {row.customer}
                         </span>{" "}
@@ -149,11 +149,11 @@ function CardHeader({
         <p className="m-0 text-sm font-medium text-admin-text-primary">
           {title}
         </p>
-        <span className="text-[11px] text-admin-text-tertiary">
+        <span className="text-[12px] text-admin-text-tertiary">
           {eyebrowRight}
         </span>
       </div>
-      <p className="mt-1 text-[11px] text-admin-text-tertiary">{subtitle}</p>
+      <p className="mt-1 text-[12px] text-admin-text-tertiary">{subtitle}</p>
     </div>
   );
 }

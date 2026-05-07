@@ -226,7 +226,7 @@ export function CommentScraperCard() {
 
           {/* Last run */}
           {m.last_run_at && (
-            <p className="mt-3 text-[11px] text-admin-text-tertiary">
+            <p className="mt-3 text-[12px] text-admin-text-tertiary">
               Última execução: {fmtAgo(m.last_run_at)} ·{" "}
               {m.last_run_status === "ok" || m.last_run_status === "success"
                 ? "sucesso"
@@ -272,7 +272,7 @@ export function CommentScraperCard() {
         <div className="mt-1.5 flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-admin-text-secondary">
           <span>
             Actor:{" "}
-            <span className="font-mono text-[11px] text-admin-text-primary">
+            <span className="font-mono text-[12px] text-admin-text-primary">
               {m.actor}
             </span>
           </span>
@@ -334,7 +334,7 @@ export function CommentScraperCard() {
       </div>
 
       {/* Source note */}
-      <p className="mt-3 text-[11px] text-admin-text-tertiary">
+      <p className="mt-3 text-[12px] text-admin-text-tertiary">
         Dados de provider_call_logs · actor = apify/instagram-comment-scraper · incluído no custo do relatório gratuito.
       </p>
     </AdminCard>

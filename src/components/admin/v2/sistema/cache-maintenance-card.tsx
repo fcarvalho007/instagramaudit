@@ -49,7 +49,7 @@ export function CacheMaintenanceCard() {
     <>
       <div className="flex flex-col gap-3">
         {/* Zone label */}
-        <p className="text-[11px] font-semibold uppercase tracking-wider flex items-center gap-1.5"
+        <p className="text-[12px] font-semibold uppercase tracking-wider flex items-center gap-1.5"
           style={{ color: "#E24B4A" }}
         >
           ⚠ Zona de risco
@@ -79,7 +79,7 @@ export function CacheMaintenanceCard() {
               <span className="text-[13px] font-semibold text-admin-text-primary">
                 Expirar cache de um perfil
               </span>
-              <p className="text-[11px] text-admin-text-tertiary leading-snug">
+              <p className="text-[12px] text-admin-text-tertiary leading-snug">
                 Invalida o snapshot guardado.{" "}
                 <strong className="text-admin-text-secondary">Não chama APIs</strong>
                 {" "}— apenas marca a cache como expirada para forçar nova recolha
@@ -131,7 +131,7 @@ export function CacheMaintenanceCard() {
           </div>
 
           {result && (
-            <p className="mt-3 text-[11px] text-admin-text-secondary bg-white/80 rounded-md px-3 py-2 border"
+            <p className="mt-3 text-[12px] text-admin-text-secondary bg-white/80 rounded-md px-3 py-2 border"
               style={{ borderColor: "#FECACA" }}
             >
               {result}

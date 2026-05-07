@@ -282,7 +282,7 @@ export function CostsDetailSection() {
                     <span className="text-eyebrow-sm text-admin-text-tertiary">
                       {ALERT_EYEBROW[alert.severity]}
                     </span>
-                    <span className="text-[11px] text-admin-text-tertiary">
+                    <span className="text-[12px] text-admin-text-tertiary">
                       {alert.when}
                     </span>
                   </header>
@@ -297,7 +297,7 @@ export function CostsDetailSection() {
                       type="button"
                       onClick={() => ackMut.mutate(alert.id)}
                       disabled={ackMut.isPending}
-                      className="text-[11px] font-medium text-admin-info-700 hover:underline disabled:opacity-50"
+                      className="text-[12px] font-medium text-admin-info-700 hover:underline disabled:opacity-50"
                     >
                       Marcar como visto
                     </button>
@@ -333,7 +333,7 @@ export function CostsDetailSection() {
                     <span className="ml-2 text-admin-text-secondary">{f.enrichment_type}</span>
                     <span className="ml-2 text-admin-text-tertiary">tentativas: {f.attempts}</span>
                     {f.error_message && (
-                      <p className="mt-1 text-admin-danger-700 text-[11px] truncate">{f.error_message}</p>
+                      <p className="mt-1 text-admin-danger-700 text-[12px] truncate">{f.error_message}</p>
                     )}
                   </div>
                 ))}
@@ -500,7 +500,7 @@ function ActorDetailCard({
               </div>
 
               {/* Cost source breakdown */}
-              <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-admin-text-secondary">
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-admin-text-secondary">
                 <span>
                   Real:{" "}
                   <span className="font-mono tabular-nums text-admin-revenue-700">
@@ -533,7 +533,7 @@ function ActorDetailCard({
 
               {/* Last run */}
               {actor.last_run_at && (
-                <p className="text-[11px] text-admin-text-tertiary m-0">
+                <p className="text-[12px] text-admin-text-tertiary m-0">
                   Última execução: {fmtAgo(actor.last_run_at)} ·{" "}
                   {actor.last_run_status === "success" || actor.last_run_status === "ok"
                     ? "sucesso"
@@ -608,13 +608,13 @@ function ActorDetailCard({
                   </span>
                 </span>
               </div>
-              <p className="mt-1.5 text-[10px] text-admin-text-tertiary m-0 italic">
+              <p className="mt-1.5 text-[12px] text-admin-text-tertiary m-0 italic">
                 O resultsLimit do Apify é aplicado por post URL. O sistema calcula o limite por post a partir do limite total alvo ÷ número de posts.
               </p>
             </div>
           )}
 
-          <p className="text-[10px] text-admin-text-tertiary m-0 italic">
+          <p className="text-[12px] text-admin-text-tertiary m-0 italic">
             Incluído no relatório gratuito
           </p>
         </div>

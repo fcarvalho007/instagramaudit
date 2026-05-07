@@ -98,7 +98,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
             </span>
             {allComplete ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider"
                 style={{ backgroundColor: "#E8F5EE", color: "#1D9E75" }}
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -108,7 +108,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
               </span>
             ) : someComplete ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider"
                 style={{ backgroundColor: "#FFF3E0", color: "#BA7517" }}
               >
                 <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "#BA7517" }} />
@@ -116,7 +116,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
               </span>
             ) : null}
           </div>
-          <div className="flex items-center gap-3 text-[11px] text-admin-text-tertiary">
+          <div className="flex items-center gap-3 text-[12px] text-admin-text-tertiary">
             {p.latestFreshCostTotal != null && (
               <span className="inline-flex items-center gap-1">
                 <DollarSign size={10} />
@@ -168,7 +168,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
 
       {/* Row 2: Cache breakdown chips */}
       <div className="flex items-center gap-1.5 flex-wrap mt-3 pl-[54px]">
-        <span className="text-[11px] text-admin-text-tertiary uppercase tracking-wider font-medium mr-1">
+        <span className="text-[12px] text-admin-text-tertiary uppercase tracking-wider font-medium mr-1">
           Em cache:
         </span>
         {STATUS_ITEMS.map((s) => {
@@ -176,7 +176,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
           return (
             <span
               key={s.key}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium"
               style={{
                 backgroundColor: ok ? "#E8F5EE" : "#F3F2EE",
                 color: ok ? "#1D9E75" : "#888780",
@@ -223,20 +223,20 @@ export function TestProfilesCard() {
     <div className="flex flex-col gap-3">
       {/* Header with counter and add button */}
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold text-admin-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+        <p className="text-[12px] font-semibold text-admin-text-secondary uppercase tracking-wider flex items-center gap-1.5">
           <span className="text-admin-text-tertiary">◎</span>
           Perfis de teste
         </p>
         <div className="flex items-center gap-3">
           {profiles.length > 0 && (
-            <span className="text-[11px] text-admin-text-tertiary">
+            <span className="text-[12px] text-admin-text-tertiary">
               {readyCount} perfis prontos
               {cacheHours != null && <> · cache válida {cacheHours}h</>}
             </span>
           )}
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted transition-colors"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted transition-colors"
             style={{ borderColor: "#E5E3D9" }}
           >
             <Plus size={12} />
@@ -246,7 +246,7 @@ export function TestProfilesCard() {
       </div>
 
       {isLoading && (
-        <p className="text-[11px] text-admin-text-tertiary">A carregar...</p>
+        <p className="text-[12px] text-admin-text-tertiary">A carregar...</p>
       )}
       <div className="flex flex-col gap-3">
         {profiles.map((p) => (

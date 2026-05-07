@@ -97,11 +97,11 @@ export function CohortSection() {
 
         {/* Rodapé */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-admin-border pt-3">
-          <p className="m-0 text-[11px] text-admin-text-secondary">
+          <p className="m-0 text-[12px] text-admin-text-secondary">
             Cohorts mais antigos retêm 63% após 6 meses · sinal saudável
           </p>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-admin-text-tertiary">0%</span>
+            <span className="text-[12px] text-admin-text-tertiary">0%</span>
             {SCALE_LEGEND.slice(0, 5).map((pct) => (
               <span
                 key={pct}
@@ -110,7 +110,7 @@ export function CohortSection() {
                 style={{ backgroundColor: retentionStyle(pct).bg }}
               />
             ))}
-            <span className="text-[10px] text-admin-text-tertiary">100%</span>
+            <span className="text-[12px] text-admin-text-tertiary">100%</span>
           </div>
         </div>
       </AdminCard>

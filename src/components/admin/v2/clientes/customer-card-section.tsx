@@ -216,7 +216,7 @@ export function CustomerCardSection() {
                         {ev.title}
                       </p>
                     )}
-                    <p className="m-0 mt-0.5 text-[11px] text-admin-text-secondary">
+                    <p className="m-0 mt-0.5 text-[12px] text-admin-text-secondary">
                       {ev.detail}
                     </p>
                   </div>
@@ -245,7 +245,7 @@ export function CustomerCardSection() {
                       <p className="m-0 text-[13px] text-admin-text-primary">
                         {p.handle}
                       </p>
-                      <p className="m-0 mt-0.5 text-[11px] text-admin-text-secondary">
+                      <p className="m-0 mt-0.5 text-[12px] text-admin-text-secondary">
                         {p.classification}
                       </p>
                     </div>
@@ -259,7 +259,7 @@ export function CustomerCardSection() {
                       >
                         {p.count}
                       </p>
-                      <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">
+                      <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
                         {p.when}
                       </p>
                     </div>
