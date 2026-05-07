@@ -42,4 +42,5 @@ export interface EnrichedLead {
   report_views: number;
   last_interaction: string;
   created_at: string;
+  report_request_id: string | null;
 }

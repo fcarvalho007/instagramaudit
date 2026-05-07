@@ -176,6 +176,7 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             report_views: handle ? (viewsByHandle.get(handle) ?? 0) : 0,
             last_interaction: lastEvent ?? lead.updated_at,
             created_at: lead.created_at,
+            report_request_id: req?.id ?? null,
           };
         });
 
