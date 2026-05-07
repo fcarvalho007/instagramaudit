@@ -83,57 +83,55 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
 
   return (
     <AdminCard
-      className="!p-3 !rounded-xl cursor-pointer hover:shadow-[var(--shadow-admin-glass-active)] transition-shadow"
-      style={{ fontSize: 13 }}
+      className="!p-4 !rounded-xl cursor-pointer hover:shadow-[var(--shadow-admin-glass-active)] transition-shadow"
     >
       {/* Header: email + actions — clicking the card body opens detail */}
       <div
-        className="flex items-start justify-between gap-1 mb-2"
+        className="flex items-start justify-between gap-2 mb-3"
         onClick={() => onOpenDetail(lead)}
       >
         <div className="min-w-0 cursor-pointer">
-          <p
-            className="m-0 text-[13px] font-medium truncate"
-            style={{ color: "#2C2C2A" }}
-            title={lead.email}
-          >
+          <p className="admin-card-title m-0 truncate text-admin-text-primary" title={lead.name || lead.email}>
+            {lead.name || lead.email}
+          </p>
+          <p className="admin-meta m-0 mt-0.5 truncate text-admin-text-secondary" title={lead.email}>
             {lead.email}
           </p>
           {lead.handle && (
-            <p className="m-0 text-[12px]" style={{ color: "#888780" }}>
+            <p className="admin-meta m-0 mt-0.5 text-admin-text-tertiary">
               @{lead.handle}
             </p>
           )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
-              <MoreHorizontal className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="text-xs">
+          <DropdownMenuContent align="end" className="text-[13px]">
             {lead.handle && (
               <DropdownMenuItem
                 onClick={() =>
                   window.open(`/analyze/${lead.handle}`, "_blank")
                 }
               >
-                <ExternalLink className="h-3 w-3 mr-1.5" />
+                <ExternalLink className="h-3.5 w-3.5 mr-2" />
                 Abrir relatório
               </DropdownMenuItem>
             )}
             {lead.handle && (
               <DropdownMenuItem onClick={handleCopyLink}>
-                <Copy className="h-3 w-3 mr-1.5" />
+                <Copy className="h-3.5 w-3.5 mr-2" />
                 Copiar link
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={handleMarkContacted}>
-              <Phone className="h-3 w-3 mr-1.5" />
+              <Phone className="h-3.5 w-3.5 mr-2" />
               Marcar contactado
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEditNotes(lead)}>
-              <MessageSquare className="h-3 w-3 mr-1.5" />
+              <MessageSquare className="h-3.5 w-3.5 mr-2" />
               Editar notas
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -141,7 +139,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
               onClick={handleArchive}
               className="text-red-600"
             >
-              <Archive className="h-3 w-3 mr-1.5" />
+              <Archive className="h-3.5 w-3.5 mr-2" />
               Arquivar
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -149,7 +147,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
       </div>
 
       {/* Badges row */}
-      <div className="flex flex-wrap gap-1 mb-2">
+      <div className="flex flex-wrap gap-1.5 mb-3">
         {lead.user_type && (
           <AdminBadge
             variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}
@@ -166,21 +164,15 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
 
       {/* Purpose */}
       {lead.purpose && (
-        <p
-          className="m-0 text-[12px] mb-1.5 line-clamp-2"
-          style={{ color: "#6B6B66" }}
-        >
+        <p className="admin-body m-0 mb-2 line-clamp-2 text-admin-text-secondary">
           {lead.purpose}
         </p>
       )}
 
       {/* Stats row */}
-      <div
-        className="flex items-center gap-2 text-[12px] mb-2"
-        style={{ color: "#888780" }}
-      >
+      <div className="flex items-center gap-2.5 admin-meta text-admin-text-tertiary mb-3">
         {lead.report_cost_usd != null && (
-          <span>€{lead.report_cost_usd.toFixed(2)}</span>
+          <span className="admin-code tabular-nums">€{lead.report_cost_usd.toFixed(2)}</span>
         )}
         <span>{lead.report_views} views</span>
         <span title={lead.last_interaction}>{timeAgo(lead.last_interaction)}</span>
@@ -190,8 +182,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
       {/* Notes preview */}
       {lead.internal_notes && (
         <p
-          className="m-0 text-[12px] italic truncate mb-2"
-          style={{ color: "#A3A29B" }}
+          className="admin-meta m-0 italic truncate mb-3 text-admin-text-tertiary"
           title={lead.internal_notes}
         >
           {lead.internal_notes}
@@ -204,12 +195,12 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
         onValueChange={handleStatusChange}
         disabled={statusChanging}
       >
-        <SelectTrigger className="h-7 text-[12px] rounded-lg">
+        <SelectTrigger className="h-8 text-[13px] rounded-lg">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {KANBAN_COLUMNS.map((col) => (
-            <SelectItem key={col.key} value={col.key} className="text-xs">
+            <SelectItem key={col.key} value={col.key} className="text-[13px]">
               {col.label}
             </SelectItem>
           ))}
