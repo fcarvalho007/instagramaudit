@@ -8,6 +8,7 @@
  */
 
 import type { CommentIntelligence } from "@/lib/analysis/types";
+import { useVariantFeatures } from "@/lib/report/report-variant";
 import { cn } from "@/lib/utils";
 import { InsightCallout } from "./insight-callout";
 import {
@@ -275,9 +276,19 @@ const UNAVAILABLE_REASONS: Record<string, { title: string; body: string }> = {
   },
 };
 
+const TECHNICAL_REASONS = new Set([
+  "processing", "budget_blocked", "comment_scraper_failed",
+  "comment_scraper_timeout", "no_valid_post_urls",
+]);
+
 export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {
+  const features = useVariantFeatures();
   const reason = data?.reason;
-  const info = reason ? UNAVAILABLE_REASONS[reason] : undefined;
+  // In public_mvp, suppress technical pipeline reasons — show the generic default instead
+  const effectiveReason = (features.debugLabels === "hidden" && reason && TECHNICAL_REASONS.has(reason))
+    ? undefined
+    : reason;
+  const info = effectiveReason ? UNAVAILABLE_REASONS[effectiveReason] : undefined;
   const title = info?.title ?? "Análise detalhada de comentários não incluída";
   const body = info?.body ?? "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa.";
   const isProcessing = reason === "processing";

@@ -1,41 +1,99 @@
 
-# QA Audit — Report Variant Architecture + Comment Scraper Disabled
+# Public MVP Report Copy Cleanup — Audit and Plan
 
-## PASS/FAIL Table
+## Assessment: CONDITIONAL PASS
 
-| # | Check | Status | Evidence |
-|---|-------|--------|----------|
-| 1 | `COMMENT_SCRAPER_ENABLED` is false | **PASS** | Secret exists in runtime secrets. Code at `routes/api/analyze-public-v1.ts:822` and `lib/analysis/comment-scraper.server.ts:120` gate on `=== "true"` — anything other than literal `"true"` disables it. Previous session confirmed it was set to `"false"`. |
-| 2 | `analysis_execution_mode` is `cache_only` | **N/A** | No such concept exists in the codebase. There is no execution mode flag. The system uses `APIFY_ENABLED` as the kill-switch. When `APIFY_ENABLED=true`, fresh analyses can run; the comment scraper is independently gated by `COMMENT_SCRAPER_ENABLED`. This check is not applicable. |
-| 3 | `public_mvp` passed to public analyze route | **PASS** | `src/routes/analyze.$username.tsx:271` passes `variant="public_mvp"` to `ReportShellV2`. The shell default is also `"public_mvp"` (line 76). |
-| 4 | `internal_lab` available for admin preview | **FAIL** | Both admin preview routes (`admin.report-preview.$username.tsx` and `admin.report-preview.snapshot.$snapshotId.tsx`) use the legacy `ReportPage` component, not `ReportShellV2`. The variant system is not wired into admin previews. Admin previews currently render the old shell, which does not suppress comment intelligence or apply variant visibility rules. |
-| 5 | `public_mvp` hides detailed `comment_intelligence` even when cached | **PASS** | `report-diagnostic-block.tsx` reads `useVariantFeatures()` and sets `effectiveCommentIntel = null` when `features.commentIntelligence !== "full"`. For `public_mvp`, `commentIntelligence` is `"hidden"`, so cached data is suppressed. |
-| 6 | Q05 still renders post-level audience metrics | **PASS** | `renderAudienceCard()` in `report-diagnostic-block.tsx` uses the `classifyAudienceResponse()` classifier which operates on post-level `avgLikes`, `avgComments`, `commentsToLikesPct`. This runs regardless of comment intelligence availability. The `DiagnosticAudienceHighlight` component receives `commentIntel: null` and falls back to post-level display. |
-| 7 | No debug strings visible in `public_mvp` | **PASS** | Grep for `"payload"`, `"debug"`, `"em desenvolvimento"`, `"missing data"` in `src/components/report-redesign/` returned zero hits. The variant features define `debugLabels: "hidden"` for `public_mvp`, and the shell checks `features.betaFeedbackBanner` before rendering the beta banner. |
-| 8 | Cached snapshots still render | **PASS** | DB confirms cached snapshots exist (e.g. `martimsilvai` with `comment_intelligence`, `frederico.m.carvalho` with `comment_intelligence`). The public route fetches from `analysis_snapshots` via `fetchPublicAnalysis()` and passes to `ReportShellV2`, which renders all blocks. The variant suppression only affects the comment intelligence display, not the overall render. |
-| 9 | No providers called during this audit | **PASS** | This audit used only read-only tools: `fetch_secrets`, `code--view`, `code--exec` (grep), `supabase--read_query`. No API endpoints were hit, no analyses triggered. |
+The public_mvp report is mostly clean. The variant system already suppresses detailed comment intelligence. However, there are **4 visible issues** that need fixing before beta users see the report.
 
-## Summary
+---
 
-**8 PASS, 1 FAIL, 1 N/A**
+## Findings
 
-### Issue Found
+### PASS — No issues found
 
-**Admin preview routes do not use the variant system.** Both `/admin/report-preview/$username` and `/admin/report-preview/snapshot/$snapshotId` render `ReportPage` (the legacy report shell), not `ReportShellV2`. This means:
+| String searched | Result |
+|---|---|
+| `"payload"` | Only in code-level prop names (`SnapshotPayload`), never rendered as visible text |
+| `"debug"` | Not found in any rendered string |
+| `"missing"` | Used as internal status value (`"missing"`), renders as "Ausente" — clean |
+| `"enrichment"` | Not found in any rendered string |
+| `"comment_intelligence"` | Only in code-level variable names, never rendered |
+| Q05 post-level fallback | Already works — `classifyAudienceResponse()` uses likes/comments data |
+| `CommentIntelligenceUnavailable` default copy | Already updated: "Análise detalhada de comentários não incluída neste relatório beta..." |
 
-- Admin previews do not benefit from the variant architecture
-- There is no way to preview `internal_lab` vs `public_mvp` from admin
-- Comment intelligence in cached snapshots will still display in admin previews (via the legacy shell), which is acceptable for admin use but means there is no `internal_lab` variant toggle
+### FAIL — Issues to fix
 
-### Note on `analysis_execution_mode`
+| # | File | Line(s) | Visible string | Problem | Variant affected |
+|---|------|---------|----------------|---------|-----------------|
+| F1 | `caption-diagnostics-card.tsx` | 482 | "Evidência detalhada em desenvolvimento." | Technical/internal — suggests unfinished feature | public_mvp |
+| F2 | `caption-diagnostics-card.tsx` | 697 | "Evidência detalhada em desenvolvimento." | Same string, second occurrence | public_mvp |
+| F3 | `visual-cover-analysis-card.tsx` | 211 | "Análise visual indisponível — aguarda processamento IA." | Exposes internal pipeline state | public_mvp |
+| F4 | `visual-cover-analysis-card.tsx` | 353 | "Score visual indisponível" + "Será calculado automaticamente quando a análise por visão computacional estiver ativa." | Technical description of unreleased capability | public_mvp |
 
-The codebase has no execution mode toggle. Cost protection comes from three independent kill-switches: `APIFY_ENABLED`, `COMMENT_SCRAPER_ENABLED`, and `DATAFORSEO_ENABLED`. There is no single `cache_only` mode.
+### BORDERLINE — Review but likely acceptable
 
-## Recommended Next Prompt
+| # | File | String | Assessment |
+|---|------|--------|-----------|
+| B1 | `report-comment-intelligence.tsx:249` | "A aguardar análise de comentários" | Only shown when `reason === "processing"` — unlikely in public_mvp since scraper is disabled, but could appear in edge cases with stale data |
+| B2 | `report-comment-intelligence.tsx:253-258` | Various technical reasons (budget_blocked, failed, timeout) | Only shown when cached data contains those specific reason codes — rare in public_mvp |
 
-Wire `internal_lab` variant into admin preview routes by migrating them from `ReportPage` to `ReportShellV2` with `variant="internal_lab"`. This gives admin the full enriched view (including cached comment intelligence) while keeping the public route on `public_mvp`. Scope:
+---
 
-1. Update `admin.report-preview.$username.tsx` to use `ReportShellV2` with `variant="internal_lab"`
-2. Update `admin.report-preview.snapshot.$snapshotId.tsx` similarly
-3. Verify both routes still render correctly with existing cached snapshots
-4. Keep the legacy `ReportPage` component intact for rollback
+## Recommended copy replacements (pt-PT)
+
+### F1 + F2 — Caption evidence fallback
+
+**Current:** "Evidência detalhada em desenvolvimento."
+
+**Proposed:** In `public_mvp`, hide the collapsible evidence section entirely (it has no content to show). In `internal_lab`, keep the current string.
+
+**Alternative (if hiding is too invasive):** Replace with "Consulta a versão Pro para ver a evidência por publicação."
+
+### F3 — Visual analysis diagnostic fallback
+
+**Current:** "Análise visual indisponível — aguarda processamento IA." + "Os thumbnails acima serão analisados por visão computacional numa próxima atualização."
+
+**Proposed for public_mvp:** "Análise visual disponível na versão Pro." + "As capas dos posts são avaliadas por inteligência artificial para consistência visual, presença de texto e diversidade de formatos."
+
+### F4 — Visual score panel fallback
+
+**Current:** "Score visual indisponível" + "Será calculado automaticamente quando a análise por visão computacional estiver ativa."
+
+**Proposed for public_mvp:** "Score visual · Pro" + "Disponível na versão completa do relatório."
+
+### B1 + B2 — Comment intelligence edge cases
+
+**Proposed:** Gate `CommentIntelligenceUnavailable` to skip rendering entirely in `public_mvp` when the reason is a technical one (processing, budget_blocked, failed, timeout). The current default fallback ("Análise detalhada de comentários não incluída") is already correct for the normal case.
+
+---
+
+## Files to touch
+
+| File | Change type |
+|------|------------|
+| `src/components/report-redesign/v2/caption-diagnostics-card.tsx` | Replace "em desenvolvimento" fallback with variant-aware copy or hide in public_mvp |
+| `src/components/report-redesign/v2/visual-cover-analysis-card.tsx` | Replace both unavailable states with Pro teaser copy in public_mvp |
+| `src/components/report-redesign/v2/report-comment-intelligence.tsx` | Gate technical reason codes in public_mvp (optional, low risk) |
+
+## Files NOT to touch
+
+- `report-diagnostic-block.tsx` — variant suppression already works correctly
+- `report-diagnostic-card.tsx` — "missing"/"Ausente" is clean user copy
+- `report-shell-v2.tsx` — no changes needed
+- `report-variant.ts` — locked, no changes needed
+- Any provider, admin, cost, or PDF files
+
+---
+
+## Ordered implementation prompts
+
+**Prompt 1 — Caption evidence fallback (F1 + F2)**
+In `caption-diagnostics-card.tsx`, import `useVariantFeatures` and hide the "Evidência detalhada em desenvolvimento" fallback paragraph in `public_mvp`. In `internal_lab`, keep the current text. Two occurrences: lines ~482 and ~697.
+
+**Prompt 2 — Visual cover analysis fallbacks (F3 + F4)**
+In `visual-cover-analysis-card.tsx`, import `useVariantFeatures`. For the diagnostic unavailable state (line ~211) and `ScorePanelUnavailable` (line ~348), show Pro teaser copy in `public_mvp` and keep technical copy in `internal_lab`.
+
+**Prompt 3 (optional) — Comment intelligence edge case reasons (B1 + B2)**
+In `report-comment-intelligence.tsx`, gate technical reason labels (processing, budget_blocked, failed, timeout) so they render the generic default in `public_mvp` instead of exposing pipeline state. Low priority — these are unlikely to appear with the scraper disabled.
+
+Each prompt should end with `tsc --noEmit` and `vitest run` validation.
