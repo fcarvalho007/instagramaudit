@@ -173,13 +173,13 @@ function ThemesRanking({
             )}
           >
             <div className="flex items-baseline gap-3 min-w-0">
-              <span className="font-mono text-[11px] tabular-nums text-slate-400 shrink-0">
+              <span className="tabular-nums text-xs tabular-nums text-slate-400 shrink-0">
                 {rank}
               </span>
               <span className="text-[15px] md:text-[16px] font-semibold text-slate-900 truncate">
                 {it.text}
               </span>
-              <span className="ml-auto font-mono text-[11px] tabular-nums text-slate-500 shrink-0">
+              <span className="ml-auto tabular-nums text-xs tabular-nums text-slate-500 shrink-0">
                 {it.weight}×
                 {it.postsCount > 0 ? (
                   <span className="text-slate-400">

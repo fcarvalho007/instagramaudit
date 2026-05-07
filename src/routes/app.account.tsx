@@ -86,7 +86,7 @@ function AccountPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="size-5 animate-spin text-slate-400" />
+        <Loader2 className="size-5 animate-spin text-content-tertiary" />
       </div>
     );
   }
@@ -101,31 +101,31 @@ function AccountPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold tracking-tight text-slate-800">
+      <h1 className="text-xl font-semibold tracking-tight text-content-primary">
         Conta
       </h1>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-content-tertiary">
         Informações e definições da conta.
       </p>
 
       {/* Profile card */}
-      <div className="mt-6 rounded-xl border border-slate-200/60 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-xl border border-border-default/20 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="flex size-10 items-center justify-center rounded-full bg-blue-50 text-blue-500">
             <User className="size-4" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-800">
+            <p className="text-sm font-medium text-content-primary">
               {account.displayName ?? account.email}
             </p>
-            <p className="text-xs text-slate-400">{account.email}</p>
+            <p className="text-xs text-content-tertiary">{account.email}</p>
           </div>
         </div>
 
         <div className="space-y-5">
           {/* Display Name — editable */}
           <div>
-            <label className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+            <label className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
               Nome de apresentação
             </label>
             {editing ? (
@@ -135,7 +135,7 @@ function AccountPage() {
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   maxLength={100}
-                  className="h-8 flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200"
+                  className="h-8 flex-1 rounded-md border border-border-default/20 bg-surface-muted px-3 text-sm text-content-primary outline-none focus:border-accent-primary/40 focus:ring-1 focus:ring-accent-primary/20"
                   autoFocus
                 />
                 <button
@@ -148,7 +148,7 @@ function AccountPage() {
                 </button>
                 <button
                   onClick={() => { setEditing(false); setNameInput(account.displayName ?? ""); }}
-                  className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:text-slate-600 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none"
+                  className="flex size-8 items-center justify-center rounded-md border border-border-default/20 text-content-tertiary hover:text-content-primary focus-visible:ring-2 focus-visible:ring-accent-primary/30 focus-visible:outline-none"
                   aria-label="Cancelar edição"
                 >
                   <X className="size-3.5" />
@@ -156,12 +156,12 @@ function AccountPage() {
               </div>
             ) : (
               <div className="mt-1 flex items-center gap-2">
-                <p className="text-sm text-slate-700">
-                  {account.displayName ?? <span className="italic text-slate-400">Não definido</span>}
+                <p className="text-sm text-content-primary">
+                  {account.displayName ?? <span className="italic text-content-tertiary">Não definido</span>}
                 </p>
                 <button
                   onClick={() => setEditing(true)}
-                  className="text-slate-300 hover:text-blue-500 transition-colors"
+                  className="text-content-tertiary hover:text-accent-primary transition-colors"
                   title="Editar nome"
                 >
                   <Pencil className="size-3" />
@@ -172,23 +172,23 @@ function AccountPage() {
 
           {/* Email */}
           <div>
-            <label className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+            <label className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
               Email
             </label>
             <div className="mt-1 flex items-center gap-2">
-              <Mail className="size-3.5 text-slate-300" />
-              <p className="text-sm text-slate-700">{account.email}</p>
+              <Mail className="size-3.5 text-content-tertiary" />
+              <p className="text-sm text-content-primary">{account.email}</p>
             </div>
           </div>
 
           {/* Plan */}
           <div>
-            <label className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+            <label className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
               Plano
             </label>
             <div className="mt-1 flex items-center gap-2">
-              <Shield className="size-3.5 text-slate-300" />
-              <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-600">
+              <Shield className="size-3.5 text-content-tertiary" />
+              <span className="rounded-full bg-accent-primary/10 px-2.5 py-0.5 text-xs font-medium text-accent-primary">
                 {planLabels[account.plan] ?? account.plan}
               </span>
             </div>
@@ -196,24 +196,24 @@ function AccountPage() {
 
           {/* Created at */}
           <div>
-            <label className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+            <label className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
               Membro desde
             </label>
             <div className="mt-1 flex items-center gap-2">
-              <Calendar className="size-3.5 text-slate-300" />
-              <p className="text-sm text-slate-700">{formatDate(account.createdAt)}</p>
+              <Calendar className="size-3.5 text-content-tertiary" />
+              <p className="text-sm text-content-primary">{formatDate(account.createdAt)}</p>
             </div>
           </div>
 
           {/* Lead email */}
           {account.leadEmail && (
             <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              <label className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
                 Email associado (lead)
               </label>
               <div className="mt-1 flex items-center gap-2">
-                <Mail className="size-3.5 text-slate-300" />
-                <p className="text-sm text-slate-500">{account.leadEmail}</p>
+                <Mail className="size-3.5 text-content-tertiary" />
+                <p className="text-sm text-content-secondary">{account.leadEmail}</p>
               </div>
             </div>
           )}
@@ -225,7 +225,7 @@ function AccountPage() {
         <button
           onClick={handleLogout}
           disabled={loggingOut}
-          className="flex items-center gap-2 rounded-lg border border-slate-200/60 bg-white px-4 py-2.5 text-sm text-slate-500 shadow-sm transition-colors hover:border-red-200 hover:text-red-500 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none"
+          className="flex items-center gap-2 rounded-lg border border-border-default/20 bg-white px-4 py-2.5 text-sm text-content-secondary shadow-sm transition-colors hover:border-signal-danger/30 hover:text-signal-danger focus-visible:ring-2 focus-visible:ring-accent-primary/30 focus-visible:outline-none"
         >
           {loggingOut ? <Loader2 className="size-3.5 animate-spin" /> : <LogOut className="size-3.5" />}
           Terminar sessão

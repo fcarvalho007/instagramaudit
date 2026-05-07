@@ -175,12 +175,12 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
         </div>
 
         {/* Step counter */}
-        <p className="text-center font-sans text-[11px] text-content-secondary tabular-nums">
+        <p className="text-center font-sans text-xs text-content-secondary tabular-nums">
           Passo {currentStep + 1} de {TOTAL_STEPS}
         </p>
 
         {/* Footnote */}
-        <p className="max-w-[340px] text-center font-sans text-[11px] leading-relaxed text-content-tertiary">
+        <p className="max-w-[340px] text-center font-sans text-xs leading-relaxed text-content-tertiary">
           Não feches esta janela — o diagnóstico está a ser preparado.
         </p>
       </div>

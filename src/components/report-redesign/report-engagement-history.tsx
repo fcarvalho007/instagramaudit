@@ -105,7 +105,7 @@ export function ReportEngagementHistory({ handle, current }: Props) {
           const isLatest = idx === ordered.length - 1;
           return (
             <li key={`${item.analyzedAt}-${idx}`} className="flex items-center gap-3">
-              <span className="font-mono text-[11px] text-content-tertiary w-14 shrink-0 tabular-nums">
+              <span className="tabular-nums text-xs text-content-tertiary w-14 shrink-0 tabular-nums">
                 {formatShort(item.analyzedAt)}
               </span>
               <div className="relative flex-1 h-2 rounded-full bg-surface-muted overflow-hidden">
@@ -121,8 +121,8 @@ export function ReportEngagementHistory({ handle, current }: Props) {
               <span
                 className={
                   isLatest
-                    ? "font-mono text-[11px] font-semibold text-content-primary w-14 text-right tabular-nums"
-                    : "font-mono text-[11px] text-content-secondary w-14 text-right tabular-nums"
+                    ? "tabular-nums text-xs font-semibold text-content-primary w-14 text-right tabular-nums"
+                    : "tabular-nums text-xs text-content-secondary w-14 text-right tabular-nums"
                 }
               >
                 {item.engagementPct.toString().replace(".", ",")}%

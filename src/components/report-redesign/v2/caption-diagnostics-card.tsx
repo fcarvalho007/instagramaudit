@@ -254,7 +254,7 @@ const FORMAT_LABEL_SHORT: Record<string, string> = {
 function FormatBadge({ format }: { format: string }) {
   return (
     <span className={cn(
-      "text-[9px] font-semibold tracking-wider rounded-md px-1.5 py-0.5 ring-1 shrink-0",
+      "text-xs font-semibold tracking-wider rounded-md px-1.5 py-0.5 ring-1 shrink-0",
       FORMAT_BADGE_STYLE[format] ?? "bg-surface-muted text-content-tertiary ring-border-default",
     )}>
       {FORMAT_LABEL_SHORT[format] ?? format.toUpperCase()}
@@ -285,11 +285,11 @@ function EvidenceRow({ match }: { match: MatchedEvidence }) {
         <div className="flex items-center gap-2 flex-wrap mb-1.5">
           <FormatBadge format={p.format ?? "Imagens"} />
           {date && (
-            <span className="text-[10px] text-content-tertiary flex items-center gap-1">
+            <span className="text-xs text-content-tertiary flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" />{date}
             </span>
           )}
-          <span className="text-[10px] text-content-tertiary">
+          <span className="text-xs text-content-tertiary">
             {fmt(p.likes ?? 0)} gostos
           </span>
         </div>
@@ -303,7 +303,7 @@ function EvidenceRow({ match }: { match: MatchedEvidence }) {
           href={p.permalink}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 flex items-center gap-1 text-[11px] text-accent-primary hover:underline font-medium mt-0.5"
+          className="shrink-0 flex items-center gap-1 text-xs text-accent-primary hover:underline font-medium mt-0.5"
         >
           Abrir <ExternalLink className="w-3 h-3" />
         </a>
@@ -385,11 +385,11 @@ function SectionThemes({
         badge={
           <div className="flex items-center gap-2">
             {semanticAnalysisCount != null && (
-              <span className="text-[10px] text-content-tertiary">
+              <span className="text-xs text-content-tertiary">
                 {semanticAnalysisCount} {semanticAnalysisCount === 1 ? "análise semântica" : "análises semânticas"}
               </span>
             )}
-            <span className="text-[10px] text-content-tertiary border border-border-subtle rounded-full px-2 py-0.5">
+            <span className="text-xs text-content-tertiary border border-border-subtle rounded-full px-2 py-0.5">
               {themes.length} {themes.length === 1 ? "tema detetado" : "temas detetados"}
             </span>
           </div>
@@ -400,7 +400,7 @@ function SectionThemes({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-eyebrow-sm text-content-tertiary">ASSUNTOS MAIS RECORRENTES</p>
-            <p className="text-[11px] text-content-tertiary mt-0.5">
+            <p className="text-xs text-content-tertiary mt-0.5">
               {hasSemantic
                 ? "Temas identificados por análise semântica das legendas"
                 : "Temas extraídos do corpo das legendas — não confundir com hashtags"}
@@ -449,7 +449,7 @@ function SectionThemes({
                       </span>
                       <CollapsibleTrigger asChild>
                         <button className={cn(
-                          "flex items-center gap-1 text-[11px] font-medium rounded-lg px-2.5 py-1.5 transition-colors",
+                          "flex items-center gap-1 text-xs font-medium rounded-lg px-2.5 py-1.5 transition-colors",
                           isOpen
                             ? "bg-accent-primary text-white"
                             : "bg-surface-muted text-content-secondary hover:bg-surface-muted/80",
@@ -468,7 +468,7 @@ function SectionThemes({
                           {matched.slice(0, 4).map((m, mi) => (
                             <EvidenceRow key={m.post.id ?? mi} match={m} />
                           ))}
-                          <div className="flex items-center gap-3 pt-2 text-[11px] text-content-tertiary">
+                          <div className="flex items-center gap-3 pt-2 text-xs text-content-tertiary">
                             <button
                               onClick={() => downloadEvidenceCsv(matched, `tema-${i + 1}-evidencia.csv`)}
                               className="flex items-center gap-1 hover:text-accent-primary transition-colors"
@@ -505,7 +505,7 @@ function CaptionEvidenceFallback({ size }: { size: "normal" | "compact" }) {
   if (features.debugLabels === "hidden") return null;
   const cls = size === "normal"
     ? "text-[12px] text-content-tertiary italic py-2"
-    : "text-[11px] text-content-tertiary italic py-1";
+    : "text-xs text-content-tertiary italic py-1";
   return <p className={cls}>Evidência detalhada em desenvolvimento.</p>;
 }
 
@@ -550,7 +550,7 @@ function SectionWritingAndExpressions({
         letter="B"
         label="COMO ESCREVE"
         badge={
-          <span className="text-[10px] text-content-tertiary border border-border-subtle rounded-full px-2 py-0.5">
+          <span className="text-xs text-content-tertiary border border-border-subtle rounded-full px-2 py-0.5">
             {patternCount} {patternCount === 1 ? "padrão estrutural" : "padrões estruturais"}
           </span>
         }
@@ -560,7 +560,7 @@ function SectionWritingAndExpressions({
         {/* Openings */}
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-0.5">COMO COMEÇAM</p>
-          <p className="text-[10px] text-content-tertiary mb-3">primeiras 8 palavras</p>
+          <p className="text-xs text-content-tertiary mb-3">primeiras 8 palavras</p>
           <div className="space-y-2">
             {data.distributions.openings.map((it) => {
               const Icon = OPENING_ICONS[it.type];
@@ -570,7 +570,7 @@ function SectionWritingAndExpressions({
                     {Icon && <Icon className="w-3.5 h-3.5 text-content-tertiary/70 shrink-0" />}
                     {it.label}
                   </span>
-                  <span className="font-mono text-[11px] tabular-nums text-content-tertiary font-semibold">
+                  <span className="tabular-nums text-xs tabular-nums text-content-tertiary font-semibold">
                     {it.pct}%
                   </span>
                 </div>
@@ -582,7 +582,7 @@ function SectionWritingAndExpressions({
         {/* Endings */}
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-0.5">COMO ACABAM</p>
-          <p className="text-[10px] text-content-tertiary mb-3">últimas linhas da legenda</p>
+          <p className="text-xs text-content-tertiary mb-3">últimas linhas da legenda</p>
           <div className="space-y-2">
             {data.distributions.endings.map((it) => {
               const isQuestionLow = it.type === "question" && it.pct < 20;
@@ -603,7 +603,7 @@ function SectionWritingAndExpressions({
                     {it.label}
                   </span>
                   <span className={cn(
-                    "font-mono text-[11px] tabular-nums font-semibold",
+                    "tabular-nums text-xs tabular-nums font-semibold",
                     isQuestionLow ? "text-signal-danger" : "text-content-tertiary",
                   )}>
                     {it.pct}%
@@ -617,7 +617,7 @@ function SectionWritingAndExpressions({
         {/* Length distribution */}
         <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
           <p className="text-eyebrow-sm text-content-tertiary mb-0.5">DISTRIBUIÇÃO COMPRIMENTO</p>
-          <p className="text-[10px] text-content-tertiary mb-3">
+          <p className="text-xs text-content-tertiary mb-3">
             {data.sampleSize} legendas analisadas
           </p>
           <LengthBarCompact items={data.distributions.length} />
@@ -630,7 +630,7 @@ function SectionWritingAndExpressions({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-eyebrow-sm text-content-tertiary">EXPRESSÕES RECORRENTES</p>
-              <p className="text-[11px] text-content-tertiary mt-0.5">
+              <p className="text-xs text-content-tertiary mt-0.5">
                 Frases e formulações que aparecem em múltiplos posts
               </p>
             </div>
@@ -643,7 +643,7 @@ function SectionWritingAndExpressions({
                   }
                   if (allMatches.length > 0) downloadEvidenceCsv(allMatches, "expressoes-recorrentes.csv");
                 }}
-                className="flex items-center gap-1.5 text-[11px] text-content-tertiary hover:text-accent-primary transition-colors"
+                className="flex items-center gap-1.5 text-xs text-content-tertiary hover:text-accent-primary transition-colors"
               >
                 <Download className="w-3 h-3" />
                 Descarregar CSV
@@ -671,16 +671,16 @@ function SectionWritingAndExpressions({
                             <p className="text-[13px] font-semibold text-content-primary leading-snug">
                               "{it.expression}"
                             </p>
-                            <span className="font-mono text-[12px] font-semibold tabular-nums text-accent-primary shrink-0">
+                            <span className="tabular-nums text-[12px] font-semibold tabular-nums text-accent-primary shrink-0">
                               ×{it.count}
                             </span>
                           </div>
-                          <p className="text-[11px] text-content-secondary mt-1.5 leading-relaxed">
+                          <p className="text-xs text-content-secondary mt-1.5 leading-relaxed">
                             {it.meaning}
                           </p>
                           <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border-subtle/40">
                             {it.risk ? (
-                              <p className="flex items-center gap-1 text-[10px] text-signal-warning">
+                              <p className="flex items-center gap-1 text-xs text-signal-warning">
                                 <AlertTriangle className="w-3 h-3 shrink-0" />
                                 {it.risk}
                               </p>
@@ -689,7 +689,7 @@ function SectionWritingAndExpressions({
                             )}
                             {posts.length > 0 && (
                               <CollapsibleTrigger asChild>
-                                <button className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-accent-primary transition-colors font-medium shrink-0">
+                                <button className="flex items-center gap-1 text-xs text-content-tertiary hover:text-accent-primary transition-colors font-medium shrink-0">
                                   {isOpen ? "Ocultar" : `Ver ${it.count} posts`}
                                 </button>
                               </CollapsibleTrigger>
@@ -732,11 +732,11 @@ function SectionWritingAndExpressions({
                           )}>
                             "{it.expression}"
                           </p>
-                          <span className="text-[9px] text-content-tertiary rounded-full bg-surface-muted px-1.5 py-0.5 ring-1 ring-border-default shrink-0">
+                          <span className="text-xs text-content-tertiary rounded-full bg-surface-muted px-1.5 py-0.5 ring-1 ring-border-default shrink-0">
                             {TYPE_LABEL[it.type] ?? "Outro"}
                           </span>
                         </div>
-                        <span className="font-mono text-[12px] font-semibold tabular-nums text-content-tertiary shrink-0">
+                        <span className="tabular-nums text-[12px] font-semibold tabular-nums text-content-tertiary shrink-0">
                           ×{it.count}
                         </span>
                       </div>
@@ -750,13 +750,13 @@ function SectionWritingAndExpressions({
       {/* Comment engagement */}
       <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5">
         <p className="text-eyebrow-sm text-content-tertiary mb-1">PEDE COMENTÁRIOS NOS POSTS?</p>
-        <p className="text-[11px] text-content-tertiary mb-3">
+        <p className="text-xs text-content-tertiary mb-3">
           Frequência de chamadas explícitas a comentar
         </p>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <span className={cn(
-              "text-[28px] sm:text-[32px] font-mono font-bold tabular-nums leading-none",
+              "text-[28px] sm:text-[32px] tabular-nums font-bold tabular-nums leading-none",
               pct >= 50 ? "text-signal-success" :
               pct >= 25 ? "text-signal-warning" :
               "text-signal-danger",
@@ -765,7 +765,7 @@ function SectionWritingAndExpressions({
             </span>
             {ce && (
               <span className={cn(
-                "text-[10px] font-semibold tracking-wider rounded-full px-2 py-0.5 ring-1 shrink-0",
+                "text-xs font-semibold tracking-wider rounded-full px-2 py-0.5 ring-1 shrink-0",
                 ce.strategyLabel === "active" ? "text-signal-success bg-tint-success ring-signal-success/15" :
                 ce.strategyLabel === "occasional" ? "text-signal-warning bg-tint-warning ring-signal-warning/15" :
                 "text-signal-danger bg-tint-danger ring-signal-danger/15",
@@ -785,7 +785,7 @@ function SectionWritingAndExpressions({
               {examples.map((ex) => (
                 <span
                   key={ex}
-                  className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] ring-1 bg-tint-primary/30 ring-accent-primary/15 text-content-secondary"
+                  className="inline-flex items-center rounded-full px-2.5 py-1 text-xs ring-1 bg-tint-primary/30 ring-accent-primary/15 text-content-secondary"
                 >
                   «{ex}»
                 </span>
@@ -814,7 +814,7 @@ function LengthBarCompact({ items }: { items: CaptionLengthDistribution[] }) {
           <div
             key={it.bucket}
             className={cn(
-              "h-full flex items-center justify-center text-[9px] font-mono font-semibold text-white/80",
+              "h-full flex items-center justify-center text-xs tabular-nums font-semibold text-white/80",
               COLORS[it.bucket] ?? "bg-accent-primary/40",
             )}
             style={{ width: `${Math.max(8, it.pct)}%` }}
@@ -825,7 +825,7 @@ function LengthBarCompact({ items }: { items: CaptionLengthDistribution[] }) {
       </div>
       <div className="space-y-1">
         {items.map((it) => (
-          <div key={it.bucket} className="flex items-center justify-between text-[11px]">
+          <div key={it.bucket} className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5">
               <span className={cn("w-2 h-2 rounded-sm", COLORS[it.bucket])} />
               <span className={cn(
@@ -836,7 +836,7 @@ function LengthBarCompact({ items }: { items: CaptionLengthDistribution[] }) {
               </span>
             </div>
             <span className={cn(
-              "font-mono tabular-nums font-semibold",
+              "tabular-nums tabular-nums font-semibold",
               it.bucket === dominantBucket ? "text-content-primary" : "text-content-tertiary",
             )}>
               {it.pct}%
@@ -889,7 +889,7 @@ function SectionEditorialReading({
         letter="C"
         label="LEITURA EDITORIAL"
         badge={
-          <span className="text-[10px] text-content-tertiary italic">
+          <span className="text-xs text-content-tertiary italic">
             síntese gerada por IA
           </span>
         }
@@ -969,7 +969,7 @@ function SectionEditorialReading({
       )}
 
       {/* Footer note */}
-      <div className="flex items-start gap-2 text-[10px] text-content-tertiary leading-relaxed">
+      <div className="flex items-start gap-2 text-xs text-content-tertiary leading-relaxed">
         <span className="shrink-0 mt-px">ⓘ</span>
         <span>
           Análise apenas a legendas públicas. Hashtags em P03. Boas práticas:{" "}
@@ -1059,7 +1059,7 @@ function SemanticPill({
       {examples && examples.length > 0 && (
         <ul className="space-y-1 pt-1">
           {examples.map((ex, i) => (
-            <li key={i} className="text-[11px] text-content-tertiary italic leading-relaxed">
+            <li key={i} className="text-xs text-content-tertiary italic leading-relaxed">
               «{ex}»
             </li>
           ))}
@@ -1150,12 +1150,12 @@ function CardShell({
             <span className="w-6 h-6 rounded-md bg-surface-muted/60 flex items-center justify-center">
               <FileText className="w-3 h-3 text-content-tertiary/70" />
             </span>
-            <span className="text-[10px] md:text-[11px] tracking-[0.16em] text-content-tertiary uppercase font-sans">
+            <span className="text-xs md:text-xs tracking-[0.16em] text-content-tertiary uppercase font-sans">
               <span className="hidden sm:inline">04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS</span>
               <span className="sm:hidden">04 · LEGENDAS · {sampleSize} · {fmt(totalWords)} PAL.</span>
             </span>
           </div>
-          <span className="text-[9px] md:text-[10px] font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
+          <span className="text-xs md:text-xs font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
             DIAGNÓSTICO
           </span>
         </div>

@@ -155,7 +155,7 @@ function ResetPasswordPage() {
       >
         <div className="flex flex-col items-center gap-4 py-4">
           <CheckCircle2 className="size-12 text-emerald-600" />
-          <p className="text-sm text-slate-500 text-center">
+          <p className="text-sm text-content-secondary text-center">
             Se o email estiver registado, receberás um link de recuperação. Verifica também a pasta de spam.
           </p>
           <Link
@@ -201,7 +201,7 @@ function ResetPasswordPage() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <p className="mt-6 text-center text-sm text-content-secondary">
         <Link to="/login" className="font-medium text-blue-600 hover:underline">
           Voltar ao login
         </Link>

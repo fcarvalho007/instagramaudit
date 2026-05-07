@@ -157,14 +157,14 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <div className="flex items-baseline">
-              <span className="font-mono text-[1.1rem] sm:text-[1.6rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+              <span className="tabular-nums text-[1.1rem] sm:text-[1.6rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
                 {fmtPctHero(k.engagementRate)}
               </span>
-              <span className="font-mono text-[1.1rem] sm:text-[1.6rem] font-light text-content-secondary/50 ml-0.5">
+              <span className="tabular-nums text-[1.1rem] sm:text-[1.6rem] font-light text-content-secondary/50 ml-0.5">
                 %
               </span>
             </div>
-            <span className="block text-[9px] sm:text-[11px] text-content-secondary mt-1 sm:mt-1.5 leading-snug">
+            <span className="block text-xs sm:text-xs text-content-secondary mt-1 sm:mt-1.5 leading-snug">
               <span className="hidden sm:inline">interação com o conteúdo</span>
               <span className="sm:hidden">interação</span>
             </span>
@@ -192,14 +192,14 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <div className="flex items-baseline">
-              <span className="font-mono text-[1.1rem] sm:text-[1.6rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+              <span className="tabular-nums text-[1.1rem] sm:text-[1.6rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
                 {fmtPctHero(chartBenchmarkVal)}
               </span>
-              <span className="font-mono text-[1.1rem] sm:text-[1.6rem] font-light text-content-secondary/50 ml-0.5">
+              <span className="tabular-nums text-[1.1rem] sm:text-[1.6rem] font-light text-content-secondary/50 ml-0.5">
                 %
               </span>
             </div>
-            <span className="block text-[9px] sm:text-[11px] text-content-secondary mt-1 sm:mt-1.5 leading-snug">
+            <span className="block text-xs sm:text-xs text-content-secondary mt-1 sm:mt-1.5 leading-snug">
               <span className="hidden sm:inline">Média de perfis no mesmo escalão.</span>
               <span className="sm:hidden">média escalão</span>
             </span>
@@ -231,7 +231,7 @@ export function EngagementCardRefined({ result }: Props) {
             <div className="flex items-baseline gap-1.5">
               <span
                 className={cn(
-                  "font-mono text-[1.1rem] sm:text-[1.6rem] font-bold tabular-nums leading-none tracking-tight",
+                  "tabular-nums text-[1.1rem] sm:text-[1.6rem] font-bold tabular-nums leading-none tracking-tight",
                   isPositive ? "text-signal-success" : "text-signal-danger"
                 )}
               >
@@ -240,7 +240,7 @@ export function EngagementCardRefined({ result }: Props) {
               {pctDiffDirection && (
                 <span
                   className={cn(
-                    "text-[10px] sm:text-sm font-medium",
+                    "text-xs sm:text-sm font-medium",
                     isPositive ? "text-signal-success" : "text-signal-danger"
                   )}
                 >
@@ -248,7 +248,7 @@ export function EngagementCardRefined({ result }: Props) {
                 </span>
               )}
             </div>
-            <span className="block text-[9px] sm:text-[11px] text-content-secondary mt-1 sm:mt-1.5 leading-snug">
+            <span className="block text-xs sm:text-xs text-content-secondary mt-1 sm:mt-1.5 leading-snug">
               face ao benchmark do escalão
             </span>
           </div>

@@ -79,7 +79,7 @@ interface SuccessEntry {
 function SectionHeader() {
   return (
     <header className="flex flex-col gap-1">
-      <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
+      <span className="text-eyebrow-sm text-xs text-content-tertiary">
         Comparação
       </span>
       <h2
@@ -101,11 +101,11 @@ function EmptyState() {
       <SectionHeader />
       <p className="font-sans text-sm text-content-secondary leading-relaxed">
         Comparação com concorrentes disponível até 2 perfis. Adicionar{" "}
-        <code className="font-mono text-xs text-content-primary">
+        <code className="tabular-nums text-xs text-content-primary">
           ?vs=username
         </code>{" "}
         ao endereço — ou{" "}
-        <code className="font-mono text-xs text-content-primary">
+        <code className="tabular-nums text-xs text-content-primary">
           ?vs=user1,user2
         </code>{" "}
         — para comparar desempenho directo entre perfis.
@@ -214,7 +214,7 @@ export function AnalysisCompetitorComparison({
             >
               <span
                 className={cn(
-                  "text-eyebrow-sm text-[0.625rem]",
+                  "text-eyebrow-sm text-xs",
                   entry.isPrimary
                     ? "text-accent-luminous"
                     : "text-content-tertiary",
@@ -225,7 +225,7 @@ export function AnalysisCompetitorComparison({
               <span className="font-sans text-sm font-medium text-content-primary truncate">
                 @{entry.username}
               </span>
-              <span className="font-mono text-[0.625rem] text-content-tertiary">
+              <span className="tabular-nums text-xs text-content-tertiary">
                 {formatFollowers(entry.followers)} seguidores
               </span>
             </div>
@@ -271,7 +271,7 @@ function Row({ metric, entries, bestUsername }: RowProps) {
   return (
     <>
       <div className="flex items-center">
-        <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
+        <span className="text-eyebrow-sm text-xs text-content-tertiary">
           {metric.label}
         </span>
       </div>

@@ -63,8 +63,8 @@ function LoginPage() {
 
   if (checkingSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F0F4FA]">
-        <Loader2 className="size-5 animate-spin text-slate-400" />
+      <div className="flex min-h-screen items-center justify-center bg-surface-muted">
+        <Loader2 className="size-5 animate-spin text-content-tertiary" />
       </div>
     );
   }
@@ -75,8 +75,8 @@ function LoginPage() {
       subtitle="Acesso restrito — fase de testes privados."
     >
       <div className="space-y-4">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-center">
-          <span className="text-sm text-slate-700 font-medium">{DISPLAY_EMAIL}</span>
+        <div className="rounded-lg border border-border-default/20 bg-surface-muted px-4 py-3 text-center">
+          <span className="text-sm text-content-primary font-medium">{DISPLAY_EMAIL}</span>
         </div>
 
         {error && (
@@ -95,7 +95,7 @@ function LoginPage() {
         </Button>
       </div>
 
-      <p className="mt-5 text-center text-xs text-slate-400">
+      <p className="mt-5 text-center text-xs text-content-tertiary">
         Fase de testes — acesso restrito.
       </p>
     </AuthCard>

@@ -90,17 +90,17 @@ function PlanPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="size-5 animate-spin text-slate-400" />
+        <Loader2 className="size-5 animate-spin text-content-tertiary" />
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-xl font-semibold tracking-tight text-slate-800">
+      <h1 className="text-xl font-semibold tracking-tight text-content-primary">
         Plano
       </h1>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-content-tertiary">
         Plano atual e opções disponíveis.
       </p>
 
@@ -111,8 +111,8 @@ function PlanPage() {
             className={
               "rounded-xl border bg-white p-5 shadow-sm transition-shadow " +
               (tier.key === currentPlan
-                ? "border-blue-300 ring-1 ring-blue-100 shadow-blue-50"
-                : "border-slate-200/60")
+                ? "border-accent-primary/40 ring-1 ring-accent-primary/10 shadow-accent-primary/5"
+                : "border-border-default/20")
             }
           >
             <div className="flex items-start justify-between">
@@ -121,29 +121,29 @@ function PlanPage() {
                   className={
                     "flex size-8 items-center justify-center rounded-lg " +
                     (tier.key === currentPlan
-                      ? "bg-blue-50 text-blue-500"
-                      : "bg-slate-50 text-slate-400")
+                       ? "bg-accent-primary/10 text-accent-primary"
+                       : "bg-surface-muted text-content-tertiary")
                   }
                 >
                   <tier.icon className="size-4" />
                 </div>
-                <h2 className="text-base font-semibold text-slate-800">
+                <h2 className="text-base font-semibold text-content-primary">
                 {tier.name}
                 </h2>
               </div>
               {tier.key === currentPlan && (
-                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-600">
+                <span className="rounded-full bg-accent-primary/10 px-2.5 py-0.5 text-xs font-medium text-accent-primary">
                   Atual
                 </span>
               )}
               {tier.badge && tier.key !== currentPlan && (
-                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${tier.badgeColor}`}>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${tier.badgeColor}`}>
                   {tier.badge}
                 </span>
               )}
             </div>
 
-            <p className="mt-3 text-[13px] leading-relaxed text-slate-500">
+            <p className="mt-3 text-[13px] leading-relaxed text-content-secondary">
               {tier.description}
             </p>
 
@@ -151,7 +151,7 @@ function PlanPage() {
               {tier.features.map((f) => (
                 <li
                   key={f}
-                  className="flex items-start gap-2 text-[13px] text-slate-600"
+                  className="flex items-start gap-2 text-[13px] text-content-secondary"
                 >
                   <Check className="mt-0.5 size-3.5 shrink-0 text-blue-400" />
                   <span>{f}</span>
@@ -160,16 +160,16 @@ function PlanPage() {
             </ul>
 
             {tier.key !== currentPlan && tier.badge && (
-              <div className="mt-5 flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-200 py-2.5">
-                <Lock className="size-3 text-slate-300" />
-                <p className="text-[11px] font-medium text-slate-400">
+              <div className="mt-5 flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-default/20 py-2.5">
+                <Lock className="size-3 text-content-tertiary" />
+                <p className="text-xs font-medium text-content-tertiary">
                   Preparado para uma fase futura
                 </p>
               </div>
             )}
 
             {tier.key === currentPlan && (
-              <p className="mt-5 text-center text-[11px] font-medium text-blue-500">
+              <p className="mt-5 text-center text-xs font-medium text-accent-primary">
                 Plano atual
               </p>
             )}
@@ -182,10 +182,10 @@ function PlanPage() {
         <div className="flex gap-3">
           <Info className="mt-0.5 size-4 shrink-0 text-blue-400" />
           <div>
-            <p className="text-[13px] font-medium text-slate-700">
+            <p className="text-[13px] font-medium text-content-primary">
               Sobre o tracking diário
             </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
+            <p className="mt-1 text-[13px] leading-relaxed text-content-secondary">
               O tracking diário será uma funcionalidade PRO futura. Por agora, a conta guarda
               os relatórios solicitados e prepara a evolução para histórico contínuo. Não existem
               cobranças nem funcionalidades ativas dos planos Pro e Agency neste momento.

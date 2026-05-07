@@ -91,7 +91,7 @@ export function ReportEngagementBenchmarkChart({
         <span className="text-eyebrow-sm text-content-secondary">
           Comparação com escalões semelhantes
         </span>
-        <div className="flex items-center gap-3 text-[10px]">
+        <div className="flex items-center gap-3 text-xs">
           <span className="inline-flex items-center gap-1.5">
             <span
               className="w-2.5 h-[7px] rounded-sm"
@@ -126,7 +126,7 @@ export function ReportEngagementBenchmarkChart({
             {/* Label above bars */}
             <div className="relative h-4 ml-[calc(8px+64px+8px)] sm:ml-[calc(12px+100px+12px)] mr-[calc(8px+52px+8px)] sm:mr-[calc(12px+56px+12px)]">
               <span
-                className="absolute bottom-0 text-[10px] text-content-secondary font-medium whitespace-nowrap -translate-x-1/2 bg-surface-secondary px-1 rounded"
+                className="absolute bottom-0 text-xs text-content-secondary font-medium whitespace-nowrap -translate-x-1/2 bg-surface-secondary px-1 rounded"
                 style={{ left: `max(${benchmarkPct}%, 28px)` }}
               >
                 benchmark {fmtRate(benchmarkVal)}
@@ -169,7 +169,7 @@ export function ReportEngagementBenchmarkChart({
               >
                 {/* Badge: ESTÁS AQUI */}
                 <span
-                  className="absolute -top-2.5 left-2 sm:left-3 text-[9px] font-bold tracking-[0.08em] bg-surface-secondary rounded px-1.5 py-0.5 uppercase"
+                  className="absolute -top-2.5 left-2 sm:left-3 text-xs font-bold tracking-[0.08em] bg-surface-secondary rounded px-1.5 py-0.5 uppercase"
                   style={{
                     color: isPositive ? "rgb(29,158,117)" : "rgb(163,45,45)",
                     border: `1px solid ${isPositive ? successBorder : dangerBorder}`,
@@ -186,7 +186,7 @@ export function ReportEngagementBenchmarkChart({
                     </span>
                     {sub && (
                       <span
-                        className="text-[10px] font-semibold tracking-[0.06em]"
+                        className="text-xs font-semibold tracking-[0.06em]"
                         style={{ color: isPositive ? "rgb(29,158,117)" : "rgb(163,45,45)" }}
                       >
                         {sub} · TEU TIER
@@ -231,7 +231,7 @@ export function ReportEngagementBenchmarkChart({
                     {/* Floating pill label above profile marker */}
                     {profileVal > 0 && (
                       <span
-                        className="absolute -top-1 text-[10px] font-bold tabular-nums whitespace-nowrap rounded-full px-1.5 py-px z-20"
+                        className="absolute -top-1 text-xs font-bold tabular-nums whitespace-nowrap rounded-full px-1.5 py-px z-20"
                         style={{
                           left: `${Math.max(profileBarPct, 2)}%`,
                           transform: "translateX(-50%) translateY(-100%)",
@@ -247,7 +247,7 @@ export function ReportEngagementBenchmarkChart({
                   {/* Value — tier reference (consistent with inactive rows) */}
                   <span
                     className={cn(
-                      "font-mono text-[14px] sm:text-[15px] tabular-nums font-bold shrink-0 min-w-[52px] sm:min-w-[56px] text-right",
+                      "tabular-nums text-[14px] sm:text-[15px] tabular-nums font-bold shrink-0 min-w-[52px] sm:min-w-[56px] text-right",
                       isPositive ? "text-signal-success" : "text-signal-danger"
                     )}
                   >
@@ -273,7 +273,7 @@ export function ReportEngagementBenchmarkChart({
                     {tier.tierLabel}
                   </span>
                   {sub && (
-                    <span className="text-[10px] text-content-secondary/50 font-semibold tracking-[0.06em]">
+                    <span className="text-xs text-content-secondary/50 font-semibold tracking-[0.06em]">
                       {sub}
                     </span>
                   )}
@@ -303,7 +303,7 @@ export function ReportEngagementBenchmarkChart({
         aria-hidden="true"
       >
         {axisSteps.map((v) => (
-          <span key={v} className="text-[9px] tabular-nums text-content-secondary/40 font-medium">
+          <span key={v} className="text-xs tabular-nums text-content-secondary/40 font-medium">
             {v % 1 === 0 ? `${v}%` : `${v.toFixed(1)}%`}
           </span>
         ))}
@@ -311,7 +311,7 @@ export function ReportEngagementBenchmarkChart({
 
       {/* Sources — compact footnote */}
       {sourceReferences.length > 0 && (
-        <div className="text-[9px] text-content-tertiary pt-1">
+        <div className="text-xs text-content-tertiary pt-1">
           <span className="text-content-secondary font-semibold tracking-wider">FONTES</span>{" "}
           {sourceReferences.map((ref, i) => (
             <span key={ref.url}>

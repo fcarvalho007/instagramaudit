@@ -82,7 +82,7 @@ export function MarketSignalsChart({
             tick={{
               fill: "var(--content-tertiary, #6B7280)",
               fontSize: 10,
-              fontFamily: "var(--font-mono, ui-monospace)",
+              fontFamily: "var(--font-sans, system-ui)",
             }}
             tickLine={false}
             axisLine={false}
@@ -93,7 +93,7 @@ export function MarketSignalsChart({
             tick={{
               fill: "var(--content-tertiary, #6B7280)",
               fontSize: 10,
-              fontFamily: "var(--font-mono, ui-monospace)",
+              fontFamily: "var(--font-sans, system-ui)",
             }}
             tickLine={false}
             axisLine={false}
@@ -135,7 +135,7 @@ export function MarketSignalsChart({
                 background: SERIES_COLORS[idx % SERIES_COLORS.length],
               }}
             />
-            <span className="font-mono text-[11px] text-content-secondary">
+            <span className="tabular-nums text-xs text-content-secondary">
               {keywords[i]}
             </span>
           </span>

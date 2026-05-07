@@ -142,7 +142,7 @@ function DiagnosticCard({
         <span className="text-eyebrow-sm text-slate-500">
           {card.eyebrow}
         </span>
-        <span className="ml-auto font-mono text-[10px] tabular-nums text-slate-400">
+        <span className="ml-auto tabular-nums text-xs tabular-nums text-slate-400">
           {String(index).padStart(2, "0")} / 04
         </span>
       </div>

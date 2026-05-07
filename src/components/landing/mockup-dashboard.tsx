@@ -150,7 +150,7 @@ export function MockupDashboard() {
                     </div>
                     <span
                       className={cn(
-                        "font-mono text-xs md:text-sm text-right",
+                        "text-xs md:text-sm text-right tabular-nums",
                         row.self
                           ? "text-on-light-primary font-semibold"
                           : "text-on-light-secondary",

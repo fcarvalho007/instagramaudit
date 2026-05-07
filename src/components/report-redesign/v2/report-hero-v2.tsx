@@ -119,10 +119,10 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                     i > 0 && "border-l border-border-subtle",
                   )}
                 >
-                  <span className="font-mono text-lg sm:text-2xl font-semibold text-content-primary tabular-nums leading-none">
+                  <span className="tabular-nums text-lg sm:text-2xl font-semibold text-content-primary tabular-nums leading-none">
                     {s.value}
                   </span>
-                  <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-content-tertiary">
+                  <span className="text-xs sm:text-xs font-semibold uppercase tracking-wide text-content-tertiary">
                     {s.label}
                   </span>
                 </div>
@@ -133,7 +133,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             {(analysisMeta.postsLabel || analysisMeta.dateLabel) && (
               <div className="mt-3 pt-3 border-t border-border-subtle flex items-center justify-center gap-3 flex-wrap">
                 {analysisMeta.postsLabel && (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-content-tertiary">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-content-tertiary">
                     <span
                       className="size-1.5 rounded-full bg-signal-success"
                       aria-hidden="true"
@@ -142,7 +142,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                   </span>
                 )}
                 {analysisMeta.dateLabel && (
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-content-tertiary">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
                     {analysisMeta.dateLabel}
                   </span>
                 )}
@@ -297,7 +297,7 @@ function PlatformPill() {
     <span
       aria-label="Plataforma analisada: Instagram"
       title="Instagram"
-      className="inline-flex items-center gap-1 rounded-full bg-tint-warning px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-signal-warning ring-1 ring-signal-warning/20"
+      className="inline-flex items-center gap-1 rounded-full bg-tint-warning px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-signal-warning ring-1 ring-signal-warning/20"
     >
       Instagram
     </span>

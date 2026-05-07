@@ -149,7 +149,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="text-sm text-slate-800 leading-tight">
                     <span className="font-medium">{source.name}</span>
-                    <span className="ml-1.5 font-mono text-[10px] text-slate-400 tabular-nums">
+                    <span className="ml-1.5 tabular-nums text-xs text-slate-400 tabular-nums">
                       {source.publishedYear}
                     </span>
                   </p>

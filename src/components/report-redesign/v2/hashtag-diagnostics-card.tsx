@@ -132,13 +132,13 @@ function KpiCard({
         <p className="text-eyebrow-sm text-content-tertiary">{label}</p>
         {badge && (
           <span
-            className={`text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full ${badge.className}`}
+            className={`text-xs font-semibold tracking-wide px-2 py-0.5 rounded-full ${badge.className}`}
           >
             {badge.label}
           </span>
         )}
       </div>
-      <p className="font-mono text-[1.5rem] md:text-[1.75rem] text-content-primary leading-none tracking-tight tabular-nums">
+      <p className="tabular-nums text-[1.5rem] md:text-[1.75rem] text-content-primary leading-none tracking-tight tabular-nums">
         {value}
       </p>
       <p className="text-xs text-content-tertiary">{sub}</p>
@@ -188,10 +188,10 @@ function FrequencyRow({
       </div>
 
       {/* stats */}
-      <span className="shrink-0 text-[13px] text-content-secondary tabular-nums font-mono w-[56px] text-right">
+      <span className="shrink-0 text-[13px] text-content-secondary tabular-nums tabular-nums w-[56px] text-right">
         {uses} usos
       </span>
-      <span className="shrink-0 text-[13px] text-content-tertiary tabular-nums font-mono w-[64px] text-right">
+      <span className="shrink-0 text-[13px] text-content-tertiary tabular-nums tabular-nums w-[64px] text-right">
         {sharePct}% posts
       </span>
     </div>
@@ -227,7 +227,7 @@ export function HashtagDiagnosticsCard({
             <span className="w-6 h-6 rounded-md bg-surface-muted/60 flex items-center justify-center">
               <Hash className="w-3 h-3 text-content-tertiary/70" />
             </span>
-            <span className="text-[10px] md:text-[11px] tracking-[0.16em] text-content-tertiary uppercase font-sans">
+            <span className="text-xs md:text-xs tracking-[0.16em] text-content-tertiary uppercase font-sans">
               03 · HASHTAGS · {postsAnalyzed} POSTS ANALISADOS
             </span>
           </div>
