@@ -40,7 +40,7 @@ function statusBadge(r: Report) {
   if (r.request_status === "processing" || r.pdf_status === "generating" || r.pdf_status === "pending") {
     return { label: "A processar", color: "bg-blue-50 text-blue-600", Icon: Loader2 } as const;
   }
-  return { label: "Pendente", color: "bg-slate-50 text-slate-500", Icon: Clock } as const;
+  return { label: "Pendente", color: "bg-surface-muted text-content-secondary", Icon: Clock } as const;
 }
 
 function fmtDate(iso: string | null) {
@@ -100,7 +100,7 @@ function ReportDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-slate-400" />
+        <Loader2 className="size-5 animate-spin text-content-tertiary" />
       </div>
     );
   }
@@ -149,7 +149,7 @@ function ReportDetailPage() {
     sent: { text: "Enviado com sucesso", color: "text-emerald-600" },
     sending: { text: "A enviar…", color: "text-blue-600" },
     failed: { text: "Falha no envio", color: "text-amber-600" },
-    not_sent: { text: "Ainda não enviado", color: "text-slate-400" },
+    not_sent: { text: "Ainda não enviado", color: "text-content-tertiary" },
   };
   const delivery = deliveryLabel[report.delivery_status] ?? deliveryLabel.not_sent;
 
@@ -158,17 +158,17 @@ function ReportDetailPage() {
       <BackLink />
 
       {/* Header card */}
-      <div className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6">
+      <div className="rounded-xl border border-border-default/20 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-              <FileText className="size-5 text-slate-500" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-muted">
+              <FileText className="size-5 text-content-secondary" />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold text-slate-900">
+              <h1 className="truncate text-lg font-semibold text-content-primary">
                 @{report.instagram_username}
               </h1>
-              <p className="mt-0.5 text-xs text-slate-400">
+              <p className="mt-0.5 text-xs text-content-tertiary">
                 {fmtDate(report.created_at)}
                 {competitors.length > 0 && (
                   <span className="ml-2">
@@ -195,15 +195,15 @@ function ReportDetailPage() {
         </div>
 
         {competitors.length > 0 && (
-          <div className="mt-4 border-t border-slate-100 pt-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+          <div className="mt-4 border-t border-border-default/10 pt-3">
+            <p className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
               Concorrentes
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {competitors.map((c) => (
                 <span
                   key={c}
-                  className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                  className="rounded-md bg-surface-muted px-2 py-0.5 text-xs text-content-secondary"
                 >
                   @{String(c)}
                 </span>
@@ -214,8 +214,8 @@ function ReportDetailPage() {
       </div>
 
       {/* Timeline card */}
-      <div className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700">Progresso</h2>
+      <div className="rounded-xl border border-border-default/20 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-content-primary">Progresso</h2>
         <ol className="mt-4 space-y-4" role="list">
           {timeline.map((step, i) => (
             <li key={i} className="flex gap-3" aria-current={step.done && !timeline.slice(i + 1).some(s => s.done) ? "step" : undefined}>
@@ -227,7 +227,7 @@ function ReportDetailPage() {
                       ? "bg-amber-100"
                       : step.done
                         ? "bg-emerald-100"
-                        : "bg-slate-100",
+                        : "bg-surface-muted",
                   )}
                 >
                   {step.failed ? (
@@ -235,17 +235,17 @@ function ReportDetailPage() {
                   ) : step.done ? (
                     <CheckCircle2 className="size-3 text-emerald-600" />
                   ) : (
-                    <Clock className="size-3 text-slate-400" />
+                    <Clock className="size-3 text-content-tertiary" />
                   )}
                 </div>
                 {i < timeline.length - 1 && (
-                  <div className="mt-1 h-full w-px bg-slate-200" />
+                  <div className="mt-1 h-full w-px bg-border-default/20" />
                 )}
               </div>
               <div className="pb-1">
-                <p className="text-sm font-medium text-slate-700">{step.label}</p>
+                <p className="text-sm font-medium text-content-primary">{step.label}</p>
                 {step.date && (
-                  <p className="mt-0.5 text-xs text-slate-400">{step.date}</p>
+                  <p className="mt-0.5 text-xs text-content-tertiary">{step.date}</p>
                 )}
               </div>
             </li>
@@ -254,8 +254,8 @@ function ReportDetailPage() {
       </div>
 
       {/* PDF card */}
-      <div className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700">PDF</h2>
+      <div className="rounded-xl border border-border-default/20 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-content-primary">PDF</h2>
 
         {pdfReady && (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -276,7 +276,7 @@ function ReportDetailPage() {
         )}
 
         {report.pdf_status === "generating" || report.pdf_status === "pending" ? (
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-content-secondary">
             <Loader2 className="mr-1.5 inline size-3.5 animate-spin" />
             O PDF está a ser gerado…
           </p>
@@ -289,7 +289,7 @@ function ReportDetailPage() {
         )}
 
         {report.pdf_status === "not_generated" && (
-          <p className="mt-3 text-sm text-slate-400">
+          <p className="mt-3 text-sm text-content-tertiary">
             O PDF ainda não foi gerado.
           </p>
         )}
@@ -297,7 +297,7 @@ function ReportDetailPage() {
         <div className="mt-4">
           <button
             disabled
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-300 cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border-default/10 bg-surface-muted px-3 py-1.5 text-xs font-medium text-content-tertiary cursor-not-allowed"
             aria-disabled="true"
             aria-label="Regenerar PDF — funcionalidade disponível em breve"
           >
@@ -308,16 +308,16 @@ function ReportDetailPage() {
       </div>
 
       {/* Delivery card */}
-      <div className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700">Entrega por email</h2>
+      <div className="rounded-xl border border-border-default/20 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-content-primary">Entrega por email</h2>
         <div className="mt-3 flex items-center gap-2">
-          <Mail className="size-4 text-slate-400" />
+          <Mail className="size-4 text-content-tertiary" />
           <span className={cn("text-sm font-medium", delivery.color)}>
             {delivery.text}
           </span>
         </div>
         {report.email_sent_at && (
-          <p className="mt-1.5 pl-6 text-xs text-slate-400">
+          <p className="mt-1.5 pl-6 text-xs text-content-tertiary">
             {fmtDate(report.email_sent_at)}
           </p>
         )}
@@ -325,13 +325,13 @@ function ReportDetailPage() {
 
       {/* Actions card */}
       {hasSnapshot && (
-        <div className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-700">Relatório web</h2>
+        <div className="rounded-xl border border-border-default/20 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-content-primary">Relatório web</h2>
           <div className="mt-3">
             <Link
               to="/analyze/$username"
               params={{ username: report.instagram_username }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-4 py-2 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-muted"
             >
               <ExternalLink className="size-3.5" />
               Abrir relatório
@@ -367,14 +367,14 @@ function BackLink() {
     <div className="flex flex-wrap items-center gap-4">
       <Link
         to="/app/reports"
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-content-secondary hover:text-content-primary transition-colors"
       >
         <ArrowLeft className="size-3.5" />
         Voltar aos relatórios
       </Link>
       <Link
         to="/"
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-content-secondary hover:text-content-primary transition-colors"
       >
         <Search className="size-3.5" />
         Analisar outro perfil

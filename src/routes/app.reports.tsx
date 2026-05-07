@@ -249,7 +249,7 @@ function ReportsPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+      <h1 className="text-xl font-semibold tracking-tight text-content-primary">
         Relatórios
       </h1>
       <p className="mt-1 text-sm text-content-secondary">

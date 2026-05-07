@@ -32,7 +32,7 @@ function deriveStatus(r: ReportCardData) {
   ) {
     return { label: "A processar", color: "bg-blue-50 text-blue-600", icon: Loader2 } as const;
   }
-  return { label: "Pendente", color: "bg-slate-50 text-slate-500", icon: Clock } as const;
+  return { label: "Pendente", color: "bg-surface-muted text-content-secondary", icon: Clock } as const;
 }
 
 function formatDate(iso: string) {
@@ -56,17 +56,17 @@ export function ReportCard({ report }: { report: ReportCardData }) {
   const hasSnapshot = !!report.analysis_snapshot_id;
 
   return (
-    <div className="rounded-xl border border-slate-200/70 bg-white p-4 shadow-sm sm:p-5 transition-shadow hover:shadow-md">
+    <div className="rounded-xl border border-border-default/20 bg-white p-4 shadow-sm sm:p-5 transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-            <FileText className="size-4 text-slate-500" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-muted">
+            <FileText className="size-4 text-content-secondary" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">
+            <p className="truncate text-sm font-semibold text-content-primary">
               @{report.instagram_username}
             </p>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-content-tertiary">
               {formatDate(report.created_at)}
               {report.competitor_count > 0 && (
                 <span className="ml-2">
@@ -92,7 +92,7 @@ export function ReportCard({ report }: { report: ReportCardData }) {
         <Link
           to="/app/reports/$id"
           params={{ id: report.id }}
-          className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-muted"
         >
           Ver detalhes
         </Link>
@@ -100,7 +100,7 @@ export function ReportCard({ report }: { report: ReportCardData }) {
           <Link
             to="/analyze/$username"
             params={{ username: report.instagram_username }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-muted"
           >
             <ExternalLink className="size-3" />
             Abrir relatório
@@ -112,8 +112,8 @@ export function ReportCard({ report }: { report: ReportCardData }) {
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
             pdfReady
-              ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer"
-              : "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed",
+              ? "border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/15 cursor-pointer"
+              : "border-border-default/10 bg-surface-muted text-content-tertiary cursor-not-allowed",
           )}
           title={pdfReady ? "Descarregar PDF" : "PDF ainda não disponível"}
         >
@@ -123,7 +123,7 @@ export function ReportCard({ report }: { report: ReportCardData }) {
       </div>
 
       {report.email_sent_at && (
-        <p className="mt-3 text-[11px] text-slate-400">
+        <p className="mt-3 text-xs text-content-tertiary">
           Email enviado a {formatDate(report.email_sent_at)}
         </p>
       )}
