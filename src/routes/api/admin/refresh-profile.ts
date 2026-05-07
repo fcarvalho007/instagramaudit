@@ -105,7 +105,13 @@ export const Route = createFileRoute("/api/admin/refresh-profile")({
           }, 500);
         }
 
-        let analyzeResult: { success: boolean; error_code?: string; message?: string; snapshot_id?: string } | null = null;
+        interface AnalyzeResult {
+          success: boolean;
+          error_code?: string;
+          message?: string;
+          snapshot_id?: string;
+        }
+        let analyzeResult: AnalyzeResult | null = null;
         let restoreWarning: string | null = null;
 
         try {
