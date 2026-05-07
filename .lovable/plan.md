@@ -1,60 +1,81 @@
 
-# Fix: Specific Error Messages for "Atualizar agora"
+# Admin Pre-Flight Check for "Atualizar agora"
 
-## Root Cause
+## Overview
 
-The mutation in `test-profiles-card.tsx` L91 calls `res.json()` which throws a raw JSON parse error when the server returns a non-JSON response (e.g. 503 HTML). Even when JSON parses correctly, the error message propagation works (`body.error` is used), but:
-
-1. Non-JSON server errors (503, gateway timeouts) produce cryptic messages like "Unexpected token '<'"
-2. The confirmation modal lacks pre-flight status — admin can't see preconditions before confirming
-3. No "last attempt" status is shown per profile
+Create a dedicated pre-flight endpoint and wire it into the confirmation modal so the admin sees exactly why a refresh is blocked, and the button is disabled when preconditions fail.
 
 ## Changes
 
-### 1. `src/components/admin/v2/sistema/test-profiles-card.tsx`
+### 1. New file: `src/routes/api/admin/refresh-profile-preflight.ts`
 
-**Mutation error handling** — wrap `res.json()` in try/catch, map HTTP status codes and `preflight_blocked` values to pt-PT admin messages:
+Server route `GET /api/admin/refresh-profile-preflight?handle=:handle`.
 
+Checks (no provider calls):
+- Admin session valid
+- `INTERNAL_API_TOKEN` configured
+- `APIFY_ENABLED === "true"`
+- Handle in allowlist (if testing mode active)
+- No concurrent refresh for this handle (reads the in-memory `refreshingHandles` set)
+- `COMMENT_SCRAPER_ENABLED` status
+- Cache status from `TestProfileStatus` data (snapshot exists, expiry)
+
+Returns:
+```json
+{
+  "can_refresh": true|false,
+  "blocking_reason": "..." | null,
+  "estimated_cost_usd": "~$0.02–0.05",
+  "checks": [
+    { "key": "internal_token", "label": "Token interno", "status": "ok"|"fail", "message": "Configurado" },
+    { "key": "apify_enabled", "label": "Apify", "status": "ok"|"fail", "message": "Ativo" },
+    { "key": "allowlist", "label": "Allowlist", "status": "ok"|"warn", "message": "Autorizado" },
+    { "key": "concurrent", "label": "Concorrência", "status": "ok"|"fail", "message": "Livre" },
+    { "key": "comment_scraper", "label": "Comentários", "status": "ok"|"warn", "message": "Desativado" }
+  ],
+  "cache_status": { "has_snapshot": true, "expired": false, "expires_at": "..." }
+}
 ```
-- 401/403 → "Sessao admin invalida ou expirada."
-- 503 → "Servidor indisponivel. Tenta dentro de instantes."
-- JSON parse failure → "Resposta inesperada do servidor."
-- preflight_blocked: internal_token_missing → "INTERNAL_API_TOKEN nao esta configurado."
-- preflight_blocked: apify_disabled → "APIFY_ENABLED nao esta ativo."
-- preflight_blocked: allowlist → "Perfil nao autorizado na allowlist."
-- preflight_blocked: concurrent_refresh → "Ja existe uma atualizacao em curso."
-- 502 (provider failure) → "O fornecedor falhou. A cache anterior foi mantida."
-- fallback → body.error or generic message
-```
 
-**Confirmation modal** — add a pre-flight status strip showing:
-- Token interno: configurado / em falta (read from existing runtime-checks query)
-- Apify: ativo / inativo
-- Allowlist: autorizado / nao autorizado
-- Cache: valida / expirada / sem dados
+The in-memory `refreshingHandles` set needs to be shared. We'll extract it to a tiny shared module (`src/lib/admin/refresh-lock.server.ts`) imported by both the existing `refresh-profile.ts` and the new preflight route.
 
-These are read from the existing `TestProfileStatus` data and the runtime-checks endpoint already called elsewhere in the admin. No new API calls needed.
+### 2. New file: `src/lib/admin/refresh-lock.server.ts`
 
-**Last attempt status** — after each mutation (success or failure), store `{ timestamp, success, reason }` in component-level state (React state, not DB). Display a small line under each profile row showing the last attempt result.
+Exports the `refreshingHandles` Set so both routes share the same lock.
 
-### 2. No backend changes needed
+### 3. Update: `src/routes/api/admin/refresh-profile.ts`
 
-The `/api/admin/refresh-profile` endpoint already returns structured errors with `preflight_blocked`, `error`, and `error_code` fields. The fix is frontend-only.
+Import `refreshingHandles` from the shared module instead of declaring it locally.
 
-### Files Changed
+### 4. Update: `src/components/admin/v2/sistema/test-profiles-card.tsx`
 
-- `src/components/admin/v2/sistema/test-profiles-card.tsx` — error mapping, modal pre-flight, last attempt display
+Replace the current `PreflightStrip` (which reads from the generic runtime-checks endpoint and guesses) with a new version that:
+- Calls `GET /api/admin/refresh-profile-preflight?handle=X` when the modal opens
+- Shows each check with status icon
+- Disables the "Atualizar agora" button when `can_refresh === false`
+- Shows the `blocking_reason` prominently
+- Displays cost estimate from the endpoint
 
-### Not Changed
+In the profile row, add a small inline status label:
+- If preflight loaded and `can_refresh`: "Pronto para atualizar"
+- If blocked: "Bloqueado: {reason}" (e.g. "Bloqueado: Apify inativo")
+- If refresh is running: "Atualização em curso"
 
-- No backend/API changes
-- No Supabase schema changes
-- No report UI changes
-- No PDF pipeline changes
+The preflight query is triggered when the modal opens (`enabled: refreshConfirmOpen`), not on every render.
+
+Remove the `import type { RuntimeCheck }` from `system-queries.server` (no longer needed — that was a `.server.ts` import in a client component, which is risky).
+
+### Not changed
+- No public routes
+- No report UI
+- No PDF pipeline
+- No Supabase schema
 - No provider calls
 
-## Validation
-
-- `tsc --noEmit`
-- `vitest run`
-- Visual check: trigger each error path and confirm correct toast
+### Files
+| File | Action |
+|------|--------|
+| `src/lib/admin/refresh-lock.server.ts` | New — shared in-memory lock |
+| `src/routes/api/admin/refresh-profile-preflight.ts` | New — pre-flight endpoint |
+| `src/routes/api/admin/refresh-profile.ts` | Edit — use shared lock |
+| `src/components/admin/v2/sistema/test-profiles-card.tsx` | Edit — wire preflight into modal + row status |
