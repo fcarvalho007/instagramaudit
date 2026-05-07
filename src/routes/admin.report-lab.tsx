@@ -318,9 +318,19 @@ function ReportLabPage() {
             copyMode
           />
           <AdminActionButton
-            label={`Abrir fullscreen · ${variant === "public_mvp" ? "Public MVP" : variant === "pro_preview" ? "Pro Preview" : "Internal Lab"}`}
+            label="Fullscreen · Public MVP"
             icon={<ExternalLink className="h-3.5 w-3.5" />}
-            onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}`, "_blank")}
+            onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=public_mvp`, "_blank")}
+          />
+          <AdminActionButton
+            label="Fullscreen · Internal Lab"
+            icon={<ExternalLink className="h-3.5 w-3.5" />}
+            onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=internal_lab`, "_blank")}
+          />
+          <AdminActionButton
+            label="Fullscreen · Pro Preview"
+            icon={<ExternalLink className="h-3.5 w-3.5" />}
+            onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=pro_preview`, "_blank")}
           />
           <AdminActionButton
             label="Copiar link fullscreen"
