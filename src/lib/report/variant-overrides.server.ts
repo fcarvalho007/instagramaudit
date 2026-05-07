@@ -108,6 +108,21 @@ export async function publishDraft(
     .delete()
     .eq("variant", variant)
     .eq("is_draft", true);
+
+  // Track publish event (fire-and-forget)
+  try {
+    await supabaseAdmin.from("product_events").insert([{
+      event_type: "module_visibility_published",
+      metadata: {
+        variant,
+        admin_email: adminEmail,
+        published_at: new Date().toISOString(),
+        changed_modules: draft,
+      },
+    }]);
+  } catch {
+    // Non-critical — never block publishing
+  }
 }
 
 /**
