@@ -13,6 +13,7 @@ interface TabDef {
     | "/admin/receita"
     | "/admin/clientes"
     | "/admin/beta-leads"
+    | "/admin/beta-requests"
     | "/admin/relatorios"
     | "/admin/perfis"
     | "/admin/conhecimento"
@@ -26,6 +27,7 @@ const TABS: TabDef[] = [
   { to: "/admin/receita", label: "Receita e despesas" },
   { to: "/admin/clientes", label: "Clientes" },
   { to: "/admin/beta-leads", label: "Beta Leads" },
+  { to: "/admin/beta-requests", label: "Beta Requests" },
   { to: "/admin/relatorios", label: "Relatórios" },
   { to: "/admin/perfis", label: "Perfis" },
   { to: "/admin/conhecimento", label: "Conhecimento" },
