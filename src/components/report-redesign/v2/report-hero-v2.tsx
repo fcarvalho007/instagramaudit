@@ -48,11 +48,11 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   return (
     <section
       aria-label="Cabeçalho do relatório"
-      className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-5"
+      className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-3"
     >
       <div className="mx-auto max-w-[1380px]">
         {/* ── TOP BAR ────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 flex-wrap mb-4">
+        <div className="flex items-center gap-3 flex-wrap mb-3">
           {/* Logo */}
           <Link to="/" className="text-sm font-semibold text-content-primary tracking-tight hover:text-accent-primary transition-colors">
             InstaBench
@@ -108,8 +108,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             <Link
               to="/"
               className={cn(
-                "hidden sm:inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2",
-                "bg-accent-primary text-white text-xs font-semibold",
+              "hidden sm:inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5",
+                "bg-accent-primary text-white text-xs font-bold shadow-sm",
                 "transition-colors duration-150 hover:bg-accent-primary/90",
               )}
             >
@@ -122,28 +122,33 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
         {/* ── HERO CARD ──────────────────────────────────────────── */}
         <div className="rounded-2xl border border-border-default bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
           {/* Profile area */}
-          <div className="flex flex-col items-center gap-4 px-5 py-5 sm:px-7 sm:py-6 md:flex-row md:items-center md:gap-6">
+          <div className="flex flex-col items-center gap-3 px-5 py-4 sm:px-6 sm:py-5 md:flex-row md:items-start md:gap-5">
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
 
             <div className="min-w-0 flex-1 space-y-1 text-center md:text-left">
-              <div className="flex items-center justify-center md:justify-start gap-2.5 min-w-0 flex-wrap">
-                <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-[-0.015em] text-content-primary leading-tight break-words">
+              <div className="flex items-center justify-center md:justify-start gap-2 min-w-0 flex-wrap">
+                <h1 className="font-display text-2xl sm:text-[28px] font-semibold tracking-[-0.02em] text-content-primary leading-tight break-words">
                   {handle}
                 </h1>
                 {verified && <VerifiedBadge />}
                 <PlatformPill />
               </div>
 
-              {(fullName || bio) && (
-                <p className="text-sm text-content-secondary leading-relaxed line-clamp-2 max-w-xl">
-                  {[fullName, bio].filter(Boolean).join(" · ")}
+              {fullName && (
+                <p className="text-sm font-medium text-content-secondary leading-snug">
+                  {fullName}
+                </p>
+              )}
+              {bio && (
+                <p className="text-sm text-content-tertiary leading-relaxed line-clamp-2 max-w-xl">
+                  {bio}
                 </p>
               )}
             </div>
           </div>
 
           {/* KPI strip */}
-          <div className="border-t border-border-subtle px-5 sm:px-7 py-5">
+          <div className="border-t border-border-default px-5 sm:px-6 py-4">
             <div className="grid grid-cols-3 gap-y-4 gap-x-0">
               {profileStats.map((s, i) => (
                 <div
@@ -153,7 +158,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                     i > 0 && "border-l border-border-subtle",
                   )}
                 >
-                  <span className="tabular-nums text-2xl sm:text-3xl font-bold text-content-primary leading-none">
+                  <span className="tabular-nums text-xl sm:text-2xl font-bold text-content-primary leading-none">
                     {s.value}
                   </span>
                   <span className="text-eyebrow-sm text-content-tertiary">
@@ -166,7 +171,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
 
           {/* Meta footer */}
           {(analysisMeta.postsLabel || analysisMeta.dateLabel) && (
-            <div className="border-t border-border-subtle px-5 sm:px-7 py-3 flex items-center justify-center gap-3 flex-wrap">
+            <div className="border-t border-border-default px-5 sm:px-6 py-2.5 flex items-center justify-center gap-3 flex-wrap">
               {analysisMeta.postsLabel && (
                 <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
                   <span className="size-1.5 rounded-full bg-signal-success shrink-0" aria-hidden="true" />
@@ -267,43 +272,36 @@ function Avatar({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  const ringClass =
-    "p-[2px] rounded-full shrink-0 bg-gradient-to-br from-border-default via-surface-muted to-border-default";
-  const innerWhite = "p-[2px] rounded-full bg-white";
   const sizeMobile = "size-14 md:size-[72px]";
 
   if (avatarUrl) {
     return (
-      <div className={ringClass}>
-        <div className={innerWhite}>
-          <img
-            src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
-            alt={`Avatar de ${fullName}`}
-            loading="eager"
-            decoding="async"
-            className={cn("rounded-full object-cover bg-white", sizeMobile)}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-          />
-        </div>
+      <div className="shrink-0 rounded-full border-2 border-border-default p-[2px]">
+        <img
+          src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
+          alt={`Avatar de ${fullName}`}
+          loading="eager"
+          decoding="async"
+          className={cn("rounded-full object-cover bg-white", sizeMobile)}
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
       </div>
     );
   }
 
   return (
-    <div className={ringClass} aria-hidden="true">
-      <div className={innerWhite}>
-        <div
-          className={cn(
-            "rounded-full flex items-center justify-center",
-            "font-display text-lg md:text-xl font-semibold text-content-tertiary",
-            "bg-surface-muted",
-            sizeMobile,
-          )}
-        >
-          {initials}
-        </div>
+    <div className="shrink-0 rounded-full border-2 border-border-default p-[2px]" aria-hidden="true">
+      <div
+        className={cn(
+          "rounded-full flex items-center justify-center",
+          "font-display text-lg md:text-xl font-semibold text-content-tertiary",
+          "bg-surface-muted",
+          sizeMobile,
+        )}
+      >
+        {initials}
       </div>
     </div>
   );
