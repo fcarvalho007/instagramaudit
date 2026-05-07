@@ -46,7 +46,6 @@ import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
-import { ComparisonHeader } from "./overview/comparison-header";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -106,9 +105,6 @@ export function ReportShellV2({
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
         <section className="bg-surface-base">
           <ReportHeroV2 result={result} actions={actions} />
-          <div className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-8 pb-3">
-            <ComparisonHeader />
-          </div>
         </section>
 
         {/* Tabs mobile sticky abaixo do hero */}
