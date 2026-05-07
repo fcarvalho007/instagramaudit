@@ -109,6 +109,14 @@ const ReportVariantContext = createContext<ReportVariant>("public_mvp");
 export const ReportVariantProvider = ReportVariantContext.Provider;
 
 /**
+ * Optional context for overriding resolved features (e.g. from admin overrides).
+ * When set, useVariantFeatures() returns this instead of the static lookup.
+ */
+const VariantFeaturesOverrideContext = createContext<VariantFeatures | null>(null);
+
+export const VariantFeaturesOverrideProvider = VariantFeaturesOverrideContext.Provider;
+
+/**
  * Returns the current report variant. Defaults to `"public_mvp"` when
  * used outside a provider — the safest default for public consumers.
  */
@@ -121,6 +129,8 @@ export function useReportVariant(): ReportVariant {
  * current variant.
  */
 export function useVariantFeatures(): VariantFeatures {
+  const override = useContext(VariantFeaturesOverrideContext);
+  if (override) return override;
   return getVariantFeatures(useReportVariant());
 }
 
