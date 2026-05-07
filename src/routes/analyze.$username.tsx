@@ -140,6 +140,13 @@ function AnalyzePage() {
   const { vs, previewLoading } = Route.useSearch();
   const cleaned = username.replace(/^@/, "");
 
+  // Clean up report-view body attribute when leaving the page
+  useEffect(() => {
+    return () => {
+      document.body.removeAttribute("data-report-view");
+    };
+  }, []);
+
   // Dev-only: freeze on the loader for visual QA
   const forceLoader = previewLoading === 1;
 
