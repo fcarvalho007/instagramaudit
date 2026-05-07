@@ -11,7 +11,7 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
