@@ -83,7 +83,7 @@ export function ReportCompetitors() {
                 </div>
 
                 <div className="text-right w-[80px]">
-                  <span className="font-mono font-medium text-sm text-content-primary">
+                  <span className="tabular-nums font-medium text-sm text-content-primary">
                     {c.engagement.toString().replace(".", ",")}%
                   </span>
                 </div>

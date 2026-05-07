@@ -111,7 +111,7 @@ export function ReportPostingHeatmap() {
               <span className="text-eyebrow-sm text-accent-primary font-semibold">
                 {s.day} · {s.hour}
               </span>
-              <span className="font-mono text-xs font-medium text-content-primary">
+              <span className="tabular-nums text-xs font-medium text-content-primary">
                 {s.engagement.toString().replace(".", ",")}%
               </span>
             </span>

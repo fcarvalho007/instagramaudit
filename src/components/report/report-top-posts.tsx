@@ -65,14 +65,14 @@ export function ReportTopPosts() {
                   <div className="flex items-center gap-3 text-xs text-content-secondary">
                     <span className="inline-flex items-center gap-1">
                       <Heart className="size-3.5" />
-                      <span className="font-mono">{post.likes.toLocaleString("pt-PT")}</span>
+                      <span className="tabular-nums">{post.likes.toLocaleString("pt-PT")}</span>
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <MessageCircle className="size-3.5" />
-                      <span className="font-mono">{post.comments}</span>
+                      <span className="tabular-nums">{post.comments}</span>
                     </span>
                   </div>
-                  <span className="font-mono text-xs font-medium text-accent-primary">
+                  <span className="tabular-nums text-xs font-medium text-accent-primary">
                     {post.engagementPct.toString().replace(".", ",")}%
                   </span>
                 </div>

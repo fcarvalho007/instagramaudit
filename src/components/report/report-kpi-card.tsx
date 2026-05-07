@@ -122,7 +122,7 @@ export function ReportKpiCard({
                 {value}
               </span>
               {valueSuffix && (
-                <span className="font-mono text-sm text-content-tertiary">
+                <span className="tabular-nums text-sm text-content-tertiary">
                   {valueSuffix}
                 </span>
               )}
@@ -138,7 +138,7 @@ export function ReportKpiCard({
                 )}
               >
                 <TrendArrow className="size-3" />
-                <span className="font-mono">{trend.value}</span>
+                <span className="tabular-nums">{trend.value}</span>
               </span>
             )}
             {subtitle && (
