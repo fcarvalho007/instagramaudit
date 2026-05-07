@@ -1,91 +1,104 @@
 
-# Desativar o Comment Scraper para MVP/Beta
+# Report Variant Architecture
 
-## Assessment: PASS
+## Readiness Assessment: PASS
 
-The system is already fully prepared for this change. The kill switch, fallback UI, and enrichment status tracking all exist.
-
----
-
-## What happens today when `COMMENT_SCRAPER_ENABLED=false`
-
-1. `analyze-public-v1.ts` line 822: reads the env var, evaluates to `false`
-2. Line 885: calls `setEnrichmentStatusAtomic(snapshotId, "comments", "disabled")` -- correct
-3. No `comment_enrichment_jobs` row is created -- no Apify call
-4. No `comment_intelligence` is patched into `normalized_payload`
-5. Q05 renders using post-level metrics (likes, comments counts, top posts) from `classifyAudienceResponse()`
-6. `CommentIntelligenceUnavailable` renders with `data={null}` -- shows default copy
-
-## Verified answers
-
-| # | Question | Answer |
-|---|----------|--------|
-| 1 | Which env var controls this? | `COMMENT_SCRAPER_ENABLED` (already defaults to `"false"`, line 822) |
-| 2 | Does setting it to `false` prevent new jobs? | **Yes.** The `if (runComments)` guard at line 830 prevents job creation entirely |
-| 3 | Does `enrichment_status.comments` become `"disabled"`? | **Yes.** Line 885 explicitly sets it |
-| 4 | Does Q05 still render? | **Yes.** `classifyAudienceResponse()` uses only post-level data. The audience card renders fully |
-| 5 | Are cached reports with `comment_intelligence` unaffected? | **Yes.** Existing `normalized_payload` is untouched. The UI checks `commentIntel?.available` |
-| 6 | Are admin chips and cost attribution coherent? | **Yes.** `provider_call_logs` are historical. No new comment-scraper entries will appear |
-| 7 | Does any UI copy need adjustment? | **Minor.** When `commentIntel` is `null`, the default fallback says "A aguardar análise de comentários" which implies it's pending. Should say something neutral |
+The current `ReportShellV2` is already well-structured into 6 discrete blocks. Comment intelligence already has a graceful fallback (`CommentIntelligenceUnavailable`). No code duplication is needed — a lightweight `ReportVariant` context + per-block visibility config is sufficient.
 
 ---
 
-## Implementation Plan
+## Proposed Architecture
 
-### Step 1: Verify current secret value (no code change)
+### Variant type
 
-Check whether `COMMENT_SCRAPER_ENABLED` is currently `true` or `false`. The code defaults to `false` if unset, but a secret may override it to `true`.
+```typescript
+type ReportVariant = "public_mvp" | "internal_lab" | "pro_preview";
+```
 
-### Step 2: Set `COMMENT_SCRAPER_ENABLED` to `false` (env-only change)
+### Mechanism
 
-Use the secrets tool to set `COMMENT_SCRAPER_ENABLED=false`. This is the only change needed to stop all future comment scraping.
+1. A new file `src/lib/report/report-variant.ts` exports the type, a React context (`ReportVariantProvider` / `useReportVariant`), and a block visibility map.
+2. `ReportShellV2` receives an optional `variant` prop (default: `"public_mvp"`).
+3. Each section checks the variant to decide: render fully, render as teaser, or skip.
+4. No new route — the existing `/analyze/$username` route passes the variant. Admin preview routes can pass `"internal_lab"`.
 
-### Step 3: Improve fallback copy (optional, small code change)
+### Block Visibility Matrix
 
-In `src/components/report-redesign/v2/report-comment-intelligence.tsx`, line 281-282, the default fallback when `data` is `null` currently says:
+| Block | public_mvp | internal_lab | pro_preview |
+|-------|-----------|-------------|-------------|
+| 01 Overview | Full | Full | Full |
+| 02 Diagnóstico (Q01-Q04, Q06) | Full | Full | Full |
+| 02 Q05 Conversa | Post-level only (no comment_intelligence) | Full (with comment_intelligence when available) | Teaser |
+| 03 Performance | Full | Full | Full |
+| 04 Conteúdo | Full | Full | Full |
+| 05 Procura (Market Signals) | Full | Full | Full |
+| 06 Benchmark | Full | Full | Full |
+| AI Reading (v2 insights) | Full when available | Full | Full |
+| Editorial Patterns | Full | Full | Full |
+| Visual Cover Analysis | Full | Full | Full |
+| Caption Semantics | Full | Full | Full |
+| Methodology | Full | Full | Full |
+| Tier Teaser / Comparison | Full | Full | Full |
+| Beta Feedback Banner | Full | Hidden | Hidden |
 
-- Title: "A aguardar análise de comentários"
-- Body: "A análise de comentários não ficou disponível nesta execução."
+### P05 Behaviour (public_mvp, comment scraper disabled)
 
-Change the default to something neutral that does not imply pending/waiting:
+Already working correctly:
+- `classifyAudienceResponse()` in `block02-diagnostic.ts` produces post-level metrics (avg comments, likes, ratio, top posts) from main scraper data
+- When `commentIntelligence` is `null` or `available === false`, `CommentIntelligenceUnavailable` renders the neutral copy set in previous changes
+- No changes needed to P05 for `public_mvp` — just ensure variant context never requests comment enrichment
 
-- Title: "Análise de comentários indisponível"  
-- Body: "O relatório base utiliza métricas agregadas de interação. A análise detalhada de comentários poderá ser incluída numa versão futura."
+### Labels to suppress in public_mvp
 
-This is a 2-line string change in one file.
+Audit needed for strings like "payload", "debug", "em desenvolvimento". The variant context lets components hide debug-only UI conditionally.
 
 ---
 
-## Files affected
+## Files to Touch
 
-| File | Change | Risk |
-|------|--------|------|
-| Secret: `COMMENT_SCRAPER_ENABLED` | Set to `false` | None (already the code default) |
-| `src/components/report-redesign/v2/report-comment-intelligence.tsx` | 2-line string change in fallback copy (lines 281-282) | Minimal |
+| File | Change |
+|------|--------|
+| `src/lib/report/report-variant.ts` | **NEW** — variant type, context provider, visibility map |
+| `src/components/report-redesign/v2/report-shell-v2.tsx` | Add `variant` prop, wrap in `ReportVariantProvider`, conditionally hide/teaser blocks |
+| `src/components/report-redesign/v2/report-diagnostic-block.tsx` | Read variant context in Q05 to skip `CommentIntelligenceSection` for `public_mvp` (already falls back gracefully — may need no change) |
+| `src/routes/analyze.$username.tsx` | Pass `variant="public_mvp"` (hardcoded for now) |
+| `src/routes/admin.report-preview.$username.tsx` | Pass `variant="internal_lab"` |
+| `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` | Pass `variant="internal_lab"` |
 
-## Files NOT to touch
+### Files NOT to Touch
 
-- `src/routes/api/analyze-public-v1.ts` -- no changes needed
-- `src/routes/api/public/enrich-comments.ts` -- no changes needed
-- `src/lib/analysis/comment-scraper.server.ts` -- no changes needed
-- `src/lib/analysis/comment-intelligence.ts` -- no changes needed
-- `src/lib/report/block02-diagnostic.ts` -- Q05 logic is already correct
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` -- rendering logic is already correct
-- All P01-P04 components
-- PDF pipeline
-- Admin cost/revenue logic
+- `src/integrations/supabase/client.ts` / `types.ts` — auto-generated
+- `src/components/report/report-page.tsx` — locked legacy shell
+- `src/lib/analysis/comment-scraper.server.ts` — already gated by secret
+- `src/lib/enrichment/run-enrichment.server.ts` — already respects `COMMENT_SCRAPER_ENABLED`
+- PDF pipeline files
+- Admin cost/revenue routes
+- Supabase schema (no migration needed)
 
-## Rollback plan
+---
 
-Set `COMMENT_SCRAPER_ENABLED=true` via secrets. Revert the 2-line copy change if desired. Cached reports are never affected in either direction.
+## Implementation Order (5 prompts)
 
-## Validation checklist
+1. **Create `src/lib/report/report-variant.ts`** — type, context, hook, visibility config
+2. **Wire variant into `ReportShellV2`** — accept prop, wrap provider, apply visibility to blocks that differ between variants
+3. **Wire variant into route files** — `analyze.$username` gets `public_mvp`, admin previews get `internal_lab`
+4. **Audit and suppress debug labels** — search for "em desenvolvimento", "debug", "payload", "missing" strings visible in public_mvp and gate them behind variant
+5. **Validation pass** — tsc, vitest, manual check that cached reports render, Q05 shows post-level fallback
 
-- [ ] Confirm `COMMENT_SCRAPER_ENABLED` secret is `false`
-- [ ] TypeScript passes (`tsc --noEmit`)
-- [ ] Tests pass (`vitest run`)
-- [ ] Load cached report for frederico.m.carvalho -- Q05 renders with post-level metrics
-- [ ] Load cached report for martimsilvai -- Q05 renders with post-level metrics
-- [ ] Existing `comment_intelligence` in cached snapshots still renders if present
-- [ ] No new `provider_call_logs` with actor `apify/instagram-comment-scraper` are created
-- [ ] Fallback copy is neutral, not "waiting"
+## Risks and Mitigations
+
+| Risk | Mitigation |
+|------|-----------|
+| Forgetting to pass variant to a new route in future | Default is `public_mvp` (safest) |
+| Context not available in deeply nested components | `useReportVariant` returns `"public_mvp"` when outside provider |
+| Cached reports with comment_intelligence break | No — `CommentIntelligenceSection` still renders when data is present regardless of variant |
+| Variant prop breaks PDF print route | PDF route already uses `ReportShell` (v1), not affected |
+
+## Rollback
+
+Remove the `variant` prop from routes and the `ReportVariantProvider` wrapper from `ReportShellV2`. All blocks render as before (current behaviour = internal_lab equivalent).
+
+## File Locking
+
+After implementation, add to `LOCKED_FILES.md`:
+- `src/lib/report/report-variant.ts`
