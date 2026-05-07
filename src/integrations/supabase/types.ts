@@ -564,6 +564,39 @@ export type Database = {
         }
         Relationships: []
       }
+      product_events: {
+        Row: {
+          actor_hash: string | null
+          created_at: string
+          event_type: string
+          handle: string | null
+          id: string
+          lead_id: string | null
+          metadata: Json
+          snapshot_id: string | null
+        }
+        Insert: {
+          actor_hash?: string | null
+          created_at?: string
+          event_type: string
+          handle?: string | null
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          snapshot_id?: string | null
+        }
+        Update: {
+          actor_hash?: string | null
+          created_at?: string
+          event_type?: string
+          handle?: string | null
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          snapshot_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
