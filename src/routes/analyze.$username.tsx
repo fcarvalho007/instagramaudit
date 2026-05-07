@@ -280,11 +280,12 @@ function AnalyzeReady({
       data: {
         eventType: "report_viewed",
         snapshotId,
-        handle: result.data.username ?? undefined,
+        handle: (payload as any).instagram_username ?? undefined,
         metadata: { variant: "public_mvp" },
       },
     }).catch(() => {});
-  }, [snapshotId, result.data.username]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshotId]);
 
   return (
     <ReportShellV2
