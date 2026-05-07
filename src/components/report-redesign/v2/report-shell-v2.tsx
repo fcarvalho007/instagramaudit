@@ -104,49 +104,10 @@ export function ReportShellV2({
         )}
       >
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
-        <section className="relative overflow-hidden" style={{ backgroundColor: '#F8FBFF' }}>
-          {/* BG Layer 1 — subtle grid */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            aria-hidden="true"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px)',
-              backgroundSize: '40px 40px',
-            }}
-          />
-          {/* BG Layer 2 — top-right soft blue radial */}
-          <div
-            className="absolute top-0 right-0 w-[600px] h-[600px] pointer-events-none"
-            aria-hidden="true"
-            style={{
-              background:
-                'radial-gradient(circle at 70% 20%, rgba(6,182,212,0.08), transparent 70%)',
-            }}
-          />
-          {/* BG Layer 3 — top-left soft violet radial */}
-          <div
-            className="absolute top-0 left-0 w-[500px] h-[500px] pointer-events-none"
-            aria-hidden="true"
-            style={{
-              background:
-                'radial-gradient(circle at 30% 30%, rgba(139,92,246,0.05), transparent 70%)',
-            }}
-          />
-          {/* BG Layer 4 — bottom fade to report canvas */}
-          <div
-            className="absolute bottom-0 inset-x-0 h-24 pointer-events-none"
-            aria-hidden="true"
-            style={{
-              background: 'linear-gradient(to bottom, transparent, #FAFBFD)',
-            }}
-          />
-          {/* Content */}
-          <div className="relative z-10">
-            <ReportHeroV2 result={result} actions={actions} />
-            <div className="mx-auto max-w-[1380px] px-5 md:px-6">
-              <ComparisonHeader />
-            </div>
+        <section className="bg-surface-base">
+          <ReportHeroV2 result={result} actions={actions} />
+          <div className="mx-auto max-w-[1380px] px-4 sm:px-6 lg:px-8 pb-4">
+            <ComparisonHeader />
           </div>
         </section>
 
@@ -291,21 +252,21 @@ function BetaFeedbackBannerV2() {
   return (
     <section
       aria-label="Feedback durante a fase beta"
-      className="w-full bg-slate-50 border-t border-slate-200"
+      className="w-full bg-surface-muted border-t border-border-default"
     >
       <div className="mx-auto max-w-[1380px] px-5 md:px-6 py-10 md:py-12">
-        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 md:p-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="rounded-2xl border border-border-default bg-white p-6 md:p-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="space-y-1.5 max-w-2xl">
             <p className="text-eyebrow text-blue-600">
               {feedback.eyebrow}
             </p>
-            <p className="text-sm md:text-base text-slate-700 leading-relaxed">
+            <p className="text-sm md:text-base text-content-secondary leading-relaxed">
               {feedback.subtitle}
             </p>
           </div>
           <a
             href={feedback.action.href}
-            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-slate-700 min-h-[44px]"
+            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-full bg-content-primary px-5 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-content-primary/90 min-h-[44px]"
           >
             {feedback.action.label}
             <span aria-hidden="true">→</span>

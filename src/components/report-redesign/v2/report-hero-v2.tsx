@@ -1,4 +1,5 @@
-import { Check, Download, Loader2 } from "lucide-react";
+import { Check, Download, Loader2, Plus, ChevronRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 import type {
   AdapterResult,
@@ -14,10 +15,10 @@ interface ReportHeroV2Props {
 }
 
 /**
- * Hero v2 — Premium 2-zone identity card (Iconosquare-inspired).
+ * Hero v2 — Clean compact first fold (Iconosquare-inspired).
  *
- *   Zone 1: avatar + handle + platform pill + bio + icon-only actions
- *   Zone 2: stats (followers / publications / following) + analysis meta
+ *   Top bar: logo + breadcrumb + status pill + actions + CTA
+ *   Hero card: profile identity + KPI strip + meta footer
  *
  * Zone 3 (auxiliary action row) is rendered separately by ComparisonHeader
  * and positioned in report-shell-v2.tsx below this card.
@@ -47,19 +48,84 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   return (
     <section
       aria-label="Cabeçalho do relatório"
-      className="w-full bg-[linear-gradient(180deg,#F6FAFF_0%,#FFFFFF_100%)] px-4 sm:px-6 lg:px-8 py-6"
+      className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-5"
     >
       <div className="mx-auto max-w-[1380px]">
-        {/* Main card */}
-        <div className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
-          {/* ── Zone 1: Identity ──────────────────────────────────── */}
-          <div className="flex flex-col items-center gap-4 p-5 sm:p-6 border-b border-border-subtle md:flex-row md:items-center md:gap-6">
-            {/* Avatar */}
+        {/* ── TOP BAR ────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 flex-wrap mb-4">
+          {/* Logo */}
+          <Link to="/" className="text-sm font-semibold text-content-primary tracking-tight hover:text-accent-primary transition-colors">
+            InstaBench
+          </Link>
+
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 text-xs text-content-tertiary">
+            <span>Relatórios</span>
+            <ChevronRight className="size-3" aria-hidden="true" />
+            <span className="font-medium text-content-secondary">{handle}</span>
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Status pill */}
+          {analysisMeta.dateLabel && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-content-secondary">
+              <span className="size-1.5 rounded-full bg-signal-success shrink-0" aria-hidden="true" />
+              {analysisMeta.dateLabel}
+            </span>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-1.5">
+            <IconButton
+              aria-label="Exportar relatório em PDF"
+              title="Exportar PDF"
+              onClick={actions.onExportPdf}
+              disabled={actions.pdfDisabled || actions.pdfBusy}
+              busy={actions.pdfBusy}
+            >
+              {actions.pdfBusy ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Download className="size-4" aria-hidden="true" />
+              )}
+            </IconButton>
+
+            <ShareReportPopover
+              result={result}
+              variant="ghost"
+              triggerLabel=""
+              aria-label="Partilhar relatório"
+              className={cn(
+                "inline-flex items-center justify-center size-[34px] rounded-lg",
+                "bg-surface-secondary border border-border-default text-content-secondary",
+                "transition-colors duration-150",
+                "hover:border-accent-primary/30 hover:text-accent-primary",
+              )}
+            />
+
+            <Link
+              to="/"
+              className={cn(
+                "hidden sm:inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2",
+                "bg-accent-primary text-white text-xs font-semibold",
+                "transition-colors duration-150 hover:bg-accent-primary/90",
+              )}
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              Novo relatório
+            </Link>
+          </div>
+        </div>
+
+        {/* ── HERO CARD ──────────────────────────────────────────── */}
+        <div className="rounded-2xl border border-border-default bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
+          {/* Profile area */}
+          <div className="flex flex-col items-center gap-4 px-5 py-5 sm:px-7 sm:py-6 md:flex-row md:items-center md:gap-6">
             <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
 
-            {/* Handle + description */}
-            <div className="min-w-0 flex-1 space-y-1.5 text-center md:text-left">
-              {/* Handle row */}
+            <div className="min-w-0 flex-1 space-y-1 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2.5 min-w-0 flex-wrap">
                 <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-[-0.015em] text-content-primary leading-tight break-words">
                   {handle}
@@ -68,87 +134,55 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 <PlatformPill />
               </div>
 
-              {/* Name + bio */}
               {(fullName || bio) && (
                 <p className="text-sm text-content-secondary leading-relaxed line-clamp-2 max-w-xl">
                   {[fullName, bio].filter(Boolean).join(" · ")}
                 </p>
               )}
             </div>
-
-            {/* Icon-only actions */}
-            <div className="flex items-center gap-2 shrink-0">
-              <IconButton
-                aria-label="Exportar relatório em PDF"
-                title="Exportar relatório em PDF"
-                onClick={actions.onExportPdf}
-                disabled={actions.pdfDisabled || actions.pdfBusy}
-                busy={actions.pdfBusy}
-              >
-                {actions.pdfBusy ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Download className="size-4" aria-hidden="true" />
-                )}
-              </IconButton>
-
-              <ShareReportPopover
-                result={result}
-                variant="ghost"
-                triggerLabel=""
-                aria-label="Partilhar relatório"
-                className={cn(
-                  "inline-flex items-center justify-center size-[34px] rounded-lg",
-                  "bg-surface-secondary border border-border-default text-content-secondary",
-                  "transition-colors duration-150",
-                  "hover:border-accent-primary/30 hover:text-accent-primary",
-                )}
-              />
-            </div>
           </div>
 
-          {/* ── Zone 2: Stats ─────────────────────────────────────── */}
-          <div className="bg-surface-muted/50 px-5 sm:px-6 py-4">
+          {/* KPI strip */}
+          <div className="border-t border-border-subtle px-5 sm:px-7 py-5">
             <div className="grid grid-cols-3 gap-y-4 gap-x-0">
-              {/* Profile stats — 3 columns */}
               {profileStats.map((s, i) => (
                 <div
                   key={s.label}
                   className={cn(
-                    "flex flex-col items-center gap-0.5",
+                    "flex flex-col items-center gap-1",
                     i > 0 && "border-l border-border-subtle",
                   )}
                 >
-                  <span className="tabular-nums text-lg sm:text-2xl font-semibold text-content-primary tabular-nums leading-none">
+                  <span className="tabular-nums text-2xl sm:text-3xl font-bold text-content-primary leading-none">
                     {s.value}
                   </span>
-                  <span className="text-xs sm:text-xs font-semibold uppercase tracking-wide text-content-tertiary">
+                  <span className="text-eyebrow-sm text-content-tertiary">
                     {s.label}
                   </span>
                 </div>
               ))}
             </div>
-
-            {/* Analysis metadata — separate row */}
-            {(analysisMeta.postsLabel || analysisMeta.dateLabel) && (
-              <div className="mt-3 pt-3 border-t border-border-subtle flex items-center justify-center gap-3 flex-wrap">
-                {analysisMeta.postsLabel && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-content-tertiary">
-                    <span
-                      className="size-1.5 rounded-full bg-signal-success"
-                      aria-hidden="true"
-                    />
-                    {analysisMeta.postsLabel}
-                  </span>
-                )}
-                {analysisMeta.dateLabel && (
-                  <span className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
-                    {analysisMeta.dateLabel}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
+
+          {/* Meta footer */}
+          {(analysisMeta.postsLabel || analysisMeta.dateLabel) && (
+            <div className="border-t border-border-subtle px-5 sm:px-7 py-3 flex items-center justify-center gap-3 flex-wrap">
+              {analysisMeta.postsLabel && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
+                  <span className="size-1.5 rounded-full bg-signal-success shrink-0" aria-hidden="true" />
+                  {analysisMeta.postsLabel}
+                </span>
+              )}
+              {analysisMeta.postsLabel && analysisMeta.dateLabel && (
+                <span className="text-content-tertiary/40" aria-hidden="true">·</span>
+              )}
+              {analysisMeta.dateLabel && (
+                <span className="text-xs text-content-tertiary sm:hidden">
+                  {analysisMeta.dateLabel}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -197,7 +231,7 @@ function buildAnalysisMeta(input: {
 
   let dateLabel: string | null = null;
   if (input.analyzedAt) {
-    dateLabel = `analisado ${input.analyzedAt}`;
+    dateLabel = `Atualizado ${input.analyzedAt}`;
   }
 
   return { postsLabel, dateLabel };
@@ -233,11 +267,10 @@ function Avatar({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  /* Local decorative gradient ring — no semantic token for avatar rings */
   const ringClass =
-    "p-[2px] rounded-full shrink-0 bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300";
+    "p-[2px] rounded-full shrink-0 bg-gradient-to-br from-border-default via-surface-muted to-border-default";
   const innerWhite = "p-[2px] rounded-full bg-white";
-  const sizeMobile = "size-14 md:size-[76px]";
+  const sizeMobile = "size-14 md:size-[72px]";
 
   if (avatarUrl) {
     return (
