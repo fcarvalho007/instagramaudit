@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Copy,
   AtSign,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,9 +47,10 @@ export interface BetaRequestRow {
 interface Props {
   row: BetaRequestRow;
   onStatusChange: (id: string, status: string, markContacted?: boolean) => void;
+  onGenerateReport?: (row: BetaRequestRow) => void;
 }
 
-export function BetaRequestActions({ row, onStatusChange }: Props) {
+export function BetaRequestActions({ row, onStatusChange, onGenerateReport }: Props) {
   const copyEmail = () => {
     if (row.lead?.email) {
       navigator.clipboard.writeText(row.lead.email);
@@ -65,6 +67,9 @@ export function BetaRequestActions({ row, onStatusChange }: Props) {
     window.open(`https://www.instagram.com/${row.instagram_username}/`, "_blank");
   };
 
+  const canGenerate =
+    row.request_status === "approved" || row.request_status === "pending_review";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -73,6 +78,15 @@ export function BetaRequestActions({ row, onStatusChange }: Props) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="text-xs min-w-[180px]">
+        {canGenerate && onGenerateReport && (
+          <>
+            <DropdownMenuItem onClick={() => onGenerateReport(row)}>
+              <Zap className="h-3 w-3 mr-1.5 text-amber-500" />
+              Gerar relatório
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {row.request_status === "pending_review" && (
           <>
             <DropdownMenuItem onClick={() => onStatusChange(row.id, "approved")}>
