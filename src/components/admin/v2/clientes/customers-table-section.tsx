@@ -121,22 +121,22 @@ export function CustomersTableSection() {
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr>
-              <th className="py-2 text-left text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-left admin-table-header">
                 Cliente
               </th>
-              <th className="py-2 text-left text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-left admin-table-header">
                 Estado
               </th>
-              <th className="py-2 text-right text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-right admin-table-header">
                 LTV
               </th>
-              <th className="py-2 text-right text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-right admin-table-header">
                 Reports
               </th>
-              <th className="py-2 text-right text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-right admin-table-header">
                 Última actividade
               </th>
-              <th className="py-2 text-right text-[12px] font-normal uppercase tracking-[0.06em] text-admin-text-tertiary">
+              <th className="py-2 text-right admin-table-header">
                 Sinal
               </th>
             </tr>

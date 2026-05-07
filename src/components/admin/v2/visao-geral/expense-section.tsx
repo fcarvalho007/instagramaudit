@@ -357,7 +357,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                <tr className="text-left admin-table-header border-b border-admin-border">
                   <th className="pb-2 pr-4 font-medium">Fornecedor</th>
                   <th className="pb-2 pr-4 font-medium text-right">Interno registado</th>
                   <th className="pb-2 pr-4 font-medium text-right">Externo (dashboard)</th>
@@ -445,7 +445,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
-                  <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                  <tr className="text-left admin-table-header border-b border-admin-border">
                     <th className="pb-2 pr-4 font-medium">Actor · nome amigável</th>
                     <th className="pb-2 pr-4 font-medium text-right">Eventos</th>
                     <th className="pb-2 pr-4 font-medium text-right">€/Evento</th>
@@ -473,7 +473,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
-                  <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                  <tr className="text-left admin-table-header border-b border-admin-border">
                     <th className="pb-2 pr-4 font-medium">Operação · modelo</th>
                     <th className="pb-2 pr-4 font-medium text-right">Chamadas</th>
                     <th className="pb-2 pr-4 font-medium text-right">Custo</th>
