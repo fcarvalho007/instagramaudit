@@ -1,56 +1,97 @@
 
-# QA Audit — Report Lab Shareable URLs & Remembered Selection
+# Public MVP Report — Beta Readiness Audit
 
-## Results
+## Overall Assessment: CONDITIONAL PASS
+
+The report is structurally solid, editorially intentional, and safe for a controlled beta launch. One issue (English labels in navigation) should be fixed before sharing with external users.
+
+---
+
+## PASS/FAIL Table
 
 | # | Check | Result | Notes |
 |---|-------|--------|-------|
-| 1 | `?profile=frederico.m.carvalho&variant=public_mvp` loads correctly | **PASS** | `resolved` reads `search.profile` first; variant from `search.variant`. |
-| 2 | `?profile=martimsilvai&variant=internal_lab` loads correctly | **PASS** | Same path. Preset detected via `TEST_PROFILES.includes()`. |
-| 3 | Invalid/missing `variant` falls back to `internal_lab` | **PASS** | Zod schema uses `fallback(z.enum(...), "internal_lab").default("internal_lab")`. |
-| 4 | localStorage used only when query params absent | **PASS** | Line 150: `search.profile \|\| saved?.profile \|\| TEST_PROFILES[0]` — saved is only reached when `search.profile` is falsy (empty string = default). |
-| 5 | Changing variant updates URL without full reload | **PASS** | `navigate({ search: ..., replace: true })` in the useEffect. |
-| 6 | Selecting preset profile updates URL + loads snapshot | **PASS** | `setProfile()` + `setCustomProfile("")` changes `activeProfile`, which triggers both effects. |
-| 7 | Custom profile input triggers URL/snapshot on every keystroke | **FAIL** | See below. |
-| 8 | "Copy current lab URL" includes active profile and variant | **PASS** | Lines 330-336 build URL from `activeProfile` and `variant`. |
-| 9 | Public route unchanged | **PASS** | No edits to any public route file. |
-| 10 | No provider calls made | **PASS** | Only `adminFetch` to `/api/admin/snapshot/...` (cached data). |
+| 1 | First impression | **PASS** | 6-block structure with human questions as headings feels editorial, not generic SaaS. Hero + comparison header + sidebar nav gives strong "professional audit" first impression. |
+| 2 | Complete enough for beta | **PASS** | All 6 blocks serve a clear purpose. Post-blocks (methodology, tier teaser, feedback) round out the experience. |
+| 3 | Unfinished/experimental sections | **PASS with note** | Visual cover analysis and caption diagnostics show clean Pro teasers when data is unavailable in public_mvp. No broken/empty states leak. |
+| 4 | Copy too technical | **PASS** | Block subtitles, diagnostic labels, and methodology use clear pt-PT editorial language. Source labels (DADOS, MERCADO, AUTO, IA) are concise. |
+| 5 | English/internal labels visible | **FAIL** | `shortLabel` values "Overview", "Performance", "Benchmark" appear in: sidebar nav, mobile bottom bar, and block section eyebrows. All other labels are pt-PT. |
+| 6 | Forbidden words in public MVP | **PASS** | `payload` — only in code props, never rendered. `debug` — gated by `debugLabels === "hidden"`. `enrichment` — not rendered. `missing` — rendered as "Ausente" (pt-PT). `unavailable` — fallback states show pt-PT copy or Pro teasers. `em desenvolvimento` — hidden when `debugLabels === "hidden"`. `comment_intelligence` — not rendered. |
+| 7 | P05 clarity (comments disabled) | **PASS** | Post-level conversation metrics (likes, comments ratio) show normally. Detailed comment intelligence shows a gold-accent Pro teaser: "Análise aprofundada de comentários — Disponível em relatórios avançados." |
+| 8 | Pro teaser for comments | **PASS** | Teaser is brief, honest, and explains what it does without frustration. Good balance. |
+| 9 | Captions/legends block safety | **PASS** | `captionsDiagnostics` is `"lightweight"` in public_mvp. The `CaptionEvidenceFallback` returns `null` when `debugLabels === "hidden"`. Safe for public. |
+| 10 | Market signals + benchmark reliability | **PASS** | Market signals silently hides when disabled/blocked (no error states). Benchmark gauge renders from cached data. Block 05 includes a clear disclaimer about Google Trends indices. |
+| 11 | Report length | **PASS with note** | 6 blocks + methodology + tier comparison + feedback banner. Long but scannable thanks to sidebar/bottom nav. Consider if tier comparison block adds value at beta stage. |
+| 12 | Mobile readability | **PASS** | Bottom nav with 3 contextual icons + hamburger drawer. `overflow-x-clip` on shell. `h-20` spacer for bottom nav. `pb-[env(safe-area-inset-bottom)]` for safe area. No obvious risks. |
+| 13 | CTA/feedback path | **PASS** | Beta feedback banner at bottom with mailto link. Tier teaser for upsell path. Both render correctly in public_mvp. |
 
-## Critical Issue: Check #7
+---
 
-**`customProfile` updates `activeProfile` on every keystroke.**
+## Critical Issues
 
-The chain:
+1. **English labels in navigation and block eyebrows** — "Overview", "Performance", "Benchmark" appear untranslated in the sidebar, mobile bottom bar, and block section headers. A beta user seeing a fully pt-PT report with 3 random English words will notice.
 
-1. `onChange` on the `<input>` calls `setCustomProfile(e.target.value)` (line 260).
-2. `activeProfile = customProfile.trim() || profile` (line 163) — recalculated every render.
-3. **Effect 1** (line 166-180): depends on `activeProfile` → calls `navigate()` + `writeLabPrefs()` on every character.
-4. **Effect 2** (line 218-220): depends on `activeProfile` → calls `loadSnapshot()` on every character.
+   Fix: Add `eyebrowOverride` to the 3 blocks in `block-config.ts`:
+   - Overview → `"Visão geral"`
+   - Performance → `"Performance"` (already common in pt-PT, OR `"Desempenho"`)
+   - Benchmark → `"Benchmark"` (loan word, acceptable) or add override anyway for consistency
 
-**Impact:** Typing "test" fires 4 navigate calls, 4 localStorage writes, and 4 API fetches. This is wasteful, creates flickering, and can show transient "missing snapshot" errors for partial usernames.
+   Also update `shortLabel` for sidebar/mobile nav, or add a separate `navLabel` field.
 
-## Recommended Fix
+---
 
-Debounce the custom profile input — only commit to `activeProfile` on blur, Enter key, or after a 500ms idle delay. Two clean approaches:
+## Important Issues
 
-**Option A — Commit on blur/Enter (simplest, recommended):**
-- Keep `customProfile` as a local "draft" state for the input.
-- Add a separate `committedCustomProfile` state.
-- Set `committedCustomProfile` on `onBlur` and `onKeyDown` (Enter).
-- Derive `activeProfile` from `committedCustomProfile.trim() || profile`.
-- This completely eliminates mid-typing side effects.
+(none)
 
-**Option B — Debounce timer:**
-- Add a `useEffect` with a 500ms `setTimeout` on `customProfile` that sets a debounced value.
-- Use the debounced value for `activeProfile`.
-- Simpler code but still fires after pauses during typing.
+---
 
-**Recommendation:** Option A. It matches the original plan spec ("update only on blur, submit, or explicit action") and is zero-surprise for the admin.
+## Nice-to-Have Improvements
 
-## Files to Touch (for fix)
+1. "Performance" and "Benchmark" are acceptable loan words in pt-PT marketing context, but "Overview" is not. At minimum, translate "Overview" to "Visão geral".
+2. The tier comparison block (`TierComparisonBlock`) at the bottom is a full feature comparison table — consider if it adds clarity or noise for a first beta where Pro doesn't exist yet.
+3. Block 05 (Procura) intro paragraph could be shorter — it explains Google Trends methodology inline; the methodology section already covers this.
 
-Only `src/routes/admin.report-lab.tsx` — add ~8 lines for committed state + blur/Enter handlers.
+---
 
-## Files NOT to Touch
+## Recommended Block Lists
 
-Everything else. No report components, no variant config, no providers, no cost logic, no PDF.
+### public_mvp (keep as-is)
+- Overview (hero + KPIs + editorial identity)
+- Diagnostic Q01-Q07
+- Performance (temporal + heatmap + best days)
+- Content (top posts + formats + hashtags + mentions)
+- Market Signals
+- Benchmark + Competitors
+- Methodology
+- Beta Feedback Banner
+
+### internal_lab only
+- Debug labels
+- Full caption evidence detail
+- Full comment intelligence (when scraper re-enabled)
+- Visual cover AI score panel (when available)
+
+### Pro teaser (currently correct)
+- Comment Intelligence detailed analysis
+- Visual cover AI score
+- Caption semantic deep dive
+
+---
+
+## Recommended Copy Changes
+
+| Location | Current | Suggested |
+|----------|---------|-----------|
+| `block-config.ts` → overview.shortLabel | "Overview" | "Visão geral" |
+| `block-config.ts` → overview (add eyebrowOverride) | (none, falls back to "OVERVIEW") | `"Visão geral"` |
+
+"Performance" and "Benchmark" can stay as loan words (both are widely used in pt-PT marketing/business context). If you prefer full translation: "Desempenho" and "Referência de mercado".
+
+---
+
+## Implementation
+
+Single file edit: `src/components/report-redesign/v2/block-config.ts` — change `shortLabel: "Overview"` to `"Visão geral"` and add `eyebrowOverride: "Visão geral"`. Optionally translate the other two.
+
+No other files need changes. No backend, provider, PDF, or cost logic touched.
