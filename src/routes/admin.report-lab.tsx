@@ -253,172 +253,220 @@ function ReportLabPage() {
   }, [activeProfile, loadSnapshot]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <FlaskConical className="h-6 w-6 text-admin-text-secondary" />
-        <div>
-          <h1 className="text-xl font-semibold text-admin-text-primary">Report Lab</h1>
-          <p className="text-sm text-admin-text-secondary">
-            Pré-visualiza o relatório em diferentes variantes sem duplicar código.
-          </p>
-        </div>
+    <div className="space-y-8">
+      {/* Mode banner */}
+      <div className={cn("rounded-xl border px-5 py-3 text-sm font-medium flex items-center gap-3", MODE_TONES[variant])}>
+        <span className="shrink-0">⚠</span>
+        <span>
+          <strong>
+            {variant === "internal_lab"
+              ? "Versão de trabalho · módulos completos e experimentais"
+              : variant === "pro_preview"
+                ? "Pré-visualização Pro · funcionalidades futuras/pagas"
+                : "Versão pública · o que os utilizadores verão"}
+          </strong>
+          {" — "}alterações aqui não afectam o relatório público.
+        </span>
       </div>
 
-      {/* Controls row */}
-      <div className="flex flex-wrap items-start gap-4">
-        {/* Profile selector */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium uppercase tracking-wider text-admin-text-tertiary">
-            Perfil
-          </label>
-          <div className="flex items-center gap-2">
-            <select
-              value={profile}
-              onChange={(e) => {
-                setProfile(e.target.value);
-                setCustomProfile("");
-                setCommittedCustom("");
-              }}
-              className="rounded-lg border border-white/30 bg-white/50 px-3 py-2 text-sm text-admin-text-primary backdrop-blur-sm"
-            >
-              {TEST_PROFILES.map((p) => (
-                <option key={p} value={p}>@{p}</option>
-              ))}
-            </select>
-            <span className="text-xs text-admin-text-tertiary">ou</span>
-            <input
-              type="text"
-              placeholder="outro username"
-              value={customProfile}
-              onChange={(e) => setCustomProfile(e.target.value)}
-              onBlur={() => setCommittedCustom(customProfile)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
-              className="rounded-lg border border-white/30 bg-white/50 px-3 py-2 text-sm text-admin-text-primary placeholder:text-admin-text-tertiary backdrop-blur-sm w-44"
-            />
+      {/* ── SECTION: Perfil e variante ─────────────────────────── */}
+      <section className="space-y-3">
+        <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
+          <span className="text-admin-text-tertiary">◎</span> Perfil e variante
+        </h2>
+        <div className="rounded-xl border border-admin-border bg-white p-5">
+          <div className="flex flex-wrap items-start gap-8">
+            {/* Profile selector */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
+                Perfil em análise
+              </label>
+              <div className="flex items-center gap-2">
+                <select
+                  value={profile}
+                  onChange={(e) => {
+                    setProfile(e.target.value);
+                    setCustomProfile("");
+                    setCommittedCustom("");
+                  }}
+                  className="rounded-lg border border-admin-border bg-white px-3 py-2 text-sm text-admin-text-primary"
+                >
+                  {TEST_PROFILES.map((p) => (
+                    <option key={p} value={p}>@{p}</option>
+                  ))}
+                </select>
+                <span className="text-xs text-admin-text-tertiary">ou</span>
+                <div className="flex items-center gap-1 rounded-lg border border-admin-border bg-white px-3 py-2">
+                  <span className="text-sm text-admin-text-tertiary">@</span>
+                  <input
+                    type="text"
+                    placeholder="outro username"
+                    value={customProfile}
+                    onChange={(e) => setCustomProfile(e.target.value)}
+                    onBlur={() => setCommittedCustom(customProfile)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+                    className="bg-transparent text-sm text-admin-text-primary placeholder:text-admin-text-tertiary outline-none w-36"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Variant switcher */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
+                Variante a pré-visualizar
+              </label>
+              <div className="inline-flex rounded-xl border border-admin-border bg-admin-surface-muted p-1">
+                {VARIANT_OPTIONS.map((opt) => {
+                  const active = variant === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setVariant(opt.value)}
+                      className={cn(
+                        "rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 flex items-center gap-2",
+                        active
+                          ? "bg-white text-admin-text-primary shadow-sm border border-admin-border"
+                          : "text-admin-text-secondary hover:text-admin-text-primary border border-transparent",
+                      )}
+                    >
+                      {active && <span className="h-2 w-2 rounded-full bg-current" />}
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Variant switcher */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium uppercase tracking-wider text-admin-text-tertiary">
-            Variante
-          </label>
-          <div className="inline-flex rounded-xl border border-white/30 bg-white/20 p-1 backdrop-blur-sm">
-            {VARIANT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setVariant(opt.value)}
-                className={cn(
-                  "rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
-                  variant === opt.value
-                    ? "bg-white/90 text-admin-text-primary shadow-sm"
-                    : "text-admin-text-secondary hover:bg-white/40 hover:text-admin-text-primary",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Mode label */}
-      <div className={cn("rounded-lg border px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-3", MODE_TONES[variant])}>
-        <span>{MODE_LABELS[variant]}</span>
-        <OverrideSourceBadge status={overrideStatus[variant]} />
-      </div>
-
-      {/* Admin actions */}
+      {/* ── SECTION: Ações de partilha ─────────────────────────── */}
       {load.kind === "ready" && (
-        <div className="flex flex-wrap gap-2">
-          <AdminActionButton
-            label="Abrir relatório público"
-            icon={<ExternalLink className="h-3.5 w-3.5" />}
-            onClick={() => window.open(`/analyze/${activeProfile}`, "_blank")}
-          />
-          <AdminActionButton
-            label="Copiar link público"
-            icon={<Copy className="h-3.5 w-3.5" />}
-            onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/analyze/${activeProfile}`);
-              toast.success("Link público copiado.");
-            }}
-            copyMode
-          />
-          <AdminActionButton
-            label="Fullscreen · Public MVP"
-            icon={<ExternalLink className="h-3.5 w-3.5" />}
-            onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=public_mvp`, "_blank")}
-          />
-          <AdminActionButton
-            label="Fullscreen · Internal Lab"
-            icon={<ExternalLink className="h-3.5 w-3.5" />}
-            onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=internal_lab`, "_blank")}
-          />
-          <AdminActionButton
-            label="Fullscreen · Pro Preview"
-            icon={<ExternalLink className="h-3.5 w-3.5" />}
-            onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=pro_preview`, "_blank")}
-          />
-          <AdminActionButton
-            label="Copiar link fullscreen"
-            icon={<Copy className="h-3.5 w-3.5" />}
-            onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}?variant=${variant}`);
-              toast.success("Link fullscreen copiado.");
-            }}
-            copyMode
-          />
-          <AdminActionButton
-            label="Copiar URL deste lab"
-            icon={<Link2 className="h-3.5 w-3.5" />}
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set("profile", activeProfile);
-              url.searchParams.set("variant", variant);
-              navigator.clipboard.writeText(url.toString());
-              toast.success("URL do lab copiado.");
-            }}
-            copyMode
-          />
-        </div>
+        <section className="space-y-3">
+          <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
+            <span className="text-admin-text-tertiary">✦</span> Ações de partilha
+          </h2>
+          <div className="rounded-xl border border-admin-border bg-white p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Open report */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-admin-text-primary">Abrir relatório</span>
+                  <span className="text-[11px] text-admin-text-tertiary">3 variantes disponíveis</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <AdminActionButton
+                    label="Público"
+                    icon={<ExternalLink className="h-3.5 w-3.5" />}
+                    onClick={() => window.open(\`/analyze/\${activeProfile}\`, "_blank")}
+                  />
+                  <AdminActionButton
+                    label="Public MVP"
+                    icon={<FlaskConical className="h-3.5 w-3.5" />}
+                    onClick={() => window.open(\`/admin/report-preview/\${activeProfile}?variant=public_mvp\`, "_blank")}
+                  />
+                  <AdminActionButton
+                    label="Internal Lab"
+                    icon={<FlaskConical className="h-3.5 w-3.5" />}
+                    onClick={() => window.open(\`/admin/report-preview/\${activeProfile}?variant=internal_lab\`, "_blank")}
+                  />
+                  <AdminActionButton
+                    label="Pro Preview"
+                    icon={<FlaskConical className="h-3.5 w-3.5" />}
+                    onClick={() => window.open(\`/admin/report-preview/\${activeProfile}?variant=pro_preview\`, "_blank")}
+                  />
+                </div>
+              </div>
+              {/* Copy links */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-admin-text-primary">Copiar links</span>
+                  <span className="text-[11px] text-admin-text-tertiary">3 formatos</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <AdminActionButton
+                    label="Público"
+                    icon={<Copy className="h-3.5 w-3.5" />}
+                    onClick={() => {
+                      navigator.clipboard.writeText(\`\${window.location.origin}/analyze/\${activeProfile}\`);
+                      toast.success("Link público copiado.");
+                    }}
+                    copyMode
+                  />
+                  <AdminActionButton
+                    label="Fullscreen"
+                    icon={<Copy className="h-3.5 w-3.5" />}
+                    onClick={() => {
+                      navigator.clipboard.writeText(\`\${window.location.origin}/admin/report-preview/\${activeProfile}?variant=\${variant}\`);
+                      toast.success("Link fullscreen copiado.");
+                    }}
+                    copyMode
+                  />
+                  <AdminActionButton
+                    label="URL Lab"
+                    icon={<Link2 className="h-3.5 w-3.5" />}
+                    onClick={() => {
+                      const url = new URL(window.location.href);
+                      url.searchParams.set("profile", activeProfile);
+                      url.searchParams.set("variant", variant);
+                      navigator.clipboard.writeText(url.toString());
+                      toast.success("URL do lab copiado.");
+                    }}
+                    copyMode
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
-      {/* Module visibility manager */}
-      <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
-        <button
-          onClick={() => setShowModules(!showModules)}
-          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
-        >
-          <span>Gestor de visibilidade de módulos</span>
-          {showModules ? (
-            <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
-          )}
-        </button>
-        {showModules && (
-          <ModuleVisibilityMatrix
-            adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
-            onPreviewDraft={(v) =>
-              window.open(
-                `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
-                "_blank",
-              )
-            }
-            onOpenPublic={() =>
-              window.open(`/analyze/${activeProfile}`, "_blank")
-            }
-          />
-        )}
+      {/* ── SECTION: Configuração e diagnóstico ────────────────── */}
+      <section className="space-y-3">
+        <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
+          <span className="text-admin-text-tertiary">◎</span> Configuração e diagnóstico
+        </h2>
+        <div className="space-y-2">
+          {/* Module visibility manager */}
+          <CollapsibleCard
+            icon={<span className="flex items-center justify-center h-8 w-8 rounded-lg bg-admin-info-50 text-admin-info-500"><FlaskConical className="h-4 w-4" /></span>}
+            title="Gestor de visibilidade de módulos"
+            subtitle="Activa ou esconde blocos individuais nesta variante"
+            badge={<span className="text-[12px] text-admin-text-tertiary">{Object.keys(FEATURE_LABELS).length} módulos</span>}
+            open={showModules}
+            onToggle={() => setShowModules(!showModules)}
+          >
+            <ModuleVisibilityMatrix
+              adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
+              onPreviewDraft={(v) =>
+                window.open(
+                  \`/admin/report-preview/\${activeProfile}?variant=\${v}&draft=true\`,
+                  "_blank",
+                )
+              }
+              onOpenPublic={() =>
+                window.open(\`/analyze/\${activeProfile}\`, "_blank")
+              }
+            />
+          </CollapsibleCard>
+
+          {/* Readiness checklist */}
+          <ReadinessChecklist />
+
+          {/* Variant differences */}
+          <VariantDiffPanel />
+        </div>
+      </section>
+
+      {/* Footer note */}
+      <div className="flex items-center gap-2 text-[12px] text-admin-text-tertiary">
+        <span className="h-1.5 w-1.5 rounded-full bg-admin-text-tertiary/40" />
+        <span>
+          Esta área é interna · alterações aqui não chamam APIs nem afectam o relatório público.
+          URL deste lab: <span className="admin-code text-[11px]">/admin/report-lab?profile={activeProfile}&variant={variant}</span>
+        </span>
       </div>
-
-      {/* Public readiness checklist */}
-      <ReadinessChecklist />
-
-      {/* Variant differences panel */}
-      <VariantDiffPanel />
 
       {/* Snapshot status */}
       {load.kind === "loading" && (
@@ -444,7 +492,7 @@ function ReportLabPage() {
 
       {/* Report render area */}
       {load.kind === "ready" && (
-        <div className="rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+        <div className="rounded-2xl border border-admin-border overflow-hidden shadow-[var(--shadow-admin-card)]">
           <ReportThemeWrapper>
             <ReportShellV2
               result={load.result}
