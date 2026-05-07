@@ -8,6 +8,8 @@ import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
+import { getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
+import type { VariantFeatures } from "@/lib/report/report-variant";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -262,6 +264,15 @@ function AnalyzeReady({
   analyzedAtIso: string | null;
 }) {
   const shareActions = useReportShareActions({ snapshotId });
+
+  // Load published module visibility overrides (silent fallback to static defaults)
+  const [featuresOverride, setFeaturesOverride] = useState<VariantFeatures | null>(null);
+  useEffect(() => {
+    getPublishedFeatures({ data: { variant: "public_mvp" } })
+      .then((features) => setFeaturesOverride(features))
+      .catch(() => { /* silent fallback — static defaults used */ });
+  }, []);
+
   return (
     <ReportShellV2
       result={result}
@@ -269,6 +280,7 @@ function AnalyzeReady({
       payload={payload}
       analyzedAtIso={analyzedAtIso}
       variant="public_mvp"
+      featuresOverride={featuresOverride}
       actions={{
         onExportPdf: () => void shareActions.exportPdf(),
         onShare: () => void shareActions.share(),
