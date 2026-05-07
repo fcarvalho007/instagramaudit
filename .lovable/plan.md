@@ -1,209 +1,176 @@
 
-# Design Pivot — Dark Tech Noir to Iconosquare-Inspired Light Analytics
+# Design System Audit & Consolidation — Corrected Plan
 
-## 1. Current Design Drift Diagnosis
+## Typography Rules (corrected)
 
-The product has three visual layers, all misaligned with the target:
+**Public-facing fonts: Fraunces + Inter only.**
 
-| Area | Current theme | Problem |
-|------|--------------|---------|
-| **Landing page** (/, /beta/*) | Dark navy (#0A0E1A) + cyan aurora blobs + violet glows | Heavy cinematic look, opposite of clean SaaS |
-| **Public report** (/analyze/*) | Light via `data-theme="light"` | Already closest to target — Iconosquare-pure palette exists |
-| **Admin/CRM** (/admin/*) | Separate `.admin-v2` light tokens (cream #F1EFE8) | Light but warm/editorial, not Iconosquare-clean |
-| **Auth** (/login, /signup) | Dark (inherits `:root`) | Dark backgrounds for auth forms |
+- **Fraunces**: editorial H1/H2 headings only (page titles, report block titles).
+- **Inter**: everything else — body, UI, labels, cards, buttons, forms, metadata, metrics, numbers, KPI values, prices, badges.
+- **JetBrains Mono**: forbidden in public-facing UI. Allowed only in admin/internal technical contexts (logs, IDs, provider diagnostics, cost/debug tables, timestamps).
+- Public-facing numbers use `Inter SemiBold/Bold` with `tabular-nums`, never `font-mono`.
 
-### What needs to change
+## Typography Scale
 
-**`:root` tokens** — currently define a dark navy world. This is the default for every page that doesn't explicitly opt into light mode. The fix: make `:root` light-first (matching the Iconosquare palette).
+| Element | Font | Desktop | Mobile |
+|---------|------|---------|--------|
+| H1 / page title | Fraunces SemiBold/Bold | 40-48px | 32-38px |
+| H2 / block title | Fraunces SemiBold | 26-32px | 22-26px |
+| H3 / card title | Inter SemiBold | 18-22px | 16-20px |
+| Body | Inter Regular | 15-17px | 14-16px |
+| UI labels/badges/metadata | Inter Medium/SemiBold | 12-14px | 12-14px |
+| Large metrics | Inter SemiBold/Bold | 32-56px | 24-40px |
+| Card metrics | Inter SemiBold/Bold | 24-36px | 20-28px |
+| Small metrics | Inter SemiBold | 14-18px | 13-16px |
+| Minimum readable | any | 12px (`text-xs`) | 12px |
 
-**`tokens-light.css`** — currently activated via `data-theme="light"` for reports. After the pivot, this file becomes redundant because `:root` will already be light. It can be kept as a no-op override or merged.
-
-**`admin-tokens.css`** — the `.admin-v2` wrapper overrides colors to a warm cream. After the pivot, admin should inherit from the new light `:root` directly, simplifying the system.
-
-**Landing components** — aurora blobs, noise overlay, glow shadows, dark gradients. All must be replaced with clean, light equivalents.
-
-**Gold accent** — used in product upsell components and badge variants. Replace with a softer amber/indigo approach or remove entirely.
-
----
-
-## 2. Corrected Color Palette (Iconosquare-inspired)
-
-```text
-Token                   Current (dark)              New (light-first)
-──────────────────────  ──────────────────────────  ──────────────────────────
---surface-base          10 14 26   (#0A0E1A)       250 251 253  (#FAFBFD)
---surface-secondary     20 28 46   (#141C2E)       255 255 255  (#FFFFFF)
---surface-elevated      36 48 68   (#243044)       255 255 255  (#FFFFFF)
---surface-overlay       42 56 80   (#2A3850)       255 255 255  (#FFFFFF)
---surface-muted         (none)                      241 244 249  (#F1F4F9)
-
---accent-primary         6 182 212 (#06B6D4 cyan)   55 114 229  (#3772E5 blue)
---accent-luminous      103 232 249 (#67E8F9 neon)   79 140 255  (#4F8CFF lighter)
---accent-violet        139  92 246 (#8B5CF6)       118 100 228  (#7664E4 soft indigo)
---accent-violet-lum    167 139 250                  140 126 244
---accent-violet-deep   109  40 217                   85  62 186
---accent-gold          252 211  77 (#FCD34D)       186 117  23  (#BA7517 subtle amber)
-
---text-primary         248 250 252 (#F8FAFC white) 15  27  61   (#0F1B3D charcoal)
---text-secondary       148 163 184                  90 107 140   (#5A6B8C)
---text-tertiary        100 116 139                 138 152 178   (#8A98B2)
---text-inverse          10  14  26                 250 251 252
-
---border-subtle        255 255 255 @0.10           15  27  61 @0.08
---border-default       255 255 255 @0.12           15  27  61 @0.10
---border-strong        255 255 255 @0.20           15  27  61 @0.16
-
---signal-success        16 185 129                  29 158 117
---signal-warning       245 158  11                 186 117  23
---signal-danger        239  68  68                 163  45  45
-
---shadow-sm             dark 0.2 opacity           light 0.04 opacity
---shadow-glow-*         cyan/gold/violet glows      none (removed)
---shadow-stage          heavy violet/navy           soft 0.08 opacity
-```
-
-### Chart series
-```text
---chart-likes:     55 114 229    (primary blue)
---chart-comments:  79 140 255    (lighter blue)
---chart-views:     85  62 186    (deep indigo)
-```
+Below 12px only for: chart axis ticks, decorative micro-labels, dense admin technical tables — each exception must be justified.
 
 ---
 
-## 3. Corrected Font Rules (unchanged from current memory)
+## Audit: Public-facing `font-mono` violations (must replace with Inter)
 
-| Font | Use for | Classes |
-|------|---------|---------|
-| **Inter** | All UI: body, labels, nav, buttons, forms, admin, CRM, report body copy | `font-sans` (default) |
-| **JetBrains Mono** | Scores, percentages, costs, dates, metric values, IDs | `font-mono`, `.admin-code` |
-| **Fraunces** | Selected report H1/H2, editorial hero titles, premium detail headers | `font-display` |
+**Landing page** (4 files):
+- `mockup-metric-card.tsx:84,100` — metric values
+- `mockup-benchmark-gauge.tsx:33,41` — gauge labels
+- `mockup-dashboard.tsx:153` — dashboard numbers
 
-No changes to font loading or font-family definitions.
+**Product / analysis** (3 files):
+- `analysis-header.tsx:80` — metric display
+- `analysis-benchmark-block.tsx:119,128,136` — benchmark values
+- `analysis-competitor-comparison.tsx:104,108,228` — comparison numbers
 
----
+**Report public** (12 files):
+- `report-overview-cards.tsx:270,276,282,389,503,520,538,560,618` — all KPI values and metric numbers
+- `report-overview-engagement.tsx:160,163,195` — engagement metrics
+- `report-hero-v2.tsx:122` — hero metric
+- `report-diagnostic-card.tsx:303,418,445,527,659,693,737,855,943,1123,1124` — all diagnostic numbers
+- `report-diagnostic-grid-v2.tsx:151,179` — grid metrics
+- `report-engagement-benchmark-chart.tsx:250` — benchmark values
+- `report-editorial-patterns.tsx:145` — pattern metrics
+- `report-engagement-history.tsx:108,124,125` — history values
+- `report-ai-reading.tsx:87` — AI score
+- `report-themes-feature.tsx:176,182` — theme metrics
+- `report-block-nav.tsx:85,250` — nav indicators
+- `caption-diagnostics-card.tsx:573,606,674,739,759,817,839` — caption metrics
+- `hashtag-diagnostics-card.tsx:141,191,194` — hashtag metrics
+- `visual-cover-analysis-card.tsx:307,326,446` — visual metrics
+- `report-enriched-top-links.tsx:59,65,67` — post metrics
+- `report-methodology.tsx:152` — methodology numbers
+- `market-signals-chart.tsx:85,96,138` — chart labels (fontFamily in JS config too)
 
-## 4. Structural Changes Required
+**Beta** (1 file):
+- `beta.submitted.$requestId.tsx:46` — request ID display
 
-### A. `src/styles/tokens.css` (LOCKED — needs unlock)
-- Rewrite `:root` from dark to light palette
-- Remove noise overlay (`body::before`)
-- Remove glow shadows (`--shadow-glow-*`)
-- Update shadows to soft light-mode values
-- Keep typography, spacing, radius, z-index, transitions unchanged
+**Shared UI**:
+- `ui/chart.tsx:224` — Recharts tooltip value
 
-### B. `src/styles/tokens-light.css`
-- Simplify or keep as identity override (`:root` will now match)
-- Ensure `[data-theme="light"]` still works but is essentially a no-op
-- Alternatively, repurpose for any future dark-mode opt-in
+## Audit: Admin/internal `font-mono` (may keep)
 
-### C. `src/styles.css` (LOCKED — needs unlock)
-- Update `@theme inline` shadcn compatibility block to match new light `:root`
-- Remove `@custom-variant dark` if dark mode is fully removed
-- Eyebrow utilities stay unchanged
-
-### D. `src/styles/admin-tokens.css`
-- Simplify: admin can now inherit from `:root` for most tokens
-- Keep admin-specific semantic colors (revenue green, leads purple, etc.)
-- Remove `.admin-v2` base color overrides that duplicate the new `:root`
-
-### E. Landing components (ALL LOCKED — need unlock)
-- `hero-aurora-background.tsx` — replace cyan/navy aurora with soft gradient (light lilac-to-white or soft blue-to-white)
-- `hero-section.tsx` — update for light background
-- `hero-action-bar.tsx` — remove `shadow-glow-violet`
-- `how-it-works-section.tsx` — remove glow shadows
-- `how-it-works-step.tsx` — remove glow shadows
-- `mockup-dashboard.tsx` — update surface tokens
-- `product-preview-section.tsx` — update surface tokens
-- All other landing components that reference dark tokens
-
-### F. Product/upsell components
-- `report-gate-modal.tsx` — replace gold accents with soft indigo/blue
-- `post-analysis-conversion-layer.tsx` — same
-- `premium-locked-section.tsx` — remove violet glows
-- `ui/badge.tsx` (LOCKED) — update `premium` variant from gold to softer accent
-
-### G. Auth pages
-- `/login`, `/signup`, `/reset-password` — will automatically become light via `:root` change
-
-### H. Layout shell (LOCKED — needs unlock)
-- `header.tsx`, `footer.tsx`, `app-shell.tsx` — update surface/text tokens for light mode
+These are acceptable — logs, IDs, cost tables, provider diagnostics:
+- `admin/v2/report-drawer.tsx` — IDs, timestamps, cost values
+- `admin/v2/receita/*` — reconciliation, invoices, plans, waterfall, cohort tables
+- `admin/v2/clientes/*` — customer cost data
+- `admin/v2/conhecimento/*` — benchmark raw data
+- `admin/v2/error-investigation-modal.tsx` — error codes
+- `admin/request-list.tsx`, `admin/request-detail-sheet.tsx` — request IDs
+- `admin.sistema.tsx` — system diagnostics
 
 ---
 
-## 5. Files NOT to Touch
+## Audit: Tiny text violations (public-facing, must fix to >= 12px)
 
-| Category | Files |
-|----------|-------|
-| Provider/pipeline | `src/lib/orchestration/*`, `src/lib/analysis/*`, `src/lib/pdf/*` |
-| Server routes | `src/routes/api/*` |
-| Supabase | `src/integrations/supabase/*` |
-| Report generation | All server-side report logic |
-| DB schema | No migrations needed |
-| Report-redesign components | Content/logic stays; only token consumption changes (passively via `:root`) |
+| File | Current | Action |
+|------|---------|--------|
+| `report-diagnostic-card.tsx` | `text-[8px]`, `text-[9px]`, `text-[10px]`, `text-[11px]` (15+ instances) | All to `text-xs` unless chart tick |
+| `report-editorial-patterns.tsx` | `text-[10px]` | `text-xs` |
+| `report-engagement-history.tsx` | `text-[11px]` (3x) | `text-xs` |
+| `report-ai-reading.tsx` | `text-[11px]` | `text-xs` |
+| `report-block-nav.tsx` | `text-[10px]` (2x) | `text-xs` |
+| `report-themes-feature.tsx` | `text-[11px]` (2x) | `text-xs` |
+| `caption-diagnostics-card.tsx` | `text-[11px]`, `text-[9px]`, `text-[12px]` | All to `text-xs` |
+| `report-methodology.tsx` | `text-[10px]` | `text-xs` |
+| `report-overview-cards.tsx` | `text-[11px]` (5x) | `text-xs` |
+| `analysis-skeleton.tsx` | `text-[11px]` (2x) | `text-xs` |
+| `analysis-competitor-comparison.tsx` | `text-[0.625rem]` (10px) | `text-xs` |
+| `app.plan.tsx` | `text-[11px]` (4x) | `text-xs` |
+| `app.account.tsx` | `text-[11px]` (6x) | `text-xs` |
+| `app.reports.tsx` | `text-[11px]` (2x) | `text-xs` |
+| `pro-tracking-teaser.tsx` | `text-[11px]` (2x) | `text-xs` |
+| `report-card.tsx` | `text-[11px]` | `text-xs` |
+| `visual-cover-analysis-card.tsx` | `text-[11px]` | `text-xs` |
+| `hashtag-diagnostics-card.tsx` | `text-[13px]` (2x) | Keep (>12px, acceptable) |
+| `market-signals-chart.tsx` | `text-[11px]` | `text-xs` for label; chart axis config: keep if justified |
 
----
+## Audit: Hardcoded `slate-*` colors (376 instances)
 
-## 6. Safe Implementation Order
-
-### Pass 0 — Unlock files + update memory
-Update `LOCKED_FILES.md` to reflect the design pivot. Update project memory to remove dark-first rules.
-
-### Pass 1 — Foundation tokens (biggest bang, lowest risk)
-1. Rewrite `src/styles/tokens.css` `:root` to the new light palette
-2. Remove noise overlay from `body::before`
-3. Simplify `src/styles/tokens-light.css` (near-identity now)
-4. Update `src/styles.css` `@theme inline` shadcn block
-5. **QA checkpoint**: every page that uses semantic tokens auto-updates
-
-### Pass 2 — Admin token simplification
-1. Remove `.admin-v2` base color overrides that now match `:root`
-2. Keep admin-specific semantic colors (revenue, leads, expense, etc.)
-3. **QA checkpoint**: admin pages render correctly
-
-### Pass 3 — Landing page redesign
-1. Replace `hero-aurora-background.tsx` with a soft light gradient
-2. Update all landing components that use glow/dark effects
-3. Update layout shell (header/footer) for light mode
-4. **QA checkpoint**: landing page looks clean and premium
-
-### Pass 4 — Product/upsell components
-1. Replace gold accents with softer alternatives
-2. Remove violet/cyan glows from modals and conversion layers
-3. Update badge `premium` variant
-4. **QA checkpoint**: report gate and upsell modals render correctly
-
-### Pass 5 — Report QA (should auto-update)
-1. Verify `/analyze/$username` still renders correctly
-2. Verify admin report previews render correctly
-3. The `data-theme="light"` override should be a near-no-op now
+Concentrated in CRM (`app.reports.tsx`, `app.plan.tsx`, `app.account.tsx`), auth pages, and some report components. All must be replaced with design tokens (`text-content-*`, `bg-surface-*`, `border-border-*`).
 
 ---
 
-## 7. Risk Assessment
+## Implementation Order
 
-| Risk | Mitigation |
-|------|-----------|
-| Semantic token change affects ALL pages at once | Pass 1 is the most impactful — do it first, QA everything |
-| Components with hardcoded dark colors break | Search for hardcoded `rgb(10 14 26`, `#0A0E1A`, etc. and fix in same pass |
-| Report light theme becomes redundant | Keep `tokens-light.css` as identity — safe, no harm |
-| Admin `.admin-v2` conflicts with new `:root` | Simplify in Pass 2 — remove redundant overrides |
-| Gold accent removal breaks upsell hierarchy | Replace with soft indigo highlight, not just remove |
+### Phase 1 — Auth & CRM (lowest risk, high visibility)
+
+Replace `slate-*` with tokens and `text-[11px]` with `text-xs` in:
+- `auth-card.tsx`
+- `login.tsx`, `signup.tsx`, `reset-password.tsx`
+- `app.tsx`, `app.reports.tsx`, `app.reports.$id.tsx`
+- `app.plan.tsx`, `app.account.tsx`
+- `pro-tracking-teaser.tsx`, `report-card.tsx`
+
+### Phase 2 — Landing page
+
+Replace `font-mono` with `font-sans font-semibold tabular-nums` in:
+- `mockup-metric-card.tsx`
+- `mockup-benchmark-gauge.tsx`
+- `mockup-dashboard.tsx`
+
+### Phase 3 — Report components (highest volume, most sensitive)
+
+Two sub-tasks per file:
+1. Replace `font-mono` with `font-sans font-semibold tabular-nums` (or `font-bold` for large metrics)
+2. Replace sub-12px text with `text-xs`
+
+Files by priority:
+- `report-overview-cards.tsx` (9 mono + 5 tiny)
+- `report-diagnostic-card.tsx` (11 mono + 15 tiny)
+- `report-hero-v2.tsx`, `report-overview-engagement.tsx`
+- `caption-diagnostics-card.tsx`, `hashtag-diagnostics-card.tsx`
+- `visual-cover-analysis-card.tsx`
+- `report-engagement-benchmark-chart.tsx`
+- `report-editorial-patterns.tsx`, `report-engagement-history.tsx`
+- `report-ai-reading.tsx`, `report-methodology.tsx`
+- `report-themes-feature.tsx`, `report-block-nav.tsx`
+- `report-diagnostic-grid-v2.tsx`
+- `report-enriched-top-links.tsx`
+- `market-signals-chart.tsx` (includes JS fontFamily config)
+- `analysis-header.tsx`, `analysis-benchmark-block.tsx`, `analysis-competitor-comparison.tsx`
+- `analysis-skeleton.tsx`
+- `ui/chart.tsx` (shared tooltip)
+- `beta.submitted.$requestId.tsx`
+
+### Phase 4 — Admin area (minor fixes only)
+
+- `admin.sistema.tsx:132` — remove inline `style={{ color: "#888780" }}`, use `text-admin-text-tertiary`
+- Keep all admin `font-mono` usage as-is (internal/technical context)
+
+### Phase 5 — Runtime error investigation
+
+- Investigate TanStack Router hydration invariant on `/admin/report-lab`
 
 ---
 
-## 8. Implementation Prompt (for Pass 1)
+## Files NOT to touch
 
-> **Prerequisite**: Unlock `src/styles/tokens.css`, `src/styles.css`, and `LOCKED_FILES.md` for this design pivot.
->
-> Rewrite the `:root` block in `src/styles/tokens.css` to a light-first Iconosquare-inspired palette:
-> - Surfaces: #FAFBFD base, #FFFFFF cards, #F1F4F9 muted
-> - Accents: #3772E5 primary blue, #4F8CFF luminous, #7664E4 soft violet, #BA7517 subtle amber
-> - Text: #0F1B3D primary, #5A6B8C secondary, #8A98B2 tertiary
-> - Borders: navy base at low alpha (0.08/0.10/0.16)
-> - Shadows: soft light shadows (0.04 opacity), remove all glow shadows
-> - Remove the `body::before` noise overlay
-> - Keep all typography, spacing, radius, z-index, and transition tokens unchanged
-> - Update `src/styles.css` `@theme inline` shadcn compatibility section
-> - Do NOT touch any component files in this pass
-> - Validate: `bunx tsc --noEmit` and `bunx vitest run`
+- Provider logic (`src/lib/providers/`, edge functions)
+- Cost formulas (`src/lib/cost/`)
+- PDF pipeline (`src/lib/pdf/`)
+- Report generation logic (`src/lib/report/`)
+- Supabase schema / migrations
+- `src/integrations/supabase/client.ts`, `types.ts`, `.env`
+- `src/styles/tokens.css`, `src/styles/tokens-light.css` (already correct)
+
+## Estimated scope
+
+~35 files, ~500+ line replacements. Mechanical changes: `font-mono` → `font-sans font-semibold tabular-nums`, `text-[Npx]` → `text-xs`, `slate-*` → tokens. No new dependencies. No schema changes. No provider calls.
