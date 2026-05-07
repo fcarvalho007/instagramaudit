@@ -59,12 +59,14 @@ export async function saveDraft(
   const { error } = await supabaseAdmin
     .from("report_variant_overrides")
     .upsert(
-      {
-        variant,
-        is_draft: true,
-        features_json: features as Record<string, unknown>,
-        updated_by: adminEmail,
-      },
+      [
+        {
+          variant,
+          is_draft: true,
+          features_json: features as Record<string, unknown>,
+          updated_by: adminEmail,
+        },
+      ],
       { onConflict: "variant,is_draft" },
     );
 
@@ -86,12 +88,14 @@ export async function publishDraft(
   const { error: pubErr } = await supabaseAdmin
     .from("report_variant_overrides")
     .upsert(
-      {
-        variant,
-        is_draft: false,
-        features_json: draft as Record<string, unknown>,
-        updated_by: adminEmail,
-      },
+      [
+        {
+          variant,
+          is_draft: false,
+          features_json: draft as Record<string, unknown>,
+          updated_by: adminEmail,
+        },
+      ],
       { onConflict: "variant,is_draft" },
     );
 
