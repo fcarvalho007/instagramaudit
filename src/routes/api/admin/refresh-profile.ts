@@ -30,6 +30,33 @@ interface AnalyzeResult {
   error_code?: string;
   message?: string;
   snapshot_id?: string;
+  // Structured provider detail fields
+  provider?: string;
+  provider_status?: number;
+  provider_message?: string;
+  run_id?: string;
+  dataset_id?: string;
+  details?: string;
+}
+
+/**
+ * Build a list of candidate URLs for the analyze endpoint.
+ * The sandbox dev-server cannot self-fetch (loopback fails with
+ * "TypeError: fetch failed"), so we try the published URL first
+ * and fall back to the request origin.
+ */
+function getAnalyzeUrls(request: Request): string[] {
+  const origin = new URL(request.url).origin;
+  const publishedUrl = "https://instagramaudit.lovable.app";
+  const urls: string[] = [];
+
+  // If we're NOT already on the published URL, try it first
+  if (!origin.includes("instagramaudit.lovable.app")) {
+    urls.push(`${publishedUrl}/api/analyze-public-v1?refresh=1`);
+  }
+  // Always include the current origin as fallback
+  urls.push(`${origin}/api/analyze-public-v1?refresh=1`);
+  return urls;
 }
 
 async function runAnalysis(
@@ -38,43 +65,80 @@ async function runAnalysis(
   internalToken: string,
 ): Promise<Response> {
   let analyzeResult: AnalyzeResult | null = null;
+  let lastError: unknown = null;
+  const urls = getAnalyzeUrls(request);
 
   try {
-    const origin = new URL(request.url).origin;
-    const analyzeUrl = `${origin}/api/analyze-public-v1?refresh=1`;
+    for (const analyzeUrl of urls) {
+      console.info(`[refresh-profile] calling analyze for @${handle} via ${analyzeUrl}`);
 
-    console.info(`[refresh-profile] calling analyze for @${handle}`);
+      try {
+        const analyzeRes = await fetch(analyzeUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${internalToken}`,
+          },
+          body: JSON.stringify({
+            instagram_username: handle,
+            competitor_usernames: [],
+          }),
+        });
 
-    const analyzeRes = await fetch(analyzeUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${internalToken}`,
-      },
-      body: JSON.stringify({
-        instagram_username: handle,
-        competitor_usernames: [],
-      }),
-    });
+        // Parse response body (may be non-JSON on 503 etc.)
+        try {
+          analyzeResult = (await analyzeRes.json()) as AnalyzeResult;
+        } catch {
+          analyzeResult = {
+            success: false,
+            error_code: "internal_parse_failed",
+            message: `Resposta não-JSON do servidor (HTTP ${analyzeRes.status}).`,
+          };
+        }
 
-    analyzeResult = (await analyzeRes.json().catch(() => null)) as AnalyzeResult | null;
+        if (!analyzeRes.ok || !analyzeResult?.success) {
+          console.warn(`[refresh-profile] analyze failed for @${handle}`, {
+            status: analyzeRes.status,
+            error_code: analyzeResult?.error_code,
+            message: analyzeResult?.message,
+          });
+        } else {
+          console.info(`[refresh-profile] analyze success for @${handle}`);
+        }
 
-    if (!analyzeRes.ok || !analyzeResult?.success) {
-      console.warn(`[refresh-profile] analyze failed for @${handle}`, analyzeResult);
-    } else {
-      console.info(`[refresh-profile] analyze success for @${handle}`);
+        // We got a real response (even if error) — stop trying other URLs
+        break;
+      } catch (fetchErr) {
+        console.warn(`[refresh-profile] fetch failed for @${handle} via ${analyzeUrl}:`, fetchErr);
+        lastError = fetchErr;
+        // Try the next URL
+        continue;
+      }
     }
-  } catch (err) {
-    console.error(`[refresh-profile] analyze threw for @${handle}`, err);
   } finally {
     refreshingHandles.delete(handle);
+  }
+
+  // All URLs failed with network error — no response at all
+  if (!analyzeResult && lastError) {
+    const errMsg = lastError instanceof Error ? lastError.message : String(lastError);
+    return jsonResponse({
+      success: false,
+      error: `Falha de rede interna — o servidor não conseguiu contactar o endpoint de análise. Tenta na versão publicada. (${errMsg})`,
+      error_code: "internal_fetch_failed",
+    }, 502);
   }
 
   if (!analyzeResult?.success) {
     return jsonResponse({
       success: false,
       error: analyzeResult?.message ?? "Falha na análise.",
-      error_code: analyzeResult?.error_code,
+      error_code: analyzeResult?.error_code ?? "provider_failure",
+      provider: analyzeResult?.provider,
+      provider_status: analyzeResult?.provider_status,
+      provider_message: analyzeResult?.provider_message,
+      run_id: analyzeResult?.run_id,
+      details: analyzeResult?.details,
     }, 502);
   }
 
