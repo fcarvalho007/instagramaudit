@@ -125,7 +125,7 @@ function resolveErrorMessage(errorCode?: string | null): string {
 
 type LoadState =
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; errorCode?: string }
   | {
       status: "ready";
       result: AdapterResult;
@@ -172,10 +172,10 @@ function AnalyzePage() {
     // Step 1 — trigger the public analyze pipeline.
     const analysis = await fetchPublicAnalysis(cleaned, competitors);
     if (!analysis.success) {
-      await waitMin();
       setState({
         status: "error",
         message: resolveErrorMessage(analysis.error_code),
+        errorCode: analysis.error_code,
       });
       return;
     }
@@ -187,10 +187,10 @@ function AnalyzePage() {
       );
       const body = (await res.json().catch(() => null)) as SnapshotResponse | null;
       if (!res.ok || !body?.success || !body.snapshot) {
-        await waitMin();
         setState({
           status: "error",
           message: resolveErrorMessage(body?.error_code),
+            errorCode: body?.error_code,
         });
         return;
       }
@@ -213,7 +213,6 @@ function AnalyzePage() {
           body.snapshot.meta?.generated_at ?? body.snapshot.updated_at ?? null,
       });
     } catch {
-      await waitMin();
       setState({
         status: "error",
         message: "Falha de ligação. Tentar novamente.",
@@ -238,6 +237,7 @@ function AnalyzePage() {
         {state.status === "error" && (
           <AnalysisErrorState
             message={state.message}
+            errorCode={state.errorCode}
             onRetry={() => void load()}
           />
         )}
