@@ -123,6 +123,21 @@ export const Route = createFileRoute("/api/admin/generate-beta-report")({
         // 9. Call analyze-public-v1 server-to-server
         const origin = new URL(request.url).origin;
         const internalToken = process.env.INTERNAL_API_TOKEN;
+
+        if (!internalToken) {
+          console.error("[generate-beta-report] INTERNAL_API_TOKEN missing — aborting generation");
+          // Rollback status
+          await supabaseAdmin
+            .from("report_requests")
+            .update({ request_status: rr.request_status, updated_at: new Date().toISOString() })
+            .eq("id", requestId);
+          return jsonResponse({
+            success: false,
+            error: "INTERNAL_API_TOKEN não configurado. Verifique os segredos do sistema.",
+            preflight_blocked: "internal_token_missing",
+          }, 409);
+        }
+
         const competitors = Array.isArray(rr.competitor_usernames)
           ? (rr.competitor_usernames as string[])
           : [];

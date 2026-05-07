@@ -73,11 +73,11 @@ export function ReportMethodology({ enriched }: Props = {}) {
           >
             <div className="flex items-center gap-2 text-blue-600">
               <Icon className="size-4" aria-hidden="true" />
-              <p className="text-eyebrow-sm text-slate-500">
+              <p className="text-eyebrow-sm text-content-tertiary">
                 {label}
               </p>
             </div>
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-content-secondary leading-relaxed">
               {body}
             </p>
           </div>
@@ -85,47 +85,47 @@ export function ReportMethodology({ enriched }: Props = {}) {
       </div>
 
       {benchmarkSource ? (
-        <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
-          <p className="text-eyebrow-sm text-slate-500">
+        <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-border-default/70">
+          <p className="text-eyebrow-sm text-content-tertiary">
             Fonte do benchmark
             {benchmarkSource.datasetVersion ? (
               <>
-                <span className="mx-2 text-slate-400">·</span>
+                <span className="mx-2 text-content-tertiary">·</span>
                 <span>dataset {benchmarkSource.datasetVersion}</span>
               </>
             ) : null}
           </p>
-          <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
+          <p className="mt-1.5 text-sm text-content-secondary leading-relaxed">
             {benchmarkSource.note}
           </p>
         </div>
       ) : null}
 
-      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
-        <p className="text-eyebrow-sm text-slate-500 mb-3">
+      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-border-default/70">
+        <p className="text-eyebrow-sm text-content-tertiary mb-3">
           Como ler os cartões
         </p>
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {sourceLegend.map(({ type, explanation }) => (
             <li key={type} className="space-y-1.5 min-w-0">
               <ReportSourceLabel type={type} />
-              <p className="text-[12px] text-slate-600 leading-snug">
+              <p className="text-[12px] text-content-secondary leading-snug">
                 {explanation}
               </p>
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-[12px] text-slate-500 leading-relaxed">
+        <p className="mt-4 text-[12px] text-content-tertiary leading-relaxed">
           Estas referências usam estudos públicos de mercado para dar contexto aos resultados. Quando não há setor definido, a comparação é feita por plataforma e dimensão aproximada da conta.
         </p>
       </div>
 
-      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
+      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-border-default/70">
         <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
-          <p className="text-eyebrow-sm text-slate-500">
+          <p className="text-eyebrow-sm text-content-tertiary">
             Fontes de referência
           </p>
-          <p className="text-eyebrow-sm text-slate-400">
+          <p className="text-eyebrow-sm text-content-tertiary">
             Dataset {BENCHMARK_DATASET_VERSION}
           </p>
         </div>
@@ -138,7 +138,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
             return (
               <li
                 key={source.name}
-                className="flex items-start gap-3 rounded-lg border border-slate-200/70 bg-white px-3 py-2.5 min-w-0"
+                className="flex items-start gap-3 rounded-lg border border-border-default/70 bg-white px-3 py-2.5 min-w-0"
               >
                 <span
                   aria-hidden="true"
@@ -147,20 +147,20 @@ export function ReportMethodology({ enriched }: Props = {}) {
                   <BookOpenSmall />
                 </span>
                 <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="text-sm text-slate-800 leading-tight">
+                  <p className="text-sm text-content-primary leading-tight">
                     <span className="font-medium">{source.name}</span>
-                    <span className="ml-1.5 tabular-nums text-xs text-slate-400 tabular-nums">
+                    <span className="ml-1.5 tabular-nums text-xs text-content-tertiary tabular-nums">
                       {source.publishedYear}
                     </span>
                   </p>
-                  <p className="text-[12px] text-slate-600 leading-snug">
+                  <p className="text-[12px] text-content-secondary leading-snug">
                     {source.shortDescription}
                   </p>
                   {showQualityChip ? (
                     <span
                       className={cn(
                         "text-eyebrow-sm mt-1 inline-block rounded-full px-1.5 py-0.5 ring-1",
-                        "bg-slate-50 text-slate-500 ring-slate-200",
+                        "bg-surface-muted text-content-tertiary ring-border-default",
                       )}
                     >
                       Qualidade média
@@ -172,7 +172,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Abrir página da ${source.name} numa nova aba`}
-                  className="shrink-0 inline-flex size-7 items-center justify-center rounded-md text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                   className="shrink-0 inline-flex size-7 items-center justify-center rounded-md text-content-tertiary hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
                 >
                   <ExternalLink aria-hidden="true" className="size-3.5" />
                 </a>
@@ -180,12 +180,12 @@ export function ReportMethodology({ enriched }: Props = {}) {
             );
           })}
         </ul>
-        <p className="mt-3 text-[11.5px] text-slate-500 leading-relaxed italic">
+        <p className="mt-3 text-[11.5px] text-content-tertiary leading-relaxed italic">
           Databox fica reservado para futura ligação autenticada — métricas privadas como alcance, visitas e cliques.
         </p>
       </div>
 
-      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-slate-200/70">
+      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-border-default/70">
         <div className="flex items-start gap-3">
           <span
             aria-hidden="true"
@@ -194,10 +194,10 @@ export function ReportMethodology({ enriched }: Props = {}) {
             <Users className="size-3.5" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1 space-y-1.5">
-            <p className="text-eyebrow-sm text-slate-500">
+            <p className="text-eyebrow-sm text-content-tertiary">
               Comparação direta com concorrentes
             </p>
-            <p className="text-sm text-slate-700 leading-relaxed">
+            <p className="text-sm text-content-secondary leading-relaxed">
               Disponível no plano Pro: adicionar perfis concorrentes para
               comparar este perfil com contas reais do mesmo mercado. Diferente
               da referência de mercado — passa a usar dados de perfis específicos
@@ -210,7 +210,7 @@ export function ReportMethodology({ enriched }: Props = {}) {
               aria-label="Adicionar concorrente — disponível no plano Pro"
               className={cn(
                 "mt-1 inline-flex items-center gap-2 rounded-full px-3 py-1.5",
-                "border border-slate-200 bg-white text-[12px] text-slate-500",
+                "border border-border-default bg-white text-[12px] text-content-tertiary",
                 "cursor-not-allowed",
               )}
             >
