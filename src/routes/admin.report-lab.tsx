@@ -659,31 +659,32 @@ function VariantDiffPanel() {
   };
 
   return (
-    <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
+    <div className="rounded-xl border border-admin-border bg-white overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
+        className="flex w-full items-center gap-3.5 px-5 py-4 text-left hover:bg-admin-surface-muted/50 transition-colors"
       >
-        <span className="flex items-center gap-2">
-          <GitCompareArrows className="h-4 w-4 text-admin-text-tertiary" />
-          Diferenças entre variantes
-          {!open && (
-            <span className="text-[12px] font-normal text-admin-text-tertiary">
-              · {diffKeys.length} módulo{diffKeys.length !== 1 ? "s" : ""} com diferenças
-            </span>
-          )}
-        </span>
+        <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-purple-50 text-purple-600 shrink-0"><GitCompareArrows className="h-4 w-4" /></span>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium text-admin-text-primary block">Diferenças entre variantes</span>
+          <span className="text-[12px] text-admin-text-secondary">Compara o que muda entre Public MVP, Internal Lab e Pro Preview</span>
+        </div>
+        {!open && (
+          <span className="text-[12px] font-semibold text-purple-700 bg-purple-50 rounded-full px-2.5 py-0.5 shrink-0">
+            {diffKeys.length} diferença{diffKeys.length !== 1 ? "s" : ""}
+          </span>
+        )}
         {open ? (
-          <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
+          <ChevronUp className="h-4 w-4 text-admin-text-tertiary shrink-0" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
+          <ChevronDown className="h-4 w-4 text-admin-text-tertiary shrink-0" />
         )}
       </button>
       {open && (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-t border-white/20 bg-white/10">
+              <tr className="border-t border-admin-border bg-admin-surface-muted/30">
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Public MVP</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Internal Lab</th>
@@ -698,7 +699,7 @@ function VariantDiffPanel() {
                 const proVis = visLabel(pro[key]);
                 const interp = MODULE_INTERPRETATIONS[key] ?? "Visibilidade difere entre variantes.";
                 return (
-                  <tr key={key} className="border-t border-white/10">
+                  <tr key={key} className="border-t border-admin-border/50">
                     <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
                     <td className="px-4 py-2">
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
@@ -770,38 +771,37 @@ function ReadinessChecklist() {
   ).filter(([key]) => counts[key]);
 
   return (
-    <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
+    <div className="rounded-xl border border-admin-border bg-white overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
+        className="flex w-full items-center gap-3.5 px-5 py-4 text-left hover:bg-admin-surface-muted/50 transition-colors"
       >
-        <span className="flex items-center gap-3">
-          <span className="flex items-center gap-2">
-            <ClipboardCheck className="h-4 w-4 text-admin-text-tertiary" />
-            Checklist de prontidão pública
-          </span>
-          {!open && summaryItems.length > 0 && (
-            <span className="flex items-center gap-2 text-[12px]">
-              {summaryItems.map(([key, label, cls], i) => (
-                <span key={key} className="flex items-center gap-1">
-                  {i > 0 && <span className="text-admin-text-tertiary">·</span>}
-                  <span className={cn("font-semibold", cls)}>{counts[key]} {label}</span>
-                </span>
-              ))}
-            </span>
-          )}
-        </span>
+        <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-green-50 text-green-600 shrink-0"><ClipboardCheck className="h-4 w-4" /></span>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium text-admin-text-primary block">Checklist de prontidão pública</span>
+          <span className="text-[12px] text-admin-text-secondary">O que falta para esta variante poder ser publicada</span>
+        </div>
+        {!open && summaryItems.length > 0 && (
+          <div className="flex items-center gap-2 text-[12px] shrink-0">
+            {summaryItems.map(([key, label, cls], i) => (
+              <span key={key} className="flex items-center gap-1">
+                {i > 0 && <span className="text-admin-text-tertiary">·</span>}
+                <span className={cn("font-semibold", cls)}>{counts[key]} {label}</span>
+              </span>
+            ))}
+          </div>
+        )}
         {open ? (
-          <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
+          <ChevronUp className="h-4 w-4 text-admin-text-tertiary shrink-0" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
+          <ChevronDown className="h-4 w-4 text-admin-text-tertiary shrink-0" />
         )}
       </button>
       {open && (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-t border-white/20 bg-white/10">
+              <tr className="border-t border-admin-border bg-admin-surface-muted/30">
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">MVP</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Estado</th>
@@ -816,7 +816,7 @@ function ReadinessChecklist() {
                 const badge = READINESS_BADGE[readiness.status];
                 const dot = RISK_DOT[readiness.risk];
                 return (
-                  <tr key={key} className="border-t border-white/10">
+                  <tr key={key} className="border-t border-admin-border/50">
                     <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
                     <td className="px-4 py-2">
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", mvpVis.cls)}>
