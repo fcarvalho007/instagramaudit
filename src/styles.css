@@ -60,14 +60,6 @@
   /* === Surface (light mode extension) === */
   --color-surface-muted: rgb(var(--surface-muted, var(--surface-secondary)));
 
-  /* === Light surfaces (editorial reveal) === */
-  --color-surface-light: rgb(var(--surface-light));
-  --color-surface-light-elevated: rgb(var(--surface-light-elevated));
-  --color-surface-light-deep: rgb(var(--surface-light-deep));
-  --color-on-light-primary: rgb(var(--text-on-light-primary));
-  --color-on-light-secondary: rgb(var(--text-on-light-secondary));
-  --color-on-light-tertiary: rgb(var(--text-on-light-tertiary));
-
   /* === Signal colors === */
   --color-signal-success: rgb(var(--signal-success));
   --color-signal-warning: rgb(var(--signal-warning));
@@ -81,8 +73,8 @@
 
   /* === Border colors === */
   --color-border-subtle: rgb(var(--border-subtle) / 0.10);
-  --color-border-default: rgb(var(--border-default) / 0.12);
-  --color-border-strong: rgb(var(--border-strong) / 0.2);
+  --color-border-default: rgb(var(--border-default) / 0.10);
+  --color-border-strong: rgb(var(--border-strong) / 0.16);
 
   /* === Font families === */
   --font-display: "Fraunces", Georgia, serif;
@@ -112,17 +104,17 @@
   --color-popover: rgb(var(--surface-elevated));
   --color-popover-foreground: rgb(var(--text-primary));
   --color-primary: rgb(var(--accent-primary));
-  --color-primary-foreground: rgb(var(--text-primary));
+  --color-primary-foreground: 255 255 255;
   --color-secondary: rgb(var(--surface-secondary));
   --color-secondary-foreground: rgb(var(--text-primary));
-  --color-muted: rgb(var(--surface-secondary));
+  --color-muted: rgb(var(--surface-muted, var(--surface-secondary)));
   --color-muted-foreground: rgb(var(--text-secondary));
   --color-accent: rgb(var(--surface-elevated));
   --color-accent-foreground: rgb(var(--text-primary));
   --color-destructive: rgb(var(--signal-danger));
-  --color-destructive-foreground: rgb(var(--text-primary));
-  --color-border: rgb(var(--border-default) / 0.12);
-  --color-input: rgb(var(--border-default) / 0.15);
+  --color-destructive-foreground: 255 255 255;
+  --color-border: rgb(var(--border-default) / 0.10);
+  --color-input: rgb(var(--border-default) / 0.12);
   --color-ring: rgb(var(--accent-primary));
 }
 
