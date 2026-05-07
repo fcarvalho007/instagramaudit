@@ -100,14 +100,30 @@ type LoadState =
 
 function AdminReportPreviewPage() {
   const { username } = Route.useParams();
-  const { variant } = Route.useSearch();
+  const { variant, draft } = Route.useSearch();
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
+  const [featuresOverride, setFeaturesOverride] = useState<VariantFeatures | null>(null);
 
   // ---------- Admin gate simples (localStorage) ----------
   useEffect(() => {
     setAuthState(readAdminEmail() ? "in" : "signed_out");
   }, []);
+
+  // ---------- Load effective features ----------
+  useEffect(() => {
+    if (authState !== "in") return;
+    (async () => {
+      try {
+        const features = draft
+          ? await getDraftFeatures({ data: { variant } })
+          : await getPublishedFeatures({ data: { variant } });
+        setFeaturesOverride(features);
+      } catch {
+        setFeaturesOverride(null);
+      }
+    })();
+  }, [authState, variant, draft]);
 
   // ---------- Load snapshot once admin is in ----------
   useEffect(() => {
