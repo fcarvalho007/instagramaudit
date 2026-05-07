@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AdminBadge } from "../admin-badge";
 import { AdminActionButton } from "../admin-action-button";
+import { ConfirmDialog } from "../confirm-dialog";
 import {
   ExternalLink,
   Copy,
@@ -53,6 +54,7 @@ import {
   ChevronDown,
   MessageCircle,
 } from "lucide-react";
+import { Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 
@@ -63,6 +65,7 @@ interface LeadDetailSheetProps {
   onOpenChange: (open: boolean) => void;
   lead: EnrichedLead | null;
   onUpdate: (id: string, updates: Record<string, unknown>) => void;
+  onRefresh?: () => void;
 }
 
 interface TimelineEvent {
@@ -218,11 +221,16 @@ function DetailRow({ label, icon: Icon, children }: { label: string; icon?: Reac
 
 // ── Main component ──────────────────────────────────────────────
 
-export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate }: LeadDetailSheetProps) {
+/** Statuses that allow triggering a fresh report generation. */
+const GENERATABLE_STATUSES = ["approved", "pending_review", "failed"] as const;
+
+export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh }: LeadDetailSheetProps) {
   const [notesText, setNotesText] = useState("");
   const [notesDirty, setNotesDirty] = useState(false);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   // Reset state when lead changes
   useEffect(() => {
@@ -463,6 +471,16 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate }: LeadDeta
               <AdminActionButton size="md" onClick={handleCopyLink}>
                 <Link2 size={14} /> Copiar link
               </AdminActionButton>
+              {lead.report_request_id &&
+                GENERATABLE_STATUSES.includes(lead.report_status as typeof GENERATABLE_STATUSES[number]) && (
+                <AdminActionButton
+                  size="md"
+                  onClick={() => setGenerateOpen(true)}
+                  className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
+                >
+                  <Zap size={14} /> Gerar relatório
+                </AdminActionButton>
+              )}
             </div>
           )}
         </div>
@@ -582,10 +600,93 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate }: LeadDeta
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* ── Generate report confirmation dialog ────────────── */}
+    <GenerateReportDialog
+      open={generateOpen}
+      onOpenChange={setGenerateOpen}
+      loading={generating}
+      handle={lead.handle}
+      onConfirm={async () => {
+        if (!lead.report_request_id) return;
+        setGenerating(true);
+        try {
+          const res = await fetch("/api/admin/generate-beta-report", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ report_request_id: lead.report_request_id }),
+          });
+          const body = await res.json();
+          if (!res.ok || !body.success) {
+            const errorMsg = body.error ?? "Erro desconhecido";
+            toast.error(`Geração falhou: ${errorMsg}`);
+          } else {
+            toast.success("Relatório gerado com sucesso!");
+            onRefresh?.();
+          }
+        } catch (err) {
+          toast.error("Erro de rede ao gerar relatório.");
+        } finally {
+          setGenerating(false);
+          setGenerateOpen(false);
+        }
+      }}
+    />
   );
 }
 
 // ── Progress Tracker ────────────────────────────────────────────
+
+function GenerateReportDialog({
+  open,
+  onOpenChange,
+  loading,
+  handle,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  loading: boolean;
+  handle: string | null;
+  onConfirm: () => void;
+}) {
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Gerar relatório Fresh"
+      description={
+        <div className="space-y-3">
+          <p>
+            Isto vai executar uma análise completa via Apify para{" "}
+            <strong>@{handle}</strong> e gerar um snapshot novo.
+          </p>
+          <div
+            className="flex items-start gap-2 rounded-lg p-3 text-[13px]"
+            style={{
+              backgroundColor: "rgba(234,179,8,0.08)",
+              border: "1px solid rgba(234,179,8,0.2)",
+            }}
+          >
+            <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: "#D97706" }} />
+            <div>
+              <p className="font-medium" style={{ color: "#D97706" }}>Aviso de custo</p>
+              <p className="mt-0.5 text-admin-text-secondary">
+                Esta ação consome créditos Apify (~€0.05–0.10 por perfil).
+                Verificar que o modo de execução está em <strong>Fresh</strong> e
+                que o provider está ativo.
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+      confirmLabel={loading ? "A gerar…" : "Confirmar geração"}
+      loading={loading}
+      onConfirm={onConfirm}
+    />
+  );
+}
 
 function ProgressTracker({
   reportStatus,
