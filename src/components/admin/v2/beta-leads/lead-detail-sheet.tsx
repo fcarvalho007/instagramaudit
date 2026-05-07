@@ -294,6 +294,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+    <>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
         className="w-full sm:max-w-[520px] overflow-y-auto p-0 scroll-smooth"
@@ -633,6 +635,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         }
       }}
     />
+  );
+    </>
   );
 }
 
