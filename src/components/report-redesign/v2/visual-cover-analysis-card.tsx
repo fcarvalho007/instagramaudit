@@ -107,7 +107,7 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
               "bg-tint-primary ring-1 ring-accent-primary/15",
-              "text-[10px] font-medium uppercase tracking-wider text-accent-primary",
+              "text-xs font-medium uppercase tracking-wider text-accent-primary",
             )}
           >
             <Eye className="size-3" aria-hidden />
@@ -131,7 +131,7 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
             analysis={analysis}
           />
           {statusCounts ? (
-            <div className="flex items-center gap-4 text-[11px] text-content-tertiary">
+            <div className="flex items-center gap-4 text-xs text-content-tertiary">
               <StatusLegendItem status="good" count={statusCounts.good} />
               <StatusLegendItem status="medium" count={statusCounts.medium} />
               <StatusLegendItem status="weak" count={statusCounts.weak} />
@@ -167,7 +167,7 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
               className={cn(
                 "inline-flex items-center rounded-full px-2.5 py-1",
                 "ring-1 ring-border-default bg-surface-muted",
-                "text-[11px] text-content-secondary",
+                "text-xs text-content-secondary",
               )}
             >
               {axis}
@@ -304,7 +304,7 @@ function ScorePanel({ analysis }: { analysis: VisualCoverAnalysis }) {
     <div className="space-y-5">
       {/* Big score */}
       <div className="rounded-xl border border-border-default bg-surface-muted p-5 text-center space-y-1">
-        <p className="text-4xl font-mono font-bold text-content-primary tabular-nums">
+        <p className="text-4xl tabular-nums font-bold text-content-primary tabular-nums">
           {analysis.overallScore}<span className="text-lg text-content-tertiary">/100</span>
         </p>
         <p className={cn("text-eyebrow font-semibold", statusColor)}>
@@ -323,7 +323,7 @@ function ScorePanel({ analysis }: { analysis: VisualCoverAnalysis }) {
             <div key={key} className="space-y-0.5">
               <div className="flex items-center justify-between">
                 <span className="text-[12px] text-content-secondary">{label}</span>
-                <span className="font-mono text-[11px] tabular-nums text-content-tertiary">{value}</span>
+                <span className="tabular-nums text-xs tabular-nums text-content-tertiary">{value}</span>
               </div>
               <div className="h-1.5 rounded-full bg-surface-muted overflow-hidden">
                 <div
@@ -349,7 +349,7 @@ function VisualAnalysisFallback() {
           ? "Análise visual disponível na versão Pro."
           : "Análise visual indisponível — aguarda processamento IA."}
       </p>
-      <p className="text-[11px] text-content-tertiary mt-1">
+      <p className="text-xs text-content-tertiary mt-1">
         {isPublic
           ? "As capas dos posts são avaliadas por inteligência artificial para consistência visual, presença de texto e diversidade de formatos."
           : "Os thumbnails acima serão analisados por visão computacional numa próxima atualização."}
@@ -367,7 +367,7 @@ function ScorePanelUnavailable() {
       <p className="text-[13px] text-content-secondary font-medium">
         {isPublic ? "Score visual \u00b7 Pro" : "Score visual indisponível"}
       </p>
-      <p className="text-[11px] text-content-tertiary max-w-[16rem] leading-relaxed">
+      <p className="text-xs text-content-tertiary max-w-[16rem] leading-relaxed">
         {isPublic
           ? "Disponível na versão completa do relatório."
           : "Será calculado automaticamente quando a análise por visão computacional estiver ativa."}
@@ -443,7 +443,7 @@ function AiSeesMiniCard({
         <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
       </div>
       {value !== null ? (
-        <p className="text-lg font-mono font-semibold text-content-primary tabular-nums">{value}</p>
+        <p className="text-lg tabular-nums font-semibold text-content-primary tabular-nums">{value}</p>
       ) : null}
       {detail !== null ? (
         <p className="text-[10.5px] text-content-tertiary leading-relaxed">{detail}</p>

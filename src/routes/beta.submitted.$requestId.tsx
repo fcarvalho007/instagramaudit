@@ -43,7 +43,7 @@ function BetaSubmittedPage() {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-text-muted">Referência</span>
-            <span className="font-mono text-text-secondary text-xs">#{shortRef}</span>
+            <span className="tabular-nums text-text-secondary text-xs">#{shortRef}</span>
           </div>
         </div>
 

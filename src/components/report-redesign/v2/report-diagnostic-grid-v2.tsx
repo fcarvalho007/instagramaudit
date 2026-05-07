@@ -148,7 +148,7 @@ function DiagnosticCard({ card }: { card: CardModel }) {
         <span className="text-eyebrow-sm text-slate-500">
           {card.eyebrow}
         </span>
-        <span className="ml-auto font-mono text-[10px] tabular-nums text-slate-400">
+        <span className="ml-auto tabular-nums text-xs tabular-nums text-slate-400">
           {String(card.index).padStart(2, "0")} / 06
         </span>
       </div>
@@ -176,7 +176,7 @@ function DiagnosticCard({ card }: { card: CardModel }) {
 
       <p
         className={cn(
-          "font-mono text-[1.5rem] md:text-[1.75rem] font-semibold tracking-[-0.015em] leading-tight tabular-nums",
+          "tabular-nums text-[1.5rem] md:text-[1.75rem] font-semibold tracking-[-0.015em] leading-tight tabular-nums",
           tone.primary,
         )}
       >

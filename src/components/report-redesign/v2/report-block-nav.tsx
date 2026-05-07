@@ -82,7 +82,7 @@ export function ReportBlockSidebar() {
                 />
                 <span
                   className={cn(
-                    "font-mono text-[10px] tabular-nums tracking-[0.16em]",
+                    "tabular-nums text-xs tabular-nums tracking-[0.16em]",
                     isActive
                       ? "text-blue-600"
                       : "text-slate-400 group-hover:text-slate-500",
@@ -183,7 +183,7 @@ export function ReportBlockTopTabs() {
                 />
                 <span
                   className={cn(
-                    "text-[11px] leading-tight truncate max-w-full px-1",
+                    "text-xs leading-tight truncate max-w-full px-1",
                     isActive
                       ? "text-blue-600 font-semibold"
                       : "text-slate-500 font-medium",
@@ -213,7 +213,7 @@ export function ReportBlockTopTabs() {
               )}
             >
               <Menu className="size-7" strokeWidth={1.6} aria-hidden="true" />
-              <span className="text-[11px] font-medium leading-tight text-slate-500">
+              <span className="text-xs font-medium leading-tight text-slate-500">
                 Menu
               </span>
             </button>
@@ -247,7 +247,7 @@ export function ReportBlockTopTabs() {
                     >
                       <span
                         className={cn(
-                          "font-mono text-[10px] tabular-nums tracking-widest",
+                          "tabular-nums text-xs tabular-nums tracking-widest",
                           isActive ? "text-blue-500" : "text-slate-400",
                         )}
                       >

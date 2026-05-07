@@ -57,7 +57,7 @@ export function AnalysisHeader({
           />
         )}
         <div className="flex flex-col gap-1 min-w-0">
-          <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
+          <span className="text-eyebrow-sm text-xs text-content-tertiary">
             Análise pública
           </span>
           <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight truncate">
@@ -77,7 +77,7 @@ export function AnalysisHeader({
               ·
             </span>
             <span>
-              <span className="font-mono text-content-primary">
+              <span className="tabular-nums text-content-primary">
                 {formatFollowers(followers)}
               </span>{" "}
               seguidores

@@ -267,19 +267,19 @@ function EngagementComparison({
     <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
       <div className="flex flex-col">
         <span className="text-eyebrow-sm text-slate-500">Este perfil</span>
-        <span className="font-mono text-[2.25rem] md:text-[2.5rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+        <span className="tabular-nums text-[2.25rem] md:text-[2.5rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
           {formatPct(engagement)}
         </span>
       </div>
       <div className="flex flex-col">
         <span className="text-eyebrow-sm text-slate-400">% Média de perfis semelhantes</span>
-        <span className="font-mono text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] text-slate-600 leading-none tabular-nums">
+        <span className="tabular-nums text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] text-slate-600 leading-none tabular-nums">
           {formatPct(benchmark)}
         </span>
       </div>
       <div className="flex flex-col">
         <span className="text-eyebrow-sm text-slate-400">Gap</span>
-        <span className={cn("font-mono text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] leading-none tabular-nums", gapColor)}>
+        <span className={cn("tabular-nums text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] leading-none tabular-nums", gapColor)}>
           {fmtPpCard(gapPp)} p.p.
         </span>
       </div>
@@ -372,10 +372,10 @@ function PostingRhythmCard({
       accentTone={gapStatus.tone === "good" ? "green" : gapStatus.tone === "warn" ? "rose" : gapStatus.tone === "bad" ? "rose" : undefined}
       sourceSlot={
         <div className="space-y-1.5">
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-xs text-slate-400 leading-relaxed">
             Frequência = publicações ÷ dias analisados × 7
           </p>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-xs text-slate-400 leading-relaxed">
             <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" aria-label="Later — referência por escalão" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[1]</a>{" "}
             referência por escalão{" · "}
             <a href="https://buffer.com/resources/how-often-to-post-on-instagram" target="_blank" rel="noopener noreferrer" aria-label="Buffer — intervalo geral" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[2]</a>{" "}
@@ -386,7 +386,7 @@ function PostingRhythmCard({
     >
       {/* Main metric */}
       <div className="flex items-end gap-3 flex-wrap">
-        <span className="font-mono text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
+        <span className="tabular-nums text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
           {weekly.toFixed(1).replace(".", ",")}
         </span>
         <span className="text-eyebrow text-slate-500 pb-1">
@@ -422,7 +422,7 @@ function PostingRhythmCard({
 
       {/* Format transparency note */}
       {postsAnalyzed > 0 && (
-        <p className="text-[11px] text-slate-400 leading-relaxed">
+        <p className="text-xs text-slate-400 leading-relaxed">
           Inclui imagens, carrosséis e Reels publicados no feed.
         </p>
       )}
@@ -499,8 +499,8 @@ function FrequencyBenchmarkBars({
       {/* Buffer general range band */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium text-slate-400">Intervalo geral</span>
-          <span className="font-mono text-[11px] text-slate-400 tabular-nums">
+          <span className="text-xs font-medium text-slate-400">Intervalo geral</span>
+          <span className="tabular-nums text-xs text-slate-400 tabular-nums">
             {bufferRange.min}–{bufferRange.max}/sem
           </span>
         </div>
@@ -516,8 +516,8 @@ function FrequencyBenchmarkBars({
       {/* Profile bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium text-slate-600">Perfil</span>
-          <span className="font-mono text-[11px] text-slate-700 tabular-nums">
+          <span className="text-xs font-medium text-slate-600">Perfil</span>
+          <span className="tabular-nums text-xs text-slate-700 tabular-nums">
             {profileValue.toFixed(1).replace(".", ",")}/sem
           </span>
         </div>
@@ -532,10 +532,10 @@ function FrequencyBenchmarkBars({
       {/* Benchmark bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium text-slate-500">
+          <span className="text-xs font-medium text-slate-500">
             Escalão {tierRange}
           </span>
-          <span className="font-mono text-[11px] text-slate-500 tabular-nums">
+          <span className="tabular-nums text-xs text-slate-500 tabular-nums">
             {benchmarkValue}/sem
           </span>
         </div>
@@ -557,7 +557,7 @@ function FrequencyBenchmarkBars({
           "text-slate-400"
         )} />
         <span className={cn(
-          "font-mono text-[11px] tabular-nums",
+          "tabular-nums text-xs tabular-nums",
           gapTone === "good" ? "text-emerald-600" :
           gapTone === "warn" ? "text-amber-600" :
           gapTone === "bad" ? "text-rose-500" :
@@ -566,7 +566,7 @@ function FrequencyBenchmarkBars({
           {gapLabel} posts/sem vs escalão
         </span>
       </div>
-      <p className="text-[11px] text-slate-400 italic">
+      <p className="text-xs text-slate-400 italic">
         {bufferStatus}
       </p>
     </div>
@@ -615,7 +615,7 @@ function DominantFormatCard({
       }
     >
       <div className="flex items-end gap-3 flex-wrap min-w-0">
-        <span className="font-mono text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
+        <span className="tabular-nums text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
           {dominantShare > 0 ? `${dominantShare}%` : "—"}
         </span>
         {dominantLabel ? (

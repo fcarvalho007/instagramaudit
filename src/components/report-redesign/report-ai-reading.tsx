@@ -84,7 +84,7 @@ export function ReportAiReading({ data, enriched, compact = false }: Props) {
                 className={cn(
                   "inline-flex size-8 shrink-0 items-center justify-center rounded-full",
                   "bg-blue-50 text-blue-700 ring-1 ring-blue-100",
-                  "font-mono text-[11px] font-semibold tracking-tight",
+                  "tabular-nums text-xs font-semibold tracking-tight",
                 )}
               >
                 {item.number}

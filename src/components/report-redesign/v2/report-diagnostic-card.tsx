@@ -162,7 +162,7 @@ export function ReportDiagnosticCard({
       )}
     >
       <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-wrap">
-        <p className="text-eyebrow-sm text-content-tertiary min-w-0 tracking-[0.06em] text-[9px] sm:text-[10px]">
+        <p className="text-eyebrow-sm text-content-tertiary min-w-0 tracking-[0.06em] text-xs sm:text-xs">
           P{number}
           <span className="mx-1.5 text-content-tertiary/40">·</span>
           <span className="text-content-tertiary">{label.toUpperCase()}</span>
@@ -287,9 +287,9 @@ export function DiagnosticDistributionBar({
             <li key={`${it.label}-${i}`} className="text-xs sm:text-sm">
               <div className="flex items-center gap-3">
                 <span className={cn("min-w-[5.5rem] w-auto sm:min-w-[8.5rem] shrink-0 leading-tight text-content-secondary transition-colors", isDominant && "font-medium text-content-primary")}>
-                  <span className="text-[11px] sm:text-sm">{it.label}</span>
+                  <span className="text-xs sm:text-sm">{it.label}</span>
                   {it.sublabel && (
-                    <span className="hidden sm:block text-[9px] text-content-tertiary/70 leading-snug mt-0.5">{it.sublabel}</span>
+                    <span className="hidden sm:block text-xs text-content-tertiary/70 leading-snug mt-0.5">{it.sublabel}</span>
                   )}
                 </span>
                 <div className={cn("flex-1 overflow-hidden rounded-full bg-surface-muted transition-all", isDominant ? "h-3" : "h-1.5")}>
@@ -300,7 +300,7 @@ export function DiagnosticDistributionBar({
                   />
                 </div>
                 <span className={cn(
-                  "w-10 shrink-0 text-right font-mono text-[11px] tabular-nums transition-colors",
+                  "w-10 shrink-0 text-right tabular-nums text-xs tabular-nums transition-colors",
                   isDominant ? "text-content-primary font-semibold" : "text-content-tertiary",
                 )}>
                   {Math.round(it.value)}%
@@ -415,7 +415,7 @@ export function DiagnosticFunnelStack({
               </div>
             )}
             <span className={cn(
-              "w-10 shrink-0 text-right font-mono text-[11px] tabular-nums",
+              "w-10 shrink-0 text-right tabular-nums text-xs tabular-nums",
               isEmpty ? "text-content-tertiary/50" : "text-content-tertiary",
             )}>
               {it.sharePct}%
@@ -442,10 +442,10 @@ export function DiagnosticMiniStats({
           key={`${it.label}-${i}`}
           className="rounded-lg border border-border-subtle bg-surface-muted/60 px-2 py-2 sm:px-3 sm:py-2.5 text-center"
         >
-          <p className="font-mono text-[13px] sm:text-[15px] font-semibold text-content-primary tabular-nums leading-none">
+          <p className="tabular-nums text-[13px] sm:text-[15px] font-semibold text-content-primary tabular-nums leading-none">
             {it.value}
           </p>
-          <p className="text-eyebrow-sm mt-0.5 sm:mt-1 text-content-tertiary text-[8px] sm:text-[10px]">
+          <p className="text-eyebrow-sm mt-0.5 sm:mt-1 text-content-tertiary text-xs sm:text-xs">
             {it.label}
           </p>
         </div>
@@ -524,7 +524,7 @@ export function DiagnosticRanking({
           return (
             <li key={`${it.label}-${i}`} className="text-sm">
               <div className="flex items-center gap-3">
-                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-content-tertiary">
+                <span className="w-10 shrink-0 text-right tabular-nums text-xs tabular-nums text-content-tertiary">
                   {pct}%
                 </span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
@@ -654,12 +654,12 @@ export function DiagnosticAudienceHighlight({
         <div className="rounded-[14px] border border-border-subtle bg-surface-muted/70 px-2.5 py-3 sm:px-4 sm:py-3.5 flex flex-col gap-1 sm:gap-1.5">
           <div className="flex items-center gap-1.5">
             <Heart size={14} className="text-content-tertiary" strokeWidth={1.5} />
-            <span className="text-eyebrow-sm text-content-tertiary text-[8px] sm:text-[10px]">Gostos / post</span>
+            <span className="text-eyebrow-sm text-content-tertiary text-xs sm:text-xs">Gostos / post</span>
           </div>
-          <span className="font-mono text-[20px] sm:text-[28px] font-semibold tabular-nums text-content-primary leading-none">
+          <span className="tabular-nums text-[20px] sm:text-[28px] font-semibold tabular-nums text-content-primary leading-none">
             {formatAvg(avgLikes)}
           </span>
-          <span className="text-[9px] sm:text-[11px] text-content-tertiary">
+          <span className="text-xs sm:text-xs text-content-tertiary">
             {totalLikes != null
               ? `${totalLikes.toLocaleString("pt-PT")} gostos no total`
               : "por publicação"}
@@ -681,22 +681,22 @@ export function DiagnosticAudienceHighlight({
               className={commentsIsAlert ? "text-signal-danger" : "text-content-tertiary"}
               strokeWidth={1.5}
             />
-            <span className="text-eyebrow-sm text-content-tertiary text-[8px] sm:text-[10px]">Coment. / post</span>
+            <span className="text-eyebrow-sm text-content-tertiary text-xs sm:text-xs">Coment. / post</span>
             {commentsIsAlert && (
-              <span className="ml-auto text-[9px] font-semibold uppercase tracking-wider text-signal-danger bg-signal-danger/10 rounded-full px-1.5 py-0.5">
+              <span className="ml-auto text-xs font-semibold uppercase tracking-wider text-signal-danger bg-signal-danger/10 rounded-full px-1.5 py-0.5">
                 Alerta
               </span>
             )}
           </div>
           <span
             className={cn(
-              "font-mono text-[20px] sm:text-[28px] font-semibold tabular-nums leading-none",
+              "tabular-nums text-[20px] sm:text-[28px] font-semibold tabular-nums leading-none",
               commentsIsAlert ? "text-signal-danger" : "text-content-primary",
             )}
           >
             {formatAvg(avgComments)}
           </span>
-          <span className="text-[9px] sm:text-[11px] text-content-tertiary">
+          <span className="text-xs sm:text-xs text-content-tertiary">
             {sampleSize != null && sampleSize < 5
               ? "Base pequena para avaliar conversão de gostos em comentários."
               : commentsToLikesPct != null && commentsToLikesPct > 0
@@ -722,19 +722,19 @@ export function DiagnosticAudienceHighlight({
               className={repliesIsAlert ? "text-signal-danger" : "text-content-tertiary"}
               strokeWidth={1.5}
             />
-            <span className="text-eyebrow-sm text-content-tertiary text-[8px] sm:text-[10px]">
+            <span className="text-eyebrow-sm text-content-tertiary text-xs sm:text-xs">
               <span className="hidden sm:inline">Respostas da marca</span>
               <span className="sm:hidden">Respostas</span>
             </span>
             {repliesIsAlert && (
-              <span className="ml-auto text-[9px] font-semibold uppercase tracking-wider text-signal-danger bg-signal-danger/10 rounded-full px-1.5 py-0.5">
+              <span className="ml-auto text-xs font-semibold uppercase tracking-wider text-signal-danger bg-signal-danger/10 rounded-full px-1.5 py-0.5">
                 Alerta
               </span>
             )}
           </div>
           <span
             className={cn(
-              "font-mono text-[20px] sm:text-[28px] font-semibold tabular-nums leading-none",
+              "tabular-nums text-[20px] sm:text-[28px] font-semibold tabular-nums leading-none",
               repliesIsAlert ? "text-signal-danger" : "text-content-primary",
             )}
           >
@@ -742,7 +742,7 @@ export function DiagnosticAudienceHighlight({
               ? `${Math.round(ownerReplyRatePct)}%`
               : ownerReplies}
           </span>
-          <span className="text-[9px] sm:text-[11px] text-content-tertiary">
+          <span className="text-xs sm:text-xs text-content-tertiary">
             {ownerReplies === 0
               ? "a marca não conversa"
               : ownerReplyRatePct != null && ownerReplyRatePct > 0
@@ -784,13 +784,13 @@ export function DiagnosticAudienceHighlight({
             const hasConversation = postsWithComments != null && sampleSize != null && sampleSize > 0 && postsWithComments / sampleSize > 0.4;
             const lowConversation = avgComments < 2;
             if (asksPctLow && hasConversation) {
-              return <p className="text-[11px] text-content-tertiary leading-snug pl-[21px]">A conversa surge mesmo sem convite explícito nas legendas.</p>;
+              return <p className="text-xs text-content-tertiary leading-snug pl-[21px]">A conversa surge mesmo sem convite explícito nas legendas.</p>;
             }
             if (asksPctLow && lowConversation) {
-              return <p className="text-[11px] text-content-tertiary leading-snug pl-[21px]">Há margem para testar perguntas finais nas legendas.</p>;
+              return <p className="text-xs text-content-tertiary leading-snug pl-[21px]">Há margem para testar perguntas finais nas legendas.</p>;
             }
             if (!asksPctLow && lowConversation) {
-              return <p className="text-[11px] text-content-tertiary leading-snug pl-[21px]">O convite existe, mas ainda não gera resposta consistente.</p>;
+              return <p className="text-xs text-content-tertiary leading-snug pl-[21px]">O convite existe, mas ainda não gera resposta consistente.</p>;
             }
             return null;
           })()}
@@ -801,7 +801,7 @@ export function DiagnosticAudienceHighlight({
       {topCommentPosts && topCommentPosts.length > 0 && (
         <div className="space-y-2.5">
           <p className="text-eyebrow text-content-tertiary">Posts que geraram mais conversa</p>
-          <p className="text-[10px] text-content-tertiary/60 mt-0.5">Classificação exclusiva por volume de conversa pública.</p>
+          <p className="text-xs text-content-tertiary/60 mt-0.5">Classificação exclusiva por volume de conversa pública.</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {topCommentPosts.slice(0, 3).map((post, idx) => {
               const Wrapper = post.permalink ? "a" : "article";
@@ -828,7 +828,7 @@ export function DiagnosticAudienceHighlight({
                       />
                     )}
                     {post.format && (
-                      <span className="text-eyebrow-sm absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-md bg-white/90 backdrop-blur text-content-primary font-semibold text-[9px]">
+                      <span className="text-eyebrow-sm absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-md bg-white/90 backdrop-blur text-content-primary font-semibold text-xs">
                         {post.format}
                       </span>
                     )}
@@ -841,7 +841,7 @@ export function DiagnosticAudienceHighlight({
                   {/* Content */}
                   <div className="px-3 py-2.5 flex flex-col gap-1.5 flex-1">
                     {post.date && (
-                      <span className="text-eyebrow-sm text-content-tertiary text-[9px]">
+                      <span className="text-eyebrow-sm text-content-tertiary text-xs">
                         {new Date(post.date).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })}
                       </span>
                     )}
@@ -852,10 +852,10 @@ export function DiagnosticAudienceHighlight({
                     )}
                     <div className="flex items-center gap-1.5 pt-1.5 mt-auto border-t border-border-subtle/30">
                       <MessageCircle size={12} className="text-accent-primary" strokeWidth={1.5} />
-                      <span className="font-mono text-[13px] font-bold tabular-nums text-accent-primary">
+                      <span className="tabular-nums text-[13px] font-bold tabular-nums text-accent-primary">
                         {post.comments.toLocaleString("pt-PT")}
                       </span>
-                      <span className="text-[10px] text-content-tertiary">comentários</span>
+                      <span className="text-xs text-content-tertiary">comentários</span>
                     </div>
                   </div>
                 </Wrapper>
@@ -940,7 +940,7 @@ export function DiagnosticObjectiveSynthesis({
                         aria-hidden
                       />
                     </div>
-                    <span className="w-6 shrink-0 text-right font-mono text-[10px] tabular-nums text-content-tertiary">
+                    <span className="w-6 shrink-0 text-right tabular-nums text-xs tabular-nums text-content-tertiary">
                       {item.score}
                     </span>
                   </div>
@@ -1075,25 +1075,25 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
     <div className="rounded-[14px] border border-border-default bg-surface-secondary px-4 py-4 sm:px-5 sm:py-5 space-y-4">
       <div>
         <p className="text-eyebrow text-content-tertiary">O que a audiência mais diz</p>
-        <p className="text-[11px] text-content-tertiary mt-0.5">
+        <p className="text-xs text-content-tertiary mt-0.5">
           Classificação automática de {ci.audienceCommentsCount.toLocaleString("pt-PT")} comentários
           {ci.uniqueAudienceCommentersCount > 0 && ` de ${ci.uniqueAudienceCommentersCount.toLocaleString("pt-PT")} pessoas`}
           {" "}· percentagens sobre sinais classificados
         </p>
         {ci.postsWithConversationPct > 0 && ci.samplePosts >= 3 ? (
-          <p className="text-[10px] text-content-tertiary/70 mt-0.5">
+          <p className="text-xs text-content-tertiary/70 mt-0.5">
             Conversa presente em {Math.round(ci.postsWithConversationPct)}% dos posts analisados
             {ci.uniqueAudienceCommentersCount > 1 && ci.audienceCommentsCount > ci.uniqueAudienceCommentersCount
               ? ` · ~${(ci.audienceCommentsCount / ci.uniqueAudienceCommentersCount).toFixed(1).replace(".", ",")} comentários por pessoa`
               : ""}
           </p>
         ) : ci.samplePosts < 3 ? (
-          <p className="text-[10px] text-content-tertiary/70 mt-0.5">
+          <p className="text-xs text-content-tertiary/70 mt-0.5">
             Amostra de comentários curta — leitura qualitativa.
           </p>
         ) : null}
         {totalSignals < 5 && totalSignals > 0 && (
-          <p className="text-[10px] text-content-tertiary/70 mt-0.5 italic">
+          <p className="text-xs text-content-tertiary/70 mt-0.5 italic">
             Percentagens baseadas numa amostra pequena de sinais classificados.
           </p>
         )}
@@ -1120,8 +1120,8 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[13px] sm:text-[14px] font-semibold text-content-primary">{it.label}</span>
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className="font-mono text-[13px] sm:text-[15px] font-bold tabular-nums text-content-primary">{it.count}</span>
-                      <span className="font-mono text-[10px] tabular-nums text-content-tertiary">({it.pct}%)</span>
+                      <span className="tabular-nums text-[13px] sm:text-[15px] font-bold tabular-nums text-content-primary">{it.count}</span>
+                      <span className="tabular-nums text-xs tabular-nums text-content-tertiary">({it.pct}%)</span>
                       {hasExcerpts && (
                         isExpanded
                           ? <ChevronUp size={14} className="text-content-tertiary ml-1" strokeWidth={1.5} />
@@ -1129,7 +1129,7 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
                       )}
                     </div>
                   </div>
-                  <p className="text-[11px] sm:text-[12px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</p>
+                  <p className="text-xs sm:text-[12px] text-content-tertiary leading-snug mt-0.5">{it.sublabel}</p>
                   <div className="h-1.5 sm:h-2 rounded-full bg-surface-muted mt-2 overflow-hidden">
                     <div
                       className={cn("h-full rounded-full", it.barClass, i > 0 && "opacity-60")}
@@ -1154,7 +1154,7 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
       </ul>
 
       {!ci.classifiedExcerpts && totalSignals > 0 && (
-        <p className="text-[10px] text-content-tertiary/60 italic">
+        <p className="text-xs text-content-tertiary/60 italic">
           Exemplos de comentários disponíveis apenas em novas análises.
         </p>
       )}
@@ -1169,11 +1169,11 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
       {/* Sinais dominantes de conversa */}
       {ci.dominantConversationSignals?.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 mt-1">
-          <span className="text-[10px] text-content-tertiary mr-1">Sinais dominantes:</span>
+          <span className="text-xs text-content-tertiary mr-1">Sinais dominantes:</span>
           {ci.dominantConversationSignals.map((signal) => (
             <span
               key={signal}
-              className="inline-flex items-center rounded-full bg-surface-muted border border-border-subtle px-2 py-0.5 text-[10px] font-medium text-content-secondary"
+              className="inline-flex items-center rounded-full bg-surface-muted border border-border-subtle px-2 py-0.5 text-xs font-medium text-content-secondary"
             >
               {CONVERSATION_SIGNAL_LABELS[signal] ?? signal}
             </span>
@@ -1208,12 +1208,12 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
               <p className="text-[13px] font-semibold text-content-primary">
                 {actionable} {actionable === 1 ? "comentário" : "comentários"} com oportunidade
               </p>
-              <p className="text-[10px] text-content-tertiary">
+              <p className="text-xs text-content-tertiary">
                 {ci.audienceCommentsCount > 0 && `${Math.round((actionable / ci.audienceCommentsCount) * 100)}% dos comentários da audiência · `}
                 {parts.join(" · ")}
               </p>
               {dominant && dominant.count > 0 && (
-                <p className="text-[11px] text-content-secondary leading-snug mt-1">
+                <p className="text-xs text-content-secondary leading-snug mt-1">
                   {dominant.insight}
                 </p>
               )}

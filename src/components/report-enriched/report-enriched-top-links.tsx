@@ -56,15 +56,15 @@ export function ReportEnrichedTopLinks({ enriched }: Props) {
                 <div className="flex items-center gap-4 sm:justify-end">
                   <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
                     <Heart className="size-3.5" aria-hidden="true" />
-                    <span className="font-mono">
+                    <span className="tabular-nums">
                       {post.likes.toLocaleString("pt-PT")}
                     </span>
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
                     <MessageCircle className="size-3.5" aria-hidden="true" />
-                    <span className="font-mono">{post.comments}</span>
+                    <span className="tabular-nums">{post.comments}</span>
                   </span>
-                  <span className="font-mono text-xs font-medium text-accent-primary">
+                  <span className="tabular-nums text-xs font-medium text-accent-primary">
                     {post.engagementPct.toString().replace(".", ",")}%
                   </span>
                   <ExternalLink
