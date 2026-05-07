@@ -9,6 +9,7 @@
  * Evidence is matched client-side from the posts array.
  */
 import { type ReactNode, useState } from "react";
+import { useVariantFeatures } from "@/lib/report/report-variant";
 import {
   FileText, AlertTriangle, Type, Zap, HelpCircle,
   BookOpen, Sparkles, Mic, Repeat, ChevronDown, ChevronUp,
@@ -478,9 +479,7 @@ function SectionThemes({
                           </div>
                         </>
                       ) : (
-                        <p className="text-[12px] text-content-tertiary italic py-2">
-                          Evidência detalhada em desenvolvimento.
-                        </p>
+                        <CaptionEvidenceFallback size="normal" />
                       )}
                     </div>
                   </CollapsibleContent>
@@ -498,6 +497,17 @@ function SectionThemes({
 // ---------------------------------------------------------------------------
 // Section C — Como escreve (Openings, Endings, Length)
 // ---------------------------------------------------------------------------
+
+
+/** Fallback when no caption evidence is available. Hidden in public_mvp. */
+function CaptionEvidenceFallback({ size }: { size: "normal" | "compact" }) {
+  const features = useVariantFeatures();
+  if (features.debugLabels === "hidden") return null;
+  const cls = size === "normal"
+    ? "text-[12px] text-content-tertiary italic py-2"
+    : "text-[11px] text-content-tertiary italic py-1";
+  return <p className={cls}>Evidência detalhada em desenvolvimento.</p>;
+}
 
 function SectionWritingAndExpressions({
   data,
@@ -693,9 +703,7 @@ function SectionWritingAndExpressions({
                                 <EvidenceRow key={m.post.id ?? mi} match={m} />
                               ))
                             ) : (
-                              <p className="text-[11px] text-content-tertiary italic py-1">
-                                Evidência detalhada em desenvolvimento.
-                              </p>
+                              <CaptionEvidenceFallback size="compact" />
                             )}
                           </div>
                         </CollapsibleContent>
