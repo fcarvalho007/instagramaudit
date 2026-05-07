@@ -27,7 +27,7 @@ export function BetaRequestFilters({ status, onStatusChange }: BetaRequestFilter
           <button
             key={s.value}
             onClick={() => onStatusChange(s.value)}
-            className="inline-flex items-center rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all duration-150"
+            className="inline-flex items-center rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all duration-150"
             style={{
               backgroundColor: active ? "#FFFFFF" : "rgba(255,255,255,0.45)",
               color: active ? "#2C2C2A" : "#6B6B66",
