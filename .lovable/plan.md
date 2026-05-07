@@ -1,113 +1,47 @@
 
-# Module Visibility Manager — Readiness & Implementation Plan
+# Module Visibility Manager — QA Audit
 
-## PASS — Infrastructure Already Built (90%)
+## PASS/FAIL Table
 
-An earlier implementation created the full stack but left it **disconnected**. No new architecture is needed — just wiring.
+| # | Check | Result | Detail |
+|---|-------|--------|--------|
+| 1 | `/analyze/$username` loads published overrides | **FAIL** | No call to `getPublishedFeatures`. No import of override functions. |
+| 2 | `/analyze/$username` passes `featuresOverride` to `ReportShellV2` | **FAIL** | `AnalyzeReady` does not pass `featuresOverride` prop (lines 266-279). |
+| 3 | `public_mvp` uses only published overrides, never draft | **N/A** | Public route uses neither — static defaults only. |
+| 4 | `/admin/report-preview/$username?draft=true` uses draft overrides | **PASS** | Calls `getDraftFeatures()` when `draft=true` (line 119). |
+| 5 | `/admin/report-preview/$username` (no draft) uses published overrides | **PASS** | Calls `getPublishedFeatures()` when `draft=false` (line 120). |
+| 6 | `ReportShellV2` propagates `featuresOverride` via `VariantFeaturesOverrideProvider` | **PASS** | Line 98: `<VariantFeaturesOverrideProvider value={featuresOverride ?? null}>` |
+| 7 | `useVariantFeatures()` returns overridden features when provided | **PASS** | Checks override context first, falls back to static (report-variant.ts lines 104-108). |
+| 8 | Locked modules override draft/published changes | **PASS** | `getEffectiveFeatures()` applies `LOCKED_MODULES` after merge (effective-features.ts lines 73-78). |
+| 9 | Publish action writes correct published row | **PASS** | `publishDraft()` reads draft, upserts with `is_draft: false`, deletes draft row. |
+| 10 | Reset deletes correct rows and falls back to static | **PASS** | `resetToDefaults()` deletes all rows for variant. `getPublishedFeatures` catches errors and returns static defaults. |
 
-### What already exists
+## Summary Answers
 
-| Layer | Status |
-|-------|--------|
-| DB table `report_variant_overrides` (variant, is_draft, features_json) | Done |
-| Server CRUD: saveDraft, publishDraft, discardDraft, resetToDefaults | Done |
-| Server functions: getPublishedFeatures, getDraftFeatures, getAllOverrides, etc. | Done |
-| `getEffectiveFeatures()` — merges static + override + LOCKED_MODULES | Done |
-| `VariantFeaturesOverrideProvider` context | Done (exported, never used) |
-| `ModuleVisibilityMatrix` interactive UI (draft/publish/discard/reset) | Done (never imported) |
-| Fullscreen preview `?draft=true` support | Done |
-| Read-only tables in Report Lab (ModuleVisibilityTable, VisibilityResolverTable) | Done |
+- **Public route wired to published overrides:** NO
+- **Draft preview wired:** YES
+- **Published preview wired:** YES
 
-### What is missing
+## Files Checked
 
-1. **Report Lab**: `ModuleVisibilityMatrix` is not imported — the interactive editor is invisible.
-2. **Public route**: `/analyze/$username` uses static `getVariantFeatures()` directly, never calls `getPublishedFeatures()` or wraps with `VariantFeaturesOverrideProvider`.
-3. **ReportShellV2**: does not accept or pass `VariantFeaturesOverrideProvider`.
+- `src/routes/analyze.$username.tsx` — public route
+- `src/routes/admin.report-preview.$username.tsx` — admin preview
+- `src/components/report-redesign/v2/report-shell-v2.tsx` — shell component
+- `src/lib/report/report-variant.ts` — static defaults + context
+- `src/lib/report/effective-features.ts` — lock rules + merge
+- `src/lib/report/variant-overrides.server.ts` — DB CRUD
+- `src/server/admin/variant-overrides.functions.ts` — server functions
 
-### Locked modules (enforced by `LOCKED_MODULES` in `effective-features.ts`)
+## Missing Implementation
 
-| Module | Lock | Rationale |
-|--------|------|-----------|
-| `overviewHeroKpis` | All variants → `full` | Core identity, cannot hide |
-| `debugLabels` | public_mvp + pro_preview → `hidden` | Internal only |
+One gap: `/analyze/$username` → `AnalyzeReady` renders `ReportShellV2` with `variant="public_mvp"` and no `featuresOverride`. Published overrides in the DB have zero effect on the public report.
 
-Additional modules to lock (to be added):
+## Recommended Next Implementation Prompt
 
-| Module | Lock | Rationale |
-|--------|------|-----------|
-| `diagnosticQ01Q07` | All variants → `full` | Core diagnostics, cannot hide |
-| `methodology` | public_mvp + pro_preview → `full` | Credibility anchor |
-
-### Editable modules
-
-All others: `conversationPostLevel`, `commentIntelligence`, `captionsDiagnostics`, `marketSignals`, `benchmarkGauge`, `betaFeedbackBanner`.
-
-### Module visibility lifecycle
-
-```text
-Static defaults (code)
-  └─► Admin edits → local changes (unsaved)
-        └─► "Guardar draft" → DB row (is_draft=true)
-              └─► "Preview draft" → fullscreen ?draft=true
-              └─► "Publicar" → confirmation → DB row (is_draft=false), draft deleted
-                    └─► Public route serves published config
-              └─► "Descartar" → deletes draft row, reverts to published or static
-              └─► "Reset defaults" → deletes both draft + published rows
-```
-
-### Fallback behavior
-
-- If DB query fails → `getEffectiveFeatures` catches and returns static defaults.
-- If no published override exists → static defaults used.
-- Public users never see broken state.
-
-### Storage recommendation
-
-**Supabase table `report_variant_overrides`** (already exists). No localStorage needed for production visibility. The existing table with `(variant, is_draft)` unique constraint is the correct model.
-
-### Draft vs Published recommendation
-
-Already implemented correctly:
-- Draft: `is_draft=true` row, visible only in admin preview with `?draft=true`
-- Published: `is_draft=false` row, served to public route
-- Confirmation dialog already says "Isto altera o que os utilizadores públicos veem."
-
----
-
-## File-by-file implementation plan
-
-### 1. `src/lib/report/effective-features.ts`
-Add two new lock rules:
-- `diagnosticQ01Q07: { variants: "*", value: "full" }`
-- `methodology: { variants: ["public_mvp", "pro_preview"], value: "full" }`
-
-### 2. `src/routes/admin.report-lab.tsx`
-- Import `ModuleVisibilityMatrix` from `@/components/admin/v2/module-visibility-matrix`
-- Replace or augment the read-only "Visibilidade de módulos" collapsible section with the interactive `ModuleVisibilityMatrix`
-- Pass `adminEmail` and `onPreviewDraft` (opens fullscreen with `?draft=true`)
-
-### 3. `src/components/report-redesign/v2/report-shell-v2.tsx`
-- Accept optional `featuresOverride?: VariantFeatures` prop
-- Wrap children with `VariantFeaturesOverrideProvider` when override is provided
-
-### 4. `src/routes/admin.report-preview.$username.tsx`
-- When `?draft=true`, call `getDraftFeatures()` and pass result as `featuresOverride` to `ReportShellV2`
-
-### 5. Public route integration (future, minimal)
-- In the route/component that renders the public report, call `getPublishedFeatures({ variant: "public_mvp" })` and pass as `featuresOverride` to `ReportShellV2`
-- Fallback: if fetch fails, static defaults apply (already handled in server function)
-
-### Files NOT to touch
-- `report-variant.ts` (static defaults stay as-is, only effective-features changes)
-- Report card components (no design changes)
-- Provider logic, cost tracking, PDF pipeline
-- `client.ts`, `types.ts`, `.env`
-
-### Risks and mitigations
-
-| Risk | Mitigation |
-|------|-----------|
-| Accidental public publish | Confirmation dialog exists; locked modules prevent catastrophic changes |
-| DB failure on public route | `getPublishedFeatures` catches errors and returns static defaults |
-| Admin publishes then wants rollback | "Reset defaults" deletes overrides, restoring static config instantly |
-| Module matrix confusing for non-technical admin | Labels, lock icons, and draft/pub badges already in the UI |
+> Wire the public route `/analyze/$username` to consume published overrides.
+>
+> In `AnalyzeReady`, call `getPublishedFeatures({ data: { variant: "public_mvp" } })` and pass the result as `featuresOverride` to `ReportShellV2`. Use a try/catch so any DB failure silently falls back to static defaults (no user-visible error, no loading delay).
+>
+> Constraints: do not trigger analyses, do not call providers, do not touch admin/cost/PDF logic, do not change report design.
+>
+> Files to edit: `src/routes/analyze.$username.tsx` only.
