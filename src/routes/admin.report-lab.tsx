@@ -156,11 +156,12 @@ function ReportLabPage() {
 
   const [profile, setProfile] = useState<string>(isPreset ? resolved.profile : TEST_PROFILES[0]);
   const [customProfile, setCustomProfile] = useState(isPreset ? "" : resolved.profile);
+  const [committedCustom, setCommittedCustom] = useState(isPreset ? "" : resolved.profile);
   const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
 
-  const activeProfile = customProfile.trim() || profile;
+  const activeProfile = committedCustom.trim() || profile;
 
   // ── Sync state → URL + localStorage ──
   useEffect(() => {
@@ -245,6 +246,7 @@ function ReportLabPage() {
               onChange={(e) => {
                 setProfile(e.target.value);
                 setCustomProfile("");
+                setCommittedCustom("");
               }}
               className="rounded-lg border border-white/30 bg-white/50 px-3 py-2 text-sm text-admin-text-primary backdrop-blur-sm"
             >
@@ -258,6 +260,8 @@ function ReportLabPage() {
               placeholder="outro username"
               value={customProfile}
               onChange={(e) => setCustomProfile(e.target.value)}
+              onBlur={() => setCommittedCustom(customProfile)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
               className="rounded-lg border border-white/30 bg-white/50 px-3 py-2 text-sm text-admin-text-primary placeholder:text-admin-text-tertiary backdrop-blur-sm w-44"
             />
           </div>
