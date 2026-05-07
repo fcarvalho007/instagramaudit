@@ -78,6 +78,14 @@ explicitly asks for a modification in a new prompt.
 ## Report Variant System (MVP variant architecture)
 - /src/lib/report/report-variant.ts
 
+## Public MVP Lock (pre-beta freeze)
+> These files control what the public sees at `/analyze/$username`.
+> Do not modify without explicit permission.
+- /src/lib/report/report-variant.ts (also listed above)
+- /src/lib/report/effective-features.ts
+- /src/routes/analyze.$username.tsx (variant="public_mvp" hardcoded)
+- /src/server/admin/variant-overrides.functions.ts
+
 When working on future features, always:
 1. Read this file first
 2. Use design tokens from tokens.css — never hardcode colors, fonts,
