@@ -52,7 +52,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   return (
     <section
       aria-label="Cabeçalho do relatório"
-      className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-3"
+      className="w-full px-5 md:px-6 pt-4 pb-3"
     >
       <div className="mx-auto max-w-[1380px]">
         {/* ── TOP BAR ────────────────────────────────────────────── */}
