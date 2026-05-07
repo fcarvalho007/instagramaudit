@@ -280,11 +280,11 @@ function AnalyzeReady({
       data: {
         eventType: "report_viewed",
         snapshotId,
-        handle: result.profile.username,
+        handle: result.data.username ?? undefined,
         metadata: { variant: "public_mvp" },
       },
     }).catch(() => {});
-  }, [snapshotId, result.profile.username]);
+  }, [snapshotId, result.data.username]);
 
   return (
     <ReportShellV2
