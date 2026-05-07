@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import { getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
 import type { VariantFeatures } from "@/lib/report/report-variant";
+import { trackEvent } from "@/lib/tracking.functions";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -272,6 +273,18 @@ function AnalyzeReady({
       .then((features) => setFeaturesOverride(features))
       .catch(() => { /* silent fallback — static defaults used */ });
   }, []);
+
+  // Track report view (fire-and-forget)
+  useEffect(() => {
+    trackEvent({
+      data: {
+        eventType: "report_viewed",
+        snapshotId,
+        handle: result.profile.username,
+        metadata: { variant: "public_mvp" },
+      },
+    }).catch(() => {});
+  }, [snapshotId, result.profile.username]);
 
   return (
     <ReportShellV2
