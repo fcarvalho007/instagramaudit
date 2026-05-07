@@ -1,56 +1,62 @@
 
-# Auditoria de prontidão — Admin Refresh Flow
+# Simplificar primeira dobra do relatório público
 
-## Resultado: PASS/FAIL por critério
+## Problema
 
-| # | Critério | Resultado | Evidência |
-|---|----------|-----------|-----------|
-| 1 | Preflight bloqueia configuração em falta | **PASS** | `refresh-profile-preflight.ts` verifica `INTERNAL_API_TOKEN`, `APIFY_ENABLED`, `APIFY_TOKEN`, allowlist e concorrência. Qualquer falha → `can_refresh: false` + `blocking_reason`. |
-| 2 | `APIFY_TOKEN` presença mostrada no modal | **PASS** | Check `apify_token` (L92-103) mostra "Presente, não validado" ou "Em falta". UI renderiza via `PreflightChecklist`. |
-| 3 | Comment scraper permanece desativado | **PASS** | Check `actor_comments` (L115-122) lê `COMMENT_SCRAPER_ENABLED`; secret está configurado mas o valor é verificado. Status `warn` quando inativo — não bloqueia. |
-| 4 | Utilizadores públicos não podem acionar provider calls | **PASS** | `analyze-public-v1.ts` L437-481: quando `execution_mode=cache_only` (default), público nunca chega ao provider. `?refresh=1` sem `Bearer INTERNAL_API_TOKEN` é ignorado silenciosamente (L387-397). |
-| 5 | Admin refresh usa token interno exclusivamente | **PASS** | `refresh-profile.ts` L180-187 exige `INTERNAL_API_TOKEN`; envia-o como `Authorization: Bearer` ao chamar `analyze-public-v1?refresh=1`. |
-| 6 | Nenhum toggle global Fresh é necessário | **PASS** | `forceRefresh=true` salta o guard `cache_only` (L437). O modo global permanece `cache_only` durante e após o refresh. |
-| 7 | Refresh com sucesso guarda snapshot | **PASS** | `storeSnapshot()` é chamado na L726 do path fresh. Confirmado na BD: snapshot `683e4c21…` com `analysis_status=ready`, `expires_at` renovado. |
-| 8 | Refresh com falha preserva cache anterior | **PASS** | L916-940: stale-while-error serve snapshot existente (≤7 dias) se o provider falhar. Nunca apaga/sobrescreve o snapshot antes de ter dados novos. |
-| 9 | Admin UI mostra erros específicos | **PASS** | `test-profiles-card.tsx` mapeia `preflight_blocked`, `provider_error_code` e `error_code` para mensagens pt-PT granulares (token inválido, actor sem dataset, parser falhou, etc.). |
-| 10 | Relatório abre a partir do novo snapshot | **PASS** | Após refresh, `analysis_events` mostra `cache` hits a servir o snapshot actualizado. O relatório `/analyze/frederico.m.carvalho` usa o mesmo `lookupSnapshot`. |
+O relatório público tem redundância visual no topo:
+1. **Header global** (AppShell) mostra "Analisar agora" — redundante quando já se está a ver um relatório
+2. **Hero top bar** repete "InstaBench · Relatórios · @handle" — contexto já coberto pelo hero card
 
-**Score: 10/10 PASS**
+## Ficheiros locked relevantes
 
----
+`header.tsx` e `app-shell.tsx` estão em `LOCKED_FILES.md`. O plano evita editá-los.
 
-## Verificações adicionais
+## Abordagem
 
-### Toggle global "Fresh" — pode ser escondido/demovido?
+### 1. Remover breadcrumb do hero (`report-hero-v2.tsx`)
 
-**Sim, recomendado.** O `ExecutionModeCard` (execution-mode-card.tsx) expõe um switch cache_only/fresh que agora é redundante para refreshes admin. Se colocado em `fresh` acidentalmente, **todo o tráfego público faz chamadas ao provider** — risco de custo elevado.
+Eliminar a top bar (L59-87) que contém:
+- "InstaBench" (logo link)
+- "Relatórios › @handle" (breadcrumb)
+- Pill de data (redundante — já aparece no COL 1 do hero)
+- "+ Novo relatório" CTA (manter, mas mover para dentro do hero card COL 3)
 
-**Recomendação:** Mover para uma secção "Avançado / Perigoso" com aviso vermelho, ou esconder completamente e deixar apenas o botão "Atualizar agora" por perfil.
+Resultado: o hero card fica como primeiro elemento visual, sem barra de navegação acima.
 
-### Fallback para URL publicada — só em preview/sandbox?
+### 2. Mover "+ Novo relatório" para COL 3 do hero card
 
-**Sim, com nuance.** `getAnalyzeUrls()` (refresh-profile.ts L49-61) tenta primeiro a URL publicada (`instagramaudit.lovable.app`) quando o origin não é o domínio publicado; depois faz fallback ao origin local. No ambiente publicado, usa directamente o origin (sem fallback externo).
+Adicionar um botão "+ Novo relatório" no topo da coluna de acções (COL 3), antes de "Exportar PDF". Estilo secundário (outline) para não competir com "Exportar PDF" como acção primária do relatório.
 
-**Risco:** Se a versão publicada estiver desatualizada face ao preview, o refresh no sandbox executa código da versão publicada, não do preview. Isto pode causar confusão durante desenvolvimento mas **não afeta produção**.
+### 3. Esconder "Analisar agora" do header global nas páginas de relatório
 
-### Confusão de ambiente?
+Como `header.tsx` é locked, a solução é via CSS no `ReportThemeWrapper` ou no route `analyze.$username.tsx`: aplicar uma classe/atributo ao body ou a um wrapper que esconde o CTA "Analisar agora" no header quando se está dentro do relatório.
 
-**Risco baixo em produção.** Em sandbox, o log `TypeError: fetch failed` nos primeiros 4 tentativas (visível nos logs) confirma que o self-fetch local falha e o fallback para a URL publicada funciona. O comportamento é aceitável para testing admin.
+Opção: no `analyze.$username.tsx`, no `beforeLoad` que já existe, adicionar `document.body.setAttribute("data-report-view", "true")` e limpar no cleanup. Depois, uma regra CSS em `styles.css`:
 
----
+```css
+[data-report-view="true"] [data-header-cta] { display: none; }
+```
 
-## Riscos residuais
+Isto requer apenas uma pequena adição ao `header.tsx` — um `data-header-cta` no botão. **Como header.tsx é locked, preciso de confirmação para adicionar este atributo.**
 
-| Risco | Severidade | Mitigação |
-|-------|------------|-----------|
-| Toggle "Fresh" global exposto e pode ser activado por engano | Médio | Mover para "Avançado" ou esconder |
-| `APIFY_TOKEN` validação é presença-only, não funcional | Baixo | Aceitável — validação real exigiria chamada paga |
-| Sandbox refresh executa código da versão publicada | Baixo | Documentar; não afeta produção |
-| Sem rate-limit no botão "Atualizar agora" além do lock de concorrência | Baixo | Lock por handle existe; considerar cooldown futuro |
+**Alternativa sem tocar no header**: aceitar que o header global aparece com "Analisar agora" e confiar no "+ Novo relatório" no hero card como CTA principal. A redundância do header é menor que a do breadcrumb.
 
----
+### Ficheiros a alterar
 
-## Veredicto
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/components/report-redesign/v2/report-hero-v2.tsx` | Remover top bar (L59-87); adicionar "+ Novo relatório" na COL 3 |
+| `src/routes/analyze.$username.tsx` | Adicionar `data-report-view` ao body (se opção header hiding aprovada) |
+| `src/styles.css` | Regra CSS para esconder CTA do header (se aprovado) |
+| `src/components/layout/header.tsx` (**LOCKED**) | Adicionar `data-header-cta` ao botão (precisa aprovação) |
 
-**BETA READY** — O pipeline de refresh admin está operacional e seguro. Todas as 10 verificações passam. Os riscos residuais são baixos e nenhum é bloqueante para beta. A única acção recomendada antes de expandir a utilizadores externos é demover/esconder o toggle global "Fresh".
+### Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Screenshot visual em `/analyze/frederico.m.carvalho`
+- Confirmar: sem breadcrumb, um só CTA primário, acções alinhadas com hero
+
+## Decisão necessária
+
+Queres que edite o `header.tsx` (locked) para adicionar o atributo `data-header-cta` e assim esconder "Analisar agora" nas páginas de relatório? Ou preferes manter o header intacto e só limpar o breadcrumb do hero?
