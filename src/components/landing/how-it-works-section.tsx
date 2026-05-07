@@ -6,13 +6,13 @@ import { HowItWorksStep } from "./how-it-works-step";
 export function HowItWorksSection() {
   return (
     <section className="relative py-24 md:py-32 overflow-hidden border-t border-border-subtle">
-      {/* HUD vertical lines background */}
+      {/* Subtle vertical lines background */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        className="absolute inset-0 opacity-[0.06] pointer-events-none"
         style={{
           backgroundImage:
-            "linear-gradient(90deg, transparent 0, transparent 79px, rgb(255 255 255) 79px, rgb(255 255 255) 80px)",
+            "linear-gradient(90deg, transparent 0, transparent 79px, rgb(15 27 61) 79px, rgb(15 27 61) 80px)",
           backgroundSize: "80px 100%",
         }}
       />
