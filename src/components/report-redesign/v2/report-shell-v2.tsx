@@ -186,7 +186,7 @@ export function ReportShellV2({
 
               {/* 05 · Procura fora do Instagram */}
               <ReportBlockSection block={procura} tone="canvas">
-                <p className="text-sm md:text-[15px] text-slate-600 leading-relaxed max-w-3xl">
+                <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
                   O Instagram mostra como a audiência atual reage. A procura
                   fora da plataforma ajuda a perceber se os mesmos temas também
                   despertam interesse em pesquisa. Os valores atuais são
