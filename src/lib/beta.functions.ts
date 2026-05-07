@@ -166,21 +166,22 @@ export const submitBetaRequest = createServerFn({ method: "POST" })
     }
 
     // Track event (fire-and-forget)
-    import("./tracking.server").then(({ recordProductEvent }) =>
+    try {
+      const { createHash } = await import("crypto");
+      const actorHash = createHash("sha256").update(emailNormalized).digest("hex");
+      const { recordProductEvent } = await import("./tracking.server");
       recordProductEvent({
         eventType: "beta_request_created",
         leadId: leadId,
         handle: data.instagramHandle,
-        actorHash: await import("crypto").then((c) =>
-          c.createHash("sha256").update(emailNormalized).digest("hex")
-        ).catch(() => null) as string | null,
+        actorHash,
         metadata: {
           user_type: data.userType,
           purpose: data.purpose,
           profile_ownership: data.profileOwnership,
         },
-      })
-    ).catch(() => {});
+      });
+    } catch { /* tracking failure must not block the response */ }
 
     return {
       success: true as const,
