@@ -1,4 +1,4 @@
-import { Check, Download, Loader2, Plus, ChevronRight, Share2, Calendar, Settings } from "lucide-react";
+import { Check, ChevronRight, Download, Loader2, Plus, Share2, Calendar, Settings } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import type {
@@ -56,35 +56,6 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
     >
       <div className="mx-auto max-w-[1380px]">
         {/* ── TOP BAR ────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 flex-wrap mb-3">
-          <Link to="/" className="text-[13px] font-bold text-content-primary tracking-tight hover:text-accent-primary transition-colors">
-            InstaBench
-          </Link>
-          <span className="text-border-default select-none text-xs" aria-hidden="true">·</span>
-          <div className="flex items-center gap-1.5 text-xs text-content-tertiary">
-            <span>Relatórios</span>
-            <ChevronRight className="size-3" aria-hidden="true" />
-            <span className="font-medium text-content-secondary">{handle}</span>
-          </div>
-          <div className="flex-1" />
-          {analysisMeta.dateLabel && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-content-tertiary">
-              <span className="size-1.5 rounded-full bg-signal-success shrink-0" aria-hidden="true" />
-              {analysisMeta.dateLabel}
-            </span>
-          )}
-          <Link
-            to="/"
-            className={cn(
-              "hidden sm:inline-flex items-center gap-1.5 rounded-lg h-9 px-4",
-              "bg-accent-primary text-white text-[13px] font-semibold shadow-sm",
-              "transition-colors duration-150 hover:bg-accent-primary/90",
-            )}
-          >
-            <Plus className="size-3.5" aria-hidden="true" />
-            Novo relatório
-          </Link>
-        </div>
 
         {/* ── HERO CARD ──────────────────────────────────────────── */}
         <div className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
@@ -203,6 +174,18 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               <span className="text-eyebrow-sm text-content-tertiary mb-1">
                 Relatório
               </span>
+              <Link
+                to="/"
+                className={cn(
+                  "w-full inline-flex items-center justify-center gap-2 rounded-lg h-9 px-4",
+                  "bg-white border border-border-default text-content-secondary text-[13px] font-medium",
+                  "transition-colors duration-150",
+                  "hover:border-accent-primary/30 hover:text-accent-primary",
+                )}
+              >
+                <Plus className="size-3.5" aria-hidden="true" />
+                Novo relatório
+              </Link>
               <button
                 type="button"
                 onClick={actions.onExportPdf}

@@ -87,13 +87,15 @@ function Header() {
               <Moon />
             </Button>
 
-            <Button
-              variant="primary"
-              rightIcon={<ArrowRight />}
-              className="hidden sm:inline-flex"
-            >
-              Analisar agora
-            </Button>
+            <span data-header-cta="">
+              <Button
+                variant="primary"
+                rightIcon={<ArrowRight />}
+                className="hidden sm:inline-flex"
+              >
+                Analisar agora
+              </Button>
+            </span>
 
             {/* Mobile drawer trigger */}
             <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -161,14 +163,16 @@ function Header() {
                   </nav>
 
                   <div className="p-6 border-t border-border-subtle">
-                    <Button
-                      variant="primary"
-                      rightIcon={<ArrowRight />}
-                      className="w-full"
-                      onClick={() => setOpen(false)}
-                    >
-                      Analisar agora
-                    </Button>
+                    <span data-header-cta="">
+                      <Button
+                        variant="primary"
+                        rightIcon={<ArrowRight />}
+                        className="w-full"
+                        onClick={() => setOpen(false)}
+                      >
+                        Analisar agora
+                      </Button>
+                    </span>
                   </div>
                 </DialogPrimitive.Content>
               </DialogPrimitive.Portal>

@@ -149,3 +149,8 @@
     font-weight: 500;
   }
 }
+
+/* Hide the global header "Analisar agora" CTA on report pages */
+[data-report-view="true"] [data-header-cta] {
+  display: none;
+}

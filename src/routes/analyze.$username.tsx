@@ -33,6 +33,7 @@ export const Route = createFileRoute("/analyze/$username")({
     // component mounts, to avoid a dark→light flash.
     if (typeof document !== "undefined") {
       document.body.setAttribute("data-theme", "light");
+      document.body.setAttribute("data-report-view", "true");
     }
   },
   validateSearch: (search: Record<string, unknown>): AnalyzeSearch => ({
@@ -138,6 +139,14 @@ function AnalyzePage() {
   const { username } = Route.useParams();
   const { vs, previewLoading } = Route.useSearch();
   const cleaned = username.replace(/^@/, "");
+
+  // Clean up report-view body attribute when leaving the page
+  useEffect(() => {
+    document.body.setAttribute("data-report-view", "true");
+    return () => {
+      document.body.removeAttribute("data-report-view");
+    };
+  }, []);
 
   // Dev-only: freeze on the loader for visual QA
   const forceLoader = previewLoading === 1;
