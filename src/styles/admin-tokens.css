@@ -183,11 +183,22 @@
 }
 
 .admin-v2 .admin-eyebrow {
-  font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   font-size: 11px;
-  font-weight: 400;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
+  color: rgb(var(--admin-neutral-600));
+  line-height: 1;
+  margin: 0;
+}
+
+.admin-v2 .admin-eyebrow-sm {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   color: rgb(var(--admin-neutral-600));
   line-height: 1;
   margin: 0;
