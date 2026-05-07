@@ -19,7 +19,7 @@ export function AdminBadge({
 }: AdminBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-lg px-2 py-[3px] text-[11px] font-normal leading-none ${className}`.trim()}
+      className={`inline-flex items-center rounded-lg px-2 py-[3px] text-[12px] font-medium leading-none ${className}`.trim()}
       style={{
         backgroundColor: ACCENT_BG_50[variant],
         color: ACCENT_TEXT[variant],
