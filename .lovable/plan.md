@@ -1,188 +1,209 @@
 
-# Design System Audit — Typography, Fonts & Consistency
+# Design Pivot — Dark Tech Noir to Iconosquare-Inspired Light Analytics
 
-## 1. Font Definitions (Confirmed)
+## 1. Current Design Drift Diagnosis
 
-**Loading** — `src/styles.css` lines 6-16: all three fonts loaded via `@fontsource` with correct weights.
+The product has three visual layers, all misaligned with the target:
 
-| Font | Weights | CSS variable | Tailwind class |
-|------|---------|-------------|----------------|
-| Fraunces | 400, 500, 600, 700 | `--font-display` | `font-display` |
-| Inter | 400, 500, 600, 700 | `--font-sans` | `font-sans` |
-| JetBrains Mono | 400, 500, 600 | `--font-mono` | `font-mono` |
+| Area | Current theme | Problem |
+|------|--------------|---------|
+| **Landing page** (/, /beta/*) | Dark navy (#0A0E1A) + cyan aurora blobs + violet glows | Heavy cinematic look, opposite of clean SaaS |
+| **Public report** (/analyze/*) | Light via `data-theme="light"` | Already closest to target — Iconosquare-pure palette exists |
+| **Admin/CRM** (/admin/*) | Separate `.admin-v2` light tokens (cream #F1EFE8) | Light but warm/editorial, not Iconosquare-clean |
+| **Auth** (/login, /signup) | Dark (inherits `:root`) | Dark backgrounds for auth forms |
 
-**Token registration** — defined in both `src/styles/tokens.css` (lines 53-55) and `src/styles.css` `@theme inline` (lines 88-90). No conflict.
+### What needs to change
 
-**Base application** — `html` element uses `var(--font-sans)` (Inter). Admin v2 wrapper `.admin-v2` also sets Inter explicitly. Correct.
+**`:root` tokens** — currently define a dark navy world. This is the default for every page that doesn't explicitly opt into light mode. The fix: make `:root` light-first (matching the Iconosquare palette).
 
----
+**`tokens-light.css`** — currently activated via `data-theme="light"` for reports. After the pivot, this file becomes redundant because `:root` will already be light. It can be kept as a no-op override or merged.
 
-## 2. Font Usage Map
+**`admin-tokens.css`** — the `.admin-v2` wrapper overrides colors to a warm cream. After the pivot, admin should inherit from the new light `:root` directly, simplifying the system.
 
-### Fraunces (Display Serif)
+**Landing components** — aurora blobs, noise overlay, glow shadows, dark gradients. All must be replaced with clean, light equivalents.
 
-| Area | Usage | Verdict |
-|------|-------|---------|
-| Landing page | H1, section headings, step titles | Correct |
-| Report public | H1 (`report-header.tsx`), section h2/h3 via `report-tokens.ts` | Correct |
-| Report redesign v2 | All card/section headings (14 files) | Correct |
-| Auth card | H1 | Correct |
-| Admin cockpit (legacy) | Section h2/h3 in cockpit panels (6 files) | Debatable — serif in light CRM |
-| Admin v2 | NOT used | Correct for CRM context |
-
-### Inter (Sans Body/UI)
-
-Used everywhere as default base. Admin v2 utility classes (`.admin-body`, `.admin-meta`, `.admin-card-title`, `.admin-section-title`, `.admin-table-cell`, `.admin-table-header`) all use Inter correctly.
-
-**Report redesign**: `text-eyebrow` and `text-eyebrow-sm` classes correctly use Inter for labels.
-
-### JetBrains Mono (Monospace)
-
-| Context | Pattern | Verdict |
-|---------|---------|---------|
-| `.admin-eyebrow` — section labels, eyebrows | JBM 11px uppercase | **VIOLATION** — memory rule: "Eyebrows = Inter uppercase, nunca font-mono" |
-| `.admin-code` — numeric KPIs | JBM 12px | Correct — raw numbers |
-| `admin.report-preview.*.tsx` — 10+ section labels | `font-mono text-[12px] uppercase` | **VIOLATION** — labels, not numbers |
-| `admin.sistema.tsx` — status text | `font-mono text-[12px]` | **VIOLATION** — text label |
-| `report-drawer.tsx` — report handle heading | `font-mono text-[18px]` | **VIOLATION** — title, not raw number |
-| `report-drawer.tsx` — provider costs, numeric values | `font-mono` | Correct — numbers |
-| `expense-section.tsx` — large stat values | `font-mono text-[2rem]`/`text-[2.5rem]` | Correct — raw numbers |
-| `top-profiles-section.tsx` — metric values | `font-mono` | Correct — numbers |
-| `metrics-section.tsx` — stat values | `font-mono` | Correct — numbers |
-| `error-investigation-modal.tsx` — error ID | `font-mono` | Correct |
-| Report public — numeric values, chart labels | `font-mono` | Correct — all numbers |
-| Report public — `text-[10px]` in `report-block-nav`, `report-diagnostic-grid-v2` | `font-mono text-[10px]` | Acceptable — decorative micro-labels |
-| Report public — `text-[11px]` in 8 components | `font-mono text-[11px]` | Acceptable — numeric data badges |
+**Gold accent** — used in product upsell components and badge variants. Replace with a softer amber/indigo approach or remove entirely.
 
 ---
 
-## 3. Typography Inconsistencies — By Severity
-
-### Critical (violates project 2-font rule)
-
-1. **`.admin-eyebrow`** (`admin-tokens.css:186-193`) — JetBrains Mono instead of Inter. Used by 15+ admin v2 components.
-2. **Report preview routes** (`admin.report-preview.snapshot.$snapshotId.tsx`, `admin.report-preview.$username.tsx`) — ~15 instances of `font-mono text-[12px] uppercase tracking-*` for section labels/eyebrows.
-3. **`admin.sistema.tsx:132`** — `font-mono text-[12px]` on status label.
-4. **`report-drawer.tsx:146`** — `font-mono text-[18px]` on report handle heading (this is a title, not a number).
-
-### Medium (missing token definitions / fallthrough)
-
-5. **`admin-eyebrow-sm`** class used in `lead-detail-sheet.tsx` (lines 392, 398, 404) but **NOT defined in `admin-tokens.css`** — falls through to global `.text-eyebrow-sm` (10px Inter). Works but fragile.
-6. **Admin cockpit legacy** (6+ panel files) uses `font-display` (Fraunces) for headings. If the admin is fully migrating to the light Inter-based v2 style, these will clash when cockpit is eventually absorbed.
-
-### Low (sub-12px text audit)
-
-7. **`text-[9px]`** found in 3 admin files (11 instances):
-   - `analysis-cost-breakdown.tsx` (2) — cost warnings
-   - `execution-mode-card.tsx` (2) — decorative labels
-   - `expense-section.tsx` (3) — micro badges
-   - `module-visibility-matrix.tsx` (3) — status chips
-
-   These are decorative/micro-labels — acceptable per rules but worth reviewing for readability.
-
-8. **`text-[11px]`** in non-admin areas:
-   - `pro-tracking-teaser.tsx`, `report-card.tsx`, `analysis-skeleton.tsx` — borderline; consider 12px.
-
----
-
-## 4. Hardcoded Colors vs Tokens
-
-**Admin report-preview routes** contain hardcoded colors (e.g., `style={{ color: "#888780" }}` in `admin.sistema.tsx:132`). These should use admin token classes.
-
----
-
-## 5. Recommended Token Consolidation
-
-### Admin Typography (update `admin-tokens.css`)
+## 2. Corrected Color Palette (Iconosquare-inspired)
 
 ```text
-Current                              Proposed change
-─────────────────────────────────    ──────────────────────────────────
-.admin-eyebrow: JBM 11px            → Inter 11px (match global .text-eyebrow)
-(missing) .admin-eyebrow-sm         → Add: Inter 10px (match global .text-eyebrow-sm)
-.admin-code: JBM 12px               → Keep (numbers only)
+Token                   Current (dark)              New (light-first)
+──────────────────────  ──────────────────────────  ──────────────────────────
+--surface-base          10 14 26   (#0A0E1A)       250 251 253  (#FAFBFD)
+--surface-secondary     20 28 46   (#141C2E)       255 255 255  (#FFFFFF)
+--surface-elevated      36 48 68   (#243044)       255 255 255  (#FFFFFF)
+--surface-overlay       42 56 80   (#2A3850)       255 255 255  (#FFFFFF)
+--surface-muted         (none)                      241 244 249  (#F1F4F9)
+
+--accent-primary         6 182 212 (#06B6D4 cyan)   55 114 229  (#3772E5 blue)
+--accent-luminous      103 232 249 (#67E8F9 neon)   79 140 255  (#4F8CFF lighter)
+--accent-violet        139  92 246 (#8B5CF6)       118 100 228  (#7664E4 soft indigo)
+--accent-violet-lum    167 139 250                  140 126 244
+--accent-violet-deep   109  40 217                   85  62 186
+--accent-gold          252 211  77 (#FCD34D)       186 117  23  (#BA7517 subtle amber)
+
+--text-primary         248 250 252 (#F8FAFC white) 15  27  61   (#0F1B3D charcoal)
+--text-secondary       148 163 184                  90 107 140   (#5A6B8C)
+--text-tertiary        100 116 139                 138 152 178   (#8A98B2)
+--text-inverse          10  14  26                 250 251 252
+
+--border-subtle        255 255 255 @0.10           15  27  61 @0.08
+--border-default       255 255 255 @0.12           15  27  61 @0.10
+--border-strong        255 255 255 @0.20           15  27  61 @0.16
+
+--signal-success        16 185 129                  29 158 117
+--signal-warning       245 158  11                 186 117  23
+--signal-danger        239  68  68                 163  45  45
+
+--shadow-sm             dark 0.2 opacity           light 0.04 opacity
+--shadow-glow-*         cyan/gold/violet glows      none (removed)
+--shadow-stage          heavy violet/navy           soft 0.08 opacity
 ```
 
-### Standardize Admin Scale
-
+### Chart series
 ```text
-Token class         Size   Font     Weight  Use for
-────────────────    ────   ──────   ──────  ────────────────────
-admin-panel-title   20px   Inter    500     Sheet/drawer titles
-admin-section-title 15px   Inter    500     Section headings (uppercase)
-admin-card-title    15px   Inter    500     Card headings
-admin-body          13px   Inter    400     Body text
-admin-table-cell    13px   Inter    400     Table data
-admin-table-header  12px   Inter    500     Table column headers (uppercase)
-admin-meta          12px   Inter    400     Secondary/timestamp text
-admin-code          12px   JBM      400     Raw numbers/IDs only
-admin-eyebrow       11px   Inter    500     Section labels (uppercase)
-admin-eyebrow-sm    10px   Inter    500     KPI micro-labels (uppercase)
-admin-badge         12px   Inter    500     AdminBadge component
+--chart-likes:     55 114 229    (primary blue)
+--chart-comments:  79 140 255    (lighter blue)
+--chart-views:     85  62 186    (deep indigo)
 ```
 
-### Report Typography (no changes needed)
+---
 
-Report area correctly uses `font-display` (Fraunces) for headings, `font-mono` for numeric values, and `text-eyebrow`/`text-eyebrow-sm` (Inter) for labels. The `report-tokens.ts` system is consistent.
+## 3. Corrected Font Rules (unchanged from current memory)
+
+| Font | Use for | Classes |
+|------|---------|---------|
+| **Inter** | All UI: body, labels, nav, buttons, forms, admin, CRM, report body copy | `font-sans` (default) |
+| **JetBrains Mono** | Scores, percentages, costs, dates, metric values, IDs | `font-mono`, `.admin-code` |
+| **Fraunces** | Selected report H1/H2, editorial hero titles, premium detail headers | `font-display` |
+
+No changes to font loading or font-family definitions.
 
 ---
 
-## 6. Files to Touch (by implementation pass)
+## 4. Structural Changes Required
 
-### Pass 1 — Fix 2-font rule violations (highest priority)
-| File | Change |
-|------|--------|
-| `src/styles/admin-tokens.css` | Change `.admin-eyebrow` to Inter; add `.admin-eyebrow-sm` |
-| `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` | Replace `font-mono` eyebrow patterns with `text-eyebrow` or `admin-eyebrow` |
-| `src/routes/admin.report-preview.$username.tsx` | Same |
-| `src/routes/admin.sistema.tsx` | Replace `font-mono` + hardcoded color on status label |
-| `src/components/admin/v2/report-drawer.tsx` | Fix handle heading (line 146): replace `font-mono` with `admin-panel-title` |
+### A. `src/styles/tokens.css` (LOCKED — needs unlock)
+- Rewrite `:root` from dark to light palette
+- Remove noise overlay (`body::before`)
+- Remove glow shadows (`--shadow-glow-*`)
+- Update shadows to soft light-mode values
+- Keep typography, spacing, radius, z-index, transitions unchanged
 
-### Pass 2 — Consolidate sub-12px text in admin
-| File | Change |
-|------|--------|
-| `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx` | Review `text-[9px]` — promote to `admin-eyebrow-sm` or `admin-meta` |
-| `src/components/admin/v2/sistema/execution-mode-card.tsx` | Same |
-| `src/components/admin/v2/visao-geral/expense-section.tsx` | Review 9px micro-badges |
-| `src/components/admin/v2/module-visibility-matrix.tsx` | Review 9px status chips |
-| `src/routes/admin.tsx` | ExecutionModeBadge `text-[11px]` — promote to `admin-eyebrow` class |
+### B. `src/styles/tokens-light.css`
+- Simplify or keep as identity override (`:root` will now match)
+- Ensure `[data-theme="light"]` still works but is essentially a no-op
+- Alternatively, repurpose for any future dark-mode opt-in
 
-### Pass 3 — Migrate legacy cockpit typography (optional, low priority)
-| File | Change |
-|------|--------|
-| `src/components/admin/cockpit/panels/*.tsx` (6 files) | Replace `font-display` headings with Inter if migrating to v2 style |
-| `src/components/admin/cockpit/parts/stat-card.tsx` | Keep `font-mono` for numbers (correct) |
-| `src/components/admin/cockpit/parts/empty-state.tsx` | Replace `font-display` with Inter |
+### C. `src/styles.css` (LOCKED — needs unlock)
+- Update `@theme inline` shadcn compatibility block to match new light `:root`
+- Remove `@custom-variant dark` if dark mode is fully removed
+- Eyebrow utilities stay unchanged
+
+### D. `src/styles/admin-tokens.css`
+- Simplify: admin can now inherit from `:root` for most tokens
+- Keep admin-specific semantic colors (revenue green, leads purple, etc.)
+- Remove `.admin-v2` base color overrides that duplicate the new `:root`
+
+### E. Landing components (ALL LOCKED — need unlock)
+- `hero-aurora-background.tsx` — replace cyan/navy aurora with soft gradient (light lilac-to-white or soft blue-to-white)
+- `hero-section.tsx` — update for light background
+- `hero-action-bar.tsx` — remove `shadow-glow-violet`
+- `how-it-works-section.tsx` — remove glow shadows
+- `how-it-works-step.tsx` — remove glow shadows
+- `mockup-dashboard.tsx` — update surface tokens
+- `product-preview-section.tsx` — update surface tokens
+- All other landing components that reference dark tokens
+
+### F. Product/upsell components
+- `report-gate-modal.tsx` — replace gold accents with soft indigo/blue
+- `post-analysis-conversion-layer.tsx` — same
+- `premium-locked-section.tsx` — remove violet glows
+- `ui/badge.tsx` (LOCKED) — update `premium` variant from gold to softer accent
+
+### G. Auth pages
+- `/login`, `/signup`, `/reset-password` — will automatically become light via `:root` change
+
+### H. Layout shell (LOCKED — needs unlock)
+- `header.tsx`, `footer.tsx`, `app-shell.tsx` — update surface/text tokens for light mode
 
 ---
 
-## 7. Files NOT to Touch
+## 5. Files NOT to Touch
 
 | Category | Files |
 |----------|-------|
-| Foundation tokens | `src/styles/tokens.css`, `src/styles/tokens-light.css`, `src/styles.css` |
-| Auto-generated | `src/integrations/supabase/*`, `src/routeTree.gen.ts` |
 | Provider/pipeline | `src/lib/orchestration/*`, `src/lib/analysis/*`, `src/lib/pdf/*` |
 | Server routes | `src/routes/api/*` |
-| Public report | `src/components/report/*`, `src/components/report-redesign/*`, `src/components/report-tier/*` |
-| Landing page | `src/components/landing/*` |
-| Cost/schema | No DB migrations, no cost formula changes |
+| Supabase | `src/integrations/supabase/*` |
+| Report generation | All server-side report logic |
+| DB schema | No migrations needed |
+| Report-redesign components | Content/logic stays; only token consumption changes (passively via `:root`) |
 
 ---
 
-## 8. Implementation Prompts
+## 6. Safe Implementation Order
 
-### Prompt 1 — Fix admin-eyebrow font + add admin-eyebrow-sm
-> In `src/styles/admin-tokens.css`, change `.admin-v2 .admin-eyebrow` font-family from JetBrains Mono to Inter (var(--font-sans)). Add `.admin-v2 .admin-eyebrow-sm` with font-family Inter, font-size 10px, font-weight 500, text-transform uppercase, letter-spacing 0.14em, line-height 1, color rgb(var(--admin-neutral-600)). This enforces the 2-font rule: Inter for all labels/eyebrows/badges, JetBrains Mono only for raw numbers. Do not touch any other file.
+### Pass 0 — Unlock files + update memory
+Update `LOCKED_FILES.md` to reflect the design pivot. Update project memory to remove dark-first rules.
 
-### Prompt 2 — Fix report-preview eyebrow patterns
-> In `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` and `src/routes/admin.report-preview.$username.tsx`, replace all `font-mono text-[12px] uppercase tracking-*` patterns used as section labels (e.g. "VISÃO GERAL", "SECÇÃO X") with the `text-eyebrow` utility class. Keep `font-mono` only where the content is a raw number, hash, or ID. Do not change the report content or data logic.
+### Pass 1 — Foundation tokens (biggest bang, lowest risk)
+1. Rewrite `src/styles/tokens.css` `:root` to the new light palette
+2. Remove noise overlay from `body::before`
+3. Simplify `src/styles/tokens-light.css` (near-identity now)
+4. Update `src/styles.css` `@theme inline` shadcn block
+5. **QA checkpoint**: every page that uses semantic tokens auto-updates
 
-### Prompt 3 — Fix report-drawer handle heading + sistema label
-> In `src/components/admin/v2/report-drawer.tsx` line 146, replace `font-mono text-[18px]` on the report handle heading with `admin-panel-title`. In `src/routes/admin.sistema.tsx` line 132, replace `font-mono text-[12px]` and the hardcoded `style={{ color: "#888780" }}` with `admin-meta text-admin-text-secondary`.
+### Pass 2 — Admin token simplification
+1. Remove `.admin-v2` base color overrides that now match `:root`
+2. Keep admin-specific semantic colors (revenue, leads, expense, etc.)
+3. **QA checkpoint**: admin pages render correctly
 
-### Prompt 4 — Consolidate 9px micro-text in admin v2
-> Review all `text-[9px]` instances in `analysis-cost-breakdown.tsx`, `execution-mode-card.tsx`, `expense-section.tsx`, and `module-visibility-matrix.tsx`. Promote informational text to `admin-eyebrow-sm` (10px) or `admin-meta` (12px). Keep `text-[9px]` only for purely decorative elements where space is extremely tight. Also promote the `text-[11px]` ExecutionModeBadge in `admin.tsx` to use the `admin-eyebrow` class.
+### Pass 3 — Landing page redesign
+1. Replace `hero-aurora-background.tsx` with a soft light gradient
+2. Update all landing components that use glow/dark effects
+3. Update layout shell (header/footer) for light mode
+4. **QA checkpoint**: landing page looks clean and premium
 
-### Prompt 5 (optional) — Legacy cockpit serif migration
-> In `src/components/admin/cockpit/panels/*.tsx` and `cockpit/parts/empty-state.tsx`, replace `font-display` (Fraunces) headings with `font-sans font-medium` (Inter) to align with the admin v2 visual system. Keep `font-display` only in `stat-card.tsx` for large numbers if desired, or convert to `font-mono` for consistency. This pass is optional and depends on whether the legacy cockpit will be kept or deprecated.
+### Pass 4 — Product/upsell components
+1. Replace gold accents with softer alternatives
+2. Remove violet/cyan glows from modals and conversion layers
+3. Update badge `premium` variant
+4. **QA checkpoint**: report gate and upsell modals render correctly
+
+### Pass 5 — Report QA (should auto-update)
+1. Verify `/analyze/$username` still renders correctly
+2. Verify admin report previews render correctly
+3. The `data-theme="light"` override should be a near-no-op now
+
+---
+
+## 7. Risk Assessment
+
+| Risk | Mitigation |
+|------|-----------|
+| Semantic token change affects ALL pages at once | Pass 1 is the most impactful — do it first, QA everything |
+| Components with hardcoded dark colors break | Search for hardcoded `rgb(10 14 26`, `#0A0E1A`, etc. and fix in same pass |
+| Report light theme becomes redundant | Keep `tokens-light.css` as identity — safe, no harm |
+| Admin `.admin-v2` conflicts with new `:root` | Simplify in Pass 2 — remove redundant overrides |
+| Gold accent removal breaks upsell hierarchy | Replace with soft indigo highlight, not just remove |
+
+---
+
+## 8. Implementation Prompt (for Pass 1)
+
+> **Prerequisite**: Unlock `src/styles/tokens.css`, `src/styles.css`, and `LOCKED_FILES.md` for this design pivot.
+>
+> Rewrite the `:root` block in `src/styles/tokens.css` to a light-first Iconosquare-inspired palette:
+> - Surfaces: #FAFBFD base, #FFFFFF cards, #F1F4F9 muted
+> - Accents: #3772E5 primary blue, #4F8CFF luminous, #7664E4 soft violet, #BA7517 subtle amber
+> - Text: #0F1B3D primary, #5A6B8C secondary, #8A98B2 tertiary
+> - Borders: navy base at low alpha (0.08/0.10/0.16)
+> - Shadows: soft light shadows (0.04 opacity), remove all glow shadows
+> - Remove the `body::before` noise overlay
+> - Keep all typography, spacing, radius, z-index, and transition tokens unchanged
+> - Update `src/styles.css` `@theme inline` shadcn compatibility section
+> - Do NOT touch any component files in this pass
+> - Validate: `bunx tsc --noEmit` and `bunx vitest run`

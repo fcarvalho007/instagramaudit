@@ -6,13 +6,13 @@ import { HowItWorksStep } from "./how-it-works-step";
 export function HowItWorksSection() {
   return (
     <section className="relative py-24 md:py-32 overflow-hidden border-t border-border-subtle">
-      {/* HUD vertical lines background */}
+      {/* Subtle vertical lines background */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        className="absolute inset-0 opacity-[0.06] pointer-events-none"
         style={{
           backgroundImage:
-            "linear-gradient(90deg, transparent 0, transparent 79px, rgb(255 255 255) 79px, rgb(255 255 255) 80px)",
+            "linear-gradient(90deg, transparent 0, transparent 79px, rgb(15 27 61) 79px, rgb(15 27 61) 80px)",
           backgroundSize: "80px 100%",
         }}
       />
@@ -55,8 +55,7 @@ export function HowItWorksSection() {
           {/* Node on step 02 icon */}
           <div
             aria-hidden="true"
-            className="hidden md:block absolute top-[30px] left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-accent-violet-luminous pointer-events-none"
-            style={{ boxShadow: "var(--shadow-glow-violet)" }}
+            className="hidden md:block absolute top-[30px] left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-accent-violet pointer-events-none"
           />
           {/* Node on step 03 icon */}
           <div

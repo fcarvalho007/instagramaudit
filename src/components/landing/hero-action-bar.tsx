@@ -108,7 +108,7 @@ export function HeroActionBar() {
               variant="primary"
               size="lg"
               rightIcon={<ArrowRight />}
-              className="w-full sm:w-auto sm:h-14 px-6 sm:px-8 whitespace-nowrap shadow-glow-violet"
+              className="w-full sm:w-auto sm:h-14 px-6 sm:px-8 whitespace-nowrap shadow-md"
             >
               Analisar
             </Button>

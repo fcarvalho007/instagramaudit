@@ -1,34 +1,29 @@
 /* === LIGHT THEME OVERRIDE ===
- * Activated only when [data-theme="light"] is set on <body>.
- * Used by /report/example (and admin report previews) to switch from
- * "Editorial Tech Noir" (dark) to the unified "Iconosquare-pure" light
- * palette: deep editorial navy on a near-white background, hairline cards,
- * one accent blue, semantic signals only when the data demands it.
- *
- * Components keep their existing semantic Tailwind classes
- * (bg-surface-secondary, text-content-primary, border-border-default…).
- * Repainting the underlying tokens here is what makes the visual switch
- * happen without touching every component.
+ * Since the design pivot to light-first (May 2026), :root is already
+ * light. This file exists as an identity override so existing
+ * data-theme="light" attributes on report pages don't break.
+ * The only meaningful overrides here are the report-specific accent
+ * (single editorial blue) and suppression of noise/selection styling.
  */
 
 [data-theme="light"] {
   /* === COLORS — Surface === */
-  --surface-base: 250 251 253;       /* #FAFBFD near-white page background */
-  --surface-secondary: 255 255 255;  /* #FFFFFF pure white card surface    */
+  --surface-base: 250 251 253;       /* identity — matches :root */
+  --surface-secondary: 255 255 255;
   --surface-elevated: 255 255 255;
   --surface-overlay: 255 255 255;
-  --surface-muted: 241 244 249;      /* #F1F4F9 hairline track / chart bg  */
+  --surface-muted: 241 244 249;
 
   /* === COLORS — Accent ===
-   * Single editorial blue. Anything decorative was demoted to the same blue
-   * so the report no longer mixes purple/cyan/indigo families.
+   * Report uses a single editorial blue — slightly different from the
+   * global accent to keep reports visually distinct.
    */
   --accent-primary:   37  99 217;    /* #2563D9 editorial blue            */
   --accent-luminous:  59 130 246;    /* #3B82F6 hover/lighter             */
   --accent-secondary: 37  99 217;
   --accent-tertiary:  37  99 217;
   --accent-gold:     186 117  23;    /* #BA7517 amber alert (rare)        */
-  --accent-violet:    37  99 217;
+  --accent-violet:    37  99 217;    /* collapsed to blue for reports     */
   --accent-violet-luminous: 59 130 246;
   --accent-violet-deep:     30  78 173;
 
@@ -36,19 +31,7 @@
   --signal-success:  29 158 117;     /* #1D9E75 calmer, more editorial    */
   --signal-warning: 186 117  23;     /* #BA7517 amber                     */
   --signal-danger:  163  45  45;     /* #A32D2D deeper red                */
-  --signal-neutral:  90 107 140;     /* matches --text-secondary          */
-
-  /* === COLORS — Tinted backgrounds for icon containers / status pills ===
-   * Lighter, less saturated than v1 so they don't read as "filled cards"
-   * inside a unified white-card layout.
-   */
-  --tint-primary: 239 244 251;       /* matches --insight-default-bg      */
-  --tint-success: 239 248 244;
-  --tint-warning: 250 244 232;
-  --tint-danger:  251 239 239;
-  --tint-neutral: 241 244 249;
-  --tint-indigo:  239 244 251;
-  --tint-cyan:    239 244 251;
+  --signal-neutral:  90 107 140;
 
   /* === COLORS — Text === */
   --text-primary:    15  27  61;     /* #0F1B3D editorial navy            */
@@ -56,68 +39,25 @@
   --text-tertiary:  138 152 178;     /* #8A98B2 (still readable on white) */
   --text-inverse: 250 251 252;
 
-  /* === COLORS — Border ===
-   * Hairline values use --border-default at 0.12 opacity (see styles.css
-   * @theme inline). To get the desired #E8EDF5 visual hairline on white
-   * we need a high base RGB — using a near-black navy at 0.12 yields a
-   * very subtle blue-grey line that matches the spec.
-   */
+  /* === COLORS — Border === */
   --border-subtle:  15  27  61;
   --border-default: 15  27  61;
   --border-strong:  15  27  61;
 
-  /* === SHADOWS — soft Iconosquare card === */
-  --shadow-sm: 0 1px 2px rgb(15 27 61 / 0.04);
-  --shadow-md: 0 1px 3px rgb(15 27 61 / 0.04),
-               0 4px 16px rgb(15 27 61 / 0.04);
-  --shadow-lg: 0 4px 6px rgb(15 27 61 / 0.05),
-               0 2px 4px rgb(15 27 61 / 0.03);
-  --shadow-xl: 0 10px 20px rgb(15 27 61 / 0.06),
-               0 4px 8px rgb(15 27 61 / 0.04);
-  --shadow-card: 0 1px 3px rgb(15 27 61 / 0.04),
-                 0 4px 16px rgb(15 27 61 / 0.04);
+  /* === SHADOWS — identity (matches :root now) === */
   --shadow-glow-cyan: none;
   --shadow-glow-gold: none;
   --shadow-glow-violet: none;
-  --shadow-stage: 0 10px 30px -10px rgb(15 27 61 / 0.08);
-
-  /* === Insight box variants === */
-  --insight-default-bg:      239 244 251;
-  --insight-default-border:  181 212 244;
-  --insight-default-icon:     24  95 165;
-  --insight-default-text:     12  68 124;
-
-  --insight-positive-bg:     239 248 244;
-  --insight-positive-border: 159 225 203;
-  --insight-positive-icon:    15 110  86;
-  --insight-positive-text:     8  80  65;
-
-  --insight-negative-bg:     251 239 239;
-  --insight-negative-border: 240 149 149;
-  --insight-negative-icon:   163  45  45;
-  --insight-negative-text:   121  31  31;
-
-  --insight-neutral-bg:      241 239 232;
-  --insight-neutral-border:  211 209 199;
-  --insight-neutral-icon:     95  94  90;
-  --insight-neutral-text:     68  68  65;
 
   /* === Chart series ===
-   * Iconosquare-pure: a single editorial blue with two luminance steps.
-   * Anything decorative is demoted to the same blue family so the temporal
-   * chart no longer mixes purple/cyan/indigo against the white card.
+   * Report-specific: single blue family for temporal charts.
    */
   --chart-likes:    37  99 217;   /* --accent-primary */
   --chart-comments: 59 130 246;   /* --accent-luminous */
   --chart-views:    30  78 173;   /* --accent-violet-deep (deep blue) */
 }
 
-/* Disable cinematic noise overlay in light mode — would feel grainy */
-body[data-theme="light"]::before {
-  display: none !important;
-}
-
-/* Lighter selection in light mode */
+/* Selection override for report light mode */
 body[data-theme="light"] ::selection {
   background-color: rgb(37 99 217 / 0.18);
   color: rgb(15 27 61);

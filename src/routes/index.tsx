@@ -54,7 +54,7 @@ function Home() {
                   className="size-4 text-signal-success"
                   aria-hidden="true"
                 />
-                <span className="font-mono text-xs uppercase tracking-wide text-content-tertiary">
+                <span className="text-eyebrow text-content-tertiary">
                   {point}
                 </span>
               </div>
@@ -76,14 +76,14 @@ function Home() {
             <Link
               to="/analyze/$username"
               params={{ username: "frederico.m.carvalho" }}
-              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-cyan/40"
+              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-primary/40"
             >
               <ExternalLink className="size-3.5" aria-hidden="true" />
               Report live · frederico.m.carvalho
             </Link>
             <Link
               to="/report/example"
-              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-cyan/40"
+              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-primary/40"
             >
               <ExternalLink className="size-3.5" aria-hidden="true" />
               Report mockup editorial
