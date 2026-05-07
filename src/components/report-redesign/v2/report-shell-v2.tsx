@@ -277,6 +277,7 @@ export function ReportShellV2({
         <div className="h-20 lg:hidden" aria-hidden="true" />
       </div>
     </ReportDataProvider>
+    </VariantFeaturesOverrideProvider>
     </ReportVariantProvider>
   );
 }
