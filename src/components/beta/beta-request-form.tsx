@@ -343,7 +343,7 @@ export function BetaRequestForm() {
           </div>
 
           <div className="flex gap-3">
-            <Button variant="outline" onClick={back} className="flex-1">
+            <Button variant="secondary" onClick={back} className="flex-1">
               <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
             </Button>
             <Button onClick={next} className="flex-1">
@@ -453,7 +453,7 @@ export function BetaRequestForm() {
           )}
 
           <div className="flex gap-3">
-            <Button variant="outline" onClick={back} className="flex-1" disabled={submitting}>
+            <Button variant="secondary" onClick={back} className="flex-1" disabled={submitting}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
             </Button>
             <Button onClick={handleSubmit} className="flex-1" disabled={submitting}>
