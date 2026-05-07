@@ -33,6 +33,7 @@ export const Route = createFileRoute("/analyze/$username")({
     // component mounts, to avoid a dark→light flash.
     if (typeof document !== "undefined") {
       document.body.setAttribute("data-theme", "light");
+      document.body.setAttribute("data-report-view", "true");
     }
   },
   validateSearch: (search: Record<string, unknown>): AnalyzeSearch => ({
