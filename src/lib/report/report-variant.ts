@@ -14,15 +14,30 @@ export type ReportVariant = "public_mvp" | "internal_lab" | "pro_preview";
 
 /**
  * Per-feature visibility for a given variant.
- *   "full"    — render normally
- *   "teaser"  — render a locked/teaser placeholder
- *   "hidden"  — do not render at all
+ *   "full"        — render normally
+ *   "lightweight" — render a simplified/reduced version
+ *   "teaser"      — render a locked/teaser placeholder
+ *   "hidden"      — do not render at all
  */
-export type FeatureVisibility = "full" | "teaser" | "hidden";
+export type FeatureVisibility = "full" | "lightweight" | "teaser" | "hidden";
 
 export interface VariantFeatures {
+  /** Overview hero + KPI cards */
+  overviewHeroKpis: FeatureVisibility;
+  /** Diagnostic cards Q01–Q07 */
+  diagnosticQ01Q07: FeatureVisibility;
+  /** P05 post-level conversation metrics */
+  conversationPostLevel: FeatureVisibility;
   /** Q05 detailed comment intelligence (from comment scraper) */
   commentIntelligence: FeatureVisibility;
+  /** Caption semantic diagnostics (P04) */
+  captionsDiagnostics: FeatureVisibility;
+  /** Market signals section */
+  marketSignals: FeatureVisibility;
+  /** Benchmark gauge */
+  benchmarkGauge: FeatureVisibility;
+  /** Methodology section */
+  methodology: FeatureVisibility;
   /** Beta feedback banner */
   betaFeedbackBanner: FeatureVisibility;
   /** Show debug/internal labels (e.g. "em desenvolvimento", "payload") */
@@ -31,20 +46,56 @@ export interface VariantFeatures {
 
 const VARIANT_FEATURES: Record<ReportVariant, VariantFeatures> = {
   public_mvp: {
+    overviewHeroKpis: "full",
+    diagnosticQ01Q07: "full",
+    conversationPostLevel: "full",
     commentIntelligence: "hidden",
+    captionsDiagnostics: "lightweight",
+    marketSignals: "full",
+    benchmarkGauge: "full",
+    methodology: "full",
     betaFeedbackBanner: "full",
     debugLabels: "hidden",
   },
   internal_lab: {
+    overviewHeroKpis: "full",
+    diagnosticQ01Q07: "full",
+    conversationPostLevel: "full",
     commentIntelligence: "full",
+    captionsDiagnostics: "full",
+    marketSignals: "full",
+    benchmarkGauge: "full",
+    methodology: "full",
     betaFeedbackBanner: "hidden",
     debugLabels: "full",
   },
   pro_preview: {
+    overviewHeroKpis: "full",
+    diagnosticQ01Q07: "full",
+    conversationPostLevel: "full",
     commentIntelligence: "teaser",
+    captionsDiagnostics: "lightweight",
+    marketSignals: "full",
+    benchmarkGauge: "full",
+    methodology: "full",
     betaFeedbackBanner: "hidden",
     debugLabels: "hidden",
   },
+};
+
+// ── Display labels for admin UI ───────────────────────────────────
+
+export const FEATURE_LABELS: Record<keyof VariantFeatures, string> = {
+  overviewHeroKpis: "Overview (Hero + KPIs)",
+  diagnosticQ01Q07: "Diagnostic (Q01–Q07)",
+  conversationPostLevel: "P05 Conversa (post-level)",
+  commentIntelligence: "P05 Comment Intelligence",
+  captionsDiagnostics: "Legendas (P04)",
+  marketSignals: "Market Signals",
+  benchmarkGauge: "Benchmark Gauge",
+  methodology: "Metodologia",
+  betaFeedbackBanner: "Beta Feedback",
+  debugLabels: "Debug labels",
 };
 
 export function getVariantFeatures(variant: ReportVariant): VariantFeatures {

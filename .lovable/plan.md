@@ -1,27 +1,77 @@
 
-# QA Audit — Report Lab & Report Variant System
+# Centralize Report Lab Module Visibility Table
 
-## PASS/FAIL Table
+## Assessment: FAIL — duplication exists
 
-| # | Check | Result | Evidence |
-|---|-------|--------|----------|
-| 1 | `/admin/report-lab` is admin-only | **PASS** | Route is `admin.report-lab.tsx` — child of `/admin` layout (`admin.tsx`), which wraps all children in `AdminAuthShell` (email allowlist gate). No public path exposes this component. |
-| 2 | Report Lab switcher changes only local state | **PASS** | `useState<ReportVariant>("internal_lab")` at line 123 of `admin.report-lab.tsx`. The selected variant is passed as a prop to `ReportShellV2`; no global store, no URL param, no context mutation. |
-| 3 | Switching variants does not affect public route | **PASS** | Public route hardcodes `variant="public_mvp"` (line 271 of `analyze.$username.tsx`). Report Lab uses its own local state. `ReportVariantProvider` is scoped inside each `ReportShellV2` instance (lines 92-274 of `report-shell-v2.tsx`). |
-| 4 | `/analyze/$username` fixed to `public_mvp` | **PASS** | Line 271: `variant="public_mvp"` — hardcoded string literal, no conditional. |
-| 5 | `/admin/report-preview/$username` fixed to `internal_lab` | **PASS** | Line 201: `variant="internal_lab"`. |
-| 6 | `/admin/report-preview/snapshot/$snapshotId` fixed to `internal_lab` | **PASS** | Line 223: `variant="internal_lab"`. |
-| 7 | Public report never shows admin/debug UI | **PASS** | No references to Report Lab, variant switcher, module visibility table, or admin controls exist in `analyze.$username.tsx` or any report-redesign component. `debugLabels` feature is `"hidden"` for `public_mvp` (in `report-variant.ts`), gating all debug labels in `caption-diagnostics-card.tsx`, `visual-cover-analysis-card.tsx`, and `report-comment-intelligence.tsx`. |
-| 8 | `public_mvp` hides detailed comment intelligence | **PASS** | `commentIntelligence` is `"hidden"` for `public_mvp`. When unavailable, `CommentIntelligenceUnavailable` checks `features.debugLabels === "hidden"` (line 287-291) and renders the Pro teaser instead of technical details. |
-| 9 | `internal_lab` shows full comment intelligence | **PASS** | `commentIntelligence` is `"full"` for `internal_lab`. `debugLabels` is `"full"`, so the component renders full technical detail (lines 310-340). |
-| 10 | No provider calls during QA | **PASS** | This audit was read-only code inspection. No browser navigation, no API calls, no snapshot fetches. Network requests in context are pre-existing admin expense queries unrelated to this audit. |
+### Current Duplication Risk
 
-## Issues Found
+`report-variant.ts` defines `VARIANT_FEATURES` with 3 keys: `commentIntelligence`, `betaFeedbackBanner`, `debugLabels`.
 
-None.
+`admin.report-lab.tsx` defines a separate `MODULE_VISIBILITY` array with 10 rows, using free-form strings ("Full", "Lightweight", "Hidden", "Teaser"). Only 3 of the 10 rows map to features in the central config. The other 7 rows (Overview, Diagnostic, Captions, Market Signals, Benchmark, Methodology, P05 post-level) are hardcoded as "Full" or "Lightweight" with no backing config — if a future change hides one of these modules in `public_mvp`, the table would show stale data.
 
-## Recommended Next Implementation Prompt
+Additionally, "Lightweight" is used for Captions but is not a value in `FeatureVisibility` (`"full" | "teaser" | "hidden"`), meaning the type system does not cover it.
 
-The variant system and Report Lab are solid. Suggested next step:
+### Proposed Central Config Shape
 
-> **Full public_mvp string audit** — Open the public report in Report Lab with `public_mvp` selected and visually scan every section for any remaining technical/internal strings (e.g. "enrichment", "em desenvolvimento", "payload", raw JSON labels, English fallback copy). This requires navigating the browser to `/admin/report-lab`, selecting Public MVP, and inspecting the rendered output for a real cached profile.
+**1. Expand `VariantFeatures` in `report-variant.ts`** to cover all reportable modules:
+
+```ts
+export type FeatureVisibility = "full" | "lightweight" | "teaser" | "hidden";
+
+export interface VariantFeatures {
+  overviewHeroKpis: FeatureVisibility;
+  diagnosticQ01Q07: FeatureVisibility;
+  conversationPostLevel: FeatureVisibility;
+  commentIntelligence: FeatureVisibility;
+  captionsDiagnostics: FeatureVisibility;
+  marketSignals: FeatureVisibility;
+  benchmarkGauge: FeatureVisibility;
+  methodology: FeatureVisibility;
+  betaFeedbackBanner: FeatureVisibility;
+  debugLabels: FeatureVisibility;
+}
+```
+
+**2. Add a display-name map** (exported, for the admin table):
+
+```ts
+export const FEATURE_LABELS: Record<keyof VariantFeatures, string> = {
+  overviewHeroKpis: "Overview (Hero + KPIs)",
+  diagnosticQ01Q07: "Diagnostic (Q01–Q07)",
+  conversationPostLevel: "P05 Conversa (post-level)",
+  commentIntelligence: "P05 Comment Intelligence",
+  captionsDiagnostics: "Legendas (P04)",
+  marketSignals: "Market Signals",
+  benchmarkGauge: "Benchmark Gauge",
+  methodology: "Metodologia",
+  betaFeedbackBanner: "Beta Feedback",
+  debugLabels: "Debug labels",
+};
+```
+
+**3. Update `VARIANT_FEATURES`** to include all keys (new keys are `"full"` or `"lightweight"` matching current actual behavior).
+
+**4. Rewrite `ModuleVisibilityTable` in `admin.report-lab.tsx`** to import `VARIANT_FEATURES`, `FEATURE_LABELS`, and iterate over the keys — no local `MODULE_VISIBILITY` array.
+
+### Files to Touch
+
+| File | Change |
+|------|--------|
+| `src/lib/report/report-variant.ts` | Add `"lightweight"` to `FeatureVisibility`, expand `VariantFeatures` interface, expand `VARIANT_FEATURES` map, export `FEATURE_LABELS` |
+| `src/routes/admin.report-lab.tsx` | Remove `MODULE_VISIBILITY` array and `ModuleRow` interface, rewrite `ModuleVisibilityTable` to derive from central config |
+
+### Files NOT to Touch
+
+- `report-shell-v2.tsx`, `report-comment-intelligence.tsx`, `caption-diagnostics-card.tsx`, `visual-cover-analysis-card.tsx` — no behavior change
+- Any provider, cost, PDF, or Supabase files
+- `tokens.css`, `styles.css`, `admin-tokens.css`
+
+### Behavior Unchanged
+
+The new keys (`overviewHeroKpis`, `diagnosticQ01Q07`, etc.) will all be `"full"` for every variant in this step — no rendering logic reads them yet. Existing keys (`commentIntelligence`, `betaFeedbackBanner`, `debugLabels`) keep their current values. Components that already check `useVariantFeatures()` continue to work identically.
+
+### Implementation Order
+
+1. Update `report-variant.ts`: add `"lightweight"` to union, expand interface + map, export `FEATURE_LABELS`.
+2. Update `admin.report-lab.tsx`: delete local `MODULE_VISIBILITY`, rewrite table to iterate `FEATURE_LABELS` keys and read from `getVariantFeatures()`.
+3. Validate: `tsc --noEmit` + `vitest run`.
