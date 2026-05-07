@@ -278,8 +278,8 @@ const UNAVAILABLE_REASONS: Record<string, { title: string; body: string }> = {
 export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {
   const reason = data?.reason;
   const info = reason ? UNAVAILABLE_REASONS[reason] : undefined;
-  const title = info?.title ?? "A aguardar análise de comentários";
-  const body = info?.body ?? "A análise de comentários não ficou disponível nesta execução.";
+  const title = info?.title ?? "Análise de comentários indisponível";
+  const body = info?.body ?? "O relatório base utiliza métricas agregadas de interação. A análise detalhada de comentários poderá ser incluída numa versão futura.";
   const isProcessing = reason === "processing";
 
   return (
