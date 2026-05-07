@@ -53,7 +53,8 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
           .order("created_at", { ascending: false });
 
         // Build map: lead_id → latest request
-        const requestByLead = new Map<string, (typeof requests)[0]>();
+        type ReqRow = NonNullable<typeof requests>[number];
+        const requestByLead = new Map<string, ReqRow>();
         if (requests) {
           for (const r of requests) {
             if (!requestByLead.has(r.lead_id)) {
