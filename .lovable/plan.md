@@ -1,77 +1,62 @@
 
-# Centralize Report Lab Module Visibility Table
+# Report Lab: Shareable URLs + Remembered Selection
 
-## Assessment: FAIL — duplication exists
+## Readiness: PASS
 
-### Current Duplication Risk
+The route already uses local `useState` for `profile`, `customProfile`, and `variant`. Adding `validateSearch` and localStorage persistence is straightforward with no risk to other routes.
 
-`report-variant.ts` defines `VARIANT_FEATURES` with 3 keys: `commentIntelligence`, `betaFeedbackBanner`, `debugLabels`.
+## Proposed Implementation
 
-`admin.report-lab.tsx` defines a separate `MODULE_VISIBILITY` array with 10 rows, using free-form strings ("Full", "Lightweight", "Hidden", "Teaser"). Only 3 of the 10 rows map to features in the central config. The other 7 rows (Overview, Diagnostic, Captions, Market Signals, Benchmark, Methodology, P05 post-level) are hardcoded as "Full" or "Lightweight" with no backing config — if a future change hides one of these modules in `public_mvp`, the table would show stale data.
-
-Additionally, "Lightweight" is used for Captions but is not a value in `FeatureVisibility` (`"full" | "teaser" | "hidden"`), meaning the type system does not cover it.
-
-### Proposed Central Config Shape
-
-**1. Expand `VariantFeatures` in `report-variant.ts`** to cover all reportable modules:
+### 1. Add `validateSearch` to the route config
 
 ```ts
-export type FeatureVisibility = "full" | "lightweight" | "teaser" | "hidden";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-export interface VariantFeatures {
-  overviewHeroKpis: FeatureVisibility;
-  diagnosticQ01Q07: FeatureVisibility;
-  conversationPostLevel: FeatureVisibility;
-  commentIntelligence: FeatureVisibility;
-  captionsDiagnostics: FeatureVisibility;
-  marketSignals: FeatureVisibility;
-  benchmarkGauge: FeatureVisibility;
-  methodology: FeatureVisibility;
-  betaFeedbackBanner: FeatureVisibility;
-  debugLabels: FeatureVisibility;
-}
+const labSearchSchema = z.object({
+  profile: fallback(z.string(), "").default(""),
+  variant: fallback(
+    z.enum(["public_mvp", "internal_lab", "pro_preview"]),
+    "internal_lab",
+  ).default("internal_lab"),
+});
+
+export const Route = createFileRoute("/admin/report-lab")({
+  validateSearch: zodValidator(labSearchSchema),
+  component: ReportLabPage,
+});
 ```
 
-**2. Add a display-name map** (exported, for the admin table):
+### 2. Initialize state from: query params > localStorage > defaults
 
-```ts
-export const FEATURE_LABELS: Record<keyof VariantFeatures, string> = {
-  overviewHeroKpis: "Overview (Hero + KPIs)",
-  diagnosticQ01Q07: "Diagnostic (Q01–Q07)",
-  conversationPostLevel: "P05 Conversa (post-level)",
-  commentIntelligence: "P05 Comment Intelligence",
-  captionsDiagnostics: "Legendas (P04)",
-  marketSignals: "Market Signals",
-  benchmarkGauge: "Benchmark Gauge",
-  methodology: "Metodologia",
-  betaFeedbackBanner: "Beta Feedback",
-  debugLabels: "Debug labels",
-};
-```
+On mount, `Route.useSearch()` provides validated params. If `profile` is empty, check localStorage key `admin.report-lab.last` (JSON `{ profile, variant }`). If still empty, fall back to `"frederico.m.carvalho"` / `"internal_lab"`.
 
-**3. Update `VARIANT_FEATURES`** to include all keys (new keys are `"full"` or `"lightweight"` matching current actual behavior).
+### 3. Sync state changes back to URL + localStorage
 
-**4. Rewrite `ModuleVisibilityTable` in `admin.report-lab.tsx`** to import `VARIANT_FEATURES`, `FEATURE_LABELS`, and iterate over the keys — no local `MODULE_VISIBILITY` array.
+When profile or variant changes, call `navigate({ search: ... })` with the new values (no reload) and write to localStorage.
 
-### Files to Touch
+### 4. "Copy current lab URL" button
+
+Already partially exists (there are copy buttons). Add a dedicated button that copies the full URL including current `?profile=...&variant=...` params to clipboard.
+
+### 5. Distinguish preset vs custom profile
+
+If the search param `profile` matches a `TEST_PROFILES` entry, set the dropdown. Otherwise treat it as a custom profile input.
+
+## Files to Touch
 
 | File | Change |
 |------|--------|
-| `src/lib/report/report-variant.ts` | Add `"lightweight"` to `FeatureVisibility`, expand `VariantFeatures` interface, expand `VARIANT_FEATURES` map, export `FEATURE_LABELS` |
-| `src/routes/admin.report-lab.tsx` | Remove `MODULE_VISIBILITY` array and `ModuleRow` interface, rewrite `ModuleVisibilityTable` to derive from central config |
+| `src/routes/admin.report-lab.tsx` | Add `validateSearch`, replace `useState` init with search-param-aware logic, add localStorage read/write, add navigate calls on state change, add copy-lab-URL button |
 
-### Files NOT to Touch
+## Files NOT to Touch
 
-- `report-shell-v2.tsx`, `report-comment-intelligence.tsx`, `caption-diagnostics-card.tsx`, `visual-cover-analysis-card.tsx` — no behavior change
-- Any provider, cost, PDF, or Supabase files
-- `tokens.css`, `styles.css`, `admin-tokens.css`
+Everything else — no report components, no variant config, no provider/cost/PDF files, no public routes.
 
-### Behavior Unchanged
+## Risks & Mitigations
 
-The new keys (`overviewHeroKpis`, `diagnosticQ01Q07`, etc.) will all be `"full"` for every variant in this step — no rendering logic reads them yet. Existing keys (`commentIntelligence`, `betaFeedbackBanner`, `debugLabels`) keep their current values. Components that already check `useVariantFeatures()` continue to work identically.
-
-### Implementation Order
-
-1. Update `report-variant.ts`: add `"lightweight"` to union, expand interface + map, export `FEATURE_LABELS`.
-2. Update `admin.report-lab.tsx`: delete local `MODULE_VISIBILITY`, rewrite table to iterate `FEATURE_LABELS` keys and read from `getVariantFeatures()`.
-3. Validate: `tsc --noEmit` + `vitest run`.
+| Risk | Mitigation |
+|------|-----------|
+| URL update on every keystroke in custom profile input | Only update URL on blur/submit of custom input, not on every keystroke |
+| localStorage SSR access | Guard with `typeof window !== "undefined"` |
+| Stale localStorage pointing to deleted profile | The snapshot loader already handles missing profiles gracefully (shows "missing" state) |
