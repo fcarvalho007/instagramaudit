@@ -43,7 +43,6 @@ import {
   Link2,
   ClipboardCheck,
 } from "lucide-react";
-import { isModuleLocked } from "@/lib/report/effective-features";
 import { Loader2, Lock } from "lucide-react";
 import { ModuleVisibilityMatrix } from "@/components/admin/v2/module-visibility-matrix";
 import { readAdminEmail } from "@/lib/admin/simple-gate";
@@ -164,7 +163,6 @@ function ReportLabPage() {
   const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
-  const [showResolver, setShowResolver] = useState(false);
 
   const activeProfile = committedCustom.trim() || profile;
 
