@@ -73,14 +73,14 @@ export function SuggestionsSection() {
             <AdminCard key={s.id} variant="accent-left" accent="signal">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <AdminBadge variant="signal">{TYPE_LABEL[s.type]}</AdminBadge>
-                <span className="text-[10px] text-admin-text-tertiary">
+                <span className="text-[11px] text-admin-text-tertiary">
                   {new Date(s.created_at).toLocaleDateString("pt-PT")}
                 </span>
               </div>
               {s.reason ? (
                 <p className="text-[12px] text-admin-text-primary mb-2">{s.reason}</p>
               ) : null}
-              <pre className="mb-3 rounded border border-admin-border bg-admin-bg-hover p-2 text-[10px] font-mono text-admin-text-secondary overflow-x-auto whitespace-pre-wrap">
+              <pre className="mb-3 rounded border border-admin-border bg-admin-bg-hover p-2 text-[11px] font-mono text-admin-text-secondary overflow-x-auto whitespace-pre-wrap">
 {JSON.stringify(s.payload, null, 2)}
               </pre>
               <div className="flex justify-end gap-2">
