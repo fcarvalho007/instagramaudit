@@ -42,7 +42,7 @@ export function AnalysisErrorState({
               {isCacheOnly
                 ? CACHE_ONLY_BODY
                 : (message ??
-                "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes."}
+                "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes."
               )}
             </p>
           </div>
