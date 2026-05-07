@@ -1,19 +1,40 @@
 
-# Provider Call Path Audit — Final Results
+# Visual QA Audit — Public Report
 
-| # | Check | Result | Evidence |
-|---|-------|--------|----------|
-| 1 | Public users cannot trigger providers | **PASS** | `analyze-public-v1` L437: `if (!forceRefresh)` enforces `cache_only` guard. `forceRefresh` requires valid `INTERNAL_API_TOKEN` (L387-398). Additional gates: allowlist (L488-506), APIFY_ENABLED kill-switch (L522-558). |
-| 2 | Admin refresh uses internal token | **PASS** | `refresh-profile` L54: `Authorization: Bearer ${internalToken}`. Pre-flight at L116-123. No global mode mutation. |
-| 3 | Admin beta report uses internal token | **PASS** | `generate-beta-report` L135: `Authorization: Bearer ${internalToken}`. Pre-flight at L78-86. No execution mode check. |
-| 4 | Global Fresh mode no longer required | **PASS** | Neither `refresh-profile` nor `generate-beta-report` import or check `getAnalysisExecutionMode`. Both use `?refresh=1` + internal token to bypass `cache_only` inside `analyze-public-v1`. |
-| 5 | `cache_only` is the safe steady-state | **PASS** | Global mode defaults to `cache_only`. Public requests obey it. Admin requests bypass via authenticated `forceRefresh` only. |
-| 6 | Provider kill switches respected | **PASS** | `APIFY_ENABLED` checked in `refresh-profile` (L126), `generate-beta-report` (L88-94), and `analyze-public-v1` (L522). `DATAFORSEO_ENABLED` gated in its own allowlist module. |
-| 7 | `COMMENT_SCRAPER_ENABLED=false` | **PASS** | `analyze-public-v1` L828: defaults to `"false"`, requires explicit `"true"`. |
-| 8 | Missing `INTERNAL_API_TOKEN` fails safely | **PASS** | `refresh-profile` returns 409 `internal_token_missing` (L117-123). `generate-beta-report` returns 409 `internal_token_missing` (L80-86). `analyze-public-v1` silently ignores `?refresh=1` (L394-397), falls through to `cache_only` guard. |
-| 9 | Failed provider calls don't overwrite cached snapshots | **PASS** | `analyze-public-v1` only upserts snapshot on success. `generate-beta-report` marks report_request as `failed` with error metadata on failure (L159-170, L227-238) — does not touch `analysis_snapshots`. |
-| 10 | No other routes trigger providers | **PASS** | `force-refresh` only expires snapshots (DB update, no provider call). `generate-report-pdf`, `request-full-report`, `send-report-email` operate on existing snapshots/PDFs. No other route calls `analyze-public-v1` or provider adapters directly. |
+## Blocker: Dev Server API Returning 503
 
-## Summary
+The `/api/analyze-public-v1` endpoint is returning 503 on the dev server. This is a transient infrastructure issue — the snapshot API (`/api/public/analysis-snapshot/frederico.m.carvalho`) returns 200 with valid data when called directly. The report cannot render because the analyze endpoint (which the page calls first) is unavailable.
 
-All provider call paths are properly gated. The system is safe with `cache_only` as steady-state. No code changes needed.
+This blocks visual QA of the rendered report (hero card, KPI strip, executive summary, etc.).
+
+## What Was Verified
+
+| # | Check | Result | Notes |
+|---|-------|--------|-------|
+| 1 | Error state renders on API failure | **PASS** | "ANALISE INDISPONIVEL" eyebrow + "Este relatorio ainda nao tem dados publicos disponiveis." + body text + "Tentar novamente" / "Voltar ao inicio" CTAs |
+| 2 | Error state uses correct pt-PT copy | **PASS** | All text in European Portuguese, no technical error codes shown |
+| 3 | Error state design system compliance | **PASS** | Light background, Inter font, blue primary CTA, no slate-*, no font-mono |
+| 4 | No provider calls triggered during page view | **PASS** | Only `/api/analyze-public-v1` called (POST, no `?refresh=1`), no internal token sent |
+| 5 | No fresh analysis triggered | **PASS** | Public request without token goes through `cache_only` guard |
+| 6 | Snapshot data exists in DB | **PASS** | Direct API call to `/api/public/analysis-snapshot/frederico.m.carvalho` returns 200 |
+
+## Not Yet Verified (Blocked by 503)
+
+| # | Check | Status |
+|---|-------|--------|
+| 1 | First fold: hero card, avatar, KPI strip, metadata row | **BLOCKED** |
+| 2 | Executive summary: score ring, strength/improvement cards | **BLOCKED** |
+| 3 | Typography: Fraunces headings, Inter body/metrics | **BLOCKED** |
+| 4 | Mobile stacking and responsive behavior | **BLOCKED** |
+| 5 | PDF/share buttons | **BLOCKED** |
+| 6 | Admin preview variants (`?variant=public_mvp`, `?variant=internal_lab`) | **BLOCKED** |
+
+## Root Cause of Blank Page Appearance
+
+The error state renders correctly but is vertically centered in the viewport — on a 1460x871 screen it falls just below the initial fold, making the page appear blank on first screenshot. This is a **minor polish issue**: the error state should be higher on the page or the section should have a `min-h-screen` to ensure visibility without scrolling.
+
+## Recommended Next Action
+
+1. **Wait for dev server API to stabilize**, then re-run this visual QA
+2. **Quick polish**: Move the error state higher in the viewport so it's visible without scrolling — this is a layout issue in `AnalysisErrorState` or its wrapper
+3. Alternatively, test on the **published URL** if recently published, where the API may be stable
