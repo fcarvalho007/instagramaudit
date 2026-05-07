@@ -115,8 +115,8 @@ export const Route = createFileRoute("/api/admin/leads-kanban/$id")({
             handle: null,
             metadata: {
               changes: Object.keys(updates).filter((k) => k !== "updated_at"),
-              new_status: updates.commercial_status ?? null,
-            },
+              new_status: (updates.commercial_status as string) ?? null,
+            } as Record<string, unknown>,
           }]);
         } catch {
           // non-critical
