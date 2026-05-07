@@ -7,9 +7,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import {
-  getExecutionMode,
   getTestProfileStatuses,
-  expireSnapshotForHandle,
   type TestProfileStatus,
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
