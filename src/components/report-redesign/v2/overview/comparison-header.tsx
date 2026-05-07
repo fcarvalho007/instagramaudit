@@ -38,7 +38,7 @@ export function ComparisonHeader() {
             <p className="text-sm font-semibold text-content-primary leading-snug">
               Compara com concorrentes diretos
             </p>
-            <p className="text-[12px] text-content-secondary mt-0.5 leading-relaxed line-clamp-1">
+            <p className="text-xs text-content-secondary mt-0.5 leading-relaxed line-clamp-1">
               Adiciona até 2 perfis e vê este perfil lado a lado em todos os blocos do relatório.
             </p>
           </div>
