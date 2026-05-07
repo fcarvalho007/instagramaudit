@@ -258,8 +258,8 @@ const UNAVAILABLE_REASONS: Record<string, { title: string; body: string }> = {
     body: "Não foi possível analisar comentários nesta execução.",
   },
   comment_scraper_disabled: {
-    title: "Análise desativada",
-    body: "A análise de comentários está temporariamente desativada.",
+    title: "Análise detalhada de comentários não incluída",
+    body: "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa.",
   },
   no_posts_with_comments: {
     title: "Sem comentários acessíveis",
@@ -278,8 +278,8 @@ const UNAVAILABLE_REASONS: Record<string, { title: string; body: string }> = {
 export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {
   const reason = data?.reason;
   const info = reason ? UNAVAILABLE_REASONS[reason] : undefined;
-  const title = info?.title ?? "Análise de comentários indisponível";
-  const body = info?.body ?? "O relatório base utiliza métricas agregadas de interação. A análise detalhada de comentários poderá ser incluída numa versão futura.";
+  const title = info?.title ?? "Análise detalhada de comentários não incluída";
+  const body = info?.body ?? "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa.";
   const isProcessing = reason === "processing";
 
   return (
