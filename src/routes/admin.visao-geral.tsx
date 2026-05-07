@@ -45,7 +45,7 @@ export const Route = createFileRoute("/admin/visao-geral")({
      >
        <div className="flex items-center gap-3 min-w-0">
          <span
-           className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium shrink-0"
+           className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-medium shrink-0"
            style={{
              background: isCacheOnly
                ? "rgb(var(--admin-revenue-500) / 0.15)"
@@ -73,7 +73,7 @@ export const Route = createFileRoute("/admin/visao-geral")({
        </div>
        <Link
          to="/admin/sistema"
-         className="shrink-0 rounded-md border border-admin-border px-2.5 py-1 text-[11px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:bg-admin-surface-elevated transition-colors"
+         className="shrink-0 rounded-md border border-admin-border px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:bg-admin-surface-elevated transition-colors"
        >
          Abrir Sistema
        </Link>

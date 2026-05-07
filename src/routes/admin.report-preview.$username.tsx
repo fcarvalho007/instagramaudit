@@ -272,13 +272,13 @@ function AdminBanner({ username, variant, load, onLogout, isDraft }: ChromeProps
     <div className="border-b border-border-default/40 bg-surface-secondary">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-3 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-content-tertiary">
+          <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-content-tertiary">
             InstaBench · Admin · Pré-visualização
-            <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VARIANT_BADGE_TONES[variant]}`}>
+            <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-semibold ${VARIANT_BADGE_TONES[variant]}`}>
               {VARIANT_LABELS[variant]}
             </span>
             {isDraft && (
-              <span className="ml-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+              <span className="ml-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[12px] font-semibold text-amber-700">
                 DRAFT
               </span>
             )}
@@ -306,7 +306,7 @@ function AdminBanner({ username, variant, load, onLogout, isDraft }: ChromeProps
       </div>
       <div className="border-t border-border-subtle/30 bg-tint-warning/40">
         <div className="mx-auto max-w-7xl px-6 py-2">
-          <p className="font-mono text-[11px] uppercase tracking-wide text-signal-warning">
+          <p className="font-mono text-[12px] uppercase tracking-wide text-signal-warning">
             Relatório disponível durante 5 dias após geração ·
             visível apenas a administradores · não indexável
           </p>
@@ -368,7 +368,7 @@ function CoverageNotice({ load }: { load: Extract<LoadState, { kind: "ready" }> 
   return (
     <div className="mx-auto max-w-7xl px-6 pb-10">
       <div className="rounded-xl border border-border-default/40 bg-surface-secondary p-5 shadow-card">
-        <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+        <p className="font-mono text-[12px] uppercase tracking-wider text-content-tertiary">
           Limitações conhecidas deste snapshot
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-content-secondary">
@@ -402,7 +402,7 @@ function CoverageStrip({ load }: { load: Extract<LoadState, { kind: "ready" }> }
   return (
     <div className="mx-auto max-w-7xl px-6 pt-6">
       <div className="rounded-xl border border-border-default/40 bg-surface-secondary p-4 shadow-card">
-        <p className="font-mono text-[10px] uppercase tracking-wider text-content-tertiary">
+        <p className="font-mono text-[12px] uppercase tracking-wider text-content-tertiary">
           Cobertura deste snapshot
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -439,7 +439,7 @@ function CoverageChip({
     <span
       className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 ${toneClasses}`}
     >
-      <span className="font-mono text-[10px] uppercase tracking-wider opacity-70">
+      <span className="font-mono text-[12px] uppercase tracking-wider opacity-70">
         {label}
       </span>
       <span className="font-mono text-xs font-semibold">{value}</span>
@@ -474,7 +474,7 @@ function AdminFooterNotice() {
   return (
     <footer className="border-t border-border-subtle/30 bg-surface-secondary">
       <div className="mx-auto max-w-7xl px-6 py-4">
-        <p className="font-mono text-[11px] uppercase tracking-wide text-content-tertiary">
+        <p className="font-mono text-[12px] uppercase tracking-wide text-content-tertiary">
           Pré-visualização administrativa · Relatório disponível durante 5 dias após geração
         </p>
       </div>

@@ -528,7 +528,7 @@ const OVERRIDE_BADGE: Record<"defaults" | "draft" | "published", { label: string
 function OverrideSourceBadge({ status }: { status: "defaults" | "draft" | "published" }) {
   const badge = OVERRIDE_BADGE[status];
   return (
-    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap", badge.cls)}>
+    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12px] font-semibold uppercase tracking-wider whitespace-nowrap", badge.cls)}>
       {badge.label}
     </span>
   );
@@ -577,7 +577,7 @@ function VariantDiffPanel() {
           <GitCompareArrows className="h-4 w-4 text-admin-text-tertiary" />
           Diferenças entre variantes
           {!open && (
-            <span className="text-[11px] font-normal text-admin-text-tertiary">
+            <span className="text-[12px] font-normal text-admin-text-tertiary">
               · {diffKeys.length} módulo{diffKeys.length !== 1 ? "s" : ""} com diferenças
             </span>
           )}
@@ -610,13 +610,13 @@ function VariantDiffPanel() {
                   <tr key={key} className="border-t border-white/10">
                     <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
                     <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
                     </td>
                     <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
                     </td>
                     <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", proVis.cls)}>{proVis.text}</span>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", proVis.cls)}>{proVis.text}</span>
                     </td>
                     <td className="px-4 py-2 text-admin-text-secondary max-w-xs">{interp}</td>
                   </tr>
@@ -690,7 +690,7 @@ function ReadinessChecklist() {
             Checklist de prontidão pública
           </span>
           {!open && summaryItems.length > 0 && (
-            <span className="flex items-center gap-2 text-[11px]">
+            <span className="flex items-center gap-2 text-[12px]">
               {summaryItems.map(([key, label, cls], i) => (
                 <span key={key} className="flex items-center gap-1">
                   {i > 0 && <span className="text-admin-text-tertiary">·</span>}
@@ -728,12 +728,12 @@ function ReadinessChecklist() {
                   <tr key={key} className="border-t border-white/10">
                     <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
                     <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", mvpVis.cls)}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", mvpVis.cls)}>
                         {mvpVis.text}
                       </span>
                     </td>
                     <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", badge.cls)}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", badge.cls)}>
                         {READINESS_STATUS_LABELS[readiness.status]}
                       </span>
                     </td>
