@@ -54,7 +54,7 @@ function deriveRequestStatus(r: UserReport): StatusBadge {
   ) {
     return { label: "A processar", className: "bg-blue-50 text-blue-600 border-blue-200/60", icon: Loader2, spin: true };
   }
-  return { label: "Pendente", className: "bg-slate-50 text-slate-500 border-slate-200/60", icon: Clock };
+  return { label: "Pendente", className: "bg-surface-muted text-content-secondary border-border-default/20", icon: Clock };
 }
 
 function derivePdfBadge(status: string): { label: string; className: string } {
@@ -66,7 +66,7 @@ function derivePdfBadge(status: string): { label: string; className: string } {
     case "failed":
       return { label: "PDF falhou", className: "bg-red-50 text-red-500 border-red-200/60" };
     default:
-      return { label: "Sem PDF", className: "bg-slate-50 text-slate-400 border-slate-200/60" };
+      return { label: "Sem PDF", className: "bg-surface-muted text-content-tertiary border-border-default/20" };
   }
 }
 
@@ -77,7 +77,7 @@ function deriveDeliveryBadge(status: string, emailSentAt: string | null): { labe
   if (status === "failed") {
     return { label: "Envio falhou", className: "bg-red-50 text-red-500 border-red-200/60", icon: MailX };
   }
-  return { label: "Não enviado", className: "bg-slate-50 text-slate-400 border-slate-200/60", icon: Mail };
+  return { label: "Não enviado", className: "bg-surface-muted text-content-tertiary border-border-default/20", icon: Mail };
 }
 
 function formatDate(iso: string) {
@@ -115,12 +115,12 @@ function computeStats(reports: UserReport[]): Stats {
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string }) {
   return (
-    <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 shadow-sm">
+    <div className="rounded-xl border border-border-default/20 bg-white px-4 py-3 shadow-sm">
       <div className="flex items-center gap-2">
         <Icon className={`size-4 ${color}`} />
-        <span className="text-xs font-medium text-slate-400">{label}</span>
+        <span className="text-xs font-medium text-content-tertiary">{label}</span>
       </div>
-      <p className="mt-1 text-lg font-semibold text-slate-800">{value}</p>
+      <p className="mt-1 text-lg font-semibold text-content-primary">{value}</p>
     </div>
   );
 }
@@ -137,18 +137,18 @@ function ReportCard({ report }: { report: UserReport }) {
   const hasSnapshot = !!report.analysisSnapshotId;
 
   return (
-    <div className="rounded-xl border border-slate-200/70 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
+    <div className="rounded-xl border border-border-default/20 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-            <FileText className="size-4 text-slate-500" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-muted">
+            <FileText className="size-4 text-content-secondary" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">
+            <p className="truncate text-sm font-semibold text-content-primary">
               @{report.instagramUsername}
             </p>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-content-tertiary">
               {formatDate(report.createdAt)}
               {competitorCount > 0 && (
                 <span className="ml-2">
@@ -173,11 +173,11 @@ function ReportCard({ report }: { report: UserReport }) {
 
       {/* Secondary badges */}
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium", pdf.className)}>
+        <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium", pdf.className)}>
           <Download className="size-2.5" />
           {pdf.label}
         </span>
-        <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium", delivery.className)}>
+        <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium", delivery.className)}>
           <DeliveryIcon className="size-2.5" />
           {delivery.label}
         </span>
@@ -188,7 +188,7 @@ function ReportCard({ report }: { report: UserReport }) {
         <Link
           to="/app/reports/$id"
           params={{ id: report.id }}
-          className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:border-slate-300"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-muted hover:border-border-default/30"
         >
           Ver detalhe
         </Link>
@@ -196,7 +196,7 @@ function ReportCard({ report }: { report: UserReport }) {
           <Link
             to="/analyze/$username"
             params={{ username: report.instagramUsername }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:border-slate-300"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-muted hover:border-border-default/30"
           >
             <ExternalLink className="size-3" />
             Abrir relatório
@@ -206,7 +206,7 @@ function ReportCard({ report }: { report: UserReport }) {
 
       {/* Email delivery timestamp */}
       {report.emailSentAt && (
-        <p className="mt-3 text-[11px] text-slate-400">
+        <p className="mt-3 text-xs text-content-tertiary">
           Email enviado a {formatDate(report.emailSentAt)}
         </p>
       )}
