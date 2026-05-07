@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { BetaStepIndicator } from "./beta-step-indicator";
 import { submitBetaRequest } from "@/lib/beta.functions";
+import { trackEvent } from "@/lib/tracking.functions";
 
 // ── Options ────────────────────────────────────────────────────────
 
@@ -395,7 +396,18 @@ export function BetaRequestForm() {
           </div>
 
           {/* Future pricing (subtle) */}
-          <div className="rounded-lg border border-accent-gold/20 bg-accent-gold/5 p-4">
+          <div
+            className="rounded-lg border border-accent-gold/20 bg-accent-gold/5 p-4 cursor-pointer"
+            onClick={() =>
+              trackEvent({
+                data: {
+                  eventType: "pricing_clicked",
+                  handle: form.instagramHandle.replace(/^@/, "").toLowerCase() || undefined,
+                  metadata: { plan_clicked: "pricing_card" },
+                },
+              }).catch(() => {})
+            }
+          >
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-accent-gold" />
               <span className="text-eyebrow-sm text-accent-gold">Preços indicativos</span>
