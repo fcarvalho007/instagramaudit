@@ -1,39 +1,109 @@
 
-# Audit: "Gerar relatório" admin flow — `/api/admin/generate-beta-report`
+# Refinar o Editorial Identity Card (Executive Summary)
 
-## PASS/FAIL Table
+## Ficheiro alvo
 
-| # | Check | Result | Notes |
-|---|-------|--------|-------|
-| 1 | Endpoint exists | **PASS** | `src/routes/api/admin/generate-beta-report.ts`, route registered as `/api/admin/generate-beta-report` |
-| 2 | Admin-protected | **PASS** | Calls `requireAdminSession()` at line 37. Throws 401 if no admin cookie, 403 if email not in allowlist. |
-| 3 | Accepts only `report_request_id` | **PASS** | Parses `{ report_request_id, force? }` from body. Only `report_request_id` is used. `force` is declared but never read — dead field, harmless. |
-| 4 | Validates report request status | **PASS** | `ALLOWED_SOURCE_STATUSES = ["approved", "pending_review"]`. Rejects any other status with 400. |
-| 5 | No unauthorised generation | **PASS** | Admin session required. No public route calls this endpoint. The only caller is `admin.beta-requests.tsx:89` via `adminFetch` (adds admin auth cookie). |
-| 6 | Respects provider kill switches | **PASS** | Pre-flight checks: (a) `getAnalysisExecutionMode()` must return `"fresh"` (409 if `cache_only`), (b) `isApifyEnabled()` must be true (409 if disabled), (c) `isTestingModeActive() && !isAllowed(handle)` blocks with 409. |
-| 7 | `COMMENT_SCRAPER_ENABLED=false` respected | **PASS** | The endpoint delegates to `/api/analyze-public-v1` which checks `process.env.COMMENT_SCRAPER_ENABLED` at line 822 — only runs comment scraper when explicitly `"true"`. Default is `false`. |
-| 8 | Creates or reuses snapshot correctly | **PASS** | Calls `/api/analyze-public-v1?refresh=1` which creates a fresh analysis snapshot. The `refresh=1` flag ensures a new snapshot is created (not cached). |
-| 9 | Links snapshot to report_request | **PASS** | On success, updates `report_requests` with `analysis_snapshot_id: snapshotId` at line 190. |
-| 10 | Updates statuses (processing/completed/failed) | **PASS** | Sets `processing` before the call (line 115), `completed` on success (line 189), `failed` on provider error (line 162) and on unexpected error (line 230). |
-| 11 | Records `report_generated` event | **PASS** | Inserts into `product_events` with `event_type: "report_generated"`, `source: "admin_beta_queue"`, links `lead_id`, `handle`, `snapshot_id`, `report_request_id`. Fire-and-forget (line 201). |
-| 12 | Handles errors safely | **PASS** | Three error paths: (a) provider failure → 502, status set to `failed`, error stored in metadata; (b) network/unexpected → 500, same rollback; (c) pre-flight failures → 409 with descriptive error. No unhandled exceptions. |
-| 13 | Cost warning in UI is accurate | **PASS** | ConfirmDialog at `admin.beta-requests.tsx:195` says: *"Esta ação vai gerar uma análise Fresh para @{username}. Pode gerar custos reais (Apify). Continuar?"* — accurate, mentions Fresh and Apify costs. |
-| 14 | No public route can trigger generation | **PASS** | Endpoint is at `/api/admin/generate-beta-report` (not under `/api/public/`). Protected by `requireAdminSession()`. No other route or component calls this endpoint. |
+`src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
 
-## Summary
+## Dependências de dados actuais (não mudam)
 
-**All 14 checks PASS.** The endpoint is well-implemented:
+- `scores: Record<ScoreKey, { value; subtitle }>` — 3 sub-scores (envolvimento, frequência, interação)
+- `aiHeroText?: string` — frase AI hero ou fallback determinístico
+- Derivados internos: `globalScore` (0–100), `globalFamily` (danger/warning/success), `strength`, `weakness`
 
-- **Security**: Admin-only, no public access path, proper auth guard.
-- **Safety**: Three pre-flight kill switches (execution mode, Apify enabled, allowlist).
-- **Resilience**: Status rollback to `failed` on all error paths, error details stored in metadata.
-- **Audit trail**: `product_events` record created on success.
-- **UI**: Cost warning is clear and accurate.
+Todos os dados já existem — não é preciso alterar cálculos, props ou tipos.
 
-## Minor observations (non-blocking)
+## Problemas actuais identificados
 
-1. **`force` field declared but unused** — `body.force` is destructured at line 44 but never read. Dead code, harmless. Could be cleaned up eventually.
-2. **`failed` not in `ALLOWED_SOURCE_STATUSES`** — The user's question mentions the button appears when status is `approved`, `pending_review` or `failed`, but the endpoint only allows `approved` and `pending_review`. If the button is shown for `failed` status, clicking it will return a 400 error. This is either intentional (retry blocked) or a minor UI/endpoint mismatch to verify.
-3. **`INTERNAL_API_TOKEN` optional** — Line 136 adds the auth header only if the token exists. If not set, the internal call to `analyze-public-v1` proceeds without it. This works if `analyze-public-v1` doesn't require it for server-to-server calls, but should be confirmed.
+1. **`bg-slate-50/60`** no Band 2 — viola regra "never use slate-*"
+2. **`text-[11px]`** em dois sítios (score "de 100" e badge) — abaixo do mínimo 12px
+3. Frase hero sem eyebrow "RESUMO EXECUTIVO" acima
+4. Band 2 (strength/weakness) visualmente rígido, sem subtítulo explicativo
+5. Gradient decorativo subtil mas frase hero podia ter mais impacto (tamanho)
+6. Score ring "de 100" e badge label ficam demasiado pequenos
 
-## No code changes made. No providers called.
+## Layout proposto
+
+```text
+Desktop (sm+):
+┌─────────────────────────────────────────────────────────────┐
+│  ┌─ Left (flex-1) ──────────────────┐ ┌─ Right ─────────┐  │
+│  │  RESUMO EXECUTIVO (eyebrow)      │ │                  │  │
+│  │                                  │ │   ┌──────────┐   │  │
+│  │  "Perfil com bom potencial..."   │ │   │  Score    │   │  │
+│  │  (Fraunces, 1.5–1.75rem)         │ │   │   67     │   │  │
+│  │                                  │ │   └──────────┘   │  │
+│  │  Supporting sentence (Inter)     │ │   /100           │  │
+│  │  (text-sm/base, text-secondary)  │ │   [A MELHORAR]   │  │
+│  │                                  │ │   Pontuação      │  │
+│  └──────────────────────────────────┘ │   InstaBench     │  │
+│                                       └──────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─ Ponto forte ──────────┐ ┌─ A melhorar ────────────────┐│
+│  │ ✓ PONTO FORTE          │ │ ⚠ A MELHORAR               ││
+│  │   Engagement           │ │   Conversa pública          ││
+│  │   (subtitle from score)│ │   (subtitle from score)     ││
+│  │   soft green bg        │ │   soft rose/amber bg        ││
+│  └────────────────────────┘ └──────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+
+Mobile:
+┌──────────────────────────┐
+│  RESUMO EXECUTIVO        │
+│  "Perfil com bom..."     │
+│                          │
+│      ┌──────────┐        │
+│      │  Score 67 │        │
+│      └──────────┘        │
+│      /100  [A MELHORAR]  │
+│      Pontuação InstaBench│
+│                          │
+│  Supporting sentence...  │
+├──────────────────────────┤
+│  ✓ Ponto forte           │
+│    Engagement · subtitle │
+├──────────────────────────┤
+│  ⚠ A melhorar            │
+│    Conversa · subtitle   │
+└──────────────────────────┘
+```
+
+## Alterações concretas
+
+### 1. Band 1 — Editorial Portrait
+- Adicionar eyebrow "RESUMO EXECUTIVO" com classe `text-eyebrow` acima da frase
+- Aumentar frase hero para `text-[1.35rem] sm:text-[1.65rem] md:text-[1.85rem]`
+- Separar a frase AI em headline (1ª frase) + supporting text (resto), quando possível
+- Score ring: aumentar size para 110px, "de 100" para `text-xs` (12px), badge para `text-xs`
+- Adicionar "Pontuação InstaBench" abaixo do badge em `text-xs text-content-tertiary`
+- Remover `ScoreOrbitBackground` canvas (over-decorative para estilo Iconosquare)
+
+### 2. Band 2 — Strength/Weakness
+- Substituir `bg-slate-50/60` por `bg-surface-muted` (token semântico)
+- Converter de row rígida para 2 mini-cards com `rounded-xl` dentro de um grid
+- Cada card: fundo soft (emerald-50 / rose-50), ícone, eyebrow label, título, e subtítulo do score
+- Adicionar `scores[key].subtitle` como linha explicativa (já existe nos dados)
+- Padding mais generoso: `px-5 py-4`
+
+### 3. Token compliance
+- Eliminar `bg-slate-50/60` → `bg-surface-muted`
+- Todos os `text-[11px]` → `text-xs` (12px mínimo)
+- Manter `font-display` (Fraunces) apenas na frase hero
+- Todos os números, labels e metadata em Inter (`font-sans`)
+
+## Ficheiros afectados
+
+- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` — alteração principal
+- Nenhum outro ficheiro precisa de mudar (props e tipos mantêm-se)
+
+## Riscos
+
+- **Nenhum** — alteração puramente visual, dados e lógica intactos
+- O component é usado apenas via `ReportOverviewBlock`, que não muda
+- Não afecta PDF pipeline (PDF usa componentes próprios)
+
+## Não se altera
+
+- Cálculos de score, fallback sentence, strength/weakness derivation
+- Provider logic, report generation, module visibility, Supabase schema
+- Nenhuma análise fresh, nenhuma chamada a providers
