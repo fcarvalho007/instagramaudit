@@ -1,86 +1,81 @@
 
-# Premium Lead Detail Sheet — Upgrade Plan
+# Admin "Gerar Relatório" — UI Integration Plan
 
 ## Current State
 
-The `LeadDetailSheet` already exists with 6 sections (Header, Perfil, Relatório, Inteligência comercial, Timeline, Notas & Ações). It covers most of the requested fields. This plan focuses on **visual polish, density improvements, and minor data enrichments** — not a rebuild.
+The backend is **already fully implemented**:
 
-## Data Availability
+- `POST /api/admin/generate-beta-report` — admin-only endpoint that:
+  - Validates admin session
+  - Checks execution mode (must be `fresh`)
+  - Checks `APIFY_ENABLED` kill switch
+  - Checks allowlist (testing mode)
+  - Calls `/api/analyze-public-v1?refresh=1` with `INTERNAL_API_TOKEN`
+  - Updates `report_requests.request_status`: `processing → completed | failed`
+  - Links `analysis_snapshot_id` to the report request
+  - Records `report_generated` product event
+  - Stores error details in `metadata` on failure
 
-| Requested field | Available in `EnrichedLead`? | Source |
-|---|---|---|
-| Name | Yes | `lead.name` |
-| Email | Yes | `lead.email` |
-| Instagram handle | Yes | `lead.handle` |
-| User type | Yes | `lead.user_type` |
-| Purpose | Yes | `lead.purpose` |
-| Profile ownership | Yes | `lead.profile_ownership` |
-| Commercial status | Yes | `lead.commercial_status` |
-| Request status | Yes | `lead.report_status` |
-| Report status (PDF) | Yes | `lead.pdf_status` |
-| Report views | Yes | `lead.report_views` |
-| Report cost | Yes | `lead.report_cost_usd` |
-| Last interaction | Yes | `lead.last_interaction` |
-| Product events timeline | Yes | fetched via `/api/admin/lead-timeline` |
-| Internal notes | Yes | `lead.internal_notes` |
-| Quick actions | Yes | already implemented |
+**What's missing**: the UI trigger in the Lead Detail Sheet and the `report_request_id` field in the data model.
 
-**Missing fields**: None. All requested data is already available. No DB migration needed.
+## Implementation
 
-## Visual Upgrade Plan
+### 1. Add `report_request_id` to the data flow
 
-### 1. Header — Premium profile hero
-- Add a large avatar placeholder (initials circle, 48px, using lead name initials)
-- Make name 22px semibold (upgrade from `admin-panel-title` 20px)
-- Email as a clickable `mailto:` link with subtle hover
-- Handle as a clickable Instagram link
-- Status badge with column color — already present, keep
+**`src/lib/admin/kanban-columns.ts`** — add `report_request_id: string | null` to `EnrichedLead`.
 
-### 2. KPI summary strip (NEW)
-- Add a horizontal 3-column KPI row below the header: **Views**, **Custo**, **Dias desde criação**
-- Use `admin-code` for numbers, `admin-eyebrow` for labels
-- Subtle card background with rounded corners
+**`src/routes/api/admin/leads-kanban.ts`** — return `report_request_id: req?.id ?? null` in the enriched lead object.
 
-### 3. Perfil section
-- Increase `DetailRow` vertical padding from `py-1.5` to `py-2.5` (audit fix already recommended)
-- Add icons to each row (User, Target, Globe, Shield) for scanability
+### 2. Add "Gerar relatório" button to the Lead Detail Sheet
 
-### 4. Relatório section
-- Show badges inline with labels instead of a separate badge row
-- Add progress indicator: a simple 3-step tracker (Pedido → Geração → Entrega) with active state
+**`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`** — in the Relatório section:
 
-### 5. Inteligência comercial
-- Intent signal box: upgrade to a card with colored left border accent
-- Suggested step box: add a subtle icon (Lightbulb)
-- Status selector: increase height to `h-10` for touch targets
+- Add a "Gerar relatório" `AdminActionButton` (visible only when `report_request_id` exists and `report_status` is `approved`, `pending_review`, or `failed`)
+- Before calling the endpoint, show a **confirmation dialog** with:
+  - Cost warning: "Esta ação consome créditos Apify (~€0.05–0.10 por perfil)."
+  - Handle being analyzed
+  - Current execution mode status
+- On click → `POST /api/admin/generate-beta-report` with `{ report_request_id }`
+- Show loading state on the button during generation
+- On success → toast + auto-refresh lead data (call parent callback)
+- On failure → toast with error message from API
 
-### 6. Timeline
-- Add event-type-specific icons (Eye for viewed, FileText for generated, etc.)
-- Add relative time ("há 2h") alongside absolute date
-- Limit to 10 events with "Ver mais" expansion
+### 3. Pre-flight status indicators
 
-### 7. Notas & Ações
-- Upgrade textarea with a counter (chars used)
-- Group action buttons in a 2x2 grid instead of flex-wrap for cleaner layout
-- Add WhatsApp action button (opens `wa.me/` if phone available — future-proof)
+In the confirmation dialog, show:
+- Execution mode: green check if `fresh`, red warning if `cache_only`
+- Provider status: visual indicator based on response from endpoint's pre-flight checks
+- Allowlist status: warning if handle is not on allowlist in testing mode
 
-### 8. Sheet chrome
-- Increase sheet width from `sm:max-w-[480px]` to `sm:max-w-[520px]`
-- Add a subtle top-border accent line using the column color
-- Smooth scroll with `scroll-smooth` class
-- Add a sticky header with lead name visible while scrolling
+These are handled server-side — the UI only needs to display error responses from the 409 pre-flight blocks.
+
+### 4. Status lifecycle (already implemented server-side)
+
+```text
+approved/pending_review
+    ↓ (admin clicks "Gerar relatório")
+processing
+    ↓
+completed ←→ failed
+```
+
+No DB schema changes needed — all fields exist.
 
 ## Files to modify
 
-1. **`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`** — all visual upgrades above
-2. **`src/styles/admin-tokens.css`** — add `.admin-kpi-strip` utility if needed
+1. **`src/lib/admin/kanban-columns.ts`** — add `report_request_id` to `EnrichedLead`
+2. **`src/routes/api/admin/leads-kanban.ts`** — return `report_request_id` in enriched data
+3. **`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`** — add generate button + confirmation dialog
 
 ## Files NOT touched
+
+- No backend endpoint changes (already complete)
 - No DB migrations
 - No public report changes
-- No provider/cost/PDF logic
-- No kanban-board.tsx changes (card already opens the sheet)
+- No provider/cost/PDF logic changes
+- `COMMENT_SCRAPER_ENABLED` remains untouched
 
 ## Validation
+
 - `bunx tsc --noEmit`
 - `bunx vitest run`
