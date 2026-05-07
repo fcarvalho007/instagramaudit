@@ -47,7 +47,7 @@ export function HowItWorksStep({
               : "h-14 w-14 bg-surface-elevated/90 border-accent-violet/15",
           )}
           style={
-            isPrimary ? { boxShadow: "var(--shadow-glow-violet)" } : undefined
+            isPrimary ? { boxShadow: "var(--shadow-md)" } : undefined
           }
         >
           <span
