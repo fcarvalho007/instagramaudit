@@ -1,53 +1,70 @@
 @layer base {
   :root {
     /* === COLORS — Surface === */
-    --surface-base: 10 14 26;
-    --surface-secondary: 20 28 46;
-    --surface-elevated: 36 48 68;
-    --surface-overlay: 42 56 80;
-    --surface-glass-alpha: 0.6;
+    --surface-base: 250 251 253;        /* #FAFBFD near-white */
+    --surface-secondary: 255 255 255;   /* #FFFFFF white cards */
+    --surface-elevated: 255 255 255;
+    --surface-overlay: 255 255 255;
+    --surface-muted: 241 244 249;       /* #F1F4F9 subtle bg */
 
     /* === COLORS — Accent === */
-    --accent-primary: 6 182 212;
-    --accent-luminous: 103 232 249;
-    --accent-gold: 252 211 77;
-    --accent-violet: 139 92 246;
-    --accent-violet-luminous: 167 139 250;
-    --accent-violet-deep: 109 40 217;
+    --accent-primary: 55 114 229;       /* #3772E5 calm blue */
+    --accent-luminous: 79 140 255;      /* #4F8CFF lighter blue */
+    --accent-gold: 186 117 23;          /* #BA7517 subtle amber (rare) */
+    --accent-violet: 118 100 228;       /* #7664E4 soft indigo */
+    --accent-violet-luminous: 140 126 244;
+    --accent-violet-deep: 85 62 186;
 
     /* === COLORS — Chart series ===
-     * Semantic tokens for the temporal chart series. In dark mode they keep
-     * the original editorial palette; in light mode they collapse to the
-     * single editorial blue (see tokens-light.css). Never hardcode hex in
-     * report components — always consume these tokens.
+     * Semantic tokens for the temporal chart series. Blue family only.
+     * Never hardcode hex in report components — always consume these tokens.
      */
-    --chart-likes:    59 130 246;   /* #3B82F6 */
-    --chart-comments:  6 182 212;   /* #06B6D4 */
-    --chart-views:    99 102 241;   /* #6366F1 */
-
-    /* === COLORS — Light surfaces (for editorial reveal moments) === */
-    --surface-light: 226 232 240;          /* slate-200 — cool editorial */
-    --surface-light-elevated: 248 250 252; /* slate-50 — mockup stage */
-    --surface-light-deep: 203 213 225;     /* slate-300 — depth/edges */
-    --text-on-light-primary: 15 23 42;
-    --text-on-light-secondary: 71 85 105;
-    --text-on-light-tertiary: 100 116 139;
+    --chart-likes:    55 114 229;   /* --accent-primary */
+    --chart-comments: 79 140 255;   /* --accent-luminous */
+    --chart-views:    85  62 186;   /* --accent-violet-deep */
 
     /* === COLORS — Semantic === */
-    --signal-success: 16 185 129;
-    --signal-warning: 245 158 11;
-    --signal-danger: 239 68 68;
+    --signal-success: 29 158 117;       /* #1D9E75 calm green */
+    --signal-warning: 186 117 23;       /* #BA7517 amber */
+    --signal-danger: 163 45 45;         /* #A32D2D deep red */
 
     /* === COLORS — Text === */
-    --text-primary: 248 250 252;
-    --text-secondary: 148 163 184;
-    --text-tertiary: 100 116 139;
-    --text-inverse: 10 14 26;
+    --text-primary: 15 27 61;           /* #0F1B3D charcoal */
+    --text-secondary: 90 107 140;       /* #5A6B8C */
+    --text-tertiary: 138 152 178;       /* #8A98B2 */
+    --text-inverse: 250 251 252;
 
     /* === COLORS — Border === */
-    --border-subtle: 255 255 255;
-    --border-default: 255 255 255;
-    --border-strong: 255 255 255;
+    --border-subtle: 15 27 61;
+    --border-default: 15 27 61;
+    --border-strong: 15 27 61;
+
+    /* === COLORS — Tinted backgrounds === */
+    --tint-primary: 239 244 251;
+    --tint-success: 239 248 244;
+    --tint-warning: 250 244 232;
+    --tint-danger: 251 239 239;
+    --tint-neutral: 241 244 249;
+    --tint-indigo: 239 244 251;
+    --tint-cyan: 239 244 251;
+
+    /* === COLORS — Insight boxes === */
+    --insight-default-bg:      239 244 251;
+    --insight-default-border:  181 212 244;
+    --insight-default-icon:     24  95 165;
+    --insight-default-text:     12  68 124;
+    --insight-positive-bg:     239 248 244;
+    --insight-positive-border: 159 225 203;
+    --insight-positive-icon:    15 110  86;
+    --insight-positive-text:     8  80  65;
+    --insight-negative-bg:     251 239 239;
+    --insight-negative-border: 240 149 149;
+    --insight-negative-icon:   163  45  45;
+    --insight-negative-text:   121  31  31;
+    --insight-neutral-bg:      241 239 232;
+    --insight-neutral-border:  211 209 199;
+    --insight-neutral-icon:     95  94  90;
+    --insight-neutral-text:     68  68  65;
 
     /* === TYPOGRAPHY === */
     --font-display: "Fraunces", Georgia, serif;
@@ -100,18 +117,19 @@
     --radius-full: 9999px;
 
     /* === SHADOWS === */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3),
-                 0 2px 4px -2px rgb(0 0 0 / 0.2);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4),
-                 0 4px 6px -4px rgb(0 0 0 / 0.3);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5),
-                 0 8px 10px -6px rgb(0 0 0 / 0.4);
-    --shadow-glow-cyan: 0 0 24px -4px rgb(6 182 212 / 0.4);
-    --shadow-glow-gold: 0 0 24px -4px rgb(252 211 77 / 0.3);
-    --shadow-glow-violet: 0 0 32px -4px rgb(139 92 246 / 0.5);
-    --shadow-stage: 0 30px 60px -25px rgb(15 23 42 / 0.35),
-                    0 60px 120px -50px rgb(79 70 229 / 0.18);
+    --shadow-sm: 0 1px 2px rgb(15 27 61 / 0.04);
+    --shadow-md: 0 1px 3px rgb(15 27 61 / 0.04),
+                 0 4px 16px rgb(15 27 61 / 0.04);
+    --shadow-lg: 0 4px 6px rgb(15 27 61 / 0.05),
+                 0 2px 4px rgb(15 27 61 / 0.03);
+    --shadow-xl: 0 10px 20px rgb(15 27 61 / 0.06),
+                 0 4px 8px rgb(15 27 61 / 0.04);
+    --shadow-card: 0 1px 3px rgb(15 27 61 / 0.04),
+                   0 4px 16px rgb(15 27 61 / 0.04);
+    --shadow-glow-cyan: none;
+    --shadow-glow-gold: none;
+    --shadow-glow-violet: none;
+    --shadow-stage: 0 10px 30px -10px rgb(15 27 61 / 0.08);
 
     /* === TRANSITIONS === */
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -147,22 +165,10 @@
     min-height: 100vh;
   }
 
-  /* === NOISE TEXTURE OVERLAY (subtle cinematic grain) === */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1;
-    opacity: 0.04;
-    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
-    mix-blend-mode: overlay;
-  }
-
   /* === SELECTION === */
   ::selection {
-    background-color: rgb(var(--accent-primary) / 0.3);
-    color: rgb(var(--text-primary));
+    background-color: rgb(var(--accent-primary) / 0.18);
+    color: rgb(15 27 61);
   }
 
   /* === FOCUS RING (global default) === */
