@@ -43,8 +43,9 @@ import {
   Link2,
   ClipboardCheck,
 } from "lucide-react";
-import { ModuleVisibilityMatrix } from "@/components/admin/v2/module-visibility-matrix";
-import { readAdminEmail } from "@/lib/admin/simple-gate";
+import { isModuleLocked } from "@/lib/report/effective-features";
+import { getAllOverrides } from "@/server/admin/variant-overrides.functions";
+import { Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
@@ -162,7 +163,7 @@ function ReportLabPage() {
   const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
-  const [showVisManager, setShowVisManager] = useState(false);
+  const [showResolver, setShowResolver] = useState(false);
 
   const activeProfile = committedCustom.trim() || profile;
 
@@ -361,30 +362,20 @@ function ReportLabPage() {
         {showModules && <ModuleVisibilityTable activeVariant={variant} />}
       </div>
 
-      {/* Module visibility manager (interactive) */}
+      {/* Read-only visibility resolver */}
       <div className="rounded-xl border border-white/30 bg-white/20 backdrop-blur-sm overflow-hidden">
         <button
-          onClick={() => setShowVisManager(!showVisManager)}
+          onClick={() => setShowResolver(!showResolver)}
           className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-admin-text-primary hover:bg-white/10 transition-colors"
         >
-          <span>Gestor de visibilidade (draft → publicar)</span>
-          {showVisManager ? (
+          <span>Resolução de visibilidade (read-only)</span>
+          {showResolver ? (
             <ChevronUp className="h-4 w-4 text-admin-text-tertiary" />
           ) : (
             <ChevronDown className="h-4 w-4 text-admin-text-tertiary" />
           )}
         </button>
-        {showVisManager && (
-          <ModuleVisibilityMatrix
-            adminEmail={readAdminEmail() ?? "admin"}
-            onPreviewDraft={(v) => {
-              window.open(
-                `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
-                "_blank",
-              );
-            }}
-          />
-        )}
+        {showResolver && <VisibilityResolverTable activeVariant={variant} />}
       </div>
 
       {/* Public readiness checklist */}
