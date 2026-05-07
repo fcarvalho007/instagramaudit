@@ -44,7 +44,7 @@ export function ComparisonHeader() {
           </div>
 
           {/* CTA pill — intentional dark primary CTA */}
-          <div className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-full bg-slate-900 text-white px-3.5 py-2 text-[13px] font-medium shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-colors duration-150 hover:bg-slate-800">
+          <div className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-full bg-content-primary text-white px-3.5 py-2 text-[13px] font-medium shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-colors duration-150 hover:bg-content-primary/90">
             <Plus className="size-3.5" aria-hidden="true" />
             <span>Adicionar</span>
             {/* PRO badge — local decorative amber/gold accent */}
@@ -54,7 +54,7 @@ export function ComparisonHeader() {
           </div>
 
           {/* Mobile-only small CTA — intentional dark primary */}
-          <div className="shrink-0 sm:hidden flex items-center justify-center size-9 rounded-lg bg-slate-900 text-white">
+          <div className="shrink-0 sm:hidden flex items-center justify-center size-9 rounded-lg bg-content-primary text-white">
             <Plus className="size-4" aria-hidden="true" />
           </div>
         </button>
@@ -78,7 +78,7 @@ export function ComparisonHeader() {
             aria-label="Redes futuras: Facebook, TikTok e YouTube"
           >
             <SocialCircle letter="f" bg="bg-blue-600" />
-            <SocialCircle letter="t" bg="bg-slate-900" />
+            <SocialCircle letter="t" bg="bg-content-primary" />
             <SocialCircle letter="Y" bg="bg-red-600" />
           </div>
 
@@ -177,7 +177,7 @@ function RoadmapInfoDialog({ onClose }: { onClose: () => void }) {
           ref={btnRef}
           type="button"
           onClick={onClose}
-          className="mt-5 w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-slate-800"
+          className="mt-5 w-full rounded-lg bg-content-primary py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-content-primary/90"
         >
           Entendido
         </button>
