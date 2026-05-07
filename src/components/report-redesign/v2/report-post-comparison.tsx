@@ -168,7 +168,7 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
           <TrendingUp className="size-3 text-accent-primary" aria-hidden="true" />
           <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">Melhor</span>
         </div>
-        <span className="font-mono text-[18px] md:text-[22px] font-bold tabular-nums text-accent-primary leading-none">
+        <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-accent-primary leading-none">
           {bestEng.toString().replace(".", ",")}%
         </span>
         <div className="w-full h-1.5 rounded-full bg-accent-primary/10 mt-0.5">
@@ -189,7 +189,7 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
           <span className="text-[9px] font-bold uppercase tracking-widest text-signal-warning">Pior</span>
           <TrendingDown className="size-3 text-signal-warning" aria-hidden="true" />
         </div>
-        <span className="font-mono text-[18px] md:text-[22px] font-bold tabular-nums text-signal-warning leading-none">
+        <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-signal-warning leading-none">
           {worstEng.toString().replace(".", ",")}%
         </span>
         <div className="w-full h-1.5 rounded-full bg-signal-warning/10 mt-0.5">
@@ -263,7 +263,7 @@ function CentralDivider({ multiplierLabel }: { multiplierLabel: string }) {
       <div className="w-px flex-1 bg-border-subtle" />
       {multiplierLabel && (
         <div className="flex flex-col items-center gap-1 bg-surface-muted border border-border-subtle rounded-lg px-2.5 py-2">
-          <span className="font-mono text-[18px] font-bold text-content-primary tabular-nums leading-none">
+          <span className="tabular-nums text-[18px] font-bold text-content-primary tabular-nums leading-none">
             {multiplierLabel}
           </span>
           <span className="text-[8px] font-bold uppercase tracking-widest text-content-tertiary text-center leading-tight">
@@ -288,7 +288,7 @@ function MobileDifferenceMarker({
     <div className="flex md:hidden items-center gap-3 py-1">
       <div className="h-px flex-1 bg-border-subtle" />
       <div className="flex items-center gap-1.5 bg-surface-muted rounded-md px-2.5 py-1">
-        <span className="font-mono text-[14px] font-bold text-content-primary tabular-nums">
+        <span className="tabular-nums text-[14px] font-bold text-content-primary tabular-nums">
           {multiplierLabel}
         </span>
         <span className="text-[8px] font-bold uppercase tracking-widest text-content-tertiary">
@@ -386,7 +386,7 @@ function PostCard({
       {/* Content */}
       <div className="flex-1 min-w-0 flex flex-col justify-between gap-0.5">
         {/* Engagement — hero metric */}
-        <span className={cn("font-mono text-[15px] font-bold tabular-nums leading-none", engColor)}>
+        <span className={cn("tabular-nums text-[15px] font-bold tabular-nums leading-none", engColor)}>
           {post.engagementPct.toFixed(2).replace(".", ",")}%
         </span>
 
@@ -399,13 +399,13 @@ function PostCard({
         <div className="flex items-center gap-2.5 pt-1 mt-auto border-t border-border-subtle/60">
           <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
             <Heart className="size-2.5" aria-hidden="true" />
-            <span className="tabular-nums font-mono">
+            <span className="tabular-nums tabular-nums">
               {post.likes.toLocaleString("pt-PT")}
             </span>
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
             <MessageCircle className="size-2.5" aria-hidden="true" />
-            <span className="tabular-nums font-mono">{post.comments}</span>
+            <span className="tabular-nums tabular-nums">{post.comments}</span>
           </span>
           <span className="ml-auto text-[9px] text-content-tertiary uppercase tracking-wide">
             {post.date}
