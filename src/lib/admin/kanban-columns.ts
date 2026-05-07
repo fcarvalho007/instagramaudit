@@ -28,6 +28,10 @@ export interface EnrichedLead {
   user_type: string | null;
   purpose: string | null;
   company: string | null;
+  profile_ownership: string | null;
+  source: string;
+  beta_consent: boolean;
+  beta_consent_at: string | null;
   commercial_status: string;
   internal_notes: string | null;
   contacted_at: string | null;
