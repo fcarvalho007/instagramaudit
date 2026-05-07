@@ -1,5 +1,9 @@
 # LOCKED FILES — DO NOT MODIFY WITHOUT EXPLICIT PERMISSION
 
+> **Design Pivot (May 2026):** The project has moved from dark Tech Noir to
+> a light-first Iconosquare-inspired analytics SaaS style. Token files and
+> landing components were unlocked for this pivot and re-locked after.
+
 > **Note:** This project uses Tailwind CSS v4 with native `@theme inline`
 > configuration in `src/styles.css`. There is no `tailwind.config.ts`.
 
@@ -7,8 +11,8 @@ These files are foundational and must not be changed unless the user
 explicitly asks for a modification in a new prompt.
 
 ## Design Foundation (locked since Sprint 0, Prompt 1)
-- /src/styles/tokens.css
-- /src/styles.css (the @theme inline configuration section)
+- /src/styles/tokens.css (light-first palette since design pivot)
+- /src/styles.css (the @theme inline configuration section — light-first)
 - /src/routes/__root.tsx (meta tags and base layout)
 - /LOCKED_FILES.md itself
 
