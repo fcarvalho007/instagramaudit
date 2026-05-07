@@ -135,11 +135,11 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             </div>
 
             {/* ── COL 2: KPI metrics ──────────────────────────────── */}
-            <div className="border-t md:border-t-0 flex-1 min-w-0 px-5 py-5 sm:px-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-2">
+            <div className="border-t md:border-t-0 flex-1 min-w-0 px-3 py-5 sm:px-4 flex items-center">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 w-full divide-x divide-border-default">
                 {/* Seguidores */}
-                <div className="flex flex-col items-center gap-1">
-                  <span className="tabular-nums text-2xl sm:text-3xl font-bold text-content-primary leading-none">
+                <div className="flex flex-col items-center gap-1.5 px-3">
+                  <span className="tabular-nums text-xl sm:text-2xl lg:text-3xl font-bold text-content-primary leading-none">
                     {formatCompact(followers)}
                   </span>
                   <span className="text-eyebrow-sm text-content-tertiary">
@@ -148,11 +148,11 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </div>
 
                 {/* Taxa de Engagement */}
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-1.5 px-3">
                   <span className="text-eyebrow-sm text-accent-primary font-semibold">
                     Principal
                   </span>
-                  <span className="tabular-nums text-2xl sm:text-3xl font-bold text-content-primary leading-none">
+                  <span className="tabular-nums text-xl sm:text-2xl lg:text-3xl font-bold text-content-primary leading-none">
                     {engRate.toFixed(2).replace(".", ",")}%
                   </span>
                   <span className="text-eyebrow-sm text-content-tertiary">
@@ -166,10 +166,10 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </div>
 
                 {/* Delta benchmark */}
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-1.5 px-3">
                   <span
                     className={cn(
-                      "tabular-nums text-2xl sm:text-3xl font-bold leading-none",
+                      "tabular-nums text-xl sm:text-2xl lg:text-3xl font-bold leading-none",
                       engDelta >= 0 ? "text-signal-success" : "text-signal-danger",
                     )}
                   >
@@ -181,8 +181,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </div>
 
                 {/* Publicações */}
-                <div className="flex flex-col items-center gap-1">
-                  <span className="tabular-nums text-2xl sm:text-3xl font-bold text-content-primary leading-none">
+                <div className="flex flex-col items-center gap-1.5 px-3">
+                  <span className="tabular-nums text-xl sm:text-2xl lg:text-3xl font-bold text-content-primary leading-none">
                     {formatCompact(postsCount)}
                   </span>
                   <span className="text-eyebrow-sm text-content-tertiary">
