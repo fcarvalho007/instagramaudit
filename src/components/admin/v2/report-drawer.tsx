@@ -207,7 +207,7 @@ function PhasesGrid({ phases }: { phases: ReportPhase[] }) {
               <span className="text-[12px] text-admin-text-secondary">{p.name}</span>
               <PhaseIcon status={p.status} />
             </div>
-            <span className="font-mono text-[12px] text-admin-text-primary">
+            <span className="admin-code text-admin-text-primary">
               {p.timestamp ?? "—"}
             </span>
             {p.durationMs != null ? (
@@ -340,7 +340,7 @@ function EventsTimeline({ events }: { events: ReportEvent[] }) {
               }}
             />
             <div className="flex items-baseline gap-2">
-              <span className="shrink-0 font-mono text-[12px] text-admin-text-tertiary">
+              <span className="shrink-0 admin-code text-admin-text-tertiary">
                 {ev.timestamp}
               </span>
               <span className="text-[12px] text-admin-text-primary">{ev.message}</span>
@@ -551,7 +551,7 @@ function SnapshotAccordion({ snapshot }: { snapshot: Record<string, unknown> }) 
         <summary className="cursor-pointer list-none text-[12px] font-medium text-admin-text-primary marker:hidden">
           Ver dados do snapshot original
         </summary>
-        <pre className="m-0 mt-3 max-h-72 overflow-auto rounded-md border border-admin-border bg-admin-surface p-3 font-mono text-[12px] leading-relaxed text-admin-text-secondary">
+        <pre className="m-0 mt-3 max-h-72 overflow-auto rounded-md border border-admin-border bg-admin-surface p-3 admin-code leading-relaxed text-admin-text-secondary">
           {JSON.stringify(snapshot, null, 2)}
         </pre>
       </details>

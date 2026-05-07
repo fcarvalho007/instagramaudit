@@ -148,7 +148,7 @@ function FunnelRow({
             conv.
           </span>
           <span
-            className="font-mono text-[12px] tabular-nums"
+            className="admin-code tabular-nums"
             style={{ color: ADMIN_LITERAL.profileBarReports }}
           >
             {funnel.conversionPct}

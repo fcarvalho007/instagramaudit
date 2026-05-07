@@ -245,7 +245,7 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
       </td>
       <td className="px-6 py-3.5 align-middle">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[12px] tabular-nums text-admin-text-primary">
+          <span className="admin-code tabular-nums text-admin-text-primary">
             {row.analyses}
           </span>
           <span
@@ -266,7 +266,7 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
         </div>
       </td>
       <td
-        className={`px-6 py-3.5 text-right align-middle font-mono text-[12px] tabular-nums ${
+        className={`px-6 py-3.5 text-right align-middle admin-code tabular-nums ${
           row.reports > 0
             ? ""
             : "text-admin-text-tertiary"
@@ -280,13 +280,13 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
         {row.reports}
       </td>
       <td
-        className={`px-6 py-3.5 text-right align-middle font-mono text-[12px] tabular-nums ${
+        className={`px-6 py-3.5 text-right align-middle admin-code tabular-nums ${
           row.reports === 0 ? "text-admin-text-tertiary" : convCls
         }`}
       >
         {row.reports === 0 ? "—" : `${row.conversionPct.toFixed(1)}%`}
       </td>
-      <td className="px-6 py-3.5 text-right align-middle font-mono text-[12px] tabular-nums text-admin-text-primary">
+      <td className="px-6 py-3.5 text-right align-middle admin-code tabular-nums text-admin-text-primary">
         {row.revenue ?? "—"}
       </td>
       <td className="px-6 py-3.5 align-middle text-[12px] text-admin-text-secondary">

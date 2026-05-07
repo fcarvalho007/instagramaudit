@@ -154,7 +154,7 @@ export function VisualCoverDebugCard() {
                 {d.openai.handleAllowed === null ? "—" : d.openai.handleAllowed ? "sim" : "não"}
               </span>
               <span className="text-admin-text-tertiary">Allowlist</span>
-              <span className="text-admin-text-primary font-mono text-[12px] break-all">
+              <span className="text-admin-text-primary admin-code break-all">
                 {d.openai.allowlist.length > 0 ? d.openai.allowlist.join(", ") : "(vazia)"}
               </span>
             </div>
@@ -178,7 +178,7 @@ export function VisualCoverDebugCard() {
                   </>
                 )}
                 <span className="text-admin-text-tertiary">Criado</span>
-                <span className="text-admin-text-primary font-mono text-[12px]">{d.snapshot.created_at}</span>
+                <span className="text-admin-text-primary admin-code">{d.snapshot.created_at}</span>
               </div>
             </div>
           )}

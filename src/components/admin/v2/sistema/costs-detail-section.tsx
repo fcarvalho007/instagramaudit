@@ -207,7 +207,7 @@ export function CostsDetailSection() {
                     key={call.id}
                     className={`${idx === 0 ? "" : "border-t border-admin-border"} hover:bg-admin-surface-muted/60`}
                   >
-                    <td className="py-3 pr-4 font-mono text-[12px] tabular-nums text-admin-text-primary">
+                    <td className="py-3 pr-4 admin-code tabular-nums text-admin-text-primary">
                       {call.when}
                     </td>
                     <td className="py-3 pr-4">
@@ -215,10 +215,10 @@ export function CostsDetailSection() {
                         {call.provider}
                       </AdminBadge>
                     </td>
-                    <td className="py-3 pr-4 font-mono text-[12px] text-admin-text-secondary">
+                    <td className="py-3 pr-4 admin-code text-admin-text-secondary">
                       {call.model}
                     </td>
-                    <td className="py-3 pr-4 font-mono text-[12px] text-admin-text-primary">
+                    <td className="py-3 pr-4 admin-code text-admin-text-primary">
                       {call.handle}
                     </td>
                     <td className="py-3 pr-4">
@@ -226,13 +226,13 @@ export function CostsDetailSection() {
                         {STATUS_BADGE[call.status].label}
                       </AdminBadge>
                     </td>
-                    <td className={`py-3 pr-4 font-mono text-[12px] tabular-nums ${httpToneClass(call.http)}`}>
+                    <td className={`py-3 pr-4 admin-code tabular-nums ${httpToneClass(call.http)}`}>
                       {call.http ?? "—"}
                     </td>
-                    <td className="py-3 pr-4 text-right font-mono text-[12px] tabular-nums text-admin-text-secondary">
+                    <td className="py-3 pr-4 text-right admin-code tabular-nums text-admin-text-secondary">
                       {call.duration}
                     </td>
-                    <td className="py-3 text-right font-mono text-[12px] tabular-nums text-admin-text-primary">
+                    <td className="py-3 text-right admin-code tabular-nums text-admin-text-primary">
                       {call.cost ?? "—"}
                     </td>
                   </tr>

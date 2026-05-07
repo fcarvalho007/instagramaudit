@@ -182,7 +182,7 @@ function ReportRow({ report, onView }: { report: MockReport; onView: () => void 
   return (
     <tr className="border-t border-admin-border transition-colors hover:bg-[var(--color-admin-surface-muted)]">
       <td className="px-6 py-3.5 align-top">
-        <p className="m-0 font-mono text-[12px] text-admin-text-primary">
+        <p className="m-0 admin-code text-admin-text-primary">
           #{report.id}
         </p>
         <p className="mt-0.5 text-[12px] text-admin-text-secondary">
@@ -207,13 +207,13 @@ function ReportRow({ report, onView }: { report: MockReport; onView: () => void 
       <td className="px-6 py-3.5 align-top">
         <StatusBadge status={report.status} />
       </td>
-      <td className="px-6 py-3.5 align-top font-mono text-[12px] text-admin-text-secondary">
+      <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
         {report.startedAt}
       </td>
-      <td className="px-6 py-3.5 align-top font-mono text-[12px] text-admin-text-secondary">
+      <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
         {report.duration ?? "—"}
       </td>
-      <td className="px-6 py-3.5 text-right align-top font-mono text-[12px] text-admin-text-primary">
+      <td className="px-6 py-3.5 text-right align-top admin-code text-admin-text-primary">
         {report.cost ?? "—"}
       </td>
       <td className="px-6 py-3.5 align-top">
