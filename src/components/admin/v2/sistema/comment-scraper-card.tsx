@@ -272,7 +272,7 @@ export function CommentScraperCard() {
         <div className="mt-1.5 flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-admin-text-secondary">
           <span>
             Actor:{" "}
-            <span className="font-mono text-[12px] text-admin-text-primary">
+            <span className="admin-code text-admin-text-primary">
               {m.actor}
             </span>
           </span>

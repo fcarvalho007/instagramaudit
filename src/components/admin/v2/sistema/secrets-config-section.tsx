@@ -93,7 +93,7 @@ export function SecretsConfigSection() {
                   key={s.name}
                   className="flex items-center justify-between rounded-lg bg-admin-surface-muted px-3.5 py-3"
                 >
-                  <span className="font-mono text-[12px] text-admin-text-primary">
+                  <span className="admin-code text-admin-text-primary">
                     {s.name}
                   </span>
                   {s.configured ? (

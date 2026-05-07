@@ -86,7 +86,7 @@ function RankingRow({ profile }: { profile: MockTopProfile }) {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="w-6 shrink-0 text-right font-mono text-[12px] tabular-nums tracking-[0.04em] text-admin-text-tertiary">
+      <span className="w-6 shrink-0 text-right admin-code tabular-nums tracking-[0.04em] text-admin-text-tertiary">
         {String(profile.rank).padStart(2, "0")}
       </span>
       <AdminAvatar
@@ -127,11 +127,11 @@ function RankingRow({ profile }: { profile: MockTopProfile }) {
         </div>
       </div>
       <div className="shrink-0 text-right tabular-nums">
-        <p className="m-0 font-mono text-[12px] text-admin-text-primary">
+        <p className="m-0 admin-code text-admin-text-primary">
           {profile.analyses} análises
         </p>
         <p
-          className="m-0 font-mono text-[12px]"
+          className="m-0 admin-code"
           style={{ color: ADMIN_LITERAL.profileBarReports }}
         >
           {profile.reports} reports
@@ -214,10 +214,10 @@ function CategoryColumn() {
             <span className="flex-1 text-[12px] text-admin-text-primary">
               {c.category}
             </span>
-            <span className="w-10 text-right font-mono text-[12px] tabular-nums text-admin-text-primary">
+            <span className="w-10 text-right admin-code tabular-nums text-admin-text-primary">
               {c.pct}%
             </span>
-            <span className="w-10 text-right font-mono text-[12px] tabular-nums text-admin-text-tertiary">
+            <span className="w-10 text-right admin-code tabular-nums text-admin-text-tertiary">
               {c.count}
             </span>
           </li>

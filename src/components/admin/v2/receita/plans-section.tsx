@@ -61,7 +61,7 @@ function MiniDonut({
         />
       </svg>
       <span
-        className="absolute font-mono text-[12px] font-medium"
+        className="absolute admin-code font-medium"
         style={{ color }}
       >
         {label}

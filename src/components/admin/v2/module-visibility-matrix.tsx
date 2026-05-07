@@ -223,7 +223,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
         <div className="flex flex-wrap gap-3 text-[12px] text-admin-text-secondary">
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
-            Draft — só afeta previews com <code className="rounded bg-white/20 px-1 font-mono text-[12px]">draft=true</code>
+            Draft — só afeta previews com <code className="rounded bg-white/20 px-1 admin-code">draft=true</code>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
@@ -244,7 +244,7 @@ export function ModuleVisibilityMatrix({ adminEmail, onPreviewDraft, onOpenPubli
             <div>
               <p className="font-medium">Isto altera o que utilizadores públicos veem.</p>
               <p className="mt-1 text-xs text-amber-600">
-                A variante <strong>{confirmPublish}</strong> será atualizada. As alterações ficam visíveis imediatamente em <code className="rounded bg-amber-100 px-1 font-mono text-[12px]">/analyze/</code>.
+                A variante <strong>{confirmPublish}</strong> será atualizada. As alterações ficam visíveis imediatamente em <code className="rounded bg-amber-100 px-1 admin-code">/analyze/</code>.
               </p>
             </div>
           </div>

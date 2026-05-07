@@ -357,7 +357,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                <tr className="text-left admin-table-header border-b border-admin-border">
                   <th className="pb-2 pr-4 font-medium">Fornecedor</th>
                   <th className="pb-2 pr-4 font-medium text-right">Interno registado</th>
                   <th className="pb-2 pr-4 font-medium text-right">Externo (dashboard)</th>
@@ -445,7 +445,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
-                  <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                  <tr className="text-left admin-table-header border-b border-admin-border">
                     <th className="pb-2 pr-4 font-medium">Actor · nome amigável</th>
                     <th className="pb-2 pr-4 font-medium text-right">Eventos</th>
                     <th className="pb-2 pr-4 font-medium text-right">€/Evento</th>
@@ -473,7 +473,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
-                  <tr className="text-left text-[12px] text-admin-text-tertiary uppercase tracking-wider border-b border-admin-border">
+                  <tr className="text-left admin-table-header border-b border-admin-border">
                     <th className="pb-2 pr-4 font-medium">Operação · modelo</th>
                     <th className="pb-2 pr-4 font-medium text-right">Chamadas</th>
                     <th className="pb-2 pr-4 font-medium text-right">Custo</th>
@@ -566,7 +566,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
 
       {/* ════ RODAPÉ METODOLÓGICO ═════════════════════════════════════ */}
       <p className="text-[12px] text-admin-text-tertiary leading-relaxed border-t border-admin-border pt-4">
-        Custos internos atribuídos provêm de <code className="font-mono text-[12px]">provider_call_logs</code> ligados a análises.
+        Custos internos atribuídos provêm de <code className="admin-code">provider_call_logs</code> ligados a análises.
         Faturação real importada do dashboard de cada fornecedor.
         {lastApifyBatch && (
           <> Última importação: Apify · {new Date(lastApifyBatch.created_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })} {new Date(lastApifyBatch.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}.</>
@@ -796,7 +796,7 @@ function ApifyActorRow({ actor }: { actor: ApifyActorBreakdown }) {
           </span>
           {friendly?.desc && <span className="text-admin-text-tertiary"> · {friendly.desc}</span>}
         </div>
-        <div className="mt-0.5 font-mono text-[12px] text-admin-text-tertiary">
+        <div className="mt-0.5 admin-code text-admin-text-tertiary">
           {actor.actor} · {actor.run_count} runs
         </div>
       </td>
@@ -841,7 +841,7 @@ function OpenAiActorRow({ actor }: { actor: OpenAiActorBreakdown }) {
             </span>
           )}
         </div>
-        <div className="mt-0.5 font-mono text-[12px] text-admin-text-tertiary">{actor.model ?? "—"}</div>
+        <div className="mt-0.5 admin-code text-admin-text-tertiary">{actor.model ?? "—"}</div>
       </td>
       <td className="py-3 pr-4 text-right tabular-nums">{noCalls ? "—" : actor.call_count}</td>
       <td className="py-3 pr-4 text-right tabular-nums font-semibold text-admin-text-primary">
