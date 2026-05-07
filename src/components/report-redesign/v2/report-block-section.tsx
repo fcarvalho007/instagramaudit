@@ -8,6 +8,9 @@ interface Props {
   block: BlockConfig;
   /** Banda de fundo alternada para ritmo visual. */
   tone?: "white" | "soft-blue" | "canvas";
+  /** First section in the report — uses reduced top padding so the
+   *  section title aligns with the sidebar card top edge. */
+  first?: boolean;
   children: ReactNode;
 }
 
@@ -16,7 +19,7 @@ interface Props {
  * cinematic do BLOCO: número grande decorativo à esquerda,
  * label + pergunta humana em serif + subtítulo.
  */
-export function ReportBlockSection({ block, tone = "canvas", children }: Props) {
+export function ReportBlockSection({ block, tone = "canvas", first, children }: Props) {
   const band =
     tone === "white"
       ? REDESIGN_TOKENS.bandWhite
@@ -30,7 +33,7 @@ export function ReportBlockSection({ block, tone = "canvas", children }: Props) 
       aria-label={block.question}
       className={cn("w-full scroll-mt-20 lg:scroll-mt-6", band)}
     >
-      <div className="py-14 md:py-20">
+      <div className={cn(first ? "pt-0 pb-14 md:pt-0 md:pb-20" : "py-14 md:py-20")}>
         <header className="mb-0 pb-8 md:pb-10 border-b border-border-subtle">
           <div className="flex flex-col md:flex-row md:items-start gap-2 md:gap-8">
             {/* Large chapter number */}

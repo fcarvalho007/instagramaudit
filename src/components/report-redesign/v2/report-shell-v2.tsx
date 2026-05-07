@@ -112,11 +112,11 @@ export function ReportShellV2({
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1380px] px-5 md:px-6">
-          <div className="flex gap-10 lg:gap-12 pt-6 lg:pt-10">
+          <div className="flex gap-8 lg:gap-10 pt-5 lg:pt-6">
             <ReportBlockSidebar />
             <main className="min-w-0 flex-1">
               {/* 01 · Overview (redesigned) */}
-              <ReportBlockSection block={overview} tone="canvas">
+              <ReportBlockSection block={overview} tone="canvas" first>
                 <ReportOverviewBlock
                   result={result}
                   renderInsight={renderInsight}
