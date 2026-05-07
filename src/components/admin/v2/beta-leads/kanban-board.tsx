@@ -50,7 +50,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
               <div
                 key={col.key}
                 className="flex flex-col gap-2.5 shrink-0"
-                style={{ width: 270 }}
+                style={{ width: 290 }}
               >
                 {/* Column header */}
                 <div
@@ -61,13 +61,13 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
                   }}
                 >
                   <span
-                    className="text-[12px] font-medium"
+                    className="text-[13px] font-medium"
                     style={{ color: col.color }}
                   >
                     {col.label}
                   </span>
                   <span
-                    className="ml-auto text-[12px] font-mono rounded-full px-1.5 py-0.5"
+                    className="ml-auto admin-code rounded-full px-2 py-0.5"
                     style={{
                       backgroundColor: `${col.color}18`,
                       color: col.color,
@@ -81,7 +81,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
                 <div className="flex flex-col gap-2">
                   {colLeads.length === 0 && (
                     <div
-                      className="rounded-lg border border-dashed py-6 text-center text-[12px]"
+                      className="rounded-lg border border-dashed py-8 text-center admin-body"
                       style={{
                         borderColor: "#D3D1C7",
                         color: "#B4B2A9",
@@ -116,7 +116,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
       >
         <SheetContent>
           <SheetHeader>
-            <SheetTitle className="text-sm">
+            <SheetTitle className="admin-card-title">
               Notas — {editingLead?.email}
             </SheetTitle>
           </SheetHeader>
@@ -126,7 +126,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
               onChange={(e) => setNotesText(e.target.value)}
               rows={8}
               placeholder="Notas internas sobre este lead..."
-              className="text-sm"
+              className="text-[13px]"
             />
             <Button size="sm" onClick={saveNotes}>
               Guardar notas
