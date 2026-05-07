@@ -12,6 +12,7 @@ import {
 interface Props {
   rows: BetaRequestRow[];
   onStatusChange: (id: string, status: string, markContacted?: boolean) => void;
+  onGenerateReport?: (row: BetaRequestRow) => void;
 }
 
 const STATUS_ACCENT: Record<string, "revenue" | "info" | "danger" | "signal" | "neutral" | "leads"> = {
@@ -21,6 +22,7 @@ const STATUS_ACCENT: Record<string, "revenue" | "info" | "danger" | "signal" | "
   processing: "signal",
   completed: "revenue",
   archived: "neutral",
+  failed: "danger",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -30,6 +32,7 @@ const STATUS_LABEL: Record<string, string> = {
   processing: "Em processamento",
   completed: "Concluído",
   archived: "Arquivado",
+  failed: "Falhou",
 };
 
 const USER_TYPE_LABEL: Record<string, string> = {
@@ -59,7 +62,7 @@ function formatDate(iso: string): string {
   });
 }
 
-export function BetaRequestsTable({ rows, onStatusChange }: Props) {
+export function BetaRequestsTable({ rows, onStatusChange, onGenerateReport }: Props) {
   if (rows.length === 0) {
     return (
       <AdminCard>
@@ -147,7 +150,7 @@ export function BetaRequestsTable({ rows, onStatusChange }: Props) {
                   {row.request_source}
                 </td>
                 <td className="px-4 py-2.5">
-                  <BetaRequestActions row={row} onStatusChange={onStatusChange} />
+                  <BetaRequestActions row={row} onStatusChange={onStatusChange} onGenerateReport={onGenerateReport} />
                 </td>
               </tr>
             ))}

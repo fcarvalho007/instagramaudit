@@ -55,6 +55,7 @@ import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
 import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
+import { Route as ApiAdminGenerateBetaReportRouteImport } from './routes/api/admin/generate-beta-report'
 import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/force-refresh'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
@@ -328,6 +329,12 @@ const ApiAdminLeadsKanbanRoute = ApiAdminLeadsKanbanRouteImport.update({
   path: '/api/admin/leads-kanban',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminGenerateBetaReportRoute =
+  ApiAdminGenerateBetaReportRouteImport.update({
+    id: '/api/admin/generate-beta-report',
+    path: '/api/admin/generate-beta-report',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminForceRefreshRoute = ApiAdminForceRefreshRouteImport.update({
   id: '/api/admin/force-refresh',
   path: '/api/admin/force-refresh',
@@ -605,6 +612,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -693,6 +701,7 @@ export interface FileRoutesByTo {
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -783,6 +792,7 @@ export interface FileRoutesById {
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
@@ -874,6 +884,7 @@ export interface FileRouteTypes {
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
+    | '/api/admin/generate-beta-report'
     | '/api/admin/leads-kanban'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -962,6 +973,7 @@ export interface FileRouteTypes {
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
+    | '/api/admin/generate-beta-report'
     | '/api/admin/leads-kanban'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -1051,6 +1063,7 @@ export interface FileRouteTypes {
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/force-refresh'
+    | '/api/admin/generate-beta-report'
     | '/api/admin/leads-kanban'
     | '/api/admin/regenerate-pdf'
     | '/api/admin/report-requests'
@@ -1125,6 +1138,7 @@ export interface RootRouteChildren {
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
+  ApiAdminGenerateBetaReportRoute: typeof ApiAdminGenerateBetaReportRoute
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
   ApiAdminRegeneratePdfRoute: typeof ApiAdminRegeneratePdfRoute
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
@@ -1488,6 +1502,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/leads-kanban'
       fullPath: '/api/admin/leads-kanban'
       preLoaderRoute: typeof ApiAdminLeadsKanbanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/generate-beta-report': {
+      id: '/api/admin/generate-beta-report'
+      path: '/api/admin/generate-beta-report'
+      fullPath: '/api/admin/generate-beta-report'
+      preLoaderRoute: typeof ApiAdminGenerateBetaReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/force-refresh': {
@@ -1969,6 +1990,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,
+  ApiAdminGenerateBetaReportRoute: ApiAdminGenerateBetaReportRoute,
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
   ApiAdminRegeneratePdfRoute: ApiAdminRegeneratePdfRoute,
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,

@@ -12,6 +12,7 @@ import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
 import { BetaRequestFilters } from "@/components/admin/v2/beta-requests/beta-request-filters";
 import { BetaRequestsTable } from "@/components/admin/v2/beta-requests/beta-requests-table";
 import { AdminSearchInput } from "@/components/admin/v2/admin-search-input";
+import { ConfirmDialog } from "@/components/admin/v2/confirm-dialog";
 import type { BetaRequestRow } from "@/components/admin/v2/beta-requests/beta-request-actions";
 
 export const Route = createFileRoute("/admin/beta-requests")({
@@ -32,6 +33,8 @@ function BetaRequestsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 25;
+  const [generateTarget, setGenerateTarget] = useState<BetaRequestRow | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   const queryKey = ["admin", "beta-requests", status, search, page];
 
@@ -78,6 +81,37 @@ function BetaRequestsPage() {
     [queryClient],
   );
 
+  const handleGenerateReport = useCallback(
+    async () => {
+      if (!generateTarget) return;
+      setGenerating(true);
+      try {
+        const res = await adminFetch("/api/admin/generate-beta-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ report_request_id: generateTarget.id }),
+        });
+
+        const data = await res.json() as { success: boolean; error?: string; preflight_blocked?: string };
+
+        if (!res.ok || !data.success) {
+          const msg = data.error ?? "Erro desconhecido";
+          toast.error(msg);
+          return;
+        }
+
+        toast.success(`Relatório gerado para @${generateTarget.instagram_username}`);
+        queryClient.invalidateQueries({ queryKey: ["admin", "beta-requests"] });
+      } catch {
+        toast.error("Erro de rede ao gerar relatório");
+      } finally {
+        setGenerating(false);
+        setGenerateTarget(null);
+      }
+    },
+    [generateTarget, queryClient],
+  );
+
   const pendingCount = rows.filter((r) => r.request_status === "pending_review").length;
 
   return (
@@ -121,7 +155,11 @@ function BetaRequestsPage() {
 
       {!isLoading && !error && (
         <>
-          <BetaRequestsTable rows={rows} onStatusChange={handleStatusChange} />
+          <BetaRequestsTable
+            rows={rows}
+            onStatusChange={handleStatusChange}
+            onGenerateReport={(row) => setGenerateTarget(row)}
+          />
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -147,6 +185,21 @@ function BetaRequestsPage() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={!!generateTarget}
+        onOpenChange={(open) => { if (!open) setGenerateTarget(null); }}
+        title="Gerar relatório"
+        description={
+          generateTarget
+            ? `Esta ação vai gerar uma análise Fresh para @${generateTarget.instagram_username}. Pode gerar custos reais (Apify). Continuar?`
+            : undefined
+        }
+        confirmLabel="Gerar agora"
+        variant="danger"
+        loading={generating}
+        onConfirm={handleGenerateReport}
+      />
     </>
   );
 }

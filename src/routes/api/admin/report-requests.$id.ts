@@ -15,6 +15,7 @@ const VALID_STATUSES = [
   "processing",
   "completed",
   "archived",
+  "failed",
 ] as const;
 
 interface LeadJoin {
