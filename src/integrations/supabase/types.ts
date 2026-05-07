@@ -518,13 +518,17 @@ export type Database = {
       }
       leads: {
         Row: {
+          archived_at: string | null
           beta_consent: boolean
           beta_consent_at: string | null
+          commercial_status: string
           company: string | null
+          contacted_at: string | null
           created_at: string
           email: string
           email_normalized: string
           id: string
+          internal_notes: string | null
           name: string
           profile_ownership: string | null
           purpose: string | null
@@ -533,13 +537,17 @@ export type Database = {
           user_type: string | null
         }
         Insert: {
+          archived_at?: string | null
           beta_consent?: boolean
           beta_consent_at?: string | null
+          commercial_status?: string
           company?: string | null
+          contacted_at?: string | null
           created_at?: string
           email: string
           email_normalized: string
           id?: string
+          internal_notes?: string | null
           name: string
           profile_ownership?: string | null
           purpose?: string | null
@@ -548,13 +556,17 @@ export type Database = {
           user_type?: string | null
         }
         Update: {
+          archived_at?: string | null
           beta_consent?: boolean
           beta_consent_at?: string | null
+          commercial_status?: string
           company?: string | null
+          contacted_at?: string | null
           created_at?: string
           email?: string
           email_normalized?: string
           id?: string
+          internal_notes?: string | null
           name?: string
           profile_ownership?: string | null
           purpose?: string | null
