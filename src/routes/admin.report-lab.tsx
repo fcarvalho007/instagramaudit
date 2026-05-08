@@ -487,10 +487,16 @@ function ReportLabPage() {
 // ── Subcomponents ──────────────────────────────────────────────────
 
 function SnapshotStatusBanner({ expiresAt }: { expiresAt: string | null }) {
+  return null as never; // replaced below
+}
+
+function SnapshotStatusBannerV2({ expiresAt, createdAt }: { expiresAt: string | null; createdAt: string }) {
+  const createdStr = new Date(createdAt).toLocaleString("pt-PT", { dateStyle: "medium", timeStyle: "short" });
+
   if (!expiresAt) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
-        Sem data de expiração definida — o relatório público pode não estar disponível.
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+        Snapshot de {createdStr} · sem data de expiração definida.
       </div>
     );
   }
@@ -503,21 +509,21 @@ function SnapshotStatusBanner({ expiresAt }: { expiresAt: string | null }) {
 
   if (isValid) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-xs text-green-700">
-        ✓ Relatório público disponível — snapshot válido até {expStr}.
+      <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-xs text-green-700">
+        ✓ Snapshot de {createdStr} · válido até {expStr}.
       </div>
     );
   }
   if (isStale) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
-        Snapshot expirado a {expStr} — dados stale podem ser servidos, mas não haverá dados novos sem modo Fresh.
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+        Snapshot de {createdStr} · expirado a {expStr} — dados stale.
       </div>
     );
   }
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
-      Snapshot demasiado antigo (expirou a {expStr}) — o relatório público mostrará erro. Ative o modo Fresh.
+    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+      Snapshot de {createdStr} · demasiado antigo (expirou a {expStr}).
     </div>
   );
 }
@@ -637,121 +643,11 @@ function CollapsibleCard({
   );
 }
 
-// ── Readiness checklist ────────────────────────────────────────────
+// ── Consolidated module table ──────────────────────────────────────
 
-// ── Override source badge ──────────────────────────────────────────
-
-const OVERRIDE_BADGE: Record<"defaults" | "draft" | "published", { label: string; cls: string }> = {
-  defaults:  { label: "Defaults estáticos",  cls: "bg-gray-100 text-gray-600 border-gray-200" },
-  draft:     { label: "Draft pendente",       cls: "bg-amber-100 text-amber-700 border-amber-300" },
-  published: { label: "Override publicado",   cls: "bg-green-100 text-green-700 border-green-300" },
-};
-
-function OverrideSourceBadge({ status }: { status: "defaults" | "draft" | "published" }) {
-  const badge = OVERRIDE_BADGE[status];
-  return (
-    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12px] font-semibold uppercase tracking-wider whitespace-nowrap", badge.cls)}>
-      {badge.label}
-    </span>
-  );
-}
-
-// ── Variant differences panel ──────────────────────────────────────
-
-const MODULE_INTERPRETATIONS: Partial<Record<keyof VariantFeatures, string>> = {
-  commentIntelligence: "Comentários avançados ficam fora do público e entram como feature Pro.",
-  captionsDiagnostics: "Diagnóstico completo de legendas fica no laboratório.",
-  debugLabels: "Labels de debug apenas visíveis no laboratório interno.",
-  betaFeedbackBanner: "Banner de feedback visível apenas no relatório público.",
-  benchmarkGauge: "Benchmark gauge visível em todas as variantes.",
-  marketSignals: "Sinais de mercado visíveis em todas as variantes.",
-};
-
-function VariantDiffPanel() {
-  const [open, setOpen] = useState(false);
-
-  const mvp = getVariantFeatures("public_mvp");
-  const lab = getVariantFeatures("internal_lab");
-  const pro = getVariantFeatures("pro_preview");
-
-  const allKeys = Object.keys(FEATURE_LABELS) as (keyof VariantFeatures)[];
-  const diffKeys = allKeys.filter((k) => {
-    const vals = new Set([mvp[k], lab[k], pro[k]]);
-    return vals.size > 1;
-  });
-
-  if (diffKeys.length === 0) return null;
-
-  const visLabel = (val: FeatureVisibility) => {
-    if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
-    if (val === "lightweight") return { text: "Lightweight", cls: "text-blue-700 bg-blue-50" };
-    if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
-    return { text: "Hidden", cls: "text-gray-500 bg-gray-100" };
-  };
-
-  return (
-    <div className="rounded-xl border border-admin-border bg-white overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-3.5 px-5 py-4 text-left hover:bg-admin-surface-muted/50 transition-colors"
-      >
-        <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-purple-50 text-purple-600 shrink-0"><GitCompareArrows className="h-4 w-4" /></span>
-        <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-admin-text-primary block">Diferenças entre variantes</span>
-          <span className="text-[12px] text-admin-text-secondary">Compara o que muda entre Public MVP, Internal Lab e Pro Preview</span>
-        </div>
-        {!open && (
-          <span className="text-[12px] font-semibold text-purple-700 bg-purple-50 rounded-full px-2.5 py-0.5 shrink-0">
-            {diffKeys.length} diferença{diffKeys.length !== 1 ? "s" : ""}
-          </span>
-        )}
-        {open ? (
-          <ChevronUp className="h-4 w-4 text-admin-text-tertiary shrink-0" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-admin-text-tertiary shrink-0" />
-        )}
-      </button>
-      {open && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-t border-admin-border bg-admin-surface-muted/30">
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Public MVP</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Internal Lab</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Pro Preview</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Interpretação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {diffKeys.map((key) => {
-                const mvpVis = visLabel(mvp[key]);
-                const labVis = visLabel(lab[key]);
-                const proVis = visLabel(pro[key]);
-                const interp = MODULE_INTERPRETATIONS[key] ?? "Visibilidade difere entre variantes.";
-                return (
-                  <tr key={key} className="border-t border-admin-border/50">
-                    <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
-                    <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", proVis.cls)}>{proVis.text}</span>
-                    </td>
-                    <td className="px-4 py-2 text-admin-text-secondary max-w-xs">{interp}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
+const VISIBLE_MODULE_KEYS = (Object.keys(FEATURE_LABELS) as (keyof VariantFeatures)[]).filter(
+  (k) => MODULE_READINESS[k].status !== "hidden",
+);
 
 const READINESS_BADGE: Record<ReadinessStatus, { cls: string }> = {
   ready:          { cls: "text-green-700 bg-green-50" },
@@ -767,23 +663,21 @@ const RISK_DOT: Record<RiskLevel, string> = {
   high: "bg-red-500",
 };
 
-// Keys visible in readiness checklist (exclude internal-only flags like debugLabels)
-const READINESS_VISIBLE_KEYS = (Object.keys(FEATURE_LABELS) as (keyof VariantFeatures)[]).filter(
-  (k) => MODULE_READINESS[k].status !== "hidden",
-);
+const VIS_BADGE = (val: FeatureVisibility) => {
+  if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
+  if (val === "lightweight") return { text: "Light", cls: "text-blue-700 bg-blue-50" };
+  if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
+  return { text: "Oculto", cls: "text-gray-500 bg-gray-100" };
+};
 
-function ReadinessChecklist() {
+function ConsolidatedModuleTable({ variant }: { variant: ReportVariant }) {
   const [open, setOpen] = useState(false);
-  const mvpFeatures = getVariantFeatures("public_mvp");
 
-  const visLabel = (val: FeatureVisibility) => {
-    if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
-    if (val === "lightweight") return { text: "Lightweight", cls: "text-blue-700 bg-blue-50" };
-    if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
-    return { text: "Hidden", cls: "text-gray-500 bg-gray-100" };
-  };
+  const mvp = getVariantFeatures("public_mvp");
+  const lab = getVariantFeatures("internal_lab");
+  const pro = getVariantFeatures("pro_preview");
 
-  const counts = READINESS_VISIBLE_KEYS.reduce(
+  const counts = VISIBLE_MODULE_KEYS.reduce(
     (acc, key) => {
       const s = MODULE_READINESS[key].status;
       acc[s] = (acc[s] || 0) + 1;
@@ -809,8 +703,8 @@ function ReadinessChecklist() {
       >
         <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-green-50 text-green-600 shrink-0"><ClipboardCheck className="h-4 w-4" /></span>
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-admin-text-primary block">Checklist de prontidão pública</span>
-          <span className="text-[12px] text-admin-text-secondary">O que falta para esta variante poder ser publicada</span>
+          <span className="text-sm font-medium text-admin-text-primary block">Visibilidade e prontidão dos módulos</span>
+          <span className="text-[12px] text-admin-text-secondary">Comparação entre variantes + estado de cada módulo</span>
         </div>
         {!open && summaryItems.length > 0 && (
           <div className="flex items-center gap-2 text-[12px] shrink-0">
@@ -834,25 +728,33 @@ function ReadinessChecklist() {
             <thead>
               <tr className="border-t border-admin-border bg-admin-surface-muted/30">
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">MVP</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "public_mvp" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Público</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "internal_lab" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Interno</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "pro_preview" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Pro</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Estado</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Risco</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Nota</th>
               </tr>
             </thead>
             <tbody>
-              {READINESS_VISIBLE_KEYS.map((key) => {
+              {VISIBLE_MODULE_KEYS.map((key) => {
                 const readiness = MODULE_READINESS[key];
-                const mvpVis = visLabel(mvpFeatures[key]);
                 const badge = READINESS_BADGE[readiness.status];
                 const dot = RISK_DOT[readiness.risk];
+                const mvpVis = VIS_BADGE(mvp[key]);
+                const labVis = VIS_BADGE(lab[key]);
+                const proVis = VIS_BADGE(pro[key]);
                 return (
                   <tr key={key} className="border-t border-admin-border/50">
                     <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
-                    <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", mvpVis.cls)}>
-                        {mvpVis.text}
-                      </span>
+                    <td className={cn("px-4 py-2", variant === "public_mvp" && "bg-admin-surface-muted/40")}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
+                    </td>
+                    <td className={cn("px-4 py-2", variant === "internal_lab" && "bg-admin-surface-muted/40")}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
+                    </td>
+                    <td className={cn("px-4 py-2", variant === "pro_preview" && "bg-admin-surface-muted/40")}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", proVis.cls)}>{proVis.text}</span>
                     </td>
                     <td className="px-4 py-2">
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", badge.cls)}>
