@@ -1,78 +1,82 @@
 
-## Scope
+## Ficheiro
 
-Two files, UI-only. No logic, data, or provider changes.
+`src/components/report-redesign/v2/report-hero-v2.tsx` — único ficheiro.
 
-1. `src/components/report-redesign/v2/report-overview-engagement.tsx`
-2. `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
-
----
-
-## 1. report-overview-engagement.tsx
-
-### Header → metrics spacing
-- Add a thin `border-t border-border-default` separator between header and KPI row (via `mt-0` on the KPI section and a `border-t` div)
-- Increase spacing: header `pb-4 sm:pb-5`, KPI section `pt-5 sm:pt-6`
-
-### KPI cards — balance widths and readability
-- Change grid from `grid-cols-3` to `grid-cols-1 sm:grid-cols-3` so cards stack on mobile (no overflow)
-- Numbers: `text-[1.4rem] sm:text-[2rem]` → `text-[1.6rem] sm:text-[2.25rem]` (larger, main focus)
-- `%` suffix: same size bump to match
-- Card padding: `px-3 py-4 sm:px-5 sm:py-5` → `px-4 py-4 sm:px-5 sm:py-5` (slightly more horizontal room)
-
-### Soften KPI 3 accent
-- Danger: `border-signal-danger/15 bg-signal-danger/4` → `border-signal-danger/12 bg-signal-danger/3`
-- Success: `border-signal-success/15 bg-signal-success/4` → `border-signal-success/12 bg-signal-success/3`
-
-### Status pill
-- Reduce pill to `text-[10px]` from `text-xs` for subtlety
-
-### Chart section spacing
-- `mt-2` → `mt-4 sm:mt-6` — more breathing room between KPIs and chart
-
-### Diagnostic reading
-- `pb-5 sm:pb-6 md:pb-8` → `pb-6 sm:pb-7 md:pb-8` — slightly more bottom padding
+Zero alterações a dados, lógica, providers ou PDF pipeline.
 
 ---
 
-## 2. report-engagement-benchmark-chart.tsx
+## Alterações
 
-### Chart rows — more vertical space
-- Container `gap-2.5` → `gap-3` between tier rows
-- Active row: `py-4 sm:py-5` → `py-5 sm:py-6`
-- Inactive rows: `py-2.5 sm:py-3` → `py-3 sm:py-3.5`
+### 1. Outer card — mais espaçoso e premium
 
-### Soften active row colours further
-- Border opacity: `0.18` → `0.14`
-- Background opacity: `0.02` → `0.015`
-- Bar opacity: `0.65` → `0.55` (softer, less aggressive)
-- Reference zone: `0.06` → `0.04`
+- Padding externo: `px-5 md:px-6 pt-4 pb-3` → `px-5 md:px-6 pt-5 pb-4`
+- Layout principal: remover `md:divide-x md:divide-border-default` (elimina divisórias verticais rígidas)
+- Substituir o 3-col flat por um layout 2-row no desktop:
+  - **Row 1**: Profile identity (full width, mais espaçoso)
+  - **Row 2**: KPI strip (full width) + Actions compactas à direita
 
-### Right-side percentage column
-- Active row value: `text-[13px] sm:text-[14px]` → `text-[14px] sm:text-[15px]`
-- Inactive value: same bump `text-[13px] sm:text-[14px]` → `text-[14px] sm:text-[15px]`
-- Consistent `min-w-[60px] sm:min-w-[64px]`
+### 2. Profile area — Row 1, mais respiração
 
-### Chart labels — easier to scan
-- Tier labels (inactive): `text-[13px]` → `text-[13px] sm:text-[14px]`
-- Sub-labels: `text-xs` (keep) — already appropriate
-- "← ESTÁS AQUI": `text-[10px]` → `text-[11px]`, `text-content-tertiary` → `text-content-secondary/60` (slightly more visible)
+- Padding interno: `px-5 py-5 sm:px-6 sm:py-5` → `px-6 py-6 sm:px-7 sm:py-7`
+- Avatar: manter `size-14 md:size-[72px]` — bom tamanho
+- Gap avatar→texto: `gap-4` → `gap-5`
+- Handle (h1): manter `font-display` (Fraunces), `text-xl sm:text-2xl`
+- Mover badges (Instagram + Ativo) para uma linha com mais `mt-1.5` de respiro
+- Bio: `mt-2.5` → `mt-3`, `max-w-md` → `max-w-lg` para melhor leitura
+- Metadata (data + posts): `mt-3` → `mt-3.5`
+- Adicionar separador subtil (`border-b border-border-default/50`) no fundo do Row 1
 
-### X-axis
-- `text-content-secondary/40` → `text-content-secondary/35` — subtler tick labels
+### 3. KPI strip — Row 2, limpo e equilibrado
 
-### Sources strip
-- Add `mt-1` for slight separation from x-axis
-- `pt-1` → `pt-2` — align better with card grid
+- Remover os `w-px h-10 bg-border-default` dividers
+- Substituir por `gap-6 lg:gap-8` entre KPIs (espaço em vez de linhas)
+- Manter todos os 4 KPIs: Seguidores, Taxa de Engagement (principal), Delta benchmark, Publicações
+- Remover o label "Principal" acima do engagement — em vez disso, fazer o valor de engagement ligeiramente maior: `text-[2.25rem]` vs `text-2xl` nos outros
+- Remover o `midTierLabel` pill dentro do KPI strip (informação duplicada com o card de engagement abaixo)
+- KPIs: alinhar à esquerda com `justify-start` em vez de `justify-center`
+- Padding: `py-5` → `py-4 sm:py-5` para não ser tão alto
+
+### 4. Action area — compacta e secundária
+
+- Mover de coluna vertical de 180px para uma row horizontal compacta alinhada à direita do KPI strip
+- Remover "Configurar" do contexto público — envolver com check `actions.onConfigure` (se existir)
+- Botões: inline `h-8` em vez de `h-9`, `text-xs` em vez de `text-[13px]`
+- "Novo relatório": mover para ghost button sem borda, apenas icon + text
+- Layout: `flex items-center gap-2` horizontal
+
+### 5. Footer — manter mas refinar
+
+- Manter "Comparar com concorrentes Pro" + "Facebook · TikTok · YouTube Em breve"
+- Reduzir padding: `py-2.5` → `py-2`
+- Border: `border-border-default` → `border-border-default/50` (mais subtil)
+
+### 6. Mobile
+
+- Profile area empilha naturalmente (já flex-col)
+- KPIs: grid 2x2 em mobile em vez de wrap confuso
+- Actions: row horizontal abaixo dos KPIs com scroll se necessário
 
 ---
 
-## Mobile safety
+## Estrutura resultante (desktop)
 
-- KPI grid stacks to `grid-cols-1` on mobile → no horizontal overflow
-- All `min-w-[]` values are small enough for 375px
-- Chart bars use `flex-1` — adapts naturally
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  [avatar]  @handle ✓                                        │
+│            Nome completo                                     │
+│            [Instagram] [Ativo]                               │
+│            Bio do perfil aqui...                             │
+│            📅 7 mai 2026 · 12 posts em 90 dias              │
+├──────────────────────────────────────────────────────────────┤
+│  1.234      0,45%          -62%         156    [PDF] [Share] │
+│  seguidores engagement    abaixo bench  posts                │
+└──────────────────────────────────────────────────────────────┘
+│  👥 Comparar Pro · Facebook · TikTok · YouTube Em breve      │
+└──────────────────────────────────────────────────────────────┘
+```
 
-## Risks
+## Riscos
 
-Minimal — purely spacing, sizing and opacity adjustments.
+Baixo — layout/CSS only. O botão "Configurar" pode desaparecer do público se não tiver handler, mas isso é o comportamento desejado.

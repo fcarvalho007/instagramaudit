@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Download, Loader2, Plus, Share2, Calendar, Settings } from "lucide-react";
+import { Check, ChevronRight, Download, Loader2, Plus, Calendar } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import type {
@@ -52,139 +52,117 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
   return (
     <section
       aria-label="Cabeçalho do relatório"
-      className="w-full px-5 md:px-6 pt-4 pb-3"
+      className="w-full px-5 md:px-6 pt-5 pb-4"
     >
       <div className="mx-auto max-w-[1380px]">
-        {/* ── TOP BAR ────────────────────────────────────────────── */}
-
         {/* ── HERO CARD ──────────────────────────────────────────── */}
         <div className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
-          {/* Main 3-col layout (md+) */}
-          <div className="flex flex-col md:flex-row md:items-stretch md:divide-x md:divide-border-default">
 
-            {/* ── COL 1: Profile identity ──────────────────────────── */}
-            <div className="flex-1 min-w-0 px-5 py-5 sm:px-6 sm:py-5">
-              <div className="flex items-start gap-4">
-                <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                    <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-content-primary leading-tight break-words">
-                      {handle}
-                    </h1>
-                    {verified && <VerifiedBadge />}
-                  </div>
-                  {fullName && (
-                    <p className="text-sm font-medium text-content-secondary leading-snug">
-                      {fullName}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                    <PlatformPill />
-                    <StatusPill label="Ativo" />
-                  </div>
+          {/* ── ROW 1: Profile identity ──────────────────────────── */}
+          <div className="px-6 py-6 sm:px-7 sm:py-7 border-b border-border-default/50">
+            <div className="flex items-start gap-5">
+              <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-content-primary leading-tight break-words">
+                    {handle}
+                  </h1>
+                  {verified && <VerifiedBadge />}
+                </div>
+                {fullName && (
+                  <p className="text-sm font-medium text-content-secondary leading-snug">
+                    {fullName}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                  <PlatformPill />
+                  <StatusPill label="Ativo" />
                 </div>
               </div>
-              {bio && (
-                <p className="text-[13px] text-content-tertiary leading-relaxed line-clamp-2 max-w-md mt-2.5">
-                  {bio}
-                </p>
+            </div>
+            {bio && (
+              <p className="text-[13px] text-content-tertiary leading-relaxed line-clamp-2 max-w-lg mt-3">
+                {bio}
+              </p>
+            )}
+            <div className="flex items-center gap-3 mt-3.5 flex-wrap">
+              {analysisMeta.dateLabel && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
+                  <Calendar className="size-3 text-content-tertiary" aria-hidden="true" />
+                  {analysisMeta.dateLabel?.replace("Atualizado ", "")}
+                </span>
               )}
-              {/* Date + posts metadata */}
-              <div className="flex items-center gap-3 mt-3 flex-wrap">
-                {analysisMeta.dateLabel && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
-                    <Calendar className="size-3 text-content-tertiary" aria-hidden="true" />
-                    {analysisMeta.dateLabel?.replace("Atualizado ", "")}
-                  </span>
-                )}
-                {analysisMeta.postsLabel && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-signal-success">
-                    {analysisMeta.postsLabel}
-                  </span>
-                )}
-              </div>
+              {analysisMeta.postsLabel && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-signal-success">
+                  {analysisMeta.postsLabel}
+                </span>
+              )}
             </div>
+          </div>
 
-            {/* ── COL 2: KPI metrics ──────────────────────────────── */}
-            <div className="border-t md:border-t-0 flex-1 min-w-0 py-5 flex items-center justify-center">
-              <div className="flex flex-wrap items-center justify-center gap-y-4">
-                {/* Seguidores */}
-                <div className="flex flex-col items-center gap-1.5 px-4 lg:px-5">
-                  <span className="tabular-nums text-2xl lg:text-[2rem] font-bold text-content-primary leading-none">
-                    {formatCompact(followers)}
-                  </span>
-                  <span className="text-eyebrow-sm text-content-tertiary">
-                    seguidores
-                  </span>
-                </div>
+          {/* ── ROW 2: KPI strip + Actions ────────────────────────── */}
+          <div className="px-6 sm:px-7 py-4 sm:py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {/* KPIs */}
+            <div className="grid grid-cols-2 sm:flex sm:items-end gap-y-4 gap-x-6 lg:gap-x-8">
+              {/* Seguidores */}
+              <div className="flex flex-col gap-1">
+                <span className="tabular-nums text-2xl font-bold text-content-primary leading-none">
+                  {formatCompact(followers)}
+                </span>
+                <span className="text-eyebrow-sm text-content-tertiary">
+                  seguidores
+                </span>
+              </div>
 
-                <div className="hidden md:block w-px h-10 bg-border-default" aria-hidden="true" />
+              {/* Taxa de Engagement — principal, slightly larger */}
+              <div className="flex flex-col gap-1">
+                <span className="tabular-nums text-2xl sm:text-[2.25rem] font-bold text-content-primary leading-none">
+                  {engRate.toFixed(2).replace(".", ",")}%
+                </span>
+                <span className="text-eyebrow-sm text-content-tertiary">
+                  engagement
+                </span>
+              </div>
 
-                {/* Taxa de Engagement */}
-                <div className="flex flex-col items-center gap-1.5 px-4 lg:px-5">
-                  <span className="text-eyebrow-sm text-accent-primary font-semibold">
-                    Principal
-                  </span>
-                  <span className="tabular-nums text-2xl lg:text-[2rem] font-bold text-content-primary leading-none">
-                    {engRate.toFixed(2).replace(".", ",")}%
-                  </span>
-                  <span className="text-eyebrow-sm text-content-tertiary text-center">
-                    taxa de engagement
-                  </span>
-                  {midTierLabel && (
-                    <span className="inline-flex items-center rounded-full bg-signal-success/10 px-2 py-0.5 text-[11px] font-medium text-signal-success mt-0.5">
-                      {midTierLabel}
-                    </span>
+              {/* Delta benchmark */}
+              <div className="flex flex-col gap-1">
+                <span
+                  className={cn(
+                    "tabular-nums text-2xl font-bold leading-none",
+                    engDelta >= 0 ? "text-signal-success" : "text-signal-danger",
                   )}
-                </div>
+                >
+                  {engDelta >= 0 ? "+" : ""}{Math.round(engDelta)}%
+                </span>
+                <span className="text-eyebrow-sm text-content-tertiary">
+                  {engDelta >= 0 ? "acima do" : "abaixo do"} benchmark
+                </span>
+              </div>
 
-                <div className="hidden md:block w-px h-10 bg-border-default" aria-hidden="true" />
-
-                {/* Delta benchmark */}
-                <div className="flex flex-col items-center gap-1.5 px-4 lg:px-5">
-                  <span
-                    className={cn(
-                      "tabular-nums text-2xl lg:text-[2rem] font-bold leading-none",
-                      engDelta >= 0 ? "text-signal-success" : "text-signal-danger",
-                    )}
-                  >
-                    {engDelta >= 0 ? "+" : ""}{Math.round(engDelta)}%
-                  </span>
-                  <span className="text-eyebrow-sm text-content-tertiary text-center">
-                    {engDelta >= 0 ? "acima do" : "abaixo do"} benchmark
-                  </span>
-                </div>
-
-                <div className="hidden md:block w-px h-10 bg-border-default" aria-hidden="true" />
-
-                {/* Publicações */}
-                <div className="flex flex-col items-center gap-1.5 px-4 lg:px-5">
-                  <span className="tabular-nums text-2xl lg:text-[2rem] font-bold text-content-primary leading-none">
-                    {formatCompact(postsCount)}
-                  </span>
-                  <span className="text-eyebrow-sm text-content-tertiary">
-                    publicações
-                  </span>
-                </div>
+              {/* Publicações */}
+              <div className="flex flex-col gap-1">
+                <span className="tabular-nums text-2xl font-bold text-content-primary leading-none">
+                  {formatCompact(postsCount)}
+                </span>
+                <span className="text-eyebrow-sm text-content-tertiary">
+                  publicações
+                </span>
               </div>
             </div>
 
-            {/* ── COL 3: Report actions ────────────────────────────── */}
-            <div className="hidden md:flex flex-col items-center justify-center gap-2 px-5 py-5 shrink-0 w-[180px]">
-              <span className="text-eyebrow-sm text-content-tertiary mb-1">
-                Relatório
-              </span>
+            {/* Actions — compact horizontal row */}
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               <Link
                 to="/"
                 className={cn(
-                  "w-full inline-flex items-center justify-center gap-2 rounded-lg h-9 px-4",
-                  "bg-white border border-border-default text-content-secondary text-[13px] font-medium",
+                  "inline-flex items-center gap-1.5 rounded-lg h-8 px-3",
+                  "text-content-tertiary text-xs font-medium",
                   "transition-colors duration-150",
-                  "hover:border-accent-primary/30 hover:text-accent-primary",
+                  "hover:text-accent-primary",
                 )}
               >
                 <Plus className="size-3.5" aria-hidden="true" />
-                Novo relatório
+                Novo
               </Link>
               <button
                 type="button"
@@ -192,49 +170,35 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 disabled={actions.pdfDisabled || actions.pdfBusy}
                 aria-busy={actions.pdfBusy}
                 className={cn(
-                  "w-full inline-flex items-center justify-center gap-2 rounded-lg h-9 px-4",
-                  "bg-accent-primary text-white text-[13px] font-semibold shadow-sm",
+                  "inline-flex items-center gap-1.5 rounded-lg h-8 px-3.5",
+                  "bg-accent-primary text-white text-xs font-semibold shadow-sm",
                   "transition-colors duration-150 hover:bg-accent-primary/90",
                   "disabled:cursor-not-allowed disabled:opacity-50",
                 )}
               >
                 {actions.pdfBusy ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Download className="size-4" aria-hidden="true" />
+                  <Download className="size-3.5" aria-hidden="true" />
                 )}
-                Exportar PDF
+                PDF
               </button>
-
               <ShareReportPopover
                 result={result}
                 variant="ghost"
                 triggerLabel="Partilhar"
                 className={cn(
-                  "w-full inline-flex items-center justify-center gap-2 rounded-lg h-9 px-4",
-                  "bg-white border border-border-default text-content-secondary text-[13px] font-medium",
+                  "inline-flex items-center gap-1.5 rounded-lg h-8 px-3",
+                  "border border-border-default text-content-secondary text-xs font-medium",
                   "transition-colors duration-150",
                   "hover:border-accent-primary/30 hover:text-accent-primary",
                 )}
               />
-
-              <button
-                type="button"
-                className={cn(
-                  "w-full inline-flex items-center justify-center gap-2 rounded-lg h-9 px-4",
-                  "bg-white border border-border-default text-content-secondary text-[13px] font-medium",
-                  "transition-colors duration-150",
-                  "hover:border-accent-primary/30 hover:text-accent-primary",
-                )}
-              >
-                <Settings className="size-4" aria-hidden="true" />
-                Configurar
-              </button>
             </div>
           </div>
 
           {/* ── FOOTER: Comparison + Multi-network + Date ──────────── */}
-          <div className="border-t border-border-default px-5 sm:px-6 py-2.5 flex items-center justify-between gap-4 flex-wrap text-xs text-content-tertiary">
+          <div className="border-t border-border-default/50 px-6 sm:px-7 py-2 flex items-center justify-between gap-4 flex-wrap text-xs text-content-tertiary">
             <span className="inline-flex items-center gap-1.5">
               👥 Comparar com concorrentes
               <span className="inline-flex items-center rounded-full bg-accent-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-primary">
