@@ -133,11 +133,15 @@ export function ReportBlockTopTabs({ visibleBlockIds }: { visibleBlockIds?: stri
     [active],
   );
 
-  // 3 ícones visíveis: ativo + adjacentes, clamped aos limites
+  // Até 3 ícones visíveis: ativo + adjacentes, clamped aos limites.
+  // Quando há menos de 3 blocos (ex.: public_mvp só tem 2), mostramos
+  // apenas os existentes em vez de aceder a índices inválidos.
   const visibleIndices = useMemo(() => {
-    const start = Math.max(0, Math.min(activeIndex - 1, filtered.length - 3));
-    return [start, start + 1, start + 2];
-  }, [activeIndex]);
+    const max = Math.min(3, filtered.length);
+    if (max <= 0) return [] as number[];
+    const start = Math.max(0, Math.min(activeIndex - 1, filtered.length - max));
+    return Array.from({ length: max }, (_, i) => start + i);
+  }, [activeIndex, filtered.length]);
 
   return (
     <nav
