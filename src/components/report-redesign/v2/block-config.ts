@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { VariantFeatures } from "@/lib/report/report-variant";
 import {
   Eye,
   Stethoscope,
@@ -25,6 +26,8 @@ export interface BlockConfig {
   /** Override do eyebrow renderizado no header do bloco. Quando ausente,
    *  o `ReportBlockSection` usa `shortLabel.toUpperCase()`. */
   eyebrowOverride?: string;
+  /** Key in VariantFeatures that controls this block's visibility. */
+  featureKey: keyof VariantFeatures;
 }
 
 export const BLOCKS: readonly BlockConfig[] = [
@@ -37,6 +40,7 @@ export const BLOCKS: readonly BlockConfig[] = [
     subtitle:
       "Identidade do perfil, indicadores principais e enquadramento do que este relatório mostra.",
     icon: Eye,
+    featureKey: "blockOverview",
   },
   {
     id: "diagnostico",
@@ -47,6 +51,7 @@ export const BLOCKS: readonly BlockConfig[] = [
     subtitle:
       "Perguntas essenciais que qualquer marketer faz ao olhar para um perfil — respondidas pelo cruzamento dos dados recolhidos.",
     icon: Stethoscope,
+    featureKey: "blockDiagnosis",
   },
   {
     id: "performance",
@@ -57,6 +62,7 @@ export const BLOCKS: readonly BlockConfig[] = [
     subtitle:
       "Evolução ao longo do tempo, ritmo de publicação e melhores momentos para chegar à audiência.",
     icon: TrendingUp,
+    featureKey: "blockPerformance",
   },
   {
     id: "conteudo",
@@ -66,6 +72,7 @@ export const BLOCKS: readonly BlockConfig[] = [
     subtitle:
       "Publicações com mais retorno, mistura de formatos e padrões de linguagem editorial.",
     icon: FileText,
+    featureKey: "blockContent",
   },
   {
     id: "procura",
@@ -75,6 +82,7 @@ export const BLOCKS: readonly BlockConfig[] = [
     subtitle:
       "Sinais de procura externa que ajudam a perceber se os mesmos temas têm interesse em pesquisa.",
     icon: Search,
+    featureKey: "blockSearch",
   },
   {
     id: "benchmark",
@@ -85,5 +93,6 @@ export const BLOCKS: readonly BlockConfig[] = [
     subtitle:
       "Posição face a referências de mercado e a perfis pares quando disponíveis.",
     icon: BarChart3,
+    featureKey: "blockBenchmark",
   },
 ] as const;
