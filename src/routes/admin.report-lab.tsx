@@ -93,10 +93,10 @@ function writeLabPrefs(prefs: LabPrefs): void {
 
 const TEST_PROFILES = ["frederico.m.carvalho", "martimsilvai"] as const;
 
-const VARIANT_OPTIONS: { value: ReportVariant; label: string }[] = [
-  { value: "public_mvp", label: "Public MVP" },
-  { value: "internal_lab", label: "Internal Lab" },
-  { value: "pro_preview", label: "Pro Preview" },
+const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: string }[] = [
+  { value: "public_mvp", label: "Público", description: "O que o público geral vê — apenas blocos 01 e 02" },
+  { value: "internal_lab", label: "Trabalho/Admin", description: "Versão completa com todos os blocos e módulos experimentais" },
+  { value: "pro_preview", label: "Pro (simulação)", description: "Simulação de relatório avançado/pago — todos os blocos" },
 ];
 
 const MODE_LABELS: Record<ReportVariant, string> = {
