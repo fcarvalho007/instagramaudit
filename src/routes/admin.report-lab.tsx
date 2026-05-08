@@ -351,7 +351,7 @@ function ReportLabPage() {
         <StatusBox tone="danger">{load.message}</StatusBox>
       )}
       {load.kind === "ready" && (
-        <SnapshotStatusBanner expiresAt={load.expiresAt} createdAt={load.createdAt} />
+        <SnapshotStatusBannerV2 expiresAt={load.expiresAt} createdAt={load.createdAt} />
       )}
 
       {/* ── 4. LINKS RÁPIDOS ───────────────────────────────────── */}
@@ -485,10 +485,6 @@ function ReportLabPage() {
 }
 
 // ── Subcomponents ──────────────────────────────────────────────────
-
-function SnapshotStatusBanner({ expiresAt }: { expiresAt: string | null }) {
-  return null as never; // replaced below
-}
 
 function SnapshotStatusBannerV2({ expiresAt, createdAt }: { expiresAt: string | null; createdAt: string }) {
   const createdStr = new Date(createdAt).toLocaleString("pt-PT", { dateStyle: "medium", timeStyle: "short" });
