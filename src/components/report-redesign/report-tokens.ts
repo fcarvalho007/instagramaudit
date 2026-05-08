@@ -34,7 +34,7 @@ export const REDESIGN_TOKENS = {
   h1Hero:
     "font-display text-[1.25rem] sm:text-[2rem] md:text-[2.5rem] lg:text-[2.75rem] font-semibold tracking-[-0.02em] text-slate-900 leading-[1.15] break-words [word-break:normal] [hyphens:none]",
   h2Section:
-    "font-display text-[2.25rem] md:text-[3rem] lg:text-[3.4rem] font-semibold tracking-[-0.035em] text-slate-900 leading-[1.02]",
+    "font-display text-[1.5rem] md:text-[1.75rem] lg:text-[2rem] font-semibold tracking-[-0.025em] text-content-primary leading-[1.15]",
   eyebrow:
     "text-eyebrow-sm text-slate-500",
   eyebrowAccent:
@@ -95,16 +95,16 @@ export const REDESIGN_TOKENS = {
     "text-eyebrow-sm inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1",
   /** Número do capítulo no chapter marker editorial. */
   chapterNumber:
-    "font-display text-[3.5rem] md:text-[4.5rem] font-semibold leading-none tracking-tighter text-content-tertiary/40 select-none",
+    "font-display text-[3.5rem] md:text-[4.5rem] font-semibold leading-none tracking-tighter text-content-tertiary/60 select-none",
   /** Caixa cinza-clara que isola o número do capítulo. */
   chapterNumberBox:
-    "flex items-center justify-center rounded-2xl bg-surface-muted w-[88px] h-[80px] md:w-[112px] md:h-[96px] shrink-0",
+    "flex items-center justify-center rounded-2xl bg-surface-muted ring-1 ring-border-default/10 w-[88px] h-[80px] md:w-[112px] md:h-[96px] shrink-0",
   /** Label do bloco: OVERVIEW, DIAGNÓSTICO EDITORIAL, etc. */
   chapterLabel:
-    "text-[11px] md:text-xs font-semibold uppercase tracking-[0.22em] text-blue-600",
+    "text-[11px] md:text-xs font-semibold uppercase tracking-[0.22em] text-accent-primary",
   /** Subtítulo do capítulo — Inter, tamanho editorial. */
   chapterSubtitle:
-    "text-[15px] sm:text-[17px] md:text-[20px] text-slate-500 leading-relaxed max-w-[900px]",
+    "text-[15px] sm:text-[17px] md:text-[20px] text-content-secondary leading-relaxed max-w-[900px]",
   /** Valor categorical do KPI (ex.: nome de formato) — escala mais sóbria. */
   kpiValueV2Categorical:
     "font-display text-[1.375rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-tight break-words [word-break:normal] [hyphens:none]",
