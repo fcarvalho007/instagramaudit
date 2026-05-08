@@ -231,7 +231,7 @@ export function ReportBlockTopTabs({ visibleBlockIds }: { visibleBlockIds?: stri
               </SheetTitle>
             </SheetHeader>
             <ul className="mt-3 space-y-1">
-              {BLOCKS.map((block) => {
+              {filtered.map((block) => {
                 const isActive = block.id === active;
                 const Icon = block.icon;
                 return (
