@@ -160,15 +160,8 @@ function ReportLabPage() {
   const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
-  const [overrideStatus, setOverrideStatus] = useState<Record<ReportVariant, "defaults" | "draft" | "published">>({
-    public_mvp: "defaults",
-    internal_lab: "defaults",
-    pro_preview: "defaults",
-  });
 
   const activeProfile = committedCustom.trim() || profile;
-
-  const features = getVariantFeatures(variant);
 
   // ── Sync state → URL + localStorage ──
   useEffect(() => {
@@ -222,29 +215,6 @@ function ReportLabPage() {
       });
     }
   }, []);
-
-  // ── Load override status ──
-  useEffect(() => {
-    getAllOverrides()
-      .then(({ rows }) => {
-        const status: Record<ReportVariant, "defaults" | "draft" | "published"> = {
-          public_mvp: "defaults",
-          internal_lab: "defaults",
-          pro_preview: "defaults",
-        };
-        for (const row of rows) {
-          const v = row.variant as ReportVariant;
-          if (!(v in status)) continue;
-          if (!row.is_draft) {
-            status[v] = "published";
-          } else if (status[v] === "defaults") {
-            status[v] = "draft";
-          }
-        }
-        setOverrideStatus(status);
-      })
-      .catch(() => { /* silent */ });
-  }, [showModules]); // refresh when module panel toggles (after save/publish)
 
   // Auto-load on profile change
   useEffect(() => {
