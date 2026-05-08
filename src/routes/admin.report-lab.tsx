@@ -100,12 +100,6 @@ const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: strin
   { value: "pro_preview", label: "Pré-visualização Pro", description: "Simulação de uma versão avançada/paga, com blocos completos ou teasers comerciais." },
 ];
 
-const MODE_LABELS: Record<ReportVariant, string> = {
-  public_mvp: "Isto é o que utilizadores públicos verão.",
-  internal_lab: "Isto é a versão de trabalho, com módulos completos e experimentais.",
-  pro_preview: "Isto simula funcionalidades futuras/pagas.",
-};
-
 const MODE_TONES: Record<ReportVariant, string> = {
   public_mvp: "bg-blue-50 border-blue-200 text-blue-700",
   internal_lab: "bg-amber-50 border-amber-200 text-amber-700",
