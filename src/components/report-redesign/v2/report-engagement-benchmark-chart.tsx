@@ -294,7 +294,6 @@ export function ReportEngagementBenchmarkChart({
         aria-hidden="true"
       >
         {axisSteps.map((v) => (
-          <span key={v} className="text-xs tabular-nums text-content-secondary/40 font-medium">
           <span key={v} className="text-xs tabular-nums text-content-secondary/35 font-medium">
             {v % 1 === 0 ? `${v}%` : `${v.toFixed(1)}%`}
           </span>
