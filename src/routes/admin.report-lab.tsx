@@ -43,10 +43,7 @@ import {
   Link2,
   ClipboardCheck,
 } from "lucide-react";
-import { Loader2, Lock, GitCompareArrows } from "lucide-react";
 import { ModuleVisibilityMatrix } from "@/components/admin/v2/module-visibility-matrix";
-import { BLOCKS } from "@/components/report-redesign/v2/block-config";
-import { getAllOverrides } from "@/server/admin/variant-overrides.functions";
 import { readAdminEmail } from "@/lib/admin/simple-gate";
 import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
@@ -99,12 +96,6 @@ const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: strin
   { value: "internal_lab", label: "Laboratório interno", description: "Versão completa para trabalho/admin. Mostra todos os blocos e módulos internos." },
   { value: "pro_preview", label: "Pré-visualização Pro", description: "Simulação de uma versão avançada/paga, com blocos completos ou teasers comerciais." },
 ];
-
-const MODE_LABELS: Record<ReportVariant, string> = {
-  public_mvp: "Isto é o que utilizadores públicos verão.",
-  internal_lab: "Isto é a versão de trabalho, com módulos completos e experimentais.",
-  pro_preview: "Isto simula funcionalidades futuras/pagas.",
-};
 
 const MODE_TONES: Record<ReportVariant, string> = {
   public_mvp: "bg-blue-50 border-blue-200 text-blue-700",
@@ -166,15 +157,8 @@ function ReportLabPage() {
   const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
-  const [overrideStatus, setOverrideStatus] = useState<Record<ReportVariant, "defaults" | "draft" | "published">>({
-    public_mvp: "defaults",
-    internal_lab: "defaults",
-    pro_preview: "defaults",
-  });
 
   const activeProfile = committedCustom.trim() || profile;
-
-  const features = getVariantFeatures(variant);
 
   // ── Sync state → URL + localStorage ──
   useEffect(() => {
@@ -229,56 +213,28 @@ function ReportLabPage() {
     }
   }, []);
 
-  // ── Load override status ──
-  useEffect(() => {
-    getAllOverrides()
-      .then(({ rows }) => {
-        const status: Record<ReportVariant, "defaults" | "draft" | "published"> = {
-          public_mvp: "defaults",
-          internal_lab: "defaults",
-          pro_preview: "defaults",
-        };
-        for (const row of rows) {
-          const v = row.variant as ReportVariant;
-          if (!(v in status)) continue;
-          if (!row.is_draft) {
-            status[v] = "published";
-          } else if (status[v] === "defaults") {
-            status[v] = "draft";
-          }
-        }
-        setOverrideStatus(status);
-      })
-      .catch(() => { /* silent */ });
-  }, [showModules]); // refresh when module panel toggles (after save/publish)
-
   // Auto-load on profile change
   useEffect(() => {
     if (activeProfile) loadSnapshot(activeProfile);
   }, [activeProfile, loadSnapshot]);
 
   return (
-    <div className="space-y-8">
-      {/* Mode banner */}
-      <div className={cn("rounded-xl border px-5 py-3 text-sm font-medium flex items-center gap-3", MODE_TONES[variant])}>
-        <span className="shrink-0">⚠</span>
+    <div className="space-y-6">
+      {/* ── 1. BANNER compacto ─────────────────────────────────── */}
+      <div className={cn("rounded-xl border px-5 py-2.5 text-[13px] font-medium flex items-center gap-2", MODE_TONES[variant])}>
+        <span className="shrink-0 text-xs">⚠</span>
         <span>
-          <strong>
-            {variant === "internal_lab"
-              ? "Versão de trabalho · módulos completos e experimentais"
-              : variant === "pro_preview"
-                ? "Pré-visualização Pro · funcionalidades futuras/pagas"
-                : "Versão pública · o que os utilizadores verão"}
-          </strong>
-          {" — "}alterações aqui não afectam o relatório público.
+          {variant === "internal_lab"
+            ? "Laboratório interno"
+            : variant === "pro_preview"
+              ? "Pré-visualização Pro"
+              : "Versão pública"}
+          {" — "}esta pré-visualização não altera dados nem gera novas análises.
         </span>
       </div>
 
-      {/* ── SECTION: Perfil e variante ─────────────────────────── */}
-      <section className="space-y-3">
-        <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
-          <span className="text-admin-text-tertiary">◎</span> Perfil e variante
-        </h2>
+      {/* ── 2. CONTROLOS: Perfil + Variante ────────────────────── */}
+      <section>
         <div className="rounded-xl border border-admin-border bg-white p-5">
           <div className="flex flex-wrap items-start gap-8">
             {/* Profile selector */}
@@ -346,86 +302,30 @@ function ReportLabPage() {
               </p>
             </div>
           </div>
-
-          {/* Block visibility comparison table */}
-          <div className="mt-4 pt-4 border-t border-admin-border/50">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary mb-3">
-              Visibilidade dos blocos por versão
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="text-left text-admin-text-tertiary">
-                    <th className="pb-2 pr-4 font-medium">Bloco</th>
-                    {VARIANT_OPTIONS.map((opt) => (
-                      <th
-                        key={opt.value}
-                        className={cn(
-                          "pb-2 px-3 font-medium text-center whitespace-nowrap",
-                          variant === opt.value && "text-admin-text-primary",
-                        )}
-                      >
-                        {opt.value === "public_mvp" ? "Público" : opt.value === "internal_lab" ? "Interno" : "Pro Preview"}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {BLOCKS.map((block) => (
-                    <tr key={block.id} className="border-t border-admin-border/30">
-                      <td className="py-2 pr-4 font-medium text-admin-text-secondary whitespace-nowrap">
-                        <span className="tabular-nums">{block.number}</span> {block.shortLabel}
-                      </td>
-                      {(["public_mvp", "internal_lab", "pro_preview"] as ReportVariant[]).map((v) => {
-                        const vis = getVariantFeatures(v)[block.featureKey];
-                        const isActive = variant === v;
-                        return (
-                          <td
-                            key={v}
-                            className={cn(
-                              "py-2 px-3 text-center",
-                              isActive && "bg-admin-surface-muted/50",
-                            )}
-                          >
-                            {vis === "hidden" ? (
-                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-400 border border-gray-200">
-                                Oculto
-                              </span>
-                            ) : vis === "teaser" ? (
-                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200">
-                                Teaser
-                              </span>
-                            ) : (
-                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-600 border border-green-200">
-                                Visível
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-[11px] text-admin-text-tertiary leading-relaxed">
-              Esta pré-visualização não altera dados nem gera novas análises. Apenas muda a visibilidade dos blocos.
-            </p>
-          </div>
         </div>
       </section>
 
-      {/* ── SECTION: Ações de partilha ─────────────────────────── */}
+      {/* ── 3. ESTADO DO SNAPSHOT ──────────────────────────────── */}
+      {load.kind === "loading" && (
+        <StatusBox tone="neutral">A carregar snapshot de @{activeProfile}…</StatusBox>
+      )}
+      {load.kind === "missing" && (
+        <StatusBox tone="warning">
+          Não existe snapshot para @{activeProfile}. Corre uma análise primeiro.
+        </StatusBox>
+      )}
+      {load.kind === "error" && (
+        <StatusBox tone="danger">{load.message}</StatusBox>
+      )}
       {load.kind === "ready" && (
-        <section className="space-y-3">
-          <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
-            <span className="text-admin-text-tertiary">✦</span> Ações de partilha
-          </h2>
-          <div className="rounded-xl border border-admin-border bg-white p-5">
-            {/* Snapshot status banner */}
-            <SnapshotStatusBanner expiresAt={load.expiresAt} />
+        <SnapshotStatusBannerV2 expiresAt={load.expiresAt} createdAt={load.createdAt} />
+      )}
 
-            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── 4. LINKS RÁPIDOS ───────────────────────────────────── */}
+      {load.kind === "ready" && (
+        <section>
+          <div className="rounded-xl border border-admin-border bg-white p-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* 1 — Relatório público */}
               <LinkBlock
                 title="Relatório público"
@@ -499,75 +399,34 @@ function ReportLabPage() {
         </section>
       )}
 
-      {/* ── SECTION: Configuração e diagnóstico ────────────────── */}
-      <section className="space-y-3">
-        <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
-          <span className="text-admin-text-tertiary">◎</span> Configuração e diagnóstico
-        </h2>
-        <div className="space-y-2">
-          {/* Module visibility manager */}
-          <CollapsibleCard
-            icon={<span className="flex items-center justify-center h-8 w-8 rounded-lg bg-admin-info-50 text-admin-info-500"><FlaskConical className="h-4 w-4" /></span>}
-            title="Gestor de visibilidade de módulos"
-            subtitle="Activa ou esconde blocos individuais nesta variante"
-            badge={<span className="text-[12px] text-admin-text-tertiary">{Object.keys(FEATURE_LABELS).length} módulos</span>}
-            open={showModules}
-            onToggle={() => setShowModules(!showModules)}
-          >
-            <ModuleVisibilityMatrix
-              adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
-              onPreviewDraft={(v) =>
-                window.open(
-                  `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
-                  "_blank",
-                )
-              }
-              onOpenPublic={() =>
-                window.open(`/analyze/${activeProfile}`, "_blank")
-              }
-            />
-          </CollapsibleCard>
+      {/* ── 5. PAINEL ÚNICO: Visibilidade e prontidão ──────────── */}
+      <section className="space-y-2">
+        <ConsolidatedModuleTable variant={variant} />
 
-          {/* Readiness checklist */}
-          <ReadinessChecklist />
-
-          {/* Variant differences */}
-          <VariantDiffPanel />
-        </div>
+        <CollapsibleCard
+          icon={<span className="flex items-center justify-center h-8 w-8 rounded-lg bg-admin-info-50 text-admin-info-500"><FlaskConical className="h-4 w-4" /></span>}
+          title="Gestor de visibilidade de módulos"
+          subtitle="Activa ou esconde blocos individuais nesta variante"
+          badge={<span className="text-[12px] text-admin-text-tertiary">{Object.keys(FEATURE_LABELS).length} módulos</span>}
+          open={showModules}
+          onToggle={() => setShowModules(!showModules)}
+        >
+          <ModuleVisibilityMatrix
+            adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
+            onPreviewDraft={(v) =>
+              window.open(
+                `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
+                "_blank",
+              )
+            }
+            onOpenPublic={() =>
+              window.open(`/analyze/${activeProfile}`, "_blank")
+            }
+          />
+        </CollapsibleCard>
       </section>
 
-      {/* Footer note */}
-      <div className="flex items-center gap-2 text-[12px] text-admin-text-tertiary">
-        <span className="h-1.5 w-1.5 rounded-full bg-admin-text-tertiary/40" />
-        <span>
-          Esta área é interna · alterações aqui não chamam APIs nem afectam o relatório público.
-          URL deste lab: <span className="admin-code text-[11px]">/admin/report-lab?profile={activeProfile}&variant={variant}</span>
-        </span>
-      </div>
-
-      {/* Snapshot status */}
-      {load.kind === "loading" && (
-        <StatusBox tone="neutral">A carregar snapshot de @{activeProfile}…</StatusBox>
-      )}
-      {load.kind === "missing" && (
-        <StatusBox tone="warning">
-          Não existe snapshot para @{activeProfile}. Corre uma análise primeiro.
-        </StatusBox>
-      )}
-      {load.kind === "error" && (
-        <StatusBox tone="danger">{load.message}</StatusBox>
-      )}
-      {load.kind === "ready" && (
-        <p className="text-xs text-admin-text-tertiary">
-          Snapshot de{" "}
-          {new Date(load.createdAt).toLocaleString("pt-PT", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </p>
-      )}
-
-      {/* Report render area */}
+      {/* ── 6. REPORT PREVIEW ──────────────────────────────────── */}
       {load.kind === "ready" && (
         <div className="rounded-2xl border border-admin-border overflow-hidden shadow-[var(--shadow-admin-card)]">
           <ReportThemeWrapper>
@@ -582,17 +441,25 @@ function ReportLabPage() {
           </ReportThemeWrapper>
         </div>
       )}
+
+      {/* ── 7. FOOTER ──────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 text-[12px] text-admin-text-tertiary">
+        <span className="h-1.5 w-1.5 rounded-full bg-admin-text-tertiary/40" />
+        <span>Área interna · sem chamadas a APIs.</span>
+      </div>
     </div>
   );
 }
 
 // ── Subcomponents ──────────────────────────────────────────────────
 
-function SnapshotStatusBanner({ expiresAt }: { expiresAt: string | null }) {
+function SnapshotStatusBannerV2({ expiresAt, createdAt }: { expiresAt: string | null; createdAt: string }) {
+  const createdStr = new Date(createdAt).toLocaleString("pt-PT", { dateStyle: "medium", timeStyle: "short" });
+
   if (!expiresAt) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
-        Sem data de expiração definida — o relatório público pode não estar disponível.
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+        Snapshot de {createdStr} · sem data de expiração definida.
       </div>
     );
   }
@@ -605,21 +472,21 @@ function SnapshotStatusBanner({ expiresAt }: { expiresAt: string | null }) {
 
   if (isValid) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-xs text-green-700">
-        ✓ Relatório público disponível — snapshot válido até {expStr}.
+      <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-xs text-green-700">
+        ✓ Snapshot de {createdStr} · válido até {expStr}.
       </div>
     );
   }
   if (isStale) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
-        Snapshot expirado a {expStr} — dados stale podem ser servidos, mas não haverá dados novos sem modo Fresh.
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+        Snapshot de {createdStr} · expirado a {expStr} — dados stale.
       </div>
     );
   }
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
-      Snapshot demasiado antigo (expirou a {expStr}) — o relatório público mostrará erro. Ative o modo Fresh.
+    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+      Snapshot de {createdStr} · demasiado antigo (expirou a {expStr}).
     </div>
   );
 }
@@ -739,121 +606,11 @@ function CollapsibleCard({
   );
 }
 
-// ── Readiness checklist ────────────────────────────────────────────
+// ── Consolidated module table ──────────────────────────────────────
 
-// ── Override source badge ──────────────────────────────────────────
-
-const OVERRIDE_BADGE: Record<"defaults" | "draft" | "published", { label: string; cls: string }> = {
-  defaults:  { label: "Defaults estáticos",  cls: "bg-gray-100 text-gray-600 border-gray-200" },
-  draft:     { label: "Draft pendente",       cls: "bg-amber-100 text-amber-700 border-amber-300" },
-  published: { label: "Override publicado",   cls: "bg-green-100 text-green-700 border-green-300" },
-};
-
-function OverrideSourceBadge({ status }: { status: "defaults" | "draft" | "published" }) {
-  const badge = OVERRIDE_BADGE[status];
-  return (
-    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12px] font-semibold uppercase tracking-wider whitespace-nowrap", badge.cls)}>
-      {badge.label}
-    </span>
-  );
-}
-
-// ── Variant differences panel ──────────────────────────────────────
-
-const MODULE_INTERPRETATIONS: Partial<Record<keyof VariantFeatures, string>> = {
-  commentIntelligence: "Comentários avançados ficam fora do público e entram como feature Pro.",
-  captionsDiagnostics: "Diagnóstico completo de legendas fica no laboratório.",
-  debugLabels: "Labels de debug apenas visíveis no laboratório interno.",
-  betaFeedbackBanner: "Banner de feedback visível apenas no relatório público.",
-  benchmarkGauge: "Benchmark gauge visível em todas as variantes.",
-  marketSignals: "Sinais de mercado visíveis em todas as variantes.",
-};
-
-function VariantDiffPanel() {
-  const [open, setOpen] = useState(false);
-
-  const mvp = getVariantFeatures("public_mvp");
-  const lab = getVariantFeatures("internal_lab");
-  const pro = getVariantFeatures("pro_preview");
-
-  const allKeys = Object.keys(FEATURE_LABELS) as (keyof VariantFeatures)[];
-  const diffKeys = allKeys.filter((k) => {
-    const vals = new Set([mvp[k], lab[k], pro[k]]);
-    return vals.size > 1;
-  });
-
-  if (diffKeys.length === 0) return null;
-
-  const visLabel = (val: FeatureVisibility) => {
-    if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
-    if (val === "lightweight") return { text: "Lightweight", cls: "text-blue-700 bg-blue-50" };
-    if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
-    return { text: "Hidden", cls: "text-gray-500 bg-gray-100" };
-  };
-
-  return (
-    <div className="rounded-xl border border-admin-border bg-white overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-3.5 px-5 py-4 text-left hover:bg-admin-surface-muted/50 transition-colors"
-      >
-        <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-purple-50 text-purple-600 shrink-0"><GitCompareArrows className="h-4 w-4" /></span>
-        <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-admin-text-primary block">Diferenças entre variantes</span>
-          <span className="text-[12px] text-admin-text-secondary">Compara o que muda entre Public MVP, Internal Lab e Pro Preview</span>
-        </div>
-        {!open && (
-          <span className="text-[12px] font-semibold text-purple-700 bg-purple-50 rounded-full px-2.5 py-0.5 shrink-0">
-            {diffKeys.length} diferença{diffKeys.length !== 1 ? "s" : ""}
-          </span>
-        )}
-        {open ? (
-          <ChevronUp className="h-4 w-4 text-admin-text-tertiary shrink-0" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-admin-text-tertiary shrink-0" />
-        )}
-      </button>
-      {open && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-t border-admin-border bg-admin-surface-muted/30">
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Public MVP</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Internal Lab</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Pro Preview</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">Interpretação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {diffKeys.map((key) => {
-                const mvpVis = visLabel(mvp[key]);
-                const labVis = visLabel(lab[key]);
-                const proVis = visLabel(pro[key]);
-                const interp = MODULE_INTERPRETATIONS[key] ?? "Visibilidade difere entre variantes.";
-                return (
-                  <tr key={key} className="border-t border-admin-border/50">
-                    <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
-                    <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", proVis.cls)}>{proVis.text}</span>
-                    </td>
-                    <td className="px-4 py-2 text-admin-text-secondary max-w-xs">{interp}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
+const VISIBLE_MODULE_KEYS = (Object.keys(FEATURE_LABELS) as (keyof VariantFeatures)[]).filter(
+  (k) => MODULE_READINESS[k].status !== "hidden",
+);
 
 const READINESS_BADGE: Record<ReadinessStatus, { cls: string }> = {
   ready:          { cls: "text-green-700 bg-green-50" },
@@ -869,23 +626,21 @@ const RISK_DOT: Record<RiskLevel, string> = {
   high: "bg-red-500",
 };
 
-// Keys visible in readiness checklist (exclude internal-only flags like debugLabels)
-const READINESS_VISIBLE_KEYS = (Object.keys(FEATURE_LABELS) as (keyof VariantFeatures)[]).filter(
-  (k) => MODULE_READINESS[k].status !== "hidden",
-);
+const VIS_BADGE = (val: FeatureVisibility) => {
+  if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
+  if (val === "lightweight") return { text: "Light", cls: "text-blue-700 bg-blue-50" };
+  if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
+  return { text: "Oculto", cls: "text-gray-500 bg-gray-100" };
+};
 
-function ReadinessChecklist() {
+function ConsolidatedModuleTable({ variant }: { variant: ReportVariant }) {
   const [open, setOpen] = useState(false);
-  const mvpFeatures = getVariantFeatures("public_mvp");
 
-  const visLabel = (val: FeatureVisibility) => {
-    if (val === "full") return { text: "Full", cls: "text-green-700 bg-green-50" };
-    if (val === "lightweight") return { text: "Lightweight", cls: "text-blue-700 bg-blue-50" };
-    if (val === "teaser") return { text: "Teaser", cls: "text-purple-700 bg-purple-50" };
-    return { text: "Hidden", cls: "text-gray-500 bg-gray-100" };
-  };
+  const mvp = getVariantFeatures("public_mvp");
+  const lab = getVariantFeatures("internal_lab");
+  const pro = getVariantFeatures("pro_preview");
 
-  const counts = READINESS_VISIBLE_KEYS.reduce(
+  const counts = VISIBLE_MODULE_KEYS.reduce(
     (acc, key) => {
       const s = MODULE_READINESS[key].status;
       acc[s] = (acc[s] || 0) + 1;
@@ -911,8 +666,8 @@ function ReadinessChecklist() {
       >
         <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-green-50 text-green-600 shrink-0"><ClipboardCheck className="h-4 w-4" /></span>
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-admin-text-primary block">Checklist de prontidão pública</span>
-          <span className="text-[12px] text-admin-text-secondary">O que falta para esta variante poder ser publicada</span>
+          <span className="text-sm font-medium text-admin-text-primary block">Visibilidade e prontidão dos módulos</span>
+          <span className="text-[12px] text-admin-text-secondary">Comparação entre variantes + estado de cada módulo</span>
         </div>
         {!open && summaryItems.length > 0 && (
           <div className="flex items-center gap-2 text-[12px] shrink-0">
@@ -936,25 +691,33 @@ function ReadinessChecklist() {
             <thead>
               <tr className="border-t border-admin-border bg-admin-surface-muted/30">
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
-                <th className="px-4 py-2 font-medium text-admin-text-secondary">MVP</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "public_mvp" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Público</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "internal_lab" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Interno</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "pro_preview" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Pro</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Estado</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Risco</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Nota</th>
               </tr>
             </thead>
             <tbody>
-              {READINESS_VISIBLE_KEYS.map((key) => {
+              {VISIBLE_MODULE_KEYS.map((key) => {
                 const readiness = MODULE_READINESS[key];
-                const mvpVis = visLabel(mvpFeatures[key]);
                 const badge = READINESS_BADGE[readiness.status];
                 const dot = RISK_DOT[readiness.risk];
+                const mvpVis = VIS_BADGE(mvp[key]);
+                const labVis = VIS_BADGE(lab[key]);
+                const proVis = VIS_BADGE(pro[key]);
                 return (
                   <tr key={key} className="border-t border-admin-border/50">
                     <td className="px-4 py-2 text-admin-text-primary">{FEATURE_LABELS[key]}</td>
-                    <td className="px-4 py-2">
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", mvpVis.cls)}>
-                        {mvpVis.text}
-                      </span>
+                    <td className={cn("px-4 py-2", variant === "public_mvp" && "bg-admin-surface-muted/40")}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
+                    </td>
+                    <td className={cn("px-4 py-2", variant === "internal_lab" && "bg-admin-surface-muted/40")}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
+                    </td>
+                    <td className={cn("px-4 py-2", variant === "pro_preview" && "bg-admin-surface-muted/40")}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", proVis.cls)}>{proVis.text}</span>
                     </td>
                     <td className="px-4 py-2">
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", badge.cls)}>
