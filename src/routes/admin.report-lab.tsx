@@ -43,7 +43,7 @@ import {
   Link2,
   ClipboardCheck,
 } from "lucide-react";
-import { Loader2, Lock, GitCompareArrows } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { ModuleVisibilityMatrix } from "@/components/admin/v2/module-visibility-matrix";
 import { BLOCKS } from "@/components/report-redesign/v2/block-config";
 import { getAllOverrides } from "@/server/admin/variant-overrides.functions";
