@@ -34,18 +34,20 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
       className={cn("w-full scroll-mt-20 lg:scroll-mt-6", band)}
     >
       <div className={cn(first ? "pt-0 pb-14 md:pt-0 md:pb-20" : "py-14 md:py-20")}>
-        <header className="mb-0 pb-8 md:pb-10 border-b border-border-subtle">
-          <div className="flex flex-col md:flex-row md:items-start gap-2 md:gap-8">
+        <header className="mb-0 pb-8 md:pb-10 border-t border-border-subtle pt-8 md:pt-10">
+          <div className="flex flex-col md:flex-row md:items-start gap-5 md:gap-8">
             {/* Large chapter number */}
-            <span
-              aria-hidden="true"
-              className={cn(REDESIGN_TOKENS.chapterNumber, "shrink-0 tabular-nums")}
-            >
-              {block.number}
-            </span>
+            <div className={REDESIGN_TOKENS.chapterNumberBox}>
+              <span
+                aria-hidden="true"
+                className={cn(REDESIGN_TOKENS.chapterNumber, "tabular-nums")}
+              >
+                {block.number}
+              </span>
+            </div>
 
             {/* Text stack */}
-            <div className="min-w-0 max-w-[900px] space-y-3 md:pt-3">
+            <div className="min-w-0 max-w-[900px] space-y-2 md:space-y-3 md:pt-1">
               <p className={REDESIGN_TOKENS.chapterLabel}>
                 {(block.eyebrowOverride ?? block.shortLabel).toUpperCase()}
               </p>
