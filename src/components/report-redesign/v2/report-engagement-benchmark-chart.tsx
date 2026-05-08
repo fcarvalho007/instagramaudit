@@ -126,7 +126,7 @@ export function ReportEngagementBenchmarkChart({
             {/* Label above bars */}
             <div className="relative h-4 ml-[calc(8px+64px+8px)] sm:ml-[calc(12px+100px+12px)] mr-[calc(8px+52px+8px)] sm:mr-[calc(12px+56px+12px)]">
               <span
-                className="absolute bottom-0 text-xs text-content-secondary font-medium whitespace-nowrap -translate-x-1/2 bg-surface-secondary px-1 rounded"
+                className="absolute bottom-0 text-xs text-content-secondary font-medium whitespace-nowrap -translate-x-1/2 bg-surface-secondary px-1.5 rounded-full"
                 style={{ left: `max(${benchmarkPct}%, 28px)` }}
               >
                 benchmark {fmtRate(benchmarkVal)}
@@ -169,7 +169,7 @@ export function ReportEngagementBenchmarkChart({
               >
                 {/* Badge: ESTÁS AQUI */}
                 <span
-                  className="absolute -top-2.5 left-2 sm:left-3 text-xs font-semibold tracking-[0.10em] bg-surface-secondary rounded px-1.5 py-0.5 uppercase"
+                  className="absolute -top-2.5 left-2 sm:left-3 text-[10px] font-semibold tracking-[0.10em] bg-surface-secondary rounded-full px-2 py-0.5 uppercase"
                   style={{
                     color: isPositive ? "rgb(29,158,117)" : "rgb(163,45,45)",
                     border: `1px solid ${isPositive ? "rgba(29,158,117,0.20)" : "rgba(163,45,45,0.20)"}`,
