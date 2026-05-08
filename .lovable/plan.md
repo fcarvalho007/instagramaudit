@@ -4,56 +4,84 @@
 1. **`src/components/report-redesign/v2/report-overview-engagement.tsx`** — card principal
 2. **`src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`** — chart de tiers
 
-Nenhuma alteração a dados, fórmulas, providers ou lógica de scoring.
+Zero alterações a fórmulas, dados, benchmark, providers ou lógica de scoring.
 
-## Dados disponíveis (confirmados, sem alterações)
+---
 
-- `k.engagementRate` — taxa do perfil
-- `chartBenchmarkVal` — benchmark do tier ativo
-- `gapPp` / `pctDiffLabel` / `pctDiffDirection` — distância à referência
-- `engagementStatus` — "Alta" / "Média" / "Baixa"
-- `isBelowBenchmark` — flag booleana
-- `benchmarkSeries`, `activeTierIdx`, `activeTier`
-- `readingText` — texto diagnóstico já calculado
+## 1. Card principal (`report-overview-engagement.tsx`)
 
-## Alterações no card principal (`report-overview-engagement.tsx`)
+### Header — reestruturar
 
-### KPI cards (grid 3-col)
-- Aumentar números de `text-[1.1rem] sm:text-[1.6rem]` → `text-[1.4rem] sm:text-[2rem]`
-- Aumentar padding interno: `px-3 py-4 sm:px-5 sm:py-5`
-- Reduzir opacidade do border-left de 0.50 → 0.30 (menos agressivo)
-- Reduzir opacidade dos fundos: danger bg 0.04 → 0.025, success bg 0.04 → 0.025, blue bg 0.03 → 0.02
-- Aumentar gap do grid: `gap-2 sm:gap-3` → `gap-3 sm:gap-4`
-- Aumentar margens gerais: `mt-4 sm:mt-6` → `mt-6 sm:mt-8`, `pb-5` → `pb-6 sm:pb-8`
+- Adicionar eyebrow `ENGAGEMENT` acima do título (Inter uppercase, `text-eyebrow-sm`, `text-content-secondary`)
+- Título em Fraunces: `"Taxa de Engagement"` — sem status word inline
+- Status pill ao lado do título: `engagementStatus` ("Alta" / "Média" / "Baixa") dentro de um `<span>` com:
+  - Alta → `bg-signal-success/8 text-signal-success border border-signal-success/20`
+  - Média → `bg-signal-warning/8 text-signal-warning border border-signal-warning/20`
+  - Baixa → `bg-signal-danger/8 text-signal-danger border border-signal-danger/20`
+  - Inter semibold, uppercase, `text-xs`, `rounded-full px-2.5 py-0.5`
+- Subtítulo em Inter: texto atual mantido
+- Remover o `borderBottom` inline style do status word
 
-### Header
-- Reduzir underline do status word de 2px → 1.5px, opacidade 0.50 → 0.35
-- Aumentar padding top/bottom do header: `pt-5 sm:pt-6 md:pt-8` → `pt-6 sm:pt-8 md:pt-10`
+### KPI cards — refinar mais
 
-## Alterações no chart (`report-engagement-benchmark-chart.tsx`)
+- Remover `borderLeftWidth: 3` accent line dos KPI cards — usar apenas border uniforme suave
+- KPI 1 (perfil): fundo neutro `bg-surface-muted/50`, border `border-border-default`
+- KPI 2 (benchmark): mesmo estilo neutro
+- KPI 3 (distância): manter cor condicional mas mais suave — `bg-signal-success/4` ou `bg-signal-danger/4`
+- Aumentar `mb` do eyebrow label para `mb-2`
+- Números já estão em `text-[1.4rem] sm:text-[2rem]` — manter
+- Remover dot colorido `size-2 rounded-full` — simplificar para apenas label + número
+- Aumentar `gap` do grid para `gap-4 sm:gap-5`
 
-### Tier rows
-- Aumentar gap entre rows: `gap-1.5` → `gap-2`
-- Active row: reduzir border de 2px → 1.5px, opacidade border 0.35 → 0.25
-- Active row: reduzir opacidade do fundo de 0.05 → 0.03
-- Active row: aumentar padding `py-2.5 sm:py-3` → `py-3 sm:py-4`
-- Inactive rows: aumentar height das barras `h-5 sm:h-6` → `h-6 sm:h-7`
+### Chart section
 
-### "ESTÁS AQUI" badge
-- Reduzir intensidade: font-bold → font-semibold, tracking mais aberto
-- Border opacity 0.35 → 0.20
+- Adicionar `mt-2` entre KPIs e chart para mais separação
 
-### Inactive bars
-- Manter opacidade leve (já 8%), sem alteração
+### Diagnóstico
 
-### Axis / footer
+- Já usa `InsightCallout` — sem alterações
+
+### Remover imports não usados
+
+- `MessageCircle` e `AlertTriangle` de lucide-react não são usados — remover
+
+---
+
+## 2. Chart (`report-engagement-benchmark-chart.tsx`)
+
+### Benchmark line
+
+- Reduzir dashed border de `border-l-2` para `border-l` (1px) — mais subtil
+- Benchmark label: adicionar `rounded-full` ao pill, manter tamanho
+
+### Active row
+
+- Manter as opacidades actuais (já suavizadas no round anterior)
+- "ESTÁS AQUI" badge: reduzir para `text-[10px]` para ser mais discreto
+
+### Inactive rows
+
 - Sem alterações
 
-## Comportamento responsivo
+### Sources
 
-Mantém-se: grid 3-col em todos os breakpoints, chart full-width. Apenas se aumentam espaçamentos que já existem.
+- Já em Inter — sem alterações
+
+---
+
+## Resumo visual antes/depois
+
+| Elemento | Antes | Depois |
+|----------|-------|--------|
+| Header | Status word com underline inline | Eyebrow + Fraunces title + status pill |
+| KPI borders | Left-accent colorido 3px | Border uniforme suave |
+| KPI dots | Dot colorido antes do label | Removido — só label |
+| KPI grid gap | `gap-3 sm:gap-4` | `gap-4 sm:gap-5` |
+| Benchmark line | 2px dashed | 1px dashed |
+| "ESTÁS AQUI" | `text-xs` | `text-[10px]` mais discreto |
+| Unused imports | MessageCircle, AlertTriangle | Removidos |
 
 ## Riscos
 
-- Mínimos — apenas CSS/spacing/opacity. Zero lógica alterada.
-- Verificar que os números maiores não causam overflow em mobile 375px.
+- Mínimos — apenas CSS, layout e cleanup de imports
+- Nenhuma alteração a lógica, dados ou providers
