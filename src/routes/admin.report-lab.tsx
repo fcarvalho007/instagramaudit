@@ -95,9 +95,9 @@ function writeLabPrefs(prefs: LabPrefs): void {
 const TEST_PROFILES = ["frederico.m.carvalho", "martimsilvai"] as const;
 
 const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: string }[] = [
-  { value: "public_mvp", label: "Público", description: "O que o público geral vê — apenas blocos 01 e 02" },
-  { value: "internal_lab", label: "Trabalho/Admin", description: "Versão completa com todos os blocos e módulos experimentais" },
-  { value: "pro_preview", label: "Pro (simulação)", description: "Simulação de relatório avançado/pago — todos os blocos" },
+  { value: "public_mvp", label: "Público geral", description: "Versão que qualquer utilizador vê. Mostra apenas os blocos 01 e 02." },
+  { value: "internal_lab", label: "Laboratório interno", description: "Versão completa para trabalho/admin. Mostra todos os blocos e módulos internos." },
+  { value: "pro_preview", label: "Pré-visualização Pro", description: "Simulação de uma versão avançada/paga, com blocos completos ou teasers comerciais." },
 ];
 
 const MODE_LABELS: Record<ReportVariant, string> = {
@@ -319,7 +319,7 @@ function ReportLabPage() {
             {/* Variant switcher */}
             <div className="space-y-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
-                Variante a pré-visualizar
+                Versão do relatório a pré-visualizar
               </label>
               <div className="inline-flex rounded-xl border border-admin-border bg-admin-surface-muted p-1">
                 {VARIANT_OPTIONS.map((opt) => {
@@ -347,34 +347,70 @@ function ReportLabPage() {
             </div>
           </div>
 
-          {/* Block visibility summary */}
+          {/* Block visibility comparison table */}
           <div className="mt-4 pt-4 border-t border-admin-border/50">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary mb-2">
-              Visibilidade dos blocos
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary mb-3">
+              Visibilidade dos blocos por versão
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              {BLOCKS.map((block) => {
-                const vis = features[block.featureKey];
-                const isVisible = vis !== "hidden";
-                return (
-                  <div
-                    key={block.id}
-                    className={cn(
-                      "rounded-lg border px-3 py-2 text-xs",
-                      isVisible
-                        ? "border-green-200 bg-green-50 text-green-700"
-                        : "border-admin-border/50 bg-admin-surface-muted text-admin-text-tertiary",
-                    )}
-                  >
-                    <span className="tabular-nums font-medium">{block.number}</span>{" "}
-                    <span>{block.shortLabel}</span>
-                    <span className="block mt-0.5 text-[10px]">
-                      {isVisible ? "✓ visível" : "oculto"}
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="text-left text-admin-text-tertiary">
+                    <th className="pb-2 pr-4 font-medium">Bloco</th>
+                    {VARIANT_OPTIONS.map((opt) => (
+                      <th
+                        key={opt.value}
+                        className={cn(
+                          "pb-2 px-3 font-medium text-center whitespace-nowrap",
+                          variant === opt.value && "text-admin-text-primary",
+                        )}
+                      >
+                        {opt.value === "public_mvp" ? "Público" : opt.value === "internal_lab" ? "Interno" : "Pro Preview"}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {BLOCKS.map((block) => (
+                    <tr key={block.id} className="border-t border-admin-border/30">
+                      <td className="py-2 pr-4 font-medium text-admin-text-secondary whitespace-nowrap">
+                        <span className="tabular-nums">{block.number}</span> {block.shortLabel}
+                      </td>
+                      {(["public_mvp", "internal_lab", "pro_preview"] as ReportVariant[]).map((v) => {
+                        const vis = getVariantFeatures(v)[block.featureKey];
+                        const isActive = variant === v;
+                        return (
+                          <td
+                            key={v}
+                            className={cn(
+                              "py-2 px-3 text-center",
+                              isActive && "bg-admin-surface-muted/50",
+                            )}
+                          >
+                            {vis === "hidden" ? (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-400 border border-gray-200">
+                                Oculto
+                              </span>
+                            ) : vis === "teaser" ? (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200">
+                                Teaser
+                              </span>
+                            ) : (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-600 border border-green-200">
+                                Visível
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+            <p className="mt-3 text-[11px] text-admin-text-tertiary leading-relaxed">
+              Esta pré-visualização não altera dados nem gera novas análises. Apenas muda a visibilidade dos blocos.
+            </p>
           </div>
         </div>
       </section>
