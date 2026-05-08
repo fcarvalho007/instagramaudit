@@ -1,62 +1,66 @@
 
-# Simplificar primeira dobra do relatório público
+## Audit Results
 
-## Problema
+### Component & File
+- **`src/components/report-redesign/v2/report-block-section.tsx`** renders all section headers
+- **`src/components/report-redesign/v2/block-config.ts`** provides static data: `number`, `shortLabel`, `eyebrowOverride`, `question` (serif headline), `subtitle` (Inter description)
+- **`src/components/report-redesign/report-tokens.ts`** defines `chapterNumber`, `chapterLabel`, `chapterSubtitle`, `h2Section` tokens
 
-O relatório público tem redundância visual no topo:
-1. **Header global** (AppShell) mostra "Analisar agora" — redundante quando já se está a ver um relatório
-2. **Hero top bar** repete "InstaBench · Relatórios · @handle" — contexto já coberto pelo hero card
+### Available Data
+| Field | Source | Example |
+|-------|--------|---------|
+| `block.number` | static | "01" |
+| `block.eyebrowOverride` / `block.shortLabel` | static | "VISAO GERAL" |
+| `block.question` | static | "Como esta o perfil em geral?" |
+| `block.subtitle` | static | "Identidade do perfil, indicadores principais..." |
 
-## Ficheiros locked relevantes
+### AI/Payload Summary Available?
+**No.** There are no fields like `aiHeroText`, `executiveSummary`, or `summary` in the payload or block config. The component receives no dynamic data -- only `BlockConfig` (static copy). The existing static `question` and `subtitle` already serve the editorial purpose well. No provider calls needed.
 
-`header.tsx` e `app-shell.tsx` estão em `LOCKED_FILES.md`. O plano evita editá-los.
+---
 
-## Abordagem
+## Plan
 
-### 1. Remover breadcrumb do hero (`report-hero-v2.tsx`)
+### 1. Update `report-block-section.tsx` layout
 
-Eliminar a top bar (L59-87) que contém:
-- "InstaBench" (logo link)
-- "Relatórios › @handle" (breadcrumb)
-- Pill de data (redundante — já aparece no COL 1 do hero)
-- "+ Novo relatório" CTA (manter, mas mover para dentro do hero card COL 3)
+**Current:** Number and text sit side-by-side in a flat `flex-row`, number is a transparent stroked outline with no background.
 
-Resultado: o hero card fica como primeiro elemento visual, sem barra de navegação acima.
-
-### 2. Mover "+ Novo relatório" para COL 3 do hero card
-
-Adicionar um botão "+ Novo relatório" no topo da coluna de acções (COL 3), antes de "Exportar PDF". Estilo secundário (outline) para não competir com "Exportar PDF" como acção primária do relatório.
-
-### 3. Esconder "Analisar agora" do header global nas páginas de relatório
-
-Como `header.tsx` é locked, a solução é via CSS no `ReportThemeWrapper` ou no route `analyze.$username.tsx`: aplicar uma classe/atributo ao body ou a um wrapper que esconde o CTA "Analisar agora" no header quando se está dentro do relatório.
-
-Opção: no `analyze.$username.tsx`, no `beforeLoad` que já existe, adicionar `document.body.setAttribute("data-report-view", "true")` e limpar no cleanup. Depois, uma regra CSS em `styles.css`:
-
-```css
-[data-report-view="true"] [data-header-cta] { display: none; }
+**Target:**
+```text
+ ┌─────────────────────────────────────────────────┐
+ │ ── top border (border-t, subtle) ──────────────── │
+ │                                                   │
+ │  ┌──────────┐                                     │
+ │  │          │  VISAO GERAL                        │
+ │  │    01    │  Como esta o perfil em geral?        │
+ │  │          │  Identidade do perfil, indicadores...│
+ │  └──────────┘                                     │
+ │                                                   │
+ └───────────────────────────────────────────────────┘
 ```
 
-Isto requer apenas uma pequena adição ao `header.tsx` — um `data-header-cta` no botão. **Como header.tsx é locked, preciso de confirmação para adicionar este atributo.**
+Changes:
+- Move the border from `border-b` to `border-t` on the header (top border, as required)
+- Wrap the number span in a light grey rounded box (`bg-slate-100/80 rounded-xl` with fixed dimensions ~120x100px)
+- Reduce number font size slightly so it sits centred in the box
+- Keep the text stack (eyebrow, serif headline, Inter subtitle) to the right
+- Maintain responsive stacking: on mobile the number box sits above the text
 
-**Alternativa sem tocar no header**: aceitar que o header global aparece com "Analisar agora" e confiar no "+ Novo relatório" no hero card como CTA principal. A redundância do header é menor que a do breadcrumb.
+### 2. Update tokens in `report-tokens.ts`
 
-### Ficheiros a alterar
+- Add `chapterNumberBox` token for the grey background container
+- Adjust `chapterNumber` to reduce size slightly (e.g. `text-[4rem] md:text-[5rem]`) and switch from transparent stroke to a solid light colour (`text-slate-300` or `text-blue-200`)
 
-| Ficheiro | Alteração |
-|----------|-----------|
-| `src/components/report-redesign/v2/report-hero-v2.tsx` | Remover top bar (L59-87); adicionar "+ Novo relatório" na COL 3 |
-| `src/routes/analyze.$username.tsx` | Adicionar `data-report-view` ao body (se opção header hiding aprovada) |
-| `src/styles.css` | Regra CSS para esconder CTA do header (se aprovado) |
-| `src/components/layout/header.tsx` (**LOCKED**) | Adicionar `data-header-cta` ao botão (precisa aprovação) |
+### 3. No changes needed in `block-config.ts`
+The existing static copy is well-written and matches the mockup examples exactly.
 
-### Validação
+---
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Screenshot visual em `/analyze/frederico.m.carvalho`
-- Confirmar: sem breadcrumb, um só CTA primário, acções alinhadas com hero
+## Risks
+- **Minimal.** Pure CSS/layout change to one component and one token file.
+- No data flow changes, no provider calls, no new dependencies.
+- The `first` prop logic for reduced top padding is preserved.
 
-## Decisão necessária
-
-Queres que edite o `header.tsx` (locked) para adicionar o atributo `data-header-cta` e assim esconder "Analisar agora" nas páginas de relatório? Ou preferes manter o header intacto e só limpar o breadcrumb do hero?
+## Files to change
+1. `src/components/report-redesign/v2/report-block-section.tsx`
+2. `src/components/report-redesign/report-tokens.ts`
