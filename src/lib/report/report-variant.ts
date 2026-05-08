@@ -42,6 +42,18 @@ export interface VariantFeatures {
   betaFeedbackBanner: FeatureVisibility;
   /** Show debug/internal labels (e.g. "em desenvolvimento", "payload") */
   debugLabels: FeatureVisibility;
+  /** Block 01 — Overview / Visão geral */
+  blockOverview: FeatureVisibility;
+  /** Block 02 — Diagnosis / Diagnóstico */
+  blockDiagnosis: FeatureVisibility;
+  /** Block 03 — Performance / Desempenho */
+  blockPerformance: FeatureVisibility;
+  /** Block 04 — Content / Conteúdo */
+  blockContent: FeatureVisibility;
+  /** Block 05 — Search / Procura */
+  blockSearch: FeatureVisibility;
+  /** Block 06 — Benchmark / Comparação */
+  blockBenchmark: FeatureVisibility;
 }
 
 const VARIANT_FEATURES: Record<ReportVariant, VariantFeatures> = {
@@ -56,6 +68,12 @@ const VARIANT_FEATURES: Record<ReportVariant, VariantFeatures> = {
     methodology: "full",
     betaFeedbackBanner: "full",
     debugLabels: "hidden",
+    blockOverview: "full",
+    blockDiagnosis: "full",
+    blockPerformance: "hidden",
+    blockContent: "hidden",
+    blockSearch: "hidden",
+    blockBenchmark: "hidden",
   },
   internal_lab: {
     overviewHeroKpis: "full",
@@ -68,6 +86,12 @@ const VARIANT_FEATURES: Record<ReportVariant, VariantFeatures> = {
     methodology: "full",
     betaFeedbackBanner: "hidden",
     debugLabels: "full",
+    blockOverview: "full",
+    blockDiagnosis: "full",
+    blockPerformance: "full",
+    blockContent: "full",
+    blockSearch: "full",
+    blockBenchmark: "full",
   },
   pro_preview: {
     overviewHeroKpis: "full",
@@ -80,6 +104,12 @@ const VARIANT_FEATURES: Record<ReportVariant, VariantFeatures> = {
     methodology: "full",
     betaFeedbackBanner: "hidden",
     debugLabels: "hidden",
+    blockOverview: "full",
+    blockDiagnosis: "full",
+    blockPerformance: "full",
+    blockContent: "full",
+    blockSearch: "full",
+    blockBenchmark: "full",
   },
 };
 
@@ -96,6 +126,12 @@ export const FEATURE_LABELS: Record<keyof VariantFeatures, string> = {
   methodology: "Metodologia",
   betaFeedbackBanner: "Beta Feedback",
   debugLabels: "Debug labels",
+  blockOverview: "Bloco 01 — Visão geral",
+  blockDiagnosis: "Bloco 02 — Diagnóstico",
+  blockPerformance: "Bloco 03 — Desempenho",
+  blockContent: "Bloco 04 — Conteúdo",
+  blockSearch: "Bloco 05 — Procura",
+  blockBenchmark: "Bloco 06 — Comparação",
 };
 
 export function getVariantFeatures(variant: ReportVariant): VariantFeatures {
@@ -170,4 +206,10 @@ export const MODULE_READINESS: Record<keyof VariantFeatures, ModuleReadiness> = 
   methodology:           { status: "ready",         risk: "low",    note: "Secção informativa estática." },
   betaFeedbackBanner:    { status: "ready",         risk: "low",    note: "Banner de feedback. Remover quando sair de beta." },
   debugLabels:           { status: "hidden",         risk: "low",    note: "Interno. Nunca visível em public_mvp." },
+  blockOverview:         { status: "ready",          risk: "low",    note: "Bloco principal. Sempre visível." },
+  blockDiagnosis:        { status: "ready",          risk: "low",    note: "Bloco principal. Sempre visível." },
+  blockPerformance:      { status: "needs_review",   risk: "low",    note: "Oculto em public_mvp. Visível em internal_lab e pro_preview." },
+  blockContent:          { status: "needs_review",   risk: "low",    note: "Oculto em public_mvp. Visível em internal_lab e pro_preview." },
+  blockSearch:           { status: "needs_review",   risk: "medium", note: "Oculto em public_mvp. Depende de DataForSEO." },
+  blockBenchmark:        { status: "needs_review",   risk: "medium", note: "Oculto em public_mvp. Rever dados de benchmark." },
 };
