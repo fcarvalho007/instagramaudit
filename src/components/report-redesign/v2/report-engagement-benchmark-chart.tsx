@@ -1,15 +1,6 @@
 /**
  * Horizontal benchmark comparison chart — tier rows with profile overlay.
- *
- * Active row decorative colours (local to this component):
- *   Below benchmark (danger):
- *     border: rgba(163,45,45,0.35)  bg: rgba(163,45,45,0.05)
- *     hatch:  rgba(163,45,45,0.08)  bar: rgba(163,45,45,0.75)
- *     pill:   rgba(163,45,45,0.12)  text: signal-danger token
- *   Above benchmark (success):
- *     border: rgba(29,158,117,0.35)  bg: rgba(29,158,117,0.05)
- *     hatch:  rgba(29,158,117,0.08)  bar: rgba(29,158,117,0.75)
- *     pill:   rgba(29,158,117,0.12)  text: signal-success token
+ * Colours are soft and analytical; no hatching or heavy alert treatment.
  */
 import { cn } from "@/lib/utils";
 import type { BenchmarkTierPoint } from "@/lib/knowledge/benchmark-context";
