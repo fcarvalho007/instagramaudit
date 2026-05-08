@@ -44,7 +44,6 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { ModuleVisibilityMatrix } from "@/components/admin/v2/module-visibility-matrix";
-import { BLOCKS } from "@/components/report-redesign/v2/block-config";
 import { readAdminEmail } from "@/lib/admin/simple-gate";
 import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
