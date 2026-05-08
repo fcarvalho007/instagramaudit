@@ -101,7 +101,6 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </span>
               )}
             </div>
-          </div>
             </div>
 
             {/* ── ZONE 2: KPIs 2×2 grid ───────────────────────────── */}
