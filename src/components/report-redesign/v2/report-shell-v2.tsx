@@ -37,11 +37,8 @@ import { ReportMethodology } from "../report-methodology";
 import { ReportTierTeaser } from "../report-tier-teaser";
 import { REDESIGN_TOKENS } from "../report-tokens";
 
-import { BLOCKS } from "./block-config";
-import {
-  ReportBlockSidebar,
-  ReportBlockTopTabs,
-} from "./report-block-nav";
+import { BLOCKS, type BlockConfig } from "./block-config";
+import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
@@ -82,6 +79,12 @@ export function ReportShellV2({
   const v2 = result.enriched.aiInsightsV2;
   const features = featuresOverride ?? getVariantFeatures(variant);
 
+  /** Blocks visible for the current variant/features. */
+  const visibleBlocks: BlockConfig[] = BLOCKS.filter(
+    (b) => features[b.featureKey] !== "hidden",
+  );
+  const visibleBlockIds = visibleBlocks.map((b) => b.id);
+
   /** Insight v2 dentro de um container já com padding (block content). */
   const renderInsight = (key: AiInsightV2Section) => {
     const item = v2?.sections[key];
@@ -108,14 +111,15 @@ export function ReportShellV2({
         </section>
 
         {/* Tabs mobile sticky abaixo do hero */}
-        <ReportBlockTopTabs />
+        <ReportBlockTopTabs visibleBlockIds={visibleBlockIds} />
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1380px] px-5 md:px-6">
           <div className="flex gap-8 lg:gap-10 pt-5 lg:pt-6">
-            <ReportBlockSidebar />
+            <ReportBlockSidebar visibleBlockIds={visibleBlockIds} />
             <main className="min-w-0 flex-1">
               {/* 01 · Overview (redesigned) */}
+              {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
                 <ReportOverviewBlock
                   result={result}
@@ -123,13 +127,17 @@ export function ReportShellV2({
                   payload={payload}
                 />
               </ReportBlockSection>
+              )}
 
               {/* 02 · Diagnóstico editorial */}
+              {features.blockDiagnosis !== "hidden" && (
               <ReportBlockSection block={diagnostico} tone="canvas">
                 <ReportDiagnosticBlock result={result} payload={payload} />
               </ReportBlockSection>
+              )}
 
               {/* 03 · Performance */}
+              {features.blockPerformance !== "hidden" && (
               <ReportBlockSection block={performance} tone="canvas">
                 <ReportFramedBlock
                   tone="canvas"
@@ -150,8 +158,10 @@ export function ReportShellV2({
                   </div>
                 </ReportFramedBlock>
               </ReportBlockSection>
+              )}
 
               {/* 04 · Conteúdo */}
+              {features.blockContent !== "hidden" && (
               <ReportBlockSection block={conteudo} tone="soft-blue">
                 <ReportFramedBlock
                   tone="soft-blue"
@@ -179,8 +189,10 @@ export function ReportShellV2({
                   </div>
                 </ReportFramedBlock>
               </ReportBlockSection>
+              )}
 
               {/* 05 · Procura fora do Instagram */}
+              {features.blockSearch !== "hidden" && (
               <ReportBlockSection block={procura} tone="canvas">
                 <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
                   O Instagram mostra como a audiência atual reage. A procura
@@ -197,8 +209,10 @@ export function ReportShellV2({
                 />
                 {renderInsight("marketSignals")}
               </ReportBlockSection>
+              )}
 
               {/* 06 · Benchmark competitivo */}
+              {features.blockBenchmark !== "hidden" && (
               <ReportBlockSection block={benchmark} tone="soft-blue">
                 <ReportFramedBlock
                   tone="soft-blue"
@@ -219,6 +233,7 @@ export function ReportShellV2({
                   ) : null}
                 </ReportFramedBlock>
               </ReportBlockSection>
+              )}
             </main>
           </div>
         </div>
