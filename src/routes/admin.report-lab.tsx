@@ -252,27 +252,22 @@ function ReportLabPage() {
   }, [activeProfile, loadSnapshot]);
 
   return (
-    <div className="space-y-8">
-      {/* Mode banner */}
-      <div className={cn("rounded-xl border px-5 py-3 text-sm font-medium flex items-center gap-3", MODE_TONES[variant])}>
-        <span className="shrink-0">⚠</span>
+    <div className="space-y-6">
+      {/* ── 1. BANNER compacto ─────────────────────────────────── */}
+      <div className={cn("rounded-xl border px-5 py-2.5 text-[13px] font-medium flex items-center gap-2", MODE_TONES[variant])}>
+        <span className="shrink-0 text-xs">⚠</span>
         <span>
-          <strong>
-            {variant === "internal_lab"
-              ? "Versão de trabalho · módulos completos e experimentais"
-              : variant === "pro_preview"
-                ? "Pré-visualização Pro · funcionalidades futuras/pagas"
-                : "Versão pública · o que os utilizadores verão"}
-          </strong>
-          {" — "}alterações aqui não afectam o relatório público.
+          {variant === "internal_lab"
+            ? "Laboratório interno"
+            : variant === "pro_preview"
+              ? "Pré-visualização Pro"
+              : "Versão pública"}
+          {" — "}esta pré-visualização não altera dados nem gera novas análises.
         </span>
       </div>
 
-      {/* ── SECTION: Perfil e variante ─────────────────────────── */}
-      <section className="space-y-3">
-        <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
-          <span className="text-admin-text-tertiary">◎</span> Perfil e variante
-        </h2>
+      {/* ── 2. CONTROLOS: Perfil + Variante ────────────────────── */}
+      <section>
         <div className="rounded-xl border border-admin-border bg-white p-5">
           <div className="flex flex-wrap items-start gap-8">
             {/* Profile selector */}
@@ -340,86 +335,30 @@ function ReportLabPage() {
               </p>
             </div>
           </div>
-
-          {/* Block visibility comparison table */}
-          <div className="mt-4 pt-4 border-t border-admin-border/50">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary mb-3">
-              Visibilidade dos blocos por versão
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="text-left text-admin-text-tertiary">
-                    <th className="pb-2 pr-4 font-medium">Bloco</th>
-                    {VARIANT_OPTIONS.map((opt) => (
-                      <th
-                        key={opt.value}
-                        className={cn(
-                          "pb-2 px-3 font-medium text-center whitespace-nowrap",
-                          variant === opt.value && "text-admin-text-primary",
-                        )}
-                      >
-                        {opt.value === "public_mvp" ? "Público" : opt.value === "internal_lab" ? "Interno" : "Pro Preview"}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {BLOCKS.map((block) => (
-                    <tr key={block.id} className="border-t border-admin-border/30">
-                      <td className="py-2 pr-4 font-medium text-admin-text-secondary whitespace-nowrap">
-                        <span className="tabular-nums">{block.number}</span> {block.shortLabel}
-                      </td>
-                      {(["public_mvp", "internal_lab", "pro_preview"] as ReportVariant[]).map((v) => {
-                        const vis = getVariantFeatures(v)[block.featureKey];
-                        const isActive = variant === v;
-                        return (
-                          <td
-                            key={v}
-                            className={cn(
-                              "py-2 px-3 text-center",
-                              isActive && "bg-admin-surface-muted/50",
-                            )}
-                          >
-                            {vis === "hidden" ? (
-                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-400 border border-gray-200">
-                                Oculto
-                              </span>
-                            ) : vis === "teaser" ? (
-                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200">
-                                Teaser
-                              </span>
-                            ) : (
-                              <span className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-600 border border-green-200">
-                                Visível
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-[11px] text-admin-text-tertiary leading-relaxed">
-              Esta pré-visualização não altera dados nem gera novas análises. Apenas muda a visibilidade dos blocos.
-            </p>
-          </div>
         </div>
       </section>
 
-      {/* ── SECTION: Ações de partilha ─────────────────────────── */}
+      {/* ── 3. ESTADO DO SNAPSHOT ──────────────────────────────── */}
+      {load.kind === "loading" && (
+        <StatusBox tone="neutral">A carregar snapshot de @{activeProfile}…</StatusBox>
+      )}
+      {load.kind === "missing" && (
+        <StatusBox tone="warning">
+          Não existe snapshot para @{activeProfile}. Corre uma análise primeiro.
+        </StatusBox>
+      )}
+      {load.kind === "error" && (
+        <StatusBox tone="danger">{load.message}</StatusBox>
+      )}
       {load.kind === "ready" && (
-        <section className="space-y-3">
-          <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
-            <span className="text-admin-text-tertiary">✦</span> Ações de partilha
-          </h2>
-          <div className="rounded-xl border border-admin-border bg-white p-5">
-            {/* Snapshot status banner */}
-            <SnapshotStatusBanner expiresAt={load.expiresAt} />
+        <SnapshotStatusBanner expiresAt={load.expiresAt} createdAt={load.createdAt} />
+      )}
 
-            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── 4. LINKS RÁPIDOS ───────────────────────────────────── */}
+      {load.kind === "ready" && (
+        <section>
+          <div className="rounded-xl border border-admin-border bg-white p-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* 1 — Relatório público */}
               <LinkBlock
                 title="Relatório público"
@@ -493,75 +432,34 @@ function ReportLabPage() {
         </section>
       )}
 
-      {/* ── SECTION: Configuração e diagnóstico ────────────────── */}
-      <section className="space-y-3">
-        <h2 className="admin-eyebrow-sm flex items-center gap-1.5">
-          <span className="text-admin-text-tertiary">◎</span> Configuração e diagnóstico
-        </h2>
-        <div className="space-y-2">
-          {/* Module visibility manager */}
-          <CollapsibleCard
-            icon={<span className="flex items-center justify-center h-8 w-8 rounded-lg bg-admin-info-50 text-admin-info-500"><FlaskConical className="h-4 w-4" /></span>}
-            title="Gestor de visibilidade de módulos"
-            subtitle="Activa ou esconde blocos individuais nesta variante"
-            badge={<span className="text-[12px] text-admin-text-tertiary">{Object.keys(FEATURE_LABELS).length} módulos</span>}
-            open={showModules}
-            onToggle={() => setShowModules(!showModules)}
-          >
-            <ModuleVisibilityMatrix
-              adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
-              onPreviewDraft={(v) =>
-                window.open(
-                  `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
-                  "_blank",
-                )
-              }
-              onOpenPublic={() =>
-                window.open(`/analyze/${activeProfile}`, "_blank")
-              }
-            />
-          </CollapsibleCard>
+      {/* ── 5. PAINEL ÚNICO: Visibilidade e prontidão ──────────── */}
+      <section className="space-y-2">
+        <ConsolidatedModuleTable variant={variant} />
 
-          {/* Readiness checklist */}
-          <ReadinessChecklist />
-
-          {/* Variant differences */}
-          <VariantDiffPanel />
-        </div>
+        <CollapsibleCard
+          icon={<span className="flex items-center justify-center h-8 w-8 rounded-lg bg-admin-info-50 text-admin-info-500"><FlaskConical className="h-4 w-4" /></span>}
+          title="Gestor de visibilidade de módulos"
+          subtitle="Activa ou esconde blocos individuais nesta variante"
+          badge={<span className="text-[12px] text-admin-text-tertiary">{Object.keys(FEATURE_LABELS).length} módulos</span>}
+          open={showModules}
+          onToggle={() => setShowModules(!showModules)}
+        >
+          <ModuleVisibilityMatrix
+            adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
+            onPreviewDraft={(v) =>
+              window.open(
+                `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,
+                "_blank",
+              )
+            }
+            onOpenPublic={() =>
+              window.open(`/analyze/${activeProfile}`, "_blank")
+            }
+          />
+        </CollapsibleCard>
       </section>
 
-      {/* Footer note */}
-      <div className="flex items-center gap-2 text-[12px] text-admin-text-tertiary">
-        <span className="h-1.5 w-1.5 rounded-full bg-admin-text-tertiary/40" />
-        <span>
-          Esta área é interna · alterações aqui não chamam APIs nem afectam o relatório público.
-          URL deste lab: <span className="admin-code text-[11px]">/admin/report-lab?profile={activeProfile}&variant={variant}</span>
-        </span>
-      </div>
-
-      {/* Snapshot status */}
-      {load.kind === "loading" && (
-        <StatusBox tone="neutral">A carregar snapshot de @{activeProfile}…</StatusBox>
-      )}
-      {load.kind === "missing" && (
-        <StatusBox tone="warning">
-          Não existe snapshot para @{activeProfile}. Corre uma análise primeiro.
-        </StatusBox>
-      )}
-      {load.kind === "error" && (
-        <StatusBox tone="danger">{load.message}</StatusBox>
-      )}
-      {load.kind === "ready" && (
-        <p className="text-xs text-admin-text-tertiary">
-          Snapshot de{" "}
-          {new Date(load.createdAt).toLocaleString("pt-PT", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </p>
-      )}
-
-      {/* Report render area */}
+      {/* ── 6. REPORT PREVIEW ──────────────────────────────────── */}
       {load.kind === "ready" && (
         <div className="rounded-2xl border border-admin-border overflow-hidden shadow-[var(--shadow-admin-card)]">
           <ReportThemeWrapper>
@@ -576,6 +474,12 @@ function ReportLabPage() {
           </ReportThemeWrapper>
         </div>
       )}
+
+      {/* ── 7. FOOTER ──────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 text-[12px] text-admin-text-tertiary">
+        <span className="h-1.5 w-1.5 rounded-full bg-admin-text-tertiary/40" />
+        <span>Área interna · sem chamadas a APIs.</span>
+      </div>
     </div>
   );
 }
