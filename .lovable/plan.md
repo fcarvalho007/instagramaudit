@@ -1,56 +1,78 @@
 
-## Ficheiro
+## Scope
 
-`src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` — único ficheiro a alterar.
+Two files, UI-only. No logic, data, or provider changes.
 
-Zero alterações a dados, fórmulas ou providers.
-
----
-
-## Alterações
-
-### 1. Espaçamento geral
-- Container gap: `gap-3` → `gap-5`
-- Tier rows gap: `gap-2` → `gap-2.5`
-
-### 2. Barras — mais espessas e arredondadas
-- Inactive bars: `h-6 sm:h-7` → `h-7 sm:h-8`, `rounded-md` → `rounded-lg`
-- Active profile bar: `rounded-md` → `rounded-lg`, inset reduzido de `top:20% bottom:20%` → `top:15% bottom:15%`
-- Active base track: `h-8 sm:h-9` → `h-9 sm:h-10`, `rounded-md` → `rounded-lg`
-- Inactive bar fill: `bg-content-secondary/8` → `bg-content-secondary/6` (mais suave)
-- Active base track: `bg-content-secondary/5` → `bg-content-secondary/4`
-
-### 3. Active row — mais espaçoso, menos alerta
-- Padding: `px-2 py-3 sm:px-3 sm:py-4` → `px-3 py-4 sm:px-4 sm:py-5`
-- Border: `1.5px` → `1px`, opacidade de 0.25 → 0.18
-- Background: opacidade de 0.03 → 0.02
-- Remove hatched zone (repeating-linear-gradient) — substituir por barra sólida muito leve como referência: `opacity 0.06`, `rounded-lg`
-- Profile bar opacity: 0.75 → 0.65 (mais calmo)
-- "ESTÁS AQUI" badge: mover para `← ESTÁS AQUI` ao lado do label do tier em vez de badge flutuante no topo — remover posicionamento absoluto, colocar inline após sub-label
-
-### 4. Profile value label
-- Em vez de floating pill acima da barra, colocar o valor dentro da barra (centrado verticalmente, alinhado à direita do preenchimento) quando a barra é larga o suficiente, ou à direita quando estreita
-- `font-bold` → `font-semibold`, manter `tabular-nums`
-
-### 5. Benchmark line e pill
-- Dashed line: `border-content-secondary/30` → `border-content-secondary/20` (mais subtil)
-- Pill: adicionar `border border-border-default/30` para mais definição
-
-### 6. Inactive rows — mais espaçosos
-- Padding: `px-2 py-2 sm:px-3 sm:py-2.5` → `px-3 py-2.5 sm:px-4 sm:py-3`
-
-### 7. Right-side percentages
-- Aumentar min-width: `min-w-[52px] sm:min-w-[56px]` → `min-w-[56px] sm:min-w-[60px]`
-- Font: `text-[13px]` → `text-[13px] sm:text-[14px]`
-
-### 8. X-axis
-- Sem alterações (já subtil)
-
-### 9. Sources
-- Sem alterações
+1. `src/components/report-redesign/v2/report-overview-engagement.tsx`
+2. `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`
 
 ---
 
-## Riscos
+## 1. report-overview-engagement.tsx
 
-Mínimos — apenas CSS/layout. A remoção do hatch pattern simplifica bastante o visual.
+### Header → metrics spacing
+- Add a thin `border-t border-border-default` separator between header and KPI row (via `mt-0` on the KPI section and a `border-t` div)
+- Increase spacing: header `pb-4 sm:pb-5`, KPI section `pt-5 sm:pt-6`
+
+### KPI cards — balance widths and readability
+- Change grid from `grid-cols-3` to `grid-cols-1 sm:grid-cols-3` so cards stack on mobile (no overflow)
+- Numbers: `text-[1.4rem] sm:text-[2rem]` → `text-[1.6rem] sm:text-[2.25rem]` (larger, main focus)
+- `%` suffix: same size bump to match
+- Card padding: `px-3 py-4 sm:px-5 sm:py-5` → `px-4 py-4 sm:px-5 sm:py-5` (slightly more horizontal room)
+
+### Soften KPI 3 accent
+- Danger: `border-signal-danger/15 bg-signal-danger/4` → `border-signal-danger/12 bg-signal-danger/3`
+- Success: `border-signal-success/15 bg-signal-success/4` → `border-signal-success/12 bg-signal-success/3`
+
+### Status pill
+- Reduce pill to `text-[10px]` from `text-xs` for subtlety
+
+### Chart section spacing
+- `mt-2` → `mt-4 sm:mt-6` — more breathing room between KPIs and chart
+
+### Diagnostic reading
+- `pb-5 sm:pb-6 md:pb-8` → `pb-6 sm:pb-7 md:pb-8` — slightly more bottom padding
+
+---
+
+## 2. report-engagement-benchmark-chart.tsx
+
+### Chart rows — more vertical space
+- Container `gap-2.5` → `gap-3` between tier rows
+- Active row: `py-4 sm:py-5` → `py-5 sm:py-6`
+- Inactive rows: `py-2.5 sm:py-3` → `py-3 sm:py-3.5`
+
+### Soften active row colours further
+- Border opacity: `0.18` → `0.14`
+- Background opacity: `0.02` → `0.015`
+- Bar opacity: `0.65` → `0.55` (softer, less aggressive)
+- Reference zone: `0.06` → `0.04`
+
+### Right-side percentage column
+- Active row value: `text-[13px] sm:text-[14px]` → `text-[14px] sm:text-[15px]`
+- Inactive value: same bump `text-[13px] sm:text-[14px]` → `text-[14px] sm:text-[15px]`
+- Consistent `min-w-[60px] sm:min-w-[64px]`
+
+### Chart labels — easier to scan
+- Tier labels (inactive): `text-[13px]` → `text-[13px] sm:text-[14px]`
+- Sub-labels: `text-xs` (keep) — already appropriate
+- "← ESTÁS AQUI": `text-[10px]` → `text-[11px]`, `text-content-tertiary` → `text-content-secondary/60` (slightly more visible)
+
+### X-axis
+- `text-content-secondary/40` → `text-content-secondary/35` — subtler tick labels
+
+### Sources strip
+- Add `mt-1` for slight separation from x-axis
+- `pt-1` → `pt-2` — align better with card grid
+
+---
+
+## Mobile safety
+
+- KPI grid stacks to `grid-cols-1` on mobile → no horizontal overflow
+- All `min-w-[]` values are small enough for 375px
+- Chart bars use `flex-1` — adapts naturally
+
+## Risks
+
+Minimal — purely spacing, sizing and opacity adjustments.

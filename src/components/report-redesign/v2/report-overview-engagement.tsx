@@ -110,7 +110,7 @@ export function EngagementCardRefined({ result }: Props) {
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-0 space-y-3">
+      <div className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-4 sm:pb-5 space-y-3">
         <p className="text-eyebrow-sm text-content-secondary">ENGAGEMENT</p>
         <div className="flex items-center gap-3 flex-wrap">
           <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
@@ -118,7 +118,7 @@ export function EngagementCardRefined({ result }: Props) {
           </h3>
           <span
             className={cn(
-              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
+              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
               pillClass,
             )}
           >
@@ -131,20 +131,20 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Hero row — 3 KPI cards */}
-      <div className="px-4 sm:px-5 md:px-6 mt-6 sm:mt-8 pb-6 sm:pb-8">
-        <div className="grid grid-cols-3 gap-4 sm:gap-5">
+      <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 border-t border-border-default pb-6 sm:pb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
 
           {/* KPI 1 — Profile engagement */}
-          <div className="rounded-xl border border-border-default bg-surface-muted/50 px-3 py-4 sm:px-5 sm:py-5">
+          <div className="rounded-xl border border-border-default bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
             <span className="text-eyebrow-sm text-content-secondary block mb-2">
               <span className="hidden sm:inline">Avaliação deste perfil</span>
               <span className="sm:hidden">Este perfil</span>
             </span>
             <div className="flex items-baseline">
-              <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-bold text-content-primary leading-none tracking-tight">
+              <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold text-content-primary leading-none tracking-tight">
                 {fmtPctHero(k.engagementRate)}
               </span>
-              <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
+              <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-light text-content-secondary/50 ml-0.5">
                 %
               </span>
             </div>
@@ -155,16 +155,16 @@ export function EngagementCardRefined({ result }: Props) {
           </div>
 
           {/* KPI 2 — Tier benchmark */}
-          <div className="rounded-xl border border-border-default bg-surface-muted/50 px-3 py-4 sm:px-5 sm:py-5">
+          <div className="rounded-xl border border-border-default bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
             <span className="text-eyebrow-sm text-content-secondary block mb-2">
               <span className="hidden sm:inline">Média do escalão</span>
               <span className="sm:hidden">Benchmark</span>
             </span>
             <div className="flex items-baseline">
-              <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-bold text-content-primary leading-none tracking-tight">
+              <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold text-content-primary leading-none tracking-tight">
                 {fmtPctHero(chartBenchmarkVal)}
               </span>
-              <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
+              <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-light text-content-secondary/50 ml-0.5">
                 %
               </span>
             </div>
@@ -177,10 +177,10 @@ export function EngagementCardRefined({ result }: Props) {
           {/* KPI 3 — Distance to benchmark */}
           <div
             className={cn(
-              "rounded-xl border px-3 py-4 sm:px-5 sm:py-5",
+              "rounded-xl border px-4 py-4 sm:px-5 sm:py-5",
               isPositive
-                ? "border-signal-success/15 bg-signal-success/4"
-                : "border-signal-danger/15 bg-signal-danger/4",
+                ? "border-signal-success/12 bg-signal-success/3"
+                : "border-signal-danger/12 bg-signal-danger/3",
             )}
           >
             <span className="text-eyebrow-sm text-content-secondary block mb-2">
@@ -190,7 +190,7 @@ export function EngagementCardRefined({ result }: Props) {
             <div className="flex items-baseline gap-1.5">
               <span
                 className={cn(
-                  "tabular-nums text-[1.4rem] sm:text-[2rem] font-bold leading-none tracking-tight",
+                  "tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold leading-none tracking-tight",
                   isPositive ? "text-signal-success" : "text-signal-danger"
                 )}
               >
@@ -215,7 +215,7 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Chart */}
-      <div className="px-4 sm:px-5 md:px-6 mt-2 pb-5 sm:pb-6 md:pb-8">
+      <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6 pb-5 sm:pb-6 md:pb-8">
         <ReportEngagementBenchmarkChart
           profileEngagementRatePct={k.engagementRate}
           followersCount={followers}
@@ -228,7 +228,7 @@ export function EngagementCardRefined({ result }: Props) {
 
       {/* Diagnostic reading box */}
       {readingText && (
-        <div className="px-4 sm:px-5 md:px-6 pb-5 sm:pb-6 md:pb-8">
+        <div className="px-4 sm:px-5 md:px-6 pb-6 sm:pb-7 md:pb-8">
           <InsightCallout
             tone={isBelowBenchmark ? "danger" : "positive"}
             label="DIAGNÓSTICO"
