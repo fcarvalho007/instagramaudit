@@ -59,15 +59,15 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
         <div className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
 
           {/* ── Main 3-zone layout ───────────────────────────────── */}
-          <div className="px-7 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9 flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-10">
+          <div className="px-6 py-6 sm:px-8 sm:py-7 lg:px-10 lg:py-10 flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-14">
 
             {/* ── ZONE 1: Profile identity ─────────────────────────── */}
             <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-5">
+            <div className="flex items-start gap-5 lg:gap-6">
               <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
               <div className="min-w-0 flex-1 space-y-0.5">
                 <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                  <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-content-primary leading-tight break-words">
+                   <h1 className="font-display text-2xl sm:text-[1.75rem] font-semibold tracking-[-0.025em] text-content-primary leading-tight break-words">
                     {handle}
                   </h1>
                   {verified && <VerifiedBadge />}
@@ -84,11 +84,11 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               </div>
             </div>
             {bio && (
-              <p className="text-[13px] text-content-tertiary leading-relaxed line-clamp-2 max-w-lg mt-3 pl-[76px] md:pl-[92px]">
+              <p className="text-sm text-content-tertiary leading-[1.65] line-clamp-2 max-w-lg mt-3">
                 {bio}
               </p>
             )}
-            <div className="flex items-center gap-3 mt-3 flex-wrap pl-[76px] md:pl-[92px]">
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
               {analysisMeta.dateLabel && (
                 <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
                   <Calendar className="size-3 text-content-tertiary" aria-hidden="true" />
@@ -107,8 +107,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             <div className="shrink-0">
               <div className="grid grid-cols-2 gap-x-8 gap-y-5 lg:gap-x-10 lg:gap-y-6">
                 {/* Engagement — principal anchor */}
-                <div className="flex flex-col gap-1">
-                  <span className="tabular-nums text-[2rem] lg:text-[2.5rem] font-bold text-content-primary leading-none">
+                 <div className="flex flex-col gap-1.5">
+                   <span className="tabular-nums text-[2.25rem] lg:text-[2.75rem] font-bold tracking-[-0.02em] text-content-primary leading-none">
                     {engRate.toFixed(2).replace(".", ",")}%
                   </span>
                   <span className="text-eyebrow-sm text-content-tertiary">
@@ -117,8 +117,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </div>
 
                 {/* Seguidores */}
-                <div className="flex flex-col gap-1">
-                  <span className="tabular-nums text-xl lg:text-2xl font-bold text-content-primary leading-none">
+                 <div className="flex flex-col gap-1.5">
+                   <span className="tabular-nums text-2xl lg:text-[1.75rem] font-bold tracking-[-0.02em] text-content-primary leading-none">
                     {formatCompact(followers)}
                   </span>
                   <span className="text-eyebrow-sm text-content-tertiary">
@@ -127,10 +127,11 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </div>
 
                 {/* Delta benchmark */}
-                <div className="flex flex-col gap-1">
+                 <div className="flex flex-col gap-1.5">
                   <span
                     className={cn(
                       "tabular-nums text-xl lg:text-2xl font-bold leading-none",
+                      "tracking-[-0.02em]",
                       engDelta >= 0 ? "text-signal-success" : "text-signal-danger",
                     )}
                   >
@@ -142,8 +143,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 </div>
 
                 {/* Publicações */}
-                <div className="flex flex-col gap-1">
-                  <span className="tabular-nums text-xl lg:text-2xl font-bold text-content-primary leading-none">
+                 <div className="flex flex-col gap-1.5">
+                   <span className="tabular-nums text-2xl lg:text-[1.75rem] font-bold tracking-[-0.02em] text-content-primary leading-none">
                     {formatCompact(postsCount)}
                   </span>
                   <span className="text-eyebrow-sm text-content-tertiary">
@@ -154,16 +155,16 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             </div>
 
             {/* ── ZONE 3: Actions ──────────────────────────────────── */}
-            <div className="hidden lg:flex flex-col items-end gap-2 shrink-0">
+            <div className="hidden lg:flex flex-col items-end gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={actions.onExportPdf}
                 disabled={actions.pdfDisabled || actions.pdfBusy}
                 aria-busy={actions.pdfBusy}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg h-8 px-3.5",
-                  "bg-accent-primary text-white text-xs font-semibold shadow-sm",
-                  "transition-colors duration-150 hover:bg-accent-primary/90",
+                  "inline-flex items-center gap-1.5 rounded-lg h-7 px-3.5",
+                  "bg-accent-primary/90 text-white text-xs font-semibold shadow-sm",
+                  "transition-colors duration-150 hover:bg-accent-primary",
                   "disabled:cursor-not-allowed disabled:opacity-50",
                 )}
               >
@@ -179,8 +180,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
                 variant="ghost"
                 triggerLabel="Partilhar"
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg h-8 px-3.5",
-                  "border border-border-default text-content-secondary text-xs font-medium",
+                  "inline-flex items-center gap-1.5 rounded-lg h-7 px-3.5",
+                  "border border-border-default/60 text-content-secondary text-xs font-medium",
                   "transition-colors duration-150",
                   "hover:border-accent-primary/30 hover:text-accent-primary",
                 )}
@@ -188,7 +189,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               <Link
                 to="/"
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg h-8 px-3",
+                  "inline-flex items-center gap-1.5 rounded-lg h-7 px-3",
                   "text-content-tertiary text-xs font-medium",
                   "transition-colors duration-150",
                   "hover:text-accent-primary",
@@ -208,9 +209,9 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               disabled={actions.pdfDisabled || actions.pdfBusy}
               aria-busy={actions.pdfBusy}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg h-8 px-3.5",
-                "bg-accent-primary text-white text-xs font-semibold shadow-sm",
-                "transition-colors duration-150 hover:bg-accent-primary/90",
+                "inline-flex items-center gap-1.5 rounded-lg h-7 px-3.5",
+                "bg-accent-primary/90 text-white text-xs font-semibold shadow-sm",
+                "transition-colors duration-150 hover:bg-accent-primary",
                 "disabled:cursor-not-allowed disabled:opacity-50",
               )}
             >
@@ -226,8 +227,8 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               variant="ghost"
               triggerLabel="Partilhar"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg h-8 px-3",
-                "border border-border-default text-content-secondary text-xs font-medium",
+                "inline-flex items-center gap-1.5 rounded-lg h-7 px-3",
+                "border border-border-default/60 text-content-secondary text-xs font-medium",
                 "transition-colors duration-150",
                 "hover:border-accent-primary/30 hover:text-accent-primary",
               )}
@@ -235,7 +236,7 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
             <Link
               to="/"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg h-8 px-3",
+                "inline-flex items-center gap-1.5 rounded-lg h-7 px-3",
                 "text-content-tertiary text-xs font-medium",
                 "transition-colors duration-150",
                 "hover:text-accent-primary",
@@ -353,7 +354,7 @@ function Avatar({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  const sizeMobile = "size-14 md:size-[72px]";
+  const sizeMobile = "size-16 md:size-20";
 
   if (avatarUrl) {
     return (
