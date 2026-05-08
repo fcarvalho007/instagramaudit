@@ -73,13 +73,13 @@ export function ReportEngagementBenchmarkChart({
   }
 
   // Colour helpers for active row
-  const dangerBorder = "rgba(163,45,45,0.35)";
-  const dangerBg = "rgba(163,45,45,0.05)";
+  const dangerBorder = "rgba(163,45,45,0.25)";
+  const dangerBg = "rgba(163,45,45,0.03)";
   const dangerHatch = "rgba(163,45,45,0.08)";
   const dangerBar = "rgba(163,45,45,0.75)";
   const dangerPill = "rgba(163,45,45,0.12)";
-  const successBorder = "rgba(29,158,117,0.35)";
-  const successBg = "rgba(29,158,117,0.05)";
+  const successBorder = "rgba(29,158,117,0.25)";
+  const successBg = "rgba(29,158,117,0.03)";
   const successHatch = "rgba(29,158,117,0.08)";
   const successBar = "rgba(29,158,117,0.75)";
   const successPill = "rgba(29,158,117,0.12)";
@@ -116,7 +116,7 @@ export function ReportEngagementBenchmarkChart({
 
       {/* Tier rows */}
       <div
-        className="relative flex flex-col gap-1.5"
+        className="relative flex flex-col gap-2"
         role="list"
         aria-label="Comparação de taxa de engagement por escalão"
       >
@@ -161,18 +161,18 @@ export function ReportEngagementBenchmarkChart({
                 key={tier.tierLabel}
                 role="listitem"
                 aria-label={`Escalão ${tier.tierLabel}: referência ${fmtRate(tier.engagementRatePct)}, este perfil ${fmtRate(profileVal)}`}
-                className="relative rounded-xl px-2 py-2.5 sm:px-3 sm:py-3"
+                className="relative rounded-xl px-2 py-3 sm:px-3 sm:py-4"
                 style={{
-                  border: `2px solid ${isPositive ? successBorder : dangerBorder}`,
+                  border: `1.5px solid ${isPositive ? successBorder : dangerBorder}`,
                   background: isPositive ? successBg : dangerBg,
                 }}
               >
                 {/* Badge: ESTÁS AQUI */}
                 <span
-                  className="absolute -top-2.5 left-2 sm:left-3 text-xs font-bold tracking-[0.08em] bg-surface-secondary rounded px-1.5 py-0.5 uppercase"
+                  className="absolute -top-2.5 left-2 sm:left-3 text-xs font-semibold tracking-[0.10em] bg-surface-secondary rounded px-1.5 py-0.5 uppercase"
                   style={{
                     color: isPositive ? "rgb(29,158,117)" : "rgb(163,45,45)",
-                    border: `1px solid ${isPositive ? successBorder : dangerBorder}`,
+                    border: `1px solid ${isPositive ? "rgba(29,158,117,0.20)" : "rgba(163,45,45,0.20)"}`,
                   }}
                 >
                   ESTÁS AQUI
@@ -195,7 +195,7 @@ export function ReportEngagementBenchmarkChart({
                   </div>
 
                   {/* Bar area */}
-                  <div className="relative flex-1 h-7 sm:h-8">
+                <div className="relative flex-1 h-8 sm:h-9">
                     {/* Base track */}
                     <div className="absolute inset-y-0 left-0 right-0 rounded-md bg-content-secondary/5" />
 
@@ -280,7 +280,7 @@ export function ReportEngagementBenchmarkChart({
                 </div>
 
                 {/* Bar area */}
-                <div className="relative flex-1 h-5 sm:h-6">
+                <div className="relative flex-1 h-6 sm:h-7">
                   <div
                     className="absolute inset-y-0 left-0 rounded-md bg-content-secondary/8"
                     style={{ width: `${Math.max(tierPct, 1)}%` }}
