@@ -174,6 +174,8 @@ function ReportLabPage() {
 
   const activeProfile = committedCustom.trim() || profile;
 
+  const features = getVariantFeatures(variant);
+
   // ── Sync state → URL + localStorage ──
   useEffect(() => {
     // Skip the very first render to avoid replacing URL on mount when
