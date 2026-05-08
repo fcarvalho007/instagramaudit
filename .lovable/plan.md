@@ -1,59 +1,24 @@
 
-## Auditoria
+## Problema
 
-### Componente e ficheiros envolvidos
+A caixa do número (`chapterNumberBox`) tem 112×96px em desktop — demasiado pequena para funcionar como um painel editorial isolado. Parece um badge, não um bloco visual distinto.
 
-| Ficheiro | Papel |
-|---|---|
-| `src/components/report-redesign/v2/report-block-section.tsx` | Renderiza o header de cada secção |
-| `src/components/report-redesign/v2/block-config.ts` | Dados estáticos: `number`, `shortLabel`, `eyebrowOverride`, `question`, `subtitle` |
-| `src/components/report-redesign/report-tokens.ts` | Tokens: `chapterNumber`, `chapterNumberBox`, `chapterLabel`, `chapterSubtitle`, `h2Section` |
+## Correção (apenas tokens CSS)
 
-### Dados disponíveis
+### `report-tokens.ts` — 2 tokens a ajustar
 
-- **Estáticos** (block-config): `number`, `eyebrowOverride`/`shortLabel`, `question` (serif headline), `subtitle` (Inter description) — todos já preenchidos com copy editorial em pt-PT.
-- **AI summary**: Não existe nenhum campo `aiHeroText`, `executiveSummary`, `summary` ou similar no payload nem no block-config. Os campos `question` e `subtitle` já servem a função editorial pretendida.
-- **Payload metrics**: O `ReportBlockSection` não recebe dados do payload — apenas `BlockConfig` estática. Isto é correto e não deve mudar.
+1. **`chapterNumberBox`**: aumentar para `w-[140px] h-[120px] md:w-[160px] md:h-[140px]` e adicionar `rounded-3xl` para maior presença editorial. Manter `bg-surface-muted`, `ring-1 ring-border-default/10`, `shrink-0`.
 
-### Estado atual do código (preview, não publicado)
+2. **`chapterNumber`**: aumentar para `text-[4.5rem] md:text-[5.5rem]` para preencher melhor o painel maior. Manter `text-content-tertiary/60`, `font-display`, `font-semibold`.
 
-As alterações da iteração anterior já adicionaram:
-- `chapterNumberBox`: `bg-surface-muted rounded-2xl` com dimensões fixas (88×80 / 112×96)
-- `chapterNumber`: tamanho reduzido para 3.5rem/4.5rem, cor `text-content-tertiary/40`
-- `border-t border-border-subtle` no header
-- Layout `flex-col md:flex-row`
+### `report-block-section.tsx` — sem alterações
 
-### Problemas identificados
-
-1. **Número demasiado transparente** — `text-content-tertiary/40` (40% opacidade) torna o "01" quase invisível dentro da caixa cinza. Deve ter mais presença (~60-70% ou usar `text-content-tertiary` puro).
-2. **h2Section demasiado grande** — `text-[2.25rem] md:text-[3rem] lg:text-[3.4rem]` (~54px desktop) domina visualmente. Para um header editorial de secção, ~28-36px é mais equilibrado.
-3. **Tokens não semânticos** — `chapterLabel` usa `text-blue-600` e `chapterSubtitle` usa `text-slate-500`, violando a regra de design tokens. Devem usar `text-accent-primary` e `text-content-secondary`.
-4. **Caixa do número pouco expressiva** — falta subtleza: um ring ou border muito suave daria mais "isolamento" editorial.
-
----
-
-## Plano de implementação
-
-### 1. `report-tokens.ts` — ajustar 4 tokens
-
-- `chapterNumber`: mudar de `text-content-tertiary/40` para `text-content-tertiary/60` (mais presença, ainda decorativo)
-- `chapterNumberBox`: adicionar `ring-1 ring-border-default/40` para subtil separação
-- `chapterLabel`: substituir `text-blue-600` por `text-accent-primary`
-- `chapterSubtitle`: substituir `text-slate-500` por `text-content-secondary`
-- `h2Section`: reduzir de `text-[2.25rem] md:text-[3rem] lg:text-[3.4rem]` para `text-[1.5rem] md:text-[1.75rem] lg:text-[2rem]` — escala editorial mais contida
-
-### 2. `report-block-section.tsx` — sem alterações estruturais
-
-O layout (flex-col → flex-row, number box + text stack, border-t) já está correto. Apenas os tokens mudam.
+A estrutura `flex-col md:flex-row` com `gap-5 md:gap-8` já está correta. O número já fica à esquerda em desktop e empilha em mobile.
 
 ### Ficheiros que NÃO mudam
 
-- `block-config.ts` — copy estática inalterada
-- Nenhum ficheiro de dados/payload
-- Nenhuma chamada a providers externos
+- `block-config.ts`, dados, lógica, providers — nada muda.
 
-### Riscos
+### Risco
 
-- **Mínimos** — alterações puramente CSS/tokens, sem lógica, sem dados, sem providers.
-- Verificar que `text-accent-primary` e `text-content-secondary` existem em `tokens-light.css`.
-- Verificar que `ring-border-default/40` resolve corretamente com o sistema de tokens.
+Mínimo — apenas dimensões CSS de 2 tokens.

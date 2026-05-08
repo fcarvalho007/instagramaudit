@@ -95,10 +95,10 @@ export const REDESIGN_TOKENS = {
     "text-eyebrow-sm inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1",
   /** Número do capítulo no chapter marker editorial. */
   chapterNumber:
-    "font-display text-[3.5rem] md:text-[4.5rem] font-semibold leading-none tracking-tighter text-content-tertiary/60 select-none",
+    "font-display text-[4.5rem] md:text-[5.5rem] font-semibold leading-none tracking-tighter text-content-tertiary/60 select-none",
   /** Caixa cinza-clara que isola o número do capítulo. */
   chapterNumberBox:
-    "flex items-center justify-center rounded-2xl bg-surface-muted ring-1 ring-border-default/10 w-[88px] h-[80px] md:w-[112px] md:h-[96px] shrink-0",
+    "flex items-center justify-center rounded-3xl bg-surface-muted ring-1 ring-border-default/10 w-[140px] h-[120px] md:w-[160px] md:h-[140px] shrink-0",
   /** Label do bloco: OVERVIEW, DIAGNÓSTICO EDITORIAL, etc. */
   chapterLabel:
     "text-[11px] md:text-xs font-semibold uppercase tracking-[0.22em] text-accent-primary",
