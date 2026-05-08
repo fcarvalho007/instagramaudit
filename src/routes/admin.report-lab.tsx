@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { Loader2, Lock, GitCompareArrows } from "lucide-react";
 import { ModuleVisibilityMatrix } from "@/components/admin/v2/module-visibility-matrix";
+import { BLOCKS } from "@/components/report-redesign/v2/block-config";
 import { getAllOverrides } from "@/server/admin/variant-overrides.functions";
 import { readAdminEmail } from "@/lib/admin/simple-gate";
 import { toast } from "sonner";
@@ -93,10 +94,10 @@ function writeLabPrefs(prefs: LabPrefs): void {
 
 const TEST_PROFILES = ["frederico.m.carvalho", "martimsilvai"] as const;
 
-const VARIANT_OPTIONS: { value: ReportVariant; label: string }[] = [
-  { value: "public_mvp", label: "Public MVP" },
-  { value: "internal_lab", label: "Internal Lab" },
-  { value: "pro_preview", label: "Pro Preview" },
+const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: string }[] = [
+  { value: "public_mvp", label: "Público", description: "O que o público geral vê — apenas blocos 01 e 02" },
+  { value: "internal_lab", label: "Trabalho/Admin", description: "Versão completa com todos os blocos e módulos experimentais" },
+  { value: "pro_preview", label: "Pro (simulação)", description: "Simulação de relatório avançado/pago — todos os blocos" },
 ];
 
 const MODE_LABELS: Record<ReportVariant, string> = {
@@ -172,6 +173,8 @@ function ReportLabPage() {
   });
 
   const activeProfile = committedCustom.trim() || profile;
+
+  const features = getVariantFeatures(variant);
 
   // ── Sync state → URL + localStorage ──
   useEffect(() => {
@@ -338,6 +341,39 @@ function ReportLabPage() {
                   );
                 })}
               </div>
+              <p className="text-xs text-admin-text-tertiary mt-1">
+                {VARIANT_OPTIONS.find((o) => o.value === variant)?.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Block visibility summary */}
+          <div className="mt-4 pt-4 border-t border-admin-border/50">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary mb-2">
+              Visibilidade dos blocos
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              {BLOCKS.map((block) => {
+                const vis = features[block.featureKey];
+                const isVisible = vis !== "hidden";
+                return (
+                  <div
+                    key={block.id}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-xs",
+                      isVisible
+                        ? "border-green-200 bg-green-50 text-green-700"
+                        : "border-admin-border/50 bg-admin-surface-muted text-admin-text-tertiary",
+                    )}
+                  >
+                    <span className="tabular-nums font-medium">{block.number}</span>{" "}
+                    <span>{block.shortLabel}</span>
+                    <span className="block mt-0.5 text-[10px]">
+                      {isVisible ? "✓ visível" : "oculto"}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
