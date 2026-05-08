@@ -299,7 +299,6 @@ export function ReportEngagementBenchmarkChart({
 
       {/* X-axis footer */}
       <div
-        className="flex justify-between ml-[calc(8px+64px+8px)] sm:ml-[calc(12px+100px+12px)] mr-[calc(8px+52px+8px)] sm:mr-[calc(12px+56px+12px)]"
         className="flex justify-between ml-[calc(12px+64px+8px)] sm:ml-[calc(16px+100px+12px)] mr-[calc(12px+56px+8px)] sm:mr-[calc(16px+60px+12px)]"
         aria-hidden="true"
       >
