@@ -1,24 +1,59 @@
 
-## Problema
+## Ficheiros a alterar
 
-A caixa do número (`chapterNumberBox`) tem 112×96px em desktop — demasiado pequena para funcionar como um painel editorial isolado. Parece um badge, não um bloco visual distinto.
+1. **`src/components/report-redesign/v2/report-overview-engagement.tsx`** — card principal
+2. **`src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx`** — chart de tiers
 
-## Correção (apenas tokens CSS)
+Nenhuma alteração a dados, fórmulas, providers ou lógica de scoring.
 
-### `report-tokens.ts` — 2 tokens a ajustar
+## Dados disponíveis (confirmados, sem alterações)
 
-1. **`chapterNumberBox`**: aumentar para `w-[140px] h-[120px] md:w-[160px] md:h-[140px]` e adicionar `rounded-3xl` para maior presença editorial. Manter `bg-surface-muted`, `ring-1 ring-border-default/10`, `shrink-0`.
+- `k.engagementRate` — taxa do perfil
+- `chartBenchmarkVal` — benchmark do tier ativo
+- `gapPp` / `pctDiffLabel` / `pctDiffDirection` — distância à referência
+- `engagementStatus` — "Alta" / "Média" / "Baixa"
+- `isBelowBenchmark` — flag booleana
+- `benchmarkSeries`, `activeTierIdx`, `activeTier`
+- `readingText` — texto diagnóstico já calculado
 
-2. **`chapterNumber`**: aumentar para `text-[4.5rem] md:text-[5.5rem]` para preencher melhor o painel maior. Manter `text-content-tertiary/60`, `font-display`, `font-semibold`.
+## Alterações no card principal (`report-overview-engagement.tsx`)
 
-### `report-block-section.tsx` — sem alterações
+### KPI cards (grid 3-col)
+- Aumentar números de `text-[1.1rem] sm:text-[1.6rem]` → `text-[1.4rem] sm:text-[2rem]`
+- Aumentar padding interno: `px-3 py-4 sm:px-5 sm:py-5`
+- Reduzir opacidade do border-left de 0.50 → 0.30 (menos agressivo)
+- Reduzir opacidade dos fundos: danger bg 0.04 → 0.025, success bg 0.04 → 0.025, blue bg 0.03 → 0.02
+- Aumentar gap do grid: `gap-2 sm:gap-3` → `gap-3 sm:gap-4`
+- Aumentar margens gerais: `mt-4 sm:mt-6` → `mt-6 sm:mt-8`, `pb-5` → `pb-6 sm:pb-8`
 
-A estrutura `flex-col md:flex-row` com `gap-5 md:gap-8` já está correta. O número já fica à esquerda em desktop e empilha em mobile.
+### Header
+- Reduzir underline do status word de 2px → 1.5px, opacidade 0.50 → 0.35
+- Aumentar padding top/bottom do header: `pt-5 sm:pt-6 md:pt-8` → `pt-6 sm:pt-8 md:pt-10`
 
-### Ficheiros que NÃO mudam
+## Alterações no chart (`report-engagement-benchmark-chart.tsx`)
 
-- `block-config.ts`, dados, lógica, providers — nada muda.
+### Tier rows
+- Aumentar gap entre rows: `gap-1.5` → `gap-2`
+- Active row: reduzir border de 2px → 1.5px, opacidade border 0.35 → 0.25
+- Active row: reduzir opacidade do fundo de 0.05 → 0.03
+- Active row: aumentar padding `py-2.5 sm:py-3` → `py-3 sm:py-4`
+- Inactive rows: aumentar height das barras `h-5 sm:h-6` → `h-6 sm:h-7`
 
-### Risco
+### "ESTÁS AQUI" badge
+- Reduzir intensidade: font-bold → font-semibold, tracking mais aberto
+- Border opacity 0.35 → 0.20
 
-Mínimo — apenas dimensões CSS de 2 tokens.
+### Inactive bars
+- Manter opacidade leve (já 8%), sem alteração
+
+### Axis / footer
+- Sem alterações
+
+## Comportamento responsivo
+
+Mantém-se: grid 3-col em todos os breakpoints, chart full-width. Apenas se aumentam espaçamentos que já existem.
+
+## Riscos
+
+- Mínimos — apenas CSS/spacing/opacity. Zero lógica alterada.
+- Verificar que os números maiores não causam overflow em mobile 375px.

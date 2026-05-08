@@ -103,19 +103,19 @@ export function EngagementCardRefined({ result }: Props) {
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 md:pt-8 pb-0 space-y-2.5">
+      <div className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-0 space-y-2.5">
         <div className="flex items-start gap-3">
           <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
             Taxa de Engagement{" "}
             <span
               className="font-semibold"
               style={{
-                borderBottom: `2px solid ${
+                borderBottom: `1.5px solid ${
                   engagementStatus === "Alta"
-                    ? "rgba(29,158,117,0.50)"
+                    ? "rgba(29,158,117,0.35)"
                     : engagementStatus === "Média"
-                      ? "rgba(217,119,6,0.50)"
-                      : "rgba(163,45,45,0.50)"
+                      ? "rgba(217,119,6,0.35)"
+                      : "rgba(163,45,45,0.35)"
                 }`,
                 paddingBottom: "1px",
               }}
@@ -130,17 +130,17 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Hero row — 3 KPI cards */}
-      <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6 pb-5">
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="px-4 sm:px-5 md:px-6 mt-6 sm:mt-8 pb-6 sm:pb-8">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
 
           {/* KPI 1 — Profile engagement */}
           <div
-            className="rounded-xl border px-2.5 py-3 sm:px-4 sm:py-3.5"
+            className="rounded-xl border px-3 py-4 sm:px-5 sm:py-5"
             style={{
-              borderColor: isBelowBenchmark ? "rgba(163,45,45,0.15)" : "rgba(37,99,217,0.12)",
+              borderColor: isBelowBenchmark ? "rgba(163,45,45,0.10)" : "rgba(37,99,217,0.08)",
               borderLeftWidth: 3,
-              borderLeftColor: isBelowBenchmark ? "rgba(163,45,45,0.50)" : "rgba(37,99,217,0.40)",
-              background: isBelowBenchmark ? "rgba(163,45,45,0.04)" : "rgba(37,99,217,0.03)",
+              borderLeftColor: isBelowBenchmark ? "rgba(163,45,45,0.30)" : "rgba(37,99,217,0.25)",
+              background: isBelowBenchmark ? "rgba(163,45,45,0.025)" : "rgba(37,99,217,0.02)",
             }}
           >
             <div className="flex items-center gap-1.5 mb-1.5">
@@ -157,10 +157,10 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <div className="flex items-baseline">
-              <span className="tabular-nums text-[1.1rem] sm:text-[1.6rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+              <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-bold text-content-primary leading-none tracking-tight">
                 {fmtPctHero(k.engagementRate)}
               </span>
-              <span className="tabular-nums text-[1.1rem] sm:text-[1.6rem] font-light text-content-secondary/50 ml-0.5">
+              <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
                 %
               </span>
             </div>
@@ -172,12 +172,12 @@ export function EngagementCardRefined({ result }: Props) {
 
           {/* KPI 2 — Tier benchmark */}
           <div
-            className="rounded-xl border px-2.5 py-3 sm:px-4 sm:py-3.5"
+            className="rounded-xl border px-3 py-4 sm:px-5 sm:py-5"
             style={{
-              borderColor: "rgba(37,99,217,0.10)",
+              borderColor: "rgba(37,99,217,0.08)",
               borderLeftWidth: 3,
               borderLeftColor: "rgba(37,99,217,0.30)",
-              background: "rgba(37,99,217,0.03)",
+              background: "rgba(37,99,217,0.02)",
             }}
           >
             <div className="flex items-center gap-1.5 mb-1.5">
@@ -192,10 +192,10 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <div className="flex items-baseline">
-              <span className="tabular-nums text-[1.1rem] sm:text-[1.6rem] font-bold text-content-primary tabular-nums leading-none tracking-tight">
+              <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-bold text-content-primary leading-none tracking-tight">
                 {fmtPctHero(chartBenchmarkVal)}
               </span>
-              <span className="tabular-nums text-[1.1rem] sm:text-[1.6rem] font-light text-content-secondary/50 ml-0.5">
+              <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-light text-content-secondary/50 ml-0.5">
                 %
               </span>
             </div>
@@ -207,12 +207,12 @@ export function EngagementCardRefined({ result }: Props) {
 
           {/* KPI 3 — Distance to benchmark */}
           <div
-            className="rounded-xl border px-2.5 py-3 sm:px-4 sm:py-3.5"
+            className="rounded-xl border px-3 py-4 sm:px-5 sm:py-5"
             style={{
-              borderColor: isPositive ? "rgba(29,158,117,0.15)" : "rgba(163,45,45,0.15)",
+              borderColor: isPositive ? "rgba(29,158,117,0.10)" : "rgba(163,45,45,0.10)",
               borderLeftWidth: 3,
-              borderLeftColor: isPositive ? "rgba(29,158,117,0.50)" : "rgba(163,45,45,0.50)",
-              background: isPositive ? "rgba(29,158,117,0.04)" : "rgba(163,45,45,0.04)",
+              borderLeftColor: isPositive ? "rgba(29,158,117,0.30)" : "rgba(163,45,45,0.30)",
+              background: isPositive ? "rgba(29,158,117,0.025)" : "rgba(163,45,45,0.025)",
             }}
           >
             <div className="flex items-center gap-1.5 mb-1.5">
@@ -231,7 +231,7 @@ export function EngagementCardRefined({ result }: Props) {
             <div className="flex items-baseline gap-1.5">
               <span
                 className={cn(
-                  "tabular-nums text-[1.1rem] sm:text-[1.6rem] font-bold tabular-nums leading-none tracking-tight",
+                  "tabular-nums text-[1.4rem] sm:text-[2rem] font-bold leading-none tracking-tight",
                   isPositive ? "text-signal-success" : "text-signal-danger"
                 )}
               >
