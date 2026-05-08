@@ -1,36 +1,83 @@
 
-# Refine Report Lab Variant Selector UX
+# Report Lab — Reorganização UX/UI
 
-Single file: `src/routes/admin.report-lab.tsx`
+## Problemas identificados
 
-## Changes
+### Repetições de informação
+1. **Visibilidade dos blocos aparece 3 vezes:**
+   - Tabela inline na secção "Perfil e variante" (blocos × variantes, badges Visível/Oculto/Teaser)
+   - Painel colapsável "Diferenças entre variantes" (módulos × variantes, incluindo os mesmos blocos)
+   - Painel colapsável "Checklist de prontidão pública" (módulos com visibilidade MVP + estado + risco)
 
-### 1. Rename selector label
-`"Variante a pré-visualizar"` → `"Versão do relatório a pré-visualizar"`
+2. **Descrição da variante aparece 3 vezes:**
+   - Banner topo ("Versão de trabalho · módulos completos...")
+   - Descrição sob o switcher de variante (texto de `VARIANT_OPTIONS`)
+   - `MODE_LABELS` (não usado diretamente mas definido)
 
-### 2. Update variant options with new titles and descriptions
+3. **Nota "não altera dados" aparece 2 vezes:**
+   - Sob a tabela de blocos
+   - No footer
 
-| Variant | Title | Description |
-|---------|-------|-------------|
-| public_mvp | Público geral | Versão que qualquer utilizador vê. Mostra apenas os blocos 01 e 02. |
-| internal_lab | Laboratório interno | Versão completa para trabalho/admin. Mostra todos os blocos e módulos internos. |
-| pro_preview | Pré-visualização Pro | Simulação de uma versão avançada/paga, com blocos completos ou teasers comerciais. |
+4. **URL do lab** repetido no footer e na secção "Ações de partilha"
 
-### 3. Replace the current single-variant block badges with a cross-variant comparison table
+### Problemas de layout
+- Secção "Perfil e variante" demasiado longa — mistura controlos (perfil + variante) com tabela de referência
+- 3 painéis colapsáveis consecutivos na secção "Configuração e diagnóstico" criam uma parede de accordions
+- Status de loading/erro (lines 548-568) aparece DEPOIS da secção "Configuração e diagnóstico", fora de ordem visual
 
-Table with columns: **Bloco | Público | Interno | Pro Preview**
+---
 
-Rows for all 6 blocks. Cells use coloured badges:
-- Green `Visível` when `full` / `lightweight`
-- Grey `Oculto` when `hidden`
-- Amber/purple `Teaser` when `teaser`
+## Plano de reorganização
 
-The active variant column gets a subtle highlight.
+### Estrutura proposta (de cima para baixo):
 
-### 4. Add info note below the table
-> "Esta pré-visualização não altera dados nem gera novas análises. Apenas muda a visibilidade dos blocos."
+```text
+┌─────────────────────────────────────────────┐
+│ 1. BANNER DE CONTEXTO (mais compacto)       │
+│    Variante activa + nota inline            │
+├─────────────────────────────────────────────┤
+│ 2. CONTROLOS (Perfil + Variante)            │
+│    Sem tabela — apenas selectores           │
+├─────────────────────────────────────────────┤
+│ 3. ESTADO DO SNAPSHOT                       │
+│    Loading / erro / validade — antes do     │
+│    conteúdo que depende dele                 │
+├─────────────────────────────────────────────┤
+│ 4. LINKS RÁPIDOS (se snapshot ready)        │
+│    3 colunas de ações de partilha           │
+├─────────────────────────────────────────────┤
+│ 5. PAINEL ÚNICO: Módulos e prontidão        │
+│    Tabela consolidada (colapsável):          │
+│    Módulo | Público | Interno | Pro |        │
+│    Estado | Risco | Nota                     │
+│    + Gestor de visibilidade (colapsável)     │
+├─────────────────────────────────────────────┤
+│ 6. REPORT PREVIEW (se snapshot ready)       │
+├─────────────────────────────────────────────┤
+│ 7. FOOTER (uma linha, sem repetições)       │
+└─────────────────────────────────────────────┘
+```
 
-### Not changed
-- No data/scoring/provider changes
-- No report shell or block visibility logic changes (already done)
-- No PDF pipeline changes
+### Mudanças concretas
+
+**`src/routes/admin.report-lab.tsx`** (UI-only):
+
+1. **Compactar banner**: manter apenas a frase curta + tone color, remover `MODE_LABELS` (unused).
+
+2. **Separar controlos da tabela**: remover a tabela de visibilidade de blocos da secção "Perfil e variante". Fica só perfil + switcher + descrição curta.
+
+3. **Mover status do snapshot** para logo após os controlos (antes das ações de partilha), para o utilizador ver imediatamente se há dados.
+
+4. **Consolidar 3 painéis em 1 tabela única** ("Visibilidade e prontidão dos módulos"):
+   - Colunas: Módulo | Público | Interno | Pro | Estado | Risco | Nota
+   - Substitui: tabela inline de blocos + VariantDiffPanel + ReadinessChecklist
+   - Coluna da variante activa fica highlighted
+   - Um único collapsible, aberto por defeito
+
+5. **Manter** o Gestor de visibilidade (ModuleVisibilityMatrix) como collapsible separado — é funcional, não informativo.
+
+6. **Remover nota duplicada** do footer — fica apenas na tabela consolidada.
+
+7. **Remover** `MODE_LABELS` (não usado no render) e `MODULE_INTERPRETATIONS` (absorvido pelas notas de readiness).
+
+Sem alterações a dados, providers, PDF, ou lógica de variantes.
