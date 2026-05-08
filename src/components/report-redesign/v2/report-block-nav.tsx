@@ -12,14 +12,16 @@ import { REDESIGN_TOKENS } from "../report-tokens";
 import { BLOCKS } from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
 
-const BLOCK_IDS = BLOCKS.map((b) => b.id);
-
 /**
  * Navegação lateral sticky para desktop (≥1024px). Lista os 6 blocos
  * com numeração mono e bullet azul a marcar o bloco activo.
  */
-export function ReportBlockSidebar() {
-  const active = useActiveBlock(BLOCK_IDS);
+export function ReportBlockSidebar({ visibleBlockIds }: { visibleBlockIds?: string[] }) {
+  const filtered = visibleBlockIds
+    ? BLOCKS.filter((b) => visibleBlockIds.includes(b.id))
+    : BLOCKS;
+  const ids = filtered.map((b) => b.id);
+  const active = useActiveBlock(ids);
 
   return (
     <nav
@@ -50,7 +52,7 @@ export function ReportBlockSidebar() {
         Secções do relatório
       </p>
       <ul className="space-y-0.5">
-        {BLOCKS.map((block) => {
+        {filtered.map((block) => {
           const isActive = block.id === active;
           return (
             <li key={block.id}>
@@ -118,18 +120,22 @@ export function ReportBlockSidebar() {
  * Mostra 3 ícones contextuais grandes (ativo + adjacentes) + hamburger
  * para navegação completa via Sheet drawer.
  */
-export function ReportBlockTopTabs() {
-  const active = useActiveBlock(BLOCK_IDS);
+export function ReportBlockTopTabs({ visibleBlockIds }: { visibleBlockIds?: string[] }) {
+  const filtered = visibleBlockIds
+    ? BLOCKS.filter((b) => visibleBlockIds.includes(b.id))
+    : BLOCKS;
+  const ids = filtered.map((b) => b.id);
+  const active = useActiveBlock(ids);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const activeIndex = useMemo(
-    () => Math.max(0, BLOCKS.findIndex((b) => b.id === active)),
+    () => Math.max(0, filtered.findIndex((b) => b.id === active)),
     [active],
   );
 
   // 3 ícones visíveis: ativo + adjacentes, clamped aos limites
   const visibleIndices = useMemo(() => {
-    const start = Math.max(0, Math.min(activeIndex - 1, BLOCKS.length - 3));
+    const start = Math.max(0, Math.min(activeIndex - 1, filtered.length - 3));
     return [start, start + 1, start + 2];
   }, [activeIndex]);
 
@@ -148,7 +154,7 @@ export function ReportBlockTopTabs() {
         {/* 3 ícones contextuais */}
         <div className="flex flex-1">
           {visibleIndices.map((idx) => {
-            const block = BLOCKS[idx];
+            const block = filtered[idx];
             const isActive = block.id === active;
             const Icon = block.icon;
             return (
