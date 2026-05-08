@@ -12,7 +12,6 @@
  *   Success: bg rgba(29,158,117,0.04), left-border rgba(29,158,117,0.45)
  */
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
-import { MessageCircle, AlertTriangle } from "lucide-react";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
   getConsolidatedBenchmarkSeries,
@@ -100,62 +99,47 @@ export function EngagementCardRefined({ result }: Props) {
     readingText = `Este perfil supera a média do seu escalão em ${aboveMultLabel} — há sinais de engagement acima da referência.`;
   }
 
+  // Status pill styling
+  const pillClass =
+    engagementStatus === "Alta"
+      ? "bg-signal-success/8 text-signal-success border-signal-success/20"
+      : engagementStatus === "Média"
+        ? "bg-signal-warning/8 text-signal-warning border-signal-warning/20"
+        : "bg-signal-danger/8 text-signal-danger border-signal-danger/20";
+
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-0 space-y-2.5">
-        <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
-            Taxa de Engagement{" "}
-            <span
-              className="font-semibold"
-              style={{
-                borderBottom: `1.5px solid ${
-                  engagementStatus === "Alta"
-                    ? "rgba(29,158,117,0.35)"
-                    : engagementStatus === "Média"
-                      ? "rgba(217,119,6,0.35)"
-                      : "rgba(163,45,45,0.35)"
-                }`,
-                paddingBottom: "1px",
-              }}
-            >
-              {engagementStatus}
-            </span>
+      <div className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-0 space-y-3">
+        <p className="text-eyebrow-sm text-content-secondary">ENGAGEMENT</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
+            Taxa de Engagement
           </h3>
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
+              pillClass,
+            )}
+          >
+            {engagementStatus}
+          </span>
         </div>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
-          Média de gostos + comentários + partilhas (÷) seguidores.
+          Média de gostos + comentários + partilhas ÷ seguidores.
         </p>
       </div>
 
       {/* Hero row — 3 KPI cards */}
       <div className="px-4 sm:px-5 md:px-6 mt-6 sm:mt-8 pb-6 sm:pb-8">
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-3 gap-4 sm:gap-5">
 
           {/* KPI 1 — Profile engagement */}
-          <div
-            className="rounded-xl border px-3 py-4 sm:px-5 sm:py-5"
-            style={{
-              borderColor: isBelowBenchmark ? "rgba(163,45,45,0.10)" : "rgba(37,99,217,0.08)",
-              borderLeftWidth: 3,
-              borderLeftColor: isBelowBenchmark ? "rgba(163,45,45,0.30)" : "rgba(37,99,217,0.25)",
-              background: isBelowBenchmark ? "rgba(163,45,45,0.025)" : "rgba(37,99,217,0.02)",
-            }}
-          >
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span
-                className="size-2 rounded-full shrink-0"
-                aria-hidden="true"
-                style={{
-                  background: isBelowBenchmark ? "rgba(163,45,45,0.70)" : "rgba(37,99,217,0.50)",
-                }}
-              />
-              <span className="text-eyebrow-sm text-content-secondary">
-                <span className="hidden sm:inline">Avaliação deste perfil</span>
-                <span className="sm:hidden">Este perfil</span>
-              </span>
-            </div>
+          <div className="rounded-xl border border-border-default bg-surface-muted/50 px-3 py-4 sm:px-5 sm:py-5">
+            <span className="text-eyebrow-sm text-content-secondary block mb-2">
+              <span className="hidden sm:inline">Avaliação deste perfil</span>
+              <span className="sm:hidden">Este perfil</span>
+            </span>
             <div className="flex items-baseline">
               <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-bold text-content-primary leading-none tracking-tight">
                 {fmtPctHero(k.engagementRate)}
@@ -164,33 +148,18 @@ export function EngagementCardRefined({ result }: Props) {
                 %
               </span>
             </div>
-            <span className="block text-xs sm:text-xs text-content-secondary mt-1 sm:mt-1.5 leading-snug">
+            <span className="block text-xs text-content-secondary mt-1.5 leading-snug">
               <span className="hidden sm:inline">interação com o conteúdo</span>
               <span className="sm:hidden">interação</span>
             </span>
           </div>
 
           {/* KPI 2 — Tier benchmark */}
-          <div
-            className="rounded-xl border px-3 py-4 sm:px-5 sm:py-5"
-            style={{
-              borderColor: "rgba(37,99,217,0.08)",
-              borderLeftWidth: 3,
-              borderLeftColor: "rgba(37,99,217,0.30)",
-              background: "rgba(37,99,217,0.02)",
-            }}
-          >
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span
-                className="size-2 rounded-full shrink-0"
-                aria-hidden="true"
-                style={{ background: "rgba(37,99,217,0.45)" }}
-              />
-              <span className="text-eyebrow-sm text-content-secondary">
-                <span className="hidden sm:inline">Outros perfis semelhantes</span>
-                <span className="sm:hidden">Benchmark</span>
-              </span>
-            </div>
+          <div className="rounded-xl border border-border-default bg-surface-muted/50 px-3 py-4 sm:px-5 sm:py-5">
+            <span className="text-eyebrow-sm text-content-secondary block mb-2">
+              <span className="hidden sm:inline">Média do escalão</span>
+              <span className="sm:hidden">Benchmark</span>
+            </span>
             <div className="flex items-baseline">
               <span className="tabular-nums text-[1.4rem] sm:text-[2rem] font-bold text-content-primary leading-none tracking-tight">
                 {fmtPctHero(chartBenchmarkVal)}
@@ -199,7 +168,7 @@ export function EngagementCardRefined({ result }: Props) {
                 %
               </span>
             </div>
-            <span className="block text-xs sm:text-xs text-content-secondary mt-1 sm:mt-1.5 leading-snug">
+            <span className="block text-xs text-content-secondary mt-1.5 leading-snug">
               <span className="hidden sm:inline">Média de perfis no mesmo escalão.</span>
               <span className="sm:hidden">média escalão</span>
             </span>
@@ -207,27 +176,17 @@ export function EngagementCardRefined({ result }: Props) {
 
           {/* KPI 3 — Distance to benchmark */}
           <div
-            className="rounded-xl border px-3 py-4 sm:px-5 sm:py-5"
-            style={{
-              borderColor: isPositive ? "rgba(29,158,117,0.10)" : "rgba(163,45,45,0.10)",
-              borderLeftWidth: 3,
-              borderLeftColor: isPositive ? "rgba(29,158,117,0.30)" : "rgba(163,45,45,0.30)",
-              background: isPositive ? "rgba(29,158,117,0.025)" : "rgba(163,45,45,0.025)",
-            }}
+            className={cn(
+              "rounded-xl border px-3 py-4 sm:px-5 sm:py-5",
+              isPositive
+                ? "border-signal-success/15 bg-signal-success/4"
+                : "border-signal-danger/15 bg-signal-danger/4",
+            )}
           >
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span
-                className="size-2 rounded-full shrink-0"
-                aria-hidden="true"
-                style={{
-                  background: isPositive ? "rgba(29,158,117,0.70)" : "rgba(163,45,45,0.70)",
-                }}
-              />
-              <span className="text-eyebrow-sm text-content-secondary">
-                <span className="hidden sm:inline">Distância à média</span>
-                <span className="sm:hidden">Distância</span>
-              </span>
-            </div>
+            <span className="text-eyebrow-sm text-content-secondary block mb-2">
+              <span className="hidden sm:inline">Distância à média</span>
+              <span className="sm:hidden">Distância</span>
+            </span>
             <div className="flex items-baseline gap-1.5">
               <span
                 className={cn(
@@ -248,7 +207,7 @@ export function EngagementCardRefined({ result }: Props) {
                 </span>
               )}
             </div>
-            <span className="block text-xs sm:text-xs text-content-secondary mt-1 sm:mt-1.5 leading-snug">
+            <span className="block text-xs text-content-secondary mt-1.5 leading-snug">
               face ao benchmark do escalão
             </span>
           </div>
@@ -256,7 +215,7 @@ export function EngagementCardRefined({ result }: Props) {
       </div>
 
       {/* Chart */}
-      <div className="px-4 sm:px-5 md:px-6 pb-5 sm:pb-6 md:pb-8">
+      <div className="px-4 sm:px-5 md:px-6 mt-2 pb-5 sm:pb-6 md:pb-8">
         <ReportEngagementBenchmarkChart
           profileEngagementRatePct={k.engagementRate}
           followersCount={followers}
