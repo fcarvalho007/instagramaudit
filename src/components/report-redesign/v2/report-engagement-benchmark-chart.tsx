@@ -65,14 +65,14 @@ export function ReportEngagementBenchmarkChart({
 
   // Colour helpers for active row
   const dangerBorder = "rgba(163,45,45,0.18)";
-  const dangerBg = "rgba(163,45,45,0.02)";
-  const dangerRef = "rgba(163,45,45,0.06)";
-  const dangerBar = "rgba(163,45,45,0.65)";
+  const dangerBg = "rgba(163,45,45,0.015)";
+  const dangerRef = "rgba(163,45,45,0.04)";
+  const dangerBar = "rgba(163,45,45,0.55)";
   const dangerPill = "rgba(163,45,45,0.10)";
   const successBorder = "rgba(29,158,117,0.18)";
-  const successBg = "rgba(29,158,117,0.02)";
-  const successRef = "rgba(29,158,117,0.06)";
-  const successBar = "rgba(29,158,117,0.65)";
+  const successBg = "rgba(29,158,117,0.015)";
+  const successRef = "rgba(29,158,117,0.04)";
+  const successBar = "rgba(29,158,117,0.55)";
   const successPill = "rgba(29,158,117,0.10)";
 
   return (
@@ -107,7 +107,7 @@ export function ReportEngagementBenchmarkChart({
 
       {/* Tier rows */}
       <div
-        className="relative flex flex-col gap-2.5"
+        className="relative flex flex-col gap-3"
         role="list"
         aria-label="Comparação de taxa de engagement por escalão"
       >
@@ -152,7 +152,7 @@ export function ReportEngagementBenchmarkChart({
                 key={tier.tierLabel}
                 role="listitem"
                 aria-label={`Escalão ${tier.tierLabel}: referência ${fmtRate(tier.engagementRatePct)}, este perfil ${fmtRate(profileVal)}`}
-                className="relative rounded-xl px-3 py-4 sm:px-4 sm:py-5"
+                className="relative rounded-xl px-3 py-5 sm:px-4 sm:py-6"
                 style={{
                   border: `1px solid ${isPositive ? successBorder : dangerBorder}`,
                   background: isPositive ? successBg : dangerBg,
@@ -173,7 +173,7 @@ export function ReportEngagementBenchmarkChart({
                           {sub}
                         </span>
                         <span
-                          className="text-[10px] font-medium text-content-tertiary"
+                          className="text-[11px] font-medium text-content-secondary/60"
                         >
                           ← ESTÁS AQUI
                         </span>
@@ -235,7 +235,7 @@ export function ReportEngagementBenchmarkChart({
                   {/* Value — tier reference (consistent with inactive rows) */}
                   <span
                     className={cn(
-                      "tabular-nums text-[13px] sm:text-[14px] font-bold shrink-0 min-w-[56px] sm:min-w-[60px] text-right",
+                      "tabular-nums text-[14px] sm:text-[15px] font-bold shrink-0 min-w-[60px] sm:min-w-[64px] text-right",
                       isPositive ? "text-signal-success" : "text-signal-danger"
                     )}
                   >
@@ -252,12 +252,12 @@ export function ReportEngagementBenchmarkChart({
               key={tier.tierLabel}
               role="listitem"
               aria-label={`Escalão ${tier.tierLabel}: referência ${fmtRate(tier.engagementRatePct)}`}
-              className="relative rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 border border-transparent"
+              className="relative rounded-xl px-3 py-3 sm:px-4 sm:py-3.5 border border-transparent"
             >
               <div className="flex items-center gap-2 sm:gap-3">
                 {/* Label — no numbering */}
                 <div className="flex flex-col leading-tight min-w-[64px] sm:min-w-[100px] shrink-0">
-                  <span className="text-[13px] font-semibold text-content-secondary">
+                  <span className="text-[13px] sm:text-[14px] font-semibold text-content-secondary">
                     {tier.tierLabel}
                   </span>
                   {sub && (
@@ -279,7 +279,7 @@ export function ReportEngagementBenchmarkChart({
                 </div>
 
                 {/* Value */}
-                <span className="text-[13px] sm:text-[14px] tabular-nums font-semibold shrink-0 min-w-[56px] sm:min-w-[60px] text-right text-content-secondary">
+                <span className="text-[14px] sm:text-[15px] tabular-nums font-semibold shrink-0 min-w-[60px] sm:min-w-[64px] text-right text-content-secondary">
                   {fmtRate(tier.engagementRatePct)}
                 </span>
               </div>
@@ -294,7 +294,7 @@ export function ReportEngagementBenchmarkChart({
         aria-hidden="true"
       >
         {axisSteps.map((v) => (
-          <span key={v} className="text-xs tabular-nums text-content-secondary/40 font-medium">
+          <span key={v} className="text-xs tabular-nums text-content-secondary/35 font-medium">
             {v % 1 === 0 ? `${v}%` : `${v.toFixed(1)}%`}
           </span>
         ))}
@@ -302,7 +302,7 @@ export function ReportEngagementBenchmarkChart({
 
       {/* Sources — compact footnote */}
       {sourceReferences.length > 0 && (
-        <div className="text-xs text-content-tertiary pt-1">
+        <div className="text-xs text-content-tertiary mt-1 pt-2">
           <span className="text-content-secondary font-semibold tracking-wider">FONTES</span>{" "}
           {sourceReferences.map((ref, i) => (
             <span key={ref.url}>
