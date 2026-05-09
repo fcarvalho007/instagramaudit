@@ -21,6 +21,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ReportExampleRouteImport } from './routes/report.example'
+import { Route as FeedbackRequestIdRouteImport } from './routes/feedback.$requestId'
 import { Route as BetaRequestRouteImport } from './routes/beta.request'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as AppPlanRouteImport } from './routes/app.plan'
@@ -161,6 +162,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const ReportExampleRoute = ReportExampleRouteImport.update({
   id: '/report/example',
   path: '/report/example',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackRequestIdRoute = FeedbackRequestIdRouteImport.update({
+  id: '/feedback/$requestId',
+  path: '/feedback/$requestId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BetaRequestRoute = BetaRequestRouteImport.update({
@@ -635,6 +641,7 @@ export interface FileRoutesByFullPath {
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
+  '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -729,6 +736,7 @@ export interface FileRoutesByTo {
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
+  '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
   '/admin': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -825,6 +833,7 @@ export interface FileRoutesById {
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
+  '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
@@ -922,6 +931,7 @@ export interface FileRouteTypes {
     | '/app/plan'
     | '/app/reports'
     | '/beta/request'
+    | '/feedback/$requestId'
     | '/report/example'
     | '/admin/'
     | '/admin/report-preview/$username'
@@ -1016,6 +1026,7 @@ export interface FileRouteTypes {
     | '/app/plan'
     | '/app/reports'
     | '/beta/request'
+    | '/feedback/$requestId'
     | '/report/example'
     | '/admin'
     | '/admin/report-preview/$username'
@@ -1111,6 +1122,7 @@ export interface FileRouteTypes {
     | '/app/plan'
     | '/app/reports'
     | '/beta/request'
+    | '/feedback/$requestId'
     | '/report/example'
     | '/admin/'
     | '/admin/report-preview/$username'
@@ -1194,6 +1206,7 @@ export interface RootRouteChildren {
   ApiRequestFullReportRoute: typeof ApiRequestFullReportRoute
   ApiSendReportEmailRoute: typeof ApiSendReportEmailRoute
   BetaRequestRoute: typeof BetaRequestRoute
+  FeedbackRequestIdRoute: typeof FeedbackRequestIdRoute
   ReportExampleRoute: typeof ReportExampleRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
@@ -1331,6 +1344,13 @@ declare module '@tanstack/react-router' {
       path: '/report/example'
       fullPath: '/report/example'
       preLoaderRoute: typeof ReportExampleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback/$requestId': {
+      id: '/feedback/$requestId'
+      path: '/feedback/$requestId'
+      fullPath: '/feedback/$requestId'
+      preLoaderRoute: typeof FeedbackRequestIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/beta/request': {
@@ -2086,6 +2106,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRequestFullReportRoute: ApiRequestFullReportRoute,
   ApiSendReportEmailRoute: ApiSendReportEmailRoute,
   BetaRequestRoute: BetaRequestRoute,
+  FeedbackRequestIdRoute: FeedbackRequestIdRoute,
   ReportExampleRoute: ReportExampleRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
