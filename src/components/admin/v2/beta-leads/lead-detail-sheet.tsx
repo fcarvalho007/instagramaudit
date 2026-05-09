@@ -689,6 +689,41 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         }
       }}
     />
+
+    {/* ── Send feedback request dialog ────────────────────── */}
+    <FeedbackRequestDialog
+      open={feedbackOpen}
+      onOpenChange={setFeedbackOpen}
+      loading={sendingFeedback}
+      lead={lead}
+      onConfirm={async () => {
+        if (!lead.report_request_id) return;
+        setSendingFeedback(true);
+        try {
+          const res = await fetch("/api/admin/send-feedback-request", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lead_id: lead.id,
+              report_request_id: lead.report_request_id,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.success) {
+            toast.error(mapFeedbackError(body?.error_code));
+          } else {
+            toast.success("Pedido de feedback enviado");
+            setFeedbackOpen(false);
+            onRefresh?.();
+          }
+        } catch {
+          toast.error("Erro de rede ao enviar email.");
+        } finally {
+          setSendingFeedback(false);
+        }
+      }}
+    />
     </>
   );
 }
