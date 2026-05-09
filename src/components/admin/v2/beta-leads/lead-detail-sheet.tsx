@@ -60,6 +60,11 @@ import { Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
+import { interpretFeedback } from "@/lib/admin/feedback-intent";
+import {
+  PRICING_PREFERENCE_LABELS,
+  PURCHASE_INTENT_LABELS,
+} from "@/lib/feedback/feedback-schema";
 import {
   renderReportReady,
   renderFeedbackRequest,
@@ -271,6 +276,12 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
   const intent = deriveIntentSignal(lead);
   const suggestedStep = suggestNextLeadAction(lead).label;
+  const feedbackIntent = interpretFeedback(lead.feedback);
+  // When feedback exists, override the heuristic intent with the commercial signal.
+  const displayedIntent = lead.feedback
+    ? { label: feedbackIntent.label, accent: feedbackIntent.accent }
+    : intent;
+  const displayedSuggestion = lead.feedback ? feedbackIntent.nextAction : suggestedStep;
   const columnDef = KANBAN_COLUMNS.find((c) => c.key === lead.commercial_status);
 
   const handleSaveNotes = () => {
@@ -516,7 +527,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
             {USER_TYPE_LABEL[lead.user_type?.toLowerCase() ?? ""] ?? "Desconhecido"}
           </DetailRow>
           <DetailRow label="Sinal de intenção" icon={Target}>
-            <AdminBadge variant={intent.accent}>{intent.label}</AdminBadge>
+            <AdminBadge variant={displayedIntent.accent}>{displayedIntent.label}</AdminBadge>
           </DetailRow>
 
           <div
@@ -530,7 +541,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
             <div>
             <p className="admin-eyebrow mb-1">Próximo passo sugerido</p>
             <p className="admin-body text-admin-text-primary font-medium m-0">
-              {suggestedStep}
+              {displayedSuggestion}
             </p>
             </div>
           </div>
@@ -551,6 +562,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
             </Select>
           </div>
         </div>
+
+        <SectionDivider />
+
+        {/* ── 5b. Feedback beta ─────────────────────────────── */}
+        <FeedbackBetaSection feedback={lead.feedback} />
 
         <SectionDivider />
 
