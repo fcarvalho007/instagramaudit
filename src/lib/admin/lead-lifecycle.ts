@@ -113,9 +113,45 @@ export function mapEventToSuggestedStatus(
       return "relatorio_visto";
     case "feedback_requested":
       return "feedback_pedido";
+    case "feedback_request_sent":
+      return "feedback_pedido";
     case "feedback_submitted":
       return "feedback_recebido";
     default:
       return null;
   }
+}
+
+/**
+ * Funnel ordering used to decide whether an automatic event should advance
+ * the lead. Higher index = further down the funnel. Statuses outside the
+ * funnel (e.g. `interessado`, `arquivado`) are sentinel and never auto-moved.
+ */
+const FUNNEL_ORDER: LifecycleStatus[] = [
+  "novo_pedido",
+  "em_analise",
+  "relatorio_gerado",
+  "link_enviado",
+  "relatorio_visto",
+  "feedback_pedido",
+  "feedback_recebido",
+];
+
+/**
+ * Returns the status to write, or null if no advance should happen.
+ * - Refuses to regress (target index <= current index).
+ * - Refuses to move a lead that already left the funnel (`interessado`,
+ *   `potencial_cliente`, `convertido`, `arquivado`).
+ */
+export function maybeAdvanceLeadStatus(
+  current: string | null | undefined,
+  target: LifecycleStatus,
+): LifecycleStatus | null {
+  const targetIdx = FUNNEL_ORDER.indexOf(target);
+  if (targetIdx === -1) return null;
+  const currentIdx = current ? FUNNEL_ORDER.indexOf(current as LifecycleStatus) : -1;
+  // current is outside the funnel (e.g. interessado/arquivado) → don't touch
+  if (current && currentIdx === -1) return null;
+  if (targetIdx <= currentIdx) return null;
+  return target;
 }
