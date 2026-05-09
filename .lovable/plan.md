@@ -1,73 +1,42 @@
-## Re-auditoria — última inconsistência
+## Auditoria de envio de emails (read-only)
 
-Após cobrir `system-queries`, `cost-sync` e `billing-reconciliation`, falta **um único endpoint** que ainda mostra custos sem aplicar a regra `actual>0 ? actual : estimated`:
+### Mapa de fluxos
 
-### `src/routes/api/admin/leads-kanban.ts` (linhas 95–128)
+| Flow | Endpoint / ficheiro | Template | Eventos `product_events` | Transição `commercial_status` | Notas / risco |
+|---|---|---|---|---|---|
+| Pedido recebido (form beta) | `src/lib/beta.functions.ts` (server fn `submitBetaRequest`, linhas 186–235) | `renderRequestReceived` (`@/lib/email/templates`) | `beta_request_created`, depois `request_received_email_sent` ou `request_received_email_failed` | Não toca (lead criado com `novo_pedido` por default da tabela) | Fire-and-forget; usa `RESEND_API_KEY` direto + `from: onboarding@resend.dev` (sandbox Resend, não pelo domínio próprio nem pela queue Lovable Email). Falha silenciosa se faltar key. |
+| Envio do link do relatório (admin) | `src/routes/api/admin/send-report-link.ts` | `renderReportReady` (`@/lib/email/templates`) | `report_link_sent` (success path apenas) via `lead-events.server` | `→ link_enviado` (com `maybeAdvanceLeadStatus`, nunca regride) | OK. Fonte canónica para envio do link. |
+| Pedido de feedback (admin) | `src/routes/api/admin/send-feedback-request.ts` | `renderFeedbackRequest` (`@/lib/email/templates`) | `feedback_requested` | `→ feedback_pedido` (apenas se atual ∈ {`link_enviado`, `relatorio_visto`, `feedback_pedido`}) | OK. |
+| Follow-up comercial | _nenhum_ | `renderCommercialFollowup` exportado em `src/lib/email/templates/index.ts` mas **sem call-site** | — | — | **Template órfão.** Existe + testado mas nenhum endpoint o invoca. |
+| Preview no admin sheet | `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (linhas 1011, 1169) | `renderReportReady`, `renderFeedbackRequest` (apenas para preview de subject/text na UI) | — | — | OK. Render-only para o sheet, não envia. |
+| Legacy: envio direto do report email | `src/routes/api/send-report-email.ts` | `@/lib/email/report-email-template` | `report_link_sent` (linha 351) | Atualiza `report_requests.delivery_status` (`sending`/`sent`/`failed`); **não** mexe em `commercial_status` | **Endpoint legacy ainda exposto** (`/api/send-report-email`). Sem chamada interna em `src/`. Tem optimistic lock + `INTERNAL_API_TOKEN`. Pode ser chamado externamente; risco se ainda houver cron/integração que dependa dele. |
 
-Alimenta o **custo por lead** no kanban de `/admin/visao-geral`. Tem dois problemas:
+### Templates órfãos
 
-1. **Código morto**: faz query a `provider_call_logs` (linha 106) e atribui a `costs`, mas a variável **nunca é usada**.
-2. **Fonte errada**: o `costBySnapshot` é construído a partir de `analysis_events.estimated_cost_usd` (linha 119), que é **só estimado, snapshot-level**. Não reflecte os custos reais (`actual_cost_usd`) registados em `provider_call_logs`. Resultado: o custo por lead na kanban diverge do custo por análise mostrado em `/admin/receita` e da reconciliação.
+- `renderCommercialFollowup` — sem call-site.
 
-### Tudo o resto está OK
+### Templates legacy ainda em uso
 
-- `system-queries.server.ts:1076–1128` (CommentScraperMetrics) usa `actual_cost_usd` directamente em 3 sítios — **intencional** (mede "quanto a Apify cobrou" para guardrails). Não é cost reporting, é monitoring de billing real. Manter.
-- `market-signals.ts` e `run-enrichment.server.ts` — DataForSEO sempre grava `actual_cost_usd`, então usar `actual` directo é correcto. Manter.
-- `report-cost-summary.server.ts` já implementa a regra correctamente (linha 146).
+- `src/lib/email/report-email-template.ts` — usado **apenas** por `src/routes/api/send-report-email.ts` (rota legacy).
+- `src/lib/email/report-link-email-template.ts` — **não existe** no repo. Já foi removido.
 
----
+### Recomendações
 
-## Plano final
+| Item | Recomendação |
+|---|---|
+| `renderRequestReceived` em `beta.functions.ts` | **Migrar** para a infraestrutura padrão (queue Lovable Email + domínio próprio) em vez de `RESEND_API_KEY` + `onboarding@resend.dev`. Atualmente envia de uma sandbox e ignora a fila. |
+| `renderReportReady` em `send-report-link.ts` | **Keep** (canónico). |
+| `renderFeedbackRequest` em `send-feedback-request.ts` | **Keep** (canónico). |
+| `renderCommercialFollowup` (órfão) | **Do not touch / pending wiring.** Confirmar com o utilizador se há endpoint planeado. Caso contrário, candidato a `delete later`. |
+| `src/routes/api/send-report-email.ts` + `src/lib/email/report-email-template.ts` | **Delete later** após confirmar que nenhum sistema externo (cron, automation, integração) ainda chama `/api/send-report-email`. Hoje todo o fluxo admin passa por `send-report-link.ts` com `renderReportReady`. |
 
-### Patch único — `src/routes/api/admin/leads-kanban.ts`
+### Pontos de atenção (sem ação agora)
 
-Substituir o bloco 95–128 por agregação via `provider_call_logs.analysis_event_id → analysis_event → snapshot_id`, aplicando `resolveCallCost`.
-
-```ts
-import { resolveCallCost } from "@/lib/admin/cost-resolution";
-
-// ... dentro do handler ...
-
-// 4. Custo real por snapshot — agregar provider_call_logs via analysis_events.
-let costBySnapshot = new Map<string, number>();
-if (snapshotIds.length > 0) {
-  // a) eventos dos snapshots em causa
-  const { data: events } = await supabaseAdmin
-    .from("analysis_events")
-    .select("id, analysis_snapshot_id")
-    .in("analysis_snapshot_id", snapshotIds);
-
-  const eventToSnapshot = new Map<string, string>();
-  for (const ev of events ?? []) {
-    if (ev.analysis_snapshot_id) eventToSnapshot.set(ev.id, ev.analysis_snapshot_id);
-  }
-
-  // b) chamadas de provider ligadas a esses eventos
-  const eventIds = [...eventToSnapshot.keys()];
-  if (eventIds.length > 0) {
-    const { data: calls } = await supabaseAdmin
-      .from("provider_call_logs")
-      .select("analysis_event_id, actual_cost_usd, estimated_cost_usd")
-      .in("analysis_event_id", eventIds);
-
-    for (const c of calls ?? []) {
-      const snapId = eventToSnapshot.get(c.analysis_event_id ?? "");
-      if (!snapId) continue;
-      const cost = resolveCallCost(c);
-      costBySnapshot.set(snapId, (costBySnapshot.get(snapId) ?? 0) + cost);
-    }
-  }
-}
-```
-
-Mantém o output `report_cost_usd` por lead com a mesma chave (`snapshotId`), por isso o frontend não muda.
+1. **Inconsistência de provider/from**: `beta.functions.ts` usa `onboarding@resend.dev` (sandbox Resend), enquanto `send-report-link.ts` e `send-feedback-request.ts` usam o caminho/`from` correto. Isto provavelmente reduz deliverability do email de "pedido recebido".
+2. **Nenhum endpoint atual move o lead para um estado pós-`feedback_pedido`** via email — coerente com `renderCommercialFollowup` ainda não estar ligado.
+3. `send-report-email.ts` (legacy) regista `report_link_sent` igual ao novo endpoint — se ambos forem chamados para o mesmo lead/snapshot, pode duplicar o evento. Como não há call-site interno do legacy, na prática não acontece, mas é um risco se reactivado.
 
 ### Validação
 
-- `bunx vitest run` (helper já tem cobertura).
-- Manual: abrir `/admin/visao-geral` (kanban). Custo por lead deve agora bater com a soma de `provider_call_logs` para o snapshot desse lead, e estar alinhado com o "custo médio por análise fresh" de `/admin/receita`.
-
-### Ficheiros alterados
-- `src/routes/api/admin/leads-kanban.ts` (1 import + 1 bloco refeito)
-
-Sem mudanças de schema.
+- Sem alterações de código.
+- Auditoria executada apenas com `rg`, leituras pontuais de ficheiros e inspeção do `routeTree.gen.ts`.
