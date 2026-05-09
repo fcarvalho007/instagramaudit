@@ -1,48 +1,73 @@
-## Re-avaliação — o que ficou por fazer
+## Re-auditoria — última inconsistência
 
-Após a última iteração (helper `resolveCallCost` aplicado em `system-queries.server.ts` + `cost-sync.server.ts`), restou **um foco crítico não convertido**: a tabela de **Reconciliação interno vs externo** em `/admin/receita` (alimentada pelo endpoint `/api/admin/billing-reconciliation`).
+Após cobrir `system-queries`, `cost-sync` e `billing-reconciliation`, falta **um único endpoint** que ainda mostra custos sem aplicar a regra `actual>0 ? actual : estimated`:
 
-### Inconsistência confirmada
+### `src/routes/api/admin/leads-kanban.ts` (linhas 95–128)
 
-`src/lib/admin/billing-reconciliation.server.ts` lê `provider_call_logs` mas usa **apenas `estimated_cost_usd`** para o lado "interno", em 5 sítios (linhas 87, 117, 140, 156, 200, 223). Resultado:
+Alimenta o **custo por lead** no kanban de `/admin/visao-geral`. Tem dois problemas:
 
-- Zona "CUSTO INTERNO ATRIBUÍDO" (já corrigida): mostra `resolveCallCost` (actual quando >0, senão estimated)
-- Zona "RECONCILIAÇÃO" (atual): mostra só `estimated_cost_usd`
-- → As duas zonas no **mesmo ecrã** mostram totais internos diferentes para a mesma janela. O user acaba a duvidar de qual é "o real".
+1. **Código morto**: faz query a `provider_call_logs` (linha 106) e atribui a `costs`, mas a variável **nunca é usada**.
+2. **Fonte errada**: o `costBySnapshot` é construído a partir de `analysis_events.estimated_cost_usd` (linha 119), que é **só estimado, snapshot-level**. Não reflecte os custos reais (`actual_cost_usd`) registados em `provider_call_logs`. Resultado: o custo por lead na kanban diverge do custo por análise mostrado em `/admin/receita` e da reconciliação.
 
-### Locais fora de escopo (deliberadamente não tocar)
+### Tudo o resto está OK
 
-- `src/lib/admin/alerts.ts:294` e `src/routes/api/admin/diagnostics.ts:161` — lêem de `analysis_events`, tabela que **só tem `estimated_cost_usd`** (não tem `actual`). Regra não se aplica.
-- `provider_billing_imports.actual_cost_usd` (linhas 134, 190 do billing-recon) — é o lado **externo** (faturação real do dashboard do provider), por design só tem `actual`. Mantém-se.
+- `system-queries.server.ts:1076–1128` (CommentScraperMetrics) usa `actual_cost_usd` directamente em 3 sítios — **intencional** (mede "quanto a Apify cobrou" para guardrails). Não é cost reporting, é monitoring de billing real. Manter.
+- `market-signals.ts` e `run-enrichment.server.ts` — DataForSEO sempre grava `actual_cost_usd`, então usar `actual` directo é correcto. Manter.
+- `report-cost-summary.server.ts` já implementa a regra correctamente (linha 146).
 
 ---
 
 ## Plano final
 
-### Patch único — `src/lib/admin/billing-reconciliation.server.ts`
+### Patch único — `src/routes/api/admin/leads-kanban.ts`
 
-1. Importar `resolveCallCost` no topo.
-2. Mudar o `.select(...)` da linha 87 de `"provider, actor, estimated_cost_usd, created_at"` para incluir `actual_cost_usd`:
-   ```ts
-   .select("provider, actor, actual_cost_usd, estimated_cost_usd, created_at")
-   ```
-3. Substituir as 5 ocorrências de `Number(r.estimated_cost_usd ?? 0)` aplicadas a linhas de `provider_call_logs` por `resolveCallCost(r)`:
-   - linha 117 (`internalTotal` KPI)
-   - linha 140 (`daily.internal`)
-   - linha 156 (`provMap` por provider)
-   - linha 200 (`actorMap` por actor)
-   - linha 223 (loop de batches → `intTotal`)
+Substituir o bloco 95–128 por agregação via `provider_call_logs.analysis_event_id → analysis_event → snapshot_id`, aplicando `resolveCallCost`.
 
-Não tocar nas linhas 104, 134, 190, 232 — essas são do lado **externo** (`provider_billing_imports` / `provider_billing_import_batches`), onde `actual_cost_usd` representa faturação real do dashboard do provider e não há fallback para estimated.
+```ts
+import { resolveCallCost } from "@/lib/admin/cost-resolution";
+
+// ... dentro do handler ...
+
+// 4. Custo real por snapshot — agregar provider_call_logs via analysis_events.
+let costBySnapshot = new Map<string, number>();
+if (snapshotIds.length > 0) {
+  // a) eventos dos snapshots em causa
+  const { data: events } = await supabaseAdmin
+    .from("analysis_events")
+    .select("id, analysis_snapshot_id")
+    .in("analysis_snapshot_id", snapshotIds);
+
+  const eventToSnapshot = new Map<string, string>();
+  for (const ev of events ?? []) {
+    if (ev.analysis_snapshot_id) eventToSnapshot.set(ev.id, ev.analysis_snapshot_id);
+  }
+
+  // b) chamadas de provider ligadas a esses eventos
+  const eventIds = [...eventToSnapshot.keys()];
+  if (eventIds.length > 0) {
+    const { data: calls } = await supabaseAdmin
+      .from("provider_call_logs")
+      .select("analysis_event_id, actual_cost_usd, estimated_cost_usd")
+      .in("analysis_event_id", eventIds);
+
+    for (const c of calls ?? []) {
+      const snapId = eventToSnapshot.get(c.analysis_event_id ?? "");
+      if (!snapId) continue;
+      const cost = resolveCallCost(c);
+      costBySnapshot.set(snapId, (costBySnapshot.get(snapId) ?? 0) + cost);
+    }
+  }
+}
+```
+
+Mantém o output `report_cost_usd` por lead com a mesma chave (`snapshotId`), por isso o frontend não muda.
 
 ### Validação
 
-- `bunx vitest run` — toda a suite (helper já tem 7 testes que cobrem a regra).
-- Manual em `/admin/receita`:
-  1. Anotar "Total interno atribuído" da zona 1 (Apify + OpenAI + DFS soma).
-  2. Anotar "Interno registado" da zona 3 (Reconciliação) — agora deve coincidir com (1) para o mesmo período de 30d. Antes desta correção, divergiam quando há `actual_cost_usd > 0` em qualquer linha.
+- `bunx vitest run` (helper já tem cobertura).
+- Manual: abrir `/admin/visao-geral` (kanban). Custo por lead deve agora bater com a soma de `provider_call_logs` para o snapshot desse lead, e estar alinhado com o "custo médio por análise fresh" de `/admin/receita`.
 
 ### Ficheiros alterados
-- `src/lib/admin/billing-reconciliation.server.ts` (1 import + 1 select + 5 substituições)
+- `src/routes/api/admin/leads-kanban.ts` (1 import + 1 bloco refeito)
 
-Sem mudanças de schema, sem novas migrações, sem mexer em providers.
+Sem mudanças de schema.

@@ -7,6 +7,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import { resolveCallCost } from "@/lib/admin/cost-resolution";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -92,7 +93,8 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
           }
         }
 
-        // 4. Costs from analysis_snapshots (estimated via provider_call_logs)
+        // 4. Custo real por snapshot — agregar provider_call_logs via analysis_events,
+        //    aplicando regra actual>0 ? actual : estimated (resolveCallCost).
         const snapshotIds = [
           ...new Set(
             (requests ?? [])
@@ -101,28 +103,32 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
           ),
         ] as string[];
 
-        let costBySnapshot = new Map<string, number>();
+        const costBySnapshot = new Map<string, number>();
         if (snapshotIds.length > 0) {
-          const { data: costs } = await supabaseAdmin
-            .from("provider_call_logs")
-            .select("analysis_event_id, estimated_cost_usd")
-            .not("estimated_cost_usd", "is", null);
-
-          // We need analysis_events to map snapshot → cost
           const { data: events } = await supabaseAdmin
             .from("analysis_events")
-            .select("id, analysis_snapshot_id, estimated_cost_usd")
+            .select("id, analysis_snapshot_id")
             .in("analysis_snapshot_id", snapshotIds);
 
-          if (events) {
-            for (const ev of events) {
-              if (ev.analysis_snapshot_id && ev.estimated_cost_usd) {
-                costBySnapshot.set(
-                  ev.analysis_snapshot_id,
-                  (costBySnapshot.get(ev.analysis_snapshot_id) ?? 0) +
-                    Number(ev.estimated_cost_usd)
-                );
-              }
+          const eventToSnapshot = new Map<string, string>();
+          for (const ev of events ?? []) {
+            if (ev.analysis_snapshot_id) {
+              eventToSnapshot.set(ev.id, ev.analysis_snapshot_id);
+            }
+          }
+
+          const eventIds = [...eventToSnapshot.keys()];
+          if (eventIds.length > 0) {
+            const { data: calls } = await supabaseAdmin
+              .from("provider_call_logs")
+              .select("analysis_event_id, actual_cost_usd, estimated_cost_usd")
+              .in("analysis_event_id", eventIds);
+
+            for (const c of calls ?? []) {
+              const snapId = eventToSnapshot.get(c.analysis_event_id ?? "");
+              if (!snapId) continue;
+              const cost = resolveCallCost(c);
+              costBySnapshot.set(snapId, (costBySnapshot.get(snapId) ?? 0) + cost);
             }
           }
         }
