@@ -16,11 +16,7 @@ import {
   recordLeadEvent,
   updateLeadCommercialStatus,
 } from "@/lib/admin/lead-events.server";
-import {
-  buildReportLinkEmailHtml,
-  buildReportLinkEmailSubject,
-  buildReportLinkEmailText,
-} from "@/lib/email/report-link-email-template";
+import { renderReportReady } from "@/lib/email/templates";
 
 const RequestSchema = z.object({
   lead_id: z.string().uuid(),
@@ -203,15 +199,13 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
         }
         const publicUrl = `${baseUrl}/analyze/${encodeURIComponent(reportRequest.instagram_username)}`;
 
-        // 7. Build email
-        const emailParams = {
-          recipientName: lead.name ?? null,
-          instagramUsername: reportRequest.instagram_username,
-          publicUrl,
-        };
-        const subject = buildReportLinkEmailSubject();
-        const html = buildReportLinkEmailHtml(emailParams);
-        const text = buildReportLinkEmailText(emailParams);
+        // 7. Build email (uses unified pt-PT templates module)
+        const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
+        const { subject, html, text } = renderReportReady({
+          firstName,
+          instagramHandle: reportRequest.instagram_username,
+          reportUrl: publicUrl,
+        });
 
         // 8. Send via Resend
         const controller = new AbortController();
