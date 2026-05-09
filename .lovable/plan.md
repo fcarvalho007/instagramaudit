@@ -1,107 +1,59 @@
-## Dedup `report_viewed` — reforço cliente + servidor
+## Auditoria de Consolidação — InstaBench Beta MVP
 
-### Diagnóstico
+Auditoria **read-only**: sem alterações de código, sem chamadas a providers, sem mutações de DB, sem envios de email. Inspeção estática + consultas SQL `SELECT` + `tsc` + `vitest`.
 
-Ambas as defesas pedidas no prompt **já existem no código**:
+### Abordagem
 
-- **Cliente** (`src/routes/analyze.$username.tsx:291-305`): `useRef<Set<string>>` guarda snapshots já registados na sessão montada.
-- **Servidor** (`src/lib/tracking.functions.ts:54-78`): janela de 5s por `snapshot_id` + `lead_id` + `event_type`.
+Auditoria executada em 4 fases, cada uma com ferramentas específicas. Output final é **um único relatório markdown** entregue na chat (não escrito em ficheiro), seguindo o formato exato pedido.
 
-Apesar disso, a base de dados continua a registar **4 eventos por minuto** para o mesmo lead/snapshot (consistente em 2026-05-09 12:37 → 12:59). Investigação:
+#### Fase 1 — Levantamento estático (15 min)
 
-- Único call site é `analyze.$username.tsx`. Sem origens paralelas.
-- Padrão "4 por minuto" + clusters de 2-4ms entre eventos = **race condition no servidor**: várias requests chegam quase em simultâneo (provável StrictMode dev × re-mount em navegação), todas fazem `SELECT` antes de qualquer `INSERT` ter completado, todas passam o check, todas inserem.
-- O `useRef` cliente não cobre **remounts entre route changes** nem **múltiplos tabs/refreshes**, mas o principal contribuidor é mesmo o servidor.
+- `rg` para mapear todos os call sites dos 12 eventos listados (`beta_request_created`, `report_generated`, `report_link_sent`, `report_viewed`, `feedback_requested`, `feedback_started`, `feedback_submitted`, `unlock_clicked`, `pricing_option_clicked`, `lead_status_changed`, `request_received_email_sent`, `request_received_email_failed`).
+- `rg` para detetar variantes/duplicações de nomes (ex.: `feedback_request_sent` vs `feedback_requested`).
+- Listar `src/lib/email/templates`, `src/routes/api/`, `src/lib/admin/lead-lifecycle.ts`, `src/components/admin/v2/beta-leads/`, `src/routes/feedback*`, `src/routes/analyze.$username.tsx`, `src/lib/tracking.functions.ts`, `src/lib/report/report-variant.ts`.
+- Confirmar `tracking.functions.ts` allowed list vs eventos realmente emitidos.
+- Mapear server functions/routes que tocam Apify/OpenAI/DataForSEO/Resend e confirmar gates (`INTERNAL_API_TOKEN`, kill switches, allowlists).
+- Identificar ficheiros órfãos: templates não importados, helpers só referenciados em testes, rotas sem links.
 
-### Mudanças propostas
+#### Fase 2 — Consistência de DB e lifecycle (10 min)
 
-**1. `src/routes/analyze.$username.tsx` — endurecer dedup cliente**
+Queries `SELECT` apenas:
+- distribuição de `commercial_status` em `leads` + leads parados há >7 dias por estado.
+- `product_events` por `event_type` × últimos 30 dias (detetar eventos órfãos / não usados).
+- `report_requests` com `delivery_status='sent'` sem `report_link_sent` correspondente (validar backfill anterior).
+- `report_requests` com `feedback_requested` mas sem `feedback_request_sent` (gap análogo).
+- `beta_feedback` órfão (sem lead/request).
+- Índices existentes em `product_events(lead_id, event_type, created_at)`, `report_requests(lead_id)`, `beta_feedback(lead_id)`.
+- FKs ausentes (já sabemos que `product_events` não tem FKs declaradas).
 
-Substituir o `useRef<Set>` (escopo por mount) por um **module-level `Set`** que sobrevive a re-mounts dentro do mesmo SPA load. Combinar com `sessionStorage` para sobreviver a refreshes do mesmo tab durante a sessão de browser.
-
-```ts
-// no topo do ficheiro
-const TRACKED_SNAPSHOTS = new Set<string>();
-const SESSION_STORAGE_KEY = "ib:tracked_report_views";
-
-function hasTrackedSnapshot(snapshotId: string): boolean {
-  if (TRACKED_SNAPSHOTS.has(snapshotId)) return true;
-  try {
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    const arr = raw ? (JSON.parse(raw) as string[]) : [];
-    if (arr.includes(snapshotId)) {
-      TRACKED_SNAPSHOTS.add(snapshotId);
-      return true;
-    }
-  } catch { /* ignore */ }
-  return false;
-}
-
-function markSnapshotTracked(snapshotId: string) {
-  TRACKED_SNAPSHOTS.add(snapshotId);
-  try {
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    const arr = raw ? (JSON.parse(raw) as string[]) : [];
-    if (!arr.includes(snapshotId)) {
-      arr.push(snapshotId);
-      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(arr.slice(-50)));
-    }
-  } catch { /* ignore */ }
-}
-```
-
-No `useEffect` substituir o ref por estas helpers. Defensivo: `try/catch` em torno de `sessionStorage` para SSR-safety (no browser apenas).
-
-**2. `src/lib/tracking.functions.ts` — pattern "insert + cleanup" para fechar a race**
-
-Após o `await recordProductEvent(...)` (apenas para `report_viewed` com `snapshotId` + `leadId` resolvidos), fazer um `SELECT` dos eventos `report_viewed` para esse `(snapshot_id, lead_id)` criados nos últimos 5s, ordenados por `created_at ASC`. Se vierem >1, apagar todos exceto o primeiro (mais antigo). Fail-open: erros aqui são silenciosos.
-
-```ts
-if (data.eventType === "report_viewed" && data.snapshotId && leadId) {
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const sinceIso = new Date(Date.now() - 5_000).toISOString();
-    const { data: rows } = await (supabaseAdmin as any)
-      .from("product_events")
-      .select("id, created_at")
-      .eq("event_type", "report_viewed")
-      .eq("snapshot_id", data.snapshotId)
-      .eq("lead_id", leadId)
-      .gte("created_at", sinceIso)
-      .order("created_at", { ascending: true });
-    if (rows && rows.length > 1) {
-      const idsToDelete = rows.slice(1).map((r: any) => r.id);
-      await (supabaseAdmin as any)
-        .from("product_events")
-        .delete()
-        .in("id", idsToDelete);
-    }
-  } catch { /* fail open */ }
-}
-```
-
-Isto converge para 1 evento mesmo quando 4 requests passam o check de pré-insert em paralelo. Pequeno custo: 1 extra SELECT + DELETE condicional por `report_viewed`.
-
-### Ficheiros tocados
-
-- `src/routes/analyze.$username.tsx` — substituir ref por módulo-level Set + sessionStorage
-- `src/lib/tracking.functions.ts` — adicionar bloco "insert + cleanup" após o `recordProductEvent`
-
-### Fora de scope (confirmado)
-
-- Sem alterações em UI do report.
-- Sem alterações de schema.
-- Sem chamadas a Apify/OpenAI/DataForSEO/Resend.
-- Sem remoção de duplicados históricos (eventos antigos permanecem).
-
-### Validação
+#### Fase 3 — Validação automatizada (5 min)
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Smoke manual: abrir `/analyze/frederico.m.carvalho` em produção 2x, navegar entre rotas, refrescar, e confirmar via `SELECT count(*) FROM product_events WHERE event_type='report_viewed' AND created_at > now() - interval '2 minutes'` que cresce de forma 1-por-visita.
+- `supabase--linter` para warnings de RLS/security.
+- Listar testes existentes vs flows críticos sem cobertura.
 
-### Output esperado
+#### Fase 4 — Síntese (escrita do relatório)
 
-- `client dedup` reforçado (module-level + sessionStorage)
-- `server dedup` reforçado com cleanup pós-insert (resolve race)
-- Resultados de tsc + vitest
+Relatório com **as 10 secções pedidas**, na ordem exata:
+
+1. **Executive summary** — 5-8 linhas pt-PT.
+2. **Beta readiness score 0–100** — com breakdown (functional/safety/UX/tracking/tests).
+3. **Critical blockers** — bloqueiam beta launch.
+4. **Important issues** — não bloqueiam mas devem ser resolvidos cedo.
+5. **Nice-to-have improvements** — refinamentos.
+6. **Orphan/duplicate code list** — ficheiro + razão.
+7. **Event/status consistency table** — colunas: evento | aceite no schema | emitido | aparece no timeline | metadata útil | observação.
+8. **Email wiring table** — template | trigger | quando emite evento | falha = bloqueante? | observações.
+9. **Public vs admin route safety table** — rota | público? | chama provider pago? | requer `INTERNAL_API_TOKEN`? | risco.
+10. **Recommended fix roadmap** — 3 buckets (Fix now / Fix soon / Can wait), cada item com esforço estimado (S/M/L).
+
+### Restrições reforçadas
+
+- Sem `code--apply_patch`, `code--write`, `supabase--migration`, `supabase--insert`, `supabase--storage_upload`.
+- Sem `stack_modern--invoke-server-function` em endpoints que possam disparar Apify/OpenAI/DataForSEO/Resend (`refresh-profile`, `generate-beta-report`, `send-report-link`, `send-feedback-request`, `analyze-public-v1` em modo fresh).
+- Permitido: `rg`, `code--view`, `code--list_dir`, `supabase--read_query`, `supabase--linter`, `bunx tsc --noEmit`, `bunx vitest run`.
+
+### Entregável
+
+Um único bloco de chat com as 10 secções acima, em pt-PT, sem placeholders, com referências a ficheiros/linhas específicas e queries usadas. Sem ficheiros novos.
