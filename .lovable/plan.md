@@ -1,42 +1,34 @@
-## Auditoria de envio de emails (read-only)
+## Validação pós-publish — `/api/public/feedback/$requestId`
 
-### Mapa de fluxos
+A rota existe em `src/routes/api/public/feedback.$requestId.ts` (GET + POST) e a página em `src/routes/feedback.$requestId.tsx`. Faltava só estarem em produção. Validar agora que `instagramaudit.lovable.app` foi publicado.
 
-| Flow | Endpoint / ficheiro | Template | Eventos `product_events` | Transição `commercial_status` | Notas / risco |
-|---|---|---|---|---|---|
-| Pedido recebido (form beta) | `src/lib/beta.functions.ts` (server fn `submitBetaRequest`, linhas 186–235) | `renderRequestReceived` (`@/lib/email/templates`) | `beta_request_created`, depois `request_received_email_sent` ou `request_received_email_failed` | Não toca (lead criado com `novo_pedido` por default da tabela) | Fire-and-forget; usa `RESEND_API_KEY` direto + `from: onboarding@resend.dev` (sandbox Resend, não pelo domínio próprio nem pela queue Lovable Email). Falha silenciosa se faltar key. |
-| Envio do link do relatório (admin) | `src/routes/api/admin/send-report-link.ts` | `renderReportReady` (`@/lib/email/templates`) | `report_link_sent` (success path apenas) via `lead-events.server` | `→ link_enviado` (com `maybeAdvanceLeadStatus`, nunca regride) | OK. Fonte canónica para envio do link. |
-| Pedido de feedback (admin) | `src/routes/api/admin/send-feedback-request.ts` | `renderFeedbackRequest` (`@/lib/email/templates`) | `feedback_requested` | `→ feedback_pedido` (apenas se atual ∈ {`link_enviado`, `relatorio_visto`, `feedback_pedido`}) | OK. |
-| Follow-up comercial | _nenhum_ | `renderCommercialFollowup` exportado em `src/lib/email/templates/index.ts` mas **sem call-site** | — | — | **Template órfão.** Existe + testado mas nenhum endpoint o invoca. |
-| Preview no admin sheet | `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (linhas 1011, 1169) | `renderReportReady`, `renderFeedbackRequest` (apenas para preview de subject/text na UI) | — | — | OK. Render-only para o sheet, não envia. |
-| Legacy: envio direto do report email | `src/routes/api/send-report-email.ts` | `@/lib/email/report-email-template` | `report_link_sent` (linha 351) | Atualiza `report_requests.delivery_status` (`sending`/`sent`/`failed`); **não** mexe em `commercial_status` | **Endpoint legacy ainda exposto** (`/api/send-report-email`). Sem chamada interna em `src/`. Tem optimistic lock + `INTERNAL_API_TOKEN`. Pode ser chamado externamente; risco se ainda houver cron/integração que dependa dele. |
+### Pré-requisitos
 
-### Templates órfãos
+- Confirmar que o utilizador clicou **Publish/Update** após as últimas alterações.
+- Obter um `report_request_id` válido para teste (sugestão: o utilizador fornece um ID controlado de QA, ou usamos o último `report_request` da Frederico, em modo read-only para o GET; o POST destrutivo só corre se o utilizador autorizar 1 submissão de teste).
 
-- `renderCommercialFollowup` — sem call-site.
+### Testes
 
-### Templates legacy ainda em uso
+| # | Método | URL | Esperado | Como validar |
+|---|---|---|---|---|
+| 1 | GET (browser) | `https://instagramaudit.lovable.app/feedback/not-a-uuid` | HTML da SPA com estado "link inválido" (sem blank page) | `browser--navigate_to_url` + `browser--observe` para confirmar texto |
+| 2 | GET (HTTP) | `https://instagramaudit.lovable.app/api/public/feedback/not-a-uuid` | 400 JSON `{ ok:false, code:"INVALID_ID" }` (ou equivalente do handler), **não** HTML | `stack_modern--invoke-server-function` |
+| 3 | GET (HTTP) | `https://instagramaudit.lovable.app/api/public/feedback/<valid-rr-id>` | 200 JSON `{ ok:true, leadFirstName, handle, alreadySubmitted }` | idem |
+| 4 | POST (HTTP) | mesmo URL, payload válido conforme `feedbackFormSchema` | Primeira: 200 `{ ok:true }`. Segunda imediata: `ALREADY_SUBMITTED` | idem; **só corre se o utilizador autorizar uso do `requestId` real** |
+| 5 | POST (HTTP) | mesmo URL, body `{}` | 400 `{ code:"INVALID_PAYLOAD" }` | idem |
 
-- `src/lib/email/report-email-template.ts` — usado **apenas** por `src/routes/api/send-report-email.ts` (rota legacy).
-- `src/lib/email/report-link-email-template.ts` — **não existe** no repo. Já foi removido.
+### Constraints respeitadas
 
-### Recomendações
+- Sem chamadas a Apify/DataForSEO/OpenAI/Resend.
+- Sem geração de PDF.
+- Único side-effect possível: 1 INSERT em `beta_feedback` + transição de `commercial_status` para `feedback_recebido` (teste 4) — só com autorização explícita e `requestId` indicado.
+- Testes 1, 2, 3, 5 são read-only.
 
-| Item | Recomendação |
-|---|---|
-| `renderRequestReceived` em `beta.functions.ts` | **Migrar** para a infraestrutura padrão (queue Lovable Email + domínio próprio) em vez de `RESEND_API_KEY` + `onboarding@resend.dev`. Atualmente envia de uma sandbox e ignora a fila. |
-| `renderReportReady` em `send-report-link.ts` | **Keep** (canónico). |
-| `renderFeedbackRequest` em `send-feedback-request.ts` | **Keep** (canónico). |
-| `renderCommercialFollowup` (órfão) | **Do not touch / pending wiring.** Confirmar com o utilizador se há endpoint planeado. Caso contrário, candidato a `delete later`. |
-| `src/routes/api/send-report-email.ts` + `src/lib/email/report-email-template.ts` | **Delete later** após confirmar que nenhum sistema externo (cron, automation, integração) ainda chama `/api/send-report-email`. Hoje todo o fluxo admin passa por `send-report-link.ts` com `renderReportReady`. |
+### Output a entregar
 
-### Pontos de atenção (sem ação agora)
+PASS/FAIL por linha com URL exato, HTTP status, response shape (primeiros 200 chars) e veredicto final: **production ready** ou **bloqueado** (com causa).
 
-1. **Inconsistência de provider/from**: `beta.functions.ts` usa `onboarding@resend.dev` (sandbox Resend), enquanto `send-report-link.ts` e `send-feedback-request.ts` usam o caminho/`from` correto. Isto provavelmente reduz deliverability do email de "pedido recebido".
-2. **Nenhum endpoint atual move o lead para um estado pós-`feedback_pedido`** via email — coerente com `renderCommercialFollowup` ainda não estar ligado.
-3. `send-report-email.ts` (legacy) regista `report_link_sent` igual ao novo endpoint — se ambos forem chamados para o mesmo lead/snapshot, pode duplicar o evento. Como não há call-site interno do legacy, na prática não acontece, mas é um risco se reactivado.
+### Necessário do utilizador
 
-### Validação
-
-- Sem alterações de código.
-- Auditoria executada apenas com `rg`, leituras pontuais de ficheiros e inspeção do `routeTree.gen.ts`.
+1. Confirmação de que o publish já foi feito.
+2. Um `report_request_id` real para os testes 3 e 4 (idealmente um lead de QA controlado). Sem isso só posso correr 1, 2 e 5.
