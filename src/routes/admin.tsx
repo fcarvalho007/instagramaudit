@@ -16,6 +16,7 @@ import { AdminAuthShell } from "@/components/admin/v2/admin-auth-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminTabsNav } from "@/components/admin/v2/admin-tabs-nav";
 import { DemoModeSwitch } from "@/components/admin/v2/demo-mode-switch";
+import { AdminCommandPalette } from "@/components/admin/v2/admin-command-palette";
 import { useDemoMode } from "@/lib/admin/demo-mode";
  import { useQuery } from "@tanstack/react-query";
  import { getExecutionMode } from "@/server/admin/execution-mode.functions";
@@ -86,6 +87,7 @@ function AdminLayout() {
           ) : null}
           <Outlet />
         </main>
+        <AdminCommandPalette />
         <Toaster />
       </div>
     </AdminAuthShell>

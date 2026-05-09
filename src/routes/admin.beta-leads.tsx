@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
 import { KanbanBoard } from "@/components/admin/v2/beta-leads/kanban-board";
@@ -11,6 +11,9 @@ import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 
 export const Route = createFileRoute("/admin/beta-leads")({
   component: BetaLeadsPage,
+  validateSearch: (search: Record<string, unknown>): { lead?: string } => ({
+    lead: typeof search.lead === "string" ? search.lead : undefined,
+  }),
 });
 
 async function fetchLeads(): Promise<EnrichedLead[]> {
@@ -33,6 +36,8 @@ async function updateLead(id: string, updates: Record<string, unknown>) {
 
 function BetaLeadsPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { lead: leadParam } = Route.useSearch();
   const { data: leads = [], isLoading, error } = useQuery({
     queryKey: ["admin", "beta-leads"],
     queryFn: fetchLeads,
@@ -77,6 +82,10 @@ function BetaLeadsPage() {
     (l) => l.commercial_status !== "arquivado"
   ).length;
 
+  const clearLeadParam = useCallback(() => {
+    navigate({ to: "/admin/beta-leads", search: {} });
+  }, [navigate]);
+
   return (
     <>
       <AdminPageHeader
@@ -100,7 +109,12 @@ function BetaLeadsPage() {
       )}
 
       {!isLoading && !error && (
-        <KanbanBoard leads={leads} onUpdate={handleUpdate} />
+        <KanbanBoard
+          leads={leads}
+          onUpdate={handleUpdate}
+          initialDetailLeadId={leadParam ?? null}
+          onDetailClose={clearLeadParam}
+        />
       )}
     </>
   );

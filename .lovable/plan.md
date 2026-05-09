@@ -1,71 +1,69 @@
 ## Objetivo
 
-Adicionar um novo bloco visual `BetaConversionFunnel` à rota `/admin/visao-geral` com 6 etapas reais do ciclo beta (pedido → interesse comercial), usando dados Supabase reais. O `FunnelSection` existente (visitantes → leads → clientes, hoje a zero porque não há checkout) mantém-se e este novo bloco aparece **acima** dele como o funil operacional do beta.
+Adicionar um Command Palette leve dentro de `/admin/*` para pesquisar rapidamente leads beta por nome, email, handle Instagram e empresa, abrindo o `LeadDetailSheet` existente.
 
 ## Inspeção (read-only)
 
-- Source: `bacfa751-…/src/components/crm/ConversionFunnelBlock.tsx` — usa mocks (`@/pages/crm/mockData`), tokens do projeto webinar (`hsl(var(--blue-600))`, `--ink-*`), terminologia paga (Inscritos/Pagaram/Receita) e breakdown por plano. **Apenas a ideia visual** (barras horizontais com label, valor, %, drop-off) é aproveitada — nenhum import/copy.
-- InstaBench: `/admin/visao-geral` já carrega `FunnelSection` (visitantes/leads/clientes — placeholder a zero), `RevenueSection`, `ExpenseSection`, `KanbanSection`, `IntentSection`. Pattern de dados: server functions em `src/server/admin/*.functions.ts` ou rotas `src/routes/api/admin/*.ts` com `requireAdminSession()` + `supabaseAdmin`.
-- Lifecycle e fontes de dados já existentes:
-  - `lead.commercial_status` (`lead-lifecycle.ts`) com ordem `novo_pedido → em_analise → relatorio_gerado → link_enviado → relatorio_visto → feedback_pedido → feedback_recebido → interessado → potencial_cliente → convertido`.
-  - `report_requests.analysis_snapshot_id` / `request_status` para "relatórios gerados".
-  - `product_events` com `report_link_sent`, `report_viewed`.
-  - `beta_feedback` (1 linha por feedback).
-  - `interpretFeedback()` (`feedback-intent.ts`) classifica intenção `alto|medio|baixo|sem`.
+- Source: `bacfa751-…/src/components/crm/CRMCommandPalette.tsx` — usa `cmdk` (`CommandDialog`/`CommandInput`/`CommandItem`), atalho ⌘K via `keydown`, props `inscritos` + `onSelectInscrito`, tokens webinar (`hsl(var(--ink-*))`) e mocks. **Adoptamos apenas o padrão de UX** (cmdk + ⌘K + lista compacta + footer de atalhos).
+- InstaBench:
+  - `src/components/ui/command.tsx` (shadcn cmdk) já existe — reutilizar.
+  - `src/routes/admin.tsx` é o layout `/admin/*` com `AdminAuthShell`; ponto natural para montar a palette globalmente.
+  - `src/routes/admin.beta-leads.tsx` carrega `useQuery(['admin','beta-leads'])` via `/api/admin/leads-kanban` — devolve `EnrichedLead[]` com `name`, `email`, `handle`, `company`. **Reutilizamos esta query** (mesma chave) para evitar endpoint novo: a query é montada quando o admin entra no kanban e fica em cache; a palette consome-a também.
+  - `KanbanBoard` mantém `detailLead` num `useState` interno — não há padrão `?lead=<id>`. A maneira mais simples e isolada de abrir a ficha a partir de qualquer rota admin é navegar para `/admin/beta-leads?lead=<id>` e fazer o board reagir a esse search param.
 
-## Mapeamento das 6 etapas (lógica de dados)
+## Decisão
 
-Período fixo: todas as leads não arquivadas (sem filtro por `period` para já — manter simples; o `PeriodSelect` global continua a aplicar-se a outras secções).
-
-1. **Pedidos beta** — `count(leads)` (todas).
-2. **Relatórios gerados** — `count(distinct lead_id)` em `report_requests` onde `analysis_snapshot_id IS NOT NULL` **OU** `request_status IN ('ready','completed','generated')` **OU** `lead.commercial_status` ≥ `relatorio_gerado` na ordem do funil.
-3. **Links enviados** — leads com `commercial_status` ≥ `link_enviado` **OU** que tenham pelo menos um `product_events.event_type = 'report_link_sent'`.
-4. **Relatórios vistos** — leads com `commercial_status` ≥ `relatorio_visto` **OU** com `product_events.event_type = 'report_viewed'` (associado por `lead_id` ou pelo `handle` do report request).
-5. **Feedback recebido** — leads com `commercial_status` ≥ `feedback_recebido` **OU** com pelo menos uma linha em `beta_feedback`.
-6. **Interesse comercial** — leads com `commercial_status IN ('interessado','potencial_cliente','convertido')` **OU** cujo `beta_feedback` mais recente passe em `interpretFeedback()` com `intent IN ('alto','medio')`.
-
-Cada etapa é um `Set<lead_id>` para garantir contagem distinta. % por etapa = `count / count(Pedidos beta)`. Drop-off = `count(prev) - count(curr)`.
+Para manter o trabalho pequeno e respeitar "não tocar no public/relatórios/providers":
+- A palette **prefetch+lê** a mesma query `['admin','beta-leads']` que o Kanban já usa. Quando montada fora de `/admin/beta-leads`, dispara `ensureQueryData` na primeira abertura. Custo: 1 GET admin (já existente, sem providers).
+- Selecionar uma lead → `navigate({ to: '/admin/beta-leads', search: { lead: id } })`.
+- `KanbanBoard` passa a aceitar um `initialDetailLeadId` opcional (vindo do search param) e o route `admin.beta-leads.tsx` lê `useSearch` com `validateSearch` (`{ lead?: string }`), passando o id ao board. Quando a sheet fecha, limpa o param.
 
 ## Ficheiros a criar / alterar
 
-1. **Criar** `src/routes/api/admin/beta-funnel.ts` (rota server `GET /api/admin/beta-funnel`):
-   - `requireAdminSession()`.
-   - Lê: `leads` (id, commercial_status, archived_at), `report_requests` (lead_id, analysis_snapshot_id, request_status), `product_events` (lead_id, handle, event_type) onde `event_type IN ('report_link_sent','report_viewed')`, `beta_feedback` (lead_id, usefulness_score, purchase_intent, pricing_preference, contact_consent, created_at).
-   - Constrói os 6 sets em memória e devolve `{ success, stages: [{ key, label, count, pctOfTotal, dropFromPrev }], total }`.
-2. **Criar** `src/components/admin/v2/visao-geral/beta-conversion-funnel.tsx`:
-   - Usa `useQuery(['admin','beta-funnel'])` com `fetch('/api/admin/beta-funnel')`.
-   - Renderiza dentro de `AdminCard` + `AdminSectionHeader` (`accent="leads"`).
-   - 6 linhas: label esquerda · barra (`bg-admin-surface`, fill `rgb(var(--admin-leads-500))`, largura proporcional a `count/maxCount`) · `count` + `(%)` à direita.
-   - Por baixo de cada linha (excepto última): `↓ {pctVsPrev}% conversão · drop {dropFromPrev}` em texto pequeno `text-admin-text-tertiary`.
-   - Mobile (`max-sm`): label encurta (`w-[120px]`), barra ocupa o resto, sem alterações de empilhamento (já é vertical).
-   - Empty state (`total === 0`): mensagem "Sem leads beta ainda — assim que chegar o primeiro pedido, o funil aparece aqui."
-   - Loading: skeleton de 6 linhas.
-   - Erro: `SectionState`/texto neutro.
-3. **Editar** `src/routes/admin.visao-geral.tsx`:
-   - Importar `BetaConversionFunnel` e renderizar **antes** de `<FunnelSection />`.
-   - Nenhuma outra alteração.
+1. **Criar** `src/components/admin/v2/admin-command-palette.tsx`
+   - Atalho ⌘K / Ctrl+K + ESC (cmdk já trata).
+   - Usa `CommandDialog`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandGroup`, `CommandItem`.
+   - `useQuery({ queryKey: ['admin','beta-leads'], queryFn: fetchLeads, enabled: open })` — mesma chave do kanban; quando o utilizador já lá esteve, há cache imediato.
+   - `value` de cada `CommandItem` concatena `name + email + handle + company` para a fuzzy-search interna do cmdk filtrar nos 4 campos.
+   - Lista até 50 resultados ordenados por `last_interaction desc`.
+   - Item: avatar (1.ª letra do nome), nome, badge `commercial_status` (cor de `getLifecycleMeta`), linha secundária `email · @handle · company`.
+   - Estados: loading (placeholder), empty ("Nenhuma lead encontrada"), erro neutro.
+   - Footer com kbd ⌘K · ↑↓ · ↵ · ESC.
+   - `onSelect` → `navigate({ to: '/admin/beta-leads', search: { lead: id } })` + `setOpen(false)`.
+   - Tokens admin (`bg-admin-surface`, `text-admin-text-*`, `border-admin-border`); zero hex hardcoded.
+
+2. **Editar** `src/routes/admin.tsx`
+   - Importar `AdminCommandPalette` e renderizá-la dentro de `AdminAuthShell`, ao lado do `<Outlet />` (uma única instância para todo o `/admin/*`).
+
+3. **Editar** `src/routes/admin.beta-leads.tsx`
+   - Adicionar `validateSearch: (s): { lead?: string } => ({ lead: typeof s.lead === 'string' ? s.lead : undefined })`.
+   - `const { lead: leadParam } = Route.useSearch()` e passar `initialDetailLeadId={leadParam}` ao `KanbanBoard`.
+   - Handler `onClearLeadParam` que faz `navigate({ search: {} })` quando a sheet fecha.
+
+4. **Editar** `src/components/admin/v2/beta-leads/kanban-board.tsx`
+   - Aceitar `initialDetailLeadId?: string | null` e `onDetailClose?: () => void`.
+   - `useEffect` que, sempre que `initialDetailLeadId` mudar, encontra a lead em `leads` e chama `setDetailLead(found)`.
+   - Quando a sheet fecha, chamar `onDetailClose?.()` antes de `setDetailLead(null)`.
 
 ## Restrições respeitadas
 
-- Sem alterações a schema, providers, public report ou geração de relatórios.
-- Apenas leitura de Supabase via `supabaseAdmin` server-side.
-- Sem mocks, sem hardcoded colors (usa `--admin-leads-*`, `admin-surface`, `admin-text-*`, `admin-border`).
-- Sem terminologia webinar (Inscritos/Pagaram/Receita/Plano).
-- Labels pt-PT e Acordo Ortográfico.
+- Sem schema, sem providers, sem alterações ao public report ou geração.
+- Sem novo endpoint (reutiliza `/api/admin/leads-kanban`).
+- Tokens admin apenas; pt-PT; sem mocks; sem terminologia webinar.
 
 ## Validação
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Manual em `/admin/visao-geral`:
-  - Bloco "Funil beta" aparece acima do funil cinematográfico actual.
-  - Contagens batem certo com a Kanban (`/admin/beta-leads`).
-  - Empty state OK quando não há leads (testar mentalmente ou em ambiente vazio).
-  - 375px sem overflow horizontal.
+- Manual em qualquer rota `/admin/*`:
+  - ⌘K (Mac) / Ctrl+K (Win/Linux) abre a palette.
+  - Pesquisa por nome, email, handle, empresa filtra correctamente.
+  - ↑↓ navega, ↵ abre `/admin/beta-leads?lead=<id>` e a sheet aparece.
+  - ESC fecha a palette; fechar a sheet limpa o `?lead=` do URL.
 
-## Output final que entregarei após implementação
+## Output final pós-implementação
 
-- Ficheiros inspecionados (já listados).
-- Ficheiros criados/alterados (3).
-- Lógica de dados por etapa (já especificada acima).
-- Resultados de `tsc` e `vitest`.
+- Source inspecionado.
+- Ficheiros alterados (4).
+- Comportamento UX descrito.
+- Resultado de `tsc` e `vitest`.
