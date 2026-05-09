@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Menu, Lock, ArrowRight, Star } from "lucide-react";
+import { Menu, Lock, ArrowRight, Star, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -14,6 +14,9 @@ import {
 } from "@/lib/report/report-variant";
 import { BLOCKS, type BlockConfig } from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
+import { PremiumInterestDialog, type PricingOption } from "./premium-interest-dialog";
+import { useReportTracking } from "./report-tracking-context";
+import { trackEvent } from "@/lib/tracking.functions";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -106,8 +109,13 @@ function ProfileHeader({ profile }: { profile: SidebarProfile }) {
       {profile.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={profile.avatarUrl}
-          alt=""
+          src={`/api/public/ig-thumb?url=${encodeURIComponent(profile.avatarUrl)}`}
+          alt={`Avatar de ${handle}`}
+          loading="eager"
+          decoding="async"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
           className="size-10 rounded-full object-cover ring-1 ring-border-default"
         />
       ) : (
