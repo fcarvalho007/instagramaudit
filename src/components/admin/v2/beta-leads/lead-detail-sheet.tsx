@@ -386,322 +386,354 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-[520px] overflow-y-auto p-0 scroll-smooth"
+        className="w-full sm:max-w-[520px] p-0 scroll-smooth flex flex-col"
         style={columnDef ? { borderTop: `3px solid ${columnDef.color}` } : undefined}
       >
         <SheetDescription className="sr-only">
           Detalhes do lead {lead.name}
         </SheetDescription>
+        <SheetTitle className="sr-only">Ficha de cliente</SheetTitle>
 
-        {/* ── 1. Header ─────────────────────────────────────── */}
-        <div className="px-6 pt-6 pb-4">
-          <SheetTitle className="sr-only">Ficha de cliente</SheetTitle>
-
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div className="flex items-start gap-3 min-w-0">
-              {/* Avatar initials */}
-              <div
-                className="shrink-0 flex items-center justify-center rounded-full text-white font-semibold"
-                style={{
-                  width: 48,
-                  height: 48,
-                  fontSize: 16,
-                  backgroundColor: columnDef?.color ?? "#534AB7",
-                }}
-              >
-                {getInitials(lead.name || lead.email)}
-              </div>
-              <div className="min-w-0">
-              <h2
-                className="m-0 truncate text-admin-text-primary"
-                style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.2 }}
-              >
-                {lead.name}
-              </h2>
-              <a
-                href={`mailto:${lead.email}`}
-                className="admin-body text-admin-text-secondary mt-1 truncate block hover:text-admin-text-primary transition-colors"
-                title={lead.email}
-              >
-                {lead.email}
-              </a>
-              {lead.handle && (
-                <a
-                  href={`https://instagram.com/${lead.handle}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="admin-meta text-admin-text-tertiary mt-0.5 inline-flex items-center gap-1 hover:text-admin-text-primary transition-colors"
+        {/* ── Sticky Header + KPIs ─────────────────────────── */}
+        <div className="sticky top-0 z-10 bg-white border-b border-admin-text-primary/10">
+          <div className="px-6 pt-6 pb-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div
+                  className="shrink-0 flex items-center justify-center rounded-full text-white font-semibold"
+                  style={{
+                    width: 48,
+                    height: 48,
+                    fontSize: 16,
+                    backgroundColor: columnDef?.color ?? "#534AB7",
+                  }}
                 >
-                  <Instagram size={12} /> @{lead.handle}
-                </a>
-              )}
+                  {getInitials(lead.name || lead.email)}
+                </div>
+                <div className="min-w-0">
+                  <h2
+                    className="m-0 truncate text-admin-text-primary"
+                    style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}
+                  >
+                    {lead.name}
+                  </h2>
+                  <a
+                    href={`mailto:${lead.email}`}
+                    className="admin-body text-admin-text-secondary mt-1 truncate block hover:text-admin-text-primary transition-colors"
+                    title={lead.email}
+                  >
+                    {lead.email}
+                  </a>
+                  {lead.handle && (
+                    <a
+                      href={`https://instagram.com/${lead.handle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="admin-meta text-admin-text-tertiary mt-0.5 inline-flex items-center gap-1 hover:text-admin-text-primary transition-colors"
+                    >
+                      <Instagram size={12} /> @{lead.handle}
+                    </a>
+                  )}
+                </div>
               </div>
+              {columnDef && (
+                <span
+                  className="shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-medium"
+                  style={{
+                    backgroundColor: `${columnDef.color}15`,
+                    color: columnDef.color,
+                    border: `1px solid ${columnDef.color}30`,
+                  }}
+                >
+                  {columnDef.label}
+                </span>
+              )}
             </div>
-            {columnDef && (
-              <span
-                className="shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-medium"
+
+            {(lead.user_type || lead.company) && (
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                {lead.user_type && (
+                  <AdminBadge variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}>
+                    {USER_TYPE_LABEL[lead.user_type.toLowerCase()] ?? lead.user_type}
+                  </AdminBadge>
+                )}
+                {lead.company && (
+                  <span className="admin-meta text-admin-text-tertiary">
+                    {lead.company}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <p className="admin-meta text-admin-text-tertiary">
+              Criado {formatDate(lead.created_at)}
+              {lead.contacted_at && ` · Contactado ${formatDate(lead.contacted_at)}`}
+            </p>
+
+            {/* KPI strip */}
+            <div
+              className="grid grid-cols-3 gap-3 rounded-xl p-3 mt-3"
+              style={{ backgroundColor: "rgba(44,44,42,0.04)" }}
+            >
+              <div className="text-center">
+                <p className="admin-eyebrow-sm m-0 mb-1">Views</p>
+                <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
+                  {lead.report_views}
+                </p>
+              </div>
+              <div
+                className="text-center"
                 style={{
-                  backgroundColor: `${columnDef.color}15`,
-                  color: columnDef.color,
-                  border: `1px solid ${columnDef.color}30`,
+                  borderLeft: "1px solid rgba(44,44,42,0.08)",
+                  borderRight: "1px solid rgba(44,44,42,0.08)",
                 }}
               >
-                {columnDef.label}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            {lead.user_type && (
-              <AdminBadge variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}>
-                {USER_TYPE_LABEL[lead.user_type.toLowerCase()] ?? lead.user_type}
-              </AdminBadge>
-            )}
-            {lead.company && (
-              <span className="admin-meta text-admin-text-tertiary">
-                {lead.company}
-              </span>
-            )}
-          </div>
-
-          <p className="admin-meta text-admin-text-tertiary mt-2">
-            Criado {formatDate(lead.created_at)}{lead.contacted_at && ` · Contactado ${formatDate(lead.contacted_at)}`}
-          </p>
-        </div>
-
-        <SectionDivider />
-
-        {/* ── 2. KPI Strip ──────────────────────────────────── */}
-        <div className="px-6 py-4">
-          <div
-            className="grid grid-cols-3 gap-3 rounded-xl p-3"
-            style={{ backgroundColor: "rgba(44,44,42,0.04)" }}
-          >
-            <div className="text-center">
-              <p className="admin-eyebrow-sm m-0 mb-1">Views</p>
-              <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
-                {lead.report_views}
-              </p>
-            </div>
-            <div className="text-center" style={{ borderLeft: "1px solid rgba(44,44,42,0.08)", borderRight: "1px solid rgba(44,44,42,0.08)" }}>
-              <p className="admin-eyebrow-sm m-0 mb-1">Custo</p>
-              <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
-                {lead.report_cost_usd != null ? `€${lead.report_cost_usd.toFixed(2)}` : "—"}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="admin-eyebrow-sm m-0 mb-1">Idade</p>
-              <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
-                {daysSince(lead.created_at)}d
-              </p>
+                <p className="admin-eyebrow-sm m-0 mb-1">Custo</p>
+                <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
+                  {lead.report_cost_usd != null ? `€${lead.report_cost_usd.toFixed(2)}` : "—"}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="admin-eyebrow-sm m-0 mb-1">Idade</p>
+                <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
+                  {daysSince(lead.created_at)}d
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <SectionDivider />
+        {/* ── Tabs ─────────────────────────────────────────── */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as TabKey)}
+          className="flex-1 min-h-0 flex flex-col"
+        >
+          <div className="px-6 pt-3 overflow-x-auto">
+            <TabsList className="inline-flex h-9 w-auto items-center gap-1 rounded-lg p-1 bg-admin-text-primary/[0.04] text-admin-text-secondary">
+              {TABS.map((t) => (
+                <TabsTrigger
+                  key={t.key}
+                  value={t.key}
+                  className="whitespace-nowrap rounded-md px-3 py-1 text-[12px] font-medium data-[state=active]:bg-white data-[state=active]:text-admin-text-primary data-[state=active]:shadow-sm"
+                >
+                  {t.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
-        {/* ── 3. Perfil ─────────────────────────────────────── */}
-        <div className="px-6 py-5">
-          <SectionTitle>Perfil</SectionTitle>
+          {/* ── Tab: Resumo ─────────────────────────────── */}
+          <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-0">
+            <div className="px-6 py-5">
+              <SectionTitle>Perfil</SectionTitle>
+              {lead.profile_ownership && (
+                <DetailRow label="Propriedade" icon={Shield}>{lead.profile_ownership}</DetailRow>
+              )}
+              {lead.purpose && (
+                <DetailRow label="Objetivo" icon={Target}>{lead.purpose}</DetailRow>
+              )}
+              <DetailRow label="Origem" icon={Globe}>{lead.source}</DetailRow>
+              <DetailRow label="Consentimento beta" icon={User}>
+                {lead.beta_consent ? (
+                  <span className="inline-flex items-center gap-1 text-admin-revenue-700">
+                    <CheckCircle2 size={14} /> Sim
+                  </span>
+                ) : (
+                  <span className="text-admin-text-tertiary">Não</span>
+                )}
+              </DetailRow>
+            </div>
 
-          {lead.profile_ownership && (
-            <DetailRow label="Propriedade" icon={Shield}>{lead.profile_ownership}</DetailRow>
-          )}
-          {lead.purpose && (
-            <DetailRow label="Objetivo" icon={Target}>{lead.purpose}</DetailRow>
-          )}
-          <DetailRow label="Origem" icon={Globe}>{lead.source}</DetailRow>
-          <DetailRow label="Consentimento beta" icon={User}>
-            {lead.beta_consent ? (
-              <span className="inline-flex items-center gap-1 text-admin-revenue-700">
-                <CheckCircle2 size={14} /> Sim
-              </span>
-            ) : (
-              <span className="text-admin-text-tertiary">Não</span>
-            )}
-          </DetailRow>
-        </div>
+            <SectionDivider />
 
-        <SectionDivider />
+            <div className="px-6 py-5">
+              <SectionTitle>Inteligência comercial</SectionTitle>
+              <DetailRow label="Tipo de lead" icon={User}>
+                {USER_TYPE_LABEL[lead.user_type?.toLowerCase() ?? ""] ?? "Desconhecido"}
+              </DetailRow>
+              <DetailRow label="Sinal de intenção" icon={Target}>
+                <AdminBadge variant={displayedIntent.accent}>{displayedIntent.label}</AdminBadge>
+              </DetailRow>
 
-        {/* ── 4. Relatório ──────────────────────────────────── */}
-        <div className="px-6 py-5">
-          <SectionTitle>Relatório</SectionTitle>
-
-          {/* Progress tracker */}
-          <ProgressTracker
-            reportStatus={lead.report_status}
-            pdfStatus={lead.pdf_status}
-          />
-
-          <DetailRow label="Estado" icon={FileText}>
-            <AdminBadge variant={STATUS_ACCENT[lead.report_status ?? ""] ?? "neutral"}>
-              {lead.report_status ?? "—"}
-            </AdminBadge>
-          </DetailRow>
-          {lead.pdf_status && lead.pdf_status !== "not_generated" && (
-            <DetailRow label="PDF" icon={FileText}>
-              <AdminBadge variant={STATUS_ACCENT[lead.pdf_status] ?? "neutral"}>
-                {lead.pdf_status}
-              </AdminBadge>
-            </DetailRow>
-          )}
-          <DetailRow label="Última interação" icon={Clock}>
-            {formatDate(lead.last_interaction)}
-          </DetailRow>
-
-          {lead.handle && (
-            <div className="flex gap-2 mt-4">
-              <AdminActionButton
-                size="md"
-                onClick={() => window.open(`/analyze/${lead.handle}`, "_blank")}
+              <div
+                className="mt-3 rounded-xl p-3.5 flex items-start gap-2.5"
+                style={{
+                  backgroundColor: "rgba(83,74,183,0.06)",
+                  borderLeft: "3px solid rgba(83,74,183,0.4)",
+                }}
               >
-                <ExternalLink size={14} /> Abrir relatório
-              </AdminActionButton>
-              <AdminActionButton size="md" onClick={handleCopyLink}>
-                <Link2 size={14} /> Copiar link
-              </AdminActionButton>
-              <SendLinkButton
-                lead={lead}
-                lastSentAt={lastReportLinkSentAt}
-                onClick={() => setSendLinkOpen(true)}
+                <Lightbulb size={15} className="text-admin-text-tertiary shrink-0 mt-0.5" />
+                <div>
+                  <p className="admin-eyebrow mb-1">Próximo passo sugerido</p>
+                  <p className="admin-body text-admin-text-primary font-medium m-0">
+                    {displayedSuggestion}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="admin-eyebrow mb-2">Estado comercial</p>
+                <Select value={lead.commercial_status} onValueChange={handleStatusChange}>
+                  <SelectTrigger className="h-10 text-[13px] rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KANBAN_COLUMNS.map((col) => (
+                      <SelectItem key={col.key} value={col.key} className="text-[13px]">
+                        {col.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <SectionDivider />
+
+            <div className="px-6 py-5 pb-8">
+              <SectionTitle>Notas e ações</SectionTitle>
+              <Textarea
+                value={notesText}
+                onChange={(e) => {
+                  setNotesText(e.target.value);
+                  setNotesDirty(true);
+                }}
+                rows={4}
+                placeholder="Notas internas sobre este lead..."
+                className="text-[13px] mb-1"
               />
-              <FeedbackRequestButton
-                lead={lead}
-                onClick={() => setFeedbackOpen(true)}
-              />
-              {lead.report_request_id &&
-                GENERATABLE_STATUSES.includes(lead.report_status as typeof GENERATABLE_STATUSES[number]) && (
+              <p className="admin-meta text-admin-text-tertiary mb-3 text-right">
+                {notesText.length} caracteres
+              </p>
+              {notesDirty && (
+                <Button size="sm" onClick={handleSaveNotes} className="mb-4">
+                  Guardar notas
+                </Button>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                {lead.handle && (
+                  <AdminActionButton
+                    size="md"
+                    onClick={() => window.open(`https://instagram.com/${lead.handle}`, "_blank")}
+                  >
+                    <Instagram size={14} /> Instagram
+                  </AdminActionButton>
+                )}
+                <AdminActionButton size="md" onClick={handleCopyEmail}>
+                  <Mail size={14} /> Copiar email
+                </AdminActionButton>
                 <AdminActionButton
                   size="md"
-                  onClick={() => setGenerateOpen(true)}
-                  className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
+                  onClick={() => {
+                    window.open(`https://wa.me/?text=${encodeURIComponent(`Olá ${lead.name}!`)}`, "_blank");
+                  }}
                 >
-                  <Zap size={14} /> Gerar relatório
+                  <MessageCircle size={14} /> WhatsApp
                 </AdminActionButton>
+                <AdminActionButton size="md" onClick={handleMarkContacted}>
+                  <Phone size={14} /> Contactado
+                </AdminActionButton>
+                <AdminActionButton
+                  size="md"
+                  onClick={handleArchive}
+                  className="text-admin-danger-700 border-admin-danger-500/30 hover:bg-admin-danger-50"
+                >
+                  <Archive size={14} /> Arquivar
+                </AdminActionButton>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ── Tab: Relatório ──────────────────────────── */}
+          <TabsContent value="relatorio" className="flex-1 overflow-y-auto mt-0">
+            <div className="px-6 py-5 pb-8">
+              <SectionTitle>Relatório</SectionTitle>
+              <ProgressTracker
+                reportStatus={lead.report_status}
+                pdfStatus={lead.pdf_status}
+              />
+
+              <DetailRow label="Estado" icon={FileText}>
+                <AdminBadge variant={STATUS_ACCENT[lead.report_status ?? ""] ?? "neutral"}>
+                  {lead.report_status ?? "—"}
+                </AdminBadge>
+              </DetailRow>
+              {lead.pdf_status && lead.pdf_status !== "not_generated" && (
+                <DetailRow label="PDF" icon={FileText}>
+                  <AdminBadge variant={STATUS_ACCENT[lead.pdf_status] ?? "neutral"}>
+                    {lead.pdf_status}
+                  </AdminBadge>
+                </DetailRow>
+              )}
+              <DetailRow label="Última interação" icon={Clock}>
+                {formatDate(lead.last_interaction)}
+              </DetailRow>
+
+              {lead.handle ? (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <AdminActionButton
+                    size="md"
+                    onClick={() => window.open(`/analyze/${lead.handle}`, "_blank")}
+                  >
+                    <ExternalLink size={14} /> Abrir relatório
+                  </AdminActionButton>
+                  <AdminActionButton size="md" onClick={handleCopyLink}>
+                    <Link2 size={14} /> Copiar link
+                  </AdminActionButton>
+                  <SendLinkButton
+                    lead={lead}
+                    lastSentAt={lastReportLinkSentAt}
+                    onClick={() => setSendLinkOpen(true)}
+                  />
+                  <FeedbackRequestButton
+                    lead={lead}
+                    onClick={() => setFeedbackOpen(true)}
+                  />
+                  {lead.report_request_id &&
+                    GENERATABLE_STATUSES.includes(lead.report_status as typeof GENERATABLE_STATUSES[number]) && (
+                    <AdminActionButton
+                      size="md"
+                      onClick={() => setGenerateOpen(true)}
+                      className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
+                    >
+                      <Zap size={14} /> Gerar relatório
+                    </AdminActionButton>
+                  )}
+                </div>
+              ) : (
+                <p className="admin-meta text-admin-text-tertiary mt-4">
+                  Sem handle Instagram associado — ações de relatório indisponíveis.
+                </p>
               )}
             </div>
-          )}
-        </div>
+          </TabsContent>
 
-        <SectionDivider />
+          {/* ── Tab: Feedback ───────────────────────────── */}
+          <TabsContent value="feedback" className="flex-1 overflow-y-auto mt-0">
+            <FeedbackBetaSection feedback={lead.feedback} />
+          </TabsContent>
 
-        {/* ── 5. Inteligência comercial ─────────────────────── */}
-        <div className="px-6 py-5">
-          <SectionTitle>Inteligência comercial</SectionTitle>
+          {/* ── Tab: Comunicação ────────────────────────── */}
+          <TabsContent value="comunicacao" className="flex-1 overflow-y-auto mt-0">
+            <TimelineSection
+              timeline={timeline.filter((ev) => COMMUNICATION_EVENT_TYPES.has(ev.event_type))}
+              loading={timelineLoading}
+              title="Comunicação"
+              emptyText="Sem comunicações registadas."
+            />
+          </TabsContent>
 
-          <DetailRow label="Tipo de lead" icon={User}>
-            {USER_TYPE_LABEL[lead.user_type?.toLowerCase() ?? ""] ?? "Desconhecido"}
-          </DetailRow>
-          <DetailRow label="Sinal de intenção" icon={Target}>
-            <AdminBadge variant={displayedIntent.accent}>{displayedIntent.label}</AdminBadge>
-          </DetailRow>
-
-          <div
-            className="mt-3 rounded-xl p-3.5 flex items-start gap-2.5"
-            style={{
-              backgroundColor: "rgba(83,74,183,0.06)",
-              borderLeft: "3px solid rgba(83,74,183,0.4)",
-            }}
-          >
-            <Lightbulb size={15} className="text-admin-text-tertiary shrink-0 mt-0.5" />
-            <div>
-            <p className="admin-eyebrow mb-1">Próximo passo sugerido</p>
-            <p className="admin-body text-admin-text-primary font-medium m-0">
-              {displayedSuggestion}
-            </p>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <p className="admin-eyebrow mb-2">Estado comercial</p>
-            <Select value={lead.commercial_status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="h-10 text-[13px] rounded-lg">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {KANBAN_COLUMNS.map((col) => (
-                  <SelectItem key={col.key} value={col.key} className="text-[13px]">
-                    {col.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <SectionDivider />
-
-        {/* ── 5b. Feedback beta ─────────────────────────────── */}
-        <FeedbackBetaSection feedback={lead.feedback} />
-
-        <SectionDivider />
-
-        {/* ── 6. Timeline ───────────────────────────────────── */}
-        <TimelineSection
-          timeline={timeline}
-          loading={timelineLoading}
-        />
-
-        <SectionDivider />
-
-        {/* ── 7. Notas & Ações ──────────────────────────────── */}
-        <div className="px-6 py-5 pb-8">
-          <SectionTitle>Notas e ações</SectionTitle>
-
-          <Textarea
-            value={notesText}
-            onChange={(e) => {
-              setNotesText(e.target.value);
-              setNotesDirty(true);
-            }}
-            rows={4}
-            placeholder="Notas internas sobre este lead..."
-            className="text-[13px] mb-1"
-          />
-          <p className="admin-meta text-admin-text-tertiary mb-3 text-right">
-            {notesText.length} caracteres
-          </p>
-          {notesDirty && (
-            <Button size="sm" onClick={handleSaveNotes} className="mb-4">
-              Guardar notas
-            </Button>
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
-            {lead.handle && (
-              <AdminActionButton
-                size="md"
-                onClick={() =>
-                  window.open(`https://instagram.com/${lead.handle}`, "_blank")
-                }
-              >
-                <Instagram size={14} /> Instagram
-              </AdminActionButton>
-            )}
-            <AdminActionButton size="md" onClick={handleCopyEmail}>
-              <Mail size={14} /> Copiar email
-            </AdminActionButton>
-            <AdminActionButton
-              size="md"
-              onClick={() => {
-                window.open(`https://wa.me/?text=${encodeURIComponent(`Olá ${lead.name}!`)}`, "_blank");
-              }}
-            >
-              <MessageCircle size={14} /> WhatsApp
-            </AdminActionButton>
-            <AdminActionButton size="md" onClick={handleMarkContacted}>
-              <Phone size={14} /> Contactado
-            </AdminActionButton>
-            <AdminActionButton
-              size="md"
-              onClick={handleArchive}
-              className="text-admin-danger-700 border-admin-danger-500/30 hover:bg-admin-danger-50"
-            >
-              <Archive size={14} /> Arquivar
-            </AdminActionButton>
-          </div>
-        </div>
+          {/* ── Tab: Histórico ──────────────────────────── */}
+          <TabsContent value="historico" className="flex-1 overflow-y-auto mt-0">
+            <TimelineSection
+              timeline={groupConsecutiveViews(timeline)}
+              loading={timelineLoading}
+              title="Histórico"
+            />
+          </TabsContent>
+        </Tabs>
       </SheetContent>
     </Sheet>
 
