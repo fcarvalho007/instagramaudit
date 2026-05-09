@@ -1,92 +1,108 @@
-# Fundação CRM para leads beta
+# Ação admin: enviar link público ao beta tester
 
-Sem envio de emails, sem providers, sem PDF. Apenas estado, eventos e UI clara.
+Adiciona uma ação **"Enviar link"** no Lead Detail Sheet que envia o link do relatório público (`/analyze/:handle`) por email via Resend, regista `report_link_sent` e move o estado comercial para `link_enviado`.
 
-## 1. Mapa final do ciclo de vida (11 estados)
+Distinto do envio de PDF existente (`/api/send-report-email`): aquele envia o PDF por signed URL com auth interno; este envia o **link público** com auth de admin.
 
-| Estado | Origem | Próxima ação sugerida |
+## Ficheiros a criar / alterar
+
+### 1. `src/lib/email/report-link-email-template.ts` (novo)
+Template pt-PT inline-styles, sem unsubscribe.
+
+- **Assunto:** `O teu relatório InstaBench já está pronto`
+- **Corpo (HTML + text)**:
+  - Saudação: `Olá {primeiro_nome},` ou `Olá,` se não houver nome
+  - Parágrafo 1: «A análise do perfil **@{handle}** já está disponível para consultares.»
+  - Botão: **"Abrir relatório"** → URL pública
+  - URL em texto monoespaçado abaixo (fallback)
+  - Parágrafo: «Este é um relatório beta — pode evoluir nos próximos dias com base no que aprendermos.»
+  - Parágrafo: «Depois de explorares, agradecemos imenso se nos enviares feedback. Vamos contactar-te em breve para o pedir.»
+  - Footer InstaBench
+- Sem promessas exageradas. Sem link de unsubscribe.
+
+Exporta `buildReportLinkEmailSubject()`, `buildReportLinkEmailHtml(params)`, `buildReportLinkEmailText(params)` e uma helper isomórfica `buildPreviewBody(params)` para o modal de confirmação reusar (texto plano resumido).
+
+### 2. `src/routes/api/admin/send-report-link.ts` (novo server route)
+`POST /api/admin/send-report-link`
+
+- `requireAdminSession()`
+- Input zod: `{ lead_id: string; report_request_id: string }`
+- Verifica `RESEND_API_KEY` → 500 `EMAIL_PROVIDER_NOT_CONFIGURED` se ausente
+- Carrega `report_requests` (id, lead_id, instagram_username, request_status, analysis_snapshot_id) e valida:
+  - `request_status ∈ {completed, ready, generated, approved}` E `analysis_snapshot_id` presente → senão 409 `REPORT_NOT_READY`
+- Carrega `leads` (id, email, name) → valida email com regex → 422 `LEAD_EMAIL_MISSING`/`LEAD_EMAIL_INVALID`
+- Constrói URL pública: usa `process.env.PDF_PUBLIC_BASE_URL` se existir, senão derivado do header `Origin`/`Host` do request (preferindo `https://`). Forma final: `${base}/analyze/${handle}`
+- Envia via Resend (timeout 10s, mesmo padrão de `send-report-email.ts`); reusa `SENDER_FROM = "InstaBench <onboarding@resend.dev>"`
+- Em **sucesso**:
+  - `recordProductEvent({ eventType: "report_link_sent", leadId, snapshotId, handle, metadata: { report_request_id, message_id, channel: "admin_manual", recipient: email_normalizado } })` — o timestamp é o `created_at` do evento
+  - `updateLeadCommercialStatus({ leadId, status: "link_enviado", source: "manual", reason: "admin sent public report link" })` (do helper criado na fase anterior)
+  - Devolve `{ success: true, message_id, sent_at, public_url }`
+- Em **falha** de envio: NÃO altera `commercial_status`; devolve `error_code` adequado (`RESEND_FAILED`, `RESEND_TIMEOUT`, `RESEND_SANDBOX_RECIPIENT_BLOCKED`)
+- Logs: apenas excerto do erro (até 300 chars), sem secrets, sem corpo da resposta Resend
+
+### 3. `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (alterar)
+Na grelha de ações da secção **Relatório**, adicionar botão `Enviar link` (ícone `Send` ou `Mail`).
+
+**Visibilidade:**
+- Sempre presente quando `lead.handle && lead.report_request_id`
+- **Ativo** quando: `lead.email` existe E `lead.report_status ∈ {completed, ready, generated}` E `lead.handle` existe
+- **Desativado** caso contrário, com `title` explicativo:
+  - sem email: «Lead sem email — não é possível enviar.»
+  - sem relatório: «Este lead ainda não tem relatório público disponível.»
+  - sem handle: «Handle Instagram em falta.»
+
+Click → abre `<SendLinkDialog>` (novo componente local no mesmo ficheiro, à imagem do `GenerateReportDialog`).
+
+### 4. `<SendLinkDialog>` (novo, dentro de `lead-detail-sheet.tsx`)
+Modal de confirmação com `ConfirmDialog`. Mostra preview:
+
+- **Para:** `{lead.email}`
+- **Perfil:** `@{lead.handle}`
+- **Link público:** `${origin}/analyze/${lead.handle}` (em mono, com botão copiar)
+- **Assunto:** `O teu relatório InstaBench já está pronto`
+- **Pré-visualização do corpo:** primeiros 6–8 linhas em texto plano (do `buildPreviewBody`)
+- Botão confirmar: **"Enviar email"** (loading state «A enviar…»)
+
+`onConfirm` faz `POST /api/admin/send-report-link` com `{ lead_id, report_request_id }`, lê `success` e:
+- sucesso: `toast.success("Link enviado por email")`, fecha modal, chama `onRefresh?.()`
+- falha: lê `error_code` e mostra `toast.error` com mensagem pt-PT mapeada:
+  - `EMAIL_PROVIDER_NOT_CONFIGURED` → «Email provider não configurado.»
+  - `LEAD_EMAIL_MISSING` → «Lead sem email.»
+  - `LEAD_EMAIL_INVALID` → «Email do lead inválido.»
+  - `REPORT_NOT_READY` → «Este lead ainda não tem relatório público disponível.»
+  - `RESEND_SANDBOX_RECIPIENT_BLOCKED` → «Resend está em modo sandbox — só pode enviar para o dono da conta. Verificar domínio.»
+  - `RESEND_TIMEOUT` / `RESEND_FAILED` → «Falha ao enviar email. Tenta novamente.»
+  - default → «Erro ao enviar.»
+
+## Sem alterações de schema
+
+- `link_enviado` já existe no lifecycle (fase anterior)
+- `report_link_sent` já está em `ALLOWED_EVENTS` e tem o timestamp em `product_events.created_at`
+- Sem novas colunas
+
+## Comportamento de estado
+
+| Resultado | `report_link_sent` event | `commercial_status` |
 |---|---|---|
-| `novo_pedido` | Form beta | Aprovar pedido e gerar relatório |
-| `em_analise` | Manual / on generate | Aguardar geração |
-| `relatorio_gerado` | Auto após `generate-beta-report` | Enviar link ao lead |
-| `link_enviado` | **NOVO** — auto após `send-report-email` | Aguardar visualização |
-| `relatorio_visto` | Auto via `report_viewed` | Pedir feedback |
-| `feedback_pedido` | Manual | Aguardar resposta |
-| `feedback_recebido` | **NOVO** — auto via `feedback_submitted` | Classificar interesse |
-| `interessado` | Manual | Agendar chamada / demo |
-| `potencial_cliente` | Manual | Enviar proposta |
-| `convertido` | Manual | Onboarding |
-| `arquivado` | Manual | — |
+| Email enviado | ✅ inserido | ✅ `link_enviado` |
+| Resend falhou | ❌ não inserido | ❌ não muda |
+| Provider não configurado | ❌ | ❌ |
+| Lead sem email | ❌ | ❌ |
+| Relatório não pronto | ❌ | ❌ |
 
-Estados em falta hoje: `link_enviado`, `feedback_recebido`. Vou adicioná-los à coluna do Kanban e ao `VALID_STATUSES` do PATCH.
-
-## 2. Eventos `product_events`
-
-Já existem em `ALLOWED_EVENTS`: `report_viewed`, `feedback_started`, `feedback_submitted`, `unlock_clicked`, `feedback_requested`, `pricing_clicked`, `public_report_link_copied`, `pro_teaser_clicked`, `email_clicked`, `report_link_sent` (registado server-side em send-report-email).
-
-A adicionar:
-
-- `pricing_option_clicked` — variante mais granular (qual opção foi clicada)
-- garantir `report_link_sent` exposto também no whitelist de `trackEvent` para ser disparável pelo cliente (atualmente só server-side)
-
-Não removo nem renomeio nada existente.
-
-## 3. Ficheiros a alterar
-
-### `src/lib/admin/kanban-columns.ts`
-- Inserir `link_enviado` (entre `relatorio_gerado` e `relatorio_visto`)
-- Inserir `feedback_recebido` (entre `feedback_pedido` e `interessado`)
-- Cor coerente com paleta admin
-
-### `src/routes/api/admin/leads-kanban.$id.ts`
-- Adicionar os 2 novos valores a `VALID_STATUSES`
-
-### `src/lib/tracking.functions.ts`
-- Adicionar `pricing_option_clicked` e `report_link_sent` ao `ALLOWED_EVENTS`
-
-### `src/lib/admin/lead-lifecycle.ts` (NOVO)
-Helpers puros, sem efeitos:
-- `LIFECYCLE_STATUSES` — array tipado
-- `getLifecycleMeta(status)` — `{ label, color, group: 'aquisicao'|'qualificacao'|'comercial'|'arquivado' }`
-- `suggestNextLeadAction(lead)` — devolve `{ label, severity }` (move a função `deriveSuggestedStep` actual + cobre os 2 novos estados)
-- `mapEventToSuggestedStatus(eventType)` — usado por triggers futuros (Fase 2), mas não dispara nada agora
-
-### `src/lib/admin/lead-events.server.ts` (NOVO)
-- `recordLeadEvent({ leadId, eventType, snapshotId?, handle?, metadata? })` — wrapper sobre `recordProductEvent` específico para leads
-- `updateLeadCommercialStatus({ leadId, status, source })` — update + emite `lead_status_changed` com metadata da origem (manual/auto)
-
-Apenas import server-side. Não muda behaviour de chamadas existentes (`leads-kanban.$id.ts` continua a funcionar como está; pode opcionalmente migrar para o helper depois).
-
-### `src/components/admin/v2/beta-leads/lead-card.tsx`
-- Mostrar pílula compacta da **próxima ação** abaixo do selector de estado (texto curto, ícone Lightbulb, cor neutra)
-- Usar `suggestNextLeadAction` em vez de calcular ad-hoc
-
-### `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
-- Substituir `deriveSuggestedStep` por import de `suggestNextLeadAction`
-- Adicionar entradas `link_enviado` e `feedback_recebido` em `EVENT_LABELS`/`EVENT_ICONS` (bem como `report_link_sent`, `feedback_requested`, `pricing_option_clicked`)
-- Adicionar bloco compacto **"Estado actual"** no topo da secção Inteligência comercial:
-  - Estado lifecycle (badge colorida)
-  - Último estado do `report_request` (já existe na secção Relatório — apenas eco curto)
-  - Link do snapshot mais recente (botão "Abrir relatório" já existe)
-  - Último evento (do timeline)
-  - Próxima ação (já existe — mantém)
-
-Tudo dentro do que já está renderizado; sem nova API, sem nova query.
-
-## 4. Sem alterações de schema
-
-A tabela `leads.commercial_status` é `text` (sem CHECK) — aceita os 2 novos valores sem migração. `product_events.event_type` também é livre. **Nenhuma migration.**
-
-## 5. Validação
+## Validação
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Smoke manual: abrir `/admin/beta-leads`, abrir sheet, mudar estado para `link_enviado` e `feedback_recebido`, confirmar que a coluna existe e o card aparece.
+- Smoke manual:
+  1. Lead com email + relatório completo → botão ativo, modal mostra preview, envio OK, status muda para `link_enviado`, evento aparece no timeline
+  2. Lead sem email → botão desativado com tooltip
+  3. Lead com `report_status = pending` → botão desativado com tooltip
+  4. Forçar erro (chave Resend inválida em ambiente local) → toast erro, status **não** muda
 
-## 6. Fora de âmbito (Fase 2)
+## Fora de âmbito
 
-- Triggers SQL para transições automáticas (`report_link_sent` → `link_enviado`, `report_viewed` → `relatorio_visto`, `feedback_submitted` → `feedback_recebido`)
-- Campos `last_status_change_at`, `last_event_at`, `first_viewed_at`
-- Envio automático de emails de follow-up
-
-Estes ficam para um prompt seguinte, depois desta fundação estar verde.
+- Geração/regeneração de relatório (já existe acção separada)
+- Envio automático sem confirmação
+- Templates configuráveis por admin
+- Tracking de cliques no link (fica para fase futura quando houver UTM/redirector)
