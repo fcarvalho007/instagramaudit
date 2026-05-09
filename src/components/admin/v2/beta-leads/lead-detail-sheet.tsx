@@ -717,12 +717,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Comunicação ────────────────────────── */}
           <TabsContent value="comunicacao" className="flex-1 overflow-y-auto mt-0">
-            <TimelineSection
-              timeline={timeline.filter((ev) => COMMUNICATION_EVENT_TYPES.has(ev.event_type))}
-              loading={timelineLoading}
-              title="Comunicação"
-              emptyText="Sem comunicações registadas."
-            />
+            <CommunicationHistory timeline={timeline} loading={timelineLoading} />
           </TabsContent>
 
           {/* ── Tab: Histórico ──────────────────────────── */}
