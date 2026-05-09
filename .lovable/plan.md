@@ -1,96 +1,119 @@
-## Diagnóstico do mockup vs. relatório real
+## Contexto
 
-Confirmado por leitura do código (`report-block-nav.tsx`, `report-hero-v2.tsx`, `premium-interest-dialog.tsx`):
-
-1. **Avatar vazio** — o sidebar (`ProfileHeader`, linhas 106-112) usa `profile.avatarUrl` **bruto**. O Instagram bloqueia hotlinking, então a imagem nunca renderiza e cai no fallback de inicial. O hero (`report-hero-v2.tsx:363`) usa `/api/public/ig-thumb?url=...` como proxy e por isso **funciona lá**. **Causa raiz identificada.**
-
-2. **Botão "DESBLOQUEAR" inerte** — `CofreCard` (linha 314-320) não tem `onClick`, não abre o `PremiumInterestDialog`, e não dispara `unlock_clicked`. O `PremiumCallout` no gráfico de engagement já faz isto corretamente. Inconsistência.
-
-3. **Tiles de pricing inertes** — as duas cards "Uma vez" / "Bundle 5" são `<div>`s, não disparam `pricing_option_clicked`. Perde-se sinal comercial vindo do sidebar (que está sempre visível, ao contrário do callout enterrado no relatório).
-
-Tudo o resto bate certinho com o mockup (estrutura, cores, badges, tipografia, progresso, eyebrows).
+O módulo `src/lib/email/` já está implementado, testado (10/10) e a passar `tsc`. Os 4 templates funcionam. Estes refinamentos elevam qualidade percebida na inbox e robustez sem mexer no provider, no schema, nem em emails de relatório existentes.
 
 ---
 
-## Refinamentos a aplicar
+## Refinamentos
 
-### 1. Avatar real via proxy `ig-thumb` (a correção principal)
+### R1 · Preheader / preview text (alto impacto inbox)
 
-Em `ProfileHeader` (`report-block-nav.tsx`):
-- Quando `profile.avatarUrl` existe, usar `src={`/api/public/ig-thumb?url=${encodeURIComponent(profile.avatarUrl)}`}` em vez do URL direto.
-- Adicionar `onError` que esconde o `<img>` (mesmo padrão do hero).
-- Quando o proxy falha ou não há `avatarUrl`, manter o fallback atual (círculo azul com inicial).
-- Manter `loading="eager"` (above-the-fold no desktop sidebar) e `decoding="async"`.
+Atualmente os emails não têm preheader — a primeira linha que Gmail/Outlook/Apple Mail mostram **ao lado do subject** na lista de inbox cai em texto aleatório do header.
 
-### 2. Botão "DESBLOQUEAR" abre o `PremiumInterestDialog`
+**Mudança:** estender `wrapHtml({ title, headline, bodyHtml, preheader })` com um bloco oculto logo a seguir a `<body>`:
 
-Refactor de `CofreCard`:
-- Converter para componente com estado local `dialogOpen` (igual ao `PremiumCallout`).
-- Usar `useReportTracking()` para obter `snapshotId`, `handle`, `variant` (já existe contexto, basta consumir).
-- `onClick` do botão DESBLOQUEAR:
-  - Disparar `trackEvent({ eventType: "unlock_clicked", metadata: { variant, source_component: "sidebar_cofre" } })`
-  - Abrir o dialog
-- Renderizar `<PremiumInterestDialog open={dialogOpen} onOpenChange={setDialogOpen} sourceComponent="sidebar_cofre" snapshotId handle variant />`
+```html
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;color:transparent;">
+  {preheader}{ZWNJ × 100}
+</div>
+```
 
-### 3. Tiles de pricing disparam `pricing_option_clicked`
+Cada renderer passa um preheader curto (≤ 90 chars), em pt-PT. Exemplos:
+- requestReceived → "Vamos rever manualmente e enviamos assim que estiver pronto."
+- reportReady → "Análise completa disponível para consultares."
+- feedbackRequest → "Duas ou três frases chegam — ajuda-nos a melhorar."
+- commercialFollowup → "Sem pressão. Respondemos quando fizer sentido para ti."
 
-Os dois tiles (`Uma vez` e `Bundle 5`) ficam `<button type="button">` em vez de `<div>`, com:
-- `onClick` que dispara `pricing_option_clicked` com `pricing_option: "single_3_eur"` ou `"bundle_13_eur"`, `source_component: "sidebar_cofre"`, e abre o dialog (idempotente — segundo clique não duplica, igual ao dialog).
-- Estado visual `aria-pressed`/checkmark quando registado (mesmo padrão do dialog interno: `Set<PricingOption>`).
-- Tap target ≥ 44px no mobile (já garantido pelo `p-2.5`).
+### R2 · `pricingOption` mapeado para rótulo legível
 
-### 4. Polimento ligeiro pt-PT / acessibilidade
+Hoje `commercialFollowup` recebe a string crua. O tracking guarda códigos (`single_3_eur`, `bundle_13_eur`, `monthly`, `agency`) — se o admin passar o código, sai literalmente "single_3_eur" no email.
 
-- `alt={`Avatar de ${handle}`}` no `<img>` do sidebar (atualmente `alt=""`), para coerência com o hero.
-- Adicionar `aria-label="Abrir opções de desbloqueio"` ao botão DESBLOQUEAR.
+**Mudança em `commercial-followup.ts`:** mapa interno opcional
+```ts
+const PRICING_LABELS: Record<string, string> = {
+  single_3_eur: "Relatório único (€3 + IVA)",
+  bundle_13_eur: "Bundle 5 relatórios (€13 + IVA)",
+  monthly: "Plano mensal",
+  agency: "Agência",
+};
+const pricingLabel = pricing ? (PRICING_LABELS[pricing] ?? pricing) : null;
+```
+Strings desconhecidas continuam a passar (backward-compat). Sem alteração de tipo público.
+
+### R3 · `feedbackRequest` aceita `reportViewed?: boolean`
+
+Hoje o copy assume sempre visualização: *"Notámos que já consultaste o relatório"*. Se admin enviar antes do `report_viewed` (o lead-detail-sheet já avisa), o email mente.
+
+**Mudança:** novo input opcional `reportViewed?: boolean` (default `true` para não partir consumidores). Quando `false`, frase muda para:
+> *"Quando tiveres oportunidade de consultar o relatório de @x, agradecíamos imenso o teu feedback."*
+
+### R4 · Fallback de URL também no `feedbackRequest`
+
+`reportReady` mostra a URL textual abaixo do botão (clientes que escondem botões funcionam). `feedbackRequest` não — se o `feedbackUrl` existe e o cliente esconde o CTA, o utilizador fica sem link.
+
+**Mudança:** quando `feedbackUrl` está presente, adicionar `renderUrlFallbackHtml(feedbackUrl)` (mesmo padrão de `reportReady`). Texto plain também ganha a URL, que já tem.
+
+### R5 · Sign-off mais cuidado + `From-name` hint
+
+Atualmente o sign-off em `text` é apenas:
+```
+—
+InstaBench
+```
+
+**Mudança:** acrescentar uma linha com nome próprio para soar a 1:1 (a marca é solo):
+```
+Obrigado,
+Frederico — InstaBench
+```
+e `pMuted` equivalente no HTML. Aplica-se apenas aos 4 templates novos (não tocamos nos templates existentes do `report-email-template.ts`). Constante `SIGNATURE_NAME = "Frederico"` em `shared.ts`.
 
 ---
 
 ## Detalhes técnicos
 
-- **Ficheiros tocados** (apenas frontend, conforme regra de "UI change → frontend only"):
-  - `src/components/report-redesign/v2/report-block-nav.tsx` — `ProfileHeader` (avatar) + `CofreCard` (refactor para dialog/tracking)
+- **Ficheiros tocados:**
+  - `src/lib/email/shared.ts` — adicionar parâmetro `preheader`, constante `SIGNATURE_NAME`, helper `signatureBlock()` (text/html)
+  - `src/lib/email/templates/request-received.ts` — preheader + sign-off
+  - `src/lib/email/templates/report-ready.ts` — preheader + sign-off
+  - `src/lib/email/templates/feedback-request.ts` — preheader + sign-off + R3 (`reportViewed`) + R4 (fallback)
+  - `src/lib/email/templates/commercial-followup.ts` — preheader + sign-off + R2 (PRICING_LABELS)
+  - `src/lib/email/__tests__/templates.test.ts` — adicionar testes:
+    - preheader presente no html (oculto)
+    - mapping `single_3_eur` → "Relatório único"
+    - `reportViewed: false` muda copy
+    - feedback fallback URL aparece em html
 
-- **Sem migrações.** Sem alterações de API. O endpoint `/api/public/ig-thumb` já existe e é usado pelo hero. Eventos `unlock_clicked` e `pricing_option_clicked` já estão na allowlist (`tracking.functions.ts`).
-
-- **Sem dependências novas.** Reutiliza `PremiumInterestDialog`, `useReportTracking`, `trackEvent`.
-
-- **Sem alterações no `/report.example`** (mockup intacto, conforme regra do projeto).
-
-- **Sem alterações ao `report-hero-v2.tsx`** (já está correto e está em `LOCKED_FILES.md`? — verificar antes de qualquer edição lateral; este plano não o toca).
+- **Sem mudanças de assinatura pública** que partam consumidores: todos os campos novos são `?` opcionais.
+- **Sem tocar:** Resend, `send-report-email.ts`, edge functions, pipeline PDF, `/report.example`, schema.
+- **Sem dependências novas.**
 
 ---
 
 ## Validação
 
 - `bunx tsc --noEmit` limpo
-- `bunx vitest run` (não há testes específicos do sidebar; cobertura de `tracking.functions` e `feedback-intent` mantém-se verde)
-- Visual: abrir `/analyze/<handle-com-avatar>` no preview, confirmar:
-  - Sidebar mostra a foto real do perfil (mesma que aparece no hero)
-  - Click em "DESBLOQUEAR" abre o dialog com 4 opções
-  - Click em tile "€3" ou "€13" no sidebar regista evento e marca como selecionado
-  - Em `product_events`: aparecem `unlock_clicked` e `pricing_option_clicked` com `metadata.source_component = "sidebar_cofre"`
-- Mobile (375px): o sidebar não aparece (é `hidden lg:block`), por isso a alteração não afeta o `ReportBlockTopTabs`
+- `bunx vitest run` — esperado 14/14 (10 atuais + 4 novos)
+- Inspeção visual via `console.log(renderRequestReceived({...}).html)` (opcional, para confirmar preheader oculto)
 
 ---
 
-## Não fazer
+## Não fazer agora (fora de scope)
 
-- Não tocar pipeline PDF
-- Não tocar geração de relatório
-- Não chamar providers
-- Não alterar `/report.example`
-- Não introduzir cores/fontes/radii hardcoded — usar tokens existentes (`bg-content-primary`, `text-amber-300`, etc., já em uso no ficheiro)
+- Wiring destes templates no `send-feedback-request.ts` ou em algum trigger comercial — pedir aprovação separada
+- Adicionar `List-Unsubscribe` (responsabilidade do provider, não do template)
+- Wrap a 78 chars no plain-text — boa prática RFC mas baixíssimo impacto prático
 
 ---
 
 ## Checkpoint
 
-- ☐ Avatar do sidebar usa proxy `/api/public/ig-thumb` com `onError` fallback
-- ☐ Alt text pt-PT correto
-- ☐ Botão DESBLOQUEAR abre `PremiumInterestDialog`
-- ☐ Botão DESBLOQUEAR dispara `unlock_clicked` com `source_component: "sidebar_cofre"`
-- ☐ Tiles de pricing disparam `pricing_option_clicked` (single_3_eur / bundle_13_eur) idempotente
+- ☐ `wrapHtml` aceita `preheader` e renderiza bloco oculto
+- ☐ 4 templates passam preheader pt-PT específico
+- ☐ `commercialFollowup` mapeia códigos `single_3_eur` / `bundle_13_eur` / `monthly` / `agency`
+- ☐ `feedbackRequest` aceita `reportViewed?: boolean` com copy alternativo
+- ☐ `feedbackRequest` mostra URL fallback quando há `feedbackUrl`
+- ☐ Sign-off "Frederico — InstaBench" em todos os 4
+- ☐ 4 testes adicionais
 - ☐ `tsc --noEmit` limpo
-- ☐ `vitest run` verde
-- ☐ Avatar real visível em `/analyze/<handle>` no preview
+- ☐ `vitest run` 14/14 verde

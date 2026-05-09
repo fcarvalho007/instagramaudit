@@ -8,6 +8,8 @@ import {
   pMuted,
   renderButtonHtml,
   renderUrlFallbackHtml,
+  signatureHtml,
+  signatureText,
   wrapHtml,
 } from "../shared";
 
@@ -20,6 +22,7 @@ export interface ReportReadyInput {
 
 const SUBJECT = "O teu relatório InstaBench já está pronto";
 const HEADLINE = "O teu relatório está pronto";
+const PREHEADER = "Análise completa disponível para consultares.";
 
 export function renderReportReady(input: ReportReadyInput): RenderedEmail {
   if (!input.reportUrl || !input.reportUrl.trim()) {
@@ -40,8 +43,7 @@ export function renderReportReady(input: ReportReadyInput): RenderedEmail {
     "É um relatório beta — pode evoluir nos próximos dias com base no que aprendermos.",
     "Depois de explorares, agradecíamos imenso o teu feedback. Vamos contactar-te em breve para o pedir.",
     "",
-    "—",
-    "InstaBench",
+    ...signatureText(),
   ]);
 
   const bodyHtml = [
@@ -53,12 +55,13 @@ export function renderReportReady(input: ReportReadyInput): RenderedEmail {
     `<div style="height:24px;"></div>`,
     pMuted("É um relatório <strong style=\"color:#0a0e1a;\">beta</strong> — pode evoluir nos próximos dias com base no que aprendermos."),
     pMuted("Depois de explorares, agradecíamos imenso o teu feedback. Vamos contactar-te em breve para o pedir."),
+    signatureHtml(),
   ].join("\n");
 
   return {
     subject: SUBJECT,
     text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml }),
+    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
   };
 }
 

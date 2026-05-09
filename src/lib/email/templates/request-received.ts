@@ -6,6 +6,8 @@ import {
   joinLines,
   p,
   pMuted,
+  signatureHtml,
+  signatureText,
   wrapHtml,
 } from "../shared";
 
@@ -16,6 +18,7 @@ export interface RequestReceivedInput {
 
 const SUBJECT = "Recebemos o teu pedido beta do InstaBench";
 const HEADLINE = "Pedido recebido";
+const PREHEADER = "Vamos rever manualmente e enviamos assim que estiver pronto.";
 
 function handleLabel(handle: string | null | undefined): string {
   return handle ? `@${handle}` : "o teu perfil de Instagram";
@@ -35,8 +38,7 @@ export function renderRequestReceived(input: RequestReceivedInput): RenderedEmai
     "",
     "Obrigado pela paciência. Esta validação manual permite-nos garantir qualidade enquanto refinamos o produto.",
     "",
-    "—",
-    "InstaBench",
+    ...signatureText(),
   ]);
 
   const bodyHtml = [
@@ -48,12 +50,13 @@ export function renderRequestReceived(input: RequestReceivedInput): RenderedEmai
     pMuted(
       "Obrigado pela paciência. Esta validação manual permite-nos garantir qualidade enquanto refinamos o produto.",
     ),
+    signatureHtml(),
   ].join("\n");
 
   return {
     subject: SUBJECT,
     text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml }),
+    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
   };
 }
 

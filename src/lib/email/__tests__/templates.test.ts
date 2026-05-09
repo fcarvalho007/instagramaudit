@@ -78,6 +78,23 @@ describe("renderFeedbackRequest", () => {
     expect(out.text).toContain("responderes a este email");
     expect(out.html).toContain("responderes a este email");
   });
+
+  it("uses pre-view copy when reportViewed is false", () => {
+    const out = renderFeedbackRequest({
+      instagramHandle: "x",
+      reportViewed: false,
+    });
+    expect(out.text).toContain("Quando tiveres oportunidade de consultar");
+    expect(out.text).not.toContain("Notámos que já consultaste");
+  });
+
+  it("includes URL fallback block when feedbackUrl is provided", () => {
+    const url = "https://example.com/feedback/abc";
+    const out = renderFeedbackRequest({ instagramHandle: "x", feedbackUrl: url });
+    // Fallback block (not the button) — escaped URL rendered as text
+    expect(out.html).toContain("Em alternativa, copia o seguinte endereço");
+    expect(out.html).toContain(url);
+  });
 });
 
 describe("renderCommercialFollowup", () => {
@@ -94,6 +111,16 @@ describe("renderCommercialFollowup", () => {
     expect(out.html).toContain("Plano mensal");
   });
 
+  it("maps known pricing codes to readable labels", () => {
+    const out = renderCommercialFollowup({
+      instagramHandle: "x",
+      pricingOption: "single_3_eur",
+    });
+    expect(out.text).toContain("Relatório único (€3 + IVA)");
+    expect(out.text).not.toContain("single_3_eur");
+    expect(out.html).toContain("Relatório único (€3 + IVA)");
+  });
+
   it("omits pricing sentence and CTA mailto when neither provided", () => {
     const out = renderCommercialFollowup({ instagramHandle: "x" });
     expect(out.text).not.toContain("Plano mensal");
@@ -108,5 +135,23 @@ describe("renderCommercialFollowup", () => {
     });
     expect(out.html).toContain("mailto:ola@instabench.pt");
     expect(out.text).toContain("ola@instabench.pt");
+  });
+});
+
+describe("preheader + signature", () => {
+  it("emits a hidden preheader block with display:none", () => {
+    const out = renderRequestReceived({ instagramHandle: "x" });
+    expect(out.html).toContain("display:none");
+    expect(out.html).toContain("Vamos rever manualmente");
+  });
+
+  it("uses the Frederico — InstaBench sign-off", () => {
+    const out = renderReportReady({
+      instagramHandle: "x",
+      reportUrl: REPORT_URL,
+    });
+    expect(out.text).toContain("Obrigado,");
+    expect(out.text).toContain("Frederico — InstaBench");
+    expect(out.html).toContain("Frederico");
   });
 });
