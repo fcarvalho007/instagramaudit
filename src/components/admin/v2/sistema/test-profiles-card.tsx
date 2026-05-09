@@ -11,7 +11,7 @@ import {
   type TestProfileStatus,
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -175,6 +175,60 @@ const STATUS_ITEMS: Array<{
   { key: "hasCommentIntelligence", label: "Comentários", short: "Comentários" },
 ];
 
+/* ── Time formatting helpers (pt-PT) ── */
+
+function formatRelative(target: Date, now: Date): string {
+  const diffMs = target.getTime() - now.getTime();
+  const future = diffMs > 0;
+  const abs = Math.abs(diffMs);
+  const sec = Math.round(abs / 1000);
+  const min = Math.round(sec / 60);
+  const hr = Math.floor(min / 60);
+  const remMin = min % 60;
+  const day = Math.floor(hr / 24);
+  const remHr = hr % 24;
+
+  let label: string;
+  if (sec < 60) label = `${sec} s`;
+  else if (min < 60) label = `${min} min`;
+  else if (hr < 24) label = remMin > 0 ? `${hr} h ${remMin} min` : `${hr} h`;
+  else label = remHr > 0 ? `${day} d ${remHr} h` : `${day} d`;
+
+  return future ? `daqui a ${label}` : `há ${label}`;
+}
+
+const ABS_SHORT = new Intl.DateTimeFormat("pt-PT", {
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const ABS_FULL = new Intl.DateTimeFormat("pt-PT", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+function formatAbsoluteShort(d: Date) {
+  return ABS_SHORT.format(d);
+}
+function formatAbsoluteFull(d: Date) {
+  return ABS_FULL.format(d);
+}
+
+/** Forces re-render every `intervalMs` so relative labels stay live. */
+function useNow(intervalMs = 30_000) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
 /* ── Avatar with gradient ── */
 function ProfileAvatar({ handle }: { handle: string }) {
   const initials = handle
@@ -243,9 +297,9 @@ function PreflightChecklist({ checks }: { checks: PreflightCheck[] }) {
 
 function ProfileRow({ p }: { p: TestProfileStatus }) {
   const qc = useQueryClient();
-  const [expiring, setExpiring] = useState(false);
   const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
   const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
+  const now = useNow();
 
   // Preflight query — only runs when modal opens
   const {
@@ -301,6 +355,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
       }
       setLastAttempt({ timestamp: new Date(), success: true });
       qc.invalidateQueries({ queryKey: ["admin", "test-profiles"] });
+      qc.refetchQueries({ queryKey: ["admin", "test-profiles"] });
       qc.invalidateQueries({ queryKey: ["admin", "preflight", p.handle] });
     },
     onError: (err: Error) => {
@@ -310,9 +365,9 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
     },
   });
 
-  const expiresIn = p.snapshotExpiresAt
-    ? Math.max(0, Math.round((new Date(p.snapshotExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60)))
-    : null;
+  const lastUpdate = p.latestSnapshotDate ? new Date(p.latestSnapshotDate) : null;
+  const expiresAt = p.snapshotExpiresAt ? new Date(p.snapshotExpiresAt) : null;
+  const isExpired = expiresAt ? expiresAt.getTime() <= now.getTime() : false;
 
   const allComplete = STATUS_ITEMS.every((s) => p[s.key]);
   const someComplete = STATUS_ITEMS.some((s) => p[s.key]);
@@ -351,7 +406,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
               </span>
             ) : null}
           </div>
-          <div className="flex items-center gap-3 text-[12px] text-admin-text-tertiary">
+          <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[12px] text-admin-text-tertiary">
             {p.latestFreshCostTotal != null && (
               <span className="inline-flex items-center gap-1">
                 <DollarSign size={10} />
@@ -359,10 +414,40 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
                 <span>custo cache</span>
               </span>
             )}
-            {expiresIn !== null && (
+            {lastUpdate ? (
+              <span
+                className="inline-flex items-center gap-1"
+                title={`Última atualização: ${formatAbsoluteFull(lastUpdate)}`}
+              >
+                <RefreshCw size={10} />
+                <span>Atualizado {formatRelative(lastUpdate, now)}</span>
+                <span className="text-admin-text-tertiary/70">·</span>
+                <span className="font-mono tabular-nums">{formatAbsoluteShort(lastUpdate)}</span>
+              </span>
+            ) : (
               <span className="inline-flex items-center gap-1">
+                <RefreshCw size={10} />
+                Sem cache · nunca atualizado
+              </span>
+            )}
+            {expiresAt && (
+              <span
+                className="inline-flex items-center gap-1"
+                title={
+                  isExpired
+                    ? `Cache expirou em ${formatAbsoluteFull(expiresAt)}`
+                    : `Cache válida até ${formatAbsoluteFull(expiresAt)}`
+                }
+                style={isExpired ? { color: "#BA7517" } : undefined}
+              >
                 <Clock size={10} />
-                expira em {expiresIn}h
+                {isExpired ? (
+                  <span>Expirada {formatRelative(expiresAt, now)}</span>
+                ) : (
+                  <span>Válida {formatRelative(expiresAt, now)}</span>
+                )}
+                <span className="text-admin-text-tertiary/70">·</span>
+                <span className="font-mono tabular-nums">{formatAbsoluteShort(expiresAt)}</span>
               </span>
             )}
             {/* Row-level refresh readiness badge */}
@@ -438,12 +523,15 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
             ) : (
               <AlertTriangle size={12} className="text-amber-600 shrink-0" />
             )}
-            <span className="text-admin-text-tertiary">
-              Última tentativa:{" "}
-              {lastAttempt.timestamp.toLocaleTimeString("pt-PT", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+            <span
+              className="text-admin-text-tertiary"
+              title={`Última tentativa: ${formatAbsoluteFull(lastAttempt.timestamp)}`}
+            >
+              Última tentativa {formatRelative(lastAttempt.timestamp, now)}
+              {" · "}
+              <span className="font-mono tabular-nums">
+                {formatAbsoluteShort(lastAttempt.timestamp)}
+              </span>
               {" — "}
               {lastAttempt.success ? (
                 <span className="text-emerald-600 font-medium">sucesso</span>
@@ -548,19 +636,29 @@ export function TestProfilesCard() {
     queryFn: () => getTestProfileStatuses(),
     staleTime: 30_000,
   });
+  const now = useNow();
 
   const profiles = data?.profiles ?? [];
   const readyCount = profiles.filter((p) =>
     STATUS_ITEMS.every((s) => p[s.key])
   ).length;
 
-  const firstExpiry = profiles
+  const futureExpiries = profiles
     .map((p) => p.snapshotExpiresAt)
-    .filter(Boolean)
-    .sort()[0];
-  const cacheHours = firstExpiry
-    ? Math.max(0, Math.round((new Date(firstExpiry).getTime() - Date.now()) / (1000 * 60 * 60)))
-    : null;
+    .filter((d): d is string => !!d)
+    .map((d) => new Date(d))
+    .filter((d) => d.getTime() > now.getTime())
+    .sort((a, b) => a.getTime() - b.getTime());
+  const nextExpiry = futureExpiries[0] ?? null;
+
+  let headerSummary: string;
+  if (profiles.length === 0) {
+    headerSummary = "Sem perfis configurados";
+  } else if (nextExpiry) {
+    headerSummary = `${readyCount} prontos · próxima expiração ${formatRelative(nextExpiry, now)}`;
+  } else {
+    headerSummary = `${readyCount} prontos · todas as caches expiradas`;
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -571,12 +669,16 @@ export function TestProfilesCard() {
           Perfis de teste
         </p>
         <div className="flex items-center gap-3">
-          {profiles.length > 0 && (
-            <span className="text-[12px] text-admin-text-tertiary">
-              {readyCount} perfis prontos
-              {cacheHours != null && <> · cache válida {cacheHours}h</>}
-            </span>
-          )}
+          <span
+            className="text-[12px] text-admin-text-tertiary"
+            title={
+              nextExpiry
+                ? `Próxima expiração: ${formatAbsoluteFull(nextExpiry)}`
+                : undefined
+            }
+          >
+            {headerSummary}
+          </span>
           <button
             type="button"
             className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted transition-colors"
