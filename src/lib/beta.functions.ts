@@ -183,6 +183,56 @@ export const submitBetaRequest = createServerFn({ method: "POST" })
       });
     } catch { /* tracking failure must not block the response */ }
 
+    // Fire-and-forget: send "Pedido recebido" confirmation email.
+    // Failures are recorded as a product_event but never block the response.
+    try {
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (resendApiKey && data.email) {
+        const { renderRequestReceived } = await import("./email/templates");
+        const firstName = data.name?.trim().split(/\s+/)[0] ?? null;
+        const { subject, html, text } = renderRequestReceived({
+          firstName,
+          instagramHandle: data.instagramHandle,
+        });
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 10_000);
+        try {
+          const res = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "InstaBench <onboarding@resend.dev>",
+              to: [data.email.trim()],
+              subject,
+              html,
+              text,
+            }),
+            signal: controller.signal,
+          });
+          const ok = res.ok;
+          const body = ok ? ((await res.json().catch(() => ({}))) as { id?: string }) : null;
+          const { recordProductEvent } = await import("./tracking.server");
+          recordProductEvent({
+            eventType: ok ? "request_received_email_sent" : "request_received_email_failed",
+            leadId: leadId,
+            handle: data.instagramHandle,
+            metadata: {
+              report_request_id: request.id,
+              message_id: body?.id ?? null,
+              http_status: res.status,
+            },
+          });
+        } finally {
+          clearTimeout(t);
+        }
+      }
+    } catch (err) {
+      console.error("[beta] request_received email failed:", err);
+    }
+
     return {
       success: true as const,
       requestId: request.id,

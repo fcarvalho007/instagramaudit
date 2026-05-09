@@ -1,11 +1,10 @@
 /**
- * POST /api/admin/send-report-link
+ * POST /api/admin/send-feedback-request
  *
- * Admin-only action: sends the PUBLIC report link (/analyze/:handle) by
- * email to the lead. On success, records `report_link_sent` and moves the
- * commercial_status to `link_enviado`. On failure, status is NOT touched.
- *
- * Distinct from /api/send-report-email which sends the PDF signed URL.
+ * Admin-only action: sends the public feedback link
+ * (`/feedback/:report_request_id`) by email to the lead. On success records
+ * `feedback_request_sent` and moves commercial_status to `feedback_pedido`.
+ * On failure, status is NOT touched.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -16,7 +15,7 @@ import {
   recordLeadEvent,
   updateLeadCommercialStatus,
 } from "@/lib/admin/lead-events.server";
-import { renderReportReady } from "@/lib/email/templates";
+import { renderFeedbackRequest } from "@/lib/email/templates";
 
 const RequestSchema = z.object({
   lead_id: z.string().uuid(),
@@ -27,11 +26,14 @@ const SENDER_FROM = "InstaBench <onboarding@resend.dev>";
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 const RESEND_TIMEOUT_MS = 10_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const READY_STATUSES = new Set([
-  "completed",
-  "ready",
-  "generated",
-  "approved",
+
+// Lead must already have received the link (or have it visible) before we ask
+// for feedback. We allow re-sending while still in feedback_pedido as a manual
+// nudge, but block once feedback was actually received or the lead is archived.
+const ELIGIBLE_STATUSES = new Set([
+  "link_enviado",
+  "relatorio_visto",
+  "feedback_pedido",
 ]);
 
 type ErrorCode =
@@ -40,7 +42,7 @@ type ErrorCode =
   | "EMAIL_PROVIDER_NOT_CONFIGURED"
   | "LEAD_NOT_FOUND"
   | "REQUEST_NOT_FOUND"
-  | "REPORT_NOT_READY"
+  | "STATUS_NOT_ELIGIBLE"
   | "LEAD_EMAIL_MISSING"
   | "LEAD_EMAIL_INVALID"
   | "HANDLE_MISSING"
@@ -55,7 +57,6 @@ function jsonResponse(body: unknown, status: number): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
-
 function errorResponse(code: ErrorCode, message: string, status = 400): Response {
   return jsonResponse({ success: false, error_code: code, message }, status);
 }
@@ -77,11 +78,10 @@ function resolvePublicBaseUrl(request: Request): string | null {
   }
 }
 
-export const Route = createFileRoute("/api/admin/send-report-link")({
+export const Route = createFileRoute("/api/admin/send-feedback-request")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // 1. Admin auth (helper throws a Response on failure)
         try {
           await requireAdminSession();
         } catch (err) {
@@ -89,7 +89,6 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
           return errorResponse("UNAUTHORIZED", "Admin session required.", 401);
         }
 
-        // 2. Payload
         let payload: { lead_id: string; report_request_id: string };
         try {
           payload = RequestSchema.parse(await request.json());
@@ -101,7 +100,6 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
           return errorResponse("INVALID_PAYLOAD", message, 400);
         }
 
-        // 3. Provider configured?
         const resendApiKey = process.env.RESEND_API_KEY;
         if (!resendApiKey) {
           return errorResponse(
@@ -111,15 +109,12 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
           );
         }
 
-        // 4. Load report_request
-        const { data: reportRequest, error: rrErr } = await supabaseAdmin
+        // Load report_request
+        const { data: rr, error: rrErr } = await supabaseAdmin
           .from("report_requests")
-          .select(
-            "id, lead_id, instagram_username, request_status, analysis_snapshot_id",
-          )
+          .select("id, lead_id, instagram_username, analysis_snapshot_id")
           .eq("id", payload.report_request_id)
           .maybeSingle();
-
         if (rrErr) {
           return errorResponse(
             "PERSISTENCE_FAILED",
@@ -127,40 +122,23 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
             500,
           );
         }
-        if (!reportRequest || reportRequest.lead_id !== payload.lead_id) {
+        if (!rr || rr.lead_id !== payload.lead_id) {
           return errorResponse(
             "REQUEST_NOT_FOUND",
             "Report request does not exist for this lead.",
             404,
           );
         }
-
-        if (
-          !READY_STATUSES.has(reportRequest.request_status) ||
-          !reportRequest.analysis_snapshot_id
-        ) {
-          return errorResponse(
-            "REPORT_NOT_READY",
-            `Report is not ready (status: ${reportRequest.request_status}).`,
-            409,
-          );
+        if (!rr.instagram_username) {
+          return errorResponse("HANDLE_MISSING", "Handle Instagram em falta.", 422);
         }
 
-        if (!reportRequest.instagram_username) {
-          return errorResponse(
-            "HANDLE_MISSING",
-            "Report request has no Instagram handle.",
-            422,
-          );
-        }
-
-        // 5. Load lead
+        // Load lead
         const { data: lead, error: leadErr } = await supabaseAdmin
           .from("leads")
-          .select("id, email, email_normalized, name")
+          .select("id, email, email_normalized, name, commercial_status")
           .eq("id", payload.lead_id)
           .maybeSingle();
-
         if (leadErr) {
           return errorResponse(
             "PERSISTENCE_FAILED",
@@ -168,27 +146,24 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
             500,
           );
         }
-        if (!lead) {
-          return errorResponse("LEAD_NOT_FOUND", "Lead does not exist.", 404);
-        }
-        if (!lead.email) {
-          return errorResponse(
-            "LEAD_EMAIL_MISSING",
-            "Lead has no email address.",
-            422,
-          );
-        }
+        if (!lead) return errorResponse("LEAD_NOT_FOUND", "Lead does not exist.", 404);
+        if (!lead.email)
+          return errorResponse("LEAD_EMAIL_MISSING", "Lead has no email.", 422);
 
         const recipientEmail = lead.email.trim();
         if (!EMAIL_REGEX.test(recipientEmail)) {
+          return errorResponse("LEAD_EMAIL_INVALID", "Lead email is malformed.", 422);
+        }
+
+        if (!ELIGIBLE_STATUSES.has(lead.commercial_status ?? "")) {
           return errorResponse(
-            "LEAD_EMAIL_INVALID",
-            "Lead email is malformed.",
-            422,
+            "STATUS_NOT_ELIGIBLE",
+            `Status atual (${lead.commercial_status}) não permite pedir feedback.`,
+            409,
           );
         }
 
-        // 6. Build public URL
+        // Build URLs
         const baseUrl = resolvePublicBaseUrl(request);
         if (!baseUrl) {
           return errorResponse(
@@ -197,22 +172,20 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
             500,
           );
         }
-        const publicUrl = `${baseUrl}/analyze/${encodeURIComponent(reportRequest.instagram_username)}`;
+        const feedbackUrl = `${baseUrl}/feedback/${rr.id}`;
+        const reportUrl = `${baseUrl}/analyze/${encodeURIComponent(rr.instagram_username)}`;
 
-        // 7. Build email (uses unified pt-PT templates module)
         const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
-        const { subject, html, text } = renderReportReady({
+        const { subject, html, text } = renderFeedbackRequest({
           firstName,
-          instagramHandle: reportRequest.instagram_username,
-          reportUrl: publicUrl,
+          instagramHandle: rr.instagram_username,
+          reportUrl,
+          feedbackUrl,
         });
 
-        // 8. Send via Resend
+        // Send via Resend
         const controller = new AbortController();
-        const timeoutId = setTimeout(
-          () => controller.abort(),
-          RESEND_TIMEOUT_MS,
-        );
+        const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
         let resendResponse: Response;
         try {
           resendResponse = await fetch(RESEND_ENDPOINT, {
@@ -269,31 +242,29 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
         const messageId = resendData.id ?? null;
         const sentAt = new Date().toISOString();
 
-        // 9. Record event (success path only)
         try {
           await recordLeadEvent({
             leadId: lead.id,
-            eventType: "report_link_sent",
-            snapshotId: reportRequest.analysis_snapshot_id,
-            handle: reportRequest.instagram_username,
+            eventType: "feedback_request_sent",
+            snapshotId: rr.analysis_snapshot_id ?? null,
+            handle: rr.instagram_username,
             metadata: {
-              report_request_id: reportRequest.id,
+              report_request_id: rr.id,
               message_id: messageId,
               channel: "admin_manual",
               recipient: lead.email_normalized ?? recipientEmail,
-              public_url: publicUrl,
+              feedback_url: feedbackUrl,
             },
           });
         } catch {
           /* non-critical */
         }
 
-        // 10. Update commercial_status (only after successful send)
         const statusResult = await updateLeadCommercialStatus({
           leadId: lead.id,
-          status: "link_enviado",
+          status: "feedback_pedido",
           source: "manual",
-          reason: "Admin sent public report link",
+          reason: "Admin sent feedback request",
         });
 
         return jsonResponse(
@@ -301,7 +272,7 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
             success: true,
             message_id: messageId,
             sent_at: sentAt,
-            public_url: publicUrl,
+            feedback_url: feedbackUrl,
             status_changed: statusResult.changed,
             previous_status: statusResult.previous,
           },

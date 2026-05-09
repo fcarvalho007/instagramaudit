@@ -58,5 +58,35 @@ export const trackEvent = createServerFn({ method: "POST" })
       leadId,
       metadata: data.metadata as Record<string, unknown> | undefined,
     });
+
+    // Auto-advance lead lifecycle on `report_viewed`. Defensive: only moves
+    // forward, never regresses, never touches leads already outside the funnel.
+    if (data.eventType === "report_viewed" && leadId) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { maybeAdvanceLeadStatus } = await import("@/lib/admin/lead-lifecycle");
+        const { updateLeadCommercialStatus } = await import("@/lib/admin/lead-events.server");
+        const { data: leadRow } = await supabaseAdmin
+          .from("leads")
+          .select("commercial_status")
+          .eq("id", leadId)
+          .maybeSingle();
+        const next = maybeAdvanceLeadStatus(
+          leadRow?.commercial_status ?? null,
+          "relatorio_visto",
+        );
+        if (next) {
+          await updateLeadCommercialStatus({
+            leadId,
+            status: next,
+            source: "auto",
+            reason: "report_viewed event",
+          });
+        }
+      } catch (err) {
+        console.error("[tracking] Auto-advance on report_viewed failed:", err);
+      }
+    }
+
     return { ok: true };
   });

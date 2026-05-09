@@ -52,6 +52,7 @@ import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminSimpleLoginRouteImport } from './routes/api/admin/simple-login'
 import { Route as ApiAdminSendReportLinkRouteImport } from './routes/api/admin/send-report-link'
+import { Route as ApiAdminSendFeedbackRequestRouteImport } from './routes/api/admin/send-feedback-request'
 import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
 import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
@@ -320,6 +321,12 @@ const ApiAdminSendReportLinkRoute = ApiAdminSendReportLinkRouteImport.update({
   path: '/api/admin/send-report-link',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminSendFeedbackRequestRoute =
+  ApiAdminSendFeedbackRequestRouteImport.update({
+    id: '/api/admin/send-feedback-request',
+    path: '/api/admin/send-feedback-request',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminResendEmailRoute = ApiAdminResendEmailRouteImport.update({
   id: '/api/admin/resend-email',
   path: '/api/admin/resend-email',
@@ -659,6 +666,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/send-feedback-request': typeof ApiAdminSendFeedbackRequestRoute
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
@@ -754,6 +762,7 @@ export interface FileRoutesByTo {
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/send-feedback-request': typeof ApiAdminSendFeedbackRequestRoute
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
@@ -851,6 +860,7 @@ export interface FileRoutesById {
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
+  '/api/admin/send-feedback-request': typeof ApiAdminSendFeedbackRequestRoute
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
@@ -949,6 +959,7 @@ export interface FileRouteTypes {
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
+    | '/api/admin/send-feedback-request'
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
@@ -1044,6 +1055,7 @@ export interface FileRouteTypes {
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
+    | '/api/admin/send-feedback-request'
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
@@ -1140,6 +1152,7 @@ export interface FileRouteTypes {
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
+    | '/api/admin/send-feedback-request'
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
@@ -1221,6 +1234,7 @@ export interface RootRouteChildren {
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
   ApiAdminReportsRoute: typeof ApiAdminReportsRouteWithChildren
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
+  ApiAdminSendFeedbackRequestRoute: typeof ApiAdminSendFeedbackRequestRoute
   ApiAdminSendReportLinkRoute: typeof ApiAdminSendReportLinkRoute
   ApiAdminSimpleLoginRoute: typeof ApiAdminSimpleLoginRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
@@ -1561,6 +1575,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/send-report-link'
       fullPath: '/api/admin/send-report-link'
       preLoaderRoute: typeof ApiAdminSendReportLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/send-feedback-request': {
+      id: '/api/admin/send-feedback-request'
+      path: '/api/admin/send-feedback-request'
+      fullPath: '/api/admin/send-feedback-request'
+      preLoaderRoute: typeof ApiAdminSendFeedbackRequestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/resend-email': {
@@ -2121,6 +2142,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,
   ApiAdminReportsRoute: ApiAdminReportsRouteWithChildren,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
+  ApiAdminSendFeedbackRequestRoute: ApiAdminSendFeedbackRequestRoute,
   ApiAdminSendReportLinkRoute: ApiAdminSendReportLinkRoute,
   ApiAdminSimpleLoginRoute: ApiAdminSimpleLoginRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
