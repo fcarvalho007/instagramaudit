@@ -1211,17 +1211,17 @@ function FeedbackRequestDialog({
             <div
               className="flex items-start gap-2 rounded-lg p-3 text-[13px]"
               style={{
-                backgroundColor: "rgba(234,179,8,0.08)",
-                border: "1px solid rgba(234,179,8,0.2)",
+                backgroundColor: "rgb(var(--tint-warning))",
+                border: "1px solid rgb(var(--signal-warning) / 0.25)",
               }}
             >
               <AlertTriangle
                 size={15}
-                style={{ color: "#D97706" }}
+                style={{ color: "rgb(var(--signal-warning))" }}
                 className="shrink-0 mt-0.5"
               />
               <div>
-                <p className="font-medium m-0" style={{ color: "#D97706" }}>
+                <p className="font-medium m-0" style={{ color: "rgb(var(--signal-warning))" }}>
                   Sem visualização registada
                 </p>
                 <p className="mt-0.5 text-admin-text-secondary m-0">
