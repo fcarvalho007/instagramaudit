@@ -346,6 +346,20 @@ export const Route = createFileRoute("/api/send-report-email")({
           );
         }
 
+        // Record product event (fire-and-forget — never block the response).
+        try {
+          await supabaseAdmin.from("product_events").insert([{
+            event_type: "report_link_sent",
+            lead_id: reportRequest.lead_id,
+            handle: reportRequest.instagram_username,
+            snapshot_id: reportRequest.analysis_snapshot_id,
+            metadata: {
+              report_request_id: reportRequest.id,
+              message_id: messageId,
+            },
+          }]);
+        } catch { /* non-critical */ }
+
         return jsonResponse(
           {
             success: true,
