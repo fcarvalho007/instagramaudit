@@ -906,6 +906,21 @@ function TimelineSection({
                   <p className="admin-body text-admin-text-primary m-0">
                     {EVENT_LABELS[ev.event_type] ?? ev.event_type}
                   </p>
+                  {ev.event_type === "pricing_option_clicked" &&
+                    ev.metadata?.pricing_option ? (
+                    <p className="admin-meta text-admin-text-secondary m-0 mt-0.5">
+                      Opção: {String(ev.metadata.pricing_option)}
+                      {ev.metadata.source_component
+                        ? ` · ${String(ev.metadata.source_component)}`
+                        : ""}
+                    </p>
+                  ) : null}
+                  {ev.event_type === "unlock_clicked" &&
+                    ev.metadata?.source_component ? (
+                    <p className="admin-meta text-admin-text-secondary m-0 mt-0.5">
+                      Origem: {String(ev.metadata.source_component)}
+                    </p>
+                  ) : null}
                   <p className="admin-meta text-admin-text-tertiary m-0 mt-0.5">
                     {relativeTime(ev.created_at)} · {formatDate(ev.created_at)}
                   </p>
