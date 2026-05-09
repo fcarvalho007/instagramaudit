@@ -92,9 +92,9 @@ function writeLabPrefs(prefs: LabPrefs): void {
 const TEST_PROFILES = ["frederico.m.carvalho", "martimsilvai"] as const;
 
 const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: string }[] = [
-  { value: "public_mvp", label: "Público geral", description: "Versão que qualquer utilizador vê. Mostra apenas os blocos 01 e 02." },
-  { value: "internal_lab", label: "Laboratório interno", description: "Versão completa para trabalho/admin. Mostra todos os blocos e módulos internos." },
-  { value: "pro_preview", label: "Pré-visualização Pro", description: "Simulação de uma versão avançada/paga, com blocos completos ou teasers comerciais." },
+  { value: "public_mvp", label: "Público geral", description: "Mostra blocos incluídos, secções premium bloqueadas e CTA de desbloqueio." },
+  { value: "internal_lab", label: "Laboratório interno", description: "Mostra todos os blocos desbloqueados para trabalho/admin." },
+  { value: "pro_preview", label: "Pro Preview", description: "Simula uma versão paga com todos os blocos desbloqueados." },
 ];
 
 const MODE_TONES: Record<ReportVariant, string> = {
