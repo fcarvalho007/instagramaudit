@@ -74,12 +74,17 @@ export async function updateLeadCommercialStatus(
     return { ok: true, changed: false, previous };
   }
 
-  const updates: Record<string, unknown> = {
+  const nowIso = new Date().toISOString();
+  const updates: {
+    commercial_status: string;
+    updated_at: string;
+    archived_at?: string;
+  } = {
     commercial_status: input.status,
-    updated_at: new Date().toISOString(),
+    updated_at: nowIso,
   };
   if (input.status === "arquivado") {
-    updates.archived_at = new Date().toISOString();
+    updates.archived_at = nowIso;
   }
 
   const { error: updateErr } = await supabaseAdmin
