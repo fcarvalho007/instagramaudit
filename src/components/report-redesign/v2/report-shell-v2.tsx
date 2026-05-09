@@ -274,6 +274,41 @@ export function ReportShellV2({
 }
 
 /**
+ * Teaser inline para a parte locked do bloco 03 (Desempenho)
+ * em variantes parciais (public_mvp lightweight). Renderiza um cartão
+ * compacto a anunciar as 2 secções restantes e leva ao cofre.
+ */
+function PerformanceLockedTeaser({ onUnlock }: { onUnlock: () => void }) {
+  return (
+    <div className="mt-4 rounded-xl border border-dashed border-border-default bg-surface-muted/50 p-5">
+      <div className="flex items-start gap-3">
+        <div className="rounded-full bg-signal-warning/15 p-2">
+          <Lock className="size-4 text-accent-gold" aria-hidden="true" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-eyebrow-sm text-accent-gold">Premium</p>
+          <h4 className="mt-1 text-sm md:text-base font-semibold text-content-primary">
+            Mais 2 secções dentro de Desempenho
+          </h4>
+          <p className="mt-1 text-sm text-content-secondary leading-relaxed">
+            Melhores dias da semana e leitura editorial do ritmo de publicação
+            ficam disponíveis no relatório completo.
+          </p>
+          <button
+            type="button"
+            onClick={onUnlock}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
+          >
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            Desbloquear análise completa →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Cópia local do banner beta para evitar editar `report-shell.tsx`
  * (locked). Reutiliza `BETA_COPY.feedback` — mesma copy, mesmo visual.
  */
