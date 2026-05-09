@@ -95,10 +95,12 @@ function FlowList({ flows }: { flows: AutomationFlow[] }) {
             description={f.description}
             trigger={f.trigger}
             action={f.action}
+            kind={f.kind}
             toStatus={f.toStatus}
             eligibleCount={f.eligibleCount}
             inFlightCount={f.inFlightCount}
             completedCount={f.completedCount}
+            recentFailures={f.recentFailures}
           />
           {i < flows.length - 1 && <AutomationEdge />}
         </Fragment>
