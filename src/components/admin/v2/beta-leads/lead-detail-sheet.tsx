@@ -66,6 +66,7 @@ import { Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
+import { CommunicationHistory } from "./communication-history";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
 import { AdminCallout } from "@/components/admin/v2/admin-callout";
 import {
