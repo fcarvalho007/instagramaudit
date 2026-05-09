@@ -20,10 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ExternalLink, Copy, Phone, Archive, MessageSquare } from "lucide-react";
+import { MoreHorizontal, ExternalLink, Copy, Phone, Archive, MessageSquare, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 import { KANBAN_COLUMNS } from "@/lib/admin/kanban-columns";
+import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
 
 interface LeadCardProps {
   lead: EnrichedLead;
@@ -59,6 +60,7 @@ function reportStatusAccent(status: string | null): "info" | "revenue" | "signal
 
 export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCardProps) {
   const [statusChanging, setStatusChanging] = useState(false);
+  const nextAction = suggestNextLeadAction(lead);
 
   const handleStatusChange = (newStatus: string) => {
     setStatusChanging(true);
@@ -196,6 +198,18 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
           ))}
         </SelectContent>
       </Select>
+
+      {/* Next action hint */}
+      {nextAction.severity !== "info" && (
+        <div
+          onClick={() => onOpenDetail(lead)}
+          className="mt-2 flex items-start gap-1.5 admin-meta text-admin-text-secondary"
+          title="Próxima ação sugerida"
+        >
+          <Lightbulb size={12} className="shrink-0 mt-0.5 text-admin-text-tertiary" />
+          <span className="line-clamp-2">{nextAction.label}</span>
+        </div>
+      )}
     </AdminCard>
   );
 }

@@ -57,6 +57,7 @@ import {
 import { Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
+import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -113,6 +114,12 @@ const EVENT_LABELS: Record<string, string> = {
   report_viewed: "Relatório visualizado",
   beta_request_created: "Pedido beta criado",
   report_generated: "Relatório gerado",
+  report_link_sent: "Link do relatório enviado",
+  feedback_requested: "Feedback pedido ao lead",
+  feedback_started: "Feedback iniciado pelo lead",
+  feedback_submitted: "Feedback submetido pelo lead",
+  unlock_clicked: "CTA de desbloqueio clicado",
+  pricing_option_clicked: "Opção de preço clicada",
   module_visibility_published: "Visibilidade publicada",
   request_status_changed: "Estado do pedido alterado",
   pricing_clicked: "Preço clicado",
@@ -130,18 +137,7 @@ function deriveIntentSignal(lead: EnrichedLead): { label: string; accent: "reven
   return { label: "Baixo — sem relatório", accent: "neutral" };
 }
 
-function deriveSuggestedStep(lead: EnrichedLead): string {
-  const s = lead.commercial_status;
-  if (s === "novo_pedido") return "Aprovar pedido e gerar relatório";
-  if (s === "em_analise") return "Aguardar geração do relatório";
-  if (s === "relatorio_gerado") return "Aguardar visualização do relatório";
-  if (s === "relatorio_visto") return "Enviar email de follow-up";
-  if (s === "feedback_pedido") return "Aguardar resposta do lead";
-  if (s === "interessado") return "Agendar chamada ou demo";
-  if (s === "potencial_cliente") return "Enviar proposta comercial";
-  if (s === "convertido") return "Configurar conta e onboarding";
-  return "Sem ação sugerida";
-}
+// Suggested step is now provided by suggestNextLeadAction (lead-lifecycle).
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-PT", {
@@ -194,6 +190,12 @@ const EVENT_ICONS: Record<string, typeof Eye> = {
   report_viewed: Eye,
   beta_request_created: FileText,
   report_generated: CheckCircle2,
+  report_link_sent: Mail,
+  feedback_requested: MessageCircle,
+  feedback_started: MessageCircle,
+  feedback_submitted: MessageCircle,
+  unlock_clicked: Zap,
+  pricing_option_clicked: Target,
   module_visibility_published: Globe,
   request_status_changed: Clock,
   pricing_clicked: Target,
@@ -258,7 +260,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   if (!lead) return null;
 
   const intent = deriveIntentSignal(lead);
-  const suggestedStep = deriveSuggestedStep(lead);
+  const suggestedStep = suggestNextLeadAction(lead).label;
   const columnDef = KANBAN_COLUMNS.find((c) => c.key === lead.commercial_status);
 
   const handleSaveNotes = () => {

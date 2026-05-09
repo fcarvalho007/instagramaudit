@@ -13,9 +13,11 @@ const ALLOWED_EVENTS = [
   "feedback_started",
   "feedback_submitted",
   "pricing_clicked",
+  "pricing_option_clicked",
   "email_clicked",
   "unlock_clicked",
   "feedback_requested",
+  "report_link_sent",
 ] as const;
 
 const trackEventSchema = z.object({
