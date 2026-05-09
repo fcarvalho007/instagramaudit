@@ -1,112 +1,110 @@
-## Auditoria
+## Estado actual vs. spec
 
-### 1. Componente da sidebar
-- **Ficheiro:** `src/components/report-redesign/v2/report-block-nav.tsx`
-- Exporta `ReportBlockSidebar` (desktop, sticky) e `ReportBlockTopTabs` (mobile, bottom nav + Sheet drawer).
-- Renderizada em `src/components/report-redesign/v2/report-shell-v2.tsx`, linhas 113 e 118.
-- O shell antigo `src/components/report-redesign/report-shell.tsx` **não usa** estes componentes — não é preciso tocar nele.
+A sidebar variant-aware já existe em `src/components/report-redesign/v2/report-block-nav.tsx`, ligada por `report-shell-v2.tsx`, com `public_mvp` a usar `blockPerformance: "lightweight"` e 04–06 `hidden`. O body já não renderiza 04–06 em público e 03 mostra teaser parcial.
 
-### 2. Como a sidebar recebe o variant
-- `ReportShellV2` recebe `variant: ReportVariant` (default `"public_mvp"`) e calcula `features = getVariantFeatures(variant)` (`src/lib/report/report-variant.ts`).
-- Calcula `visibleBlockIds = BLOCKS.filter(b => features[b.featureKey] !== "hidden")` e passa só os IDs à sidebar. **A sidebar hoje não conhece o variant nem o estado de cada feature** — só sabe quais IDs mostrar.
+Faltam **acabamentos visuais** para alinhar com a referência (premium, comercial, editorial). Esta plano é puramente UI/typografia/acabamento — sem mudanças funcionais nem em providers, scoring ou body.
 
-### 3. Visibilidade ao nível de bloco (estado atual)
-- `BLOCKS` (`src/components/report-redesign/v2/block-config.ts`) liga cada bloco 01–06 a uma chave em `VariantFeatures` (`blockOverview` … `blockBenchmark`).
-- Cada chave tem visibilidade `full | lightweight | teaser | hidden`.
-- **Estado actual em `public_mvp`:** 01 e 02 = `full`; 03, 04, 05, 06 = `hidden`. Logo a sidebar pública só mostra 2 itens (01 + 02).
-- Em `internal_lab` e `pro_preview`: tudo `full`.
-- O body do shell já respeita isto — cada `<ReportBlockSection>` está guardado por `features.blockX !== "hidden"`.
+## Deltas a implementar
 
-### 4. Pode o bloco 03 ser representado como parcial sem renderizar conteúdo bloqueado?
-Sim, com **mudança mínima e localizada ao bloco 03**:
-- Adicionar um terceiro estado `"partial"` à decisão de visibilidade da sidebar (puramente derivado, sem mudar `FeatureVisibility`).
-- No body: quando 03 estiver em modo parcial, o `<ReportBlockSection>` do `performance` renderiza só os **3 primeiros mini-blocos acessíveis** (`ReportTemporalChart` + insight `evolutionChart` + `ReportPostingHeatmap`) e termina com um teaser bloqueado a anunciar "2 secções premium dentro de Desempenho". Os componentes `ReportBestDays` e o insight `daysOfWeek` ficam fora da árvore — nada de dados nem custos extra.
-- Não se altera a normalização de dados, scoring, providers ou Apify.
+### 1. `src/components/report-block-nav.tsx`
 
-### 5. Estrutura de dados da sidebar (novo)
+**Header**
+- `@username` em **Fraunces** SemiBold (`font-display`) em vez de Inter, mantendo `text-content-primary`. Pequeno (text-base) para não competir com hero.
+- Manter avatar circular azul + fallback inicial (já feito).
+- Continuar sem data, tier, LIVE/AUDITORIA — esses badges vivem só no hero.
 
-Acrescentar, dentro de `report-block-nav.tsx`, um cálculo derivado por bloco:
+**Numeração das secções**
+- `01`, `02`, … em **Fraunces italic** (`font-display italic`) com `tabular-nums`, em substituição do estilo mono atual. Tamanho `text-xs` para não dominar o label.
 
-```ts
-type AccessState = "accessible" | "partial" | "locked";
-type SidebarItem = BlockConfig & {
-  group: "incluido" | "premium";
-  access: AccessState;
-  partialBadge?: string; // ex.: "3/5"
-};
-```
+**Group headers**
+- `INCLUÍDO`: bullet `•` (caractere literal) verde + label uppercase Inter, contador à direita. Manter cor emerald.
+- `PREMIUM`: glifo `✦` (caractere literal) âmbar + label uppercase Inter, contador à direita.
+- Tudo em Inter, sem ícones Lucide para os labels — combina melhor com a referência.
 
-Função `buildSidebarItems(variant, features)`:
-- Para `internal_lab` e `pro_preview`: todos os 6 blocos no grupo `incluido`, `access = "accessible"`. Sem CTA paywall.
-- Para `public_mvp`:
-  - 01 Visão geral → `incluido` · `accessible`
-  - 02 Diagnóstico → `incluido` · `accessible`
-  - 03 Desempenho → `incluido` · `partial` (badge `3/5`)
-  - 04 Conteúdo · 05 Procura · 06 Comparação → `premium` · `locked`
+**Premium tinted area**
+- Envolver os itens locked num bloco com fundo amber muito subtil (`bg-signal-warning/[0.04]`), borda `border-signal-warning/15`, padding interno `p-2 rounded-xl`. Cria a "warm amber tinted area" pedida.
+- Locked items: nome em **Fraunces italic** âmbar suave (`text-accent-gold/90`), cadeado pequeno âmbar (`text-accent-gold`), sem hover azul. Hover apenas eleva levemente o fundo (`hover:bg-signal-warning/10`) e mostra cursor `cursor-pointer` (continua a fazer scroll para o cofre).
 
-A sidebar passa a receber `variant` (e opcionalmente `features`) em vez de só `visibleBlockIds`. Os IDs visíveis no body continuam a derivar de `features.blockX !== "hidden"` no shell.
+**Active item**
+- Continuar com `bg-blue-50` + barra azul à esquerda + ponto azul à direita. Já está bem; ajustar apenas para que o número Fraunces italic fique `text-blue-600` quando activo.
 
-## Tabela de comportamento por variant
+**Partial badge `3/5`**
+- Manter pill amber pequena (`bg-signal-warning/15 text-accent-gold`, `tabular-nums`).
 
-| Variant         | Header                     | 01 | 02 | 03           | 04 | 05 | 06 | Progresso              | Cofre / CTA | Badge topo               |
-|-----------------|----------------------------|----|----|--------------|----|----|----|------------------------|-------------|--------------------------|
-| `public_mvp`    | avatar + `@username`       | ✓  | ✓  | parcial 3/5  | 🔒 | 🔒 | 🔒 | "3 acessíveis · 3 por desbloquear" | sim ("Abrir o cofre", €3 / Bundle €13, "DESBLOQUEAR →") | — |
-| `internal_lab`  | avatar + `@username`       | ✓  | ✓  | ✓            | ✓  | ✓  | ✓  | oculto (tudo acessível) | não         | "Laboratório interno"    |
-| `pro_preview`   | avatar + `@username`       | ✓  | ✓  | ✓            | ✓  | ✓  | ✓  | oculto                 | não         | "Pro ativo"              |
+**Progress bar — 6 segmentos**
+- Substituir as duas barras proporcionais por **6 cells fixas** (uma por bloco), cada uma `flex-1 h-1.5 rounded-sm`:
+  - accessible → `bg-emerald-500`
+  - partial → `bg-signal-warning`
+  - locked → `bg-signal-warning/25`
+- Legendas mantêm-se: esquerda "3 acessíveis" (emerald), direita "3 por desbloquear" (amber). Inter `text-[11px]`.
 
-## Plano de implementação (apenas UI / nav / visibilidade)
+**Cofre card — premium dark**
+- Fundo `bg-content-primary` mas com glow radial subtil sobreposto:
+  - `relative overflow-hidden`
+  - duas `<div>` absolutas com `bg-[radial-gradient(...)]`:
+    - âmbar quente no canto inferior-direito (`rgba(186,117,23,0.18)` → transparente)
+    - índigo/violeta no canto superior-esquerdo (`rgba(118,100,228,0.18)` → transparente)
+  - Conteúdo em `relative z-10`.
+- Título com `✦` antes de "Abrir o cofre" (Inter SemiBold, branco).
+- Grid de preços mantém-se. Pequenos ajustes:
+  - "UMA VEZ" card: `bg-white/5` + `ring-white/10` (mais discreto que `bg-white/10`).
+  - "BUNDLE 5" card âmbar: manter destaque amber, adicionar `shadow-[0_8px_24px_-12px_rgba(186,117,23,0.5)]`.
+  - Badge "★ POUPA €2" em pill âmbar escuro sobre topo do card destacado (já está, manter).
+- CTA "DESBLOQUEAR →" branco sobre escuro (já está).
 
-### A. Variant features
-- `src/lib/report/report-variant.ts`: alterar `public_mvp` para
-  - `blockPerformance: "lightweight"` (parcial)
-  - `blockContent`, `blockSearch`, `blockBenchmark`: manter `"hidden"` (body não rende, mas a sidebar mostra-os como locked).
-- Sem alterações em `internal_lab` nem `pro_preview`.
-- Sem alterações na shape de `VariantFeatures` (sem campo novo, sem migração).
+### 2. Layout dos grupos no `SidebarList`
 
-### B. Sidebar (`report-block-nav.tsx`)
-1. Aceitar nova prop `variant: ReportVariant` e `features: VariantFeatures` (em vez de só `visibleBlockIds`). Manter compat com a anterior se trivial.
-2. Aceitar `profile: { handle: string; avatarUrl: string | null; displayName?: string | null }` para o cabeçalho.
-3. Derivar `items` (grupos `incluido` / `premium`) com `buildSidebarItems(variant, features)`.
-4. **Layout novo (desktop e mobile drawer):**
-   - **Header card**: avatar circular azul (placeholder com inicial quando não há `avatarUrl`) + `@handle` em Inter SemiBold.
-   - **Grupo "INCLUÍDO"** com contador à direita ("3"). Itens com nº mono (`01` …), label, indicador activo, e — quando aplicável — badge `3/5` em âmbar.
-   - **Grupo "PREMIUM"** apenas em `public_mvp`. Itens com ícone de cadeado e label em itálico, cliques abrem CTA do cofre (não scrollam).
-   - **Barra de progresso segmentada** (verde + âmbar + cinza) com legenda "X acessíveis" / "Y por desbloquear" — escondida fora de `public_mvp`.
-   - **Card "Abrir o cofre"** com fundo escuro/azul, dois cartões de preço (Uma vez €3 + Bundle 5 €13 com badge "★ POUPA €2") e botão `DESBLOQUEAR →`. Renderiza só em `public_mvp`. Botão é placeholder (sem fluxo de pagamento — o stack ainda não tem checkout).
-   - **Badge topo opcional** (`Laboratório interno` em `internal_lab`, `Pro ativo` em `pro_preview`).
-5. Item parcial: continua a usar `scrollToBlock(block.id)` (o bloco existe no body em modo `lightweight`).
-6. Item locked: `aria-disabled`, ícone cadeado; `onClick` → scroll para o card "Abrir o cofre" (via id `#cofre`).
-7. Mobile: o `ReportBlockTopTabs` mantém os 3 ícones contextuais entre apenas itens **acessíveis**; o Sheet drawer recebe a mesma estrutura grupos+cofre da sidebar para paridade.
+- Inserir wrapper `<section>` com a tinted area apenas à volta do grupo Premium, mantendo Incluído sem tint.
+- Espaçamento vertical entre grupos `space-y-3` (era `mt-3`).
 
-### C. Body (`report-shell-v2.tsx`)
-1. Mudar a guarda do bloco 03 para renderizar versão lightweight quando `features.blockPerformance === "lightweight"`:
-   - Mostra `ReportTemporalChart` + insight `evolutionChart` + `ReportPostingHeatmap` (3 elementos acessíveis).
-   - Em vez de `ReportBestDays` / insight `daysOfWeek`, renderiza um teaser inline ("2 secções dentro de Desempenho disponíveis no relatório completo") com botão que faz scroll para o cofre.
-2. Passar à sidebar: `variant`, `features` e `profile = result.data.profile`.
-3. Não renderizar 04/05/06 no body em `public_mvp` (já é o comportamento, garantir que continua hidden mesmo com o novo lightweight).
+### 3. Mobile drawer
 
-### D. Estilos
-- Usar tokens existentes (`content-primary/secondary/tertiary`, `surface-muted`, `border-default`, accent `#3772E5`, âmbar `#BA7517`). Sem novas cores hardcoded. Sem `slate-*`.
-- Cofre escuro: pode usar `bg-content-primary` ou um surface escuro existente; confirmar contra `tokens-light.css` antes de adicionar.
+- O mesmo `SidebarList` é usado, logo herda automaticamente a nova tinted area, progress bar segmentada e cofre. Verificar apenas que o drawer continua scrollável (`max-h-[88vh] overflow-y-auto` já existe).
 
-### E. Testes manuais (sem providers)
-1. `/analyze/frederico.m.carvalho?variant=public_mvp` → ver 01, 02 acessíveis, 03 parcial, 04–06 locked + cofre.
-2. `?variant=internal_lab` → 6 acessíveis, sem cofre, badge "Laboratório interno".
-3. `?variant=pro_preview` → 6 acessíveis, sem cofre, badge "Pro ativo".
-4. Confirmar 375px (drawer) e 1280px (sidebar sticky) sem overflow.
+### 4. Anti-regressão
+
+- Nenhuma alteração em `report-variant.ts`, `block-config.ts`, `report-shell-v2.tsx`, `use-active-block.ts`.
+- `internal_lab` e `pro_preview` continuam sem grupo Premium (ramo `buildSidebarItems` já trata) → sem cofre, sem tinted area.
+
+## Comportamento por variant (recap)
+
+| Variant | Header | 01 | 02 | 03 | 04 | 05 | 06 | Premium tint | Progress | Cofre | Badge topo |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `public_mvp` | avatar + `@username` (Fraunces) | ✓ | ✓ | parcial 3/5 | 🔒 | 🔒 | 🔒 | sim, âmbar subtil | 6 cells (3 verde + 1 âmbar + 2 âmbar claro) | sim, dark com glow âmbar+indigo | — |
+| `internal_lab` | avatar + `@username` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | — | "Laboratório interno" |
+| `pro_preview` | avatar + `@username` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | — | "Pro ativo" |
+
+## Tipografia (rules)
+
+- `@username`: `font-display` (Fraunces) SemiBold
+- Números das secções: `font-display italic` tabular-nums
+- Nomes de secções locked: `font-display italic` âmbar
+- Tudo o resto (labels, contadores, badges, preços, CTA): Inter
+- Sem `font-mono`, sem `slate-*`, sem hardcode de cores fora dos tokens (`signal-warning`, `accent-gold`, `content-primary`, `surface-muted`, `border-default`, `blue-*` já permitidos)
+
+## Validação
+
+- Build automático do harness corre `tsc` em cada edit (não corro manualmente).
+- `bunx vitest run` → executar no fim para confirmar que nenhum teste partiu (sidebar não tem testes dedicados; mas há testes em `src/lib/report/*` que validam variant features — não são tocados).
+- Smoke manual via preview:
+  - `/analyze/frederico.m.carvalho` (default `public_mvp`) → ver Incluído (3 itens, 03 com `3/5`), Premium tint com 04–06 trancados, progress bar 6 cells, cofre dark com glow.
+  - `?variant=internal_lab` → 6 itens acessíveis, sem cofre, badge "Laboratório interno".
+  - `?variant=pro_preview` → idem com badge "Pro ativo".
+- Body em `public_mvp`: confirmar que 04, 05, 06 não renderizam (já tratado pelas guardas `features.blockX !== "hidden"`).
 
 ## Constraints respeitadas
-- Sem chamadas a Apify / OpenAI / DataForSEO.
-- Sem alterações em scoring, dados, providers, Supabase, PDF.
-- Sem fluxo de pagamento — o botão `DESBLOQUEAR →` é placeholder.
-- Sem mudanças no `report-shell.tsx` antigo, no PDF nem nos fluxos do servidor.
+
+- UI/tipografia apenas. Sem chamadas a Apify/OpenAI/DataForSEO. Sem mudanças em Supabase, PDF, scoring ou normalização. CTA "Desbloquear" continua placeholder (sem checkout).
 
 ## Checkpoint final
-☐ Sidebar nova com header avatar + `@handle`.
-☐ Grupos "Incluído" e "Premium" com contadores.
-☐ Bloco 03 mostra badge `3/5` na sidebar e renderiza versão parcial no body.
-☐ Cards 04–06 aparecem locked com cadeado em `public_mvp`.
-☐ Barra de progresso + cofre + dois cartões de preço + CTA visíveis só em `public_mvp`.
-☐ `internal_lab` e `pro_preview` mostram tudo acessível, sem cofre, com badge respetivo.
-☐ Mobile drawer espelha a estrutura.
-☐ Sem chamadas externas, sem alterações em dados/scoring/PDF.
+
+☐ `@username` em Fraunces SemiBold no header da sidebar.
+☐ Números das secções em Fraunces italic.
+☐ Group labels com `•` verde / `✦` âmbar.
+☐ Grupo Premium dentro de área âmbar subtil.
+☐ Locked items em Fraunces italic âmbar com cadeado âmbar.
+☐ Progress bar com 6 cells (verde / âmbar / âmbar claro).
+☐ Cofre dark com glow âmbar + indigo radial subtil.
+☐ Mobile drawer mostra a mesma estrutura sem overflow.
+☐ `internal_lab` e `pro_preview` continuam limpos, sem Premium nem cofre.
+☐ Sem mudanças funcionais, sem providers, sem PDF.

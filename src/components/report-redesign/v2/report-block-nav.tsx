@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Menu, Lock, Sparkles, ArrowRight, Star } from "lucide-react";
+import { Menu, Lock, ArrowRight, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -83,7 +83,7 @@ function VariantBadge({ variant }: { variant: ReportVariant }) {
   if (variant === "internal_lab") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-content-secondary border border-border-default">
-        <Sparkles className="size-3" aria-hidden="true" />
+        <span aria-hidden="true">✦</span>
         Laboratório interno
       </span>
     );
@@ -91,7 +91,7 @@ function VariantBadge({ variant }: { variant: ReportVariant }) {
   if (variant === "pro_preview") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-700 border border-blue-200">
-        <Sparkles className="size-3" aria-hidden="true" />
+        <span aria-hidden="true">✦</span>
         Pro ativo
       </span>
     );
@@ -119,7 +119,7 @@ function ProfileHeader({ profile }: { profile: SidebarProfile }) {
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-content-primary">
+        <p className="truncate text-base font-display font-semibold text-content-primary">
           {handle}
         </p>
       </div>
@@ -127,24 +127,29 @@ function ProfileHeader({ profile }: { profile: SidebarProfile }) {
   );
 }
 
-function ProgressBar({ accessible, total }: { accessible: number; total: number }) {
-  const locked = total - accessible;
+function ProgressBar({ items }: { items: SidebarItem[] }) {
+  const accessible = items.filter((i) => i.access === "accessible").length;
+  const partial = items.filter((i) => i.access === "partial").length;
+  const locked = items.filter((i) => i.access === "locked").length;
   return (
-    <div className="px-1 pt-1 pb-3">
-      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
-        <div
-          className="bg-emerald-500"
-          style={{ width: `${(accessible / total) * 100}%` }}
-          aria-hidden="true"
-        />
-        <div
-          className="bg-signal-warning/70"
-          style={{ width: `${(locked / total) * 100}%` }}
-          aria-hidden="true"
-        />
+    <div className="px-1 pt-3 pb-1">
+      <div className="flex w-full gap-1" aria-hidden="true">
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className={cn(
+              "h-1.5 flex-1 rounded-sm",
+              item.access === "accessible" && "bg-emerald-500",
+              item.access === "partial" && "bg-signal-warning",
+              item.access === "locked" && "bg-signal-warning/25",
+            )}
+          />
+        ))}
       </div>
       <div className="mt-2 flex items-center justify-between text-[11px] font-medium">
-        <span className="text-emerald-600">{accessible} acessíveis</span>
+        <span className="text-emerald-600">
+          {accessible + partial} acessíveis
+        </span>
         <span className="text-accent-gold">{locked} por desbloquear</span>
       </div>
     </div>
@@ -191,24 +196,24 @@ function ItemRow({
       />
       <span
         className={cn(
-          "tabular-nums text-xs tracking-[0.16em]",
+          "font-display italic tabular-nums text-sm",
           isActive
             ? "text-blue-600"
             : isLocked
-              ? "text-content-tertiary/80"
+              ? "text-accent-gold/70"
               : "text-content-tertiary",
         )}
       >
         {item.block.number}
       </span>
       {isLocked ? (
-        <Lock className="size-3.5 text-content-tertiary" aria-hidden="true" />
+        <Lock className="size-3.5 text-accent-gold" aria-hidden="true" />
       ) : null}
       <span
         className={cn(
           "text-sm truncate",
           isActive ? "font-semibold" : "font-medium",
-          isLocked && "italic",
+          isLocked && "font-display italic text-accent-gold/90",
         )}
       >
         {item.block.shortLabel}
@@ -234,19 +239,17 @@ function GroupHeader({
   variant: "incluido" | "premium";
 }) {
   return (
-    <div className="flex items-center justify-between px-2 mt-3 mb-1">
+    <div className="flex items-center justify-between px-2 mb-1.5">
       <div className="flex items-center gap-1.5">
-        {variant === "incluido" ? (
-          <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-        ) : (
-          <Sparkles className="size-3 text-accent-gold" aria-hidden="true" />
-        )}
         <span
           className={cn(
             "text-[11px] font-semibold uppercase tracking-[0.12em]",
             variant === "incluido" ? "text-emerald-600" : "text-accent-gold",
           )}
         >
+          <span aria-hidden="true" className="mr-1">
+            {variant === "incluido" ? "•" : "✦"}
+          </span>
           {label}
         </span>
       </div>
@@ -259,10 +262,20 @@ function CofreCard() {
   return (
     <div
       id={COFRE_ANCHOR_ID}
-      className="mt-4 rounded-2xl bg-content-primary p-4 text-white shadow-[0_18px_40px_-24px_rgba(15,23,42,0.4)]"
+      className="relative mt-4 overflow-hidden rounded-2xl bg-content-primary p-4 text-white shadow-[0_18px_40px_-24px_rgba(15,23,42,0.4)]"
     >
+      {/* Glow radial subtil — âmbar + indigo */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(120% 80% at 100% 100%, rgba(186,117,23,0.22) 0%, transparent 55%), radial-gradient(100% 70% at 0% 0%, rgba(118,100,228,0.18) 0%, transparent 60%)",
+        }}
+      />
+      <div className="relative z-10">
       <div className="flex items-center gap-2">
-        <Sparkles className="size-4 text-amber-300" aria-hidden="true" />
+        <span aria-hidden="true" className="text-amber-300">✦</span>
         <h3 className="text-sm font-semibold">Abrir o cofre</h3>
       </div>
       <p className="mt-1 text-xs text-white/70">
@@ -270,7 +283,7 @@ function CofreCard() {
       </p>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-white/10 p-2.5 ring-1 ring-white/10">
+        <div className="rounded-lg bg-white/5 p-2.5 ring-1 ring-white/10">
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/60">
             Uma vez
           </p>
@@ -281,7 +294,7 @@ function CofreCard() {
             só esta análise
           </p>
         </div>
-        <div className="relative rounded-lg bg-amber-500 p-2.5 text-content-primary ring-1 ring-amber-300/50">
+        <div className="relative rounded-lg bg-amber-500 p-2.5 text-content-primary ring-1 ring-amber-300/50 shadow-[0_8px_24px_-12px_rgba(186,117,23,0.6)]">
           <span className="absolute -top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-0.5 rounded-full bg-content-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
             <Star className="size-2.5 fill-amber-300" aria-hidden="true" />
             POUPA €2
@@ -305,6 +318,7 @@ function CofreCard() {
         Desbloquear
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
+      </div>
     </div>
   );
 }
@@ -326,26 +340,27 @@ function SidebarList({
 }) {
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
-  const accessibleCount = items.filter((i) => i.access !== "locked").length;
   const isPublic = variant === "public_mvp";
 
   return (
-    <>
-      <GroupHeader label="Incluído" count={incluidos.length} variant="incluido" />
-      <ul className="space-y-0.5">
-        {incluidos.map((item) => (
-          <li key={item.block.id}>
-            <ItemRow
-              item={item}
-              isActive={item.block.id === active}
-              onClick={() => onAccessibleClick(item.block.id)}
-            />
-          </li>
-        ))}
-      </ul>
+    <div className="space-y-3">
+      <section>
+        <GroupHeader label="Incluído" count={incluidos.length} variant="incluido" />
+        <ul className="space-y-0.5">
+          {incluidos.map((item) => (
+            <li key={item.block.id}>
+              <ItemRow
+                item={item}
+                isActive={item.block.id === active}
+                onClick={() => onAccessibleClick(item.block.id)}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {premium.length > 0 && (
-        <>
+        <section className="rounded-xl border border-signal-warning/20 bg-signal-warning/[0.04] p-2">
           <GroupHeader label="Premium" count={premium.length} variant="premium" />
           <ul className="space-y-0.5">
             {premium.map((item) => (
@@ -358,15 +373,12 @@ function SidebarList({
               </li>
             ))}
           </ul>
-        </>
+        </section>
       )}
 
-      {isPublic && (
-        <ProgressBar accessible={accessibleCount} total={items.length} />
-      )}
-
+      {isPublic && <ProgressBar items={items} />}
       {isPublic && <CofreCard />}
-    </>
+    </div>
   );
 }
 
