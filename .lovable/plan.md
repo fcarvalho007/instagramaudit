@@ -1,97 +1,50 @@
-## Estado actual
+## Auditoria pós-refresh — `frederico.m.carvalho`
 
-`src/routes/admin.report-lab.tsx` já tem o label “Versão do relatório a pré-visualizar” (linha 278). Faltam:
+Modo read-only, sem chamadas a providers. Cruzei `analysis_events`, `provider_call_logs` e `analysis_snapshots`.
 
-- títulos/descrições das opções `VARIANT_OPTIONS` alinhados com a nova spec
-- tabela compacta ao nível dos 6 blocos (01–06) com badges semânticas (Incluído / Parcial 3/5 / Premium / Desbloqueado / Oculto)
-- nota explicativa de não-impacto operacional
+### Resultado da última tentativa de “Atualizar agora”
 
-A tabela existente `ConsolidatedModuleTable` é ao nível de **módulos** (overview/diagnostics/marketSignals/…), não dos 6 blocos pedidos. Mantém-se como está; a nova tabela será uma vista resumida diferente, focada nos blocos.
+A última tentativa **foi bem-sucedida**.
 
-## Mudanças (admin-only, UI)
+- **Timestamp do refresh:** 2026-05-09 11:21:15 UTC
+- **`analysis_events`** linha `data_source = fresh`, `outcome = success`, `error_code = NULL`, posts=12, custo=$0.011, snapshot `683e4c21-…`, provider_call_log `3567509d-…`.
+- Antes disso houve uma janela 11:17–11:20 com várias linhas `outcome = blocked_cache_only` / `error_code = CACHE_ONLY_NO_DATA` — é a fase em que o sistema estava em modo cache-only e não tinha snapshot válido. O refresh resolveu isso.
 
-Tudo num único ficheiro: `src/routes/admin.report-lab.tsx`.
+### Checklist (1–10)
 
-### 1. Reescrever `VARIANT_OPTIONS`
+| # | Pergunta | Resposta |
+|---|---|---|
+| 1 | Refresh chegou ao endpoint? | Sim — evento fresh registado. |
+| 2 | Chegou ao Apify? | Sim — `provider_call_logs` `apify/instagram-scraper`, http 200, 9.8 s. |
+| 3 | Apify devolveu run_id? | Sim — `jImT8X3FYSIaKigLF`. |
+| 4 | Dataset não vazio? | Sim — `posts_returned = 12`. |
+| 5 | Snapshot guardado? | Sim — snapshot `683e4c21-60e0-4045-b43a-dfcd85fe9896`, `analysis_status = ready`, 12 posts no payload, updated_at 11:25:40 (após cadeia de enrichment). |
+| 6 | Cache atualizada? | Sim — `cache_key = v1:frederico.m.carvalho|`, `expires_at = 2026-05-10 11:21:17` (~24 h). |
+| 7 | Cache anterior preservada em caso de falha? | N/A nesta tentativa (sucesso); estrutura mantém snapshot anterior até overwrite atómico. |
+| 8 | `error_code` exato? | `NULL` — sem erro. (As linhas anteriores `CACHE_ONLY_NO_DATA` correspondem a tentativas pré-refresh, não ao refresh em si.) |
+| 9 | `/analyze/:username` carrega da cache? | Sim — todos os 15 eventos mais recentes (11:39–11:42) são `data_source = cache`, `outcome = success`, duração 42–189 ms. |
+| 10 | Provider call inesperado da rota pública? | Não — `provider_call_logs` após 11:25:40 está vazio. As únicas chamadas são as do refresh + cadeia de enrichment (Apify, DataForSEO, OpenAI), todas dentro da janela 11:21–11:25. |
 
-```ts
-const VARIANT_OPTIONS = [
-  { value: "public_mvp",   label: "Público geral",        description: "Mostra blocos incluídos, secções premium bloqueadas e CTA de desbloqueio." },
-  { value: "internal_lab", label: "Laboratório interno",  description: "Mostra todos os blocos desbloqueados para trabalho/admin." },
-  { value: "pro_preview",  label: "Pro Preview",          description: "Simula uma versão paga com todos os blocos desbloqueados." },
-];
-```
+### Cadeia de enrichment associada (todas success, http 200)
 
-A descrição da variant activa continua a ser renderizada pelo `<p>` actual (linha 300–302) — sem mudanças estruturais.
+- 11:25:06 DataForSEO `google_trends_explore` — $0.009
+- 11:25:13 OpenAI `insights:gpt-5.4-mini` — $0.0057
+- 11:25:21 OpenAI `insights:gpt-5.4-mini` — $0.0063
+- 11:25:31 OpenAI `visual-cover-analysis` — $0.0132
+- 11:25:40 OpenAI `caption-semantic-analysis` — $0.0074
 
-### 2. Nova tabela compacta `BlockAccessMatrix`
+Custo total da operação ≈ **$0.0526**.
 
-Componente local renderizado **logo abaixo** do bloco do switcher de variant (dentro da mesma `section`, antes do "Estado do snapshot"):
+### Ponto exato de sucesso/falha
 
-- Cabeçalho: `Bloco · Público · Interno · Pro` (Inter `text-[11px] uppercase tracking-[0.12em] text-admin-text-tertiary`).
-- 6 linhas, derivadas de `BLOCKS` (`@/components/report-redesign/v2/block-config`) cruzadas com `getVariantFeatures("public_mvp"|"internal_lab"|"pro_preview")`:
-  - `01 Visão geral` … `06 Comparação`
-- Para cada célula, mapear o estado do bloco para uma badge:
-  - `full` → **Desbloqueado** (ou **Incluído** quando a variant for `public_mvp`)
-  - `lightweight` ou `teaser` → **Parcial 3/5** (mostrar apenas `Parcial` para outros blocos sem split conhecido)
-  - `hidden` em `public_mvp` → **Premium** (badge âmbar com cadeado pequeno)
-  - `hidden` noutras variants → **Oculto** (badge cinza)
-- A coluna correspondente à variant seleccionada fica destacada (mesma técnica `bg-admin-surface-muted/40` já usada no `ConsolidatedModuleTable`).
-- Colunas centradas, badges Inter SemiBold `text-[10px] tracking-wider`, cores via tokens (`bg-emerald-50 text-emerald-700`, `bg-signal-warning/15 text-accent-gold`, `bg-admin-surface-muted text-admin-text-tertiary`).
+Sucesso end-to-end. Sem ponto de falha. Snapshot validado e a servir cache à rota pública.
 
-### 3. Função utilitária `blockBadge(state, variant)`
+### Próxima ação sugerida
 
-```ts
-function blockBadge(state: FeatureVisibility, variant: ReportVariant, blockId: string) {
-  if (state === "hidden") {
-    return variant === "public_mvp"
-      ? { label: "Premium",     cls: "bg-signal-warning/15 text-accent-gold border border-signal-warning/30" }
-      : { label: "Oculto",      cls: "bg-admin-surface-muted text-admin-text-tertiary" };
-  }
-  if (state === "lightweight" || state === "teaser") {
-    return blockId === "performance"
-      ? { label: "Parcial 3/5", cls: "bg-signal-warning/15 text-accent-gold" }
-      : { label: "Parcial",     cls: "bg-signal-warning/15 text-accent-gold" };
-  }
-  // full
-  return variant === "public_mvp"
-    ? { label: "Incluído",     cls: "bg-emerald-50 text-emerald-700" }
-    : { label: "Desbloqueado", cls: "bg-emerald-50 text-emerald-700" };
-}
-```
+Nada urgente. Opcional:
 
-### 4. Nota explicativa
+1. **Confirmar visualmente** em `/analyze/frederico.m.carvalho` (já está a servir da cache, `posts_in_payload = 12`).
+2. **Cache TTL**: expira em 2026-05-10 11:21 — após essa data, o próximo acesso fará novo fresh. Se quiseres prolongar para testes, podemos rever a política de TTL noutra task.
+3. As linhas `CACHE_ONLY_NO_DATA` registadas antes do refresh são ruído histórico; se quiseres, podemos adicionar um filtro no admin para esconder tentativas pré-snapshot.
 
-Imediatamente abaixo da tabela, renderizar:
-
-```tsx
-<p className="mt-2 text-[12px] text-admin-text-tertiary">
-  Esta pré-visualização não gera novas análises nem altera dados. Apenas muda visibilidade e contexto comercial.
-</p>
-```
-
-### 5. Fora de scope
-
-- Não tocar em `ConsolidatedModuleTable`, `ModuleVisibilityMatrix`, `ReportShellV2`, `report-variant.ts`, `block-config.ts`.
-- Não tocar em providers, scoring, PDF, Supabase, edge functions.
-- Não alterar query strings nem persistência das prefs (`writeLabPrefs`).
-
-## Validação
-
-- Build automático do harness corre `tsc`.
-- `bunx vitest run` no fim para garantir 124/124 verde.
-- Smoke manual em `/admin/report-lab`:
-  - Trocar entre as 3 variants e confirmar coluna destacada + descrição alinhada.
-  - Tabela mostra `Incluído/Incluído/Parcial 3/5/Premium/Premium/Premium` na coluna **Público**.
-  - Tabela mostra `Desbloqueado` em todas as 6 linhas nas colunas **Interno** e **Pro**.
-  - Nota visível por baixo da tabela.
-
-## Checkpoint
-
-☐ `VARIANT_OPTIONS` com novos títulos e descrições.
-☐ Nova `BlockAccessMatrix` (6 linhas × 4 colunas) renderizada abaixo do switcher.
-☐ Badges Incluído / Parcial 3/5 / Premium / Desbloqueado / Oculto aplicadas corretamente por variant.
-☐ Coluna activa destacada.
-☐ Nota explicativa abaixo da tabela.
-☐ Sem mudanças em lógica, providers, PDF, Supabase ou scoring.
-☐ `bunx vitest run` verde.
+Sem ações de código necessárias agora — auditoria fechada com sucesso.
