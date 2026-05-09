@@ -234,14 +234,48 @@ export const Route = createFileRoute("/api/admin/beta-funnel")({
           }
         }
 
-        const counts = [s1, s2, s3, s4, s5, s6].map((s) => s.size);
+        const s7 = new Set<string>();
+        for (const id of allLeadIds) {
+          if (statusByLead.get(id) === "convertido") s7.add(id);
+        }
+
+        const counts = [s1, s2, s3, s4, s5, s6, s7].map((s) => s.size);
         const stagesMeta = [
-          { key: "pedidos", label: "Pedidos beta" },
-          { key: "relatorios", label: "Relatórios gerados" },
-          { key: "links", label: "Links enviados" },
-          { key: "vistos", label: "Relatórios vistos" },
-          { key: "feedback", label: "Feedback recebido" },
-          { key: "interesse", label: "Interesse comercial" },
+          {
+            key: "pedidos",
+            label: "Pedidos beta",
+            description: "Leads que submeteram o formulário de pedido beta.",
+          },
+          {
+            key: "relatorios",
+            label: "Relatórios gerados",
+            description: "Pedidos com snapshot de análise pronto.",
+          },
+          {
+            key: "links",
+            label: "Links enviados",
+            description: "Lead recebeu o email com o link público do relatório.",
+          },
+          {
+            key: "vistos",
+            label: "Relatórios vistos",
+            description: "Existe pelo menos um evento de visualização do relatório.",
+          },
+          {
+            key: "feedback",
+            label: "Feedback recebido",
+            description: "Lead submeteu o formulário de feedback beta.",
+          },
+          {
+            key: "interesse",
+            label: "Interesse comercial",
+            description: "Sinal comercial alto/médio ou estado interessado/potencial/convertido.",
+          },
+          {
+            key: "convertidos",
+            label: "Convertidos",
+            description: "Leads explicitamente marcados como convertido.",
+          },
         ];
 
         const stages = stagesMeta.map((m, i) => {

@@ -15,6 +15,7 @@ import { adminFetch } from "@/lib/admin/fetch";
 interface FunnelStage {
   key: string;
   label: string;
+  description?: string;
   count: number;
   pctOfTotal: number;
   pctVsPrev: number;
@@ -92,9 +93,16 @@ function FunnelBars({
         return (
           <div key={s.key} className="flex flex-col gap-1">
             <div className="flex items-center gap-3">
-              <span className="w-[140px] shrink-0 truncate text-[13px] text-admin-text-secondary max-sm:w-[110px] max-sm:text-[12px]">
-                {s.label}
-              </span>
+              <div className="w-[160px] shrink-0 max-sm:w-[120px]">
+                <p className="truncate text-[13px] text-admin-text-secondary max-sm:text-[12px] m-0">
+                  {s.label}
+                </p>
+                {s.description && (
+                  <p className="text-[11px] text-admin-text-tertiary leading-tight m-0 mt-0.5 line-clamp-2">
+                    {s.description}
+                  </p>
+                )}
+              </div>
               <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-admin-surface-elevated">
                 <div
                   className="h-full rounded-full transition-all duration-500"
@@ -114,7 +122,7 @@ function FunnelBars({
               </div>
             </div>
             {!isFirst && (
-              <div className="ml-[140px] flex items-center gap-2 pl-2 text-[11px] text-admin-text-tertiary max-sm:ml-[110px]">
+              <div className="ml-[160px] flex items-center gap-2 pl-2 text-[11px] text-admin-text-tertiary max-sm:ml-[120px]">
                 <span aria-hidden="true">↓</span>
                 <span className="tabular-nums">
                   {formatPct(s.pctVsPrev)} conversão
@@ -139,9 +147,9 @@ function FunnelBars({
 function FunnelSkeleton() {
   return (
     <div className="flex flex-col gap-3">
-      {Array.from({ length: 6 }).map((_, i) => (
+      {Array.from({ length: 7 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3">
-          <div className="h-3 w-[140px] shrink-0 rounded bg-admin-surface-elevated max-sm:w-[110px]" />
+          <div className="h-3 w-[160px] shrink-0 rounded bg-admin-surface-elevated max-sm:w-[120px]" />
           <div className="h-3 flex-1 rounded-full bg-admin-surface-elevated" />
           <div className="h-3 w-[88px] shrink-0 rounded bg-admin-surface-elevated max-sm:w-[72px]" />
         </div>

@@ -13,6 +13,7 @@ import { PeriodSelect, type AdminPeriod } from "@/components/admin/v2/period-sel
 import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
 import { FunnelSection } from "@/components/admin/v2/visao-geral/funnel-section";
 import { BetaConversionFunnel } from "@/components/admin/v2/visao-geral/beta-conversion-funnel";
+import { PriorityFollowups } from "@/components/admin/v2/visao-geral/priority-followups";
 import { RevenueSection } from "@/components/admin/v2/visao-geral/revenue-section";
 import { ExpenseSection } from "@/components/admin/v2/visao-geral/expense-section";
 import { KanbanSection } from "@/components/admin/v2/visao-geral/kanban-section";
@@ -99,6 +100,7 @@ function VisaoGeralPage() {
       <div className="flex flex-col gap-14">
          <ExecutionModeStrip />
         <BetaConversionFunnel />
+        <PriorityFollowups />
         <FunnelSection />
         <RevenueSection />
         <ExpenseSection />
