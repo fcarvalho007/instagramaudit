@@ -1,185 +1,135 @@
-# Roadmap de Correção — InstaBench Beta MVP
+# Plano — Teste Beta Controlado com 1 Lead Externo
 
-Baseado na auditoria final (score 82/100). Plano de correção isolado por tema, sem misturar UI, DB e providers no mesmo batch.
-
----
-
-## 1. Agrupamento por Prioridade
-
-### P0 — Bloqueia lançamento beta
-
-**P0-A++ · Hardening de RLS e SECURITY DEFINER** *(detetado pelo linter)*
-- **Problema:** 1 tabela `public.*` com RLS desativada exposta via PostgREST + 5 funções `SECURITY DEFINER` executáveis pelo role `anon` (`record_analysis_event`, `set_admin_email_session`, `link_user_to_existing_reports`, `handle_new_user`, `set_enrichment_status`, `get_knowledge_context`).
-- **Ficheiros:** nova migration SQL.
-- **Risco:** privilege escalation, leitura/escrita não autorizada de dados de leads e snapshots. **Severidade: ALTA.**
-- **Fix proposto:** habilitar RLS na tabela exposta + políticas restritivas; `REVOKE EXECUTE ... FROM anon, public` nas 5 funções; `GRANT EXECUTE` apenas a `authenticated`/`service_role` consoante uso real.
-- **Validação:** `supabase--linter` 0 erros; smoke test do happy path (request → report → feedback) com sessão real e com `anon`; confirmar que edge functions ainda funcionam (usam `service_role`).
-- **Migração DB:** **Sim.**
-- **Provider/email:** **Não.**
+Validação operacional end-to-end do fluxo beta com **um único lead real externo**, em modo observador (sem alterar código). Execução requer aprovações pontuais antes de qualquer ação que custe (Apify) ou envie email.
 
 ---
 
-### P1 — Antes dos primeiros testers externos
+## 1. Pré-requisitos a Confirmar (antes de começar)
 
-**P1-NEW-3 · Labels de timeline em falta**
-- **Problema:** 6 eventos sem label no `lead-lifecycle`: `request_received_email_sent`, `request_received_email_failed`, `pricing_clicked`, `public_report_link_copied`, `module_visibility_published`, `request_status_changed`.
-- **Ficheiros:** `src/lib/admin/lead-lifecycle.ts` (mapeamento de labels).
-- **Risco:** baixo (cosmético no CRM); afeta legibilidade do operador comercial.
-- **Fix:** adicionar entradas no dicionário de labels pt-PT.
-- **Validação:** abrir lead detail sheet com eventos destes tipos; verificar texto renderizado.
-- **DB:** Não. **Provider/email:** Não.
+| # | Item | Como verificar |
+|---|---|---|
+| 1 | Email externo do tester definido | Tu fornecer (não usar `frederico.m.carvalho` nem o admin) |
+| 2 | Username Instagram para análise | Idealmente o do próprio tester ou outro permitido pela `APIFY_ALLOWLIST` |
+| 3 | Snapshot já em cache para esse handle? | `SELECT id, created_at FROM analysis_snapshots WHERE instagram_username = ? ORDER BY created_at DESC LIMIT 1` |
+| 4 | Estado atual do `APIFY_ENABLED` e `APIFY_TESTING_MODE` | `secrets--fetch_secrets` (já visíveis na config) |
+| 5 | Estado do `RESEND_API_KEY` + domínio de envio ativo | já configurados; confirmar antes do passo 5 |
 
-**P1-C · Índices de performance**
-- **Problema:** queries do CRM sobre `product_events`/`leads` sem índices em colunas filtradas (event_type, lead_id, created_at).
-- **Ficheiros:** nova migration.
-- **Risco:** degradação com volume; nenhum em <100 leads.
-- **Fix:** `CREATE INDEX IF NOT EXISTS` em colunas usadas pelo Kanban e timeline.
-- **Validação:** `EXPLAIN` antes/depois.
-- **DB:** **Sim.** **Provider/email:** Não.
-
-**P1-A · Smoke tests E2E (Vitest)**
-- **Problema:** happy path validado manualmente apenas (1 lead em produção).
-- **Ficheiros:** `src/__tests__/e2e/beta-flow.test.ts` (novo).
-- **Risco:** regressões silenciosas em iterações futuras.
-- **Fix:** testes mockados do fluxo: request → email → view → feedback (sem providers reais).
-- **Validação:** `bunx vitest run` verde.
-- **DB:** Não. **Provider/email:** mockados.
-
-**P1-B · Decisão sobre `commercial-followup`**
-- **Problema:** template orfão importado mas nunca emitido.
-- **Ficheiros:** `src/emails/commercial-followup.tsx` + sites de import.
-- **Risco:** confusão / dead code.
-- **Fix:** decidir — wire-up no CRM (botão "enviar follow-up") **OU** remover. Recomendação: remover e re-introduzir quando houver UX definida.
-- **Validação:** `rg commercial-followup` = 0 hits após remoção; tsc + vitest verdes.
-- **DB:** Não. **Provider/email:** Não (apenas import; sem envio).
+→ **Checkpoint A**: se snapshot **não existir**, é necessário Apify run (custo). Pedir aprovação explícita antes de avançar.
 
 ---
 
-### P2 — Pós primeira wave de beta
+## 2. Fluxo de Execução (16 passos auditados)
 
-**P2-A · Colapsar duplicação de `report_viewed`**
-- **Problema:** lógica de dedup espalhada; possível dupla contagem em edge cases.
-- **Fix:** centralizar em helper único.
-- **DB:** Não. **Provider/email:** Não.
+Cada passo regista: **timestamp UTC**, **lead_id**, **event_id**, **status**, **PASS/FAIL**.
 
-**P2-B · Suprimir `lead_status_changed` ruidoso**
-- **Problema:** evento gerado em transições internas pollui timeline.
-- **Fix:** filtrar no recordProductEvent OU no render de timeline.
-- **DB:** Não. **Provider/email:** Não.
+### Bloco 1 — Captura
+1. **Submeter beta request** via `/` (form público) com email externo real.
+2. **Confirmar `leads` row** (`SELECT id, email, commercial_status, created_at FROM leads WHERE email_normalized = ? ORDER BY created_at DESC LIMIT 1`). Esperado: `commercial_status = 'novo_pedido'`.
+3. **Abrir CRM Kanban** (`/admin`); confirmar card visível na coluna "Novo pedido".
+4. **Abrir lead detail sheet**; confirmar timeline mostra `request_submitted`.
 
-**P2-NEW-1 · Tipagem estrita de event_type**
-- **Problema:** 4 sites fazem `INSERT` direto bypassando validação `ALLOWED_EVENTS`.
-- **Fix:** refatorar para usar `recordProductEvent`.
-- **DB:** Não. **Provider/email:** Não.
+### Bloco 2 — Geração de Report ⚠️ *gate de custo*
+5. **Checkpoint B (custo Apify):** se cache existir → reuse; se não → **PARAR e pedir aprovação**.
+6. **Gerar/atribuir report** via UI admin → snapshot vinculado ao lead.
+7. **Confirmar `report_requests`** (`SELECT id, request_status, analysis_snapshot_id FROM report_requests WHERE lead_id = ?`). Esperado: `request_status = 'ready'`, `analysis_snapshot_id` preenchido.
+
+### Bloco 3 — Envio do Link ⚠️ *gate de email #1*
+8. **Checkpoint C (email):** confirmar que vais clicar "Enviar link". Pedir OK.
+9. **Clicar "Enviar link do report"** no lead detail.
+10. **Confirmar Resend send** via `provider_call_logs` (`provider='resend'`, último 5min) + `report_requests.delivery_status = 'sent'` + `email_message_id` preenchido.
+11. **Confirmar evento** `report_link_sent` em `product_events`.
+12. **Confirmar `commercial_status` = `link_enviado`**.
+
+### Bloco 4 — Visualização Pública
+13. **Tester abre link do email** (URL pública `/r/<token>`).
+14. **Confirmar exactamente 1 evento** `report_viewed` (`SELECT count(*), min(created_at) FROM product_events WHERE lead_id = ? AND event_type = 'report_viewed'`). Esperado: `count = 1`.
+15. **Refresh do tester** (validar dedup): contagem deve permanecer `1` (P2-A já documenta este risco).
+
+### Bloco 5 — Feedback ⚠️ *gate de email #2*
+16. **Checkpoint D (email):** OK para enviar request de feedback.
+17. **Clicar "Pedir feedback"** no CRM.
+18. **Confirmar Resend send #2** + evento `feedback_request_sent` + `commercial_status = 'feedback_pedido'`.
+19. **Tester submete formulário** público de feedback.
+20. **Confirmar `beta_feedback` row** (`SELECT id, usefulness_score, purchase_intent, created_at FROM beta_feedback WHERE lead_id = ?`).
+21. **Confirmar `commercial_status = 'feedback_recebido'`**.
+22. **Confirmar evento** `feedback_received`.
+
+### Bloco 6 — Coerência Final
+23. **Listar timeline completa** ordenada por `created_at` para o `lead_id`. Validar:
+    - sem eventos órfãos
+    - sem duplicados além do esperado
+    - todos os eventos têm label pt-PT renderizada (atenção: P1-NEW-3 tem 6 sem label)
 
 ---
 
-### P3 — Nice-to-have
+## 3. Output que Vais Receber
 
-- Documentação de runbook de incidentes (provider down, Resend bounce).
-- Dashboard admin com KPIs de funil (request → view → feedback).
-- Limpeza de comentários TODO / código morto residual.
+### A. Tabela PASS/FAIL (16 passos)
 
----
+| # | Passo | Esperado | Observado | Status | event_id / lead_id |
+|---|---|---|---|---|---|
+| 1 | Submit form | row em `leads` | … | ✅/❌ | … |
+| … | … | … | … | … | … |
 
-## 2. Batches de Implementação
+### B. Status de envio de email
 
-| Batch | Tema | Toca | Migração | Provider |
-|---|---|---|---|---|
-| **B1** | P0-A++ RLS + SECURITY DEFINER | DB only | Sim | Não |
-| **B2** | P1-C índices | DB only | Sim | Não |
-| **B3** | P1-NEW-3 labels timeline | UI/lib only | Não | Não |
-| **B4** | P1-A smoke tests E2E | Tests only | Não | Mock |
-| **B5** | P1-B decisão commercial-followup | Code cleanup | Não | Não |
-| **B6** | P2-A dedup report_viewed | lib only | Não | Não |
-| **B7** | P2-B filtro lead_status_changed | lib only | Não | Não |
-| **B8** | P2-NEW-1 refactor inserts diretos | lib only | Não | Não |
+| # | Trigger | Resend message_id | Status | Latência | Erro? |
+|---|---|---|---|---|---|
+| 1 | Report link | re_xxx | sent | xx ms | — |
+| 2 | Feedback request | re_yyy | sent | xx ms | — |
 
-Cada batch isolado, sem misturar camadas. Risco crescente concentrado em B1.
+### C. Timeline de eventos (cronológica)
 
----
-
-## 3. Ordem Recomendada (segurança crescente → estabilidade → polish)
-
-```text
-B1 (P0 segurança)  ← crítico, requer aprovação migration
-  ↓
-B2 (índices)        ← migration trivial, melhora perf
-  ↓
-B3 (labels)         ← UI cosmético, zero risco
-  ↓
-B4 (smoke tests)    ← rede de segurança antes de testers
-  ↓
-B5 (cleanup)        ← decisão produto
-  ↓
-B6 → B7 → B8        ← refactor pós-beta
+```
+HH:MM:SS  request_submitted        evt_…
+HH:MM:SS  report_request_created   evt_…
+HH:MM:SS  report_ready             evt_…
+HH:MM:SS  report_link_sent         evt_…
+HH:MM:SS  report_viewed            evt_…
+HH:MM:SS  feedback_request_sent    evt_…
+HH:MM:SS  feedback_received        evt_…
 ```
 
-**Rationale:** B1 primeiro porque expõe dados; B2 logo a seguir aproveita janela de migration; B3-B4 antes de convidar testers; B5+ podem correr em paralelo com beta.
+### D. Estado final do lead
+- `commercial_status` final
+- # eventos totais
+- `beta_feedback` row presente
+
+### E. Issues encontradas
+Lista de regressões ou inconsistências (com referência à linha PASS/FAIL).
+
+### F. Recomendação
+Verde / Amarelo / Vermelho para convidar 5–10 testers + ações requeridas antes.
 
 ---
 
-## 4. Risco Estimado por Batch
+## 4. Gates de Aprovação (anti-custo / anti-spam)
 
-- **B1:** MÉDIO-ALTO — pode partir edge functions se `service_role` não estiver corretamente granted. Mitigação: testar cada função após migration.
-- **B2:** BAIXO — `CREATE INDEX IF NOT EXISTS` é idempotente e seguro.
-- **B3:** MUITO BAIXO — apenas strings.
-- **B4:** BAIXO — só adiciona ficheiros de teste.
-- **B5:** BAIXO — remoção de código morto verificável com `rg`.
-- **B6-B8:** BAIXO-MÉDIO — refactor com testes do B4 como rede.
+| Gate | Acção | Custo | Como pedirei |
+|---|---|---|---|
+| **B** | Apify run novo | ~$0.05–$0.20 | Mostro handle + estado da cache, peço OK explícito |
+| **C** | Resend email #1 (link) | ~$0 (incluso) | Confirmo destinatário antes de clicar |
+| **D** | Resend email #2 (feedback) | ~$0 (incluso) | Confirmo destinatário antes de clicar |
 
----
-
-## 5. Primeiro Prompt de Implementação (B1)
-
-> ```
-> Use Plan Mode first.
->
-> Goal:
-> Implement Batch B1 — RLS hardening + SECURITY DEFINER lockdown.
->
-> Scope:
-> 1. Identify the public.* table flagged by supabase--linter as
->    "RLS Disabled in Public" (ERROR 21).
-> 2. Enable RLS on that table and add minimum-viable policies:
->    - SELECT: only owner / service_role (depending on table semantics)
->    - INSERT/UPDATE/DELETE: service_role only, unless the table has a
->      legitimate authenticated write path
-> 3. For these 5 SECURITY DEFINER functions, REVOKE EXECUTE FROM anon, public
->    and GRANT EXECUTE only to the roles that actually call them:
->    - record_analysis_event
->    - set_admin_email_session
->    - link_user_to_existing_reports
->    - handle_new_user (must remain callable by trigger context)
->    - set_enrichment_status
->    - get_knowledge_context
->
-> Deliverable:
-> - One migration file via supabase--migration tool
-> - No code changes outside the migration
-> - Run supabase--linter after to confirm 0 errors remain
->
-> Constraints:
-> - Do not modify edge function code in this batch
-> - Do not touch UI
-> - Do not call providers
-> - Stop and request confirmation before applying if any policy could
->   break the existing happy path (request → report → feedback)
-> - Map each function's actual call sites (rg) before changing GRANTs
->
-> Validation:
-> - supabase--linter: 0 ERROR-level findings on these items
-> - bunx tsc --noEmit: 0 errors
-> - bunx vitest run: 163/163 pass
-> - Manual smoke: load /admin CRM as authenticated admin; load a public
->   report URL as anonymous; confirm both render
-> ```
+Se algum gate for negado → registo "BLOCKED" no PASS/FAIL e não avanço.
 
 ---
 
-## Notas técnicas
+## 5. Constraints respeitadas
 
-- **Política de migrations:** B1 e B2 são migrations separadas para permitir rollback granular.
-- **Idempotência:** todas as migrations usam `IF NOT EXISTS` / `IF EXISTS` para serem re-executáveis.
-- **Edge functions:** usam `SUPABASE_SERVICE_ROLE_KEY`, logo bypass de RLS — B1 não as afeta desde que `service_role` mantenha `EXECUTE`.
-- **`handle_new_user`:** chamada por trigger no `auth.users`; precisa de `EXECUTE` para `supabase_auth_admin` (não para `anon`).
+- ✅ Apenas 1 lead, 1 ciclo completo
+- ✅ Apify só com aprovação explícita (preferência: reusar cache)
+- ✅ Máximo 2 emails (link + feedback request)
+- ✅ Sem alteração de dados não relacionados
+- ✅ Timestamps UTC e IDs reais registados em cada passo
+- ✅ Apenas leitura via `supabase--read_query` para validação
+
+---
+
+## 6. O que preciso de ti antes de começar
+
+1. **Email externo do tester** (formato real, recebível por ti ou pessoa de confiança).
+2. **Username Instagram** a analisar (e confirmar se está em `APIFY_ALLOWLIST`).
+3. **Confirmação:** posso avançar até ao Checkpoint B parando para pedir aprovação aí?
+
+Sem estas 3 respostas, não inicio a execução.
