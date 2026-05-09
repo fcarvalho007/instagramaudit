@@ -51,6 +51,32 @@ export const trackEvent = createServerFn({ method: "POST" })
       }
     }
 
+    // Defensive server-side dedup for `report_viewed`: se já existe um
+    // evento idêntico (mesmo snapshot + mesmo lead) nos últimos 5s,
+    // ignora silenciosamente. Protege contra StrictMode, remounts,
+    // duplo-clique e refreshes rápidos. Fail-open: erros aqui caem para
+    // o insert normal.
+    if (data.eventType === "report_viewed" && data.snapshotId) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const sinceIso = new Date(Date.now() - 5_000).toISOString();
+        let q = (supabaseAdmin as any)
+          .from("product_events")
+          .select("id")
+          .eq("event_type", "report_viewed")
+          .eq("snapshot_id", data.snapshotId)
+          .gte("created_at", sinceIso)
+          .limit(1);
+        q = leadId ? q.eq("lead_id", leadId) : q.is("lead_id", null);
+        const { data: existing } = await q.maybeSingle();
+        if (existing) {
+          return { ok: true, deduped: true };
+        }
+      } catch {
+        // fall through to normal insert
+      }
+    }
+
     await recordProductEvent({
       eventType: data.eventType,
       snapshotId: data.snapshotId,

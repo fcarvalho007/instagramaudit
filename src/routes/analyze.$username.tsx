@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
@@ -285,8 +285,14 @@ function AnalyzeReady({
       .catch(() => { /* silent fallback — static defaults used */ });
   }, []);
 
-  // Track report view (fire-and-forget)
+  // Track report view (fire-and-forget). Guarded by a ref-backed Set so
+  // StrictMode double-invokes, remounts ou re-renders não duplicam o evento
+  // para o mesmo snapshot dentro da mesma sessão montada.
+  const trackedSnapshotsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
+    if (!snapshotId) return;
+    if (trackedSnapshotsRef.current.has(snapshotId)) return;
+    trackedSnapshotsRef.current.add(snapshotId);
     trackEvent({
       data: {
         eventType: "report_viewed",
