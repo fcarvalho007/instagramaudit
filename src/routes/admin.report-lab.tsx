@@ -33,6 +33,7 @@ import {
   type RiskLevel,
 } from "@/lib/report/report-variant";
 import { cn } from "@/lib/utils";
+import { BLOCKS } from "@/components/report-redesign/v2/block-config";
 import {
   FlaskConical,
   ExternalLink,
