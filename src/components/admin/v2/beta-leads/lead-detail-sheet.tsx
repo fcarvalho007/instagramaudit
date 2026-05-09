@@ -1133,6 +1133,7 @@ function FeedbackRequestDialog({
     reportUrl,
     feedbackUrl,
   });
+  const notViewed = (lead.report_views ?? 0) === 0;
 
   return (
     <ConfirmDialog
@@ -1149,6 +1150,31 @@ function FeedbackRequestDialog({
             <span className="admin-meta text-admin-text-tertiary">Assunto</span>
             <span className="text-admin-text-primary">{subject}</span>
           </div>
+          {notViewed && (
+            <div
+              className="flex items-start gap-2 rounded-lg p-3 text-[13px]"
+              style={{
+                backgroundColor: "rgba(234,179,8,0.08)",
+                border: "1px solid rgba(234,179,8,0.2)",
+              }}
+            >
+              <AlertTriangle
+                size={15}
+                style={{ color: "#D97706" }}
+                className="shrink-0 mt-0.5"
+              />
+              <div>
+                <p className="font-medium m-0" style={{ color: "#D97706" }}>
+                  Sem visualização registada
+                </p>
+                <p className="mt-0.5 text-admin-text-secondary m-0">
+                  Este relatório ainda não foi registado como visto. Podes
+                  enviar mesmo assim — o pedido continuará válido quando o
+                  lead abrir o link.
+                </p>
+              </div>
+            </div>
+          )}
           <div>
             <p className="admin-eyebrow-sm mb-1">Link de feedback</p>
             <p className="admin-code text-admin-text-primary break-all rounded-md bg-admin-text-primary/[0.04] border border-admin-text-primary/10 px-2.5 py-1.5 text-[12px]">
@@ -1162,7 +1188,7 @@ function FeedbackRequestDialog({
             </pre>
           </div>
           <p className="admin-meta text-admin-text-tertiary">
-            Em sucesso: regista o evento <code>feedback_request_sent</code> e
+            Em sucesso: regista o evento <code>feedback_requested</code> e
             move o estado para <strong>Feedback pedido</strong>.
           </p>
         </div>
