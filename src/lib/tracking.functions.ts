@@ -6,15 +6,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+// Adding a new event requires a corresponding handler in src/lib/admin/lead-lifecycle.ts.
 const ALLOWED_EVENTS = [
   "report_viewed",
   "public_report_link_copied",
-  "pro_teaser_clicked",
   "feedback_started",
   "feedback_submitted",
   "pricing_clicked",
   "pricing_option_clicked",
-  "email_clicked",
   "unlock_clicked",
   "feedback_requested",
   "report_link_sent",
