@@ -14,6 +14,7 @@ interface TabDef {
     | "/admin/clientes"
     | "/admin/beta-leads"
     | "/admin/beta-requests"
+    | "/admin/automacoes"
     | "/admin/relatorios"
     | "/admin/perfis"
     | "/admin/conhecimento"
@@ -41,6 +42,7 @@ const GROUPS: TabGroup[] = [
     tabs: [
       { to: "/admin/beta-leads", label: "Leads" },
       { to: "/admin/beta-requests", label: "Pedidos" },
+      { to: "/admin/automacoes", label: "Automações" },
     ],
   },
   {

@@ -42,6 +42,7 @@ import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimen
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as AdminBetaRequestsRouteImport } from './routes/admin.beta-requests'
 import { Route as AdminBetaLeadsRouteImport } from './routes/admin.beta-leads'
+import { Route as AdminAutomacoesRouteImport } from './routes/admin.automacoes'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
 import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
 import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
@@ -270,6 +271,11 @@ const AdminBetaRequestsRoute = AdminBetaRequestsRouteImport.update({
 const AdminBetaLeadsRoute = AdminBetaLeadsRouteImport.update({
   id: '/beta-leads',
   path: '/beta-leads',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAutomacoesRoute = AdminAutomacoesRouteImport.update({
+  id: '/automacoes',
+  path: '/automacoes',
   getParentRoute: () => AdminRoute,
 } as any)
 const ReportPrintSnapshotIdRoute = ReportPrintSnapshotIdRouteImport.update({
@@ -640,6 +646,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -738,6 +745,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -838,6 +846,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -939,6 +948,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/automacoes'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
     | '/admin/clientes'
@@ -1037,6 +1047,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/automacoes'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
     | '/admin/clientes'
@@ -1136,6 +1147,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/automacoes'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
     | '/admin/clientes'
@@ -1531,6 +1543,13 @@ declare module '@tanstack/react-router' {
       path: '/beta-leads'
       fullPath: '/admin/beta-leads'
       preLoaderRoute: typeof AdminBetaLeadsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/automacoes': {
+      id: '/admin/automacoes'
+      path: '/automacoes'
+      fullPath: '/admin/automacoes'
+      preLoaderRoute: typeof AdminAutomacoesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/report/print/$snapshotId': {
@@ -1997,6 +2016,7 @@ const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminAutomacoesRoute: typeof AdminAutomacoesRoute
   AdminBetaLeadsRoute: typeof AdminBetaLeadsRoute
   AdminBetaRequestsRoute: typeof AdminBetaRequestsRoute
   AdminClientesRoute: typeof AdminClientesRoute
@@ -2013,6 +2033,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAutomacoesRoute: AdminAutomacoesRoute,
   AdminBetaLeadsRoute: AdminBetaLeadsRoute,
   AdminBetaRequestsRoute: AdminBetaRequestsRoute,
   AdminClientesRoute: AdminClientesRoute,
