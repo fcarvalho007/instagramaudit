@@ -1,60 +1,107 @@
-## Avaliação dos últimos prompts
+## Dedup `report_viewed` — reforço cliente + servidor
 
-### Estado de cada tarefa
+### Diagnóstico
 
-| # | Tarefa | Estado | Verificação |
-|---|---|---|---|
-| 1 | Auditoria de templates de email | ✅ Concluída (read-only) | Mapa endpoint→template entregue. |
-| 2 | Validação `/api/public/feedback/$requestId` pós-publish | ✅ 5/5 PASS | Testes 1–5 verificados em `instagramaudit.lovable.app`. Lead Frederico transitou para `feedback_recebido` (confirmado: `commercial_status='feedback_recebido'`, 1 registo em `beta_feedback`). |
-| 3 | Backfill `report_link_sent` | ✅ Executado | 1 evento inserido com `channel:backfill`. Re-query confirma `gaps_remaining = 0`. Idempotente: re-execução não duplica. |
+Ambas as defesas pedidas no prompt **já existem no código**:
 
-### Timeline do lead seed (Frederico) após backfill
+- **Cliente** (`src/routes/analyze.$username.tsx:291-305`): `useRef<Set<string>>` guarda snapshots já registados na sessão montada.
+- **Servidor** (`src/lib/tracking.functions.ts:54-78`): janela de 5s por `snapshot_id` + `lead_id` + `event_type`.
 
+Apesar disso, a base de dados continua a registar **4 eventos por minuto** para o mesmo lead/snapshot (consistente em 2026-05-09 12:37 → 12:59). Investigação:
+
+- Único call site é `analyze.$username.tsx`. Sem origens paralelas.
+- Padrão "4 por minuto" + clusters de 2-4ms entre eventos = **race condition no servidor**: várias requests chegam quase em simultâneo (provável StrictMode dev × re-mount em navegação), todas fazem `SELECT` antes de qualquer `INSERT` ter completado, todas passam o check, todas inserem.
+- O `useRef` cliente não cobre **remounts entre route changes** nem **múltiplos tabs/refreshes**, mas o principal contribuidor é mesmo o servidor.
+
+### Mudanças propostas
+
+**1. `src/routes/analyze.$username.tsx` — endurecer dedup cliente**
+
+Substituir o `useRef<Set>` (escopo por mount) por um **module-level `Set`** que sobrevive a re-mounts dentro do mesmo SPA load. Combinar com `sessionStorage` para sobreviver a refreshes do mesmo tab durante a sessão de browser.
+
+```ts
+// no topo do ficheiro
+const TRACKED_SNAPSHOTS = new Set<string>();
+const SESSION_STORAGE_KEY = "ib:tracked_report_views";
+
+function hasTrackedSnapshot(snapshotId: string): boolean {
+  if (TRACKED_SNAPSHOTS.has(snapshotId)) return true;
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    if (arr.includes(snapshotId)) {
+      TRACKED_SNAPSHOTS.add(snapshotId);
+      return true;
+    }
+  } catch { /* ignore */ }
+  return false;
+}
+
+function markSnapshotTracked(snapshotId: string) {
+  TRACKED_SNAPSHOTS.add(snapshotId);
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    if (!arr.includes(snapshotId)) {
+      arr.push(snapshotId);
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(arr.slice(-50)));
+    }
+  } catch { /* ignore */ }
+}
 ```
-report_link_sent     × 1   (backfill, 2026-05-04)
-report_viewed        × 76  ← ver "Refinamento 1"
-feedback_started     × 1
-feedback_submitted   × 1
-lead_status_changed  × 3
+
+No `useEffect` substituir o ref por estas helpers. Defensivo: `try/catch` em torno de `sessionStorage` para SSR-safety (no browser apenas).
+
+**2. `src/lib/tracking.functions.ts` — pattern "insert + cleanup" para fechar a race**
+
+Após o `await recordProductEvent(...)` (apenas para `report_viewed` com `snapshotId` + `leadId` resolvidos), fazer um `SELECT` dos eventos `report_viewed` para esse `(snapshot_id, lead_id)` criados nos últimos 5s, ordenados por `created_at ASC`. Se vierem >1, apagar todos exceto o primeiro (mais antigo). Fail-open: erros aqui são silenciosos.
+
+```ts
+if (data.eventType === "report_viewed" && data.snapshotId && leadId) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const sinceIso = new Date(Date.now() - 5_000).toISOString();
+    const { data: rows } = await (supabaseAdmin as any)
+      .from("product_events")
+      .select("id, created_at")
+      .eq("event_type", "report_viewed")
+      .eq("snapshot_id", data.snapshotId)
+      .eq("lead_id", leadId)
+      .gte("created_at", sinceIso)
+      .order("created_at", { ascending: true });
+    if (rows && rows.length > 1) {
+      const idsToDelete = rows.slice(1).map((r: any) => r.id);
+      await (supabaseAdmin as any)
+        .from("product_events")
+        .delete()
+        .in("id", idsToDelete);
+    }
+  } catch { /* fail open */ }
+}
 ```
 
-A timeline agora abre corretamente com `report_link_sent` → ordenação cronológica reposta.
+Isto converge para 1 evento mesmo quando 4 requests passam o check de pré-insert em paralelo. Pequeno custo: 1 extra SELECT + DELETE condicional por `report_viewed`.
 
----
+### Ficheiros tocados
 
-### Refinamentos sugeridos (não bloqueantes; fora do âmbito dos prompts)
+- `src/routes/analyze.$username.tsx` — substituir ref por módulo-level Set + sessionStorage
+- `src/lib/tracking.functions.ts` — adicionar bloco "insert + cleanup" após o `recordProductEvent`
 
-**Refinamento 1 — `report_viewed` em excesso (76 eventos)**
-- Cada abertura do relatório está a emitir 2–4 eventos quase simultâneos (ms de diferença), provavelmente por:
-  - StrictMode duplo-render em dev, **ou**
-  - efeito disparado em vários componentes filhos, **ou**
-  - falta de debounce/dedup no endpoint que regista `report_viewed`.
-- Impacto: ruído no timeline e nas métricas de "views únicos".
-- Sugestão: dedup por `(lead_id, snapshot_id, hora)` no servidor, ou throttle 30s no cliente. Tarefa separada.
+### Fora de scope (confirmado)
 
-**Refinamento 2 — Falta `feedback_request_sent`**
-- Há `feedback_started` e `feedback_submitted` mas nenhum evento que registe quando o **link de feedback** foi enviado por email.
-- Se o template `renderFeedbackRequest` foi efetivamente enviado para o Frederico, o endpoint que envia o link devia emitir `feedback_request_sent`.
-- Hipóteses:
-  - O envio foi manual/teste e não passou pelo endpoint oficial → não há gap real.
-  - O endpoint oficial não regista o evento → bug pequeno a corrigir.
-- Sugestão: novo prompt curto para auditar o endpoint `send-feedback-request` (read-only) e confirmar se emite `product_events.feedback_request_sent`. Se não emitir, é um gap análogo ao que acabámos de corrigir.
+- Sem alterações em UI do report.
+- Sem alterações de schema.
+- Sem chamadas a Apify/OpenAI/DataForSEO/Resend.
+- Sem remoção de duplicados históricos (eventos antigos permanecem).
 
-**Refinamento 3 — Backfill semelhante para outros eventos lifecycle?**
-- Já confirmado que **não há mais gaps** para `report_link_sent`.
-- Vale a pena, em prompt separado, validar se existem gaps equivalentes para:
-  - `feedback_request_sent` vs leads com `commercial_status='feedback_solicitado'`
-  - `commercial_followup_sent` vs leads com `commercial_status='followup_enviado'` (ou similar)
-- Não é urgente — a flow atual já regista corretamente.
+### Validação
 
----
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Smoke manual: abrir `/analyze/frederico.m.carvalho` em produção 2x, navegar entre rotas, refrescar, e confirmar via `SELECT count(*) FROM product_events WHERE event_type='report_viewed' AND created_at > now() - interval '2 minutes'` que cresce de forma 1-por-visita.
 
-### Conclusão
+### Output esperado
 
-Os 3 prompts ficaram **bem feitos e fechados**. Não há ações pendentes diretas dos pedidos. Os 3 refinamentos acima são oportunidades de melhoria que recomendo tratar em prompts separados, por ordem de prioridade:
-
-1. **Refinamento 2** (auditar `feedback_request_sent`) — prioridade média, mesmo padrão do bug que acabámos de corrigir.
-2. **Refinamento 1** (dedup `report_viewed`) — prioridade média, afeta qualidade das métricas.
-3. **Refinamento 3** (procurar mais gaps lifecycle) — prioridade baixa, preventivo.
-
-Não é necessária nenhuma ação imediata neste turno.
+- `client dedup` reforçado (module-level + sessionStorage)
+- `server dedup` reforçado com cleanup pós-insert (resolve race)
+- Resultados de tsc + vitest
