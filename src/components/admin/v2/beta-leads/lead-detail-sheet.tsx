@@ -275,6 +275,9 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   if (!lead) return null;
 
   const intent = deriveIntentSignal(lead);
+  const lastReportLinkSentAt =
+    timeline.find((ev) => ev.event_type === "report_link_sent")?.created_at ??
+    null;
   const suggestedStep = suggestNextLeadAction(lead).label;
   const feedbackIntent = interpretFeedback(lead.feedback);
   // When feedback exists, override the heuristic intent with the commercial signal.
