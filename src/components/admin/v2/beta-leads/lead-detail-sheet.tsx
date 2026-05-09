@@ -488,6 +488,10 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                 lead={lead}
                 onClick={() => setSendLinkOpen(true)}
               />
+              <FeedbackRequestButton
+                lead={lead}
+                onClick={() => setFeedbackOpen(true)}
+              />
               {lead.report_request_id &&
                 GENERATABLE_STATUSES.includes(lead.report_status as typeof GENERATABLE_STATUSES[number]) && (
                 <AdminActionButton
