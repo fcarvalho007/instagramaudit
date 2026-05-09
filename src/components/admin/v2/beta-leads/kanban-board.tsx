@@ -2,7 +2,7 @@
  * KanbanBoard — horizontal scrollable board for beta leads.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -19,12 +19,26 @@ import { LeadDetailSheet } from "./lead-detail-sheet";
 interface KanbanBoardProps {
   leads: EnrichedLead[];
   onUpdate: (id: string, updates: Record<string, unknown>) => void;
+  initialDetailLeadId?: string | null;
+  onDetailClose?: () => void;
 }
 
-export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
+export function KanbanBoard({
+  leads,
+  onUpdate,
+  initialDetailLeadId,
+  onDetailClose,
+}: KanbanBoardProps) {
   const [editingLead, setEditingLead] = useState<EnrichedLead | null>(null);
   const [notesText, setNotesText] = useState("");
   const [detailLead, setDetailLead] = useState<EnrichedLead | null>(null);
+
+  // Sincroniza com search param `?lead=<id>` (vindo da Command Palette).
+  useEffect(() => {
+    if (!initialDetailLeadId) return;
+    const found = leads.find((l) => l.id === initialDetailLeadId);
+    if (found) setDetailLead(found);
+  }, [initialDetailLeadId, leads]);
 
   const openNotes = (lead: EnrichedLead) => {
     setEditingLead(lead);
