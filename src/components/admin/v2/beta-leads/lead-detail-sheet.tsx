@@ -1088,6 +1088,7 @@ function FeedbackRequestButton({
   if (!hasRequest) disabledReason = "Sem pedido de relatório associado.";
   else if (!hasEmail) disabledReason = "Lead sem email.";
   else if (!hasHandle) disabledReason = "Handle Instagram em falta.";
+  else if (lead.feedback) disabledReason = "Feedback já recebido.";
   else if (!eligibleStatus)
     disabledReason =
       "Disponível depois de o link ser enviado e antes do feedback ser recebido.";
