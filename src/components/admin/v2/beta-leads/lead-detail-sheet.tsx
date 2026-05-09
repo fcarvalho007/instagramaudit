@@ -42,6 +42,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Send,
 } from "lucide-react";
 import {
   User,
@@ -58,6 +59,10 @@ import { Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
+import {
+  buildReportLinkEmailSubject,
+  buildReportLinkPreviewBody,
+} from "@/lib/email/report-link-email-template";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -233,6 +238,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [sendLinkOpen, setSendLinkOpen] = useState(false);
+  const [sendingLink, setSendingLink] = useState(false);
 
   // Reset state when lead changes
   useEffect(() => {
@@ -474,6 +481,10 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               <AdminActionButton size="md" onClick={handleCopyLink}>
                 <Link2 size={14} /> Copiar link
               </AdminActionButton>
+              <SendLinkButton
+                lead={lead}
+                onClick={() => setSendLinkOpen(true)}
+              />
               {lead.report_request_id &&
                 GENERATABLE_STATUSES.includes(lead.report_status as typeof GENERATABLE_STATUSES[number]) && (
                 <AdminActionButton
@@ -633,6 +644,41 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         } finally {
           setGenerating(false);
           setGenerateOpen(false);
+        }
+      }}
+    />
+
+    {/* ── Send public link confirmation dialog ───────────── */}
+    <SendLinkDialog
+      open={sendLinkOpen}
+      onOpenChange={setSendLinkOpen}
+      loading={sendingLink}
+      lead={lead}
+      onConfirm={async () => {
+        if (!lead.report_request_id) return;
+        setSendingLink(true);
+        try {
+          const res = await fetch("/api/admin/send-report-link", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lead_id: lead.id,
+              report_request_id: lead.report_request_id,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.success) {
+            toast.error(mapSendLinkError(body?.error_code));
+          } else {
+            toast.success("Link enviado por email");
+            setSendLinkOpen(false);
+            onRefresh?.();
+          }
+        } catch {
+          toast.error("Erro de rede ao enviar email.");
+        } finally {
+          setSendingLink(false);
         }
       }}
     />
@@ -821,4 +867,141 @@ function TimelineSection({
       )}
     </div>
   );
+}
+
+// ── Send link button + dialog ───────────────────────────────────
+
+function SendLinkButton({
+  lead,
+  onClick,
+}: {
+  lead: EnrichedLead;
+  onClick: () => void;
+}) {
+  const reportReady =
+    lead.report_status != null &&
+    ["completed", "ready", "generated"].includes(lead.report_status);
+  const hasEmail = Boolean(lead.email);
+  const hasHandle = Boolean(lead.handle);
+  const hasRequest = Boolean(lead.report_request_id);
+
+  let disabledReason: string | null = null;
+  if (!hasRequest) disabledReason = "Sem pedido de relatório associado.";
+  else if (!reportReady)
+    disabledReason = "Este lead ainda não tem relatório público disponível.";
+  else if (!hasEmail) disabledReason = "Lead sem email — não é possível enviar.";
+  else if (!hasHandle) disabledReason = "Handle Instagram em falta.";
+
+  const disabled = disabledReason != null;
+
+  return (
+    <AdminActionButton
+      size="md"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={disabledReason ?? "Enviar link público por email"}
+      className={
+        disabled
+          ? undefined
+          : "!border-admin-revenue-500/40 !text-admin-revenue-700 hover:!bg-admin-revenue-50"
+      }
+    >
+      <Send size={14} /> Enviar link
+    </AdminActionButton>
+  );
+}
+
+function SendLinkDialog({
+  open,
+  onOpenChange,
+  loading,
+  lead,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  loading: boolean;
+  lead: EnrichedLead;
+  onConfirm: () => void;
+}) {
+  const publicUrl =
+    typeof window !== "undefined" && lead.handle
+      ? `${window.location.origin}/analyze/${lead.handle}`
+      : lead.handle
+        ? `/analyze/${lead.handle}`
+        : "";
+  const subject = buildReportLinkEmailSubject();
+  const previewBody = buildReportLinkPreviewBody({
+    recipientName: lead.name ?? null,
+    instagramUsername: lead.handle ?? "",
+    publicUrl,
+  });
+
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Enviar link ao beta tester"
+      description={
+        <div className="space-y-3 text-[13px]">
+          <div className="grid grid-cols-[80px_1fr] gap-y-1.5">
+            <span className="admin-meta text-admin-text-tertiary">Para</span>
+            <span className="text-admin-text-primary break-all">{lead.email}</span>
+            <span className="admin-meta text-admin-text-tertiary">Perfil</span>
+            <span className="text-admin-text-primary">@{lead.handle}</span>
+            <span className="admin-meta text-admin-text-tertiary">Assunto</span>
+            <span className="text-admin-text-primary">{subject}</span>
+          </div>
+          <div>
+            <p className="admin-eyebrow-sm mb-1">Link público</p>
+            <p className="admin-code text-admin-text-primary break-all rounded-md bg-admin-text-primary/[0.04] border border-admin-text-primary/10 px-2.5 py-1.5 text-[12px]">
+              {publicUrl || "—"}
+            </p>
+          </div>
+          <div>
+            <p className="admin-eyebrow-sm mb-1">Pré-visualização</p>
+            <pre className="text-admin-text-secondary whitespace-pre-wrap rounded-md bg-admin-text-primary/[0.03] border border-admin-text-primary/10 px-3 py-2 text-[12px] leading-relaxed font-sans m-0">
+              {previewBody}
+            </pre>
+          </div>
+          <p className="admin-meta text-admin-text-tertiary">
+            Em sucesso: regista o evento <code>report_link_sent</code> e move o
+            estado para <strong>Link enviado</strong>.
+          </p>
+        </div>
+      }
+      confirmLabel={loading ? "A enviar…" : "Enviar email"}
+      loading={loading}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+function mapSendLinkError(code: string | undefined): string {
+  switch (code) {
+    case "EMAIL_PROVIDER_NOT_CONFIGURED":
+      return "Email provider não configurado.";
+    case "LEAD_EMAIL_MISSING":
+      return "Lead sem email.";
+    case "LEAD_EMAIL_INVALID":
+      return "Email do lead inválido.";
+    case "REPORT_NOT_READY":
+      return "Este lead ainda não tem relatório público disponível.";
+    case "REQUEST_NOT_FOUND":
+      return "Pedido de relatório não encontrado.";
+    case "HANDLE_MISSING":
+      return "Handle Instagram em falta.";
+    case "RESEND_SANDBOX_RECIPIENT_BLOCKED":
+      return "Resend está em modo sandbox — verifica o domínio para enviar a outros destinatários.";
+    case "RESEND_TIMEOUT":
+      return "Email provider demorou demasiado a responder.";
+    case "RESEND_FAILED":
+      return "Falha ao enviar email. Tenta novamente.";
+    case "UNAUTHORIZED":
+    case "UNAUTHENTICATED":
+    case "NOT_ALLOWED":
+      return "Sessão admin inválida.";
+    default:
+      return "Erro ao enviar email.";
+  }
 }
