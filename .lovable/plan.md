@@ -1,80 +1,157 @@
-# Plano — Refinamentos e fases por concluir
+## Objetivo
 
-Revi o estado das 4 fases anteriores. Há lacunas claras de integração: módulos criados que não estão a ser usados, ações admin em falta no Lead Detail Sheet, e transições de status que ficaram preparadas mas nunca disparam. Proposta para fechar tudo numa única passagem.
+Tornar o feedback dos beta testers visível e acionável no CRM (Lead Detail Sheet + Kanban), com interpretação comercial e sugestão de próximo passo. Sem tocar no formulário público nem em providers/PDF.
 
-## Diagnóstico
+---
 
-| Fase | Estado | Lacuna |
-|---|---|---|
-| 1. CRM lifecycle | OK | `mapEventToSuggestedStatus` existe mas nunca dispara — `relatorio_visto` nunca é definido automaticamente |
-| 2. Enviar link | OK funcionalmente | Usa `report-link-email-template.ts` antigo em vez do novo módulo `templates/report-ready` |
-| 3. Email templates pt-PT | Criados mas **não usados em lado nenhum** | 4 templates órfãos |
-| 4. Form de feedback público | OK | **Não há ação admin para enviar o link `/feedback/$requestId`** nem para marcar `feedback_pedido` |
+## 1. Backend — expor `beta_feedback` no payload do CRM
 
-Templates antigos remanescentes: `report-link-email-template.ts`, `report-email-template.ts`. Não os removo — `report-email-template.ts` envia o PDF (caso distinto, cobre `send-report-email.ts` que não foi pedido para alterar).
+Ficheiro: `src/routes/api/admin/leads-kanban.ts`
 
-## Refinamentos a executar
+- Após obter `requests`, fazer um `select` em `beta_feedback` por `report_request_id IN (...)`.
+- Construir `feedbackByLead: Map<lead_id, BetaFeedbackRow>` (mais recente por lead, normalmente único pelo `UNIQUE(report_request_id)`).
+- Anexar campo `feedback` ao objeto enriquecido devolvido por lead (ou `null`).
 
-### R1. Wire-up do `templates/report-ready` no envio de link
-- `src/routes/api/admin/send-report-link.ts` passa a importar `renderReportReady` de `@/lib/email/templates`.
-- Apaga `src/lib/email/report-link-email-template.ts` (órfão após swap).
-- Mantém comportamento, copy e assunto idênticos (ambos já alinhados).
+Sem alterações de schema. Sem migrations.
 
-### R2. Nova ação "Pedir feedback" no Lead Detail Sheet
-- Novo endpoint `POST /api/admin/send-feedback-request.ts`:
-  - Valida `lead_id` + `report_request_id`, exige status `link_enviado` ou `relatorio_visto` e email do lead.
-  - Constrói URL `${PUBLIC_BASE}/feedback/${report_request_id}`.
-  - Envia email via Resend usando `renderFeedbackRequest` (já existe).
-  - Em sucesso: regista `feedback_request_sent`, e move o status para `feedback_pedido` via `updateLeadCommercialStatus({source:"manual"})`.
-- Botão `Pedir feedback` no Lead Detail Sheet, ao lado de `Enviar link`. Disabled se faltar email/handle/report_request_id ou se status já estiver em `feedback_pedido`/`feedback_recebido`/`arquivado`. Diálogo de confirmação igual ao `SendLinkDialog`.
+---
 
-### R3. Auto-transição em `report_viewed`
-- Em `src/lib/tracking.functions.ts` (server function que recebe o evento de visualização), depois de gravar `report_viewed`, se conseguirmos resolver o `lead_id` (via `report_requests.instagram_username` + lookup), chamar `updateLeadCommercialStatus({status:"relatorio_visto", source:"auto"})` apenas se o status atual for `link_enviado`. Nunca regredir status (ex: já está em `feedback_pedido`).
-- Implementação defensiva: helper `maybeAdvanceLeadStatus(currentStatus, targetStatus)` que define a ordem do funil e só avança.
+## 2. Interpretação comercial — helper puro
 
-### R4. Email "Pedido recebido" no submit beta
-- Em `src/routes/api/request-full-report.ts` (ou `beta-request` equivalente — confirmo no exec), depois de criar a lead/report_request, dispara `renderRequestReceived` via Resend.
-- Wrap em try/catch; falha de email **não** bloqueia o pedido. Regista `request_received_email_sent` ou `request_received_email_failed` em `product_events` para auditoria.
+Novo ficheiro: `src/lib/admin/feedback-intent.ts`
 
-### R5. Idempotência do `feedback_started`
-- O check actual usa `metadata @> {report_request_id}` — funciona, mas `product_events` não tem índice GIN em `metadata`. Para escala atual (beta) está OK; flag apenas no plano. Sem ação agora.
+Exporta:
 
-## Fora de scope (não toco)
+```ts
+export type FeedbackIntent = "alto" | "medio" | "baixo" | "sem";
 
-- `send-report-email.ts` (envia PDF, não foi pedido alterar)
-- Geração de relatório, scoring, PDF pipeline
-- Layout/colunas do Kanban
-- Templates antigos enquanto ainda usados (`report-email-template.ts`)
-- Follow-up comercial automático (Template 4 fica órfão por agora — uso manual via "Copiar email" já cobre o cenário; só criamos ação dedicada se pedires)
+export interface FeedbackIntentResult {
+  intent: FeedbackIntent;
+  label: string;        // "Intenção alta", etc.
+  accent: "revenue" | "signal" | "neutral" | "expense";
+  nextAction: string;   // "Responder com proposta de relatório único", etc.
+}
 
-## Ficheiros
+export function interpretFeedback(fb: BetaFeedbackRow | null): FeedbackIntentResult
+```
 
-**Criar:**
-- `src/routes/api/admin/send-feedback-request.ts`
+Regras:
 
-**Editar:**
-- `src/routes/api/admin/send-report-link.ts` — usa `renderReportReady`
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — botão "Pedir feedback" + diálogo
-- `src/lib/tracking.functions.ts` — auto-transição em `report_viewed`
-- `src/lib/admin/lead-lifecycle.ts` — adiciona helper `maybeAdvanceLeadStatus`
-- `src/routes/api/request-full-report.ts` — dispara email "Pedido recebido"
+| Condições                                                                                       | Intent | Próxima ação                              |
+| ---                                                                                             | ---    | ---                                       |
+| `purchase_intent="sim"` + `contact_consent=true` + `score≥4`                                    | alto   | conforme `pricing_preference` (ver abaixo) |
+| `purchase_intent="sim"` ou (`talvez` + `score≥4` + `contact_consent`)                           | médio  | "Explorar plano mensal" / bundle           |
+| `purchase_intent="talvez"` sem consentimento, ou `score=3`                                      | baixo  | "Nutrir mais tarde"                        |
+| `purchase_intent="nao"` ou `score≤2`                                                            | sem    | "Arquivar / nutrir mais tarde"             |
+| `fb=null`                                                                                       | sem    | (não usado — secção mostra empty state)    |
 
-**Apagar:**
-- `src/lib/email/report-link-email-template.ts` (substituído pelo módulo novo)
+Mapeamento `pricing_preference → ação`:
+- `one_off_3` → "Responder com proposta de relatório único"
+- `bundle_5_13` → "Sugerir bundle 5"
+- `plano_mensal` / `plano_agencia` → "Explorar plano mensal"
+- `nao_sei` / `undefined` → fallback pela intent
 
-## Validação
+Testes em `src/lib/admin/__tests__/feedback-intent.test.ts` cobrem cada combinação.
+
+---
+
+## 3. Tipos partilhados
+
+`src/lib/admin/kanban-columns.ts`:
+
+```ts
+export interface BetaFeedbackSummary {
+  id: string;
+  usefulness_score: number;
+  clarity_text: string | null;
+  missing_text: string | null;
+  purchase_intent: "sim" | "talvez" | "nao";
+  pricing_preference: string | null;
+  contact_consent: boolean;
+  created_at: string;
+}
+```
+
+Adicionar `feedback: BetaFeedbackSummary | null` a `EnrichedLead`.
+
+---
+
+## 4. Lead Detail Sheet — secção "Feedback beta"
+
+Ficheiro: `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
+
+Inserir nova secção entre "Relatório" e "Inteligência comercial" (apenas quando faz sentido — empty state simples se ausente).
+
+Layout compacto:
+
+- Cabeçalho: `SectionTitle` "Feedback beta" + `relativeTime(created_at)` à direita.
+- Linha de score: 5 pontos preenchidos conforme `usefulness_score` (reutilizar tokens, sem hardcodes).
+- `DetailRow "Disposto a pagar"` → label PT + badge.
+- `DetailRow "Opção preferida"` → `PRICING_PREFERENCE_LABELS[…]` ou "—".
+- `DetailRow "Permite contacto"` → "Sim" / "Não".
+- Bloco texto livre (apenas se preenchidos):
+  - "O que ficou mais claro" → `clarity_text`
+  - "O que faltou" → `missing_text`
+- Caixa destacada (mesmo estilo do "Próximo passo sugerido", cor pelo accent da `interpretFeedback`):
+  - eyebrow "Sinal comercial" + intent label
+  - "Sugestão" + `nextAction`
+
+Empty state (sem feedback): card minimal com "Sem feedback ainda" e CTA "Pedir feedback" (já existe acima — apenas referenciar).
+
+A `Inteligência comercial` continua a usar o `suggestNextLeadAction` baseado no estado, mas se houver feedback, sobrescreve o `intent` mostrado lá pela interpretação do feedback (mais forte que o sinal heurístico).
+
+---
+
+## 5. Kanban Card — badges de feedback
+
+Ficheiro: `src/components/admin/v2/beta-leads/lead-card.tsx`
+
+Na linha de badges existente, juntar (apenas se `lead.feedback`):
+- `AdminBadge` "Feedback" (variant `info`) com tooltip do score (`★ 4/5`).
+- `AdminBadge` da intent (variant pelo accent retornado por `interpretFeedback`).
+
+Sem aumentar altura do card — ambas as badges entram no mesmo flex-wrap.
+
+---
+
+## 6. Timeline — `feedback_submitted`
+
+Já existe `EVENT_LABELS.feedback_submitted` e `EVENT_ICONS.feedback_submitted`. Confirmar visualmente; nenhuma mudança de código necessária.
+
+---
+
+## 7. Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run`
-- Confirmar manualmente: "Pedir feedback" envia email, regista evento, status vai a `feedback_pedido`.
-- Confirmar: abrir relatório enquanto status é `link_enviado` → muda para `relatorio_visto`. Abrir quando já está em `feedback_pedido` → não regride.
-- Confirmar: Kanban e Lead Detail Sheet continuam a abrir.
+- `bunx vitest run` (incluindo `feedback-intent.test.ts`)
+- Manual: lead com feedback mostra a secção; lead sem feedback mostra empty state limpo; card mostra badges quando aplicável.
+
+---
+
+## Ficheiros tocados
+
+**Novos**
+- `src/lib/admin/feedback-intent.ts`
+- `src/lib/admin/__tests__/feedback-intent.test.ts`
+
+**Editados**
+- `src/lib/admin/kanban-columns.ts` — tipo `BetaFeedbackSummary` + campo no `EnrichedLead`
+- `src/routes/api/admin/leads-kanban.ts` — fetch + map + payload
+- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — nova secção + override do intent
+- `src/components/admin/v2/beta-leads/lead-card.tsx` — badges
+
+**Não tocados**
+- Formulário público (`feedback-form.tsx`, `feedback-schema.ts`, `routes/feedback.$requestId.tsx`)
+- API pública `/api/public/feedback.$requestId.ts`
+- Pipelines de relatório / PDF / providers
+- `supabase/migrations/*`
+
+---
 
 ## Checkpoint
 
-- ☐ R1 swap template send-report-link
-- ☐ R2 endpoint + botão "Pedir feedback"
-- ☐ R3 auto-transição `relatorio_visto`
-- ☐ R4 email "Pedido recebido" no submit beta
-- ☐ Apagar template antigo órfão
-- ☐ tsc + vitest verdes
+- ☐ Endpoint devolve `feedback` por lead
+- ☐ `interpretFeedback` cobre todas as combinações + testes verdes
+- ☐ Lead Detail Sheet renderiza secção e empty state em pt-PT
+- ☐ Card mostra badges sem quebrar layout
+- ☐ `tsc --noEmit` limpo · `vitest` 100% verde

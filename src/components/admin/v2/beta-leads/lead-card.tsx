@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 import { KANBAN_COLUMNS } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
+import { interpretFeedback } from "@/lib/admin/feedback-intent";
 
 interface LeadCardProps {
   lead: EnrichedLead;
@@ -61,6 +62,7 @@ function reportStatusAccent(status: string | null): "info" | "revenue" | "signal
 export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCardProps) {
   const [statusChanging, setStatusChanging] = useState(false);
   const nextAction = suggestNextLeadAction(lead);
+  const feedbackIntent = lead.feedback ? interpretFeedback(lead.feedback) : null;
 
   const handleStatusChange = (newStatus: string) => {
     setStatusChanging(true);
@@ -161,6 +163,20 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
           <AdminBadge variant={reportStatusAccent(lead.report_status)}>
             {lead.report_status}
           </AdminBadge>
+        )}
+        {lead.feedback && (
+          <span title={`Score ${lead.feedback.usefulness_score}/5`}>
+            <AdminBadge variant="info">
+              ★ {lead.feedback.usefulness_score}/5
+            </AdminBadge>
+          </span>
+        )}
+        {feedbackIntent && feedbackIntent.intent !== "sem" && (
+          <span title={feedbackIntent.nextAction}>
+            <AdminBadge variant={feedbackIntent.accent}>
+              {feedbackIntent.label}
+            </AdminBadge>
+          </span>
         )}
       </div>
 

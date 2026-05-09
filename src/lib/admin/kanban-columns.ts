@@ -45,4 +45,16 @@ export interface EnrichedLead {
   last_interaction: string;
   created_at: string;
   report_request_id: string | null;
+  feedback: BetaFeedbackSummary | null;
+}
+
+export interface BetaFeedbackSummary {
+  id: string;
+  usefulness_score: number;
+  clarity_text: string | null;
+  missing_text: string | null;
+  purchase_intent: "sim" | "talvez" | "nao";
+  pricing_preference: string | null;
+  contact_consent: boolean;
+  created_at: string;
 }

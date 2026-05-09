@@ -145,6 +145,45 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
           }
         }
 
+        // 5b. Beta feedback per lead (via report_request_id)
+        const reqIds = (requests ?? []).map((r) => r.id);
+        const feedbackByLead = new Map<string, {
+          id: string;
+          usefulness_score: number;
+          clarity_text: string | null;
+          missing_text: string | null;
+          purchase_intent: "sim" | "talvez" | "nao";
+          pricing_preference: string | null;
+          contact_consent: boolean;
+          created_at: string;
+        }>();
+        if (reqIds.length > 0) {
+          const { data: feedbackRows } = await supabaseAdmin
+            .from("beta_feedback")
+            .select(
+              "id, lead_id, report_request_id, usefulness_score, clarity_text, missing_text, purchase_intent, pricing_preference, contact_consent, created_at"
+            )
+            .in("report_request_id", reqIds)
+            .order("created_at", { ascending: false });
+
+          if (feedbackRows) {
+            for (const f of feedbackRows) {
+              if (f.lead_id && !feedbackByLead.has(f.lead_id)) {
+                feedbackByLead.set(f.lead_id, {
+                  id: f.id,
+                  usefulness_score: f.usefulness_score,
+                  clarity_text: f.clarity_text,
+                  missing_text: f.missing_text,
+                  purchase_intent: f.purchase_intent as "sim" | "talvez" | "nao",
+                  pricing_preference: f.pricing_preference,
+                  contact_consent: !!f.contact_consent,
+                  created_at: f.created_at,
+                });
+              }
+            }
+          }
+        }
+
         // 6. Assemble enriched leads
         const enriched = leads.map((lead) => {
           const req = requestByLead.get(lead.id);
@@ -177,6 +216,7 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             last_interaction: lastEvent ?? lead.updated_at,
             created_at: lead.created_at,
             report_request_id: req?.id ?? null,
+            feedback: feedbackByLead.get(lead.id) ?? null,
           };
         });
 
