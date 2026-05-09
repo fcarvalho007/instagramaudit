@@ -267,6 +267,47 @@ function GroupHeader({
 }
 
 function CofreCard() {
+  const { snapshotId, handle, variant } = useReportTracking();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [registered, setRegistered] = useState<Set<PricingOption>>(new Set());
+
+  const openDialog = () => setDialogOpen(true);
+
+  const handleUnlock = () => {
+    trackEvent({
+      data: {
+        eventType: "unlock_clicked",
+        snapshotId: snapshotId ?? undefined,
+        handle: handle ?? undefined,
+        metadata: { variant, source_component: "sidebar_cofre" },
+      },
+    }).catch(() => {});
+    openDialog();
+  };
+
+  const handlePricing = (option: PricingOption) => {
+    if (!registered.has(option)) {
+      setRegistered((prev) => {
+        const next = new Set(prev);
+        next.add(option);
+        return next;
+      });
+      trackEvent({
+        data: {
+          eventType: "pricing_option_clicked",
+          snapshotId: snapshotId ?? undefined,
+          handle: handle ?? undefined,
+          metadata: {
+            pricing_option: option,
+            variant,
+            source_component: "sidebar_cofre",
+          },
+        },
+      }).catch(() => {});
+    }
+    openDialog();
+  };
+
   return (
     <div
       id={COFRE_ANCHOR_ID}
@@ -291,7 +332,18 @@ function CofreCard() {
       </p>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-white/5 p-2.5 ring-1 ring-white/10">
+        <button
+          type="button"
+          onClick={() => handlePricing("single_3_eur")}
+          aria-pressed={registered.has("single_3_eur")}
+          className="relative text-left rounded-lg bg-white/5 p-2.5 ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
+          {registered.has("single_3_eur") && (
+            <Check
+              aria-hidden="true"
+              className="absolute top-1.5 right-1.5 size-3 text-emerald-400"
+            />
+          )}
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/60">
             Uma vez
           </p>
@@ -301,12 +353,23 @@ function CofreCard() {
           <p className="mt-1 text-[10px] text-white/60 leading-tight">
             só esta análise
           </p>
-        </div>
-        <div className="relative rounded-lg bg-amber-500 p-2.5 text-content-primary ring-1 ring-amber-300/50 shadow-[0_8px_24px_-12px_rgba(186,117,23,0.6)]">
+        </button>
+        <button
+          type="button"
+          onClick={() => handlePricing("bundle_13_eur")}
+          aria-pressed={registered.has("bundle_13_eur")}
+          className="relative text-left rounded-lg bg-amber-500 p-2.5 text-content-primary ring-1 ring-amber-300/50 shadow-[0_8px_24px_-12px_rgba(186,117,23,0.6)] hover:bg-amber-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200"
+        >
           <span className="absolute -top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-0.5 rounded-full bg-content-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
             <Star className="size-2.5 fill-amber-300" aria-hidden="true" />
             POUPA €2
           </span>
+          {registered.has("bundle_13_eur") && (
+            <Check
+              aria-hidden="true"
+              className="absolute top-1.5 right-1.5 size-3 text-content-primary"
+            />
+          )}
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] opacity-80">
             Bundle 5
           </p>
@@ -316,17 +379,27 @@ function CofreCard() {
           <p className="mt-1 text-[10px] opacity-80 leading-tight">
             5 análises · €2,60/cada
           </p>
-        </div>
+        </button>
       </div>
 
       <button
         type="button"
+        onClick={handleUnlock}
+        aria-label="Abrir opções de desbloqueio"
         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2.5 text-xs font-bold uppercase tracking-[0.08em] text-content-primary hover:bg-white/90 transition-colors"
       >
         Desbloquear
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
       </div>
+      <PremiumInterestDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        snapshotId={snapshotId}
+        handle={handle}
+        variant={variant}
+        sourceComponent="sidebar_cofre"
+      />
     </div>
   );
 }
