@@ -859,7 +859,7 @@ async function fetchReportCounts(sinceIso: string): Promise<{
     // Fetch all provider_call_logs linked to these events
     const { data: linkedCalls } = await supabaseAdmin
       .from("provider_call_logs")
-      .select("analysis_event_id, estimated_cost_usd, provider")
+      .select("analysis_event_id, actual_cost_usd, estimated_cost_usd, provider")
       .in("analysis_event_id", freshEventIds)
       .eq("status", "success");
 
@@ -869,13 +869,14 @@ async function fetchReportCounts(sinceIso: string): Promise<{
       const costByEvent = new Map<string, { cost: number; providers: Set<string> }>();
       for (const call of linkedCalls) {
         const eid = call.analysis_event_id as string;
+        const callCost = resolveCallCost(call);
         const existing = costByEvent.get(eid);
         if (existing) {
-          existing.cost += Number(call.estimated_cost_usd ?? 0);
+          existing.cost += callCost;
           existing.providers.add(call.provider as string);
         } else {
           costByEvent.set(eid, {
-            cost: Number(call.estimated_cost_usd ?? 0),
+            cost: callCost,
             providers: new Set([call.provider as string]),
           });
         }
