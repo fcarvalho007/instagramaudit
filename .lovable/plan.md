@@ -1,162 +1,151 @@
-## Diagnóstico
+## Objetivo
 
-Infraestrutura já preparada — falta apenas a UI e o "fio elétrico":
-
-- ✅ `trackEvent` server fn com `unlock_clicked` e `pricing_option_clicked` no allowlist
-- ✅ Resolução automática `lead_id` via `snapshot_id` (em `tracking.functions.ts`)
-- ✅ Timeline já tem `EVENT_LABELS` e `EVENT_ICONS` para ambos os eventos
-- ❌ Não existe botão "DESBLOQUEAR" nem grelha de preços no relatório público
-- ❌ Timeline não mostra metadata (qual opção foi clicada)
-
-`PremiumCallout` é a peça central já usada (ex.: em `report-engagement-benchmark-chart.tsx`), atualmente sem CTA.
+Auditoria end-to-end **read-only** do fluxo operacional beta (15 passos). Sem alterações de código, sem providers pagos, sem emails reais — exceto se o utilizador autorizar pontualmente um lead de teste.
 
 ---
 
-## UX escolhida — opção mais leve
+## Cobertura mapeada
 
-**Modal único de "Registar interesse"** disparado a partir do botão **DESBLOQUEAR** dentro do `PremiumCallout`:
-
-1. Click em **DESBLOQUEAR** → regista `unlock_clicked` → abre dialog
-2. Dialog mostra 4 cartões de preço (sem checkout):
-   - **single_3_eur** — €3 + IVA · "Relatório único"
-   - **bundle_13_eur** — €13 + IVA · "Bundle 5 relatórios"
-   - **monthly** — "Plano mensal · em breve"
-   - **agency** — "Agência · falamos contigo"
-3. Click num cartão → regista `pricing_option_clicked` com `pricing_option` no metadata → cartão muda para estado **"Interesse registado ✓"** (idempotente; não dispara segunda vez para o mesmo cartão)
-4. Footer: "Sem pagamento. Voltamos a falar contigo."
-
-Sem checkout, sem provider, sem coleta de email (já temos do beta tester via lead).
+| # | Etapa | Superfície a auditar |
+|---|---|---|
+| 1 | Submissão beta | `src/routes/beta.request.tsx` + `src/routes/api/request-full-report.ts` |
+| 2 | Aparece no Kanban | `src/routes/api/admin/leads-kanban.ts` + UI `BetaLeadsKanban` |
+| 3 | Lead detail | `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` + `lead-timeline.$id.ts` + `leads-kanban.$id.ts` |
+| 4 | Generate/refresh report | `src/routes/api/admin/generate-beta-report.ts` + `force-refresh.ts` |
+| 5 | Report link disponível | `report_requests.pdf_storage_path` + estado `report_status` |
+| 6 | Send report link | `src/routes/api/admin/send-report-link.ts` + template email |
+| 7 | Evento `report_link_sent` | `product_events` (via `recordProductEvent`) |
+| 8 | Visualização pública | `src/routes/analyze.$username.tsx` |
+| 9 | Evento `report_viewed` + auto-advance | `tracking.functions.ts` + `lead-lifecycle.ts` |
+| 10 | Send feedback request | `send-feedback-request.ts` + dialog em `lead-detail-sheet.tsx` |
+| 11 | Submissão feedback | `src/routes/feedback.$requestId.tsx` + `api/public/feedback.$requestId.ts` |
+| 12 | Evento `feedback_submitted` | `product_events` + lifecycle update |
+| 13 | Feedback no detail | secção "Feedback beta" + `feedback-intent.ts` |
+| 14 | Status atualiza | `lead-lifecycle.ts` ladder |
+| 15 | Próxima ação sugerida | `feedback-intent.ts` `nextAction` |
 
 ---
 
-## Implementação
+## Método (3 fases sequenciais)
 
-### 1. Novo dialog `src/components/report-redesign/v2/premium-interest-dialog.tsx`
+### Fase A — Inspeção estática (read-only, ~15 min)
 
-Props:
-```ts
-interface Props {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  snapshotId: string | null
-  handle: string | null
-  variant: string                  // "public_mvp"
-  sourceComponent: string          // ex. "engagement_benchmark_chart"
-}
+Para cada um dos 15 passos:
+- Ler o ficheiro responsável
+- Verificar contrato esperado (input/output, status codes, eventos disparados)
+- Confirmar idempotência onde requerido (passos 11, 6)
+- Confirmar fallback de erro (rollback de status quando email falha)
+
+Verificações transversais:
+- **Sem providers no público**: rg em `src/routes/api/public/*` por chamadas a `apifyClient`, `dataforseo`, `openai`, `lovable-ai-gateway`. Esperado: zero.
+- **Rotas quebradas**: `bunx tsc --noEmit` + verificar `src/routeTree.gen.ts` cobre `/beta/request`, `/beta/submitted/$requestId`, `/feedback/$requestId`, `/analyze/$username`, todas as `/api/admin/*` e `/api/public/*` referenciadas.
+- **Allowlist de eventos**: `tracking.functions.ts` contém `report_link_sent`, `report_viewed`, `feedback_submitted`, `feedback_requested`, `unlock_clicked`, `pricing_option_clicked`.
+- **Form mobile**: classes responsivas em `feedback.$requestId.tsx` e `beta.request.tsx` (grid, padding, tap targets ≥ 44px).
+
+### Fase B — Inspeção de dados live (read-only DB, ~10 min)
+
+Via `psql` (read-only) ou `supabase--read_query`:
+
+1. **Lead mais recente com fluxo completo** (se existir):
+   ```sql
+   select id, email, commercial_status, created_at
+   from leads
+   order by created_at desc limit 5;
+   ```
+2. **Eventos por lead** (sanity da timeline):
+   ```sql
+   select event_type, created_at, metadata
+   from product_events
+   where lead_id = '<id>'
+   order by created_at;
+   ```
+   Confirmar ordem esperada: `report_link_sent` → `report_viewed` → `feedback_requested` → `feedback_submitted`.
+3. **Feedback duplicado**:
+   ```sql
+   select report_request_id, count(*) from beta_feedback
+   group by 1 having count(*) > 1;
+   ```
+   Esperado: zero linhas (constraint deve impedir).
+4. **Report sem link**:
+   ```sql
+   select rr.id, rr.delivery_status, rr.pdf_storage_path
+   from report_requests rr
+   where rr.delivery_status = 'sent' and pdf_storage_path is null;
+   ```
+   Esperado: zero linhas.
+5. **Status leads vs eventos** (deteta drift do lifecycle):
+   ```sql
+   select l.commercial_status, count(*) from leads l
+   group by 1;
+   ```
+
+### Fase C — Smoke HTTP (apenas endpoints públicos, ~5 min)
+
+Sem disparar custos:
+
+- `GET /feedback/<requestId-inválido>` → esperado: estado vazio amigável (não 500)
+- `GET /analyze/<handle-inexistente>` → esperado: empty/error state
+- `POST /api/public/feedback/<requestId>` com payload inválido → 400 com `error.message`
+- `POST /api/public/feedback/<requestId-válido>` duplicado → 409 / `already_submitted`
+
+Endpoints admin: **não chamar** sem aprovação (geram custo / enviam email).
+
+---
+
+## Critérios de severidade
+
+- **Blocker**: quebra qualquer dos 15 passos numa run normal (lead real perderia funcionalidade)
+- **Important**: degrada UX/dados (timeline desordenada, status que não avança, rótulos errados)
+- **Nice-to-have**: cosmética, copy, micro-acessibilidade
+
+---
+
+## Fórmula do score (0–100)
+
+```
+score = 100
+  − 25 por cada blocker
+  − 8 por cada important
+  − 2 por cada nice-to-have
+mínimo 0
 ```
 
-Comportamento:
-- Lista de 4 opções tipadas: `type PricingOption = "single_3_eur" | "bundle_13_eur" | "monthly" | "agency"`
-- Estado local `Set<PricingOption>` para marcar cliques já registados
-- Ao clicar: chama `trackEvent({ data: { eventType: "pricing_option_clicked", snapshotId, handle, metadata: { pricing_option, variant, source_component } }}).catch(()=>{})`
-- Usa `Dialog` do shadcn já existente
-- Estilo: cartões em grid 2×2 mobile-first, tons leves (sem amber agressivo), badge "Em breve" para `monthly`/`agency`
-- Tokens: usar `surface-muted`, `border-default`, `accent` — sem cores hardcoded
-
-### 2. Atualizar `PremiumCallout`
-
-Adicionar props opcionais (backward compatible):
-```ts
-unlockEnabled?: boolean
-snapshotId?: string | null
-handle?: string | null
-sourceComponent?: string
-variant?: string
-```
-
-Quando `unlockEnabled === true`, renderizar internamente:
-- Botão "DESBLOQUEAR" (ícone `Sparkles`) abaixo da descrição
-- Estado local `dialogOpen`
-- Click no botão → `trackEvent({ data: { eventType: "unlock_clicked", snapshotId, handle, metadata: { variant, source_component } }}).catch(()=>{})` → `setDialogOpen(true)`
-- Inclui `<PremiumInterestDialog>` controlado por esse estado
-
-Sem alterar a aparência atual quando `unlockEnabled` é falsy (default).
-
-### 3. Ativar nos pontos de uso
-
-Em `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` (única utilização atual), passar:
-```tsx
-<PremiumCallout
-  unlockEnabled
-  snapshotId={snapshotId}
-  handle={handle}
-  variant="public_mvp"
-  sourceComponent="engagement_benchmark_chart"
-  ...
-/>
-```
-
-`snapshotId` e `handle` precisam fluir até este componente. Se ainda não chegam, propagam-se via props (sem alterar dados do relatório nem PDF).
-
-### 4. Timeline mostra a opção clicada
-
-`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — no map de eventos, adicionar uma linha de metadata abaixo do label quando `event_type` ∈ {`pricing_option_clicked`, `unlock_clicked`}:
-
-```tsx
-{ev.event_type === "pricing_option_clicked" && ev.metadata?.pricing_option && (
-  <p className="admin-meta text-admin-text-tertiary m-0 mt-0.5">
-    Opção: <code>{String(ev.metadata.pricing_option)}</code>
-    {ev.metadata.source_component ? ` · ${String(ev.metadata.source_component)}` : ""}
-  </p>
-)}
-```
-
-(Verificar primeiro que `ev.metadata` é exposto pela API da timeline — se não for, expandir o `select` em `src/routes/api/admin/lead-timeline.ts`.)
-
-### 5. Testes
-
-`src/components/report-redesign/v2/__tests__/premium-interest-dialog.test.tsx`:
-- Renderiza 4 opções
-- Click no cartão `single_3_eur` chama `trackEvent` com payload correto
-- Segundo click no mesmo cartão não duplica
-- Click em `monthly` continua a registar evento (mesmo com badge "em breve")
-
-Mock simples de `trackEvent` via `vi.mock("@/lib/tracking.functions")`.
+Tetos: ≥85 = beta-ready · 60–84 = ready com ressalvas · <60 = não-pronto.
 
 ---
 
-## Não tocado
+## Output (entrega no próximo turno)
 
-- Pipeline PDF
-- Geração / scoring de relatório
-- Dados / providers
-- Schema / migrations
-- Checkout / payment
-
----
-
-## Validação
-
-- `bunx tsc --noEmit` limpo
-- `bunx vitest run` 100% verde
-- Manual:
-  - Abrir `/analyze/<handle>` → ver botão DESBLOQUEAR no callout
-  - Click → DB tem evento `unlock_clicked` com `lead_id` resolvido (se snapshot tem report_request)
-  - Click numa opção → `pricing_option_clicked` com `metadata.pricing_option`
-  - Lead detail sheet → timeline mostra "CTA de desbloqueio clicado" e "Opção de preço clicada · single_3_eur"
+1. **Tabela PASS/FAIL** com 15 linhas (uma por passo) + 7 linhas de verificações transversais
+2. **Lista de blockers** com ficheiro:linha + correção sugerida
+3. **Lista de important** idem
+4. **Lista de nice-to-have** idem
+5. **Score 0–100** com decomposição
+6. **Top 3 next fixes** prioritizados por impacto/esforço
 
 ---
 
-## Ficheiros tocados
+## Não fazer
 
-**Criados (2)**
-- `src/components/report-redesign/v2/premium-interest-dialog.tsx`
-- `src/components/report-redesign/v2/__tests__/premium-interest-dialog.test.tsx`
+- Não enviar emails reais (não chamar `send-report-link` nem `send-feedback-request`)
+- Não chamar Apify / DataForSEO / OpenAI
+- Não alterar código nem dados (só `SELECT`)
+- Não tocar `/report.example`, pipeline PDF, ou geração de relatório
 
-**Editados (3-4)**
-- `src/components/report-redesign/v2/premium-callout.tsx` — botão DESBLOQUEAR + estado dialog
-- `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` — passa props
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — metadata na timeline
-- (se necessário) `src/routes/api/admin/lead-timeline.ts` — incluir `metadata` no select
+---
+
+## Pedido ao utilizador antes de começar (opcional)
+
+Se quiseres que eu exercite os endpoints admin contra um **lead de teste real** (com email teu), aprova explicitamente. Caso contrário, fico apenas pela inspeção estática + DB read-only + smoke público.
 
 ---
 
 ## Checkpoint
 
-- ☐ Dialog renderizado com 4 opções de preço
-- ☐ `unlock_clicked` registado ao abrir dialog
-- ☐ `pricing_option_clicked` registado por opção, com metadata correto
-- ☐ `lead_id` resolvido server-side via snapshot
-- ☐ Timeline do lead mostra ambos os eventos com a opção visível
-- ☐ Sem checkout, sem alterações de dados/PDF
-- ☐ `tsc --noEmit` limpo · `vitest` verde
+- ☐ Fase A: 15 passos + 7 verificações transversais inspecionadas
+- ☐ Fase B: 5 queries DB executadas, drifts identificados
+- ☐ Fase C: 4 smoke calls públicos sem 5xx
+- ☐ Tabela PASS/FAIL produzida
+- ☐ Blockers / important / nice-to-have catalogados
+- ☐ Score 0–100 calculado com fórmula explícita
+- ☐ Top 3 next fixes priorizados
