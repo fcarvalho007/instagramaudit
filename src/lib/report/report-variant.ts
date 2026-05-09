@@ -70,7 +70,7 @@ const VARIANT_FEATURES: Record<ReportVariant, VariantFeatures> = {
     debugLabels: "hidden",
     blockOverview: "full",
     blockDiagnosis: "full",
-    blockPerformance: "hidden",
+    blockPerformance: "lightweight",
     blockContent: "hidden",
     blockSearch: "hidden",
     blockBenchmark: "hidden",

@@ -33,10 +33,11 @@ import {
 } from "@/lib/report/report-variant";
 
 import { ReportFramedBlock } from "../report-framed-block";
+import { Lock, Sparkles } from "lucide-react";
 import { ReportMethodology } from "../report-methodology";
 import { REDESIGN_TOKENS } from "../report-tokens";
 
-import { BLOCKS, type BlockConfig } from "./block-config";
+import { BLOCKS } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
@@ -78,11 +79,17 @@ export function ReportShellV2({
   const v2 = result.enriched.aiInsightsV2;
   const features = featuresOverride ?? getVariantFeatures(variant);
 
-  /** Blocks visible for the current variant/features. */
-  const visibleBlocks: BlockConfig[] = BLOCKS.filter(
-    (b) => features[b.featureKey] !== "hidden",
-  );
-  const visibleBlockIds = visibleBlocks.map((b) => b.id);
+  const sidebarProfile = {
+    handle: result.data.profile.username,
+    avatarUrl: result.enriched.profile?.avatarUrl ?? null,
+    displayName: result.data.profile.fullName ?? null,
+  };
+
+  const scrollToCofre = () => {
+    if (typeof document === "undefined") return;
+    const el = document.getElementById("report-cofre");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   /** Insight v2 dentro de um container já com padding (block content). */
   const renderInsight = (key: AiInsightV2Section) => {
@@ -110,12 +117,20 @@ export function ReportShellV2({
         </section>
 
         {/* Tabs mobile sticky abaixo do hero */}
-        <ReportBlockTopTabs visibleBlockIds={visibleBlockIds} />
+        <ReportBlockTopTabs
+          variant={variant}
+          features={features}
+          profile={sidebarProfile}
+        />
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1380px] px-5 md:px-6">
           <div className="flex gap-8 lg:gap-10 pt-5 lg:pt-6">
-            <ReportBlockSidebar visibleBlockIds={visibleBlockIds} />
+            <ReportBlockSidebar
+              variant={variant}
+              features={features}
+              profile={sidebarProfile}
+            />
             <main className="min-w-0 flex-1">
               {/* 01 · Overview (redesigned) */}
               {features.blockOverview !== "hidden" && (
@@ -152,8 +167,14 @@ export function ReportShellV2({
                   <div className="space-y-10 md:space-y-12">
                     <ReportPostingHeatmap />
                     <div className="mt-4">{renderInsight("heatmap")}</div>
-                    <ReportBestDays />
-                    <div className="mt-4">{renderInsight("daysOfWeek")}</div>
+                    {features.blockPerformance === "full" ? (
+                      <>
+                        <ReportBestDays />
+                        <div className="mt-4">{renderInsight("daysOfWeek")}</div>
+                      </>
+                    ) : (
+                      <PerformanceLockedTeaser onUnlock={scrollToCofre} />
+                    )}
                   </div>
                 </ReportFramedBlock>
               </ReportBlockSection>
@@ -249,6 +270,41 @@ export function ReportShellV2({
     </ReportDataProvider>
     </VariantFeaturesOverrideProvider>
     </ReportVariantProvider>
+  );
+}
+
+/**
+ * Teaser inline para a parte locked do bloco 03 (Desempenho)
+ * em variantes parciais (public_mvp lightweight). Renderiza um cartão
+ * compacto a anunciar as 2 secções restantes e leva ao cofre.
+ */
+function PerformanceLockedTeaser({ onUnlock }: { onUnlock: () => void }) {
+  return (
+    <div className="mt-4 rounded-xl border border-dashed border-border-default bg-surface-muted/50 p-5">
+      <div className="flex items-start gap-3">
+        <div className="rounded-full bg-signal-warning/15 p-2">
+          <Lock className="size-4 text-accent-gold" aria-hidden="true" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-eyebrow-sm text-accent-gold">Premium</p>
+          <h4 className="mt-1 text-sm md:text-base font-semibold text-content-primary">
+            Mais 2 secções dentro de Desempenho
+          </h4>
+          <p className="mt-1 text-sm text-content-secondary leading-relaxed">
+            Melhores dias da semana e leitura editorial do ritmo de publicação
+            ficam disponíveis no relatório completo.
+          </p>
+          <button
+            type="button"
+            onClick={onUnlock}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
+          >
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            Desbloquear análise completa →
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
