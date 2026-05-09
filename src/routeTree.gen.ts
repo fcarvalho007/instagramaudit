@@ -42,6 +42,7 @@ import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimen
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as AdminBetaRequestsRouteImport } from './routes/admin.beta-requests'
 import { Route as AdminBetaLeadsRouteImport } from './routes/admin.beta-leads'
+import { Route as AdminAutomacoesRouteImport } from './routes/admin.automacoes'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
 import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
 import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
@@ -66,6 +67,7 @@ import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diag
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
 import { Route as ApiAdminBillingReconciliationRouteImport } from './routes/api/admin/billing-reconciliation'
 import { Route as ApiAdminBetaFunnelRouteImport } from './routes/api/admin/beta-funnel'
+import { Route as ApiAdminAutomationFlowRouteImport } from './routes/api/admin/automation-flow'
 import { Route as ApiAdminAnalysisCostBreakdownRouteImport } from './routes/api/admin/analysis-cost-breakdown'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
@@ -271,6 +273,11 @@ const AdminBetaLeadsRoute = AdminBetaLeadsRouteImport.update({
   path: '/beta-leads',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAutomacoesRoute = AdminAutomacoesRouteImport.update({
+  id: '/automacoes',
+  path: '/automacoes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ReportPrintSnapshotIdRoute = ReportPrintSnapshotIdRouteImport.update({
   id: '/report/print/$snapshotId',
   path: '/report/print/$snapshotId',
@@ -395,6 +402,11 @@ const ApiAdminBillingReconciliationRoute =
 const ApiAdminBetaFunnelRoute = ApiAdminBetaFunnelRouteImport.update({
   id: '/api/admin/beta-funnel',
   path: '/api/admin/beta-funnel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAutomationFlowRoute = ApiAdminAutomationFlowRouteImport.update({
+  id: '/api/admin/automation-flow',
+  path: '/api/admin/automation-flow',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminAnalysisCostBreakdownRoute =
@@ -634,6 +646,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -660,6 +673,7 @@ export interface FileRoutesByFullPath {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
@@ -731,6 +745,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -757,6 +772,7 @@ export interface FileRoutesByTo {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
@@ -830,6 +846,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
+  '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -856,6 +873,7 @@ export interface FileRoutesById {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
@@ -930,6 +948,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/automacoes'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
     | '/admin/clientes'
@@ -956,6 +975,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
@@ -1027,6 +1047,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/automacoes'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
     | '/admin/clientes'
@@ -1053,6 +1074,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
@@ -1125,6 +1147,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/termos'
+    | '/admin/automacoes'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
     | '/admin/clientes'
@@ -1151,6 +1174,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
@@ -1234,6 +1258,7 @@ export interface RootRouteChildren {
   FeedbackRequestIdRoute: typeof FeedbackRequestIdRoute
   ReportExampleRoute: typeof ReportExampleRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
+  ApiAdminAutomationFlowRoute: typeof ApiAdminAutomationFlowRoute
   ApiAdminBetaFunnelRoute: typeof ApiAdminBetaFunnelRoute
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
@@ -1520,6 +1545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBetaLeadsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/automacoes': {
+      id: '/admin/automacoes'
+      path: '/automacoes'
+      fullPath: '/admin/automacoes'
+      preLoaderRoute: typeof AdminAutomacoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/report/print/$snapshotId': {
       id: '/report/print/$snapshotId'
       path: '/report/print/$snapshotId'
@@ -1686,6 +1718,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/beta-funnel'
       fullPath: '/api/admin/beta-funnel'
       preLoaderRoute: typeof ApiAdminBetaFunnelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/automation-flow': {
+      id: '/api/admin/automation-flow'
+      path: '/api/admin/automation-flow'
+      fullPath: '/api/admin/automation-flow'
+      preLoaderRoute: typeof ApiAdminAutomationFlowRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/analysis-cost-breakdown': {
@@ -1977,6 +2016,7 @@ const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminAutomacoesRoute: typeof AdminAutomacoesRoute
   AdminBetaLeadsRoute: typeof AdminBetaLeadsRoute
   AdminBetaRequestsRoute: typeof AdminBetaRequestsRoute
   AdminClientesRoute: typeof AdminClientesRoute
@@ -1993,6 +2033,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAutomacoesRoute: AdminAutomacoesRoute,
   AdminBetaLeadsRoute: AdminBetaLeadsRoute,
   AdminBetaRequestsRoute: AdminBetaRequestsRoute,
   AdminClientesRoute: AdminClientesRoute,
@@ -2150,6 +2191,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedbackRequestIdRoute: FeedbackRequestIdRoute,
   ReportExampleRoute: ReportExampleRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
+  ApiAdminAutomationFlowRoute: ApiAdminAutomationFlowRoute,
   ApiAdminBetaFunnelRoute: ApiAdminBetaFunnelRoute,
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,

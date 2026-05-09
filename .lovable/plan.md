@@ -1,69 +1,105 @@
-## Objetivo
+## Página `/admin/automacoes` — visualização do ciclo de vida beta
 
-Adicionar um Command Palette leve dentro de `/admin/*` para pesquisar rapidamente leads beta por nome, email, handle Instagram e empresa, abrindo o `LeadDetailSheet` existente.
+Apenas leitura. Sem execução, sem emails, sem providers, sem alterações de schema.
 
-## Inspeção (read-only)
+### Fontes inspecionadas
 
-- Source: `bacfa751-…/src/components/crm/CRMCommandPalette.tsx` — usa `cmdk` (`CommandDialog`/`CommandInput`/`CommandItem`), atalho ⌘K via `keydown`, props `inscritos` + `onSelectInscrito`, tokens webinar (`hsl(var(--ink-*))`) e mocks. **Adoptamos apenas o padrão de UX** (cmdk + ⌘K + lista compacta + footer de atalhos).
-- InstaBench:
-  - `src/components/ui/command.tsx` (shadcn cmdk) já existe — reutilizar.
-  - `src/routes/admin.tsx` é o layout `/admin/*` com `AdminAuthShell`; ponto natural para montar a palette globalmente.
-  - `src/routes/admin.beta-leads.tsx` carrega `useQuery(['admin','beta-leads'])` via `/api/admin/leads-kanban` — devolve `EnrichedLead[]` com `name`, `email`, `handle`, `company`. **Reutilizamos esta query** (mesma chave) para evitar endpoint novo: a query é montada quando o admin entra no kanban e fica em cache; a palette consome-a também.
-  - `KanbanBoard` mantém `detailLead` num `useState` interno — não há padrão `?lead=<id>`. A maneira mais simples e isolada de abrir a ficha a partir de qualquer rota admin é navegar para `/admin/beta-leads?lead=<id>` e fazer o board reagir a esse search param.
+- **Source CRM (referência UX apenas, não copiar)**
+  - `src/components/crm/AutomationFlowTab.tsx` (2060 linhas) — extrair só o padrão visual: nó com tag/título/subtítulo, separadores de grupo, ligação vertical entre nós, contagem de elegíveis. Ignorar tudo o que é específico de webinar (templates SMS, day groups, drawer de envio, edge functions, mocks).
 
-## Decisão
+- **InstaBench (reutilizar)**
+  - `src/lib/admin/lead-lifecycle.ts` — `LIFECYCLE_STATUSES`, `getLifecycleMeta`, `mapEventToSuggestedStatus`, `suggestNextLeadAction`.
+  - `src/lib/admin/feedback-intent.ts` — `interpretFeedback` (alto/medio/baixo).
+  - `src/routes/api/admin/beta-funnel.ts` — padrão para endpoint admin com `requireAdminSession` + `supabaseAdmin`.
+  - `src/components/admin/v2/admin-card.tsx`, `admin-section-header.tsx`, `admin-page-header.tsx`, `admin-badge.tsx` — primitivos do design system.
+  - `src/components/admin/v2/admin-tabs-nav.tsx` — adicionar item de navegação.
 
-Para manter o trabalho pequeno e respeitar "não tocar no public/relatórios/providers":
-- A palette **prefetch+lê** a mesma query `['admin','beta-leads']` que o Kanban já usa. Quando montada fora de `/admin/beta-leads`, dispara `ensureQueryData` na primeira abertura. Custo: 1 GET admin (já existente, sem providers).
-- Selecionar uma lead → `navigate({ to: '/admin/beta-leads', search: { lead: id } })`.
-- `KanbanBoard` passa a aceitar um `initialDetailLeadId` opcional (vindo do search param) e o route `admin.beta-leads.tsx` lê `useSearch` com `validateSearch` (`{ lead?: string }`), passando o id ao board. Quando a sheet fecha, limpa o param.
+### Modelo de dados (read-only)
 
-## Ficheiros a criar / alterar
+Endpoint novo: `GET /api/admin/automation-flow`
 
-1. **Criar** `src/components/admin/v2/admin-command-palette.tsx`
-   - Atalho ⌘K / Ctrl+K + ESC (cmdk já trata).
-   - Usa `CommandDialog`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandGroup`, `CommandItem`.
-   - `useQuery({ queryKey: ['admin','beta-leads'], queryFn: fetchLeads, enabled: open })` — mesma chave do kanban; quando o utilizador já lá esteve, há cache imediato.
-   - `value` de cada `CommandItem` concatena `name + email + handle + company` para a fuzzy-search interna do cmdk filtrar nos 4 campos.
-   - Lista até 50 resultados ordenados por `last_interaction desc`.
-   - Item: avatar (1.ª letra do nome), nome, badge `commercial_status` (cor de `getLifecycleMeta`), linha secundária `email · @handle · company`.
-   - Estados: loading (placeholder), empty ("Nenhuma lead encontrada"), erro neutro.
-   - Footer com kbd ⌘K · ↑↓ · ↵ · ESC.
-   - `onSelect` → `navigate({ to: '/admin/beta-leads', search: { lead: id } })` + `setOpen(false)`.
-   - Tokens admin (`bg-admin-surface`, `text-admin-text-*`, `border-admin-border`); zero hex hardcoded.
+Devolve a definição estática dos 6 fluxos + contagens reais agregadas a partir do Supabase (sem custo, sem providers):
 
-2. **Editar** `src/routes/admin.tsx`
-   - Importar `AdminCommandPalette` e renderizá-la dentro de `AdminAuthShell`, ao lado do `<Outlet />` (uma única instância para todo o `/admin/*`).
+```ts
+type AutomationFlow = {
+  key: "pedido_recebido" | "relatorio_pronto" | "relatorio_visto"
+     | "feedback_pedido" | "feedback_recebido" | "follow_up_comercial";
+  title: string;
+  description: string;
+  trigger: { kind: "form" | "event" | "manual"; label: string };
+  action: { kind: "email" | "manual" | "wait" | "classify"; label: string };
+  fromStatus: LifecycleStatus | null;
+  toStatus: LifecycleStatus | null;
+  eligibleCount: number;     // leads em estado "pronto para o próximo passo"
+  inFlightCount: number;     // leads já neste estado a aguardar
+  completedCount: number;    // leads que já passaram este passo
+};
+```
 
-3. **Editar** `src/routes/admin.beta-leads.tsx`
-   - Adicionar `validateSearch: (s): { lead?: string } => ({ lead: typeof s.lead === 'string' ? s.lead : undefined })`.
-   - `const { lead: leadParam } = Route.useSearch()` e passar `initialDetailLeadId={leadParam}` ao `KanbanBoard`.
-   - Handler `onClearLeadParam` que faz `navigate({ search: {} })` quando a sheet fecha.
+Lógica de contagens (uma única query a `leads` + uso do índice ordinal de `LIFECYCLE_STATUSES`):
 
-4. **Editar** `src/components/admin/v2/beta-leads/kanban-board.tsx`
-   - Aceitar `initialDetailLeadId?: string | null` e `onDetailClose?: () => void`.
-   - `useEffect` que, sempre que `initialDetailLeadId` mudar, encontra a lead em `leads` e chama `setDetailLead(found)`.
-   - Quando a sheet fecha, chamar `onDetailClose?.()` antes de `setDetailLead(null)`.
+| Fluxo | Eligible (precisa ação) | In-flight (aguarda) | Completed (já passou) |
+|---|---|---|---|
+| Pedido recebido | `status = novo_pedido` | — | `status >= em_analise` |
+| Relatório pronto | `status = relatorio_gerado` | `status = em_analise` | `status >= link_enviado` |
+| Relatório visto | `status = link_enviado` | — | `status >= relatorio_visto` |
+| Feedback pedido | `status = relatorio_visto` | `status = feedback_pedido` | `status >= feedback_recebido` |
+| Feedback recebido | `status = feedback_recebido` | — | `status >= interessado` |
+| Follow-up comercial | `status ∈ {interessado, potencial_cliente}` | — | `status = convertido` |
 
-## Restrições respeitadas
+Tudo derivado de `leads.commercial_status`, comparando o índice em `LIFECYCLE_STATUSES`. Sem joins extra. `arquivado` é ignorado (não conta em nenhuma coluna).
 
-- Sem schema, sem providers, sem alterações ao public report ou geração.
-- Sem novo endpoint (reutiliza `/api/admin/leads-kanban`).
-- Tokens admin apenas; pt-PT; sem mocks; sem terminologia webinar.
+### Ficheiros a criar
 
-## Validação
+1. **`src/routes/api/admin/automation-flow.ts`**
+   - `requireAdminSession` + `supabaseAdmin.from("leads").select("commercial_status")`.
+   - Agrega para os 6 fluxos. Devolve `{ success, generatedAt, flows: AutomationFlow[] }`.
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Manual em qualquer rota `/admin/*`:
-  - ⌘K (Mac) / Ctrl+K (Win/Linux) abre a palette.
-  - Pesquisa por nome, email, handle, empresa filtra correctamente.
-  - ↑↓ navega, ↵ abre `/admin/beta-leads?lead=<id>` e a sheet aparece.
-  - ESC fecha a palette; fechar a sheet limpa o `?lead=` do URL.
+2. **`src/components/admin/v2/automacoes/automation-flow-page.tsx`**
+   - Container. `useQuery(["admin","automation-flow"], adminFetch)`.
+   - `AdminPageHeader` + `EligibilitySummary` + lista vertical de `AutomationNode` separados por `AutomationEdge`.
+   - Empty state e skeleton.
+   - Banner informativo: "Visualização apenas — nenhuma ação executada nesta página".
 
-## Output final pós-implementação
+3. **`src/components/admin/v2/automacoes/automation-node.tsx`**
+   - Card branco com: badge de trigger (form/event/manual), título, subtítulo, badge `getLifecycleMeta(toStatus)`, três métricas (`Elegíveis` / `Em curso` / `Concluídos`).
+   - Tokens admin (`AdminCard`, `AdminBadge`, `AdminStat`).
 
-- Source inspecionado.
-- Ficheiros alterados (4).
-- Comportamento UX descrito.
+4. **`src/components/admin/v2/automacoes/automation-edge.tsx`**
+   - Conector vertical simples (linha + chevron) entre nós. Esconder no último.
+   - Mobile: mantém vertical, sem overflow.
+
+5. **`src/components/admin/v2/automacoes/eligibility-summary.tsx`**
+   - Strip horizontal com KPIs: total de leads ativos, leads à espera de ação admin (soma dos `eligibleCount`), leads em curso, leads concluídos no funil.
+
+6. **`src/routes/admin.automacoes.tsx`**
+   - Route file. Renderiza `<AutomationFlowPage />` dentro do shell admin.
+
+### Ficheiros a editar
+
+- **`src/components/admin/v2/admin-tabs-nav.tsx`** — adicionar `{ to: "/admin/automacoes", label: "Automações" }` no grupo **Pipeline** (entre Leads e Pedidos).
+
+### Restrições aplicadas
+
+- Sem botões de execução, sem `mutate`, sem chamadas a edge functions de envio.
+- Sem schema changes.
+- Sem mock data — se `flows` vier vazio (zero leads), mostra empty state real.
+- Sem Apify, sem Resend, sem AI gateway.
+- Tudo em pt-PT, tokens admin, mobile-first.
+
+### Validação
+
+- `bunx tsc --noEmit` → 0 erros.
+- `bunx vitest run` → suite atual continua a passar (163/163).
+- Manual:
+  - `/admin/automacoes` carrega com sessão admin.
+  - Contagens batem aproximadamente com colunas do Kanban (`/admin/beta-leads`).
+  - Layout legível a 375px (nós empilhados, métricas em coluna).
+  - Inspeção da rede: apenas `GET /api/admin/automation-flow`, sem chamadas a providers.
+
+### Entregáveis no fim
+
+- Lista de ficheiros inspecionados (acima).
+- Lista de ficheiros criados/editados.
 - Resultado de `tsc` e `vitest`.
+- Print mental da árvore de chamadas (apenas o endpoint novo).
