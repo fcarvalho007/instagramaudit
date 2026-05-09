@@ -1,157 +1,110 @@
-## Objetivo
+## Diagnóstico
 
-Tornar o feedback dos beta testers visível e acionável no CRM (Lead Detail Sheet + Kanban), com interpretação comercial e sugestão de próximo passo. Sem tocar no formulário público nem em providers/PDF.
+A ação **"Pedir feedback"** já existe no Lead Detail Sheet (botão + dialog `FeedbackRequestDialog` + endpoint `POST /api/admin/send-feedback-request`) e cumpre 5 dos 6 requisitos:
 
----
+- ✅ Botão na ficha do lead (secção Relatório)
+- ✅ Habilitado apenas com email + handle + estado em `link_enviado` / `relatorio_visto` / `feedback_pedido`
+- ✅ Modal mostra destinatário, assunto, link e pré-visualização do corpo
+- ✅ Em sucesso: envia via Resend, regista evento, atualiza status, toast
+- ✅ Em falha: status só muda após 200 OK do provider
+- ❌ **Falta o aviso "Este relatório ainda não foi registado como visto."**
+- ⚠️ Pequenos refinamentos: bloquear quando `feedback` já foi recebido e alinhar nome do evento com a spec/timeline
 
-## 1. Backend — expor `beta_feedback` no payload do CRM
-
-Ficheiro: `src/routes/api/admin/leads-kanban.ts`
-
-- Após obter `requests`, fazer um `select` em `beta_feedback` por `report_request_id IN (...)`.
-- Construir `feedbackByLead: Map<lead_id, BetaFeedbackRow>` (mais recente por lead, normalmente único pelo `UNIQUE(report_request_id)`).
-- Anexar campo `feedback` ao objeto enriquecido devolvido por lead (ou `null`).
-
-Sem alterações de schema. Sem migrations.
+Plano cirúrgico (sem alterar lógica do envio nem o template).
 
 ---
 
-## 2. Interpretação comercial — helper puro
+## 1. Aviso "ainda não foi visto" no modal
 
-Novo ficheiro: `src/lib/admin/feedback-intent.ts`
+`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` → `FeedbackRequestDialog`.
 
-Exporta:
+Calcular `notViewed = lead.report_views === 0` e renderizar dentro do `description`, antes do bloco "Pré-visualização":
 
-```ts
-export type FeedbackIntent = "alto" | "medio" | "baixo" | "sem";
-
-export interface FeedbackIntentResult {
-  intent: FeedbackIntent;
-  label: string;        // "Intenção alta", etc.
-  accent: "revenue" | "signal" | "neutral" | "expense";
-  nextAction: string;   // "Responder com proposta de relatório único", etc.
-}
-
-export function interpretFeedback(fb: BetaFeedbackRow | null): FeedbackIntentResult
+```tsx
+{notViewed && (
+  <div
+    className="flex items-start gap-2 rounded-lg p-3 text-[13px]"
+    style={{
+      backgroundColor: "rgba(234,179,8,0.08)",
+      border: "1px solid rgba(234,179,8,0.2)",
+    }}
+  >
+    <AlertTriangle size={15} style={{ color: "#D97706" }} className="shrink-0 mt-0.5" />
+    <div>
+      <p className="font-medium m-0" style={{ color: "#D97706" }}>Sem visualização registada</p>
+      <p className="mt-0.5 text-admin-text-secondary m-0">
+        Este relatório ainda não foi registado como visto. Podes enviar
+        mesmo assim — o pedido continuará válido quando o lead abrir o link.
+      </p>
+    </div>
+  </div>
+)}
 ```
 
-Regras:
-
-| Condições                                                                                       | Intent | Próxima ação                              |
-| ---                                                                                             | ---    | ---                                       |
-| `purchase_intent="sim"` + `contact_consent=true` + `score≥4`                                    | alto   | conforme `pricing_preference` (ver abaixo) |
-| `purchase_intent="sim"` ou (`talvez` + `score≥4` + `contact_consent`)                           | médio  | "Explorar plano mensal" / bundle           |
-| `purchase_intent="talvez"` sem consentimento, ou `score=3`                                      | baixo  | "Nutrir mais tarde"                        |
-| `purchase_intent="nao"` ou `score≤2`                                                            | sem    | "Arquivar / nutrir mais tarde"             |
-| `fb=null`                                                                                       | sem    | (não usado — secção mostra empty state)    |
-
-Mapeamento `pricing_preference → ação`:
-- `one_off_3` → "Responder com proposta de relatório único"
-- `bundle_5_13` → "Sugerir bundle 5"
-- `plano_mensal` / `plano_agencia` → "Explorar plano mensal"
-- `nao_sei` / `undefined` → fallback pela intent
-
-Testes em `src/lib/admin/__tests__/feedback-intent.test.ts` cobrem cada combinação.
+`AlertTriangle` já está importado no ficheiro.
 
 ---
 
-## 3. Tipos partilhados
+## 2. Bloquear quando feedback já foi submetido
 
-`src/lib/admin/kanban-columns.ts`:
+`FeedbackRequestButton` recebe a `EnrichedLead` que agora inclui `feedback`. Adicionar regra:
 
 ```ts
-export interface BetaFeedbackSummary {
-  id: string;
-  usefulness_score: number;
-  clarity_text: string | null;
-  missing_text: string | null;
-  purchase_intent: "sim" | "talvez" | "nao";
-  pricing_preference: string | null;
-  contact_consent: boolean;
-  created_at: string;
-}
+else if (lead.feedback) disabledReason = "Feedback já recebido.";
 ```
 
-Adicionar `feedback: BetaFeedbackSummary | null` a `EnrichedLead`.
+Defesa server-side já existe (status passa a `feedback_recebido`, fora do `ELIGIBLE_STATUSES`).
 
 ---
 
-## 4. Lead Detail Sheet — secção "Feedback beta"
+## 3. Alinhar nome do evento com a spec e a timeline
 
-Ficheiro: `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
+Hoje o endpoint regista `feedback_request_sent`, mas a `EVENT_LABELS` e a `EVENT_ICONS` da timeline (e o `tracking.functions.ts` allowlist) só conhecem `feedback_requested` — resultado: o evento aparece sem label amigável.
 
-Inserir nova secção entre "Relatório" e "Inteligência comercial" (apenas quando faz sentido — empty state simples se ausente).
+Mudança mínima:
 
-Layout compacto:
+- `src/routes/api/admin/send-feedback-request.ts`:
+  - `eventType: "feedback_request_sent"` → `eventType: "feedback_requested"`
+  - Atualizar comentários do header e o JSDoc
+- `src/lib/admin/lead-lifecycle.ts`: remover o caso obsoleto `case "feedback_request_sent"` (manter apenas `feedback_requested`).
+- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`: a linha do dialog que diz `<code>feedback_request_sent</code>` passa a `<code>feedback_requested</code>`.
 
-- Cabeçalho: `SectionTitle` "Feedback beta" + `relativeTime(created_at)` à direita.
-- Linha de score: 5 pontos preenchidos conforme `usefulness_score` (reutilizar tokens, sem hardcodes).
-- `DetailRow "Disposto a pagar"` → label PT + badge.
-- `DetailRow "Opção preferida"` → `PRICING_PREFERENCE_LABELS[…]` ou "—".
-- `DetailRow "Permite contacto"` → "Sim" / "Não".
-- Bloco texto livre (apenas se preenchidos):
-  - "O que ficou mais claro" → `clarity_text`
-  - "O que faltou" → `missing_text`
-- Caixa destacada (mesmo estilo do "Próximo passo sugerido", cor pelo accent da `interpretFeedback`):
-  - eyebrow "Sinal comercial" + intent label
-  - "Sugestão" + `nextAction`
-
-Empty state (sem feedback): card minimal com "Sem feedback ainda" e CTA "Pedir feedback" (já existe acima — apenas referenciar).
-
-A `Inteligência comercial` continua a usar o `suggestNextLeadAction` baseado no estado, mas se houver feedback, sobrescreve o `intent` mostrado lá pela interpretação do feedback (mais forte que o sinal heurístico).
+Sem migration. Eventos antigos (se existirem) continuam a aparecer como “linha crua” na timeline — aceitável por serem residuais.
 
 ---
 
-## 5. Kanban Card — badges de feedback
+## 4. Validação
 
-Ficheiro: `src/components/admin/v2/beta-leads/lead-card.tsx`
-
-Na linha de badges existente, juntar (apenas se `lead.feedback`):
-- `AdminBadge` "Feedback" (variant `info`) com tooltip do score (`★ 4/5`).
-- `AdminBadge` da intent (variant pelo accent retornado por `interpretFeedback`).
-
-Sem aumentar altura do card — ambas as badges entram no mesmo flex-wrap.
-
----
-
-## 6. Timeline — `feedback_submitted`
-
-Já existe `EVENT_LABELS.feedback_submitted` e `EVENT_ICONS.feedback_submitted`. Confirmar visualmente; nenhuma mudança de código necessária.
-
----
-
-## 7. Validação
-
-- `bunx tsc --noEmit`
-- `bunx vitest run` (incluindo `feedback-intent.test.ts`)
-- Manual: lead com feedback mostra a secção; lead sem feedback mostra empty state limpo; card mostra badges quando aplicável.
+- `bunx tsc --noEmit` limpo
+- `bunx vitest run` 100% verde
+- Manual:
+  - Lead em `link_enviado` com 0 views → modal mostra aviso amarelo + permite envio
+  - Lead em `link_enviado` com views > 0 → sem aviso
+  - Lead com `feedback` preenchido → botão desativado com tooltip "Feedback já recebido."
+  - Sucesso: toast + status `feedback_pedido` + evento `feedback_requested` na timeline com label "Feedback pedido ao lead"
+  - Falha provider (chave em falta / 502) → toast erro, status inalterado
 
 ---
 
 ## Ficheiros tocados
 
-**Novos**
-- `src/lib/admin/feedback-intent.ts`
-- `src/lib/admin/__tests__/feedback-intent.test.ts`
-
-**Editados**
-- `src/lib/admin/kanban-columns.ts` — tipo `BetaFeedbackSummary` + campo no `EnrichedLead`
-- `src/routes/api/admin/leads-kanban.ts` — fetch + map + payload
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — nova secção + override do intent
-- `src/components/admin/v2/beta-leads/lead-card.tsx` — badges
+**Editados (3)**
+- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — aviso no dialog, regra de desativação, código no rodapé
+- `src/routes/api/admin/send-feedback-request.ts` — `feedback_requested`
+- `src/lib/admin/lead-lifecycle.ts` — remover `feedback_request_sent`
 
 **Não tocados**
-- Formulário público (`feedback-form.tsx`, `feedback-schema.ts`, `routes/feedback.$requestId.tsx`)
-- API pública `/api/public/feedback.$requestId.ts`
-- Pipelines de relatório / PDF / providers
-- `supabase/migrations/*`
+- `src/lib/email/templates/feedback-request.ts` (template)
+- `src/routes/api/public/feedback.$requestId.ts`
+- Pipelines de relatório, PDF, providers
+- Schema / migrations
 
 ---
 
 ## Checkpoint
 
-- ☐ Endpoint devolve `feedback` por lead
-- ☐ `interpretFeedback` cobre todas as combinações + testes verdes
-- ☐ Lead Detail Sheet renderiza secção e empty state em pt-PT
-- ☐ Card mostra badges sem quebrar layout
-- ☐ `tsc --noEmit` limpo · `vitest` 100% verde
+- ☐ Aviso "ainda não visto" visível quando `report_views === 0`
+- ☐ Botão desativado se `lead.feedback` já existe
+- ☐ Evento gravado como `feedback_requested` e visível na timeline com label
+- ☐ Status muda apenas após sucesso do provider
+- ☐ `tsc --noEmit` limpo · `vitest` verde
