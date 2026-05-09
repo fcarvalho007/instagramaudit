@@ -298,14 +298,14 @@ export async function aggregateApifyActorBreakdown(
 
     if (!isSuccess) {
       acc.errors += 1;
-      if (row.actual_cost_usd != null) {
+      if (hasReportedActualCost(row)) {
         acc.actualTotal += Number(row.actual_cost_usd);
         acc.hasActual = true;
       }
     } else {
       acc.runs += 1;
       acc.results += row.posts_returned ?? 0;
-      if (row.actual_cost_usd != null) {
+      if (hasReportedActualCost(row)) {
         acc.actualTotal += Number(row.actual_cost_usd);
         acc.hasActual = true;
       } else if (row.estimated_cost_usd != null) {
@@ -319,8 +319,8 @@ export async function aggregateApifyActorBreakdown(
     if (acc.lastAt === null) {
       acc.lastAt = String(row.created_at);
       acc.lastStatus = status;
-      acc.lastCost = row.actual_cost_usd != null ? Number(row.actual_cost_usd)
-        : row.estimated_cost_usd != null ? Number(row.estimated_cost_usd) : null;
+      const resolved = resolveCallCost(row);
+      acc.lastCost = resolved > 0 ? resolved : null;
     }
   }
 
