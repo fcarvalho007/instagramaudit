@@ -303,6 +303,10 @@ function ReportLabPage() {
             </div>
           </div>
         </div>
+        <BlockAccessMatrix variant={variant} />
+        <p className="mt-2 text-[12px] text-admin-text-tertiary">
+          Esta pré-visualização não gera novas análises nem altera dados. Apenas muda visibilidade e contexto comercial.
+        </p>
       </section>
 
       {/* ── 3. ESTADO DO SNAPSHOT ──────────────────────────────── */}
