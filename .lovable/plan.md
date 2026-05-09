@@ -1,195 +1,101 @@
-# Roadmap de Correções — Pós-Auditoria InstaBench
+# Final Consolidation Audit — Plano de Execução
 
-Score atual da auditoria: **78/100**. Objetivo deste roadmap: chegar a **≥92/100** antes do beta sair para os primeiros 10 utilizadores, sem desestabilizar o MVP.
-
-Cada batch é **pequeno, isolado e validável de forma independente**. Nada se mistura com refactors maiores nem com importações do CRM Webinar.
+Auditoria **100% read-only** ao MVP beta antes de convidar testers reais. Sem alterações de código, sem chamadas a providers, sem mutações de DB.
 
 ---
 
-## Resumo dos buckets
+## Objetivo
 
-| Prioridade | Bloqueia o quê | Nº batches | Risco agregado |
-|---|---|---|---|
-| **P0** | Lançamento beta (segurança/dados expostos) | 2 | Médio |
-| **P1** | Primeiros 10 utilizadores (qualidade/observabilidade) | 3 | Baixo |
-| **P2** | Refinamento pós-beta | 2 | Baixo |
-| **P3** | Nice-to-have | 1 | Muito baixo |
+Produzir um relatório único de 10 secções (executive summary → batches de implementação) que confirme que o beta está pronto para os primeiros utilizadores externos, **ou** identifique exatamente o que falta corrigir antes.
 
 ---
 
-## P0 — Bloqueia o beta (resolver primeiro)
+## Fases da auditoria
 
-### Batch P0-A — RLS explícito em `leads`, `report_requests`, `product_events`, `beta_feedback`
+### Fase 1 — Reconhecimento estático (rg + code--view)
 
-- **Problema:** As tabelas `leads`, `report_requests` (só tem 1 policy SELECT), `product_events` e `beta_feedback` **não têm policies completas**. Hoje só funcionam porque o admin usa `supabaseAdmin` (service role, bypass RLS). Mas:
-  - O publishable key + utilizador autenticado podem chegar a estas tabelas via `supabase.from(...)` no browser.
-  - `report_requests` aceita `INSERT` sem policy explícita → bloqueado por defeito, mas não há `WITH CHECK` que confirme `lead_id` pertence ao user.
-  - Sem RLS estrita, qualquer fuga de chave ou bug em loader isomórfico expõe dados de leads.
-- **Ficheiros afetados:** apenas migration SQL. Código aplicacional não muda (continua a usar `supabaseAdmin` para escritas).
-- **Risco:** **Médio.** Se a policy estiver errada, pode partir o `/admin/beta-leads` (que usa admin client, portanto **não deve partir** se o admin client ignora RLS, mas há que validar). Risco real: alguma query feita pelo browser (autenticado) deixar de funcionar.
-- **Proposta de fix:**
-  - `leads`: deny-all para `anon` e `authenticated`. Só service role lê/escreve. (Lead nunca é lida diretamente pelo cliente.)
-  - `report_requests`: manter SELECT própria (já existe), bloquear INSERT/UPDATE/DELETE para `authenticated` e `anon`.
-  - `product_events`: deny-all para `anon` e `authenticated`. Eventos só inseridos via server functions com service role.
-  - `beta_feedback`: permitir INSERT anónimo **com `WITH CHECK` apertado** (`report_request_id` e `lead_id` têm de existir e ser consistentes), bloquear SELECT/UPDATE/DELETE para todos exceto service role. Form de feedback público precisa de inserir.
-- **Migration DB:** **Sim.** 1 migration com 4 blocos `CREATE POLICY` + `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` defensivo.
-- **Providers/email:** Não.
-- **Validação:**
-  - `supabase--linter` antes/depois (esperar 0 critical).
-  - `bunx tsc --noEmit` + `bunx vitest run`.
-  - Manual: abrir `/admin/beta-leads` (deve continuar a funcionar — service role).
-  - Manual: submeter feedback no relatório público (deve funcionar com publishable key).
-  - Manual: tentar `supabase.from('leads').select('*')` na consola do browser autenticado → deve retornar 0 linhas.
+Mapear, sem ler ficheiros inteiros, **onde está cada coisa** para cruzar com a lista do utilizador:
 
-### Batch P0-B — Limpar allowlist de eventos não usados
+- **Eventos:** `rg "recordProductEvent\(|trackEvent\(" -n src/` → todos os call sites com linha e contexto, agrupar por `event_type`.
+- **Allowlist:** ler `src/lib/tracking.functions.ts` (já sabemos que está limpa após P0-B).
+- **Lifecycle:** ler `src/lib/admin/lead-lifecycle.ts` para ver mapeamento `event_type → commercial_status` e confirmar que **não** referencia eventos obsoletos (`feedback_request_sent`, `pro_teaser_clicked`, `email_clicked`).
+- **Email templates:** `ls src/lib/email/templates/` + `rg "from.*email/templates" -n src/` → confirmar quem importa o quê (orfãos identificados na auditoria anterior: `commercial-followup` ainda órfão).
+- **Endpoints de envio:** `rg -n "Resend|resend\.emails\.send|RESEND_API_KEY" src/` → confirmar gates `INTERNAL_API_TOKEN` e kill-switch.
+- **Provider gates:** `rg -n "APIFY_ENABLED|OPENAI_ENABLED|DATAFORSEO_ENABLED" src/` → confirmar leitura em todos os providers.
+- **Public routes:** `ls src/routes/` + `rg -n "createServerFn|requireSupabaseAuth|INTERNAL_API_TOKEN" src/routes/analyze* src/routes/feedback* src/routes/api/public/` → confirmar nenhuma rota pública dispara provider pago.
+- **Variants do paywall:** `rg -n "unlock_clicked|pricing_option_clicked|paywall|locked" src/components/report*` para confirmar que disparam uma única vez com metadata útil.
 
-- **Problema:** `src/lib/tracking.functions.ts` aceita `pro_teaser_clicked` e `email_clicked` na allowlist mas **nenhum call site os emite**. Risco: alguém adiciona um disparo errado e contamina `product_events` com eventos inúteis que nunca terão handler de lifecycle.
-- **Ficheiros afetados:** `src/lib/tracking.functions.ts` (apenas remover do array de allowlist).
-- **Risco:** **Muito baixo.** Apenas remover constantes de uma lista. Nenhum call site usa estes eventos.
-- **Proposta de fix:** remover `pro_teaser_clicked` e `email_clicked` da `ALLOWED_EVENTS`. Adicionar comentário a explicar a regra: "se voltar a ser usado, adicionar aqui + handler em `lead-lifecycle.ts`".
-- **Migration DB:** Não.
-- **Providers/email:** Não.
-- **Validação:** `bunx tsc --noEmit` + `bunx vitest run` + `rg "pro_teaser_clicked|email_clicked" src/` deve devolver 0 hits após a alteração.
+### Fase 2 — Tracing end-to-end do happy path
 
----
+Para cada um dos 16 passos do lifecycle indicados pelo utilizador, identificar:
+- ficheiro + função que despoleta
+- evento que regista
+- transição de status que espera disparar (cruzar com `lead-lifecycle.ts`)
+- label da timeline (cruzar com `lead-detail-sheet.tsx`)
+- metadata mínima registada
 
-## P1 — Antes dos primeiros 10 utilizadores
+Output: tabela com 16 linhas e coluna "✅ confirmado / ⚠️ parcial / ❌ em falta".
 
-### Batch P1-A — Smoke tests para envio de email
+### Fase 3 — Verificações de DB (read-only)
 
-- **Problema:** `send-report-link` e `send-feedback-request` (server functions críticas) **não têm testes**. Um regression silencioso pode quebrar a entrega do relatório sem alarmes. Já temos 163 testes a passar — basta adicionar 4–6 testes focados.
-- **Ficheiros afetados:** novo `src/lib/__tests__/send-report-link.test.ts` e `src/lib/__tests__/send-feedback-request.test.ts`.
-- **Risco:** **Baixo.** Só adiciona ficheiros. Mockar Supabase + Resend.
-- **Proposta de fix:** testes que validam:
-  - Resposta `unauthorized` sem `INTERNAL_API_TOKEN` válido.
-  - Skip quando `RESEND_KILL_SWITCH` ativo.
-  - Skip quando lead não existe ou snapshot não está pronto.
-  - Path feliz: chama `recordProductEvent` com o `event_type` certo.
-- **Migration DB:** Não.
-- **Providers/email:** **Não** — providers são mocked.
-- **Validação:** `bunx vitest run` → 165–169 testes a passar.
+Apenas `SELECT` via `supabase--read_query`. Cinco queries estritamente diagnósticas:
 
-### Batch P1-B — Wiring ou remoção de `commercial-followup`
+1. **Distribuição de `commercial_status`** em `leads` — detetar leads "presos" em estados intermédios.
+2. **Distribuição de `event_type`** em `product_events` (últimos 30d) — confirmar que só aparecem eventos da allowlist atual e detetar eventos obsoletos persistidos historicamente.
+3. **Leads com `report_link_sent` mas sem `report_viewed`** após 7d — sinal de relatórios entregues mas não abertos.
+4. **`report_requests` com `delivery_status='sent'` sem evento `report_link_sent`** — gap de backfill.
+5. **`beta_feedback` órfão** (sem `report_request` correspondente) ou inconsistente (`lead_id` ≠ `report_request.lead_id`).
 
-- **Problema:** `src/lib/email/templates/commercial-followup.ts` existe e está exportado em `index.ts` mas **não é importado por nenhum endpoint**. Órfão.
-- **Ficheiros afetados:** `src/lib/email/templates/commercial-followup.ts`, `src/lib/email/templates/index.ts`, possivelmente `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (se decidirmos adicionar botão).
-- **Risco:** **Baixo.** Decisão binária: ou (a) wired a um botão manual no Lead Detail Sheet ("Enviar follow-up comercial"), ou (b) eliminar.
-- **Proposta de fix:** **wired manual.** Adicionar botão no `lead-detail-sheet.tsx` que aparece **apenas** quando `commercial_status ∈ {feedback_recebido, interessado, potencial_cliente}`. O botão chama um novo server function `send-commercial-followup` análogo a `send-feedback-request`.
-- **Migration DB:** Não.
-- **Providers/email:** Sim (Resend) — mas só quando admin clica manualmente, sem auto-disparo.
-- **Validação:** `bunx tsc --noEmit` + `bunx vitest run` + teste manual em `/admin/beta-leads` (escolher lead em estado correto e enviar para o próprio email).
+### Fase 4 — Validação automática
 
-### Batch P1-C — Índice composto em `product_events`
+- `bunx tsc --noEmit` (esperar 0 erros).
+- `bunx vitest run` (esperar 163/163 ou superior — P1-A trará +4–6).
+- `supabase--linter` (esperar 0 critical, deve corresponder ao output da auditoria anterior).
 
-- **Problema:** Auditoria detetou `product_events` sem índice em `(lead_id, event_type, created_at DESC)`. Queries de lifecycle e dedup já fazem ~3 SELECTs por evento. Com volume de beta isto continua rápido (<10ms), mas num cenário de 1000 leads × 12 eventos × loops de re-render fica notório.
-- **Ficheiros afetados:** apenas migration SQL.
-- **Risco:** **Muito baixo.** `CREATE INDEX CONCURRENTLY` é seguro em produção; em Supabase managed basta `CREATE INDEX` (a migration corre numa transação curta sobre tabela ainda pequena).
-- **Proposta de fix:**
-  - `CREATE INDEX idx_product_events_lead_event_created ON product_events(lead_id, event_type, created_at DESC);`
-  - `CREATE INDEX idx_product_events_snapshot_event ON product_events(snapshot_id, event_type) WHERE snapshot_id IS NOT NULL;` (acelera dedup de `report_viewed`).
-- **Migration DB:** **Sim.**
-- **Providers/email:** Não.
-- **Validação:** `supabase--linter` (0 novos warnings) + `bunx tsc --noEmit` + `bunx vitest run`.
+### Fase 5 — Síntese do relatório
+
+Documento único de 10 secções na resposta final ao utilizador:
+
+1. **Executive summary** (≤8 linhas).
+2. **Beta readiness score** 0–100, com delta vs. score anterior (78).
+3. **P0 blockers** (lista vazia se OK para beta).
+4. **P1 fixes** antes dos primeiros testers externos.
+5. **P2 fixes** após primeira vaga.
+6. **Orphan/duplicate code list** (cruzar com auditoria anterior — atualizar status).
+7. **Event consistency table** — 12 eventos × colunas {emitido, allowed, lifecycle handler, timeline label, metadata, obsoleto?}.
+8. **Email wiring table** — 4 fluxos × {template usado, endpoint, gate, status}.
+9. **Provider safety table** — 4 providers × {kill-switch, allowlist, public path?, admin path?}.
+10. **Recommended implementation batches** — atualização do roadmap P0–P3 com qualquer item novo.
 
 ---
 
-## P2 — Pós-beta (refinamento UX)
+## Restrições enforced durante a execução
 
-### Batch P2-A — Colapsar `report_viewed` repetidos na timeline
+| Não fazer | Como garanto |
+|---|---|
+| Alterar código | Sem `code--apply_patch`, `code--write`, `code--copy` para src/, `supabase--migration`, `supabase--insert` |
+| Enviar emails | Não invocar `send-report-link`, `send-feedback-request`, nem nenhum endpoint Resend |
+| Gerar relatórios | Não invocar `analyze.functions` nem refresh |
+| Chamar providers | Não invocar `stack_modern--invoke-server-function` em endpoints com Apify/OpenAI/DataForSEO/Resend |
+| Mutar DB | Apenas `supabase--read_query`, nunca `supabase--insert` ou `supabase--migration` |
 
-- **Problema:** Mesmo com dedup ativo, leads que abrem o relatório múltiplas vezes ao longo de dias geram vários `report_viewed`. A timeline do `lead-detail-sheet.tsx` mostra-os todos, criando ruído visual.
-- **Ficheiros afetados:** `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`.
-- **Risco:** **Baixo.** Só apresentação.
-- **Proposta de fix:** agrupar runs consecutivos de `report_viewed` num único item da timeline com badge `×N` e tooltip com primeira/última data.
-- **Migration DB:** Não.
-- **Providers/email:** Não.
-- **Validação:** `bunx tsc --noEmit` + visual em `/admin/beta-leads`.
+## Tools usadas (todas read-only)
 
-### Batch P2-B — Suprimir `lead_status_changed` redundantes na UI
+- `code--exec` (apenas `rg`, `ls`, `bunx tsc --noEmit`, `bunx vitest run`)
+- `code--view`, `code--list_dir`
+- `supabase--read_query`, `supabase--linter`
 
-- **Problema:** Cada transição de lifecycle emite o evento que a despoletou (e.g. `report_viewed`) **e** um `lead_status_changed`. A timeline mostra ambos com o mesmo timestamp, duplicando informação.
-- **Ficheiros afetados:** `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (filtro de apresentação) ou helper em `src/lib/admin/lead-events.server.ts`.
-- **Risco:** **Baixo.** Só apresentação — eventos continuam a ser registados em DB para auditoria.
-- **Proposta de fix:** colapsar `lead_status_changed` quando há outro evento no mesmo segundo para o mesmo lead, mostrando o evento original com badge a indicar a transição.
-- **Migration DB:** Não.
-- **Providers/email:** Não.
-- **Validação:** visual + `bunx vitest run`.
+## Estimativa de duração
+
+~6–10 chamadas de tool em paralelo agressivo. Resultado consolidado num único turno de resposta ao utilizador.
 
 ---
 
-## P3 — Nice-to-have
+## O que **não** está incluído (por design)
 
-### Batch P3-A — Tipo `Database` exato em `recordProductEvent`
+- Não importa código do CRM Webinar (roadmap separado).
+- Não implementa nenhum batch P0/P1/P2 do roadmap anterior — só audita o estado atual.
+- Não faz refactor preventivo nem renames.
+- Não cria testes novos — só relata cobertura atual e gaps.
 
-- **Problema:** `recordProductEvent` usa `event_type: string` em vez de tipo união derivado da allowlist. Erros de typo só aparecem em runtime.
-- **Ficheiros afetados:** `src/lib/tracking.functions.ts`, `src/lib/tracking.server.ts`, possivelmente call sites.
-- **Risco:** **Muito baixo.**
-- **Proposta de fix:** exportar `type AllowedEvent = typeof ALLOWED_EVENTS[number]` e tipar argumentos.
-- **Migration DB:** Não.
-- **Providers/email:** Não.
-- **Validação:** `bunx tsc --noEmit` (deve continuar verde, ou apanhar typos existentes).
-
----
-
-## Ordem de execução recomendada (mais segura)
-
-```text
-Dia 1 (antes de qualquer outra coisa):
-  1. P0-B  (limpeza allowlist)         — 5 min,   risco ~0
-  2. P0-A  (RLS migration)             — 30 min,  risco médio (validar manualmente)
-
-Dia 2 (qualidade pré-beta):
-  3. P1-C  (índices)                   — 10 min,  risco ~0
-  4. P1-A  (smoke tests)               — 45 min,  risco ~0
-  5. P1-B  (commercial-followup wire)  — 1h,      risco baixo
-
-Pós-beta (sem pressa):
-  6. P2-A  (colapsar report_viewed)
-  7. P2-B  (suprimir lead_status_changed redundantes)
-  8. P3-A  (tipos)
-```
-
-**Justificação da ordem:**
-- P0-B vai antes de P0-A porque é trivial e elimina ruído.
-- P0-A (RLS) é o único batch com risco médio — fazer cedo, validar com calma.
-- P1-C antes de P1-A porque migrations e índices não dependem de testes.
-- P1-A antes de P1-B para que o novo `send-commercial-followup` já nasça testado.
-
----
-
-## Detalhes técnicos relevantes (para a fase de Build)
-
-- Nenhum batch importa código do CRM Webinar — esses são roadmap separado (auditoria anterior).
-- Todas as migrations devem usar a tool de migration do Supabase, **uma por batch**, nunca combinadas.
-- O batch P0-A é o único que pode revelar bugs aplicacionais latentes (queries do browser que dependiam de RLS desligada). Validar `/relatorio/$username` (público) e `/perfil` (autenticado) após aplicar.
-- Tests novos em P1-A devem mockar `supabaseAdmin` e `Resend` — não fazer chamadas reais.
-- `commercial_status` só pode transitar via `lead-lifecycle.ts` — o novo botão de P1-B **não muda status**, só dispara email + regista evento `commercial_followup_sent`.
-
----
-
-## Primeiro prompt de implementação (para usar quando aprovares)
-
-> **Goal:** Implement Batch P0-B — remove unused events from tracking allowlist.
->
-> **Context:** Audit found `pro_teaser_clicked` and `email_clicked` are in the `ALLOWED_EVENTS` allowlist in `src/lib/tracking.functions.ts` but no call site in the codebase emits them. They have no lifecycle handler. Risk of contaminating `product_events` with stale event types.
->
-> **Scope:**
-> 1. Open `src/lib/tracking.functions.ts`.
-> 2. Remove `"pro_teaser_clicked"` and `"email_clicked"` from `ALLOWED_EVENTS`.
-> 3. Add a one-line comment above the array: `// Adding a new event requires a corresponding handler in src/lib/admin/lead-lifecycle.ts`.
-> 4. Confirm via `rg "pro_teaser_clicked|email_clicked" src/` that no call site references these strings (should return 0 hits).
->
-> **Constraints:**
-> - Do not change any other file.
-> - Do not touch lifecycle code.
-> - Do not touch DB schema.
-> - Do not call Apify, OpenAI, DataForSEO, or Resend.
->
-> **Validation:**
-> - `bunx tsc --noEmit` (0 errors).
-> - `bunx vitest run` (163/163 still passing).
-> - `rg "pro_teaser_clicked|email_clicked" src/` returns 0 hits.
->
-> **Return:**
-> - Files changed (expect 1).
-> - Output of the three validation commands.
+Aprova para eu correr a auditoria.
