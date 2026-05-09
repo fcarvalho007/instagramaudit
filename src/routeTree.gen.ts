@@ -65,6 +65,7 @@ import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/for
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
 import { Route as ApiAdminBillingReconciliationRouteImport } from './routes/api/admin/billing-reconciliation'
+import { Route as ApiAdminBetaFunnelRouteImport } from './routes/api/admin/beta-funnel'
 import { Route as ApiAdminAnalysisCostBreakdownRouteImport } from './routes/api/admin/analysis-cost-breakdown'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
@@ -391,6 +392,11 @@ const ApiAdminBillingReconciliationRoute =
     path: '/api/admin/billing-reconciliation',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminBetaFunnelRoute = ApiAdminBetaFunnelRouteImport.update({
+  id: '/api/admin/beta-funnel',
+  path: '/api/admin/beta-funnel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminAnalysisCostBreakdownRoute =
   ApiAdminAnalysisCostBreakdownRouteImport.update({
     id: '/api/admin/analysis-cost-breakdown',
@@ -654,6 +660,7 @@ export interface FileRoutesByFullPath {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
@@ -750,6 +757,7 @@ export interface FileRoutesByTo {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
@@ -848,6 +856,7 @@ export interface FileRoutesById {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
@@ -947,6 +956,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
@@ -1043,6 +1053,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
@@ -1140,6 +1151,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
@@ -1222,6 +1234,7 @@ export interface RootRouteChildren {
   FeedbackRequestIdRoute: typeof FeedbackRequestIdRoute
   ReportExampleRoute: typeof ReportExampleRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
+  ApiAdminBetaFunnelRoute: typeof ApiAdminBetaFunnelRoute
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
@@ -1666,6 +1679,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/billing-reconciliation'
       fullPath: '/api/admin/billing-reconciliation'
       preLoaderRoute: typeof ApiAdminBillingReconciliationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/beta-funnel': {
+      id: '/api/admin/beta-funnel'
+      path: '/api/admin/beta-funnel'
+      fullPath: '/api/admin/beta-funnel'
+      preLoaderRoute: typeof ApiAdminBetaFunnelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/analysis-cost-breakdown': {
@@ -2130,6 +2150,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedbackRequestIdRoute: FeedbackRequestIdRoute,
   ReportExampleRoute: ReportExampleRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
+  ApiAdminBetaFunnelRoute: ApiAdminBetaFunnelRoute,
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
