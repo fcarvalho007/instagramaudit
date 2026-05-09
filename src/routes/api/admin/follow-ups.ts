@@ -176,7 +176,8 @@ export const Route = createFileRoute("/api/admin/follow-ups")({
           .in("lead_id", leadIds)
           .order("created_at", { ascending: false });
 
-        const feedbackByLead = new Map<string, (typeof feedback)[number]>();
+        type FeedbackRow = NonNullable<typeof feedback>[number];
+        const feedbackByLead = new Map<string, FeedbackRow>();
         for (const f of feedback ?? []) {
           if (!f.lead_id) continue;
           if (!feedbackByLead.has(f.lead_id)) feedbackByLead.set(f.lead_id, f);

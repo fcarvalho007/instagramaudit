@@ -63,6 +63,7 @@ import { Route as ApiAdminRefreshProfileRouteImport } from './routes/api/admin/r
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
 import { Route as ApiAdminGenerateBetaReportRouteImport } from './routes/api/admin/generate-beta-report'
 import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/force-refresh'
+import { Route as ApiAdminFollowUpsRouteImport } from './routes/api/admin/follow-ups'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
 import { Route as ApiAdminBillingReconciliationRouteImport } from './routes/api/admin/billing-reconciliation'
@@ -382,6 +383,11 @@ const ApiAdminForceRefreshRoute = ApiAdminForceRefreshRouteImport.update({
   path: '/api/admin/force-refresh',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminFollowUpsRoute = ApiAdminFollowUpsRouteImport.update({
+  id: '/api/admin/follow-ups',
+  path: '/api/admin/follow-ups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminDiagnosticsRoute = ApiAdminDiagnosticsRouteImport.update({
   id: '/api/admin/diagnostics',
   path: '/api/admin/diagnostics',
@@ -678,6 +684,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
+  '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
@@ -777,6 +784,7 @@ export interface FileRoutesByTo {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
+  '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
@@ -878,6 +886,7 @@ export interface FileRoutesById {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
+  '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
@@ -980,6 +989,7 @@ export interface FileRouteTypes {
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
+    | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-kanban'
@@ -1079,6 +1089,7 @@ export interface FileRouteTypes {
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
+    | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-kanban'
@@ -1179,6 +1190,7 @@ export interface FileRouteTypes {
     | '/api/admin/billing-reconciliation'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
+    | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-kanban'
@@ -1263,6 +1275,7 @@ export interface RootRouteChildren {
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
+  ApiAdminFollowUpsRoute: typeof ApiAdminFollowUpsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
   ApiAdminGenerateBetaReportRoute: typeof ApiAdminGenerateBetaReportRoute
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
@@ -1690,6 +1703,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/force-refresh'
       fullPath: '/api/admin/force-refresh'
       preLoaderRoute: typeof ApiAdminForceRefreshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/follow-ups': {
+      id: '/api/admin/follow-ups'
+      path: '/api/admin/follow-ups'
+      fullPath: '/api/admin/follow-ups'
+      preLoaderRoute: typeof ApiAdminFollowUpsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/diagnostics': {
@@ -2196,6 +2216,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
+  ApiAdminFollowUpsRoute: ApiAdminFollowUpsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,
   ApiAdminGenerateBetaReportRoute: ApiAdminGenerateBetaReportRoute,
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
