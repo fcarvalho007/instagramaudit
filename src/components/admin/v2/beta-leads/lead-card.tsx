@@ -165,14 +165,18 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
           </AdminBadge>
         )}
         {lead.feedback && (
-          <AdminBadge variant="info" title={`Score ${lead.feedback.usefulness_score}/5`}>
-            ★ {lead.feedback.usefulness_score}/5
-          </AdminBadge>
+          <span title={`Score ${lead.feedback.usefulness_score}/5`}>
+            <AdminBadge variant="info">
+              ★ {lead.feedback.usefulness_score}/5
+            </AdminBadge>
+          </span>
         )}
         {feedbackIntent && feedbackIntent.intent !== "sem" && (
-          <AdminBadge variant={feedbackIntent.accent} title={feedbackIntent.nextAction}>
-            {feedbackIntent.label}
-          </AdminBadge>
+          <span title={feedbackIntent.nextAction}>
+            <AdminBadge variant={feedbackIntent.accent}>
+              {feedbackIntent.label}
+            </AdminBadge>
+          </span>
         )}
       </div>
 
