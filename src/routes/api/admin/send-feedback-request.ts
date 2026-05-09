@@ -3,7 +3,7 @@
  *
  * Admin-only action: sends the public feedback link
  * (`/feedback/:report_request_id`) by email to the lead. On success records
- * `feedback_request_sent` and moves commercial_status to `feedback_pedido`.
+ * `feedback_requested` and moves commercial_status to `feedback_pedido`.
  * On failure, status is NOT touched.
  */
 
@@ -245,7 +245,7 @@ export const Route = createFileRoute("/api/admin/send-feedback-request")({
         try {
           await recordLeadEvent({
             leadId: lead.id,
-            eventType: "feedback_request_sent",
+            eventType: "feedback_requested",
             snapshotId: rr.analysis_snapshot_id ?? null,
             handle: rr.instagram_username,
             metadata: {
