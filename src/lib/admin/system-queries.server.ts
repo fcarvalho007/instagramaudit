@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { resolveCallCost, hasReportedActualCost } from "./cost-resolution";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -213,7 +214,7 @@ export async function aggregateOpenAiActorBreakdown(
       continue;
     }
     acc.calls += 1;
-    acc.cost += Number(row.estimated_cost_usd ?? 0);
+    acc.cost += resolveCallCost(row);
     acc.promptTokens += Number(row.prompt_tokens ?? 0);
     acc.completionTokens += Number(row.completion_tokens ?? 0);
     if (!acc.lastAt) {
