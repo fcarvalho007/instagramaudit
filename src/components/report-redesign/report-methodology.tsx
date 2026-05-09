@@ -1,17 +1,11 @@
 import { Database, LineChart, Sparkles, Search, ExternalLink } from "lucide-react";
 import { ReportSectionFrame } from "./report-section-frame";
 import { REDESIGN_TOKENS } from "./report-tokens";
-import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import {
-  INSTAGRAM_BENCHMARK_CONTEXT,
   BENCHMARK_DATASET_VERSION,
   getActiveBenchmarkSources,
 } from "@/lib/knowledge/benchmark-context";
 import { cn } from "@/lib/utils";
-
-interface Props {
-  enriched?: ReportEnriched;
-}
 
 /**
  * Metodologia humana, não-técnica. Grid das três famílias de fonte
@@ -20,7 +14,7 @@ interface Props {
  * é mencionado em itálico discreto como reserva para futura ligação
  * autenticada.
  */
-export function ReportMethodology({ enriched }: Props = {}) {
+export function ReportMethodology() {
   const sources = [
     {
       icon: Database,
