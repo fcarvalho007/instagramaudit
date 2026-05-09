@@ -33,6 +33,7 @@ import {
 } from "@/lib/report/report-variant";
 
 import { ReportFramedBlock } from "../report-framed-block";
+import { Lock, Sparkles } from "lucide-react";
 import { ReportMethodology } from "../report-methodology";
 import { REDESIGN_TOKENS } from "../report-tokens";
 
@@ -78,11 +79,17 @@ export function ReportShellV2({
   const v2 = result.enriched.aiInsightsV2;
   const features = featuresOverride ?? getVariantFeatures(variant);
 
-  /** Blocks visible for the current variant/features. */
-  const visibleBlocks: BlockConfig[] = BLOCKS.filter(
-    (b) => features[b.featureKey] !== "hidden",
-  );
-  const visibleBlockIds = visibleBlocks.map((b) => b.id);
+  const sidebarProfile = {
+    handle: result.data.profile.username,
+    avatarUrl: result.enriched.profile?.avatarUrl ?? null,
+    displayName: result.data.profile.fullName ?? null,
+  };
+
+  const scrollToCofre = () => {
+    if (typeof document === "undefined") return;
+    const el = document.getElementById("report-cofre");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   /** Insight v2 dentro de um container já com padding (block content). */
   const renderInsight = (key: AiInsightV2Section) => {
@@ -110,12 +117,20 @@ export function ReportShellV2({
         </section>
 
         {/* Tabs mobile sticky abaixo do hero */}
-        <ReportBlockTopTabs visibleBlockIds={visibleBlockIds} />
+        <ReportBlockTopTabs
+          variant={variant}
+          features={features}
+          profile={sidebarProfile}
+        />
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1380px] px-5 md:px-6">
           <div className="flex gap-8 lg:gap-10 pt-5 lg:pt-6">
-            <ReportBlockSidebar visibleBlockIds={visibleBlockIds} />
+            <ReportBlockSidebar
+              variant={variant}
+              features={features}
+              profile={sidebarProfile}
+            />
             <main className="min-w-0 flex-1">
               {/* 01 · Overview (redesigned) */}
               {features.blockOverview !== "hidden" && (
@@ -152,8 +167,14 @@ export function ReportShellV2({
                   <div className="space-y-10 md:space-y-12">
                     <ReportPostingHeatmap />
                     <div className="mt-4">{renderInsight("heatmap")}</div>
-                    <ReportBestDays />
-                    <div className="mt-4">{renderInsight("daysOfWeek")}</div>
+                    {features.blockPerformance === "full" ? (
+                      <>
+                        <ReportBestDays />
+                        <div className="mt-4">{renderInsight("daysOfWeek")}</div>
+                      </>
+                    ) : (
+                      <PerformanceLockedTeaser onUnlock={scrollToCofre} />
+                    )}
                   </div>
                 </ReportFramedBlock>
               </ReportBlockSection>
