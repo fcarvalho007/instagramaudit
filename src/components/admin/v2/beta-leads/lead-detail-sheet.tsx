@@ -681,6 +681,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
       onOpenChange={setSendLinkOpen}
       loading={sendingLink}
       lead={lead}
+      lastSentAt={lastReportLinkSentAt}
       onConfirm={async () => {
         if (!lead.report_request_id) return;
         setSendingLink(true);
@@ -696,9 +697,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           });
           const body = await res.json().catch(() => ({}));
           if (!res.ok || !body.success) {
-            toast.error(mapSendLinkError(body?.error_code));
+            toast.error(mapSendLinkError(body?.error_code, body?.details));
           } else {
-            toast.success("Link enviado por email");
+            toast.success(
+              lastReportLinkSentAt ? "Link reenviado por email" : "Link enviado por email",
+            );
             setSendLinkOpen(false);
             onRefresh?.();
           }
