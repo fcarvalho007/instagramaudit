@@ -85,6 +85,35 @@ export const trackEvent = createServerFn({ method: "POST" })
       metadata: data.metadata as Record<string, unknown> | undefined,
     });
 
+    // Post-insert cleanup para `report_viewed`: fecha a janela de race em que
+    // várias requests paralelas passam o pré-check ao mesmo tempo e inserem
+    // todas. Mantém o mais antigo, apaga os restantes dos últimos 5s.
+    if (data.eventType === "report_viewed" && data.snapshotId && leadId) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const sinceIso = new Date(Date.now() - 5_000).toISOString();
+        const { data: rows } = await (supabaseAdmin as any)
+          .from("product_events")
+          .select("id, created_at")
+          .eq("event_type", "report_viewed")
+          .eq("snapshot_id", data.snapshotId)
+          .eq("lead_id", leadId)
+          .gte("created_at", sinceIso)
+          .order("created_at", { ascending: true });
+        if (Array.isArray(rows) && rows.length > 1) {
+          const idsToDelete = rows.slice(1).map((r: any) => r.id as string);
+          if (idsToDelete.length > 0) {
+            await (supabaseAdmin as any)
+              .from("product_events")
+              .delete()
+              .in("id", idsToDelete);
+          }
+        }
+      } catch {
+        /* fail open */
+      }
+    }
+
     // Auto-advance lead lifecycle on `report_viewed`. Defensive: only moves
     // forward, never regresses, never touches leads already outside the funnel.
     if (data.eventType === "report_viewed" && leadId) {
