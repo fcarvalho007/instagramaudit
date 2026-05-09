@@ -1,105 +1,69 @@
-## Contexto
+## Avaliação: tudo já está implementado
 
-A ação "Enviar link" está implementada e operacional. Estes refinamentos endereçam **regressão de estado**, **clareza de re-envio**, **diagnóstico de erro** e **deteção de sandbox** — sem alterar contrato público nem schema.
+Os 5 itens do pedido **já estão no código**. Verificação ficheiro a ficheiro:
 
----
+| # | Pedido | Estado | Onde |
+|---|---|---|---|
+| 1 | Aviso "Sem visualização registada" no `FeedbackRequestDialog` quando `report_views === 0` | ✅ Presente | `lead-detail-sheet.tsx:1193` (`notViewed`) + bloco amber `1210–1234` com copy exato do brief |
+| 2 | Botão desabilitado quando `lead.feedback` existe, tooltip "Feedback já recebido." | ✅ Presente | `lead-detail-sheet.tsx:1148` (`disabledReason = "Feedback já recebido."`) |
+| 3 | Endpoint emite `feedback_requested` (não `feedback_request_sent`) | ✅ Presente | `send-feedback-request.ts:248` (`eventType: "feedback_requested"`) |
+| 4 | `lead-lifecycle.ts` mapeia apenas `feedback_requested → feedback_pedido` | ✅ Presente | `lead-lifecycle.ts:114` (sem referência a `feedback_request_sent`) |
+| 5 | Dialog code preview diz `feedback_requested` | ✅ Presente | `lead-detail-sheet.tsx:1248` |
 
-## Refinamentos
-
-### R1 · Bloquear downgrade de `commercial_status`
-
-**Problema:** se o admin reenvia o link após o lead já estar em `relatorio_visto` ou `feedback_pedido`, `updateLeadCommercialStatus({ status: "link_enviado" })` força o status a recuar — falsifica o funil.
-
-**Verificação rápida em `lead-lifecycle.ts`:** já existe ordem lifecycle. Vou usá-la.
-
-**Mudança no endpoint** (`send-report-link.ts`):
-- Antes de chamar `updateLeadCommercialStatus`, ler status atual e só atualizar se for `novo_pedido` / `aguardar_aprovacao` / `relatorio_pronto` (i.e., **anteriores ou iguais a `link_enviado` na ordem lifecycle**). Caso contrário, manter status e devolver `status_changed: false, previous: <status atual>`.
-- Idealmente expor um helper `isStatusDowngrade(prev, next): boolean` em `lead-lifecycle.ts` reutilizável (alternativa: lógica inline com array `LIFECYCLE_ORDER`).
-
-**Impacto:** re-envios deixam de mentir sobre o estágio do lead.
-
-### R2 · UI: deteção de re-envio + last-sent no modal
-
-**Problema:** botão diz sempre "Enviar link" e o modal não mostra que já foi enviado antes — admin pode duplicar sem se aperceber.
-
-**Mudança em `lead-detail-sheet.tsx`** (e helper `EnrichedLead` se existir o campo):
-- Derivar `lastSentAt` a partir de `lead.timeline` (procurar último evento `report_link_sent`). Se já existe no `EnrichedLead`/payload do `leads-kanban`, usar; senão, computar no componente.
-- Botão `SendLinkButton`:
-  - Label muda para **"Reenviar link"** quando `lastSentAt != null`.
-  - Cor permanece (mesma ação semântica).
-- `SendLinkDialog`:
-  - Quando `lastSentAt`, adicionar linha **"Último envio · há 3 dias (12/03 14:22)"** no grid de meta, com aviso visual subtil (cor amber).
-  - Título do diálogo muda para **"Reenviar link ao beta tester"**.
-
-**Impacto:** alta clareza, zero risco de duplicação acidental.
-
-### R3 · Resend: deteção de sandbox mais robusta + bubbling de erro
-
-**Problema:** a regex atual `/you can only send testing emails to your own email/i` só apanha uma das mensagens. A Resend também devolve variantes com **`verified domain`** ou **`testing emails`** consoante o estado da conta. Erros genéricos perdem a `error.message` — admin fica com `RESEND_FAILED · status 403` sem contexto.
-
-**Mudança em `send-report-link.ts`:**
-- Tentar parse JSON do body; extrair `error.message` ou `message`.
-- Sandbox check: `/(testing emails|only send.*verified|verified (email|domain))/i` sobre `message ?? bodyText`.
-- Em `RESEND_FAILED`, incluir `details: <message truncated 200 chars>` na resposta (não vaza chave; só a mensagem do provider).
-- `mapSendLinkError` no UI passa a anexar `details` ao toast quando presente: `"Falha ao enviar email. Resend: <details>"`.
-
-**Impacto:** desbloqueia diagnóstico em produção sem precisar de logs.
-
-### R4 · Aviso visual quando snapshot expirou
-
-**Problema (menor):** se `analysis_snapshots.expires_at < now()`, o link `/analyze/:handle` ainda funciona (o relatório regenera-se) mas o admin envia sem saber.
-
-**Mudança:** o `select` do `report_request` passa a juntar `expires_at` do snapshot (via `analysis_snapshot_id` → `analysis_snapshots.expires_at`). Devolver `snapshot_expired: boolean` na resposta. **Não bloqueia.** No diálogo, se `snapshotExpired === true` (vindo da fila do `EnrichedLead` via timeline ou novo campo no leads-kanban), mostrar aviso amber: *"Snapshot expirou — abrir o link irá regenerar dados."*
-
-**Alternativa pragmática (preferida):** se isto exige tocar `leads-kanban.ts` (extra scope), **deixar fora** deste plano e abrir como nice-to-have separado. Mantenho R4 como **opcional**, marcado abaixo.
+`grep` global confirma **zero referências a `feedback_request_sent`** em todo o `src/`. Nada por fazer no contrato funcional.
 
 ---
 
-## Detalhes técnicos
+## Único refinamento proposto (opcional, alinhamento com design system)
 
-**Ficheiros tocados (R1–R3, must-have):**
-- `src/lib/admin/lead-lifecycle.ts` — adicionar `LIFECYCLE_ORDER` (se ainda não exportado) e helper `isStatusDowngrade(prev, next)`
-- `src/routes/api/admin/send-report-link.ts` — usar helper antes de update; melhorar parse de erro Resend; expor `details`
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — `SendLinkButton` label dinâmico; `SendLinkDialog` mostra `lastSentAt` quando re-envio; `mapSendLinkError` anexa `details`
-- `src/lib/admin/__tests__/feedback-intent.test.ts` (ou novo `lead-lifecycle.test.ts`) — testes para `isStatusDowngrade` (apenas se helper for adicionado)
+O bloco de aviso no `FeedbackRequestDialog` usa cores **hardcoded** (`rgba(234,179,8,...)` / `#D97706`), o que viola a regra de memória *"Design tokens in src/styles/tokens.css and src/styles/tokens-light.css — never hardcode colors/fonts in components"*. O sistema já expõe os tokens corretos:
 
-**Sem novos pacotes. Sem migrações. Sem alteração no template de email.**
+- `--signal-warning: 186 117 23` (#BA7517 — amber subtil oficial)
+- `--tint-warning: 250 244 232` (fundo amber para alertas)
 
-**Não tocar:**
-- Schema Supabase
-- Pipeline PDF, geração de relatório, providers
-- `report_requests` table, RLS
-- `/analyze/:handle` UI
+### Mudança proposta
 
----
+**Ficheiro único:** `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
 
-## Validação
+Substituir o bloco `notViewed` (linhas 1211–1233) por uma versão tokenizada:
 
-- `bunx tsc --noEmit` limpo
-- `bunx vitest run` — manter 15/15 + novos testes do `isStatusDowngrade` (3 casos: prev<next, prev=next, prev>next)
-- Smoke manual:
-  1. Lead com status `relatorio_visto` → clicar "Reenviar link" → email enviado, status fica `relatorio_visto` (não recua), evento `report_link_sent` registado
-  2. Lead já enviado → botão diz "Reenviar link", modal mostra "Último envio · …"
-  3. Forçar Resend a falhar (chave inválida) → toast mostra `details` da Resend
-  4. Sandbox: enviar para email não-verificado → toast diz "modo sandbox", reconhecido mesmo que mensagem mude
+- `backgroundColor: "rgb(var(--tint-warning))"` (em vez de `rgba(234,179,8,0.08)`)
+- `borderColor: "rgb(var(--signal-warning) / 0.25)"` (em vez de `rgba(234,179,8,0.2)`)
+- Texto título e ícone: `color: "rgb(var(--signal-warning))"` (em vez de `#D97706`)
+- Manter ícone `AlertTriangle`, mesmo layout, mesmo copy literal
 
----
+**Aplicar o mesmo tratamento ao `GenerateReportDialog`** (linhas 773–810 — mesmo padrão hardcoded amber) **só se** quisermos consistência num único passe. Caso contrário, fica fora deste plano para respeitar a regra "tocar apenas nos 3 ficheiros aprovados". **Recomendo deixar de fora** — risco zero do refactor escalar.
 
-## Não fazer agora
+### Por que faz sentido
 
-- R4 (aviso de snapshot expirado) — fica para iteração separada se exigir tocar `leads-kanban.ts`
-- Bloqueio server-side de duplo envio (`force`/idempotency) — UI já gere `loading`; a auditoria via timeline é suficiente
-- Mudar `SENDER_FROM` do sandbox `onboarding@resend.dev` — depende de domínio verificado, fora de scope
+- Cumpre regra core de design tokens
+- Fica alinhado com o subtle amber #BA7517 (regra de memória explícita: gold demoted to subtle amber)
+- Continua "visible but not alarming" como o brief pede — `--signal-warning` é mais sóbrio que o `#D97706` atual
+
+### Por que pode ser dispensado
+
+- Funcionalmente idêntico
+- O brief explicitamente pediu *"Use existing admin styling and semantic tokens **where possible**"* e *"Keep changes limited to the three approved files"* — fazer este refinamento mantém-se dentro dos 3 ficheiros (só toca `lead-detail-sheet.tsx`), portanto compatível
+- Nenhum risco regressivo
 
 ---
 
-## Checkpoint
+## Validação prevista
 
-- ☐ `isStatusDowngrade` exportado e testado
-- ☐ Endpoint não recua status se já está à frente
-- ☐ Resend: parse de `error.message` + sandbox regex robusta + `details` bubbled
-- ☐ Botão muda para "Reenviar link" quando há envio prévio
-- ☐ Diálogo mostra "Último envio · …" e título "Reenviar"
-- ☐ Toast inclui `details` quando provider falha
-- ☐ `tsc --noEmit` limpo
-- ☐ `vitest run` ≥ 15/15
+- `bunx tsc --noEmit` — limpo (mudança puramente CSS via style inline)
+- `bunx vitest run` — manter 156/156 (sem testes a tocar este componente)
+- Smoke manual: abrir Lead Detail Sheet com lead em `link_enviado` + `report_views = 0`, confirmar aviso amber subtil; abrir lead com `feedback` presente, confirmar botão disabled + tooltip
+
+---
+
+## Sem mudanças necessárias
+
+- `send-feedback-request.ts` — já correto
+- `lead-lifecycle.ts` — já correto
+- Schema, providers, PDF, public form, `/api/public/feedback.$requestId.ts` — não tocados
+
+---
+
+## Decisão pedida
+
+Confirmas que avanço só com a tokenização do bloco amber no `FeedbackRequestDialog`? Se preferires não tocar em código (já que o pedido funcional está 100% cumprido), respondo apenas com o relatório de QA manual e fechamos.
