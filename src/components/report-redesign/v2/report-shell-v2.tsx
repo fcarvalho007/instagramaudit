@@ -31,6 +31,7 @@ import {
   VariantFeaturesOverrideProvider,
   type VariantFeatures,
 } from "@/lib/report/report-variant";
+import { ReportTrackingProvider } from "./report-tracking-context";
 
 import { ReportFramedBlock } from "../report-framed-block";
 import { Lock, Sparkles } from "lucide-react";
@@ -105,6 +106,13 @@ export function ReportShellV2({
     <ReportVariantProvider value={variant}>
     <VariantFeaturesOverrideProvider value={featuresOverride ?? null}>
     <ReportDataProvider data={result.data}>
+    <ReportTrackingProvider
+      value={{
+        snapshotId: snapshotId ?? null,
+        handle: result.data.profile.username ?? null,
+        variant,
+      }}
+    >
       <div
         className={cn(
           REDESIGN_TOKENS.pageCanvas,
@@ -267,6 +275,7 @@ export function ReportShellV2({
         {/* Espaço inferior mobile para a bottom nav bar não tapar conteúdo */}
         <div className="h-20 lg:hidden" aria-hidden="true" />
       </div>
+    </ReportTrackingProvider>
     </ReportDataProvider>
     </VariantFeaturesOverrideProvider>
     </ReportVariantProvider>
