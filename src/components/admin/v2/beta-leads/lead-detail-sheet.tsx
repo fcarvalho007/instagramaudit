@@ -60,9 +60,9 @@ import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
 import {
-  buildReportLinkEmailSubject,
-  buildReportLinkPreviewBody,
-} from "@/lib/email/report-link-email-template";
+  renderReportReady,
+  renderFeedbackRequest,
+} from "@/lib/email/templates";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -930,11 +930,11 @@ function SendLinkDialog({
       : lead.handle
         ? `/analyze/${lead.handle}`
         : "";
-  const subject = buildReportLinkEmailSubject();
-  const previewBody = buildReportLinkPreviewBody({
-    recipientName: lead.name ?? null,
-    instagramUsername: lead.handle ?? "",
-    publicUrl,
+  const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
+  const { subject, text: previewBody } = renderReportReady({
+    firstName,
+    instagramHandle: lead.handle ?? "",
+    reportUrl: publicUrl || "https://instabench.example/relatorio",
   });
 
   return (
