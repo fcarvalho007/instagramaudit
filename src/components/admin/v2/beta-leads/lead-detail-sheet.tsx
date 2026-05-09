@@ -647,6 +647,41 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         }
       }}
     />
+
+    {/* ── Send public link confirmation dialog ───────────── */}
+    <SendLinkDialog
+      open={sendLinkOpen}
+      onOpenChange={setSendLinkOpen}
+      loading={sendingLink}
+      lead={lead}
+      onConfirm={async () => {
+        if (!lead.report_request_id) return;
+        setSendingLink(true);
+        try {
+          const res = await fetch("/api/admin/send-report-link", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lead_id: lead.id,
+              report_request_id: lead.report_request_id,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.success) {
+            toast.error(mapSendLinkError(body?.error_code));
+          } else {
+            toast.success("Link enviado por email");
+            setSendLinkOpen(false);
+            onRefresh?.();
+          }
+        } catch {
+          toast.error("Erro de rede ao enviar email.");
+        } finally {
+          setSendingLink(false);
+        }
+      }}
+    />
     </>
   );
 }
