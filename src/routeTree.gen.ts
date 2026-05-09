@@ -38,6 +38,7 @@ import { Route as AdminReportLabRouteImport } from './routes/admin.report-lab'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
+import { Route as AdminEmailLabRouteImport } from './routes/admin.email-lab'
 import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
 import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as AdminBetaRequestsRouteImport } from './routes/admin.beta-requests'
@@ -252,6 +253,11 @@ const AdminReceitaRoute = AdminReceitaRouteImport.update({
 const AdminPerfisRoute = AdminPerfisRouteImport.update({
   id: '/perfis',
   path: '/perfis',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEmailLabRoute = AdminEmailLabRouteImport.update({
+  id: '/email-lab',
+  path: '/email-lab',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminConhecimentoRoute = AdminConhecimentoRouteImport.update({
@@ -657,6 +663,7 @@ export interface FileRoutesByFullPath {
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
+  '/admin/email-lab': typeof AdminEmailLabRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -757,6 +764,7 @@ export interface FileRoutesByTo {
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
+  '/admin/email-lab': typeof AdminEmailLabRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -859,6 +867,7 @@ export interface FileRoutesById {
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
   '/admin/conhecimento': typeof AdminConhecimentoRoute
+  '/admin/email-lab': typeof AdminEmailLabRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -962,6 +971,7 @@ export interface FileRouteTypes {
     | '/admin/beta-requests'
     | '/admin/clientes'
     | '/admin/conhecimento'
+    | '/admin/email-lab'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -1062,6 +1072,7 @@ export interface FileRouteTypes {
     | '/admin/beta-requests'
     | '/admin/clientes'
     | '/admin/conhecimento'
+    | '/admin/email-lab'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -1163,6 +1174,7 @@ export interface FileRouteTypes {
     | '/admin/beta-requests'
     | '/admin/clientes'
     | '/admin/conhecimento'
+    | '/admin/email-lab'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -1528,6 +1540,13 @@ declare module '@tanstack/react-router' {
       path: '/perfis'
       fullPath: '/admin/perfis'
       preLoaderRoute: typeof AdminPerfisRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/email-lab': {
+      id: '/admin/email-lab'
+      path: '/email-lab'
+      fullPath: '/admin/email-lab'
+      preLoaderRoute: typeof AdminEmailLabRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/conhecimento': {
@@ -2041,6 +2060,7 @@ interface AdminRouteChildren {
   AdminBetaRequestsRoute: typeof AdminBetaRequestsRoute
   AdminClientesRoute: typeof AdminClientesRoute
   AdminConhecimentoRoute: typeof AdminConhecimentoRoute
+  AdminEmailLabRoute: typeof AdminEmailLabRoute
   AdminPerfisRoute: typeof AdminPerfisRoute
   AdminReceitaRoute: typeof AdminReceitaRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
@@ -2058,6 +2078,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminBetaRequestsRoute: AdminBetaRequestsRoute,
   AdminClientesRoute: AdminClientesRoute,
   AdminConhecimentoRoute: AdminConhecimentoRoute,
+  AdminEmailLabRoute: AdminEmailLabRoute,
   AdminPerfisRoute: AdminPerfisRoute,
   AdminReceitaRoute: AdminReceitaRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
