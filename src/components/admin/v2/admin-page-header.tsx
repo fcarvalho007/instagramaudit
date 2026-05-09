@@ -20,9 +20,8 @@ export function AdminPageHeader({
 }: AdminPageHeaderProps) {
   return (
     <header
+      className="mb-6 pb-4 sm:mb-7 sm:pb-5"
       style={{
-        marginBottom: 28,
-        paddingBottom: 20,
         backgroundImage:
           "linear-gradient(to right, rgba(44,44,42,0.18), transparent)",
         backgroundRepeat: "no-repeat",
@@ -30,20 +29,13 @@ export function AdminPageHeader({
         backgroundSize: "100% 1px",
       }}
     >
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div className="min-w-0 space-y-2">
           <p className="admin-eyebrow">
             InstaBench · Admin
           </p>
           <h1
-            style={{
-              fontSize: 36,
-              fontWeight: 500,
-              letterSpacing: "-0.02em",
-              lineHeight: 1.05,
-              margin: 0,
-            }}
-            className="text-admin-text-primary"
+            className="m-0 text-[28px] font-medium leading-[1.05] tracking-[-0.02em] text-admin-text-primary sm:text-[36px]"
           >
             {title}
           </h1>
@@ -54,7 +46,7 @@ export function AdminPageHeader({
           ) : null}
         </div>
         {actions ? (
-          <div className="flex items-center gap-2">{actions}</div>
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
         ) : null}
       </div>
     </header>

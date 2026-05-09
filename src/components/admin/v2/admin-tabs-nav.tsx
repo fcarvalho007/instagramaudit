@@ -65,19 +65,20 @@ export function AdminTabsNav() {
   return (
     <nav
       aria-label="Secções do admin"
-      className="mb-7 -mx-2 px-3 py-2.5 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30"
+      className="mb-5 sm:mb-7 -mx-1 sm:-mx-2 rounded-2xl border border-white/30 bg-white/20 px-2 py-2 sm:px-3 sm:py-2.5 backdrop-blur-sm"
     >
-      <div className="flex flex-wrap items-end gap-0">
+      {/* Mobile: faixa única com scroll horizontal. Desktop (sm+): grupos com separadores. */}
+      <div className="flex items-end gap-1 overflow-x-auto sm:flex-wrap sm:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {GROUPS.map((group, gi) => (
-          <div key={group.label} className="flex items-end">
+          <div key={group.label} className="flex shrink-0 items-end sm:shrink">
             {/* Group */}
-            <div className="flex flex-col gap-1.5 px-1">
+            <div className="flex flex-col gap-1.5 px-0.5 sm:px-1">
               <span className="hidden sm:block text-[10px] font-medium uppercase tracking-[0.14em] text-admin-text-tertiary pl-1 select-none">
                 {group.label}
               </span>
-              <ul className="m-0 flex flex-wrap gap-1 list-none p-0">
+              <ul className="m-0 flex shrink-0 list-none gap-1 p-0 sm:flex-wrap">
                 {group.tabs.map((tab) => (
-                  <li key={tab.to}>
+                  <li key={tab.to} className="shrink-0">
                     <Link
                       to={tab.to}
                       className={TAB_INACTIVE}

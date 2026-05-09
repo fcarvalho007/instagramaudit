@@ -40,15 +40,12 @@ function AdminLayout() {
 
   return (
     <AdminAuthShell onLogoutReady={(handler) => setLogout(() => handler)}>
-      <div className="admin-v2 min-h-screen" data-demo={demoOn ? "on" : "off"}>
-        <main
-          style={{
-            maxWidth: 1280,
-            margin: "0 auto",
-            padding: "1.75rem",
-          }}
-        >
-          <div className="flex justify-end items-center gap-2 mb-2">
+      <div
+        className="admin-v2 min-h-screen overflow-x-hidden"
+        data-demo={demoOn ? "on" : "off"}
+      >
+        <main className="mx-auto w-full max-w-[1280px] px-3 py-4 sm:px-5 sm:py-5 md:px-7 md:py-7">
+          <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
              <ExecutionModeBadge />
             <DemoModeSwitch />
             {logout && (
@@ -64,20 +61,28 @@ function AdminLayout() {
           </div>
           <AdminTabsNav />
           {demoOn ? (
-            <div
-              role="note"
-              className="mb-4 mt-2 rounded-md border px-3 py-2 text-[11px]"
+            <details
+              className="group mb-4 mt-2 rounded-md border px-3 py-2 text-[11px]"
               style={{
                 borderColor: "rgba(6,182,212,0.35)",
                 background: "rgba(6,182,212,0.06)",
                 color: "rgb(8 145 178)",
               }}
             >
-              <strong className="font-medium">Modo demonstração ativo</strong> —
-              {" "}secções sem integração real (Receita, Clientes, Pipeline) mostram
-              {" "}dados fictícios para visualizar o layout. Despesa, perfis analisados
-              {" "}e métricas operacionais continuam reais.
-            </div>
+              <summary className="flex cursor-pointer items-center justify-between gap-2 list-none [&::-webkit-details-marker]:hidden">
+                <span>
+                  <strong className="font-medium">Modo demonstração ativo</strong>
+                  <span className="hidden sm:inline"> — Receita, Clientes e Pipeline mostram dados fictícios.</span>
+                </span>
+                <span className="shrink-0 text-[10px] opacity-70 group-open:hidden">Ver impacto</span>
+                <span className="hidden shrink-0 text-[10px] opacity-70 group-open:inline">Fechar</span>
+              </summary>
+              <p className="mt-2 leading-relaxed">
+                Secções sem integração real (Receita, Clientes, Pipeline) mostram dados
+                fictícios para visualizar o layout. Despesa, perfis analisados e métricas
+                operacionais continuam reais.
+              </p>
+            </details>
           ) : null}
           <Outlet />
         </main>
