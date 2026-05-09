@@ -255,12 +255,14 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   const [sendingLink, setSendingLink] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("resumo");
 
   // Reset state when lead changes
   useEffect(() => {
     if (lead) {
       setNotesText(lead.internal_notes ?? "");
       setNotesDirty(false);
+      setActiveTab("resumo");
     }
   }, [lead?.id]);
 
