@@ -43,6 +43,7 @@ import {
   Clock,
   AlertCircle,
   Send,
+  MessageSquareText,
 } from "lucide-react";
 import {
   User,
@@ -240,6 +241,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   const [generating, setGenerating] = useState(false);
   const [sendLinkOpen, setSendLinkOpen] = useState(false);
   const [sendingLink, setSendingLink] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [sendingFeedback, setSendingFeedback] = useState(false);
 
   // Reset state when lead changes
   useEffect(() => {
