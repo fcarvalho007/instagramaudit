@@ -17,6 +17,7 @@ import {
   updateLeadCommercialStatus,
 } from "@/lib/admin/lead-events.server";
 import { renderReportReady } from "@/lib/email/templates";
+import { maybeAdvanceLeadStatus } from "@/lib/admin/lead-lifecycle";
 
 const RequestSchema = z.object({
   lead_id: z.string().uuid(),
@@ -58,6 +59,18 @@ function jsonResponse(body: unknown, status: number): Response {
 
 function errorResponse(code: ErrorCode, message: string, status = 400): Response {
   return jsonResponse({ success: false, error_code: code, message }, status);
+}
+
+function errorResponseWithDetails(
+  code: ErrorCode,
+  message: string,
+  details: string | null,
+  status = 400,
+): Response {
+  return jsonResponse(
+    { success: false, error_code: code, message, details: details ?? undefined },
+    status,
+  );
 }
 
 function resolvePublicBaseUrl(request: Request): string | null {
@@ -247,18 +260,41 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
 
         if (!resendResponse.ok) {
           const bodyText = await resendResponse.text().catch(() => "");
+          let providerMessage: string | null = null;
+          try {
+            const parsed = JSON.parse(bodyText) as {
+              message?: string;
+              error?: { message?: string } | string;
+              name?: string;
+            };
+            const errField =
+              typeof parsed.error === "string"
+                ? parsed.error
+                : parsed.error?.message;
+            providerMessage = parsed.message ?? errField ?? null;
+          } catch {
+            providerMessage = bodyText ? bodyText.slice(0, 200) : null;
+          }
+          const matchSource = providerMessage ?? bodyText;
           const isSandboxBlock =
-            /you can only send testing emails to your own email/i.test(bodyText);
+            /(testing emails|only send.*verified|verified (email|domain))/i.test(
+              matchSource,
+            );
+          const truncated = providerMessage
+            ? providerMessage.slice(0, 200)
+            : null;
           if (isSandboxBlock) {
-            return errorResponse(
+            return errorResponseWithDetails(
               "RESEND_SANDBOX_RECIPIENT_BLOCKED",
-              "Sandbox sender can only deliver to the Resend account owner.",
+              "Sandbox sender can only deliver to verified recipients.",
+              truncated,
               502,
             );
           }
-          return errorResponse(
+          return errorResponseWithDetails(
             "RESEND_FAILED",
             `Email provider returned ${resendResponse.status}.`,
+            truncated,
             502,
           );
         }
@@ -288,13 +324,30 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
           /* non-critical */
         }
 
-        // 10. Update commercial_status (only after successful send)
-        const statusResult = await updateLeadCommercialStatus({
-          leadId: lead.id,
-          status: "link_enviado",
-          source: "manual",
-          reason: "Admin sent public report link",
-        });
+        // 10. Update commercial_status (only after successful send).
+        // Never regress: if the lead is already past `link_enviado` in the
+        // funnel (e.g. `relatorio_visto`, `feedback_pedido`), preserve it.
+        const { data: leadStatusRow } = await supabaseAdmin
+          .from("leads")
+          .select("commercial_status")
+          .eq("id", lead.id)
+          .maybeSingle();
+        const currentStatus =
+          (leadStatusRow?.commercial_status as string | null) ?? null;
+        const advanceTo = maybeAdvanceLeadStatus(currentStatus, "link_enviado");
+        let statusResult: { changed: boolean; previous: string | null } = {
+          changed: false,
+          previous: currentStatus,
+        };
+        if (advanceTo) {
+          const r = await updateLeadCommercialStatus({
+            leadId: lead.id,
+            status: advanceTo,
+            source: "manual",
+            reason: "Admin sent public report link",
+          });
+          statusResult = { changed: r.changed, previous: r.previous };
+        }
 
         return jsonResponse(
           {

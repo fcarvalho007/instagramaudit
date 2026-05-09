@@ -275,6 +275,9 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   if (!lead) return null;
 
   const intent = deriveIntentSignal(lead);
+  const lastReportLinkSentAt =
+    timeline.find((ev) => ev.event_type === "report_link_sent")?.created_at ??
+    null;
   const suggestedStep = suggestNextLeadAction(lead).label;
   const feedbackIntent = interpretFeedback(lead.feedback);
   // When feedback exists, override the heuristic intent with the commercial signal.
@@ -497,6 +500,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               </AdminActionButton>
               <SendLinkButton
                 lead={lead}
+                lastSentAt={lastReportLinkSentAt}
                 onClick={() => setSendLinkOpen(true)}
               />
               <FeedbackRequestButton
@@ -677,6 +681,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
       onOpenChange={setSendLinkOpen}
       loading={sendingLink}
       lead={lead}
+      lastSentAt={lastReportLinkSentAt}
       onConfirm={async () => {
         if (!lead.report_request_id) return;
         setSendingLink(true);
@@ -692,9 +697,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           });
           const body = await res.json().catch(() => ({}));
           if (!res.ok || !body.success) {
-            toast.error(mapSendLinkError(body?.error_code));
+            toast.error(mapSendLinkError(body?.error_code, body?.details));
           } else {
-            toast.success("Link enviado por email");
+            toast.success(
+              lastReportLinkSentAt ? "Link reenviado por email" : "Link enviado por email",
+            );
             setSendLinkOpen(false);
             onRefresh?.();
           }
@@ -946,9 +953,11 @@ function TimelineSection({
 
 function SendLinkButton({
   lead,
+  lastSentAt,
   onClick,
 }: {
   lead: EnrichedLead;
+  lastSentAt: string | null;
   onClick: () => void;
 }) {
   const reportReady =
@@ -966,20 +975,24 @@ function SendLinkButton({
   else if (!hasHandle) disabledReason = "Handle Instagram em falta.";
 
   const disabled = disabledReason != null;
+  const isResend = lastSentAt != null;
 
   return (
     <AdminActionButton
       size="md"
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
-      title={disabledReason ?? "Enviar link público por email"}
+      title={
+        disabledReason ??
+        (isResend ? "Reenviar link público por email" : "Enviar link público por email")
+      }
       className={
         disabled
           ? undefined
           : "!border-admin-revenue-500/40 !text-admin-revenue-700 hover:!bg-admin-revenue-50"
       }
     >
-      <Send size={14} /> Enviar link
+      <Send size={14} /> {isResend ? "Reenviar link" : "Enviar link"}
     </AdminActionButton>
   );
 }
@@ -989,12 +1002,14 @@ function SendLinkDialog({
   onOpenChange,
   loading,
   lead,
+  lastSentAt,
   onConfirm,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   loading: boolean;
   lead: EnrichedLead;
+  lastSentAt: string | null;
   onConfirm: () => void;
 }) {
   const publicUrl =
@@ -1009,14 +1024,37 @@ function SendLinkDialog({
     instagramHandle: lead.handle ?? "",
     reportUrl: publicUrl || "https://instabench.example/relatorio",
   });
+  const isResend = lastSentAt != null;
+  const lastSentLabel = lastSentAt
+    ? new Date(lastSentAt).toLocaleString("pt-PT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Enviar link ao beta tester"
+      title={isResend ? "Reenviar link ao beta tester" : "Enviar link ao beta tester"}
       description={
         <div className="space-y-3 text-[13px]">
+          {isResend && lastSentLabel && (
+            <div
+              className="rounded-md px-3 py-2 text-[12px]"
+              style={{
+                backgroundColor: "rgba(186,117,23,0.08)",
+                border: "1px solid rgba(186,117,23,0.25)",
+                color: "#8A560F",
+              }}
+            >
+              Já foi enviado um link a este lead em <strong>{lastSentLabel}</strong>.
+              Confirma o reenvio.
+            </div>
+          )}
           <div className="grid grid-cols-[80px_1fr] gap-y-1.5">
             <span className="admin-meta text-admin-text-tertiary">Para</span>
             <span className="text-admin-text-primary break-all">{lead.email}</span>
@@ -1050,7 +1088,11 @@ function SendLinkDialog({
   );
 }
 
-function mapSendLinkError(code: string | undefined): string {
+function mapSendLinkError(
+  code: string | undefined,
+  details?: string | null,
+): string {
+  const suffix = details ? ` Resend: ${details}` : "";
   switch (code) {
     case "EMAIL_PROVIDER_NOT_CONFIGURED":
       return "Email provider não configurado.";
@@ -1065,11 +1107,11 @@ function mapSendLinkError(code: string | undefined): string {
     case "HANDLE_MISSING":
       return "Handle Instagram em falta.";
     case "RESEND_SANDBOX_RECIPIENT_BLOCKED":
-      return "Resend está em modo sandbox — verifica o domínio para enviar a outros destinatários.";
+      return `Resend está em modo sandbox — verifica o domínio para enviar a outros destinatários.${suffix}`;
     case "RESEND_TIMEOUT":
       return "Email provider demorou demasiado a responder.";
     case "RESEND_FAILED":
-      return "Falha ao enviar email. Tenta novamente.";
+      return `Falha ao enviar email.${suffix || " Tenta novamente."}`;
     case "UNAUTHORIZED":
     case "UNAUTHENTICATED":
     case "NOT_ALLOWED":
