@@ -1047,3 +1047,141 @@ function mapSendLinkError(code: string | undefined): string {
       return "Erro ao enviar email.";
   }
 }
+
+// ── Feedback request button + dialog ─────────────────────────────
+
+const FEEDBACK_ELIGIBLE = new Set([
+  "link_enviado",
+  "relatorio_visto",
+  "feedback_pedido",
+]);
+
+function FeedbackRequestButton({
+  lead,
+  onClick,
+}: {
+  lead: EnrichedLead;
+  onClick: () => void;
+}) {
+  const hasEmail = Boolean(lead.email);
+  const hasHandle = Boolean(lead.handle);
+  const hasRequest = Boolean(lead.report_request_id);
+  const eligibleStatus = FEEDBACK_ELIGIBLE.has(lead.commercial_status ?? "");
+
+  let disabledReason: string | null = null;
+  if (!hasRequest) disabledReason = "Sem pedido de relatório associado.";
+  else if (!hasEmail) disabledReason = "Lead sem email.";
+  else if (!hasHandle) disabledReason = "Handle Instagram em falta.";
+  else if (!eligibleStatus)
+    disabledReason =
+      "Disponível depois de o link ser enviado e antes do feedback ser recebido.";
+
+  const disabled = disabledReason != null;
+
+  return (
+    <AdminActionButton
+      size="md"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={disabledReason ?? "Pedir feedback ao beta tester"}
+    >
+      <MessageSquareText size={14} /> Pedir feedback
+    </AdminActionButton>
+  );
+}
+
+function FeedbackRequestDialog({
+  open,
+  onOpenChange,
+  loading,
+  lead,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  loading: boolean;
+  lead: EnrichedLead;
+  onConfirm: () => void;
+}) {
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const feedbackUrl = lead.report_request_id
+    ? `${origin}/feedback/${lead.report_request_id}`
+    : "";
+  const reportUrl = lead.handle ? `${origin}/analyze/${lead.handle}` : "";
+  const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
+  const { subject, text: previewBody } = renderFeedbackRequest({
+    firstName,
+    instagramHandle: lead.handle ?? "",
+    reportUrl,
+    feedbackUrl,
+  });
+
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Pedir feedback ao beta tester"
+      description={
+        <div className="space-y-3 text-[13px]">
+          <div className="grid grid-cols-[80px_1fr] gap-y-1.5">
+            <span className="admin-meta text-admin-text-tertiary">Para</span>
+            <span className="text-admin-text-primary break-all">{lead.email}</span>
+            <span className="admin-meta text-admin-text-tertiary">Perfil</span>
+            <span className="text-admin-text-primary">@{lead.handle}</span>
+            <span className="admin-meta text-admin-text-tertiary">Assunto</span>
+            <span className="text-admin-text-primary">{subject}</span>
+          </div>
+          <div>
+            <p className="admin-eyebrow-sm mb-1">Link de feedback</p>
+            <p className="admin-code text-admin-text-primary break-all rounded-md bg-admin-text-primary/[0.04] border border-admin-text-primary/10 px-2.5 py-1.5 text-[12px]">
+              {feedbackUrl || "—"}
+            </p>
+          </div>
+          <div>
+            <p className="admin-eyebrow-sm mb-1">Pré-visualização</p>
+            <pre className="text-admin-text-secondary whitespace-pre-wrap rounded-md bg-admin-text-primary/[0.03] border border-admin-text-primary/10 px-3 py-2 text-[12px] leading-relaxed font-sans m-0">
+              {previewBody}
+            </pre>
+          </div>
+          <p className="admin-meta text-admin-text-tertiary">
+            Em sucesso: regista o evento <code>feedback_request_sent</code> e
+            move o estado para <strong>Feedback pedido</strong>.
+          </p>
+        </div>
+      }
+      confirmLabel={loading ? "A enviar…" : "Enviar pedido"}
+      loading={loading}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+function mapFeedbackError(code: string | undefined): string {
+  switch (code) {
+    case "STATUS_NOT_ELIGIBLE":
+      return "Estado do lead não permite pedir feedback agora.";
+    case "EMAIL_PROVIDER_NOT_CONFIGURED":
+      return "Email provider não configurado.";
+    case "LEAD_EMAIL_MISSING":
+      return "Lead sem email.";
+    case "LEAD_EMAIL_INVALID":
+      return "Email do lead inválido.";
+    case "REQUEST_NOT_FOUND":
+      return "Pedido de relatório não encontrado.";
+    case "HANDLE_MISSING":
+      return "Handle Instagram em falta.";
+    case "RESEND_SANDBOX_RECIPIENT_BLOCKED":
+      return "Resend em modo sandbox — verifica o domínio.";
+    case "RESEND_TIMEOUT":
+      return "Email provider demorou demasiado a responder.";
+    case "RESEND_FAILED":
+      return "Falha ao enviar email.";
+    case "UNAUTHORIZED":
+    case "UNAUTHENTICATED":
+    case "NOT_ALLOWED":
+      return "Sessão admin inválida.";
+    default:
+      return "Erro ao enviar pedido de feedback.";
+  }
+}
