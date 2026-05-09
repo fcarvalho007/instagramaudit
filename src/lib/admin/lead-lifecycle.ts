@@ -113,8 +113,6 @@ export function mapEventToSuggestedStatus(
       return "relatorio_visto";
     case "feedback_requested":
       return "feedback_pedido";
-    case "feedback_request_sent":
-      return "feedback_pedido";
     case "feedback_submitted":
       return "feedback_recebido";
     default:
