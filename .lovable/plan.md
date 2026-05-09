@@ -1,101 +1,185 @@
-# Final Consolidation Audit — Plano de Execução
+# Roadmap de Correção — InstaBench Beta MVP
 
-Auditoria **100% read-only** ao MVP beta antes de convidar testers reais. Sem alterações de código, sem chamadas a providers, sem mutações de DB.
-
----
-
-## Objetivo
-
-Produzir um relatório único de 10 secções (executive summary → batches de implementação) que confirme que o beta está pronto para os primeiros utilizadores externos, **ou** identifique exatamente o que falta corrigir antes.
+Baseado na auditoria final (score 82/100). Plano de correção isolado por tema, sem misturar UI, DB e providers no mesmo batch.
 
 ---
 
-## Fases da auditoria
+## 1. Agrupamento por Prioridade
 
-### Fase 1 — Reconhecimento estático (rg + code--view)
+### P0 — Bloqueia lançamento beta
 
-Mapear, sem ler ficheiros inteiros, **onde está cada coisa** para cruzar com a lista do utilizador:
-
-- **Eventos:** `rg "recordProductEvent\(|trackEvent\(" -n src/` → todos os call sites com linha e contexto, agrupar por `event_type`.
-- **Allowlist:** ler `src/lib/tracking.functions.ts` (já sabemos que está limpa após P0-B).
-- **Lifecycle:** ler `src/lib/admin/lead-lifecycle.ts` para ver mapeamento `event_type → commercial_status` e confirmar que **não** referencia eventos obsoletos (`feedback_request_sent`, `pro_teaser_clicked`, `email_clicked`).
-- **Email templates:** `ls src/lib/email/templates/` + `rg "from.*email/templates" -n src/` → confirmar quem importa o quê (orfãos identificados na auditoria anterior: `commercial-followup` ainda órfão).
-- **Endpoints de envio:** `rg -n "Resend|resend\.emails\.send|RESEND_API_KEY" src/` → confirmar gates `INTERNAL_API_TOKEN` e kill-switch.
-- **Provider gates:** `rg -n "APIFY_ENABLED|OPENAI_ENABLED|DATAFORSEO_ENABLED" src/` → confirmar leitura em todos os providers.
-- **Public routes:** `ls src/routes/` + `rg -n "createServerFn|requireSupabaseAuth|INTERNAL_API_TOKEN" src/routes/analyze* src/routes/feedback* src/routes/api/public/` → confirmar nenhuma rota pública dispara provider pago.
-- **Variants do paywall:** `rg -n "unlock_clicked|pricing_option_clicked|paywall|locked" src/components/report*` para confirmar que disparam uma única vez com metadata útil.
-
-### Fase 2 — Tracing end-to-end do happy path
-
-Para cada um dos 16 passos do lifecycle indicados pelo utilizador, identificar:
-- ficheiro + função que despoleta
-- evento que regista
-- transição de status que espera disparar (cruzar com `lead-lifecycle.ts`)
-- label da timeline (cruzar com `lead-detail-sheet.tsx`)
-- metadata mínima registada
-
-Output: tabela com 16 linhas e coluna "✅ confirmado / ⚠️ parcial / ❌ em falta".
-
-### Fase 3 — Verificações de DB (read-only)
-
-Apenas `SELECT` via `supabase--read_query`. Cinco queries estritamente diagnósticas:
-
-1. **Distribuição de `commercial_status`** em `leads` — detetar leads "presos" em estados intermédios.
-2. **Distribuição de `event_type`** em `product_events` (últimos 30d) — confirmar que só aparecem eventos da allowlist atual e detetar eventos obsoletos persistidos historicamente.
-3. **Leads com `report_link_sent` mas sem `report_viewed`** após 7d — sinal de relatórios entregues mas não abertos.
-4. **`report_requests` com `delivery_status='sent'` sem evento `report_link_sent`** — gap de backfill.
-5. **`beta_feedback` órfão** (sem `report_request` correspondente) ou inconsistente (`lead_id` ≠ `report_request.lead_id`).
-
-### Fase 4 — Validação automática
-
-- `bunx tsc --noEmit` (esperar 0 erros).
-- `bunx vitest run` (esperar 163/163 ou superior — P1-A trará +4–6).
-- `supabase--linter` (esperar 0 critical, deve corresponder ao output da auditoria anterior).
-
-### Fase 5 — Síntese do relatório
-
-Documento único de 10 secções na resposta final ao utilizador:
-
-1. **Executive summary** (≤8 linhas).
-2. **Beta readiness score** 0–100, com delta vs. score anterior (78).
-3. **P0 blockers** (lista vazia se OK para beta).
-4. **P1 fixes** antes dos primeiros testers externos.
-5. **P2 fixes** após primeira vaga.
-6. **Orphan/duplicate code list** (cruzar com auditoria anterior — atualizar status).
-7. **Event consistency table** — 12 eventos × colunas {emitido, allowed, lifecycle handler, timeline label, metadata, obsoleto?}.
-8. **Email wiring table** — 4 fluxos × {template usado, endpoint, gate, status}.
-9. **Provider safety table** — 4 providers × {kill-switch, allowlist, public path?, admin path?}.
-10. **Recommended implementation batches** — atualização do roadmap P0–P3 com qualquer item novo.
+**P0-A++ · Hardening de RLS e SECURITY DEFINER** *(detetado pelo linter)*
+- **Problema:** 1 tabela `public.*` com RLS desativada exposta via PostgREST + 5 funções `SECURITY DEFINER` executáveis pelo role `anon` (`record_analysis_event`, `set_admin_email_session`, `link_user_to_existing_reports`, `handle_new_user`, `set_enrichment_status`, `get_knowledge_context`).
+- **Ficheiros:** nova migration SQL.
+- **Risco:** privilege escalation, leitura/escrita não autorizada de dados de leads e snapshots. **Severidade: ALTA.**
+- **Fix proposto:** habilitar RLS na tabela exposta + políticas restritivas; `REVOKE EXECUTE ... FROM anon, public` nas 5 funções; `GRANT EXECUTE` apenas a `authenticated`/`service_role` consoante uso real.
+- **Validação:** `supabase--linter` 0 erros; smoke test do happy path (request → report → feedback) com sessão real e com `anon`; confirmar que edge functions ainda funcionam (usam `service_role`).
+- **Migração DB:** **Sim.**
+- **Provider/email:** **Não.**
 
 ---
 
-## Restrições enforced durante a execução
+### P1 — Antes dos primeiros testers externos
 
-| Não fazer | Como garanto |
-|---|---|
-| Alterar código | Sem `code--apply_patch`, `code--write`, `code--copy` para src/, `supabase--migration`, `supabase--insert` |
-| Enviar emails | Não invocar `send-report-link`, `send-feedback-request`, nem nenhum endpoint Resend |
-| Gerar relatórios | Não invocar `analyze.functions` nem refresh |
-| Chamar providers | Não invocar `stack_modern--invoke-server-function` em endpoints com Apify/OpenAI/DataForSEO/Resend |
-| Mutar DB | Apenas `supabase--read_query`, nunca `supabase--insert` ou `supabase--migration` |
+**P1-NEW-3 · Labels de timeline em falta**
+- **Problema:** 6 eventos sem label no `lead-lifecycle`: `request_received_email_sent`, `request_received_email_failed`, `pricing_clicked`, `public_report_link_copied`, `module_visibility_published`, `request_status_changed`.
+- **Ficheiros:** `src/lib/admin/lead-lifecycle.ts` (mapeamento de labels).
+- **Risco:** baixo (cosmético no CRM); afeta legibilidade do operador comercial.
+- **Fix:** adicionar entradas no dicionário de labels pt-PT.
+- **Validação:** abrir lead detail sheet com eventos destes tipos; verificar texto renderizado.
+- **DB:** Não. **Provider/email:** Não.
 
-## Tools usadas (todas read-only)
+**P1-C · Índices de performance**
+- **Problema:** queries do CRM sobre `product_events`/`leads` sem índices em colunas filtradas (event_type, lead_id, created_at).
+- **Ficheiros:** nova migration.
+- **Risco:** degradação com volume; nenhum em <100 leads.
+- **Fix:** `CREATE INDEX IF NOT EXISTS` em colunas usadas pelo Kanban e timeline.
+- **Validação:** `EXPLAIN` antes/depois.
+- **DB:** **Sim.** **Provider/email:** Não.
 
-- `code--exec` (apenas `rg`, `ls`, `bunx tsc --noEmit`, `bunx vitest run`)
-- `code--view`, `code--list_dir`
-- `supabase--read_query`, `supabase--linter`
+**P1-A · Smoke tests E2E (Vitest)**
+- **Problema:** happy path validado manualmente apenas (1 lead em produção).
+- **Ficheiros:** `src/__tests__/e2e/beta-flow.test.ts` (novo).
+- **Risco:** regressões silenciosas em iterações futuras.
+- **Fix:** testes mockados do fluxo: request → email → view → feedback (sem providers reais).
+- **Validação:** `bunx vitest run` verde.
+- **DB:** Não. **Provider/email:** mockados.
 
-## Estimativa de duração
-
-~6–10 chamadas de tool em paralelo agressivo. Resultado consolidado num único turno de resposta ao utilizador.
+**P1-B · Decisão sobre `commercial-followup`**
+- **Problema:** template orfão importado mas nunca emitido.
+- **Ficheiros:** `src/emails/commercial-followup.tsx` + sites de import.
+- **Risco:** confusão / dead code.
+- **Fix:** decidir — wire-up no CRM (botão "enviar follow-up") **OU** remover. Recomendação: remover e re-introduzir quando houver UX definida.
+- **Validação:** `rg commercial-followup` = 0 hits após remoção; tsc + vitest verdes.
+- **DB:** Não. **Provider/email:** Não (apenas import; sem envio).
 
 ---
 
-## O que **não** está incluído (por design)
+### P2 — Pós primeira wave de beta
 
-- Não importa código do CRM Webinar (roadmap separado).
-- Não implementa nenhum batch P0/P1/P2 do roadmap anterior — só audita o estado atual.
-- Não faz refactor preventivo nem renames.
-- Não cria testes novos — só relata cobertura atual e gaps.
+**P2-A · Colapsar duplicação de `report_viewed`**
+- **Problema:** lógica de dedup espalhada; possível dupla contagem em edge cases.
+- **Fix:** centralizar em helper único.
+- **DB:** Não. **Provider/email:** Não.
 
-Aprova para eu correr a auditoria.
+**P2-B · Suprimir `lead_status_changed` ruidoso**
+- **Problema:** evento gerado em transições internas pollui timeline.
+- **Fix:** filtrar no recordProductEvent OU no render de timeline.
+- **DB:** Não. **Provider/email:** Não.
+
+**P2-NEW-1 · Tipagem estrita de event_type**
+- **Problema:** 4 sites fazem `INSERT` direto bypassando validação `ALLOWED_EVENTS`.
+- **Fix:** refatorar para usar `recordProductEvent`.
+- **DB:** Não. **Provider/email:** Não.
+
+---
+
+### P3 — Nice-to-have
+
+- Documentação de runbook de incidentes (provider down, Resend bounce).
+- Dashboard admin com KPIs de funil (request → view → feedback).
+- Limpeza de comentários TODO / código morto residual.
+
+---
+
+## 2. Batches de Implementação
+
+| Batch | Tema | Toca | Migração | Provider |
+|---|---|---|---|---|
+| **B1** | P0-A++ RLS + SECURITY DEFINER | DB only | Sim | Não |
+| **B2** | P1-C índices | DB only | Sim | Não |
+| **B3** | P1-NEW-3 labels timeline | UI/lib only | Não | Não |
+| **B4** | P1-A smoke tests E2E | Tests only | Não | Mock |
+| **B5** | P1-B decisão commercial-followup | Code cleanup | Não | Não |
+| **B6** | P2-A dedup report_viewed | lib only | Não | Não |
+| **B7** | P2-B filtro lead_status_changed | lib only | Não | Não |
+| **B8** | P2-NEW-1 refactor inserts diretos | lib only | Não | Não |
+
+Cada batch isolado, sem misturar camadas. Risco crescente concentrado em B1.
+
+---
+
+## 3. Ordem Recomendada (segurança crescente → estabilidade → polish)
+
+```text
+B1 (P0 segurança)  ← crítico, requer aprovação migration
+  ↓
+B2 (índices)        ← migration trivial, melhora perf
+  ↓
+B3 (labels)         ← UI cosmético, zero risco
+  ↓
+B4 (smoke tests)    ← rede de segurança antes de testers
+  ↓
+B5 (cleanup)        ← decisão produto
+  ↓
+B6 → B7 → B8        ← refactor pós-beta
+```
+
+**Rationale:** B1 primeiro porque expõe dados; B2 logo a seguir aproveita janela de migration; B3-B4 antes de convidar testers; B5+ podem correr em paralelo com beta.
+
+---
+
+## 4. Risco Estimado por Batch
+
+- **B1:** MÉDIO-ALTO — pode partir edge functions se `service_role` não estiver corretamente granted. Mitigação: testar cada função após migration.
+- **B2:** BAIXO — `CREATE INDEX IF NOT EXISTS` é idempotente e seguro.
+- **B3:** MUITO BAIXO — apenas strings.
+- **B4:** BAIXO — só adiciona ficheiros de teste.
+- **B5:** BAIXO — remoção de código morto verificável com `rg`.
+- **B6-B8:** BAIXO-MÉDIO — refactor com testes do B4 como rede.
+
+---
+
+## 5. Primeiro Prompt de Implementação (B1)
+
+> ```
+> Use Plan Mode first.
+>
+> Goal:
+> Implement Batch B1 — RLS hardening + SECURITY DEFINER lockdown.
+>
+> Scope:
+> 1. Identify the public.* table flagged by supabase--linter as
+>    "RLS Disabled in Public" (ERROR 21).
+> 2. Enable RLS on that table and add minimum-viable policies:
+>    - SELECT: only owner / service_role (depending on table semantics)
+>    - INSERT/UPDATE/DELETE: service_role only, unless the table has a
+>      legitimate authenticated write path
+> 3. For these 5 SECURITY DEFINER functions, REVOKE EXECUTE FROM anon, public
+>    and GRANT EXECUTE only to the roles that actually call them:
+>    - record_analysis_event
+>    - set_admin_email_session
+>    - link_user_to_existing_reports
+>    - handle_new_user (must remain callable by trigger context)
+>    - set_enrichment_status
+>    - get_knowledge_context
+>
+> Deliverable:
+> - One migration file via supabase--migration tool
+> - No code changes outside the migration
+> - Run supabase--linter after to confirm 0 errors remain
+>
+> Constraints:
+> - Do not modify edge function code in this batch
+> - Do not touch UI
+> - Do not call providers
+> - Stop and request confirmation before applying if any policy could
+>   break the existing happy path (request → report → feedback)
+> - Map each function's actual call sites (rg) before changing GRANTs
+>
+> Validation:
+> - supabase--linter: 0 ERROR-level findings on these items
+> - bunx tsc --noEmit: 0 errors
+> - bunx vitest run: 163/163 pass
+> - Manual smoke: load /admin CRM as authenticated admin; load a public
+>   report URL as anonymous; confirm both render
+> ```
+
+---
+
+## Notas técnicas
+
+- **Política de migrations:** B1 e B2 são migrations separadas para permitir rollback granular.
+- **Idempotência:** todas as migrations usam `IF NOT EXISTS` / `IF EXISTS` para serem re-executáveis.
+- **Edge functions:** usam `SUPABASE_SERVICE_ROLE_KEY`, logo bypass de RLS — B1 não as afeta desde que `service_role` mantenha `EXECUTE`.
+- **`handle_new_user`:** chamada por trigger no `auth.users`; precisa de `EXECUTE` para `supabase_auth_admin` (não para `anon`).
