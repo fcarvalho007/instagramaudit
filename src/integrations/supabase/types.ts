@@ -179,6 +179,48 @@ export type Database = {
         }
         Relationships: []
       }
+      beta_feedback: {
+        Row: {
+          clarity_text: string | null
+          contact_consent: boolean
+          created_at: string
+          id: string
+          lead_id: string
+          missing_text: string | null
+          pricing_preference: string | null
+          purchase_intent: string
+          report_request_id: string
+          usefulness_score: number
+          user_agent: string | null
+        }
+        Insert: {
+          clarity_text?: string | null
+          contact_consent?: boolean
+          created_at?: string
+          id?: string
+          lead_id: string
+          missing_text?: string | null
+          pricing_preference?: string | null
+          purchase_intent: string
+          report_request_id: string
+          usefulness_score: number
+          user_agent?: string | null
+        }
+        Update: {
+          clarity_text?: string | null
+          contact_consent?: boolean
+          created_at?: string
+          id?: string
+          lead_id?: string
+          missing_text?: string | null
+          pricing_preference?: string | null
+          purchase_intent?: string
+          report_request_id?: string
+          usefulness_score?: number
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       comment_enrichment_jobs: {
         Row: {
           analysis_event_id: string | null

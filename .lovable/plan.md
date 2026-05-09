@@ -1,148 +1,110 @@
-# Módulo de templates de email beta (pt-PT)
+# Plano — Formulário público de feedback beta
 
-Cria um módulo reutilizável com **4 templates** transacionais pt-PT, cada um a expor `subject`, `text` e `html`. Sem envio, sem alterações ao provider — só código de templating + testes.
+## 1. Rota pública
 
-## Estrutura de ficheiros
+Criar `src/routes/feedback.$requestId.tsx` (rota pública, sem auth gate).
 
-```
-src/lib/email/
-├── shared.ts                    (novo) — helpers: escapeHtml, firstName, layout HTML, footer
-├── templates/
-│   ├── index.ts                 (novo) — exports + types
-│   ├── request-received.ts      (novo) — Template 1
-│   ├── report-ready.ts          (novo) — Template 2
-│   ├── feedback-request.ts      (novo) — Template 3
-│   └── commercial-followup.ts   (novo) — Template 4
-└── __tests__/
-    └── templates.test.ts        (novo) — testes vitest
-```
+- Param `requestId` = `report_requests.id` (UUID, já público no link enviado por email; o lead deve apenas conseguir abrir a partir do email).
+- `loader` chama um server function público para validar o `requestId` e devolver dados mínimos (nome do lead, handle, se já foi submetido feedback).
+- Estados de UI:
+  - **Inválido** → mensagem clara: "Link inválido ou expirado."
+  - **Já submetido** → ecrã "Já recebemos o teu feedback. Obrigado." (sem reabrir form).
+  - **Form** → mostra perguntas.
+  - **Thank-you** → após submit.
 
-`report-link-email-template.ts` e `report-email-template.ts` existentes ficam **intocados** (já estão em uso). O Template 2 (Relatório pronto) é uma versão paralela na nova API uniformizada — uma fase futura pode migrar `send-report-link.ts` para usar a nova; nesta tarefa não se mexe nesses call-sites.
+## 2. Schema (nova tabela)
 
-## API uniforme
+Recomendação: **criar tabela nova `beta_feedback`**. Motivo: dados de pesquisa têm estrutura própria (escala, intenção de compra, opção de pricing) e não pertencem a `leads` ou `report_requests`. Mantém CRM limpo.
 
-```ts
-// shared.ts
-export interface RenderedEmail {
-  subject: string;
-  text: string;
-  html: string;
-}
+```sql
+CREATE TABLE public.beta_feedback (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id uuid NOT NULL,
+  report_request_id uuid NOT NULL UNIQUE,  -- evita duplicados
+  usefulness_score smallint NOT NULL CHECK (usefulness_score BETWEEN 1 AND 5),
+  clarity_text text,
+  missing_text text,
+  purchase_intent text NOT NULL CHECK (purchase_intent IN ('sim','talvez','nao')),
+  pricing_preference text CHECK (pricing_preference IN ('one_off_3','bundle_5_13','plano_mensal','plano_agencia','nao_sei')),
+  contact_consent boolean NOT NULL DEFAULT false,
+  user_agent text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-export interface BaseTemplateInput {
-  firstName?: string | null;
-  email?: string | null;
-  instagramHandle?: string | null;
-  reportUrl?: string | null;
-  feedbackUrl?: string | null;
-  pricingOption?: string | null;
-}
-
-export type EmailTemplate<I extends BaseTemplateInput = BaseTemplateInput> =
-  (input: I) => RenderedEmail;
+ALTER TABLE public.beta_feedback ENABLE ROW LEVEL SECURITY;
+-- Sem policies públicas: tudo via server function com supabaseAdmin.
+CREATE INDEX idx_beta_feedback_lead ON public.beta_feedback(lead_id);
 ```
 
-Helpers em `shared.ts`:
-- `escapeHtml(s)`
-- `greeting(firstName)` → `"Olá {Nome},"` ou `"Olá,"`
-- `wrapHtml({ title, bodyHtml })` → layout consistente (Inter sans, fundo `#f5f5f4`, card branco, header eyebrow `INSTABENCH`, footer simples). Reaproveita o estilo já usado em `report-link-email-template.ts` mas extraído como template-base.
-- `renderButton({ label, url })` → bloco HTML do CTA
-- `joinLines(lines: string[])` → helper para corpo `text`
+`UNIQUE (report_request_id)` resolve duplicados a nível de DB. Server function trata o erro de conflito devolvendo `already_submitted`.
 
-## Templates
+## 3. Endpoints (server routes públicas)
 
-Subjects (fixos, sem variáveis para evitar quebrar threading):
+Sob `/api/public/` para bypass de auth, sempre validados.
 
-| # | Nome | Subject | Inputs usados |
-|---|---|---|---|
-| 1 | `requestReceived` | "Recebemos o teu pedido beta do InstaBench" | `firstName`, `instagramHandle` |
-| 2 | `reportReady` | "O teu relatório InstaBench já está pronto" | `firstName`, `instagramHandle`, `reportUrl` (obrigatório) |
-| 3 | `feedbackRequest` | "Podes dar feedback ao teu relatório InstaBench?" | `firstName`, `instagramHandle`, `reportUrl?`, `feedbackUrl?` |
-| 4 | `commercialFollowup` | "Próximo passo para analisar melhor o teu Instagram" | `firstName`, `instagramHandle?`, `pricingOption?`, `reportUrl?` |
+- `GET /api/public/feedback/$requestId` → valida, devolve `{ ok, leadFirstName, handle, alreadySubmitted }`. Se válido e ainda não submetido, regista evento `feedback_started` (idempotente: só na primeira chamada por requestId, controlado checando se já existe um `feedback_started` no `product_events` para esse lead+request).
+- `POST /api/public/feedback/$requestId` → valida payload com Zod, insere em `beta_feedback`, regista evento `feedback_submitted`, atualiza `commercial_status` do lead para `feedback_recebido` via `updateLeadCommercialStatus({source:"auto"})`. Em caso de violação UNIQUE, devolve `{ ok:false, code:"already_submitted" }`.
 
-### Conteúdo (resumo, tom pt-PT, sem hype, tu)
+## 4. UI do formulário (mobile-first)
 
-**1. Pedido recebido**
-- «Recebemos o teu pedido para analisar **@{handle}**.»
-- «Durante a fase beta, cada relatório é revisto manualmente antes de ser enviado.»
-- «Vais receber um email assim que o relatório estiver pronto. Normalmente leva entre algumas horas e um dia útil.»
-- «Obrigado pela paciência — esta validação manual permite-nos garantir qualidade enquanto refinamos o produto.»
+Componente `FeedbackForm` em `src/components/feedback/feedback-form.tsx`:
 
-**2. Relatório pronto**
-- «A análise do perfil **@{handle}** já está disponível.»
-- CTA: **"Abrir relatório"** → `reportUrl`
-- Fallback URL em mono
-- «É um relatório beta — pode evoluir nos próximos dias.»
+- 6 perguntas numa única página (sem multi-step, evita "feel de inquérito longo").
+- Indicador visual leve: "6 perguntas · ~1 minuto".
+- Pergunta 1: 5 botões grandes (1–5) com legenda "Nada útil → Muito útil".
+- Perguntas 2 e 3: `<textarea>` com `maxLength=500`.
+- Pergunta 4: `<RadioGroup>` (Sim / Talvez / Não).
+- Pergunta 5: `<RadioGroup>` com 5 opções de pricing.
+- Pergunta 6: `<Switch>` consentimento de contacto (default off).
+- Apenas Pergunta 1 e Pergunta 4 obrigatórias.
+- Validação client-side com Zod + react-hook-form (já no projeto).
+- Após submit: ecrã thank-you com link "Voltar ao InstaBench".
+- Tokens semânticos apenas (sem cores hardcoded). Inter para tudo, Fraunces apenas no H1.
 
-**3. Pedido de feedback**
-- «Notámos que já consultaste o relatório de **@{handle}** — obrigado.»
-- «Gostaríamos de saber, em duas ou três frases, o que foi mais útil e o que falta melhorar.»
-- CTA: **"Dar feedback"** → `feedbackUrl` (se presente); fallback: «Basta responder a este email.»
-- «O teu input nesta fase pesa muito na direção do produto.»
+## 5. CRM
 
-**4. Follow-up comercial**
-- «Esperamos que o relatório de **@{handle}** tenha sido útil.»
-- «Se quiseres aprofundar — comparar com mais concorrentes, monitorizar evolução ao longo do tempo ou receber relatórios recorrentes — podemos preparar uma proposta adaptada ao teu caso.»
-- Se `pricingOption`: «Vimos que mostraste interesse na opção **{pricingOption}** — fica à vontade para responder e marcamos uma conversa curta.»
-- CTA suave: **"Falar connosco"** → `mailto:` para o email do remetente, OU se `reportUrl` presente, link para rever relatório.
-- Fecho cordial, sem urgência fabricada.
+- Após `feedback_submitted`, status passa a `feedback_recebido`. O Kanban e o lead-detail-sheet existentes já reconhecem este status — sem mudança de layout.
+- O lead-detail-sheet já mostra a timeline de `product_events`, portanto `feedback_started` e `feedback_submitted` aparecem automaticamente.
 
-## Validação de inputs
+## 6. Eventos
 
-- Cada template recebe um input tipado e específico (não a interface base completa).
-- `reportReady` exige `reportUrl` não-vazio; sem ele, lança `Error("reportUrl is required for reportReady")`.
-- `feedbackRequest` aceita `feedbackUrl` opcional — se ausente, o corpo pede resposta direta ao email.
-- `commercialFollowup` lida graciosamente com todos os campos opcionais.
+| Evento | Quando | Metadata |
+|---|---|---|
+| `feedback_started` | GET inicial bem-sucedido (1ª vez) | `{ report_request_id }` |
+| `feedback_submitted` | POST bem-sucedido | `{ report_request_id, usefulness_score, purchase_intent, pricing_preference }` |
+| `lead_status_changed` | já emitido por `updateLeadCommercialStatus` | source: `"auto"`, reason: `"feedback_received"` |
 
-## Testes (`templates.test.ts`)
+## 7. Ficheiros a criar/editar
 
-Para cada template:
-1. **Subject correto** (string fixa)
-2. **`text` contém pontos-chave**: handle, URL quando aplicável, frase de assinatura
-3. **`html` é HTML válido**: começa com `<!DOCTYPE html>`, contém `<html lang="pt-PT">`
-4. **Escape de HTML**: passar `firstName: "<script>"` resulta em `&lt;script&gt;` no `html`, sem `<script>` literal
-5. **Saudação fallback**: sem `firstName`, contém `Olá,`; com `firstName: "Maria Silva"`, contém `Olá Maria,` (primeiro nome apenas)
-6. **`reportReady` falha sem `reportUrl`**
-7. **`commercialFollowup` com e sem `pricingOption`**: a frase específica aparece/desaparece conforme
+**Migration:**
+- nova tabela `beta_feedback` (via tool de migração).
 
-Total estimado: ~12-15 asserts em ~7-8 `it()` blocks.
+**Criar:**
+- `src/routes/feedback.$requestId.tsx`
+- `src/routes/api/public/feedback.$requestId.ts` (GET + POST)
+- `src/components/feedback/feedback-form.tsx`
+- `src/lib/feedback/feedback-schema.ts` (Zod schema partilhado client/server)
+- `src/lib/feedback/__tests__/feedback-schema.test.ts`
 
-## Sample rendered output (pré-visualização do plano)
+**Não tocar:** report pipeline, PDF, scoring, layout do CRM, `/report.example`.
 
-**Template 1 — text:**
-```
-Olá Maria,
-
-Recebemos o teu pedido para analisar @frederico.m.carvalho.
-
-Durante a fase beta, cada relatório é revisto manualmente antes de
-ser enviado. Vais receber um email assim que estiver pronto —
-normalmente entre algumas horas e um dia útil.
-
-Obrigado pela paciência.
-
-—
-InstaBench
-```
-
-(Os outros três seguem a mesma estrutura visual: saudação → 1-2 parágrafos → CTA opcional → fecho.)
-
-## Constraints respeitados
-
-- Sem envio
-- Sem alterações ao provider Resend
-- Sem alterações a `send-report-link.ts`, `send-report-email.ts`, geração de relatório, PDF ou UI pública
-- Sem `você`, sem hype, sem promessas exageradas
-- Tom pt-PT (Acordo Ortográfico): «direta», «ação», etc.
-
-## Validação
+## 8. Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (deve ficar em 124 + ~8 novos = ~132 testes)
+- `bunx vitest run` (incluindo novos testes do schema)
+- Manual: abrir `/feedback/<id-válido>`, submeter, confirmar que:
+  - aparece em `beta_feedback`
+  - lead muda para `feedback_recebido` no Kanban
+  - segunda submissão do mesmo `requestId` mostra "já submetido"
+  - `requestId` inválido mostra erro claro
 
-## Return ao concluir
+## Checkpoint
 
-- Lista dos 4 templates + subjects
-- Render de exemplo (`text` completo) de pelo menos 2 templates
-- Lista de ficheiros criados
-- Resultado dos testes
+- ☐ Migration aprovada
+- ☐ Rota pública `/feedback/$requestId` funcional
+- ☐ POST escreve em `beta_feedback` (UNIQUE em report_request_id)
+- ☐ Eventos `feedback_started` e `feedback_submitted` emitidos
+- ☐ Status do lead vai para `feedback_recebido`
+- ☐ Estados: inválido / já submetido / form / thank-you
+- ☐ Mobile-first, tokens semânticos, pt-PT
+- ☐ tsc + vitest verdes
