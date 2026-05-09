@@ -128,7 +128,7 @@ export const Route = createFileRoute("/api/send-report-email")({
         const { data: reportRequest, error: requestError } = await supabaseAdmin
           .from("report_requests")
           .select(
-            "id, lead_id, instagram_username, pdf_status, pdf_storage_path, delivery_status",
+            "id, lead_id, instagram_username, pdf_status, pdf_storage_path, delivery_status, analysis_snapshot_id",
           )
           .eq("id", payload.report_request_id)
           .maybeSingle();
@@ -345,6 +345,20 @@ export const Route = createFileRoute("/api/send-report-email")({
             500,
           );
         }
+
+        // Record product event (fire-and-forget — never block the response).
+        try {
+          await supabaseAdmin.from("product_events").insert([{
+            event_type: "report_link_sent",
+            lead_id: reportRequest.lead_id,
+            handle: reportRequest.instagram_username,
+            snapshot_id: reportRequest.analysis_snapshot_id,
+            metadata: {
+              report_request_id: reportRequest.id,
+              message_id: messageId,
+            },
+          }]);
+        } catch { /* non-critical */ }
 
         return jsonResponse(
           {
