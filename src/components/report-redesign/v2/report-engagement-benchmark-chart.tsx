@@ -326,6 +326,8 @@ export function ReportEngagementBenchmarkChart({
         <PremiumCallout
           title="Comparar com concorrente direto"
           description="Vê se este perfil está abaixo do mercado ou apenas abaixo dos concorrentes diretos."
+          unlockEnabled
+          sourceComponent="engagement_benchmark_chart"
         />
       ) : null}
     </div>
