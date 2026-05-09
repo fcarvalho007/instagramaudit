@@ -1201,3 +1201,122 @@ function mapFeedbackError(code: string | undefined): string {
       return "Erro ao enviar pedido de feedback.";
   }
 }
+
+// ── Feedback beta section ───────────────────────────────────────
+
+function FeedbackBetaSection({
+  feedback,
+}: {
+  feedback: EnrichedLead["feedback"];
+}) {
+  if (!feedback) {
+    return (
+      <div className="px-6 py-5">
+        <SectionTitle>Feedback beta</SectionTitle>
+        <div
+          className="rounded-xl p-4 admin-body text-admin-text-tertiary"
+          style={{
+            backgroundColor: "rgba(44,44,42,0.03)",
+            border: "1px dashed rgba(44,44,42,0.12)",
+          }}
+        >
+          Sem feedback ainda. Usa <strong>Pedir feedback</strong> na secção
+          Relatório para enviar o pedido ao lead.
+        </div>
+      </div>
+    );
+  }
+
+  const intent = interpretFeedback(feedback);
+  const pricingLabel = feedback.pricing_preference
+    ? PRICING_PREFERENCE_LABELS[
+        feedback.pricing_preference as keyof typeof PRICING_PREFERENCE_LABELS
+      ] ?? feedback.pricing_preference
+    : "—";
+
+  return (
+    <div className="px-6 py-5">
+      <div className="flex items-center justify-between mb-3">
+        <SectionTitle>Feedback beta</SectionTitle>
+        <span className="admin-meta text-admin-text-tertiary">
+          {relativeTime(feedback.created_at)}
+        </span>
+      </div>
+
+      {/* Score dots */}
+      <div className="flex items-center gap-1.5 mb-3" aria-label={`Score ${feedback.usefulness_score} de 5`}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <span
+            key={n}
+            className="rounded-full"
+            style={{
+              width: 10,
+              height: 10,
+              backgroundColor:
+                n <= feedback.usefulness_score
+                  ? "var(--admin-accent-info-500, #3772E5)"
+                  : "rgba(44,44,42,0.12)",
+            }}
+          />
+        ))}
+        <span className="admin-meta text-admin-text-secondary ml-2 tabular-nums">
+          {feedback.usefulness_score}/5
+        </span>
+      </div>
+
+      <DetailRow label="Disposto a pagar">
+        <AdminBadge
+          variant={
+            feedback.purchase_intent === "sim"
+              ? "revenue"
+              : feedback.purchase_intent === "talvez"
+                ? "signal"
+                : "neutral"
+          }
+        >
+          {PURCHASE_INTENT_LABELS[feedback.purchase_intent]}
+        </AdminBadge>
+      </DetailRow>
+      <DetailRow label="Opção preferida">{pricingLabel}</DetailRow>
+      <DetailRow label="Permite contacto">
+        {feedback.contact_consent ? "Sim" : "Não"}
+      </DetailRow>
+
+      {feedback.clarity_text && (
+        <div className="mt-3">
+          <p className="admin-eyebrow mb-1">O que ficou mais claro</p>
+          <p className="admin-body text-admin-text-primary m-0 whitespace-pre-wrap">
+            {feedback.clarity_text}
+          </p>
+        </div>
+      )}
+      {feedback.missing_text && (
+        <div className="mt-3">
+          <p className="admin-eyebrow mb-1">O que faltou</p>
+          <p className="admin-body text-admin-text-primary m-0 whitespace-pre-wrap">
+            {feedback.missing_text}
+          </p>
+        </div>
+      )}
+
+      <div
+        className="mt-4 rounded-xl p-3.5 flex items-start gap-2.5"
+        style={{
+          backgroundColor: "rgba(55,114,229,0.06)",
+          borderLeft: "3px solid rgba(55,114,229,0.4)",
+        }}
+      >
+        <Lightbulb size={15} className="text-admin-text-tertiary shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <p className="admin-eyebrow mb-1 flex items-center gap-2">
+            Sinal comercial
+            <AdminBadge variant={intent.accent}>{intent.label}</AdminBadge>
+          </p>
+          <p className="admin-body text-admin-text-primary font-medium m-0">
+            {intent.nextAction}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
