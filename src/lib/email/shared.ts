@@ -19,6 +19,7 @@ export interface BaseTemplateInput {
 }
 
 export const BRAND = "InstaBench";
+export const SIGNATURE_NAME = "Frederico";
 
 export function escapeHtml(value: string): string {
   return value
@@ -75,11 +76,16 @@ export interface WrapHtmlInput {
   headline: string;
   /** Body HTML — already escaped/sanitised by the caller. */
   bodyHtml: string;
+  /** Hidden preview text shown in inbox lists (Gmail/Outlook/Apple Mail). */
+  preheader?: string;
 }
 
 export function wrapHtml(input: WrapHtmlInput): string {
   const safeTitle = escapeHtml(input.title);
   const safeHeadline = escapeHtml(input.headline);
+  const preheaderHtml = input.preheader
+    ? `<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;color:transparent;">${escapeHtml(input.preheader)}${"\u200c".repeat(100)}</div>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="pt-PT">
 <head>
@@ -88,6 +94,7 @@ export function wrapHtml(input: WrapHtmlInput): string {
 <title>${safeTitle}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0a0e1a;">
+  ${preheaderHtml}
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f5f4;padding:40px 16px;">
     <tr>
       <td align="center">
@@ -128,4 +135,14 @@ export function p(text: string): string {
 /** Smaller secondary paragraph. */
 export function pMuted(text: string): string {
   return `<p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#57534e;">${text}</p>`;
+}
+
+/** Plain-text sign-off block. */
+export function signatureText(): string[] {
+  return ["Obrigado,", `${SIGNATURE_NAME} — ${BRAND}`];
+}
+
+/** HTML sign-off block (muted paragraph). */
+export function signatureHtml(): string {
+  return `<p style="margin:24px 0 0 0;font-size:14px;line-height:1.6;color:#57534e;">Obrigado,<br/>${escapeHtml(SIGNATURE_NAME)} — <strong style="color:#0a0e1a;">${BRAND}</strong></p>`;
 }
