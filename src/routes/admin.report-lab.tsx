@@ -33,6 +33,7 @@ import {
   type RiskLevel,
 } from "@/lib/report/report-variant";
 import { cn } from "@/lib/utils";
+import { BLOCKS } from "@/components/report-redesign/v2/block-config";
 import {
   FlaskConical,
   ExternalLink,
@@ -92,9 +93,9 @@ function writeLabPrefs(prefs: LabPrefs): void {
 const TEST_PROFILES = ["frederico.m.carvalho", "martimsilvai"] as const;
 
 const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: string }[] = [
-  { value: "public_mvp", label: "Público geral", description: "Versão que qualquer utilizador vê. Mostra apenas os blocos 01 e 02." },
-  { value: "internal_lab", label: "Laboratório interno", description: "Versão completa para trabalho/admin. Mostra todos os blocos e módulos internos." },
-  { value: "pro_preview", label: "Pré-visualização Pro", description: "Simulação de uma versão avançada/paga, com blocos completos ou teasers comerciais." },
+  { value: "public_mvp", label: "Público geral", description: "Mostra blocos incluídos, secções premium bloqueadas e CTA de desbloqueio." },
+  { value: "internal_lab", label: "Laboratório interno", description: "Mostra todos os blocos desbloqueados para trabalho/admin." },
+  { value: "pro_preview", label: "Pro Preview", description: "Simula uma versão paga com todos os blocos desbloqueados." },
 ];
 
 const MODE_TONES: Record<ReportVariant, string> = {
@@ -303,6 +304,10 @@ function ReportLabPage() {
             </div>
           </div>
         </div>
+        <BlockAccessMatrix variant={variant} />
+        <p className="mt-2 text-[12px] text-admin-text-tertiary">
+          Esta pré-visualização não gera novas análises nem altera dados. Apenas muda visibilidade e contexto comercial.
+        </p>
       </section>
 
       {/* ── 3. ESTADO DO SNAPSHOT ──────────────────────────────── */}
@@ -738,6 +743,82 @@ function ConsolidatedModuleTable({ variant }: { variant: ReportVariant }) {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Block-level access matrix (admin-only summary) ────────────────
+
+function blockBadge(state: FeatureVisibility, variant: ReportVariant, blockId: string): { label: string; cls: string } {
+  if (state === "hidden") {
+    return variant === "public_mvp"
+      ? { label: "Premium", cls: "bg-signal-warning/15 text-accent-gold border border-signal-warning/30" }
+      : { label: "Oculto", cls: "bg-admin-surface-muted text-admin-text-tertiary" };
+  }
+  if (state === "lightweight" || state === "teaser") {
+    return blockId === "performance"
+      ? { label: "Parcial 3/5", cls: "bg-signal-warning/15 text-accent-gold" }
+      : { label: "Parcial", cls: "bg-signal-warning/15 text-accent-gold" };
+  }
+  return variant === "public_mvp"
+    ? { label: "Incluído", cls: "bg-emerald-50 text-emerald-700" }
+    : { label: "Desbloqueado", cls: "bg-emerald-50 text-emerald-700" };
+}
+
+function BlockAccessMatrix({ variant }: { variant: ReportVariant }) {
+  const mvp = getVariantFeatures("public_mvp");
+  const lab = getVariantFeatures("internal_lab");
+  const pro = getVariantFeatures("pro_preview");
+
+  const colHeader = (label: string, active: boolean) => (
+    <th
+      className={cn(
+        "px-4 py-2 text-center text-[11px] font-medium uppercase tracking-[0.12em]",
+        active ? "text-admin-text-primary" : "text-admin-text-tertiary",
+      )}
+    >
+      {label}
+    </th>
+  );
+
+  const cell = (state: FeatureVisibility, v: ReportVariant, blockId: string, active: boolean) => {
+    const b = blockBadge(state, v, blockId);
+    return (
+      <td className={cn("px-4 py-2 text-center", active && "bg-admin-surface-muted/40")}>
+        <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", b.cls)}>
+          {b.label}
+        </span>
+      </td>
+    );
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-admin-border bg-white overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="bg-admin-surface-muted/30">
+              <th className="px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">Bloco</th>
+              {colHeader("Público", variant === "public_mvp")}
+              {colHeader("Interno", variant === "internal_lab")}
+              {colHeader("Pro", variant === "pro_preview")}
+            </tr>
+          </thead>
+          <tbody>
+            {BLOCKS.map((b) => (
+              <tr key={b.id} className="border-t border-admin-border/50">
+                <td className="px-4 py-2 text-admin-text-primary">
+                  <span className="text-admin-text-tertiary tabular-nums mr-2">{b.number}</span>
+                  {b.shortLabel}
+                </td>
+                {cell(mvp[b.featureKey], "public_mvp", b.id, variant === "public_mvp")}
+                {cell(lab[b.featureKey], "internal_lab", b.id, variant === "internal_lab")}
+                {cell(pro[b.featureKey], "pro_preview", b.id, variant === "pro_preview")}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
