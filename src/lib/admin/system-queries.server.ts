@@ -1069,7 +1069,7 @@ export async function fetchCommentScraperMetrics(
   for (const row of rows) {
     const status = String(row.status);
     if (status === "success" || status === "ok") {
-      const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+      const cost = resolveCallCost(row);
       totalCost += cost;
       totalComments += row.posts_returned ?? 0;
       runCount += 1;
