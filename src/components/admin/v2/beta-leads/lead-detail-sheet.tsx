@@ -66,6 +66,7 @@ import { Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
+import { CommunicationHistory } from "./communication-history";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
 import { AdminCallout } from "@/components/admin/v2/admin-callout";
 import {
@@ -717,12 +718,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Comunicação ────────────────────────── */}
           <TabsContent value="comunicacao" className="flex-1 overflow-y-auto mt-0">
-            <TimelineSection
-              timeline={timeline.filter((ev) => COMMUNICATION_EVENT_TYPES.has(ev.event_type))}
-              loading={timelineLoading}
-              title="Comunicação"
-              emptyText="Sem comunicações registadas."
-            />
+            <CommunicationHistory timeline={timeline} loading={timelineLoading} />
           </TabsContent>
 
           {/* ── Tab: Histórico ──────────────────────────── */}
