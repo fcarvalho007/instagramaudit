@@ -42,6 +42,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Send,
 } from "lucide-react";
 import {
   User,
@@ -58,6 +59,10 @@ import { Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
+import {
+  buildReportLinkEmailSubject,
+  buildReportLinkPreviewBody,
+} from "@/lib/email/report-link-email-template";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -233,6 +238,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [sendLinkOpen, setSendLinkOpen] = useState(false);
+  const [sendingLink, setSendingLink] = useState(false);
 
   // Reset state when lead changes
   useEffect(() => {
@@ -474,6 +481,10 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               <AdminActionButton size="md" onClick={handleCopyLink}>
                 <Link2 size={14} /> Copiar link
               </AdminActionButton>
+              <SendLinkButton
+                lead={lead}
+                onClick={() => setSendLinkOpen(true)}
+              />
               {lead.report_request_id &&
                 GENERATABLE_STATUSES.includes(lead.report_status as typeof GENERATABLE_STATUSES[number]) && (
                 <AdminActionButton
