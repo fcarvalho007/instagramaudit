@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.knowledge_log_change() FROM anon, authenticated, public;
