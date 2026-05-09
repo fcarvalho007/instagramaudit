@@ -340,7 +340,6 @@ function SidebarList({
 }) {
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
-  const accessibleCount = items.filter((i) => i.access !== "locked").length;
   const isPublic = variant === "public_mvp";
 
   return (
