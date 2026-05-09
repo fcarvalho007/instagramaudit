@@ -1,110 +1,162 @@
 ## Diagnóstico
 
-A ação **"Pedir feedback"** já existe no Lead Detail Sheet (botão + dialog `FeedbackRequestDialog` + endpoint `POST /api/admin/send-feedback-request`) e cumpre 5 dos 6 requisitos:
+Infraestrutura já preparada — falta apenas a UI e o "fio elétrico":
 
-- ✅ Botão na ficha do lead (secção Relatório)
-- ✅ Habilitado apenas com email + handle + estado em `link_enviado` / `relatorio_visto` / `feedback_pedido`
-- ✅ Modal mostra destinatário, assunto, link e pré-visualização do corpo
-- ✅ Em sucesso: envia via Resend, regista evento, atualiza status, toast
-- ✅ Em falha: status só muda após 200 OK do provider
-- ❌ **Falta o aviso "Este relatório ainda não foi registado como visto."**
-- ⚠️ Pequenos refinamentos: bloquear quando `feedback` já foi recebido e alinhar nome do evento com a spec/timeline
+- ✅ `trackEvent` server fn com `unlock_clicked` e `pricing_option_clicked` no allowlist
+- ✅ Resolução automática `lead_id` via `snapshot_id` (em `tracking.functions.ts`)
+- ✅ Timeline já tem `EVENT_LABELS` e `EVENT_ICONS` para ambos os eventos
+- ❌ Não existe botão "DESBLOQUEAR" nem grelha de preços no relatório público
+- ❌ Timeline não mostra metadata (qual opção foi clicada)
 
-Plano cirúrgico (sem alterar lógica do envio nem o template).
+`PremiumCallout` é a peça central já usada (ex.: em `report-engagement-benchmark-chart.tsx`), atualmente sem CTA.
 
 ---
 
-## 1. Aviso "ainda não foi visto" no modal
+## UX escolhida — opção mais leve
 
-`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` → `FeedbackRequestDialog`.
+**Modal único de "Registar interesse"** disparado a partir do botão **DESBLOQUEAR** dentro do `PremiumCallout`:
 
-Calcular `notViewed = lead.report_views === 0` e renderizar dentro do `description`, antes do bloco "Pré-visualização":
+1. Click em **DESBLOQUEAR** → regista `unlock_clicked` → abre dialog
+2. Dialog mostra 4 cartões de preço (sem checkout):
+   - **single_3_eur** — €3 + IVA · "Relatório único"
+   - **bundle_13_eur** — €13 + IVA · "Bundle 5 relatórios"
+   - **monthly** — "Plano mensal · em breve"
+   - **agency** — "Agência · falamos contigo"
+3. Click num cartão → regista `pricing_option_clicked` com `pricing_option` no metadata → cartão muda para estado **"Interesse registado ✓"** (idempotente; não dispara segunda vez para o mesmo cartão)
+4. Footer: "Sem pagamento. Voltamos a falar contigo."
+
+Sem checkout, sem provider, sem coleta de email (já temos do beta tester via lead).
+
+---
+
+## Implementação
+
+### 1. Novo dialog `src/components/report-redesign/v2/premium-interest-dialog.tsx`
+
+Props:
+```ts
+interface Props {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  snapshotId: string | null
+  handle: string | null
+  variant: string                  // "public_mvp"
+  sourceComponent: string          // ex. "engagement_benchmark_chart"
+}
+```
+
+Comportamento:
+- Lista de 4 opções tipadas: `type PricingOption = "single_3_eur" | "bundle_13_eur" | "monthly" | "agency"`
+- Estado local `Set<PricingOption>` para marcar cliques já registados
+- Ao clicar: chama `trackEvent({ data: { eventType: "pricing_option_clicked", snapshotId, handle, metadata: { pricing_option, variant, source_component } }}).catch(()=>{})`
+- Usa `Dialog` do shadcn já existente
+- Estilo: cartões em grid 2×2 mobile-first, tons leves (sem amber agressivo), badge "Em breve" para `monthly`/`agency`
+- Tokens: usar `surface-muted`, `border-default`, `accent` — sem cores hardcoded
+
+### 2. Atualizar `PremiumCallout`
+
+Adicionar props opcionais (backward compatible):
+```ts
+unlockEnabled?: boolean
+snapshotId?: string | null
+handle?: string | null
+sourceComponent?: string
+variant?: string
+```
+
+Quando `unlockEnabled === true`, renderizar internamente:
+- Botão "DESBLOQUEAR" (ícone `Sparkles`) abaixo da descrição
+- Estado local `dialogOpen`
+- Click no botão → `trackEvent({ data: { eventType: "unlock_clicked", snapshotId, handle, metadata: { variant, source_component } }}).catch(()=>{})` → `setDialogOpen(true)`
+- Inclui `<PremiumInterestDialog>` controlado por esse estado
+
+Sem alterar a aparência atual quando `unlockEnabled` é falsy (default).
+
+### 3. Ativar nos pontos de uso
+
+Em `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` (única utilização atual), passar:
+```tsx
+<PremiumCallout
+  unlockEnabled
+  snapshotId={snapshotId}
+  handle={handle}
+  variant="public_mvp"
+  sourceComponent="engagement_benchmark_chart"
+  ...
+/>
+```
+
+`snapshotId` e `handle` precisam fluir até este componente. Se ainda não chegam, propagam-se via props (sem alterar dados do relatório nem PDF).
+
+### 4. Timeline mostra a opção clicada
+
+`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — no map de eventos, adicionar uma linha de metadata abaixo do label quando `event_type` ∈ {`pricing_option_clicked`, `unlock_clicked`}:
 
 ```tsx
-{notViewed && (
-  <div
-    className="flex items-start gap-2 rounded-lg p-3 text-[13px]"
-    style={{
-      backgroundColor: "rgba(234,179,8,0.08)",
-      border: "1px solid rgba(234,179,8,0.2)",
-    }}
-  >
-    <AlertTriangle size={15} style={{ color: "#D97706" }} className="shrink-0 mt-0.5" />
-    <div>
-      <p className="font-medium m-0" style={{ color: "#D97706" }}>Sem visualização registada</p>
-      <p className="mt-0.5 text-admin-text-secondary m-0">
-        Este relatório ainda não foi registado como visto. Podes enviar
-        mesmo assim — o pedido continuará válido quando o lead abrir o link.
-      </p>
-    </div>
-  </div>
+{ev.event_type === "pricing_option_clicked" && ev.metadata?.pricing_option && (
+  <p className="admin-meta text-admin-text-tertiary m-0 mt-0.5">
+    Opção: <code>{String(ev.metadata.pricing_option)}</code>
+    {ev.metadata.source_component ? ` · ${String(ev.metadata.source_component)}` : ""}
+  </p>
 )}
 ```
 
-`AlertTriangle` já está importado no ficheiro.
+(Verificar primeiro que `ev.metadata` é exposto pela API da timeline — se não for, expandir o `select` em `src/routes/api/admin/lead-timeline.ts`.)
+
+### 5. Testes
+
+`src/components/report-redesign/v2/__tests__/premium-interest-dialog.test.tsx`:
+- Renderiza 4 opções
+- Click no cartão `single_3_eur` chama `trackEvent` com payload correto
+- Segundo click no mesmo cartão não duplica
+- Click em `monthly` continua a registar evento (mesmo com badge "em breve")
+
+Mock simples de `trackEvent` via `vi.mock("@/lib/tracking.functions")`.
 
 ---
 
-## 2. Bloquear quando feedback já foi submetido
+## Não tocado
 
-`FeedbackRequestButton` recebe a `EnrichedLead` que agora inclui `feedback`. Adicionar regra:
-
-```ts
-else if (lead.feedback) disabledReason = "Feedback já recebido.";
-```
-
-Defesa server-side já existe (status passa a `feedback_recebido`, fora do `ELIGIBLE_STATUSES`).
+- Pipeline PDF
+- Geração / scoring de relatório
+- Dados / providers
+- Schema / migrations
+- Checkout / payment
 
 ---
 
-## 3. Alinhar nome do evento com a spec e a timeline
-
-Hoje o endpoint regista `feedback_request_sent`, mas a `EVENT_LABELS` e a `EVENT_ICONS` da timeline (e o `tracking.functions.ts` allowlist) só conhecem `feedback_requested` — resultado: o evento aparece sem label amigável.
-
-Mudança mínima:
-
-- `src/routes/api/admin/send-feedback-request.ts`:
-  - `eventType: "feedback_request_sent"` → `eventType: "feedback_requested"`
-  - Atualizar comentários do header e o JSDoc
-- `src/lib/admin/lead-lifecycle.ts`: remover o caso obsoleto `case "feedback_request_sent"` (manter apenas `feedback_requested`).
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`: a linha do dialog que diz `<code>feedback_request_sent</code>` passa a `<code>feedback_requested</code>`.
-
-Sem migration. Eventos antigos (se existirem) continuam a aparecer como “linha crua” na timeline — aceitável por serem residuais.
-
----
-
-## 4. Validação
+## Validação
 
 - `bunx tsc --noEmit` limpo
 - `bunx vitest run` 100% verde
 - Manual:
-  - Lead em `link_enviado` com 0 views → modal mostra aviso amarelo + permite envio
-  - Lead em `link_enviado` com views > 0 → sem aviso
-  - Lead com `feedback` preenchido → botão desativado com tooltip "Feedback já recebido."
-  - Sucesso: toast + status `feedback_pedido` + evento `feedback_requested` na timeline com label "Feedback pedido ao lead"
-  - Falha provider (chave em falta / 502) → toast erro, status inalterado
+  - Abrir `/analyze/<handle>` → ver botão DESBLOQUEAR no callout
+  - Click → DB tem evento `unlock_clicked` com `lead_id` resolvido (se snapshot tem report_request)
+  - Click numa opção → `pricing_option_clicked` com `metadata.pricing_option`
+  - Lead detail sheet → timeline mostra "CTA de desbloqueio clicado" e "Opção de preço clicada · single_3_eur"
 
 ---
 
 ## Ficheiros tocados
 
-**Editados (3)**
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — aviso no dialog, regra de desativação, código no rodapé
-- `src/routes/api/admin/send-feedback-request.ts` — `feedback_requested`
-- `src/lib/admin/lead-lifecycle.ts` — remover `feedback_request_sent`
+**Criados (2)**
+- `src/components/report-redesign/v2/premium-interest-dialog.tsx`
+- `src/components/report-redesign/v2/__tests__/premium-interest-dialog.test.tsx`
 
-**Não tocados**
-- `src/lib/email/templates/feedback-request.ts` (template)
-- `src/routes/api/public/feedback.$requestId.ts`
-- Pipelines de relatório, PDF, providers
-- Schema / migrations
+**Editados (3-4)**
+- `src/components/report-redesign/v2/premium-callout.tsx` — botão DESBLOQUEAR + estado dialog
+- `src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx` — passa props
+- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — metadata na timeline
+- (se necessário) `src/routes/api/admin/lead-timeline.ts` — incluir `metadata` no select
 
 ---
 
 ## Checkpoint
 
-- ☐ Aviso "ainda não visto" visível quando `report_views === 0`
-- ☐ Botão desativado se `lead.feedback` já existe
-- ☐ Evento gravado como `feedback_requested` e visível na timeline com label
-- ☐ Status muda apenas após sucesso do provider
+- ☐ Dialog renderizado com 4 opções de preço
+- ☐ `unlock_clicked` registado ao abrir dialog
+- ☐ `pricing_option_clicked` registado por opção, com metadata correto
+- ☐ `lead_id` resolvido server-side via snapshot
+- ☐ Timeline do lead mostra ambos os eventos com a opção visível
+- ☐ Sem checkout, sem alterações de dados/PDF
 - ☐ `tsc --noEmit` limpo · `vitest` verde
