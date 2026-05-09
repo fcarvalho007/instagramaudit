@@ -34,7 +34,8 @@ function idx(status: string | null | undefined): number {
 export interface AutomationFlow {
   key:
     | "pedido_recebido"
-    | "relatorio_pronto"
+    | "relatorio_gerado"
+    | "link_enviado"
     | "relatorio_visto"
     | "feedback_pedido"
     | "feedback_recebido"
@@ -43,11 +44,13 @@ export interface AutomationFlow {
   description: string;
   trigger: { kind: "form" | "event" | "manual"; label: string };
   action: { kind: "email" | "manual" | "wait" | "classify"; label: string };
+  kind: "automatic" | "manual";
   fromStatus: LifecycleStatus | null;
   toStatus: LifecycleStatus | null;
   eligibleCount: number;
   inFlightCount: number;
   completedCount: number;
+  recentFailures: number;
 }
 
 export interface AutomationFlowResponse {
@@ -100,6 +103,22 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
           return active.filter((x) => sset.has(x)).length;
         };
 
+        // Recent email failures (last 7d). Best-effort: failures are not
+        // recorded as product_events today, so we read `report_requests`
+        // delivery_status='failed' to detect link delivery problems.
+        let linkFailures7d = 0;
+        try {
+          const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          const { count } = await supabaseAdmin
+            .from("report_requests")
+            .select("id", { count: "exact", head: true })
+            .eq("delivery_status", "failed")
+            .gte("updated_at", since);
+          linkFailures7d = count ?? 0;
+        } catch {
+          linkFailures7d = 0;
+        }
+
         const flows: AutomationFlow[] = [
           {
             key: "pedido_recebido",
@@ -111,24 +130,43 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               kind: "manual",
               label: "Admin aprova e gera relatório",
             },
+            kind: "automatic",
             fromStatus: null,
             toStatus: "novo_pedido",
             eligibleCount: countEq("novo_pedido"),
             inFlightCount: 0,
             completedCount: countAtLeast("em_analise"),
+            recentFailures: 0,
           },
           {
-            key: "relatorio_pronto",
-            title: "Relatório pronto",
+            key: "relatorio_gerado",
+            title: "Relatório gerado",
             description:
-              "Snapshot gerado com sucesso. Falta enviar o link ao lead.",
+              "Admin gera o snapshot do relatório a partir do pedido em análise.",
             trigger: { kind: "event", label: "report_generated" },
-            action: { kind: "email", label: "Enviar link do relatório" },
+            action: { kind: "manual", label: "Admin gera relatório" },
+            kind: "manual",
             fromStatus: "em_analise",
+            toStatus: "relatorio_gerado",
+            eligibleCount: countEq("em_analise"),
+            inFlightCount: 0,
+            completedCount: countAtLeast("relatorio_gerado"),
+            recentFailures: 0,
+          },
+          {
+            key: "link_enviado",
+            title: "Link enviado",
+            description:
+              "Admin envia o link público do relatório para o email do lead.",
+            trigger: { kind: "manual", label: "Admin envia link" },
+            action: { kind: "email", label: "Email \"relatório pronto\"" },
+            kind: "manual",
+            fromStatus: "relatorio_gerado",
             toStatus: "link_enviado",
             eligibleCount: countEq("relatorio_gerado"),
-            inFlightCount: countEq("em_analise"),
+            inFlightCount: 0,
             completedCount: countAtLeast("link_enviado"),
+            recentFailures: linkFailures7d,
           },
           {
             key: "relatorio_visto",
@@ -140,11 +178,13 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               kind: "manual",
               label: "Sugerir pedido de feedback",
             },
+            kind: "automatic",
             fromStatus: "link_enviado",
             toStatus: "relatorio_visto",
             eligibleCount: countEq("link_enviado"),
             inFlightCount: 0,
             completedCount: countAtLeast("relatorio_visto"),
+            recentFailures: 0,
           },
           {
             key: "feedback_pedido",
@@ -153,11 +193,13 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               "Admin enviou pedido de feedback. Aguarda resposta do lead.",
             trigger: { kind: "manual", label: "Admin pede feedback" },
             action: { kind: "wait", label: "Aguardar resposta do lead" },
+            kind: "manual",
             fromStatus: "relatorio_visto",
             toStatus: "feedback_pedido",
             eligibleCount: countEq("relatorio_visto"),
             inFlightCount: countEq("feedback_pedido"),
             completedCount: countAtLeast("feedback_recebido"),
+            recentFailures: 0,
           },
           {
             key: "feedback_recebido",
@@ -169,11 +211,13 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               kind: "classify",
               label: "Classificar intenção comercial",
             },
+            kind: "automatic",
             fromStatus: "feedback_pedido",
             toStatus: "feedback_recebido",
             eligibleCount: countEq("feedback_recebido"),
             inFlightCount: 0,
             completedCount: countAtLeast("interessado"),
+            recentFailures: 0,
           },
           {
             key: "follow_up_comercial",
@@ -182,11 +226,13 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               "Lead com interesse alto ou médio. Próximo passo: chamada, demo ou proposta.",
             trigger: { kind: "manual", label: "Intenção alta/média" },
             action: { kind: "manual", label: "Follow-up comercial futuro" },
+            kind: "manual",
             fromStatus: "feedback_recebido",
             toStatus: "interessado",
             eligibleCount: countIn(["interessado", "potencial_cliente"]),
             inFlightCount: 0,
             completedCount: countEq("convertido"),
+            recentFailures: 0,
           },
         ];
 
