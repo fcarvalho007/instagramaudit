@@ -746,3 +746,79 @@ function ConsolidatedModuleTable({ variant }: { variant: ReportVariant }) {
     </div>
   );
 }
+
+// ── Block-level access matrix (admin-only summary) ────────────────
+
+function blockBadge(state: FeatureVisibility, variant: ReportVariant, blockId: string): { label: string; cls: string } {
+  if (state === "hidden") {
+    return variant === "public_mvp"
+      ? { label: "Premium", cls: "bg-signal-warning/15 text-accent-gold border border-signal-warning/30" }
+      : { label: "Oculto", cls: "bg-admin-surface-muted text-admin-text-tertiary" };
+  }
+  if (state === "lightweight" || state === "teaser") {
+    return blockId === "performance"
+      ? { label: "Parcial 3/5", cls: "bg-signal-warning/15 text-accent-gold" }
+      : { label: "Parcial", cls: "bg-signal-warning/15 text-accent-gold" };
+  }
+  return variant === "public_mvp"
+    ? { label: "Incluído", cls: "bg-emerald-50 text-emerald-700" }
+    : { label: "Desbloqueado", cls: "bg-emerald-50 text-emerald-700" };
+}
+
+function BlockAccessMatrix({ variant }: { variant: ReportVariant }) {
+  const mvp = getVariantFeatures("public_mvp");
+  const lab = getVariantFeatures("internal_lab");
+  const pro = getVariantFeatures("pro_preview");
+
+  const colHeader = (label: string, active: boolean) => (
+    <th
+      className={cn(
+        "px-4 py-2 text-center text-[11px] font-medium uppercase tracking-[0.12em]",
+        active ? "text-admin-text-primary" : "text-admin-text-tertiary",
+      )}
+    >
+      {label}
+    </th>
+  );
+
+  const cell = (state: FeatureVisibility, v: ReportVariant, blockId: string, active: boolean) => {
+    const b = blockBadge(state, v, blockId);
+    return (
+      <td className={cn("px-4 py-2 text-center", active && "bg-admin-surface-muted/40")}>
+        <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", b.cls)}>
+          {b.label}
+        </span>
+      </td>
+    );
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-admin-border bg-white overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="bg-admin-surface-muted/30">
+              <th className="px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">Bloco</th>
+              {colHeader("Público", variant === "public_mvp")}
+              {colHeader("Interno", variant === "internal_lab")}
+              {colHeader("Pro", variant === "pro_preview")}
+            </tr>
+          </thead>
+          <tbody>
+            {BLOCKS.map((b) => (
+              <tr key={b.id} className="border-t border-admin-border/50">
+                <td className="px-4 py-2 text-admin-text-primary">
+                  <span className="text-admin-text-tertiary tabular-nums mr-2">{b.number}</span>
+                  {b.shortLabel}
+                </td>
+                {cell(mvp[b.featureKey], "public_mvp", b.id, variant === "public_mvp")}
+                {cell(lab[b.featureKey], "internal_lab", b.id, variant === "internal_lab")}
+                {cell(pro[b.featureKey], "pro_preview", b.id, variant === "pro_preview")}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
