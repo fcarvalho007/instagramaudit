@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { resolveCallCost, hasReportedActualCost } from "./cost-resolution";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -213,7 +214,7 @@ export async function aggregateOpenAiActorBreakdown(
       continue;
     }
     acc.calls += 1;
-    acc.cost += Number(row.estimated_cost_usd ?? 0);
+    acc.cost += resolveCallCost(row);
     acc.promptTokens += Number(row.prompt_tokens ?? 0);
     acc.completionTokens += Number(row.completion_tokens ?? 0);
     if (!acc.lastAt) {
@@ -297,14 +298,14 @@ export async function aggregateApifyActorBreakdown(
 
     if (!isSuccess) {
       acc.errors += 1;
-      if (row.actual_cost_usd != null) {
+      if (hasReportedActualCost(row)) {
         acc.actualTotal += Number(row.actual_cost_usd);
         acc.hasActual = true;
       }
     } else {
       acc.runs += 1;
       acc.results += row.posts_returned ?? 0;
-      if (row.actual_cost_usd != null) {
+      if (hasReportedActualCost(row)) {
         acc.actualTotal += Number(row.actual_cost_usd);
         acc.hasActual = true;
       } else if (row.estimated_cost_usd != null) {
@@ -318,8 +319,8 @@ export async function aggregateApifyActorBreakdown(
     if (acc.lastAt === null) {
       acc.lastAt = String(row.created_at);
       acc.lastStatus = status;
-      acc.lastCost = row.actual_cost_usd != null ? Number(row.actual_cost_usd)
-        : row.estimated_cost_usd != null ? Number(row.estimated_cost_usd) : null;
+      const resolved = resolveCallCost(row);
+      acc.lastCost = resolved > 0 ? resolved : null;
     }
   }
 
@@ -599,7 +600,7 @@ export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
     const status = String(row.status);
     if (status !== "success" && status !== "cache") continue;
 
-    const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+    const cost = resolveCallCost(row);
     totals[provider].amount_usd += cost;
     totals[provider].calls += 1;
 
@@ -695,7 +696,7 @@ export async function fetchRecentProviderCalls(
       status,
       http: row.http_status ?? null,
       duration: fmtDuration(row.duration_ms ?? null),
-      cost: fmtCost(row.actual_cost_usd ?? row.estimated_cost_usd),
+      cost: fmtCost(resolveCallCost(row) || null),
     };
   });
 }
@@ -858,7 +859,7 @@ async function fetchReportCounts(sinceIso: string): Promise<{
     // Fetch all provider_call_logs linked to these events
     const { data: linkedCalls } = await supabaseAdmin
       .from("provider_call_logs")
-      .select("analysis_event_id, estimated_cost_usd, provider")
+      .select("analysis_event_id, actual_cost_usd, estimated_cost_usd, provider")
       .in("analysis_event_id", freshEventIds)
       .eq("status", "success");
 
@@ -868,13 +869,14 @@ async function fetchReportCounts(sinceIso: string): Promise<{
       const costByEvent = new Map<string, { cost: number; providers: Set<string> }>();
       for (const call of linkedCalls) {
         const eid = call.analysis_event_id as string;
+        const callCost = resolveCallCost(call);
         const existing = costByEvent.get(eid);
         if (existing) {
-          existing.cost += Number(call.estimated_cost_usd ?? 0);
+          existing.cost += callCost;
           existing.providers.add(call.provider as string);
         } else {
           costByEvent.set(eid, {
-            cost: Number(call.estimated_cost_usd ?? 0),
+            cost: callCost,
             providers: new Set([call.provider as string]),
           });
         }
@@ -1067,7 +1069,7 @@ export async function fetchCommentScraperMetrics(
   for (const row of rows) {
     const status = String(row.status);
     if (status === "success" || status === "ok") {
-      const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+      const cost = resolveCallCost(row);
       totalCost += cost;
       totalComments += row.posts_returned ?? 0;
       runCount += 1;

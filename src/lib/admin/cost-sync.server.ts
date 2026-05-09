@@ -16,6 +16,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
+import { resolveCallCost } from "./cost-resolution";
 
 export interface SyncSummary {
   provider: "apify" | "openai" | "dataforseo";
@@ -179,7 +180,7 @@ export async function syncDataForSeoCosts(): Promise<SyncSummary> {
     for (const row of logs ?? []) {
       if (row.status !== "success") continue;
       const day = String(row.created_at).slice(0, 10);
-      const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+      const cost = resolveCallCost(row);
       const bucket = buckets.get(day) ?? { amount: 0, calls: 0 };
       bucket.amount += cost;
       bucket.calls += 1;
@@ -280,7 +281,7 @@ export async function syncOpenAiCosts(): Promise<SyncSummary> {
     const buckets = new Map<string, { amount: number; calls: number }>();
     for (const row of data ?? []) {
       const day = (row.created_at as string).slice(0, 10);
-      const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+      const cost = resolveCallCost(row);
       const bucket = buckets.get(day) ?? { amount: 0, calls: 0 };
       bucket.amount += cost;
       bucket.calls += 1;
