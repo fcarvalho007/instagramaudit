@@ -154,7 +154,10 @@ export function KanbanBoard({
       <LeadDetailSheet
         open={!!detailLead}
         onOpenChange={(open) => {
-          if (!open) setDetailLead(null);
+          if (!open) {
+            setDetailLead(null);
+            onDetailClose?.();
+          }
         }}
         lead={detailLead}
         onUpdate={onUpdate}
