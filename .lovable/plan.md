@@ -1,108 +1,148 @@
-# Ação admin: enviar link público ao beta tester
+# Módulo de templates de email beta (pt-PT)
 
-Adiciona uma ação **"Enviar link"** no Lead Detail Sheet que envia o link do relatório público (`/analyze/:handle`) por email via Resend, regista `report_link_sent` e move o estado comercial para `link_enviado`.
+Cria um módulo reutilizável com **4 templates** transacionais pt-PT, cada um a expor `subject`, `text` e `html`. Sem envio, sem alterações ao provider — só código de templating + testes.
 
-Distinto do envio de PDF existente (`/api/send-report-email`): aquele envia o PDF por signed URL com auth interno; este envia o **link público** com auth de admin.
+## Estrutura de ficheiros
 
-## Ficheiros a criar / alterar
+```
+src/lib/email/
+├── shared.ts                    (novo) — helpers: escapeHtml, firstName, layout HTML, footer
+├── templates/
+│   ├── index.ts                 (novo) — exports + types
+│   ├── request-received.ts      (novo) — Template 1
+│   ├── report-ready.ts          (novo) — Template 2
+│   ├── feedback-request.ts      (novo) — Template 3
+│   └── commercial-followup.ts   (novo) — Template 4
+└── __tests__/
+    └── templates.test.ts        (novo) — testes vitest
+```
 
-### 1. `src/lib/email/report-link-email-template.ts` (novo)
-Template pt-PT inline-styles, sem unsubscribe.
+`report-link-email-template.ts` e `report-email-template.ts` existentes ficam **intocados** (já estão em uso). O Template 2 (Relatório pronto) é uma versão paralela na nova API uniformizada — uma fase futura pode migrar `send-report-link.ts` para usar a nova; nesta tarefa não se mexe nesses call-sites.
 
-- **Assunto:** `O teu relatório InstaBench já está pronto`
-- **Corpo (HTML + text)**:
-  - Saudação: `Olá {primeiro_nome},` ou `Olá,` se não houver nome
-  - Parágrafo 1: «A análise do perfil **@{handle}** já está disponível para consultares.»
-  - Botão: **"Abrir relatório"** → URL pública
-  - URL em texto monoespaçado abaixo (fallback)
-  - Parágrafo: «Este é um relatório beta — pode evoluir nos próximos dias com base no que aprendermos.»
-  - Parágrafo: «Depois de explorares, agradecemos imenso se nos enviares feedback. Vamos contactar-te em breve para o pedir.»
-  - Footer InstaBench
-- Sem promessas exageradas. Sem link de unsubscribe.
+## API uniforme
 
-Exporta `buildReportLinkEmailSubject()`, `buildReportLinkEmailHtml(params)`, `buildReportLinkEmailText(params)` e uma helper isomórfica `buildPreviewBody(params)` para o modal de confirmação reusar (texto plano resumido).
+```ts
+// shared.ts
+export interface RenderedEmail {
+  subject: string;
+  text: string;
+  html: string;
+}
 
-### 2. `src/routes/api/admin/send-report-link.ts` (novo server route)
-`POST /api/admin/send-report-link`
+export interface BaseTemplateInput {
+  firstName?: string | null;
+  email?: string | null;
+  instagramHandle?: string | null;
+  reportUrl?: string | null;
+  feedbackUrl?: string | null;
+  pricingOption?: string | null;
+}
 
-- `requireAdminSession()`
-- Input zod: `{ lead_id: string; report_request_id: string }`
-- Verifica `RESEND_API_KEY` → 500 `EMAIL_PROVIDER_NOT_CONFIGURED` se ausente
-- Carrega `report_requests` (id, lead_id, instagram_username, request_status, analysis_snapshot_id) e valida:
-  - `request_status ∈ {completed, ready, generated, approved}` E `analysis_snapshot_id` presente → senão 409 `REPORT_NOT_READY`
-- Carrega `leads` (id, email, name) → valida email com regex → 422 `LEAD_EMAIL_MISSING`/`LEAD_EMAIL_INVALID`
-- Constrói URL pública: usa `process.env.PDF_PUBLIC_BASE_URL` se existir, senão derivado do header `Origin`/`Host` do request (preferindo `https://`). Forma final: `${base}/analyze/${handle}`
-- Envia via Resend (timeout 10s, mesmo padrão de `send-report-email.ts`); reusa `SENDER_FROM = "InstaBench <onboarding@resend.dev>"`
-- Em **sucesso**:
-  - `recordProductEvent({ eventType: "report_link_sent", leadId, snapshotId, handle, metadata: { report_request_id, message_id, channel: "admin_manual", recipient: email_normalizado } })` — o timestamp é o `created_at` do evento
-  - `updateLeadCommercialStatus({ leadId, status: "link_enviado", source: "manual", reason: "admin sent public report link" })` (do helper criado na fase anterior)
-  - Devolve `{ success: true, message_id, sent_at, public_url }`
-- Em **falha** de envio: NÃO altera `commercial_status`; devolve `error_code` adequado (`RESEND_FAILED`, `RESEND_TIMEOUT`, `RESEND_SANDBOX_RECIPIENT_BLOCKED`)
-- Logs: apenas excerto do erro (até 300 chars), sem secrets, sem corpo da resposta Resend
+export type EmailTemplate<I extends BaseTemplateInput = BaseTemplateInput> =
+  (input: I) => RenderedEmail;
+```
 
-### 3. `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (alterar)
-Na grelha de ações da secção **Relatório**, adicionar botão `Enviar link` (ícone `Send` ou `Mail`).
+Helpers em `shared.ts`:
+- `escapeHtml(s)`
+- `greeting(firstName)` → `"Olá {Nome},"` ou `"Olá,"`
+- `wrapHtml({ title, bodyHtml })` → layout consistente (Inter sans, fundo `#f5f5f4`, card branco, header eyebrow `INSTABENCH`, footer simples). Reaproveita o estilo já usado em `report-link-email-template.ts` mas extraído como template-base.
+- `renderButton({ label, url })` → bloco HTML do CTA
+- `joinLines(lines: string[])` → helper para corpo `text`
 
-**Visibilidade:**
-- Sempre presente quando `lead.handle && lead.report_request_id`
-- **Ativo** quando: `lead.email` existe E `lead.report_status ∈ {completed, ready, generated}` E `lead.handle` existe
-- **Desativado** caso contrário, com `title` explicativo:
-  - sem email: «Lead sem email — não é possível enviar.»
-  - sem relatório: «Este lead ainda não tem relatório público disponível.»
-  - sem handle: «Handle Instagram em falta.»
+## Templates
 
-Click → abre `<SendLinkDialog>` (novo componente local no mesmo ficheiro, à imagem do `GenerateReportDialog`).
+Subjects (fixos, sem variáveis para evitar quebrar threading):
 
-### 4. `<SendLinkDialog>` (novo, dentro de `lead-detail-sheet.tsx`)
-Modal de confirmação com `ConfirmDialog`. Mostra preview:
+| # | Nome | Subject | Inputs usados |
+|---|---|---|---|
+| 1 | `requestReceived` | "Recebemos o teu pedido beta do InstaBench" | `firstName`, `instagramHandle` |
+| 2 | `reportReady` | "O teu relatório InstaBench já está pronto" | `firstName`, `instagramHandle`, `reportUrl` (obrigatório) |
+| 3 | `feedbackRequest` | "Podes dar feedback ao teu relatório InstaBench?" | `firstName`, `instagramHandle`, `reportUrl?`, `feedbackUrl?` |
+| 4 | `commercialFollowup` | "Próximo passo para analisar melhor o teu Instagram" | `firstName`, `instagramHandle?`, `pricingOption?`, `reportUrl?` |
 
-- **Para:** `{lead.email}`
-- **Perfil:** `@{lead.handle}`
-- **Link público:** `${origin}/analyze/${lead.handle}` (em mono, com botão copiar)
-- **Assunto:** `O teu relatório InstaBench já está pronto`
-- **Pré-visualização do corpo:** primeiros 6–8 linhas em texto plano (do `buildPreviewBody`)
-- Botão confirmar: **"Enviar email"** (loading state «A enviar…»)
+### Conteúdo (resumo, tom pt-PT, sem hype, tu)
 
-`onConfirm` faz `POST /api/admin/send-report-link` com `{ lead_id, report_request_id }`, lê `success` e:
-- sucesso: `toast.success("Link enviado por email")`, fecha modal, chama `onRefresh?.()`
-- falha: lê `error_code` e mostra `toast.error` com mensagem pt-PT mapeada:
-  - `EMAIL_PROVIDER_NOT_CONFIGURED` → «Email provider não configurado.»
-  - `LEAD_EMAIL_MISSING` → «Lead sem email.»
-  - `LEAD_EMAIL_INVALID` → «Email do lead inválido.»
-  - `REPORT_NOT_READY` → «Este lead ainda não tem relatório público disponível.»
-  - `RESEND_SANDBOX_RECIPIENT_BLOCKED` → «Resend está em modo sandbox — só pode enviar para o dono da conta. Verificar domínio.»
-  - `RESEND_TIMEOUT` / `RESEND_FAILED` → «Falha ao enviar email. Tenta novamente.»
-  - default → «Erro ao enviar.»
+**1. Pedido recebido**
+- «Recebemos o teu pedido para analisar **@{handle}**.»
+- «Durante a fase beta, cada relatório é revisto manualmente antes de ser enviado.»
+- «Vais receber um email assim que o relatório estiver pronto. Normalmente leva entre algumas horas e um dia útil.»
+- «Obrigado pela paciência — esta validação manual permite-nos garantir qualidade enquanto refinamos o produto.»
 
-## Sem alterações de schema
+**2. Relatório pronto**
+- «A análise do perfil **@{handle}** já está disponível.»
+- CTA: **"Abrir relatório"** → `reportUrl`
+- Fallback URL em mono
+- «É um relatório beta — pode evoluir nos próximos dias.»
 
-- `link_enviado` já existe no lifecycle (fase anterior)
-- `report_link_sent` já está em `ALLOWED_EVENTS` e tem o timestamp em `product_events.created_at`
-- Sem novas colunas
+**3. Pedido de feedback**
+- «Notámos que já consultaste o relatório de **@{handle}** — obrigado.»
+- «Gostaríamos de saber, em duas ou três frases, o que foi mais útil e o que falta melhorar.»
+- CTA: **"Dar feedback"** → `feedbackUrl` (se presente); fallback: «Basta responder a este email.»
+- «O teu input nesta fase pesa muito na direção do produto.»
 
-## Comportamento de estado
+**4. Follow-up comercial**
+- «Esperamos que o relatório de **@{handle}** tenha sido útil.»
+- «Se quiseres aprofundar — comparar com mais concorrentes, monitorizar evolução ao longo do tempo ou receber relatórios recorrentes — podemos preparar uma proposta adaptada ao teu caso.»
+- Se `pricingOption`: «Vimos que mostraste interesse na opção **{pricingOption}** — fica à vontade para responder e marcamos uma conversa curta.»
+- CTA suave: **"Falar connosco"** → `mailto:` para o email do remetente, OU se `reportUrl` presente, link para rever relatório.
+- Fecho cordial, sem urgência fabricada.
 
-| Resultado | `report_link_sent` event | `commercial_status` |
-|---|---|---|
-| Email enviado | ✅ inserido | ✅ `link_enviado` |
-| Resend falhou | ❌ não inserido | ❌ não muda |
-| Provider não configurado | ❌ | ❌ |
-| Lead sem email | ❌ | ❌ |
-| Relatório não pronto | ❌ | ❌ |
+## Validação de inputs
+
+- Cada template recebe um input tipado e específico (não a interface base completa).
+- `reportReady` exige `reportUrl` não-vazio; sem ele, lança `Error("reportUrl is required for reportReady")`.
+- `feedbackRequest` aceita `feedbackUrl` opcional — se ausente, o corpo pede resposta direta ao email.
+- `commercialFollowup` lida graciosamente com todos os campos opcionais.
+
+## Testes (`templates.test.ts`)
+
+Para cada template:
+1. **Subject correto** (string fixa)
+2. **`text` contém pontos-chave**: handle, URL quando aplicável, frase de assinatura
+3. **`html` é HTML válido**: começa com `<!DOCTYPE html>`, contém `<html lang="pt-PT">`
+4. **Escape de HTML**: passar `firstName: "<script>"` resulta em `&lt;script&gt;` no `html`, sem `<script>` literal
+5. **Saudação fallback**: sem `firstName`, contém `Olá,`; com `firstName: "Maria Silva"`, contém `Olá Maria,` (primeiro nome apenas)
+6. **`reportReady` falha sem `reportUrl`**
+7. **`commercialFollowup` com e sem `pricingOption`**: a frase específica aparece/desaparece conforme
+
+Total estimado: ~12-15 asserts em ~7-8 `it()` blocks.
+
+## Sample rendered output (pré-visualização do plano)
+
+**Template 1 — text:**
+```
+Olá Maria,
+
+Recebemos o teu pedido para analisar @frederico.m.carvalho.
+
+Durante a fase beta, cada relatório é revisto manualmente antes de
+ser enviado. Vais receber um email assim que estiver pronto —
+normalmente entre algumas horas e um dia útil.
+
+Obrigado pela paciência.
+
+—
+InstaBench
+```
+
+(Os outros três seguem a mesma estrutura visual: saudação → 1-2 parágrafos → CTA opcional → fecho.)
+
+## Constraints respeitados
+
+- Sem envio
+- Sem alterações ao provider Resend
+- Sem alterações a `send-report-link.ts`, `send-report-email.ts`, geração de relatório, PDF ou UI pública
+- Sem `você`, sem hype, sem promessas exageradas
+- Tom pt-PT (Acordo Ortográfico): «direta», «ação», etc.
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run`
-- Smoke manual:
-  1. Lead com email + relatório completo → botão ativo, modal mostra preview, envio OK, status muda para `link_enviado`, evento aparece no timeline
-  2. Lead sem email → botão desativado com tooltip
-  3. Lead com `report_status = pending` → botão desativado com tooltip
-  4. Forçar erro (chave Resend inválida em ambiente local) → toast erro, status **não** muda
+- `bunx vitest run` (deve ficar em 124 + ~8 novos = ~132 testes)
 
-## Fora de âmbito
+## Return ao concluir
 
-- Geração/regeneração de relatório (já existe acção separada)
-- Envio automático sem confirmação
-- Templates configuráveis por admin
-- Tracking de cliques no link (fica para fase futura quando houver UTM/redirector)
+- Lista dos 4 templates + subjects
+- Render de exemplo (`text` completo) de pelo menos 2 templates
+- Lista de ficheiros criados
+- Resultado dos testes
