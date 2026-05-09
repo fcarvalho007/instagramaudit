@@ -860,9 +860,13 @@ function ProgressTracker({
 function TimelineSection({
   timeline,
   loading,
+  title = "Timeline",
+  emptyText = "Sem eventos registados.",
 }: {
   timeline: TimelineEvent[];
   loading: boolean;
+  title?: string;
+  emptyText?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const INITIAL_COUNT = 10;
@@ -870,7 +874,7 @@ function TimelineSection({
 
   return (
     <div className="px-6 py-5">
-      <SectionTitle>Timeline</SectionTitle>
+      <SectionTitle>{title}</SectionTitle>
 
       {loading && (
         <div className="flex items-center gap-2 text-admin-text-tertiary admin-meta py-3">
@@ -880,7 +884,7 @@ function TimelineSection({
 
       {!loading && timeline.length === 0 && (
         <p className="admin-meta text-admin-text-tertiary py-3">
-          Sem eventos registados.
+          {emptyText}
         </p>
       )}
 
@@ -888,6 +892,10 @@ function TimelineSection({
         <div className="space-y-0">
           {visible.map((ev) => {
             const IconComp = EVENT_ICONS[ev.event_type] ?? Clock;
+            const groupedCount =
+              typeof ev.metadata?.grouped_count === "number"
+                ? (ev.metadata.grouped_count as number)
+                : null;
             return (
               <div
                 key={ev.id}
@@ -905,8 +913,16 @@ function TimelineSection({
                   <IconComp size={13} className="text-admin-text-tertiary" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="admin-body text-admin-text-primary m-0">
-                    {EVENT_LABELS[ev.event_type] ?? ev.event_type}
+                  <p className="admin-body text-admin-text-primary m-0 flex items-center gap-2">
+                    <span>{EVENT_LABELS[ev.event_type] ?? ev.event_type}</span>
+                    {groupedCount && groupedCount > 1 ? (
+                      <span
+                        className="admin-meta text-admin-text-tertiary rounded-full px-2 py-0.5"
+                        style={{ backgroundColor: "rgba(44,44,42,0.06)" }}
+                      >
+                        ×{groupedCount}
+                      </span>
+                    ) : null}
                   </p>
                   {ev.event_type === "pricing_option_clicked" &&
                     ev.metadata?.pricing_option ? (
