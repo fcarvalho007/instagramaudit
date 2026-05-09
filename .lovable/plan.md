@@ -1,105 +1,70 @@
-## Página `/admin/automacoes` — visualização do ciclo de vida beta
+## Batch P1-C — Performance indexes em `product_events`
 
-Apenas leitura. Sem execução, sem emails, sem providers, sem alterações de schema.
+### Estado actual
 
-### Fontes inspecionadas
+`pg_indexes` em `public.product_events`:
 
-- **Source CRM (referência UX apenas, não copiar)**
-  - `src/components/crm/AutomationFlowTab.tsx` (2060 linhas) — extrair só o padrão visual: nó com tag/título/subtítulo, separadores de grupo, ligação vertical entre nós, contagem de elegíveis. Ignorar tudo o que é específico de webinar (templates SMS, day groups, drawer de envio, edge functions, mocks).
+| Índice | Definição |
+|---|---|
+| `product_events_pkey` | UNIQUE btree (id) |
+| `idx_product_events_type_created` | btree (event_type, created_at DESC) |
 
-- **InstaBench (reutilizar)**
-  - `src/lib/admin/lead-lifecycle.ts` — `LIFECYCLE_STATUSES`, `getLifecycleMeta`, `mapEventToSuggestedStatus`, `suggestNextLeadAction`.
-  - `src/lib/admin/feedback-intent.ts` — `interpretFeedback` (alto/medio/baixo).
-  - `src/routes/api/admin/beta-funnel.ts` — padrão para endpoint admin com `requireAdminSession` + `supabaseAdmin`.
-  - `src/components/admin/v2/admin-card.tsx`, `admin-section-header.tsx`, `admin-page-header.tsx`, `admin-badge.tsx` — primitivos do design system.
-  - `src/components/admin/v2/admin-tabs-nav.tsx` — adicionar item de navegação.
+Não existe índice em `lead_id`, `snapshot_id` nem `handle`. Tudo o que filtra por estas colunas faz hoje sequential scan.
 
-### Modelo de dados (read-only)
+### Padrões de query observados (`rg`)
 
-Endpoint novo: `GET /api/admin/automation-flow`
+| Caller | Filtro | Ordem |
+|---|---|---|
+| `api/admin/lead-timeline.$id.ts` | `lead_id = X OR handle = Y` | `created_at DESC LIMIT 50` |
+| `api/admin/leads-kanban.ts` | `lead_id IN (...)` | `created_at DESC` (último evento por lead) |
+| `api/admin/leads-kanban.ts` | `event_type='report_viewed' AND handle IN (...)` | — (count) |
+| `lib/tracking.functions.ts` (dedup) | `event_type='report_viewed' AND snapshot_id=X AND lead_id=Y AND created_at>=...` | — |
+| `api/public/feedback.$requestId.ts` | `event_type='feedback_started' AND lead_id=X AND metadata @> {report_request_id}` | LIMIT 1 |
+| `api/admin/beta-funnel.ts` | `event_type IN (link_sent, viewed)` | — (já coberto por `idx_product_events_type_created`) |
 
-Devolve a definição estática dos 6 fluxos + contagens reais agregadas a partir do Supabase (sem custo, sem providers):
+### Migração proposta (idempotente)
 
-```ts
-type AutomationFlow = {
-  key: "pedido_recebido" | "relatorio_pronto" | "relatorio_visto"
-     | "feedback_pedido" | "feedback_recebido" | "follow_up_comercial";
-  title: string;
-  description: string;
-  trigger: { kind: "form" | "event" | "manual"; label: string };
-  action: { kind: "email" | "manual" | "wait" | "classify"; label: string };
-  fromStatus: LifecycleStatus | null;
-  toStatus: LifecycleStatus | null;
-  eligibleCount: number;     // leads em estado "pronto para o próximo passo"
-  inFlightCount: number;     // leads já neste estado a aguardar
-  completedCount: number;    // leads que já passaram este passo
-};
+```sql
+-- 1. Timeline + kanban "último evento por lead"
+CREATE INDEX IF NOT EXISTS idx_product_events_lead_created
+  ON public.product_events (lead_id, created_at DESC)
+  WHERE lead_id IS NOT NULL;
+
+-- 2. Dedup de report_viewed por snapshot (tracking.functions.ts) +
+--    futuras agregações snapshot-based
+CREATE INDEX IF NOT EXISTS idx_product_events_snapshot_type_created
+  ON public.product_events (snapshot_id, event_type, created_at DESC)
+  WHERE snapshot_id IS NOT NULL;
+
+-- 3. Lookup por handle (kanban "report_viewed por handle", lead-timeline OR-arm)
+CREATE INDEX IF NOT EXISTS idx_product_events_handle_type_created
+  ON public.product_events (handle, event_type, created_at DESC)
+  WHERE handle IS NOT NULL;
 ```
 
-Lógica de contagens (uma única query a `leads` + uso do índice ordinal de `LIFECYCLE_STATUSES`):
+### O que NÃO faço
 
-| Fluxo | Eligible (precisa ação) | In-flight (aguarda) | Completed (já passou) |
-|---|---|---|---|
-| Pedido recebido | `status = novo_pedido` | — | `status >= em_analise` |
-| Relatório pronto | `status = relatorio_gerado` | `status = em_analise` | `status >= link_enviado` |
-| Relatório visto | `status = link_enviado` | — | `status >= relatorio_visto` |
-| Feedback pedido | `status = relatorio_visto` | `status = feedback_pedido` | `status >= feedback_recebido` |
-| Feedback recebido | `status = feedback_recebido` | — | `status >= interessado` |
-| Follow-up comercial | `status ∈ {interessado, potencial_cliente}` | — | `status = convertido` |
+- **Sem `(lead_id, event_type, created_at DESC)`** triplo: as queries por lead na timeline e no kanban não filtram por `event_type`. O índice `(lead_id, created_at DESC)` é mais barato e cobre os mesmos padrões. O único caller que combina `lead_id + event_type` é o dedup de `feedback_started` (LIMIT 1, baixo volume), perfeitamente servido pelo novo `idx_product_events_lead_created` + filtro residual em memória.
+- **Sem GIN em `metadata`**: única query com `@>` é o dedup de `feedback_started`, executado no início de um form humano (volume residual). Não justifica o custo de manutenção GIN em todas as inserções (`report_viewed` é o evento mais quente).
+- Os índices usam `WHERE col IS NOT NULL` parciais para excluir linhas onde a coluna de prefixo é nula, reduzindo tamanho sem afetar selectividade.
 
-Tudo derivado de `leads.commercial_status`, comparando o índice em `LIFECYCLE_STATUSES`. Sem joins extra. `arquivado` é ignorado (não conta em nenhuma coluna).
+### Constraints respeitadas
 
-### Ficheiros a criar
+- Apenas migração SQL. Sem alterações de UI/aplicação/dados.
+- `IF NOT EXISTS` em todos. Sem duplicar `idx_product_events_type_created` existente.
+- Sem chamadas a Apify/OpenAI/DataForSEO/Resend.
 
-1. **`src/routes/api/admin/automation-flow.ts`**
-   - `requireAdminSession` + `supabaseAdmin.from("leads").select("commercial_status")`.
-   - Agrega para os 6 fluxos. Devolve `{ success, generatedAt, flows: AutomationFlow[] }`.
+### Validação pós-migração
 
-2. **`src/components/admin/v2/automacoes/automation-flow-page.tsx`**
-   - Container. `useQuery(["admin","automation-flow"], adminFetch)`.
-   - `AdminPageHeader` + `EligibilitySummary` + lista vertical de `AutomationNode` separados por `AutomationEdge`.
-   - Empty state e skeleton.
-   - Banner informativo: "Visualização apenas — nenhuma ação executada nesta página".
+1. `supabase--linter` → mantém o resultado actual (estes índices não introduzem novos avisos).
+2. `bunx tsc --noEmit` → 0 erros (sem código alterado).
+3. `bunx vitest run` → 163/163.
+4. `EXPLAIN` opcional read-only em `lead-timeline` e `leads-kanban` para confirmar `Index Scan` em vez de `Seq Scan`.
 
-3. **`src/components/admin/v2/automacoes/automation-node.tsx`**
-   - Card branco com: badge de trigger (form/event/manual), título, subtítulo, badge `getLifecycleMeta(toStatus)`, três métricas (`Elegíveis` / `Em curso` / `Concluídos`).
-   - Tokens admin (`AdminCard`, `AdminBadge`, `AdminStat`).
+### Retorno após execução
 
-4. **`src/components/admin/v2/automacoes/automation-edge.tsx`**
-   - Conector vertical simples (linha + chevron) entre nós. Esconder no último.
-   - Mobile: mantém vertical, sem overflow.
+- Índices antes (acima).
+- Índices criados (lista acima).
+- Output do linter pós-migração e dos testes.
 
-5. **`src/components/admin/v2/automacoes/eligibility-summary.tsx`**
-   - Strip horizontal com KPIs: total de leads ativos, leads à espera de ação admin (soma dos `eligibleCount`), leads em curso, leads concluídos no funil.
-
-6. **`src/routes/admin.automacoes.tsx`**
-   - Route file. Renderiza `<AutomationFlowPage />` dentro do shell admin.
-
-### Ficheiros a editar
-
-- **`src/components/admin/v2/admin-tabs-nav.tsx`** — adicionar `{ to: "/admin/automacoes", label: "Automações" }` no grupo **Pipeline** (entre Leads e Pedidos).
-
-### Restrições aplicadas
-
-- Sem botões de execução, sem `mutate`, sem chamadas a edge functions de envio.
-- Sem schema changes.
-- Sem mock data — se `flows` vier vazio (zero leads), mostra empty state real.
-- Sem Apify, sem Resend, sem AI gateway.
-- Tudo em pt-PT, tokens admin, mobile-first.
-
-### Validação
-
-- `bunx tsc --noEmit` → 0 erros.
-- `bunx vitest run` → suite atual continua a passar (163/163).
-- Manual:
-  - `/admin/automacoes` carrega com sessão admin.
-  - Contagens batem aproximadamente com colunas do Kanban (`/admin/beta-leads`).
-  - Layout legível a 375px (nós empilhados, métricas em coluna).
-  - Inspeção da rede: apenas `GET /api/admin/automation-flow`, sem chamadas a providers.
-
-### Entregáveis no fim
-
-- Lista de ficheiros inspecionados (acima).
-- Lista de ficheiros criados/editados.
-- Resultado de `tsc` e `vitest`.
-- Print mental da árvore de chamadas (apenas o endpoint novo).
+Após aprovação, aplico a migração.
