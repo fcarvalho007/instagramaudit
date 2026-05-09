@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
@@ -22,6 +22,46 @@ import {
 interface AnalyzeSearch {
   vs?: string;
   previewLoading?: number;
+}
+
+// Module-level dedup: sobrevive a re-mounts dentro do mesmo SPA load,
+// e o sessionStorage estende a proteção a refreshes do mesmo tab.
+const TRACKED_SNAPSHOTS = new Set<string>();
+const TRACKED_STORAGE_KEY = "ib:tracked_report_views";
+
+function hasTrackedSnapshot(snapshotId: string): boolean {
+  if (TRACKED_SNAPSHOTS.has(snapshotId)) return true;
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = window.sessionStorage.getItem(TRACKED_STORAGE_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    if (Array.isArray(arr) && arr.includes(snapshotId)) {
+      TRACKED_SNAPSHOTS.add(snapshotId);
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+function markSnapshotTracked(snapshotId: string): void {
+  TRACKED_SNAPSHOTS.add(snapshotId);
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.sessionStorage.getItem(TRACKED_STORAGE_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    const list = Array.isArray(arr) ? arr : [];
+    if (!list.includes(snapshotId)) {
+      list.push(snapshotId);
+      window.sessionStorage.setItem(
+        TRACKED_STORAGE_KEY,
+        JSON.stringify(list.slice(-50)),
+      );
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 export const Route = createFileRoute("/analyze/$username")({
