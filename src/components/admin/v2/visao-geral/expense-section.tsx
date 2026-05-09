@@ -132,6 +132,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
   const recon = useQuery<ReconciliationData>({
     queryKey: ["billing-reconciliation", days],
     queryFn: () => fetchJson<ReconciliationData>(`/api/admin/billing-reconciliation?days=${days}`),
+    refetchInterval: 5 * 60_000,
   });
 
   const dailyData = expense.data?.daily ?? [];
