@@ -1,84 +1,94 @@
-## Página de Automações — alinhar com a especificação dos 7 nós
+## Email Template Lab — pré-visualização read-only de 4 templates
 
 ### Descoberta
 
-A página `/admin/automacoes` **já existe e está funcional**, com a mesma arquitetura modular descrita no pedido:
+Templates já existem em `src/lib/email/templates/` como renderers puros que devolvem `{ subject, text, html }`:
 
-- `src/routes/admin.automacoes.tsx` — rota
-- `src/components/admin/v2/automacoes/automation-flow-page.tsx` (156L) — página
-- `src/components/admin/v2/automacoes/automation-node.tsx` (191L) — cartão de nó
-- `src/components/admin/v2/automacoes/automation-edge.tsx` (33L) — conector
-- `src/components/admin/v2/automacoes/eligibility-summary.tsx` (45L) — sumário no topo
-- `src/routes/api/admin/automation-flow.ts` (203L) — endpoint read-only
+| Template | Renderer | Endpoint que usa | Estado |
+|---|---|---|---|
+| Pedido recebido | `renderRequestReceived` | `src/lib/beta.functions.ts` (submissão de pedido beta) | **Wired** |
+| Relatório pronto | `renderReportReady` | `src/routes/api/admin/send-report-link.ts` | **Wired** |
+| Pedido de feedback | `renderFeedbackRequest` | `src/routes/api/admin/send-feedback-request.ts` | **Wired** |
+| Follow-up comercial | `renderCommercialFollowup` | nenhum endpoint (apenas testes) | **Orphan** |
 
-Comportamento atual:
-- Lê `leads.commercial_status` via Supabase admin (sem providers, sem mutações, sem emails)
-- Mostra para cada nó: título, descrição, `Trigger` (form/event/manual), `Ação` (email/manual/wait/classify), badge do estado destino, três contagens (elegíveis, em curso, concluídos)
-- Reusa `getLifecycleMeta` e `LIFECYCLE_STATUSES` de `lib/admin/lead-lifecycle.ts`
-- Tokens `--admin-*` apenas, pt-PT, mobile-first, sem botões de execução
-- Banner "Read-only" no topo
+Cada renderer tem `SUBJECT`, `PREHEADER` e `HEADLINE` declarados. Alguns expõem `.subject` como propriedade da função. Inputs estão tipados (`RequestReceivedInput`, `ReportReadyInput`, `FeedbackRequestInput`, `CommercialFollowupInput`).
 
-### Lacunas face ao pedido
+A área `/admin/*` segue o padrão `src/routes/admin.<slug>.tsx` com componentes em `src/components/admin/v2/<slug>/`. `AdminPageHeader`, `AdminCard`, `AdminSectionHeader` e tokens `--admin-*` já existem. CRM Webinar não é importado — apenas o padrão UX (lista + preview + meta).
 
-1. **6 nós em vez de 7**: o atual junta "Relatório gerado" + "Link enviado" num único nó "Relatório pronto" (elegíveis em `relatorio_gerado`, ação "Enviar link"). O pedido especifica os dois passos separados: um para a geração do relatório (manual/admin), outro para o envio do link (manual/admin, com email).
-2. **Badge `Automático` / `Manual` explícito**: hoje há tags de `Trigger` e `Ação` por tipo, mas não um badge dedicado para classificar o nó como automático ou manual conforme a coluna "Type" da especificação.
-3. **`recent failures` por nó**: não é atualmente apresentado. O pedido lista-o como campo por nó.
+### Mudança proposta
 
-### Mudança proposta (mínima, focada)
+**Ficheiros novos:** 2 · **alterados:** 0 (nada locked).
 
-**Ficheiros tocados:** 3.
+#### `src/components/admin/v2/email-lab/email-lab-page.tsx` (novo)
+Página cliente-side, sem `useQuery`, sem fetch — chama os 4 renderers diretamente com sample data fixa:
 
-#### `src/routes/api/admin/automation-flow.ts` (API)
-- Adicionar campo `kind: 'automatic' | 'manual'` ao tipo `AutomationFlow`.
-- Dividir o nó `relatorio_pronto` em dois:
-  - `relatorio_gerado` — title "Relatório gerado", trigger `event: report_generated`, action `manual: Admin gera relatório`, kind `manual`, target `relatorio_gerado`, eligible = `countEq('em_analise')`, completed = `countAtLeast('relatorio_gerado')`.
-  - `link_enviado` — title "Link enviado", trigger `manual: Admin envia link`, action `email: Email "relatório pronto"`, kind `manual`, target `link_enviado`, eligible = `countEq('relatorio_gerado')`, completed = `countAtLeast('link_enviado')`.
-- Marcar os restantes nós conforme a especificação:
-  - `pedido_recebido` → `automatic`
-  - `relatorio_visto` → `automatic`
-  - `feedback_pedido` → `manual`
-  - `feedback_recebido` → `automatic`
-  - `follow_up_comercial` → `manual` (futuro)
-- Adicionar `recentFailures: number` por nó. Calcular via uma query agregada extra a `product_events` últimos 7d:
-  - `link_enviado.recentFailures` = count de `product_events.event_type IN ('email_failed','email_bounced')` últimos 7 dias com `metadata.context = 'send_link'` (ou apenas `email_failed`/`email_bounced` agrupados por `metadata.kind`); fallback: total de falhas de email recentes atribuídas ao envio do link.
-  - `feedback_pedido.recentFailures` = mesmo, filtrado por contexto `feedback_request`.
-  - Para os outros nós: `0` (não há ações de email envolvidas).
-  - Se a query falhar ou a coluna `metadata` não tiver as chaves, devolver `0` silenciosamente; nunca quebrar a página.
+```ts
+const SAMPLE = {
+  firstName: "Frederico",
+  instagramHandle: "frederico.m.carvalho",
+  reportUrl: "https://example.com/analyze/frederico.m.carvalho",
+  feedbackUrl: "https://example.com/feedback/example",
+  pricingOption: "monthly",
+};
+```
 
-#### `src/components/admin/v2/automacoes/automation-node.tsx`
-- Acrescentar prop `kind: 'automatic' | 'manual'` e prop opcional `recentFailures?: number`.
-- Renderizar **badge** de tipo na linha de tags ("Automático" cyan / "Manual" amarelo, usando os mesmos tokens admin já presentes no node).
-- Quando `recentFailures > 0`, mostrar uma pequena pílula vermelha "N falhas recentes (7d)" usando `--admin-signal-danger`. Ocultar quando 0.
+Catálogo declarativo de 4 entradas (`key`, `title` pt-PT, `wired: boolean`, `wiredAt: string | null` descrevendo o ficheiro do endpoint, `render()`). Layout em duas colunas (≥lg) ou stack (mobile-first):
 
-#### `src/components/admin/v2/automacoes/automation-flow-page.tsx`
-- Passar os novos campos (`kind`, `recentFailures`) ao `AutomationNode`. Sem alterações estruturais.
+- **Coluna esquerda — lista de templates** (cards verticais clicáveis): título, badge `Wired` (verde) ou `Orphan` (cinza/âmbar), subject truncado.
+- **Coluna direita — detalhe do template selecionado**:
+  - Bloco "Meta": nome interno (`request_received`, `report_ready`, `feedback_request`, `commercial_followup`), subject, preheader (se existir), wiring (caminho do endpoint ou "Não está ligado a nenhum endpoint").
+  - Bloco "Variáveis de exemplo": tabela `chave → valor` apenas com as variáveis usadas por aquele template.
+  - Tabs `Texto` / `HTML`:
+    - **Texto**: `<pre>` com `text`, `whitespace-pre-wrap`, `font-mono` (admin permite mono), `max-h-[480px] overflow-auto`.
+    - **HTML**: `<iframe srcDoc={html} sandbox="" className="w-full h-[640px] rounded border" title="..." />` para conter estilos do email e evitar quebrar o layout admin. `sandbox=""` bloqueia scripts e navegação.
+- Banner topo "Modo visualização — nenhum email é enviado a partir desta página." (mesmo padrão do `/admin/automacoes`).
+
+Estado local: `useState` com a key selecionada (default: `request_received`).
+
+Sem chamadas Resend, sem mutações, sem fetch.
+
+#### `src/routes/admin.email-lab.tsx` (novo)
+Rota fina:
+```tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { EmailLabPage } from "@/components/admin/v2/email-lab/email-lab-page";
+
+export const Route = createFileRoute("/admin/email-lab")({
+  component: EmailLabPage,
+});
+```
+
+### Sample data por template (tabela mostrada na UI)
+
+- `request_received` → `firstName`, `instagramHandle`
+- `report_ready` → `firstName`, `instagramHandle`, `reportUrl`
+- `feedback_request` → `firstName`, `instagramHandle`, `reportUrl`, `feedbackUrl`, `reportViewed: true`
+- `commercial_followup` → `firstName`, `instagramHandle`, `pricingOption: "monthly"`, `reportUrl`
 
 ### Restrições respeitadas
 
-- Sem schema changes, sem nova tabela, sem mutações, sem emails, sem providers.
-- Endpoint mantém-se read-only e gated por `requireAdminSession`.
-- Sem botões de execução, sem editor, sem mocks.
-- Sem alterações em rotas públicas, em `/report.example`, ou em ficheiros locked.
-- Tokens `--admin-*` apenas; pt-PT, AO90.
-- Mobile-first preservado (cards fluidos já existentes).
+- Sem schema, sem tabela `email_templates`, sem mutações, sem chamadas a Resend.
+- Sem alterações aos templates ou a rotas públicas.
+- Sem importar nada do CRM Webinar; apenas o padrão UX foi reaproveitado.
+- Tokens `--admin-*` exclusivamente; pt-PT/AO90.
+- Mobile-first (stack a 411px; lado-a-lado a partir de `lg`).
+- `iframe sandbox=""` isola o HTML do template.
 
 ### Validação
 
 1. `bunx tsc --noEmit` → 0 erros.
 2. `bunx vitest run` → 163/163.
-3. Manual em `/admin/automacoes`:
-   - 7 nós na ordem: Pedido recebido · Relatório gerado · Link enviado · Relatório visto · Feedback pedido · Feedback recebido · Follow-up comercial.
-   - Cada nó com badge "Automático" ou "Manual" conforme a especificação.
-   - Contagens de elegíveis batem com o Kanban (somar coluna por estado).
-   - Pílula de falhas recentes só aparece quando há `email_failed`/`email_bounced` registados nos últimos 7d para os nós de email.
-   - Banner read-only continua visível; nenhum botão "Enviar"/"Gerar"/"Reenviar" no DOM.
-   - 411px: cards e tags não dão overflow horizontal.
+3. Manual em `/admin/email-lab`:
+   - Página carrega; banner read-only visível.
+   - 4 templates listados na ordem pedida.
+   - Cada um tem badge Wired/Orphan correto (Pedido recebido, Relatório pronto, Pedido de feedback = Wired; Follow-up comercial = Orphan).
+   - Tabs Texto/HTML alternam preview.
+   - HTML preview contido no `iframe`, sem quebrar layout, sem horizontal scroll a 411px.
+   - Variáveis de exemplo refletem o `SAMPLE` acima.
 
 ### Fora de âmbito (próxima fase)
 
-O que se torna editável depois desta fase de leitura:
-- Templates de email por nó (pré-visualização e edição).
-- Disparo manual a partir do nó (ex.: "Enviar link aos N elegíveis"), reutilizando endpoints `/api/admin/send-report-link` e `/api/admin/send-feedback-request` já existentes.
-- Regras opcionais de envio automático (ex.: link automático após `relatorio_gerado` + 24h).
-- Ligação a `follow-ups` heurísticos para sugerir a ação no nó certo.
-- Histórico de execução por nó (drilldown para `product_events` filtrado).
+- Editar `subject` / corpo a partir do admin (requer tabela `email_templates`).
+- Enviar email de teste para si próprio (precisa endpoint + Resend).
+- Last-known event por template (precisa query a `product_events` ou `email_send_log`).
+- Suporte a múltiplos sample profiles e A/B variants.
