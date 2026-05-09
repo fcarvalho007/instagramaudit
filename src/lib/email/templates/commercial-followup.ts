@@ -7,6 +7,8 @@ import {
   p,
   pMuted,
   renderButtonHtml,
+  signatureHtml,
+  signatureText,
   wrapHtml,
 } from "../shared";
 
@@ -21,11 +23,20 @@ export interface CommercialFollowupInput {
 
 const SUBJECT = "Próximo passo para analisar melhor o teu Instagram";
 const HEADLINE = "Continuamos a conversa?";
+const PREHEADER = "Sem pressão. Respondemos quando fizer sentido para ti.";
+
+const PRICING_LABELS: Record<string, string> = {
+  single_3_eur: "Relatório único (€3 + IVA)",
+  bundle_13_eur: "Bundle 5 relatórios (€13 + IVA)",
+  monthly: "Plano mensal",
+  agency: "Agência",
+};
 
 export function renderCommercialFollowup(input: CommercialFollowupInput): RenderedEmail {
   const handle = input.instagramHandle ? `@${input.instagramHandle}` : "o teu perfil";
   const safeHandle = escapeHtml(handle);
-  const pricing = input.pricingOption?.trim() || null;
+  const pricingRaw = input.pricingOption?.trim() || null;
+  const pricing = pricingRaw ? (PRICING_LABELS[pricingRaw] ?? pricingRaw) : null;
   const reportUrl = input.reportUrl?.trim() || null;
   const replyTo = input.replyToEmail?.trim() || null;
 
@@ -48,8 +59,7 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
     "",
     "Sem pressão — respondemos quando fizer sentido para ti.",
     "",
-    "—",
-    "InstaBench",
+    ...signatureText(),
   ]);
 
   const ctaUrl = replyTo ? `mailto:${replyTo}` : null;
@@ -72,6 +82,7 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
       ? pMuted(`Podes também <a href="${escapeHtml(reportUrl)}" target="_blank" rel="noopener noreferrer" style="color:#3772E5;text-decoration:underline;">rever o relatório</a> antes de decidires.`)
       : "",
     pMuted("Sem pressão — respondemos quando fizer sentido para ti."),
+    signatureHtml(),
   ]
     .filter(Boolean)
     .join("\n");
@@ -79,7 +90,7 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
   return {
     subject: SUBJECT,
     text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml }),
+    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
   };
 }
 
