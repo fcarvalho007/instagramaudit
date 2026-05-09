@@ -56,7 +56,7 @@ import {
   ChevronDown,
   MessageCircle,
 } from "lucide-react";
-import { Zap, AlertTriangle } from "lucide-react";
+import { Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
