@@ -69,6 +69,7 @@ import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.r
 import { Route as ApiPublicHooksSyncOpenaiCostsRouteImport } from './routes/api/public/hooks/sync-openai-costs'
 import { Route as ApiPublicHooksSyncDataforseoCostsRouteImport } from './routes/api/public/hooks/sync-dataforseo-costs'
 import { Route as ApiPublicHooksSyncApifyCostsRouteImport } from './routes/api/public/hooks/sync-apify-costs'
+import { Route as ApiPublicFeedbackRequestIdRouteImport } from './routes/api/public/feedback.$requestId'
 import { Route as ApiPublicAnalysisSnapshotUsernameRouteImport } from './routes/api/public/analysis-snapshot.$username'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api/admin/snapshot-by-id.$snapshotId'
@@ -413,6 +414,12 @@ const ApiPublicHooksSyncApifyCostsRoute =
     path: '/api/public/hooks/sync-apify-costs',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicFeedbackRequestIdRoute =
+  ApiPublicFeedbackRequestIdRouteImport.update({
+    id: '/api/public/feedback/$requestId',
+    path: '/api/public/feedback/$requestId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAnalysisSnapshotUsernameRoute =
   ApiPublicAnalysisSnapshotUsernameRouteImport.update({
     id: '/api/public/analysis-snapshot/$username',
@@ -681,6 +688,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
+  '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
@@ -774,6 +782,7 @@ export interface FileRoutesByTo {
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
+  '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
@@ -869,6 +878,7 @@ export interface FileRoutesById {
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
+  '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
@@ -965,6 +975,7 @@ export interface FileRouteTypes {
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
+    | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
@@ -1058,6 +1069,7 @@ export interface FileRouteTypes {
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
+    | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
@@ -1152,6 +1164,7 @@ export interface FileRouteTypes {
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
+    | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
@@ -1226,6 +1239,7 @@ export interface RootRouteChildren {
   ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
   ApiPublicAnalysisSnapshotUsernameRoute: typeof ApiPublicAnalysisSnapshotUsernameRoute
+  ApiPublicFeedbackRequestIdRoute: typeof ApiPublicFeedbackRequestIdRoute
   ApiPublicHooksSyncApifyCostsRoute: typeof ApiPublicHooksSyncApifyCostsRoute
   ApiPublicHooksSyncDataforseoCostsRoute: typeof ApiPublicHooksSyncDataforseoCostsRoute
   ApiPublicHooksSyncOpenaiCostsRoute: typeof ApiPublicHooksSyncOpenaiCostsRoute
@@ -1653,6 +1667,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/sync-apify-costs'
       fullPath: '/api/public/hooks/sync-apify-costs'
       preLoaderRoute: typeof ApiPublicHooksSyncApifyCostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/feedback/$requestId': {
+      id: '/api/public/feedback/$requestId'
+      path: '/api/public/feedback/$requestId'
+      fullPath: '/api/public/feedback/$requestId'
+      preLoaderRoute: typeof ApiPublicFeedbackRequestIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/analysis-snapshot/$username': {
@@ -2113,6 +2134,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
   ApiPublicAnalysisSnapshotUsernameRoute:
     ApiPublicAnalysisSnapshotUsernameRoute,
+  ApiPublicFeedbackRequestIdRoute: ApiPublicFeedbackRequestIdRoute,
   ApiPublicHooksSyncApifyCostsRoute: ApiPublicHooksSyncApifyCostsRoute,
   ApiPublicHooksSyncDataforseoCostsRoute:
     ApiPublicHooksSyncDataforseoCostsRoute,
