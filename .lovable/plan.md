@@ -1,94 +1,72 @@
-## Email Template Lab — pré-visualização read-only de 4 templates
+## Lead Detail Sheet — vista `Comunicação` enriquecida
 
 ### Descoberta
 
-Templates já existem em `src/lib/email/templates/` como renderers puros que devolvem `{ subject, text, html }`:
+A `LeadDetailSheet` já tem uma tab **Comunicação** (linhas 718–726 de `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`) que reutiliza `TimelineSection` filtrando por `COMMUNICATION_EVENT_TYPES = { report_link_sent, feedback_requested, feedback_started, email_failed, email_bounced }`. Limitações actuais:
 
-| Template | Renderer | Endpoint que usa | Estado |
+- Não inclui **pedido recebido** (`beta_request_created`), nem **feedback submetido** (`feedback_submitted`), nem o sinal de **abertura** (`report_viewed`) nesta tab.
+- Não mostra **message_id**, **recipient** nem **status badge** (Enviado / Falhou / Recebido / Aberto / Submetido) — apenas label + tempo.
+- Não colapsa runs de `report_viewed` (a colapsagem só acontece na tab Histórico via `groupConsecutiveViews`).
+
+Eventos realmente emitidos (verificado em `src/lib/tracking.functions.ts`, `src/routes/api/...`): `beta_request_created`, `report_link_sent` (com `metadata.message_id`, `metadata.recipient`, `metadata.channel`, `metadata.public_url`), `feedback_requested` (com `message_id`, `recipient`, `feedback_url`), `feedback_started`, `feedback_submitted`, `report_viewed` (sem recipient — é evento do lead, não envio). Não são emitidos hoje `request_received_email_sent`, `request_received_email_failed`, `email_failed`, `email_bounced` — ficam no mapa para suporte futuro mas não aparecem agora.
+
+### Mapeamento `event_type → label / badge / extras`
+
+| `event_type` | Label (pt-PT) | Badge | Extras mostrados |
 |---|---|---|---|
-| Pedido recebido | `renderRequestReceived` | `src/lib/beta.functions.ts` (submissão de pedido beta) | **Wired** |
-| Relatório pronto | `renderReportReady` | `src/routes/api/admin/send-report-link.ts` | **Wired** |
-| Pedido de feedback | `renderFeedbackRequest` | `src/routes/api/admin/send-feedback-request.ts` | **Wired** |
-| Follow-up comercial | `renderCommercialFollowup` | nenhum endpoint (apenas testes) | **Orphan** |
-
-Cada renderer tem `SUBJECT`, `PREHEADER` e `HEADLINE` declarados. Alguns expõem `.subject` como propriedade da função. Inputs estão tipados (`RequestReceivedInput`, `ReportReadyInput`, `FeedbackRequestInput`, `CommercialFollowupInput`).
-
-A área `/admin/*` segue o padrão `src/routes/admin.<slug>.tsx` com componentes em `src/components/admin/v2/<slug>/`. `AdminPageHeader`, `AdminCard`, `AdminSectionHeader` e tokens `--admin-*` já existem. CRM Webinar não é importado — apenas o padrão UX (lista + preview + meta).
+| `beta_request_created` | Pedido recebido | Recebido (info) | — |
+| `report_link_sent` | Link do relatório enviado | Enviado (success) | recipient, message_id |
+| `feedback_requested` | Pedido de feedback enviado | Enviado (success) | recipient, message_id |
+| `report_viewed` | Relatório aberto pelo lead | Aberto (signal) | colapsado: ×N visualizações |
+| `feedback_started` | Formulário de feedback iniciado | Aberto (signal) | — |
+| `feedback_submitted` | Feedback submetido | Submetido (success forte) | — |
+| `email_failed` / `email_bounced` (futuro) | Falha no envio | Falhou (danger) | error_code (se houver) |
 
 ### Mudança proposta
 
-**Ficheiros novos:** 2 · **alterados:** 0 (nada locked).
+**Ficheiros novos:** 1 · **alterados:** 1.
 
-#### `src/components/admin/v2/email-lab/email-lab-page.tsx` (novo)
-Página cliente-side, sem `useQuery`, sem fetch — chama os 4 renderers diretamente com sample data fixa:
+#### `src/components/admin/v2/beta-leads/communication-history.tsx` (novo)
 
-```ts
-const SAMPLE = {
-  firstName: "Frederico",
-  instagramHandle: "frederico.m.carvalho",
-  reportUrl: "https://example.com/analyze/frederico.m.carvalho",
-  feedbackUrl: "https://example.com/feedback/example",
-  pricingOption: "monthly",
-};
-```
+Componente UI puro, recebe `timeline: TimelineEvent[]` e `loading: boolean`. Lógica:
 
-Catálogo declarativo de 4 entradas (`key`, `title` pt-PT, `wired: boolean`, `wiredAt: string | null` descrevendo o ficheiro do endpoint, `render()`). Layout em duas colunas (≥lg) ou stack (mobile-first):
+1. Filtra `timeline` pelos `event_type` da tabela acima (set local — independente de `COMMUNICATION_EVENT_TYPES` do ficheiro principal, mais alargado).
+2. Aplica `groupConsecutiveViews` (importado/copiado do ficheiro principal) para colapsar runs consecutivos de `report_viewed` num único item com `metadata.grouped_count`.
+3. Renderiza linha por linha — mesmo estilo visual do `TimelineSection` actual mas com:
+   - **Badge de estado** à direita (`Enviado` / `Falhou` / `Recebido` / `Aberto` / `Submetido`) usando `--admin-success-500`, `--admin-danger-500`, `--admin-info-500`, `--admin-accent-500`/signal — sempre via `style={{ background: "rgb(var(--...) / 0.12)", color: "rgb(var(--...))" }}`. Nunca cores hardcoded.
+   - **Linha meta** em `admin-meta`: `Para: <recipient>` (se existir) · `ID: <message_id curto>` (font-mono — admin permite) · timestamp relativo + absoluto. Para `report_viewed` colapsado, `×N` em vez de recipient.
+4. Botão "Ver mais" igual ao `TimelineSection` (limite inicial 10).
+5. Empty state pt-PT: "Sem comunicações registadas para este lead."
+6. Loading state com `Loader2` (mesmo padrão).
 
-- **Coluna esquerda — lista de templates** (cards verticais clicáveis): título, badge `Wired` (verde) ou `Orphan` (cinza/âmbar), subject truncado.
-- **Coluna direita — detalhe do template selecionado**:
-  - Bloco "Meta": nome interno (`request_received`, `report_ready`, `feedback_request`, `commercial_followup`), subject, preheader (se existir), wiring (caminho do endpoint ou "Não está ligado a nenhum endpoint").
-  - Bloco "Variáveis de exemplo": tabela `chave → valor` apenas com as variáveis usadas por aquele template.
-  - Tabs `Texto` / `HTML`:
-    - **Texto**: `<pre>` com `text`, `whitespace-pre-wrap`, `font-mono` (admin permite mono), `max-h-[480px] overflow-auto`.
-    - **HTML**: `<iframe srcDoc={html} sandbox="" className="w-full h-[640px] rounded border" title="..." />` para conter estilos do email e evitar quebrar o layout admin. `sandbox=""` bloqueia scripts e navegação.
-- Banner topo "Modo visualização — nenhum email é enviado a partir desta página." (mesmo padrão do `/admin/automacoes`).
+Sem fetch, sem mutações, sem botões de envio, sem importações de SMS/WhatsApp.
 
-Estado local: `useState` com a key selecionada (default: `request_received`).
+#### `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (edit)
 
-Sem chamadas Resend, sem mutações, sem fetch.
-
-#### `src/routes/admin.email-lab.tsx` (novo)
-Rota fina:
-```tsx
-import { createFileRoute } from "@tanstack/react-router";
-import { EmailLabPage } from "@/components/admin/v2/email-lab/email-lab-page";
-
-export const Route = createFileRoute("/admin/email-lab")({
-  component: EmailLabPage,
-});
-```
-
-### Sample data por template (tabela mostrada na UI)
-
-- `request_received` → `firstName`, `instagramHandle`
-- `report_ready` → `firstName`, `instagramHandle`, `reportUrl`
-- `feedback_request` → `firstName`, `instagramHandle`, `reportUrl`, `feedbackUrl`, `reportViewed: true`
-- `commercial_followup` → `firstName`, `instagramHandle`, `pricingOption: "monthly"`, `reportUrl`
+- Substituir o conteúdo do `<TabsContent value="comunicacao">` (linhas 719–726) por `<CommunicationHistory timeline={timeline} loading={timelineLoading} />`.
+- Manter `COMMUNICATION_EVENT_TYPES` e `TimelineSection` intactos (usados pela tab Histórico e por outras zonas).
+- Adicionar import do novo componente.
 
 ### Restrições respeitadas
 
-- Sem schema, sem tabela `email_templates`, sem mutações, sem chamadas a Resend.
-- Sem alterações aos templates ou a rotas públicas.
-- Sem importar nada do CRM Webinar; apenas o padrão UX foi reaproveitado.
-- Tokens `--admin-*` exclusivamente; pt-PT/AO90.
-- Mobile-first (stack a 411px; lado-a-lado a partir de `lg`).
-- `iframe sandbox=""` isola o HTML do template.
+- UI only — read-only. Sem schema, sem mutações, sem providers, sem emails.
+- Sem novos endpoints, sem alterações a rotas públicas, sem `/report.example`.
+- Sem importar nada do CRM Webinar (apenas padrão UX).
+- Tokens `--admin-*` apenas; pt-PT/AO90; mobile-first (badge colapsa para baixo do label a <360px via `flex-wrap`).
+- `report_viewed` colapsado evita inundação (×N pill em vez de 200 linhas).
+- Outras tabs (`Resumo`, `Relatório`, `Feedback`, `Histórico`) e fluxos (`SendLinkButton`, `RequestFeedbackButton`) não são tocados.
 
 ### Validação
 
 1. `bunx tsc --noEmit` → 0 erros.
 2. `bunx vitest run` → 163/163.
-3. Manual em `/admin/email-lab`:
-   - Página carrega; banner read-only visível.
-   - 4 templates listados na ordem pedida.
-   - Cada um tem badge Wired/Orphan correto (Pedido recebido, Relatório pronto, Pedido de feedback = Wired; Follow-up comercial = Orphan).
-   - Tabs Texto/HTML alternam preview.
-   - HTML preview contido no `iframe`, sem quebrar layout, sem horizontal scroll a 411px.
-   - Variáveis de exemplo refletem o `SAMPLE` acima.
+3. Manual em `/admin/beta-leads`:
+   - Lead com `report_link_sent` + várias `report_viewed` → mostra badge **Enviado** com `Para:` e `ID:`, mais uma linha **Aberto ×N**; mobile (411px) sem overflow horizontal.
+   - Lead novo sem comunicações → empty state "Sem comunicações registadas para este lead.".
+   - Tab `Histórico` continua a mostrar todos os eventos como antes.
 
 ### Fora de âmbito (próxima fase)
 
-- Editar `subject` / corpo a partir do admin (requer tabela `email_templates`).
-- Enviar email de teste para si próprio (precisa endpoint + Resend).
-- Last-known event por template (precisa query a `product_events` ou `email_send_log`).
-- Suporte a múltiplos sample profiles e A/B variants.
+- Emitir `email_failed` / `email_bounced` (precisa webhook Resend + tabela ou metadata de falha).
+- Mostrar abertura por click tracking (precisa Resend events).
+- Reenvio rápido a partir desta vista (sai do âmbito read-only).
