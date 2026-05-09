@@ -34,7 +34,6 @@ import {
 
 import { ReportFramedBlock } from "../report-framed-block";
 import { ReportMethodology } from "../report-methodology";
-import { ReportTierTeaser } from "../report-tier-teaser";
 import { REDESIGN_TOKENS } from "../report-tokens";
 
 import { BLOCKS, type BlockConfig } from "./block-config";
@@ -239,8 +238,7 @@ export function ReportShellV2({
         </div>
 
         {/* Pós-blocos (mantêm-se fora da numeração 1–6) */}
-        <ReportMethodology enriched={result.enriched} />
-        <ReportTierTeaser />
+        <ReportMethodology />
         <TierComparisonBlock />
         <ReportFinalBlock snapshotId={snapshotId} result={result} />
         {features.betaFeedbackBanner !== "hidden" && <BetaFeedbackBannerV2 />}

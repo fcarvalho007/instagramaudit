@@ -29,7 +29,6 @@ import { ReportFramedBlock } from "./report-framed-block";
 import { ReportAiReading } from "./report-ai-reading";
 import { ReportPendingAiNotice } from "./report-pending-ai-notice";
 import { ReportMethodology } from "./report-methodology";
-import { ReportTierTeaser } from "./report-tier-teaser";
 import { ReportEditorialPatterns } from "./report-editorial-patterns";
 import { REDESIGN_TOKENS } from "./report-tokens";
 
@@ -174,10 +173,9 @@ export function ReportShell({
         </ReportFramedBlock>
 
         {/* 11. Metodologia */}
-        <ReportMethodology enriched={result.enriched} />
+        <ReportMethodology />
 
-        {/* 12. Teaser Free vs Pro + bloco completo (âncora) */}
-        <ReportTierTeaser />
+        {/* 12. Bloco completo (âncora) */}
         <TierComparisonBlock />
 
         {/* 13. Bloco final */}

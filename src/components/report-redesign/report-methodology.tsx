@@ -1,18 +1,11 @@
-import { Database, LineChart, Sparkles, Search, ExternalLink, Users } from "lucide-react";
+import { Database, LineChart, Sparkles, Search, ExternalLink } from "lucide-react";
 import { ReportSectionFrame } from "./report-section-frame";
 import { REDESIGN_TOKENS } from "./report-tokens";
-import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
-import { ReportSourceLabel, type ReportSourceType } from "./v2/report-source-label";
 import {
-  INSTAGRAM_BENCHMARK_CONTEXT,
   BENCHMARK_DATASET_VERSION,
   getActiveBenchmarkSources,
 } from "@/lib/knowledge/benchmark-context";
 import { cn } from "@/lib/utils";
-
-interface Props {
-  enriched?: ReportEnriched;
-}
 
 /**
  * Metodologia humana, não-técnica. Grid das três famílias de fonte
@@ -21,7 +14,7 @@ interface Props {
  * é mencionado em itálico discreto como reserva para futura ligação
  * autenticada.
  */
-export function ReportMethodology({ enriched }: Props = {}) {
+export function ReportMethodology() {
   const sources = [
     {
       icon: Database,
@@ -44,15 +37,6 @@ export function ReportMethodology({ enriched }: Props = {}) {
       body: "Indicadores públicos de procura associados aos temas do perfil, para perceber relevância fora da plataforma.",
     },
   ] as const;
-
-  const benchmarkSource = enriched?.benchmarkSource ?? null;
-
-  const sourceLegend: Array<{ type: ReportSourceType; explanation: string }> = [
-    { type: "dados", explanation: "Recolhido directamente do perfil público de Instagram." },
-    { type: "auto", explanation: "Métrica calculada ou classificação por regras determinísticas — sem IA." },
-    { type: "mercado", explanation: "Comparação com a Knowledge Base de pares e benchmarks de mercado." },
-    { type: "ia", explanation: "Texto interpretativo gerado por modelo de linguagem." },
-  ];
 
   const benchmarkSources = getActiveBenchmarkSources();
 
@@ -82,42 +66,6 @@ export function ReportMethodology({ enriched }: Props = {}) {
             </p>
           </div>
         ))}
-      </div>
-
-      {benchmarkSource ? (
-        <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-border-default/70">
-          <p className="text-eyebrow-sm text-content-tertiary">
-            Fonte do benchmark
-            {benchmarkSource.datasetVersion ? (
-              <>
-                <span className="mx-2 text-content-tertiary">·</span>
-                <span>dataset {benchmarkSource.datasetVersion}</span>
-              </>
-            ) : null}
-          </p>
-          <p className="mt-1.5 text-sm text-content-secondary leading-relaxed">
-            {benchmarkSource.note}
-          </p>
-        </div>
-      ) : null}
-
-      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-border-default/70">
-        <p className="text-eyebrow-sm text-content-tertiary mb-3">
-          Como ler os cartões
-        </p>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {sourceLegend.map(({ type, explanation }) => (
-            <li key={type} className="space-y-1.5 min-w-0">
-              <ReportSourceLabel type={type} />
-              <p className="text-[12px] text-content-secondary leading-snug">
-                {explanation}
-              </p>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 text-[12px] text-content-tertiary leading-relaxed">
-          Estas referências usam estudos públicos de mercado para dar contexto aos resultados. Quando não há setor definido, a comparação é feita por plataforma e dimensão aproximada da conta.
-        </p>
       </div>
 
       <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-border-default/70">
@@ -183,44 +131,6 @@ export function ReportMethodology({ enriched }: Props = {}) {
         <p className="mt-3 text-[11.5px] text-content-tertiary leading-relaxed italic">
           Databox fica reservado para futura ligação autenticada — métricas privadas como alcance, visitas e cliques.
         </p>
-      </div>
-
-      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-border-default/70">
-        <div className="flex items-start gap-3">
-          <span
-            aria-hidden="true"
-            className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-          >
-            <Users className="size-3.5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <p className="text-eyebrow-sm text-content-tertiary">
-              Comparação direta com concorrentes
-            </p>
-            <p className="text-sm text-content-secondary leading-relaxed">
-              Disponível no plano Pro: adicionar perfis concorrentes para
-              comparar este perfil com contas reais do mesmo mercado. Diferente
-              da referência de mercado — passa a usar dados de perfis específicos
-              em vez de estudos agregados.
-            </p>
-            <button
-              type="button"
-              disabled
-              title="Disponível no plano Pro"
-              aria-label="Adicionar concorrente — disponível no plano Pro"
-              className={cn(
-                "mt-1 inline-flex items-center gap-2 rounded-full px-3 py-1.5",
-                "border border-border-default bg-white text-[12px] text-content-tertiary",
-                "cursor-not-allowed",
-              )}
-            >
-              <span>Adicionar concorrente</span>
-              <span className="text-eyebrow-sm text-blue-600 bg-blue-50 ring-1 ring-blue-200 rounded-full px-1.5 py-0.5">
-                Pro
-              </span>
-            </button>
-          </div>
-        </div>
       </div>
     </ReportSectionFrame>
   );
