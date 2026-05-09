@@ -497,6 +497,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               </AdminActionButton>
               <SendLinkButton
                 lead={lead}
+                lastSentAt={lastReportLinkSentAt}
                 onClick={() => setSendLinkOpen(true)}
               />
               <FeedbackRequestButton
