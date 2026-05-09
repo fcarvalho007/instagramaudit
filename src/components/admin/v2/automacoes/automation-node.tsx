@@ -18,10 +18,12 @@ interface AutomationNodeProps {
   description: string;
   trigger: { kind: TriggerKind; label: string };
   action: { kind: ActionKind; label: string };
+  kind: "automatic" | "manual";
   toStatus: LifecycleStatus | null;
   eligibleCount: number;
   inFlightCount: number;
   completedCount: number;
+  recentFailures?: number;
 }
 
 const TRIGGER_LABEL: Record<TriggerKind, string> = {
@@ -55,18 +57,31 @@ export function AutomationNode({
   description,
   trigger,
   action,
+  kind,
   toStatus,
   eligibleCount,
   inFlightCount,
   completedCount,
+  recentFailures = 0,
 }: AutomationNodeProps) {
   const meta = toStatus ? getLifecycleMeta(toStatus) : null;
+  const kindColor = kind === "automatic" ? "#0E9488" : "#BA7517";
+  const kindLabel = kind === "automatic" ? "Automático" : "Manual";
 
   return (
     <AdminCard variant="accent-left" accent="leads">
       <div className="flex flex-col gap-3">
         {/* Tag row */}
         <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+            style={{
+              backgroundColor: `${kindColor}1A`,
+              color: kindColor,
+            }}
+          >
+            {kindLabel}
+          </span>
           <Tag color={TRIGGER_COLOR[trigger.kind]} prefix="Trigger">
             {TRIGGER_LABEL[trigger.kind]} · {trigger.label}
           </Tag>
@@ -82,6 +97,17 @@ export function AutomationNode({
               }}
             >
               → {meta.label}
+            </span>
+          )}
+          {recentFailures > 0 && (
+            <span
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              style={{
+                backgroundColor: "#D85A301A",
+                color: "#D85A30",
+              }}
+            >
+              {recentFailures} falha{recentFailures === 1 ? "" : "s"} recente{recentFailures === 1 ? "" : "s"} (7d)
             </span>
           )}
         </div>
