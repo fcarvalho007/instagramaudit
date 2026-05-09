@@ -7,6 +7,7 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { resolveCallCost } from "./cost-resolution";
 
 /* ── Shared types ──────────────────────────────────────────────────── */
 
@@ -84,7 +85,7 @@ export async function getReconciliationData(
   // Internal logged costs
   const { data: intRows } = await supabaseAdmin
     .from("provider_call_logs")
-    .select("provider, actor, estimated_cost_usd, created_at")
+    .select("provider, actor, actual_cost_usd, estimated_cost_usd, created_at")
     .gte("created_at", since);
 
   // Batches
@@ -114,7 +115,7 @@ export async function getReconciliationData(
   // KPIs — external total from batch dashboard totals (not row sums)
   let externalTotal = 0;
   for (const v of batchByProvider.values()) externalTotal += v.dashboardTotal;
-  const internalTotal = int.reduce((s, r) => s + Number(r.estimated_cost_usd ?? 0), 0);
+  const internalTotal = int.reduce((s, r) => s + resolveCallCost(r), 0);
   const variance = externalTotal - internalTotal;
   const variancePct = externalTotal > 0 ? (variance / externalTotal) * 100 : null;
 
@@ -137,7 +138,7 @@ export async function getReconciliationData(
   for (const r of int) {
     const d = (r.created_at as string).slice(0, 10);
     const entry = dailyMap.get(d) ?? { internal: 0, external: 0 };
-    entry.internal += Number(r.estimated_cost_usd ?? 0);
+    entry.internal += resolveCallCost(r);
     dailyMap.set(d, entry);
   }
   const daily: DailyPoint[] = [...dailyMap.entries()]
@@ -153,7 +154,7 @@ export async function getReconciliationData(
   const provMap = new Map<string, { internal: number }>();
   for (const r of int) {
     const entry = provMap.get(r.provider) ?? { internal: 0 };
-    entry.internal += Number(r.estimated_cost_usd ?? 0);
+    entry.internal += resolveCallCost(r);
     provMap.set(r.provider, entry);
   }
 
@@ -197,7 +198,7 @@ export async function getReconciliationData(
       external: 0,
       internal: 0,
     };
-    entry.internal += Number(r.estimated_cost_usd ?? 0);
+    entry.internal += resolveCallCost(r);
     actorMap.set(key, entry);
   }
   const byActor: ActorBreakdown[] = [...actorMap.entries()].map(
@@ -220,7 +221,7 @@ export async function getReconciliationData(
       if (r.provider !== b.provider) continue;
       const t = new Date(r.created_at as string).getTime();
       if (t >= bStart && t <= bEnd) {
-        intTotal += Number(r.estimated_cost_usd ?? 0);
+        intTotal += resolveCallCost(r);
       }
     }
     return {
