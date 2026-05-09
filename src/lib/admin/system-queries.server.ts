@@ -600,7 +600,7 @@ export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
     const status = String(row.status);
     if (status !== "success" && status !== "cache") continue;
 
-    const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+    const cost = resolveCallCost(row);
     totals[provider].amount_usd += cost;
     totals[provider].calls += 1;
 
@@ -696,7 +696,7 @@ export async function fetchRecentProviderCalls(
       status,
       http: row.http_status ?? null,
       duration: fmtDuration(row.duration_ms ?? null),
-      cost: fmtCost(row.actual_cost_usd ?? row.estimated_cost_usd),
+      cost: fmtCost(resolveCallCost(row) || null),
     };
   });
 }
