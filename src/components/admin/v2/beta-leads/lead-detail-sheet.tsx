@@ -56,11 +56,12 @@ import {
   ChevronDown,
   MessageCircle,
 } from "lucide-react";
-import { Zap, AlertTriangle } from "lucide-react";
+import { Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
+import { AdminCallout } from "@/components/admin/v2/admin-callout";
 import {
   PRICING_PREFERENCE_LABELS,
   PURCHASE_INTENT_LABELS,
@@ -777,23 +778,11 @@ function GenerateReportDialog({
             Isto vai executar uma análise completa via Apify para{" "}
             <strong>@{handle}</strong> e gerar um snapshot novo.
           </p>
-          <div
-            className="flex items-start gap-2 rounded-lg p-3 text-[13px]"
-            style={{
-              backgroundColor: "rgba(234,179,8,0.08)",
-              border: "1px solid rgba(234,179,8,0.2)",
-            }}
-          >
-            <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: "#D97706" }} />
-            <div>
-              <p className="font-medium" style={{ color: "#D97706" }}>Aviso de custo</p>
-              <p className="mt-0.5 text-admin-text-secondary">
-                Esta ação consome créditos Apify (~€0.05–0.10 por perfil).
-                Verificar que o modo de execução está em <strong>Fresh</strong> e
-                que o provider está ativo.
-              </p>
-            </div>
-          </div>
+          <AdminCallout title="Aviso de custo">
+            Esta ação consome créditos Apify (~€0.05–0.10 por perfil).
+            Verificar que o modo de execução está em <strong>Fresh</strong> e
+            que o provider está ativo.
+          </AdminCallout>
         </div>
       }
       confirmLabel={loading ? "A gerar…" : "Confirmar geração"}
@@ -1043,17 +1032,10 @@ function SendLinkDialog({
       description={
         <div className="space-y-3 text-[13px]">
           {isResend && lastSentLabel && (
-            <div
-              className="rounded-md px-3 py-2 text-[12px]"
-              style={{
-                backgroundColor: "rgba(186,117,23,0.08)",
-                border: "1px solid rgba(186,117,23,0.25)",
-                color: "#8A560F",
-              }}
-            >
+            <AdminCallout title="Link já enviado">
               Já foi enviado um link a este lead em <strong>{lastSentLabel}</strong>.
               Confirma o reenvio.
-            </div>
+            </AdminCallout>
           )}
           <div className="grid grid-cols-[80px_1fr] gap-y-1.5">
             <span className="admin-meta text-admin-text-tertiary">Para</span>
@@ -1208,29 +1190,11 @@ function FeedbackRequestDialog({
             <span className="text-admin-text-primary">{subject}</span>
           </div>
           {notViewed && (
-            <div
-              className="flex items-start gap-2 rounded-lg p-3 text-[13px]"
-              style={{
-                backgroundColor: "rgb(var(--tint-warning))",
-                border: "1px solid rgb(var(--signal-warning) / 0.25)",
-              }}
-            >
-              <AlertTriangle
-                size={15}
-                style={{ color: "rgb(var(--signal-warning))" }}
-                className="shrink-0 mt-0.5"
-              />
-              <div>
-                <p className="font-medium m-0" style={{ color: "rgb(var(--signal-warning))" }}>
-                  Sem visualização registada
-                </p>
-                <p className="mt-0.5 text-admin-text-secondary m-0">
-                  Este relatório ainda não foi registado como visto. Podes
-                  enviar mesmo assim — o pedido continuará válido quando o
-                  lead abrir o link.
-                </p>
-              </div>
-            </div>
+            <AdminCallout title="Sem visualização registada">
+              Este relatório ainda não foi registado como visto. Podes
+              enviar mesmo assim — o pedido continuará válido quando o
+              lead abrir o link.
+            </AdminCallout>
           )}
           <div>
             <p className="admin-eyebrow-sm mb-1">Link de feedback</p>

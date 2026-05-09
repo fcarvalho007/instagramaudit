@@ -1,69 +1,84 @@
-## Avaliação: tudo já está implementado
+## Avaliação de consolidação
 
-Os 5 itens do pedido **já estão no código**. Verificação ficheiro a ficheiro:
+Após o refinamento de tokens no `FeedbackRequestDialog`, fiz um sweep ao `lead-detail-sheet.tsx` (1406 linhas) e flows admin adjacentes. Encontrei **inconsistência de design no mesmo padrão visual repetido 3 vezes** — banners de aviso amber dentro de dialogs. Cada um usa cores diferentes:
 
-| # | Pedido | Estado | Onde |
-|---|---|---|---|
-| 1 | Aviso "Sem visualização registada" no `FeedbackRequestDialog` quando `report_views === 0` | ✅ Presente | `lead-detail-sheet.tsx:1193` (`notViewed`) + bloco amber `1210–1234` com copy exato do brief |
-| 2 | Botão desabilitado quando `lead.feedback` existe, tooltip "Feedback já recebido." | ✅ Presente | `lead-detail-sheet.tsx:1148` (`disabledReason = "Feedback já recebido."`) |
-| 3 | Endpoint emite `feedback_requested` (não `feedback_request_sent`) | ✅ Presente | `send-feedback-request.ts:248` (`eventType: "feedback_requested"`) |
-| 4 | `lead-lifecycle.ts` mapeia apenas `feedback_requested → feedback_pedido` | ✅ Presente | `lead-lifecycle.ts:114` (sem referência a `feedback_request_sent`) |
-| 5 | Dialog code preview diz `feedback_requested` | ✅ Presente | `lead-detail-sheet.tsx:1248` |
+| # | Local | Fundo | Borda | Texto/Ícone | Avaliação |
+|---|---|---|---|---|---|
+| 1 | `GenerateReportDialog` (L775–796) "Aviso de custo" | `rgba(234,179,8,0.08)` (amarelo) | `rgba(234,179,8,0.2)` | `#D97706` | ❌ Cor errada (yellow-600, não o amber #BA7517 do sistema) |
+| 2 | `SendLinkDialog` resend banner (L1045–1056) | `rgba(186,117,23,0.08)` ✓ | `rgba(186,117,23,0.25)` ✓ | `#8A560F` | ⚠️ Cor certa mas hardcoded em vez de tokens |
+| 3 | `FeedbackRequestDialog` (L1210–1234) "Sem visualização registada" | `rgb(var(--tint-warning))` | `rgb(var(--signal-warning) / 0.25)` | `rgb(var(--signal-warning))` | ✅ Tokenizado (já feito) |
 
-`grep` global confirma **zero referências a `feedback_request_sent`** em todo o `src/`. Nada por fazer no contrato funcional.
+Três variantes do mesmo conceito visual = dívida técnica de design system. A regra core de memória diz literalmente *"never hardcode colors/fonts in components"* e *"Gold demoted to subtle amber #BA7517"*. O #1 é o pior caso: é literalmente uma cor diferente (amarelo Tailwind em vez do amber sóbrio do sistema).
 
 ---
 
-## Único refinamento proposto (opcional, alinhamento com design system)
+## Plano de consolidação
 
-O bloco de aviso no `FeedbackRequestDialog` usa cores **hardcoded** (`rgba(234,179,8,...)` / `#D97706`), o que viola a regra de memória *"Design tokens in src/styles/tokens.css and src/styles/tokens-light.css — never hardcode colors/fonts in components"*. O sistema já expõe os tokens corretos:
+### Passo 1 — Criar componente reutilizável
 
-- `--signal-warning: 186 117 23` (#BA7517 — amber subtil oficial)
-- `--tint-warning: 250 244 232` (fundo amber para alertas)
+Novo ficheiro: `src/components/admin/v2/admin-callout.tsx`
 
-### Mudança proposta
+```tsx
+// Componente único para banners informativos dentro de dialogs/cards admin.
+// Variants: "warning" (amber) | "info" (blue, futuro)
+type Props = {
+  variant?: "warning";
+  icon?: ReactNode;       // default: <AlertTriangle size={15} />
+  title: string;
+  children: ReactNode;    // body
+};
+```
 
-**Ficheiro único:** `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
+Estilo via tokens existentes:
+- `warning` → `--tint-warning` / `--signal-warning`
+- title + ícone usam `rgb(var(--signal-warning))`
+- body usa `text-admin-text-secondary`
+- spacing/radius/border match dos 3 sítios atuais (`rounded-lg p-3 text-[13px]`, ícone `mt-0.5 shrink-0`, gap-2)
 
-Substituir o bloco `notViewed` (linhas 1211–1233) por uma versão tokenizada:
+### Passo 2 — Migrar os 3 sítios
 
-- `backgroundColor: "rgb(var(--tint-warning))"` (em vez de `rgba(234,179,8,0.08)`)
-- `borderColor: "rgb(var(--signal-warning) / 0.25)"` (em vez de `rgba(234,179,8,0.2)`)
-- Texto título e ícone: `color: "rgb(var(--signal-warning))"` (em vez de `#D97706`)
-- Manter ícone `AlertTriangle`, mesmo layout, mesmo copy literal
+**`GenerateReportDialog`** (L780–796):
+- Substituir bloco inteiro por `<AdminCallout variant="warning" title="Aviso de custo">`
+- Body: copy atual sobre créditos Apify
+- Ganho: cor passa de yellow-600 errado para amber #BA7517 oficial
 
-**Aplicar o mesmo tratamento ao `GenerateReportDialog`** (linhas 773–810 — mesmo padrão hardcoded amber) **só se** quisermos consistência num único passe. Caso contrário, fica fora deste plano para respeitar a regra "tocar apenas nos 3 ficheiros aprovados". **Recomendo deixar de fora** — risco zero do refactor escalar.
+**`SendLinkDialog`** (L1046–1056):
+- Substituir bloco resend banner por `<AdminCallout variant="warning" title="Link já enviado">` (novo título mais semântico)
+- Body: "Já foi enviado um link a este lead em **{lastSentLabel}**. Confirma o reenvio."
+- Ganho: tokens em vez de hardcoded, e ganha ícone (atualmente não tem) → consistência visual
 
-### Por que faz sentido
+**`FeedbackRequestDialog`** (L1210–1234):
+- Substituir bloco já tokenizado por `<AdminCallout variant="warning" title="Sem visualização registada">`
+- Body: copy atual
+- Ganho: -25 linhas, mesma aparência
 
-- Cumpre regra core de design tokens
-- Fica alinhado com o subtle amber #BA7517 (regra de memória explícita: gold demoted to subtle amber)
-- Continua "visible but not alarming" como o brief pede — `--signal-warning` é mais sóbrio que o `#D97706` atual
+### Passo 3 — Limpeza
 
-### Por que pode ser dispensado
-
-- Funcionalmente idêntico
-- O brief explicitamente pediu *"Use existing admin styling and semantic tokens **where possible**"* e *"Keep changes limited to the three approved files"* — fazer este refinamento mantém-se dentro dos 3 ficheiros (só toca `lead-detail-sheet.tsx`), portanto compatível
-- Nenhum risco regressivo
-
----
-
-## Validação prevista
-
-- `bunx tsc --noEmit` — limpo (mudança puramente CSS via style inline)
-- `bunx vitest run` — manter 156/156 (sem testes a tocar este componente)
-- Smoke manual: abrir Lead Detail Sheet com lead em `link_enviado` + `report_views = 0`, confirmar aviso amber subtil; abrir lead com `feedback` presente, confirmar botão disabled + tooltip
-
----
-
-## Sem mudanças necessárias
-
-- `send-feedback-request.ts` — já correto
-- `lead-lifecycle.ts` — já correto
-- Schema, providers, PDF, public form, `/api/public/feedback.$requestId.ts` — não tocados
+- Verificar se `AlertTriangle` continua a ser importado em `lead-detail-sheet.tsx` (provavelmente não — fica encapsulado no callout). Remover import órfão se aplicável.
+- `tsc --noEmit` + `vitest run` (esperado 156/156 verdes — mudança puramente visual, sem lógica).
+- QA manual rápido nos 3 dialogs.
 
 ---
 
-## Decisão pedida
+## O que NÃO está neste plano (deixar para futura iteração)
 
-Confirmas que avanço só com a tokenização do bloco amber no `FeedbackRequestDialog`? Se preferires não tocar em código (já que o pedido funcional está 100% cumprido), respondo apenas com o relatório de QA manual e fechamos.
+- **Extrair dialogs para ficheiros próprios**: `lead-detail-sheet.tsx` tem 1406 linhas e contém `GenerateReportDialog`, `SendLinkDialog`, `FeedbackRequestDialog`, `RegenerateConfirmDialog` inline. Faz sentido extrair para `src/components/admin/v2/beta-leads/dialogs/` mas é refactor maior — se quiseres, faço como passo separado depois deste.
+- **Outras cores hardcoded encontradas no sweep** (`rgba(44,44,42,0.04)`, `rgba(83,74,183,0.06)`, etc.): são tints subtis de surface/accent já consistentes, baixa prioridade.
+- **Receita/relatórios `#FAF9F5`**: cores de chart, fora do escopo deste pedido.
+
+---
+
+## Constraints respeitados
+
+- Não toca em endpoint, lifecycle, schema, providers, PDF, public form
+- Mantém comportamento funcional 100% idêntico
+- Apenas 1 ficheiro novo + 1 editado (mais 0 a 1 import limpo)
+- Sem novas dependências
+
+## Validação
+
+- `bunx tsc --noEmit` limpo
+- `bunx vitest run` mantém 156/156
+- Inspeção visual dos 3 dialogs (Generate, SendLink resend, FeedbackRequest sem view)
+
+Dou seguimento?
