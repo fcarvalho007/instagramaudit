@@ -325,14 +325,13 @@ function AnalyzeReady({
       .catch(() => { /* silent fallback — static defaults used */ });
   }, []);
 
-  // Track report view (fire-and-forget). Guarded by a ref-backed Set so
-  // StrictMode double-invokes, remounts ou re-renders não duplicam o evento
-  // para o mesmo snapshot dentro da mesma sessão montada.
-  const trackedSnapshotsRef = useRef<Set<string>>(new Set());
+  // Track report view (fire-and-forget). Guarded por module-level Set +
+  // sessionStorage para sobreviver a StrictMode double-invokes, remounts entre
+  // route changes e refreshes dentro do mesmo tab.
   useEffect(() => {
     if (!snapshotId) return;
-    if (trackedSnapshotsRef.current.has(snapshotId)) return;
-    trackedSnapshotsRef.current.add(snapshotId);
+    if (hasTrackedSnapshot(snapshotId)) return;
+    markSnapshotTracked(snapshotId);
     trackEvent({
       data: {
         eventType: "report_viewed",
