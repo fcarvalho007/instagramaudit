@@ -37,7 +37,7 @@ import { Lock, Sparkles } from "lucide-react";
 import { ReportMethodology } from "../report-methodology";
 import { REDESIGN_TOKENS } from "../report-tokens";
 
-import { BLOCKS, type BlockConfig } from "./block-config";
+import { BLOCKS } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
