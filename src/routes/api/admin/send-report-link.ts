@@ -85,10 +85,11 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // 1. Admin auth
+        // 1. Admin auth (helper throws a Response on failure)
         try {
           await requireAdminSession();
-        } catch {
+        } catch (err) {
+          if (err instanceof Response) return err;
           return errorResponse("UNAUTHORIZED", "Admin session required.", 401);
         }
 
