@@ -128,7 +128,7 @@ export const Route = createFileRoute("/api/send-report-email")({
         const { data: reportRequest, error: requestError } = await supabaseAdmin
           .from("report_requests")
           .select(
-            "id, lead_id, instagram_username, pdf_status, pdf_storage_path, delivery_status",
+            "id, lead_id, instagram_username, pdf_status, pdf_storage_path, delivery_status, analysis_snapshot_id",
           )
           .eq("id", payload.report_request_id)
           .maybeSingle();
