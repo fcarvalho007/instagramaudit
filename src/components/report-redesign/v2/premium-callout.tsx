@@ -1,6 +1,9 @@
-import type { ReactNode } from "react";
-import { Crown, Lock } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Crown, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/tracking.functions";
+import { PremiumInterestDialog } from "./premium-interest-dialog";
+import { useReportTracking } from "./report-tracking-context";
 
 interface Props {
   /** Title of the premium feature. */
@@ -10,6 +13,10 @@ interface Props {
   /** Optional slot for CTA button or extra content. */
   children?: ReactNode;
   className?: string;
+  /** When true, shows DESBLOQUEAR button + opens interest dialog on click. */
+  unlockEnabled?: boolean;
+  /** Logical origin of this callout (used for event metadata). */
+  sourceComponent?: string;
 }
 
 /**
@@ -23,7 +30,24 @@ export function PremiumCallout({
   description,
   children,
   className,
+  unlockEnabled = false,
+  sourceComponent = "premium_callout",
 }: Props) {
+  const { snapshotId, handle, variant } = useReportTracking();
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleUnlock = () => {
+    trackEvent({
+      data: {
+        eventType: "unlock_clicked",
+        snapshotId: snapshotId ?? undefined,
+        handle: handle ?? undefined,
+        metadata: { variant, source_component: sourceComponent },
+      },
+    }).catch(() => {});
+    setDialogOpen(true);
+  };
+
   return (
     <div
       className={cn(
@@ -57,6 +81,32 @@ export function PremiumCallout({
         </p>
         {children ? (
           <div className="mt-2">{children}</div>
+        ) : null}
+        {unlockEnabled ? (
+          <>
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={handleUnlock}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
+                  "text-eyebrow-sm bg-amber-600 text-white hover:bg-amber-700",
+                  "transition-colors",
+                )}
+              >
+                <Sparkles className="size-3" aria-hidden="true" />
+                Desbloquear
+              </button>
+            </div>
+            <PremiumInterestDialog
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              snapshotId={snapshotId}
+              handle={handle}
+              variant={variant}
+              sourceComponent={sourceComponent}
+            />
+          </>
         ) : null}
       </div>
     </div>
