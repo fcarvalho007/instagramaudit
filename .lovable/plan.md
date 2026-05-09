@@ -1,11 +1,11 @@
-Plano para corrigir o erro ao clicar em “Público geral” em `/admin/report-lab`:
+O bug "Cannot read properties of undefined (reading 'id')" em `/analyze/frederico.m.carvalho` já foi corrigido na ronda anterior:
 
-1. Reproduzir a falha no próprio Report Lab após garantir sessão/admin visível no preview.
-2. Corrigir a causa provável no `ReportShellV2`: quando a variante `public_mvp` deixa apenas 2 blocos visíveis, a navegação mobile ainda tenta renderizar 3 tabs e pode aceder a um bloco inexistente.
-3. Tornar `ReportBlockTopTabs` resiliente para 1–2 blocos visíveis:
-   - calcular apenas índices válidos;
-   - não renderizar botões quando não existe bloco;
-   - manter sidebar e tabs alinhadas com `visibleBlockIds`.
-4. Fazer uma verificação rápida do fluxo: `internal_lab` → `public_mvp` sem cair no fallback “Something went wrong”.
+- Causa: `ReportBlockTopTabs` (nav mobile) e o cálculo de `visibleIndices` partiam do princípio que existem sempre 3 blocos visíveis. Em `public_mvp`, só há 2 (Visão geral + Diagnóstico), pelo que `filtered[2]` era `undefined` e a renderização rebentava ao ler `block.id`.
+- Correção aplicada em `src/components/report-redesign/v2/report-block-nav.tsx`: o array de índices visíveis agora limita-se a `min(3, filtered.length)` e não acede a posições inválidas.
 
-Sem mexer em dados, providers, PDF, Lovable Cloud ou lógica de análise.
+Verificação no preview:
+- `/analyze/frederico.m.carvalho` carrega normalmente.
+- O relatório público mostra apenas Bloco 01 (Visão geral) e Bloco 02 (Diagnóstico), tal como definido para `public_mvp`.
+- Sem erros na consola.
+
+Se o erro voltar a aparecer numa rota específica (ex.: variante diferente, ou outra página), basta indicares o URL e o ecrã onde ocorreu para investigar pontualmente. Sem alterações adicionais a fazer agora.
