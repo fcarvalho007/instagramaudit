@@ -244,6 +244,60 @@ function DetailRow({ label, icon: Icon, children }: { label: string; icon?: Reac
 /** Statuses that allow triggering a fresh report generation. */
 const GENERATABLE_STATUSES = ["approved", "pending_review", "failed"] as const;
 
+type TabKey = "resumo" | "relatorio" | "feedback" | "comunicacao" | "historico";
+
+const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
+  { key: "resumo", label: "Resumo" },
+  { key: "relatorio", label: "Relatório" },
+  { key: "feedback", label: "Feedback" },
+  { key: "comunicacao", label: "Comunicação" },
+  { key: "historico", label: "Histórico" },
+];
+
+const COMMUNICATION_EVENT_TYPES = new Set([
+  "report_link_sent",
+  "feedback_requested",
+  "feedback_started",
+  "email_failed",
+  "email_bounced",
+]);
+
+/**
+ * Collapses runs of consecutive `report_viewed` events (same handle) into a
+ * single synthetic event with `metadata.grouped_count` for compact display.
+ */
+function groupConsecutiveViews(events: TimelineEvent[]): TimelineEvent[] {
+  const out: TimelineEvent[] = [];
+  let i = 0;
+  while (i < events.length) {
+    const ev = events[i];
+    if (ev.event_type !== "report_viewed") {
+      out.push(ev);
+      i++;
+      continue;
+    }
+    let j = i + 1;
+    while (
+      j < events.length &&
+      events[j].event_type === "report_viewed" &&
+      events[j].handle === ev.handle
+    ) {
+      j++;
+    }
+    const count = j - i;
+    if (count === 1) {
+      out.push(ev);
+    } else {
+      out.push({
+        ...ev,
+        metadata: { ...(ev.metadata ?? {}), grouped_count: count },
+      });
+    }
+    i = j;
+  }
+  return out;
+}
+
 export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh }: LeadDetailSheetProps) {
   const [notesText, setNotesText] = useState("");
   const [notesDirty, setNotesDirty] = useState(false);
