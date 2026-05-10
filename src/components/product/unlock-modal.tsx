@@ -376,7 +376,7 @@ export function UnlockModal({
                 Acesso gratuito durante a beta · demora cerca de 1 minuto
               </DialogDescription>
               <div
-                className="h-[2px] w-full rounded-full bg-primary/15 overflow-hidden mt-1"
+                className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden mt-1"
                 role="progressbar"
                 aria-valuemin={1}
                 aria-valuemax={TOTAL_STEPS}
@@ -430,6 +430,12 @@ export function UnlockModal({
                     form.setValue("goal", v as Goal, { shouldValidate: true })
                   }
                   error={form.formState.errors.goal?.message}
+                  otherValue="other"
+                  otherText={form.watch("goal_other_text") ?? ""}
+                  onOtherTextChange={(v) =>
+                    form.setValue("goal_other_text", v, { shouldValidate: true })
+                  }
+                  otherError={form.formState.errors.goal_other_text?.message}
                 />
               ) : null}
               {step === 4 ? (
@@ -447,6 +453,14 @@ export function UnlockModal({
                     })
                   }
                   error={form.formState.errors.user_type?.message}
+                  otherValue="other"
+                  otherText={form.watch("user_type_other_text") ?? ""}
+                  onOtherTextChange={(v) =>
+                    form.setValue("user_type_other_text", v, {
+                      shouldValidate: true,
+                    })
+                  }
+                  otherError={form.formState.errors.user_type_other_text?.message}
                 />
               ) : null}
 
