@@ -297,26 +297,51 @@ export async function processReportUnlock(
         .select("id")
         .single();
       if (rrErr || !insertedRR) {
+        // Race: another concurrent unlock for the same (lead, snapshot) won
+        // the insert. The unique partial index report_requests_lead_snapshot_unique
+        // raises 23505. Refetch and treat as existing (no duplicate email).
+        if ((rrErr as { code?: string } | null)?.code === "23505") {
+          const { data: raceRR } = await (supabaseAdmin as any)
+            .from("report_requests")
+            .select("id")
+            .eq("lead_id", leadId)
+            .eq("analysis_snapshot_id", data.analysis_snapshot_id)
+            .limit(1)
+            .maybeSingle();
+          if (raceRR?.id) {
+            reportRequestId = raceRR.id as string;
+            createdReportRequest = false;
+          } else {
+            console.error(
+              "[unlock] 23505 but no row found for lead",
+              leadId,
+              rrErr,
+            );
+            return { success: false, status: 500, error: "INTERNAL_ERROR" };
+          }
+        } else {
         console.error(
           "[unlock] report_request insert failed for lead",
           leadId,
           rrErr,
         );
         return { success: false, status: 500, error: "INTERNAL_ERROR" };
-      }
-      reportRequestId = insertedRR.id as string;
-      createdReportRequest = true;
+        }
+      } else {
+        reportRequestId = insertedRR.id as string;
+        createdReportRequest = true;
 
-      await recordProductEvent({
-        eventType: "report_saved_to_account",
-        leadId,
-        snapshotId: data.analysis_snapshot_id,
-        handle: data.instagram_username,
-        metadata: {
-          returning_lead: returningLead,
-          report_request_id: reportRequestId,
-        },
-      });
+        await recordProductEvent({
+          eventType: "report_saved_to_account",
+          leadId,
+          snapshotId: data.analysis_snapshot_id,
+          handle: data.instagram_username,
+          metadata: {
+            returning_lead: returningLead,
+            report_request_id: reportRequestId,
+          },
+        });
+      }
     }
 
     // unlock_completed (deduped within 5s)
