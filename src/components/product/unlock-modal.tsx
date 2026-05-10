@@ -165,7 +165,9 @@ const STEP_HEADERS: Record<
         <strong className="text-content-primary font-medium">
           Conteúdo · Procura · Comparação
         </strong>
-        . Acesso gratuito durante a beta.
+        . Acesso gratuito durante a{" "}
+        <strong className="text-content-primary font-medium">beta privada</strong>
+        {" "}— podemos contactar-te para feedback.
       </>
     ),
   },
