@@ -44,10 +44,7 @@ function AdminLayout() {
         data-demo={demoOn ? "on" : "off"}
       >
         <AdminSidebar logout={logout} />
-        <main
-          className="min-h-screen pt-12 px-3 py-4 sm:px-5 sm:py-5 md:pt-7 md:px-7 md:py-7"
-          style={{ marginLeft: "var(--admin-sidebar-width-md, 0)" }}
-        >
+        <main className="min-h-screen pt-14 px-3 py-4 sm:px-5 sm:py-5 md:pt-7 md:pl-7 md:pr-7 md:py-7 md:ml-[var(--admin-sidebar-width)]">
           <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
             <ExecutionModeBadge />
           </div>
