@@ -2,13 +2,18 @@
  * Resolve the Resend `From` header for transactional emails.
  *
  * Reads `RESEND_FROM` (e.g., `"InstaBench <relatorios@instagramaudit.pt>"`).
- * Falls back to Resend's sandbox identity, which only delivers to the Resend
- * account owner — production use requires a verified domain + `RESEND_FROM`.
+ * No silent fallback: if `RESEND_FROM` is missing the caller must surface
+ * a `RESEND_FROM_MISSING` error. We never fall back to Resend's sandbox
+ * sender (`onboarding@resend.dev`) because that only delivers to the
+ * Resend account owner and would silently break external beta sends.
  */
 
-const DEFAULT_SENDER_FROM = "InstaBench <onboarding@resend.dev>";
+export type SenderResolution =
+  | { ok: true; from: string }
+  | { ok: false; reason: "RESEND_FROM_MISSING" };
 
-export function resolveSender(): string {
+export function resolveSender(): SenderResolution {
   const v = process.env.RESEND_FROM?.trim();
-  return v && v.length > 0 ? v : DEFAULT_SENDER_FROM;
+  if (!v) return { ok: false, reason: "RESEND_FROM_MISSING" };
+  return { ok: true, from: v };
 }

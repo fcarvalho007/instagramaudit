@@ -427,6 +427,7 @@ const SECRET_NAMES = [
   "DATAFORSEO_ENABLED",
   "DATAFORSEO_ALLOWLIST",
   "RESEND_API_KEY",
+  "RESEND_FROM",
   "INTERNAL_API_TOKEN",
   "ADMIN_ALLOWED_EMAILS",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -467,7 +468,9 @@ export async function fetchSystemHealth(): Promise<HealthChip[]> {
     lastCallStatus("dataforseo"),
   ]);
 
-  const resendOk = Boolean(process.env.RESEND_API_KEY);
+  const resendApiKeyOk = Boolean(process.env.RESEND_API_KEY);
+  const resendFromOk = Boolean(process.env.RESEND_FROM);
+  const resendOk = resendApiKeyOk && resendFromOk;
   const supabaseOk = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   return [
@@ -477,7 +480,11 @@ export async function fetchSystemHealth(): Promise<HealthChip[]> {
     {
       service: "Resend",
       status: resendOk ? "operational" : "critical",
-      detail: resendOk ? "Operacional" : "Em falta",
+      detail: resendOk
+        ? "Operacional"
+        : !resendApiKeyOk
+          ? "RESEND_API_KEY em falta"
+          : "RESEND_FROM em falta",
     },
     {
       service: "Supabase",

@@ -183,6 +183,17 @@ async function sendViaResend(
     };
   }
 
+  const sender = resolveSender();
+  if (!sender.ok) {
+    return {
+      ok: false,
+      messageId: null,
+      reason: sender.reason,
+      status: null,
+      latencyMs: Date.now() - startedAt,
+    };
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
   try {
@@ -193,7 +204,7 @@ async function sendViaResend(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: resolveSender(),
+        from: sender.from,
         to: [input.to],
         subject: input.subject,
         html: input.html,
@@ -283,17 +294,25 @@ export async function sendTransactionalEmail(
     latency_ms: brevo.latencyMs,
   });
 
-  const hasResend = Boolean(process.env.RESEND_API_KEY?.trim());
-  if (!hasResend) {
+  const resendApiKeyOk = Boolean(process.env.RESEND_API_KEY?.trim());
+  const resendFromOk = Boolean(process.env.RESEND_FROM?.trim());
+  const resendConfigured = resendApiKeyOk && resendFromOk;
+  if (!resendConfigured) {
+    const missingSecret = !resendApiKeyOk ? "RESEND_API_KEY" : "RESEND_FROM";
+    const resendReason = !resendApiKeyOk
+      ? "RESEND_API_KEY_MISSING"
+      : "RESEND_FROM_MISSING";
     await safeRecord(FLOW_FAILURE_EVENT[input.flowType], input, {
       brevo_reason: brevo.reason,
-      resend_reason: null,
+      resend_reason: resendReason,
       fallback_attempted: false,
+      missing_secret: missingSecret,
+      provider: "resend",
     });
     return {
       ok: false,
       brevoReason: brevo.reason ?? "BREVO_UNKNOWN",
-      resendReason: null,
+      resendReason,
       latencyMs: Date.now() - startedAt,
     };
   }
