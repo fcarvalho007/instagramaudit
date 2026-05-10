@@ -412,37 +412,82 @@ export async function processReportUnlock(
     //    by the report_request lookup above. Never blocks the unlock.
     if (createdReportRequest) {
       try {
-        const { sendPersonalAreaSavedEmail } = await import(
-          "@/lib/email/send-personal-area-saved.server"
-        );
         const firstName =
           data.name ?? (existingLead?.name as string | null | undefined) ?? null;
-        const res = await sendPersonalAreaSavedEmail({
-          toEmail: data.email,
-          firstName,
-          instagramHandle: data.instagram_username,
-          leadId,
-          reportRequestId,
-          snapshotId: data.analysis_snapshot_id,
-        });
-        // Success event stays here (carries caller-specific metadata).
-        // Failure events are emitted by the transactional abstraction
-        // itself (provider-level + flow-specific) — do NOT duplicate here.
-        if (res.ok) {
-          await recordProductEvent({
-            eventType: "personal_area_email_sent",
+        if (returningLead) {
+          // Returning lead: keep the existing "personal area saved" copy.
+          const { sendPersonalAreaSavedEmail } = await import(
+            "@/lib/email/send-personal-area-saved.server"
+          );
+          const res = await sendPersonalAreaSavedEmail({
+            toEmail: data.email,
+            firstName,
+            instagramHandle: data.instagram_username,
             leadId,
+            reportRequestId,
             snapshotId: data.analysis_snapshot_id,
-            handle: data.instagram_username,
-            metadata: {
-              message_id: res.messageId,
-              provider: res.provider,
-              report_request_id: reportRequestId,
-            },
           });
+          if (res.ok) {
+            await recordProductEvent({
+              eventType: "personal_area_email_sent",
+              leadId,
+              snapshotId: data.analysis_snapshot_id,
+              handle: data.instagram_username,
+              metadata: {
+                message_id: res.messageId,
+                provider: res.provider,
+                report_request_id: reportRequestId,
+              },
+            });
+          }
+        } else {
+          // Brand-new lead: send the welcome-beta email.
+          const { sendWelcomeBetaEmail } = await import(
+            "@/lib/email/send-welcome-beta.server"
+          );
+          const res = await sendWelcomeBetaEmail({
+            toEmail: data.email,
+            firstName,
+            instagramHandle: data.instagram_username,
+            leadId,
+            reportRequestId,
+            snapshotId: data.analysis_snapshot_id,
+          });
+          if (res.ok) {
+            await recordProductEvent({
+              eventType: "welcome_beta_email_sent",
+              leadId,
+              snapshotId: data.analysis_snapshot_id,
+              handle: data.instagram_username,
+              metadata: {
+                message_id: res.messageId,
+                provider: res.provider,
+                report_request_id: reportRequestId,
+              },
+            });
+
+            // Brevo attribute stamp — fire-and-forget. Never blocks unlock.
+            void (async () => {
+              const { upsertBrevoContact } = await import(
+                "@/lib/brevo/contacts.server"
+              );
+              const stamp = await upsertBrevoContact({
+                email: data.email,
+                attributes: { BETA_WELCOMED_AT: new Date().toISOString() },
+              });
+              if (!stamp.ok) {
+                console.error(
+                  "[unlock] brevo BETA_WELCOMED_AT stamp failed:",
+                  stamp.reason,
+                );
+              }
+            })().catch((err) => {
+              console.error("[unlock] brevo welcomed-at stamp error:", err);
+            });
+          }
         }
       } catch (err) {
-        console.error("[unlock] personal-area email error:", err);
+        console.error("[unlock] welcome/personal-area email error:", err);
       }
     }
 
