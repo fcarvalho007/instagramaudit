@@ -1,84 +1,43 @@
-## Avaliação das fases do prompt original
+## Avaliação final — fase Brevo contact sync
 
-| Fase | Estado |
+| Fase do prompt original | Estado |
 |---|---|
-| 1. Secrets (`BREVO_API_KEY`, `BREVO_LEAD_MAGNET_LIST_ID=16`, `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`) | ✅ todos presentes |
-| 2. Helpers `client.server.ts`, `contacts.server.ts`, `sync.server.ts`, `types.ts` | ✅ existem |
-| 3. `syncLeadToBrevo(leadId, reason)` | ✅ implementado |
-| 4. Chamada fire-and-forget no unlock | ✅ `unlock.server.ts:494-501` |
-| 5. Payload com 11 atributos + `listIds:[16]` + `updateEnabled:true` | ⚠️ código correto, **mas tem bug** |
+| 1. Secrets `BREVO_API_KEY`, `BREVO_LEAD_MAGNET_LIST_ID=16`, `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME` | ✅ presentes |
+| 2. Helpers `client.server.ts` / `contacts.server.ts` / `sync.server.ts` / `types.ts` | ✅ existem |
+| 3. `syncLeadToBrevo(leadId, reason)` | ✅ |
+| 4. Chamada fire-and-forget no unlock (`unlock.server.ts:494-501`) | ✅ |
+| 5. Payload com 11 atributos, `listIds:[16]`, `updateEnabled:true` | ✅ (após fix `goal→purpose`) |
 | 6. Best-effort + eventos `brevo_contact_synced` / `brevo_contact_sync_failed` | ✅ |
+| Bug `goal` vs coluna real `purpose` | ✅ corrigido |
+| Testes unitários | ✅ 5/5 passam |
+| `bunx tsc --noEmit` | ✅ |
 
-## Bug bloqueador detectado
+**Tudo o que o prompt pediu está concluído.** Não há refinamentos de código pendentes.
 
-`src/lib/brevo/sync.server.ts` linha 52 faz `SELECT ... goal ...` da tabela `leads`, mas a coluna real é **`purpose`** (confirmado no schema). O Supabase devolve erro de coluna inexistente → cai sempre em `LEAD_LOAD_ERROR` → nunca chama o Brevo. A sincronização está 100 % partida em produção.
+## Único ponto que não consegui validar automaticamente
 
-Os testes unitários não apanharam porque o mock devolve `goal` em vez de espelhar o schema real.
+O endpoint `GET /v3/contacts/attributes` do gateway Brevo devolve `not_found` — o gateway só expõe `POST /v3/contacts` (o necessário para sync). Não consegui listar os atributos da conta para confirmar que `GOAL`, `PROFILE_OWNERSHIP`, `INSTAGRAM_HANDLE`, etc. existem com esse nome exato.
 
-## Refinamento mínimo para concluir a fase
+Comportamento real do Brevo: se um atributo não existe, ele é **criado automaticamente** no primeiro upsert (com tipo inferido). Logo, mesmo que algum nome esteja diferente do que tens na UI, a chamada não falha — apenas cria um atributo novo. Risco: ficares com `GOAL` (atributo antigo) e `GOAL` novo duplicado, ou com casing inconsistente.
 
-### Edits
+## Validação manual recomendada (1 min, faz tu)
 
-**`src/lib/brevo/sync.server.ts`**
-- Linha 52: substituir `goal` por `purpose` na lista do `select`.
-- Linha 92: ler `lead.purpose` em vez de `lead.goal` (mantém o nome do atributo Brevo `GOAL` — esse mapeamento é intencional e está alinhado com o spec do prompt).
+1. Faz unlock de teste em produção com um email novo.
+2. Abre Brevo → Contacts → procura o email.
+3. Confirma:
+   - Está na lista **Lead Magnet Gratuito (ID 16)**.
+   - Os 11 atributos aparecem preenchidos com os nomes esperados.
+4. Em Lovable → admin → product_events: confirma evento `brevo_contact_synced`.
 
-**`src/lib/brevo/__tests__/sync.test.ts`**
-- Atualizar o mock do lead: `purpose: "improve_content"` em vez de `goal: ...`.
-- Adicionar 1 teste regressivo: o argumento passado a `.select(...)` contém `"purpose"` e **não** contém `"goal,"`.
+Se algum atributo aparecer com nome diferente, abrimos um pequeno follow-up para renomear no código.
 
-### Não tocar
+## Próximas fases (fora do scope deste prompt)
 
-- `client.server.ts`, `contacts.server.ts`, `types.ts`, `customer-sync.server.ts`
-- `unlock.server.ts` (wiring já correto)
-- `tracking.functions.ts` / allowlist de eventos (já contém os 2 eventos)
-- BD (sem migração — `purpose` já existe)
-- UI pública, Resend, Apify, OpenAI, DataForSEO
+Quando quiseres avançar, candidatos naturais:
+- **Sync de cliente pago** → mover contact para lista 17 (`Clientes Pagos`) + `IS_CUSTOMER: true`. Já existe `customer-sync.server.ts` esqueleto — falta wiring quando houver pagamento.
+- **Sync de intenção alta** → lista 18, regras de qualificação a definir (ex.: 2+ relatórios + `pricing_preference` alto).
+- **Envio transacional via Brevo** (substituir Resend) — fase explicitamente excluída deste prompt.
 
-## Payload final que o Brevo vai receber (após fix)
+## Conclusão
 
-```http
-POST https://api.brevo.com/v3/contacts
-Content-Type: application/json
-api-key: ***
-
-{
-  "email": "ana@empresa.pt",
-  "updateEnabled": true,
-  "listIds": [16],
-  "attributes": {
-    "INSTAGRAM_HANDLE": "frederico.m.carvalho",
-    "REPORTS_COUNT": 3,
-    "LAST_REPORT_URL": "https://instagramaudit.lovable.app/analyze/frederico.m.carvalho",
-    "LAST_REPORT_AT": "2026-05-10T14:22:01.123Z",
-    "PROFILE_OWNERSHIP": "own_profile",
-    "GOAL": "grow_audience",
-    "USER_TYPE": "creator",
-    "PRICING_PREFERENCE": "29-49 EUR",
-    "LEAD_SOURCE": "public_report_gate",
-    "COMMERCIAL_STATUS": "novo_pedido",
-    "IS_CUSTOMER": false
-  }
-}
-```
-(Atributos `null`/`""` são removidos por `cleanAttributes` antes do envio.)
-
-## Eventos `product_events`
-
-Ambos já registados pelo código existente:
-- `brevo_contact_synced` — metadata: `sync_reason`, `brevo_id`, `status`, `latency_ms`, `email_masked`, `reports_count`
-- `brevo_contact_sync_failed` — metadata: `sync_reason`, `reason`, `latency_ms`, `email_masked`
-
-## Validação
-
-- `bunx tsc --noEmit`
-- `bunx vitest run` (atualiza testes Brevo + novo regressivo passa)
-- Manual após deploy:
-  1. Unlock com email novo → contact aparece em lista 16 com 11 atributos
-  2. Unlock 2× com mesmo email → mesmo contact, `REPORTS_COUNT` incrementa
-  3. Unlock continua a funcionar mesmo se Brevo falhar; `brevo_contact_sync_failed` registado
-
-## Ficheiros alterados
-
-- `src/lib/brevo/sync.server.ts` (2 linhas)
-- `src/lib/brevo/__tests__/sync.test.ts` (mock + 1 teste novo)
+Fase Brevo contact sync **encerrada**. Sem ações de código a fazer agora. Aguardo decisão sobre a validação manual e qual a próxima fase a abrir.
