@@ -22,9 +22,17 @@ export interface Props {
   result: AdapterResult;
   renderInsight: (key: AiInsightV2Section) => ReactNode;
   payload?: SnapshotPayload;
+  /**
+   * Split rendering for the public lock gate:
+   * - "all" (default): renders everything.
+   * - "free": renders only the Editorial Identity Card (above the gate).
+   * - "locked": renders content from the Engagement card onward
+   *   (Engagement, Frequency+Format grid, Best vs Worst posts).
+   */
+  mode?: "all" | "free" | "locked";
 }
 
-export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
+export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload: _payload, mode = "all" }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
 
@@ -60,45 +68,50 @@ export function ReportOverviewBlock({ result, renderInsight, payload }: Props) {
   return (
     <div className="relative space-y-8 md:space-y-10">
 
-      {/* Zona B — 6-card summary grid (3 scores + 3 diagnostic) */}
-      {/* Zona B — Editorial Identity Card (replaces 6-card grid) */}
-      <EditorialIdentityCard
-        scores={scores}
-        aiHeroText={enriched.aiInsightsV2?.sections.hero?.text ?? null}
-        keyMetrics={{
-          engagementRate: k.engagementRate,
-          engagementBenchmark: k.engagementBenchmark,
-          engagementDeltaPct: k.engagementDeltaPct,
-        }}
-      />
-
-      {/* Zona C — Card de Taxa de Envolvimento */}
-      <EngagementCardRefined result={result} />
-
-      {/* Zona D — Frequência + Tipo de conteúdo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-        <FrequencyCard
-          postsAnalyzed={k.postsAnalyzed}
-          windowDays={result.coverage.windowDays}
-          postingFrequencyWeekly={k.postingFrequencyWeekly}
-          calendarDays={enriched.postingTimeline}
+      {(mode === "all" || mode === "free") && (
+        /* Zona B — Editorial Identity Card (replaces 6-card grid) */
+        <EditorialIdentityCard
+          scores={scores}
+          aiHeroText={enriched.aiInsightsV2?.sections.hero?.text ?? null}
+          keyMetrics={{
+            engagementRate: k.engagementRate,
+            engagementBenchmark: k.engagementBenchmark,
+            engagementDeltaPct: k.engagementDeltaPct,
+          }}
         />
-        <FormatCard
-          postsAnalyzed={k.postsAnalyzed}
-          dominantFormat={k.dominantFormat}
-          dominantFormatShare={k.dominantFormatShare}
-          formats={formatEntries}
-          analysedPostFormats={enriched.analysedPostFormats}
-        />
-      </div>
+      )}
 
-      {/* Best vs Worst Posts */}
-      <PostComparisonBlock
-        topPosts={result.enriched.topPosts}
-        bottomPosts={result.enriched.bottomPosts}
-        aiInsightText={result.enriched.aiInsightsV2?.sections.topPosts?.text ?? null}
-        windowLabel={result.data.meta?.windowShortLabel}
-      />
+      {(mode === "all" || mode === "locked") && (
+        <>
+          {/* Zona C — Card de Taxa de Envolvimento (lock boundary) */}
+          <EngagementCardRefined result={result} />
+
+          {/* Zona D — Frequência + Tipo de conteúdo */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+            <FrequencyCard
+              postsAnalyzed={k.postsAnalyzed}
+              windowDays={result.coverage.windowDays}
+              postingFrequencyWeekly={k.postingFrequencyWeekly}
+              calendarDays={enriched.postingTimeline}
+            />
+            <FormatCard
+              postsAnalyzed={k.postsAnalyzed}
+              dominantFormat={k.dominantFormat}
+              dominantFormatShare={k.dominantFormatShare}
+              formats={formatEntries}
+              analysedPostFormats={enriched.analysedPostFormats}
+            />
+          </div>
+
+          {/* Best vs Worst Posts */}
+          <PostComparisonBlock
+            topPosts={result.enriched.topPosts}
+            bottomPosts={result.enriched.bottomPosts}
+            aiInsightText={result.enriched.aiInsightsV2?.sections.topPosts?.text ?? null}
+            windowLabel={result.data.meta?.windowShortLabel}
+          />
+        </>
+      )}
     </div>
   );
 }

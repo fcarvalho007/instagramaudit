@@ -44,6 +44,7 @@ import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
+import { ReportLockGate } from "@/components/product/report-lock-gate";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -55,6 +56,13 @@ interface ReportShellV2Props {
   variant?: ReportVariant;
   /** Optional resolved features override (from admin visibility manager). */
   featuresOverride?: VariantFeatures | null;
+  /**
+   * If "engagement", everything from the Engagement card onward is wrapped
+   * in a frosted lock gate with a CTA. Default null = no gate.
+   */
+  lockBoundary?: "engagement" | null;
+  unlocked?: boolean;
+  onUnlockClick?: () => void;
 }
 
 /**
@@ -76,6 +84,9 @@ export function ReportShellV2({
   analyzedAtIso,
   variant = "public_mvp",
   featuresOverride,
+  lockBoundary = null,
+  unlocked = false,
+  onUnlockClick,
 }: ReportShellV2Props) {
   const v2 = result.enriched.aiInsightsV2;
   const features = featuresOverride ?? getVariantFeatures(variant);
@@ -101,6 +112,9 @@ export function ReportShellV2({
 
   const [overview, diagnostico, performance, conteudo, procura, benchmark] =
     BLOCKS;
+
+  const gated = lockBoundary === "engagement" && !unlocked;
+  const handleUnlockClick = onUnlockClick ?? (() => {});
 
   return (
     <ReportVariantProvider value={variant}>
@@ -143,23 +157,138 @@ export function ReportShellV2({
               {/* 01 · Overview (redesigned) */}
               {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
-                <ReportOverviewBlock
-                  result={result}
-                  renderInsight={renderInsight}
-                  payload={payload}
-                />
+                {lockBoundary === "engagement" ? (
+                  <ReportOverviewBlock
+                    result={result}
+                    renderInsight={renderInsight}
+                    payload={payload}
+                    mode="free"
+                  />
+                ) : (
+                  <ReportOverviewBlock
+                    result={result}
+                    renderInsight={renderInsight}
+                    payload={payload}
+                  />
+                )}
               </ReportBlockSection>
               )}
 
+              {/* When gated, everything from the Engagement card onward
+                  lives inside one ReportLockGate so a single CTA overlay
+                  covers the entire locked region. */}
+              {gated ? (
+                <ReportLockGate
+                  unlocked={unlocked}
+                  onUnlockClick={handleUnlockClick}
+                >
+                  {features.blockOverview !== "hidden" && (
+                    <div className="mt-6 md:mt-8">
+                      <ReportOverviewBlock
+                        result={result}
+                        renderInsight={renderInsight}
+                        payload={payload}
+                        mode="locked"
+                      />
+                    </div>
+                  )}
+                  {features.blockDiagnosis !== "hidden" && (
+                    <ReportBlockSection block={diagnostico} tone="canvas">
+                      <ReportDiagnosticBlock result={result} payload={payload} />
+                    </ReportBlockSection>
+                  )}
+                  {features.blockPerformance !== "hidden" && (
+                    <ReportBlockSection block={performance} tone="canvas">
+                      <ReportFramedBlock
+                        tone="canvas"
+                        ariaLabel="Performance ao longo do tempo"
+                      >
+                        <ReportTemporalChart />
+                        <div className="mt-4">{renderInsight("evolutionChart")}</div>
+                      </ReportFramedBlock>
+                      <ReportFramedBlock
+                        tone="canvas"
+                        ariaLabel="Resposta da audiência"
+                      >
+                        <div className="space-y-10 md:space-y-12">
+                          <ReportPostingHeatmap />
+                          <div className="mt-4">{renderInsight("heatmap")}</div>
+                          {features.blockPerformance === "full" ? (
+                            <>
+                              <ReportBestDays />
+                              <div className="mt-4">{renderInsight("daysOfWeek")}</div>
+                            </>
+                          ) : (
+                            <PerformanceLockedTeaser onUnlock={scrollToCofre} />
+                          )}
+                        </div>
+                      </ReportFramedBlock>
+                    </ReportBlockSection>
+                  )}
+                  {features.blockContent !== "hidden" && (
+                    <ReportBlockSection block={conteudo} tone="soft-blue">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Top publicações">
+                        <div className="mt-6">
+                          <ReportEnrichedTopLinks enriched={result.enriched} />
+                        </div>
+                      </ReportFramedBlock>
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Mistura de formatos">
+                        <ReportFormatBreakdown />
+                        <div className="mt-4">{renderInsight("formats")}</div>
+                      </ReportFramedBlock>
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Hashtags, palavras-chave e menções">
+                        <div className="space-y-10 md:space-y-12">
+                          <ReportHashtagsKeywords />
+                          <div className="mt-4">{renderInsight("language")}</div>
+                          <ReportEnrichedMentions enriched={result.enriched} />
+                        </div>
+                      </ReportFramedBlock>
+                    </ReportBlockSection>
+                  )}
+                  {features.blockSearch !== "hidden" && (
+                    <ReportBlockSection block={procura} tone="canvas">
+                      <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
+                        O Instagram mostra como a audiência atual reage. A procura
+                        fora da plataforma ajuda a perceber se os mesmos temas também
+                        despertam interesse em pesquisa.
+                      </p>
+                      <ReportMarketSignalsSection
+                        snapshotId={snapshotId}
+                        plan="free"
+                        cachedSummary={payload?.market_signals_free}
+                        compact
+                      />
+                      {renderInsight("marketSignals")}
+                    </ReportBlockSection>
+                  )}
+                  {features.blockBenchmark !== "hidden" && (
+                    <ReportBlockSection block={benchmark} tone="soft-blue">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Posição face ao mercado">
+                        <ReportBenchmarkGauge />
+                        <div className="mt-4">{renderInsight("benchmark")}</div>
+                      </ReportFramedBlock>
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Comparação com perfis pares">
+                        <ReportCompetitors />
+                        {result.coverage.competitors === "empty" ? (
+                          <div className="mt-6">
+                            <ReportEnrichedCompetitorsCta />
+                          </div>
+                        ) : null}
+                      </ReportFramedBlock>
+                    </ReportBlockSection>
+                  )}
+                </ReportLockGate>
+              ) : null}
+
               {/* 02 · Diagnóstico editorial */}
-              {features.blockDiagnosis !== "hidden" && (
+              {!gated && features.blockDiagnosis !== "hidden" && (
               <ReportBlockSection block={diagnostico} tone="canvas">
                 <ReportDiagnosticBlock result={result} payload={payload} />
               </ReportBlockSection>
               )}
 
               {/* 03 · Performance */}
-              {features.blockPerformance !== "hidden" && (
+              {!gated && features.blockPerformance !== "hidden" && (
               <ReportBlockSection block={performance} tone="canvas">
                 <ReportFramedBlock
                   tone="canvas"
@@ -189,7 +318,7 @@ export function ReportShellV2({
               )}
 
               {/* 04 · Conteúdo */}
-              {features.blockContent !== "hidden" && (
+              {!gated && features.blockContent !== "hidden" && (
               <ReportBlockSection block={conteudo} tone="soft-blue">
                 <ReportFramedBlock
                   tone="soft-blue"
@@ -220,7 +349,7 @@ export function ReportShellV2({
               )}
 
               {/* 05 · Procura fora do Instagram */}
-              {features.blockSearch !== "hidden" && (
+              {!gated && features.blockSearch !== "hidden" && (
               <ReportBlockSection block={procura} tone="canvas">
                 <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
                   O Instagram mostra como a audiência atual reage. A procura
@@ -240,7 +369,7 @@ export function ReportShellV2({
               )}
 
               {/* 06 · Benchmark competitivo */}
-              {features.blockBenchmark !== "hidden" && (
+              {!gated && features.blockBenchmark !== "hidden" && (
               <ReportBlockSection block={benchmark} tone="soft-blue">
                 <ReportFramedBlock
                   tone="soft-blue"
