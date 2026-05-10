@@ -10,11 +10,21 @@ import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AdminPageHeader } from "../admin-page-header";
 import { AdminCard } from "../admin-card";
-import { AdminSectionHeader } from "../admin-section-header";
 import { adminFetch } from "@/lib/admin/fetch";
 import { AutomationNode } from "./automation-node";
 import { AutomationEdge } from "./automation-edge";
-import { EligibilitySummary } from "./eligibility-summary";
+import { StageGroup } from "./stage-group";
+import { StageConnector } from "./stage-connector";
+import { MetricsTab } from "./metrics-tab";
+import { PeopleTab } from "./people-tab";
+import { TemplatesTab } from "./templates-tab";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import type { EmailTemplateKey } from "@/lib/admin/email-template-registry";
 import type {
   AutomationFlow,
   AutomationFlowResponse,
@@ -25,6 +35,51 @@ async function fetchAutomationFlow(): Promise<AutomationFlowResponse> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()) as AutomationFlowResponse;
 }
+
+type FlowKey = AutomationFlow["key"];
+
+interface StageDef {
+  key: string;
+  number: string;
+  label: string;
+  description: string;
+  color: string;
+  flowKeys: FlowKey[];
+}
+
+const STAGES: StageDef[] = [
+  {
+    key: "captacao",
+    number: "1",
+    label: "Captação",
+    description: "pedido beta → relatório gerado",
+    color: "#0E9488",
+    flowKeys: ["pedido_recebido", "relatorio_gerado"],
+  },
+  {
+    key: "entrega",
+    number: "2",
+    label: "Entrega",
+    description: "envio do link → consumo do relatório",
+    color: "#3772E5",
+    flowKeys: ["link_enviado", "relatorio_visto"],
+  },
+  {
+    key: "conversao",
+    number: "3",
+    label: "Conversão",
+    description: "feedback → follow-up comercial",
+    color: "#BA7517",
+    flowKeys: ["feedback_pedido", "feedback_recebido", "follow_up_comercial"],
+  },
+];
+
+const TEMPLATE_BY_FLOW: Partial<Record<FlowKey, EmailTemplateKey>> = {
+  pedido_recebido: "request_received",
+  link_enviado: "report_ready",
+  feedback_pedido: "feedback_request",
+  follow_up_comercial: "commercial_followup",
+};
 
 export function AutomationFlowPage() {
   const { data, isLoading, error } = useQuery({
@@ -37,7 +92,7 @@ export function AutomationFlowPage() {
     <>
       <AdminPageHeader
         title="Automações"
-        subtitle="Visualização read-only do ciclo de vida beta. Nenhuma ação é executada nesta página."
+        subtitle="Visualização operacional do ciclo de vida beta. Nenhuma ação é executada nesta página."
       />
 
       <div className="flex flex-col gap-6">
@@ -52,21 +107,15 @@ export function AutomationFlowPage() {
             </p>
           </AdminCard>
         ) : (
-          <>
-            <EligibilitySummary
-              totalActive={data.totalActive}
-              totalArchived={data.totalArchived}
-              totalEligible={sum(data.flows.map((f) => f.eligibleCount))}
-              totalInFlight={sum(data.flows.map((f) => f.inFlightCount))}
-            />
+          <Tabs defaultValue="fluxo" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="fluxo">Fluxo</TabsTrigger>
+              <TabsTrigger value="metricas">Métricas</TabsTrigger>
+              <TabsTrigger value="pessoas">Pessoas</TabsTrigger>
+              <TabsTrigger value="templates">Templates</TabsTrigger>
+            </TabsList>
 
-            <section className="flex flex-col gap-3">
-              <AdminSectionHeader
-                title="Fluxo do ciclo de vida"
-                subtitle="seis passos do pedido beta ao follow-up comercial"
-                accent="leads"
-                info="Cada nó representa um passo do ciclo de vida da lead. Os números refletem o estado atual em `leads.commercial_status` — elegíveis aguardam ação, em curso estão a meio do passo, concluídos já avançaram. Leads arquivadas não contam."
-              />
+            <TabsContent value="fluxo" className="mt-0">
               {data.flows.length === 0 || data.totalActive === 0 ? (
                 <AdminCard>
                   <p className="text-[13px] text-admin-text-tertiary">
@@ -75,38 +124,78 @@ export function AutomationFlowPage() {
                   </p>
                 </AdminCard>
               ) : (
-                <FlowList flows={data.flows} />
+                <FlowStages flows={data.flows} />
               )}
-            </section>
-          </>
+            </TabsContent>
+
+            <TabsContent value="metricas" className="mt-0">
+              <MetricsTab data={data} />
+            </TabsContent>
+
+            <TabsContent value="pessoas" className="mt-0">
+              <PeopleTab />
+            </TabsContent>
+
+            <TabsContent value="templates" className="mt-0">
+              <TemplatesTab />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </>
   );
 }
 
-function FlowList({ flows }: { flows: AutomationFlow[] }) {
+function FlowStages({ flows }: { flows: AutomationFlow[] }) {
+  const byKey = new Map<FlowKey, AutomationFlow>(
+    flows.map((f) => [f.key, f]),
+  );
+
   return (
-    <div className="flex flex-col">
-      {flows.map((f, i) => (
-        <Fragment key={f.key}>
-          <AutomationNode
-            title={f.title}
-            description={f.description}
-            trigger={f.trigger}
-            action={f.action}
-            kind={f.kind}
-            toStatus={f.toStatus}
-            eligibleCount={f.eligibleCount}
-            inFlightCount={f.inFlightCount}
-            completedCount={f.completedCount}
-            recentFailures={f.recentFailures}
-            last24hCount={f.last24hCount}
-            lastEventAt={f.lastEventAt}
-          />
-          {i < flows.length - 1 && <AutomationEdge />}
-        </Fragment>
-      ))}
+    <div className="mx-auto flex max-w-[820px] flex-col">
+      {STAGES.map((stage, sIdx) => {
+        const stageFlows = stage.flowKeys
+          .map((k) => byKey.get(k))
+          .filter((x): x is AutomationFlow => Boolean(x));
+        const stageEligible = stageFlows.reduce(
+          (a, f) => a + f.eligibleCount,
+          0,
+        );
+
+        return (
+          <Fragment key={stage.key}>
+            {sIdx > 0 && <StageConnector label={stage.label} />}
+            <StageGroup
+              number={stage.number}
+              label={stage.label}
+              description={stage.description}
+              count={stageEligible}
+              color={stage.color}
+            >
+              {stageFlows.map((f, i) => (
+                <Fragment key={f.key}>
+                  <AutomationNode
+                    title={f.title}
+                    description={f.description}
+                    trigger={f.trigger}
+                    action={f.action}
+                    kind={f.kind}
+                    toStatus={f.toStatus}
+                    eligibleCount={f.eligibleCount}
+                    inFlightCount={f.inFlightCount}
+                    completedCount={f.completedCount}
+                    recentFailures={f.recentFailures}
+                    last24hCount={f.last24hCount}
+                    lastEventAt={f.lastEventAt}
+                    templateKey={TEMPLATE_BY_FLOW[f.key]}
+                  />
+                  {i < stageFlows.length - 1 && <AutomationEdge />}
+                </Fragment>
+              ))}
+            </StageGroup>
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
@@ -154,8 +243,4 @@ function SummarySkeleton() {
       ))}
     </div>
   );
-}
-
-function sum(arr: number[]): number {
-  return arr.reduce((a, b) => a + b, 0);
 }
