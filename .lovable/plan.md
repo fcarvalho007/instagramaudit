@@ -1,149 +1,191 @@
-## Estado actual (auditoria honesta antes de planear)
+## Auditoria do estado actual
 
-A maior parte do scope deste prompt **já existe** desde o turno anterior. Antes de plano, partilho o que está e o que falta:
+Mapeei os 5 fluxos transaccionais — não estão todos no mesmo formato:
 
-| Requisito do prompt | Estado |
-|---|---|
-| `BREVO_API_KEY` em secrets | ✅ existe (gerido pelo connector) |
-| `BREVO_LEAD_MAGNET_LIST_ID` em secrets | ✅ existe (assumir valor `16` confirmado) |
-| Cliente server-only via gateway Lovable | ✅ `src/lib/brevo/brevo-client.server.ts` |
-| `upsertBrevoContact(input)` com `updateEnabled: true` + listIds | ✅ implementado |
-| Mapping de atributos (11 campos pedidos) | ✅ implementado |
-| Integração no fluxo de unlock | ✅ passo 7 em `src/lib/unlock.server.ts` |
-| Logging em `product_events` (`brevo_contact_synced` / `_failed`) | ✅ implementado |
-| Allowlist de eventos | ✅ em `src/lib/tracking.functions.ts` |
-| Falha do Brevo não bloqueia unlock | ✅ try/catch envolve a chamada |
-| Testes do client (`brevo-client.test.ts`) | ✅ 10 cenários |
+| Fluxo | Ficheiro | Padrão actual | Eventos hoje |
+|---|---|---|---|
+| **personal-area-saved** | `src/lib/email/send-personal-area-saved.server.ts` | helper limpo, devolve `{ok, reason}`, sem HTTP | `personal_area_email_sent` / `_failed` ✅ |
+| **report-ready** (PDF) | `src/routes/api/send-report-email.ts` | route handler com `fetch` inline + `RESEND_FAILED→502` | só success path |
+| **report-ready** (link público) | `src/routes/api/admin/send-report-link.ts` | route handler com `fetch` inline + actualiza `commercial_status` | `report_link_sent` (success) |
+| **feedback-request** | `src/routes/api/admin/send-feedback-request.ts` | idem | `feedback_requested` (success) |
+| **commercial-followup** | `src/routes/api/admin/send-commercial-followup.ts` | idem | `commercial_followup_sent` / `_failed` ✅ |
+| **request-received** | `src/lib/beta.functions.ts` (~L189) | `fetch` inline | — |
 
-**Gaps reais vs este prompt:**
-
-1. **Layout de ficheiros pedido** (`client.server.ts`, `contacts.server.ts`, `sync.server.ts`, `types.ts`) — actualmente está tudo num único módulo (`brevo-client.server.ts`).
-2. **Função `syncLeadToBrevo(leadId, reason)`** — actualmente a lógica de carregar lead/report/count vive inline em `unlock.server.ts`. Não existe wrapper dedicado em `sync.server.ts`.
-3. **Padrão fire-and-forget verdadeiro** — actualmente faz `await upsertBrevoContact(...)` dentro de try/catch. O prompt pede `void syncLeadToBrevo(...).catch(() => {})`, o que move a chamada para fora do caminho crítico.
-4. **Secrets do remetente** — `BREVO_FROM_EMAIL` / `BREVO_FROM_NAME` ainda não existem (só serão usados na Fase 2 — emails — mas o prompt pede para os adicionar agora).
-
-Plano abaixo cobre **só estes gaps**. Funcionalidade lógica não muda; este é um refactor + 2 secrets + mudança de await→fire-and-forget.
+Endpoint Brevo via gateway: `POST https://connector-gateway.lovable.dev/brevo/v3/smtp/email`.
+Secrets necessários: `BREVO_API_KEY` (✅), `BREVO_FROM_EMAIL` (✅), `BREVO_FROM_NAME` (✅), `RESEND_API_KEY` (✅), `RESEND_FROM` (✅).
 
 ---
 
-## Plano
+## Decisão de scope: duas fases
 
-### 1. Adicionar secrets do remetente (não usados nesta fase)
+Migrar os 5 sites num único prompt é arriscado — os 4 routes admin devolvem códigos HTTP específicos ao painel (`RESEND_FAILED`, `RESEND_SANDBOX_RECIPIENT_BLOCKED`, `RESEND_TIMEOUT`) e fazem side-effects (status update, lead events com metadata custom). Vou separar:
 
-Pedir via `add_secret`:
-- `BREVO_FROM_EMAIL` (= `frederico.carvalho@digitalfc.pt`)
-- `BREVO_FROM_NAME` (= `Frederico Carvalho`)
+- **Fase A — este prompt:** construir a abstracção + migrar **só `personal-area-saved`** (helper, único caller, já tem testes, padrão `{ok, reason}` igual ao da abstracção). Provar Brevo em produção com risco contido.
+- **Fase B — prompts seguintes (1 por route):** migrar `send-report-email`, `send-report-link`, `send-feedback-request`, `send-commercial-followup`, `request-received` (em `beta.functions.ts`).
 
-Justificação para já: o prompt pede explicitamente. Vou armazenar mas **não consumir** — Resend continua activo para transacional.
+A abstracção é construída completa nesta fase (suporta os 5 fluxos), portanto Fase B é só plumbing.
 
-### 2. Refactor para o layout pedido
+---
 
-Manter código actual a funcionar até ao swap final. Criar:
+## Plano da Fase A
 
-**`src/lib/brevo/types.ts`** (client-safe — só types puros):
+### 1. Criar a abstracção
+
+**`src/lib/email/transactional-email.server.ts`** — server-only, único entry point:
+
 ```ts
-export type BrevoAttributes = Record<string, string|number|boolean|null|undefined>;
-export interface BrevoContactPayload {
-  email: string;
-  attributes: BrevoAttributes;
-  listIds: number[];
+export type TxFlow =
+  | "personal-area-saved"
+  | "report-ready"
+  | "feedback-request"
+  | "request-received"
+  | "commercial-followup";
+
+export interface SendTransactionalEmailInput {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  flowType: TxFlow;
+  leadId: string | null;
+  reportRequestId?: string | null;
+  snapshotId?: string | null;
+  handle?: string | null;
+  metadata?: Record<string, unknown>;
 }
-export interface UpsertBrevoContactInput { ... }
-export type UpsertBrevoContactResult =
-  | { ok: true; brevoId: number | null; status: number; latencyMs: number }
-  | { ok: false; reason: string; status?: number; latencyMs: number };
-export type BrevoSyncReason = "report_unlock" | "manual_resync" | "backfill";
+
+export type SendTransactionalEmailResult =
+  | {
+      ok: true;
+      provider: "brevo" | "resend";
+      messageId: string | null;
+      latencyMs: number;
+      brevoFailed?: { reason: string }; // present quando o Resend foi fallback
+    }
+  | {
+      ok: false;
+      brevoReason: string;
+      resendReason: string | null;  // null se Resend não estava configurado
+      latencyMs: number;
+    };
+
+export async function sendTransactionalEmail(
+  input: SendTransactionalEmailInput,
+): Promise<SendTransactionalEmailResult>
 ```
 
-**`src/lib/brevo/client.server.ts`** — só transporte HTTP:
-- `brevoFetch(path, init)` — wrapper com gateway URL, headers, AbortController 8s, devolve `{ status, body, latencyMs }` ou erro tipado.
-- Nada de lógica de domínio (sem `email`, sem atributos).
+**Comportamento interno (nunca lança):**
 
-**`src/lib/brevo/contacts.server.ts`** — domínio de contactos:
-- `upsertBrevoContact(input)` chama `brevoFetch("/v3/contacts", ...)`.
-- Resolve `BREVO_LEAD_MAGNET_LIST_ID` aqui (não no client).
-- `cleanAttributes(...)` aqui.
-- Devolve `UpsertBrevoContactResult` com `latencyMs`.
+1. Tenta **Brevo primeiro** via `brevoFetch("/v3/smtp/email", ...)` (reutiliza o transporte que já existe em `src/lib/brevo/client.server.ts`). Payload:
+   ```json
+   {
+     "sender": { "email": "<BREVO_FROM_EMAIL>", "name": "<BREVO_FROM_NAME>" },
+     "to": [{ "email": "<to>" }],
+     "subject": "<subject>",
+     "htmlContent": "<html>",
+     "textContent": "<text>"
+   }
+   ```
+   - Brevo `messageId` chega em `messageId` do response JSON.
+   - Sucesso → emite `brevo_email_sent` em `product_events`, devolve `{ ok: true, provider: "brevo", messageId, latencyMs }`.
 
-**`src/lib/brevo/sync.server.ts`** — orquestração de sincronização:
-- `syncLeadToBrevo(leadId: string, reason: BrevoSyncReason)`:
-  1. Carrega `leads` por id (`email`, `source`, `commercial_status`, `profile_ownership`, `goal`, `user_type`, `pricing_preference`).
-  2. Carrega último `report_requests` (`instagram_username`, `analysis_snapshot_id`, `created_at`).
-  3. Faz count de `report_requests` por `lead_id`.
-  4. Constrói payload (mesmo mapping actual de 11 atributos).
-  5. Chama `upsertBrevoContact`.
-  6. Regista `brevo_contact_synced` ou `brevo_contact_sync_failed` em `product_events` com metadata `{ lead_id, email_masked, reason, status, latencyMs, errorMessage }` (email mascarado, nunca em claro).
-  7. **Nunca lança**: cada passo dentro de try/catch; em qualquer erro, regista `brevo_contact_sync_failed` e retorna.
+2. **Falha do Brevo** (qualquer reason: missing key, timeout, 4xx, 5xx, rede): emite `brevo_email_failed` (com `reason`, `latency_ms`, `flow_type`, `email_masked`). Decide fallback:
+   - Se `RESEND_API_KEY` ausente → emite o evento de falha específico do fluxo (ver mapping abaixo) e devolve `{ ok: false, brevoReason, resendReason: null }`.
+   - Se `RESEND_API_KEY` presente → tenta Resend (`https://api.resend.com/emails`, `from = RESEND_FROM`).
 
-**Manter** `src/lib/brevo/brevo-client.server.ts` como **re-export shim** durante uma transição curta:
-```ts
-// Deprecated — re-exports for backwards compat. Prefer ./contacts.server.
-export { upsertBrevoContact } from "./contacts.server";
-export type * from "./types";
+3. **Resend fallback ok** → emite `resend_fallback_email_sent` (com metadata incluindo `brevo_reason`) e devolve `{ ok: true, provider: "resend", messageId, brevoFailed: { reason } }`. **Não** emite o evento "sucesso" do fluxo — o caller faz isso (mantém compatibilidade com flows que já recordam `personal_area_email_sent`).
+
+4. **Resend também falha** → emite o evento de falha específico do fluxo + devolve `{ ok: false, brevoReason, resendReason }`.
+
+**Eventos genéricos novos (adicionar a `ALLOWED_EVENTS` em `tracking.functions.ts`):**
+- `brevo_email_sent`
+- `brevo_email_failed`
+- `resend_fallback_email_sent`
+
+**Mapping flow → evento de falha total** (interno à abstracção):
 ```
-Remover após o swap em `unlock.server.ts` (mesmo PR).
-
-### 3. Substituir bloco inline em `unlock.server.ts` por chamada fire-and-forget
-
-Trocar o try/catch awaitado (linhas 448-516) por:
-```ts
-// 7. Brevo contact mirror — fire-and-forget. Nunca bloqueia o unlock.
-void (async () => {
-  const { syncLeadToBrevo } = await import("@/lib/brevo/sync.server");
-  return syncLeadToBrevo(leadId, "report_unlock");
-})().catch(() => {
-  // syncLeadToBrevo já regista falhas internamente
-});
+personal-area-saved   → personal_area_email_failed     (já existe ✅)
+report-ready          → report_ready_email_failed      (NOVO — adicionar)
+feedback-request      → feedback_request_email_failed  (NOVO — adicionar)
+request-received      → request_received_email_failed  (NOVO — adicionar)
+commercial-followup   → commercial_followup_failed     (já existe ✅)
 ```
 
-Implicação: no caminho crítico do unlock o utilizador não espera pela latência do Brevo (até 8s). O event `brevo_contact_synced` chega à BD ~1-3s depois da resposta da API ao browser.
+Os 3 NOVOS eventos vão ao allowlist. Eventos de **sucesso** específicos do fluxo continuam a ser registados pelo caller (não pela abstracção) para preservar metadata específica (`report_request_id`, status updates, etc.).
 
-### 4. Testes
+### 2. Migrar `send-personal-area-saved` para a abstracção
 
-- **Manter** `src/lib/brevo/__tests__/brevo-client.test.ts` (10 testes, agora apontados aos novos paths).
-- **Adicionar** `src/lib/brevo/__tests__/sync.test.ts`:
-  - Mock `supabaseAdmin` + `upsertBrevoContact`.
-  - Cenário 1: lead existe → payload contém os 11 atributos correctos.
-  - Cenário 2: lead inexistente → regista `brevo_contact_sync_failed` com reason `LEAD_NOT_FOUND`.
-  - Cenário 3: `upsertBrevoContact` retorna `{ ok: false }` → regista failure event com reason propagada.
-  - Cenário 4: `syncLeadToBrevo` nunca lança mesmo com supabase a deitar erro.
+Refactor de `src/lib/email/send-personal-area-saved.server.ts`:
+- Mantém `renderPersonalAreaSaved` igual (template intacto).
+- Substitui o bloco `fetch(RESEND_ENDPOINT, ...)` por `sendTransactionalEmail({ to, subject, html, text, flowType: "personal-area-saved", leadId, reportRequestId, ... })`.
+- Mantém a assinatura pública `sendPersonalAreaSavedEmail` e o tipo `{ ok, messageId } | { ok, reason }` (callers de `unlock.server.ts` não mudam). Mapeia `result.ok` → `messageId`; `!result.ok` → `reason: result.brevoReason` (mais Resend reason quando relevante).
 
-### 5. Verificações
+Caller existente em `unlock.server.ts` regista `personal_area_email_sent` no caminho de sucesso — **mantém-se**, mas a metadata passa a incluir `provider` (`brevo` ou `resend`) para visibilidade. (Edição mínima: 1 linha extra na metadata.)
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Manual:
-  - Unlock real → resposta JSON imediata; ~2s depois aparece `brevo_contact_synced` em `product_events` e contacto na lista 16.
-  - Forçar falha (mexer `BREVO_LEAD_MAGNET_LIST_ID` para um inválido em dev) → unlock continua a funcionar; aparece `brevo_contact_sync_failed`.
-  - `bun run build` + `rg "BREVO_API_KEY|connector-gateway" dist/` → zero matches no bundle do browser.
+### 3. Testes
+
+Criar `src/lib/email/__tests__/transactional-email.test.ts`:
+
+| Cenário | Expectativa |
+|---|---|
+| Brevo 201 | `provider: "brevo"`, `messageId` capturado, evento `brevo_email_sent` registado, Resend nunca chamado |
+| Brevo 500 + Resend 200 | `provider: "resend"`, `brevoFailed.reason` presente, eventos `brevo_email_failed` + `resend_fallback_email_sent` |
+| Brevo 500 + Resend 500 | `ok: false`, eventos `brevo_email_failed` + `<flow>_email_failed` |
+| Brevo 500 + sem `RESEND_API_KEY` | `ok: false`, `resendReason: null`, evento `<flow>_email_failed` |
+| `BREVO_API_KEY` ausente | tenta Resend imediatamente (Brevo falha com `BREVO_API_KEY_MISSING`) |
+| AbortError no Brevo (timeout 8s) | reason `BREVO_TIMEOUT` propagada, fallback executa |
+| Email mascarado em todas as metadatas | nenhum evento contém o email em claro |
+
+Atualizar `src/lib/email/__tests__/templates.test.ts` se a assinatura interna mudou (não devia — só o transporte muda). Os testes existentes do `send-personal-area-saved` (se existirem) podem precisar de re-mock.
+
+### 4. Validação
+
+- `bunx tsc --noEmit` verde
+- `bunx vitest run` verde (todos os 204 testes existentes + os novos)
+- `rg "BREVO_API_KEY|RESEND_API_KEY" dist/` após build → zero matches no bundle do browser
+- **Smoke test manual** (só após aprovação explícita): 1 unlock real → confirmar `brevo_email_sent` em `product_events` + email recebido com `From: Frederico Carvalho <frederico.carvalho@digitalfc.pt>`. Resend não é chamado.
+- **Teste de fallback** (manual): mexer `BREVO_API_KEY` para inválido em dev → repetir unlock → confirmar `brevo_email_failed` + `resend_fallback_email_sent` + email recebido via Resend.
 
 ---
 
-## O que NÃO está no scope (confirmação explícita)
+## Out of scope (Fase A) — propostos para Fase B
 
-- ❌ Envio de emails via Brevo (Resend mantém-se).
-- ❌ Migração de templates Resend.
-- ❌ Mexer no UI público, no PDF ou no relatório.
-- ❌ Apify / OpenAI / DataForSEO.
-- ❌ Schema da BD (zero migrations).
-- ❌ Automations dentro do Brevo.
-- ❌ Listas 17 (clientes pagos) e 18 (intenção alta) — virão noutra fase.
+- Migração de `send-report-email.ts` (PDF link).
+- Migração de `send-report-link.ts` (link público).
+- Migração de `send-feedback-request.ts`.
+- Migração de `send-commercial-followup.ts`.
+- Migração do envio inline em `beta.functions.ts` (request-received).
+- Suppression list (não existe hoje, fora de scope).
+- Idempotency keys server-side (não existem hoje).
+- Mexer em templates ou copy.
+- Schema da BD.
+- Testes E2E ao SMTP real.
 
-## Atributos no Brevo (lembrete operacional)
+---
 
-Os 11 atributos têm de existir na conta Brevo (Contacts → Settings → Contact attributes) com tipos correctos, senão são criados como TEXT no primeiro contacto:
-- `REPORTS_COUNT` → Number
-- `LAST_REPORT_AT` → Date
-- `IS_CUSTOMER` → Boolean
-- restantes → Text
+## Ficheiros que vão mudar (Fase A)
 
-Se algum vier mal-tipado, a chamada falha com `400` e cai em `brevo_contact_sync_failed` (não bloqueia unlock). Confirmar antes de testar.
+**Criados:**
+- `src/lib/email/transactional-email.server.ts`
+- `src/lib/email/__tests__/transactional-email.test.ts`
+
+**Editados:**
+- `src/lib/email/send-personal-area-saved.server.ts` (delega para a abstracção; assinatura pública preservada)
+- `src/lib/tracking.functions.ts` (adicionar 6 eventos novos: `brevo_email_sent`, `brevo_email_failed`, `resend_fallback_email_sent`, `report_ready_email_failed`, `feedback_request_email_failed`, `request_received_email_failed`)
+- `src/lib/unlock.server.ts` (1 linha: incluir `provider` na metadata de `personal_area_email_sent`)
+
+**Não tocar:**
+- Os 4 routes admin (Fase B).
+- `src/lib/email/sender.ts`, templates em `src/lib/email/templates/`, `report-email-template.ts`.
+- `src/lib/brevo/contacts.server.ts` (já em produção; Phase 1 do Brevo).
+
+---
 
 ## Checkpoint
 
-- ☐ Secrets `BREVO_FROM_EMAIL` e `BREVO_FROM_NAME` adicionados
-- ☐ `types.ts` + `client.server.ts` + `contacts.server.ts` + `sync.server.ts` criados
-- ☐ `brevo-client.server.ts` reduzido a re-export shim (remover após swap)
-- ☐ `unlock.server.ts` passa a chamar `syncLeadToBrevo` em fire-and-forget
-- ☐ Novo teste `sync.test.ts` + testes existentes verdes
-- ☐ `tsc` + `vitest` verdes; `BREVO_API_KEY` ausente do bundle do browser
+- ☐ `transactional-email.server.ts` criado com Brevo-first + Resend fallback
+- ☐ 6 eventos novos no allowlist
+- ☐ `send-personal-area-saved` delega para a abstracção, mantém assinatura
+- ☐ Testes da abstracção verdes (7 cenários)
+- ☐ `tsc` + `vitest` verdes; secrets fora do bundle do browser
+- ☐ Pedir aprovação antes de qualquer envio real
