@@ -47,6 +47,7 @@ import { Route as AdminAutomacoesRouteImport } from './routes/admin.automacoes'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
 import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
 import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
+import { Route as ApiPublicUnlockCheckRouteImport } from './routes/api/public/unlock-check'
 import { Route as ApiPublicReportUnlockRouteImport } from './routes/api/public/report-unlock'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicPricingFeedbackRouteImport } from './routes/api/public/pricing-feedback'
@@ -303,6 +304,11 @@ const AppReportsIdRoute = AppReportsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AppReportsRoute,
+} as any)
+const ApiPublicUnlockCheckRoute = ApiPublicUnlockCheckRouteImport.update({
+  id: '/api/public/unlock-check',
+  path: '/api/public/unlock-check',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicReportUnlockRoute = ApiPublicReportUnlockRouteImport.update({
   id: '/api/public/report-unlock',
@@ -739,6 +745,7 @@ export interface FileRoutesByFullPath {
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
+  '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
@@ -844,6 +851,7 @@ export interface FileRoutesByTo {
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
+  '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
@@ -951,6 +959,7 @@ export interface FileRoutesById {
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
+  '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
@@ -1059,6 +1068,7 @@ export interface FileRouteTypes {
     | '/api/public/pricing-feedback'
     | '/api/public/public-report-pdf'
     | '/api/public/report-unlock'
+    | '/api/public/unlock-check'
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
@@ -1164,6 +1174,7 @@ export interface FileRouteTypes {
     | '/api/public/pricing-feedback'
     | '/api/public/public-report-pdf'
     | '/api/public/report-unlock'
+    | '/api/public/unlock-check'
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
@@ -1270,6 +1281,7 @@ export interface FileRouteTypes {
     | '/api/public/pricing-feedback'
     | '/api/public/public-report-pdf'
     | '/api/public/report-unlock'
+    | '/api/public/unlock-check'
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
@@ -1359,6 +1371,7 @@ export interface RootRouteChildren {
   ApiPublicPricingFeedbackRoute: typeof ApiPublicPricingFeedbackRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
   ApiPublicReportUnlockRoute: typeof ApiPublicReportUnlockRoute
+  ApiPublicUnlockCheckRoute: typeof ApiPublicUnlockCheckRoute
   BetaSubmittedRequestIdRoute: typeof BetaSubmittedRequestIdRoute
   ReportPrintSnapshotIdRoute: typeof ReportPrintSnapshotIdRoute
   ApiAdminKnowledgeBenchmarksRoute: typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -1658,6 +1671,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/reports/$id'
       preLoaderRoute: typeof AppReportsIdRouteImport
       parentRoute: typeof AppReportsRoute
+    }
+    '/api/public/unlock-check': {
+      id: '/api/public/unlock-check'
+      path: '/api/public/unlock-check'
+      fullPath: '/api/public/unlock-check'
+      preLoaderRoute: typeof ApiPublicUnlockCheckRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/report-unlock': {
       id: '/api/public/report-unlock'
@@ -2341,6 +2361,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPricingFeedbackRoute: ApiPublicPricingFeedbackRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
   ApiPublicReportUnlockRoute: ApiPublicReportUnlockRoute,
+  ApiPublicUnlockCheckRoute: ApiPublicUnlockCheckRoute,
   BetaSubmittedRequestIdRoute: BetaSubmittedRequestIdRoute,
   ReportPrintSnapshotIdRoute: ReportPrintSnapshotIdRoute,
   ApiAdminKnowledgeBenchmarksRoute:
