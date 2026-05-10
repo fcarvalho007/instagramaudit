@@ -16,48 +16,54 @@ export interface RequestReceivedInput {
   instagramHandle?: string | null;
 }
 
-const SUBJECT = "Recebemos o teu pedido beta do InstaBench";
 const HEADLINE = "Pedido recebido";
-const PREHEADER = "Vamos rever manualmente e enviamos assim que estiver pronto.";
+const PREHEADER = "A análise está a ser preparada — recebes o relatório por email.";
+const FALLBACK_SUBJECT = "Recebemos o teu pedido";
 
 function handleLabel(handle: string | null | undefined): string {
   return handle ? `@${handle}` : "o teu perfil de Instagram";
 }
 
+function buildSubject(handle: string | null | undefined): string {
+  return handle ? `Recebemos o teu pedido para @${handle}` : FALLBACK_SUBJECT;
+}
+
 export function renderRequestReceived(input: RequestReceivedInput): RenderedEmail {
   const handle = handleLabel(input.instagramHandle);
   const safeHandle = escapeHtml(handle);
+  const subject = buildSubject(input.instagramHandle);
 
   const text = joinLines([
     greetingText(input.firstName),
     "",
-    `Recebemos o teu pedido para analisar ${handle}.`,
+    `Recebemos o teu pedido para analisar ${handle}. A preparação do relatório está em curso — vais receber um email assim que estiver pronto, normalmente em poucos minutos.`,
     "",
-    "Durante a fase beta, cada relatório é revisto manualmente antes de ser enviado.",
-    "Vais receber um email assim que estiver pronto — normalmente entre algumas horas e um dia útil.",
+    "Esta ferramenta está em fase beta. O objetivo é simples: perceber se a análise que entregamos é genuinamente útil para quem decide sobre conteúdo, audiência ou marca no Instagram.",
     "",
-    "Obrigado pela paciência. Esta validação manual permite-nos garantir qualidade enquanto refinamos o produto.",
+    "Por isso, depois de explorares o relatório, vamos pedir-te uma opinião curta. Vale ouro nesta fase.",
     "",
     ...signatureText(),
   ]);
 
   const bodyHtml = [
     p(greetingHtml(input.firstName)),
-    p(`Recebemos o teu pedido para analisar <strong style="color:#0a0e1a;">${safeHandle}</strong>.`),
-    pMuted(
-      "Durante a fase beta, cada relatório é revisto manualmente antes de ser enviado. Vais receber um email assim que estiver pronto — normalmente entre algumas horas e um dia útil.",
+    p(
+      `Recebemos o teu pedido para analisar <strong style="color:#0a0e1a;">${safeHandle}</strong>. A preparação do relatório está em curso — vais receber um email assim que estiver pronto, normalmente em poucos minutos.`,
     ),
     pMuted(
-      "Obrigado pela paciência. Esta validação manual permite-nos garantir qualidade enquanto refinamos o produto.",
+      "Esta ferramenta está em fase <strong style=\"color:#0a0e1a;\">beta</strong>. O objetivo é simples: perceber se a análise que entregamos é genuinamente útil para quem decide sobre conteúdo, audiência ou marca no Instagram.",
+    ),
+    pMuted(
+      "Por isso, depois de explorares o relatório, vamos pedir-te uma opinião curta. Vale ouro nesta fase.",
     ),
     signatureHtml(),
   ].join("\n");
 
   return {
-    subject: SUBJECT,
+    subject,
     text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    html: wrapHtml({ title: subject, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
   };
 }
 
-renderRequestReceived.subject = SUBJECT;
+renderRequestReceived.subject = FALLBACK_SUBJECT;
