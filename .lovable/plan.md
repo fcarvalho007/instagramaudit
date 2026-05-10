@@ -1,86 +1,61 @@
-# Plano — fix do Brevo sync e validação Fase 6
+# Avaliação de bugs e correções
 
-## Causa raiz (já confirmada)
+## Estado atual
 
-O gateway da Brovo no Lovable **strip-a o prefixo `/v3`** automaticamente.
-Toda a camada `src/lib/brevo/*` envia paths `/v3/contacts`, `/v3/contacts/lists/{id}`, etc., e o gateway responde:
+**Fix do código já está commitado** em `src/lib/brevo/client.server.ts` (regex que retira `/v3/` antes de chamar o gateway). O sandbox local tem o código novo. Os testes (20) passam.
 
-```
-HTTP 404 {"code":"not_found","message":"Invalid route/ method passed"}
-```
+**Problema operacional:** o preview público (`project--{id}-dev.lovable.app`) **continua a servir o bundle antigo** mais de 10min após a edição. Todos os unlocks continuam a falhar com `BREVO_404`. Não é um bug de código — é o ciclo de build do preview que não propagou.
 
-Foi por isso que os 6 unlocks de teste registaram 0 eventos `brevo_contact_synced` e 0 `brevo_contact_sync_failed` na BD: a chamada falhava com `BREVO_404`, mas o sync era fire-and-forget e o worker terminava antes do `safeRecordFailure` correr (até ao fix do `await` que já metemos).
+## Bugs identificados
 
-Confirmado experimentalmente:
-- `POST /brevo/v3/contacts` → 404
-- `POST /brevo/contacts` → 201 `{"id":263}`
-- `GET /brevo/account` → 200 (sem `/v3`)
+### B1 — Fix Brevo aplicado mas sem deploy propagado (P0)
+- 31 unlocks nos últimos 20min, 100% com `brevo_contact_sync_failed` + `brevo_email_failed` (mesma causa raiz: `/v3/` no path).
+- Cobre dois fluxos: contact upsert (`/v3/contacts`) e transactional email (`/v3/smtp/email`). A normalização em `brevoFetch` resolve ambos.
+- Acção: forçar restart do dev-server preview para garantir rebuild, depois validar com 1 unlock.
 
-## Passo 1 — Corrigir paths em `src/lib/brevo/*`
+### B2 — Poluição de leads de teste (P1)
+- 37 leads `frederico+brevotest1..37@…` na BD, dos quais 31 vieram da poll loop que fiz a aguardar o deploy.
+- 31 destes têm também `report_requests` e `product_events` associados (FK constraints).
+- Acção: migration que apaga em cascata (events → report_requests → leads) os 31 spam (`brevotest8..37` + `brevotest_*` se existir). Mantém `brevotest1..7` como amostra de teste original.
 
-Remover o prefixo `/v3` de todos os paths usados pelo cliente. Tipicamente uma única alteração centralizada em `client.server.ts`:
+### B3 — Backfill dos 7 leads de teste originais (P1)
+- `brevotest1..7` ainda não estão sincronizados no Brevo (exceto `brevotest6` que upserti manualmente como diagnóstico, id 263, mas sem atributos completos).
+- Acção: script efémero que invoca `syncLeadToBrevo(leadId, "report_unlock_backfill")` para os 7. Só corre depois de B1 estar confirmado.
 
-- Trocar `GATEWAY_URL = "https://connector-gateway.lovable.dev/brevo"` mantém-se igual.
-- Atualizar todas as chamadas `brevoFetch("/v3/...")` para `brevoFetch("/...")`. Ficheiros afetados:
-  - `src/lib/brevo/contacts.server.ts` — `POST /v3/contacts` → `POST /contacts`
-  - `src/lib/brevo/customer-sync.server.ts` — qualquer `/v3/...`
-  - testes em `src/lib/brevo/__tests__/*` — atualizar mocks/asserts
+### B4 — `BREVO_DIRECT_API_KEY` órfão (P2)
+- Foi adicionado na Fase 5 só para criar atributos custom via API direta. Já não é referenciado em nenhum lado do código (`rg` confirmará).
+- Acção: remover via `delete_secret`.
 
-Decisão: em vez de remover linha-a-linha, `client.server.ts` passa a normalizar automaticamente — se o path começar por `/v3`, retira-o. Isto torna o fix idempotente, robusto a chamadores futuros, e mantém os ficheiros de domínio iguais ao que existiria contra a API direta da Brevo. Justificação: o gateway é uma fachada que decide o versionamento; o nosso código não deve precisar de saber.
+### B5 — Documentação do quirk do gateway (P2)
+- O strip de `/v3/` é silencioso e não-óbvio. Sem documentação, qualquer endpoint Brevo novo (lists, attributes management, transactional templates) vai cair na mesma armadilha.
+- Acção: adicionar nota em `src/lib/brevo/client.server.ts` (já parcialmente feita no comentário) e no `.lovable/plan.md` em "Notas operacionais Brevo".
 
-Implementação: 2 linhas em `brevoFetch`:
-```ts
-const normalized = path.replace(/^\/?v3\//, "/");
-const url = `${GATEWAY_URL}${normalized.startsWith("/") ? normalized : `/${normalized}`}`;
-```
+## Plano de execução
 
-## Passo 2 — Limpar instrumentação temporária
+1. **Restart do dev-server** para forçar rebuild do preview com a nova `brevoFetch`.
+2. **Validar** com `POST /api/public/report-unlock` para `frederico+brevotest_final@fredericocarvalho.pt` e confirmar em `product_events`:
+   - `brevo_contact_synced` com `metadata.brevo_id` numérico
+   - `brevo_email_sent` (welcome-beta) com `messageId`
+3. **Inspecionar** o contacto no Brevo via `GET /brevo/contacts/{email}` (sem `/v3`):
+   - `INSTAGRAM_HANDLE`, `REPORTS_COUNT`, `LAST_REPORT_URL`, `LAST_REPORT_AT`
+   - `PROFILE_OWNERSHIP`, `GOAL`, `USER_TYPE`, `PRICING_PREFERENCE`
+   - `LEAD_SOURCE=public_report_unlock`, `COMMERCIAL_STATUS=novo_pedido`, `IS_CUSTOMER=false`
+   - presente em `listIds: [16]` (lead-magnet)
+4. **Backfill** dos 7 leads originais (`brevotest1..7`).
+5. **Limpeza** dos 31 leads `brevotest8..37` via migration (cascade delete).
+6. **Remover** `BREVO_DIRECT_API_KEY`.
+7. **Marcar Fase 6 ✅** em `.lovable/plan.md` e documentar quirk.
 
-- Remover `console.log("[unlock] BREVO_SYNC_START …")` e `BREVO_SYNC_END` em `src/lib/unlock.server.ts`. Manter o `await syncLeadToBrevo(...)` (essa parte do fix mantém-se correta).
-- Remover endpoint efémero `src/routes/api/public/brevo-test-sync.ts`.
+## Notas
 
-## Passo 3 — Validação end-to-end (1 unlock real)
-
-1. Unlock real via UI ou via `POST /api/public/report-unlock` para:
-   - email: `frederico+brevotest7@fredericocarvalho.pt`
-   - handle: `frederico.m.carvalho`
-   - snapshot: `683e4c21-60e0-4045-b43a-dfcd85fe9896`
-2. Esperar 5s.
-3. Verificar `product_events` (últimos 2min):
-   - `brevo_contact_synced` com `metadata.brevo_id` numérico, `status=201` (novo) ou `204` (existente).
-4. `GET /brevo/contacts/{email}` direto pelo gateway → confirmar:
-   - `INSTAGRAM_HANDLE = "frederico.m.carvalho"`
-   - `REPORTS_COUNT = 1` (NUMBER)
-   - `LAST_REPORT_URL = "https://instagramaudit.lovable.app/analyze/frederico.m.carvalho"`
-   - `LAST_REPORT_AT` (DATE/ISO)
-   - `PROFILE_OWNERSHIP / GOAL / USER_TYPE / PRICING_PREFERENCE` se enviados na unlock
-   - `LEAD_SOURCE = "public_report_unlock"`
-   - `COMMERCIAL_STATUS = "novo_pedido"`
-   - `IS_CUSTOMER = false`
-   - contact em `listIds` inclui `16` (lead-magnet)
-
-## Passo 4 — Backfill dos 6 leads de teste já criados
-
-Os contactos `brevotest1..6` ainda não foram sincronizados com sucesso (exceto o `6`, que upserti manualmente como teste de diagnóstico — id 263). Criar script efémero (`code--exec`) que itera sobre os 6 lead IDs e chama `syncLeadToBrevo`. Não toca em nada destrutivo. Remove-se o script após correr.
-
-## Passo 5 — Cleanup final
-
-- Remover secret `BREVO_DIRECT_API_KEY` (já não é necessário — só serviu para criar atributos no Passo 5 anterior; o sync corre via gateway).
-- Atualizar `.lovable/plan.md` a marcar Fase 6 ✅.
-- Documentar no plan.md o quirk do gateway (strip de `/v3`) para evitar regressões futuras quando adicionarmos novos endpoints Brevo.
-
-## Notas técnicas
-
-- Não é necessário criar nem alterar tabelas.
 - Não toca em `auth/storage/realtime`.
-- Não regenera reports nem chama Apify/DFS/OpenAI.
-- O fix em `brevoFetch` é compatível com chamadas que já estão sem `/v3` — a regex só normaliza quando o prefixo está presente.
+- Migration de B2 só apaga `email_normalized LIKE 'frederico+brevotest%'` com offset > 7 — sem risco de tocar dados reais.
+- Se após restart o B1 ainda falhar, escalo para inspeção do build remoto (logs Cloudflare Worker) antes de continuar.
 
 ## Checkpoint
 
-- ☐ `brevoFetch` normaliza `/v3` → 200/201 contra `POST /v3/contacts`
-- ☐ Instrumentação debug e endpoint efémero removidos
-- ☐ Unlock end-to-end de `brevotest7` valida atributos corretos no Brevo
-- ☐ Backfill dos 6 leads de teste anteriores
-- ☐ `BREVO_DIRECT_API_KEY` removido
-- ☐ Quirk do gateway documentado no plan.md
+- ☐ B1: rebuild preview e unlock final retorna `brevo_contact_synced`
+- ☐ B3: 7 leads originais com contacto Brevo e atributos corretos
+- ☐ B2: 31 leads-spam apagados em cascata
+- ☐ B4: `BREVO_DIRECT_API_KEY` removido
+- ☐ B5: quirk documentado, Fase 6 ✅
