@@ -225,6 +225,58 @@ export function ReportShellV2({
                       </ReportFramedBlock>
                     </ReportBlockSection>
                   )}
+                  {features.blockContent !== "hidden" && (
+                    <ReportBlockSection block={conteudo} tone="soft-blue">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Top publicações">
+                        <div className="mt-6">
+                          <ReportEnrichedTopLinks enriched={result.enriched} />
+                        </div>
+                      </ReportFramedBlock>
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Mistura de formatos">
+                        <ReportFormatBreakdown />
+                        <div className="mt-4">{renderInsight("formats")}</div>
+                      </ReportFramedBlock>
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Hashtags, palavras-chave e menções">
+                        <div className="space-y-10 md:space-y-12">
+                          <ReportHashtagsKeywords />
+                          <div className="mt-4">{renderInsight("language")}</div>
+                          <ReportEnrichedMentions enriched={result.enriched} />
+                        </div>
+                      </ReportFramedBlock>
+                    </ReportBlockSection>
+                  )}
+                  {features.blockSearch !== "hidden" && (
+                    <ReportBlockSection block={procura} tone="canvas">
+                      <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
+                        O Instagram mostra como a audiência atual reage. A procura
+                        fora da plataforma ajuda a perceber se os mesmos temas também
+                        despertam interesse em pesquisa.
+                      </p>
+                      <ReportMarketSignalsSection
+                        snapshotId={snapshotId}
+                        plan="free"
+                        cachedSummary={payload?.market_signals_free}
+                        compact
+                      />
+                      {renderInsight("marketSignals")}
+                    </ReportBlockSection>
+                  )}
+                  {features.blockBenchmark !== "hidden" && (
+                    <ReportBlockSection block={benchmark} tone="soft-blue">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Posição face ao mercado">
+                        <ReportBenchmarkGauge />
+                        <div className="mt-4">{renderInsight("benchmark")}</div>
+                      </ReportFramedBlock>
+                      <ReportFramedBlock tone="soft-blue" ariaLabel="Comparação com perfis pares">
+                        <ReportCompetitors />
+                        {result.coverage.competitors === "empty" ? (
+                          <div className="mt-6">
+                            <ReportEnrichedCompetitorsCta />
+                          </div>
+                        ) : null}
+                      </ReportFramedBlock>
+                    </ReportBlockSection>
+                  )}
                 </ReportLockGate>
               ) : null}
 
