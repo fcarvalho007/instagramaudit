@@ -1,6 +1,6 @@
 # Runbook Operacional — Beta Privada InstaBench
 
-Documento operacional. Sem alterações de código. Para guardar como `docs/BETA_RUNBOOK.md` após aprovação.
+Documento operacional. Para uso interno do operador durante a fase de beta privada.
 
 ---
 
@@ -46,11 +46,11 @@ Tempo total: 1–3 min.
 
 | Trigger | Template | Quando | Beta status |
 |---|---|---|---|
-| Unlock concluído | `report-ready` | Imediato (transacional) | ✅ ON |
-| Welcome lead-magnet | `welcome-beta` | ~2 min após unlock | ⚠️ OFF na beta externa |
-| Resumo do relatório | `report-summary` | ~24h depois | ⚠️ OFF na beta externa |
-| Feedback request | `feedback-request` | Manual via admin | ✅ ON (manual) |
-| Commercial follow-up | `commercial-followup` | Manual via admin | ✅ ON (manual) |
+| Unlock concluído | `report-ready` | Imediato (transacional) | ON |
+| Welcome lead-magnet | `welcome-beta` | ~2 min após unlock | OFF na beta externa |
+| Resumo do relatório | `report-summary` | ~24h depois | OFF na beta externa |
+| Feedback request | `feedback-request` | Manual via admin | ON (manual) |
+| Commercial follow-up | `commercial-followup` | Manual via admin | ON (manual) |
 
 ## 5. Onde verificar o lead em `/admin`
 
@@ -109,7 +109,7 @@ Se faltar `unlock_completed` mas existir `unlock_started` → desistiu no funil.
 | Erro "perfil não existe" | Typo do utilizador | Confirmar URL |
 | Modal trava no passo 1 | RGPD não aceite | Lembrar utilizador |
 | Erro 500 | Edge function | Logs em `/admin/sistema` → recent errors |
-| `APIFY_ENABLED="false"` | Kill-switch ativo | Reativar se intencional foi pausa |
+| `APIFY_ENABLED="false"` | Kill-switch ativo | Reativar se a pausa não foi intencional |
 
 ## 11. Mover lead no kanban
 
@@ -126,15 +126,15 @@ Adicionar nota interna no sheet sempre que se mover de coluna.
 
 ## 12. O que NÃO tocar durante a beta
 
-- ❌ `/report.example` (mockup editorial — não ligar a dados reais).
-- ❌ Schema de `leads`, `unlock_events`, `product_events` (quebra o funil histórico).
-- ❌ Valores de `APIFY_ALLOWLIST` sem documentar (perde-se controlo de custo).
-- ❌ Ativar `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED="true"` antes de o footer dos emails ter unsubscribe + identificação operador.
-- ❌ Política de privacidade / Termos sem revisão.
-- ❌ Templates de email (rebuild assíncrono, risco de envio inconsistente).
-- ❌ Tabela `user_roles` (não usada agora, fica para auth futura).
+- `/report.example` (mockup editorial — não ligar a dados reais).
+- Schema de `leads`, `unlock_events`, `product_events` (quebra o funil histórico).
+- Valores de `APIFY_ALLOWLIST` sem documentar (perde-se controlo de custo).
+- Ativar `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED="true"` antes de o footer dos emails ter unsubscribe + identificação operador.
+- Política de privacidade / Termos sem revisão.
+- Templates de email (rebuild assíncrono, risco de envio inconsistente).
+- Tabela `user_roles` (não usada agora, fica para auth futura).
 
-## 13. Limitações conhecidas (comunicar a beta testers se perguntarem)
+## 13. Limitações conhecidas
 
 - Apenas perfis públicos do Instagram.
 - Snapshot expira em 24h (necessário re-analisar).
@@ -148,51 +148,42 @@ Adicionar nota interna no sheet sempre que se mover de coluna.
 
 ## Checklist ANTES de convidar um tester
 
-- ☐ Handle alvo está em `APIFY_ALLOWLIST`
-- ☐ `APIFY_ENABLED="true"`
-- ☐ `BREVO_TRANSACTIONAL_ENABLED="true"` (ou Resend fallback ON)
-- ☐ `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED="false"` (até unsubscribe estar pronto)
-- ☐ Cockpit `/admin/sistema` sem alertas vermelhos
-- ☐ Saldo Apify > limite mínimo
-- ☐ Política de privacidade publicada (`/privacidade` 200 OK)
+- [ ] Handle alvo está em `APIFY_ALLOWLIST`
+- [ ] `APIFY_ENABLED="true"`
+- [ ] `BREVO_TRANSACTIONAL_ENABLED="true"` (ou Resend fallback ON)
+- [ ] `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED="false"` (até unsubscribe estar pronto)
+- [ ] Cockpit `/admin/sistema` sem alertas vermelhos
+- [ ] Saldo Apify > limite mínimo
+- [ ] Política de privacidade publicada (`/privacidade` 200 OK)
 
 ## Checklist DEPOIS de cada teste
 
-- ☐ Lead apareceu em `/admin/beta-leads`
-- ☐ Timeline mostra `unlock_completed` + `report_link_sent`
-- ☐ `brevo_contact_id` preenchido (ou `*_skipped` se intencional)
-- ☐ Utilizador confirmou receção do email
-- ☐ Lead movido para coluna correta no kanban
-- ☐ Notas internas adicionadas (impressão do utilizador, bugs reportados)
-- ☐ Custo Apify do run dentro do esperado (ver provider_call_logs)
+- [ ] Lead apareceu em `/admin/beta-leads`
+- [ ] Timeline mostra `unlock_completed` + `report_link_sent`
+- [ ] `brevo_contact_id` preenchido (ou `*_skipped` se intencional)
+- [ ] Utilizador confirmou receção do email
+- [ ] Lead movido para coluna correta no kanban
+- [ ] Notas internas adicionadas (impressão do utilizador, bugs reportados)
+- [ ] Custo Apify do run dentro do esperado (ver `provider_call_logs`)
 
 ---
 
 ## Tabela de troubleshooting rápida
 
-| Problema | Local 1º check | Local 2º check | Decisão |
+| Problema | Local 1.º check | Local 2.º check | Decisão |
 |---|---|---|---|
 | Sem unlock | Browser console do tester | `/admin/sistema` errors | Reanalisar manualmente |
 | Sem email | Timeline do lead | `email_send_log` | Reenviar via admin |
 | Brevo sync KO | Timeline (`brevo_*`) | `/admin/sistema` Brevo | Ignorar até batch ou re-sync manual |
-| Apify falhou | `/admin/sistema` provider | provider_call_logs | Confirmar allowlist + saldo |
+| Apify falhou | `/admin/sistema` provider | `provider_call_logs` | Confirmar allowlist + saldo |
 | Kanban vazio | Refresh + filtros | `/api/admin/leads-kanban` 200? | Reportar incidente |
-| Custo a disparar | `/admin/visao-geral` despesa | provider_call_logs hoje | Pausar `APIFY_ENABLED` |
+| Custo a disparar | `/admin/visao-geral` despesa | `provider_call_logs` hoje | Pausar `APIFY_ENABLED` |
 
 ## Regras de escalação
 
 - **Sev-1 (parar a beta)**: relatório não desbloqueia para >50% dos testers, custo Apify >2× esperado, leak de dados, erro RGPD.
   - Ação: `APIFY_ENABLED="false"` + parar convites + post-mortem em 24h.
 - **Sev-2 (avisar testers ativos)**: emails não saem, Brevo down >2h.
-  - Ação: avisar manualmente os 1-2 testers afetados; ativar fallback Resend se desligado.
+  - Ação: avisar manualmente os testers afetados; confirmar fallback Resend ativo.
 - **Sev-3 (registo)**: bug visual, copy errado, métrica esquisita.
   - Ação: anotar em backlog. Não interromper.
-
----
-
-## Checkpoint
-
-- ☐ Aprovar conteúdo do runbook
-- ☐ Confirmar gravação como `docs/BETA_RUNBOOK.md`
-- ☐ Indicar se quer também versão resumida 1-pager para referência rápida
-- ☐ Confirmar que `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` deve estar OFF na beta
