@@ -20,7 +20,7 @@ export function AdminPageHeader({
 }: AdminPageHeaderProps) {
   return (
     <header
-      className="mb-6 pb-4 sm:mb-7 sm:pb-5"
+      className="mb-5 pb-4 sm:mb-7 sm:pb-5"
       style={{
         backgroundImage:
           "linear-gradient(to right, rgba(44,44,42,0.18), transparent)",
