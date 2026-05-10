@@ -114,8 +114,8 @@ describe("syncLeadToBrevo", () => {
       PROFILE_OWNERSHIP: "own_profile",
       GOAL: "improve_content",
       USER_TYPE: "creator",
-      PRICING_PREFERENCE: "below_20",
-      LEAD_SOURCE: "public_report_unlock",
+      PRICING_PREFERENCE: "one_off",
+      LEAD_SOURCE: "unlock",
       COMMERCIAL_STATUS: "lead",
       IS_CUSTOMER: false,
     });
