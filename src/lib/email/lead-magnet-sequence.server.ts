@@ -94,6 +94,39 @@ export async function sendLeadMagnetSequence(
     return { welcome: "skipped_disabled", summary: "skipped_no_data" };
   }
 
+  // Consent gate (defesa em profundidade): mesmo com o kill-switch ON, só
+  // enviamos a sequência lead-magnet (welcome + summary) a leads que
+  // marcaram explicitamente `marketing_consent = true`. Os emails
+  // puramente transacionais não passam por aqui.
+  try {
+    const { data: leadRow } = await (supabaseAdmin as any)
+      .from("leads")
+      .select("marketing_consent")
+      .eq("id", args.leadId)
+      .maybeSingle();
+    if (leadRow?.marketing_consent !== true) {
+      try {
+        await recordProductEvent({
+          eventType: "lead_magnet_sequence_skipped" as any,
+          leadId: args.leadId,
+          snapshotId: args.snapshotId,
+          handle: args.instagramHandle,
+          metadata: {
+            report_request_id: args.reportRequestId,
+            reason: "NO_MARKETING_CONSENT",
+          },
+        });
+      } catch (err) {
+        console.error("[lead-magnet] failed to record consent-skip event:", err);
+      }
+      return { welcome: "skipped_disabled", summary: "skipped_no_data" };
+    }
+  } catch (err) {
+    // Fail-closed: se não conseguimos confirmar consent, não enviamos.
+    console.error("[lead-magnet] consent lookup failed, skipping send:", err);
+    return { welcome: "skipped_disabled", summary: "skipped_no_data" };
+  }
+
   // ---------- 1. welcome-beta ----------
   if (args.sendWelcome) {
     const dup = await eventAlreadyEmitted(
