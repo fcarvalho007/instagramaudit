@@ -34,6 +34,10 @@ const ALLOWED_EVENTS = [
   // Welcome-beta email (first unlock only)
   "welcome_beta_email_sent",
   "welcome_beta_email_failed",
+  // Report summary email (manual admin trigger; cron later)
+  "report_summary_email_sent",
+  "report_summary_email_failed",
+  "report_summary_skipped_no_data",
   // Brevo contact mirror (Phase — contact sync only, no emails)
   "brevo_contact_synced",
   "brevo_contact_sync_failed",

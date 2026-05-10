@@ -59,6 +59,7 @@ export function UnlockModal({
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [result, setResult] = useState<UnlockResult | null>(null);
+  const [lookupPending, setLookupPending] = useState(false);
 
   const form = useForm<UnlockFormValues>({
     resolver: zodResolver(unlockFormSchema),
@@ -92,6 +93,43 @@ export function UnlockModal({
     if (step === 3) fields = ["goal"];
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
+
+    // After step 1 (email), check if this is a returning lead with full
+    // qualification → skip steps 2-4 entirely. Conservative fallback:
+    // any error or timeout keeps the standard 4-step flow.
+    if (step === 1) {
+      const email = form.getValues("email");
+      setLookupPending(true);
+      let canSkip = false;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch("/api/public/lookup-lead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = (await res.json().catch(() => ({}))) as {
+            exists?: boolean;
+            has_qualification?: boolean;
+          };
+          canSkip = Boolean(data.exists && data.has_qualification);
+        }
+      } catch {
+        canSkip = false;
+      } finally {
+        setLookupPending(false);
+      }
+
+      if (canSkip) {
+        await submitMinimal(email);
+        return;
+      }
+    }
+
     setStep(((step as number) + 1) as Step);
   };
 
@@ -145,6 +183,56 @@ export function UnlockModal({
       setSubmitting(false);
     }
   });
+
+  /**
+   * Minimal-payload submit for returning leads with full qualification.
+   * Sends only email + snapshot + handle. The server merges conservatively
+   * (never regresses qualification fields).
+   */
+  const submitMinimal = async (email: string) => {
+    setSubmitting(true);
+    setServerError(null);
+    try {
+      const res = await fetch("/api/public/report-unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          instagram_username: instagramUsername,
+          analysis_snapshot_id: snapshotId,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        lead_id?: string;
+        report_request_id?: string;
+        returning_lead?: boolean;
+      };
+      if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
+        // Fallback: drop the skip and let the user complete the 3 questions.
+        setStep(2);
+        setServerError(
+          "Precisamos de mais 3 detalhes rápidos para desbloquear.",
+        );
+        return;
+      }
+      const r: UnlockResult = {
+        leadId: data.lead_id,
+        reportRequestId: data.report_request_id,
+        returningLead: Boolean(data.returning_lead),
+      };
+      setResult(r);
+      onUnlock(r);
+      setStep("success");
+    } catch {
+      setStep(2);
+      setServerError(
+        "Erro de ligação. Verifica a tua internet e tenta novamente.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const stepNum = step === "success" ? TOTAL_STEPS : step;
   const progressPct = ((stepNum as number) / TOTAL_STEPS) * 100;
@@ -266,12 +354,12 @@ export function UnlockModal({
                   type="submit"
                   size="lg"
                   className="flex-1 rounded-lg font-medium"
-                  disabled={submitting}
+                  disabled={submitting || lookupPending}
                 >
-                  {submitting ? (
+                  {submitting || lookupPending ? (
                     <>
                       <Loader2 className="size-4 animate-spin" aria-hidden />
-                      A desbloquear…
+                      {lookupPending ? "A verificar…" : "A desbloquear…"}
                     </>
                   ) : step === 4 ? (
                     "Desbloquear relatório"
