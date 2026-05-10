@@ -1216,7 +1216,7 @@ function WelcomeBackState({
           {firstName ? `, ${firstName}` : ""}
         </DialogTitle>
         <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-          Vamos guardar este report na tua área pessoal.
+          Podes voltar a consultar este relatório na tua área pessoal.
         </DialogDescription>
       </DialogHeader>
 
