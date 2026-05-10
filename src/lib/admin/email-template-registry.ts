@@ -34,12 +34,29 @@ export type EmailTemplateKey =
   | "report_summary"
   | "commercial_followup";
 
+export type EmailTemplateCategory = "operacional" | "conta" | "comercial";
+
+export const CATEGORY_LABELS: Record<EmailTemplateCategory, string> = {
+  operacional: "Operacionais",
+  conta: "Conta e área pessoal",
+  comercial: "Comercial",
+};
+
+export const CATEGORY_ORDER: EmailTemplateCategory[] = [
+  "operacional",
+  "conta",
+  "comercial",
+];
+
 export interface EmailTemplateEntry {
   key: EmailTemplateKey;
   title: string;
   internalName: string;
+  category: EmailTemplateCategory;
+  shortDescription: string;
   wired: boolean;
   wiredAt: string | null;
+  wiredNote?: string | null;
   variables: Array<{ key: string; value: string }>;
   render: () => RenderedEmail;
   preheader?: string;
@@ -50,8 +67,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     key: "request_received",
     title: "Pedido recebido",
     internalName: "request_received",
+    category: "operacional",
+    shortDescription: "Recebemos o teu pedido para analisar @{handle}.",
     wired: true,
     wiredAt: "src/lib/beta.functions.ts (submissão de pedido beta)",
+    wiredNote: "Disparado quando o lead submete um pedido beta no site público.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -67,8 +87,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     key: "report_ready",
     title: "Relatório pronto",
     internalName: "report_ready",
+    category: "operacional",
+    shortDescription: "A análise do perfil já está disponível para consultares.",
     wired: true,
     wiredAt: "src/routes/api/admin/send-report-link.ts",
+    wiredNote: "Enviado pelo admin a partir do detalhe da lead (acção \"Enviar relatório\").",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -86,8 +109,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     key: "feedback_request",
     title: "Pedido de feedback",
     internalName: "feedback_request",
+    category: "operacional",
+    shortDescription: "Pedes feedback rápido sobre o relatório?",
     wired: true,
     wiredAt: "src/routes/api/admin/send-feedback-request.ts",
+    wiredNote: "Disparado pelo admin após o lead consultar o relatório.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -109,8 +135,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     key: "personal_area_saved",
     title: "Área pessoal guardada",
     internalName: "personal_area_saved",
+    category: "conta",
+    shortDescription: "Guardámos a análise na tua área pessoal.",
     wired: true,
     wiredAt: "src/lib/email/templates/send-personal-area-saved.server.ts",
+    wiredNote: "Disparado quando a lead cria conta e a análise é vinculada.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -128,8 +157,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     key: "welcome_beta",
     title: "Boas-vindas à beta",
     internalName: "welcome_beta",
+    category: "conta",
+    shortDescription: "Bem-vindo à beta — o que vais encontrar.",
     wired: true,
     wiredAt: "src/lib/email/send-welcome-beta.server.ts (primeiro unlock)",
+    wiredNote: "Enviado uma única vez no primeiro unlock do lead, com consentimento explícito.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -147,8 +179,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     key: "report_summary",
     title: "Resumo do relatório",
     internalName: "report_summary",
+    category: "comercial",
+    shortDescription: "As 3 conclusões principais em 60 segundos.",
     wired: true,
     wiredAt: "src/lib/email/send-report-summary.server.ts (após unlock)",
+    wiredNote: "Disparado em sequência após unlock, com consentimento de marketing.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -178,8 +213,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     key: "commercial_followup",
     title: "Follow-up comercial",
     internalName: "commercial_followup",
+    category: "comercial",
+    shortDescription: "Falta ligar trigger ao stripe webhook.",
     wired: false,
     wiredAt: null,
+    wiredNote: "Sem trigger automático. Reserva-se para conversão paga (futuro).",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
