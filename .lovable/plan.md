@@ -1,155 +1,101 @@
-## Fase 3 — Persistência backend do unlock público
+## Goal
+Ligar o `UnlockModal` ao endpoint `POST /api/public/report-unlock` com fluxo progressivo de 5 passos, reutilizando o gate visual já existente.
 
-### Objetivo
+## Current state
+- `UnlockModal` só captura email e dispara `onUnlock` local.
+- `analyze.$username.tsx` persiste unlock em `sessionStorage("ib_unlock_preview")` (sem backend).
+- Endpoint `/api/public/report-unlock` já valida `email`, `instagram_username`, `analysis_snapshot_id` e os 4 campos qualitativos opcionais (`profile_ownership`, `goal`, `user_type`, `pricing_preference`). Devolve `{ success, lead_id, report_request_id, returning_lead, created_report_request }`.
+- Enums já definidos em `src/lib/unlock.server.ts` — vamos espelhá-los num módulo client-safe.
 
-Capturar email + respostas progressivas no endpoint público `POST /api/public/report-unlock`. Reutilizar lead existente quando o email já foi visto, criar `report_request` ligado, emitir eventos, e ser idempotente para `(email, snapshot)`. Sem providers, sem email, sem auth.
+## Architecture decisions
+- **Sem partial save**: o endpoint atual é tudo-ou-nada (exige `email + instagram_username + analysis_snapshot_id`). Mantemos os 5 passos em estado local (`useState`/RHF) e fazemos **uma única chamada** no fim do passo 5. Coerente com "Save email step as soon as possible **if backend supports**; otherwise keep local".
+- **react-hook-form + Zod**: o projeto já usa shadcn `Form` + RHF + zodResolver — reutilizar.
+- **Marcador local de unlock**: passar a chave por snapshot — `ib_unlock:<snapshotId>` — em vez de flag global `ib_unlock_preview`. Evita que um snapshot desbloqueado destranque outro report no mesmo tab. Migração silenciosa (ler ambas no carregamento).
+- **Returning lead UX**: o backend devolve `returning_lead: true` mesmo quando ainda faltam respostas. Não encurtamos o fluxo no cliente (não sabemos antes de submeter). Mostramos copy de "Bem-vindo de volta" no success state quando `returning_lead === true`.
+- **Variante leve "email-first" deferida**: um endpoint `check-email` que encurte o flow para returning leads fica fora de scope (evita criar dependência nova de backend).
 
-### Impacto de schema (1 migração mínima)
-
-Tabela `leads` ganha 1 coluna opcional:
-
-- `pricing_preference text NULL` — único campo das 4 respostas que ainda não tem coluna; os outros já existem (`profile_ownership`, `purpose` para o "goal", `user_type`).
-
-Eventos novos no enum `ALLOWED_EVENTS` (`src/lib/tracking.functions.ts`):
-
-- `unlock_email_submitted`
-- `unlock_completed`
-- `report_saved_to_account`
-- `returning_lead_detected`
-
-Sem nova tabela. Sem RLS — `leads`, `report_requests` e `product_events` já operam só via `supabaseAdmin` em rotas server.
-
-### Endpoint — `POST /api/public/report-unlock`
-
-Ficheiro novo: `src/routes/api/public/report-unlock.ts` (server route).
-
-**Payload (Zod, strict):**
-
-```ts
-z.object({
-  email: z.string().trim().toLowerCase().email().max(255),
-  instagram_username: z.string().trim().min(1).max(60)
-    .transform(v => v.replace(/^@/, "").toLowerCase()),
-  analysis_snapshot_id: z.string().uuid(),
-  profile_ownership: z.enum(["own_profile","brand_profile","client_profile"]).optional(),
-  goal: z.enum(["improve_content","benchmark_competitors","client_report","grow_audience","validate_brand","other"]).optional(),
-  user_type: z.enum(["creator","brand","agency","consultant","ecommerce","other"]).optional(),
-  pricing_preference: z.string().trim().max(80).optional(),
-  name: z.string().trim().min(1).max(100).optional(), // fallback "Sem nome"
-})
+## UX flow
+```text
+Modal (Dialog, sm:max-w-md, mobile-first)
+├── Header fixo: "Desbloquear relatório gratuito" + "Acesso gratuito durante a beta"
+├── Progress: "Passo X de 5" + barra fina (bg-surface-muted → primary)
+├── Step 1 — Email
+│     Input email · CTA "Continuar"
+│     Microcopy: "Sem spam. Usamos o email para guardar este report e enviar o acesso."
+├── Step 2 — Profile ownership (radio cards grandes)
+│     "Este perfil é teu?" → own_profile · brand_profile · client_profile
+├── Step 3 — Goal
+│     "Qual o teu objetivo?" → improve_content · benchmark_competitors ·
+│     client_report · grow_audience · validate_brand · other
+├── Step 4 — User type
+│     "Como te descreves?" → creator · brand · agency · consultant · ecommerce · other
+├── Step 5 — Pricing preference (radio + "outro" textarea curto)
+│     "Quanto pagarias por um report mensal?" → free_only · under_10 ·
+│     10_to_30 · 30_plus · not_sure
+├── CTAs por passo: "Voltar" (ghost) + "Continuar" / "Desbloquear relatório" (primary)
+├── Loading: botão com spinner, inputs disabled
+├── Erro: Alert vermelho com mensagem + retry
+└── Success state (substitui o form)
+      ├── Novo lead   → "Relatório desbloqueado" + "Também guardámos este report
+      │                 na tua área pessoal."
+      ├── Returning   → "Bem-vindo de volta" + "Este report foi guardado na tua área."
+      └── CTA "Ver relatório" fecha modal
 ```
+"Demora cerca de 1 minuto" aparece como hint debaixo do título no Step 1.
 
-Rejeita corpo inválido com `400 { error: "INVALID_PAYLOAD", issues }`.
+## Data model (cliente)
+Novo `src/lib/unlock-flow.ts` (client-safe):
+- Re-exporta tuplos `PROFILE_OWNERSHIPS`, `GOALS`, `USER_TYPES`, `PRICING_PREFERENCES` (novo, ver abaixo).
+- `unlockFormSchema` = Zod com email + 4 campos required (não opcionais — no cliente exigimos todos para passar do step 5).
+- `LABELS` pt-PT por valor de enum (para os radio cards).
 
-**Fluxo (em `supabaseAdmin`):**
+`PRICING_PREFERENCES` (novo, só cliente — backend aceita string livre ≤80):
+`free_only | under_10 | 10_to_30 | 30_plus | not_sure`.
 
-1. Normalizar email; calcular `email_normalized = email`.
-2. **Lookup snapshot** em `analysis_snapshots` por `id = analysis_snapshot_id`. Se não existir → `404 { error: "SNAPSHOT_NOT_FOUND" }`. Garante que não persistimos lixo.
-3. **Lookup lead** por `email_normalized`:
-   - Se existe (`returningLead = true`):
-     - **Update conservador** (só preenche campos `NULL`):
-       ```sql
-       UPDATE leads SET
-         user_type = COALESCE(user_type, $userType),
-         purpose = COALESCE(purpose, $goal),
-         profile_ownership = COALESCE(profile_ownership, $ownership),
-         pricing_preference = COALESCE(pricing_preference, $pricing),
-         updated_at = now()
-       WHERE id = $leadId
-       ```
-     - Emite `returning_lead_detected` com `metadata: { snapshot_id, handle, fields_updated: [...] }`.
-   - Se não existe:
-     - INSERT lead com `name = payload.name ?? "Sem nome"`, `email`, `email_normalized`, `source = "public_report_unlock"`, `commercial_status = "novo_pedido"` (estado inicial canónico, igual ao default), e os 4 campos qualitativos.
-4. **Idempotência do report_request** — procura `report_requests` com `(lead_id, analysis_snapshot_id)` igual:
-   - Se existe → `report_request_id = existing.id`, `created = false`. UPDATE de `metadata` por merge JSON (`metadata = metadata || $newMeta`), nunca sobrescreve chaves já presentes. Não emite `report_saved_to_account` (já foi emitido antes).
-   - Se não existe → INSERT com:
-     - `lead_id`
-     - `instagram_username`
-     - `analysis_snapshot_id`
-     - `request_source = "public_unlock"`
-     - `request_status = "completed"` (snapshot já existe, não há análise pendente)
-     - `is_free_request = true`
-     - `metadata = { profile_ownership, goal, user_type, pricing_preference, source: "public_unlock", unlocked_at: <iso> }` (omite chaves `undefined`)
-     - **Não** preenche `user_id` (não há auth ainda).
-   - Emite `report_saved_to_account` apenas no INSERT, com `metadata: { snapshot_id, handle, returning_lead }`.
-5. **Eventos sequenciais** via `recordProductEvent` (helper já existente):
-   - `unlock_email_submitted` — sempre, no início (após validação, antes de tocar em leads). Permite medir intent vs completion.
-   - `unlock_completed` — sempre, no fim, com `metadata: { fields_present: [...], returning_lead }`.
-   - `returning_lead_detected` — só quando aplicável (passo 3).
-   - `report_saved_to_account` — só no INSERT do report_request (passo 4).
-   - Todos com `lead_id`, `snapshot_id`, `handle = instagram_username`.
-6. **Lifecycle (best-effort)**: chamar `maybeAdvanceLeadStatus(current, "relatorio_visto")`. Não regride. Fail-open.
+## Implementation phases
+1. **Extrair enums para módulo client-safe** — criar `src/lib/unlock-flow.ts` com tuplos + labels + schema RHF. Importar tuplos a partir de `unlock.server.ts` é seguro? **Não**: ficheiros `*.server.ts` são bloqueados no bundle cliente. Duplicar os tuplos no novo ficheiro e adicionar teste que garante igualdade com o server (via re-import dentro do teste vitest, que corre em Node).
+2. **Refazer `UnlockModal`** com state machine de 5 steps:
+   - `useForm` com `defaultValues` + `mode: "onChange"`.
+   - `step` em `useState<1|2|3|4|5|"success">`.
+   - `submitting`, `serverError`, `result` (`{ returning_lead, lead_id }`).
+   - Submit final: `fetch("/api/public/report-unlock", { method: "POST", body: JSON.stringify({...}) })`.
+   - Reset ao fechar (apenas se ainda não desbloqueou).
+3. **Componente `RadioCardGroup`** local ao modal (ou inline) — botões grandes, full-width, `min-h-12`, estado selected via token `border-primary` + `bg-primary/5`.
+4. **Atualizar `analyze.$username.tsx`**:
+   - Trocar chave para `ib_unlock:${snapshotId}` (ler legada como fallback).
+   - Passar `snapshotId` + `instagramUsername` ao `UnlockModal`.
+   - `onUnlock` recebe agora `{ leadId, returningLead }` — apenas para tracking opcional; unlock visual já é feito no modal antes do success state, mas marker local só grava após sucesso confirmado.
+5. **Tests** (`src/components/product/unlock-modal.test.tsx`):
+   - render step 1 → 2 → 5 com `userEvent`.
+   - validação email.
+   - submit final faz `fetch` mockado, mostra success state com copy correta consoante `returning_lead`.
+   - erro 500 mostra Alert + permite retry.
+   - Test de paridade dos enums client/server.
+6. **Validação**: `bunx tsc --noEmit` + `bunx vitest run`. Manual: novo email completa flow → unlock; recarregar mantém unlock; reabrir noutro snapshot continua locked.
 
-**Resposta (200):**
+## Files to change
+- `src/lib/unlock-flow.ts` (novo) — enums client + Zod schema + labels pt-PT.
+- `src/components/product/unlock-modal.tsx` — reescrita completa (5 steps + submit + success).
+- `src/routes/analyze.$username.tsx` — chave por snapshot, props extra ao modal.
+- `src/components/product/unlock-modal.test.tsx` (novo) — cobertura do fluxo.
+- `src/lib/unlock-flow.test.ts` (novo) — paridade de enums client vs server.
 
-```ts
-{
-  success: true,
-  lead_id: string,
-  report_request_id: string,
-  returning_lead: boolean,
-  access_state: "unlocked",
-  created_report_request: boolean,
-}
-```
+## Out of scope
+Scoring, providers, envio de email, PDF, autenticação password, payments, encurtar fluxo para returning leads (precisaria endpoint novo).
 
-**Cabeçalhos:** `Cache-Control: no-store`, `Content-Type: application/json`.
+## Risks
+- **Sem encurtamento de flow** para returning leads → fricção desnecessária. Mitigação: copy clara + success state diferenciado. Endpoint `check-email` fica como follow-up.
+- **Pricing preference** como string livre no backend pode acumular valores inconsistentes. Mitigação: enviar sempre os slugs do tuplo client; admin pode mais tarde migrar para enum.
+- **Migração da chave sessionStorage** pode invalidar unlocks ativos de QA. Mitigação: ler chave legada como fallback durante esta fase.
 
-**Códigos de erro:** `400` payload inválido · `404` snapshot inexistente · `500` erro interno (genérico, sem stack).
+## Checkpoints
+☐ Modal abre no Step 1 e progride 1→5 com Voltar/Continuar funcionais  
+☐ Step 5 dispara `POST /api/public/report-unlock` uma única vez  
+☐ Success state mostra copy diferente para novo vs returning lead  
+☐ `sessionStorage["ib_unlock:<snapshotId>"]` gravado só após `success: true`  
+☐ Reload mantém unlock no mesmo snapshot; outro snapshot continua locked  
+☐ Mobile 375px: sem overflow, tap targets ≥44px  
+☐ `bunx tsc --noEmit` 0 erros · `bunx vitest run` verde
 
-### Idempotência detalhada
-
-- Mesma chamada repetida (mesmo email + snapshot) → 200 com `created_report_request: false`, sem novos `report_saved_to_account`. `unlock_email_submitted` e `unlock_completed` voltam a ser emitidos (são eventos de intent, não de estado — útil para contar tentativas).
-- Para evitar flood de `unlock_completed` em retries acidentais (ex.: duplo-clique), aplicamos dedup defensivo idêntico ao `report_viewed`: se existe `unlock_completed` com mesmo `(snapshot_id, lead_id)` nos últimos 5s, ignora silenciosamente. Mesmo padrão para `unlock_email_submitted`.
-
-### Segurança
-
-- Endpoint público sob `/api/public/*` (já bypassa auth, é o standard do projeto).
-- Validação Zod estrita; rejeita extras com `.strict()` no schema.
-- Tudo via `supabaseAdmin` → escolhas de RLS irrelevantes; nunca devolve dados privados (só os 3 IDs e flags).
-- Sem PII no log: erros logados mascaram email para `a***@example.com`.
-- Rate limiting: **fora de scope** desta fase (deixa nota no ficheiro a sugerir middleware futuro). Risco aceitável enquanto endpoint só persiste dados qualitativos.
-
-### Ficheiros tocados
-
-1. **migração nova** — adiciona `leads.pricing_preference text NULL`.
-2. **`src/lib/tracking.functions.ts`** — adiciona 4 eventos ao `ALLOWED_EVENTS` (não toca em mais nada, comentário a ligar com `lead-lifecycle.ts`).
-3. **`src/lib/unlock.server.ts`** (novo) — pure server helper `processReportUnlock(payload)` com toda a lógica acima. Mantém a route file fina e testável.
-4. **`src/routes/api/public/report-unlock.ts`** (novo) — server route POST: parse JSON, valida, chama helper, devolve resposta. ~50 linhas.
-5. **`src/lib/__tests__/unlock.server.test.ts`** (novo) — testes unitários do helper com `supabaseAdmin` mockado:
-   - novo email → cria lead + report_request + 3 eventos (sem returning).
-   - email existente → reusa lead + cria report_request + 4 eventos (com `returning_lead_detected`).
-   - mesmo email + mesmo snapshot → não duplica report_request.
-   - email inválido → schema rejeita (testa via parse).
-   - snapshot inexistente → 404.
-   - update conservador: lead com `purpose` já preenchido não é sobrescrito.
-
-### Frontend
-
-**Não é alterado nesta fase.** O `UnlockModal` continua a fazer unlock local via `sessionStorage`. Phase 4 fará a chamada real ao endpoint a partir do modal de 5 passos. Isto mantém o âmbito UI-only da fase 2 separado da persistência, e permite testar o endpoint isoladamente via cURL/`invoke-server-function`.
-
-### Validação
-
-- `bunx tsc --noEmit` — 0 erros.
-- `bunx vitest run` — todos os existentes passam + 6 novos do unlock helper.
-- **Manual via `invoke-server-function`** (após o user approve a migração):
-  1. POST com email novo + snapshot real → 200, `returning_lead: false`, `created_report_request: true`. Confirma 1 lead + 1 report_request + 3 events em `psql` ou `read_query`.
-  2. Repetir mesma chamada → 200, `returning_lead: true`, `created_report_request: false`. Sem novos report_requests; `returning_lead_detected` emitido; sem novo `report_saved_to_account` (nem novo `unlock_completed` se dentro de 5s).
-  3. POST com email novo + snapshot diferente do mesmo handle → cria 2º report_request ligado ao mesmo lead.
-  4. POST sem email / com email mal formado → 400.
-  5. POST com `analysis_snapshot_id` inexistente → 404.
-  6. Verificar via `psql` que não houve nenhum hit a Apify/OpenAI/DataForSEO/Resend (estes endpoints não são tocados pelo handler).
-
-### Riscos
-
-- `pricing_preference` chega como string livre (max 80). Se quisermos enum no futuro, basta apertar o Zod sem migração.
-- Sem rate limiting → endpoint pode ser spammed. Mitigação curto-prazo: dedup de 5s nos eventos; mitigação real fica para Phase 5 (middleware).
-- O update conservador de leads usa `COALESCE` em SQL bruto. Para evitar SQL inline com supabase-js, fazemos SELECT + diff em JS e UPDATE só os campos vazios.
-- `request_status = "completed"` num report_request criado sem PDF/email pode confundir o admin CRM. Alternativa: usar novo valor `"unlocked"` (não requer migração — é text). Vou usar `"unlocked"` para diferenciar do fluxo beta tradicional.
-
-### Checkpoint
-
-- ☐ Confirmar adicionar coluna `leads.pricing_preference text` (única alteração de schema)
-- ☐ Confirmar `request_status = "unlocked"` para distinguir do fluxo beta (vs. `"completed"`)
-- ☐ Confirmar valor `request_source = "public_unlock"` (corresponde à spec do user)
-- ☐ Confirmar que o frontend NÃO é alterado nesta fase (modal continua local-only)
+## Next implementation prompt
+> Implementa o plano acima. Não alteres `unlock.server.ts` nem o endpoint. Cria `src/lib/unlock-flow.ts` com os tuplos duplicados + Zod + labels pt-PT, reescreve `UnlockModal` com state machine de 5 passos e RHF, atualiza `analyze.$username.tsx` para chave `ib_unlock:<snapshotId>` e adiciona testes de fluxo + paridade. Valida com `bunx tsc --noEmit` e `bunx vitest run`.
