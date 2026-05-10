@@ -105,9 +105,9 @@ describe("syncCustomerToBrevo", () => {
       PROFILE_OWNERSHIP: "own_profile",
       GOAL: "growth",
       USER_TYPE: "creator",
-      PRICING_PREFERENCE: "one_off",
-      LEAD_SOURCE: "unlock",
-      COMMERCIAL_STATUS: "customer",
+      PRICING_PREFERENCE: 1,
+      LEAD_SOURCE: 1,
+      COMMERCIAL_STATUS: 2,
       IS_CUSTOMER: true,
       PLAN: "pago_unico_30_50",
     });
