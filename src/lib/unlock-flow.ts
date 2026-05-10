@@ -11,6 +11,7 @@ export const PROFILE_OWNERSHIPS = [
   "brand_profile",
   "client_profile",
   "competitor_research",
+  "curiosity",
 ] as const;
 
 export const GOALS = [
@@ -28,6 +29,7 @@ export const USER_TYPES = [
   "agency",
   "consultant",
   "ecommerce",
+  "student",
   "other",
 ] as const;
 
@@ -48,7 +50,8 @@ export const PROFILE_OWNERSHIP_LABELS: Record<ProfileOwnership, string> = {
   own_profile: "É o meu perfil pessoal",
   brand_profile: "É o perfil da minha marca",
   client_profile: "É o perfil de um cliente",
-  competitor_research: "Estou a ver concorrência ou a explorar",
+  competitor_research: "Estou a observar concorrência",
+  curiosity: "Estou só a cuscar / curiosidade",
 };
 
 export const GOAL_LABELS: Record<Goal, string> = {
@@ -66,6 +69,7 @@ export const USER_TYPE_LABELS: Record<UserType, string> = {
   agency: "Agência",
   consultant: "Consultor / Freelancer",
   ecommerce: "E-commerce",
+  student: "Estudante / Académico",
   other: "Outro",
 };
 
@@ -86,12 +90,14 @@ export const unlockFormSchema = z
     goal: z.enum(GOALS, { required_error: "Escolhe uma opção" }),
     user_type: z.enum(USER_TYPES, { required_error: "Escolhe uma opção" }),
     // Free-text only when "other" is picked (validated by the refinement below).
-    goal_other_text: z.string().trim().max(120).optional(),
-    user_type_other_text: z.string().trim().max(120).optional(),
+    goal_other_text: z.string().trim().max(80).optional(),
+    user_type_other_text: z.string().trim().max(80).optional(),
     // GDPR consent is required to submit the form.
     gdpr_consent: z.literal(true, {
       errorMap: () => ({ message: "Tens de aceitar para continuar" }),
     }),
+    // Optional marketing newsletter consent (separate from GDPR).
+    marketing_consent: z.boolean().optional(),
     // Pricing preference is no longer asked in the unlock modal — moved to
     // a contextual sheet (post-value). Kept optional for backwards compat.
     pricing_preference: z.enum(PRICING_PREFERENCES).optional(),
