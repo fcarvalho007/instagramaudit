@@ -25,3 +25,7 @@ export {
   renderPersonalAreaSaved,
   type PersonalAreaSavedInput,
 } from "./personal-area-saved";
+export {
+  renderWelcomeBeta,
+  type WelcomeBetaInput,
+} from "./welcome-beta";
