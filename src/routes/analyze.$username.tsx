@@ -174,6 +174,7 @@ type LoadState =
       snapshotId: string;
       payload: SnapshotPayload;
       analyzedAtIso: string | null;
+      expiresAtIso: string | null;
     };
 
 function AnalyzePage() {
@@ -261,6 +262,7 @@ function AnalyzePage() {
         payload,
         analyzedAtIso:
           body.snapshot.meta?.generated_at ?? body.snapshot.updated_at ?? null,
+        expiresAtIso: (body.snapshot as { expires_at?: string | null }).expires_at ?? null,
       });
     } catch {
       setState({
@@ -297,6 +299,7 @@ function AnalyzePage() {
             snapshotId={state.snapshotId}
             payload={state.payload}
             analyzedAtIso={state.analyzedAtIso}
+            expiresAtIso={state.expiresAtIso}
           />
         )}
       </div>
@@ -310,11 +313,13 @@ function AnalyzeReady({
   snapshotId,
   payload,
   analyzedAtIso,
+  expiresAtIso,
 }: {
   result: AdapterResult;
   snapshotId: string;
   payload: SnapshotPayload;
   analyzedAtIso: string | null;
+  expiresAtIso: string | null;
 }) {
   const shareActions = useReportShareActions({ snapshotId });
 
@@ -367,6 +372,7 @@ function AnalyzeReady({
         snapshotId={snapshotId}
         payload={payload}
         analyzedAtIso={analyzedAtIso}
+        expiresAtIso={expiresAtIso}
         variant="public_mvp"
         featuresOverride={featuresOverride}
         lockBoundary="engagement"
