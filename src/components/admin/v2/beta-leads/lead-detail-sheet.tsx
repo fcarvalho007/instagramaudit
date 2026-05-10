@@ -651,13 +651,15 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                 <AdminActionButton size="md" onClick={handleMarkContacted}>
                   <Phone size={14} /> Contactado
                 </AdminActionButton>
-                <AdminActionButton
-                  size="md"
-                  onClick={() => setFollowupOpen(true)}
-                  className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
-                >
-                  <Sparkles size={14} /> Follow-up comercial
-                </AdminActionButton>
+                {followupEligible && (
+                  <AdminActionButton
+                    size="md"
+                    onClick={() => setFollowupOpen(true)}
+                    className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
+                  >
+                    <Sparkles size={14} /> Follow-up comercial
+                  </AdminActionButton>
+                )}
                 <AdminActionButton
                   size="md"
                   onClick={handleArchive}
