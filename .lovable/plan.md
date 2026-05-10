@@ -1,61 +1,61 @@
-## Objetivo
+## Estado actual — auditoria
 
-Aplicar os 3 refinamentos menores identificados na revisão anterior do `unlock-modal.tsx` e garantir que o modal está bem adaptado a mobile (375px e abaixo), sem alterar copy, fluxo, tracking ou lógica de negócio.
+A funcionalidade pedida **já está integralmente implementada** no código. Só falta um pequeno alinhamento de copy + cobertura de testes. Confirmações:
 
-## Alterações propostas
+| Requisito | Local | Estado |
+|---|---|---|
+| Triggers: 70% scroll, 90s, PDF export | `src/hooks/use-pricing-feedback-trigger.ts` (`SCROLL_THRESHOLD = 0.7`, `TIMER_MS = 90_000`, listener `PRICING_PDF_EVENT`) | ✅ |
+| Não aparece antes do unlock | `analyze.$username.tsx` l.366 (`enabled: unlocked && Boolean(unlockedLeadId)`) | ✅ |
+| Não bloqueia, é dismissível | `PricingFeedbackSheet` (Sheet bottom, `onOpenChange` → `dismiss()`) | ✅ |
+| 5 opções correctas | `PRICING_PREFERENCES` em `src/lib/unlock-flow.ts` + labels (`Até 3 €`, `Até 9 €`, `Até 19 €`, `Só uso se for gratuito…`, `Ainda não sei`) | ✅ |
+| Endpoint público sem auth/sem providers/sem email | `src/routes/api/public/pricing-feedback.ts` (Zod estrito, rate-limit 5s, guard `pricing_preference IS NULL`, evento `pricing_feedback_submitted`) | ✅ |
+| Disparo no export PDF | `analyze.$username.tsx` l.404 (`window.dispatchEvent(new CustomEvent(PRICING_PDF_EVENT))`) | ✅ |
 
-### 1. Acessibilidade — foco visível no radio (Step 2 e Step 4)
+## Gaps a fechar
 
-Ficheiro: `src/components/product/unlock-modal.tsx` (componente `RadioGroupCustom`, ~l.880–945)
+### 1. Copy do título não corresponde 100% ao briefing
 
-- Adicionar `peer` ao `<input type="radio" className="sr-only">`.
-- No círculo customizado (`<span aria-hidden>` com `border-2`), acrescentar:
-  `peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base`
-- Resultado: navegação por Tab passa a desenhar um anel visível à volta do círculo do radio, sem alterar o estado selecionado.
+- Actual: `"Quanto pagarias por um relatório completo?"`
+- Pedido: `"Depois de ver este relatório, quanto pagarias por uma análise completa de uma rede social?"`
 
-### 2. Botão CTA do Step 5 — usar variant do Button
+Acção: actualizar `SheetTitle` em `src/components/product/pricing-feedback-sheet.tsx` (l.114-116). O eyebrow e a description mantêm-se.
 
-Ficheiro: `src/components/product/unlock-modal.tsx` (l.1163–1170)
+### 2. Faltam testes automatizados
 
-- Substituir `className="… bg-content-primary text-white hover:bg-content-primary/90"` por `variant="default"` (já temático) e manter apenas `className="w-full rounded-lg font-medium mt-4"`.
-- Verificar visualmente que `variant="default"` produz o botão escuro pretendido; se não, usar `variant="primary"` consoante o que existe em `src/components/ui/button.tsx` (a inspecionar antes de editar).
+Não há ficheiro `*pricing-feedback*test*` em todo o `src/`. Adicionar:
 
-### 3. Pricing cards — semântica correta
+- `src/lib/__tests__/pricing-feedback.test.ts` — valida o `pricingFeedbackSchema`:
+  - aceita payload correcto com cada um dos 5 valores e cada um dos 3 triggers (`scroll`, `pdf`, `timer`)
+  - rejeita `lead_id`/`snapshot_id` não-uuid
+  - rejeita valor de `pricing_preference` fora do enum
+  - rejeita campos extra (modo `.strict()`)
 
-Ficheiro: `src/components/product/unlock-modal.tsx` (l.1122–1160)
+- `src/hooks/__tests__/use-pricing-feedback-trigger.test.ts` — usando `@testing-library/react` + `vi.useFakeTimers()`:
+  - não dispara enquanto `enabled=false`
+  - dispara `trigger="timer"` aos 90s após `enabled=true`
+  - dispara `trigger="pdf"` quando o `PRICING_PDF_EVENT` é emitido
+  - `dismiss()` fecha e bloqueia disparos posteriores na mesma sessão (se essa for a semântica actual — confirmar lendo o ficheiro completo durante a implementação)
 
-- Remover `aria-disabled` dos dois `<div>` de pricing.
-- Substituir por `role="presentation"` (são puramente visuais; CTA principal fecha o modal e nada acontece ao clicar nos cards).
-- Manter `cursor-default`.
+(Trigger de scroll é mais frágil de testar de forma fiável em jsdom — testar o resto e deixar o scroll documentado para QA manual.)
 
-### 4. Auditoria e ajustes mobile (375px e 320px)
+### 3. Validação manual
 
-Verificar e, se necessário, ajustar:
-
-- `DialogContent` já tem `sm:max-w-[480px] max-h-[92vh] overflow-y-auto` — OK.
-- Step 5 — pricing cards (`grid-cols-2`, l.1122): no card "BUNDLE 5", o badge `★ POUPA €2` está em `absolute -top-2 right-2`. Em 320px o card é muito estreito e o badge pode tocar/sair do limite direito. Ajustar para:
-  - reduzir padding do card de `p-3` para `p-2.5` em mobile (`p-2.5 sm:p-3`), ou
-  - encurtar badge para `★ -€2` em mobile via `sm:` prefix, ou
-  - mover badge para `-top-2 right-1.5` e garantir `whitespace-nowrap`.
-  Decisão: aplicar `whitespace-nowrap` + `right-1.5` (mínimo invasivo).
-- Step 5 header (l.1004): `px-6 pt-7 pb-5 sm:px-7` — confirmar que o título Fraunces 28–30px não quebra de forma feia em 320px. Já tem `text-[28px] sm:text-[30px]` — OK.
-- Step 1 (l.531): `text-[28px] sm:text-[30px]` no DialogTitle — OK.
-- Linha de pares de botões "Voltar / Continuar" (l.632, 1229): usar `flex gap-3` com botões `flex-1` para garantir que em 320px ambos cabem; verificar se já está assim, caso contrário adicionar `flex-1`.
-- Confirmar que `max-h-[92vh] overflow-y-auto` permite scroll completo no Step 5 em viewports curtos (iPhone SE, 568px de altura).
-
-A auditoria mobile será feita com `preview_ui--set_preview_device_viewport` + screenshot do preview nos 5 steps após as edições.
+- Carregar `/analyze/<username>`, fazer unlock, deixar correr 90s → sheet aparece com `trigger=timer`.
+- Refresh, fazer unlock, scroll ≥70% → sheet aparece com `trigger=scroll`.
+- Refresh, fazer unlock, clicar Export PDF → sheet aparece com `trigger=pdf`.
+- Submeter cada uma das 5 opções → confirmar registo em `leads.pricing_preference` + evento `pricing_feedback_submitted` em `product_events`.
+- Re-abrir o relatório no mesmo browser → sheet **não** reaparece (lead já tem `pricing_preference`).
 
 ## Fora de âmbito
 
-- Copy, fluxo, tracking, eventos, lógica de leads/email.
-- Step 5 CTA continua a fechar o modal (apenas visual).
-- `welcome-back state` mantém-se como está.
+- Backend, schema, endpoint, eventos: já estão em produção e cumprem todas as constraints (não envia emails, não chama providers, não exige login).
+- Lógica de triggers: 0.7/90000/PDF event já correctos.
 
 ## Checkpoint
 
-- ☐ Radio com foco-visível (Step 2 + Step 4) navegável por teclado
-- ☐ Step 5 CTA migrado para `variant` do Button sem regressão visual
-- ☐ Pricing cards com `role="presentation"` e sem `aria-disabled`
-- ☐ Pricing card "BUNDLE 5" sem overflow do badge a 320px
-- ☐ Botões "Voltar / Continuar" cabem a 320px
-- ☐ Screenshots dos 5 steps a 375px confirmam render correto
+- ☐ Título do sheet alinhado com briefing
+- ☐ Testes do schema (5 valores × 3 triggers + rejeições)
+- ☐ Testes do hook (timer + pdf event + enabled gating)
+- ☐ `bunx tsc --noEmit` limpo
+- ☐ `bunx vitest run` verde
+- ☐ QA manual dos 3 triggers + dedup
