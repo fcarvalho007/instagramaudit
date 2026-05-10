@@ -41,7 +41,7 @@ describe("unlockFormSchema", () => {
       profile_ownership: "own_profile",
       goal: "improve_content",
       user_type: "creator",
-      pricing_preference: "under_10",
+      pricing_preference: "under_9",
     });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.email).toBe("ana@empresa.pt");
