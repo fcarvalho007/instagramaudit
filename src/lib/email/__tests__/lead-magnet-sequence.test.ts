@@ -21,26 +21,26 @@ vi.mock("@/integrations/supabase/client.server", () => ({
 }));
 
 // ---- recordProductEvent --------------------------------------------------
-const recordProductEvent = vi.fn(async () => undefined);
+const recordProductEvent = vi.fn(async (..._a: any[]) => undefined);
 vi.mock("@/lib/tracking.server", () => ({
-  recordProductEvent: (...a: any[]) => recordProductEvent(...a),
+  recordProductEvent: (...a: any[]) => recordProductEvent(...(a as [any])),
 }));
 
 // ---- senders -------------------------------------------------------------
-const sendWelcomeBetaEmail = vi.fn();
+const sendWelcomeBetaEmail = vi.fn(async (..._a: any[]) => ({}) as any);
 vi.mock("../send-welcome-beta.server", () => ({
-  sendWelcomeBetaEmail: (...a: any[]) => sendWelcomeBetaEmail(...a),
+  sendWelcomeBetaEmail: (...a: any[]) => sendWelcomeBetaEmail(...(a as [any])),
 }));
 
-const sendReportSummaryEmail = vi.fn();
+const sendReportSummaryEmail = vi.fn(async (..._a: any[]) => ({}) as any);
 vi.mock("../send-report-summary.server", () => ({
-  sendReportSummaryEmail: (...a: any[]) => sendReportSummaryEmail(...a),
+  sendReportSummaryEmail: (...a: any[]) => sendReportSummaryEmail(...(a as [any])),
 }));
 
 // ---- Brevo stamp ---------------------------------------------------------
-const upsertBrevoContact = vi.fn(async () => ({ ok: true }));
+const upsertBrevoContact = vi.fn(async (..._a: any[]) => ({ ok: true }) as any);
 vi.mock("@/lib/brevo/contacts.server", () => ({
-  upsertBrevoContact: (...a: any[]) => upsertBrevoContact(...a),
+  upsertBrevoContact: (...a: any[]) => upsertBrevoContact(...(a as [any])),
 }));
 
 import { sendLeadMagnetSequence } from "../lead-magnet-sequence.server";
@@ -79,7 +79,7 @@ describe("sendLeadMagnetSequence", () => {
     expect(result).toEqual({ welcome: "sent", summary: "sent" });
     expect(sendWelcomeBetaEmail).toHaveBeenCalledTimes(1);
     expect(sendReportSummaryEmail).toHaveBeenCalledTimes(1);
-    const types = recordProductEvent.mock.calls.map((c) => c[0].eventType);
+    const types = recordProductEvent.mock.calls.map((c: any[]) => c[0].eventType);
     expect(types).toContain("beta_welcome_email_sent");
     expect(types).toContain("report_summary_email_sent");
   });
@@ -109,7 +109,7 @@ describe("sendLeadMagnetSequence", () => {
     const result = await sendLeadMagnetSequence({ ...baseArgs, sendWelcome: true });
     expect(result.welcome).toBe("failed");
     expect(result.summary).toBe("sent");
-    const types = recordProductEvent.mock.calls.map((c) => c[0].eventType);
+    const types = recordProductEvent.mock.calls.map((c: any[]) => c[0].eventType);
     expect(types).toContain("beta_welcome_email_failed");
     expect(types).toContain("report_summary_email_sent");
   });
@@ -118,7 +118,7 @@ describe("sendLeadMagnetSequence", () => {
     sendReportSummaryEmail.mockResolvedValue({ ok: false, reason: "NO_DATA" });
     const result = await sendLeadMagnetSequence({ ...baseArgs, sendWelcome: true });
     expect(result.summary).toBe("skipped_no_data");
-    const types = recordProductEvent.mock.calls.map((c) => c[0].eventType);
+    const types = recordProductEvent.mock.calls.map((c: any[]) => c[0].eventType);
     expect(types).toContain("report_summary_skipped_no_data");
     expect(types).not.toContain("report_summary_email_failed");
   });
@@ -140,7 +140,7 @@ describe("sendLeadMagnetSequence", () => {
     await sendLeadMagnetSequence({ ...baseArgs, sendWelcome: true });
     await flushMicrotasks();
     expect(upsertBrevoContact).toHaveBeenCalledTimes(1);
-    const call = upsertBrevoContact.mock.calls[0][0];
+    const call = (upsertBrevoContact.mock.calls[0] as any[])[0];
     expect(call.email).toBe("user@example.com");
     expect(call.attributes).toHaveProperty("BETA_WELCOMED_AT");
   });
