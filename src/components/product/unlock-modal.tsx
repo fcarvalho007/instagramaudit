@@ -908,12 +908,12 @@ function RadioCardField({
                   value={opt.value}
                   checked={selected}
                   onChange={() => onChange(opt.value)}
-                  className="sr-only"
+                  className="sr-only peer"
                 />
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "relative flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    "relative flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base",
                     selected
                       ? "border-primary"
                       : "border-border-default group-hover:border-border-strong",
@@ -1121,7 +1121,7 @@ function SuccessStep({
           {/* Pricing inline (visual only) */}
           <div className="grid grid-cols-2 gap-2 pt-1">
             <div
-              aria-disabled
+              role="presentation"
               className="rounded-lg border border-border-default/60 bg-white p-3 cursor-default"
             >
               <p className="text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
@@ -1138,10 +1138,10 @@ function SuccessStep({
               </p>
             </div>
             <div
-              aria-disabled
+              role="presentation"
               className="relative rounded-lg border border-amber-400/60 bg-gradient-to-br from-amber-100 to-amber-200/60 p-3 cursor-default"
             >
-              <span className="absolute -top-2 right-2 inline-flex items-center rounded-full bg-amber-600 text-white px-1.5 py-[1px] text-[9px] font-semibold tracking-wide">
+              <span className="absolute -top-2 right-1.5 inline-flex items-center rounded-full bg-amber-600 text-white px-1.5 py-[1px] text-[9px] font-semibold tracking-wide whitespace-nowrap">
                 ★ POUPA €2
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900">
