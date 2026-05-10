@@ -864,23 +864,10 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     />
 
     {/* ── Send commercial follow-up dialog ─────────────────── */}
-    <ConfirmDialog
+    <CommercialFollowupDialog
       open={followupOpen}
       onOpenChange={setFollowupOpen}
-      title="Enviar follow-up comercial"
-      description={
-        <div className="space-y-2">
-          <p>
-            Vai enviar o email <strong>"Próximo passo"</strong> para{" "}
-            <strong>{lead.email}</strong>.
-          </p>
-          <p className="text-admin-text-tertiary text-[13px]">
-            Sem pressão — convida o lead a responder. Não altera o estado
-            comercial; apenas marca <em>contacted_at</em>.
-          </p>
-        </div>
-      }
-      confirmLabel={sendingFollowup ? "A enviar…" : "Enviar follow-up"}
+      lead={lead}
       loading={sendingFollowup}
       onConfirm={async () => {
         setSendingFollowup(true);
