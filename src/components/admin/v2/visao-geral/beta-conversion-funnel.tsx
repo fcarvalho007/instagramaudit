@@ -20,6 +20,7 @@ interface FunnelStage {
   pctOfTotal: number;
   pctVsPrev: number;
   dropFromPrev: number;
+  comparable?: boolean;
 }
 
 interface FunnelResponse {
@@ -55,7 +56,7 @@ export function BetaConversionFunnel() {
         title="Funil de conversão pública"
         subtitle="do report público à conversão"
         accent="leads"
-        info="Percurso real do visitante: report público visto → unlock → guardado → feedback → intenção → convertido. Etapas 1-2 medem visitantes anónimos (actor_hash); etapas 3-7 medem leads identificados — a transição 2→3 marca o momento em que o anónimo se torna lead."
+        info="Percurso do visitante público: views → email → unlock → pedido → feedback → intenção → convertido. Etapas 1 e 2 são indicativas (sem identificador anónimo persistente); etapas 3-7 contam leads únicas (lead_id). Conversões só são comparáveis a partir de 3→4."
       />
       <AdminCard>
         {isLoading ? (
@@ -64,10 +65,10 @@ export function BetaConversionFunnel() {
           <p className="text-[13px] text-admin-text-tertiary">
             Não foi possível carregar o funil de conversão.
           </p>
-        ) : data.total === 0 ? (
+        ) : data.total === 0 && (data.stages[2]?.count ?? 0) === 0 ? (
           <p className="text-[13px] text-admin-text-tertiary">
-            Ainda sem visualizações públicas — assim que o primeiro relatório
-            for visto, o funil aparece aqui.
+            Ainda sem actividade pública — o funil aparece assim que houver
+            visualizações ou leads.
           </p>
         ) : (
           <FunnelBars stages={data.stages} total={data.total} />
@@ -84,7 +85,7 @@ function FunnelBars({
   stages: FunnelStage[];
   total: number;
 }) {
-  const max = Math.max(total, 1);
+  const max = Math.max(total, ...stages.map((s) => s.count), 1);
   return (
     <div className="flex flex-col gap-3">
       {stages.map((s, i) => {
@@ -125,7 +126,8 @@ function FunnelBars({
               <div className="ml-[160px] flex items-center gap-2 pl-2 text-[11px] text-admin-text-tertiary max-sm:ml-[120px]">
                 <span aria-hidden="true">↓</span>
                 <span className="tabular-nums">
-                  {formatPct(s.pctVsPrev)} conversão
+                  {formatPct(s.pctVsPrev)}{" "}
+                  {s.comparable ? "conversão" : "indicativo"}
                 </span>
                 {s.dropFromPrev > 0 && (
                   <span

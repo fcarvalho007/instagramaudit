@@ -181,37 +181,44 @@ export const Route = createFileRoute("/api/admin/beta-funnel")({
             key: "report_visto",
             label: "Report público visto",
             description: "Visualizações únicas do relatório público (anónimo).",
+            comparable: false,
           },
           {
             key: "unlock_iniciado",
-            label: "Unlock iniciado",
-            description: "Clique no CTA ou submissão de email para desbloquear.",
+            label: "Email submetido",
+            description: "Email submetido no formulário de unlock.",
+            comparable: false,
           },
           {
             key: "unlock_concluido",
             label: "Unlock concluído",
             description: "Email confirmado e relatório desbloqueado (lead criada).",
+            comparable: false,
           },
           {
             key: "report_guardado",
-            label: "Report guardado",
-            description: "Lead guardou o relatório na conta.",
+            label: "Pedido criado",
+            description: "Pedido associado à lead (criado no 1.º unlock).",
+            comparable: true,
           },
           {
             key: "feedback_recebido",
             label: "Feedback recebido",
             description: "Lead submeteu o formulário de feedback beta.",
+            comparable: true,
           },
           {
             key: "intencao",
             label: "Intenção média/alta",
             description:
               "Feedback com intenção alto/médio ou estado comercial interessado/potencial.",
+            comparable: true,
           },
           {
             key: "convertido",
             label: "Convertido",
             description: "Lead marcada como convertida no CRM.",
+            comparable: true,
           },
         ];
 
@@ -219,7 +226,8 @@ export const Route = createFileRoute("/api/admin/beta-funnel")({
           const count = counts[i];
           const prev = i > 0 ? counts[i - 1] : count;
           const pctOfTotal = total > 0 ? count / total : 0;
-          const pctVsPrev = prev > 0 ? count / prev : 0;
+          const rawPctVsPrev = prev > 0 ? count / prev : 0;
+          const pctVsPrev = Math.min(rawPctVsPrev, 1);
           const dropFromPrev = i > 0 ? Math.max(prev - count, 0) : 0;
           return {
             ...m,
