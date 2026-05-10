@@ -23,13 +23,13 @@ import {
   buildReportEmailSubject,
   buildReportEmailText,
 } from "@/lib/email/report-email-template";
+import { resolveSender } from "@/lib/email/sender";
 
 const RequestSchema = z.object({
   report_request_id: z.string().uuid(),
 });
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
-const SENDER_FROM = "InstaBench <onboarding@resend.dev>";
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 type ErrorCode =
