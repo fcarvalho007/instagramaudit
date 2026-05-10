@@ -22,10 +22,9 @@ export interface WelcomeBetaInput {
   feedbackUrl?: string | null;
 }
 
-const SUBJECT = "Bem-vindo ao piloto InstaBench";
-const HEADLINE = "A tua análise está desbloqueada";
-const PREHEADER =
-  "Estamos a validar o MVP com utilizadores reais — o teu feedback conta.";
+const SUBJECT = "Bem-vindo à beta — o que esperar daqui";
+const HEADLINE = "Bem-vindo à beta";
+const PREHEADER = "O que está aberto, o que é premium e como ajudar a melhorar.";
 
 export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
   if (!input.reportUrl || !input.reportUrl.trim()) {
@@ -41,42 +40,48 @@ export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
   const text = joinLines([
     greetingText(input.firstName),
     "",
-    `Acabaste de desbloquear a análise completa de ${handle}. Bem-vindo ao piloto privado do InstaBench.`,
+    "Obrigado por entrares na beta.",
     "",
-    "O InstaBench é uma ferramenta de benchmark para perfis de Instagram em pt-PT. Mostra o desempenho do perfil, compara com referências do mercado e dá pistas práticas para melhorar conteúdo.",
+    "O InstaBench é uma ferramenta de análise editorial de perfis de Instagram — pensada para quem tem de tomar decisões rápidas sobre conteúdo, marca ou audiência. A ideia: cruzar os dados públicos do perfil com referências de mercado e devolver uma leitura clara, em vez de um dashboard de números.",
     "",
-    "Estamos em fase de validação do MVP: queremos perceber se um relatório simples ajuda a tomar melhores decisões no Instagram. O teu uso e o teu feedback ajudam-nos a afinar o produto.",
+    "O projeto nasceu da prática docente — Frederico Carvalho, com 20 anos em marketing digital, sentia falta de uma ferramenta que alunos e clientes pudessem usar em poucos minutos. Esta é a primeira tentativa de resolver isso.",
     "",
-    "Abrir o meu relatório:",
+    "O que esperar nesta fase:",
+    "· 3 secções gratuitas (Visão geral · Diagnóstico · Desempenho parcial)",
+    "· 3 secções premium (Conteúdo · Procura · Comparação)",
+    "· Apenas Instagram, por agora — outras redes seguem se fizer sentido",
+    "· A interface ainda muda; os dados não",
+    "",
+    `Abrir o relatório de ${handle}:`,
     url,
     "",
-    "Podes voltar a este relatório a qualquer momento — fica guardado na tua área pessoal.",
-    "",
-    "Durante a beta, o acesso é gratuito.",
+    "Se algo correr mal ou tiveres uma ideia, responde a este email. Esta beta existe para validar utilidade, e o input de quem usa pesa muito mais do que aparenta.",
     ...(feedbackUrl
       ? ["", "Dar feedback quando terminares a leitura:", feedbackUrl]
       : []),
     "",
-    ...signatureText(),
+    ...signatureText("Bom trabalho,"),
   ]);
 
   const bodyHtml = [
     p(greetingHtml(input.firstName)),
+    p("Obrigado por entrares na beta."),
     p(
-      `Acabaste de desbloquear a análise completa de <strong style="color:#0a0e1a;">${safeHandle}</strong>. Bem-vindo ao piloto privado do InstaBench.`,
+      `O <strong style="color:#0a0e1a;">InstaBench</strong> é uma ferramenta de análise editorial de perfis de Instagram — pensada para quem tem de tomar decisões rápidas sobre conteúdo, marca ou audiência. A ideia: cruzar os dados públicos do perfil com referências de mercado e devolver uma leitura clara, em vez de um <em>dashboard</em> de números.`,
+    ),
+    pMuted(
+      "O projeto nasceu da prática docente — Frederico Carvalho, com 20 anos em marketing digital, sentia falta de uma ferramenta que alunos e clientes pudessem usar em poucos minutos. Esta é a primeira tentativa de resolver isso.",
     ),
     p(
-      `O <strong style="color:#0a0e1a;">InstaBench</strong> é uma ferramenta de benchmark para perfis de Instagram em pt-PT. Mostra o desempenho do perfil, compara com referências do mercado e dá pistas práticas para melhorar conteúdo.`,
+      `O que esperar nesta fase:<br/>· 3 secções <strong style="color:#0a0e1a;">gratuitas</strong> (Visão geral · Diagnóstico · Desempenho parcial)<br/>· 3 secções <strong style="color:#0a0e1a;">premium</strong> (Conteúdo · Procura · Comparação)<br/>· Apenas Instagram, por agora — outras redes seguem se fizer sentido<br/>· A interface ainda muda; os dados não`,
     ),
-    p(
-      `Estamos em fase de <strong style="color:#0a0e1a;">validação do MVP</strong>: queremos perceber se um relatório simples ajuda a tomar melhores decisões no Instagram. O teu uso e o teu feedback ajudam-nos a afinar o produto.`,
-    ),
-    renderButtonHtml("Abrir o meu relatório", url),
+    renderButtonHtml(`Abrir relatório de ${handle}`, url),
     `<div style="height:20px;"></div>`,
     renderUrlFallbackHtml(url),
     `<div style="height:24px;"></div>`,
-    pMuted("Podes voltar a este relatório a qualquer momento — fica guardado na tua área pessoal."),
-    pMuted("Durante a beta, o acesso é gratuito."),
+    pMuted(
+      "Se algo correr mal ou tiveres uma ideia, responde a este email. Esta beta existe para validar utilidade, e o <em>input</em> de quem usa pesa muito mais do que aparenta.",
+    ),
     ...(feedbackUrl
       ? [
           pMuted(
@@ -84,7 +89,7 @@ export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
           ),
         ]
       : []),
-    signatureHtml(),
+    signatureHtml("Bom trabalho,"),
   ].join("\n");
 
   return {
