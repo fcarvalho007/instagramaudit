@@ -1,82 +1,66 @@
 ## Estado atual
 
-Boa parte da feature **já está implementada**:
+`/admin/visao-geral` já monta um **`BetaConversionFunnel`** (linha 102 de `admin.visao-geral.tsx`) que consome `GET /api/admin/beta-funnel`. UI, design tokens, layout responsivo e empty state já estão prontos e encaixam no spec. **O que precisa de mudar são as 7 etapas** — o endpoint atual mede o fluxo beta operacional (Pedidos → Relatórios → Links → Vistos → Feedback → Interesse → Convertidos), enquanto o spec novo pede o **funil de conversão pública** (Report visto → Unlock → Guardado → Feedback → Intenção → Convertido).
 
-| Componente | Estado |
-|---|---|
-| Endpoint `POST /api/admin/send-commercial-followup` | ✅ existe (266 linhas), usa `renderCommercialFollowup`, `resolveSender()`, regista `commercial_followup_sent`, marca `contacted_at`, mapeia erros Resend (sandbox, timeout, etc.) |
-| Botão "Follow-up comercial" no Lead Detail Sheet | ✅ existe (linha 642–648) |
-| Dialog de confirmação com `ConfirmDialog` | ✅ existe (linha 852–904), com mapping de erros e toast |
-| Template `renderCommercialFollowup` | ✅ existe e testado |
-| `resolveSender()` + Resend infra | ✅ partilhado com outros emails |
+## Mapeamento das novas etapas
 
-## Lacunas face ao spec
+| # | Label pt-PT | Fonte de dados | Unidade |
+|---|---|---|---|
+| 1 | Report público visto | `product_events.event_type = 'report_viewed'` | views únicos por `(handle, actor_hash)` |
+| 2 | Unlock iniciado | `product_events.event_type IN ('unlock_clicked','unlock_email_submitted')` | `actor_hash` distintos |
+| 3 | Unlock concluído | `product_events.event_type = 'unlock_completed'` | `lead_id` distintos |
+| 4 | Report guardado | `product_events.event_type = 'report_saved_to_account'` | `lead_id` distintos |
+| 5 | Feedback recebido | row em `beta_feedback` (ou `event_type = 'feedback_submitted'`) | `lead_id` distintos |
+| 6 | Intenção média/alta | `interpretFeedback(latestFeedback).intent ∈ {alto, medio}` OU `commercial_status ∈ {interessado, potencial_cliente, convertido}` | `lead_id` distintos |
+| 7 | Convertido | `leads.commercial_status = 'convertido'` | `lead_id` distintos |
 
-Quatro ajustes necessários:
+**Conversões mostradas por etapa** (já existe na UI):
+- `count` absoluta
+- `pctOfTotal` (vs etapa 1, "report visto")
+- `pctVsPrev` (vs etapa anterior)
 
-### 1. Gating do botão (atualmente sempre visível)
-O botão deve **só aparecer** quando:
-- `lead.email` presente
-- `lead.feedback` presente
-- `interpretFeedback(lead.feedback).intent ∈ {"alto", "medio"}`
-- `lead.commercial_status ∉ {"convertido", "arquivado"}`
+## Nota técnica importante (transição anónimo → lead)
 
-Quando inelegível, esconder (ou desabilitar com tooltip "Sem feedback / intenção baixa").
-
-### 2. Dialog enriquecido com preview
-Atualmente mostra apenas email + descrição genérica. Adicionar:
-- **Destinatário**: `lead.email`
-- **Handle**: `@{lead.handle}`
-- **Intenção detetada**: badge com `feedbackIntent.label` (alta/média)
-- **Preferência de preço**: `lead.pricing_preference` traduzido (ex: "Plano mensal", "Bundle 5", "Relatório único", "—")
-- **Subject**: render local de `renderCommercialFollowup(...).subject` para mostrar o assunto exato
-- **Pré-visualização do corpo**: bloco scrollable com `text` (versão plain) ou render simplificado do `html` (preferido: `text` truncado em ~600 chars com botão "ver mais") — sem iframe pesado
-
-Componente novo dedicado `CommercialFollowupDialog` para evitar engordar `lead-detail-sheet.tsx` (já tem 1540 linhas).
-
-### 3. Atualização de status no sucesso (endpoint)
-Atualmente o endpoint só marca `contacted_at`. Spec quer:
-- `intent === "alto"` → `commercial_status = "potencial_cliente"`
-- `intent === "medio"` → `commercial_status = "interessado"`
-- Apenas se status atual ainda estiver no funil (não sobrepor `convertido`/`arquivado` mesmo se chamado por engano)
-
-Implementação: o endpoint vai precisar de **carregar o feedback do lead** (já lê leads, basta join à `beta_feedback` mais recente) e correr `interpretFeedback` server-side para decidir o novo status. Reutiliza `interpretFeedback` (já é puro, server-safe).
-
-### 4. Evento de falha (opcional mas pedido)
-Adicionar `commercial_followup_failed` em todos os ramos de erro pós-validação (ou seja: depois de termos `lead`, antes de retornar erro Resend/timeout). Metadata: `error_code`, `provider_message`, `recipient`. Não atualiza status. Não bloqueia a resposta de erro.
-
-Confirmar `commercial_followup_sent`/`commercial_followup_failed` na lifecycle/timeline labels e na allowlist de `recordLeadEvent` (`src/lib/admin/lead-events.server.ts`). Se não estiver, adicionar — sem alteração de schema (BD aceita qualquer string em `event_type`).
+As etapas 1 e 2 medem actores **anónimos** (visitantes públicos identificados por `actor_hash`). Etapas 3-7 medem **leads identificados** (`lead_id`). Há sempre uma quebra estrutural na transição 2→3 (assinar email = nascer um lead). Consequência:
+- Os rácios `pctVsPrev` continuam matematicamente calculáveis mas conceptualmente são "% de visitantes anónimos que se tornaram leads".
+- Adicionar pequeno texto informativo (`info` no `AdminSectionHeader`) explicando que etapas 1-2 são públicas/anónimas e 3-7 são por lead.
 
 ## Ficheiros afetados
 
 **Editar:**
-- `src/routes/api/admin/send-commercial-followup.ts` — carregar feedback, calcular intent server-side, atualizar status condicionalmente, registar `commercial_followup_failed` nos ramos de erro
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — gating do botão (esconder se inelegível); substituir o `ConfirmDialog` inline pelo novo `CommercialFollowupDialog`
-- `src/lib/admin/lead-events.server.ts` (se tiver allowlist) — adicionar os dois events
-- `src/lib/admin/lead-timeline-labels.ts` (ou equivalente) — labels pt-PT para os novos events
+- `src/routes/api/admin/beta-funnel.ts` — substituir as 7 etapas atuais pelas novas. Lógica nova:
+  1. Carregar `product_events` filtrados pelos 5 event_types relevantes (numa query) com `lead_id`, `handle`, `actor_hash`, `event_type`.
+  2. Agregar em conjuntos: `s1` por `(handle + actor_hash)`, `s2` por `actor_hash`, `s3..s4` por `lead_id`.
+  3. Carregar `beta_feedback` (último por lead) → `s5` e calcular `s6` via `interpretFeedback`.
+  4. Carregar `leads.commercial_status` para os IDs envolvidos → `s6` (alargar com status comercial) e `s7` (converted).
+  5. Devolver mesma shape (`{ success, total, stages: [...] }`) — total = `s1.size`.
+- `src/components/admin/v2/visao-geral/beta-conversion-funnel.tsx` — atualizar copy: título "Funil de conversão pública", subtítulo "do report público à conversão", `info` com nota anónimo→lead.
 
-**Criar:**
-- `src/components/admin/v2/beta-leads/commercial-followup-dialog.tsx` — dialog dedicado com preview de subject+body, badges de intent e pricing
-
-**Não tocar:**
-- Template `renderCommercialFollowup` (já testado)
-- `resolveSender()`, infra Resend
+**Não criar nada novo.** Não alterar:
 - Schema BD
-- Public report / report generation / Apify / OpenAI / DataForSEO
+- Componente está pronto, design system intacto
+- `interpretFeedback` (puro, server-safe, já usado)
+- Resto do `/admin/visao-geral` (FunnelSection operacional fica como está, em paralelo)
+
+## Cuidados de robustez
+
+- **Divisão por zero**: já tratada em `formatPct` (devolve "0%").
+- **Total = 0**: já tratado (empty state mostra "Sem leads beta ainda" — atualizar copy para "Ainda sem visualizações públicas").
+- **Counts decrescentes**: a UI assume que cada stage ⊆ stage anterior; com a transição anónima→lead, **isto pode falhar** (um lead pode submeter feedback sem nunca ter um `report_viewed` registado, p.ex. fluxo legado). Mitigação: garantir monotonicidade no servidor (`s_i = s_i ∩ unidade_consistente` ou simplesmente clamping `count_i = min(count_i, count_{i-1})` apenas para `pctVsPrev` quando aplicável). Decisão: **não fazer clamp**; mostrar números reais e deixar pequena nota se necessário. UI atual já tolera (usa `Math.max((count/max)*100, 4%)`).
+- **Performance**: agregação em memória é OK enquanto `product_events` < ~50k. Se crescer, mover para SQL agregado posterior.
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (templates.test.ts continua a passar)
+- `bunx vitest run`
 - Manual:
-  1. Lead com feedback intent alto → botão visível, dialog mostra "Intenção alta" + handle + pricing + subject + preview
-  2. Lead sem feedback → botão escondido
-  3. Lead intent baixo/sem → botão escondido
-  4. Lead arquivado → botão escondido mesmo com intent alto
-  5. Sucesso → toast + status passa a `potencial_cliente`/`interessado` + timeline mostra `commercial_followup_sent`
-  6. Falha simulada (RESEND_API_KEY removida ou recipient sandbox) → toast com erro mapeado + status NÃO muda + timeline mostra `commercial_followup_failed`
+  1. `/admin/visao-geral` carrega sem erro
+  2. Card "Funil de conversão pública" mostra 7 barras com novos labels
+  3. Conta de etapa 1 ≈ views públicos únicos; conta de etapa 7 ≈ Kanban "convertido"
+  4. Sem dados → mensagem "Ainda sem visualizações públicas"
+  5. Mobile (375px): labels truncam para 120px sem quebrar layout (já testado pela UI atual)
 
 ## Riscos
 
-- **Concorrência**: se admin já mudou o status manualmente para `convertido` enquanto o email saiu, evitamos sobrepor (verificação dentro do endpoint após `Resend.ok`).
-- **Re-envios**: spec não pede idempotência; mantemos comportamento atual (admin pode reenviar; cada envio gera novo evento).
+- **Quebra de utilizadores externos do endpoint**: `/api/admin/beta-funnel` só é consumido pelo componente `BetaConversionFunnel` (verificado por grep). Mudar as etapas é seguro.
+- **Perda da vista operacional beta** (Pedidos → Links → Feedback): essa vista é útil para Tomás. Como `/admin/visao-geral` já tem `FunnelSection` ao lado, posso (sub-decisão) renomear o atual `BetaConversionFunnel` para "Funil operacional" e adicionar um segundo componente "Funil de conversão pública". **Recomendação**: substituir, conforme spec literal pede; se quiseres preservar ambos, indica antes de implementar.
