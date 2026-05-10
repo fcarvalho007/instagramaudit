@@ -335,3 +335,17 @@
   0% { transform: scale(1); opacity: 0.45; }
   100% { transform: scale(2.4); opacity: 0; }
 }
+
+/* === Sidebar tokens (light, Iconosquare-aligned) === */
+:root {
+  --admin-sidebar-width: 240px;
+  --admin-sidebar-bg: 255 255 255;             /* #FFFFFF */
+  --admin-sidebar-border: var(--admin-border-rgb);
+  --admin-sidebar-item-text: var(--admin-neutral-600);
+  --admin-sidebar-item-text-hover: var(--admin-neutral-900);
+  --admin-sidebar-item-bg-hover: var(--admin-neutral-50);
+  --admin-sidebar-item-bg-active: var(--admin-info-50);
+  --admin-sidebar-item-text-active: var(--admin-info-700);
+  --admin-sidebar-item-icon: var(--admin-neutral-400);
+  --admin-sidebar-eyebrow: var(--admin-neutral-400);
+}
