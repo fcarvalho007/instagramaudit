@@ -29,3 +29,9 @@ export {
   renderWelcomeBeta,
   type WelcomeBetaInput,
 } from "./welcome-beta";
+export {
+  renderReportSummary,
+  type ReportSummaryInput,
+  type ReportSummaryKpis,
+  type ReportSummaryTopPost,
+} from "./report-summary";
