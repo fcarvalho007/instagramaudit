@@ -571,6 +571,8 @@ export type Database = {
           email_normalized: string
           id: string
           internal_notes: string | null
+          marketing_consent: boolean
+          marketing_consent_at: string | null
           name: string
           pricing_preference: string | null
           profile_ownership: string | null
@@ -591,6 +593,8 @@ export type Database = {
           email_normalized: string
           id?: string
           internal_notes?: string | null
+          marketing_consent?: boolean
+          marketing_consent_at?: string | null
           name: string
           pricing_preference?: string | null
           profile_ownership?: string | null
@@ -611,6 +615,8 @@ export type Database = {
           email_normalized?: string
           id?: string
           internal_notes?: string | null
+          marketing_consent?: boolean
+          marketing_consent_at?: string | null
           name?: string
           pricing_preference?: string | null
           profile_ownership?: string | null
