@@ -1,66 +1,99 @@
-## Estado atual
+## Block A — Auditoria de senders e preparação do envio externo
 
-`/admin/visao-geral` já monta um **`BetaConversionFunnel`** (linha 102 de `admin.visao-geral.tsx`) que consome `GET /api/admin/beta-funnel`. UI, design tokens, layout responsivo e empty state já estão prontos e encaixam no spec. **O que precisa de mudar são as 7 etapas** — o endpoint atual mede o fluxo beta operacional (Pedidos → Relatórios → Links → Vistos → Feedback → Interesse → Convertidos), enquanto o spec novo pede o **funil de conversão pública** (Report visto → Unlock → Guardado → Feedback → Intenção → Convertido).
+### 1. Auditoria de senders
 
-## Mapeamento das novas etapas
+| # | Sender | Ficheiro | Usa `resolveSender()`? | Hardcoded? |
+|---|---|---|---|---|
+| 1 | `personal-area-saved` | `src/lib/email/send-personal-area-saved.server.ts:70` | ✅ sim | — |
+| 2 | `report-ready` (legacy unlock email) | `src/routes/api/send-report-email.ts:268` | ✅ sim | — |
+| 3 | `commercial-followup` | `src/routes/api/admin/send-commercial-followup.ts:176` | ✅ sim | — |
+| 4 | `feedback-request` | `src/routes/api/admin/send-feedback-request.ts:25,198` | ❌ não | ❌ `const SENDER_FROM = "InstaBench <onboarding@resend.dev>"` |
+| 5 | `report-link` (admin reenvia link) | `src/routes/api/admin/send-report-link.ts:27,238` | ❌ não | ❌ mesma constante hardcoded |
+| 6 | `request-received` (auto após pedido beta) | `src/lib/beta.functions.ts:207` | ❌ não | ❌ `from: "InstaBench <onboarding@resend.dev>"` inline |
+| — | helper | `src/lib/email/sender.ts:9` | — | ⚠️ tem `DEFAULT_SENDER_FROM` como fallback de sandbox (intencional, declarado no JSDoc) |
 
-| # | Label pt-PT | Fonte de dados | Unidade |
-|---|---|---|---|
-| 1 | Report público visto | `product_events.event_type = 'report_viewed'` | views únicos por `(handle, actor_hash)` |
-| 2 | Unlock iniciado | `product_events.event_type IN ('unlock_clicked','unlock_email_submitted')` | `actor_hash` distintos |
-| 3 | Unlock concluído | `product_events.event_type = 'unlock_completed'` | `lead_id` distintos |
-| 4 | Report guardado | `product_events.event_type = 'report_saved_to_account'` | `lead_id` distintos |
-| 5 | Feedback recebido | row em `beta_feedback` (ou `event_type = 'feedback_submitted'`) | `lead_id` distintos |
-| 6 | Intenção média/alta | `interpretFeedback(latestFeedback).intent ∈ {alto, medio}` OU `commercial_status ∈ {interessado, potencial_cliente, convertido}` | `lead_id` distintos |
-| 7 | Convertido | `leads.commercial_status = 'convertido'` | `lead_id` distintos |
+**Conclusão:** 3 dos 6 senders **ignoram** `resolveSender()` e enviam sempre via sandbox — irão falhar com `RESEND_403` para qualquer destinatário externo, mesmo após `RESEND_FROM` estar definido. Tem de se uniformizar **antes** do smoke test.
 
-**Conversões mostradas por etapa** (já existe na UI):
-- `count` absoluta
-- `pctOfTotal` (vs etapa 1, "report visto")
-- `pctVsPrev` (vs etapa anterior)
+### 2. Estado das secrets
 
-## Nota técnica importante (transição anónimo → lead)
+Já configuradas:
+- ✅ `RESEND_API_KEY`
+- ✅ `PDF_PUBLIC_BASE_URL` (usado como fallback do base URL)
 
-As etapas 1 e 2 medem actores **anónimos** (visitantes públicos identificados por `actor_hash`). Etapas 3-7 medem **leads identificados** (`lead_id`). Há sempre uma quebra estrutural na transição 2→3 (assinar email = nascer um lead). Consequência:
-- Os rácios `pctVsPrev` continuam matematicamente calculáveis mas conceptualmente são "% de visitantes anónimos que se tornaram leads".
-- Adicionar pequeno texto informativo (`info` no `AdminSectionHeader`) explicando que etapas 1-2 são públicas/anónimas e 3-7 são por lead.
+Em falta para Bloco A:
+- ❌ `PUBLIC_APP_BASE_URL` — o pedido pede valor explícito `https://instagramaudit.lovable.app`
+- ❌ `RESEND_FROM` — **não criar ainda** sem confirmares verificação do domínio
 
-## Ficheiros afetados
+### 3. Verificação do domínio Resend
 
-**Editar:**
-- `src/routes/api/admin/beta-funnel.ts` — substituir as 7 etapas atuais pelas novas. Lógica nova:
-  1. Carregar `product_events` filtrados pelos 5 event_types relevantes (numa query) com `lead_id`, `handle`, `actor_hash`, `event_type`.
-  2. Agregar em conjuntos: `s1` por `(handle + actor_hash)`, `s2` por `actor_hash`, `s3..s4` por `lead_id`.
-  3. Carregar `beta_feedback` (último por lead) → `s5` e calcular `s6` via `interpretFeedback`.
-  4. Carregar `leads.commercial_status` para os IDs envolvidos → `s6` (alargar com status comercial) e `s7` (converted).
-  5. Devolver mesma shape (`{ success, total, stages: [...] }`) — total = `s1.size`.
-- `src/components/admin/v2/visao-geral/beta-conversion-funnel.tsx` — atualizar copy: título "Funil de conversão pública", subtítulo "do report público à conversão", `info` com nota anónimo→lead.
+Não consigo consultar o estado da conta Resend a partir do sandbox. **Antes** de pedir `RESEND_FROM` precisas de confirmar no painel Resend (Domains):
 
-**Não criar nada novo.** Não alterar:
-- Schema BD
-- Componente está pronto, design system intacto
-- `interpretFeedback` (puro, server-safe, já usado)
-- Resto do `/admin/visao-geral` (FunnelSection operacional fica como está, em paralelo)
+Checklist DNS para `instagramaudit.pt`:
+- [ ] Domínio aparece como **Verified** em Resend → Domains
+- [ ] **SPF**: `TXT @ "v=spf1 include:amazonses.com ~all"` (ou o include indicado por Resend)
+- [ ] **DKIM**: 3 CNAMEs (`resend._domainkey`, `resend2._domainkey`, `resend3._domainkey`) a apontar para `*.dkim.amazonses.com` indicados pela própria Resend
+- [ ] **DMARC**: `TXT _dmarc "v=DMARC1; p=none; rua=mailto:postmaster@instagramaudit.pt"` (mínimo recomendado)
+- [ ] Sender verificado no painel: `relatorios@instagramaudit.pt` (ou outro que confirmes)
 
-## Cuidados de robustez
+Se algum item falhar → paro aqui e devolvo-te a checklist; **não defino** `RESEND_FROM`.
 
-- **Divisão por zero**: já tratada em `formatPct` (devolve "0%").
-- **Total = 0**: já tratado (empty state mostra "Sem leads beta ainda" — atualizar copy para "Ainda sem visualizações públicas").
-- **Counts decrescentes**: a UI assume que cada stage ⊆ stage anterior; com a transição anónima→lead, **isto pode falhar** (um lead pode submeter feedback sem nunca ter um `report_viewed` registado, p.ex. fluxo legado). Mitigação: garantir monotonicidade no servidor (`s_i = s_i ∩ unidade_consistente` ou simplesmente clamping `count_i = min(count_i, count_{i-1})` apenas para `pctVsPrev` quando aplicável). Decisão: **não fazer clamp**; mostrar números reais e deixar pequena nota se necessário. UI atual já tolera (usa `Math.max((count/max)*100, 4%)`).
-- **Performance**: agregação em memória é OK enquanto `product_events` < ~50k. Se crescer, mover para SQL agregado posterior.
+### 4. Alterações de código (refactor mínimo, sem mudar comportamento de envio)
 
-## Validação
+Substituir as 3 constantes hardcoded por `resolveSender()`:
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Manual:
-  1. `/admin/visao-geral` carrega sem erro
-  2. Card "Funil de conversão pública" mostra 7 barras com novos labels
-  3. Conta de etapa 1 ≈ views públicos únicos; conta de etapa 7 ≈ Kanban "convertido"
-  4. Sem dados → mensagem "Ainda sem visualizações públicas"
-  5. Mobile (375px): labels truncam para 120px sem quebrar layout (já testado pela UI atual)
+- `src/routes/api/admin/send-feedback-request.ts`
+  - Remover `const SENDER_FROM = ...`
+  - Adicionar `import { resolveSender } from "@/lib/email/sender"`
+  - Trocar `from: SENDER_FROM` por `from: resolveSender()`
 
-## Riscos
+- `src/routes/api/admin/send-report-link.ts`
+  - Mesma transformação
 
-- **Quebra de utilizadores externos do endpoint**: `/api/admin/beta-funnel` só é consumido pelo componente `BetaConversionFunnel` (verificado por grep). Mudar as etapas é seguro.
-- **Perda da vista operacional beta** (Pedidos → Links → Feedback): essa vista é útil para Tomás. Como `/admin/visao-geral` já tem `FunnelSection` ao lado, posso (sub-decisão) renomear o atual `BetaConversionFunnel` para "Funil operacional" e adicionar um segundo componente "Funil de conversão pública". **Recomendação**: substituir, conforme spec literal pede; se quiseres preservar ambos, indica antes de implementar.
+- `src/lib/beta.functions.ts` (bloco `request-received`)
+  - Importar `resolveSender` (dynamic ou estático no topo)
+  - Trocar `from: "InstaBench <onboarding@resend.dev>"` por `from: resolveSender()`
+
+Sem alterar `src/lib/email/sender.ts` — o fallback fica documentado como sandbox; quando `RESEND_FROM` estiver definido, `resolveSender()` devolve o valor correto.
+
+**Nada mais muda:** templates, lógica de tracking, eventos `*_email_sent`/`*_email_failed`, schema, UI pública — tudo intacto.
+
+### 5. Sequência de execução
+
+1. **Refactor** dos 3 senders → `bunx tsc --noEmit` + `bunx vitest run` verdes.
+2. **Adicionar secret** `PUBLIC_APP_BASE_URL` = `https://instagramaudit.lovable.app` via `secrets--add_secret`.
+3. **Pausa** — perguntar-te:
+   - "Domínio `instagramaudit.pt` está Verified em Resend?"
+   - "Confirmas o sender exato? Sugestão: `InstaBench <relatorios@instagramaudit.pt>`"
+4. Se sim → adicionar secret `RESEND_FROM` com o valor confirmado por ti.
+5. Outra **pausa** — pedir-te o email destinatário do smoke test.
+
+### 6. Plano de smoke test (só executa após autorização explícita)
+
+**Pré-requisitos satisfeitos antes de correr:**
+- `RESEND_FROM` definido com domínio verificado (não `onboarding@resend.dev`)
+- `PUBLIC_APP_BASE_URL` definido
+- Email destinatário fornecido por ti
+
+**Procedimento:**
+1. Identificar uma `lead` real ou de teste com snapshot pronto (sem chamar Apify/OpenAI/DataForSEO — só leitura).
+2. Atualizar temporariamente o `email` dessa lead para o destinatário que indicaste (UPDATE direto via migração ou script — só esta linha).
+3. Invocar `sendPersonalAreaSaved(...)` (server fn em `src/lib/email/send-personal-area-saved.server.ts`) com o `lead_id` e `report_request_id` correspondentes — uma única chamada.
+4. Inspecionar:
+   - resposta da função: `{ ok: true, messageId }` (Resend 200)
+   - `product_events` últimos 60s: confirmar **um** evento `personal_area_email_sent` com `metadata.message_id` preenchido e **zero** `personal_area_email_failed`
+   - HTML do template contém `https://instagramaudit.lovable.app/...` (não localhost, não `lovable.app` antigo)
+5. Reverter o email da lead ao valor original.
+6. Reportar resultado.
+
+**Bloqueios duros:** se algum passo de verificação falhar, paro e reporto sem reenviar.
+
+### 7. Validação
+
+- `rg "onboarding@resend.dev|RESEND_FROM|resolveSender" src/` — esperado: `onboarding@resend.dev` apenas em `src/lib/email/sender.ts` (fallback documentado); `resolveSender` em todos os 6 sites de envio.
+- `bunx tsc --noEmit` — 0 erros
+- `bunx vitest run` — 180/180 passar
+- Smoke test só após tua autorização
+
+### 8. Resposta final esperada
+
+Após implementação devolvo: ficheiros alterados, secrets criadas (e quais ficaram pendentes), estado da verificação do domínio (com base no que me confirmares) e o plano exato do smoke test pronto a ser disparado quando autorizares.
