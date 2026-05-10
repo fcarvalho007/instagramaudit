@@ -69,7 +69,6 @@ export function UnlockModal({
       profile_ownership: undefined as unknown as ProfileOwnership,
       goal: undefined as unknown as Goal,
       user_type: undefined as unknown as UserType,
-      pricing_preference: undefined,
     },
   });
 
