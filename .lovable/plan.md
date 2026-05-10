@@ -54,8 +54,14 @@
 
 ## Checkpoint
 
-- ☐ B1: rebuild preview e unlock final retorna `brevo_contact_synced`
-- ☐ B3: 7 leads originais com contacto Brevo e atributos corretos
-- ☐ B2: 31 leads-spam apagados em cascata
-- ☐ B4: `BREVO_DIRECT_API_KEY` removido
-- ☐ B5: quirk documentado, Fase 6 ✅
+- ☑ B1: rebuild preview e unlock final retorna `brevo_contact_synced` (Brevo id 264, msg `<202605101902…@smtp-relay.mailin.fr>`)
+- ☑ B3: 7 leads originais sincronizados (Brevo ids 263, 266–271)
+- ☑ B2: 31 leads-spam apagados em cascata (events → report_requests → leads)
+- ☑ B4: `BREVO_DIRECT_API_KEY` removido
+- ☑ B5: quirk documentado abaixo
+
+## Notas operacionais Brevo (Fase 6 ✅)
+
+- O gateway Lovable (`https://connector-gateway.lovable.dev/brevo`) **remove silenciosamente o prefixo `/v3/`** dos paths antes de chamar a API upstream. Chamadas a `/v3/contacts` ou `/v3/smtp/email` devolvem `404 Invalid route/ method passed`.
+- Solução central: `brevoFetch` em `src/lib/brevo/client.server.ts` normaliza qualquer path que comece por `/v3/` ou `v3/`, deixando o resto intacto. Qualquer endpoint Brevo novo deve ser escrito sem `/v3/` (ex.: `/contacts`, `/smtp/email`, `/contacts/lists`).
+- Verificação rápida: `GET /brevo/account` deve devolver 200 com a conta Brevo. Falhas em massa com código `BREVO_404` indicam regressão deste fix.
