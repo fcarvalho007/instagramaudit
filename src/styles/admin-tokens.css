@@ -348,4 +348,7 @@
   --admin-sidebar-item-text-active: var(--admin-info-700);
   --admin-sidebar-item-icon: var(--admin-neutral-400);
   --admin-sidebar-eyebrow: var(--admin-neutral-400);
+  --admin-sidebar-item-active-outline: var(--admin-info-500);
+  --admin-sidebar-item-active-halo: rgb(55 138 221 / 0.10);
+  --admin-sidebar-group-divider: rgb(15 27 61 / 0.06);
 }

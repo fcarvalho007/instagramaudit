@@ -91,10 +91,10 @@ const GROUPS: NavGroup[] = [
 ];
 
 const ITEM_BASE =
-  "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] no-underline transition-colors duration-150 text-[rgb(var(--admin-sidebar-item-text))] hover:bg-[rgb(var(--admin-sidebar-item-bg-hover))] hover:text-[rgb(var(--admin-sidebar-item-text-hover))]";
+  "flex items-center gap-2.5 pl-[10px] pr-3 py-2 rounded-lg text-[13px] no-underline transition-colors duration-150 border-l-2 border-transparent text-[rgb(var(--admin-sidebar-item-text))] hover:bg-[rgb(var(--admin-sidebar-item-bg-hover))] hover:text-[rgb(var(--admin-sidebar-item-text-hover))]";
 
 const ITEM_ACTIVE =
-  "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] no-underline transition-colors duration-150 bg-[rgb(var(--admin-sidebar-item-bg-active))] text-[rgb(var(--admin-sidebar-item-text-active))] font-medium";
+  "flex items-center gap-2.5 pl-[10px] pr-3 py-2 rounded-lg text-[13px] no-underline transition-colors duration-150 border-l-2 bg-[rgb(var(--admin-sidebar-item-bg-active))] text-[rgb(var(--admin-sidebar-item-text-active))] font-medium border-[rgb(var(--admin-sidebar-item-active-outline))] shadow-[0_0_0_1px_var(--admin-sidebar-item-active-halo)]";
 
 interface SidebarBodyProps {
   logout: (() => Promise<void>) | null;
@@ -117,8 +117,15 @@ function SidebarBody({ logout, onNavigate }: SidebarBodyProps) {
 
       {/* Nav */}
       <nav aria-label="Secções do admin" className="flex-1 overflow-y-auto">
-        {GROUPS.map((group) => (
-          <div key={group.label} className="mb-4 last:mb-0">
+        {GROUPS.map((group, idx) => (
+          <div
+            key={group.label}
+            className={
+              idx === 0
+                ? "mb-5 last:mb-0"
+                : "mb-5 last:mb-0 pt-4 mt-1 border-t border-[var(--admin-sidebar-group-divider)]"
+            }
+          >
             <p
               className="text-[10px] font-semibold uppercase tracking-[0.14em] px-3 mb-1.5 select-none text-[rgb(var(--admin-sidebar-eyebrow))]"
             >
