@@ -84,6 +84,7 @@ type LoadState =
         instagram_username: string;
         created_at: string;
         updated_at: string;
+        expires_at: string | null;
       };
       costSummary: CostSummaryView | null;
       providerCalls: ProviderCallView[];
@@ -136,6 +137,7 @@ function AdminSnapshotPreviewPage() {
             instagram_username: body.snapshot.instagram_username,
             created_at: body.snapshot.created_at,
             updated_at: body.snapshot.updated_at,
+            expires_at: body.snapshot.expires_at ?? null,
           },
           costSummary: body.snapshot.cost_summary ?? null,
           providerCalls: body.snapshot.provider_calls ?? [],
@@ -220,6 +222,7 @@ function AdminPreviewChrome({ snapshotId, load, onLogout }: ChromeProps) {
             snapshotId={load.snapshotMeta.id}
             payload={load.payload}
             analyzedAtIso={load.snapshotMeta.created_at}
+            expiresAtIso={load.snapshotMeta.expires_at}
             variant="internal_lab"
             actions={{}}
           />
