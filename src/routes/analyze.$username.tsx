@@ -400,6 +400,20 @@ function AnalyzeReady({
             /* ignore */
           }
           setUnlocked(true);
+          // Pequena confirmação visual: scroll suave + flash subtil
+          // no primeiro bloco previamente bloqueado quando o utilizador
+          // fecha o modal de sucesso.
+          window.setTimeout(() => {
+            const target =
+              document.getElementById("report-locked-section") ??
+              document.querySelector<HTMLElement>("[data-locked-anchor]");
+            if (!target) return;
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+            target.classList.add("ring-2", "ring-primary/40", "ring-offset-4", "ring-offset-surface-base", "rounded-2xl", "transition-all");
+            window.setTimeout(() => {
+              target.classList.remove("ring-2", "ring-primary/40", "ring-offset-4", "ring-offset-surface-base");
+            }, 1400);
+          }, 350);
         }}
       />
     </>
