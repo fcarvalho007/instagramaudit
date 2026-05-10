@@ -1,99 +1,95 @@
-## Block A — Auditoria de senders e preparação do envio externo
+## Cache freshness display — clarificar frescura na UI
 
-### 1. Auditoria de senders
+### 1. Campos de cache disponíveis (já no payload)
 
-| # | Sender | Ficheiro | Usa `resolveSender()`? | Hardcoded? |
-|---|---|---|---|---|
-| 1 | `personal-area-saved` | `src/lib/email/send-personal-area-saved.server.ts:70` | ✅ sim | — |
-| 2 | `report-ready` (legacy unlock email) | `src/routes/api/send-report-email.ts:268` | ✅ sim | — |
-| 3 | `commercial-followup` | `src/routes/api/admin/send-commercial-followup.ts:176` | ✅ sim | — |
-| 4 | `feedback-request` | `src/routes/api/admin/send-feedback-request.ts:25,198` | ❌ não | ❌ `const SENDER_FROM = "InstaBench <onboarding@resend.dev>"` |
-| 5 | `report-link` (admin reenvia link) | `src/routes/api/admin/send-report-link.ts:27,238` | ❌ não | ❌ mesma constante hardcoded |
-| 6 | `request-received` (auto após pedido beta) | `src/lib/beta.functions.ts:207` | ❌ não | ❌ `from: "InstaBench <onboarding@resend.dev>"` inline |
-| — | helper | `src/lib/email/sender.ts:9` | — | ⚠️ tem `DEFAULT_SENDER_FROM` como fallback de sandbox (intencional, declarado no JSDoc) |
+| Campo | Origem | Disponível em |
+|---|---|---|
+| `meta.generated_at` | snapshot payload (escrito quando o relatório é gerado) | público + admin |
+| `created_at` | linha `analysis_snapshots` | público + admin |
+| `updated_at` | linha `analysis_snapshots` | público + admin |
+| `expires_at` | linha `analysis_snapshots` (TTL real, server-truth) | público (`body.snapshot.expires_at` na resposta de `/api/public/analysis-snapshot.$username`) e admin |
 
-**Conclusão:** 3 dos 6 senders **ignoram** `resolveSender()` e enviam sempre via sandbox — irão falhar com `RESEND_403` para qualquer destinatário externo, mesmo após `RESEND_FROM` estar definido. Tem de se uniformizar **antes** do smoke test.
+`CACHE_TTL_MS = 24h` e `STALE_TOLERANCE_MS = 7d` são definidos em `src/lib/analysis/cache.ts` (server-only) — vão **ficar como estão** e ser usados apenas como fallback no cliente.
 
-### 2. Estado das secrets
+### 2. Estado atual da UI
 
-Já configuradas:
-- ✅ `RESEND_API_KEY`
-- ✅ `PDF_PUBLIC_BASE_URL` (usado como fallback do base URL)
+- Já existe `src/components/report-redesign/v2/cache-status-badge.tsx`. Mostra "Atualizado há X · válido até HH:MM" com tooltip nativo (`title`).
+- Limitações:
+  - Não tem variante visual (cor / dot / etiqueta) por estado.
+  - Deriva o `expires_at` por TTL hardcoded em vez de usar o real do servidor.
+  - Devolve `null` quando o timestamp está em falta — não mostra "Estado por confirmar".
+  - Tooltip é o atributo HTML `title`, não o componente Radix.
+- Usado em `ReportHeroV2` (versão expandida + compact). Admin previews passam `created_at` mas **não** passam `expires_at` que já têm em mãos.
 
-Em falta para Bloco A:
-- ❌ `PUBLIC_APP_BASE_URL` — o pedido pede valor explícito `https://instagramaudit.lovable.app`
-- ❌ `RESEND_FROM` — **não criar ainda** sem confirmares verificação do domínio
+### 3. Regras de estado
 
-### 3. Verificação do domínio Resend
+| Estado | Regra (com base em `expiresAtIso` real ou derivado) | Etiqueta pt-PT | Cor (token semântico) |
+|---|---|---|---|
+| `fresh` | `now < expiresAt − 6h` | "Dados atualizados" | `success` (verde) |
+| `expiring_soon` | `expiresAt − 6h ≤ now < expiresAt` | "A expirar em breve" | `warning` (âmbar) |
+| `stale` | `now ≥ expiresAt` (ou idade > 24h se sem `expiresAt`) | "Dados antigos" | `danger` (vermelho suave) |
+| `unknown` | sem `analyzedAtIso` válido | "Estado por confirmar" | `muted` (neutro) |
 
-Não consigo consultar o estado da conta Resend a partir do sandbox. **Antes** de pedir `RESEND_FROM` precisas de confirmar no painel Resend (Domains):
+Janela "expiring_soon" = 6h por defeito (configurável via prop `warnWithinHours`).
 
-Checklist DNS para `instagramaudit.pt`:
-- [ ] Domínio aparece como **Verified** em Resend → Domains
-- [ ] **SPF**: `TXT @ "v=spf1 include:amazonses.com ~all"` (ou o include indicado por Resend)
-- [ ] **DKIM**: 3 CNAMEs (`resend._domainkey`, `resend2._domainkey`, `resend3._domainkey`) a apontar para `*.dkim.amazonses.com` indicados pela própria Resend
-- [ ] **DMARC**: `TXT _dmarc "v=DMARC1; p=none; rua=mailto:postmaster@instagramaudit.pt"` (mínimo recomendado)
-- [ ] Sender verificado no painel: `relatorios@instagramaudit.pt` (ou outro que confirmes)
+### 4. Componente `CacheStatusBadge` — refactor (mesmo ficheiro)
 
-Se algum item falhar → paro aqui e devolvo-te a checklist; **não defino** `RESEND_FROM`.
+Não criar novo ficheiro — estender o existente para preservar imports e testes futuros.
 
-### 4. Alterações de código (refactor mínimo, sem mudar comportamento de envio)
+Nova API:
+```ts
+interface Props {
+  analyzedAtIso: string | null;
+  expiresAtIso?: string | null;   // novo: usar valor real do servidor quando disponível
+  ttlHours?: number;              // fallback para derivar expires (24)
+  warnWithinHours?: number;       // default 6
+  compact?: boolean;              // mantém-se: footer denso
+}
+```
 
-Substituir as 3 constantes hardcoded por `resolveSender()`:
+Estrutura visual (mobile-first):
+- Layout flex com gap pequeno: `<dot/> <label> · <span muted>Atualizado há X · Válido até DD MMM HH:mm</span>`
+- `compact`: só `<dot/> <label muted>` para encaixar no footer.
+- Cor do dot e da etiqueta vem dos tokens semânticos (`text-success`, `text-warning`, `text-danger`, `text-content-tertiary`). Sem cores hardcoded.
+- Tipografia: Inter, `text-xs`, `tabular-nums` nas datas.
+- Substituir `title="..."` por `<Tooltip>` shadcn (`src/components/ui/tooltip.tsx` já existe). Conteúdo do tooltip:
+  - "Última análise: DD MMM YYYY HH:mm"
+  - "Cache válida até: DD MMM YYYY HH:mm" (ou "Cache expirada em ...")
+  - Sem expor `cache_key`, IDs, ou nomes técnicos.
+- Quando `unknown`: render dot neutro + "Estado por confirmar", sem tooltip.
 
-- `src/routes/api/admin/send-feedback-request.ts`
-  - Remover `const SENDER_FROM = ...`
-  - Adicionar `import { resolveSender } from "@/lib/email/sender"`
-  - Trocar `from: SENDER_FROM` por `from: resolveSender()`
+Helpers internos (`formatRelative`, `formatExpires`, `formatAbsolute`) são reaproveitados; ajusta-se `formatExpires` para usar `expiresAtIso` quando passado.
 
-- `src/routes/api/admin/send-report-link.ts`
-  - Mesma transformação
+### 5. Pontos de integração
 
-- `src/lib/beta.functions.ts` (bloco `request-received`)
-  - Importar `resolveSender` (dynamic ou estático no topo)
-  - Trocar `from: "InstaBench <onboarding@resend.dev>"` por `from: resolveSender()`
+| Ficheiro | Mudança |
+|---|---|
+| `src/components/report-redesign/v2/cache-status-badge.tsx` | Refactor para nova API, variantes, Tooltip shadcn. |
+| `src/components/report-redesign/v2/report-hero-v2.tsx` | Aceitar `expiresAtIso` e propagar (forma expandida + compact). Renderizar mesmo quando `analyzedAtIso` é null para mostrar "Estado por confirmar" — atualizar as guardas atuais (`{analyzedAtIso ? ... : null}`) para deixar o badge tratar do estado `unknown`. |
+| `src/components/report-redesign/v2/report-shell-v2.tsx` | Adicionar prop `expiresAtIso` e passar a `ReportHeroV2`. |
+| `src/components/report-redesign/report-shell.tsx` | Adicionar prop opcional `expiresAtIso` e propagar a `ReportShellV2` (forwarding apenas). |
+| `src/routes/analyze.$username.tsx` | Ler `body.snapshot.expires_at`, guardar no estado, passar ao `ReportShellV2`/`ReportShellV2Compact`. |
+| `src/routes/admin.report-preview.$username.tsx` | Acrescentar `expires_at` no `snapshotMeta` e passar a `ReportShellV2`. |
+| `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` | Idem (já tem `expires_at` no response, falta apenas guardar e passar). |
 
-Sem alterar `src/lib/email/sender.ts` — o fallback fica documentado como sandbox; quando `RESEND_FROM` estiver definido, `resolveSender()` devolve o valor correto.
+Sem alterações em `report-shell.tsx` (legacy) que afetem o `ReportPendingAiNotice` — a prop nova é puramente opcional.
 
-**Nada mais muda:** templates, lógica de tracking, eventos `*_email_sent`/`*_email_failed`, schema, UI pública — tudo intacto.
+### 6. Constraints respeitadas
 
-### 5. Sequência de execução
-
-1. **Refactor** dos 3 senders → `bunx tsc --noEmit` + `bunx vitest run` verdes.
-2. **Adicionar secret** `PUBLIC_APP_BASE_URL` = `https://instagramaudit.lovable.app` via `secrets--add_secret`.
-3. **Pausa** — perguntar-te:
-   - "Domínio `instagramaudit.pt` está Verified em Resend?"
-   - "Confirmas o sender exato? Sugestão: `InstaBench <relatorios@instagramaudit.pt>`"
-4. Se sim → adicionar secret `RESEND_FROM` com o valor confirmado por ti.
-5. Outra **pausa** — pedir-te o email destinatário do smoke test.
-
-### 6. Plano de smoke test (só executa após autorização explícita)
-
-**Pré-requisitos satisfeitos antes de correr:**
-- `RESEND_FROM` definido com domínio verificado (não `onboarding@resend.dev`)
-- `PUBLIC_APP_BASE_URL` definido
-- Email destinatário fornecido por ti
-
-**Procedimento:**
-1. Identificar uma `lead` real ou de teste com snapshot pronto (sem chamar Apify/OpenAI/DataForSEO — só leitura).
-2. Atualizar temporariamente o `email` dessa lead para o destinatário que indicaste (UPDATE direto via migração ou script — só esta linha).
-3. Invocar `sendPersonalAreaSaved(...)` (server fn em `src/lib/email/send-personal-area-saved.server.ts`) com o `lead_id` e `report_request_id` correspondentes — uma única chamada.
-4. Inspecionar:
-   - resposta da função: `{ ok: true, messageId }` (Resend 200)
-   - `product_events` últimos 60s: confirmar **um** evento `personal_area_email_sent` com `metadata.message_id` preenchido e **zero** `personal_area_email_failed`
-   - HTML do template contém `https://instagramaudit.lovable.app/...` (não localhost, não `lovable.app` antigo)
-5. Reverter o email da lead ao valor original.
-6. Reportar resultado.
-
-**Bloqueios duros:** se algum passo de verificação falhar, paro e reporto sem reenviar.
+- 100% UI/cliente. Sem novos endpoints. Sem alterar `cache.ts`, `reports.functions.ts`, geração ou scoring.
+- Sem refresh, sem chamar providers, sem PDF, sem schema.
+- Sem expor `cache_key`, `snapshot.id`, provider — apenas timestamps humanos.
 
 ### 7. Validação
 
-- `rg "onboarding@resend.dev|RESEND_FROM|resolveSender" src/` — esperado: `onboarding@resend.dev` apenas em `src/lib/email/sender.ts` (fallback documentado); `resolveSender` em todos os 6 sites de envio.
-- `bunx tsc --noEmit` — 0 erros
-- `bunx vitest run` — 180/180 passar
-- Smoke test só após tua autorização
+- `bunx tsc --noEmit`
+- `bunx vitest run` (180/180 — não há testes existentes ao badge; podemos opcionalmente adicionar 1 teste leve para a função `computeStatus(now, generated, expires)` se justificar — proponho **sim**, ficheiro novo `cache-status-badge.test.ts` com 4 casos, um por variante).
+- Manual:
+  - `/analyze/frederico.m.carvalho` → badge no hero com etiqueta colorida; tooltip mostra ambas as datas.
+  - `/admin/report-preview/...` (handle e snapshot) → mesmo comportamento.
+  - 375px: badge não causa overflow (testar com handle longo).
+  - Snapshot artificialmente "antigo" (forçar `analyzedAtIso` no passado via DevTools) → estado `stale`.
 
 ### 8. Resposta final esperada
 
-Após implementação devolvo: ficheiros alterados, secrets criadas (e quais ficaram pendentes), estado da verificação do domínio (com base no que me confirmares) e o plano exato do smoke test pronto a ser disparado quando autorizares.
+Ficheiros alterados, regras de estado finais, e resultados de tsc + vitest.

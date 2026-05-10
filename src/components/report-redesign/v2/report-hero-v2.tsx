@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Download, Loader2, Plus, Calendar } from "lucide-react";
+import { Check, ChevronRight, Download, Loader2, Plus } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import type {
@@ -14,6 +14,7 @@ interface ReportHeroV2Props {
   result: AdapterResult;
   actions: ReportPageActions;
   analyzedAtIso?: string | null;
+  expiresAtIso?: string | null;
 }
 
 /**
@@ -23,7 +24,12 @@ interface ReportHeroV2Props {
  *   Hero card: 3-column layout (profile | metrics | actions)
  *   Footer: comparison CTA + multi-network teaser + date
  */
-export function ReportHeroV2({ result, actions, analyzedAtIso = null }: ReportHeroV2Props) {
+export function ReportHeroV2({
+  result,
+  actions,
+  analyzedAtIso = null,
+  expiresAtIso = null,
+}: ReportHeroV2Props) {
   const profile = result.data.profile;
   const enriched: ReportEnriched = result.enriched;
   const k = result.data.keyMetrics;
@@ -91,16 +97,7 @@ export function ReportHeroV2({ result, actions, analyzedAtIso = null }: ReportHe
               </p>
             )}
             <div className="flex items-center gap-3 mt-3 flex-wrap">
-              {analyzedAtIso ? (
-                <CacheStatusBadge analyzedAtIso={analyzedAtIso} />
-              ) : (
-                analysisMeta.dateLabel && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
-                    <Calendar className="size-3 text-content-tertiary" aria-hidden="true" />
-                    {analysisMeta.dateLabel?.replace("Atualizado ", "")}
-                  </span>
-                )
-              )}
+              <CacheStatusBadge analyzedAtIso={analyzedAtIso} expiresAtIso={expiresAtIso} />
               {analysisMeta.postsLabel && (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-signal-success">
                   {analysisMeta.postsLabel}
@@ -270,17 +267,13 @@ export function ReportHeroV2({ result, actions, analyzedAtIso = null }: ReportHe
               </span>
             </span>
 
-            {analyzedAtIso ? (
-              <span className="hidden lg:inline">
-                <CacheStatusBadge analyzedAtIso={analyzedAtIso} compact />
-              </span>
-            ) : (
-              analysisMeta.dateLabel && (
-                <span className="hidden lg:inline text-xs text-content-tertiary">
-                  {analysisMeta.dateLabel?.replace("Atualizado ", "")}
-                </span>
-              )
-            )}
+            <span className="hidden lg:inline">
+              <CacheStatusBadge
+                analyzedAtIso={analyzedAtIso}
+                expiresAtIso={expiresAtIso}
+                compact
+              />
+            </span>
           </div>
         </div>
       </div>

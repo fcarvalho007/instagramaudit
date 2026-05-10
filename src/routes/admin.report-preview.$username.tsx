@@ -95,7 +95,7 @@ type LoadState =
       result: AdapterResult;
       snapshotId: string;
       payload: SnapshotPayload;
-      snapshotMeta: { created_at: string };
+      snapshotMeta: { created_at: string; expires_at: string | null };
     };
 
 function AdminReportPreviewPage() {
@@ -158,7 +158,10 @@ function AdminReportPreviewPage() {
           result,
           snapshotId: body.snapshot.id,
           payload: body.snapshot.payload ?? {},
-          snapshotMeta: { created_at: body.snapshot.created_at },
+          snapshotMeta: {
+            created_at: body.snapshot.created_at,
+            expires_at: body.snapshot.expires_at ?? null,
+          },
         });
       } catch (e) {
         if (cancelled) return;

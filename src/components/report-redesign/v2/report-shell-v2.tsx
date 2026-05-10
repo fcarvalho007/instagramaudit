@@ -52,6 +52,7 @@ interface ReportShellV2Props {
   actions: ReportPageActions;
   payload?: SnapshotPayload;
   analyzedAtIso?: string | null;
+  expiresAtIso?: string | null;
   /** Report variant — controls feature visibility. Defaults to public_mvp. */
   variant?: ReportVariant;
   /** Optional resolved features override (from admin visibility manager). */
@@ -82,6 +83,7 @@ export function ReportShellV2({
   actions,
   payload,
   analyzedAtIso,
+  expiresAtIso,
   variant = "public_mvp",
   featuresOverride,
   lockBoundary = null,
@@ -135,7 +137,12 @@ export function ReportShellV2({
       >
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
         <section className="bg-surface-base">
-          <ReportHeroV2 result={result} actions={actions} analyzedAtIso={analyzedAtIso ?? null} />
+          <ReportHeroV2
+            result={result}
+            actions={actions}
+            analyzedAtIso={analyzedAtIso ?? null}
+            expiresAtIso={expiresAtIso ?? null}
+          />
         </section>
 
         {/* Tabs mobile sticky abaixo do hero */}
