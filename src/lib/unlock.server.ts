@@ -17,6 +17,7 @@ export const PROFILE_OWNERSHIPS = [
   "own_profile",
   "brand_profile",
   "client_profile",
+  "competitor_research",
 ] as const;
 
 export const GOALS = [
@@ -52,6 +53,9 @@ export const reportUnlockSchema = z
     user_type: z.enum(USER_TYPES).optional(),
     pricing_preference: z.string().trim().min(1).max(80).optional(),
     name: z.string().trim().min(1).max(100).optional(),
+    goal_other_text: z.string().trim().min(1).max(120).optional(),
+    user_type_other_text: z.string().trim().min(1).max(120).optional(),
+    gdpr_consent: z.boolean().optional(),
   })
   .strict();
 
