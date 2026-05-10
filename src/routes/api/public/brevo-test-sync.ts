@@ -1,5 +1,5 @@
 /**
- * POST /api/public/admin-tools/brevo-test-sync — diagnóstico Brevo sync.
+ * POST /api/public/brevo-test-sync — diagnóstico Brevo sync.
  *
  * Vive em /api/public/* para escapar ao gating do preview do Lovable que
  * intercepta /api/admin/* fora de sessão browser. Continua protegido pela
