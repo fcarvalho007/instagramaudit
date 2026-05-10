@@ -189,6 +189,7 @@ export const submitBetaRequest = createServerFn({ method: "POST" })
       const resendApiKey = process.env.RESEND_API_KEY;
       if (resendApiKey && data.email) {
         const { renderRequestReceived } = await import("./email/templates");
+        const { resolveSender } = await import("./email/sender");
         const firstName = data.name?.trim().split(/\s+/)[0] ?? null;
         const { subject, html, text } = renderRequestReceived({
           firstName,
@@ -204,7 +205,7 @@ export const submitBetaRequest = createServerFn({ method: "POST" })
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: "InstaBench <onboarding@resend.dev>",
+              from: resolveSender(),
               to: [data.email.trim()],
               subject,
               html,

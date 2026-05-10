@@ -16,13 +16,13 @@ import {
   updateLeadCommercialStatus,
 } from "@/lib/admin/lead-events.server";
 import { renderFeedbackRequest } from "@/lib/email/templates";
+import { resolveSender } from "@/lib/email/sender";
 
 const RequestSchema = z.object({
   lead_id: z.string().uuid(),
   report_request_id: z.string().uuid(),
 });
 
-const SENDER_FROM = "InstaBench <onboarding@resend.dev>";
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 const RESEND_TIMEOUT_MS = 10_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -195,7 +195,7 @@ export const Route = createFileRoute("/api/admin/send-feedback-request")({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: SENDER_FROM,
+              from: resolveSender(),
               to: [recipientEmail],
               subject,
               html,
