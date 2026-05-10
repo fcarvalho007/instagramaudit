@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { upsertBrevoContact } from "../brevo-client.server";
+import { upsertBrevoContact } from "../contacts.server";
 
 const ORIGINAL_FETCH = globalThis.fetch;
 const ORIGINAL_ENV = { ...process.env };
