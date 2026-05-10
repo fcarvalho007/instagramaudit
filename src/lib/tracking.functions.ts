@@ -24,6 +24,9 @@ const ALLOWED_EVENTS = [
   "returning_lead_detected",
   "personal_area_email_sent",
   "personal_area_email_failed",
+  // Brevo contact mirror (Phase — contact sync only, no emails)
+  "brevo_contact_synced",
+  "brevo_contact_sync_failed",
 ] as const;
 
 const trackEventSchema = z.object({
