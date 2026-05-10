@@ -131,32 +131,6 @@ const STATUS_ACCENT: Record<string, "revenue" | "info" | "signal" | "expense" | 
   not_sent: "neutral",
 };
 
-const EVENT_LABELS: Record<string, string> = {
-  report_viewed: "Relatório visualizado",
-  beta_request_created: "Pedido beta criado",
-  report_generated: "Relatório gerado",
-  report_link_sent: "Link do relatório enviado",
-  feedback_requested: "Feedback pedido ao lead",
-  feedback_started: "Feedback iniciado pelo lead",
-  feedback_submitted: "Feedback submetido pelo lead",
-  unlock_clicked: "CTA de desbloqueio clicado",
-  pricing_option_clicked: "Opção de preço clicada",
-  module_visibility_published: "Visibilidade publicada",
-  request_status_changed: "Estado do pedido alterado",
-  pricing_clicked: "Preço clicado",
-  public_report_link_copied: "Link público copiado",
-  lead_status_changed: "Estado comercial alterado",
-  commercial_followup_sent: "Follow-up comercial enviado",
-  commercial_followup_failed: "Falha no envio do follow-up comercial",
-  unlock_completed: "Desbloqueio concluído",
-  unlock_email_submitted: "Email submetido para desbloqueio",
-  brevo_contact_synced: "Contacto sincronizado com Brevo",
-  brevo_contact_sync_failed: "Falha na sincronização Brevo",
-  brevo_email_failed: "Falha no envio de email Brevo",
-  report_saved_to_account: "Relatório guardado na conta",
-  returning_lead_detected: "Lead recorrente detetado",
-};
-
 function deriveIntentSignal(lead: EnrichedLead): { label: string; accent: "revenue" | "signal" | "neutral" } {
   if (lead.report_status === "completed" && lead.report_views > 0) {
     return { label: "Alto — relatório visto", accent: "revenue" };
@@ -1062,7 +1036,7 @@ function TimelineSection({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="admin-body text-admin-text-primary m-0 flex items-center gap-2">
-                    <span>{EVENT_LABELS[ev.event_type] ?? ev.event_type}</span>
+                    <span>{getEventLabel(ev.event_type)}</span>
                     {groupedCount && groupedCount > 1 ? (
                       <span
                         className="admin-meta text-admin-text-tertiary rounded-full px-2 py-0.5"
