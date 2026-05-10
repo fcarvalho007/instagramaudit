@@ -18,21 +18,18 @@ import { cn } from "@/lib/utils";
 import {
   GOAL_LABELS,
   GOALS,
-  PRICING_PREFERENCE_LABELS,
-  PRICING_PREFERENCES,
   PROFILE_OWNERSHIP_LABELS,
   PROFILE_OWNERSHIPS,
   USER_TYPE_LABELS,
   USER_TYPES,
   unlockFormSchema,
   type Goal,
-  type PricingPreference,
   type ProfileOwnership,
   type UnlockFormValues,
   type UserType,
 } from "@/lib/unlock-flow";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 export interface UnlockResult {
   leadId: string;
@@ -49,7 +46,7 @@ export interface UnlockModalProps {
   onUnlock: (result: UnlockResult) => void;
 }
 
-type Step = 1 | 2 | 3 | 4 | 5 | "success";
+type Step = 1 | 2 | 3 | 4 | "success";
 
 export function UnlockModal({
   open,
@@ -71,7 +68,7 @@ export function UnlockModal({
       profile_ownership: undefined as unknown as ProfileOwnership,
       goal: undefined as unknown as Goal,
       user_type: undefined as unknown as UserType,
-      pricing_preference: undefined as unknown as PricingPreference,
+      pricing_preference: undefined,
     },
   });
 
@@ -93,7 +90,6 @@ export function UnlockModal({
     if (step === 1) fields = ["email"];
     if (step === 2) fields = ["profile_ownership"];
     if (step === 3) fields = ["goal"];
-    if (step === 4) fields = ["user_type"];
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
     setStep(((step as number) + 1) as Step);
@@ -118,7 +114,6 @@ export function UnlockModal({
           profile_ownership: values.profile_ownership,
           goal: values.goal,
           user_type: values.user_type,
-          pricing_preference: values.pricing_preference,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -194,7 +189,7 @@ export function UnlockModal({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (step === 5) void handleFinalSubmit();
+                if (step === 4) void handleFinalSubmit();
                 else void goNext();
               }}
               className="space-y-6 mt-6"
@@ -246,25 +241,6 @@ export function UnlockModal({
                   error={form.formState.errors.user_type?.message}
                 />
               ) : null}
-              {step === 5 ? (
-                <RadioCardField
-                  legend="Quanto pagarias por um relatório completo (uso único)?"
-                  name="pricing_preference"
-                  options={PRICING_PREFERENCES.map((v) => ({
-                    value: v,
-                    label: PRICING_PREFERENCE_LABELS[v],
-                  }))}
-                  value={form.watch("pricing_preference")}
-                  onChange={(v) =>
-                    form.setValue(
-                      "pricing_preference",
-                      v as PricingPreference,
-                      { shouldValidate: true },
-                    )
-                  }
-                  error={form.formState.errors.pricing_preference?.message}
-                />
-              ) : null}
 
               {serverError ? (
                 <Alert variant="destructive">
@@ -297,7 +273,7 @@ export function UnlockModal({
                       <Loader2 className="size-4 animate-spin" aria-hidden />
                       A desbloquear…
                     </>
-                  ) : step === 5 ? (
+                  ) : step === 4 ? (
                     "Desbloquear relatório"
                   ) : (
                     "Continuar"
