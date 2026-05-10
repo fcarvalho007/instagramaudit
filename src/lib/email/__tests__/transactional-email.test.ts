@@ -143,12 +143,43 @@ describe("sendTransactionalEmail", () => {
 
     const out = await sendTransactionalEmail(baseInput);
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.resendReason).toBeNull();
+    if (!out.ok) expect(out.resendReason).toBe("RESEND_API_KEY_MISSING");
     expect(resendCalled).toBe(false);
     const events = mockRecord.mock.calls.map((c) => c[0].eventType);
     expect(events).toEqual(["brevo_email_failed", "personal_area_email_failed"]);
     const failureMeta = mockRecord.mock.calls[1][0].metadata;
     expect(failureMeta.fallback_attempted).toBe(false);
+    expect(failureMeta.missing_secret).toBe("RESEND_API_KEY");
+    expect(failureMeta.resend_reason).toBe("RESEND_API_KEY_MISSING");
+  });
+
+  it("emits flow failure without trying Resend when RESEND_FROM is absent", async () => {
+    setEnv({ RESEND_FROM: undefined });
+    let resendCalled = false;
+    mockProviders({
+      brevo: async () => new Response("boom", { status: 500 }),
+      resend: async () => {
+        resendCalled = true;
+        return new Response("ok", { status: 200 });
+      },
+    });
+
+    const out = await sendTransactionalEmail(baseInput);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.resendReason).toBe("RESEND_FROM_MISSING");
+    expect(resendCalled).toBe(false);
+    const events = mockRecord.mock.calls.map((c) => c[0].eventType);
+    expect(events).toEqual(["brevo_email_failed", "personal_area_email_failed"]);
+    const failureMeta = mockRecord.mock.calls[1][0].metadata;
+    expect(failureMeta.fallback_attempted).toBe(false);
+    expect(failureMeta.missing_secret).toBe("RESEND_FROM");
+    expect(failureMeta.resend_reason).toBe("RESEND_FROM_MISSING");
+
+    // No sandbox sender ever surfaces in events.
+    const allMeta = JSON.stringify(mockRecord.mock.calls);
+    expect(allMeta).not.toContain("onboarding@resend.dev");
+    expect(allMeta).not.toContain("resend.dev");
+    expect(allMeta).not.toContain("re_test");
   });
 
   it("falls back to Resend when BREVO_API_KEY is missing", async () => {
