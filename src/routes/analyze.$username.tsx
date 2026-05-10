@@ -331,6 +331,10 @@ function AnalyzeReady({
   const [unlocked, setUnlocked] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     try {
+      if (snapshotId && window.sessionStorage.getItem(`ib_unlock:${snapshotId}`) === "1") {
+        return true;
+      }
+      // legacy global key (Phase 2 fallback)
       return window.sessionStorage.getItem("ib_unlock_preview") === "1";
     } catch {
       return false;
@@ -379,14 +383,17 @@ function AnalyzeReady({
       <UnlockModal
         open={unlockOpen}
         onOpenChange={setUnlockOpen}
+        snapshotId={snapshotId}
+        instagramUsername={(payload as any).instagram_username ?? ""}
         onUnlock={() => {
           try {
-            window.sessionStorage.setItem("ib_unlock_preview", "1");
+            if (snapshotId) {
+              window.sessionStorage.setItem(`ib_unlock:${snapshotId}`, "1");
+            }
           } catch {
             /* ignore */
           }
           setUnlocked(true);
-          setUnlockOpen(false);
         }}
       />
     </>
