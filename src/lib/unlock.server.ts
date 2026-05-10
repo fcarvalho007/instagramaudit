@@ -421,25 +421,26 @@ export async function processReportUnlock(
           toEmail: data.email,
           firstName,
           instagramHandle: data.instagram_username,
-        });
-        await recordProductEvent({
-          eventType: res.ok
-            ? "personal_area_email_sent"
-            : "personal_area_email_failed",
           leadId,
+          reportRequestId,
           snapshotId: data.analysis_snapshot_id,
-          handle: data.instagram_username,
-          metadata: res.ok
-            ? {
-                message_id: res.messageId,
-                sender: "resend",
-                report_request_id: reportRequestId,
-              }
-            : {
-                reason: res.reason,
-                report_request_id: reportRequestId,
-              },
         });
+        // Success event stays here (carries caller-specific metadata).
+        // Failure events are emitted by the transactional abstraction
+        // itself (provider-level + flow-specific) — do NOT duplicate here.
+        if (res.ok) {
+          await recordProductEvent({
+            eventType: "personal_area_email_sent",
+            leadId,
+            snapshotId: data.analysis_snapshot_id,
+            handle: data.instagram_username,
+            metadata: {
+              message_id: res.messageId,
+              provider: res.provider,
+              report_request_id: reportRequestId,
+            },
+          });
+        }
       } catch (err) {
         console.error("[unlock] personal-area email error:", err);
       }
