@@ -417,7 +417,11 @@ function AnalyzeReady({
         open={unlockOpen}
         onOpenChange={setUnlockOpen}
         snapshotId={snapshotId}
-        instagramUsername={(payload as any).instagram_username ?? ""}
+        instagramUsername={
+          (payload as any).instagram_username ??
+          (payload as any).profile?.username ??
+          ""
+        }
         onUnlock={(result) => {
           try {
             if (snapshotId) {
