@@ -158,7 +158,7 @@ export async function processReportUnlock(
     const { data: existingLead } = await (supabaseAdmin as any)
       .from("leads")
       .select(
-        "id, user_type, purpose, profile_ownership, pricing_preference, name",
+        "id, user_type, purpose, profile_ownership, pricing_preference, name, beta_consent",
       )
       .eq("email_normalized", emailNormalized)
       .maybeSingle();
@@ -170,7 +170,7 @@ export async function processReportUnlock(
       leadId = existingLead.id as string;
 
       // Conservative update: only fill NULL/empty fields.
-      const patch: Record<string, string> = {};
+      const patch: Record<string, unknown> = {};
       const fieldsUpdated: string[] = [];
       if (!existingLead.user_type && data.user_type) {
         patch.user_type = data.user_type;
@@ -187,6 +187,11 @@ export async function processReportUnlock(
       if (!existingLead.pricing_preference && data.pricing_preference) {
         patch.pricing_preference = data.pricing_preference;
         fieldsUpdated.push("pricing_preference");
+      }
+      if (!existingLead.beta_consent && data.gdpr_consent === true) {
+        patch.beta_consent = true;
+        patch.beta_consent_at = new Date().toISOString();
+        fieldsUpdated.push("beta_consent");
       }
       if (Object.keys(patch).length > 0) {
         await (supabaseAdmin as any)
@@ -226,6 +231,9 @@ export async function processReportUnlock(
           purpose: data.goal ?? null,
           profile_ownership: data.profile_ownership ?? null,
           pricing_preference: data.pricing_preference ?? null,
+          beta_consent: data.gdpr_consent === true,
+          beta_consent_at:
+            data.gdpr_consent === true ? new Date().toISOString() : null,
         })
         .select("id")
         .single();
@@ -266,6 +274,11 @@ export async function processReportUnlock(
     if (data.goal) newMeta.goal = data.goal;
     if (data.user_type) newMeta.user_type = data.user_type;
     if (data.pricing_preference) newMeta.pricing_preference = data.pricing_preference;
+    if (data.goal === "other" && data.goal_other_text)
+      newMeta.goal_other_text = data.goal_other_text;
+    if (data.user_type === "other" && data.user_type_other_text)
+      newMeta.user_type_other_text = data.user_type_other_text;
+    if (data.gdpr_consent === true) newMeta.gdpr_consent = true;
 
     const { data: existingRR } = await (supabaseAdmin as any)
       .from("report_requests")
