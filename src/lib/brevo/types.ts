@@ -22,7 +22,9 @@ export type UpsertBrevoContactResult =
 export type BrevoSyncReason =
   | "report_unlock"
   | "manual_resync"
-  | "backfill";
+  | "backfill"
+  | "admin_conversion"
+  | "payment_webhook";
 
 export type BrevoSyncOutcome =
   | {

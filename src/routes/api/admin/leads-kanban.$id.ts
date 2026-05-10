@@ -5,6 +5,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import { syncCustomerToBrevo } from "@/lib/brevo/customer-sync.server";
 
 import type { Json } from "@/integrations/supabase/types";
 
@@ -48,6 +49,20 @@ export const Route = createFileRoute("/api/admin/leads-kanban/$id")({
         }
 
         const updates: Record<string, unknown> = {};
+
+        // Read previous status BEFORE update so we can detect a real
+        // transition into "convertido" and avoid re-syncing on no-op PATCHes.
+        let previousStatus: string | null = null;
+        try {
+          const { data: prev } = await supabaseAdmin
+            .from("leads")
+            .select("commercial_status")
+            .eq("id", params.id)
+            .maybeSingle();
+          previousStatus = (prev?.commercial_status as string | null) ?? null;
+        } catch {
+          previousStatus = null;
+        }
 
         if (typeof body.commercial_status === "string") {
           if (
@@ -124,6 +139,17 @@ export const Route = createFileRoute("/api/admin/leads-kanban/$id")({
           }]);
         } catch {
           // non-critical
+        }
+
+        // Fire-and-forget Brevo customer sync on real transition → convertido.
+        // Failure here MUST NOT reverse the lead update.
+        if (
+          updates.commercial_status === "convertido" &&
+          previousStatus !== "convertido"
+        ) {
+          void syncCustomerToBrevo(params.id, "admin_conversion").catch((err) => {
+            console.error("[leads-kanban] brevo customer sync failed:", err);
+          });
         }
 
         return jsonResponse({ success: true, lead: data });
