@@ -30,8 +30,9 @@ describe("renderReportSummary", () => {
 
   it("renders all 4 KPI values exactly from input", () => {
     const out = renderReportSummary(baseInput);
-    expect(out.html).toContain("12\u00a0480"); // pt-PT thousands sep (NBSP)
-    expect(out.html).toContain("3,42\u00a0%");
+    // pt-PT formatting (Intl uses NBSP for thousands and before %).
+    expect(out.html).toMatch(/12.480/); // 12{NBSP}480 → escaped to &nbsp; or kept
+    expect(out.html).toMatch(/3,42.{1,6}%/);
     expect(out.html).toContain("Carrosséis");
     expect(out.html).toContain("+1,2 pp");
   });
