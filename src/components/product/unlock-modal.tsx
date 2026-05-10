@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BookmarkPlus, CheckCircle2, Loader2, Lock, Mail } from "lucide-react";
 
 import {
   Dialog,
@@ -156,34 +156,36 @@ export function UnlockModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md max-h-[92vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[460px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
         {step === "success" ? (
-          <SuccessState
-            returningLead={Boolean(result?.returningLead)}
-            email={form.getValues("email")}
-            onClose={() => onOpenChange(false)}
-          />
+          <div className="px-6 py-7 sm:px-7 sm:py-8">
+            <SuccessState
+              returningLead={Boolean(result?.returningLead)}
+              email={form.getValues("email")}
+              onClose={() => onOpenChange(false)}
+            />
+          </div>
         ) : (
-          <>
-            <DialogHeader className="text-left space-y-2">
-              <p className="text-eyebrow-sm text-primary">
+          <div className="px-6 py-7 sm:px-7 sm:py-8">
+            <DialogHeader className="text-left space-y-3">
+              <p className="text-eyebrow-sm text-content-tertiary">
                 Passo {step} de {TOTAL_STEPS}
               </p>
-              <DialogTitle className="font-fraunces text-2xl leading-tight">
+              <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
                 Desbloquear relatório gratuito
               </DialogTitle>
-              <DialogDescription className="text-sm text-content-secondary">
-                Acesso gratuito durante a beta · Demora cerca de 1 minuto
+              <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+                Acesso gratuito durante a beta · demora cerca de 1 minuto
               </DialogDescription>
               <div
-                className="h-1 w-full rounded-full bg-surface-muted overflow-hidden"
+                className="h-[2px] w-full rounded-full bg-primary/15 overflow-hidden mt-1"
                 role="progressbar"
                 aria-valuemin={1}
                 aria-valuemax={TOTAL_STEPS}
                 aria-valuenow={step}
               >
                 <div
-                  className="h-full bg-primary transition-all"
+                  className="h-full bg-primary transition-all duration-300 ease-out"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
@@ -195,7 +197,7 @@ export function UnlockModal({
                 if (step === 5) void handleFinalSubmit();
                 else void goNext();
               }}
-              className="space-y-5 mt-2"
+              className="space-y-6 mt-6"
             >
               {step === 1 ? <Step1Email form={form} /> : null}
               {step === 2 ? (
@@ -246,7 +248,7 @@ export function UnlockModal({
               ) : null}
               {step === 5 ? (
                 <RadioCardField
-                  legend="Quanto pagarias por um relatório mensal?"
+                  legend="Quanto pagarias por um relatório completo (uso único)?"
                   name="pricing_preference"
                   options={PRICING_PREFERENCES.map((v) => ({
                     value: v,
@@ -270,15 +272,15 @@ export function UnlockModal({
                 </Alert>
               ) : null}
 
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-6 sm:-mx-7 px-6 sm:px-7 pt-5 mt-2">
                 {step > 1 ? (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="lg"
                     onClick={goBack}
                     disabled={submitting}
-                    className="flex-shrink-0"
+                    className="flex-shrink-0 rounded-lg"
                   >
                     <ArrowLeft className="size-4" aria-hidden />
                     Voltar
@@ -287,7 +289,7 @@ export function UnlockModal({
                 <Button
                   type="submit"
                   size="lg"
-                  className="flex-1"
+                  className="flex-1 rounded-lg font-medium"
                   disabled={submitting}
                 >
                   {submitting ? (
@@ -304,19 +306,13 @@ export function UnlockModal({
               </div>
 
               {step === 1 ? (
-                <div className="flex items-start gap-2 rounded-lg bg-surface-muted/60 p-3">
-                  <ShieldCheck
-                    className="size-4 shrink-0 mt-0.5 text-primary"
-                    aria-hidden="true"
-                  />
-                  <p className="text-xs text-content-tertiary leading-relaxed">
-                    Sem spam. Usamos o email para guardar este report e enviar o
-                    acesso.
-                  </p>
-                </div>
+                <p className="flex items-center justify-center gap-1.5 text-[12px] text-content-tertiary">
+                  <Lock className="size-3" aria-hidden="true" />
+                  Sem spam. Email usado só para guardar e enviar este report.
+                </p>
               ) : null}
             </form>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>
@@ -371,8 +367,8 @@ function RadioCardField({
   error?: string;
 }) {
   return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-medium text-content-primary mb-1">
+    <fieldset className="space-y-3">
+      <legend className="text-[14px] font-medium text-content-primary mb-1">
         {legend}
       </legend>
       <div className="grid gap-2">
@@ -382,11 +378,10 @@ function RadioCardField({
             <label
               key={opt.value}
               className={cn(
-                "flex items-center gap-3 min-h-12 px-4 py-3 rounded-lg border cursor-pointer transition-colors",
-                "hover:bg-surface-muted/60",
+                "group flex items-center gap-3 min-h-12 px-4 py-3.5 rounded-xl border cursor-pointer transition-all duration-150",
                 selected
-                  ? "border-primary bg-primary/5"
-                  : "border-border-default",
+                  ? "border-primary bg-primary/[0.04] shadow-[0_0_0_1px_rgb(var(--accent-primary)/0.20)]"
+                  : "border-border-default/60 hover:border-border-default hover:bg-surface-muted/40",
               )}
             >
               <input
@@ -395,9 +390,27 @@ function RadioCardField({
                 value={opt.value}
                 checked={selected}
                 onChange={() => onChange(opt.value)}
-                className="size-4 accent-primary"
+                className="sr-only"
               />
-              <span className="text-sm text-content-primary">{opt.label}</span>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "relative flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                  selected
+                    ? "border-primary"
+                    : "border-border-default group-hover:border-border-strong",
+                )}
+              >
+                <span
+                  className={cn(
+                    "size-2 rounded-full bg-primary transition-transform duration-150",
+                    selected ? "scale-100" : "scale-0",
+                  )}
+                />
+              </span>
+              <span className="text-[14px] text-content-primary leading-snug">
+                {opt.label}
+              </span>
             </label>
           );
         })}
@@ -418,35 +431,62 @@ function SuccessState({
 }) {
   const signupHref = `/signup?email=${encodeURIComponent(email)}`;
   return (
-    <div className="text-center space-y-4 py-2">
-      <div className="mx-auto size-12 rounded-full bg-primary/10 flex items-center justify-center">
+    <div className="space-y-6">
+      <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center">
         <CheckCircle2 className="size-6 text-primary" aria-hidden />
       </div>
-      <DialogHeader className="space-y-2">
-        <DialogTitle className="font-fraunces text-2xl text-center">
+      <DialogHeader className="text-left space-y-2">
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
           {returningLead ? "Bem-vindo de volta" : "Relatório desbloqueado"}
         </DialogTitle>
-        <DialogDescription className="text-sm text-content-secondary text-center">
+        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
           {returningLead
-            ? "Este report foi guardado na tua área."
-            : "Também guardámos este report na tua área pessoal."}
+            ? "Este report já estava guardado na tua área pessoal."
+            : "Também guardámos este report na tua área pessoal para acesso futuro."}
         </DialogDescription>
       </DialogHeader>
-      <Button size="lg" className="w-full" onClick={onClose}>
-        Ver relatório
-      </Button>
-      <a
-        href={signupHref}
-        className="block text-sm font-medium text-primary hover:underline"
-      >
-        Criar conta com este email para aceder mais tarde
-      </a>
-      <p className="text-xs text-content-tertiary">
-        Já tens conta?{" "}
-        <a href="/login" className="underline hover:text-content-secondary">
-          Entrar
+
+      <ul className="space-y-3">
+        <NextStepRow
+          icon={<BookmarkPlus className="size-4" aria-hidden="true" />}
+          text="Acede sempre que quiseres em /me"
+        />
+        <NextStepRow
+          icon={<Mail className="size-4" aria-hidden="true" />}
+          text={`Enviámos uma confirmação para ${email}`}
+        />
+      </ul>
+
+      <div className="space-y-3 pt-2 border-t border-border-default/40">
+        <Button size="lg" className="w-full rounded-lg font-medium mt-4" onClick={onClose}>
+          Ver relatório completo
+        </Button>
+        <a
+          href={signupHref}
+          className="block text-center text-[13px] font-medium text-primary hover:underline"
+        >
+          Criar conta com este email para aceder mais tarde
         </a>
-      </p>
+        <p className="text-[12px] text-content-tertiary text-center">
+          Já tens conta?{" "}
+          <a href="/login" className="underline hover:text-content-secondary">
+            Entrar
+          </a>
+        </p>
+      </div>
     </div>
+  );
+}
+
+function NextStepRow({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className="mt-0.5 inline-flex size-7 items-center justify-center rounded-lg bg-surface-muted text-primary">
+        {icon}
+      </span>
+      <span className="text-[13px] text-content-secondary leading-relaxed">
+        {text}
+      </span>
+    </li>
   );
 }
