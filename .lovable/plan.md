@@ -1,43 +1,88 @@
-## Auditoria final — todas as fases completas
+## Auditoria — Brevo list ID
 
-| Fase do spec | Estado | Evidência |
-|---|---|---|
-| 1. Componente `PricingFeedbackSheet` | ✅ | `src/components/product/pricing-feedback-sheet.tsx` |
-| 2. Endpoint público | ✅ | `POST /api/public/pricing-feedback` (mantido em vez de PATCH renomeado — decisão registada no plano anterior) |
-| 3. Payload (`lead_id` + `snapshot_id` + `pricing_preference` + `trigger`) | ✅ | Validado por `pricingFeedbackSchema` strict |
-| 4. Update `leads.pricing_preference` (sem overwrite) | ✅ | `.is("pricing_preference", null)` no servidor |
-| 5a. Evento `_shown` | ✅ | Emitido no hook em `fire()` (loop anterior) |
-| 5b. Evento `_submitted` | ✅ | Emitido pelo endpoint |
-| 5c. Evento `_dismissed` | ✅ | Emitido no `handleClose` quando `status !== "success"` |
-| 6. localStorage anti-repetição | ✅ | `ib_pricing_asked:{snapshotId}` |
-| 7. Não-bloqueante, dismissível | ✅ | Sheet com Saltar/X, fire-and-forget |
+### TL;DR
 
-### Constraints respeitados
+✅ **Tudo correto. Nenhum hardcoded `42`. Sem alterações de código necessárias.**
 
-- ✅ Não pedir pricing no unlock — `UnlockModal` não tem campo (verificado: 0 ocorrências de `pricing` em `unlock-modal.tsx`).
-- ✅ Não bloqueia leitura do report.
-- ✅ Não chama providers, não envia emails, não muda cálculos, não exige login.
+### 1. Procura por `42` hardcoded
 
-### Observação (não-bloqueante, fora de escopo)
+Foram encontradas várias ocorrências de `42` no codebase, **todas legítimas**:
 
-`unlock.server.ts` ainda aceita `pricing_preference` opcional no schema (legado). Nenhum cliente o envia hoje. Limpeza futura possível, mas **não fazer agora** — risco de regressão zero ao manter, e está fora do âmbito deste pedido.
+- `src/lib/brevo/__tests__/brevo-client.test.ts:23,64` — fixture de teste (`BREVO_LEAD_MAGNET_LIST_ID: "42"` mockado para validar parsing)
+- `src/lib/brevo/__tests__/customer-sync.test.ts:93` — `brevoId: 42` (mock do response Brevo, não list ID)
+- Vários `rgba(15,23,42,...)` — cor hex em sombras Tailwind
+- Vários valores `42` em fixtures de testes de insights, normalização e mock data
 
-### Validação automática
+**Nenhuma ocorrência de `42` em código de produção como list ID.**
 
-- `bunx vitest run` → **243/243 passed** (já corrido no loop anterior pós-implementação)
-- `bunx tsc --noEmit` corrido implicitamente pelo harness sem erros após patches
+### 2. Onde o list ID é lido
 
-### Conclusão
+Único ponto de leitura: `src/lib/brevo/contacts.server.ts:24-33`
 
-**Não há trabalho pendente.** Todas as fases do spec foram implementadas e validadas no loop anterior. Nenhuma alteração de código adicional necessária neste loop — qualquer refinamento agora seria churn sem valor (renomear eventos para `pricing_micro_survey_*` quebraria histórico de admin/Brevo; alterar endpoint para PATCH quebraria contrato com cliente já em produção).
+```ts
+function resolveListIds(override?: number[]): number[] | { error: string } {
+  if (override && override.length > 0) return override;
+  const raw = process.env.BREVO_LEAD_MAGNET_LIST_ID?.trim();
+  if (!raw) return { error: "BREVO_LEAD_MAGNET_LIST_ID_MISSING" };
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return { error: "BREVO_LEAD_MAGNET_LIST_ID_INVALID" };
+  }
+  return [parsed];
+}
+```
 
-### Recomendação
+- ✅ Lê de `process.env.BREVO_LEAD_MAGNET_LIST_ID` (secret confirmada na lista de secrets do projeto)
+- ✅ Parse com `Number.parseInt(raw, 10)` → número
+- ✅ Valida `Number.isFinite` + `> 0`
+- ✅ Sem fallback hardcoded — falha explícita se ausente/inválido
 
-Sair do plan mode sem alterações. Próximo passo do utilizador: validação manual em preview (3 triggers + submit + dismiss) conforme checklist do plano anterior.
+Para clientes pagos, `customer-sync.server.ts:37-43` usa `BREVO_PAID_CUSTOMERS_LIST_ID` (lista 17) com mesma lógica de parsing; se ausente, faz fallback para a lista lead-magnet (16) via `upsertBrevoContact`.
+
+### 3. Tratamento de erro / não-bloqueio
+
+- `resolveListIds` devolve `{ error: "BREVO_LEAD_MAGNET_LIST_ID_MISSING" | "BREVO_LEAD_MAGNET_LIST_ID_INVALID" }`
+- `upsertBrevoContact` propaga como `{ ok: false, reason }`
+- `syncLeadToBrevo` (`src/lib/brevo/sync.server.ts:170`) regista evento **`brevo_contact_sync_failed`** com o `reason`
+- `unlock.server.ts:471-476` invoca `syncLeadToBrevo` em **`void (async () => { … })().catch(...)`** — fire-and-forget, **nunca bloqueia o unlock**
+
+✅ Comportamento exato pedido.
+
+### 4. Payload final com list ID 16
+
+Com `BREVO_LEAD_MAGNET_LIST_ID=16` em secrets (confirmado), o payload enviado para `POST /v3/contacts` é:
+
+```json
+{
+  "email": "user@example.com",
+  "updateEnabled": true,
+  "listIds": [16],
+  "attributes": { … }
+}
+```
+
+✅ Confirmado por inspeção em `contacts.server.ts:44-52` — `listIds: listsOrErr` é o resultado direto de `resolveListIds()`, ou seja `[16]` quando a env é `"16"`.
+
+### Recomendações
+
+**Nenhum fix necessário.** A implementação está correta:
+
+- Sem hardcoded `42` em produção
+- Lê e valida a env como número positivo
+- Falha visível via `brevo_contact_sync_failed` sem bloquear unlock
+- Suporta override por chamada (usado pelo customer-sync com lista paga 17)
+
+### Opcional (sem prioridade)
+
+Os secrets para listas 17 (clientes pagos) e 18 (intenção alta) ainda não estão configurados — apenas `BREVO_LEAD_MAGNET_LIST_ID` (16) existe. Quando quiseres ativar segmentação, adicionar:
+
+- `BREVO_PAID_CUSTOMERS_LIST_ID=17` (já lido por `customer-sync.server.ts`)
+- `BREVO_HIGH_INTENT_LIST_ID=18` (ainda não tem leitor — precisaria de novo callsite)
 
 ## Checkpoint
 
-- ☑ Todas as 7 fases implementadas
-- ☑ 0 constraints violados
-- ☑ 243/243 testes verdes
-- ☑ Sem ações de código pendentes
+- ☑ `42` é apenas exemplo/fixture; não aparece em código de produção
+- ☑ List ID lido de `BREVO_LEAD_MAGNET_LIST_ID` (parse int + validação)
+- ☑ Falha não bloqueia unlock; emite `brevo_contact_sync_failed`
+- ☑ Payload usa `listIds: [16]` quando secret = `"16"`
+- ☑ Sem alterações de código necessárias
