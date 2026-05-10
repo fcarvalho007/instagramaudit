@@ -83,6 +83,7 @@ import { Route as ApiPublicHooksSyncDataforseoCostsRouteImport } from './routes/
 import { Route as ApiPublicHooksSyncApifyCostsRouteImport } from './routes/api/public/hooks/sync-apify-costs'
 import { Route as ApiPublicFeedbackRequestIdRouteImport } from './routes/api/public/feedback.$requestId'
 import { Route as ApiPublicAnalysisSnapshotUsernameRouteImport } from './routes/api/public/analysis-snapshot.$username'
+import { Route as ApiPublicAdminToolsBrevoTestSyncRouteImport } from './routes/api/public/admin-tools/brevo-test-sync'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api/admin/snapshot-by-id.$snapshotId'
 import { Route as ApiAdminSistemaVisualCoverDebugRouteImport } from './routes/api/admin/sistema.visual-cover-debug'
@@ -501,6 +502,12 @@ const ApiPublicAnalysisSnapshotUsernameRoute =
     path: '/api/public/analysis-snapshot/$username',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAdminToolsBrevoTestSyncRoute =
+  ApiPublicAdminToolsBrevoTestSyncRouteImport.update({
+    id: '/api/public/admin-tools/brevo-test-sync',
+    path: '/api/public/admin-tools/brevo-test-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminSnapshotUsernameRoute =
   ApiAdminSnapshotUsernameRouteImport.update({
     id: '/api/admin/snapshot/$username',
@@ -774,6 +781,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
+  '/api/public/admin-tools/brevo-test-sync': typeof ApiPublicAdminToolsBrevoTestSyncRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
@@ -880,6 +888,7 @@ export interface FileRoutesByTo {
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
+  '/api/public/admin-tools/brevo-test-sync': typeof ApiPublicAdminToolsBrevoTestSyncRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
@@ -988,6 +997,7 @@ export interface FileRoutesById {
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
+  '/api/public/admin-tools/brevo-test-sync': typeof ApiPublicAdminToolsBrevoTestSyncRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
@@ -1097,6 +1107,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
+    | '/api/public/admin-tools/brevo-test-sync'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
@@ -1203,6 +1214,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
+    | '/api/public/admin-tools/brevo-test-sync'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
@@ -1310,6 +1322,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
+    | '/api/public/admin-tools/brevo-test-sync'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
@@ -1395,6 +1408,7 @@ export interface RootRouteChildren {
   ApiAdminSistemaVisualCoverDebugRoute: typeof ApiAdminSistemaVisualCoverDebugRoute
   ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
+  ApiPublicAdminToolsBrevoTestSyncRoute: typeof ApiPublicAdminToolsBrevoTestSyncRoute
   ApiPublicAnalysisSnapshotUsernameRoute: typeof ApiPublicAnalysisSnapshotUsernameRoute
   ApiPublicFeedbackRequestIdRoute: typeof ApiPublicFeedbackRequestIdRoute
   ApiPublicHooksSyncApifyCostsRoute: typeof ApiPublicHooksSyncApifyCostsRoute
@@ -1924,6 +1938,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAnalysisSnapshotUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/admin-tools/brevo-test-sync': {
+      id: '/api/public/admin-tools/brevo-test-sync'
+      path: '/api/public/admin-tools/brevo-test-sync'
+      fullPath: '/api/public/admin-tools/brevo-test-sync'
+      preLoaderRoute: typeof ApiPublicAdminToolsBrevoTestSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/snapshot/$username': {
       id: '/api/admin/snapshot/$username'
       path: '/api/admin/snapshot/$username'
@@ -2387,6 +2408,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSistemaVisualCoverDebugRoute: ApiAdminSistemaVisualCoverDebugRoute,
   ApiAdminSnapshotByIdSnapshotIdRoute: ApiAdminSnapshotByIdSnapshotIdRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
+  ApiPublicAdminToolsBrevoTestSyncRoute: ApiPublicAdminToolsBrevoTestSyncRoute,
   ApiPublicAnalysisSnapshotUsernameRoute:
     ApiPublicAnalysisSnapshotUsernameRoute,
   ApiPublicFeedbackRequestIdRoute: ApiPublicFeedbackRequestIdRoute,
@@ -2401,12 +2423,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
