@@ -108,12 +108,14 @@ export function AutomationFlowPage() {
           </AdminCard>
         ) : (
           <Tabs defaultValue="fluxo" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="fluxo">Fluxo</TabsTrigger>
-              <TabsTrigger value="metricas">Métricas</TabsTrigger>
-              <TabsTrigger value="pessoas">Pessoas</TabsTrigger>
-              <TabsTrigger value="templates">Templates</TabsTrigger>
-            </TabsList>
+            <div className="mb-4 -mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0">
+              <TabsList className="inline-flex w-auto whitespace-nowrap">
+                <TabsTrigger value="fluxo">Fluxo</TabsTrigger>
+                <TabsTrigger value="metricas">Métricas</TabsTrigger>
+                <TabsTrigger value="pessoas">Pessoas</TabsTrigger>
+                <TabsTrigger value="templates">Templates</TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="fluxo" className="mt-0">
               {data.flows.length === 0 || data.totalActive === 0 ? (

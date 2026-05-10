@@ -75,7 +75,19 @@ export function BetaRequestsTable({ rows, onStatusChange, onGenerateReport }: Pr
 
   return (
     <AdminCard variant="flush">
-      <div className="overflow-x-auto">
+      <p className="md:hidden px-4 pt-3 pb-1 text-[11px] text-admin-text-tertiary">
+        Desliza horizontalmente para ver todas as colunas →
+      </p>
+      <div
+        className="overflow-x-auto"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, white 30%, rgba(255,255,255,0)), linear-gradient(to right, rgba(255,255,255,0), white 70%) 100% 0, radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.12), rgba(0,0,0,0)), radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,0.12), rgba(0,0,0,0)) 100% 0",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "40px 100%, 40px 100%, 14px 100%, 14px 100%",
+          backgroundAttachment: "local, local, scroll, scroll",
+        }}
+      >
         <table className="w-full text-[12px]" style={{ color: "#2C2C2A" }}>
           <thead>
             <tr

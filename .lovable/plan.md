@@ -1,110 +1,102 @@
-## Auditoria RLS / Segurança Supabase — pré-beta externo
+## Auditoria mobile (375px) — Admin CRM
 
-### 1. Status RLS por tabela
+Auditoria 100% **read-only**, baseada em leitura de código. O preview do admin exige Google Sign-in (allowlist) e não consegui passar o gate sem credenciais — por isso não foi possível tirar screenshots logados. Os achados abaixo derivam da inspeção dos componentes recém-alterados.
 
-✅ **Boa notícia**: **Todas** as tabelas em `public` têm `rowsecurity = true` (RLS ativada). Postura default = **deny-all** para anon/authenticated; apenas o service role (server functions) tem acesso.
+Se quiseres screenshots reais, faz login no preview com a tua conta admin e dou-te a captura por rota.
 
-| Tabela | RLS | # Policies | Notas |
-|---|---|---|---|
-| `profiles` | ✅ | 2 | SELECT/UPDATE próprios (`auth.uid() = id`) — sem INSERT (criado por trigger `handle_new_user`) |
-| `report_requests` | ✅ | 1 | SELECT próprios (`user_id = auth.uid()`) |
-| `leads` | ✅ | **0** | Apenas service role |
-| `product_events` | ✅ | **0** | Apenas service role |
-| `analysis_snapshots` | ✅ | **0** | Apenas service role |
-| `analysis_events` | ✅ | **0** | Apenas service role |
-| `social_profiles` | ✅ | **0** | Apenas service role |
-| `provider_call_logs` | ✅ | **0** | Apenas service role |
-| `app_config` | ✅ | **0** | Apenas service role (admin) |
-| `beta_feedback` | ✅ | **0** | Apenas service role |
-| `cost_daily`, `provider_billing_*`, `usage_alerts` | ✅ | **0** | Internas/admin |
-| `knowledge_*` (5 tabelas) | ✅ | **0** | Apenas admin via server fn |
-| `benchmark_references`, `enrichment_jobs`, `comment_enrichment_jobs`, `report_variant_overrides` | ✅ | **0** | Internas |
+---
 
-### 2. Linter findings
+### 1. Status por rota
 
-- **21 issues**, todas **`INFO`** (severidade baixa): "RLS Enabled No Policy" — não-bloqueantes. Significa apenas que o linter detetou tabelas com RLS sem policies, o que é **intencional** para tabelas só acedidas via service role.
-- Nenhum `WARN` ou `ERROR`. Nenhum aviso "RLS disabled" (que seria crítico).
-
-### 3. Acesso client-side direto às tabelas
-
-**`rg supabase.from(...)` em código não-server retornou 0 resultados.** Todo o acesso a tabelas é via:
-- `createServerFn` + `requireSupabaseAuth` (RLS aplica como utilizador)
-- `supabaseAdmin` em `*.server.ts` (service role, bypass RLS)
-
-Browser client é usado **apenas** para `supabase.auth.*` (login/signup/sessão) em 6 ficheiros. Confirmado seguro.
-
-### 4. Análise de risco
-
-| Risco | Severidade | Status |
+| Rota | Estado | Notas principais |
 |---|---|---|
-| Tabelas sem RLS expostas | **P0** | ✅ Não existe — todas têm RLS |
-| `leads` (PII: emails) lida por anon | **P0** | ✅ Bloqueado por deny-all |
-| `product_events` (analytics) lida por anon | **P1** | ✅ Bloqueado |
-| Policy demasiado permissiva (`USING (true)`) | **P0** | ✅ Não existe |
-| Mutações cliente em tabelas sensíveis | **P0** | ✅ Cliente nunca escreve direto |
-| `profiles` expor PII de outros utilizadores | **P1** | ✅ SELECT restringido a `auth.uid() = id` |
-| `report_requests` cross-user leak | **P1** | ✅ SELECT restringido a `user_id = auth.uid()` |
-| Falta INSERT policy em `profiles` | **P2** | ⚠️ Só funciona via trigger — OK enquanto signup usar `handle_new_user` |
-| `app_config` editável por anon | **P0** | ✅ Bloqueado |
-| Realtime subscriptions a tabelas sem policy | **P2** | ⚠️ Confirmar que nenhum canal Realtime está ativo (não vi nenhum) |
+| `/admin/visao-geral` | OK c/ ressalvas | Funil compacto bem dimensionado; secções empilham; muitas cards verticais |
+| `/admin/beta-leads` | OK | Acordeão mobile dedicado; chips wrap; search full-width |
+| `/admin/beta-requests` | Tolerável | Tabela 10 colunas em `overflow-x-auto` (scroll horizontal pouco descoberto) |
+| `/admin/automacoes` | Risco médio | TabsList sem scroll; nós/edges desenhados para vertical OK, mas tabs podem cortar |
+| `/admin/email-lab` | OK | Stack vertical limpo; iframe 640px; tabela variáveis com scroll |
+| `/admin/report-lab` | Risco alto | Selector de variantes `inline-flex` 3 botões pode estourar 375px; matrix densa |
+| `/admin/sistema` | OK c/ ressalvas | Strip "modo execução" no topo aperta texto + botão "Abrir Sistema" |
 
-### 5. Conclusão da auditoria
+---
 
-🟢 **A postura RLS atual é segura para beta externo.** Não há expostos críticos. O modelo é "service role + server functions exclusivamente", o que é o padrão **recomendado** para esta arquitetura TanStack.
+### 2. Achados detalhados
 
-### 6. Hardening proposto (não-bloqueante para beta, mas recomendado)
+#### Sidebar drawer (todas as rotas)
+- `AdminSidebar` usa `md:hidden fixed inset-0 z-50` com backdrop e `aside` à largura `var(--admin-sidebar-width)` — abertura/fecho corretos, ESC funciona, click no backdrop fecha.
+- `onNavigate={() => setOpen(false)}` em cada `Link` — boa prática.
+- **OK** — fluxo abrir/fechar/navegar é sólido.
 
-Para reduzir os 21 findings INFO do linter e tornar a postura **explicitamente** documentada (defense-in-depth):
+#### Topbar (`AdminTopbar`)
+- Hambúrguer 40×40 (h-10 w-10) — tap target ≥44px iOS: **abaixo por 4px**.
+- Botão "Procurar" mostra só ícone Search no mobile (`hidden sm:inline`), altura `h-8` (32px) — **tap target pequeno (P2)**.
+- ExecutionModeBadge tem variante curta "Cache"/"Fresh" — bem.
+- Risco de colisão se título for longo: `truncate` ativo, mas com hambúrguer + título + (Procurar + Badge) à direita, sobra pouco para o título. Em rotas com título de 1-2 palavras está OK.
 
-#### Plano de migração (P1 — fazer antes de abrir o beta a externos)
+#### Kanban board (`/admin/beta-leads`)
+- `md:hidden` accordion com `KANBAN_COLUMNS` — uma coluna aberta por vez. **Bom UX mobile.**
+- Toolbar: chips em `flex-wrap` + search full-width — **OK**.
+- `LeadCard` herdado do desktop: precisa verificar se tem botões grandes o suficiente (não auditado em profundidade).
 
-1. **Adicionar policies "deny-all explícitas"** ou comentários `COMMENT ON TABLE` documentando a intenção em todas as tabelas service-role-only. Limpa o linter e clarifica a intenção.
-2. **Adicionar SELECT policy ao próprio utilizador em `leads`** (`email_normalized = (SELECT lower(email) FROM auth.users WHERE id = auth.uid())`) **se** quisermos permitir ao utilizador autenticado ver o seu próprio lead na app. Caso contrário, manter deny-all.
-3. **Adicionar SELECT em `beta_feedback`** restrito ao próprio lead via `lead_id IN (SELECT lead_id FROM profiles WHERE id = auth.uid())` se quisermos UI de "ver feedback que enviei".
-4. **Confirmar `FORCE ROW LEVEL SECURITY`** nas tabelas com PII (`leads`, `profiles`, `report_requests`) — garante que mesmo o owner da tabela não escapa RLS por engano (service role bypassa na mesma).
-5. **Dropar acesso ao schema `public` para `anon`** em tabelas que nunca devem ser tocadas por anon (`REVOKE ALL ON TABLE ... FROM anon`). Belt-and-suspenders.
+#### Lead Detail Sheet (`lead-detail-sheet.tsx`, 1514 linhas)
+- `SheetContent` com `w-full sm:max-w-[520px]` — ocupa 100% no mobile. **OK.**
+- Header sticky com avatar 48px + nome/email/handle + status badge: usa `flex items-start justify-between gap-3` com `min-w-0` e `truncate`. **OK** mas em ecrãs ≤320 pode apertar muito.
+- KPI strip: `grid grid-cols-3 gap-3` — Views/Custo/Idade legíveis a 18px. **OK.**
+- Tabs internas: `<div className="px-6 pt-3 overflow-x-auto">` com `TabsList inline-flex whitespace-nowrap` — **scroll horizontal funciona**.
+- Padding `px-6` (24px) em mobile come 48px laterais — em 375 sobra 327 para conteúdo. Aceitável mas pesado; podia ser `px-4 sm:px-6`.
 
-#### Plano de rollback
+#### Automações (`/admin/automacoes`)
+- `<TabsList className="mb-4">` com 4 TabsTriggers ("Fluxo", "Métricas", "Pessoas", "Templates") — **sem `overflow-x-auto`**. Em PT-PT cabe (~256-300px), mas qualquer rótulo mais longo no futuro corta. **P2.**
+- `<FlowStages>` usa `mx-auto max-w-[820px] flex-col` — vertical, bom.
+- `AutomationNode` usa `AdminCard accent-left` com `flex-col gap-3` — provavelmente OK; **não verificado no detalhe** se badges trigger/action partem para 2 linhas.
 
-- Cada policy criada = 1 statement `DROP POLICY ... ON ...`. Migração reversível.
-- `FORCE RLS` reversível com `ALTER TABLE ... NO FORCE ROW LEVEL SECURITY`.
-- `REVOKE` reversível com `GRANT SELECT ON TABLE ... TO anon`.
-- Nenhuma alteração de schema (colunas, dados).
+#### Overview funil (`BetaConversionFunnel`)
+- Linha: `w-[160px]` label + bar `flex-1` + `w-[88px]` count, com `max-sm:w-[120px]` e `max-sm:w-[72px]`.
+- A 375 com padding do AdminCard: 343px disponíveis − 120 − 72 − 24 (gaps) = **127px para a barra**. Aceitável mas apertado. Descrição em 2 linhas (`line-clamp-2`) ajuda.
+- Linha inferior "↓ X% conversão" tem `ml-[160px] max-sm:ml-[120px]` — **OK**.
 
-### 7. Primeiro prompt de hardening (a executar a seguir, em build mode)
+#### Email Lab
+- `lg:grid-cols-[280px_1fr]` colapsa para 1 coluna em mobile — **OK**.
+- iframe `height: 640px` — alto mas legível.
+- Tabela de variáveis em `overflow-x-auto` — OK.
 
-> **Objetivo**: Aplicar P1 RLS hardening — limpar 21 INFO findings + reforçar PII.
->
-> **Migração** (uma só):
-> 1. `ALTER TABLE leads, profiles, report_requests, product_events FORCE ROW LEVEL SECURITY;`
-> 2. `REVOKE ALL ON TABLE leads, product_events, analysis_events, analysis_snapshots, social_profiles, provider_call_logs, app_config, cost_daily, provider_billing_imports, provider_billing_import_batches, usage_alerts, knowledge_*, enrichment_jobs, comment_enrichment_jobs, report_variant_overrides, beta_feedback, benchmark_references FROM anon, authenticated;`
-> 3. `COMMENT ON TABLE <each>` documentando "service-role only".
-> 4. **Não** adicionar policies "deny-all" SQL (redundante com REVOKE; linter vai parar de queixar-se porque a tabela perde grants públicos).
->
-> **Validação pós-migração**:
-> - Re-correr `supabase--linter` → 0 findings esperados.
-> - Smoke test do unlock (já validado): deve continuar a funcionar (service role bypassa).
-> - Login/signup: deve continuar (auth schema intocado).
-> - Página `/app` (autenticado, lê `profiles` e `report_requests`): testar manualmente — pode quebrar se a server fn `getUserDashboard` for chamada com `requireSupabaseAuth` em vez de admin.
->
-> **Rollback** se quebrar:
-> ```sql
-> GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE <table> TO authenticated;
-> ALTER TABLE <table> NO FORCE ROW LEVEL SECURITY;
-> ```
+#### Report Lab — **PRINCIPAL RISCO**
+- Linha 281: selector de variantes `<div className="inline-flex rounded-xl border ... p-1">` com 3 botões `px-4 py-2 text-sm` (≈110-130px cada). Total ≈ 330-390px + padding parent → **muito provável overflow horizontal a 375px**. **P1.**
+- Linha 333: `grid grid-cols-1 lg:grid-cols-3 gap-6` — colapsa. OK.
+- `BlockAccessMatrix` (linhas 694, 797) usa `overflow-x-auto` interno — funciona mas pouco descoberto em mobile.
 
-### Constraints respeitados
+#### Beta Requests (tabela)
+- 10 colunas dentro de `overflow-x-auto`. A 375px o scroll horizontal é a única forma de ver Status/Fonte. **Funciona mas não tem hint visual de scroll.** Considerar versão card mobile (como Kanban) ou shadow indicador. **P1.**
 
-- ✅ Auditoria read-only — 0 alterações
-- ✅ 0 migrações criadas
-- ✅ 0 policies alteradas
-- ✅ Fluxo público de unlock/report intacto
-- ✅ Sem exposição de dados privados (linter confirma)
+#### Sistema — ExecutionModeStrip
+- `flex items-center justify-between gap-4` com texto `truncate` + link "Abrir Sistema" `shrink-0`. A 375px cabe mas o texto fica muito truncado. Aceitável.
 
-### Checkpoint
+#### Command Palette
+- shadcn `CommandDialog` é responsive por defeito (modal centrado). **OK.**
+- Atalho ⌘K não está acessível em mobile (sem teclado físico) → o utilizador depende do botão "Procurar" da topbar (que é só ícone). Tap target 32px de altura. **P2.**
 
-- ☐ Aprovar plano de hardening P1 (revoke + force RLS)
-- ☐ Decidir se utilizadores autenticados devem **ler o próprio `lead`** (SELECT policy) ou só via server fn
-- ☐ Executar migração
-- ☐ Re-correr linter e smoke test do unlock
-- ☐ Validar `/app` autenticado (dashboard, account, plan)
+---
+
+### 3. Lista priorizada de issues
+
+**P0 (bloqueante para beta externa):** nenhum identificado.
+
+**P1 (corrigir antes do beta):**
+- **report-lab**: selector de variantes `inline-flex` provoca overflow horizontal em 375px. Trocar por `flex flex-wrap gap-2` ou `grid grid-cols-3` com `text-xs sm:text-sm`.
+- **beta-requests**: tabela densa sem indicador de scroll. Adicionar shadow lateral (gradiente nas extremidades) **ou** versão mobile em cards (preferível).
+
+**P2 (refinamento, não-bloqueante):**
+- **topbar**: aumentar tap targets — hambúrguer para `h-11 w-11` (44px) e botão "Procurar" para `h-10 px-3` com label visível pelo menos como `Pesquisar` curto, ou `aria-label` melhor + ícone maior (18px).
+- **lead-detail-sheet**: trocar `px-6` por `px-4 sm:px-6` no header e tabs para ganhar 16px laterais.
+- **automacoes**: envolver `TabsList` em `<div className="overflow-x-auto -mx-4 px-4">` para futuro-proof.
+- **lead-detail-sheet** header: status badge à direita pode descer se nome longo — considerar `flex-wrap` ou mover badge para baixo do nome.
+
+---
+
+### 4. Próximos passos sugeridos
+
+Posso preparar um **prompt de implementação** focado em P1 (report-lab + beta-requests) sem tocar em business logic. Confirma se queres avançar nessa direção, ou se preferes que eu valide visualmente primeiro fazendo login no preview (precisas dar acesso ou validar manualmente e enviar screenshots).
+
+☐ Aprovar este audit  
+☐ Decidir: corrigir P1 agora vs apenas registar  
+☐ Decidir: validação visual no browser (precisa de login)

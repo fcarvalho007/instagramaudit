@@ -278,7 +278,7 @@ function ReportLabPage() {
               <label className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
                 Versão do relatório a pré-visualizar
               </label>
-              <div className="inline-flex rounded-xl border border-admin-border bg-admin-surface-muted p-1">
+              <div className="flex flex-wrap gap-1 rounded-xl border border-admin-border bg-admin-surface-muted p-1 sm:inline-flex sm:flex-nowrap">
                 {VARIANT_OPTIONS.map((opt) => {
                   const active = variant === opt.value;
                   return (
@@ -286,7 +286,7 @@ function ReportLabPage() {
                       key={opt.value}
                       onClick={() => setVariant(opt.value)}
                       className={cn(
-                        "rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 flex items-center gap-2",
+                        "flex-1 sm:flex-none rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap",
                         active
                           ? "bg-white text-admin-text-primary shadow-sm border border-admin-border"
                           : "text-admin-text-secondary hover:text-admin-text-primary border border-transparent",
