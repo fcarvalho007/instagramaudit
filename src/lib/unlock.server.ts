@@ -374,6 +374,44 @@ export async function processReportUnlock(
       console.error("[unlock] lifecycle advance failed:", err);
     }
 
+    // 6. Transactional "personal area saved" email — only on first-time
+    //    creation of (lead, snapshot). Resubmissions are deduped naturally
+    //    by the report_request lookup above. Never blocks the unlock.
+    if (createdReportRequest) {
+      try {
+        const { sendPersonalAreaSavedEmail } = await import(
+          "@/lib/email/send-personal-area-saved.server"
+        );
+        const firstName =
+          data.name ?? (existingLead?.name as string | null | undefined) ?? null;
+        const res = await sendPersonalAreaSavedEmail({
+          toEmail: data.email,
+          firstName,
+          instagramHandle: data.instagram_username,
+        });
+        await recordProductEvent({
+          eventType: res.ok
+            ? "personal_area_email_sent"
+            : "personal_area_email_failed",
+          leadId,
+          snapshotId: data.analysis_snapshot_id,
+          handle: data.instagram_username,
+          metadata: res.ok
+            ? {
+                message_id: res.messageId,
+                sender: "resend",
+                report_request_id: reportRequestId,
+              }
+            : {
+                reason: res.reason,
+                report_request_id: reportRequestId,
+              },
+        });
+      } catch (err) {
+        console.error("[unlock] personal-area email error:", err);
+      }
+    }
+
     return {
       success: true,
       lead_id: leadId,
