@@ -148,7 +148,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     title: "Resumo do relatório",
     internalName: "report_summary",
     wired: true,
-    wiredAt: "src/lib/email/send-report-summary.server.ts (admin manual)",
+    wiredAt: "src/lib/email/send-report-summary.server.ts (após unlock)",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -172,7 +172,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
           permalink: null,
         },
       }),
-    preheader: "4 números reais e o post que mais resultou.",
+    preheader: "Os principais sinais do teu relatório InstaBench.",
   },
   {
     key: "commercial_followup",
