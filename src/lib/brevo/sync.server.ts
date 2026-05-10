@@ -49,6 +49,26 @@ export async function syncLeadToBrevo(
 ): Promise<BrevoSyncOutcome> {
   const startedAt = Date.now();
 
+  // Kill switch: BREVO_CONTACT_SYNC_ENABLED. Default ON; set to literal
+  // "false" to disable Brevo contact sync without breaking unlock or report.
+  if ((process.env.BREVO_CONTACT_SYNC_ENABLED ?? "true").trim().toLowerCase() === "false") {
+    const outcome: BrevoSyncOutcome = {
+      ok: false,
+      reason: "DISABLED_BY_FLAG",
+      latencyMs: Date.now() - startedAt,
+    };
+    try {
+      await recordProductEvent({
+        eventType: "brevo_contact_sync_skipped" as any,
+        leadId,
+        metadata: { reason, flag: "BREVO_CONTACT_SYNC_ENABLED" },
+      });
+    } catch (err) {
+      console.error("[brevo-sync] failed to record skipped event:", err);
+    }
+    return outcome;
+  }
+
   try {
     // 1. Load lead.
     const { data: lead, error: leadErr } = await (supabaseAdmin as any)

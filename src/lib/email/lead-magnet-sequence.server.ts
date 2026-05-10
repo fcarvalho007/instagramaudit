@@ -70,6 +70,30 @@ export async function sendLeadMagnetSequence(
   let welcome: WelcomeOutcome = "skipped_disabled";
   let summary: SummaryOutcome = "skipped_no_data";
 
+  // Kill switch: LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED. Default ON; set to
+  // literal "false" to disable the entire sequence (welcome + summary).
+  if (
+    (process.env.LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED ?? "true")
+      .trim()
+      .toLowerCase() === "false"
+  ) {
+    try {
+      await recordProductEvent({
+        eventType: "lead_magnet_sequence_skipped" as any,
+        leadId: args.leadId,
+        snapshotId: args.snapshotId,
+        handle: args.instagramHandle,
+        metadata: {
+          report_request_id: args.reportRequestId,
+          flag: "LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED",
+        },
+      });
+    } catch (err) {
+      console.error("[lead-magnet] failed to record skipped event:", err);
+    }
+    return { welcome: "skipped_disabled", summary: "skipped_no_data" };
+  }
+
   // ---------- 1. welcome-beta ----------
   if (args.sendWelcome) {
     const dup = await eventAlreadyEmitted(

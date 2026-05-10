@@ -1,0 +1,32 @@
+# Kill Switches — InstaBench
+
+Todas as flags usam comparação literal: definir como `"false"` desliga.
+Default = ON (não definida = ligada). Nenhuma destas flags afeta o
+relatório público nem o unlock — são apenas side effects.
+
+## Matriz de travagem rápida
+
+| Sintoma | Definir `="false"` | Efeito |
+|---|---|---|
+| Brevo a poluir contactos / sync com erro | `BREVO_CONTACT_SYNC_ENABLED` | `syncLeadToBrevo` devolve `DISABLED_BY_FLAG`, regista `brevo_contact_sync_skipped`. Email não afetado. |
+| Brevo a falhar entregas transacionais | `BREVO_TRANSACTIONAL_ENABLED` | `sendViaBrevo` devolve `BREVO_DISABLED_BY_FLAG`, cai imediatamente para Resend. |
+| Resend com bounce / spam complaints | `RESEND_FALLBACK_ENABLED` | Sem fallback. Falhas Brevo registam `resend_reason="RESEND_DISABLED_BY_FLAG"`. |
+| Sequência lead-magnet a incomodar | `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` | `sendLeadMagnetSequence` salta welcome + summary, regista `lead_magnet_sequence_skipped`. |
+| Custo Apify | `APIFY_ENABLED` (NOT `="true"`) | Sem fresh provider call; cache continua. |
+| OpenAI insights | `OPENAI_ENABLED` (NOT `="true"`) | Sem geração AI. |
+| DataForSEO keywords | `DATAFORSEO_ENABLED` (NOT `="true"`) | Sem keywords. |
+| Comment scraper | `COMMENT_SCRAPER_ENABLED` (NOT `="true"`) | Sem scraping de comentários. |
+
+## Notas
+
+- Apify / OpenAI / DataForSEO / Comment scraper usam o padrão **opt-in**
+  (`=== "true"` para ligar). Default = OFF.
+- Brevo / Resend / Lead-magnet usam o padrão **opt-out**
+  (`=== "false"` para desligar). Default = ON.
+- Todas registam evento dedicado em `product_events` para auditoria.
+- Nenhum kill switch interrompe `unlock` ou o relatório público.
+- Localização dos guards:
+  - `src/lib/brevo/sync.server.ts` → `syncLeadToBrevo`
+  - `src/lib/email/transactional-email.server.ts` → `sendViaBrevo` + bloco fallback
+  - `src/lib/email/lead-magnet-sequence.server.ts` → `sendLeadMagnetSequence`
+  - `src/lib/security/apify-allowlist.ts`, `openai-allowlist.ts`, `dataforseo-allowlist.ts`, `analysis/comment-scraper.server.ts`

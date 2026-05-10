@@ -116,6 +116,18 @@ async function sendViaBrevo(
 ): Promise<ProviderResult> {
   const startedAt = Date.now();
 
+  // Kill switch: BREVO_TRANSACTIONAL_ENABLED. Default ON; set to literal
+  // "false" to skip Brevo and go straight to Resend fallback.
+  if ((process.env.BREVO_TRANSACTIONAL_ENABLED ?? "true").trim().toLowerCase() === "false") {
+    return {
+      ok: false,
+      messageId: null,
+      reason: "BREVO_DISABLED_BY_FLAG",
+      status: null,
+      latencyMs: Date.now() - startedAt,
+    };
+  }
+
   const fromEmail = process.env.BREVO_FROM_EMAIL?.trim();
   if (!fromEmail) {
     return {
@@ -296,12 +308,22 @@ export async function sendTransactionalEmail(
 
   const resendApiKeyOk = Boolean(process.env.RESEND_API_KEY?.trim());
   const resendFromOk = Boolean(process.env.RESEND_FROM?.trim());
-  const resendConfigured = resendApiKeyOk && resendFromOk;
+  // Kill switch: RESEND_FALLBACK_ENABLED. Default ON; set to literal "false"
+  // to disable the Resend fallback (Brevo failures will not be retried).
+  const resendFallbackEnabled =
+    (process.env.RESEND_FALLBACK_ENABLED ?? "true").trim().toLowerCase() !== "false";
+  const resendConfigured = resendApiKeyOk && resendFromOk && resendFallbackEnabled;
   if (!resendConfigured) {
-    const missingSecret = !resendApiKeyOk ? "RESEND_API_KEY" : "RESEND_FROM";
-    const resendReason = !resendApiKeyOk
-      ? "RESEND_API_KEY_MISSING"
-      : "RESEND_FROM_MISSING";
+    const missingSecret = !resendFallbackEnabled
+      ? "RESEND_FALLBACK_ENABLED"
+      : !resendApiKeyOk
+        ? "RESEND_API_KEY"
+        : "RESEND_FROM";
+    const resendReason = !resendFallbackEnabled
+      ? "RESEND_DISABLED_BY_FLAG"
+      : !resendApiKeyOk
+        ? "RESEND_API_KEY_MISSING"
+        : "RESEND_FROM_MISSING";
     await safeRecord(FLOW_FAILURE_EVENT[input.flowType], input, {
       brevo_reason: brevo.reason,
       resend_reason: resendReason,
