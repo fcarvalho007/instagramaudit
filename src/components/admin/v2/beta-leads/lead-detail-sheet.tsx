@@ -78,6 +78,7 @@ import {
   renderReportReady,
   renderFeedbackRequest,
 } from "@/lib/email/templates";
+import { CommercialFollowupDialog } from "./commercial-followup-dialog";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -145,6 +146,8 @@ const EVENT_LABELS: Record<string, string> = {
   pricing_clicked: "Preço clicado",
   public_report_link_copied: "Link público copiado",
   lead_status_changed: "Estado comercial alterado",
+  commercial_followup_sent: "Follow-up comercial enviado",
+  commercial_followup_failed: "Falha no envio do follow-up comercial",
 };
 
 function deriveIntentSignal(lead: EnrichedLead): { label: string; accent: "revenue" | "signal" | "neutral" } {
