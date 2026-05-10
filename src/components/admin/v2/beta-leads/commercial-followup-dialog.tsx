@@ -46,7 +46,7 @@ export function CommercialFollowupDialog({
   const intent = interpretFeedback(lead.feedback);
   const pricingRaw = lead.feedback?.pricing_preference ?? null;
   const pricingLabel = pricingRaw
-    ? (PRICING_PREFERENCE_LABELS[pricingRaw] ?? pricingRaw)
+    ? ((PRICING_PREFERENCE_LABELS as Record<string, string>)[pricingRaw] ?? pricingRaw)
     : null;
 
   const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
