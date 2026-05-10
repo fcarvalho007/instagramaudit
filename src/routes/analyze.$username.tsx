@@ -6,6 +6,7 @@ import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
+import { UnlockModal } from "@/components/product/unlock-modal";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import { getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
