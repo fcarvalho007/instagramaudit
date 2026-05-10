@@ -383,8 +383,8 @@ function AnalyzeReady({
       <UnlockModal
         open={unlockOpen}
         onOpenChange={setUnlockOpen}
-        snapshotId={snapshotId ?? ""}
-        instagramUsername={(payload as any).instagram_username ?? username}
+        snapshotId={snapshotId}
+        instagramUsername={(payload as any).instagram_username ?? ""}
         onUnlock={() => {
           try {
             if (snapshotId) {
