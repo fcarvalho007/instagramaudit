@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import {
@@ -31,6 +32,35 @@ import {
 import { trackEvent } from "@/lib/tracking.functions";
 
 const TOTAL_STEPS = 4;
+
+const FIELD_LABELS_PT: Record<string, string> = {
+  email: "Email",
+  gdpr_consent: "Consentimento",
+  profile_ownership: "Tipo de perfil",
+  goal: "Objetivo",
+  user_type: "Como te descreves",
+  goal_other_text: "Detalhe do objetivo",
+  user_type_other_text: "Detalhe de como te descreves",
+  analysis_snapshot_id: "Relatório",
+  instagram_username: "Perfil Instagram",
+};
+
+function extractServerError(data: {
+  error?: string;
+  issues?: { fieldErrors?: Record<string, string[]> };
+}): string {
+  const fe = data.issues?.fieldErrors ?? {};
+  const firstField = Object.keys(fe)[0];
+  if (firstField) {
+    const msg = fe[firstField]?.[0];
+    const label = FIELD_LABELS_PT[firstField] ?? firstField;
+    return msg ? `${label}: ${msg}` : `Campo inválido: ${label}`;
+  }
+  if (data.error === "SNAPSHOT_NOT_FOUND") {
+    return "Este relatório expirou. Volta a abrir a página e tenta de novo.";
+  }
+  return "Não foi possível desbloquear agora. Tenta novamente em instantes.";
+}
 
 type QField = "profile_ownership" | "goal" | "user_type";
 const STEP_FIELD: Record<2 | 3 | 4, QField> = {
@@ -80,6 +110,9 @@ export function UnlockModal({
       profile_ownership: undefined as unknown as ProfileOwnership,
       goal: undefined as unknown as Goal,
       user_type: undefined as unknown as UserType,
+      goal_other_text: "",
+      user_type_other_text: "",
+      gdpr_consent: false as unknown as true,
     },
   });
 
@@ -98,9 +131,12 @@ export function UnlockModal({
   const goNext = async () => {
     setServerError(null);
     let fields: (keyof UnlockFormValues)[] = [];
-    if (step === 1) fields = ["email"];
+    if (step === 1) fields = ["email", "gdpr_consent"];
     if (step === 2) fields = ["profile_ownership"];
-    if (step === 3) fields = ["goal"];
+    if (step === 3) {
+      fields = ["goal"];
+      if (form.getValues("goal") === "other") fields.push("goal_other_text");
+    }
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
 
@@ -240,6 +276,13 @@ export function UnlockModal({
           profile_ownership: values.profile_ownership,
           goal: values.goal,
           user_type: values.user_type,
+          goal_other_text:
+            values.goal === "other" ? values.goal_other_text : undefined,
+          user_type_other_text:
+            values.user_type === "other"
+              ? values.user_type_other_text
+              : undefined,
+          gdpr_consent: values.gdpr_consent === true ? true : undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -248,11 +291,10 @@ export function UnlockModal({
         report_request_id?: string;
         returning_lead?: boolean;
         error?: string;
+        issues?: { fieldErrors?: Record<string, string[]> };
       };
       if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
-        setServerError(
-          "Não foi possível desbloquear agora. Tenta novamente em instantes.",
-        );
+        setServerError(extractServerError(data));
         return;
       }
       const r: UnlockResult = {
@@ -288,6 +330,7 @@ export function UnlockModal({
           email,
           instagram_username: instagramUsername,
           analysis_snapshot_id: snapshotId,
+          gdpr_consent: true,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -362,7 +405,7 @@ export function UnlockModal({
                 Acesso gratuito durante a beta · demora cerca de 1 minuto
               </DialogDescription>
               <div
-                className="h-[2px] w-full rounded-full bg-primary/15 overflow-hidden mt-1"
+                className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden mt-1"
                 role="progressbar"
                 aria-valuemin={1}
                 aria-valuemax={TOTAL_STEPS}
@@ -416,6 +459,12 @@ export function UnlockModal({
                     form.setValue("goal", v as Goal, { shouldValidate: true })
                   }
                   error={form.formState.errors.goal?.message}
+                  otherValue="other"
+                  otherText={form.watch("goal_other_text") ?? ""}
+                  onOtherTextChange={(v) =>
+                    form.setValue("goal_other_text", v, { shouldValidate: true })
+                  }
+                  otherError={form.formState.errors.goal_other_text?.message}
                 />
               ) : null}
               {step === 4 ? (
@@ -433,6 +482,14 @@ export function UnlockModal({
                     })
                   }
                   error={form.formState.errors.user_type?.message}
+                  otherValue="other"
+                  otherText={form.watch("user_type_other_text") ?? ""}
+                  onOtherTextChange={(v) =>
+                    form.setValue("user_type_other_text", v, {
+                      shouldValidate: true,
+                    })
+                  }
+                  otherError={form.formState.errors.user_type_other_text?.message}
                 />
               ) : null}
 
@@ -495,23 +552,59 @@ function Step1Email({
   form: ReturnType<typeof useForm<UnlockFormValues>>;
 }) {
   const error = form.formState.errors.email?.message;
+  const consentError = form.formState.errors.gdpr_consent?.message;
+  const consent = form.watch("gdpr_consent");
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor="unlock-email" className="text-sm">
-        Email
-      </Label>
-      <Input
-        id="unlock-email"
-        type="email"
-        autoFocus
-        autoComplete="email"
-        placeholder="ana@empresa.pt"
-        aria-invalid={Boolean(error)}
-        {...form.register("email")}
-      />
-      {error ? (
-        <p className="text-xs text-destructive">{error}</p>
-      ) : null}
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="unlock-email" className="text-sm">
+          Email
+        </Label>
+        <Input
+          id="unlock-email"
+          type="email"
+          autoFocus
+          autoComplete="email"
+          placeholder="ana@empresa.pt"
+          aria-invalid={Boolean(error)}
+          {...form.register("email")}
+        />
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="unlock-gdpr"
+          className="flex items-start gap-2.5 cursor-pointer"
+        >
+          <Checkbox
+            id="unlock-gdpr"
+            checked={consent === true}
+            onCheckedChange={(v) =>
+              form.setValue("gdpr_consent", v === true ? true : (false as unknown as true), {
+                shouldValidate: true,
+              })
+            }
+            aria-invalid={Boolean(consentError)}
+            className="mt-0.5"
+          />
+          <span className="text-[12px] text-content-secondary leading-relaxed">
+            Aceito que o meu email seja guardado para criar este relatório e
+            receber atualizações ocasionais. Posso cancelar a qualquer momento.{" "}
+            <a
+              href="/privacidade"
+              target="_blank"
+              rel="noopener"
+              className="underline hover:text-content-primary"
+            >
+              Política de privacidade
+            </a>
+            .
+          </span>
+        </label>
+        {consentError ? (
+          <p className="text-xs text-destructive">{consentError}</p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -528,6 +621,10 @@ function RadioCardField({
   value,
   onChange,
   error,
+  otherValue,
+  otherText,
+  onOtherTextChange,
+  otherError,
 }: {
   legend: string;
   name: string;
@@ -535,6 +632,10 @@ function RadioCardField({
   value: string | undefined;
   onChange: (v: string) => void;
   error?: string;
+  otherValue?: string;
+  otherText?: string;
+  onOtherTextChange?: (v: string) => void;
+  otherError?: string;
 }) {
   return (
     <fieldset className="space-y-3">
@@ -545,8 +646,8 @@ function RadioCardField({
         {options.map((opt) => {
           const selected = value === opt.value;
           return (
+            <div key={opt.value}>
             <label
-              key={opt.value}
               className={cn(
                 "group flex items-center gap-3 min-h-12 px-4 py-3.5 rounded-xl border cursor-pointer transition-all duration-150",
                 selected
@@ -582,6 +683,29 @@ function RadioCardField({
                 {opt.label}
               </span>
             </label>
+              {selected && otherValue && opt.value === otherValue && onOtherTextChange ? (
+                <div className="mt-2 ml-7 space-y-1">
+                  <Input
+                    autoFocus
+                    maxLength={120}
+                    placeholder="Conta-nos brevemente…"
+                    value={otherText ?? ""}
+                    onChange={(e) => onOtherTextChange(e.target.value)}
+                    aria-invalid={Boolean(otherError)}
+                  />
+                  <div className="flex items-center justify-between">
+                    {otherError ? (
+                      <p className="text-xs text-destructive">{otherError}</p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="text-[11px] text-content-tertiary">
+                      {(otherText ?? "").length}/120
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>

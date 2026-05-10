@@ -1,59 +1,63 @@
-## Healthcheck operacional — Status: 🟢 GO para smoke test
+## Âmbito
 
-### Resultados de validação
+Refinar o unlock modal com 5 mudanças concretas pedidas pelo utilizador. Tudo frontend + 1 ajuste mínimo ao schema (acrescenta valores enum, sem migration).
 
-| Check | Status | Evidência |
-|---|---|---|
-| `bunx tsc --noEmit` | ✅ | 0 erros |
-| `bunx vitest run` | ✅ | 243/243 passed (25 ficheiros, 1.94s) |
-| Eventos sem label visível | ✅ | Todos os 14 `event_type` em `product_events` (7d) estão em `EVENT_LABELS` após o último fix |
-| Provider calls em rota pública | ✅ | `/analyze/$username` é `ssr: false`; comentário explícito mantém Apify atrás do server route |
+### Diagnóstico do "Não foi possível desbloquear agora"
 
-### Critical paths — análise código + DB
+Os 400 vistos em `preview--instagramaudit.lovable.app` (20:11 e 20:14 UTC) são `INVALID_PAYLOAD` retornados pelo `report-unlock` server route, mas o atual build de dev funciona — testei a mesma payload e devolveu 200. A causa mais provável é que o build estático do preview publicado está stale ou que o `serverError` genérico do modal mascara o motivo real (Zod issues nunca são mostrados ao utilizador). Solução: passar a expor o motivo via `metadata.reason` quando o backend devolve `issues`, e republicar após este patch para garantir que o build do preview fica alinhado.
 
-**1. Public report cache-only** ✅
-`src/routes/analyze.$username.tsx:73-76` — `ssr: false` + comentário "Apify boundary inside the server route". Sem imports diretos de `apify`/`openai`/`dataforseo` em rotas `report.*` ou `analyze.*`.
+### Fixes
 
-**2. Unlock flow** ✅
-`src/lib/unlock.server.ts` orquestra: validate → lead upsert → report_request idempotente (constraint `report_requests_lead_snapshot_unique`) → email sequence → Brevo sync (awaited, try/catch). Devolve `success: true` mesmo se Brevo falhar.
+#### 1. Checkbox GDPR no Passo 1
+- Acrescenta checkbox **obrigatória** abaixo do email no `Step1Email`.
+- Texto:
+  > "Aceito que o meu email seja guardado para criar este relatório e receber atualizações ocasionais. Posso cancelar a qualquer momento."
+- Link inline para `/privacidade` (target=_blank).
+- Schema: `gdpr_consent: z.literal(true, { errorMap: () => ({ message: "Tens de aceitar para continuar" }) })`.
+- Server: quando true, persiste `beta_consent = true, beta_consent_at = now()` no `leads` (colunas já existem). Para leads existentes, só atualiza se ainda for false.
 
-**3. Lead create/update** ✅
-8 leads em DB. Última semana: 14 `unlock_email_submitted` + 14 `unlock_completed` consistentes.
+#### 2. Barra de progresso mais visível
+- Atual: `h-[2px] bg-primary/15` — quase invisível.
+- Novo: `h-1.5 bg-primary/10 rounded-full` com fill `bg-primary` + transition suave. Alinhada com o padding do header. Mantém aria attributes.
 
-**4. Report request idempotência** ✅
-8 report_requests = 8 leads (1:1 atual). Migration de cleanup `20260510104527` aplicada. 7 `report_saved_to_account` confirmam linkagem ao user.
+#### 3. Campo livre quando "Outro" é selecionado (Passo 3 e Passo 4)
+- Acrescenta `goal_other_text` e `user_type_other_text` (string opcional, max 120) ao `unlockFormSchema` e ao `reportUnlockSchema` no servidor.
+- Refinement: se `goal === "other"`, exigir `goal_other_text.trim().length >= 2`. Idem para `user_type`.
+- UI: dentro do `RadioCardField`, quando a opção selecionada tiver `value === "other"`, mostrar `<Input>` inline com placeholder "Conta-nos brevemente…" + contador subtil 0/120.
+- Persistência: server grava em `report_requests.metadata.goal_other_text` e `metadata.user_type_other_text`. Sem nova coluna no `leads`.
 
-**5. Brevo best-effort** ✅
-7 `brevo_contact_synced` + 1 `brevo_contact_sync_failed` registados → comportamento esperado, falhas não bloqueiam unlock.
+#### 4. Nova opção em "Este perfil é teu?"
+- Adicionar `competitor_research` ao tuple `PROFILE_OWNERSHIPS` em **dois sítios** (parity test exige):
+  - `src/lib/unlock-flow.ts` (cliente)
+  - `src/lib/unlock.server.ts` (server, mesmo tuple)
+- Label pt-PT: **"Estou a ver concorrência ou a explorar"** (compromisso entre as duas hipóteses do utilizador; "cuscar" é demasiado coloquial para o tom editorial).
+- Sem migration — `leads.profile_ownership` é text livre.
+- Atualizar `enum-mappers.ts` se mapear este campo para Brevo (verificar; mapeamento provável: `competitor_research → 4` ou texto cru).
+- Atualizar testes de parity (`unlock-flow.test.ts`).
 
-**6. Email sequence sem duplicados** ✅
-`src/lib/email/lead-magnet-sequence.server.ts:44-65` — `eventAlreadyEmitted` por `(lead_id, event_type, metadata.report_request_id)` antes de cada step (welcome + summary), fail-open com idempotency key como segunda linha.
+#### 5. Surface de erro mais informativa
+- Em vez de mensagem fixa, ler `data.error` + `data.issues` (Zod flatten) e mostrar o primeiro fieldError encontrado em pt-PT, com fallback genérico se vazio. Continua a fechar o modal só em sucesso.
+- Mantém o evento `unlock_failed` (a criar) com `metadata.reason` e `metadata.fields_invalid` para o admin diagnosticar futuros 400.
 
-**7. Admin beta-leads** ✅
-Rota `/admin/beta-leads` existe; `lead-detail-sheet.tsx` lê leads + timeline normalmente.
+### Out of scope (explicitamente)
+- Sem migrations.
+- Sem mudar `report_requests` schema.
+- Sem mexer em Brevo customer-sync.
+- Sem alterar `report.example`.
+- Sem novos eventos para além de `unlock_failed`.
 
-**8. Timeline labels pt-PT** ✅
-14 event_types ativos vs `EVENT_LABELS` (24 entries). Match 100%. Render: `EVENT_LABELS[ev.event_type] ?? ev.event_type` em `lead-detail-sheet.tsx:1065` — fallback seguro.
+### Validação
+- `bunx tsc --noEmit`
+- `bunx vitest run` (ajustar `unlock-flow.test.ts` para incluir o novo enum + testes do refinement "outro requer texto")
+- Smoke manual: completar o flow com (a) `competitor_research`, (b) `other` sem texto → erro inline, (c) `other` com texto → sucesso, (d) checkbox GDPR desmarcada → botão Continuar bloqueado.
 
-**9. Sem provider calls em /analyze** ✅
-Grep `apify|openai|dataforseo|provider-router` em `src/routes/` não devolve nada relevante para rotas públicas.
+### Checkpoint
 
-**10. Tests + typecheck** ✅
-243/243 + 0 erros TS.
-
-### Outras observações (não bloqueadoras)
-
-- `RESEND_FROM` continua **não definido** como secret. Fallback `onboarding@resend.dev` (sender.ts:9) só entrega ao dono da conta Resend — OK para smoke test do próprio Frederico, **bloqueador antes de público**.
-- Brevo sync: 8 leads em DB vs 7 `brevo_contact_synced` — 1 lead criado antes do enum-mappers fix (consistente com a 1 falha registada).
-- 1 `report_link_sent` apenas → fluxo de envio manual de link ainda pouco usado, esperado em beta.
-
-### Bloqueadores para smoke test real
-**Nenhum técnico.** Pode avançar com o teste controlado de unlock descrito no plano anterior.
-
-### Bloqueadores antes de abrir ao público (≥ 2 leads externos)
-1. ⚠️ Definir secret `RESEND_FROM` com domínio verificado (SPF/DKIM)
-2. ⚠️ Confirmar manualmente os 11 atributos custom em Brevo (Contacts → Settings)
-3. ⚠️ Validar visualmente em Brevo após smoke test que `PRICING_PREFERENCE`/`LEAD_SOURCE`/`COMMERCIAL_STATUS` aparecem como números, não strings
-
-### Saídas
-Sem ficheiros alterados. Validação read-only completa. Aguarda decisão para smoke test ou para resolver os 3 bloqueadores acima.
+- ☐ Schema cliente + servidor: `gdpr_consent`, `goal_other_text`, `user_type_other_text`, `competitor_research`
+- ☐ UI Step 1: checkbox GDPR obrigatória + link `/privacidade`
+- ☐ Progress bar h-1.5 com fill animado
+- ☐ Campo livre inline quando opção "other" selecionada (Passo 3 e 4)
+- ☐ Nova opção "Estou a ver concorrência ou a explorar" no Passo 2
+- ☐ Server persiste consent + free-text em metadata
+- ☐ Erro do modal mostra motivo real (Zod issues)
+- ☐ Tests + tsc verdes

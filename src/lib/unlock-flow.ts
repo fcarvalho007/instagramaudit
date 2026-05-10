@@ -10,6 +10,7 @@ export const PROFILE_OWNERSHIPS = [
   "own_profile",
   "brand_profile",
   "client_profile",
+  "competitor_research",
 ] as const;
 
 export const GOALS = [
@@ -47,6 +48,7 @@ export const PROFILE_OWNERSHIP_LABELS: Record<ProfileOwnership, string> = {
   own_profile: "É o meu perfil pessoal",
   brand_profile: "É o perfil da minha marca",
   client_profile: "É o perfil de um cliente",
+  competitor_research: "Estou a ver concorrência ou a explorar",
 };
 
 export const GOAL_LABELS: Record<Goal, string> = {
@@ -75,16 +77,43 @@ export const PRICING_PREFERENCE_LABELS: Record<PricingPreference, string> = {
   not_sure: "Ainda não sei",
 };
 
-export const unlockFormSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Email inválido").max(255),
-  profile_ownership: z.enum(PROFILE_OWNERSHIPS, {
-    required_error: "Escolhe uma opção",
-  }),
-  goal: z.enum(GOALS, { required_error: "Escolhe uma opção" }),
-  user_type: z.enum(USER_TYPES, { required_error: "Escolhe uma opção" }),
-  // Pricing preference is no longer asked in the unlock modal — moved to
-  // a contextual sheet (post-value). Kept optional for backwards compat.
-  pricing_preference: z.enum(PRICING_PREFERENCES).optional(),
-});
+export const unlockFormSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email("Email inválido").max(255),
+    profile_ownership: z.enum(PROFILE_OWNERSHIPS, {
+      required_error: "Escolhe uma opção",
+    }),
+    goal: z.enum(GOALS, { required_error: "Escolhe uma opção" }),
+    user_type: z.enum(USER_TYPES, { required_error: "Escolhe uma opção" }),
+    // Free-text only when "other" is picked (validated by the refinement below).
+    goal_other_text: z.string().trim().max(120).optional(),
+    user_type_other_text: z.string().trim().max(120).optional(),
+    // GDPR consent is required to submit the form.
+    gdpr_consent: z.literal(true, {
+      errorMap: () => ({ message: "Tens de aceitar para continuar" }),
+    }),
+    // Pricing preference is no longer asked in the unlock modal — moved to
+    // a contextual sheet (post-value). Kept optional for backwards compat.
+    pricing_preference: z.enum(PRICING_PREFERENCES).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.goal === "other" && (data.goal_other_text ?? "").length < 2) {
+      ctx.addIssue({
+        path: ["goal_other_text"],
+        code: z.ZodIssueCode.custom,
+        message: "Conta-nos brevemente (mínimo 2 caracteres)",
+      });
+    }
+    if (
+      data.user_type === "other" &&
+      (data.user_type_other_text ?? "").length < 2
+    ) {
+      ctx.addIssue({
+        path: ["user_type_other_text"],
+        code: z.ZodIssueCode.custom,
+        message: "Conta-nos brevemente (mínimo 2 caracteres)",
+      });
+    }
+  });
 
 export type UnlockFormValues = z.infer<typeof unlockFormSchema>;

@@ -30,6 +30,7 @@ describe("unlockFormSchema", () => {
       profile_ownership: "own_profile",
       goal: "improve_content",
       user_type: "creator",
+      gdpr_consent: true,
     });
     expect(r.success).toBe(false);
   });
@@ -40,6 +41,7 @@ describe("unlockFormSchema", () => {
       profile_ownership: "own_profile",
       goal: "improve_content",
       user_type: "creator",
+      gdpr_consent: true,
     });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.email).toBe("ana@empresa.pt");
@@ -52,6 +54,7 @@ describe("unlockFormSchema", () => {
       goal: "improve_content",
       user_type: "creator",
       pricing_preference: "under_9",
+      gdpr_consent: true,
     });
     expect(r.success).toBe(true);
   });
@@ -59,5 +62,38 @@ describe("unlockFormSchema", () => {
   it("requires all qualitative fields", () => {
     const r = unlockFormSchema.safeParse({ email: "a@b.pt" });
     expect(r.success).toBe(false);
+  });
+
+  it("requires gdpr_consent to be true", () => {
+    const r = unlockFormSchema.safeParse({
+      email: "ana@empresa.pt",
+      profile_ownership: "own_profile",
+      goal: "improve_content",
+      user_type: "creator",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("requires goal_other_text when goal is 'other'", () => {
+    const r = unlockFormSchema.safeParse({
+      email: "ana@empresa.pt",
+      profile_ownership: "own_profile",
+      goal: "other",
+      user_type: "creator",
+      gdpr_consent: true,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts goal='other' with goal_other_text", () => {
+    const r = unlockFormSchema.safeParse({
+      email: "ana@empresa.pt",
+      profile_ownership: "competitor_research",
+      goal: "other",
+      goal_other_text: "Crescer em LATAM",
+      user_type: "creator",
+      gdpr_consent: true,
+    });
+    expect(r.success).toBe(true);
   });
 });
