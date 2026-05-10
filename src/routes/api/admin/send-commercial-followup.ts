@@ -290,7 +290,11 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
         // commercial_status. We never overwrite terminal/exit statuses
         // (`convertido`, `arquivado`) — admin owns those moves.
         try {
-          const updates: Record<string, unknown> = {
+          const updates: {
+            contacted_at: string;
+            updated_at: string;
+            commercial_status?: string;
+          } = {
             contacted_at: sentAt,
             updated_at: sentAt,
           };
