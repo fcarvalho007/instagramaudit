@@ -52,22 +52,22 @@ export function BetaConversionFunnel() {
   return (
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
-        title="Funil beta"
-        subtitle="ciclo de vida das leads"
+        title="Funil de conversão pública"
+        subtitle="do report público à conversão"
         accent="leads"
-        info="Percurso real das leads beta desde o pedido inicial até demonstrarem interesse comercial. Usa estado da lead, eventos do produto e feedback recebido."
+        info="Percurso real do visitante: report público visto → unlock → guardado → feedback → intenção → convertido. Etapas 1-2 medem visitantes anónimos (actor_hash); etapas 3-7 medem leads identificados — a transição 2→3 marca o momento em que o anónimo se torna lead."
       />
       <AdminCard>
         {isLoading ? (
           <FunnelSkeleton />
         ) : error || !data?.success ? (
           <p className="text-[13px] text-admin-text-tertiary">
-            Não foi possível carregar o funil beta.
+            Não foi possível carregar o funil de conversão.
           </p>
         ) : data.total === 0 ? (
           <p className="text-[13px] text-admin-text-tertiary">
-            Sem leads beta ainda — assim que chegar o primeiro pedido, o funil
-            aparece aqui.
+            Ainda sem visualizações públicas — assim que o primeiro relatório
+            for visto, o funil aparece aqui.
           </p>
         ) : (
           <FunnelBars stages={data.stages} total={data.total} />
