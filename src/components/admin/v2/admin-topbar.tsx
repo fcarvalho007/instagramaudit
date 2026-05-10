@@ -127,7 +127,7 @@ export function AdminTopbar() {
         type="button"
         onClick={openSidebar}
         aria-label="Abrir menu"
-        className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg border text-[rgb(var(--admin-neutral-800))]"
+        className="md:hidden inline-flex items-center justify-center h-11 w-11 rounded-lg border text-[rgb(var(--admin-neutral-800))]"
         style={{
           borderColor: "rgb(var(--admin-sidebar-border) / 0.12)",
           background: "rgb(var(--admin-sidebar-bg))",
@@ -147,7 +147,7 @@ export function AdminTopbar() {
         <button
           type="button"
           onClick={openCommandPalette}
-          className="inline-flex items-center gap-2 rounded-md px-2.5 h-8 text-[12px] text-[rgb(var(--admin-neutral-600))] hover:text-[rgb(var(--admin-neutral-900))] transition-colors"
+          className="inline-flex items-center gap-2 rounded-md px-2.5 h-10 sm:h-8 text-[12px] text-[rgb(var(--admin-neutral-600))] hover:text-[rgb(var(--admin-neutral-900))] transition-colors"
           style={{
             background: "rgb(var(--admin-sidebar-bg))",
             border: "1px solid rgb(var(--admin-sidebar-border) / 0.12)",
