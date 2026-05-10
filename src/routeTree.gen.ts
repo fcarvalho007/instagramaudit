@@ -72,6 +72,7 @@ import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/for
 import { Route as ApiAdminFollowUpsRouteImport } from './routes/api/admin/follow-ups'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
+import { Route as ApiAdminBrevoTestSyncRouteImport } from './routes/api/admin/brevo-test-sync'
 import { Route as ApiAdminBillingReconciliationRouteImport } from './routes/api/admin/billing-reconciliation'
 import { Route as ApiAdminBetaFunnelRouteImport } from './routes/api/admin/beta-funnel'
 import { Route as ApiAdminAutomationFlowRouteImport } from './routes/api/admin/automation-flow'
@@ -437,6 +438,11 @@ const ApiAdminDataforseoDiagnosticsRoute =
     path: '/api/admin/dataforseo-diagnostics',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminBrevoTestSyncRoute = ApiAdminBrevoTestSyncRouteImport.update({
+  id: '/api/admin/brevo-test-sync',
+  path: '/api/admin/brevo-test-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminBillingReconciliationRoute =
   ApiAdminBillingReconciliationRouteImport.update({
     id: '/api/admin/billing-reconciliation',
@@ -721,6 +727,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
+  '/api/admin/brevo-test-sync': typeof ApiAdminBrevoTestSyncRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
@@ -827,6 +834,7 @@ export interface FileRoutesByTo {
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
+  '/api/admin/brevo-test-sync': typeof ApiAdminBrevoTestSyncRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
@@ -935,6 +943,7 @@ export interface FileRoutesById {
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
+  '/api/admin/brevo-test-sync': typeof ApiAdminBrevoTestSyncRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
@@ -1044,6 +1053,7 @@ export interface FileRouteTypes {
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
+    | '/api/admin/brevo-test-sync'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
@@ -1150,6 +1160,7 @@ export interface FileRouteTypes {
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
+    | '/api/admin/brevo-test-sync'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
@@ -1257,6 +1268,7 @@ export interface FileRouteTypes {
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
+    | '/api/admin/brevo-test-sync'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
@@ -1347,6 +1359,7 @@ export interface RootRouteChildren {
   ApiAdminAutomationFlowRoute: typeof ApiAdminAutomationFlowRoute
   ApiAdminBetaFunnelRoute: typeof ApiAdminBetaFunnelRoute
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
+  ApiAdminBrevoTestSyncRoute: typeof ApiAdminBrevoTestSyncRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminFollowUpsRoute: typeof ApiAdminFollowUpsRoute
@@ -1847,6 +1860,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminDataforseoDiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/brevo-test-sync': {
+      id: '/api/admin/brevo-test-sync'
+      path: '/api/admin/brevo-test-sync'
+      fullPath: '/api/admin/brevo-test-sync'
+      preLoaderRoute: typeof ApiAdminBrevoTestSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/billing-reconciliation': {
       id: '/api/admin/billing-reconciliation'
       path: '/api/admin/billing-reconciliation'
@@ -2337,6 +2357,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminAutomationFlowRoute: ApiAdminAutomationFlowRoute,
   ApiAdminBetaFunnelRoute: ApiAdminBetaFunnelRoute,
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
+  ApiAdminBrevoTestSyncRoute: ApiAdminBrevoTestSyncRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminFollowUpsRoute: ApiAdminFollowUpsRoute,
