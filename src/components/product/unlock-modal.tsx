@@ -33,6 +33,35 @@ import { trackEvent } from "@/lib/tracking.functions";
 
 const TOTAL_STEPS = 4;
 
+const FIELD_LABELS_PT: Record<string, string> = {
+  email: "Email",
+  gdpr_consent: "Consentimento",
+  profile_ownership: "Tipo de perfil",
+  goal: "Objetivo",
+  user_type: "Como te descreves",
+  goal_other_text: "Detalhe do objetivo",
+  user_type_other_text: "Detalhe de como te descreves",
+  analysis_snapshot_id: "Relatório",
+  instagram_username: "Perfil Instagram",
+};
+
+function extractServerError(data: {
+  error?: string;
+  issues?: { fieldErrors?: Record<string, string[]> };
+}): string {
+  const fe = data.issues?.fieldErrors ?? {};
+  const firstField = Object.keys(fe)[0];
+  if (firstField) {
+    const msg = fe[firstField]?.[0];
+    const label = FIELD_LABELS_PT[firstField] ?? firstField;
+    return msg ? `${label}: ${msg}` : `Campo inválido: ${label}`;
+  }
+  if (data.error === "SNAPSHOT_NOT_FOUND") {
+    return "Este relatório expirou. Volta a abrir a página e tenta de novo.";
+  }
+  return "Não foi possível desbloquear agora. Tenta novamente em instantes.";
+}
+
 type QField = "profile_ownership" | "goal" | "user_type";
 const STEP_FIELD: Record<2 | 3 | 4, QField> = {
   2: "profile_ownership",
