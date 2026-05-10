@@ -51,6 +51,9 @@ export interface AutomationFlow {
   inFlightCount: number;
   completedCount: number;
   recentFailures: number;
+  eventTypes: string[];
+  last24hCount: number;
+  lastEventAt: string | null;
 }
 
 export interface AutomationFlowResponse {
@@ -119,6 +122,61 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
           linkFailures7d = 0;
         }
 
+        // Aggregate product_events: last24h count + most recent timestamp per type.
+        const FLOW_EVENTS: Record<string, string[]> = {
+          pedido_recebido: ["beta_request_created", "unlock_completed"],
+          relatorio_gerado: ["report_generated"],
+          link_enviado: ["report_link_sent"],
+          relatorio_visto: ["report_viewed"],
+          feedback_pedido: ["feedback_requested"],
+          feedback_recebido: ["feedback_submitted"],
+          follow_up_comercial: ["commercial_followup_sent"],
+        };
+        const allEventTypes = Array.from(
+          new Set(Object.values(FLOW_EVENTS).flat()),
+        );
+        const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const last24hByType: Record<string, number> = {};
+        const lastAtByType: Record<string, string | null> = {};
+        try {
+          const { data: recent24 } = await supabaseAdmin
+            .from("product_events")
+            .select("event_type")
+            .in("event_type", allEventTypes)
+            .gte("created_at", since24h);
+          for (const row of recent24 ?? []) {
+            const t = row.event_type as string;
+            last24hByType[t] = (last24hByType[t] ?? 0) + 1;
+          }
+          // Last timestamp per type — single query, group in memory.
+          const { data: latest } = await supabaseAdmin
+            .from("product_events")
+            .select("event_type, created_at")
+            .in("event_type", allEventTypes)
+            .order("created_at", { ascending: false })
+            .limit(500);
+          for (const row of latest ?? []) {
+            const t = row.event_type as string;
+            if (!lastAtByType[t]) lastAtByType[t] = row.created_at as string;
+          }
+        } catch (e) {
+          console.error("[automation-flow] product_events aggregate failed", e);
+        }
+
+        const eventStats = (key: keyof typeof FLOW_EVENTS) => {
+          const types = FLOW_EVENTS[key] ?? [];
+          const last24hCount = types.reduce(
+            (acc, t) => acc + (last24hByType[t] ?? 0),
+            0,
+          );
+          let lastEventAt: string | null = null;
+          for (const t of types) {
+            const v = lastAtByType[t];
+            if (v && (!lastEventAt || v > lastEventAt)) lastEventAt = v;
+          }
+          return { eventTypes: types, last24hCount, lastEventAt };
+        };
+
         const flows: AutomationFlow[] = [
           {
             key: "pedido_recebido",
@@ -137,6 +195,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             inFlightCount: 0,
             completedCount: countAtLeast("em_analise"),
             recentFailures: 0,
+            ...eventStats("pedido_recebido"),
           },
           {
             key: "relatorio_gerado",
@@ -152,6 +211,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             inFlightCount: 0,
             completedCount: countAtLeast("relatorio_gerado"),
             recentFailures: 0,
+            ...eventStats("relatorio_gerado"),
           },
           {
             key: "link_enviado",
@@ -167,6 +227,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             inFlightCount: 0,
             completedCount: countAtLeast("link_enviado"),
             recentFailures: linkFailures7d,
+            ...eventStats("link_enviado"),
           },
           {
             key: "relatorio_visto",
@@ -185,6 +246,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             inFlightCount: 0,
             completedCount: countAtLeast("relatorio_visto"),
             recentFailures: 0,
+            ...eventStats("relatorio_visto"),
           },
           {
             key: "feedback_pedido",
@@ -200,6 +262,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             inFlightCount: countEq("feedback_pedido"),
             completedCount: countAtLeast("feedback_recebido"),
             recentFailures: 0,
+            ...eventStats("feedback_pedido"),
           },
           {
             key: "feedback_recebido",
@@ -218,6 +281,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             inFlightCount: 0,
             completedCount: countAtLeast("interessado"),
             recentFailures: 0,
+            ...eventStats("feedback_recebido"),
           },
           {
             key: "follow_up_comercial",
@@ -233,6 +297,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             inFlightCount: 0,
             completedCount: countEq("convertido"),
             recentFailures: 0,
+            ...eventStats("follow_up_comercial"),
           },
         ];
 
