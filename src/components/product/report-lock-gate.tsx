@@ -65,7 +65,7 @@ export function ReportLockGate({
           )}
         >
           <p className="text-eyebrow-sm text-primary">Análise completa</p>
-          <h2 className="mt-2 font-fraunces text-2xl md:text-3xl leading-tight text-content-primary">
+          <h2 className="mt-2 font-display text-2xl md:text-3xl leading-tight tracking-[-0.01em] text-content-primary">
             Desbloquear análise completa
           </h2>
           <p className="mt-3 text-sm md:text-[15px] text-content-secondary leading-relaxed">

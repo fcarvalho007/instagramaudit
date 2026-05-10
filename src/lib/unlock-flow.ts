@@ -31,10 +31,10 @@ export const USER_TYPES = [
 ] as const;
 
 export const PRICING_PREFERENCES = [
+  "under_3",
+  "under_9",
+  "under_19",
   "free_only",
-  "under_10",
-  "10_to_30",
-  "30_plus",
   "not_sure",
 ] as const;
 
@@ -68,10 +68,10 @@ export const USER_TYPE_LABELS: Record<UserType, string> = {
 };
 
 export const PRICING_PREFERENCE_LABELS: Record<PricingPreference, string> = {
-  free_only: "Só uso se for gratuito",
-  under_10: "Até 10 € / mês",
-  "10_to_30": "10 € – 30 € / mês",
-  "30_plus": "Mais de 30 € / mês",
+  under_3: "Até 3 € por relatório",
+  under_9: "Até 9 € por relatório",
+  under_19: "Até 19 € por relatório",
+  free_only: "Só uso se for gratuito (mesmo para ver concorrência)",
   not_sure: "Ainda não sei",
 };
 
