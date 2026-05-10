@@ -409,11 +409,14 @@ function RadioCardField({
 
 function SuccessState({
   returningLead,
+  email,
   onClose,
 }: {
   returningLead: boolean;
+  email: string;
   onClose: () => void;
 }) {
+  const signupHref = `/signup?email=${encodeURIComponent(email)}`;
   return (
     <div className="text-center space-y-4 py-2">
       <div className="mx-auto size-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -432,6 +435,18 @@ function SuccessState({
       <Button size="lg" className="w-full" onClick={onClose}>
         Ver relatório
       </Button>
+      <a
+        href={signupHref}
+        className="block text-sm font-medium text-primary hover:underline"
+      >
+        Criar conta com este email para aceder mais tarde
+      </a>
+      <p className="text-xs text-content-tertiary">
+        Já tens conta?{" "}
+        <a href="/login" className="underline hover:text-content-secondary">
+          Entrar
+        </a>
+      </p>
     </div>
   );
 }
