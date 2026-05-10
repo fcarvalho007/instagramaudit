@@ -12,6 +12,7 @@ import {
   renderCommercialFollowup,
   renderPersonalAreaSaved,
   renderWelcomeBeta,
+  renderReportSummary,
   type RenderedEmail,
 } from "@/lib/email/templates";
 
@@ -30,6 +31,7 @@ export type EmailTemplateKey =
   | "feedback_request"
   | "personal_area_saved"
   | "welcome_beta"
+  | "report_summary"
   | "commercial_followup";
 
 export interface EmailTemplateEntry {
@@ -140,6 +142,37 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         reportUrl: SAMPLE.reportUrl,
       }),
     preheader: "Estamos a validar o produto e o teu feedback conta.",
+  },
+  {
+    key: "report_summary",
+    title: "Resumo do relatório",
+    internalName: "report_summary",
+    wired: true,
+    wiredAt: "src/lib/email/send-report-summary.server.ts (admin manual)",
+    variables: [
+      { key: "firstName", value: SAMPLE.firstName },
+      { key: "instagramHandle", value: SAMPLE.instagramHandle },
+      { key: "reportUrl", value: SAMPLE.reportUrl },
+    ],
+    render: () =>
+      renderReportSummary({
+        firstName: SAMPLE.firstName,
+        instagramHandle: SAMPLE.instagramHandle,
+        reportUrl: SAMPLE.reportUrl,
+        kpis: {
+          followers: 12480,
+          engagementPct: 3.42,
+          dominantFormat: "Carrosséis",
+          benchmarkDeltaPp: 1.2,
+        },
+        topPost: {
+          format: "Reel",
+          engagementPct: 7.85,
+          thumbnailUrl: null,
+          permalink: null,
+        },
+      }),
+    preheader: "4 números reais e o post que mais resultou.",
   },
   {
     key: "commercial_followup",
