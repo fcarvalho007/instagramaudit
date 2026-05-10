@@ -141,7 +141,6 @@ function SidebarBody({ logout, onNavigate }: SidebarBodyProps) {
                       onClick={onNavigate}
                       className={ITEM_BASE}
                       activeProps={{ className: ITEM_ACTIVE }}
-                      activeOptions={{ exact: item.to === "/admin/sistema" ? false : false }}
                     >
                       {({ isActive }) => (
                         <>
