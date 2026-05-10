@@ -78,6 +78,7 @@ import {
   renderReportReady,
   renderFeedbackRequest,
 } from "@/lib/email/templates";
+import { CommercialFollowupDialog } from "./commercial-followup-dialog";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -145,6 +146,8 @@ const EVENT_LABELS: Record<string, string> = {
   pricing_clicked: "Preço clicado",
   public_report_link_copied: "Link público copiado",
   lead_status_changed: "Estado comercial alterado",
+  commercial_followup_sent: "Follow-up comercial enviado",
+  commercial_followup_failed: "Falha no envio do follow-up comercial",
 };
 
 function deriveIntentSignal(lead: EnrichedLead): { label: string; accent: "revenue" | "signal" | "neutral" } {
@@ -262,6 +265,8 @@ const COMMUNICATION_EVENT_TYPES = new Set([
   "feedback_started",
   "email_failed",
   "email_bounced",
+  "commercial_followup_sent",
+  "commercial_followup_failed",
 ]);
 
 /**
@@ -353,6 +358,15 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     : intent;
   const displayedSuggestion = lead.feedback ? feedbackIntent.nextAction : suggestedStep;
   const columnDef = KANBAN_COLUMNS.find((c) => c.key === lead.commercial_status);
+
+  // Commercial follow-up button is only available when the lead has shown
+  // measurable purchase intent in their feedback AND is still in the funnel.
+  const followupEligible =
+    !!lead.email &&
+    !!lead.feedback &&
+    (feedbackIntent.intent === "alto" || feedbackIntent.intent === "medio") &&
+    lead.commercial_status !== "convertido" &&
+    lead.commercial_status !== "arquivado";
 
   const handleSaveNotes = () => {
     onUpdate(lead.id, { internal_notes: notesText });
@@ -639,13 +653,15 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                 <AdminActionButton size="md" onClick={handleMarkContacted}>
                   <Phone size={14} /> Contactado
                 </AdminActionButton>
-                <AdminActionButton
-                  size="md"
-                  onClick={() => setFollowupOpen(true)}
-                  className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
-                >
-                  <Sparkles size={14} /> Follow-up comercial
-                </AdminActionButton>
+                {followupEligible && (
+                  <AdminActionButton
+                    size="md"
+                    onClick={() => setFollowupOpen(true)}
+                    className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
+                  >
+                    <Sparkles size={14} /> Follow-up comercial
+                  </AdminActionButton>
+                )}
                 <AdminActionButton
                   size="md"
                   onClick={handleArchive}
@@ -850,23 +866,10 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     />
 
     {/* ── Send commercial follow-up dialog ─────────────────── */}
-    <ConfirmDialog
+    <CommercialFollowupDialog
       open={followupOpen}
       onOpenChange={setFollowupOpen}
-      title="Enviar follow-up comercial"
-      description={
-        <div className="space-y-2">
-          <p>
-            Vai enviar o email <strong>"Próximo passo"</strong> para{" "}
-            <strong>{lead.email}</strong>.
-          </p>
-          <p className="text-admin-text-tertiary text-[13px]">
-            Sem pressão — convida o lead a responder. Não altera o estado
-            comercial; apenas marca <em>contacted_at</em>.
-          </p>
-        </div>
-      }
-      confirmLabel={sendingFollowup ? "A enviar…" : "Enviar follow-up"}
+      lead={lead}
       loading={sendingFollowup}
       onConfirm={async () => {
         setSendingFollowup(true);

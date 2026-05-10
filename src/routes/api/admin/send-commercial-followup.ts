@@ -17,6 +17,8 @@ import { requireAdminSession } from "@/lib/admin/session";
 import { recordLeadEvent } from "@/lib/admin/lead-events.server";
 import { renderCommercialFollowup } from "@/lib/email/templates";
 import { resolveSender } from "@/lib/email/sender";
+import { interpretFeedback } from "@/lib/admin/feedback-intent";
+import type { BetaFeedbackSummary } from "@/lib/admin/kanban-columns";
 
 const RequestSchema = z.object({
   lead_id: z.string().uuid(),
@@ -103,7 +105,7 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
         // Load lead
         const { data: lead, error: leadErr } = await supabaseAdmin
           .from("leads")
-          .select("id, email, email_normalized, name, pricing_preference")
+          .select("id, email, email_normalized, name, pricing_preference, commercial_status")
           .eq("id", payload.lead_id)
           .maybeSingle();
 
@@ -125,6 +127,27 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
           return errorResponse("LEAD_EMAIL_INVALID", "Lead email is malformed.", 422);
         }
 
+        // Load latest feedback to (a) gate the send and (b) compute the
+        // status transition that follows a successful send.
+        const { data: latestFeedback } = await supabaseAdmin
+          .from("beta_feedback")
+          .select(
+            "id, usefulness_score, clarity_text, missing_text, purchase_intent, pricing_preference, contact_consent, created_at",
+          )
+          .eq("lead_id", lead.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const feedbackSummary = (latestFeedback as BetaFeedbackSummary | null) ?? null;
+        const intentResult = interpretFeedback(feedbackSummary);
+        const targetStatus =
+          intentResult.intent === "alto"
+            ? "potencial_cliente"
+            : intentResult.intent === "medio"
+              ? "interessado"
+              : null;
+
         // Try to enrich with the latest report request (handle + report URL)
         const { data: latestRequest } = await supabaseAdmin
           .from("report_requests")
@@ -140,10 +163,12 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
           baseUrl && handle ? `${baseUrl}/analyze/${encodeURIComponent(handle)}` : null;
 
         const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
+        const pricingPreference =
+          feedbackSummary?.pricing_preference ?? lead.pricing_preference ?? null;
         const { subject, html, text } = renderCommercialFollowup({
           firstName,
           instagramHandle: handle,
-          pricingOption: lead.pricing_preference ?? null,
+          pricingOption: pricingPreference,
           reportUrl,
           replyToEmail: null,
         });
@@ -174,6 +199,10 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
           const isAbort =
             err instanceof Error &&
             (err.name === "AbortError" || err.name === "TimeoutError");
+          await recordFailureEvent(lead.id, latestRequest?.analysis_snapshot_id ?? null, handle, {
+            error_code: isAbort ? "RESEND_TIMEOUT" : "RESEND_FAILED",
+            recipient: lead.email_normalized ?? recipientEmail,
+          });
           return errorResponse(
             isAbort ? "RESEND_TIMEOUT" : "RESEND_FAILED",
             isAbort ? "Email provider request timed out." : "Failed to reach email provider.",
@@ -202,6 +231,12 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
             /(testing emails|only send.*verified|verified (email|domain))/i.test(matchSource);
           const truncated = providerMessage ? providerMessage.slice(0, 200) : null;
           if (isSandboxBlock) {
+            await recordFailureEvent(lead.id, latestRequest?.analysis_snapshot_id ?? null, handle, {
+              error_code: "RESEND_SANDBOX_RECIPIENT_BLOCKED",
+              provider_message: truncated,
+              http_status: resendResponse.status,
+              recipient: lead.email_normalized ?? recipientEmail,
+            });
             return errorResponse(
               "RESEND_SANDBOX_RECIPIENT_BLOCKED",
               "Sandbox sender can only deliver to verified recipients.",
@@ -209,6 +244,12 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
               truncated,
             );
           }
+          await recordFailureEvent(lead.id, latestRequest?.analysis_snapshot_id ?? null, handle, {
+            error_code: "RESEND_FAILED",
+            provider_message: truncated,
+            http_status: resendResponse.status,
+            recipient: lead.email_normalized ?? recipientEmail,
+          });
           return errorResponse(
             "RESEND_FAILED",
             `Email provider returned ${resendResponse.status}.`,
@@ -234,20 +275,39 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
               message_id: messageId,
               channel: "admin_manual",
               recipient: lead.email_normalized ?? recipientEmail,
-              pricing_preference: lead.pricing_preference ?? null,
+              pricing_preference: pricingPreference,
               report_url: reportUrl,
+              detected_intent: intentResult.intent,
+              previous_status: lead.commercial_status,
+              new_status: targetStatus ?? lead.commercial_status,
             },
           });
         } catch {
           /* non-critical */
         }
 
-        // Stamp contacted_at (best-effort)
+        // Stamp contacted_at and (when intent justifies it) advance the
+        // commercial_status. We never overwrite terminal/exit statuses
+        // (`convertido`, `arquivado`) — admin owns those moves.
         try {
-          await supabaseAdmin
-            .from("leads")
-            .update({ contacted_at: sentAt, updated_at: sentAt })
-            .eq("id", lead.id);
+          const updates: {
+            contacted_at: string;
+            updated_at: string;
+            commercial_status?: string;
+          } = {
+            contacted_at: sentAt,
+            updated_at: sentAt,
+          };
+          const currentStatus = lead.commercial_status as string | null;
+          if (
+            targetStatus &&
+            currentStatus !== "convertido" &&
+            currentStatus !== "arquivado" &&
+            currentStatus !== targetStatus
+          ) {
+            updates.commercial_status = targetStatus;
+          }
+          await supabaseAdmin.from("leads").update(updates).eq("id", lead.id);
         } catch {
           /* non-critical */
         }
@@ -257,6 +317,7 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
             success: true,
             message_id: messageId,
             sent_at: sentAt,
+            new_status: targetStatus,
           },
           200,
         );
@@ -264,3 +325,22 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
     },
   },
 });
+
+async function recordFailureEvent(
+  leadId: string,
+  snapshotId: string | null,
+  handle: string | null,
+  metadata: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await recordLeadEvent({
+      leadId,
+      eventType: "commercial_followup_failed",
+      snapshotId,
+      handle,
+      metadata: { ...metadata, channel: "admin_manual" },
+    });
+  } catch {
+    /* non-critical */
+  }
+}
