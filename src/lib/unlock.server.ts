@@ -161,7 +161,7 @@ export async function processReportUnlock(
     const { data: existingLead } = await (supabaseAdmin as any)
       .from("leads")
       .select(
-        "id, user_type, purpose, profile_ownership, pricing_preference, name, beta_consent",
+        "id, user_type, purpose, profile_ownership, pricing_preference, name, beta_consent, marketing_consent",
       )
       .eq("email_normalized", emailNormalized)
       .maybeSingle();
@@ -195,6 +195,11 @@ export async function processReportUnlock(
         patch.beta_consent = true;
         patch.beta_consent_at = new Date().toISOString();
         fieldsUpdated.push("beta_consent");
+      }
+      if (!existingLead.marketing_consent && data.marketing_consent === true) {
+        patch.marketing_consent = true;
+        patch.marketing_consent_at = new Date().toISOString();
+        fieldsUpdated.push("marketing_consent");
       }
       if (Object.keys(patch).length > 0) {
         await (supabaseAdmin as any)
@@ -237,6 +242,9 @@ export async function processReportUnlock(
           beta_consent: data.gdpr_consent === true,
           beta_consent_at:
             data.gdpr_consent === true ? new Date().toISOString() : null,
+          marketing_consent: data.marketing_consent === true,
+          marketing_consent_at:
+            data.marketing_consent === true ? new Date().toISOString() : null,
         })
         .select("id")
         .single();
@@ -282,6 +290,7 @@ export async function processReportUnlock(
     if (data.user_type === "other" && data.user_type_other_text)
       newMeta.user_type_other_text = data.user_type_other_text;
     if (data.gdpr_consent === true) newMeta.gdpr_consent = true;
+    if (data.marketing_consent === true) newMeta.marketing_consent = true;
 
     const { data: existingRR } = await (supabaseAdmin as any)
       .from("report_requests")
