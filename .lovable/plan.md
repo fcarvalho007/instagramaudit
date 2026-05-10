@@ -1,97 +1,152 @@
-# Revisão · Melhorias para `/admin`
+# Brevo · Recuperação de procedimento e fases
 
-Auditei `/admin/visao-geral`, `/admin/sistema`, `/admin/clientes` em desktop (1366) e mobile (375), mais o código da sidebar, do `AdminPageHeader` e do gate. O esqueleto é sólido (sidebar light + Iconosquare-aligned, tokens consistentes), mas há fricções claras de chrome, hierarquia e mobile.
+Este plano retoma a integração Brevo aprovada anteriormente (msg #3405) e nunca executada — interrompida quando passámos para o fix do header do `/admin` e depois para as melhorias do cockpit. Estado atual confirmado: **Brevo ainda não está ligada** (`list_connections` devolve vazio, sem `BREVO_API_KEY` em secrets), `RESEND_API_KEY` continua a ser o único provider de email, e existe `src/lib/email/templates/` (5 templates) + `src/lib/unlock.server.ts` intactos. Não existe `src/lib/brevo/`.
 
-## Problemas identificados
+## Estado atual (auditado)
 
-### 1. Topbar inexistente — `ExecutionModeBadge` órfã
-A pílula "Cache-only · sem custos" está absoluta no canto superior direito, **sem container**, **sem fundo**, **sem alinhamento** ao header da página. Em mobile sobrepõe-se ao espaço do hamburger. O hamburger por sua vez vive isolado no canto oposto, também flutuante.
+- `src/lib/email/sender.ts` + `src/lib/email/templates/{request-received,report-ready,feedback-request,personal-area-saved,commercial-followup}.ts` → emails transacionais via Resend (HTTP direto)
+- `src/lib/unlock.server.ts` → grava lead em Supabase, dispara email Resend, sem sync externa
+- Sem ficheiros `src/lib/brevo/*` ainda
+- Connector Brevo disponível mas não ligado (gateway-enabled)
 
-### 2. `AdminPageHeader` mistura responsabilidades
-- Repete em todas as páginas o eyebrow "INSTABENCH · ADMIN" (redundante — já estamos no admin).
-- A barra de acções (`Atualizar`, `Forçar sync`, `Exportar`) compete com o H1 em vez de viver numa topbar global.
-- Zero breadcrumbs em sub-páginas (`/admin/sistema/cockpit-legado` aparece sem trilho).
+## Princípios
 
-### 3. Sidebar densidade e identidade
-- 12 itens + 5 grupos + footer (Demo + Logout) **não cabem em 768px** sem scroll interno → utilizador não vê "Sistema" nem o toggle Demo sem scrollar.
-- Brand é só um ícone genérico `BarChart2` (lucide). Devia ser o mark InstaBench.
-- Toggle "REAL" em caps sem contexto → label confusa; faltam tooltips em itens de nav quando potencialmente colapsada.
+- **Não bloquear o unlock** se a Brevo falhar (sync + email são side-effects fire-and-forget).
+- **Resend permanece como fallback**, nunca é desligado.
+- **Brevo via gateway Lovable** (`https://connector-gateway.lovable.dev/brevo`), nunca chamada direta.
+- **Idempotente**: re-runs não duplicam contactos (Brevo `createContact` faz upsert por email).
+- **Observabilidade**: cada passo grava `product_events` (`brevo_*` / `resend_fallback_*`).
 
-### 4. Sem affordance para command palette
-`AdminCommandPalette` existe mas não há botão visível nem hint `⌘K` na topbar — invisível para utilizadores que não conhecem o atalho.
+---
 
-### 5. Mobile — header rasgado
-Em 375px o `Cache-only` badge fica solto no topo, o eyebrow ocupa linha própria, o H1 cai numa terceira linha e as acções ainda abaixo. **4 linhas só de header** antes de chegar ao conteúdo.
+## Fase 0 — Ligação Brevo (1 tool call, sem código)
 
-### 6. Funil em "Visão geral"
-- Bar do "Unlock iniciado" desenha 100% mesmo quando o valor absoluto é 1 → induz erro visual face a "Unlock concluído" (0).
-- Delta `−1` a vermelho sem legenda do que está a ser comparado.
+1. Pedir ao utilizador para criar/ligar a connection Brevo via `standard_connectors--connect` com `connector_id: "brevo"`.
+2. Após ligação:
+   - `BREVO_API_KEY` injetada automaticamente nos secrets (chave de gateway, não a API key direta da Brevo).
+   - `LOVABLE_API_KEY` já existe (managed).
+3. Pedir ao utilizador 3 secrets adicionais via `add_secret`:
+   - `BREVO_FROM_EMAIL` — sender verificado na conta Brevo (ex.: `frederico@instabench.app`).
+   - `BREVO_FROM_NAME` — nome a mostrar no `From` (ex.: `Frederico · InstaBench`).
+   - `BREVO_LEAD_MAGNET_LIST_ID` — id numérico da lista "InstaBench — Lead Magnet Gratuito" criada manualmente no painel Brevo.
 
-## Plano de melhorias (3 fases, ordenadas por impacto)
+**Pré-requisito manual no painel Brevo** (faço guia passo-a-passo no chat antes de pedir secrets):
+- Verificar domínio sender (DNS SPF/DKIM).
+- Criar 3 listas: "Lead Magnet Gratuito", "Clientes Pagos", "Intenção Alta".
+- Criar atributos personalizados (script abaixo na Fase 1 cria-os via API se faltarem):
+  `INSTAGRAM_HANDLE`, `REPORTS_COUNT`, `LAST_REPORT_URL`, `LAST_REPORT_AT`, `PROFILE_OWNERSHIP`, `GOAL`, `USER_TYPE`, `PRICING_PREFERENCE`, `LEAD_SOURCE`, `COMMERCIAL_STATUS`, `IS_CUSTOMER`, `PLAN`, `LAST_PAYMENT_AT`.
 
-### Fase 1 — Topbar global + header limpo (alto impacto, baixo risco)
+---
 
-Criar `AdminTopbar` em `src/components/admin/v2/admin-topbar.tsx`:
+## Fase 1 — Cliente Brevo + sync no unlock (não-bloqueante)
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ ☰  Visão geral                  [⌘K Procurar] [● Cache-only]│
-│    Receita · 30 dias                                        │
-└─────────────────────────────────────────────────────────────┘
+Cria a infra mínima e liga sync ao unlock, **sem mexer em emails ainda**.
+
+**Novos ficheiros:**
+```
+src/lib/brevo/client.server.ts      # fetch wrapper para o gateway Lovable
+src/lib/brevo/contacts.server.ts    # upsertContact, addToList, mapLeadToAttributes
+src/lib/brevo/sync.server.ts        # syncLeadToBrevo(leadId, reason): fire-and-forget
+src/lib/brevo/types.ts              # BrevoContact, BrevoAttributes, SyncReason
 ```
 
-- Sticky `top-0`, `h-14`, fundo `surface` com border-bottom token.
-- Mobile: hamburger à esquerda dentro da topbar (deixa de ser flutuante).
-- Slot central: título compacto + subtítulo (puxado de cada rota via context ou prop).
-- Slot direito: trigger `⌘K` (abre command palette) + `ExecutionModeBadge` ancorado.
-- `AdminPageHeader` passa a renderizar **apenas** o H1 editorial + acções primárias (Atualizar, Exportar). Eyebrow "INSTABENCH · ADMIN" removido.
+**Edits:**
+- `src/lib/unlock.server.ts` → após gravar lead/report_request, chamar `void syncLeadToBrevo(lead.id, "report_unlock").catch(() => {})`.
+- Adicionar 2 novos `product_events`: `brevo_contact_synced` e `brevo_contact_sync_failed` (com `{ leadId, reason, status, latencyMs, errorMessage? }`).
 
-### Fase 2 — Sidebar densidade + identidade (médio impacto)
+**Comportamento:**
+- 8s timeout por chamada Brevo. Se rebenta, regista evento e continua.
+- `upsertContact` faz POST `/contacts` com `updateEnabled: true` + `listIds: [BREVO_LEAD_MAGNET_LIST_ID]`.
+- Mapeamento atributos a partir das colunas existentes em `leads` / `report_requests`.
 
-- Substituir `BarChart2` pelo logo InstaBench real (já existe como SVG no marketing header).
-- Reduzir `py` dos itens de `py-2` → `py-[7px]`, `gap` `2.5` → `2`, `text-[13px]` → mantém. Ganha-se ~80px verticais.
-- Mover footer (Demo switch + Logout) para um menu de avatar/ações na **topbar**, libertando o fundo da sidebar.
-- Tornar grupos colapsáveis (`<details>` nativo) com persistência em `localStorage` (`admin.sidebar.<group>=open`).
-- Adicionar tooltips nos itens (`@/components/ui/tooltip`) para preparar futura variante mini-icon.
+**Validação:** unlock continua a funcionar mesmo com `BREVO_API_KEY` inválida; lead aparece no painel Brevo na lista certa após unlock real.
 
-### Fase 3 — Polish funcional (baixo risco, maior clareza)
+---
 
-- **Funil**: largura da bar proporcional ao valor absoluto do passo anterior (não `max-100%`); zero passos sem bar; legenda da delta ("vs período anterior").
-- **Breadcrumbs** em sub-rotas (`Sistema / Cockpit legado`).
-- **Demo switch**: trocar label "REAL" pelo par `Real ◯ ⬤ Demo` com ícone, dentro do menu da topbar.
-- **Command palette hint**: tecla `⌘K` visível e atalho `Ctrl+K` cross-platform.
+## Fase 2 — Provider abstraction com fallback Resend
 
-## Fora de âmbito
+Centraliza envio para preparar troca Resend → Brevo + fallback automático.
 
-- Não tocar em `Header`/`Footer` públicos.
-- Não tocar em rotas `/admin/report-preview/*` (mockups visuais).
-- Sem mudanças de schema, sem novos endpoints, sem novos secrets.
-- Sem refactor das queries do dashboard — só apresentação.
-
-## Ficheiros previstos
-
-```text
-NOVO   src/components/admin/v2/admin-topbar.tsx
-NOVO   src/components/admin/v2/admin-breadcrumbs.tsx
-EDIT   src/routes/admin.tsx                       (introduz topbar, ajusta padding)
-EDIT   src/components/admin/v2/admin-page-header.tsx  (sem eyebrow, mais leve)
-EDIT   src/components/admin/v2/admin-sidebar.tsx  (logo, densidade, sem footer)
-EDIT   src/styles/admin-tokens.css                (var --admin-topbar-height)
+**Novos ficheiros:**
+```
+src/lib/email/providers/brevo.server.ts    # sendViaBrevo({ to, subject, html, text })
+src/lib/email/providers/resend.server.ts   # sendViaResend(...)  (extraído do código atual)
+src/lib/email/send.server.ts               # sendTransactionalEmail() com fallback
 ```
 
-## Validação
+**Refactor (sem mudar payloads):**
+- `sender.ts` e os 5 templates (`request-received`, `report-ready`, `feedback-request`, `personal-area-saved`, `commercial-followup`) passam a chamar `sendTransactionalEmail()` em vez de Resend direto.
+- `sendTransactionalEmail()`:
+  1. Tenta Brevo (8s timeout).
+  2. Se 5xx / timeout / network error → tenta Resend.
+  3. Se 4xx (template/email inválido) → não tenta fallback, regista erro e desiste.
+  4. Eventos: `brevo_email_sent`, `brevo_email_failed`, `resend_fallback_email_sent`, `resend_fallback_email_failed`.
+- `BREVO_TRANSACTIONAL_ENABLED` (env) como kill-switch — se `false`, vai direto a Resend (rollback de 1 segundo).
 
-- Browser desktop 1366×768: nada rola na sidebar até "Sistema"; topbar sticky.
-- Browser mobile 375×812: header com 1 linha (título + hamburger), badge ancorado.
-- `/admin/visao-geral`, `/admin/sistema`, `/admin/clientes` continuam a renderizar (smoke-test via screenshot).
-- `tsc --noEmit` verde.
+**Validação:** disparar manualmente cada um dos 5 templates em modo teste contra um email pessoal; confirmar que aparece sempre exatamente 1 email recebido (Brevo OU Resend, nunca ambos).
 
-## ☐ Checklist
+---
 
-- ☐ **Fase 1** — Topbar global + header limpo
-- ☐ **Fase 2** — Sidebar densidade + brand + grupos colapsáveis
-- ☐ **Fase 3** — Funil, breadcrumbs, demo label, ⌘K hint
-- ☐ Verificação visual em desktop + mobile
-- ☐ tsc verde
+## Fase 3 — Lifecycle sync (status changes + customer upgrade)
 
-> Sugestão: aprovar **Fase 1 isolada primeiro** (resolve o problema mais visível — chrome confuso) e avaliar antes de avançar para Fase 2/3.
+Liga eventos de negócio futuros à Brevo.
+
+**Edits:**
+- `commercial_status` muda → `syncLeadToBrevo(id, "status_change")` re-envia atributos atualizados.
+- Quando o lead pagar (preparar hook futuro):
+  - Atributos `IS_CUSTOMER=true`, `PLAN`, `LAST_PAYMENT_AT`.
+  - Mover de "Lead Magnet Gratuito" → "Clientes Pagos" (POST `/contacts/lists/{id}/contacts/add` + remove da outra).
+- Lista dinâmica "Intenção Alta" alimentada por feedback → flag `INTENT_HIGH`, sync atualiza atributo, list rule no painel Brevo filtra automaticamente.
+
+---
+
+## Fase 4 — Admin observabilidade (mínima)
+
+Reaproveita `/admin/sistema` ou `/admin/automacoes` para mostrar:
+- Total de syncs/24h (sucesso/falha).
+- Total de emails enviados/24h por provider (Brevo vs Resend fallback).
+- Últimos 20 erros Brevo (com mensagem + leadId + timestamp).
+- Toggle `BREVO_TRANSACTIONAL_ENABLED` (apenas leitura — flip via secrets).
+
+**Não mexer** em rotas/UI fora de `/admin`. Sem novas tabelas — usa `product_events` que já existe.
+
+---
+
+## Riscos identificados
+
+| Risco | Mitigação |
+|---|---|
+| Domínio Brevo não verificado → emails bouncem | Fase 0 valida no painel ANTES de Fase 2. Resend continua a funcionar. |
+| Atributos personalizados não existem na Brevo → API 400 | Fase 1 cria-os via API no boot do `client.server.ts` (idempotente). |
+| Lista `BREVO_LEAD_MAGNET_LIST_ID` errada → contactos perdem-se | Validar id no boot; falhar loud se inválido. |
+| Race: 2 unlocks simultâneos do mesmo email | Brevo upsert é idempotente por email. OK. |
+| Custos: dispatch duplicado em retries | Idempotency key `unlock-${leadId}` no `product_events` evita logging duplicado. |
+| Brevo lento (>8s) bloqueia unlock | `void` + `.catch()` garante fire-and-forget. |
+
+---
+
+## Fora de âmbito (explicitamente)
+
+- Editor de templates no admin (plano separado já aprovado anteriormente — `slots.ts` etc.).
+- Webhooks Brevo (bounce/complaint/unsubscribe) — Fase 5+.
+- Marketing/newsletter — Brevo só será usada para transacionais + CRM mirror.
+- Apify, OpenAI, DataForSEO intactos.
+- `/api/public/report-unlock` schema intacto.
+- Sem mudanças em `src/integrations/supabase/*`.
+
+---
+
+## Primeiro prompt de implementação (Fase 0)
+
+> "Liga o connector Brevo neste projeto. Antes de pedires secrets adicionais (`BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`, `BREVO_LEAD_MAGNET_LIST_ID`), guia-me passo-a-passo no painel da Brevo para: (1) verificar o domínio sender, (2) criar as 3 listas com os nomes exatos do plano, (3) confirmar onde encontro o id da lista 'Lead Magnet Gratuito'. Não escreves código nesta fase."
+
+## ☐ Checklist global
+
+- ☐ **Fase 0** — Connector Brevo + 3 secrets + setup manual no painel
+- ☐ **Fase 1** — `src/lib/brevo/*` + sync no `unlock.server.ts` (não-bloqueante)
+- ☐ **Fase 2** — `sendTransactionalEmail()` com fallback Brevo→Resend
+- ☐ **Fase 3** — Lifecycle sync (status, customer, listas dinâmicas)
+- ☐ **Fase 4** — Painel mínimo de observabilidade em `/admin`
+- ☐ Validação end-to-end com unlock real + screenshot do contacto na Brevo
+
+> **Sugestão:** aprovar e executar **só a Fase 0** primeiro. As Fases 1–4 só fazem sentido com Brevo verificada e listas criadas.
