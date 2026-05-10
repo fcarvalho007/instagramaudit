@@ -1,158 +1,169 @@
 ## Estado atual
 
-Template e formatter já existem mas não estão ligados ao unlock. Falta o sender e o disparo.
+Os dois envios já existem como blocos inline dentro de `unlock.server.ts` (linhas 410-555):
 
-| Peça | Estado |
-|---|---|
-| `templates/report-summary.ts` | ✅ existe (4 KPIs + top post + CTA) |
-| `build-report-summary-data.server.ts` | ✅ extrai do snapshot via `snapshotToReportData` (única fonte de verdade) |
-| Allowlist eventos `report_summary_email_sent` / `_failed` / `_skipped_no_data` | ✅ em `tracking.functions.ts` |
-| Mapping em `transactional-email.server.ts` | ✅ `report-summary → report_summary_email_failed` |
-| Sender `send-report-summary.server.ts` | ❌ falta |
-| Disparo em `unlock.server.ts` | ❌ falta |
-| Subject/preheader iguais ao spec | ⚠️ desalinhados (ver abaixo) |
-| Testes formatter + template | ❌ falta |
+- **welcome-beta** — só para brand-new leads (`!returningLead`), `await` (bloqueante dentro do try); `personal-area-saved` substitui-o em returning leads
+- **report-summary** — fire-and-forget para todos, com `NO_DATA` → `report_summary_skipped_no_data`
 
-## Decisão sobre nomes de ficheiros
+**Dedup atual**: gate único `if (createdReportRequest)`. Isto cobre 99% dos casos mas é frágil (se algum dia chamarmos a sequência fora deste gate, ou se quisermos re-tentar manualmente, podemos duplicar emails). O spec pede dedup **explícito** consultando `product_events` por `(lead_id, report_request_id, event_type)`.
 
-- **Manter** `build-report-summary-data.server.ts` (em vez do `report-summary-data.ts` do spec). O sufixo `.server.ts` está protegido contra import no client e é padrão neste projeto. Renomear não traz benefício e mexe em imports do admin registry.
-- **Manter** `templates/report-summary.ts` (já no caminho que o spec pede).
+## Decisões
 
-## Refinamentos a aplicar
+1. **Extrair para orquestrador, manter `personal-area-saved` inline.** A sequência lead-magnet ≠ comunicação para returning leads. O orquestrador trata só de welcome-beta + report-summary. O ramo returning lead continua a enviar `personal-area-saved` no `unlock.server.ts` (sem alteração de comportamento).
 
-### 1. `src/lib/email/templates/report-summary.ts`
-- Subject → `"Resumo da análise de @{handle}"` (literal do spec) em `buildSubject`.
-- Preheader → `"Os principais sinais do teu relatório InstaBench."`.
-- Manter `HEADLINE = "Resumo da tua análise"`, KPI grid, top post card, CTA "Ver relatório completo" — já cumprem spec.
-- Sem mudanças de design/layout.
+2. **Welcome-beta continua restrito a brand-new leads.** O orquestrador aceita `sendWelcome: boolean` (passado como `!returningLead` pelo unlock). Returning leads disparam só o resumo. Isto preserva o que já está em produção e evita enviar duas boas-vindas.
 
-### 2. Novo `src/lib/email/send-report-summary.server.ts`
-Espelha o padrão do `send-welcome-beta.server.ts`:
+3. **Dedup via `product_events`** (substitui o gate atual):
+   - Antes de cada envio, `SELECT id FROM product_events WHERE lead_id=$1 AND event_type=$2 AND metadata->>'report_request_id'=$3 LIMIT 1`
+   - Se existir → `skipped_duplicate` (não emitir novo evento, apenas log).
+   - Mantém o gate `createdReportRequest` no caller como otimização (evita query desnecessária na maioria dos unlocks repetidos), mas o dedup verdadeiro passa a estar no orquestrador.
 
+4. **Sem delay artificial.** O Worker runtime do Lovable não tem suporte fiável a `setTimeout` longo nem job queue exposta. Sequencial síncrono (await welcome → await summary) é mais simples e suficiente. Se um dia houver pgmq/cron, adapta-se.
+
+## Orquestrador
+
+`src/lib/email/lead-magnet-sequence.server.ts`
+
+```ts
+export interface LeadMagnetSequenceArgs {
+  leadId: string;
+  reportRequestId: string;
+  snapshotId: string;
+  toEmail: string;
+  firstName: string | null;
+  instagramHandle: string;
+  /** Send welcome-beta only when true (brand-new lead). Default false. */
+  sendWelcome?: boolean;
+}
+
+export interface LeadMagnetSequenceResult {
+  welcome: "sent" | "failed" | "skipped_duplicate" | "skipped_disabled";
+  summary: "sent" | "failed" | "skipped_no_data" | "skipped_duplicate";
+}
+
+export async function sendLeadMagnetSequence(
+  args: LeadMagnetSequenceArgs,
+): Promise<LeadMagnetSequenceResult>
 ```
-sendReportSummaryEmail({
-  toEmail, firstName, leadId, reportRequestId, snapshotId,
-}) → { ok, messageId, provider } | { ok: false, reason }
+
+**Fluxo:**
+
+1. **Welcome-beta** (apenas se `sendWelcome === true`):
+   - Dedup: `eventAlreadyEmitted(leadId, reportRequestId, "beta_welcome_email_sent")` → se sim, `welcome = "skipped_duplicate"`.
+   - Caso contrário: chama `sendWelcomeBetaEmail`. Emite `beta_welcome_email_sent` ou `beta_welcome_email_failed` (mesmo metadata atual).
+   - Falha **não** aborta a sequência — passa ao summary.
+   - Em sucesso, mantém o stamp Brevo `BETA_WELCOMED_AT` (move-se para dentro do orquestrador para não ficar duplicado).
+
+2. **Report-summary** (sempre):
+   - Dedup: idem com `report_summary_email_sent`.
+   - Chama `sendReportSummaryEmail`. Emite `report_summary_email_sent`, `report_summary_email_failed` ou `report_summary_skipped_no_data`.
+
+3. Devolve resultado estruturado para tests/admin.
+
+**Helper interno** `eventAlreadyEmitted(leadId, reportRequestId, eventType)`:
+```ts
+const { data } = await supabaseAdmin
+  .from("product_events")
+  .select("id")
+  .eq("lead_id", leadId)
+  .eq("event_type", eventType)
+  .eq("metadata->>report_request_id", reportRequestId)
+  .limit(1)
+  .maybeSingle();
+return Boolean(data);
 ```
+(Nota: jsonb path query no PostgREST — `metadata->>report_request_id`. Validar sintaxe; alternativa segura é `.contains("metadata", { report_request_id })`.)
 
-Fluxo:
-1. `buildReportSummaryEmailData(snapshotId)` — se devolver `null`, retornar `{ ok: false, reason: "NO_DATA" }` (caller emite `report_summary_skipped_no_data`).
-2. `renderReportSummary({ firstName, instagramHandle: data.instagramHandle, reportUrl: resolveReportUrl(handle), kpis, topPost })`.
-3. `sendTransactionalEmail({ flowType: "report-summary", ... })` — Brevo + Resend fallback já existentes.
-4. Nunca lança.
+## Mudanças em `unlock.server.ts`
 
-### 3. `src/lib/unlock.server.ts`
-Logo após o bloco `welcome-beta` (dentro do mesmo `if (createdReportRequest)`), adicionar bloco fire-and-forget para o resumo. Vai sair só uma vez por `(lead, snapshot)` graças ao mesmo gate. Aplica a brand-new **e** returning leads (cada relatório novo merece resumo).
+Substituir as **duas** secções (welcome-beta block + report-summary block) por uma chamada única, mantendo o ramo returning lead intacto:
 
-```
-void (async () => {
-  const { sendReportSummaryEmail } = await import(
-    "@/lib/email/send-report-summary.server"
-  );
-  const res = await sendReportSummaryEmail({
-    toEmail: data.email,
-    firstName,
-    leadId,
-    reportRequestId,
-    snapshotId: data.analysis_snapshot_id,
-  });
-  if (res.ok) {
-    await recordProductEvent({
-      eventType: "report_summary_email_sent",
-      leadId, snapshotId: data.analysis_snapshot_id,
-      handle: data.instagram_username,
-      metadata: { message_id: res.messageId, provider: res.provider, report_request_id: reportRequestId },
-    });
-  } else if (res.reason === "NO_DATA") {
-    await recordProductEvent({
-      eventType: "report_summary_skipped_no_data",
-      leadId, snapshotId: data.analysis_snapshot_id,
-      handle: data.instagram_username,
-      metadata: { report_request_id: reportRequestId },
-    });
-  } else {
-    await recordProductEvent({
-      eventType: "report_summary_email_failed",
-      leadId, snapshotId: data.analysis_snapshot_id,
-      handle: data.instagram_username,
-      metadata: { reason: res.reason, report_request_id: reportRequestId },
-    });
+```ts
+if (createdReportRequest) {
+  const firstName = data.name ?? (existingLead?.name as ... ?? null);
+
+  if (returningLead) {
+    // mantém: sendPersonalAreaSavedEmail + recordProductEvent inline
   }
-})().catch((err) => console.error("[unlock] report-summary email error:", err));
+
+  // Sempre: lead-magnet sequence (fire-and-forget)
+  void (async () => {
+    const { sendLeadMagnetSequence } = await import(
+      "@/lib/email/lead-magnet-sequence.server"
+    );
+    await sendLeadMagnetSequence({
+      leadId,
+      reportRequestId,
+      snapshotId: data.analysis_snapshot_id,
+      toEmail: data.email,
+      firstName,
+      instagramHandle: data.instagram_username,
+      sendWelcome: !returningLead,
+    });
+  })().catch((err) => console.error("[unlock] lead-magnet sequence error:", err));
+}
 ```
 
-Wraps em `void`/`catch` para não bloquear o unlock nem o welcome-beta. (`createdReportRequest = true` garante 1 envio por (lead, snapshot).)
+Ganho: 90 linhas a menos no `unlock.server.ts`, lógica testável isoladamente, dedup explícito que sobrevive a futuros call sites.
 
-### 4. `src/lib/admin/email-template-registry.ts`
-- Atualizar `wiredAt` do `report_summary` para `"src/lib/email/send-report-summary.server.ts (após unlock)"`.
-- Atualizar o preheader de preview para `"Os principais sinais do teu relatório InstaBench."`.
+## Tests novos — `src/lib/email/__tests__/lead-magnet-sequence.test.ts`
 
-## Campos usados (do snapshot)
+Mocks: `supabaseAdmin.from("product_events")`, `sendWelcomeBetaEmail`, `sendReportSummaryEmail`, `recordProductEvent`, `upsertBrevoContact`.
 
-Do `snapshotToReportData`:
-- `data.profile.followers` → KPI Seguidores
-- `data.keyMetrics.engagementRate` → KPI Engagement médio (%)
-- `data.keyMetrics.dominantFormat` → KPI Formato dominante
-- `data.keyMetrics.engagementDeltaPct` → KPI Δ vs benchmark (pp)
-- `data.topPosts[0]` → top post (format, engagementPct, thumbnailUrl, permalink)
+1. **first unlock — brand-new lead**: `sendWelcome=true`, sem eventos prévios → ambos enviados; eventos `beta_welcome_email_sent` + `report_summary_email_sent` registados; resultado `{ welcome: "sent", summary: "sent" }`.
+2. **first unlock — returning lead**: `sendWelcome=false` → welcome NÃO chamado, resultado `welcome: "skipped_disabled"`; summary enviado normalmente.
+3. **duplicate unlock**: ambos os eventos já em `product_events` → ambos os senders **não** são chamados; resultado `{ welcome: "skipped_duplicate", summary: "skipped_duplicate" }`.
+4. **welcome falha, summary OK**: welcome sender devolve `{ ok: false }` → emite `beta_welcome_email_failed`; summary chamado e enviado.
+5. **summary sem dados**: builder devolve `null` (`reason: "NO_DATA"`) → emite `report_summary_skipped_no_data`, sem `_failed`.
+6. **welcome dup, summary novo**: welcome já em `product_events`, summary não → welcome skipped, summary enviado.
+7. **welcome OK dispara stamp Brevo**: verificar que `upsertBrevoContact` é chamado com `BETA_WELCOMED_AT` quando welcome=sent.
 
-Origem secundária: `instagram_username` da própria row `analysis_snapshots`.
-
-## Regras do formatter (já implementadas, validar com testes)
-
-- Hard-gate: se faltar followers, engagement, formato, top post ou top.engagement → devolve `null` (caller emite `report_summary_skipped_no_data`, **não** envia email).
-- Followers ≤ 0 ou engagement ≤ 0 contam como em falta.
-- `benchmarkDeltaPp` em falta cai para `0` (não bloqueia o envio — é métrica auxiliar).
-- Sem fallback inventado: nada de "estimado", "≈", placeholders.
-- Template escapa HTML em todos os campos via `escapeHtml`.
-
-## Testes a criar
-
-`src/lib/email/__tests__/report-summary.test.ts`:
-1. `renderReportSummary` produz subject `"Resumo da análise de @frederico.m.carvalho"` e preheader literal do spec.
-2. Valores KPI no HTML correspondem ao input (`12.480`, `3,42 %`, `Carrosséis`, `+1,2 pp`).
-3. HTML escapa tentativa de injeção: handle `"a<b>c"` aparece como `a&lt;b&gt;c`.
-4. Top post sem `permalink` não envolve em `<a>`; sem `thumbnailUrl` usa fallback gradient.
-
-`src/lib/email/__tests__/build-report-summary-data.test.ts`:
-5. Snapshot completo → todos os campos extraídos exatamente do `snapshotToReportData`.
-6. Snapshot sem followers → `null`.
-7. Snapshot sem `topPosts[0]` → `null`.
-8. Snapshot com `engagementDeltaPct` ausente → KPI cai para `0` mas devolve objeto.
-
-(Mock de `supabaseAdmin` + `snapshotToReportData` via `vi.mock`.)
+Adicionar também um teste mínimo ao `unlock-flow.test.ts` se necessário para garantir que o caller passa `sendWelcome: !returningLead` (provavelmente já coberto se mockarmos a sequência).
 
 ## Não tocar
 
-- Cálculos do relatório (`snapshotToReportData`, benchmarks)
-- UI pública do report
-- Apify / OpenAI / DataForSEO
-- Welcome-beta (já enviado em paralelo)
-- `personal-area-saved` (returning leads continuam a recebê-lo)
+- `personal-area-saved` (returning leads, ramo separado)
+- Templates (`templates/welcome-beta.ts`, `templates/report-summary.ts`)
+- Senders individuais (`send-welcome-beta.server.ts`, `send-report-summary.server.ts`, `build-report-summary-data.server.ts`)
+- Allowlist de eventos em `tracking.functions.ts` (não há novos eventos)
+- Cálculos do report
+- UI pública
 - Migração BD
+- Provider stack (Brevo + Resend)
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (8 testes novos + suite atual)
+- `bunx vitest run` (7 testes novos + suite atual)
 - Manual:
-  1. Unlock novo → `welcome-beta` **e** `report-summary` chegam ao inbox; números no email = números no `/analyze/{handle}`.
-  2. Unlock 2× mesmo (email, snapshot) → 1 só email de cada (gate `createdReportRequest`).
-  3. Snapshot incompleto (followers=0) → unlock OK, evento `report_summary_skipped_no_data`, sem email.
-  4. Provider Brevo+Resend a falhar → `report_summary_email_failed` em `product_events`, unlock OK.
-  5. CTA do email abre `https://instagramaudit.lovable.app/analyze/{handle}`.
+  1. Unlock novo (lead inédito) → query `product_events` deve mostrar exatamente 1× `beta_welcome_email_sent` e 1× `report_summary_email_sent` para `(leadId, reportRequestId)`.
+  2. Repetir o mesmo unlock (sem mudar snapshot) → não cria novos `product_events` (gate `createdReportRequest` evita até a chamada).
+  3. Forçar reentrada com `createdReportRequest=true` (cenário hipotético via shell admin) → orquestrador deteta dup via `product_events` e não duplica envio.
+  4. Lead com snapshot incompleto → `beta_welcome_email_sent` (se brand-new) + `report_summary_skipped_no_data`, sem email de resumo na inbox.
+  5. Provider Brevo+Resend offline → `beta_welcome_email_failed` e `report_summary_email_failed`, unlock OK.
 
-## Eventos finais
+## Comportamento final
 
-- `report_summary_email_sent` — `{ message_id, provider, report_request_id }`
-- `report_summary_email_failed` — `{ reason, report_request_id }`
-- `report_summary_skipped_no_data` — `{ report_request_id }` (já registado quando snapshot insuficiente)
+| Cenário | Welcome | Summary |
+|---|---|---|
+| Brand-new lead, primeira vez | sent | sent |
+| Brand-new lead, retry no mesmo report_request | skipped_duplicate | skipped_duplicate |
+| Returning lead, novo snapshot | skipped_disabled | sent |
+| Returning lead, retry | skipped_disabled | skipped_duplicate |
+| Snapshot incompleto | sent (se aplicável) | skipped_no_data |
+| Provider falha | failed | failed (independente) |
 
-## Ficheiros alterados / criados
+## Ficheiros alterados
 
-- `src/lib/email/templates/report-summary.ts` (subject + preheader)
-- **NOVO** `src/lib/email/send-report-summary.server.ts`
-- `src/lib/unlock.server.ts` (novo bloco fire-and-forget)
-- `src/lib/admin/email-template-registry.ts` (wiredAt + preheader)
-- **NOVO** `src/lib/email/__tests__/report-summary.test.ts`
-- **NOVO** `src/lib/email/__tests__/build-report-summary-data.test.ts`
+- **NOVO** `src/lib/email/lead-magnet-sequence.server.ts`
+- **NOVO** `src/lib/email/__tests__/lead-magnet-sequence.test.ts`
+- `src/lib/unlock.server.ts` — substitui ~90 linhas pelos ~12 do call da sequência (welcome+summary). Ramo `personal-area-saved` (returning leads) mantém-se intacto.
+
+## Checkpoint
+
+- ☐ `lead-magnet-sequence.server.ts` criado com `sendLeadMagnetSequence` + dedup via `product_events`
+- ☐ `unlock.server.ts` simplificado, ramo `personal-area-saved` preservado
+- ☐ 7 testes novos passam
+- ☐ `bunx tsc --noEmit` limpo
+- ☐ `bunx vitest run` 100%
+- ☐ Validação manual: 1 unlock = 1 par de eventos `(beta_welcome_email_sent, report_summary_email_sent)` em `product_events`

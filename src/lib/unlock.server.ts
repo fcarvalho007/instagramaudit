@@ -407,15 +407,18 @@ export async function processReportUnlock(
       console.error("[unlock] lifecycle advance failed:", err);
     }
 
-    // 6. Transactional "personal area saved" email — only on first-time
-    //    creation of (lead, snapshot). Resubmissions are deduped naturally
-    //    by the report_request lookup above. Never blocks the unlock.
+    // 6. Lead-magnet email sequence — only on first-time creation of
+    //    (lead, report_request). Returning leads keep receiving the
+    //    `personal-area-saved` email as before; brand-new leads receive
+    //    welcome-beta. Both paths trigger the report-summary email via the
+    //    orchestrator, which dedups against `product_events`. Never blocks
+    //    the unlock.
     if (createdReportRequest) {
-      try {
-        const firstName =
-          data.name ?? (existingLead?.name as string | null | undefined) ?? null;
-        if (returningLead) {
-          // Returning lead: keep the existing "personal area saved" copy.
+      const firstName =
+        data.name ?? (existingLead?.name as string | null | undefined) ?? null;
+
+      if (returningLead) {
+        try {
           const { sendPersonalAreaSavedEmail } = await import(
             "@/lib/email/send-personal-area-saved.server"
           );
@@ -440,117 +443,26 @@ export async function processReportUnlock(
               },
             });
           }
-        } else {
-          // Brand-new lead: send the welcome-beta email.
-          const { sendWelcomeBetaEmail } = await import(
-            "@/lib/email/send-welcome-beta.server"
-          );
-          const res = await sendWelcomeBetaEmail({
-            toEmail: data.email,
-            firstName,
-            instagramHandle: data.instagram_username,
-            leadId,
-            reportRequestId,
-            snapshotId: data.analysis_snapshot_id,
-          });
-          if (res.ok) {
-            await recordProductEvent({
-              eventType: "beta_welcome_email_sent",
-              leadId,
-              snapshotId: data.analysis_snapshot_id,
-              handle: data.instagram_username,
-              metadata: {
-                message_id: res.messageId,
-                provider: res.provider,
-                report_request_id: reportRequestId,
-              },
-            });
-
-            // Brevo attribute stamp — fire-and-forget. Never blocks unlock.
-            void (async () => {
-              const { upsertBrevoContact } = await import(
-                "@/lib/brevo/contacts.server"
-              );
-              const stamp = await upsertBrevoContact({
-                email: data.email,
-                attributes: { BETA_WELCOMED_AT: new Date().toISOString() },
-              });
-              if (!stamp.ok) {
-                console.error(
-                  "[unlock] brevo BETA_WELCOMED_AT stamp failed:",
-                  stamp.reason,
-                );
-              }
-            })().catch((err) => {
-              console.error("[unlock] brevo welcomed-at stamp error:", err);
-            });
-          } else {
-            await recordProductEvent({
-              eventType: "beta_welcome_email_failed",
-              leadId,
-              snapshotId: data.analysis_snapshot_id,
-              handle: data.instagram_username,
-              metadata: {
-                reason: res.reason,
-                report_request_id: reportRequestId,
-              },
-            });
-          }
+        } catch (err) {
+          console.error("[unlock] personal-area email error:", err);
         }
-      } catch (err) {
-        console.error("[unlock] welcome/personal-area email error:", err);
       }
 
-      // 6b. Report summary email (Email 2) — fire-and-forget. Sent to both
-      //     brand-new and returning leads on every newly-created report
-      //     request. Skipped silently when snapshot lacks the 4 KPIs.
       void (async () => {
-        const { sendReportSummaryEmail } = await import(
-          "@/lib/email/send-report-summary.server"
+        const { sendLeadMagnetSequence } = await import(
+          "@/lib/email/lead-magnet-sequence.server"
         );
-        const firstName =
-          data.name ?? (existingLead?.name as string | null | undefined) ?? null;
-        const res = await sendReportSummaryEmail({
-          toEmail: data.email,
-          firstName,
+        await sendLeadMagnetSequence({
           leadId,
           reportRequestId,
           snapshotId: data.analysis_snapshot_id,
+          toEmail: data.email,
+          firstName,
+          instagramHandle: data.instagram_username,
+          sendWelcome: !returningLead,
         });
-        if (res.ok) {
-          await recordProductEvent({
-            eventType: "report_summary_email_sent",
-            leadId,
-            snapshotId: data.analysis_snapshot_id,
-            handle: data.instagram_username,
-            metadata: {
-              message_id: res.messageId,
-              provider: res.provider,
-              report_request_id: reportRequestId,
-            },
-          });
-        } else if (res.reason === "NO_DATA") {
-          await recordProductEvent({
-            eventType: "report_summary_skipped_no_data",
-            leadId,
-            snapshotId: data.analysis_snapshot_id,
-            handle: data.instagram_username,
-            metadata: { report_request_id: reportRequestId },
-          });
-        } else {
-          await recordProductEvent({
-            eventType: "report_summary_email_failed",
-            leadId,
-            snapshotId: data.analysis_snapshot_id,
-            handle: data.instagram_username,
-            metadata: {
-              reason: res.reason,
-              report_request_id: reportRequestId,
-            },
-          });
-        }
       })().catch((err) => {
-        console.error("[unlock] report-summary email error:", err);
+        console.error("[unlock] lead-magnet sequence error:", err);
       });
     }
 
