@@ -1,70 +1,86 @@
-# Plano — diagnóstico Brevo sync + fechar Fase 6
+# Plano — fix do Brevo sync e validação Fase 6
 
-## Estado atual
+## Causa raiz (já confirmada)
 
-- Fase 5 ✅ — 14 atributos custom criados na Brevo (verificado via GET).
-- Fase 6 ⚠️ — 6 unlocks reais executados, 0 contactos chegaram à Brevo, 0 eventos `brevo_contact_synced` ou `brevo_contact_sync_failed` em `product_events`. Causa exata desconhecida porque os logs do worker não estão a chegar ao agregador.
+O gateway da Brovo no Lovable **strip-a o prefixo `/v3`** automaticamente.
+Toda a camada `src/lib/brevo/*` envia paths `/v3/contacts`, `/v3/contacts/lists/{id}`, etc., e o gateway responde:
 
-## Objetivo deste plano
+```
+HTTP 404 {"code":"not_found","message":"Invalid route/ method passed"}
+```
 
-Isolar a causa real da falha do `syncLeadToBrevo` e completar Fase 6 (1 unlock end-to-end com contacto verificado na Brevo + atributos com tipos corretos).
+Foi por isso que os 6 unlocks de teste registaram 0 eventos `brevo_contact_synced` e 0 `brevo_contact_sync_failed` na BD: a chamada falhava com `BREVO_404`, mas o sync era fire-and-forget e o worker terminava antes do `safeRecordFailure` correr (até ao fix do `await` que já metemos).
 
-## Passo A — Endpoint admin de diagnóstico (efémero)
+Confirmado experimentalmente:
+- `POST /brevo/v3/contacts` → 404
+- `POST /brevo/contacts` → 201 `{"id":263}`
+- `GET /brevo/account` → 200 (sem `/v3`)
 
-Criar `src/routes/api/admin/brevo-test-sync.ts` (POST):
+## Passo 1 — Corrigir paths em `src/lib/brevo/*`
 
-- Protegido por `INTERNAL_API_TOKEN` (header `x-internal-token`) — não público.
-- Aceita `{ leadId: string, reason?: string }`.
-- Chama diretamente `syncLeadToBrevo(leadId, reason ?? "admin_test")`.
-- Retorna `{ outcome: BrevoSyncOutcome, env: { hasLovableKey, hasBrevoKey, hasListId } }` no body — sem mascarar para podermos ver `reason` exato (`BREVO_API_KEY_MISSING`, `BREVO_429:…`, `BREVO_TIMEOUT`, `BREVO_NETWORK:…`, etc.).
-- Sem fire-and-forget, sem dynamic imports tardios.
+Remover o prefixo `/v3` de todos os paths usados pelo cliente. Tipicamente uma única alteração centralizada em `client.server.ts`:
 
-Vou correr 1 chamada com `leadId=5024101c-…` (brevotest6) e ver o `reason`.
+- Trocar `GATEWAY_URL = "https://connector-gateway.lovable.dev/brevo"` mantém-se igual.
+- Atualizar todas as chamadas `brevoFetch("/v3/...")` para `brevoFetch("/...")`. Ficheiros afetados:
+  - `src/lib/brevo/contacts.server.ts` — `POST /v3/contacts` → `POST /contacts`
+  - `src/lib/brevo/customer-sync.server.ts` — qualquer `/v3/...`
+  - testes em `src/lib/brevo/__tests__/*` — atualizar mocks/asserts
 
-## Passo B — Aplicar fix conforme diagnóstico
+Decisão: em vez de remover linha-a-linha, `client.server.ts` passa a normalizar automaticamente — se o path começar por `/v3`, retira-o. Isto torna o fix idempotente, robusto a chamadores futuros, e mantém os ficheiros de domínio iguais ao que existiria contra a API direta da Brevo. Justificação: o gateway é uma fachada que decide o versionamento; o nosso código não deve precisar de saber.
 
-Três cenários esperados e ação para cada:
+Implementação: 2 linhas em `brevoFetch`:
+```ts
+const normalized = path.replace(/^\/?v3\//, "/");
+const url = `${GATEWAY_URL}${normalized.startsWith("/") ? normalized : `/${normalized}`}`;
+```
 
-| Diagnóstico | Fix |
-|---|---|
-| `BREVO_API_KEY_MISSING` | Secret de connector não está injetado no worker. Investigar se o template TanStack Start carrega `BREVO_API_KEY` ou se tem outro nome (`VITE_…`, namespace de connector). Pode exigir `update_secret` ou re-link via `standard_connectors--connect`. |
-| `BREVO_4xx:…` | Atributo/lista mal-formado. Ajustar o payload em `sync.server.ts` (provavelmente formato dos campos `category` enviados como string label vs ID). |
-| `BREVO_TIMEOUT` ou `BREVO_NETWORK:…` | Aumentar timeout, ou problema de rede no gateway — reportar e tentar de novo. |
-| Outro (ex.: erro no insert de `product_events`) | Logar payload exato e corrigir no sítio certo. |
+## Passo 2 — Limpar instrumentação temporária
 
-## Passo C — Validação end-to-end
+- Remover `console.log("[unlock] BREVO_SYNC_START …")` e `BREVO_SYNC_END` em `src/lib/unlock.server.ts`. Manter o `await syncLeadToBrevo(...)` (essa parte do fix mantém-se correta).
+- Remover endpoint efémero `src/routes/api/public/brevo-test-sync.ts`.
 
-Após o fix:
-1. Novo unlock real: `frederico+brevotest7@fredericocarvalho.pt`.
-2. Verificar `product_events` → `brevo_contact_synced` com `metadata.brevo_id`.
-3. `GET /v3/contacts/{email}` direto → confirmar atributos populados:
-   - `INSTAGRAM_HANDLE` = `frederico.m.carvalho`
-   - `REPORTS_COUNT` = `1` (numérico)
-   - `LAST_REPORT_URL` = URL completa
-   - `LAST_REPORT_AT` = ISO date
-   - `PROFILE_OWNERSHIP/GOAL/USER_TYPE/PRICING_PREFERENCE/LEAD_SOURCE/COMMERCIAL_STATUS` com valores válidos
-   - `IS_CUSTOMER` = `false`
-4. Confirmar contacto está na lista `BREVO_LEAD_MAGNET_LIST_ID`.
+## Passo 3 — Validação end-to-end (1 unlock real)
 
-## Passo D — Cleanup
+1. Unlock real via UI ou via `POST /api/public/report-unlock` para:
+   - email: `frederico+brevotest7@fredericocarvalho.pt`
+   - handle: `frederico.m.carvalho`
+   - snapshot: `683e4c21-60e0-4045-b43a-dfcd85fe9896`
+2. Esperar 5s.
+3. Verificar `product_events` (últimos 2min):
+   - `brevo_contact_synced` com `metadata.brevo_id` numérico, `status=201` (novo) ou `204` (existente).
+4. `GET /brevo/contacts/{email}` direto pelo gateway → confirmar:
+   - `INSTAGRAM_HANDLE = "frederico.m.carvalho"`
+   - `REPORTS_COUNT = 1` (NUMBER)
+   - `LAST_REPORT_URL = "https://instagramaudit.lovable.app/analyze/frederico.m.carvalho"`
+   - `LAST_REPORT_AT` (DATE/ISO)
+   - `PROFILE_OWNERSHIP / GOAL / USER_TYPE / PRICING_PREFERENCE` se enviados na unlock
+   - `LEAD_SOURCE = "public_report_unlock"`
+   - `COMMERCIAL_STATUS = "novo_pedido"`
+   - `IS_CUSTOMER = false`
+   - contact em `listIds` inclui `16` (lead-magnet)
 
-- Remover endpoint admin de diagnóstico (`brevo-test-sync.ts`).
-- Remover `console.log` de debug que ficou em `unlock.server.ts`.
-- Manter o `await` (substituição do fire-and-forget) — é o fix correto.
-- Documentar nota no plan.md sobre lead-magnet sequence (passo 6 do unlock) que continua fire-and-forget e provavelmente também não corre — fica como follow-up separado.
-- Pedir-te para remover `BREVO_DIRECT_API_KEY` (já não é preciso).
+## Passo 4 — Backfill dos 6 leads de teste já criados
 
-## Detalhes técnicos
+Os contactos `brevotest1..6` ainda não foram sincronizados com sucesso (exceto o `6`, que upserti manualmente como teste de diagnóstico — id 263). Criar script efémero (`code--exec`) que itera sobre os 6 lead IDs e chama `syncLeadToBrevo`. Não toca em nada destrutivo. Remove-se o script após correr.
 
-- O endpoint admin não regenera reports nem chama providers Apify/DFS/OpenAI — apenas a Brevo via gateway.
-- Não toca em `auth`, `storage`, ou outras schemas reservadas.
-- Não há mudanças à BD nesta fase.
+## Passo 5 — Cleanup final
+
+- Remover secret `BREVO_DIRECT_API_KEY` (já não é necessário — só serviu para criar atributos no Passo 5 anterior; o sync corre via gateway).
+- Atualizar `.lovable/plan.md` a marcar Fase 6 ✅.
+- Documentar no plan.md o quirk do gateway (strip de `/v3`) para evitar regressões futuras quando adicionarmos novos endpoints Brevo.
+
+## Notas técnicas
+
+- Não é necessário criar nem alterar tabelas.
+- Não toca em `auth/storage/realtime`.
+- Não regenera reports nem chama Apify/DFS/OpenAI.
+- O fix em `brevoFetch` é compatível com chamadas que já estão sem `/v3` — a regex só normaliza quando o prefixo está presente.
 
 ## Checkpoint
 
-- ☐ Endpoint admin criado e protegido por token
-- ☐ Diagnóstico com `reason` exato capturado
-- ☐ Fix aplicado conforme diagnóstico
-- ☐ Unlock end-to-end validado (evento + contacto Brevo + atributos com tipos corretos)
-- ☐ Endpoint admin e console.log removidos
-- ☐ Lead-magnet sequence documentada como follow-up
+- ☐ `brevoFetch` normaliza `/v3` → 200/201 contra `POST /v3/contacts`
+- ☐ Instrumentação debug e endpoint efémero removidos
+- ☐ Unlock end-to-end de `brevotest7` valida atributos corretos no Brevo
+- ☐ Backfill dos 6 leads de teste anteriores
+- ☐ `BREVO_DIRECT_API_KEY` removido
+- ☐ Quirk do gateway documentado no plan.md

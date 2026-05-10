@@ -55,7 +55,7 @@ describe("upsertBrevoContact", () => {
 
     expect(res).toEqual({ ok: true, brevoId: 12345, status: 201 });
     expect(capturedUrl).toBe(
-      "https://connector-gateway.lovable.dev/brevo/v3/contacts",
+      "https://connector-gateway.lovable.dev/brevo/contacts",
     );
     expect(capturedHeaders["Authorization"]).toBe("Bearer lov_test");
     expect(capturedHeaders["X-Connection-Api-Key"]).toBe("lovc_test");
