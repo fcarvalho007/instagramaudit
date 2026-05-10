@@ -100,7 +100,7 @@ export async function syncCustomerToBrevo(
       USER_TYPE: lead.user_type ?? null,
       PRICING_PREFERENCE: mapPricingPreference(lead.pricing_preference),
       LEAD_SOURCE: mapLeadSource(lead.source as string | null),
-      COMMERCIAL_STATUS: "customer",
+      COMMERCIAL_STATUS: 2, // customer
       IS_CUSTOMER: true,
       PLAN: plan,
       LAST_PAYMENT_AT: nowIso,
