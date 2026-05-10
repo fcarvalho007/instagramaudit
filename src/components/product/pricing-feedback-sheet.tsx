@@ -16,6 +16,7 @@ import {
   type PricingPreference,
 } from "@/lib/unlock-flow";
 import type { PricingFeedbackTrigger } from "@/lib/pricing-feedback";
+import { trackEvent } from "@/lib/tracking.functions";
 
 export interface PricingFeedbackSheetProps {
   open: boolean;
@@ -43,7 +44,22 @@ export function PricingFeedbackSheet({
 
   const handleClose = (next: boolean) => {
     if (status === "submitting") return;
-    if (!next) onDone?.();
+    if (!next) {
+      if (status !== "success") {
+        try {
+          void trackEvent({
+            data: {
+              eventType: "pricing_feedback_dismissed",
+              snapshotId,
+              metadata: { trigger },
+            },
+          }).catch(() => {});
+        } catch {
+          /* ignore */
+        }
+      }
+      onDone?.();
+    }
     onOpenChange(next);
   };
 

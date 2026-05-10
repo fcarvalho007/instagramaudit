@@ -45,6 +45,7 @@ const ALLOWED_EVENTS = [
   "brevo_customer_synced",
   "brevo_customer_sync_failed",
   // Contextual pricing-feedback sheet (post-value)
+  "pricing_feedback_shown",
   "pricing_feedback_submitted",
   "pricing_feedback_dismissed",
   // Unlock-check (per-field returning lead detection)
