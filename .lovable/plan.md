@@ -1,93 +1,158 @@
-## Avaliação — fase Email 1 (welcome beta) já está 90% feita
+## Estado atual
 
-A maior parte do que o prompt pede já existe:
+Template e formatter já existem mas não estão ligados ao unlock. Falta o sender e o disparo.
 
-| Requisito | Estado |
+| Peça | Estado |
 |---|---|
-| Template welcome beta | ✅ `src/lib/email/templates/welcome-beta.ts` |
-| Sender server-only | ✅ `src/lib/email/send-welcome-beta.server.ts` |
-| Disparo após unlock (apenas brand-new lead) | ✅ `unlock.server.ts:443-487` |
-| Dedupe por (lead, snapshot) | ✅ guardado por `createdReportRequest` |
-| Não bloqueia unlock se falhar | ✅ try/catch + `await` mas envolvido em try; sender nunca lança |
-| Provider Resend (fallback) | ✅ `transactional-email.server.ts` (Brevo+Resend) |
-| Evento `..._email_sent` | ⚠️ existe como `welcome_beta_email_sent` (spec pede `beta_welcome_email_sent`) |
-| Evento `..._email_failed` | ⚠️ definido em `transactional-email.server.ts` mas como `welcome_beta_email_failed` |
-| Cópia: handle, MVP, beta, CTA | ✅ |
-| Cópia: "Durante a beta, o acesso é gratuito." | ❌ falta |
-| Secondary CTA "Dar feedback…" | ❌ falta (sem URL configurado) |
-| Subject = uma das 3 opções | ⚠️ atual "Bem-vindo à beta do InstaBench" — não é exatamente nenhuma |
-| Preheader spec | ⚠️ atual "Estamos a validar o produto e o teu feedback conta." (próximo mas não igual) |
+| `templates/report-summary.ts` | ✅ existe (4 KPIs + top post + CTA) |
+| `build-report-summary-data.server.ts` | ✅ extrai do snapshot via `snapshotToReportData` (única fonte de verdade) |
+| Allowlist eventos `report_summary_email_sent` / `_failed` / `_skipped_no_data` | ✅ em `tracking.functions.ts` |
+| Mapping em `transactional-email.server.ts` | ✅ `report-summary → report_summary_email_failed` |
+| Sender `send-report-summary.server.ts` | ❌ falta |
+| Disparo em `unlock.server.ts` | ❌ falta |
+| Subject/preheader iguais ao spec | ⚠️ desalinhados (ver abaixo) |
+| Testes formatter + template | ❌ falta |
 
-## Decisão de naming
+## Decisão sobre nomes de ficheiros
 
-**Manter ficheiro `welcome-beta.ts`** (não criar `beta-welcome.ts` paralelo). Renomear ficheiros já em uso causa churn em imports, testes e admin templates registry sem benefício funcional. O nome interno é detalhe de implementação; o que o utilizador vê é o subject.
-
-**Decisão sobre nome dos eventos**: o spec pede `beta_welcome_email_*`, o código atual usa `welcome_beta_email_*`. Vou alinhar com o spec → renomear para `beta_welcome_email_sent` / `beta_welcome_email_failed` em 3 sítios (allowlist de tracking, dispatcher do transactional-email, unlock.server). Sem migração BD: `product_events.event_type` é texto livre.
+- **Manter** `build-report-summary-data.server.ts` (em vez do `report-summary-data.ts` do spec). O sufixo `.server.ts` está protegido contra import no client e é padrão neste projeto. Renomear não traz benefício e mexe em imports do admin registry.
+- **Manter** `templates/report-summary.ts` (já no caminho que o spec pede).
 
 ## Refinamentos a aplicar
 
-### 1. `src/lib/email/templates/welcome-beta.ts`
-- Subject → `"Bem-vindo ao piloto InstaBench"` (opção 1 do spec — mais transparente que "beta", consistente com tom "piloto/MVP").
-- Preheader → `"Estamos a validar o MVP com utilizadores reais — o teu feedback conta."` (literal do spec).
-- Adicionar parágrafo `pMuted("Durante a beta, o acesso é gratuito.")` antes do `signatureHtml()`.
-- Aceitar `feedbackUrl?: string | null` no input. Se vier preenchido, renderizar segundo CTA discreto: `pMuted("<a href=\"…\">Dar feedback quando terminares a leitura</a>")`. Se não vier, omitir.
-- Atualizar versão `text` (plain-text) com as mesmas linhas.
+### 1. `src/lib/email/templates/report-summary.ts`
+- Subject → `"Resumo da análise de @{handle}"` (literal do spec) em `buildSubject`.
+- Preheader → `"Os principais sinais do teu relatório InstaBench."`.
+- Manter `HEADLINE = "Resumo da tua análise"`, KPI grid, top post card, CTA "Ver relatório completo" — já cumprem spec.
+- Sem mudanças de design/layout.
 
-### 2. `src/lib/email/send-welcome-beta.server.ts`
-- Aceitar `feedbackUrl?: string | null` em `SendWelcomeBetaArgs` e propagar para `renderWelcomeBeta`.
-- Resolver default a partir de `process.env.FEEDBACK_URL` (trim, vazio → null).
+### 2. Novo `src/lib/email/send-report-summary.server.ts`
+Espelha o padrão do `send-welcome-beta.server.ts`:
+
+```
+sendReportSummaryEmail({
+  toEmail, firstName, leadId, reportRequestId, snapshotId,
+}) → { ok, messageId, provider } | { ok: false, reason }
+```
+
+Fluxo:
+1. `buildReportSummaryEmailData(snapshotId)` — se devolver `null`, retornar `{ ok: false, reason: "NO_DATA" }` (caller emite `report_summary_skipped_no_data`).
+2. `renderReportSummary({ firstName, instagramHandle: data.instagramHandle, reportUrl: resolveReportUrl(handle), kpis, topPost })`.
+3. `sendTransactionalEmail({ flowType: "report-summary", ... })` — Brevo + Resend fallback já existentes.
+4. Nunca lança.
 
 ### 3. `src/lib/unlock.server.ts`
-- Renomear `eventType: "welcome_beta_email_sent"` → `"beta_welcome_email_sent"`.
-- Adicionar bloco de **failure event**: se `res.ok === false`, registar `beta_welcome_email_failed` com `metadata: { reason: res.reason, report_request_id, …email_masked }`.
-- Não tocar no caminho `personal-area-saved` (returning leads continuam intactos).
+Logo após o bloco `welcome-beta` (dentro do mesmo `if (createdReportRequest)`), adicionar bloco fire-and-forget para o resumo. Vai sair só uma vez por `(lead, snapshot)` graças ao mesmo gate. Aplica a brand-new **e** returning leads (cada relatório novo merece resumo).
 
-### 4. `src/lib/email/transactional-email.server.ts`
-- Atualizar mapa de flow → failure event: `"welcome-beta": "beta_welcome_email_failed"`.
+```
+void (async () => {
+  const { sendReportSummaryEmail } = await import(
+    "@/lib/email/send-report-summary.server"
+  );
+  const res = await sendReportSummaryEmail({
+    toEmail: data.email,
+    firstName,
+    leadId,
+    reportRequestId,
+    snapshotId: data.analysis_snapshot_id,
+  });
+  if (res.ok) {
+    await recordProductEvent({
+      eventType: "report_summary_email_sent",
+      leadId, snapshotId: data.analysis_snapshot_id,
+      handle: data.instagram_username,
+      metadata: { message_id: res.messageId, provider: res.provider, report_request_id: reportRequestId },
+    });
+  } else if (res.reason === "NO_DATA") {
+    await recordProductEvent({
+      eventType: "report_summary_skipped_no_data",
+      leadId, snapshotId: data.analysis_snapshot_id,
+      handle: data.instagram_username,
+      metadata: { report_request_id: reportRequestId },
+    });
+  } else {
+    await recordProductEvent({
+      eventType: "report_summary_email_failed",
+      leadId, snapshotId: data.analysis_snapshot_id,
+      handle: data.instagram_username,
+      metadata: { reason: res.reason, report_request_id: reportRequestId },
+    });
+  }
+})().catch((err) => console.error("[unlock] report-summary email error:", err));
+```
 
-### 5. `src/lib/tracking.functions.ts`
-- Renomear allowlist: `"welcome_beta_email_sent"` → `"beta_welcome_email_sent"`, `"welcome_beta_email_failed"` → `"beta_welcome_email_failed"`.
+Wraps em `void`/`catch` para não bloquear o unlock nem o welcome-beta. (`createdReportRequest = true` garante 1 envio por (lead, snapshot).)
 
-### 6. Testes
-- Atualizar quaisquer testes em `src/lib/email/__tests__` que esperem o subject antigo ou os eventos antigos. Vou verificar e corrigir.
+### 4. `src/lib/admin/email-template-registry.ts`
+- Atualizar `wiredAt` do `report_summary` para `"src/lib/email/send-report-summary.server.ts (após unlock)"`.
+- Atualizar o preheader de preview para `"Os principais sinais do teu relatório InstaBench."`.
+
+## Campos usados (do snapshot)
+
+Do `snapshotToReportData`:
+- `data.profile.followers` → KPI Seguidores
+- `data.keyMetrics.engagementRate` → KPI Engagement médio (%)
+- `data.keyMetrics.dominantFormat` → KPI Formato dominante
+- `data.keyMetrics.engagementDeltaPct` → KPI Δ vs benchmark (pp)
+- `data.topPosts[0]` → top post (format, engagementPct, thumbnailUrl, permalink)
+
+Origem secundária: `instagram_username` da própria row `analysis_snapshots`.
+
+## Regras do formatter (já implementadas, validar com testes)
+
+- Hard-gate: se faltar followers, engagement, formato, top post ou top.engagement → devolve `null` (caller emite `report_summary_skipped_no_data`, **não** envia email).
+- Followers ≤ 0 ou engagement ≤ 0 contam como em falta.
+- `benchmarkDeltaPp` em falta cai para `0` (não bloqueia o envio — é métrica auxiliar).
+- Sem fallback inventado: nada de "estimado", "≈", placeholders.
+- Template escapa HTML em todos os campos via `escapeHtml`.
+
+## Testes a criar
+
+`src/lib/email/__tests__/report-summary.test.ts`:
+1. `renderReportSummary` produz subject `"Resumo da análise de @frederico.m.carvalho"` e preheader literal do spec.
+2. Valores KPI no HTML correspondem ao input (`12.480`, `3,42 %`, `Carrosséis`, `+1,2 pp`).
+3. HTML escapa tentativa de injeção: handle `"a<b>c"` aparece como `a&lt;b&gt;c`.
+4. Top post sem `permalink` não envolve em `<a>`; sem `thumbnailUrl` usa fallback gradient.
+
+`src/lib/email/__tests__/build-report-summary-data.test.ts`:
+5. Snapshot completo → todos os campos extraídos exatamente do `snapshotToReportData`.
+6. Snapshot sem followers → `null`.
+7. Snapshot sem `topPosts[0]` → `null`.
+8. Snapshot com `engagementDeltaPct` ausente → KPI cai para `0` mas devolve objeto.
+
+(Mock de `supabaseAdmin` + `snapshotToReportData` via `vi.mock`.)
 
 ## Não tocar
 
-- Filename `welcome-beta.ts` (decisão consciente — vê acima)
-- `personal-area-saved` (returning leads)
-- Provider stack (Brevo+Resend já existe; spec diz "use existing")
-- Brevo `BETA_WELCOMED_AT` stamp (já correto)
-- Report UI, PDF, Apify, OpenAI, DataForSEO
+- Cálculos do relatório (`snapshotToReportData`, benchmarks)
+- UI pública do report
+- Apify / OpenAI / DataForSEO
+- Welcome-beta (já enviado em paralelo)
+- `personal-area-saved` (returning leads continuam a recebê-lo)
 - Migração BD
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (testes existentes + atualizados)
+- `bunx vitest run` (8 testes novos + suite atual)
 - Manual:
-  1. Unlock com email novo → recebe email com novo subject/preheader, parágrafo "Durante a beta…", sem secondary CTA (porque `FEEDBACK_URL` ainda não está definido)
-  2. Unlock 2× com mesmo (email, snapshot) → 1 só email enviado (dedupe por `createdReportRequest`)
-  3. Unlock returning lead em snapshot novo → `personal-area-saved` (não `welcome-beta`)
-  4. Forçar falha (rotacionar Brevo+Resend keys local) → unlock continua, `beta_welcome_email_failed` registado em `product_events`
-  5. Definir `FEEDBACK_URL` e repetir → email passa a ter secondary CTA
+  1. Unlock novo → `welcome-beta` **e** `report-summary` chegam ao inbox; números no email = números no `/analyze/{handle}`.
+  2. Unlock 2× mesmo (email, snapshot) → 1 só email de cada (gate `createdReportRequest`).
+  3. Snapshot incompleto (followers=0) → unlock OK, evento `report_summary_skipped_no_data`, sem email.
+  4. Provider Brevo+Resend a falhar → `report_summary_email_failed` em `product_events`, unlock OK.
+  5. CTA do email abre `https://instagramaudit.lovable.app/analyze/{handle}`.
 
 ## Eventos finais
 
-- `beta_welcome_email_sent` — metadata: `message_id`, `provider`, `report_request_id`
-- `beta_welcome_email_failed` — metadata: `reason`, `report_request_id`, `email_masked`
+- `report_summary_email_sent` — `{ message_id, provider, report_request_id }`
+- `report_summary_email_failed` — `{ reason, report_request_id }`
+- `report_summary_skipped_no_data` — `{ report_request_id }` (já registado quando snapshot insuficiente)
 
-## Ficheiros alterados
+## Ficheiros alterados / criados
 
-- `src/lib/email/templates/welcome-beta.ts`
-- `src/lib/email/send-welcome-beta.server.ts`
-- `src/lib/email/transactional-email.server.ts`
-- `src/lib/unlock.server.ts`
-- `src/lib/tracking.functions.ts`
-- `src/lib/email/__tests__/*` (se necessário após verificação)
-
-## Pergunta antes de avançar
-
-Vou usar **subject "Bem-vindo ao piloto InstaBench"** (opção 1 do spec). Confirmas, ou preferes outra das opções:
-- (A) "Bem-vindo ao piloto InstaBench" *(default proposto)*
-- (B) "Obrigado por testares o InstaBench"
-- (C) "O teu acesso ao InstaBench beta está ativo"
+- `src/lib/email/templates/report-summary.ts` (subject + preheader)
+- **NOVO** `src/lib/email/send-report-summary.server.ts`
+- `src/lib/unlock.server.ts` (novo bloco fire-and-forget)
+- `src/lib/admin/email-template-registry.ts` (wiredAt + preheader)
+- **NOVO** `src/lib/email/__tests__/report-summary.test.ts`
+- **NOVO** `src/lib/email/__tests__/build-report-summary-data.test.ts`

@@ -71,11 +71,11 @@ function formatDelta(n: number): string {
 }
 
 function buildSubject(handle: string): string {
-  return `O teu raio-X de @${handle} em 60 segundos`;
+  return `Resumo da análise de @${handle}`;
 }
 
 const HEADLINE = "Resumo da tua análise";
-const PREHEADER = "4 números reais e o post que mais resultou.";
+const PREHEADER = "Os principais sinais do teu relatório InstaBench.";
 
 function kpiCellHtml(label: string, value: string): string {
   const safeLabel = escapeHtml(label);
