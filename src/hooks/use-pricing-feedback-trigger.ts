@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { PricingFeedbackTrigger } from "@/lib/pricing-feedback";
+import { trackEvent } from "@/lib/tracking.functions";
 
 const PDF_EVENT = "ib:pdf-export";
 const SCROLL_THRESHOLD = 0.7;
@@ -70,6 +71,17 @@ export function usePricingFeedbackTrigger({
       markAsked(snapshotId);
       setTrigger(t);
       setOpen(true);
+      try {
+        void trackEvent({
+          data: {
+            eventType: "pricing_feedback_shown",
+            snapshotId,
+            metadata: { trigger: t },
+          },
+        }).catch(() => {});
+      } catch {
+        /* ignore */
+      }
     };
 
     const onScroll = () => {
