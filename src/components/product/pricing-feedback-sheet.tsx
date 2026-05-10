@@ -111,8 +111,8 @@ export function PricingFeedbackSheet({
               <p className="text-eyebrow-sm text-content-tertiary">
                 Ajuda-nos a definir o preço
               </p>
-              <SheetTitle className="font-display text-[24px] sm:text-[26px] leading-[1.15] tracking-[-0.01em] text-content-primary">
-                Quanto pagarias por um relatório completo?
+              <SheetTitle className="font-display text-[22px] sm:text-[24px] leading-[1.2] tracking-[-0.01em] text-content-primary">
+                Depois de ver este relatório, quanto pagarias por uma análise completa de uma rede social?
               </SheetTitle>
               <SheetDescription className="text-[13px] text-content-secondary leading-relaxed">
                 Uso único. Resposta anónima — só nos serve para perceber valor justo.
