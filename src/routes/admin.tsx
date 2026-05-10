@@ -44,7 +44,7 @@ function AdminLayout() {
       >
         <AdminSidebar logout={logout} />
         <AdminTopbar />
-        <main className="min-h-screen px-3 py-4 sm:px-5 sm:py-5 md:pl-7 md:pr-7 md:py-7 md:ml-[var(--admin-sidebar-width)]">
+        <main className="min-h-screen px-4 py-5 sm:px-5 sm:py-5 md:pl-7 md:pr-7 md:py-7 md:ml-[var(--admin-sidebar-width)]">
           {demoOn ? (
             <details
               className="group mb-4 mt-2 rounded-md border px-3 py-2 text-[11px]"

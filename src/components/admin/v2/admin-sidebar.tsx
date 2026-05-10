@@ -90,10 +90,10 @@ const GROUPS: NavGroup[] = [
 ];
 
 const ITEM_BASE =
-  "flex items-center gap-2.5 pl-[10px] pr-3 py-2 rounded-lg text-[13px] no-underline transition-colors duration-150 border-l-2 border-transparent text-[rgb(var(--admin-sidebar-item-text))] hover:bg-[rgb(var(--admin-sidebar-item-bg-hover))] hover:text-[rgb(var(--admin-sidebar-item-text-hover))]";
+  "flex items-center gap-2.5 pl-[10px] pr-3 py-2.5 md:py-2 rounded-lg text-[15px] md:text-[13px] no-underline transition-colors duration-150 border-l-2 border-transparent text-[rgb(var(--admin-sidebar-item-text))] hover:bg-[rgb(var(--admin-sidebar-item-bg-hover))] hover:text-[rgb(var(--admin-sidebar-item-text-hover))]";
 
 const ITEM_ACTIVE =
-  "flex items-center gap-2.5 pl-[10px] pr-3 py-2 rounded-lg text-[13px] no-underline transition-colors duration-150 border-l-2 bg-[rgb(var(--admin-sidebar-item-bg-active))] text-[rgb(var(--admin-sidebar-item-text-active))] font-medium border-[rgb(var(--admin-sidebar-item-active-outline))] shadow-[0_0_0_1px_var(--admin-sidebar-item-active-halo)]";
+  "flex items-center gap-2.5 pl-[10px] pr-3 py-2.5 md:py-2 rounded-lg text-[15px] md:text-[13px] no-underline transition-colors duration-150 border-l-2 bg-[rgb(var(--admin-sidebar-item-bg-active))] text-[rgb(var(--admin-sidebar-item-text-active))] font-medium border-[rgb(var(--admin-sidebar-item-active-outline))] shadow-[0_0_0_1px_var(--admin-sidebar-item-active-halo)]";
 
 interface SidebarBodyProps {
   logout: (() => Promise<void>) | null;
@@ -109,7 +109,7 @@ function SidebarBody({ logout, onNavigate }: SidebarBodyProps) {
         style={{ borderBottom: "1px solid rgb(var(--admin-sidebar-border) / 0.08)" }}
       >
         <BarChart2 size={20} className="text-[rgb(var(--admin-info-500))]" />
-        <span className="text-[14px] font-semibold text-[rgb(var(--admin-neutral-900))]">
+        <span className="text-[16px] md:text-[14px] font-semibold text-[rgb(var(--admin-neutral-900))]">
           InstaBench
         </span>
       </div>
@@ -126,7 +126,7 @@ function SidebarBody({ logout, onNavigate }: SidebarBodyProps) {
             }
           >
             <p
-              className="text-[10px] font-semibold uppercase tracking-[0.14em] px-3 mb-1.5 select-none text-[rgb(var(--admin-sidebar-eyebrow))]"
+              className="text-[12px] md:text-[10px] font-semibold uppercase tracking-[0.14em] px-3 mb-1.5 select-none text-[rgb(var(--admin-sidebar-eyebrow))]"
             >
               {group.label}
             </p>

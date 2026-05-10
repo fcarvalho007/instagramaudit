@@ -79,7 +79,7 @@ function ExecutionModeBadge() {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap"
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] sm:text-[11px] font-medium whitespace-nowrap"
       style={{
         background: isCacheOnly
           ? "rgb(var(--admin-revenue-500) / 0.12)"
@@ -127,17 +127,17 @@ export function AdminTopbar() {
         type="button"
         onClick={openSidebar}
         aria-label="Abrir menu"
-        className="md:hidden inline-flex items-center justify-center h-9 w-9 rounded-lg border text-[rgb(var(--admin-neutral-800))]"
+        className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg border text-[rgb(var(--admin-neutral-800))]"
         style={{
           borderColor: "rgb(var(--admin-sidebar-border) / 0.12)",
           background: "rgb(var(--admin-sidebar-bg))",
         }}
       >
-        <Menu size={18} />
+        <Menu size={20} />
       </button>
 
       <h2
-        className="min-w-0 truncate text-[14px] font-semibold text-[rgb(var(--admin-neutral-900))]"
+        className="min-w-0 truncate text-[16px] sm:text-[14px] font-semibold text-[rgb(var(--admin-neutral-900))]"
         title={title}
       >
         {title}
