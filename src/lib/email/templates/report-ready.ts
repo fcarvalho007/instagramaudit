@@ -20,9 +20,13 @@ export interface ReportReadyInput {
   reportUrl: string;
 }
 
-const SUBJECT = "O teu relatório InstaBench já está pronto";
-const HEADLINE = "O teu relatório está pronto";
-const PREHEADER = "Análise completa disponível para consultares.";
+const HEADLINE = "Relatório pronto";
+const PREHEADER = "Análise completa, com leitura editorial dos dados públicos.";
+const FALLBACK_SUBJECT = "O teu relatório está disponível";
+
+function buildSubject(handle: string | null | undefined): string {
+  return handle ? `O teu relatório de @${handle} está disponível` : FALLBACK_SUBJECT;
+}
 
 export function renderReportReady(input: ReportReadyInput): RenderedEmail {
   if (!input.reportUrl || !input.reportUrl.trim()) {
@@ -31,38 +35,51 @@ export function renderReportReady(input: ReportReadyInput): RenderedEmail {
   const handle = input.instagramHandle ? `@${input.instagramHandle}` : "o teu perfil";
   const safeHandle = escapeHtml(handle);
   const url = input.reportUrl.trim();
+  const subject = buildSubject(input.instagramHandle);
 
   const text = joinLines([
     greetingText(input.firstName),
     "",
-    `A análise do perfil ${handle} já está disponível para consultares.`,
+    `O relatório de ${handle} está pronto.`,
     "",
     "Abrir relatório:",
     url,
     "",
-    "É um relatório beta — pode evoluir nos próximos dias com base no que aprendermos.",
-    "Depois de explorares, agradecíamos imenso o teu feedback. Vamos contactar-te em breve para o pedir.",
+    "Tira uns minutos a explorar. Não é um dashboard de métricas — é uma leitura editorial dos dados públicos do perfil, cruzada com referências de mercado. Alguns blocos podem surpreender, no bom e no mau sentido.",
     "",
-    ...signatureText(),
+    "Esta é uma versão beta:",
+    "· pode ainda haver pontas soltas — se vires algo estranho, dá-nos sinal;",
+    "· vai melhorar nas próximas semanas com base em quem a usa.",
+    "",
+    "Daqui a uns dias, vamos pedir-te 2 minutos de feedback. O input de quem usa agora é o que define o caminho.",
+    "",
+    ...signatureText("Boa leitura,"),
   ]);
 
   const bodyHtml = [
     p(greetingHtml(input.firstName)),
-    p(`A análise do perfil <strong style="color:#0a0e1a;">${safeHandle}</strong> já está disponível para consultares.`),
+    p(`O relatório de <strong style="color:#0a0e1a;">${safeHandle}</strong> está pronto.`),
     renderButtonHtml("Abrir relatório", url),
     `<div style="height:20px;"></div>`,
     renderUrlFallbackHtml(url),
     `<div style="height:24px;"></div>`,
-    pMuted("É um relatório <strong style=\"color:#0a0e1a;\">beta</strong> — pode evoluir nos próximos dias com base no que aprendermos."),
-    pMuted("Depois de explorares, agradecíamos imenso o teu feedback. Vamos contactar-te em breve para o pedir."),
-    signatureHtml(),
+    pMuted(
+      "Tira uns minutos a explorar. Não é um <em>dashboard</em> de métricas — é uma leitura editorial dos dados públicos do perfil, cruzada com referências de mercado. Alguns blocos podem surpreender, no bom e no mau sentido.",
+    ),
+    pMuted(
+      "Esta é uma versão <strong style=\"color:#0a0e1a;\">beta</strong>:<br/>· pode ainda haver pontas soltas — se vires algo estranho, dá-nos sinal;<br/>· vai melhorar nas próximas semanas com base em quem a usa.",
+    ),
+    pMuted(
+      "Daqui a uns dias, vamos pedir-te 2 minutos de feedback. O <em>input</em> de quem usa agora é o que define o caminho.",
+    ),
+    signatureHtml("Boa leitura,"),
   ].join("\n");
 
   return {
-    subject: SUBJECT,
+    subject,
     text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    html: wrapHtml({ title: subject, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
   };
 }
 
-renderReportReady.subject = SUBJECT;
+renderReportReady.subject = FALLBACK_SUBJECT;

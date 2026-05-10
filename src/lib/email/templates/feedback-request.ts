@@ -22,9 +22,13 @@ export interface FeedbackRequestInput {
   reportViewed?: boolean;
 }
 
-const SUBJECT = "Podes dar feedback ao teu relatório InstaBench?";
-const HEADLINE = "O teu feedback ajuda-nos a melhorar";
+const HEADLINE = "Pedido de feedback";
 const PREHEADER = "Duas ou três frases chegam — ajuda-nos a melhorar.";
+const FALLBACK_SUBJECT = "O teu relatório foi útil?";
+
+function buildSubject(handle: string | null | undefined): string {
+  return handle ? `O relatório de @${handle} foi útil?` : FALLBACK_SUBJECT;
+}
 
 export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmail {
   const handle = input.instagramHandle ? `@${input.instagramHandle}` : "o teu perfil";
@@ -32,13 +36,14 @@ export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmai
   const feedbackUrl = input.feedbackUrl?.trim() || null;
   const reportUrl = input.reportUrl?.trim() || null;
   const reportViewed = input.reportViewed ?? true;
+  const subject = buildSubject(input.instagramHandle);
 
   const openingText = reportViewed
-    ? `Notámos que já consultaste o relatório de ${handle} — obrigado.`
-    : `Quando tiveres oportunidade de consultar o relatório de ${handle}, agradecíamos imenso o teu feedback.`;
+    ? `Vimos que já abriste o relatório de ${handle}. Obrigado por experimentares.`
+    : `Quando tiveres oportunidade de abrir o relatório de ${handle}, agradecíamos o teu feedback.`;
   const openingHtml = reportViewed
-    ? `Notámos que já consultaste o relatório de <strong style="color:#0a0e1a;">${safeHandle}</strong> — obrigado.`
-    : `Quando tiveres oportunidade de consultar o relatório de <strong style="color:#0a0e1a;">${safeHandle}</strong>, agradecíamos imenso o teu feedback.`;
+    ? `Vimos que já abriste o relatório de <strong style="color:#0a0e1a;">${safeHandle}</strong>. Obrigado por experimentares.`
+    : `Quando tiveres oportunidade de abrir o relatório de <strong style="color:#0a0e1a;">${safeHandle}</strong>, agradecíamos o teu feedback.`;
 
   const ctaTextLines = feedbackUrl
     ? ["Dar feedback:", feedbackUrl]
@@ -49,16 +54,18 @@ export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmai
     "",
     openingText,
     "",
-    "Gostaríamos de saber, em duas ou três frases, o que foi mais útil e o que falta melhorar.",
+    "Podemos pedir-te 2 minutos? Estamos na fase de validar se a análise é genuinamente útil — ou se há outro caminho que faria mais sentido.",
     "",
     ...ctaTextLines,
     "",
-    ...(reportUrl && !feedbackUrl
-      ? [`Caso precises de rever o relatório: ${reportUrl}`, ""]
-      : []),
-    "O teu input nesta fase pesa muito na direção do produto.",
+    "Três perguntas, três frases curtas. O que te ajudou, o que faltou, o que mudarias.",
     "",
-    ...signatureText(),
+    ...(reportUrl && !feedbackUrl
+      ? [`(Se quiseres rever o relatório antes: ${reportUrl})`, ""]
+      : reportUrl
+      ? [`(Se quiseres rever o relatório antes: ${reportUrl})`, ""]
+      : []),
+    ...signatureText("Obrigado pela ajuda,"),
   ]);
 
   const ctaHtml = feedbackUrl
@@ -68,25 +75,27 @@ export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmai
   const bodyHtml = [
     p(greetingHtml(input.firstName)),
     p(openingHtml),
-    pMuted("Gostaríamos de saber, em duas ou três frases, o que foi mais útil e o que falta melhorar."),
+    pMuted(
+      "Podemos pedir-te 2 minutos? Estamos na fase de validar se a análise é genuinamente útil — ou se há outro caminho que faria mais sentido.",
+    ),
     ctaHtml,
     `<div style="height:20px;"></div>`,
     feedbackUrl ? renderUrlFallbackHtml(feedbackUrl) : "",
     feedbackUrl ? `<div style="height:20px;"></div>` : "",
+    pMuted("Três perguntas, três frases curtas. O que te ajudou, o que faltou, o que mudarias."),
     reportUrl
-      ? pMuted(`Caso precises de rever o relatório, podes <a href="${escapeHtml(reportUrl)}" target="_blank" rel="noopener noreferrer" style="color:#3772E5;text-decoration:underline;">abri-lo aqui</a>.`)
+      ? pMuted(`Se quiseres rever o relatório antes: <a href="${escapeHtml(reportUrl)}" target="_blank" rel="noopener noreferrer" style="color:#3772E5;text-decoration:underline;">abrir relatório</a>.`)
       : "",
-    pMuted("O teu input nesta fase pesa muito na direção do produto."),
-    signatureHtml(),
+    signatureHtml("Obrigado pela ajuda,"),
   ]
     .filter(Boolean)
     .join("\n");
 
   return {
-    subject: SUBJECT,
+    subject,
     text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    html: wrapHtml({ title: subject, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
   };
 }
 
-renderFeedbackRequest.subject = SUBJECT;
+renderFeedbackRequest.subject = FALLBACK_SUBJECT;

@@ -19,69 +19,59 @@ export interface CommercialFollowupInput {
   reportUrl?: string | null;
   /** Optional reply-to email used in the soft CTA (mailto:). */
   replyToEmail?: string | null;
+  /** Optional checkout URL — primary CTA when present. */
+  checkoutUrl?: string | null;
 }
 
-const SUBJECT = "Próximo passo para analisar melhor o teu Instagram";
-const HEADLINE = "Continuamos a conversa?";
-const PREHEADER = "Sem pressão. Respondemos quando fizer sentido para ti.";
-
-const PRICING_LABELS: Record<string, string> = {
-  single_3_eur: "Relatório único (€3 + IVA)",
-  bundle_13_eur: "Bundle 5 relatórios (€13 + IVA)",
-  monthly: "Plano mensal",
-  agency: "Agência",
-};
+const SUBJECT = "Próximos passos para o relatório completo";
+const HEADLINE = "Próximos passos";
+const PREHEADER = "Acesso vitalício, bundle de 5 análises e condições para docentes.";
 
 export function renderCommercialFollowup(input: CommercialFollowupInput): RenderedEmail {
   const handle = input.instagramHandle ? `@${input.instagramHandle}` : "o teu perfil";
   const safeHandle = escapeHtml(handle);
-  const pricingRaw = input.pricingOption?.trim() || null;
-  const pricing = pricingRaw ? (PRICING_LABELS[pricingRaw] ?? pricingRaw) : null;
+  const checkoutUrl = input.checkoutUrl?.trim() || null;
   const reportUrl = input.reportUrl?.trim() || null;
   const replyTo = input.replyToEmail?.trim() || null;
-
-  const pricingLine = pricing
-    ? `Vimos que mostraste interesse na opção "${pricing}" — fica à vontade para responder e marcamos uma conversa curta.`
-    : null;
 
   const text = joinLines([
     greetingText(input.firstName),
     "",
-    `Esperamos que o relatório de ${handle} tenha sido útil.`,
+    "Obrigado pelo interesse em desbloquear o relatório completo. Os próximos passos:",
     "",
-    "Se quiseres aprofundar — comparar com mais concorrentes, monitorizar a evolução ao longo do tempo ou receber relatórios recorrentes — podemos preparar uma proposta adaptada ao teu caso.",
-    ...(pricingLine ? ["", pricingLine] : []),
+    "Duas opções:",
+    `· Esta análise — €3 + IVA, acesso vitalício às 6 secções de ${handle}`,
+    "· Bundle 5 análises — €13 + IVA, poupas €2, ideal para comparar várias contas (clientes, concorrentes ou hipóteses)",
     "",
-    replyTo
-      ? `Para falar connosco, basta responderes a este email ou escreveres para ${replyTo}.`
-      : "Para falar connosco, basta responderes a este email.",
+    ...(checkoutUrl ? ["Desbloquear:", checkoutUrl, ""] : []),
+    `Se a tua dúvida é sobre uso académico — para alunos, turmas ou investigação — responde a este email${replyTo ? ` ou escreve para ${replyTo}` : ""}. Há condições específicas para docentes.`,
     ...(reportUrl ? ["", `Rever o relatório: ${reportUrl}`] : []),
-    "",
-    "Sem pressão — respondemos quando fizer sentido para ti.",
     "",
     ...signatureText(),
   ]);
 
-  const ctaUrl = replyTo ? `mailto:${replyTo}` : null;
-  const ctaHtml = ctaUrl
-    ? renderButtonHtml("Falar connosco", ctaUrl)
+  const ctaHtml = checkoutUrl
+    ? renderButtonHtml("Desbloquear", checkoutUrl)
+    : replyTo
+    ? renderButtonHtml("Falar connosco", `mailto:${replyTo}`)
     : pMuted("Para falar connosco, basta responderes a este email.");
 
   const bodyHtml = [
     p(greetingHtml(input.firstName)),
-    p(`Esperamos que o relatório de <strong style="color:#0a0e1a;">${safeHandle}</strong> tenha sido útil.`),
-    pMuted(
-      "Se quiseres aprofundar — comparar com mais concorrentes, monitorizar a evolução ao longo do tempo ou receber relatórios recorrentes — podemos preparar uma proposta adaptada ao teu caso.",
+    p(
+      `Obrigado pelo interesse em desbloquear o relatório completo de <strong style="color:#0a0e1a;">${safeHandle}</strong>. Os próximos passos:`,
     ),
-    pricing
-      ? pMuted(`Vimos que mostraste interesse na opção <strong style="color:#0a0e1a;">${escapeHtml(pricing)}</strong> — fica à vontade para responder e marcamos uma conversa curta.`)
-      : "",
+    p(
+      `Duas opções:<br/>· <strong style="color:#0a0e1a;">Esta análise</strong> — €3 + IVA, acesso vitalício às 6 secções de ${safeHandle}<br/>· <strong style="color:#0a0e1a;">Bundle 5 análises</strong> — €13 + IVA, poupas €2, ideal para comparar várias contas (clientes, concorrentes ou hipóteses)`,
+    ),
     ctaHtml,
     `<div style="height:20px;"></div>`,
+    pMuted(
+      `Se a tua dúvida é sobre uso académico — para alunos, turmas ou investigação — responde a este email${replyTo ? ` ou escreve para <a href="mailto:${escapeHtml(replyTo)}" style="color:#3772E5;text-decoration:underline;">${escapeHtml(replyTo)}</a>` : ""}. Há condições específicas para docentes.`,
+    ),
     reportUrl
-      ? pMuted(`Podes também <a href="${escapeHtml(reportUrl)}" target="_blank" rel="noopener noreferrer" style="color:#3772E5;text-decoration:underline;">rever o relatório</a> antes de decidires.`)
+      ? pMuted(`Rever o relatório: <a href="${escapeHtml(reportUrl)}" target="_blank" rel="noopener noreferrer" style="color:#3772E5;text-decoration:underline;">abrir relatório</a>.`)
       : "",
-    pMuted("Sem pressão — respondemos quando fizer sentido para ti."),
     signatureHtml(),
   ]
     .filter(Boolean)
