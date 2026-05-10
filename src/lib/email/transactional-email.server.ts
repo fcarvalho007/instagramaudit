@@ -59,7 +59,7 @@ const FLOW_FAILURE_EVENT: Record<TxFlow, string> = {
   "feedback-request": "feedback_request_email_failed",
   "request-received": "request_received_email_failed",
   "commercial-followup": "commercial_followup_failed",
-  "welcome-beta": "welcome_beta_email_failed",
+  "welcome-beta": "beta_welcome_email_failed",
   "report-summary": "report_summary_email_failed",
 };
 

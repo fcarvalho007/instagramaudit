@@ -22,6 +22,8 @@ export interface SendWelcomeBetaArgs {
   leadId?: string | null;
   reportRequestId?: string | null;
   snapshotId?: string | null;
+  /** Optional secondary CTA URL. Defaults to FEEDBACK_URL env var if unset. */
+  feedbackUrl?: string | null;
 }
 
 export type SendWelcomeBetaResult =
@@ -48,6 +50,8 @@ export async function sendWelcomeBetaEmail(
       firstName: args.firstName,
       instagramHandle: args.instagramHandle,
       reportUrl: resolveReportUrl(args.instagramHandle),
+      feedbackUrl:
+        args.feedbackUrl ?? (process.env.FEEDBACK_URL?.trim() || null),
     });
   } catch (err) {
     return {
