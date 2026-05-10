@@ -420,7 +420,6 @@ function AnalyzeReady({
         instagramUsername={
           (payload as any).instagram_username ??
           (payload as any).profile?.username ??
-          username ??
           ""
         }
         onUnlock={(result) => {
