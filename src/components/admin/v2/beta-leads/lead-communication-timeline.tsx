@@ -4,7 +4,6 @@ import {
   Mail,
   MessageCircle,
   Eye,
-  FileText,
   AlertCircle,
   ChevronDown,
   CheckCircle2,
@@ -24,7 +23,7 @@ export interface CommunicationTimelineEvent {
   created_at: string;
 }
 
-type BadgeKind = "sent" | "failed" | "received" | "opened" | "submitted";
+type BadgeKind = "sent" | "failed" | "opened" | "submitted" | "saved";
 
 interface EventConfig {
   label: string;
@@ -35,10 +34,25 @@ interface EventConfig {
 // ── Mapping ───────────────────────────────────────────────────────
 
 const EVENT_CONFIG: Record<string, EventConfig> = {
-  beta_request_created: {
-    label: "Pedido recebido",
-    badgeKind: "received",
-    icon: FileText,
+  request_received_email_sent: {
+    label: "Confirmação de pedido enviada",
+    badgeKind: "sent",
+    icon: Mail,
+  },
+  request_received_email_failed: {
+    label: "Falha na confirmação de pedido",
+    badgeKind: "failed",
+    icon: AlertCircle,
+  },
+  personal_area_email_sent: {
+    label: "Email da área pessoal enviado",
+    badgeKind: "sent",
+    icon: Mail,
+  },
+  personal_area_email_failed: {
+    label: "Falha no email da área pessoal",
+    badgeKind: "failed",
+    icon: AlertCircle,
   },
   report_link_sent: {
     label: "Link do relatório enviado",
@@ -50,11 +64,6 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
     badgeKind: "sent",
     icon: Mail,
   },
-  report_viewed: {
-    label: "Relatório aberto pelo lead",
-    badgeKind: "opened",
-    icon: Eye,
-  },
   feedback_started: {
     label: "Formulário de feedback iniciado",
     badgeKind: "opened",
@@ -64,6 +73,16 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
     label: "Feedback submetido",
     badgeKind: "submitted",
     icon: CheckCircle2,
+  },
+  commercial_followup_sent: {
+    label: "Follow-up comercial enviado",
+    badgeKind: "sent",
+    icon: Mail,
+  },
+  commercial_followup_failed: {
+    label: "Falha no follow-up comercial",
+    badgeKind: "failed",
+    icon: AlertCircle,
   },
   email_failed: {
     label: "Falha no envio de email",
@@ -75,16 +94,6 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
     badgeKind: "failed",
     icon: AlertCircle,
   },
-  commercial_followup_sent: {
-    label: "Follow-up comercial enviado",
-    badgeKind: "sent",
-    icon: Mail,
-  },
-  commercial_followup_failed: {
-    label: "Falha no envio do follow-up comercial",
-    badgeKind: "failed",
-    icon: AlertCircle,
-  },
 };
 
 const COMMUNICATION_TYPES = new Set(Object.keys(EVENT_CONFIG));
@@ -92,18 +101,18 @@ const COMMUNICATION_TYPES = new Set(Object.keys(EVENT_CONFIG));
 const BADGE_LABEL: Record<BadgeKind, string> = {
   sent: "Enviado",
   failed: "Falhou",
-  received: "Recebido",
   opened: "Aberto",
   submitted: "Submetido",
+  saved: "Guardado",
 };
 
 // Map BadgeKind → admin token base name (rgb triplet variable).
 const BADGE_TOKEN: Record<BadgeKind, string> = {
   sent: "--admin-revenue-500",
   failed: "--admin-danger-500",
-  received: "--admin-info-500",
   opened: "--admin-signal-500",
   submitted: "--admin-leads-500",
+  saved: "--admin-info-500",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -134,7 +143,17 @@ function shortId(value: string): string {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
-/** Collapse consecutive `report_viewed` events into one with grouped_count. */
+function deriveErrorText(meta: Record<string, unknown>): string | null {
+  const reason = typeof meta.reason === "string" ? meta.reason : null;
+  if (reason) return reason;
+  const errorCode = typeof meta.error_code === "string" ? meta.error_code : null;
+  if (errorCode) return errorCode;
+  const httpStatus = typeof meta.http_status === "number" ? meta.http_status : null;
+  if (httpStatus && httpStatus >= 400) return `HTTP ${httpStatus}`;
+  return null;
+}
+
+/** Collapse consecutive `report_viewed` events (defensive — not in whitelist). */
 function groupConsecutiveViews(
   events: CommunicationTimelineEvent[],
 ): CommunicationTimelineEvent[] {
@@ -186,7 +205,7 @@ function StatusBadge({ kind }: { kind: BadgeKind }) {
   );
 }
 
-export function CommunicationHistory({
+export function LeadCommunicationTimeline({
   timeline,
   loading,
 }: {
@@ -198,23 +217,21 @@ export function CommunicationHistory({
   const filtered = timeline.filter((ev) =>
     COMMUNICATION_TYPES.has(ev.event_type),
   );
-  // Endpoint devolve ordem DESC (mais recente primeiro). A colapsagem de
-  // `report_viewed` agrupa runs consecutivos independentemente da direção.
   const events = groupConsecutiveViews(filtered);
 
   const INITIAL_COUNT = 10;
   const visible = expanded ? events : events.slice(0, INITIAL_COUNT);
 
-  // Stats agregados (apenas após filtragem/colapsagem).
   const stats = events.reduce(
     (acc, ev) => {
       const kind = EVENT_CONFIG[ev.event_type]?.badgeKind;
       if (kind === "sent") acc.sent += 1;
+      if (kind === "failed") acc.failed += 1;
       if (kind === "opened") acc.opened += 1;
       if (kind === "submitted") acc.submitted += 1;
       return acc;
     },
-    { sent: 0, opened: 0, submitted: 0 },
+    { sent: 0, failed: 0, opened: 0, submitted: 0 },
   );
 
   const handleCopyId = (id: string) => {
@@ -236,17 +253,17 @@ export function CommunicationHistory({
 
       {!loading && events.length === 0 && (
         <p className="admin-meta text-admin-text-tertiary py-3">
-          Sem comunicações registadas para este lead.
+          Ainda não há comunicações registadas.
         </p>
       )}
 
       {!loading && events.length > 0 && (
         <div className="space-y-0">
           <p className="admin-meta text-admin-text-tertiary mb-2">
-            Enviados: {stats.sent} · Aberturas: {stats.opened} · Submissões:{" "}
-            {stats.submitted}
+            Enviados: {stats.sent} · Falhas: {stats.failed} · Aberturas:{" "}
+            {stats.opened} · Submissões: {stats.submitted}
           </p>
-          {visible.map((ev) => {
+          {visible.map((ev, idx) => {
             const cfg = EVENT_CONFIG[ev.event_type];
             const IconComp = cfg?.icon ?? Clock;
             const recipient =
@@ -257,14 +274,15 @@ export function CommunicationHistory({
               typeof ev.metadata?.message_id === "string"
                 ? (ev.metadata.message_id as string)
                 : null;
+            const reportRequestId =
+              typeof ev.metadata?.report_request_id === "string"
+                ? (ev.metadata.report_request_id as string)
+                : null;
             const groupedCount =
               typeof ev.metadata?.grouped_count === "number"
                 ? (ev.metadata.grouped_count as number)
                 : null;
-            const errorCode =
-              typeof ev.metadata?.error_code === "string"
-                ? (ev.metadata.error_code as string)
-                : null;
+            const errorText = deriveErrorText(ev.metadata ?? {});
             const publicUrl =
               typeof ev.metadata?.public_url === "string"
                 ? (ev.metadata.public_url as string)
@@ -277,7 +295,7 @@ export function CommunicationHistory({
                 key={ev.id}
                 className="flex items-start gap-3 py-2.5"
                 style={
-                  visible.indexOf(ev) < visible.length - 1
+                  idx < visible.length - 1
                     ? { borderBottom: "1px solid rgba(44,44,42,0.06)" }
                     : undefined
                 }
@@ -331,12 +349,18 @@ export function CommunicationHistory({
                     </div>
                   ) : null}
 
-                  {errorCode ? (
+                  {reportRequestId ? (
+                    <p className="admin-meta text-admin-text-tertiary m-0 mt-0.5">
+                      Pedido: {shortId(reportRequestId)}
+                    </p>
+                  ) : null}
+
+                  {errorText ? (
                     <p
                       className="admin-code m-0 mt-0.5"
                       style={{ color: "rgb(var(--admin-danger-700))" }}
                     >
-                      Erro: {errorCode}
+                      Erro: {errorText}
                     </p>
                   ) : null}
 

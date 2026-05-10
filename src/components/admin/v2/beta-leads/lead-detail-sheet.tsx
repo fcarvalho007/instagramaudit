@@ -67,7 +67,7 @@ import { Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
-import { CommunicationHistory } from "./communication-history";
+import { LeadCommunicationTimeline } from "./lead-communication-timeline";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
 import { AdminCallout } from "@/components/admin/v2/admin-callout";
 import {
@@ -258,16 +258,6 @@ const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
   { key: "comunicacao", label: "Comunicação" },
   { key: "historico", label: "Histórico" },
 ];
-
-const COMMUNICATION_EVENT_TYPES = new Set([
-  "report_link_sent",
-  "feedback_requested",
-  "feedback_started",
-  "email_failed",
-  "email_bounced",
-  "commercial_followup_sent",
-  "commercial_followup_failed",
-]);
 
 /**
  * Collapses runs of consecutive `report_viewed` events (same handle) into a
@@ -744,7 +734,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Comunicação ────────────────────────── */}
           <TabsContent value="comunicacao" className="flex-1 overflow-y-auto mt-0">
-            <CommunicationHistory timeline={timeline} loading={timelineLoading} />
+            <LeadCommunicationTimeline timeline={timeline} loading={timelineLoading} />
           </TabsContent>
 
           {/* ── Tab: Histórico ──────────────────────────── */}

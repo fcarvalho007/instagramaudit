@@ -1,95 +1,99 @@
-## Cache freshness display — clarificar frescura na UI
+## Communication Tab — Lead Detail Sheet (InstaBench CRM)
 
-### 1. Campos de cache disponíveis (já no payload)
+The Communication tab already exists, with `CommunicationHistory` rendered in tab `comunicacao`. The plan is therefore an **extension + rename**, not a from-scratch build: add the 4 missing email events, add a new badge state ("Guardado"), surface failure reasons consistently, and rename the component to `LeadCommunicationTimeline` as requested.
 
-| Campo | Origem | Disponível em |
-|---|---|---|
-| `meta.generated_at` | snapshot payload (escrito quando o relatório é gerado) | público + admin |
-| `created_at` | linha `analysis_snapshots` | público + admin |
-| `updated_at` | linha `analysis_snapshots` | público + admin |
-| `expires_at` | linha `analysis_snapshots` (TTL real, server-truth) | público (`body.snapshot.expires_at` na resposta de `/api/public/analysis-snapshot.$username`) e admin |
+### 1. Files changed
 
-`CACHE_TTL_MS = 24h` e `STALE_TOLERANCE_MS = 7d` são definidos em `src/lib/analysis/cache.ts` (server-only) — vão **ficar como estão** e ser usados apenas como fallback no cliente.
-
-### 2. Estado atual da UI
-
-- Já existe `src/components/report-redesign/v2/cache-status-badge.tsx`. Mostra "Atualizado há X · válido até HH:MM" com tooltip nativo (`title`).
-- Limitações:
-  - Não tem variante visual (cor / dot / etiqueta) por estado.
-  - Deriva o `expires_at` por TTL hardcoded em vez de usar o real do servidor.
-  - Devolve `null` quando o timestamp está em falta — não mostra "Estado por confirmar".
-  - Tooltip é o atributo HTML `title`, não o componente Radix.
-- Usado em `ReportHeroV2` (versão expandida + compact). Admin previews passam `created_at` mas **não** passam `expires_at` que já têm em mãos.
-
-### 3. Regras de estado
-
-| Estado | Regra (com base em `expiresAtIso` real ou derivado) | Etiqueta pt-PT | Cor (token semântico) |
-|---|---|---|---|
-| `fresh` | `now < expiresAt − 6h` | "Dados atualizados" | `success` (verde) |
-| `expiring_soon` | `expiresAt − 6h ≤ now < expiresAt` | "A expirar em breve" | `warning` (âmbar) |
-| `stale` | `now ≥ expiresAt` (ou idade > 24h se sem `expiresAt`) | "Dados antigos" | `danger` (vermelho suave) |
-| `unknown` | sem `analyzedAtIso` válido | "Estado por confirmar" | `muted` (neutro) |
-
-Janela "expiring_soon" = 6h por defeito (configurável via prop `warnWithinHours`).
-
-### 4. Componente `CacheStatusBadge` — refactor (mesmo ficheiro)
-
-Não criar novo ficheiro — estender o existente para preservar imports e testes futuros.
-
-Nova API:
-```ts
-interface Props {
-  analyzedAtIso: string | null;
-  expiresAtIso?: string | null;   // novo: usar valor real do servidor quando disponível
-  ttlHours?: number;              // fallback para derivar expires (24)
-  warnWithinHours?: number;       // default 6
-  compact?: boolean;              // mantém-se: footer denso
-}
-```
-
-Estrutura visual (mobile-first):
-- Layout flex com gap pequeno: `<dot/> <label> · <span muted>Atualizado há X · Válido até DD MMM HH:mm</span>`
-- `compact`: só `<dot/> <label muted>` para encaixar no footer.
-- Cor do dot e da etiqueta vem dos tokens semânticos (`text-success`, `text-warning`, `text-danger`, `text-content-tertiary`). Sem cores hardcoded.
-- Tipografia: Inter, `text-xs`, `tabular-nums` nas datas.
-- Substituir `title="..."` por `<Tooltip>` shadcn (`src/components/ui/tooltip.tsx` já existe). Conteúdo do tooltip:
-  - "Última análise: DD MMM YYYY HH:mm"
-  - "Cache válida até: DD MMM YYYY HH:mm" (ou "Cache expirada em ...")
-  - Sem expor `cache_key`, IDs, ou nomes técnicos.
-- Quando `unknown`: render dot neutro + "Estado por confirmar", sem tooltip.
-
-Helpers internos (`formatRelative`, `formatExpires`, `formatAbsolute`) são reaproveitados; ajusta-se `formatExpires` para usar `expiresAtIso` quando passado.
-
-### 5. Pontos de integração
-
-| Ficheiro | Mudança |
+| File | Action |
 |---|---|
-| `src/components/report-redesign/v2/cache-status-badge.tsx` | Refactor para nova API, variantes, Tooltip shadcn. |
-| `src/components/report-redesign/v2/report-hero-v2.tsx` | Aceitar `expiresAtIso` e propagar (forma expandida + compact). Renderizar mesmo quando `analyzedAtIso` é null para mostrar "Estado por confirmar" — atualizar as guardas atuais (`{analyzedAtIso ? ... : null}`) para deixar o badge tratar do estado `unknown`. |
-| `src/components/report-redesign/v2/report-shell-v2.tsx` | Adicionar prop `expiresAtIso` e passar a `ReportHeroV2`. |
-| `src/components/report-redesign/report-shell.tsx` | Adicionar prop opcional `expiresAtIso` e propagar a `ReportShellV2` (forwarding apenas). |
-| `src/routes/analyze.$username.tsx` | Ler `body.snapshot.expires_at`, guardar no estado, passar ao `ReportShellV2`/`ReportShellV2Compact`. |
-| `src/routes/admin.report-preview.$username.tsx` | Acrescentar `expires_at` no `snapshotMeta` e passar a `ReportShellV2`. |
-| `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` | Idem (já tem `expires_at` no response, falta apenas guardar e passar). |
+| `src/components/admin/v2/beta-leads/lead-communication-timeline.tsx` | **New.** Renamed and extended replacement for `communication-history.tsx`. |
+| `src/components/admin/v2/beta-leads/communication-history.tsx` | **Delete.** Sole consumer is `lead-detail-sheet.tsx`. |
+| `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` | Update import + JSX usage (`<LeadCommunicationTimeline />`). Drop now-unused `COMMUNICATION_EVENT_TYPES` set. |
+| `src/components/admin/v2/beta-leads/__tests__/lead-communication-timeline.test.tsx` | **New.** Cover: empty state copy, sent vs. failed rendering, recipient + message_id + reason fields, `report_viewed` collapse, badge mapping for the 4 new events. |
 
-Sem alterações em `report-shell.tsx` (legacy) que afetem o `ReportPendingAiNotice` — a prop nova é puramente opcional.
+No backend, schema, route, or email-sending code is touched.
 
-### 6. Constraints respeitadas
+### 2. Events included (final mapping)
 
-- 100% UI/cliente. Sem novos endpoints. Sem alterar `cache.ts`, `reports.functions.ts`, geração ou scoring.
-- Sem refresh, sem chamar providers, sem PDF, sem schema.
-- Sem expor `cache_key`, `snapshot.id`, provider — apenas timestamps humanos.
+Source of truth confirmed in code (`unlock.server.ts`, `beta.functions.ts`, `send-report-email.ts`, `feedback.$requestId.ts`, `lead-events.server.ts`):
 
-### 7. Validação
+| event_type | Label (pt-PT) | Badge | Icon |
+|---|---|---|---|
+| `request_received_email_sent` | Confirmação de pedido enviada | Enviado | Mail |
+| `request_received_email_failed` | Falha na confirmação de pedido | Falhou | AlertCircle |
+| `personal_area_email_sent` | Email da área pessoal enviado | Enviado | Mail |
+| `personal_area_email_failed` | Falha no email da área pessoal | Falhou | AlertCircle |
+| `report_link_sent` | Link do relatório enviado | Enviado | Mail |
+| `feedback_requested` | Pedido de feedback enviado | Enviado | Mail |
+| `feedback_started` | Formulário de feedback iniciado | Aberto | MessageCircle |
+| `feedback_submitted` | Feedback submetido | Submetido | CheckCircle2 |
+| `commercial_followup_sent` | Follow-up comercial enviado | Enviado | Mail |
+| `commercial_followup_failed` | Falha no follow-up comercial | Falhou | AlertCircle |
+| `email_failed` *(legacy, generic)* | Falha no envio de email | Falhou | AlertCircle |
+| `email_bounced` *(legacy)* | Email devolvido | Falhou | AlertCircle |
+
+Excluded from the Communication tab:
+- `report_viewed` → kept in main "Histórico" tab. Already excluded here (not in the whitelist) — keeps tab focused on outbound communication. The collapse helper stays for safety but won't run.
+- `beta_request_created`, `report_generated`, `unlock_*`, `pricing_*`, `lead_status_changed`, `module_visibility_published`, `request_status_changed`, `returning_lead_detected`, `report_saved_to_account`, `unlock_email_submitted`, `unlock_completed` → not communication, stay in Histórico.
+
+The full timeline tab (`historico`) is untouched.
+
+### 3. Status badge mapping
+
+Spec mentions five badges: Enviado, Falhou, Aberto, Submetido, **Guardado**. None of the current/expected events naturally map to "Guardado" (saving is a UI action, not an email). Two options — pick one:
+
+- **(default in this plan)** Add the badge kind to the type system but don't assign it yet, so future events (e.g. `commercial_note_saved`) can use it without a refactor.
+- Map `personal_area_email_sent` to "Guardado" instead of "Enviado" — semantically wrong (it's still an outbound email), not recommended.
+
+Token mapping (admin tokens only, no hard-coded colors):
+
+| Badge | Token |
+|---|---|
+| Enviado | `--admin-revenue-500` |
+| Falhou | `--admin-danger-500` |
+| Aberto | `--admin-signal-500` |
+| Submetido | `--admin-leads-500` |
+| Guardado | `--admin-info-500` |
+
+(`Recebido` from the current implementation is dropped — `beta_request_created` is not in the whitelist anymore.)
+
+### 4. Metadata surfaced per row
+
+| Field | Source key(s) | Display |
+|---|---|---|
+| Recipient | `metadata.recipient` | "Para: …" (truncated, mobile-safe) |
+| Message ID | `metadata.message_id` | Mono short form `abc123…ef01` + copy-to-clipboard |
+| Report/request link | `metadata.report_request_id` | "Pedido #abcd1234" linking to `/admin/v2/beta-leads?lead=…` if same lead, else passive label |
+| Public link | `metadata.public_url` ‖ `metadata.feedback_url` | "Abrir link" with ExternalLink icon |
+| Failure reason | `metadata.reason` ‖ `metadata.error_code` ‖ `metadata.http_status` (formatted "HTTP 4xx") | Danger-token line: "Erro: …" |
+| Timestamp | `created_at` | `formatDate` absolute + `relativeTime` |
+
+`request_received_email_failed` only carries `http_status` — the helper falls back to `HTTP {status}` so it's never blank.
+
+### 5. Empty state
+
+Replace current text with the exact spec copy:
+
+> Ainda não há comunicações registadas.
+
+### 6. UI / accessibility
+
+- Mobile-first: existing flex layout already wraps; verified at 375 px in current build, kept.
+- Semantic admin tokens only (`text-admin-text-primary`, `--admin-*-500`, `admin-meta`, `admin-section-title`). No hard-coded hex.
+- No new dependencies.
+- Tooltip / hover hints kept minimal — the row itself shows recipient + ID + reason inline.
+
+### 7. Constraints respected
+
+- UI / read-only. No emails, no Resend, no provider calls, no DB mutation, no schema change, no public-report change.
+- `lead-detail-sheet.tsx` keeps the Histórico tab for the full timeline.
+
+### 8. Validation
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (180/180 — não há testes existentes ao badge; podemos opcionalmente adicionar 1 teste leve para a função `computeStatus(now, generated, expires)` se justificar — proponho **sim**, ficheiro novo `cache-status-badge.test.ts` com 4 casos, um por variante).
-- Manual:
-  - `/analyze/frederico.m.carvalho` → badge no hero com etiqueta colorida; tooltip mostra ambas as datas.
-  - `/admin/report-preview/...` (handle e snapshot) → mesmo comportamento.
-  - 375px: badge não causa overflow (testar com handle longo).
-  - Snapshot artificialmente "antigo" (forçar `analyzedAtIso` no passado via DevTools) → estado `stale`.
+- `bunx vitest run` (incl. new `lead-communication-timeline.test.tsx`)
+- Manual: lead with `request_received_email_failed` shows red "Falhou" badge + HTTP status; lead with no events shows new empty copy; mobile 375 px has no overflow.
 
-### 8. Resposta final esperada
+### Open question (please confirm before I implement)
 
-Ficheiros alterados, regras de estado finais, e resultados de tsc + vitest.
+The "Guardado" badge has no current event source. Confirm option **A** (reserve the badge kind for the future, don't assign now) — or pick another mapping.
