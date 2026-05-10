@@ -22,7 +22,8 @@ export type TxFlow =
   | "feedback-request"
   | "request-received"
   | "commercial-followup"
-  | "welcome-beta";
+  | "welcome-beta"
+  | "report-summary";
 
 export interface SendTransactionalEmailInput {
   to: string;
@@ -59,6 +60,7 @@ const FLOW_FAILURE_EVENT: Record<TxFlow, string> = {
   "request-received": "request_received_email_failed",
   "commercial-followup": "commercial_followup_failed",
   "welcome-beta": "welcome_beta_email_failed",
+  "report-summary": "report_summary_email_failed",
 };
 
 function maskEmail(email: string | null | undefined): string {
