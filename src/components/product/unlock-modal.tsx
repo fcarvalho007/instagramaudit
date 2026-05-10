@@ -1,7 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, BookmarkPlus, CheckCircle2, Loader2, Lock, Mail } from "lucide-react";
+import {
+  ArrowLeft,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  Clock,
+  HelpCircle,
+  Loader2,
+  Lock,
+  Search,
+  Star,
+  User,
+} from "lucide-react";
 
 import {
   Dialog,
@@ -31,7 +43,47 @@ import {
 } from "@/lib/unlock-flow";
 import { trackEvent } from "@/lib/tracking.functions";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
+
+const OPERATOR_INFO = {
+  name: "DIGITALFC",
+  city: "Lisboa, Portugal",
+  nif: "509XXXXXX",
+};
+
+const PREMIUM_SECTIONS = ["Conteúdo", "Procura", "Comparação"] as const;
+
+const FREE_SECTIONS: ReadonlyArray<{
+  rank: string;
+  label: string;
+  state: "complete" | "partial";
+  badge?: string;
+}> = [
+  { rank: "01", label: "Visão geral", state: "complete" },
+  { rank: "02", label: "Diagnóstico", state: "complete" },
+  { rank: "03", label: "Desempenho", state: "partial", badge: "3/5" },
+];
+
+type IconCmp = typeof User;
+
+const PROFILE_OWNERSHIP_ICONS: Record<
+  ProfileOwnership,
+  { Icon: IconCmp; bg: string; fg: string }
+> = {
+  own_profile: { Icon: User, bg: "bg-blue-100", fg: "text-blue-600" },
+  brand_profile: { Icon: Star, bg: "bg-purple-100", fg: "text-purple-600" },
+  client_profile: {
+    Icon: Briefcase,
+    bg: "bg-emerald-100",
+    fg: "text-emerald-600",
+  },
+  competitor_research: {
+    Icon: Search,
+    bg: "bg-amber-100",
+    fg: "text-amber-700",
+  },
+  curiosity: { Icon: HelpCircle, bg: "bg-pink-100", fg: "text-pink-600" },
+};
 
 const FIELD_LABELS_PT: Record<string, string> = {
   email: "Email",
@@ -84,7 +136,80 @@ export interface UnlockModalProps {
   onUnlock: (result: UnlockResult) => void;
 }
 
-type Step = 1 | 2 | 3 | 4 | "welcome-back" | "success";
+type Step = 1 | 2 | 3 | 4 | 5 | "welcome-back";
+
+const STEP_HEADERS: Record<
+  1 | 2 | 3 | 4,
+  {
+    eyebrow: string;
+    badge?: string;
+    title: (handle: string) => React.ReactNode;
+    subtitle: React.ReactNode;
+  }
+> = {
+  1: {
+    eyebrow: "PASSO 1 DE 5",
+    badge: "~1 MIN",
+    title: () => (
+      <>
+        Desbloquear{" "}
+        <em className="not-italic font-display italic text-primary">
+          3 secções
+        </em>{" "}
+        grátis
+      </>
+    ),
+    subtitle: (
+      <>
+        Continuam premium:{" "}
+        <strong className="text-content-primary font-medium">
+          Conteúdo · Procura · Comparação
+        </strong>
+        . Acesso gratuito durante a beta.
+      </>
+    ),
+  },
+  2: {
+    eyebrow: "PASSO 2 DE 5",
+    title: (handle) => (
+      <>
+        Que relação tens com o perfil{" "}
+        <em className="not-italic font-display italic text-secondary">
+          @{handle}
+        </em>
+        ?
+      </>
+    ),
+    subtitle: "Ajuda-nos a personalizar o tom da análise.",
+  },
+  3: {
+    eyebrow: "PASSO 3 DE 5",
+    title: () => (
+      <>
+        O que queres{" "}
+        <em className="not-italic font-display italic text-secondary">
+          tirar daqui
+        </em>
+        ?
+      </>
+    ),
+    subtitle:
+      "Selecciona o objectivo principal. Ajuda-nos a destacar o que importa.",
+  },
+  4: {
+    eyebrow: "PASSO 4 DE 5",
+    title: () => (
+      <>
+        Como te{" "}
+        <em className="not-italic font-display italic text-secondary">
+          descreves
+        </em>
+        ?
+      </>
+    ),
+    subtitle: "Última pergunta antes de abrirmos o relatório.",
+  },
+};
 
 export function UnlockModal({
   open,
@@ -113,15 +238,25 @@ export function UnlockModal({
       goal_other_text: "",
       user_type_other_text: "",
       gdpr_consent: false as unknown as true,
+      marketing_consent: false,
     },
   });
 
-  // Reset when reopening from a fresh state
+  // Best-effort track of "pricing seen" once when reaching step 5.
+  const pricingSeenTracked = useRef(false);
   useEffect(() => {
-    if (!open && step !== "success") {
-      // do not wipe values; user may reopen mid-flow
+    if (step === 5 && !pricingSeenTracked.current) {
+      pricingSeenTracked.current = true;
+      void trackEvent({
+        data: {
+          eventType: "unlock_pricing_cta_seen",
+          handle: instagramUsername,
+          snapshotId,
+          metadata: {},
+        },
+      }).catch(() => {});
     }
-  }, [open, step]);
+  }, [step, instagramUsername, snapshotId]);
 
   const handleClose = (next: boolean) => {
     if (submitting) return;
@@ -140,9 +275,6 @@ export function UnlockModal({
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
 
-    // After step 1 (email), call unlock-check to discover which qualification
-    // fields are already on file. Skip those steps; show welcome state if
-    // nothing is missing. Any error / timeout falls back to the full flow.
     if (step === 1) {
       const email = form.getValues("email");
       setLookupPending(true);
@@ -209,14 +341,12 @@ export function UnlockModal({
         }
       }
 
-      // All qualification known → welcome state, then minimal submit.
       if (exists && missing.length === 0) {
         setPartialBanner(null);
         setStep("welcome-back");
         return;
       }
 
-      // Partial: jump to first missing step + show neutral banner (no name).
       if (exists && missing.length > 0 && missing.length < 3) {
         setPartialBanner(
           `Já temos parte dos teus dados. Faltam só ${missing.length} ${
@@ -233,8 +363,7 @@ export function UnlockModal({
       setPartialBanner(null);
     }
 
-    // Advance to next step, skipping any field already known.
-    if (typeof step === "number") {
+    if (typeof step === "number" && step <= 4) {
       let next = step + 1;
       while (next <= 4 && knownFields.has(STEP_FIELD[next as 2 | 3 | 4])) {
         next += 1;
@@ -253,7 +382,7 @@ export function UnlockModal({
       setStep(1);
       return;
     }
-    if (typeof step === "number" && step > 1) {
+    if (typeof step === "number" && step > 1 && step < 5) {
       let prev = step - 1;
       while (prev >= 2 && knownFields.has(STEP_FIELD[prev as 2 | 3 | 4])) {
         prev -= 1;
@@ -283,6 +412,7 @@ export function UnlockModal({
               ? values.user_type_other_text
               : undefined,
           gdpr_consent: values.gdpr_consent === true ? true : undefined,
+          marketing_consent: values.marketing_consent === true ? true : undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -304,7 +434,7 @@ export function UnlockModal({
       };
       setResult(r);
       onUnlock(r);
-      setStep("success");
+      setStep(5);
     } catch {
       setServerError(
         "Erro de ligação. Verifica a tua internet e tenta novamente.",
@@ -314,11 +444,6 @@ export function UnlockModal({
     }
   });
 
-  /**
-   * Minimal-payload submit for returning leads with full qualification.
-   * Sends only email + snapshot + handle. The server merges conservatively
-   * (never regresses qualification fields).
-   */
   const submitMinimal = async (email: string) => {
     setSubmitting(true);
     setServerError(null);
@@ -340,7 +465,6 @@ export function UnlockModal({
         returning_lead?: boolean;
       };
       if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
-        // Fallback: drop the skip and let the user complete the 3 questions.
         setStep(2);
         setServerError(
           "Precisamos de mais 3 detalhes rápidos para desbloquear.",
@@ -354,7 +478,7 @@ export function UnlockModal({
       };
       setResult(r);
       onUnlock(r);
-      setStep("success");
+      setStep(5);
     } catch {
       setStep(2);
       setServerError(
@@ -365,23 +489,22 @@ export function UnlockModal({
     }
   };
 
-  const stepNum =
-    step === "success" || step === "welcome-back"
-      ? TOTAL_STEPS
-      : (step as number);
-  const progressPct = (stepNum / TOTAL_STEPS) * 100;
+  const stepNumForBar =
+    step === "welcome-back" ? 1 : (step as number);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[460px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
-        {step === "success" ? (
-          <div className="px-6 py-7 sm:px-7 sm:py-8">
-            <SuccessState
-              returningLead={Boolean(result?.returningLead)}
-              email={form.getValues("email")}
-              onClose={() => onOpenChange(false)}
-            />
-          </div>
+      <DialogContent className="sm:max-w-[480px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
+        {step === 5 ? (
+          <SuccessStep
+            firstName={
+              returningFirstName ??
+              firstNameFromEmail(form.getValues("email"))
+            }
+            email={form.getValues("email")}
+            returningLead={Boolean(result?.returningLead)}
+            onClose={() => onOpenChange(false)}
+          />
         ) : step === "welcome-back" ? (
           <div className="px-6 py-7 sm:px-7 sm:py-8">
             <WelcomeBackState
@@ -395,27 +518,23 @@ export function UnlockModal({
         ) : (
           <div className="px-6 py-7 sm:px-7 sm:py-8">
             <DialogHeader className="text-left space-y-3">
-              <p className="text-eyebrow-sm text-content-tertiary">
-                Passo {step} de {TOTAL_STEPS}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-eyebrow-sm text-content-tertiary">
+                  {STEP_HEADERS[step].eyebrow}
+                </p>
+                {STEP_HEADERS[step].badge ? (
+                  <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-[1px] text-[10px] font-semibold tracking-wide">
+                    {STEP_HEADERS[step].badge}
+                  </span>
+                ) : null}
+              </div>
               <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-                Desbloquear relatório gratuito
+                {STEP_HEADERS[step].title(instagramUsername)}
               </DialogTitle>
               <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-                Acesso gratuito durante a beta · demora cerca de 1 minuto
+                {STEP_HEADERS[step].subtitle}
               </DialogDescription>
-              <div
-                className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden mt-1"
-                role="progressbar"
-                aria-valuemin={1}
-                aria-valuemax={TOTAL_STEPS}
-                aria-valuenow={step}
-              >
-                <div
-                  className="h-full bg-primary transition-all duration-300 ease-out"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
+              <ProgressSegments current={stepNumForBar} total={TOTAL_STEPS} />
             </DialogHeader>
 
             <form
@@ -434,11 +553,12 @@ export function UnlockModal({
               {step === 1 ? <Step1Email form={form} /> : null}
               {step === 2 ? (
                 <RadioCardField
-                  legend="Este perfil é teu?"
+                  legend=""
                   name="profile_ownership"
                   options={PROFILE_OWNERSHIPS.map((v) => ({
                     value: v,
                     label: PROFILE_OWNERSHIP_LABELS[v],
+                    icon: PROFILE_OWNERSHIP_ICONS[v],
                   }))}
                   value={form.watch("profile_ownership")}
                   onChange={(v) =>
@@ -451,9 +571,12 @@ export function UnlockModal({
               ) : null}
               {step === 3 ? (
                 <RadioCardField
-                  legend="Qual é o teu objetivo principal?"
+                  legend=""
                   name="goal"
-                  options={GOALS.map((v) => ({ value: v, label: GOAL_LABELS[v] }))}
+                  options={GOALS.map((v) => ({
+                    value: v,
+                    label: GOAL_LABELS[v],
+                  }))}
                   value={form.watch("goal")}
                   onChange={(v) =>
                     form.setValue("goal", v as Goal, { shouldValidate: true })
@@ -465,12 +588,17 @@ export function UnlockModal({
                     form.setValue("goal_other_text", v, { shouldValidate: true })
                   }
                   otherError={form.formState.errors.goal_other_text?.message}
+                  otherPlaceholder="ex: investigação académica sobre IA criativa"
+                  otherEyebrow="descreve em poucas palavras"
+                  otherHint="opcional · ajuda-nos a melhorar"
                 />
               ) : null}
               {step === 4 ? (
                 <RadioCardField
-                  legend="Como te descreves?"
+                  legend=""
                   name="user_type"
+                  twoColumns
+                  fullWidthValues={["other"]}
                   options={USER_TYPES.map((v) => ({
                     value: v,
                     label: USER_TYPE_LABELS[v],
@@ -490,6 +618,8 @@ export function UnlockModal({
                     })
                   }
                   otherError={form.formState.errors.user_type_other_text?.message}
+                  otherPlaceholder="ex: jornalista, investigador, curador"
+                  otherEyebrow="selecciona para descrever"
                 />
               ) : null}
 
@@ -525,17 +655,21 @@ export function UnlockModal({
                       {lookupPending ? "A verificar…" : "A desbloquear…"}
                     </>
                   ) : step === 4 ? (
-                    "Desbloquear relatório"
+                    "Abrir relatório  →"
                   ) : (
-                    "Continuar"
+                    "Continuar  →"
                   )}
                 </Button>
               </div>
 
               {step === 1 ? (
-                <p className="flex items-center justify-center gap-1.5 text-[12px] text-content-tertiary">
+                <p className="flex items-center justify-center gap-1.5 text-[11px] text-content-tertiary">
                   <Lock className="size-3" aria-hidden="true" />
-                  Sem spam. Email usado só para guardar e enviar este report.
+                  Operador:{" "}
+                  <strong className="font-semibold text-content-secondary">
+                    {OPERATOR_INFO.name}
+                  </strong>{" "}
+                  · {OPERATOR_INFO.city} · NIF {OPERATOR_INFO.nif} · Sem spam.
                 </p>
               ) : null}
             </form>
@@ -543,6 +677,48 @@ export function UnlockModal({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function firstNameFromEmail(email: string | undefined): string | null {
+  if (!email) return null;
+  const handle = email.split("@")[0] ?? "";
+  const cleaned = handle.replace(/[._-]/g, " ").trim();
+  if (!cleaned) return null;
+  const first = cleaned.split(/\s+/)[0];
+  return first ? first.charAt(0).toUpperCase() + first.slice(1) : null;
+}
+
+function ProgressSegments({
+  current,
+  total,
+}: {
+  current: number;
+  total: number;
+}) {
+  return (
+    <div
+      className="flex gap-1.5 mt-1"
+      role="progressbar"
+      aria-valuemin={1}
+      aria-valuemax={total}
+      aria-valuenow={current}
+    >
+      {Array.from({ length: total }).map((_, i) => {
+        const isActive = i < current;
+        return (
+          <div
+            key={i}
+            className={cn(
+              "h-1 flex-1 rounded-full transition-all duration-300",
+              isActive
+                ? "bg-gradient-to-r from-primary to-secondary"
+                : "bg-primary/10",
+            )}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -554,24 +730,38 @@ function Step1Email({
   const error = form.formState.errors.email?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
+  const marketing = form.watch("marketing_consent");
+  const emailValue = form.watch("email");
+  const emailIsValid = !error && emailValue && /\S+@\S+\.\S+/.test(emailValue);
+
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="unlock-email" className="text-sm">
           Email
         </Label>
-        <Input
-          id="unlock-email"
-          type="email"
-          autoFocus
-          autoComplete="email"
-          placeholder="ana@empresa.pt"
-          aria-invalid={Boolean(error)}
-          {...form.register("email")}
-        />
+        <div className="relative">
+          <Input
+            id="unlock-email"
+            type="email"
+            autoFocus
+            autoComplete="email"
+            placeholder="ana@empresa.pt"
+            aria-invalid={Boolean(error)}
+            className="pr-9"
+            {...form.register("email")}
+          />
+          {emailIsValid ? (
+            <Check
+              className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-emerald-600"
+              aria-hidden
+            />
+          ) : null}
+        </div>
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
       </div>
-      <div className="space-y-1.5">
+
+      <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-4 space-y-3">
         <label
           htmlFor="unlock-gdpr"
           className="flex items-start gap-2.5 cursor-pointer"
@@ -580,31 +770,69 @@ function Step1Email({
             id="unlock-gdpr"
             checked={consent === true}
             onCheckedChange={(v) =>
-              form.setValue("gdpr_consent", v === true ? true : (false as unknown as true), {
-                shouldValidate: true,
-              })
+              form.setValue(
+                "gdpr_consent",
+                v === true ? true : (false as unknown as true),
+                { shouldValidate: true },
+              )
             }
             aria-invalid={Boolean(consentError)}
             className="mt-0.5"
           />
-          <span className="text-[12px] text-content-secondary leading-relaxed">
-            Aceito que o meu email seja guardado para criar este relatório e
-            receber atualizações ocasionais. Posso cancelar a qualquer momento.{" "}
+          <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
+            Aceito o{" "}
+            <a
+              href="/termos"
+              target="_blank"
+              rel="noopener"
+              className="underline text-primary hover:text-primary/80"
+            >
+              tratamento dos meus dados
+            </a>{" "}
+            para guardar e aceder a este relatório, e confirmo que li a{" "}
             <a
               href="/privacidade"
               target="_blank"
               rel="noopener"
-              className="underline hover:text-content-primary"
+              className="underline text-primary hover:text-primary/80"
             >
-              Política de privacidade
+              política de privacidade
             </a>
-            .
+            .{" "}
+            <span className="inline-flex items-center rounded bg-pink-100 text-pink-700 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wide ml-0.5 align-middle">
+              OBRIG.
+            </span>
           </span>
         </label>
-        {consentError ? (
-          <p className="text-xs text-destructive">{consentError}</p>
-        ) : null}
+
+        <div className="border-t border-dashed border-border-default/50" />
+
+        <label
+          htmlFor="unlock-marketing"
+          className="flex items-start gap-2.5 cursor-pointer"
+        >
+          <Checkbox
+            id="unlock-marketing"
+            checked={marketing === true}
+            onCheckedChange={(v) =>
+              form.setValue("marketing_consent", v === true, {
+                shouldValidate: false,
+              })
+            }
+            className="mt-0.5"
+          />
+          <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
+            Quero receber análises e dicas de marketing digital por email{" "}
+            <span className="text-content-tertiary">
+              (cancelas quando quiseres · ~1 email/semana)
+            </span>
+          </span>
+        </label>
       </div>
+
+      {consentError ? (
+        <p className="text-xs text-destructive">{consentError}</p>
+      ) : null}
     </div>
   );
 }
@@ -612,6 +840,7 @@ function Step1Email({
 interface RadioOption {
   value: string;
   label: string;
+  icon?: { Icon: IconCmp; bg: string; fg: string };
 }
 
 function RadioCardField({
@@ -625,6 +854,11 @@ function RadioCardField({
   otherText,
   onOtherTextChange,
   otherError,
+  otherPlaceholder,
+  otherEyebrow,
+  otherHint,
+  twoColumns,
+  fullWidthValues,
 }: {
   legend: string;
   name: string;
@@ -636,71 +870,109 @@ function RadioCardField({
   otherText?: string;
   onOtherTextChange?: (v: string) => void;
   otherError?: string;
+  otherPlaceholder?: string;
+  otherEyebrow?: string;
+  otherHint?: string;
+  twoColumns?: boolean;
+  fullWidthValues?: string[];
 }) {
   return (
     <fieldset className="space-y-3">
-      <legend className="text-[14px] font-medium text-content-primary mb-1">
-        {legend}
-      </legend>
-      <div className="grid gap-2">
+      {legend ? (
+        <legend className="text-[14px] font-medium text-content-primary mb-1">
+          {legend}
+        </legend>
+      ) : null}
+      <div className={cn("grid gap-2", twoColumns ? "grid-cols-2" : "grid-cols-1")}>
         {options.map((opt) => {
           const selected = value === opt.value;
+          const isOther = otherValue && opt.value === otherValue;
+          const isFullWidth =
+            twoColumns && fullWidthValues?.includes(opt.value);
           return (
-            <div key={opt.value}>
-            <label
-              className={cn(
-                "group flex items-center gap-3 min-h-12 px-4 py-3.5 rounded-xl border cursor-pointer transition-all duration-150",
-                selected
-                  ? "border-primary bg-primary/[0.04] shadow-[0_0_0_1px_rgb(var(--accent-primary)/0.20)]"
-                  : "border-border-default/60 hover:border-border-default hover:bg-surface-muted/40",
-              )}
+            <div
+              key={opt.value}
+              className={isFullWidth ? "col-span-2" : undefined}
             >
-              <input
-                type="radio"
-                name={name}
-                value={opt.value}
-                checked={selected}
-                onChange={() => onChange(opt.value)}
-                className="sr-only"
-              />
-              <span
-                aria-hidden="true"
+              <label
                 className={cn(
-                  "relative flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                  "group flex items-center gap-3 min-h-12 px-4 py-3.5 rounded-xl border cursor-pointer transition-all duration-150",
                   selected
-                    ? "border-primary"
-                    : "border-border-default group-hover:border-border-strong",
+                    ? "border-primary bg-primary/[0.04] shadow-[0_0_0_1px_rgb(var(--accent-primary)/0.20)]"
+                    : "border-border-default/60 hover:border-border-default hover:bg-surface-muted/40",
                 )}
               >
+                <input
+                  type="radio"
+                  name={name}
+                  value={opt.value}
+                  checked={selected}
+                  onChange={() => onChange(opt.value)}
+                  className="sr-only"
+                />
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "relative flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    selected
+                      ? "border-primary"
+                      : "border-border-default group-hover:border-border-strong",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "size-2 rounded-full bg-primary transition-transform duration-150",
+                      selected ? "scale-100" : "scale-0",
+                    )}
+                  />
+                </span>
+                {opt.icon ? (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "flex size-7 shrink-0 items-center justify-center rounded-lg",
+                      opt.icon.bg,
+                    )}
+                  >
+                    <opt.icon.Icon className={cn("size-4", opt.icon.fg)} />
+                  </span>
+                ) : null}
                 <span
                   className={cn(
-                    "size-2 rounded-full bg-primary transition-transform duration-150",
-                    selected ? "scale-100" : "scale-0",
+                    "text-[14px] leading-snug flex-1",
+                    selected
+                      ? "text-content-primary font-medium"
+                      : "text-content-primary",
                   )}
-                />
-              </span>
-              <span className="text-[14px] text-content-primary leading-snug">
-                {opt.label}
-              </span>
-            </label>
-              {selected && otherValue && opt.value === otherValue && onOtherTextChange ? (
+                >
+                  {opt.label}
+                </span>
+                {isOther && !selected && otherEyebrow ? (
+                  <span className="text-[11px] italic text-content-tertiary shrink-0">
+                    {otherEyebrow}
+                  </span>
+                ) : null}
+              </label>
+              {selected && isOther && onOtherTextChange ? (
                 <div className="mt-2 ml-7 space-y-1">
                   <Input
                     autoFocus
-                    maxLength={120}
-                    placeholder="Conta-nos brevemente…"
+                    maxLength={80}
+                    placeholder={otherPlaceholder ?? "Conta-nos brevemente…"}
                     value={otherText ?? ""}
                     onChange={(e) => onOtherTextChange(e.target.value)}
                     aria-invalid={Boolean(otherError)}
                   />
-                  <div className="flex items-center justify-between">
-                    {otherError ? (
-                      <p className="text-xs text-destructive">{otherError}</p>
-                    ) : (
-                      <span />
-                    )}
+                  <div className="flex items-center justify-between gap-3">
                     <span className="text-[11px] text-content-tertiary">
-                      {(otherText ?? "").length}/120
+                      {otherError ? (
+                        <span className="text-destructive">{otherError}</span>
+                      ) : (
+                        otherHint ?? ""
+                      )}
+                    </span>
+                    <span className="text-[11px] text-content-tertiary tabular-nums">
+                      {(otherText ?? "").length} / 80
                     </span>
                   </div>
                 </div>
@@ -714,74 +986,206 @@ function RadioCardField({
   );
 }
 
-function SuccessState({
-  returningLead,
+function SuccessStep({
+  firstName,
   email,
+  returningLead,
   onClose,
 }: {
-  returningLead: boolean;
+  firstName: string | null;
   email: string;
+  returningLead: boolean;
   onClose: () => void;
 }) {
   const signupHref = `/signup?email=${encodeURIComponent(email)}`;
   return (
-    <div className="space-y-6">
-      <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-        <CheckCircle2 className="size-6 text-primary" aria-hidden />
+    <div>
+      {/* Green gradient header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-7">
+        <div
+          className="absolute right-0 top-0 size-40 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none"
+          aria-hidden
+        />
+        <div className="relative space-y-3">
+          <div className="size-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-[0_0_0_4px_rgb(16_185_129_/_0.18)]">
+            <CheckCircle2 className="size-5 text-white" aria-hidden />
+          </div>
+          <p className="text-eyebrow-sm text-emerald-700">
+            CONFIRMADO · OBRIGADO {firstName ? firstName.toUpperCase() : "—"}
+          </p>
+          <h2 className="font-display text-[28px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+            {returningLead ? (
+              <>
+                Bem-vindo de{" "}
+                <em className="not-italic font-display italic text-emerald-600">
+                  volta
+                </em>
+              </>
+            ) : (
+              <>
+                3 secções{" "}
+                <em className="not-italic font-display italic text-emerald-600">
+                  desbloqueadas
+                </em>
+              </>
+            )}
+          </h2>
+          <p className="text-[13px] text-content-secondary">
+            O teu relatório está pronto. Eis o que tens acesso já:
+          </p>
+          <ProgressSegments
+            current={TOTAL_STEPS}
+            total={TOTAL_STEPS}
+          />
+        </div>
       </div>
-      <DialogHeader className="text-left space-y-2">
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-          {returningLead ? "Bem-vindo de volta" : "Relatório desbloqueado"}
-        </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-          {returningLead
-            ? "Este report já estava guardado na tua área pessoal."
-            : "Também guardámos este report na tua área pessoal para acesso futuro."}
-        </DialogDescription>
-      </DialogHeader>
 
-      <ul className="space-y-3">
-        <NextStepRow
-          icon={<BookmarkPlus className="size-4" aria-hidden="true" />}
-          text="Acede sempre que quiseres em /app/reports"
-        />
-        <NextStepRow
-          icon={<Mail className="size-4" aria-hidden="true" />}
-          text={`Enviámos uma confirmação para ${email}`}
-        />
-      </ul>
+      <div className="px-6 sm:px-7 py-6 space-y-5">
+        {/* Free sections */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-eyebrow-sm text-emerald-700">
+              <span className="inline-block size-1.5 rounded-full bg-emerald-600 mr-1.5 align-middle" />
+              INCLUÍDO · ABERTO
+            </p>
+            <span className="text-[11px] text-content-tertiary tabular-nums">
+              {FREE_SECTIONS.length}
+            </span>
+          </div>
+          <ul className="space-y-1.5">
+            {FREE_SECTIONS.map((sec) => (
+              <li
+                key={sec.rank}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg border",
+                  sec.state === "complete"
+                    ? "bg-emerald-50/70 border-emerald-200/70"
+                    : "bg-amber-50/70 border-amber-200/70",
+                )}
+              >
+                {sec.state === "complete" ? (
+                  <Check className="size-4 text-emerald-600" aria-hidden />
+                ) : (
+                  <Clock className="size-4 text-amber-600" aria-hidden />
+                )}
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold tabular-nums tracking-wide",
+                    sec.state === "complete"
+                      ? "text-emerald-700"
+                      : "text-amber-700",
+                  )}
+                >
+                  {sec.rank}
+                </span>
+                <span className="text-[13px] text-content-primary flex-1">
+                  {sec.label}
+                </span>
+                {sec.badge ? (
+                  <span className="inline-flex items-center rounded-full bg-white/70 border border-amber-300/70 text-amber-700 px-2 py-[1px] text-[11px] font-medium tabular-nums">
+                    {sec.badge}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      <div className="space-y-3 pt-2 border-t border-border-default/40">
-        <Button size="lg" className="w-full rounded-lg font-medium mt-4" onClick={onClose}>
-          Ver relatório completo
-        </Button>
-        <a
-          href={signupHref}
-          className="block text-center text-[13px] font-medium text-primary hover:underline"
-        >
-          Criar conta com este email para aceder mais tarde
-        </a>
-        <p className="text-[12px] text-content-tertiary text-center">
-          Já tens conta?{" "}
-          <a href="/login" className="underline hover:text-content-secondary">
-            Entrar
+        {/* Premium sections */}
+        <section className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50 to-amber-50/30 p-3 space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-eyebrow-sm text-amber-800">
+              ✦ PREMIUM · POR DESBLOQUEAR
+            </p>
+            <span className="text-[11px] text-amber-700 tabular-nums">
+              {PREMIUM_SECTIONS.length}
+            </span>
+          </div>
+          <ul className="space-y-1">
+            {PREMIUM_SECTIONS.map((label, i) => (
+              <li
+                key={label}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/60"
+              >
+                <Lock className="size-3.5 text-amber-700" aria-hidden />
+                <span className="text-[11px] font-semibold tabular-nums text-amber-700 tracking-wide">
+                  {String(i + 4).padStart(2, "0")}
+                </span>
+                <span className="font-display italic text-[14px] text-content-primary">
+                  {label}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          {/* Pricing inline (visual only) */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div
+              aria-disabled
+              className="rounded-lg border border-border-default/60 bg-white p-3 cursor-default"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
+                UMA VEZ
+              </p>
+              <p className="text-[18px] font-semibold text-content-primary mt-1 tabular-nums">
+                €3{" "}
+                <span className="text-[11px] font-normal text-content-tertiary">
+                  +IVA
+                </span>
+              </p>
+              <p className="text-[11px] text-content-tertiary mt-0.5">
+                só esta análise
+              </p>
+            </div>
+            <div
+              aria-disabled
+              className="relative rounded-lg border border-amber-400/60 bg-gradient-to-br from-amber-100 to-amber-200/60 p-3 cursor-default"
+            >
+              <span className="absolute -top-2 right-2 inline-flex items-center rounded-full bg-amber-600 text-white px-1.5 py-[1px] text-[9px] font-semibold tracking-wide">
+                ★ POUPA €2
+              </span>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                BUNDLE 5
+              </p>
+              <p className="text-[18px] font-semibold text-amber-900 mt-1 tabular-nums">
+                €13{" "}
+                <span className="text-[11px] font-normal text-amber-800/70">
+                  +IVA
+                </span>
+              </p>
+              <p className="text-[11px] text-amber-800/80 mt-0.5">
+                5 análises completas
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="space-y-3 pt-2 border-t border-border-default/40">
+          <Button
+            size="lg"
+            className="w-full rounded-lg font-medium mt-4 bg-content-primary text-white hover:bg-content-primary/90"
+            onClick={onClose}
+          >
+            Ver relatório agora
+          </Button>
+          <p className="text-[11px] text-content-tertiary text-center">
+            Podes desbloquear o premium quando quiseres a partir do relatório.
+          </p>
+          <a
+            href={signupHref}
+            className="block text-center text-[12px] font-medium text-primary hover:underline"
+          >
+            Criar conta com este email para aceder mais tarde
           </a>
-        </p>
+          <p className="text-[11px] text-content-tertiary text-center">
+            Já tens conta?{" "}
+            <a href="/login" className="underline hover:text-content-secondary">
+              Entrar
+            </a>
+          </p>
+        </div>
       </div>
     </div>
-  );
-}
-
-function NextStepRow({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <li className="flex items-start gap-3">
-      <span className="mt-0.5 inline-flex size-7 items-center justify-center rounded-lg bg-surface-muted text-primary">
-        {icon}
-      </span>
-      <span className="text-[13px] text-content-secondary leading-relaxed">
-        {text}
-      </span>
-    </li>
   );
 }
 
@@ -800,12 +1204,16 @@ function WelcomeBackState({
 }) {
   return (
     <div className="space-y-6">
-      <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-        <CheckCircle2 className="size-6 text-primary" aria-hidden />
+      <div className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+        <CheckCircle2 className="size-6 text-emerald-600" aria-hidden />
       </div>
       <DialogHeader className="text-left space-y-2">
         <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-          Bem-vindo de volta{firstName ? `, ${firstName}` : ""}
+          Bem-vindo de{" "}
+          <em className="not-italic font-display italic text-emerald-600">
+            volta
+          </em>
+          {firstName ? `, ${firstName}` : ""}
         </DialogTitle>
         <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
           Vamos guardar este report na tua área pessoal.
