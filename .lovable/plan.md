@@ -1,76 +1,70 @@
-## Conclusão Brevo — criar atributos em falta + teste de unlock real
+# Próximos passos — Brevo attributes + teste real
 
-### Estado atual das fases anteriores
+## Passo 5 — Criar 14 atributos custom via API direta
 
-| Fase | Estado | Pendente |
-|---|---|---|
-| 1. Implementação `upsertBrevoContact` | ✅ Concluída | — |
-| 2. Hook no fluxo de unlock + `product_event` (`brevo_contact_synced` / `_failed`) | ✅ Concluída | — |
-| 3. Checklist dos 14 atributos esperados (nome + tipo) | ✅ Concluída | — |
-| 4. Auditoria GET aos atributos reais da conta Brevo | ✅ Concluída | — |
-| 5. Criar os 14 atributos custom na Brevo com tipo correto | ❌ Em falta | **bloqueia teste real** |
-| 6. Teste manual de unlock real + verificação no Brevo + `product_events` | ❌ Em falta | depende do passo 5 |
+**Pré-requisito:** adicionar secret `BREVO_DIRECT_API_KEY` (formato `xkeysib-…`).
+- Onde obter: painel Brevo → SMTP & API → API Keys → Generate a new API key.
+- Permissões mínimas: Contacts (read/write).
+- Após o teste, o secret pode ser removido (a sync runtime continua a usar o gateway com `BREVO_API_KEY`).
 
-A auditoria mostrou que **nenhum** dos 14 atributos custom existe — só os built-in da Brevo. Avançar agora deixaria a Brevo criá-los todos como `text`, o que partiria segmentações por número, data, boolean e category. Refinamento necessário **antes** de fechar.
+**Script one-shot** (executado via `code--exec`, não fica no repo):
 
-### Plano para concluir (2 passos)
+1. `GET https://api.brevo.com/v3/contacts/attributes` → snapshot do estado atual.
+2. Calcular diff vs lista canónica:
 
-#### Passo 5 — Criar os 14 atributos via API Brevo (script automatizado)
+   | Categoria | Nome | Tipo | Enum |
+   |---|---|---|---|
+   | normal | INSTAGRAM_HANDLE | text | — |
+   | normal | LAST_REPORT_URL | text | — |
+   | normal | REPORTS_COUNT | float | — |
+   | normal | LAST_REPORT_AT | date | — |
+   | normal | LAST_PAYMENT_AT | date | — |
+   | normal | BETA_WELCOMED_AT | date | — |
+   | normal | IS_CUSTOMER | boolean | — |
+   | category | PROFILE_OWNERSHIP | category | own_profile, competitor, client, prospect |
+   | category | GOAL | category | improve_content, understand_competitors, grow_audience, monetize, other |
+   | category | USER_TYPE | category | creator, agency, brand, freelancer, other |
+   | category | PRICING_PREFERENCE | category | one_off, subscription, unsure |
+   | category | LEAD_SOURCE | category | unlock, direct, referral, organic |
+   | category | COMMERCIAL_STATUS | category | lead, customer, churned |
+   | category | PLAN | category | free, one_off, pro, agency |
 
-Em vez de criar manualmente no painel, corro um script one-shot que faz `POST /contacts/attributes/{category}/{name}` para cada um, com o tipo certo. É idempotente: a Brevo devolve erro se já existir, que tratamos como "OK, skip".
+3. Para cada atributo em falta: `POST /v3/contacts/attributes/{category}/{name}` com body apropriado (`{type}` para normal/boolean/date/float; `{enumeration: [{value, label}]}` para category).
+4. Skip atributos já existentes (idempotente). Avisar se algum já existe com tipo diferente.
+5. `GET /v3/contacts/attributes` final → confirmar 14/14 ✅ e mostrar tabela resumo.
 
-Mapeamento exato (resultado da auditoria):
+**Sem alterações ao código da app.** O script corre fora do repo.
 
-| Atributo | Categoria Brevo | Tipo / Enum |
-|---|---|---|
-| `INSTAGRAM_HANDLE` | `normal` | `text` |
-| `LAST_REPORT_URL` | `normal` | `text` |
-| `REPORTS_COUNT` | `normal` | `float` |
-| `LAST_REPORT_AT` | `normal` | `date` |
-| `LAST_PAYMENT_AT` | `normal` | `date` |
-| `BETA_WELCOMED_AT` | `normal` | `date` |
-| `IS_CUSTOMER` | `normal` | `boolean` |
-| `PROFILE_OWNERSHIP` | `category` | enum: `own_profile`, `competitor`, `client`, `prospect` |
-| `GOAL` | `category` | enum: `improve_content`, `understand_competitors`, `grow_audience`, `monetize`, `other` |
-| `USER_TYPE` | `category` | enum: `creator`, `agency`, `brand`, `freelancer`, `other` |
-| `PRICING_PREFERENCE` | `category` | enum: `one_off`, `subscription`, `unsure` |
-| `LEAD_SOURCE` | `category` | enum: `unlock`, `direct`, `referral`, `organic` |
-| `COMMERCIAL_STATUS` | `category` | enum: `lead`, `customer`, `churned` |
-| `PLAN` | `category` | enum: `free`, `one_off`, `pro`, `agency` |
+## Passo 6 — Teste real de unlock
 
-Após criar, **re-executo o GET** `/contacts/attributes` para confirmar 14/14 ✅ com tipo correto. Output: tabela final de veredicto.
+**Inputs fixos:**
+- Email: `frederico+brevotest1@fredericocarvalho.pt`
+- Handle: `frederico.m.carvalho`
+- Snapshot: `683e4c21-60e0-4045-b43a-dfcd85fe9896` (já existente, sem regeneração)
 
-**Antes de avançar, preciso de confirmação dos enums** — os valores acima são derivados do código atual de `upsertBrevoContact`, mas a categoria é fechada na Brevo (não é livre). Se quiseres adicionar/remover algum valor, é melhor agora que depois.
+**Sequência:**
+1. `POST /api/public/report-unlock` com payload mínimo (email + handle + snapshot).
+2. `project_debug--sleep` 5s para a sync assíncrona com Brevo concluir.
+3. `supabase--read_query` em `product_events` (últimos 2 min) → procurar `brevo_contact_synced` com `metadata.brevoId` preenchido.
+4. `GET https://api.brevo.com/v3/contacts/{email}` (via gateway com `BREVO_API_KEY`) → validar:
+   - 16 attributes built-in presentes
+   - Attributes custom populados com tipos corretos (REPORTS_COUNT como número, datas como ISO, IS_CUSTOMER boolean, categorias com valores válidos)
+   - Listas: `BREVO_LEAD_MAGNET_LIST_ID` inclui o contacto
+5. Verificar `supabase--edge_function_logs` da função de sync para garantir 0 erros.
 
-#### Passo 6 — Teste de unlock real + verificação
+**Sem mutações destrutivas, sem regeneração de report, sem chamadas a providers externos (Apify/DFS/OpenAI).**
 
-Depois dos atributos confirmados:
+## Detalhes técnicos
 
-1. Email de teste: `frederico+brevotest1@…` (alias dedicado — preciso que confirmes o domínio).
-2. POST `/api/public/report-unlock` com snapshot `683e4c21-60e0-4045-b43a-dfcd85fe9896` e handle `frederico.m.carvalho`.
-3. Esperar 5s pela sync assíncrona.
-4. Ler `product_events` (últimos 2min para esse email): confirmar `brevo_contact_synced` com `metadata.brevoId`.
-5. GET `/contacts/{email}` na Brevo: confirmar atributos populados com tipos corretos + presença na lista 16.
-6. Output final: ✅ ou diagnóstico do que falhou.
+- O secret `BREVO_DIRECT_API_KEY` é apenas para o script de criação de atributos (one-shot). Não é referenciado em código de produção.
+- A app continua a usar exclusivamente o gateway via `BREVO_API_KEY` para a sync runtime.
+- Dry-run primeiro: o script imprime o diff e pede confirmação antes de fazer POSTs.
+- Em caso de enum mismatch (atributo já existe com valores diferentes), o script reporta e não tenta sobrescrever — decidimos manualmente.
 
-Não toca em Apify / OpenAI / DataForSEO. Não regenera relatório. Único email enviado é o de unlock que já existe.
+## Checkpoint
 
-### Riscos e mitigação
-
-- **Criação de atributos é write** mas reversível no painel Brevo, e idempotente.
-- **Categoria errada (`normal` vs `category`)** é destrutivo para corrigir → script faz validação dry-run (lista atributos, calcula diff, pede confirmação antes de criar).
-- **Enums fechados** → por isso peço confirmação dos valores antes de criar.
-
-### Inputs que preciso de ti antes de avançar
-
-1. **Confirmar / ajustar os enums** das 7 categorias acima.
-2. **Domínio do alias de teste** (`frederico+brevotest1@<domínio>`) para o passo 6.
-
-### Checkpoint
-
-- ☐ Passo 5a: dry-run (listar atributos atuais + diff vs esperados) → output
-- ☐ Passo 5b: criar 14 atributos via POST (após confirmação dos enums)
-- ☐ Passo 5c: GET de verificação → tabela final 14/14 ✅
-- ☐ Passo 6a: unlock real com alias + snapshot existente
-- ☐ Passo 6b: ler `product_events` + GET contacto Brevo
-- ☐ Passo 6c: output final consolidado
+- ☐ Secret `BREVO_DIRECT_API_KEY` adicionado
+- ☐ Script de auditoria + criação executado, 14/14 atributos confirmados via GET final
+- ☐ Unlock test executado, `brevo_contact_synced` registado
+- ☐ GET ao contacto na Brevo confirma todos os atributos com tipos corretos
+- ☐ Secret `BREVO_DIRECT_API_KEY` removido após validação
