@@ -50,6 +50,7 @@ import {
   AlertCircle,
   Send,
   MessageSquareText,
+  Sparkles,
 } from "lucide-react";
 import {
   User,
