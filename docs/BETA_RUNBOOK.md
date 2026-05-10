@@ -52,6 +52,13 @@ Tempo total: 1–3 min.
 | Feedback request | `feedback-request` | Manual via admin | ON (manual) |
 | Commercial follow-up | `commercial-followup` | Manual via admin | ON (manual) |
 
+> Nota consent: para além do kill-switch global
+> `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED`, a sequência lead-magnet **só é
+> enviada a leads que marcaram o opt-in `marketing_consent`** no modal.
+> Leads sem consent recebem apenas o `report-ready` transacional.
+> O sync para Brevo (CRM) também só ocorre com consent — sem opt-in,
+> regista `brevo_contact_sync_skipped` com `reason: NO_MARKETING_CONSENT`.
+
 ## 5. Onde verificar o lead em `/admin`
 
 - **Visão geral** (`/admin/visao-geral`) — funil + kanban resumido.
