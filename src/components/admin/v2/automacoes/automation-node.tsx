@@ -9,7 +9,6 @@ import {
   getLifecycleMeta,
   type LifecycleStatus,
 } from "@/lib/admin/lead-lifecycle";
-import { Link } from "@tanstack/react-router";
 import type { EmailTemplateKey } from "@/lib/admin/email-template-registry";
 
 type TriggerKind = "form" | "event" | "manual";
@@ -119,13 +118,12 @@ export function AutomationNode({
             </span>
           )}
           {templateKey && (
-            <Link
-              to="/admin/email-lab"
-              search={{ template: templateKey } as never}
+            <a
+              href={`/admin/email-lab?template=${templateKey}`}
               className="ml-auto text-[11px] font-medium text-admin-text-tertiary hover:text-admin-text-primary hover:underline"
             >
               Ver template →
-            </Link>
+            </a>
           )}
         </div>
 
