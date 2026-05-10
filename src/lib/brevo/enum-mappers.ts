@@ -12,25 +12,46 @@
  *   COMMERCIAL_STATUS:  lead | customer | churned
  */
 
-export type BrevoPricingPreference = "one_off" | "subscription" | "unsure";
-export type BrevoLeadSource = "unlock" | "direct" | "referral" | "organic";
-export type BrevoCommercialStatus = "lead" | "customer" | "churned";
+/**
+ * Brevo category attributes accept the enum's numeric `value`, not the label
+ * string. Sending a label silently drops the field. The numeric IDs below
+ * match the order the enums were created in the Brevo account schema.
+ */
+
+const PRICING_PREFERENCE_IDS = {
+  one_off: 1,
+  subscription: 2,
+  unsure: 3,
+} as const;
+
+const LEAD_SOURCE_IDS = {
+  unlock: 1,
+  direct: 2,
+  referral: 3,
+  organic: 4,
+} as const;
+
+const COMMERCIAL_STATUS_IDS = {
+  lead: 1,
+  customer: 2,
+  churned: 3,
+} as const;
+
+export type BrevoPricingPreference = keyof typeof PRICING_PREFERENCE_IDS;
+export type BrevoLeadSource = keyof typeof LEAD_SOURCE_IDS;
+export type BrevoCommercialStatus = keyof typeof COMMERCIAL_STATUS_IDS;
 
 export function mapPricingPreference(
   value: string | null | undefined,
-): BrevoPricingPreference | null {
+): number | null {
   if (!value) return null;
   const v = value.toLowerCase().trim();
-  // Subscription-like values.
   if (v === "subscription" || v === "recurring" || v === "monthly" || v === "yearly") {
-    return "subscription";
+    return PRICING_PREFERENCE_IDS.subscription;
   }
-  // Explicit "I don't know".
   if (v === "unsure" || v === "dont_know" || v === "dont-know" || v === "nao_sei" || v === "other") {
-    return "unsure";
+    return PRICING_PREFERENCE_IDS.unsure;
   }
-  // All one-off price brackets (one_off, ate_50, ate_100, ate_200, oneoff, …)
-  // collapse to the single Brevo bucket.
   if (
     v === "one_off" ||
     v === "oneoff" ||
@@ -42,42 +63,39 @@ export function mapPricingPreference(
     v.startsWith("pago_unico") ||
     /\d/.test(v)
   ) {
-    return "one_off";
+    return PRICING_PREFERENCE_IDS.one_off;
   }
-  // Unknown future values default to unsure rather than being dropped.
-  return "unsure";
+  return PRICING_PREFERENCE_IDS.unsure;
 }
 
 export function mapLeadSource(
   value: string | null | undefined,
-): BrevoLeadSource {
-  if (!value) return "unlock";
+): number {
+  if (!value) return LEAD_SOURCE_IDS.unlock;
   const v = value.toLowerCase().trim();
   if (v.includes("unlock") || v.includes("gate") || v.includes("report")) {
-    return "unlock";
+    return LEAD_SOURCE_IDS.unlock;
   }
   if (v.includes("referral") || v.includes("affiliate") || v.includes("partner")) {
-    return "referral";
+    return LEAD_SOURCE_IDS.referral;
   }
   if (v.includes("organic") || v.includes("seo") || v.includes("search")) {
-    return "organic";
+    return LEAD_SOURCE_IDS.organic;
   }
-  // test_qa, manual, admin, direct, etc. → direct
-  return "direct";
+  return LEAD_SOURCE_IDS.direct;
 }
 
 export function mapCommercialStatus(
   value: string | null | undefined,
   fallback: BrevoCommercialStatus = "lead",
-): BrevoCommercialStatus {
-  if (!value) return fallback;
+): number {
+  if (!value) return COMMERCIAL_STATUS_IDS[fallback];
   const v = value.toLowerCase().trim();
   if (v === "convertido" || v === "customer" || v === "cliente" || v === "pago") {
-    return "customer";
+    return COMMERCIAL_STATUS_IDS.customer;
   }
   if (v === "churned" || v === "churn" || v === "cancelado" || v === "perdido" || v === "inativo") {
-    return "churned";
+    return COMMERCIAL_STATUS_IDS.churned;
   }
-  // novo_pedido, relatorio_visto, feedback_recebido, contactado, em_negociacao… → lead
-  return "lead";
+  return COMMERCIAL_STATUS_IDS.lead;
 }
