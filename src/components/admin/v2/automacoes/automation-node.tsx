@@ -24,6 +24,8 @@ interface AutomationNodeProps {
   inFlightCount: number;
   completedCount: number;
   recentFailures?: number;
+  last24hCount?: number;
+  lastEventAt?: string | null;
 }
 
 const TRIGGER_LABEL: Record<TriggerKind, string> = {
@@ -63,6 +65,8 @@ export function AutomationNode({
   inFlightCount,
   completedCount,
   recentFailures = 0,
+  last24hCount = 0,
+  lastEventAt = null,
 }: AutomationNodeProps) {
   const meta = toStatus ? getLifecycleMeta(toStatus) : null;
   const kindColor = kind === "automatic" ? "#0E9488" : "#BA7517";
@@ -125,6 +129,17 @@ export function AutomationNode({
           <p className="m-0 text-[12px] text-admin-text-tertiary">
             {action.label}
           </p>
+          {(lastEventAt || last24hCount > 0) && (
+            <p className="m-0 text-[11px] text-admin-text-tertiary">
+              {lastEventAt && (
+                <>Última atividade: {formatRelative(lastEventAt)}</>
+              )}
+              {lastEventAt && last24hCount > 0 && <> · </>}
+              {last24hCount > 0 && (
+                <>24h: {last24hCount} evento{last24hCount === 1 ? "" : "s"}</>
+              )}
+            </p>
+          )}
         </div>
 
         {/* Counts */}
@@ -215,4 +230,18 @@ function Metric({
       </div>
     </div>
   );
+}
+
+function formatRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "agora";
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "há instantes";
+  if (m < 60) return `há ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `há ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `há ${d}d`;
+  const mo = Math.floor(d / 30);
+  return `há ${mo} m`;
 }

@@ -101,6 +101,8 @@ function FlowList({ flows }: { flows: AutomationFlow[] }) {
             inFlightCount={f.inFlightCount}
             completedCount={f.completedCount}
             recentFailures={f.recentFailures}
+            last24hCount={f.last24hCount}
+            lastEventAt={f.lastEventAt}
           />
           {i < flows.length - 1 && <AutomationEdge />}
         </Fragment>

@@ -1,72 +1,43 @@
-## Plano — Executar tudo (P0 → P3) no máximo alcance
+## Estado atual
 
-Ordem por dependência e risco. Cada bloco é um checkpoint independente que valido antes do seguinte.
+A página `/admin/automacoes` **já está implementada e a funcionar**. Levantamento:
 
----
+| Ficheiro | Estado | Linhas |
+|---|---|---|
+| `src/routes/admin.automacoes.tsx` | ✅ existe | 9 |
+| `src/routes/api/admin/automation-flow.ts` | ✅ existe | 249 |
+| `src/components/admin/v2/automacoes/automation-flow-page.tsx` | ✅ existe | 158 |
+| `src/components/admin/v2/automacoes/automation-node.tsx` | ✅ existe | 217 |
+| `src/components/admin/v2/automacoes/automation-edge.tsx` | ✅ existe | 33 |
+| `src/components/admin/v2/automacoes/eligibility-summary.tsx` | ✅ existe | 45 |
+| `src/components/admin/v2/admin-tabs-nav.tsx` | ✅ entrada "Automações" presente |
 
-### Bloco A · P0 · Email infra (desbloqueia beta externo)
+O endpoint devolve os 7 fluxos (pedido_recebido → follow_up_comercial), com contagens reais agregadas a partir de `leads.commercial_status` e `recentFailures` lido de `report_requests.delivery_status='failed'` (últimos 7 dias). Read-only, sem botões de execução, sem chamadas a providers, tokens admin, mobile-first.
 
-A1. Configurar secret `RESEND_FROM` (ex.: `Instagram Audit <relatorios@instagramaudit.pt>`).
-A2. Configurar secret `PUBLIC_APP_BASE_URL` (ex.: `https://instagramaudit.lovable.app`) e usar como fonte única em todos os emails (deprecar fallback via `PDF_PUBLIC_BASE_URL`).
-A3. Verificação do domínio no Resend (SPF/DKIM/DMARC) — guio passo a passo, valores são colados pelo utilizador no DNS.
-A4. Smoke test: disparar `personal-area-saved` para email externo real e confirmar entrega + ausência de `personal_area_email_failed` em `product_events`.
+## Lacuna face ao spec original
 
-> Requer dois `add_secret` interativos (A1, A2). Bloco arranca aí.
+O spec pede que cada nó referencie eventos reais (`report_generated`, `report_link_sent`, `report_viewed`, `feedback_requested`, `feedback_submitted`). Hoje esses eventos aparecem como **label estático** no nó, mas não há leitura agregada de `product_events` — as contagens vêm só de `commercial_status`. Isto é uma simplificação razoável, mas perde-se sinal útil (ex: "5 leads viram o relatório nas últimas 24h").
 
----
+## Proposta de afinação (opcional, pequena)
 
-### Bloco B · P1 · Completude funcional
+Se quiseres enriquecer a visualização sem mudar a estrutura, dois ajustes pequenos:
 
-B1. **Decisão `commercial-followup`** — proponho ligar a um botão admin no Lead Detail Sheet ("Enviar follow-up comercial") que dispara o template já existente, marca `commercial_followup_sent` em `product_events` e atualiza `leads.contacted_at`. Alternativa: remover renderer + testes. Recomendo ligar (esforço baixo, valor alto).
+1. **Endpoint** — adicionar a cada flow:
+   - `last24hCount` — `count(*) from product_events where event_type = X and created_at > now()-24h`
+   - `lastEventAt` — timestamp do evento mais recente desse tipo
+   Eventos mapeados: `pedido_recebido`→`beta_request_created|unlock_completed`, `relatorio_gerado`→`report_generated`, `link_enviado`→`report_link_sent`, `relatorio_visto`→`report_viewed`, `feedback_pedido`→`feedback_requested`, `feedback_recebido`→`feedback_submitted`, `follow_up_comercial`→`commercial_followup_sent`.
 
-B2. **Tab "Comunicação" no Lead Detail Sheet** (#3291) — timeline cronológico filtrado por eventos `*_email_*`, `report_link_sent`, `feedback_*`, com badges de estado (enviado/falhado) e timestamp relativo.
+2. **AutomationNode** — mostrar discretamente "Última atividade: há 2h" + "24h: 3 eventos" na linha do trigger.
 
-B3. **Display de cache** (#3100) — em `/analyze/$username` e em `/admin/perfis/$handle`, mostrar "Última atualização: há X · válida até Y" com timestamp absoluto em tooltip, em vez do estado críptico atual.
+Sem schema novo, sem novos componentes, sem alterar contratos existentes. ~40 linhas no endpoint + ~15 no nó.
 
----
+## Validação
 
-### Bloco C · P2 · Robustez
+- `bunx tsc --noEmit`
+- Inspeção manual: `/admin/automacoes` carrega, contagens batem com Kanban, sem botões de envio, network mostra apenas `GET /api/admin/automation-flow`, layout legível em 375px.
 
-C1. **Rate limit em 3 endpoints públicos** (`/api/public/report-unlock`, `/api/public/feedback`, `/api/public/request-full-report`):
-   - Implementação via tabela `public_request_throttle` (IP hash + endpoint + bucket de tempo) com índice parcial e cleanup por cron diário. 5 req/10min e 20 req/24h por IP+endpoint.
-   - Resposta 429 com mensagem PT-PT.
+## Decisão pedida
 
-C2. **Fluxo encurtado para returning leads** — novo endpoint `/api/public/unlock-check` (POST email) que devolve campos já conhecidos. Modal salta passos preenchidos e mostra apenas confirmação + pricing.
-
-C3. **Testes HTTP para `report-unlock`**: novo lead, returning lead, idempotência (mesma chamada 2× → 1 só `report_request`).
-
----
-
-### Bloco D · P3 · Observabilidade
-
-D1. Painel `/admin/sistema` — secção "Falhas de email recentes" (últimos 7d de `personal_area_email_failed` + `report_link_email_failed`) com lead, timestamp, erro, e ação "reenviar".
-
-D2. **Métrica de funil unlock** em `/admin/visao-geral` — gráfico `unlock_email_submitted → ownership → goal → user_type → pricing → unlock_completed` com drop-off por passo (últimos 30d).
-
----
-
-### Detalhes técnicos (referência)
-
-- Migrações novas: `public_request_throttle` (B/C1), índice parcial `idx_product_events_email_failures` (D1).
-- Server functions novas: `unlock-check.ts` (C2), `commercial-followup-send.ts` (B1).
-- Componentes novos: `LeadCommunicationTimeline.tsx` (B2), `CacheStatusBadge.tsx` (B3), `EmailFailuresPanel.tsx` (D1), `UnlockFunnelChart.tsx` (D2).
-- Tudo segue tokens `src/styles/tokens-light.css`, Inter+Fraunces, sem novas deps.
-- `tsc --noEmit` + `vitest` verdes obrigatórios após cada bloco.
-
----
-
-### Ordem de execução e checkpoints
-
-```text
-A (P0 emails) → STOP, valido entrega externa
-   ↓
-B (P1 funcional) → STOP, validas Comunicação tab + cache display
-   ↓
-C (P2 robustez) → STOP, valido rate limit + returning flow
-   ↓
-D (P3 observabilidade) → fim
-```
-
-☐ Aprovas começar pelo Bloco A (preciso pedir os 2 secrets)?
-☐ Em B1, ligar `commercial-followup` (recomendado) ou remover?
-☐ Algum bloco a saltar / despriorizar?
+- (A) **Não fazer nada** — página já cumpre o spec funcional.
+- (B) **Aplicar afinação 1+2** — enriquecer com `product_events` (last24h + lastEventAt).
+- (C) Outra direção que queiras especificar.
