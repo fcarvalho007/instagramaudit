@@ -445,6 +445,76 @@ export async function processReportUnlock(
       }
     }
 
+    // 7. Brevo contact mirror (best-effort). Runs on EVERY unlock, both
+    //    new and returning leads, so REPORTS_COUNT and LAST_REPORT_AT stay
+    //    fresh. Never blocks the unlock.
+    try {
+      const { upsertBrevoContact } = await import(
+        "@/lib/brevo/brevo-client.server"
+      );
+
+      const [{ count: reportsCount }, { data: leadRow }] = await Promise.all([
+        (supabaseAdmin as any)
+          .from("report_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", leadId),
+        (supabaseAdmin as any)
+          .from("leads")
+          .select("source, commercial_status")
+          .eq("id", leadId)
+          .maybeSingle(),
+      ]);
+
+      const baseUrl = (
+        process.env.PUBLIC_APP_BASE_URL ??
+        process.env.PDF_PUBLIC_BASE_URL ??
+        "https://instagramaudit.lovable.app"
+      )
+        .trim()
+        .replace(/\/+$/, "");
+
+      const brevoRes = await upsertBrevoContact({
+        email: data.email,
+        attributes: {
+          INSTAGRAM_HANDLE: data.instagram_username,
+          REPORTS_COUNT:
+            typeof reportsCount === "number" ? reportsCount : null,
+          LAST_REPORT_URL: `${baseUrl}/analyze/${data.instagram_username}`,
+          LAST_REPORT_AT: new Date().toISOString(),
+          PROFILE_OWNERSHIP: data.profile_ownership ?? null,
+          GOAL: data.goal ?? null,
+          USER_TYPE: data.user_type ?? null,
+          PRICING_PREFERENCE: data.pricing_preference ?? null,
+          LEAD_SOURCE: (leadRow?.source as string | null) ?? "public_report_unlock",
+          COMMERCIAL_STATUS: (leadRow?.commercial_status as string | null) ?? null,
+          IS_CUSTOMER: false,
+        },
+      });
+
+      await recordProductEvent({
+        eventType: brevoRes.ok
+          ? "brevo_contact_synced"
+          : "brevo_contact_sync_failed",
+        leadId,
+        snapshotId: data.analysis_snapshot_id,
+        handle: data.instagram_username,
+        metadata: brevoRes.ok
+          ? {
+              brevo_id: brevoRes.brevoId,
+              status: brevoRes.status,
+              report_request_id: reportRequestId,
+              returning_lead: returningLead,
+            }
+          : {
+              reason: brevoRes.reason,
+              report_request_id: reportRequestId,
+              returning_lead: returningLead,
+            },
+      });
+    } catch (err) {
+      console.error("[unlock] brevo sync error:", err);
+    }
+
     return {
       success: true,
       lead_id: leadId,
