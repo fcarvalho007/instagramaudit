@@ -31,9 +31,6 @@ export function AdminPageHeader({
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="min-w-0 space-y-2">
-          <p className="admin-eyebrow">
-            InstaBench · Admin
-          </p>
           <h1
             className="m-0 text-[28px] font-medium leading-[1.05] tracking-[-0.02em] text-admin-text-primary sm:text-[36px]"
           >

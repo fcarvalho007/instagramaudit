@@ -23,7 +23,6 @@ import {
   Settings,
   BarChart2,
   LogOut,
-  Menu,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -205,6 +204,13 @@ export function AdminSidebar({ logout }: AdminSidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Listen for topbar hamburger trigger
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("admin:sidebar-open", onOpen);
+    return () => window.removeEventListener("admin:sidebar-open", onOpen);
+  }, []);
+
   return (
     <>
       {/* Desktop: fixed sidebar */}
@@ -218,20 +224,6 @@ export function AdminSidebar({ logout }: AdminSidebarProps) {
       >
         <SidebarBody logout={logout} />
       </aside>
-
-      {/* Mobile: hamburger trigger */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Abrir menu"
-        className="md:hidden fixed top-3 left-3 z-30 p-2 rounded-lg shadow-sm"
-        style={{
-          background: "rgb(var(--admin-sidebar-bg))",
-          border: "1px solid rgb(var(--admin-sidebar-border) / 0.10)",
-        }}
-      >
-        <Menu size={20} className="text-[rgb(var(--admin-neutral-800))]" />
-      </button>
 
       {/* Mobile: drawer */}
       {open && (
