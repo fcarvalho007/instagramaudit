@@ -10,6 +10,9 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    email: typeof search.email === "string" ? search.email : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Criar conta — InstaBench" },
@@ -21,7 +24,8 @@ export const Route = createFileRoute("/signup")({
 
 function SignupPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const { email: emailFromQuery } = Route.useSearch();
+  const [email, setEmail] = useState(emailFromQuery ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
