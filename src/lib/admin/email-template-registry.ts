@@ -11,6 +11,7 @@ import {
   renderFeedbackRequest,
   renderCommercialFollowup,
   renderPersonalAreaSaved,
+  renderWelcomeBeta,
   type RenderedEmail,
 } from "@/lib/email/templates";
 
@@ -28,6 +29,7 @@ export type EmailTemplateKey =
   | "report_ready"
   | "feedback_request"
   | "personal_area_saved"
+  | "welcome_beta"
   | "commercial_followup";
 
 export interface EmailTemplateEntry {
@@ -119,6 +121,25 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         appUrl: SAMPLE.appUrl,
       }),
     preheader: "Podes voltar a consultá-lo sempre que precisares.",
+  },
+  {
+    key: "welcome_beta",
+    title: "Boas-vindas à beta",
+    internalName: "welcome_beta",
+    wired: true,
+    wiredAt: "src/lib/email/send-welcome-beta.server.ts (primeiro unlock)",
+    variables: [
+      { key: "firstName", value: SAMPLE.firstName },
+      { key: "instagramHandle", value: SAMPLE.instagramHandle },
+      { key: "reportUrl", value: SAMPLE.reportUrl },
+    ],
+    render: () =>
+      renderWelcomeBeta({
+        firstName: SAMPLE.firstName,
+        instagramHandle: SAMPLE.instagramHandle,
+        reportUrl: SAMPLE.reportUrl,
+      }),
+    preheader: "Estamos a validar o produto e o teu feedback conta.",
   },
   {
     key: "commercial_followup",
