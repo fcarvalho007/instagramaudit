@@ -386,7 +386,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
         {/* ── Sticky Header + KPIs ─────────────────────────── */}
         <div className="sticky top-0 z-10 bg-white border-b border-admin-text-primary/10">
-          <div className="px-6 pt-6 pb-4">
+          <div className="px-4 sm:px-6 pt-6 pb-4">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex items-start gap-3 min-w-0">
                 <div
@@ -499,7 +499,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           onValueChange={(v) => setActiveTab(v as TabKey)}
           className="flex-1 min-h-0 flex flex-col"
         >
-          <div className="px-6 pt-3 overflow-x-auto">
+          <div className="px-4 sm:px-6 pt-3 overflow-x-auto">
             <TabsList className="inline-flex h-9 w-auto items-center gap-1 rounded-lg p-1 bg-admin-text-primary/[0.04] text-admin-text-secondary">
               {TABS.map((t) => (
                 <TabsTrigger
@@ -515,7 +515,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Resumo ─────────────────────────────── */}
           <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-0">
-            <div className="px-6 py-5">
+            <div className="px-4 sm:px-6 py-5">
               <SectionTitle>Perfil</SectionTitle>
               {lead.profile_ownership && (
                 <DetailRow label="Propriedade" icon={Shield}>{lead.profile_ownership}</DetailRow>
@@ -537,7 +537,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
             <SectionDivider />
 
-            <div className="px-6 py-5">
+            <div className="px-4 sm:px-6 py-5">
               <SectionTitle>Inteligência comercial</SectionTitle>
               <DetailRow label="Tipo de lead" icon={User}>
                 {USER_TYPE_LABEL[lead.user_type?.toLowerCase() ?? ""] ?? "Desconhecido"}
@@ -581,7 +581,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
             <SectionDivider />
 
-            <div className="px-6 py-5 pb-8">
+            <div className="px-4 sm:px-6 py-5 pb-8">
               <SectionTitle>Notas e ações</SectionTitle>
               <Textarea
                 value={notesText}
@@ -647,7 +647,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Relatório ──────────────────────────── */}
           <TabsContent value="relatorio" className="flex-1 overflow-y-auto mt-0">
-            <div className="px-6 py-5 pb-8">
+            <div className="px-4 sm:px-6 py-5 pb-8">
               <SectionTitle>Relatório</SectionTitle>
               <ProgressTracker
                 reportStatus={lead.report_status}
@@ -996,7 +996,7 @@ function TimelineSection({
   const visible = expanded ? timeline : timeline.slice(0, INITIAL_COUNT);
 
   return (
-    <div className="px-6 py-5">
+    <div className="px-4 sm:px-6 py-5">
       <SectionTitle>{title}</SectionTitle>
 
       {loading && (
@@ -1404,7 +1404,7 @@ function FeedbackBetaSection({
 }) {
   if (!feedback) {
     return (
-      <div className="px-6 py-5">
+      <div className="px-4 sm:px-6 py-5">
         <SectionTitle>Feedback beta</SectionTitle>
         <div
           className="rounded-xl p-4 admin-body text-admin-text-tertiary"
@@ -1428,7 +1428,7 @@ function FeedbackBetaSection({
     : "—";
 
   return (
-    <div className="px-6 py-5">
+    <div className="px-4 sm:px-6 py-5">
       <div className="flex items-center justify-between mb-3">
         <SectionTitle>Feedback beta</SectionTitle>
         <span className="admin-meta text-admin-text-tertiary">
