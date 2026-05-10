@@ -466,14 +466,23 @@ export async function processReportUnlock(
       });
     }
 
-    // 7. Brevo contact mirror — fire-and-forget. Never blocks the unlock.
-    //    `syncLeadToBrevo` records success/failure events internally.
-    void (async () => {
+    // 7. Brevo contact mirror — awaited.
+    //
+    // We previously fire-and-forget'd this, but Cloudflare Workers terminate
+    // background async work as soon as the response is returned (no
+    // `waitUntil` is registered here), so the sync was silently dropped in
+    // production. The upsert is a single HTTP call to Brevo (~300–600ms);
+    // awaiting it keeps unlock latency acceptable while guaranteeing the
+    // contact is mirrored. `syncLeadToBrevo` never throws and records
+    // success/failure events internally.
+    try {
+      console.log("[unlock] BREVO_SYNC_START leadId=", leadId);
       const { syncLeadToBrevo } = await import("@/lib/brevo/sync.server");
-      return syncLeadToBrevo(leadId, "report_unlock");
-    })().catch((err) => {
+      const out = await syncLeadToBrevo(leadId, "report_unlock");
+      console.log("[unlock] BREVO_SYNC_END outcome=", JSON.stringify(out));
+    } catch (err) {
       console.error("[unlock] brevo sync error:", err);
-    });
+    }
 
     return {
       success: true,
