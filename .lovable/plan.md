@@ -1,73 +1,109 @@
-# Auditoria de Kill Switches — Beta Externa
+# Auditoria de Privacidade & Consent — Beta Externa
 
-## 1. Kill switches existentes
+## 1. O que existe hoje
 
-| Área | Flag | Comportamento atual |
-|---|---|---|
-| Apify (provider) | `APIFY_ENABLED="true"` + `APIFY_ALLOWLIST` | Hard kill-switch real em `src/lib/security/apify-allowlist.ts`. Sem `="true"` literal, nenhum perfil dispara provider call. |
-| OpenAI (insights) | `OPENAI_ENABLED="true"` | Hard kill em `src/lib/security/openai-allowlist.ts`. |
-| DataForSEO (keywords) | `DATAFORSEO_ENABLED="true"` | Hard kill em `src/lib/security/dataforseo-allowlist.ts`. |
-| Comment scraper | `COMMENT_SCRAPER_ENABLED="true"` | Hard kill em `comment-scraper.server.ts`. |
-| Brevo contact sync | — | **Sem flag.** Só falha se `BREVO_API_KEY` ou `LOVABLE_API_KEY` em falta (devolve `BREVO_API_KEY_MISSING`, fire-and-forget, não rebenta unlock). |
-| Brevo transacional | — | **Sem flag.** Falha se `BREVO_FROM_EMAIL` ou `BREVO_API_KEY` em falta → cai para Resend. |
-| Resend fallback | — | **Sem flag.** Só corre se `RESEND_API_KEY` E `RESEND_FROM` presentes; caso contrário marca `fallback_attempted: false`. |
-| Lead-magnet sequence | — | **Sem flag.** Só `sendWelcome` flag por argumento (brand-new lead). Sequência sempre tenta enviar `report-summary` se snapshot tem KPIs. |
+**Unlock modal** (`src/components/product/unlock-modal.tsx`)
+- 5 passos. Eyebrow "PASSO X DE 5". Subtítulo passo 1 menciona "Acesso gratuito durante a beta" ✅
+- Checkbox `gdpr_consent` **obrigatório**: "Aceito o tratamento dos meus dados … li a política de privacidade". Liga a `/termos` (errado, devia ligar a `/privacidade` na frase "tratamento") e a `/privacidade` ✅
+- Checkbox `marketing_consent` **opcional**: "Quero receber análises e dicas de marketing digital por email (cancelas quando quiseres · ~1 email/semana)" ✅
+- Footer passo 1: "Operador: {nome} · {cidade} · NIF {nif} · Sem spam." ✅
 
-## 2. Comportamento por falha (atual, já robusto)
+**Política de privacidade** (`/privacidade`)
+- Bem estruturada, RGPD-compliant na forma. Lista subcontratantes, transferências, retenção, direitos.
+- ⚠️ **Subcontratantes desatualizados**: lista só **Supabase, Lovable Cloud, Cloudflare, Apify, Resend**. Faltam: **Brevo** (contact sync + transacional primário), **OpenAI** (insights), **DataForSEO** (keywords).
+- ⚠️ Diz "Não é efetuado envio de comunicações de marketing … sem consentimento expresso e separado" — alinhado com o checkbox marketing, mas a sequência lead-magnet (welcome-beta + report-summary) está atualmente a sair sempre, não condicionada ao `marketing_consent`. **Inconsistência entre o que se promete e o que se executa.**
+- ⚠️ Não menciona o estatuto **beta/piloto**.
 
-- **`BREVO_API_KEY` ausente**: contact sync devolve `BREVO_API_KEY_MISSING`; tx-email cai para Resend; unlock e relatório público continuam.
-- **`BREVO_FROM_EMAIL` ausente**: tx-email salta Brevo, vai direto a Resend.
-- **`RESEND_API_KEY` ou `RESEND_FROM` ausente**: sem fallback; flow regista `*_email_failed` com `missing_secret`. UI não rebenta.
-- **`APIFY_TOKEN` ausente / `APIFY_ENABLED!=true`**: nenhuma chamada provider; analyze devolve cache ou erro controlado.
-- **Brevo 4xx/5xx/timeout**: tx-email cai para Resend; sync regista `brevo_contact_sync_failed`. Unlock OK.
-- **Resend 4xx/5xx/timeout**: regista `*_email_failed` com `brevo_reason` + `resend_reason`. Unlock OK.
-- **Relatório público**: nunca depende destes — lê snapshot da BD.
+**Termos** (`/termos`) — existe.
 
-## 3. Kill switches em falta (P1 antes da beta)
+**Footers de email** (`src/lib/email/shared.ts::wrapHtml`)
+- Footer único: `"InstaBench · Análise competitiva para Instagram"`
+- ❌ **Sem identificação do operador (nome legal, NIF, morada).** RGPD/Lei 7/2004 exigem identificação em emails comerciais.
+- ❌ **Sem link de cancelamento ("preferências de email").** Aplica-se mesmo a transacionais quando há sequência de marketing.
+- ❌ **Sem link para política de privacidade.**
+- ❌ Não distingue "transacional" vs "lead-magnet". `welcome-beta` e `report-summary` são lead-magnet (consent-based) e por lei **têm de ter unsubscribe**.
 
-Quatro flags simples, idênticas em padrão às já existentes (literal `"true"`):
+**Tracking de eventos** (`product_events`)
+- Nenhuma menção na política à recolha de eventos de uso (`page_view`, `report_viewed`, `unlock_started`, etc.). Cair-se na cláusula "registos técnicos … segurança e diagnóstico" é debatível para tracking de funil.
 
-| Flag | Default seguro | Local de verificação | Efeito quando OFF |
+**Brevo sync**
+- `BREVO_LEAD_MAGNET_LIST_ID` adiciona contacto à lista mesmo sem `marketing_consent` claro — confirmar lógica.
+
+## 2. Gaps por categoria
+
+### P0 (bloqueiam beta externa)
+
+1. **Subcontratantes Brevo / OpenAI / DataForSEO ausentes da política.** Risco RGPD direto.
+2. **Sem unsubscribe nem identificação do operador no footer dos emails.** Bloqueador legal para `welcome-beta` e `report-summary` (lead-magnet).
+3. **Sequência lead-magnet ignora `marketing_consent`.** Promessa partida.
+4. **Tracking de produto não mencionado na política.**
+
+### P1 (corrigir antes de divulgar)
+
+5. **Aviso explícito "estás a entrar numa beta privada"** no unlock e no welcome (já existe em `welcome-beta`, falta no modal e no relatório).
+6. **Link errado no checkbox obrigatório**: "tratamento dos meus dados" aponta para `/termos` em vez de `/privacidade` (linha 785).
+7. **Política refere apenas "Resend" como envio**: atualizar para "Brevo (primário) + Resend (fallback)".
+8. **Inconsistência menor**: política diz "PDF para o email", mas atualmente envia link ao relatório online.
+
+### P2 (refinamento)
+
+9. Frase "Sem spam" no footer do modal — substituir por "Cancela quando quiseres" para não soar a promessa absoluta enquanto enviamos sequência.
+10. `report-ready` e `report-summary` deviam ter linha "Recebes este email porque desbloqueaste @{handle}. Cancelar emails: {link}".
+
+## 3. Sugestões de copy pt-PT (para aprovar antes de implementar)
+
+**Footer email (substitui o atual)**
+```
+InstaBench · Análise competitiva para Instagram
+Operado por {Nome Operador}, NIF {NIF}, {Morada}.
+Recebes este email porque desbloqueaste uma análise no InstaBench.
+Política de privacidade · Cancelar emails de novidades
+```
+- Para emails puramente transacionais (`report-ready`, `personal-area-saved`, `request-received`, `feedback-request`): linha de cancelamento omitida; "Recebes este email porque pediste …".
+- Para lead-magnet (`welcome-beta`, `report-summary`, `commercial-followup`): linha de cancelamento obrigatória.
+
+**Modal — checkbox obrigatório (correção mínima)**
+> Aceito o **tratamento dos meus dados** [link → /privacidade] para guardar e aceder a este relatório, e li a **política de privacidade** [link → /privacidade].
+
+**Modal — passo 1 subtítulo (adicionar nota beta)**
+> Continuam premium: Conteúdo · Procura · Comparação. **Acesso gratuito durante a beta privada — podemos contactar-te para feedback.**
+
+**Política — secção 4 (subcontratantes), adicionar:**
+- **Brevo** — envio de email transacional e gestão de lista de contactos opt-in (UE).
+- **OpenAI** — geração de insights textuais a partir de dados agregados, sem PII (EUA, com salvaguardas RGPD).
+- **DataForSEO** — pesquisa de tendências e termos relacionados (EUA).
+
+**Política — secção 3 (finalidades), acrescentar:**
+> **Comunicações de marketing por email** (newsletter, novidades de produto) — apenas mediante consentimento expresso opt-in marcado no momento do desbloqueio. Base legal: consentimento (Art.º 6.º, n.º 1, alínea a). O consentimento pode ser retirado a qualquer momento via link de cancelamento em cada email.
+
+**Política — secção nova "Análise de utilização":**
+> São registados eventos pseudonimizados de utilização do produto (páginas vistas, passos do unlock, secções abertas) para diagnóstico, deteção de abuso e melhoria do serviço. Base legal: interesse legítimo. Não são utilizados cookies de tracking publicitário nem partilhados com terceiros.
+
+## 4. Mínimo recomendado antes de beta externa
+
+Ordem sugerida (todos P0/P1, sem mexer em fluxo):
+
+| # | Mudança | Ficheiros | Tipo |
 |---|---|---|---|
-| `BREVO_CONTACT_SYNC_ENABLED` | "true" em prod, "false" para travar | topo de `syncLeadToBrevo()` em `src/lib/brevo/sync.server.ts` | Devolve `{ok:false, reason:"DISABLED_BY_FLAG"}`, regista evento `brevo_contact_sync_skipped`. |
-| `BREVO_TRANSACTIONAL_ENABLED` | "true" | topo de `sendViaBrevo()` em `transactional-email.server.ts` | Salta Brevo, vai direto a Resend (mantém entrega de emails críticos). |
-| `RESEND_FALLBACK_ENABLED` | "true" | antes de `sendViaResend()` no orquestrador | Sem fallback; flow regista `*_email_failed` com `resend_reason="DISABLED_BY_FLAG"`. |
-| `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` | "true" | topo de `sendLeadMagnetSequence()` em `lead-magnet-sequence.server.ts` | Devolve `{welcome:"skipped_disabled", summary:"skipped_disabled"}`, evento `lead_magnet_sequence_skipped`. Unlock e relatório intactos. |
+| 1 | Adicionar Brevo, OpenAI, DataForSEO à secção 4 da política | `src/routes/privacidade.tsx` | copy |
+| 2 | Adicionar parágrafo de tracking + finalidade marketing à política | `src/routes/privacidade.tsx` | copy |
+| 3 | Footer dos emails com identificação operador + link política | `src/lib/email/shared.ts::wrapHtml` | template |
+| 4 | Adicionar parâmetro `includeUnsubscribe` ao `wrapHtml` e ligar nos templates lead-magnet | `shared.ts` + `welcome-beta.ts` + `report-summary.ts` + `commercial-followup.ts` | template + rota `/email/cancelar` |
+| 5 | Condicionar `sendLeadMagnetSequence` ao `marketing_consent` do lead | `lead-magnet-sequence.server.ts` + leitura do lead | lógica mínima |
+| 6 | Corrigir link do checkbox obrigatório (linha 785) | `unlock-modal.tsx` | trivial |
+| 7 | Subtítulo passo 1 do modal: nota "beta privada" | `unlock-modal.tsx` constantes (linhas 150-170) | trivial |
 
-Princípios:
-- Comparação literal `=== "true"` (igual ao padrão Apify/OpenAI).
-- Default = ON quando variável não definida (compatibilidade com prod atual). Para travar, basta definir `="false"`.
-- Sempre fire-and-forget; nunca rebenta unlock nem report público.
-- Cada salto regista evento dedicado em `product_events` para auditoria.
+Itens 4 e 5 implicam infraestrutura nova (rota pública `/email/cancelar?token=…` + tabela de tokens ou query parametrizada). Pode ficar para sprint dedicado pós este audit; nesse caso os emails lead-magnet **não devem ser enviados na beta externa** — desligar via `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED="false"` (kill switch já existe) até o unsubscribe estar pronto.
 
-## 4. Matriz "como travar rapidamente"
+## 5. Próximo prompt sugerido (após aprovação deste audit)
 
-| Sintoma | Variável a meter `="false"` | Impacto colateral |
-|---|---|---|
-| Brevo a poluir contactos | `BREVO_CONTACT_SYNC_ENABLED` | Nenhum no envio de emails. |
-| Brevo a falhar entregas | `BREVO_TRANSACTIONAL_ENABLED` | Tudo passa por Resend. |
-| Resend com bounce/spam | `RESEND_FALLBACK_ENABLED` | Se Brevo cair, emails falham com log. |
-| Sequência lead magnet a incomodar | `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` | Welcome + summary deixam de sair. Personal-area-saved continua. |
-| Custo Apify | `APIFY_ENABLED="false"` (já existe) | Sem fresh; cache continua a servir. |
-
-## 5. Plano de implementação (proposto, não executado)
-
-Edits mínimos (4 ficheiros, ~6 linhas cada):
-
-1. `src/lib/brevo/sync.server.ts` — adicionar guard no topo de `syncLeadToBrevo`.
-2. `src/lib/email/transactional-email.server.ts` — guard no topo de `sendViaBrevo` (devolve `reason: "BREVO_DISABLED_BY_FLAG"`); guard antes do `sendViaResend` (devolve `reason: "RESEND_DISABLED_BY_FLAG"`).
-3. `src/lib/email/lead-magnet-sequence.server.ts` — guard no topo de `sendLeadMagnetSequence`.
-4. Documentar as 4 flags em `LOCKED_FILES.md` ou novo `docs/KILL_SWITCHES.md` (lista única consultável).
-
-Sem migrações. Sem mudança em UI. Sem alteração de assinatura pública das funções (resultados já contemplam `ok:false` + `reason`).
-
-## 6. Próximo prompt sugerido (a executar depois de aprovado este audit)
-
-> "Implementa as 4 flags `BREVO_CONTACT_SYNC_ENABLED`, `BREVO_TRANSACTIONAL_ENABLED`, `RESEND_FALLBACK_ENABLED`, `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` no padrão literal `=== "true"` com default ON. Adiciona guards no topo de `syncLeadToBrevo`, `sendViaBrevo`, antes do `sendViaResend`, e no topo de `sendLeadMagnetSequence`. Cada salto regista evento `*_skipped` em `product_events`. Cria `docs/KILL_SWITCHES.md` com a matriz de travagem. Não tocar em unlock, report público, nem schema."
+> "Aplica os itens 1, 2, 6 e 7 da auditoria de privacidade: atualiza `src/routes/privacidade.tsx` para incluir Brevo/OpenAI/DataForSEO em subcontratantes, adiciona finalidade 'marketing por consentimento' e parágrafo sobre tracking de eventos pseudonimizados; corrige o link do checkbox obrigatório no `unlock-modal.tsx` (linha ~785) para `/privacidade`; adiciona ao subtítulo do passo 1 a nota 'beta privada — podemos contactar-te para feedback'. Não implementes ainda o footer do email nem o unsubscribe — fica para prompt seguinte. Não toques em fluxo, só copy."
+>
+> E em paralelo: "Mantém `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED='false'` na beta externa até existir mecanismo de unsubscribe."
 
 ## Checkpoint
 
-- ☐ Aprovar audit
-- ☐ Confirmar nomes das 4 flags (ou pedir alternativa)
-- ☐ Confirmar default ON (alternativa: default OFF para máxima cautela na beta)
-- ☐ Avançar para implementação no prompt seguinte
+- ☐ Aprovar este audit
+- ☐ Aprovar copy proposto (ou propor variantes)
+- ☐ Decidir: implementar unsubscribe agora vs desligar lead-magnet via kill-switch
+- ☐ Confirmar dados legais do operador (nome, NIF, morada) para footer

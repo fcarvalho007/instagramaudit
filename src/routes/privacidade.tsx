@@ -118,13 +118,28 @@ function PrivacidadePage() {
             efetuado (confirmações, falhas técnicas) — base legal: execução de contrato.
           </li>
           <li>
+            <strong>Comunicações de marketing por email</strong> (novidades de produto, dicas
+            editoriais, convites a dar feedback) — apenas mediante consentimento expresso
+            recolhido no momento do desbloqueio. Base legal: consentimento (Art.º 6.º, n.º 1,
+            alínea a) do RGPD). O consentimento pode ser retirado a qualquer momento através do
+            link de cancelamento incluído em cada email.
+          </li>
+          <li>
+            <strong>Análise de utilização do produto</strong> — registo de eventos
+            pseudonimizados (páginas vistas, passos do desbloqueio, secções abertas do relatório)
+            para diagnóstico, deteção de abuso e melhoria do serviço. Não são utilizados cookies
+            de tracking publicitário nem partilha com terceiros para fins de marketing. Base
+            legal: interesse legítimo (Art.º 6.º, n.º 1, alínea f) do RGPD).
+          </li>
+          <li>
             <strong>Cumprimento de obrigações legais</strong>, sempre que aplicáveis — base legal:
             obrigação jurídica (Art.º 6.º, n.º 1, alínea c) do RGPD).
           </li>
         </ul>
         <p>
-          Não é efetuado envio de comunicações de marketing nem a inclusão dos dados em qualquer
-          newsletter sem consentimento expresso e separado.
+          O InstaBench encontra-se em fase de <strong>beta privada</strong>: o serviço pode evoluir
+          ao longo do tempo e os utilizadores podem ser contactados para recolha de feedback,
+          sempre com possibilidade de recusar e cancelar a qualquer momento.
         </p>
       </section>
 
@@ -152,7 +167,23 @@ function PrivacidadePage() {
             geração da análise.
           </li>
           <li>
-            <strong>Resend</strong> — entrega transacional do relatório por email.
+            <strong>Brevo</strong> — fornecedor primário de envio transacional de email e gestão
+            da lista de contactos opt-in para comunicações de marketing (infraestrutura na União
+            Europeia).
+          </li>
+          <li>
+            <strong>Resend</strong> — fornecedor de envio transacional de email utilizado como
+            fallback quando o fornecedor primário não está disponível.
+          </li>
+          <li>
+            <strong>OpenAI</strong> — geração de insights textuais a partir de dados agregados do
+            perfil analisado, sem partilha de dados pessoais identificáveis dos utilizadores
+            (tratamento nos Estados Unidos da América, com salvaguardas RGPD aplicáveis).
+          </li>
+          <li>
+            <strong>DataForSEO</strong> — pesquisa de tendências e termos relacionados utilizados
+            no enriquecimento da análise (tratamento nos Estados Unidos da América, com
+            salvaguardas RGPD aplicáveis).
           </li>
         </ul>
         <p>
@@ -164,9 +195,10 @@ function PrivacidadePage() {
       <section id="transferencias">
         <h2>5. Transferências internacionais</h2>
         <p>
-          Alguns subcontratantes (nomeadamente Resend, Apify e parte da infraestrutura de
-          Cloudflare) podem tratar dados fora do Espaço Económico Europeu, em particular nos Estados
-          Unidos da América. Estas transferências apoiam-se nas garantias previstas no RGPD,
+          Alguns subcontratantes (nomeadamente Resend, OpenAI, DataForSEO, Apify e parte da
+          infraestrutura de Cloudflare) podem tratar dados fora do Espaço Económico Europeu, em
+          particular nos Estados Unidos da América. Estas transferências apoiam-se nas garantias
+          previstas no RGPD,
           incluindo, consoante aplicável, o EU–U.S. Data Privacy Framework e/ou Cláusulas
           Contratuais-Tipo aprovadas pela Comissão Europeia.
         </p>

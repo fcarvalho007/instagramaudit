@@ -165,7 +165,9 @@ const STEP_HEADERS: Record<
         <strong className="text-content-primary font-medium">
           Conteúdo · Procura · Comparação
         </strong>
-        . Acesso gratuito durante a beta.
+        . Acesso gratuito durante a{" "}
+        <strong className="text-content-primary font-medium">beta privada</strong>
+        {" "}— podemos contactar-te para feedback.
       </>
     ),
   },
@@ -782,7 +784,7 @@ function Step1Email({
           <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
             Aceito o{" "}
             <a
-              href="/termos"
+              href="/privacidade"
               target="_blank"
               rel="noopener"
               className="underline text-primary hover:text-primary/80"
