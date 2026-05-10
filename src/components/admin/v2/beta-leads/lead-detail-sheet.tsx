@@ -311,6 +311,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   const [sendingLink, setSendingLink] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [followupOpen, setFollowupOpen] = useState(false);
+  const [sendingFollowup, setSendingFollowup] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("resumo");
 
   // Reset state when lead changes
