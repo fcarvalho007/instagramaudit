@@ -8,9 +8,9 @@
  */
 
 import { renderPersonalAreaSaved } from "./templates/personal-area-saved";
+import { resolveSender } from "./sender";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
-const DEFAULT_SENDER_FROM = "InstaBench <onboarding@resend.dev>";
 const TIMEOUT_MS = 8_000;
 const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
 
@@ -32,10 +32,6 @@ function resolveAppUrl(): string {
   ).trim();
   const cleaned = base.replace(/\/+$/, "");
   return `${cleaned}/app/reports`;
-}
-
-function resolveSender(): string {
-  return (process.env.RESEND_FROM ?? DEFAULT_SENDER_FROM).trim();
 }
 
 export async function sendPersonalAreaSavedEmail(
