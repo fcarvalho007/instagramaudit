@@ -437,45 +437,14 @@ export async function processReportUnlock(
     }
 
     // 6. Lead-magnet email sequence — only on first-time creation of
-    //    (lead, report_request). Returning leads keep receiving the
-    //    `personal-area-saved` email as before; brand-new leads receive
-    //    welcome-beta. Both paths trigger the report-summary email via the
-    //    orchestrator, which dedups against `product_events`. Never blocks
-    //    the unlock.
+    //    (lead, report_request). Brand-new leads receive `welcome-beta`
+    //    + `report-summary`; returning leads receive only `report-summary`.
+    //    The `personal-area-saved` email was deprecated (it duplicated
+    //    report-summary without real KPIs). The orchestrator dedups against
+    //    `product_events` keyed by `report_request_id`. Never blocks unlock.
     if (createdReportRequest) {
       const firstName =
         data.name ?? (existingLead?.name as string | null | undefined) ?? null;
-
-      if (returningLead) {
-        try {
-          const { sendPersonalAreaSavedEmail } = await import(
-            "@/lib/email/send-personal-area-saved.server"
-          );
-          const res = await sendPersonalAreaSavedEmail({
-            toEmail: data.email,
-            firstName,
-            instagramHandle: data.instagram_username,
-            leadId,
-            reportRequestId,
-            snapshotId: data.analysis_snapshot_id,
-          });
-          if (res.ok) {
-            await recordProductEvent({
-              eventType: "personal_area_email_sent",
-              leadId,
-              snapshotId: data.analysis_snapshot_id,
-              handle: data.instagram_username,
-              metadata: {
-                message_id: res.messageId,
-                provider: res.provider,
-                report_request_id: reportRequestId,
-              },
-            });
-          }
-        } catch (err) {
-          console.error("[unlock] personal-area email error:", err);
-        }
-      }
 
       void (async () => {
         const { sendLeadMagnetSequence } = await import(
