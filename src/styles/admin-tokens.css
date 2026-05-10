@@ -110,6 +110,17 @@
     0 1px 2px rgb(var(--admin-border-rgb) / 0.04),
     0 4px 12px rgb(var(--admin-border-rgb) / 0.05);
 
+  /* Board (kanban beta-leads) */
+  --admin-board-column-bg: rgb(var(--admin-neutral-50));
+  --admin-board-card-shadow:
+    0 1px 2px rgb(var(--admin-border-rgb) / 0.05),
+    0 1px 3px rgb(var(--admin-border-rgb) / 0.04);
+  --admin-board-card-shadow-hover:
+    0 2px 4px rgb(var(--admin-border-rgb) / 0.08),
+    0 6px 16px rgb(var(--admin-border-rgb) / 0.08);
+  --admin-board-chip-active-bg: rgb(var(--admin-info-500));
+  --admin-board-chip-active-text: #ffffff;
+
   /* Accents — receita (esmeralda) */
   --color-admin-revenue-50: rgb(var(--admin-revenue-50));
   --color-admin-revenue-100: rgb(var(--admin-revenue-100));
