@@ -17,6 +17,11 @@ const ALLOWED_EVENTS = [
   "unlock_clicked",
   "feedback_requested",
   "report_link_sent",
+  // Public report unlock flow (Phase 3 — backend persistence)
+  "unlock_email_submitted",
+  "unlock_completed",
+  "report_saved_to_account",
+  "returning_lead_detected",
 ] as const;
 
 const trackEventSchema = z.object({
