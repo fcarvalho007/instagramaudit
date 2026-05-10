@@ -65,7 +65,12 @@ export async function brevoFetch(
   );
 
   try {
-    const url = `${GATEWAY_URL}${path.startsWith("/") ? path : `/${path}`}`;
+    // The Lovable Brevo gateway strips the upstream `/v3` prefix automatically.
+    // Calling `/v3/contacts` returns 404 `Invalid route`. Normalize defensively
+    // so domain modules can keep authoring paths that mirror Brevo's public API.
+    const normalized = path.replace(/^\/?v3\//, "/");
+    const withSlash = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    const url = `${GATEWAY_URL}${withSlash}`;
     const res = await fetch(url, {
       method: init.method ?? "POST",
       headers: {
