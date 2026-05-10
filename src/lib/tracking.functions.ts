@@ -24,6 +24,13 @@ const ALLOWED_EVENTS = [
   "returning_lead_detected",
   "personal_area_email_sent",
   "personal_area_email_failed",
+  // Provider-level transactional email events (Brevo-first + Resend fallback)
+  "brevo_email_sent",
+  "brevo_email_failed",
+  "resend_fallback_email_sent",
+  "report_ready_email_failed",
+  "feedback_request_email_failed",
+  "request_received_email_failed",
   // Brevo contact mirror (Phase — contact sync only, no emails)
   "brevo_contact_synced",
   "brevo_contact_sync_failed",
