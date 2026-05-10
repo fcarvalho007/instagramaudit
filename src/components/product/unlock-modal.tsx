@@ -59,7 +59,6 @@ export function UnlockModal({
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [result, setResult] = useState<UnlockResult | null>(null);
-  const [skipQualification, setSkipQualification] = useState(false);
   const [lookupPending, setLookupPending] = useState(false);
 
   const form = useForm<UnlockFormValues>({
@@ -126,7 +125,6 @@ export function UnlockModal({
       }
 
       if (canSkip) {
-        setSkipQualification(true);
         await submitMinimal(email);
         return;
       }
@@ -212,7 +210,6 @@ export function UnlockModal({
       };
       if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
         // Fallback: drop the skip and let the user complete the 3 questions.
-        setSkipQualification(false);
         setStep(2);
         setServerError(
           "Precisamos de mais 3 detalhes rápidos para desbloquear.",
@@ -228,7 +225,6 @@ export function UnlockModal({
       onUnlock(r);
       setStep("success");
     } catch {
-      setSkipQualification(false);
       setStep(2);
       setServerError(
         "Erro de ligação. Verifica a tua internet e tenta novamente.",
