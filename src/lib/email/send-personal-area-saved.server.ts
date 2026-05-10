@@ -2,26 +2,29 @@
  * Server-only sender for the "personal area saved" transactional email.
  *
  * Fired once per first-time unlock of a (lead, snapshot) pair. Never throws —
- * any failure (missing API key, timeout, Resend 4xx/5xx, network error) is
- * returned as `{ ok: false, reason }` so the caller can record an event
- * without blocking the unlock response.
+ * any failure is returned as `{ ok: false, reason }` so the caller can record
+ * a flow event without blocking the unlock response.
+ *
+ * Delegates the actual transport to `sendTransactionalEmail`, which tries
+ * Brevo first and falls back to Resend on failure.
  */
 
 import { renderPersonalAreaSaved } from "./templates/personal-area-saved";
-import { resolveSender } from "./sender";
+import { sendTransactionalEmail } from "./transactional-email.server";
 
-const RESEND_ENDPOINT = "https://api.resend.com/emails";
-const TIMEOUT_MS = 8_000;
 const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
 
 export interface SendPersonalAreaSavedArgs {
   toEmail: string;
   firstName: string | null;
   instagramHandle: string | null;
+  leadId?: string | null;
+  reportRequestId?: string | null;
+  snapshotId?: string | null;
 }
 
 export type SendPersonalAreaSavedResult =
-  | { ok: true; messageId: string | null }
+  | { ok: true; messageId: string | null; provider: "brevo" | "resend" }
   | { ok: false; reason: string };
 
 function resolveAppUrl(): string {
@@ -37,11 +40,6 @@ function resolveAppUrl(): string {
 export async function sendPersonalAreaSavedEmail(
   args: SendPersonalAreaSavedArgs,
 ): Promise<SendPersonalAreaSavedResult> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    return { ok: false, reason: "RESEND_API_KEY_MISSING" };
-  }
-
   let rendered;
   try {
     rendered = renderPersonalAreaSaved({
@@ -56,53 +54,23 @@ export async function sendPersonalAreaSavedEmail(
     };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const result = await sendTransactionalEmail({
+    to: args.toEmail,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    flowType: "personal-area-saved",
+    leadId: args.leadId ?? null,
+    reportRequestId: args.reportRequestId ?? null,
+    snapshotId: args.snapshotId ?? null,
+    handle: args.instagramHandle ?? null,
+  });
 
-  try {
-    const res = await fetch(RESEND_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        from: resolveSender(),
-        to: [args.toEmail],
-        subject: rendered.subject,
-        html: rendered.html,
-        text: rendered.text,
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      let errBody = "";
-      try {
-        errBody = (await res.text()).slice(0, 200);
-      } catch {
-        // ignore
-      }
-      return { ok: false, reason: `RESEND_${res.status}:${errBody}` };
-    }
-
-    let messageId: string | null = null;
-    try {
-      const json = (await res.json()) as { id?: string };
-      messageId = json?.id ?? null;
-    } catch {
-      // ignore parse error — send already succeeded
-    }
-    return { ok: true, messageId };
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      return { ok: false, reason: "RESEND_TIMEOUT" };
-    }
-    return {
-      ok: false,
-      reason: `RESEND_NETWORK:${err instanceof Error ? err.message : "unknown"}`,
-    };
-  } finally {
-    clearTimeout(timeout);
+  if (result.ok) {
+    return { ok: true, messageId: result.messageId, provider: result.provider };
   }
+  const reason = result.resendReason
+    ? `${result.brevoReason} | ${result.resendReason}`
+    : result.brevoReason;
+  return { ok: false, reason };
 }
