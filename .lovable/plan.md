@@ -1,145 +1,123 @@
-# Sync de contactos Brevo no unlock do Lead Magnet
-
 ## Objetivo
-Espelhar cada lead do unlock no Brevo via connector gateway, sem enviar emails. Best-effort: nunca bloqueia o unlock nem expõe erros ao utilizador.
 
-## Pré-requisitos (secrets)
-Já existe: `BREVO_API_KEY` (chave da connection do gateway), `LOVABLE_API_KEY`.
+Fechar o lead magnet end-to-end:
 
-**Falta adicionar:**
-- `BREVO_LEAD_MAGNET_LIST_ID` — ID numérico da lista Brevo "Lead Magnet Gratuito"
+1. Reduzir fricção do unlock — passar de 5 para 4 passos (sai a pergunta de preço).
+2. Perguntar preço **só depois** do utilizador ter visto valor — sheet contextual disparado por 70% scroll **OU** export PDF **OU** 90s após unlock.
+3. Enviar **email de boas-vindas via Brevo** no primeiro unlock (returning leads não recebem).
 
-Vou pedir este secret via `secrets--add_secret` antes de implementar. Acompanhar com instruções para o utilizador criar a lista no Brevo (Contacts → Lists → New) e copiar o ID.
+Tudo o resto (sync de contacto Brevo, persistência em `leads`, tracking) já existe. Esta fase liga as últimas pontas.
 
-## Arquitetura
+---
 
-### Cliente Brevo via connector gateway
-**Importante:** o `BREVO_API_KEY` é a chave da connection — chamadas vão sempre via `https://connector-gateway.lovable.dev/brevo` com headers `Authorization: Bearer ${LOVABLE_API_KEY}` e `X-Connection-Api-Key: ${BREVO_API_KEY}`. Nunca atingir `api.brevo.com` diretamente.
+## Fase 1 — Unlock fica com 4 passos
 
-### Ficheiros novos
+**`src/lib/unlock-flow.ts`**
+- `unlockFormSchema`: `pricing_preference` deixa de ser obrigatório, passa a `.optional()`.
+- Manter as constantes `PRICING_PREFERENCES` / `PRICING_PREFERENCE_LABELS` exportadas (reusadas pelo sheet).
 
-**`src/lib/brevo/brevo-client.server.ts`** (server-only)
-- `GATEWAY_URL = "https://connector-gateway.lovable.dev/brevo"`
-- Helper `brevoFetch(path, init)` — anexa headers, valida env vars, timeout 8s via AbortController, devolve `{ ok, status, body }` em vez de lançar.
-- `upsertBrevoContact(input)`:
-  - Input tipado: `{ email, attributes, listIds? }`.
-  - Estratégia idempotente: `POST /v3/contacts` com `{ email, attributes, listIds: [BREVO_LEAD_MAGNET_LIST_ID], updateEnabled: true }`. O `updateEnabled: true` faz upsert num único request (cria ou atualiza, e adiciona à lista).
-  - Devolve `{ ok: true, brevoId } | { ok: false, reason }` — nunca lança.
-- Atributos enviados (todos opcionais; só inclui chaves não-null):
-  - `INSTAGRAM_HANDLE` (text)
-  - `REPORTS_COUNT` (number) — calculado server-side: `count(report_requests where lead_id = …)` após o INSERT
-  - `LAST_REPORT_URL` (text) — `${PUBLIC_APP_BASE_URL}/analyze/${handle}`
-  - `LAST_REPORT_AT` (date ISO)
-  - `PROFILE_OWNERSHIP`, `GOAL`, `USER_TYPE`, `PRICING_PREFERENCE` (text)
-  - `LEAD_SOURCE` (text) — `lead.source`
-  - `COMMERCIAL_STATUS` (text) — `lead.commercial_status` (após avanço de lifecycle)
-  - `IS_CUSTOMER` (boolean) — `false` na fase atual (placeholder; futuro: derivado de plan/billing)
+**`src/components/product/unlock-modal.tsx`**
+- `TOTAL_STEPS = 4`. Tipo `Step = 1 | 2 | 3 | 4 | "success"`.
+- Remover bloco do step 5 (pricing). Submit final passa a acontecer no step 4.
+- `goNext` deixa de incluir o passo extra; submit envia `pricing_preference: undefined`.
 
-**`src/lib/brevo/index.ts`** — re-export apenas dos tipos públicos.
+**`src/lib/unlock.server.ts`** — já aceita `pricing_preference` opcional. Sem alterações.
 
-### Integração em `src/lib/unlock.server.ts`
-Adicionar bloco best-effort **depois** do envio do email (passo 6 atual), **dentro do `try` principal**, para que tanto novos como recorrentes sejam sincronizados a cada unlock — não só na primeira vez.
+**Testes**: actualizar `src/lib/__tests__/unlock-flow.test.ts` e `unlock-schema.test.ts` para aceitar `pricing_preference` ausente.
 
-```ts
-try {
-  const { upsertBrevoContact } = await import("@/lib/brevo/brevo-client.server");
-  const { count: reportsCount } = await supabaseAdmin
-    .from("report_requests")
-    .select("id", { count: "exact", head: true })
-    .eq("lead_id", leadId);
-  const { data: leadRow } = await supabaseAdmin
-    .from("leads")
-    .select("source, commercial_status, plan:profiles(plan)")
-    .eq("id", leadId).maybeSingle();
-  const res = await upsertBrevoContact({
-    email: data.email,
-    attributes: { … },
-  });
-  await recordProductEvent({
-    eventType: res.ok ? "brevo_contact_synced" : "brevo_contact_sync_failed",
-    leadId, snapshotId: data.analysis_snapshot_id, handle: data.instagram_username,
-    metadata: res.ok ? { brevo_id: res.brevoId } : { reason: res.reason },
-  });
-} catch (err) { console.error("[unlock] brevo sync error:", err); }
-```
+---
 
-### Eventos
-Acrescentar `brevo_contact_synced` e `brevo_contact_sync_failed` à allowlist em `src/lib/tracking.functions.ts` (defesa para futuro uso client-side; já são aceites server-side).
+## Fase 2 — Sheet contextual de pricing (pós-valor)
 
-### Testes
-**`src/lib/brevo/__tests__/brevo-client.test.ts`** (novo, vitest):
-- Mock global `fetch`. Casos:
-  - upsert 201 → `{ ok: true, brevoId }`, payload contém `updateEnabled: true` e `listIds`
-  - upsert 204 (existing contact updated) → `{ ok: true }`
-  - 429/5xx → `{ ok: false, reason: "BREVO_429:…" }`
-  - timeout → `{ ok: false, reason: "BREVO_TIMEOUT" }`
-  - missing `BREVO_API_KEY` ou `LOVABLE_API_KEY` ou `BREVO_LEAD_MAGNET_LIST_ID` → `{ ok: false, reason: "BREVO_*_MISSING" }`
-  - omite atributos `null/undefined` do payload
+Novo componente client-only:
 
-**`src/lib/__tests__/unlock-flow.test.ts`** — manter; sem alteração (helper Brevo é separado).
+**`src/components/product/pricing-feedback-sheet.tsx`**
+- Usa `Sheet` do shadcn (mobile: bottom; desktop: side right, `sm:max-w-md`).
+- Conteúdo: pergunta única "Quanto pagarias por um relatório completo (uso único)?" + 5 opções (`PRICING_PREFERENCES`) + botão "Saltar" discreto.
+- Design system estrito (Inter/Fraunces, tokens semânticos, sem cores hardcoded). Título Fraunces, opções estilo `RadioCardField` (extraído ou reutilizado).
+- Estado: idle → submitting → success (mensagem curta "Obrigado pelo feedback") → fecha automaticamente após 1.5s.
 
-## Idempotência confirmada
-- Lead Supabase: lookup por `email_normalized` (já existente).
-- Report request: índice único `(lead_id, snapshot_id)` (já existente).
-- Brevo: `updateEnabled: true` faz upsert por email; chamar N vezes com mesmo email atualiza o mesmo contacto e a lista é set semântico (não duplica).
+**Hook trigger** — `src/hooks/use-pricing-feedback-trigger.ts`
+- Inputs: `{ leadId, snapshotId, enabled }`.
+- Idempotência: chave `ib_pricing_asked:{snapshotId}` em `localStorage`. Se existir, nunca dispara.
+- Três triggers (qualquer um abre):
+  - **Scroll 70%**: listener com throttle de 200ms, calcula `(scrollY + innerHeight) / documentHeight ≥ 0.7`.
+  - **PDF export**: novo `CustomEvent("ib:pdf-export")` disparado em `analyze.$username.tsx` no início de `shareActions.exportPdf()`.
+  - **Timer 90s**: `setTimeout` armado quando o sheet fica `enabled` (após unlock).
+- Ao disparar, marca `localStorage` (mesmo que utilizador feche sem responder, não voltamos a perguntar nesta sessão/dispositivo) e remove listeners.
 
-## Constraints respeitadas
-- ✅ Nada de Resend/email novo.
-- ✅ Nada de Apify/OpenAI/DataForSEO.
-- ✅ Sem alterações ao UI público nem à geração do report.
-- ✅ Sem schema novo (tudo em `product_events.metadata` + tabelas existentes).
-- ✅ `BREVO_API_KEY` e `LOVABLE_API_KEY` lidos só em `*.server.ts` via `process.env`, nunca no bundle do browser.
+**Persistência** — endpoint novo:
+
+**`src/routes/api/public/pricing-feedback.ts`** (POST)
+- Zod: `{ lead_id: string (uuid), snapshot_id: string, pricing_preference: enum }`.
+- Update em `leads` (apenas se `pricing_preference IS NULL`, para não sobrepor resposta anterior).
+- Insert `product_events`: `pricing_feedback_submitted` com `metadata = { trigger: "scroll" | "pdf" | "timer", snapshot_id }`.
+- Adicionar `pricing_feedback_submitted` à allowlist em `src/lib/tracking.functions.ts`.
+- Sem auth (segue padrão de `/api/public/*`), validação rigorosa, rate-limit ligeiro por `lead_id` (in-memory map, suficiente para MVP).
+
+**Integração em `src/routes/analyze.$username.tsx`**
+- Guardar `unlockResult` (lead_id) em estado.
+- Render `<PricingFeedbackSheet leadId={...} snapshotId={...} enabled={unlocked && !!leadId} />` ao lado do `UnlockModal`.
+- No `shareActions.exportPdf` wrapper, disparar `window.dispatchEvent(new CustomEvent("ib:pdf-export"))` antes de iniciar o export.
+
+---
+
+## Fase 3 — Email de boas-vindas Brevo (apenas no primeiro unlock)
+
+**`src/lib/brevo/brevo-client.server.ts`** — nova função `sendBrevoTransactionalEmail`:
+- POST `https://connector-gateway.lovable.dev/brevo/v3/smtp/email` (gateway pattern, headers `Authorization: Bearer LOVABLE_API_KEY` + `X-Connection-Api-Key: BREVO_API_KEY`).
+- Payload mínimo: `sender`, `to`, `subject`, `htmlContent`, `tags: ["instabench-welcome"]`.
+- Sender: `BREVO_SENDER_EMAIL` + `BREVO_SENDER_NAME` (novos secrets — pedir ao utilizador). Domínio tem de estar verificado no Brevo.
+- Best-effort: nunca lança; devolve `{ ok, messageId | reason, status }`.
+
+**Conteúdo** (pt-PT, copy real, sem placeholder):
+- Assunto: `O teu relatório do @{handle} está guardado`
+- HTML simples editorial (Inter system fallback): saudação, link para `/me`, link directo para o report (`PUBLIC_APP_BASE_URL + /analyze/{handle}`), nota "Sem spam, podes apagar a qualquer altura".
+- Função pura `buildWelcomeEmail({ handle, reportUrl, meUrl })` em `src/lib/brevo/welcome-email.server.ts` (testável).
+
+**Integração em `src/lib/unlock.server.ts`** (passo 7, depois do contact sync):
+- Só envia se `returningLead === false` (primeiro unlock para este email).
+- Loga `welcome_email_sent` ou `welcome_email_failed` em `product_events` (adicionar ambos à allowlist).
+- Falha do Brevo nunca quebra o unlock.
+
+**Nota interna ao utilizador**: este passo só funciona com domínio verificado no Brevo + `BREVO_SENDER_EMAIL` configurado. Se ainda não tiver, podemos preparar o código atrás de feature flag (`BREVO_WELCOME_EMAIL_ENABLED`) e activar quando estiver pronto. Confirmar com o utilizador antes de pedir secrets.
+
+---
 
 ## Detalhes técnicos
 
-**Payload exemplo enviado ao Brevo:**
-```json
-POST https://connector-gateway.lovable.dev/brevo/v3/contacts
-Headers:
-  Authorization: Bearer <LOVABLE_API_KEY>
-  X-Connection-Api-Key: <BREVO_API_KEY>
-  Content-Type: application/json
-Body:
-{
-  "email": "joao@example.com",
-  "updateEnabled": true,
-  "listIds": [42],
-  "attributes": {
-    "INSTAGRAM_HANDLE": "joao.silva",
-    "REPORTS_COUNT": 2,
-    "LAST_REPORT_URL": "https://instagramaudit.lovable.app/analyze/joao.silva",
-    "LAST_REPORT_AT": "2026-05-10T14:32:00.000Z",
-    "PROFILE_OWNERSHIP": "own_profile",
-    "GOAL": "improve_content",
-    "USER_TYPE": "creator",
-    "PRICING_PREFERENCE": "under_9",
-    "LEAD_SOURCE": "public_report_unlock",
-    "COMMERCIAL_STATUS": "relatorio_visto",
-    "IS_CUSTOMER": false
-  }
-}
-```
-
-**Atributos no Brevo:** o utilizador deve criar previamente os atributos no painel Brevo (Contacts → Settings → Contact attributes) com os tipos corretos, ou aceitar que o Brevo crie dinamicamente como TEXT na primeira receção (REPORTS_COUNT/IS_CUSTOMER/LAST_REPORT_AT terão tipos errados se criados implicitamente). Vou recomendar criação manual prévia dos 3 não-text.
+- **Zero alterações de schema**: `leads.pricing_preference` já existe e aceita NULL.
+- **Tracking events novos** (allowlist em `tracking.functions.ts`): `pricing_feedback_submitted`, `welcome_email_sent`, `welcome_email_failed`.
+- **Locked files**: nenhum tocado. `report.example` intacto.
+- **Idempotência**:
+  - Pricing: `localStorage` por snapshot + guard server-side (`pricing_preference IS NULL`).
+  - Email: `returning_lead` flag já calculada por `unlock.server.ts`.
+- **Tokens**: Sheet usa `surface-base`, `border-default`, `content-primary/secondary/tertiary`, `primary`, sem cores hardcoded. Título em Fraunces (regra do design system).
+- **Mobile-first**: Sheet em `bottom` no mobile, ≥640px passa a `right`. Botões `min-h-12`.
 
 ## Validação
-1. `bunx tsc --noEmit` — verde.
-2. `bunx vitest run` — verde, novos testes incluídos.
-3. Teste manual via UI: unlock com email novo → ver `brevo_contact_synced` em `product_events` e contacto na lista Brevo. Repetir com mesmo email → atributos atualizados, sem duplicado, novo evento `brevo_contact_synced`.
-4. Teste de falha: definir `BREVO_LEAD_MAGNET_LIST_ID` para ID inválido → unlock continua a 100%, evento `brevo_contact_sync_failed` registado com `reason`.
-5. `rg "BREVO_API_KEY" dist/ 2>/dev/null` após build — não deve aparecer.
 
-## Out of scope
-- Painel admin para gerir lista/atributos Brevo
-- Sync retroativo dos leads existentes (pode ser corrida manual num turno separado)
-- Sync bidirecional (Brevo → Supabase)
-- Templates ou envio de emails Brevo
-- Workflow Brevo (automation) — configurado no painel pelo utilizador
+- `bunx tsc --noEmit`
+- `bunx vitest run` (ajustar testes existentes do unlock-flow + adicionar teste para `buildWelcomeEmail`).
+- Manual:
+  - Fluxo unlock fecha em 4 passos.
+  - Após unlock, scroll até 70% → sheet abre. Submeter → grava em `leads.pricing_preference`, `product_events`.
+  - Recarregar página → sheet **não** reabre (idempotência).
+  - Em sessão limpa, esperar 90s sem scrollar → sheet abre.
+  - Export PDF → sheet abre se ainda não tiver disparado.
+  - Primeiro unlock → email de boas-vindas chega; segundo unlock do mesmo email → não chega novo email.
+
+## Fora de âmbito
+
+- Templates Brevo geridos remotamente.
+- Página /admin para editar copy do email (pode vir depois).
+- Múltiplas variantes de copy / A-B test.
+- Bloqueio do sheet em utilizadores logados (versão simples: pergunta sempre uma vez por snapshot).
 
 ## Checkpoint
-- ☐ Adicionar secret `BREVO_LEAD_MAGNET_LIST_ID`
-- ☐ Criar `src/lib/brevo/brevo-client.server.ts` com `upsertBrevoContact`
-- ☐ Integrar chamada best-effort em `processReportUnlock` após envio de email
-- ☐ Acrescentar 2 eventos à allowlist em `tracking.functions.ts`
-- ☐ Testes vitest do helper Brevo (mock fetch)
-- ☐ `bunx tsc --noEmit` + `bunx vitest run` verdes
+
+- ☐ Unlock reduzido para 4 passos, schema actualizado, testes verdes
+- ☐ `PricingFeedbackSheet` + hook + endpoint `/api/public/pricing-feedback` a gravar em `leads`
+- ☐ Triggers: 70% scroll, evento PDF, timer 90s — todos com idempotência por snapshot
+- ☐ Brevo: `sendBrevoTransactionalEmail` + email de boas-vindas no primeiro unlock (atrás de flag até confirmação de sender verificado)
+- ☐ Tracking events na allowlist; `tsc` + `vitest` verdes
