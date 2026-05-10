@@ -5,6 +5,7 @@ const mockUpsert = vi.fn();
 const mockRecord = vi.fn();
 
 const fromMock = vi.fn();
+const leadsSelectSpy = vi.fn();
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: { from: (...args: unknown[]) => fromMock(...args) },
 }));
@@ -28,14 +29,17 @@ function setupSupabase(opts: {
   fromMock.mockImplementation((table: string) => {
     if (table === "leads") {
       return {
-        select: () => ({
+        select: (cols: string) => {
+          leadsSelectSpy(cols);
+          return {
           eq: () => ({
             maybeSingle: async () => ({
               data: opts.lead ?? null,
               error: opts.leadError ?? null,
             }),
           }),
-        }),
+          };
+        },
       };
     }
     if (table === "report_requests") {
@@ -66,6 +70,7 @@ beforeEach(() => {
   mockUpsert.mockReset();
   mockRecord.mockReset();
   fromMock.mockReset();
+  leadsSelectSpy.mockReset();
 });
 
 afterEach(() => {
@@ -81,7 +86,7 @@ describe("syncLeadToBrevo", () => {
         source: "public_report_unlock",
         commercial_status: "lead",
         profile_ownership: "own_profile",
-        goal: "improve_content",
+        purpose: "improve_content",
         user_type: "creator",
         pricing_preference: "below_20",
       },
@@ -123,6 +128,19 @@ describe("syncLeadToBrevo", () => {
     expect(evt.metadata.brevo_id).toBe(999);
     expect(evt.metadata.email_masked).toBe("J***@Example.com");
     expect(evt.metadata.sync_reason).toBe("report_unlock");
+  });
+
+  it("selects 'purpose' column from leads (regression: was 'goal')", async () => {
+    setupSupabase({
+      lead: { id: "lead-x", email: "a@b.com", purpose: "grow_audience" },
+      latestRR: null,
+      count: 0,
+    });
+    mockUpsert.mockResolvedValue({ ok: true, brevoId: 1, status: 201 });
+    await syncLeadToBrevo("lead-x", "report_unlock");
+    const cols = leadsSelectSpy.mock.calls[0][0] as string;
+    expect(cols).toContain("purpose");
+    expect(cols).not.toMatch(/\bgoal\b/);
   });
 
   it("records failure with LEAD_NOT_FOUND when lead missing", async () => {
