@@ -455,7 +455,7 @@ export async function processReportUnlock(
           });
           if (res.ok) {
             await recordProductEvent({
-              eventType: "welcome_beta_email_sent",
+              eventType: "beta_welcome_email_sent",
               leadId,
               snapshotId: data.analysis_snapshot_id,
               handle: data.instagram_username,
@@ -483,6 +483,17 @@ export async function processReportUnlock(
               }
             })().catch((err) => {
               console.error("[unlock] brevo welcomed-at stamp error:", err);
+            });
+          } else {
+            await recordProductEvent({
+              eventType: "beta_welcome_email_failed",
+              leadId,
+              snapshotId: data.analysis_snapshot_id,
+              handle: data.instagram_username,
+              metadata: {
+                reason: res.reason,
+                report_request_id: reportRequestId,
+              },
             });
           }
         }
