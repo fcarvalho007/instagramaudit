@@ -1,103 +1,109 @@
-## Auditoria
+## Smoke test controlado — Lead magnet (1 envio real)
 
-- **`RESEND_FROM`**: **não configurado** (confirmado via `fetch_secrets`). `RESEND_API_KEY` está presente.
-- **`src/lib/email/sender.ts`**: cai silenciosamente em `"InstaBench <onboarding@resend.dev>"` (sandbox da Resend) quando `RESEND_FROM` está vazio. **Inseguro** — em beta externa, a Resend só entrega para o owner da conta.
-- **`src/lib/email/transactional-email.server.ts`** (l.286-299): o gate de fallback verifica apenas `RESEND_API_KEY`. Se faltar `RESEND_FROM`, ainda chama `sendViaResend` que usa o sender sandbox. O log emitido (`resend_fallback_email_sent`) **mente** sobre o destino real.
-- Não existe flag clara de "dev mode" no projeto (o `NODE_ENV` do Vite não está usado nesta pipeline server). Decisão: **não fazer fallback para sandbox em nenhum cenário automaticamente**. Quem quiser testar local define `RESEND_FROM` explicitamente.
+### Bloqueador antes de executar
 
-## Pergunta antes de implementar
+Preciso do **email exato** a usar no teste.
 
-`RESEND_FROM` valor sugerido: **`InstaBench <relatorios@instagramaudit.pt>`**.
-Antes de chamar `add_secret`, preciso confirmar:
+Sugestão: um alias pessoal (ex: `frederico+smoke@…`) — não usar emails de equipa, nem `@digitalfc.pt` que já é o `BREVO_FROM_EMAIL` (auto-envios para o sender podem ser filtrados).
 
-- O domínio `instagramaudit.pt` (ou subdomínio) está **verificado na Resend** com SPF/DKIM ok?
-  - **Sim** → adicionamos `RESEND_FROM = InstaBench <relatorios@instagramaudit.pt>`.
-  - **Não** → ficamos sem `RESEND_FROM` definido (Resend fica desativado, código loga `RESEND_FROM_MISSING`) até o domínio ser verificado.
+Vou pedir via `ask_questions` antes de prosseguir.
 
-Vou pedir esta confirmação via `ask_questions` antes de mexer no secret.
+### Snapshot a usar (cache existente, sem provider calls)
 
-## Alterações de código
+Cache disponível (sem chamar Apify/OpenAI/DataForSEO):
 
-### 1. `src/lib/email/sender.ts` — remover fallback sandbox
+| handle | snapshots | último |
+|---|---|---|
+| `martimsilvai` | 1 | 2026-05-04 |
+| `karmel_loja_` | 1 | 2026-05-02 |
+| `karmel` | 1 | 2026-05-02 |
+| `frederico.m.carvalho` | 1 | 2026-04-29 |
 
-```ts
-export type SenderResolution =
-  | { ok: true; from: string }
-  | { ok: false; reason: "RESEND_FROM_MISSING" };
+**Proposta**: usar **`martimsilvai`** (mais recente, não é o profile do owner → evita confusão de eventos antigos no `frederico.m.carvalho`). Mudo se preferires outro.
 
-export function resolveSender(): SenderResolution {
-  const v = process.env.RESEND_FROM?.trim();
-  if (!v) return { ok: false, reason: "RESEND_FROM_MISSING" };
-  return { ok: true, from: v };
-}
-```
+### Pré-flight (read-only, antes do clique)
 
-Sem default. Sem sandbox. Sem branch dev — quem precisar define `RESEND_FROM` no ambiente.
+1. Verificar gates de envio: `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`, `BREVO_LEAD_MAGNET_LIST_ID`, `RESEND_API_KEY`, `RESEND_FROM`, `LOVABLE_API_KEY`. Confirmar `BREVO_LEAD_MAGNET_LIST_ID == 16`.
+2. `SELECT` em `leads` pelo email do teste — se já existir, registar `lead_id` e `created_at` para comparar deltas (não apago — constraint do briefing: não mutar leads não relacionados, mas o do teste é o alvo legítimo).
+3. `SELECT` em `product_events` pelo email/lead nos últimos 7d para baseline.
 
-### 2. `src/lib/email/transactional-email.server.ts`
+### Execução do teste (browser, fluxo real)
 
-- `sendViaResend` (l.170): logo após validar `RESEND_API_KEY`, validar `resolveSender()`. Se `!ok`, devolver `ProviderResult` com `reason: "RESEND_FROM_MISSING"` (sem chamar fetch).
-- Linha do body: `from: sender.from` (após o guard).
-- Dispatcher (l.286): mudar `hasResend` para também exigir `RESEND_FROM`:
-  ```ts
-  const resendApiKeyOk = Boolean(process.env.RESEND_API_KEY?.trim());
-  const resendFromOk = Boolean(process.env.RESEND_FROM?.trim());
-  const resendConfigured = resendApiKeyOk && resendFromOk;
-  ```
-  Se `!resendConfigured`, registar evento de falha do flow com:
-  ```ts
-  {
-    brevo_reason,
-    resend_reason: !resendApiKeyOk ? "RESEND_API_KEY_MISSING" : "RESEND_FROM_MISSING",
-    fallback_attempted: false,
-    missing_secret: !resendApiKeyOk ? "RESEND_API_KEY" : "RESEND_FROM",
-  }
-  ```
-  e devolver `resendReason` correspondente (em vez de `null`).
-- Garantir que metadata **nunca** inclui chaves API (já não inclui — só nome do secret em falta).
+1. `browser--navigate_to_sandbox` para `/p/{snapshot-id-ou-handle}` ou rota pública equivalente do snapshot escolhido.
+2. Confirmar visualmente: report carrega, sem regenerar (sem chamadas a `/analyze/...`).
+3. Acionar unlock → preencher email do teste → submeter.
+4. Capturar screenshots: (a) modal antes do submit, (b) modal pós-sucesso, (c) "Welcome back" se aplicável.
+5. Validar copy do modal de sucesso contra a versão aprovada.
 
-### 3. `src/lib/admin/system-queries.server.ts`
+### Verificações pós-envio (sem mais sends)
 
-Adicionar `RESEND_FROM` à lista de secrets monitorizados (l.429) e considerar o "Resend OK" (l.470) como `RESEND_API_KEY && RESEND_FROM`.
+#### Brevo
+- Listar contacto via gateway `GET /v3/contacts/{email}` (mocked? **não — leitura real, não envia**).
+- Confirmar:
+  - `email` correto
+  - `listIds` inclui `16`
+  - atributos populados (NOME, HANDLE, REPORT_URL, etc. — listo os reais ao ler `contacts.server.ts`)
+- Se contacto já existia: confirmar update incremental, não duplicado.
 
-### 4. Testes — `src/lib/email/__tests__/transactional-email.test.ts`
+#### Supabase — `product_events`
+Query por `lead_id` (do email do teste) ordenando por `created_at DESC LIMIT 30`. Esperar:
+- `unlock_email_submitted`
+- `unlock_completed`
+- `report_saved_to_account`
+- `brevo_contact_synced`
+- `beta_welcome_email_sent`
+- `report_summary_email_sent`
 
-Atualizar/adicionar:
+Cada um **uma única vez** para o `metadata.report_request_id` do teste — comprova idempotência da `lead-magnet-sequence`.
 
-- **Brevo OK** → Resend não usado. (já existe)
-- **Brevo falha + RESEND_FROM presente** → Resend fallback usado. (já existe)
-- **Brevo falha + RESEND_API_KEY ausente** → falha logada, `resend_reason: "RESEND_API_KEY_MISSING"`, `missing_secret: "RESEND_API_KEY"`, sem chamada Resend. (substitui o existente para incluir os novos campos)
-- **NOVO: Brevo falha + RESEND_FROM ausente (mas API key presente)** → falha logada, `resend_reason: "RESEND_FROM_MISSING"`, `missing_secret: "RESEND_FROM"`, sem chamada Resend, sem `onboarding@resend.dev` no JSON.stringify das chamadas.
-- **NOVO: Asserção** que `JSON.stringify(mockRecord.mock.calls)` não contém `re_test` nem `resend.dev`.
+#### Email (caixa do tester)
+- Welcome-beta chega.
+- Report-summary chega.
+- Métricas no report-summary batem com `analysis_snapshots` row do snapshot usado (followers, engagement, top posts).
+- Links: domínio `instagramaudit.pt` (PUBLIC_APP_BASE_URL), apontam para o public report e para `/app/reports`.
 
-### 5. Adicionar secret (após confirmação)
+#### Fallback Resend
+- Inspecionar `product_events` para `brevo_email_failed` / `resend_fallback_email_sent` / `*_email_failed`.
+- Caminho esperado em sucesso: **só** `brevo_email_sent` × 2 (welcome + summary), **sem** Resend.
+- Se Brevo falhar: documentar `reason` e se Resend pegou (deve, pois `RESEND_FROM` está agora configurado).
 
-Se o domínio estiver verificado: `add_secret(["RESEND_FROM"])` com guidance para colar `InstaBench <relatorios@instagramaudit.pt>`.
+### Critérios GO / NO-GO
 
-## Fora de âmbito
+**GO (beta interno)** se:
+- ✅ Modal flui sem erro, copy correto
+- ✅ Welcome-beta + report-summary chegam à caixa do tester
+- ✅ Brevo contacto na lista 16 com atributos
+- ✅ 6 eventos esperados, sem duplicados
+- ✅ Métricas/links consistentes
+- ✅ Sem chamadas a Apify/OpenAI/DataForSEO durante o teste
 
-- Não alterar copy de emails.
-- Não tocar em UI pública.
-- Sem mudanças de schema.
-- Sem chamadas reais a Brevo/Resend (testes mockados, como já estão).
-- Sem mexer no Brevo (continua primário).
+**NO-GO** se qualquer falha não-recuperável (email não chega, contacto não criado, dados errados nos emails, eventos duplicados).
 
-## Validação
+### Constraints respeitados
 
-- `bunx tsc --noEmit`
-- `bunx vitest run src/lib/email/__tests__/transactional-email.test.ts`
+- 1 unlock só, 1 email só.
+- Sem regenerar report (uso snapshot cache).
+- Sem chamar paid providers (verificável nos logs).
+- Sem campanhas Brevo manuais.
+- Sem mexer em outros leads.
 
-## Resposta final ao briefing
+### Output final ao briefing
 
-- **`RESEND_FROM` configurado?** Não.
-- **Comportamento quando ausente (após patch):** Resend não é tentado; evento de falha do flow é registado com `resend_reason: "RESEND_FROM_MISSING"`, `missing_secret: "RESEND_FROM"`, `fallback_attempted: false`. Nunca cai em `onboarding@resend.dev`.
+Retorno:
+- email usado
+- snapshot/handle usado + `report_request_id`
+- lista de eventos com timestamps
+- payload Brevo do contacto (mascarado)
+- screenshot dos 2 emails recebidos (ou colagem do HTML)
+- falhas/observações
+- decisão GO/NO-GO
 
-## Checkpoint
+### Checkpoint antes de começar
 
-- ☐ Confirmar verificação do domínio `instagramaudit.pt` na Resend
-- ☐ (Se verificado) `RESEND_FROM` adicionado via `add_secret`
-- ☐ `sender.ts` devolve resolução tipada sem sandbox
-- ☐ `transactional-email.server.ts` gate inclui `RESEND_FROM`, metadata expõe `missing_secret`
-- ☐ `system-queries.server.ts` reconhece `RESEND_FROM` como obrigatório
-- ☐ Testes atualizados (5 cenários, sem leak de keys/sandbox)
-- ☐ `tsc` e `vitest` verdes
+- ☐ Receber email exato do tester
+- ☐ Confirmar snapshot (default `martimsilvai`, ou outro)
+- ☐ Confirmar `BREVO_LEAD_MAGNET_LIST_ID == 16`
+- ☐ Pré-flight read-only (envs + baseline `product_events`)
+- ☐ Executar unlock no browser
+- ☐ Auditar Brevo + DB + caixa do tester
+- ☐ Emitir GO/NO-GO
