@@ -11,11 +11,9 @@
 
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { AdminAuthShell } from "@/components/admin/v2/admin-auth-shell";
 import { Toaster } from "@/components/ui/sonner";
-import { AdminTabsNav } from "@/components/admin/v2/admin-tabs-nav";
-import { DemoModeSwitch } from "@/components/admin/v2/demo-mode-switch";
+import { AdminSidebar } from "@/components/admin/v2/admin-sidebar";
 import { AdminCommandPalette } from "@/components/admin/v2/admin-command-palette";
 import { useDemoMode } from "@/lib/admin/demo-mode";
  import { useQuery } from "@tanstack/react-query";
@@ -45,22 +43,11 @@ function AdminLayout() {
         className="admin-v2 min-h-screen overflow-x-hidden"
         data-demo={demoOn ? "on" : "off"}
       >
-        <main className="mx-auto w-full max-w-[1280px] px-3 py-4 sm:px-5 sm:py-5 md:px-7 md:py-7">
-          <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
-             <ExecutionModeBadge />
-            <DemoModeSwitch />
-            {logout && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => logout()}
-                className="text-xs text-admin-text-secondary hover:text-admin-text-primary"
-              >
-                Terminar sessão
-              </Button>
-            )}
+        <AdminSidebar logout={logout} />
+        <main className="min-h-screen pt-14 px-3 py-4 sm:px-5 sm:py-5 md:pt-7 md:pl-7 md:pr-7 md:py-7 md:ml-[var(--admin-sidebar-width)]">
+          <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+            <ExecutionModeBadge />
           </div>
-          <AdminTabsNav />
           {demoOn ? (
             <details
               className="group mb-4 mt-2 rounded-md border px-3 py-2 text-[11px]"
