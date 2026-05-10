@@ -848,6 +848,60 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         }
       }}
     />
+
+    {/* ── Send commercial follow-up dialog ─────────────────── */}
+    <ConfirmDialog
+      open={followupOpen}
+      onOpenChange={setFollowupOpen}
+      title="Enviar follow-up comercial"
+      description={
+        <div className="space-y-2">
+          <p>
+            Vai enviar o email <strong>"Próximo passo"</strong> para{" "}
+            <strong>{lead.email}</strong>.
+          </p>
+          <p className="text-admin-text-tertiary text-[13px]">
+            Sem pressão — convida o lead a responder. Não altera o estado
+            comercial; apenas marca <em>contacted_at</em>.
+          </p>
+        </div>
+      }
+      confirmLabel={sendingFollowup ? "A enviar…" : "Enviar follow-up"}
+      loading={sendingFollowup}
+      onConfirm={async () => {
+        setSendingFollowup(true);
+        try {
+          const res = await fetch("/api/admin/send-commercial-followup", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lead_id: lead.id }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.success) {
+            const code = body?.error_code as string | undefined;
+            const map: Record<string, string> = {
+              EMAIL_PROVIDER_NOT_CONFIGURED: "Provider de email não configurado.",
+              LEAD_EMAIL_MISSING: "Lead sem email.",
+              LEAD_EMAIL_INVALID: "Email do lead inválido.",
+              RESEND_SANDBOX_RECIPIENT_BLOCKED:
+                "Sandbox: domínio não verificado. Configurar RESEND_FROM.",
+              RESEND_TIMEOUT: "Timeout do provider.",
+              RESEND_FAILED: "Falha no envio.",
+            };
+            toast.error(map[code ?? ""] ?? "Falha ao enviar follow-up.");
+          } else {
+            toast.success("Follow-up comercial enviado");
+            setFollowupOpen(false);
+            onRefresh?.();
+          }
+        } catch {
+          toast.error("Erro de rede ao enviar email.");
+        } finally {
+          setSendingFollowup(false);
+        }
+      }}
+    />
     </>
   );
 }
