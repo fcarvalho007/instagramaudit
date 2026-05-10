@@ -135,7 +135,7 @@ export function ReportShellV2({
       >
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
         <section className="bg-surface-base">
-          <ReportHeroV2 result={result} actions={actions} />
+          <ReportHeroV2 result={result} actions={actions} analyzedAtIso={analyzedAtIso ?? null} />
         </section>
 
         {/* Tabs mobile sticky abaixo do hero */}

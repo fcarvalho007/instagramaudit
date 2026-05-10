@@ -7,11 +7,13 @@ import type {
 } from "@/lib/report/snapshot-to-report-data";
 import type { ReportPageActions } from "@/components/report/report-page";
 import { ShareReportPopover } from "@/components/report-share/share-popover";
+import { CacheStatusBadge } from "./cache-status-badge";
 import { cn } from "@/lib/utils";
 
 interface ReportHeroV2Props {
   result: AdapterResult;
   actions: ReportPageActions;
+  analyzedAtIso?: string | null;
 }
 
 /**
@@ -21,7 +23,7 @@ interface ReportHeroV2Props {
  *   Hero card: 3-column layout (profile | metrics | actions)
  *   Footer: comparison CTA + multi-network teaser + date
  */
-export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
+export function ReportHeroV2({ result, actions, analyzedAtIso = null }: ReportHeroV2Props) {
   const profile = result.data.profile;
   const enriched: ReportEnriched = result.enriched;
   const k = result.data.keyMetrics;
@@ -89,11 +91,15 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               </p>
             )}
             <div className="flex items-center gap-3 mt-3 flex-wrap">
-              {analysisMeta.dateLabel && (
-                <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
-                  <Calendar className="size-3 text-content-tertiary" aria-hidden="true" />
-                  {analysisMeta.dateLabel?.replace("Atualizado ", "")}
-                </span>
+              {analyzedAtIso ? (
+                <CacheStatusBadge analyzedAtIso={analyzedAtIso} />
+              ) : (
+                analysisMeta.dateLabel && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
+                    <Calendar className="size-3 text-content-tertiary" aria-hidden="true" />
+                    {analysisMeta.dateLabel?.replace("Atualizado ", "")}
+                  </span>
+                )
               )}
               {analysisMeta.postsLabel && (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-signal-success">
@@ -264,10 +270,16 @@ export function ReportHeroV2({ result, actions }: ReportHeroV2Props) {
               </span>
             </span>
 
-            {analysisMeta.dateLabel && (
-              <span className="hidden lg:inline text-xs text-content-tertiary">
-                {analysisMeta.dateLabel?.replace("Atualizado ", "")}
+            {analyzedAtIso ? (
+              <span className="hidden lg:inline">
+                <CacheStatusBadge analyzedAtIso={analyzedAtIso} compact />
               </span>
+            ) : (
+              analysisMeta.dateLabel && (
+                <span className="hidden lg:inline text-xs text-content-tertiary">
+                  {analysisMeta.dateLabel?.replace("Atualizado ", "")}
+                </span>
+              )
             )}
           </div>
         </div>
