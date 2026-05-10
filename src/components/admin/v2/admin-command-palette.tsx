@@ -93,6 +93,7 @@ export function AdminCommandPalette() {
                     lead.email,
                     lead.handle,
                     lead.company,
+                    meta.label,
                   ]
                     .filter(Boolean)
                     .join(" ");
