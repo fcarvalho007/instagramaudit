@@ -25,6 +25,11 @@ relatório público nem o unlock — são apenas side effects.
   (`=== "false"` para desligar). Default = ON.
 - Todas registam evento dedicado em `product_events` para auditoria.
 - Nenhum kill switch interrompe `unlock` ou o relatório público.
+- **Consent layer (em cima do kill-switch)**: `syncLeadToBrevo` e
+  `sendLeadMagnetSequence` verificam adicionalmente `lead.marketing_consent`.
+  Sem opt-in expresso, ambos saltam mesmo com kill-switch ON, registando
+  evento com `reason: "NO_MARKETING_CONSENT"`. Garante consistência com a
+  política de privacidade (consentimento expresso para marketing/CRM).
 - Localização dos guards:
   - `src/lib/brevo/sync.server.ts` → `syncLeadToBrevo`
   - `src/lib/email/transactional-email.server.ts` → `sendViaBrevo` + bloco fallback
