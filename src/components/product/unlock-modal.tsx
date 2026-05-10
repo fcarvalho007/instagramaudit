@@ -619,7 +619,7 @@ function SuccessState({
       <ul className="space-y-3">
         <NextStepRow
           icon={<BookmarkPlus className="size-4" aria-hidden="true" />}
-          text="Acede sempre que quiseres em /me"
+          text="Acede sempre que quiseres em /app/reports"
         />
         <NextStepRow
           icon={<Mail className="size-4" aria-hidden="true" />}

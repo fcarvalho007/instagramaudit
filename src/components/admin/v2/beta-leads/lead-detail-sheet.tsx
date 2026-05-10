@@ -148,6 +148,13 @@ const EVENT_LABELS: Record<string, string> = {
   lead_status_changed: "Estado comercial alterado",
   commercial_followup_sent: "Follow-up comercial enviado",
   commercial_followup_failed: "Falha no envio do follow-up comercial",
+  unlock_completed: "Desbloqueio concluído",
+  unlock_email_submitted: "Email submetido para desbloqueio",
+  brevo_contact_synced: "Contacto sincronizado com Brevo",
+  brevo_contact_sync_failed: "Falha na sincronização Brevo",
+  brevo_email_failed: "Falha no envio de email Brevo",
+  report_saved_to_account: "Relatório guardado na conta",
+  returning_lead_detected: "Lead recorrente detetado",
 };
 
 function deriveIntentSignal(lead: EnrichedLead): { label: string; accent: "revenue" | "signal" | "neutral" } {
