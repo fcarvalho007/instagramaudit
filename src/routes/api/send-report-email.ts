@@ -265,7 +265,7 @@ export const Route = createFileRoute("/api/send-report-email")({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: SENDER_FROM,
+              from: resolveSender(),
               to: [recipientEmail],
               subject,
               html,
