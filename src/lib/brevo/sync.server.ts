@@ -49,7 +49,7 @@ export async function syncLeadToBrevo(
     const { data: lead, error: leadErr } = await (supabaseAdmin as any)
       .from("leads")
       .select(
-        "id, email, source, commercial_status, profile_ownership, goal, user_type, pricing_preference",
+        "id, email, source, commercial_status, profile_ownership, purpose, user_type, pricing_preference",
       )
       .eq("id", leadId)
       .maybeSingle();
@@ -89,7 +89,7 @@ export async function syncLeadToBrevo(
       LAST_REPORT_URL: handle ? `${baseUrl}/analyze/${handle}` : null,
       LAST_REPORT_AT: latestRR?.created_at ?? new Date().toISOString(),
       PROFILE_OWNERSHIP: lead.profile_ownership ?? null,
-      GOAL: lead.goal ?? null,
+      GOAL: lead.purpose ?? null,
       USER_TYPE: lead.user_type ?? null,
       PRICING_PREFERENCE: lead.pricing_preference ?? null,
       LEAD_SOURCE: (lead.source as string | null) ?? "public_report_unlock",
