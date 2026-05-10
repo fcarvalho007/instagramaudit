@@ -1,54 +1,120 @@
-## Estado atual: já implementado
+## Objetivo
 
-Após auditoria, o pedido já está aplicado no código atual. Resumo da verificação:
+Detetar leads recorrentes **passo-a-passo**, saltando apenas os passos cuja resposta já está em BD. Hoje só sabemos saltar tudo-ou-nada via `/api/public/lookup-lead` (booleano `has_qualification`).
 
-### Modal (`src/components/product/unlock-modal.tsx`)
-- `TOTAL_STEPS = 4` ✅
-- 4 passos: Email → Profile ownership → Goal → User type → Success ✅
-- Sem passo de pricing no JSX ✅
-- Progresso "Passo X de 4" ✅
-- Submit final (`handleFinalSubmit`) **não envia** `pricing_preference` no payload ✅
-- Lookup + skip qualification preservados ✅
+## Decisão de endpoint
 
-### Schema cliente (`src/lib/unlock-flow.ts`)
-- `unlockFormSchema` já tem `pricing_preference: z.enum(...).optional()` ✅
-- Comentário já marca campo como movido para sheet pós-valor ✅
-- Constantes `PRICING_PREFERENCES` e `PRICING_PREFERENCE_LABELS` mantidas (usadas pelo `pricing-feedback-sheet`) ✅
+Criar **novo** `POST /api/public/unlock-check` (mais rico) e **manter** `/api/public/lookup-lead` por enquanto (não há outros consumidores além do modal, mas ficamos com fallback durante o roll-out). Numa segunda fase fica deprecated.
 
-### Schema servidor (`src/lib/unlock.server.ts`)
-- `pricing_preference` já é `.optional()` no `reportUnlockSchema` ✅
-- Branch returning lead nunca regride o campo ✅
+### Contrato
 
-### Testes
-- `unlock-flow.test.ts`: já cobre payload válido sem pricing + back-compat com pricing ✅
-- `unlock-schema.test.ts`: aceita payload mínimo sem pricing ✅
+Request:
+```json
+{ "email": "ana@empresa.pt" }
+```
 
-### Coluna BD
-- `leads.pricing_preference` intacta, sem migração ✅
+Response (200, **shape constante** em todos os ramos para minimizar enumeration):
+```json
+{
+  "exists": true,
+  "knownFields": ["profile_ownership", "goal", "user_type"],
+  "missingFields": [],
+  "display": { "firstName": "Ana" }
+}
+```
 
----
+Negative branch (não existe / inválido / rate-limited / erro):
+```json
+{ "exists": false, "knownFields": [], "missingFields": ["profile_ownership","goal","user_type"], "display": { "firstName": null } }
+```
 
-## Limpezas opcionais (cosméticas)
+Notas técnicas:
+- BD usa coluna `purpose`; o endpoint **traduz** `purpose` → `goal` para alinhar com o formulário (`unlock-flow.ts`).
+- `firstName` derivado de `leads.name` (`split(" ")[0]`, max 40 chars, trim). Só presente quando `exists=true`. Nunca devolver email, handle, IDs, timestamps, status comercial, pricing, notas internas.
+- Sem cache (`Cache-Control: no-store`), sempre `200 OK`.
+- Rate-limit por IP-hash, **5 req / 60 s** (igual ao `lookup-lead`, com fallback negativo se exceder).
+- Validação Zod `.strict()` no body.
 
-Se quiseres, faço numa única passagem mínima e segura:
+## Privacidade — risco de enumeration
 
-1. **Remover `pricing_preference: undefined` dos `defaultValues`** do `useForm` em `unlock-modal.tsx` (linha 72) — campo não é editado em lado nenhum do modal, só polui os defaults.
-2. **Remover o import não utilizado** `BookmarkPlus` se não for usado no `SuccessState` (verificar antes).
+`exists: true` + `firstName` permite confirmar se um email está registado. Mitigação:
 
-Nenhuma destas mexe em comportamento, apenas higiene de código.
+1. Endpoint não autenticado mas **rate-limited** + shape constante.
+2. `firstName` opcional no payload — só é **usado no UI** quando o modal vai mostrar boas-vindas (i.e., qualificação completa). Se houver passos por responder, o modal usa copy **neutra** ("Já temos parte destes dados, faltam só X passos.") e não exibe nome.
+3. Sem `lead_id` exposto.
+4. Texto de erro sempre genérico.
 
----
+Trade-off: a copy "Bem-vindo de volta" inerentemente revela existência ao próprio dono do email — aceitável (o utilizador é dono do email que digitou). O risco real é ataque automatizado, mitigado por rate-limit + shape constante.
 
-## Validação a correr depois (mesmo que não haja alterações)
+## Mudanças no modal (`src/components/product/unlock-modal.tsx`)
+
+1. Substituir chamada de `lookup-lead` → `unlock-check` após Step 1 (Email).
+2. Guardar em estado: `knownFields: Set<Field>`, `firstName: string | null`, `returningLead: boolean`.
+3. Lógica de navegação `goNext`:
+   - Se step atual ∈ `knownFields`, saltar automaticamente para o próximo step não-conhecido.
+   - Se já não há steps por responder → submeter via `submitMinimal` (já existe).
+4. **Welcome state intermédio** (opcional, único ecrã antes do submit minimal):
+   - Quando `returningLead && missingFields.length === 0`, mostrar copy editorial:
+     > "Bem-vindo de volta{firstName ? `, ${firstName}` : ""}. Vamos guardar este report na tua área."
+   - Botão "Continuar" → submitMinimal.
+5. Quando há campos parciais conhecidos: copy neutra acima do próximo passo: "Faltam só {n} passos rápidos." (sem nome).
+6. Fallback robusto: qualquer erro / timeout (4 s) do `unlock-check` → flow normal de 4 passos (comportamento atual já existe).
+7. Pré-preencher `defaultValues` no `react-hook-form` com `knownFields` (mantém estado consistente caso utilizador volte atrás).
+
+## Backend (`src/lib/unlock.server.ts`)
+
+Sem alterações funcionais. O `submitMinimal` envia só email+snapshot+handle e o servidor já faz merge conservador (nunca regride). Reuso integral.
+
+## Tracking
+
+Adicionar a `tracking.functions.ts` (`ALLOWED_EVENTS`):
+- `unlock_check_returning_lead` — disparado quando `exists=true`
+- `unlock_check_skipped_steps` — metadata `{ skipped: ["profile_ownership", ...] }`
+
+(Não bloqueante; dispara client-side via `trackEvent` existente.)
+
+## Testes
+
+Novo `src/lib/__tests__/unlock-check-endpoint.test.ts` (unit do schema/payload puros, sem fetch de rede):
+- payload válido com lead completo → todos `knownFields`, `missingFields` vazio, `firstName` derivado
+- lead com 1 campo (ex.: só `profile_ownership`) → `knownFields=["profile_ownership"]`, restantes em `missingFields`
+- email inválido → shape negativa
+- lead sem `name` → `firstName=null`
+- lead inexistente → shape negativa
+
+(Refatorar a derivação `leadRow → response` para função pura `buildUnlockCheckResponse(lead)` exportada do ficheiro do route, importável no teste.)
+
+Manter `unlock-flow.test.ts` e `unlock-schema.test.ts` intocados.
+
+## Ficheiros tocados
+
+Criados:
+- `src/routes/api/public/unlock-check.ts`
+- `src/lib/__tests__/unlock-check-endpoint.test.ts`
+
+Editados:
+- `src/components/product/unlock-modal.tsx` (lookup → unlock-check, lógica per-field, welcome state)
+- `src/lib/tracking.functions.ts` (2 eventos)
+
+Não tocados:
+- `src/lib/unlock.server.ts`
+- `src/lib/unlock-flow.ts`
+- `src/routes/api/public/lookup-lead.ts` (mantido como fallback, marca-se deprecated em comentário)
+- BD (sem migração)
+
+## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (focar `unlock-flow`, `unlock-schema`)
-- Smoke manual: abrir modal → 4 passos → unlock OK
-
----
+- `bunx vitest run`
+- Manual com 3 emails de teste:
+  1. Email novo → 4 passos completos
+  2. Email com qualificação completa → welcome state + submit imediato
+  3. Email com 1 campo conhecido → modal salta esse step e pede só os restantes 2
 
 ## Pergunta antes de avançar
 
-Queres que:
-- (A) faça apenas as **limpezas cosméticas** acima e corra a validação, ou
-- (B) considere a tarefa **fechada como já implementada** (sem tocar em nada) e avance para o próximo lote (Phase 4 — `report_engaged` event)?
+(A) Avançar com este plano tal como está — novo endpoint `unlock-check`, welcome state quando qualificação completa, lookup-lead mantido como fallback deprecated.
+
+(B) Em vez de criar endpoint novo, **estender** `lookup-lead` adicionando `knownFields`/`missingFields`/`firstName` e renomear depois (menos ficheiros, mais churn no consumidor existente).
+
+(C) Esconder `firstName` do payload e usar copy 100 % neutra ("Bem-vindo de volta" sem nome), eliminando qualquer leak de PII.

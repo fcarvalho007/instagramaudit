@@ -47,6 +47,9 @@ const ALLOWED_EVENTS = [
   // Contextual pricing-feedback sheet (post-value)
   "pricing_feedback_submitted",
   "pricing_feedback_dismissed",
+  // Unlock-check (per-field returning lead detection)
+  "unlock_check_returning_lead",
+  "unlock_check_skipped_steps",
 ] as const;
 
 const trackEventSchema = z.object({
