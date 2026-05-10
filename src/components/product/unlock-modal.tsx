@@ -671,7 +671,7 @@ export function UnlockModal({
                   <strong className="font-semibold text-content-secondary">
                     {OPERATOR_INFO.name}
                   </strong>{" "}
-                  · {OPERATOR_INFO.city} · NIF {OPERATOR_INFO.nif} · Sem spam.
+                  · {OPERATOR_INFO.city} · NIF {OPERATOR_INFO.nif} · Cancela quando quiseres.
                 </p>
               ) : null}
             </form>
