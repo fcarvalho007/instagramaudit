@@ -98,9 +98,6 @@ export function ReportHeroV2({
             )}
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               <CacheStatusBadge analyzedAtIso={analyzedAtIso} expiresAtIso={expiresAtIso} />
-                  </span>
-                )
-              )}
               {analysisMeta.postsLabel && (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-signal-success">
                   {analysisMeta.postsLabel}
