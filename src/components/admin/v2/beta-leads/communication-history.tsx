@@ -75,6 +75,16 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
     badgeKind: "failed",
     icon: AlertCircle,
   },
+  commercial_followup_sent: {
+    label: "Follow-up comercial enviado",
+    badgeKind: "sent",
+    icon: Mail,
+  },
+  commercial_followup_failed: {
+    label: "Falha no envio do follow-up comercial",
+    badgeKind: "failed",
+    icon: AlertCircle,
+  },
 };
 
 const COMMUNICATION_TYPES = new Set(Object.keys(EVENT_CONFIG));
