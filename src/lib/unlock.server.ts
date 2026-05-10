@@ -500,6 +500,58 @@ export async function processReportUnlock(
       } catch (err) {
         console.error("[unlock] welcome/personal-area email error:", err);
       }
+
+      // 6b. Report summary email (Email 2) — fire-and-forget. Sent to both
+      //     brand-new and returning leads on every newly-created report
+      //     request. Skipped silently when snapshot lacks the 4 KPIs.
+      void (async () => {
+        const { sendReportSummaryEmail } = await import(
+          "@/lib/email/send-report-summary.server"
+        );
+        const firstName =
+          data.name ?? (existingLead?.name as string | null | undefined) ?? null;
+        const res = await sendReportSummaryEmail({
+          toEmail: data.email,
+          firstName,
+          leadId,
+          reportRequestId,
+          snapshotId: data.analysis_snapshot_id,
+        });
+        if (res.ok) {
+          await recordProductEvent({
+            eventType: "report_summary_email_sent",
+            leadId,
+            snapshotId: data.analysis_snapshot_id,
+            handle: data.instagram_username,
+            metadata: {
+              message_id: res.messageId,
+              provider: res.provider,
+              report_request_id: reportRequestId,
+            },
+          });
+        } else if (res.reason === "NO_DATA") {
+          await recordProductEvent({
+            eventType: "report_summary_skipped_no_data",
+            leadId,
+            snapshotId: data.analysis_snapshot_id,
+            handle: data.instagram_username,
+            metadata: { report_request_id: reportRequestId },
+          });
+        } else {
+          await recordProductEvent({
+            eventType: "report_summary_email_failed",
+            leadId,
+            snapshotId: data.analysis_snapshot_id,
+            handle: data.instagram_username,
+            metadata: {
+              reason: res.reason,
+              report_request_id: reportRequestId,
+            },
+          });
+        }
+      })().catch((err) => {
+        console.error("[unlock] report-summary email error:", err);
+      });
     }
 
     // 7. Brevo contact mirror — fire-and-forget. Never blocks the unlock.
