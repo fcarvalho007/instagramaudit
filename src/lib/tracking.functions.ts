@@ -31,9 +31,9 @@ const ALLOWED_EVENTS = [
   "report_ready_email_failed",
   "feedback_request_email_failed",
   "request_received_email_failed",
-  // Welcome-beta email (first unlock only)
-  "welcome_beta_email_sent",
-  "welcome_beta_email_failed",
+  // Beta welcome email (first unlock only)
+  "beta_welcome_email_sent",
+  "beta_welcome_email_failed",
   // Report summary email (manual admin trigger; cron later)
   "report_summary_email_sent",
   "report_summary_email_failed",
