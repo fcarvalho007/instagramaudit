@@ -660,3 +660,69 @@ function NextStepRow({ icon, text }: { icon: React.ReactNode; text: string }) {
     </li>
   );
 }
+
+function WelcomeBackState({
+  firstName,
+  submitting,
+  serverError,
+  onContinue,
+  onBack,
+}: {
+  firstName: string | null;
+  submitting: boolean;
+  serverError: string | null;
+  onContinue: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+        <CheckCircle2 className="size-6 text-primary" aria-hidden />
+      </div>
+      <DialogHeader className="text-left space-y-2">
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+          Bem-vindo de volta{firstName ? `, ${firstName}` : ""}
+        </DialogTitle>
+        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+          Vamos guardar este report na tua área pessoal.
+        </DialogDescription>
+      </DialogHeader>
+
+      {serverError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{serverError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-6 sm:-mx-7 px-6 sm:px-7 pt-5 mt-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={onBack}
+          disabled={submitting}
+          className="flex-shrink-0 rounded-lg"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          Voltar
+        </Button>
+        <Button
+          type="button"
+          size="lg"
+          className="flex-1 rounded-lg font-medium"
+          onClick={onContinue}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              A desbloquear…
+            </>
+          ) : (
+            "Continuar"
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
