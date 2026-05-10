@@ -476,8 +476,10 @@ export async function processReportUnlock(
     // contact is mirrored. `syncLeadToBrevo` never throws and records
     // success/failure events internally.
     try {
+      console.log("[unlock] BREVO_SYNC_START leadId=", leadId);
       const { syncLeadToBrevo } = await import("@/lib/brevo/sync.server");
-      await syncLeadToBrevo(leadId, "report_unlock");
+      const out = await syncLeadToBrevo(leadId, "report_unlock");
+      console.log("[unlock] BREVO_SYNC_END outcome=", JSON.stringify(out));
     } catch (err) {
       console.error("[unlock] brevo sync error:", err);
     }
