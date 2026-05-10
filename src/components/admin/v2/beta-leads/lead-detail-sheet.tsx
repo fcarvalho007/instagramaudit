@@ -357,6 +357,15 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   const displayedSuggestion = lead.feedback ? feedbackIntent.nextAction : suggestedStep;
   const columnDef = KANBAN_COLUMNS.find((c) => c.key === lead.commercial_status);
 
+  // Commercial follow-up button is only available when the lead has shown
+  // measurable purchase intent in their feedback AND is still in the funnel.
+  const followupEligible =
+    !!lead.email &&
+    !!lead.feedback &&
+    (feedbackIntent.intent === "alto" || feedbackIntent.intent === "medio") &&
+    lead.commercial_status !== "convertido" &&
+    lead.commercial_status !== "arquivado";
+
   const handleSaveNotes = () => {
     onUpdate(lead.id, { internal_notes: notesText });
     setNotesDirty(false);
