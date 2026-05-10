@@ -160,6 +160,7 @@ export function UnlockModal({
         {step === "success" ? (
           <SuccessState
             returningLead={Boolean(result?.returningLead)}
+            email={form.getValues("email")}
             onClose={() => onOpenChange(false)}
           />
         ) : (
