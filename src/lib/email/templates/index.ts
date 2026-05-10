@@ -21,3 +21,7 @@ export {
   renderCommercialFollowup,
   type CommercialFollowupInput,
 } from "./commercial-followup";
+export {
+  renderPersonalAreaSaved,
+  type PersonalAreaSavedInput,
+} from "./personal-area-saved";

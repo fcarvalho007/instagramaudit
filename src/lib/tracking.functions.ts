@@ -22,6 +22,8 @@ const ALLOWED_EVENTS = [
   "unlock_completed",
   "report_saved_to_account",
   "returning_lead_detected",
+  "personal_area_email_sent",
+  "personal_area_email_failed",
 ] as const;
 
 const trackEventSchema = z.object({

@@ -4,9 +4,11 @@ import {
   renderReportReady,
   renderFeedbackRequest,
   renderCommercialFollowup,
+  renderPersonalAreaSaved,
 } from "../templates";
 
 const REPORT_URL = "https://example.com/analyze/frederico.m.carvalho";
+const APP_URL = "https://instagramaudit.lovable.app/app/reports";
 
 describe("renderRequestReceived", () => {
   it("renders subject, handle and brand sign-off", () => {
@@ -153,5 +155,38 @@ describe("preheader + signature", () => {
     expect(out.text).toContain("Obrigado,");
     expect(out.text).toContain("Frederico — InstaBench");
     expect(out.html).toContain("Frederico");
+  });
+});
+
+describe("renderPersonalAreaSaved", () => {
+  it("renders subject, preheader, handle and app URL", () => {
+    const out = renderPersonalAreaSaved({
+      firstName: "Maria Silva",
+      instagramHandle: "frederico.m.carvalho",
+      appUrl: APP_URL,
+    });
+    expect(out.subject).toBe("O teu relatório InstaBench foi guardado");
+    expect(out.html).toContain(
+      "Podes voltar a consultá-lo sempre que precisares.",
+    );
+    expect(out.text).toContain("Olá Maria,");
+    expect(out.text).toContain("@frederico.m.carvalho");
+    expect(out.text).toContain(APP_URL);
+    expect(out.text).toContain("Durante a beta, este acesso é gratuito.");
+    expect(out.html).toContain("Abrir a minha área");
+    expect(out.html).toContain(APP_URL);
+  });
+
+  it("falls back gracefully without name or handle", () => {
+    const out = renderPersonalAreaSaved({ appUrl: APP_URL });
+    expect(out.text).toContain("Olá,");
+    expect(out.text).toContain("o teu perfil");
+    expect(out.text).not.toContain("@undefined");
+  });
+
+  it("throws when appUrl is empty", () => {
+    expect(() =>
+      renderPersonalAreaSaved({ appUrl: "" }),
+    ).toThrow();
   });
 });

@@ -1,56 +1,116 @@
-## Validação: a área pessoal já existe
+## Plano: email transacional após unlock do report público
 
-A ideia, tal como descrita, **duplica funcionalidade que já está implementada e testada**. Recomendo NÃO criar `/my-reports` nem `/reports/access/:token` e em vez disso reutilizar a área existente, fechando apenas o gap de acesso sem password.
+### Arquitetura geral
+Reutilizo o sistema de templates existente (`src/lib/email/templates/`, render puro pt-PT) e o padrão de envio Resend já usado em `src/routes/api/send-report-email.ts`. **Não introduzo Lovable Email infra nem novo connector** — alinha com o stack atual e com a regra "Email: Resend".
 
-### O que já existe
-- `/app/reports` — lista de relatórios do utilizador autenticado (ícones de status, link para abrir, badges de delivery). Já é mobile-first e em pt-PT.
-- `/app/account` — perfil, plano, logout.
-- `/app` — layout autenticado (`AppShell`) que exige sessão e redireciona para `/login`.
-- `/signup` — email+password + Google OAuth (via `lovable.auth.signInWithOAuth`).
-- `/login` — atualmente só com auto-login do email admin (placeholder).
-- DB:
-  - `report_requests` tem RLS `user_id = auth.uid()`.
-  - Trigger `handle_new_user` corre `link_user_to_existing_reports(user_id, email)` no signup → liga automaticamente todos os `report_requests` cujo `lead.email_normalized` bate certo.
-  - `ensureReportAssociation()` é chamado a cada entrada no `/app` para reconciliar reports criados após o último login.
+### 1. Novo template (puro render, testável)
+Ficheiro: `src/lib/email/templates/personal-area-saved.ts`
 
-### O que isto implica para o unlock flow
-Quando o visitante completa o unlock no report público:
-1. Já criamos/atualizamos o `lead` por `email_normalized`.
-2. Já criamos um `report_request` ligado a esse lead com `request_source: "public_unlock"`.
-3. Se mais tarde esse email **fizer signup** (Google ou password), o trigger liga automaticamente os reports antigos ao novo `auth.users.id` → aparecem em `/app/reports` sem trabalho extra.
+```ts
+export interface PersonalAreaSavedInput {
+  firstName?: string | null;
+  instagramHandle?: string | null;
+  appUrl: string;       // ex: https://instagramaudit.lovable.app/app/reports
+}
+export function renderPersonalAreaSaved(input): RenderedEmail
+```
 
-A peça que **realmente falta** não é uma nova área pessoal — é dar ao visitante um caminho de entrada nessa área existente sem inventar password.
+- **Subject**: `O teu relatório InstaBench foi guardado`
+- **Preheader**: `Podes voltar a consultá-lo sempre que precisares.`
+- **Headline**: `Relatório guardado`
+- **Body**:
+  - greeting via `greetingHtml`/`greetingText`
+  - `Guardámos a análise de @<handle> na tua área pessoal.`
+  - botão `Abrir a minha área` → `appUrl`
+  - fallback URL via `renderUrlFallbackHtml`
+  - linha em `pMuted`: `Durante a beta, este acesso é gratuito.`
+  - assinatura via `signatureHtml/Text`
+- Exportar em `src/lib/email/templates/index.ts`.
+- Teste em `src/lib/email/__tests__/templates.test.ts`: subject, preheader, handle escapado, presença do `appUrl`, fallback quando handle é null.
 
-### Recomendação
-1. **Reutilizar `/app/reports`** como "Área pessoal" oficial. Ajustar copy do header para "Os teus relatórios InstaBench" se quiser alinhar com o pedido.
-2. **Adicionar Magic Link (Supabase OTP por email)** ao `/login`:
-   - É nativo no Supabase, seguro (token assinado, single-use, expira em 1h).
-   - Não precisa password.
-   - Liga-se ao trigger existente, então o primeiro login com magic link já cria o profile e liga os reports do lead.
-3. **No success state do unlock modal**, acrescentar uma linha:
-   > "Para acederes mais tarde, recebes um link de entrada por email."
-   E disponibilizar um CTA "Enviar-me link de acesso" que dispara `supabase.auth.signInWithOtp({ email, emailRedirectTo: "/app/reports" })`.
+### 2. Sender server-only
+Ficheiro: `src/lib/email/send-personal-area-saved.server.ts`
 
-### Por que NÃO um token custom em `/reports/access/:token`
-- Reinventa magic link com mais superfície de ataque (storage, expiração, single-use, hashing — tudo o que o Supabase já faz).
-- Cria uma segunda fonte de verdade de identidade (token vs auth.users), o que parte o trigger `handle_new_user` e a RLS por `user_id`.
-- Mais código e mais testes para entregar a mesma UX.
+```ts
+export async function sendPersonalAreaSavedEmail(args: {
+  toEmail: string;
+  firstName: string | null;
+  instagramHandle: string | null;
+}): Promise<{ ok: true; messageId: string | null } | { ok: false; reason: string }>
+```
 
-### Decisões a confirmar antes de avançar
+- Lê `RESEND_API_KEY` (já configurado, ver secrets).
+- `SENDER_FROM = "InstaBench <onboarding@resend.dev>"` (mesmo padrão do send-report-email; não há domínio verificado ainda).
+- Base URL: `process.env.PUBLIC_APP_BASE_URL ?? process.env.PDF_PUBLIC_BASE_URL ?? "https://instagramaudit.lovable.app"` → concatena `/app/reports`.
+- Timeout 8s via `AbortController` (idêntico a send-report-email mas mais curto para não atrasar resposta do unlock).
+- Nunca faz throw — devolve `{ ok: false, reason }` em qualquer falha (network, 4xx/5xx, timeout, sem API key).
+- Não escreve em `report_requests` (este envio é distinto do PDF report email).
 
-1. **Aceitas reutilizar `/app/reports` como área pessoal** (em vez de criar `/my-reports`)?
-2. **Aceitas adoptar Supabase magic link** como modelo de acesso sem password? (Implica enviar email — precisaria de prompt explícito separado, dado o constraint "Do not send emails in this prompt unless explicitly scoped".)
-3. **Header copy**: muda-se "Relatórios — InstaBench" para "Os teus relatórios InstaBench"? Pequeno mas alinha com o pedido.
+### 3. Eventos
+Em `src/lib/tracking.functions.ts` acrescentar a `ALLOWED_EVENTS`:
+- `personal_area_email_sent`
+- `personal_area_email_failed`
 
-Se confirmares estas três, o próximo prompt fica reduzido a: ajustar copy + adicionar botão magic link no `/login` + adicionar CTA "enviar link" no success state do unlock modal. Sem nova área, sem novas tabelas, sem token custom.
+A nota "Adding a new event requires a corresponding handler in `lead-lifecycle.ts`" é apenas informativa; estes não disparam mudança de status comercial → não requerem handler novo.
 
-### Riscos da abordagem proposta
-- **Magic link exige email enviado**. Se ainda estamos em modo "no emails", podemos:
-  - Fase A (este prompt, sem email): mostrar no success state "Cria conta com este email para acederes ao histórico" + link para `/signup` pré-preenchido. Trigger já liga os reports.
-  - Fase B (prompt seguinte, com email scoped): adicionar magic link.
-- Se o lead nunca fizer signup, o report continua acessível pelo URL público (`/analyze/<username>`) — comportamento atual mantém-se.
+### 4. Integração com unlock
+Em `src/lib/unlock.server.ts`, no fim de `processReportUnlock`, **antes do `return success`**, **só quando `createdReportRequest === true`**:
 
-### Checkpoints (após confirmação)
-☐ Confirmação das 3 decisões acima  
-☐ Decisão Fase A vs Fase B (com ou sem email neste prompt)  
-☐ Próximo prompt redigido em função das respostas
+```ts
+if (createdReportRequest) {
+  try {
+    const { sendPersonalAreaSavedEmail } = await import(
+      "@/lib/email/send-personal-area-saved.server"
+    );
+    const res = await sendPersonalAreaSavedEmail({
+      toEmail: data.email,
+      firstName: data.name ?? null,
+      instagramHandle: data.instagram_username,
+    });
+    await recordProductEvent({
+      eventType: res.ok ? "personal_area_email_sent" : "personal_area_email_failed",
+      leadId, snapshotId: data.analysis_snapshot_id, handle: data.instagram_username,
+      metadata: res.ok
+        ? { message_id: res.messageId, sender: "resend" }
+        : { reason: res.reason },
+    });
+  } catch (err) {
+    console.error("[unlock] personal-area email error:", err);
+    // never blocks
+  }
+}
+```
+
+**Justificação da estratégia anti-duplicado** (sem nova tabela):
+- `report_requests` tem unicidade lógica `(lead_id, analysis_snapshot_id)`. O email só é enviado quando esse par é INSERIDO pela primeira vez (`createdReportRequest === true`).
+- Resubmissões do mesmo email + mesmo snapshot reutilizam o `report_request` existente e **não** disparam novo envio. Isto cobre StrictMode, double-click, retries do cliente.
+- Sem necessidade de janela temporal explícita nem coluna nova.
+
+**Por que `await` em vez de fire-and-forget**: o runtime serverless pode terminar promessas após a resposta. `await` com timeout de 8s garante execução; o utilizador já gastou 1 min no flow, +2-3s na resposta final é aceitável e mantém a UX honesta ("guardámos na tua área").
+
+### 5. Constraints respeitados
+- ✅ Sem chamadas a Apify/OpenAI/DataForSEO.
+- ✅ Sem mexer em geração de report nem PDF.
+- ✅ Sem newsletter/marketing — é estritamente transacional, 1:1, disparado por ação do próprio utilizador.
+- ✅ Falha de Resend não bloqueia unlock (try/catch externo + sender que nunca faz throw).
+
+### 6. Ficheiros tocados
+- **NEW** `src/lib/email/templates/personal-area-saved.ts`
+- **EDIT** `src/lib/email/templates/index.ts` (export)
+- **NEW** `src/lib/email/send-personal-area-saved.server.ts`
+- **EDIT** `src/lib/tracking.functions.ts` (2 eventos)
+- **EDIT** `src/lib/unlock.server.ts` (~20 linhas no fim do success path)
+- **EDIT** `src/lib/email/__tests__/templates.test.ts` (novos casos)
+
+### 7. Validação
+- `bunx tsc --noEmit`
+- `bunx vitest run` (cobre só o template; sender é mock-friendly mas sem teste de integração — Resend não é chamado em testes)
+- Manual: completar unlock com email novo → verificar inbox + `product_events` (`personal_area_email_sent`); repetir mesmo email + mesmo snapshot → não deve aparecer novo evento de email; remover `RESEND_API_KEY` em runtime e refazer → unlock continua a devolver success e aparece `personal_area_email_failed`.
+
+### Checkpoint
+☐ Template criado e exportado  
+☐ Sender server-only com timeout e sem throw  
+☐ Eventos registados em ALLOWED_EVENTS  
+☐ Integração no fim de `processReportUnlock` apenas quando `createdReportRequest`  
+☐ Testes do template a passar  
+☐ tsc + vitest verdes
