@@ -27,6 +27,9 @@ const ALLOWED_EVENTS = [
   // Brevo contact mirror (Phase — contact sync only, no emails)
   "brevo_contact_synced",
   "brevo_contact_sync_failed",
+  // Contextual pricing-feedback sheet (post-value)
+  "pricing_feedback_submitted",
+  "pricing_feedback_dismissed",
 ] as const;
 
 const trackEventSchema = z.object({

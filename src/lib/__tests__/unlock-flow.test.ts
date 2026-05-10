@@ -30,21 +30,30 @@ describe("unlockFormSchema", () => {
       profile_ownership: "own_profile",
       goal: "improve_content",
       user_type: "creator",
-      pricing_preference: "free_only",
     });
     expect(r.success).toBe(false);
   });
 
-  it("accepts a complete valid payload", () => {
+  it("accepts a complete valid payload (without pricing)", () => {
     const r = unlockFormSchema.safeParse({
       email: "Ana@Empresa.PT",
+      profile_ownership: "own_profile",
+      goal: "improve_content",
+      user_type: "creator",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.email).toBe("ana@empresa.pt");
+  });
+
+  it("still accepts pricing_preference if provided (back-compat)", () => {
+    const r = unlockFormSchema.safeParse({
+      email: "ana@empresa.pt",
       profile_ownership: "own_profile",
       goal: "improve_content",
       user_type: "creator",
       pricing_preference: "under_9",
     });
     expect(r.success).toBe(true);
-    if (r.success) expect(r.data.email).toBe("ana@empresa.pt");
   });
 
   it("requires all qualitative fields", () => {

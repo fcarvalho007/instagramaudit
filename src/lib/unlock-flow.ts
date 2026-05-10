@@ -82,9 +82,9 @@ export const unlockFormSchema = z.object({
   }),
   goal: z.enum(GOALS, { required_error: "Escolhe uma opção" }),
   user_type: z.enum(USER_TYPES, { required_error: "Escolhe uma opção" }),
-  pricing_preference: z.enum(PRICING_PREFERENCES, {
-    required_error: "Escolhe uma opção",
-  }),
+  // Pricing preference is no longer asked in the unlock modal — moved to
+  // a contextual sheet (post-value). Kept optional for backwards compat.
+  pricing_preference: z.enum(PRICING_PREFERENCES).optional(),
 });
 
 export type UnlockFormValues = z.infer<typeof unlockFormSchema>;
