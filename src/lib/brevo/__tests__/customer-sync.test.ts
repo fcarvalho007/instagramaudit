@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe("syncCustomerToBrevo", () => {
-  it("sends IS_CUSTOMER=true + COMMERCIAL_STATUS=convertido + PLAN", async () => {
+  it("sends IS_CUSTOMER=true + COMMERCIAL_STATUS=customer + PLAN", async () => {
     setupSupabase({
       lead: {
         id: "lead-1",
@@ -105,9 +105,9 @@ describe("syncCustomerToBrevo", () => {
       PROFILE_OWNERSHIP: "own_profile",
       GOAL: "growth",
       USER_TYPE: "creator",
-      PRICING_PREFERENCE: "pago_unico_30_50",
-      LEAD_SOURCE: "public_report_gate",
-      COMMERCIAL_STATUS: "convertido",
+      PRICING_PREFERENCE: "one_off",
+      LEAD_SOURCE: "unlock",
+      COMMERCIAL_STATUS: "customer",
       IS_CUSTOMER: true,
       PLAN: "pago_unico_30_50",
     });
