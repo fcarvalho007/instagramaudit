@@ -303,7 +303,7 @@ export async function processReportUnlock(
         if ((rrErr as { code?: string } | null)?.code === "23505") {
           const { data: raceRR } = await (supabaseAdmin as any)
             .from("report_requests")
-            .select("id")
+            .select("id, metadata")
             .eq("lead_id", leadId)
             .eq("analysis_snapshot_id", data.analysis_snapshot_id)
             .limit(1)
@@ -311,6 +311,14 @@ export async function processReportUnlock(
           if (raceRR?.id) {
             reportRequestId = raceRR.id as string;
             createdReportRequest = false;
+            // Mirror the existingRR branch: merge metadata so a losing
+            // concurrent submission still contributes any new fields it
+            // brought (existing keys win).
+            const merged = { ...newMeta, ...(raceRR.metadata ?? {}) };
+            await (supabaseAdmin as any)
+              .from("report_requests")
+              .update({ metadata: merged, updated_at: new Date().toISOString() })
+              .eq("id", reportRequestId);
           } else {
             console.error(
               "[unlock] 23505 but no row found for lead",
@@ -320,12 +328,12 @@ export async function processReportUnlock(
             return { success: false, status: 500, error: "INTERNAL_ERROR" };
           }
         } else {
-        console.error(
-          "[unlock] report_request insert failed for lead",
-          leadId,
-          rrErr,
-        );
-        return { success: false, status: 500, error: "INTERNAL_ERROR" };
+          console.error(
+            "[unlock] report_request insert failed for lead",
+            leadId,
+            rrErr,
+          );
+          return { success: false, status: 500, error: "INTERNAL_ERROR" };
         }
       } else {
         reportRequestId = insertedRR.id as string;
