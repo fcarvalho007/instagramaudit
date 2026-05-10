@@ -19,7 +19,7 @@ export interface BaseTemplateInput {
 }
 
 export const BRAND = "InstaBench";
-export const SIGNATURE_NAME = "Frederico";
+export const SIGNATURE_NAME = "equipa InstaBench";
 
 export function escapeHtml(value: string): string {
   return value
@@ -137,12 +137,12 @@ export function pMuted(text: string): string {
   return `<p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#57534e;">${text}</p>`;
 }
 
-/** Plain-text sign-off block. */
-export function signatureText(): string[] {
-  return ["Obrigado,", `${SIGNATURE_NAME} — ${BRAND}`];
+/** Plain-text sign-off block. Optional opening line ("Boa leitura,", "Obrigado pela ajuda,", etc.). */
+export function signatureText(opening: string = "Até já,"): string[] {
+  return [opening, `— ${SIGNATURE_NAME}`];
 }
 
 /** HTML sign-off block (muted paragraph). */
-export function signatureHtml(): string {
-  return `<p style="margin:24px 0 0 0;font-size:14px;line-height:1.6;color:#57534e;">Obrigado,<br/>${escapeHtml(SIGNATURE_NAME)} — <strong style="color:#0a0e1a;">${BRAND}</strong></p>`;
+export function signatureHtml(opening: string = "Até já,"): string {
+  return `<p style="margin:24px 0 0 0;font-size:14px;line-height:1.6;color:#57534e;">${escapeHtml(opening)}<br/>— ${escapeHtml(SIGNATURE_NAME)}</p>`;
 }
