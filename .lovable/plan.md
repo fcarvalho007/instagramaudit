@@ -1,103 +1,123 @@
-# Refinar visual do Kanban /admin/beta-leads (CRM-style)
+# Upgrade visual de `/admin/automacoes` (estilo CRM Webinar, 4 tabs)
 
 ## Auditoria
 
-**CRM Webinar (`src/components/crm/PipelineView.tsx`, projeto bacfa751):**
-- Header de coluna com **strip de cor 1px** no topo + cartão branco com título + pill de contagem
-- Cartões: branco, `rounded-[10px]`, `shadow-card`, hover `-translate-y-px` + `shadow-card-md`
-- Toolbar: pill-group de filtros (Todos / Pré / Pós) + search à direita
-- Mobile: accordion por coluna com chevron rotativo
-- Drag & drop nativo HTML5 com `dragOverCol` highlight (azul)
+**CRM Webinar — `src/components/crm/AutomationFlowTab.tsx` (projeto bacfa751, 2060 linhas, webinar-specific):**
+- Padrão visual reusável (sem lógica de domínio):
+  - `DayGroupContainer`: barra lateral colorida + label + badge numérico, agrupa nós de uma fase
+  - `ArrowConnector`: seta vertical entre grupos
+  - Cartão de nó: ícone à esquerda · título + subtítulo · `Tag` (IMEDIATO / AGENDADO / MANUAL / ENVIADO / ERRO) · coluna direita com contagens ("X enviados", "Y por receber", "Z falhas") + botão "Ver email →"
+  - Container central `max-w-[800px] mx-auto`
+- Não reutilizável: `WEBINAR_CONFIG`, `Inscrito`, `MessageLog`, `EmailRecipientsDrawer`, edge functions `send-video-*`, SMS, `WebinarContext`, `BulkInvoiceButton`, qualquer texto "webinar/masterclass/premium pass".
 
-**InstaBench atual (`kanban-board.tsx`, `lead-card.tsx`):**
-- Funcional, real Supabase, 11 colunas em `KANBAN_COLUMNS`
-- Header: `borderLeft 3px` + bg tinted — visual menos definido que CRM Webinar
-- Cards: `AdminCard` com hover-shadow, sem lift, sem topo colorido
-- Sem toolbar (search/filtros) ao nível do board
-- Sem mobile accordion (apenas scroll horizontal)
-- DnD: não existe — mudança via `<Select>` no cartão
+**InstaBench atual:**
+- `src/routes/admin.automacoes.tsx` → `AutomationFlowPage` (read-only)
+- `src/components/admin/v2/automacoes/{automation-flow-page,automation-node,automation-edge,eligibility-summary}.tsx`
+- API `/api/admin/automation-flow` devolve 7 fluxos com `eligibleCount`, `inFlightCount`, `completedCount`, `recentFailures`, `last24hCount`, `lastEventAt`, `eventTypes`
+- 5 templates em `src/lib/email/templates/` (`request-received`, `report-ready`, `feedback-request`, `personal-area-saved`, `commercial-followup`)
+- Email Lab: `src/components/admin/v2/email-lab/email-lab-page.tsx` já tem registry `TEMPLATES` com `wired`/`wiredAt`/`render()` — fonte de verdade para a tab Templates
 
-**Reusável:** padrão visual do header (strip + pill), elevação dos cards, accordion mobile, toolbar pill-group.
-**Não reusável:** mocks `Inscrito`, `WEBINAR_CONFIG`, `WebinarBadge`, `BulkInvoiceButton`, `genderEmoji`, lógica de `payment_status` / `step_reached`.
+**LOCKED_FILES.md:** ficheiro não existe na raiz. Sem entradas a respeitar.
 
-## Locked files
-`/LOCKED_FILES.md` — sem entradas para `beta-leads/*`. Livre para editar.
+## Estrutura final da página
 
-## Estrutura final do board
+Header `Automações · Visualização operacional do ciclo de vida beta` + `Tabs` (shadcn) com 4 separadores:
 
-11 colunas mantidas (`KANBAN_COLUMNS`, `commercial_status`):
-Novo pedido · Em análise · Relatório gerado · Link enviado · Relatório visto · Feedback pedido · Feedback recebido · Interessado · Potencial cliente · Convertido · Arquivado
+```
+[ Fluxo ]  [ Métricas ]  [ Pessoas ]  [ Templates ]
+```
 
-Toolbar acima do board:
-- **Search** (nome, email, handle) — local, no estado
-- **Filter chips** pill-group: Todos · Em análise · Com relatório · Com feedback · Potencial cliente · Arquivados
-  - mapeiam para subconjuntos de `commercial_status`:
-    - "Em análise" → `novo_pedido`, `em_analise`
-    - "Com relatório" → `relatorio_gerado`, `link_enviado`, `relatorio_visto`
-    - "Com feedback" → `feedback_pedido`, `feedback_recebido`
-    - "Potencial cliente" → `interessado`, `potencial_cliente`, `convertido`
-    - "Arquivados" → `arquivado`
-  - chip activo esconde colunas fora do subset (resto continua a renderizar com 0)
+### Tab 1 — Fluxo (default)
+- Mantém os 7 cartões de fluxo (`pedido_recebido` … `follow_up_comercial`)
+- Agrupa visualmente em 3 fases CRM (apenas visual, lógica intacta):
+  - **Captação** (verde-azulado): `pedido_recebido`, `relatorio_gerado`
+  - **Entrega** (azul): `link_enviado`, `relatorio_visto`
+  - **Conversão** (âmbar): `feedback_pedido`, `feedback_recebido`, `follow_up_comercial`
+- Cada grupo num `StageGroup` (novo): barra lateral 3px na cor da fase + header com nome da fase + número + contador agregado de elegíveis
+- `AutomationEdge` actual continua a separar nós dentro do grupo; `StageConnector` (novo) entre grupos
+- Cartão de nó (`automation-node.tsx`) recebe pequeno refinamento: tag de status à esquerda do título (Automático/Manual/Aguarda/Erro), botão "Ver template →" só quando `action.kind === 'email'` linkando `/admin/email-lab?template=<key>` (read-only)
+
+### Tab 2 — Métricas
+Reusa o mesmo `data` (sem fetch novo). Grelha de cards:
+- KPIs topo: Leads ativas · Aguardam ação · Em curso · Arquivadas (já existe `EligibilitySummary` — mover para esta tab)
+- "Últimos 24h por fase": lista compacta com `last24hCount` por fluxo
+- "Falhas (7d) — entrega de link": valor único (`linkFailures7d`)
+- "Última atividade por fase": tabela 2 colunas (fase → relativo)
+- Sem charts pesados.
+
+### Tab 3 — Pessoas
+- Lista compacta de leads elegíveis por fase
+- Reusa `/api/admin/leads-kanban` (já existe no kanban) — sem novo endpoint
+- Para cada uma das 7 fases: secção com label + até 5 leads (nome · email · handle · "há X") · botão "Abrir →" que navega para `/admin/beta-leads?lead=<id>` (já suportado)
+- Vazio: "Sem leads nesta fase"
+- Mobile: stack vertical
+
+### Tab 4 — Templates
+- Reusa o registry `TEMPLATES` de `email-lab-page.tsx` (extraído para `src/lib/admin/email-template-registry.ts` para partilhar)
+- Mapeia também `personal-area-saved` (existe em `src/lib/email/templates/personal-area-saved.ts`)
+- Para cada template (5 entradas): cartão com
+  - Título + key interna (`request_received`, etc.)
+  - Badge `Wired` (verde) ou `Orphan` (cinza) com tooltip do `wiredAt`
+  - Variáveis (lista compacta key=value)
+  - Botão "Pré-visualizar →" → `/admin/email-lab?template=<key>` (read-only, já existe)
+  - Botão "Editar (em breve)" disabled
+- Sem edição de DB. Sem envio.
 
 ## Mudanças por batch
 
-### Batch 1 — Tokens (admin-tokens.css)
-Adicionar tokens neutros de board:
-- `--admin-board-column-bg`: `rgb(var(--admin-neutral-50))` (fundo das listas das colunas)
-- `--admin-board-card-shadow` / `--admin-board-card-shadow-hover` (sombras card subtis)
-- `--admin-board-chip-active-bg`: `rgb(var(--admin-info-500))`
-- `--admin-board-chip-active-text`: branco
-Sem novos hex hardcoded — só compor sobre tokens existentes.
+### Batch 1 — Extrair registry de templates
+- Mover constante `TEMPLATES` de `email-lab-page.tsx` para `src/lib/admin/email-template-registry.ts` exportando `EMAIL_TEMPLATES`, tipo `EmailTemplateEntry`, `getTemplateByKey()`. Adicionar entrada `personal_area_saved`.
+- `email-lab-page.tsx` passa a importar do registry (mudança transparente, sem alterar UI).
 
-### Batch 2 — `kanban-board.tsx` (refactor visual)
-- Adicionar estado `search` e `filterChip` ('todos' default)
-- Top toolbar: `<div>` com pill-group + search input (estilo `admin-input`, h-9, rounded-lg)
-- Computar `visibleColumns` por chip e `filteredLeads` por search
-- Coluna:
-  - wrapper `min-w-[260px] max-w-[280px]` (mais compacto, alinhado com CRM Webinar)
-  - **header** com top strip 2px na cor da coluna (`col.color`) + bloco branco com título 13px medium + pill de contagem (bg `col.color` 14% / texto `col.color`)
-  - **lista** com fundo `--admin-board-column-bg`, `rounded-b-xl`, padding 8px, min-h 240px, espaço entre cards 8px
-- Empty state: ícone subtil + "Sem leads" 12px text-tertiary, sem border dashed pesado
-- Mobile (`md:hidden`): accordion — cada coluna num card colapsável com chevron, primeira aberta por defeito
-- Desktop (`hidden md:flex`): horizontal scroll dentro do board (`overflow-x-auto`), sem afetar página
+### Batch 2 — Refactor da página em tabs
+- `automation-flow-page.tsx` substitui o layout actual por `<Tabs defaultValue="fluxo">` (shadcn) + 4 `<TabsContent>`
+- Mantém o `useQuery` ao `/api/admin/automation-flow`
+- `Fluxo`: novo wrapper `<StageGroup>` agrupando os nós em 3 fases
+- `Métricas`: nova subview com `EligibilitySummary` + `MetricsGrid`
+- `Pessoas`: nova subview que faz `useQuery(['admin','beta-leads'])` e agrupa por `commercial_status`
+- `Templates`: nova subview que mapeia `EMAIL_TEMPLATES`
 
-### Batch 3 — `lead-card.tsx` (refinar)
-- `AdminCard` → div próprio mais leve: `bg-white rounded-[10px] border border-admin-border p-3 shadow-[var(--admin-board-card-shadow)] hover:shadow-[var(--admin-board-card-shadow-hover)] hover:-translate-y-px transition-all`
-- Hierarquia compactada:
-  - Linha 1: nome (13px medium, truncate) + ações dropdown
-  - Linha 2: email (12px text-secondary, truncate)
-  - Linha 3: @handle (12px text-tertiary)
-  - Linha 4: badges flex-wrap (user_type, report_status, feedback)
-  - Linha 5: meta row (€custo · views · há Xd · 📞 se contactado)
-  - Removido o `<Select>` inline → mover para dropdown actions ("Mover para…") para reduzir altura. O detalhe completo já está no LeadDetailSheet.
-- Próxima ação: linha discreta com Lightbulb 12px só se severity ≠ info
-- `onClick` no cartão (excepto dropdown) abre `LeadDetailSheet`
+### Batch 3 — Componentes novos
+- `src/components/admin/v2/automacoes/stage-group.tsx` — wrapper visual com bg subtil + barra lateral colorida + header (label + nº + contador agregado)
+- `src/components/admin/v2/automacoes/stage-connector.tsx` — seta vertical entre grupos
+- `src/components/admin/v2/automacoes/metrics-tab.tsx`
+- `src/components/admin/v2/automacoes/people-tab.tsx`
+- `src/components/admin/v2/automacoes/templates-tab.tsx`
+- `automation-node.tsx`: adicionar tag `Automático/Manual/Erro` mais proeminente à esquerda + botão "Ver template →" quando `action.kind === 'email'`
 
 ### Batch 4 — Validação
 - `bunx tsc --noEmit`
-- `bunx vitest run` (existem testes em `__tests__`)
-- Manual no preview:
-  - `/admin/beta-leads` carrega
-  - chips filtram colunas correctamente
-  - search filtra cards
-  - clique no cartão abre `LeadDetailSheet`
-  - `/admin/beta-leads?lead=<id>` continua a abrir directamente
-  - mobile 375px: accordion abre/fecha, sem overflow horizontal da página
-  - desktop: scroll horizontal contido no board
+- `bunx vitest run`
+- Manual:
+  - `/admin/automacoes` carrega na tab `Fluxo`
+  - todos os 4 separadores trocam sem refetch desnecessário
+  - `Templates` mostra 5 entradas com badge wired/orphan correcto
+  - botão "Pré-visualizar" navega para `/admin/email-lab?template=<key>`
+  - `Pessoas` lista leads por fase e "Abrir →" abre `LeadDetailSheet` em `/admin/beta-leads`
+  - `Métricas` mostra KPIs e "últimos 24h"
+  - mobile 411px: tabs scrollam horizontalmente sem partir layout, cartões empilham
+  - nenhum botão envia email ou executa automação
 
 ## Fora de âmbito
-- Drag & drop entre colunas (mantém-se dropdown "Mover para…" no menu de ações)
-- Schema, providers, emails
-- LeadDetailSheet interno (só abertura)
-- `commercial_status` lifecycle
+- Execução de automações, envio de emails, providers
+- Edição de templates em DB
+- Schema, lifecycle de leads
+- Charts complexos
+- Importar `Inscrito`, `WEBINAR_CONFIG`, `MessageLog`, SMS, `WebinarContext`
 
 ## Riscos
-- Remover o `<Select>` inline muda fluxo de mudança de status. Mitigação: substituir por item "Mover para…" no `DropdownMenu` com submenu (ou abrir `LeadDetailSheet` que já tem o controlo). Confirmar preferência se for crítico.
-- Testes em `__tests__/` podem assumir markup do card — vou verificar e ajustar se quebrarem (apenas o teste, não a lógica).
+- **Tab `Pessoas` reutiliza `/api/admin/leads-kanban`**: já carrega todos os leads — para volumes pequenos (beta) é OK. Limitamos a 5 por fase no client. Sem novo endpoint.
+- **Refresh de templates**: o registry é estático no código (não vem da DB). Manter assim — alinhado com o estado actual do Email Lab.
+- **`AutomationEdge` actual**: continua a ser usada dentro de cada grupo. `StageConnector` entre grupos é estilo distinto (seta com label da fase seguinte).
 
 ## Entregáveis
-- `src/styles/admin-tokens.css` (novos tokens board)
-- `src/components/admin/v2/beta-leads/kanban-board.tsx` (toolbar + colunas refinadas + accordion mobile)
-- `src/components/admin/v2/beta-leads/lead-card.tsx` (visual + remover select inline)
-- Eventuais ajustes em `__tests__/` se markup mudar
+- `src/lib/admin/email-template-registry.ts` (novo)
+- `src/components/admin/v2/email-lab/email-lab-page.tsx` (passa a importar do registry)
+- `src/components/admin/v2/automacoes/automation-flow-page.tsx` (refactor para Tabs)
+- `src/components/admin/v2/automacoes/automation-node.tsx` (tag + "Ver template →")
+- `src/components/admin/v2/automacoes/stage-group.tsx` (novo)
+- `src/components/admin/v2/automacoes/stage-connector.tsx` (novo)
+- `src/components/admin/v2/automacoes/metrics-tab.tsx` (novo)
+- `src/components/admin/v2/automacoes/people-tab.tsx` (novo)
+- `src/components/admin/v2/automacoes/templates-tab.tsx` (novo)
 - Resultados `tsc` + `vitest` + checklist manual
