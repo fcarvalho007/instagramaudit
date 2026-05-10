@@ -523,23 +523,59 @@ function Step1Email({
   form: ReturnType<typeof useForm<UnlockFormValues>>;
 }) {
   const error = form.formState.errors.email?.message;
+  const consentError = form.formState.errors.gdpr_consent?.message;
+  const consent = form.watch("gdpr_consent");
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor="unlock-email" className="text-sm">
-        Email
-      </Label>
-      <Input
-        id="unlock-email"
-        type="email"
-        autoFocus
-        autoComplete="email"
-        placeholder="ana@empresa.pt"
-        aria-invalid={Boolean(error)}
-        {...form.register("email")}
-      />
-      {error ? (
-        <p className="text-xs text-destructive">{error}</p>
-      ) : null}
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="unlock-email" className="text-sm">
+          Email
+        </Label>
+        <Input
+          id="unlock-email"
+          type="email"
+          autoFocus
+          autoComplete="email"
+          placeholder="ana@empresa.pt"
+          aria-invalid={Boolean(error)}
+          {...form.register("email")}
+        />
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="unlock-gdpr"
+          className="flex items-start gap-2.5 cursor-pointer"
+        >
+          <Checkbox
+            id="unlock-gdpr"
+            checked={consent === true}
+            onCheckedChange={(v) =>
+              form.setValue("gdpr_consent", v === true ? true : (false as unknown as true), {
+                shouldValidate: true,
+              })
+            }
+            aria-invalid={Boolean(consentError)}
+            className="mt-0.5"
+          />
+          <span className="text-[12px] text-content-secondary leading-relaxed">
+            Aceito que o meu email seja guardado para criar este relatório e
+            receber atualizações ocasionais. Posso cancelar a qualquer momento.{" "}
+            <a
+              href="/privacidade"
+              target="_blank"
+              rel="noopener"
+              className="underline hover:text-content-primary"
+            >
+              Política de privacidade
+            </a>
+            .
+          </span>
+        </label>
+        {consentError ? (
+          <p className="text-xs text-destructive">{consentError}</p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -556,6 +592,10 @@ function RadioCardField({
   value,
   onChange,
   error,
+  otherValue,
+  otherText,
+  onOtherTextChange,
+  otherError,
 }: {
   legend: string;
   name: string;
@@ -563,6 +603,10 @@ function RadioCardField({
   value: string | undefined;
   onChange: (v: string) => void;
   error?: string;
+  otherValue?: string;
+  otherText?: string;
+  onOtherTextChange?: (v: string) => void;
+  otherError?: string;
 }) {
   return (
     <fieldset className="space-y-3">
@@ -573,8 +617,8 @@ function RadioCardField({
         {options.map((opt) => {
           const selected = value === opt.value;
           return (
+            <div key={opt.value}>
             <label
-              key={opt.value}
               className={cn(
                 "group flex items-center gap-3 min-h-12 px-4 py-3.5 rounded-xl border cursor-pointer transition-all duration-150",
                 selected
@@ -610,6 +654,29 @@ function RadioCardField({
                 {opt.label}
               </span>
             </label>
+              {selected && otherValue && opt.value === otherValue && onOtherTextChange ? (
+                <div className="mt-2 ml-7 space-y-1">
+                  <Input
+                    autoFocus
+                    maxLength={120}
+                    placeholder="Conta-nos brevemente…"
+                    value={otherText ?? ""}
+                    onChange={(e) => onOtherTextChange(e.target.value)}
+                    aria-invalid={Boolean(otherError)}
+                  />
+                  <div className="flex items-center justify-between">
+                    {otherError ? (
+                      <p className="text-xs text-destructive">{otherError}</p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="text-[11px] text-content-tertiary">
+                      {(otherText ?? "").length}/120
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>
