@@ -265,6 +265,8 @@ const COMMUNICATION_EVENT_TYPES = new Set([
   "feedback_started",
   "email_failed",
   "email_bounced",
+  "commercial_followup_sent",
+  "commercial_followup_failed",
 ]);
 
 /**
