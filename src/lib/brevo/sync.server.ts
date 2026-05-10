@@ -74,7 +74,7 @@ export async function syncLeadToBrevo(
     const { data: lead, error: leadErr } = await (supabaseAdmin as any)
       .from("leads")
       .select(
-        "id, email, source, commercial_status, profile_ownership, purpose, user_type, pricing_preference",
+        "id, email, source, commercial_status, profile_ownership, purpose, user_type, pricing_preference, marketing_consent",
       )
       .eq("id", leadId)
       .maybeSingle();
@@ -86,6 +86,32 @@ export async function syncLeadToBrevo(
         latencyMs: Date.now() - startedAt,
       };
       await safeRecordFailure(leadId, null, reason, outcome);
+      return outcome;
+    }
+
+    // Consent gate: política de privacidade promete que dados só são
+    // sincronizados com Brevo (CRM/marketing) mediante consentimento
+    // expresso. Se `marketing_consent !== true`, salta o sync e regista
+    // evento de skip. O unlock e o relatório continuam intactos.
+    if (lead.marketing_consent !== true) {
+      const outcome: BrevoSyncOutcome = {
+        ok: false,
+        reason: "NO_MARKETING_CONSENT",
+        latencyMs: Date.now() - startedAt,
+      };
+      try {
+        await recordProductEvent({
+          eventType: "brevo_contact_sync_skipped" as any,
+          leadId,
+          metadata: {
+            sync_reason: reason,
+            reason: "NO_MARKETING_CONSENT",
+            email_masked: maskEmail(lead.email),
+          },
+        });
+      } catch (err) {
+        console.error("[brevo-sync] failed to record consent-skip event:", err);
+      }
       return outcome;
     }
 
