@@ -37,7 +37,10 @@ export function mapPricingPreference(
     v === "one-off" ||
     v.startsWith("ate_") ||
     v.startsWith("up_to_") ||
-    v.startsWith("under_")
+    v.startsWith("under_") ||
+    v.startsWith("below_") ||
+    v.startsWith("pago_unico") ||
+    /\d/.test(v)
   ) {
     return "one_off";
   }
