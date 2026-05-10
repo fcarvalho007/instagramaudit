@@ -18,7 +18,7 @@ const bodySchema = z.object({
   reason: z.string().trim().min(1).max(60).optional(),
 });
 
-export const Route = createFileRoute("/api/public/admin-tools/brevo-test-sync")({
+export const Route = createFileRoute("/api/public/brevo-test-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {

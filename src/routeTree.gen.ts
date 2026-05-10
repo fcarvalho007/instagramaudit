@@ -55,6 +55,7 @@ import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/loo
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
 import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
+import { Route as ApiPublicBrevoTestSyncRouteImport } from './routes/api/public/brevo-test-sync'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminSimpleLoginRouteImport } from './routes/api/admin/simple-login'
 import { Route as ApiAdminSendReportLinkRouteImport } from './routes/api/admin/send-report-link'
@@ -83,7 +84,6 @@ import { Route as ApiPublicHooksSyncDataforseoCostsRouteImport } from './routes/
 import { Route as ApiPublicHooksSyncApifyCostsRouteImport } from './routes/api/public/hooks/sync-apify-costs'
 import { Route as ApiPublicFeedbackRequestIdRouteImport } from './routes/api/public/feedback.$requestId'
 import { Route as ApiPublicAnalysisSnapshotUsernameRouteImport } from './routes/api/public/analysis-snapshot.$username'
-import { Route as ApiPublicAdminToolsBrevoTestSyncRouteImport } from './routes/api/public/admin-tools/brevo-test-sync'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
 import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api/admin/snapshot-by-id.$snapshotId'
 import { Route as ApiAdminSistemaVisualCoverDebugRouteImport } from './routes/api/admin/sistema.visual-cover-debug'
@@ -348,6 +348,11 @@ const ApiPublicEnrichCommentsRoute = ApiPublicEnrichCommentsRouteImport.update({
   path: '/api/public/enrich-comments',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBrevoTestSyncRoute = ApiPublicBrevoTestSyncRouteImport.update({
+  id: '/api/public/brevo-test-sync',
+  path: '/api/public/brevo-test-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminWhoamiRoute = ApiAdminWhoamiRouteImport.update({
   id: '/api/admin/whoami',
   path: '/api/admin/whoami',
@@ -500,12 +505,6 @@ const ApiPublicAnalysisSnapshotUsernameRoute =
   ApiPublicAnalysisSnapshotUsernameRouteImport.update({
     id: '/api/public/analysis-snapshot/$username',
     path: '/api/public/analysis-snapshot/$username',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicAdminToolsBrevoTestSyncRoute =
-  ApiPublicAdminToolsBrevoTestSyncRouteImport.update({
-    id: '/api/public/admin-tools/brevo-test-sync',
-    path: '/api/public/admin-tools/brevo-test-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiAdminSnapshotUsernameRoute =
@@ -745,6 +744,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/brevo-test-sync': typeof ApiPublicBrevoTestSyncRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
@@ -781,7 +781,6 @@ export interface FileRoutesByFullPath {
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
-  '/api/public/admin-tools/brevo-test-sync': typeof ApiPublicAdminToolsBrevoTestSyncRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
@@ -852,6 +851,7 @@ export interface FileRoutesByTo {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/brevo-test-sync': typeof ApiPublicBrevoTestSyncRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
@@ -888,7 +888,6 @@ export interface FileRoutesByTo {
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
-  '/api/public/admin-tools/brevo-test-sync': typeof ApiPublicAdminToolsBrevoTestSyncRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
@@ -961,6 +960,7 @@ export interface FileRoutesById {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/brevo-test-sync': typeof ApiPublicBrevoTestSyncRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
@@ -997,7 +997,6 @@ export interface FileRoutesById {
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
   '/api/admin/snapshot-by-id/$snapshotId': typeof ApiAdminSnapshotByIdSnapshotIdRoute
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
-  '/api/public/admin-tools/brevo-test-sync': typeof ApiPublicAdminToolsBrevoTestSyncRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
@@ -1071,6 +1070,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/public/brevo-test-sync'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
@@ -1107,7 +1107,6 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
-    | '/api/public/admin-tools/brevo-test-sync'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
@@ -1178,6 +1177,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/public/brevo-test-sync'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
@@ -1214,7 +1214,6 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
-    | '/api/public/admin-tools/brevo-test-sync'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
@@ -1286,6 +1285,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/public/brevo-test-sync'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
@@ -1322,7 +1322,6 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/visual-cover-debug'
     | '/api/admin/snapshot-by-id/$snapshotId'
     | '/api/admin/snapshot/$username'
-    | '/api/public/admin-tools/brevo-test-sync'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
     | '/api/public/hooks/sync-apify-costs'
@@ -1377,6 +1376,7 @@ export interface RootRouteChildren {
   ApiAdminSendReportLinkRoute: typeof ApiAdminSendReportLinkRoute
   ApiAdminSimpleLoginRoute: typeof ApiAdminSimpleLoginRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
+  ApiPublicBrevoTestSyncRoute: typeof ApiPublicBrevoTestSyncRoute
   ApiPublicEnrichCommentsRoute: typeof ApiPublicEnrichCommentsRoute
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
   ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
@@ -1408,7 +1408,6 @@ export interface RootRouteChildren {
   ApiAdminSistemaVisualCoverDebugRoute: typeof ApiAdminSistemaVisualCoverDebugRoute
   ApiAdminSnapshotByIdSnapshotIdRoute: typeof ApiAdminSnapshotByIdSnapshotIdRoute
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
-  ApiPublicAdminToolsBrevoTestSyncRoute: typeof ApiPublicAdminToolsBrevoTestSyncRoute
   ApiPublicAnalysisSnapshotUsernameRoute: typeof ApiPublicAnalysisSnapshotUsernameRoute
   ApiPublicFeedbackRequestIdRoute: typeof ApiPublicFeedbackRequestIdRoute
   ApiPublicHooksSyncApifyCostsRoute: typeof ApiPublicHooksSyncApifyCostsRoute
@@ -1742,6 +1741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicEnrichCommentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/brevo-test-sync': {
+      id: '/api/public/brevo-test-sync'
+      path: '/api/public/brevo-test-sync'
+      fullPath: '/api/public/brevo-test-sync'
+      preLoaderRoute: typeof ApiPublicBrevoTestSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/whoami': {
       id: '/api/admin/whoami'
       path: '/api/admin/whoami'
@@ -1936,13 +1942,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/analysis-snapshot/$username'
       fullPath: '/api/public/analysis-snapshot/$username'
       preLoaderRoute: typeof ApiPublicAnalysisSnapshotUsernameRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/admin-tools/brevo-test-sync': {
-      id: '/api/public/admin-tools/brevo-test-sync'
-      path: '/api/public/admin-tools/brevo-test-sync'
-      fullPath: '/api/public/admin-tools/brevo-test-sync'
-      preLoaderRoute: typeof ApiPublicAdminToolsBrevoTestSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/snapshot/$username': {
@@ -2375,6 +2374,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSendReportLinkRoute: ApiAdminSendReportLinkRoute,
   ApiAdminSimpleLoginRoute: ApiAdminSimpleLoginRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
+  ApiPublicBrevoTestSyncRoute: ApiPublicBrevoTestSyncRoute,
   ApiPublicEnrichCommentsRoute: ApiPublicEnrichCommentsRoute,
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
   ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
@@ -2408,7 +2408,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSistemaVisualCoverDebugRoute: ApiAdminSistemaVisualCoverDebugRoute,
   ApiAdminSnapshotByIdSnapshotIdRoute: ApiAdminSnapshotByIdSnapshotIdRoute,
   ApiAdminSnapshotUsernameRoute: ApiAdminSnapshotUsernameRoute,
-  ApiPublicAdminToolsBrevoTestSyncRoute: ApiPublicAdminToolsBrevoTestSyncRoute,
   ApiPublicAnalysisSnapshotUsernameRoute:
     ApiPublicAnalysisSnapshotUsernameRoute,
   ApiPublicFeedbackRequestIdRoute: ApiPublicFeedbackRequestIdRoute,
@@ -2423,3 +2422,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
