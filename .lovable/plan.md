@@ -1,198 +1,74 @@
-# Runbook Operacional — Beta Privada InstaBench
+# Avaliação Final + Refinamentos Pendentes
 
-Documento operacional. Sem alterações de código. Para guardar como `docs/BETA_RUNBOOK.md` após aprovação.
+## Estado da loop atual
 
----
-
-## 0. Estado atual e premissas
-
-- **Acesso ao admin**: `ADMIN_ALLOWED_EMAILS` (CSV) — sem JWT, baseado em allowlist de email.
-- **Autenticação pública**: nenhuma. O utilizador entra direto em `/analyze/{handle}`.
-- **Email primário**: Brevo. Fallback: Resend. Kill-switches disponíveis (`BREVO_TRANSACTIONAL_ENABLED`, `RESEND_FALLBACK_ENABLED`, `BREVO_CONTACT_SYNC_ENABLED`, `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED`).
-- **Apify**: `APIFY_ENABLED` + `APIFY_ALLOWLIST` controlam custo e perfis permitidos.
-- **Sequência lead-magnet**: deve estar **OFF** durante a beta externa enquanto não houver link de unsubscribe.
-
----
-
-## 1. Como convidar um beta tester
-
-1. Confirmar que o handle de teste está em `APIFY_ALLOWLIST` (admin → `/admin/sistema`).
-2. Enviar mensagem direta (WhatsApp/email pessoal) com:
-   - URL: `https://instagramaudit.lovable.app/`
-   - 1 frase de contexto: "Estamos em beta privada de uma ferramenta de benchmark de Instagram. Demora ~1 minuto."
-   - Aviso: "É beta — qualquer coisa estranha avisa-me."
-3. **Não usar** newsletter, ads, ou qualquer canal massa.
-4. Marcar internamente o convite (ficheiro/Notion) com data + handle convidado.
-
-## 2. URL a enviar
-
-- **Sempre**: `https://instagramaudit.lovable.app/` (homepage).
-- **Nunca** enviar `/admin/*`, `/report.example`, ou link direto a `/analyze/{handle}` (perde o contexto do unlock e o tracking de origem).
-
-## 3. O que o utilizador deve experienciar
-
-| Passo | Esperado |
-|---|---|
-| 1 | Landing → introduz @ ou URL do Instagram |
-| 2 | Vê preview do relatório com 3 secções abertas e blur nas premium |
-| 3 | Clica "Desbloquear" → modal 5 passos: email, ownership, goal, user type, pricing |
-| 4 | Aceita RGPD (obrigatório), opcional marketing |
-| 5 | Após submit: relatório completo desbloqueia |
-| 6 | Recebe email com link |
-
-Tempo total: 1–3 min.
-
-## 4. Emails que o utilizador deve receber
-
-| Trigger | Template | Quando | Beta status |
-|---|---|---|---|
-| Unlock concluído | `report-ready` | Imediato (transacional) | ✅ ON |
-| Welcome lead-magnet | `welcome-beta` | ~2 min após unlock | ⚠️ OFF na beta externa |
-| Resumo do relatório | `report-summary` | ~24h depois | ⚠️ OFF na beta externa |
-| Feedback request | `feedback-request` | Manual via admin | ✅ ON (manual) |
-| Commercial follow-up | `commercial-followup` | Manual via admin | ✅ ON (manual) |
-
-## 5. Onde verificar o lead em `/admin`
-
-- **Visão geral** (`/admin/visao-geral`) — funil + kanban resumido.
-- **Beta leads** (`/admin/beta-leads`) — kanban completo. Procurar por handle ou email.
-- **Lead detail sheet** — clicar no card. Abas: Identidade, Engagement, Histórico, **Timeline**, Comunicação, Notas.
-
-## 6. Como confirmar Brevo sync
-
-1. Abrir lead em `/admin/beta-leads` → sheet de detalhe.
-2. Procurar campo `brevo_contact_id` na secção Identidade.
-3. Se preenchido → sync OK. Se vazio + lead recente → ver Timeline pelo evento `brevo_contact_synced` ou `brevo_contact_sync_failed`.
-4. Para confirmação cruzada: `/admin/sistema` → cockpit Brevo (contagem de syncs hoje).
-
-## 7. Como ler a Timeline do lead
-
-Eventos relevantes por ordem cronológica:
-
-- `unlock_started` — abriu modal
-- `unlock_step_completed` — passos 1-5
-- `unlock_completed` — submeteu form
-- `report_link_sent` — email enviado
-- `report_email_delivered` / `report_email_opened` (se webhook ativo)
-- `brevo_contact_synced` ou `brevo_contact_sync_failed` / `brevo_contact_sync_skipped`
-- `report_viewed` — abriu o relatório
-- `report_section_opened` — interagiu
-
-Se faltar `unlock_completed` mas existir `unlock_started` → desistiu no funil. Investigar passo.
-
-## 8. Utilizador não recebeu emails
-
-| Sintoma | Verificar | Ação |
+| Tema | Estado | Notas |
 |---|---|---|
-| Sem `report-ready` | Timeline → `report_email_failed`? | Ver `error_message` na Timeline |
-| Email no spam | Confirmar com utilizador | Pedir marcar "Não é spam"; logar |
-| `report_email_failed` Brevo | Cockpit `/admin/sistema` → Brevo OK? | Se Brevo down: kill-switch fallback Resend já trata |
-| Ambos falham | Logs em `email_send_log` (admin → sistema) | Reenviar manualmente após corrigir |
-| Lead-magnet não chegou | Confirmar `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` | Esperado OFF na beta — não é bug |
+| Mobile audit (admin 375px) | ✅ Concluído | Edits aplicados em topbar, kanban, lead sheet, beta-requests, report-lab |
+| Kill switches (4 flags Brevo/Resend/Lead-magnet) | ✅ Concluído | `docs/KILL_SWITCHES.md` + guards em 3 ficheiros |
+| Audit privacidade — itens 1, 2, 6, 7 | ✅ Concluído | Política atualizada com Brevo/OpenAI/DataForSEO + tracking + marketing; link checkbox corrigido; nota "beta privada" no modal |
+| Runbook beta operacional | ✅ Concluído | `docs/BETA_RUNBOOK.md` |
 
-## 9. Brevo sync falhou
+## Pendências do audit privacidade (itens 3, 4, 5)
 
-1. Timeline mostra `brevo_contact_sync_failed` com `reason`.
-2. Razões comuns:
-   - `BREVO_API_KEY` ausente → `/admin/sistema` mostra alerta. Adicionar secret.
-   - `DISABLED_BY_FLAG` → `BREVO_CONTACT_SYNC_ENABLED="false"`. Esperado se desativado de propósito.
-   - 429 Brevo → rate limit. Tenta novamente em 1h.
-3. **Não bloqueante**: o utilizador desbloqueou na mesma. Apenas falta CRM externo.
-4. Não há retry automático: re-sync manual via botão "Forçar sync" no detalhe do lead (se disponível) ou ignorar até final da beta e fazer batch.
+Estes itens foram **explicitamente diferidos** no prompt anterior para "prompt seguinte". São P0 antes de beta externa **se** os emails lead-magnet ficarem ON. Como o runbook recomenda mantê-los OFF via `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED="false"`, é possível adiar segurança-mente — **mas há um problema novo** identificado nesta avaliação:
 
-## 10. Relatório não desbloqueia
+**Brevo contact sync ignora `marketing_consent`.** Em `src/lib/brevo/sync.server.ts` o lead é adicionado à lista mesmo quando o utilizador não marcou o opt-in marketing. Isto contradiz a política recém-atualizada (que diz "apenas mediante consentimento expresso"). Tem de ser corrigido **antes** de divulgar a política em beta externa, mesmo com lead-magnet OFF, porque a sync para a lista Brevo já está ON por defeito.
 
-| Sintoma | Causa provável | Ação |
+## Refinamentos propostos para fechar agora
+
+### R1 — Gating do Brevo sync por `marketing_consent` (P0)
+
+`src/lib/brevo/sync.server.ts` em `syncLeadToBrevo`:
+- Se `lead.marketing_consent !== true` E `BREVO_LEAD_MAGNET_LIST_ID` definido → **não adicionar à lista** (criar contacto sem `listIds`, ou pular).
+- Registar evento `brevo_contact_sync_skipped` com `reason: "NO_MARKETING_CONSENT"`.
+- Mantém o sync de attributos (nome, handle) para CRM interno se quisermos, mas sem listas de marketing.
+
+Decisão a tomar: criar contacto sem lista, ou não criar de todo? **Proposta**: criar sem lista (continua a ser CRM útil) e re-adicionar à lista quando `marketing_consent` mudar para true.
+
+### R2 — Gating do `sendLeadMagnetSequence` por `marketing_consent` (P0)
+
+`src/lib/email/lead-magnet-sequence.server.ts`:
+- Já tem kill-switch global. Adicionar verificação adicional: se `lead.marketing_consent !== true` → skip welcome + summary, retornar `{welcome:"skipped_no_consent", summary:"skipped_no_consent"}`, registar `lead_magnet_sequence_skipped` com `reason: "NO_MARKETING_CONSENT"`.
+- Defesa em profundidade: mesmo que alguém ative o kill-switch, leads sem opt-in nunca recebem.
+
+### R3 — Refinamentos de copy (P2 do audit anterior)
+
+- `src/components/product/unlock-modal.tsx` linha ~672: trocar "Sem spam." por "Cancela quando quiseres." (não promete absoluto).
+
+### R4 — Atualizar runbook + KILL_SWITCHES com a nova lógica de consent
+
+- `docs/BETA_RUNBOOK.md`: secção 4 (emails), nota explícita "lead-magnet só sai se utilizador marcou opt-in marketing".
+- `docs/KILL_SWITCHES.md`: adicionar nota "verificação adicional de `marketing_consent` aplica-se em cima do kill-switch".
+
+### R5 — Não fazer agora (continuar a deferir)
+
+Estes 3 itens precisam de infraestrutura nova e ficam para sprint dedicado:
+
+- ❌ Footer email com identificação operador (NIF + morada) — precisa decisão legal/dados do operador
+- ❌ Rota pública `/email/cancelar?token=…` + tabela de tokens — sprint dedicado
+- ❌ Linha "Recebes este email porque…" nos templates — só faz sentido com unsubscribe
+
+Mitigação: lead-magnet permanece OFF via env flag até estes 3 ficarem prontos. Os transacionais (`report-ready`, `personal-area-saved`, `request-received`, `feedback-request`, `commercial-followup`) saem ao abrigo de execução de contrato e interesse legítimo, não exigem unsubscribe.
+
+## Ficheiros tocados
+
+| Ficheiro | Mudança | Linhas estimadas |
 |---|---|---|
-| Modal fica em "A desbloquear…" | Apify down / fora de allowlist | `/admin/sistema` → status Apify; adicionar handle ao allowlist |
-| Erro "perfil privado" | Conta IG privada | Pedir handle público alternativo |
-| Erro "perfil não existe" | Typo do utilizador | Confirmar URL |
-| Modal trava no passo 1 | RGPD não aceite | Lembrar utilizador |
-| Erro 500 | Edge function | Logs em `/admin/sistema` → recent errors |
-| `APIFY_ENABLED="false"` | Kill-switch ativo | Reativar se intencional foi pausa |
+| `src/lib/brevo/sync.server.ts` | Guard `marketing_consent` antes de adicionar à lista | ~15 |
+| `src/lib/email/lead-magnet-sequence.server.ts` | Guard adicional `marketing_consent` antes do kill-switch atual | ~10 |
+| `src/components/product/unlock-modal.tsx` | "Sem spam" → "Cancela quando quiseres" | 1 |
+| `docs/BETA_RUNBOOK.md` | Nota gating consent na secção 4 | ~3 |
+| `docs/KILL_SWITCHES.md` | Nota sobre layered consent | ~5 |
 
-## 11. Mover lead no kanban
-
-Colunas disponíveis (drag & drop em `/admin/beta-leads`):
-
-`link_enviado` → `relatorio_visto` → `feedback_pedido` → `feedback_recebido` → **`interessado`** → **`potencial_cliente`** → **`convertido`** → **`arquivado`**
-
-- **Interessado**: respondeu positivamente, quer continuar a conversa.
-- **Potencial cliente**: discussão comercial concreta (preço/scope).
-- **Convertido**: pagou ou assinou contrato.
-- **Arquivado**: sem interesse, duplicado, ou teste interno.
-
-Adicionar nota interna no sheet sempre que se mover de coluna.
-
-## 12. O que NÃO tocar durante a beta
-
-- ❌ `/report.example` (mockup editorial — não ligar a dados reais).
-- ❌ Schema de `leads`, `unlock_events`, `product_events` (quebra o funil histórico).
-- ❌ Valores de `APIFY_ALLOWLIST` sem documentar (perde-se controlo de custo).
-- ❌ Ativar `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED="true"` antes de o footer dos emails ter unsubscribe + identificação operador.
-- ❌ Política de privacidade / Termos sem revisão.
-- ❌ Templates de email (rebuild assíncrono, risco de envio inconsistente).
-- ❌ Tabela `user_roles` (não usada agora, fica para auth futura).
-
-## 13. Limitações conhecidas (comunicar a beta testers se perguntarem)
-
-- Apenas perfis públicos do Instagram.
-- Snapshot expira em 24h (necessário re-analisar).
-- Sem login: o relatório fica acessível por link assinado.
-- Sem histórico no perfil do utilizador (área pessoal não está pronta).
-- Sem export PDF (só link online).
-- Insights gerados por IA podem ter pequenas imprecisões — pedir feedback.
-- Sem unsubscribe nos emails de marketing → por isso a sequência lead-magnet está OFF.
-
----
-
-## Checklist ANTES de convidar um tester
-
-- ☐ Handle alvo está em `APIFY_ALLOWLIST`
-- ☐ `APIFY_ENABLED="true"`
-- ☐ `BREVO_TRANSACTIONAL_ENABLED="true"` (ou Resend fallback ON)
-- ☐ `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED="false"` (até unsubscribe estar pronto)
-- ☐ Cockpit `/admin/sistema` sem alertas vermelhos
-- ☐ Saldo Apify > limite mínimo
-- ☐ Política de privacidade publicada (`/privacidade` 200 OK)
-
-## Checklist DEPOIS de cada teste
-
-- ☐ Lead apareceu em `/admin/beta-leads`
-- ☐ Timeline mostra `unlock_completed` + `report_link_sent`
-- ☐ `brevo_contact_id` preenchido (ou `*_skipped` se intencional)
-- ☐ Utilizador confirmou receção do email
-- ☐ Lead movido para coluna correta no kanban
-- ☐ Notas internas adicionadas (impressão do utilizador, bugs reportados)
-- ☐ Custo Apify do run dentro do esperado (ver provider_call_logs)
-
----
-
-## Tabela de troubleshooting rápida
-
-| Problema | Local 1º check | Local 2º check | Decisão |
-|---|---|---|---|
-| Sem unlock | Browser console do tester | `/admin/sistema` errors | Reanalisar manualmente |
-| Sem email | Timeline do lead | `email_send_log` | Reenviar via admin |
-| Brevo sync KO | Timeline (`brevo_*`) | `/admin/sistema` Brevo | Ignorar até batch ou re-sync manual |
-| Apify falhou | `/admin/sistema` provider | provider_call_logs | Confirmar allowlist + saldo |
-| Kanban vazio | Refresh + filtros | `/api/admin/leads-kanban` 200? | Reportar incidente |
-| Custo a disparar | `/admin/visao-geral` despesa | provider_call_logs hoje | Pausar `APIFY_ENABLED` |
-
-## Regras de escalação
-
-- **Sev-1 (parar a beta)**: relatório não desbloqueia para >50% dos testers, custo Apify >2× esperado, leak de dados, erro RGPD.
-  - Ação: `APIFY_ENABLED="false"` + parar convites + post-mortem em 24h.
-- **Sev-2 (avisar testers ativos)**: emails não saem, Brevo down >2h.
-  - Ação: avisar manualmente os 1-2 testers afetados; ativar fallback Resend se desligado.
-- **Sev-3 (registo)**: bug visual, copy errado, métrica esquisita.
-  - Ação: anotar em backlog. Não interromper.
-
----
+Sem migrações. Sem novas dependências. Sem mudanças de UI pública (exceto micro-copy do modal).
 
 ## Checkpoint
 
-- ☐ Aprovar conteúdo do runbook
-- ☐ Confirmar gravação como `docs/BETA_RUNBOOK.md`
-- ☐ Indicar se quer também versão resumida 1-pager para referência rápida
-- ☐ Confirmar que `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` deve estar OFF na beta
+- ☐ Aprovar R1 (Brevo gating)
+- ☐ Aprovar R2 (lead-magnet gating)
+- ☐ Aprovar R3 (copy modal)
+- ☐ Aprovar R4 (atualizar docs)
+- ☐ Confirmar que R5 (footer + unsubscribe) fica para sprint dedicado pós-beta inicial
+
+Após esta sequência, o produto fica **consistente entre o que promete na política e o que executa**, e pronto para beta privada/restrita com handles convidados.
