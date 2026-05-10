@@ -1,88 +1,133 @@
-## Auditoria — Brevo list ID
+## Checklist de atributos Brevo — pré-teste de unlock real
 
 ### TL;DR
 
-✅ **Tudo correto. Nenhum hardcoded `42`. Sem alterações de código necessárias.**
+✅ **Sem alteração de código.** O sync é resiliente: se um atributo não existir, Brevo cria-o automaticamente como **Text** e o upsert continua a funcionar. O risco é apenas perda de tipagem (filtros numéricos/data deixam de funcionar). **Recomenda-se criar manualmente os 14 atributos no painel Brevo antes do primeiro unlock real**, para garantir tipos corretos desde o início.
 
-### 1. Procura por `42` hardcoded
+---
 
-Foram encontradas várias ocorrências de `42` no codebase, **todas legítimas**:
+### 1. Atributos enviados pelo código
 
-- `src/lib/brevo/__tests__/brevo-client.test.ts:23,64` — fixture de teste (`BREVO_LEAD_MAGNET_LIST_ID: "42"` mockado para validar parsing)
-- `src/lib/brevo/__tests__/customer-sync.test.ts:93` — `brevoId: 42` (mock do response Brevo, não list ID)
-- Vários `rgba(15,23,42,...)` — cor hex em sombras Tailwind
-- Vários valores `42` em fixtures de testes de insights, normalização e mock data
+Inventário completo a partir de `src/lib/brevo/sync.server.ts`, `customer-sync.server.ts` e `lead-magnet-sequence.server.ts`:
 
-**Nenhuma ocorrência de `42` em código de produção como list ID.**
+| # | Atributo | Origem | Exemplo de valor |
+|---|---|---|---|
+| 1 | `INSTAGRAM_HANDLE` | `report_requests.instagram_username` | `"frederico.m.carvalho"` |
+| 2 | `REPORTS_COUNT` | `count(report_requests)` | `3` |
+| 3 | `LAST_REPORT_URL` | computado: `${baseUrl}/analyze/${handle}` | `"https://instagramaudit.lovable.app/analyze/joao"` |
+| 4 | `LAST_REPORT_AT` | `report_requests.created_at` (ISO 8601) | `"2026-05-10T10:00:00Z"` |
+| 5 | `PROFILE_OWNERSHIP` | `leads.profile_ownership` | `"own_profile"` / `"client_profile"` / `"competitor"` |
+| 6 | `GOAL` | `leads.purpose` | `"improve_content"` / `"growth"` / `"benchmarking"` |
+| 7 | `USER_TYPE` | `leads.user_type` | `"creator"` / `"agency"` / `"brand"` |
+| 8 | `PRICING_PREFERENCE` | `leads.pricing_preference` | `"below_20"` / `"pago_unico_30_50"` / `"sub_mensal"` |
+| 9 | `LEAD_SOURCE` | `leads.source` | `"public_report_unlock"` / `"public_report_gate"` |
+| 10 | `COMMERCIAL_STATUS` | `leads.commercial_status` | `"lead"` / `"qualificado"` / `"convertido"` |
+| 11 | `IS_CUSTOMER` | derivado | `false` (lead sync) / `true` (customer sync) |
+| 12 | `PLAN` | `leads.pricing_preference` (apenas customer sync) | `"pago_unico_30_50"` |
+| 13 | `LAST_PAYMENT_AT` | `now()` (apenas customer sync) | `"2026-05-10T10:00:00Z"` |
+| 14 | `BETA_WELCOMED_AT` | `now()` (após welcome email) | `"2026-05-10T10:00:00Z"` |
 
-### 2. Onde o list ID é lido
+**Não enviado:** `FIRSTNAME` / `LASTNAME` (built-in Brevo) — o `firstName` é usado apenas no template do email, não no contacto. Não bloqueia testes.
 
-Único ponto de leitura: `src/lib/brevo/contacts.server.ts:24-33`
+---
 
-```ts
-function resolveListIds(override?: number[]): number[] | { error: string } {
-  if (override && override.length > 0) return override;
-  const raw = process.env.BREVO_LEAD_MAGNET_LIST_ID?.trim();
-  if (!raw) return { error: "BREVO_LEAD_MAGNET_LIST_ID_MISSING" };
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return { error: "BREVO_LEAD_MAGNET_LIST_ID_INVALID" };
-  }
-  return [parsed];
-}
+### 2. Tipos Brevo corretos
+
+| Atributo | Tipo Brevo | Categoria | Justificação |
+|---|---|---|---|
+| `INSTAGRAM_HANDLE` | **Text** | Normal | Username livre |
+| `REPORTS_COUNT` | **Number** | Normal | Inteiro (filtros: "≥ 2") |
+| `LAST_REPORT_URL` | **Text** | Normal | URL livre |
+| `LAST_REPORT_AT` | **Date** | Normal | ISO 8601 (filtros: "últimos 30 dias") |
+| `PROFILE_OWNERSHIP` | **Text** | Category | Enum curto, ideal para segmentação por categoria |
+| `GOAL` | **Text** | Category | Enum curto |
+| `USER_TYPE` | **Text** | Category | Enum curto |
+| `PRICING_PREFERENCE` | **Text** | Category | Enum curto |
+| `LEAD_SOURCE` | **Text** | Category | Enum curto |
+| `COMMERCIAL_STATUS` | **Text** | Category | Enum curto, base do funil comercial |
+| `IS_CUSTOMER` | **Boolean** | Normal | true/false (filtros: "é cliente") |
+| `PLAN` | **Text** | Category | Enum curto |
+| `LAST_PAYMENT_AT` | **Date** | Normal | ISO 8601 |
+| `BETA_WELCOMED_AT` | **Date** | Normal | ISO 8601 |
+
+> **Nota sobre "Category" vs "Normal" em Brevo:**
+> Brevo permite marcar atributos Text como "Category" — desbloqueia segmentação multi-valor e filtros mais limpos no UI. Não é obrigatório, mas recomendado para os 6 enums acima.
+
+---
+
+### 3. Checklist manual no painel Brevo
+
+**Onde:** Brevo → **Contacts** → **Settings** (ícone engrenagem topo-direito) → **Contact Attributes**
+
+**Como criar cada um:**
+1. Clicar **"Add an attribute"**
+2. **Attribute name:** copiar **exatamente** da coluna "Atributo" abaixo (case-sensitive, com underscores)
+3. **Attribute type:** selecionar do dropdown
+4. (Opcional) Para os 6 atributos Text marcados como Category: escolher **Category** em vez de **Text**
+5. Guardar
+
+**Lista para colar (14 atributos):**
+
+```
+☐ INSTAGRAM_HANDLE       Text
+☐ REPORTS_COUNT          Number
+☐ LAST_REPORT_URL        Text
+☐ LAST_REPORT_AT         Date
+☐ PROFILE_OWNERSHIP      Text (Category)
+☐ GOAL                   Text (Category)
+☐ USER_TYPE              Text (Category)
+☐ PRICING_PREFERENCE     Text (Category)
+☐ LEAD_SOURCE            Text (Category)
+☐ COMMERCIAL_STATUS      Text (Category)
+☐ IS_CUSTOMER            Boolean
+☐ PLAN                   Text (Category)
+☐ LAST_PAYMENT_AT        Date
+☐ BETA_WELCOMED_AT       Date
 ```
 
-- ✅ Lê de `process.env.BREVO_LEAD_MAGNET_LIST_ID` (secret confirmada na lista de secrets do projeto)
-- ✅ Parse com `Number.parseInt(raw, 10)` → número
-- ✅ Valida `Number.isFinite` + `> 0`
-- ✅ Sem fallback hardcoded — falha explícita se ausente/inválido
+⚠️ **Atenção ao formato Date:** Brevo aceita `YYYY-MM-DD` ou ISO 8601 completo. O código envia ISO 8601 com timezone (`2026-05-10T10:00:00Z`) — funciona em ambos os casos, mas se o atributo for criado como **Text** por engano, perde-se filtragem temporal.
 
-Para clientes pagos, `customer-sync.server.ts:37-43` usa `BREVO_PAID_CUSTOMERS_LIST_ID` (lista 17) com mesma lógica de parsing; se ausente, faz fallback para a lista lead-magnet (16) via `upsertBrevoContact`.
+---
 
-### 3. Tratamento de erro / não-bloqueio
+### 4. Resiliência se atributos faltarem
 
-- `resolveListIds` devolve `{ error: "BREVO_LEAD_MAGNET_LIST_ID_MISSING" | "BREVO_LEAD_MAGNET_LIST_ID_INVALID" }`
-- `upsertBrevoContact` propaga como `{ ok: false, reason }`
-- `syncLeadToBrevo` (`src/lib/brevo/sync.server.ts:170`) regista evento **`brevo_contact_sync_failed`** com o `reason`
-- `unlock.server.ts:471-476` invoca `syncLeadToBrevo` em **`void (async () => { … })().catch(...)`** — fire-and-forget, **nunca bloqueia o unlock**
+✅ **Sim, o código continua a funcionar.** Comportamento confirmado por inspeção de `src/lib/brevo/contacts.server.ts`:
 
-✅ Comportamento exato pedido.
+- `cleanAttributes()` remove apenas `null`/`undefined`/strings vazias antes do envio
+- O endpoint `POST /v3/contacts` da Brevo cria atributos em falta automaticamente como **Text**
+- Em caso de erro Brevo (rate-limit, 5xx, etc.), `upsertBrevoContact` devolve `{ ok: false, reason }` que é registado em `brevo_contact_sync_failed`
+- O unlock é **fire-and-forget** (`unlock.server.ts:471-476`), nunca bloqueia
 
-### 4. Payload final com list ID 16
+**Risco de não criar manualmente:**
+- Sem perda de dados — todos os valores chegam à Brevo
+- **Perda de tipagem:** `REPORTS_COUNT` como Text impede filtros "≥ X"; `LAST_REPORT_AT` como Text impede filtros "últimos 30 dias"; `IS_CUSTOMER` como Text obriga a comparar `"true"`/`"false"` em vez de booleano nativo
+- **Difícil de corrigir depois:** Brevo não permite mudar o tipo de um atributo existente sem o apagar (e perder os valores em todos os contactos). Por isso, **é importante criar com tipo correto antes do primeiro upsert**
 
-Com `BREVO_LEAD_MAGNET_LIST_ID=16` em secrets (confirmado), o payload enviado para `POST /v3/contacts` é:
+---
 
-```json
-{
-  "email": "user@example.com",
-  "updateEnabled": true,
-  "listIds": [16],
-  "attributes": { … }
-}
-```
+### 5. Criação automática de atributos
 
-✅ Confirmado por inspeção em `contacts.server.ts:44-52` — `listIds: listsOrErr` é o resultado direto de `resolveListIds()`, ou seja `[16]` quando a env é `"16"`.
+❌ **Não implementar agora.** O endpoint Brevo `POST /v3/contacts/attributes/{category}/{name}` permitiria criar via código, mas:
+- Adiciona latência ao primeiro unlock
+- Requer tracking de "já criou?" para idempotência
+- Risco de race conditions
+- Está **fora do âmbito** desta auditoria
 
-### Recomendações
+A criação manual (5 min no painel) é mais segura e definitiva.
 
-**Nenhum fix necessário.** A implementação está correta:
+---
 
-- Sem hardcoded `42` em produção
-- Lê e valida a env como número positivo
-- Falha visível via `brevo_contact_sync_failed` sem bloquear unlock
-- Suporta override por chamada (usado pelo customer-sync com lista paga 17)
+### Recomendação final
 
-### Opcional (sem prioridade)
+✅ **Avançar com teste manual de unlock real assim que os 14 atributos estiverem criados no painel Brevo com os tipos da tabela acima.**
 
-Os secrets para listas 17 (clientes pagos) e 18 (intenção alta) ainda não estão configurados — apenas `BREVO_LEAD_MAGNET_LIST_ID` (16) existe. Quando quiseres ativar segmentação, adicionar:
-
-- `BREVO_PAID_CUSTOMERS_LIST_ID=17` (já lido por `customer-sync.server.ts`)
-- `BREVO_HIGH_INTENT_LIST_ID=18` (ainda não tem leitor — precisaria de novo callsite)
+Se preferires testar antes de criar (apenas para validar que o sync chega), o sync funcionará — mas será preciso apagar os atributos auto-criados como Text e recriá-los com tipo correto antes de qualquer segmentação real.
 
 ## Checkpoint
 
-- ☑ `42` é apenas exemplo/fixture; não aparece em código de produção
-- ☑ List ID lido de `BREVO_LEAD_MAGNET_LIST_ID` (parse int + validação)
-- ☑ Falha não bloqueia unlock; emite `brevo_contact_sync_failed`
-- ☑ Payload usa `listIds: [16]` quando secret = `"16"`
+- ☑ 14 atributos inventariados a partir do código de produção
+- ☑ Tipo Brevo correto definido para cada um (4 Date, 1 Number, 1 Boolean, 8 Text/Category)
+- ☑ Checklist copy-paste pronta para o painel Brevo
+- ☑ Confirmado que código não bloqueia se atributos faltarem (cria como Text)
 - ☑ Sem alterações de código necessárias
+- ☐ Utilizador cria os 14 atributos no painel Brevo antes do primeiro teste real
