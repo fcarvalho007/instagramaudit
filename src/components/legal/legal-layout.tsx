@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { AppShell } from "@/components/layout/app-shell";
 import { Container } from "@/components/layout/container";
 
 interface LegalLayoutProps {
@@ -25,7 +24,7 @@ interface LegalLayoutProps {
  */
 export function LegalLayout({ eyebrow, title, lede, lastUpdated, toc, children }: LegalLayoutProps) {
   return (
-    <AppShell>
+    <>
       <Container>
         <article className="py-16 md:py-24">
           {/* Header */}
@@ -33,7 +32,7 @@ export function LegalLayout({ eyebrow, title, lede, lastUpdated, toc, children }
             <span className="text-eyebrow-sm text-[0.625rem] text-accent-luminous">
               {eyebrow}
             </span>
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-content-primary tracking-tight">
+            <h1 className="font-display text-[2rem] sm:text-4xl md:text-5xl lg:text-6xl font-medium text-content-primary tracking-tight text-balance break-words leading-[1.05]">
               {title}
             </h1>
             <p className="font-sans text-base md:text-lg text-content-secondary leading-relaxed">
@@ -152,6 +151,6 @@ export function LegalLayout({ eyebrow, title, lede, lastUpdated, toc, children }
           border-radius: 0.25rem;
         }
       `}</style>
-    </AppShell>
+    </>
   );
 }
