@@ -74,59 +74,37 @@ function buildSubject(handle: string): string {
   return `Resumo da análise de @${handle}`;
 }
 
-const HEADLINE = "Resumo da tua análise";
-const PREHEADER = "Os principais sinais do teu relatório InstaBench.";
+const HEADLINE = "Resumo do relatório";
+const PREHEADER = "As 3 conclusões principais em 60 segundos.";
 
-function kpiCellHtml(label: string, value: string): string {
-  const safeLabel = escapeHtml(label);
-  const safeValue = escapeHtml(value);
-  return `<td width="50%" valign="top" style="padding:14px 16px;background-color:#fafaf9;border:1px solid #e7e5e4;border-radius:10px;">
-  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.16em;color:#78716c;text-transform:uppercase;margin:0 0 6px 0;">${safeLabel}</div>
-  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:600;color:#0a0e1a;line-height:1.2;font-variant-numeric:tabular-nums;">${safeValue}</div>
-</td>`;
-}
-
-function kpiGridHtml(kpis: ReportSummaryKpis): string {
-  const cells = [
-    kpiCellHtml("Seguidores", formatInt(kpis.followers)),
-    kpiCellHtml("Engagement médio", formatPct(kpis.engagementPct)),
-    kpiCellHtml("Formato dominante", kpis.dominantFormat),
-    kpiCellHtml("Δ vs benchmark", formatDelta(kpis.benchmarkDeltaPp)),
+function buildInsights(
+  handle: string,
+  kpis: ReportSummaryKpis,
+  topPost: ReportSummaryTopPost,
+): string[] {
+  const followers = formatInt(kpis.followers);
+  const eng = formatPct(kpis.engagementPct);
+  const delta = formatDelta(kpis.benchmarkDeltaPp);
+  const benchmarkLine = Number.isFinite(kpis.benchmarkDeltaPp)
+    ? kpis.benchmarkDeltaPp >= 0
+      ? `Engagement médio em ${eng} — ${delta} acima da referência de mercado.`
+      : `Engagement médio em ${eng} — ${delta} face à referência de mercado.`
+    : `Engagement médio em ${eng}.`;
+  return [
+    `@${handle} tem ${followers} seguidores e o formato dominante é ${kpis.dominantFormat}.`,
+    benchmarkLine,
+    `O post de topo foi um ${topPost.format} com ${formatPct(topPost.engagementPct)} de engagement.`,
   ];
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="8" border="0" style="border-collapse:separate;border-spacing:8px;margin:0 -8px 8px -8px;">
-  <tr>${cells[0]}${cells[1]}</tr>
-  <tr>${cells[2]}${cells[3]}</tr>
-</table>`;
 }
 
-function topPostHtml(top: ReportSummaryTopPost): string {
-  const safeFormat = escapeHtml(top.format);
-  const safeEng = escapeHtml(formatPct(top.engagementPct));
-  const thumbHtml = top.thumbnailUrl
-    ? `<img src="${escapeHtml(top.thumbnailUrl)}" alt="" width="80" height="80" style="display:block;width:80px;height:80px;border-radius:8px;object-fit:cover;border:1px solid #e7e5e4;" />`
-    : `<div style="width:80px;height:80px;border-radius:8px;background:linear-gradient(135deg,#3772E5,#7664E4);"></div>`;
-  const linkOpen = top.permalink
-    ? `<a href="${escapeHtml(top.permalink)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">`
-    : "";
-  const linkClose = top.permalink ? `</a>` : "";
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 16px 0;background-color:#ffffff;border:1px solid #e7e5e4;border-radius:10px;">
-  <tr>
-    <td style="padding:14px;">
-      ${linkOpen}
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td valign="top" style="padding-right:14px;">${thumbHtml}</td>
-          <td valign="top">
-            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.16em;color:#78716c;text-transform:uppercase;margin:0 0 6px 0;">Post de topo</div>
-            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#0a0e1a;margin:0 0 4px 0;">${safeFormat}</div>
-            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#57534e;font-variant-numeric:tabular-nums;">Engagement: <strong style="color:#0a0e1a;">${safeEng}</strong></div>
-          </td>
-        </tr>
-      </table>
-      ${linkClose}
-    </td>
-  </tr>
-</table>`;
+function insightListHtml(insights: string[]): string {
+  const items = insights
+    .map(
+      (line, i) =>
+        `<li style="margin:0 0 10px 0;padding-left:8px;font-size:15px;line-height:1.6;color:#1c1917;"><strong style="color:#0a0e1a;">${i + 1}.</strong> ${escapeHtml(line)}</li>`,
+    )
+    .join("\n");
+  return `<ol style="margin:0 0 20px 0;padding:0 0 0 20px;list-style:none;">${items}</ol>`;
 }
 
 export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
@@ -140,22 +118,21 @@ export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
   const handle = input.instagramHandle.replace(/^@/, "");
   const url = input.reportUrl.trim();
   const subject = buildSubject(handle);
+  const insights = buildInsights(handle, input.kpis, input.topPost);
 
   const text = joinLines([
     greetingText(input.firstName),
     "",
-    `Aqui ficam 4 números reais do teu raio-X de @${handle}:`,
-    `· Seguidores: ${formatInt(input.kpis.followers)}`,
-    `· Engagement médio: ${formatPct(input.kpis.engagementPct)}`,
-    `· Formato dominante: ${input.kpis.dominantFormat}`,
-    `· Δ vs benchmark: ${formatDelta(input.kpis.benchmarkDeltaPp)}`,
+    `Em vez de abrires já o relatório completo, deixamos as 3 conclusões principais sobre @${handle}:`,
     "",
-    `Post de topo — ${input.topPost.format} · Engagement ${formatPct(input.topPost.engagementPct)}`,
-    "",
-    "Este é um snapshot parcial. O relatório completo tem benchmarks por formato, comparação com concorrência e recomendações.",
+    `1. ${insights[0]}`,
+    `2. ${insights[1]}`,
+    `3. ${insights[2]}`,
     "",
     "Ver relatório completo:",
     url,
+    "",
+    "O relatório tem o detalhe e a evidência por trás de cada conclusão — incluindo outras observações que não couberam neste resumo.",
     "",
     ...signatureText(),
   ]);
@@ -163,16 +140,16 @@ export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
   const bodyHtml = [
     p(greetingHtml(input.firstName)),
     p(
-      `Aqui ficam <strong style="color:#0a0e1a;">4 números reais</strong> do teu raio-X de <strong style="color:#0a0e1a;">@${escapeHtml(handle)}</strong>.`,
+      `Em vez de abrires já o relatório completo, deixamos as <strong style="color:#0a0e1a;">3 conclusões principais</strong> sobre <strong style="color:#0a0e1a;">@${escapeHtml(handle)}</strong>:`,
     ),
-    kpiGridHtml(input.kpis),
-    topPostHtml(input.topPost),
-    pMuted(
-      "Este é um snapshot parcial. O relatório completo tem benchmarks por formato, comparação com concorrência e recomendações.",
-    ),
+    insightListHtml(insights),
     renderButtonHtml("Ver relatório completo", url),
     `<div style="height:20px;"></div>`,
     renderUrlFallbackHtml(url),
+    `<div style="height:20px;"></div>`,
+    pMuted(
+      "O relatório tem o detalhe e a evidência por trás de cada conclusão — incluindo outras observações que não couberam neste resumo.",
+    ),
     signatureHtml(),
   ].join("\n");
 
