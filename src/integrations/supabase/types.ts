@@ -572,6 +572,7 @@ export type Database = {
           id: string
           internal_notes: string | null
           name: string
+          pricing_preference: string | null
           profile_ownership: string | null
           purpose: string | null
           source: string
@@ -591,6 +592,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           name: string
+          pricing_preference?: string | null
           profile_ownership?: string | null
           purpose?: string | null
           source?: string
@@ -610,6 +612,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           name?: string
+          pricing_preference?: string | null
           profile_ownership?: string | null
           purpose?: string | null
           source?: string
