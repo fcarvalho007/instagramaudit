@@ -1,191 +1,108 @@
-## Auditoria do estado actual
+## Diagnóstico do trigger de pagamento
 
-Mapeei os 5 fluxos transaccionais — não estão todos no mesmo formato:
+Pesquisei todo o `src/` por integrações de pagamento (EuPago, Stripe, webhooks `paid`, `subscription`, `payment_status`, etc.). **Não existe nenhuma integração real de pagamento implementada.** Tudo o que aparece em `src/components/admin/v2/receita/*` e `src/lib/admin/mock-data.ts` é mock/UI de demonstração. Não há webhook, edge function nem rota `/api/public/*` que receba confirmação de pagamento real. A tabela `leads` também não tem colunas de pagamento (`paid_at`, `plan`, `payment_amount`).
 
-| Fluxo | Ficheiro | Padrão actual | Eventos hoje |
-|---|---|---|---|
-| **personal-area-saved** | `src/lib/email/send-personal-area-saved.server.ts` | helper limpo, devolve `{ok, reason}`, sem HTTP | `personal_area_email_sent` / `_failed` ✅ |
-| **report-ready** (PDF) | `src/routes/api/send-report-email.ts` | route handler com `fetch` inline + `RESEND_FAILED→502` | só success path |
-| **report-ready** (link público) | `src/routes/api/admin/send-report-link.ts` | route handler com `fetch` inline + actualiza `commercial_status` | `report_link_sent` (success) |
-| **feedback-request** | `src/routes/api/admin/send-feedback-request.ts` | idem | `feedback_requested` (success) |
-| **commercial-followup** | `src/routes/api/admin/send-commercial-followup.ts` | idem | `commercial_followup_sent` / `_failed` ✅ |
-| **request-received** | `src/lib/beta.functions.ts` (~L189) | `fetch` inline | — |
+A única forma real e atual de marcar uma conversão é o admin mover manualmente o lead para `commercial_status = "convertido"` no Kanban, que faz `PATCH /api/admin/leads-kanban/$id` (`src/routes/api/admin/leads-kanban.$id.ts`). Esse handler já atualiza `commercial_status` e regista `lead_status_changed` em `product_events`.
 
-Endpoint Brevo via gateway: `POST https://connector-gateway.lovable.dev/brevo/v3/smtp/email`.
-Secrets necessários: `BREVO_API_KEY` (✅), `BREVO_FROM_EMAIL` (✅), `BREVO_FROM_NAME` (✅), `RESEND_API_KEY` (✅), `RESEND_FROM` (✅).
+Pela restrição explícita do prompt — *"Do not implement unless a real payment success event exists. Do not fake conversions."* — **não vou criar webhook EuPago/Stripe nem inventar fluxo de pagamento**. Vou apenas ligar o sync ao único trigger real de conversão que existe hoje: a transição admin `→ convertido`. Quando um gateway real for adicionado (próximo prompt), basta chamar a mesma função `syncCustomerToBrevo(leadId, reason)`.
 
----
+## Âmbito desta fase
 
-## Decisão de scope: duas fases
+1. Detetar transição `commercial_status → "convertido"` no PATCH admin.
+2. Disparar `syncCustomerToBrevo(leadId, "admin_conversion")` em fire-and-forget (nunca bloqueia o PATCH nem reverte o estado).
+3. Sync com Brevo a marcar contacto como cliente.
 
-Migrar os 5 sites num único prompt é arriscado — os 4 routes admin devolvem códigos HTTP específicos ao painel (`RESEND_FAILED`, `RESEND_SANDBOX_RECIPIENT_BLOCKED`, `RESEND_TIMEOUT`) e fazem side-effects (status update, lead events com metadata custom). Vou separar:
+Fora de âmbito (próximos prompts):
+- Webhook real de pagamento (EuPago/Stripe).
+- Schema changes para `paid_at`, `plan`, `amount` na tabela `leads`.
+- Lista paga só é usada se o secret existir; não vou criar o secret nem alterar config.
 
-- **Fase A — este prompt:** construir a abstracção + migrar **só `personal-area-saved`** (helper, único caller, já tem testes, padrão `{ok, reason}` igual ao da abstracção). Provar Brevo em produção com risco contido.
-- **Fase B — prompts seguintes (1 por route):** migrar `send-report-email`, `send-report-link`, `send-feedback-request`, `send-commercial-followup`, `request-received` (em `beta.functions.ts`).
+## Arquitetura
 
-A abstracção é construída completa nesta fase (suporta os 5 fluxos), portanto Fase B é só plumbing.
+**Novo módulo `src/lib/brevo/customer-sync.server.ts`** — paralelo ao `sync.server.ts` existente (que faz lead-magnet). Reutiliza `upsertBrevoContact`. Diferenças:
 
----
+- Sempre envia `IS_CUSTOMER = true` e `COMMERCIAL_STATUS = "convertido"`.
+- Inclui `LAST_PAYMENT_AT` (ISO timestamp do momento do sync, já que não há `paid_at` real ainda).
+- `PLAN`: lê de `leads.pricing_preference` como melhor proxy disponível (não há coluna `plan`); fica `null` se vazio.
+- Adiciona à lista paga **apenas** se `BREVO_PAID_CUSTOMERS_LIST_ID` estiver definido e for um inteiro válido. Caso contrário, faz upsert sem alterar listas (lista lead-magnet continua a apanhar via fallback do `upsertBrevoContact`, ou — alternativa — passamos `listIds: [paidId]` só quando existir; se não existir, passamos `listIds` undefined → cai no default lead-magnet, que é aceitável e mantém o contacto sincronizado).
+- Eventos: `brevo_customer_synced` / `brevo_customer_sync_failed` em `product_events`.
 
-## Plano da Fase A
+**Tipos** em `src/lib/brevo/types.ts`:
+- Estender `BrevoSyncReason` com `"admin_conversion"` e `"payment_webhook"` (este último reservado para futuro uso).
 
-### 1. Criar a abstracção
+**Tracking** em `src/lib/tracking.functions.ts`:
+- Adicionar `brevo_customer_synced` e `brevo_customer_sync_failed` ao `ALLOWED_EVENTS`.
 
-**`src/lib/email/transactional-email.server.ts`** — server-only, único entry point:
+**Hook em `src/routes/api/admin/leads-kanban.$id.ts`**:
+- Após o `update` ter sucesso, se `updates.commercial_status === "convertido"` **e** o estado anterior era diferente, disparar `void syncCustomerToBrevo(params.id, "admin_conversion").catch(...)` (fire-and-forget, não usa await que bloqueie a resposta).
+- Ler estado anterior antes do update (single `select commercial_status`) para evitar re-sync em PATCHes que só mudam `internal_notes`.
 
-```ts
-export type TxFlow =
-  | "personal-area-saved"
-  | "report-ready"
-  | "feedback-request"
-  | "request-received"
-  | "commercial-followup";
+## Payload Brevo (exemplo)
 
-export interface SendTransactionalEmailInput {
-  to: string;
-  subject: string;
-  html: string;
-  text: string;
-  flowType: TxFlow;
-  leadId: string | null;
-  reportRequestId?: string | null;
-  snapshotId?: string | null;
-  handle?: string | null;
-  metadata?: Record<string, unknown>;
+```json
+POST /v3/contacts
+{
+  "email": "lead@example.com",
+  "updateEnabled": true,
+  "listIds": [17],
+  "attributes": {
+    "INSTAGRAM_HANDLE": "frederico.m.carvalho",
+    "REPORTS_COUNT": 3,
+    "LAST_REPORT_URL": "https://instagramaudit.lovable.app/analyze/frederico.m.carvalho",
+    "LAST_REPORT_AT": "2026-05-10T12:00:00.000Z",
+    "PROFILE_OWNERSHIP": "owner",
+    "GOAL": "growth",
+    "USER_TYPE": "creator",
+    "PRICING_PREFERENCE": "pago_unico_30_50",
+    "LEAD_SOURCE": "public_report_gate",
+    "COMMERCIAL_STATUS": "convertido",
+    "IS_CUSTOMER": true,
+    "PLAN": "pago_unico_30_50",
+    "LAST_PAYMENT_AT": "2026-05-10T12:00:00.000Z"
+  }
 }
-
-export type SendTransactionalEmailResult =
-  | {
-      ok: true;
-      provider: "brevo" | "resend";
-      messageId: string | null;
-      latencyMs: number;
-      brevoFailed?: { reason: string }; // present quando o Resend foi fallback
-    }
-  | {
-      ok: false;
-      brevoReason: string;
-      resendReason: string | null;  // null se Resend não estava configurado
-      latencyMs: number;
-    };
-
-export async function sendTransactionalEmail(
-  input: SendTransactionalEmailInput,
-): Promise<SendTransactionalEmailResult>
 ```
 
-**Comportamento interno (nunca lança):**
+Se `BREVO_PAID_CUSTOMERS_LIST_ID` não existir → `listIds` cai em `[BREVO_LEAD_MAGNET_LIST_ID]` (id 16). Atributos `IS_CUSTOMER=true` continuam a permitir segmentação na Brevo mesmo sem lista dedicada.
 
-1. Tenta **Brevo primeiro** via `brevoFetch("/v3/smtp/email", ...)` (reutiliza o transporte que já existe em `src/lib/brevo/client.server.ts`). Payload:
-   ```json
-   {
-     "sender": { "email": "<BREVO_FROM_EMAIL>", "name": "<BREVO_FROM_NAME>" },
-     "to": [{ "email": "<to>" }],
-     "subject": "<subject>",
-     "htmlContent": "<html>",
-     "textContent": "<text>"
-   }
-   ```
-   - Brevo `messageId` chega em `messageId` do response JSON.
-   - Sucesso → emite `brevo_email_sent` em `product_events`, devolve `{ ok: true, provider: "brevo", messageId, latencyMs }`.
+## Eventos product_events
 
-2. **Falha do Brevo** (qualquer reason: missing key, timeout, 4xx, 5xx, rede): emite `brevo_email_failed` (com `reason`, `latency_ms`, `flow_type`, `email_masked`). Decide fallback:
-   - Se `RESEND_API_KEY` ausente → emite o evento de falha específico do fluxo (ver mapping abaixo) e devolve `{ ok: false, brevoReason, resendReason: null }`.
-   - Se `RESEND_API_KEY` presente → tenta Resend (`https://api.resend.com/emails`, `from = RESEND_FROM`).
+- `brevo_customer_synced` — `{ sync_reason, brevo_id, status, latency_ms, email_masked, list_id, plan }`
+- `brevo_customer_sync_failed` — `{ sync_reason, reason, latency_ms, email_masked }`
 
-3. **Resend fallback ok** → emite `resend_fallback_email_sent` (com metadata incluindo `brevo_reason`) e devolve `{ ok: true, provider: "resend", messageId, brevoFailed: { reason } }`. **Não** emite o evento "sucesso" do fluxo — o caller faz isso (mantém compatibilidade com flows que já recordam `personal_area_email_sent`).
+Mascaramento de email reutiliza o helper já existente (`f***@example.com`).
 
-4. **Resend também falha** → emite o evento de falha específico do fluxo + devolve `{ ok: false, brevoReason, resendReason }`.
+## Garantias de segurança
 
-**Eventos genéricos novos (adicionar a `ALLOWED_EVENTS` em `tracking.functions.ts`):**
-- `brevo_email_sent`
-- `brevo_email_failed`
-- `resend_fallback_email_sent`
+- Sync é fire-and-forget; falha **nunca** reverte o update do lead.
+- Sem chaves Brevo no bundle do browser (módulo `.server.ts`, usa gateway Lovable já em produção).
+- Sem alterações de schema.
+- Sem chamadas a providers fora de Brevo.
+- Sem envio de emails.
+- Sem mock de conversão: trigger só dispara em transição real `→ convertido`.
 
-**Mapping flow → evento de falha total** (interno à abstracção):
-```
-personal-area-saved   → personal_area_email_failed     (já existe ✅)
-report-ready          → report_ready_email_failed      (NOVO — adicionar)
-feedback-request      → feedback_request_email_failed  (NOVO — adicionar)
-request-received      → request_received_email_failed  (NOVO — adicionar)
-commercial-followup   → commercial_followup_failed     (já existe ✅)
-```
+## Ficheiros a alterar/criar
 
-Os 3 NOVOS eventos vão ao allowlist. Eventos de **sucesso** específicos do fluxo continuam a ser registados pelo caller (não pela abstracção) para preservar metadata específica (`report_request_id`, status updates, etc.).
+Criar:
+- `src/lib/brevo/customer-sync.server.ts`
+- `src/lib/brevo/__tests__/customer-sync.test.ts` (cenários: sucesso, lead sem email, falha Brevo, lista paga ausente vs presente)
 
-### 2. Migrar `send-personal-area-saved` para a abstracção
+Editar:
+- `src/lib/brevo/types.ts` — estender `BrevoSyncReason`.
+- `src/lib/tracking.functions.ts` — 2 novos `ALLOWED_EVENTS`.
+- `src/routes/api/admin/leads-kanban.$id.ts` — ler estado anterior, disparar sync em transição para `convertido`.
 
-Refactor de `src/lib/email/send-personal-area-saved.server.ts`:
-- Mantém `renderPersonalAreaSaved` igual (template intacto).
-- Substitui o bloco `fetch(RESEND_ENDPOINT, ...)` por `sendTransactionalEmail({ to, subject, html, text, flowType: "personal-area-saved", leadId, reportRequestId, ... })`.
-- Mantém a assinatura pública `sendPersonalAreaSavedEmail` e o tipo `{ ok, messageId } | { ok, reason }` (callers de `unlock.server.ts` não mudam). Mapeia `result.ok` → `messageId`; `!result.ok` → `reason: result.brevoReason` (mais Resend reason quando relevante).
+## Validação
 
-Caller existente em `unlock.server.ts` regista `personal_area_email_sent` no caminho de sucesso — **mantém-se**, mas a metadata passa a incluir `provider` (`brevo` ou `resend`) para visibilidade. (Edição mínima: 1 linha extra na metadata.)
-
-### 3. Testes
-
-Criar `src/lib/email/__tests__/transactional-email.test.ts`:
-
-| Cenário | Expectativa |
-|---|---|
-| Brevo 201 | `provider: "brevo"`, `messageId` capturado, evento `brevo_email_sent` registado, Resend nunca chamado |
-| Brevo 500 + Resend 200 | `provider: "resend"`, `brevoFailed.reason` presente, eventos `brevo_email_failed` + `resend_fallback_email_sent` |
-| Brevo 500 + Resend 500 | `ok: false`, eventos `brevo_email_failed` + `<flow>_email_failed` |
-| Brevo 500 + sem `RESEND_API_KEY` | `ok: false`, `resendReason: null`, evento `<flow>_email_failed` |
-| `BREVO_API_KEY` ausente | tenta Resend imediatamente (Brevo falha com `BREVO_API_KEY_MISSING`) |
-| AbortError no Brevo (timeout 8s) | reason `BREVO_TIMEOUT` propagada, fallback executa |
-| Email mascarado em todas as metadatas | nenhum evento contém o email em claro |
-
-Atualizar `src/lib/email/__tests__/templates.test.ts` se a assinatura interna mudou (não devia — só o transporte muda). Os testes existentes do `send-personal-area-saved` (se existirem) podem precisar de re-mock.
-
-### 4. Validação
-
-- `bunx tsc --noEmit` verde
-- `bunx vitest run` verde (todos os 204 testes existentes + os novos)
-- `rg "BREVO_API_KEY|RESEND_API_KEY" dist/` após build → zero matches no bundle do browser
-- **Smoke test manual** (só após aprovação explícita): 1 unlock real → confirmar `brevo_email_sent` em `product_events` + email recebido com `From: Frederico Carvalho <frederico.carvalho@digitalfc.pt>`. Resend não é chamado.
-- **Teste de fallback** (manual): mexer `BREVO_API_KEY` para inválido em dev → repetir unlock → confirmar `brevo_email_failed` + `resend_fallback_email_sent` + email recebido via Resend.
-
----
-
-## Out of scope (Fase A) — propostos para Fase B
-
-- Migração de `send-report-email.ts` (PDF link).
-- Migração de `send-report-link.ts` (link público).
-- Migração de `send-feedback-request.ts`.
-- Migração de `send-commercial-followup.ts`.
-- Migração do envio inline em `beta.functions.ts` (request-received).
-- Suppression list (não existe hoje, fora de scope).
-- Idempotency keys server-side (não existem hoje).
-- Mexer em templates ou copy.
-- Schema da BD.
-- Testes E2E ao SMTP real.
-
----
-
-## Ficheiros que vão mudar (Fase A)
-
-**Criados:**
-- `src/lib/email/transactional-email.server.ts`
-- `src/lib/email/__tests__/transactional-email.test.ts`
-
-**Editados:**
-- `src/lib/email/send-personal-area-saved.server.ts` (delega para a abstracção; assinatura pública preservada)
-- `src/lib/tracking.functions.ts` (adicionar 6 eventos novos: `brevo_email_sent`, `brevo_email_failed`, `resend_fallback_email_sent`, `report_ready_email_failed`, `feedback_request_email_failed`, `request_received_email_failed`)
-- `src/lib/unlock.server.ts` (1 linha: incluir `provider` na metadata de `personal_area_email_sent`)
-
-**Não tocar:**
-- Os 4 routes admin (Fase B).
-- `src/lib/email/sender.ts`, templates em `src/lib/email/templates/`, `report-email-template.ts`.
-- `src/lib/brevo/contacts.server.ts` (já em produção; Phase 1 do Brevo).
-
----
+- `bunx tsc --noEmit`
+- `bunx vitest run` (todos verdes, incluindo novos testes do customer-sync)
+- Smoke test manual (após aprovação): mover 1 lead de teste para "Convertido" no Kanban → confirmar:
+  - Lead atualizado em Supabase com `commercial_status = "convertido"`.
+  - Contacto na Brevo com `IS_CUSTOMER=true`, `COMMERCIAL_STATUS=convertido`, `LAST_PAYMENT_AT` preenchido.
+  - Evento `brevo_customer_synced` em `product_events`.
+  - Forçar falha (chave inválida) → `brevo_customer_sync_failed` registado e PATCH continua 200 OK.
 
 ## Checkpoint
 
-- ☐ `transactional-email.server.ts` criado com Brevo-first + Resend fallback
-- ☐ 6 eventos novos no allowlist
-- ☐ `send-personal-area-saved` delega para a abstracção, mantém assinatura
-- ☐ Testes da abstracção verdes (7 cenários)
-- ☐ `tsc` + `vitest` verdes; secrets fora do bundle do browser
-- ☐ Pedir aprovação antes de qualquer envio real
+☐ Confirmar que aceitas usar a transição admin `→ convertido` como trigger desta fase (não há gateway de pagamento real ainda).
+☐ Confirmar se queres que adicione já o secret `BREVO_PAID_CUSTOMERS_LIST_ID` ou se deixo o fallback para a lista lead-magnet.
