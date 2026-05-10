@@ -20,6 +20,11 @@ import { recordProductEvent } from "@/lib/tracking.server";
 
 import { upsertBrevoContact } from "./contacts.server";
 import type { BrevoSyncOutcome, BrevoSyncReason } from "./types";
+import {
+  mapCommercialStatus,
+  mapLeadSource,
+  mapPricingPreference,
+} from "./enum-mappers";
 
 function maskEmail(email: string | null | undefined): string {
   if (!email) return "***";
@@ -91,9 +96,12 @@ export async function syncLeadToBrevo(
       PROFILE_OWNERSHIP: lead.profile_ownership ?? null,
       GOAL: lead.purpose ?? null,
       USER_TYPE: lead.user_type ?? null,
-      PRICING_PREFERENCE: lead.pricing_preference ?? null,
-      LEAD_SOURCE: (lead.source as string | null) ?? "public_report_unlock",
-      COMMERCIAL_STATUS: (lead.commercial_status as string | null) ?? null,
+      PRICING_PREFERENCE: mapPricingPreference(lead.pricing_preference),
+      LEAD_SOURCE: mapLeadSource(lead.source as string | null),
+      COMMERCIAL_STATUS: mapCommercialStatus(
+        lead.commercial_status as string | null,
+        "lead",
+      ),
       IS_CUSTOMER: false,
     };
 
