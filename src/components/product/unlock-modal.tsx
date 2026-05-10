@@ -782,7 +782,7 @@ function Step1Email({
           <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
             Aceito o{" "}
             <a
-              href="/termos"
+              href="/privacidade"
               target="_blank"
               rel="noopener"
               className="underline text-primary hover:text-primary/80"
