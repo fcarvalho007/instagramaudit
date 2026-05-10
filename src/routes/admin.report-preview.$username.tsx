@@ -158,7 +158,10 @@ function AdminReportPreviewPage() {
           result,
           snapshotId: body.snapshot.id,
           payload: body.snapshot.payload ?? {},
-          snapshotMeta: { created_at: body.snapshot.created_at },
+          snapshotMeta: {
+            created_at: body.snapshot.created_at,
+            expires_at: body.snapshot.expires_at ?? null,
+          },
         });
       } catch (e) {
         if (cancelled) return;
