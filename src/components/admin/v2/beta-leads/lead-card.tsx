@@ -2,25 +2,21 @@
  * LeadCard — individual card for the beta leads kanban.
  */
 
-import { useState } from "react";
-import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ExternalLink, Copy, Phone, Archive, MessageSquare, Lightbulb } from "lucide-react";
+import { MoreHorizontal, ExternalLink, Copy, Phone, Archive, MessageSquare, Lightbulb, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 import { KANBAN_COLUMNS } from "@/lib/admin/kanban-columns";
@@ -60,14 +56,11 @@ function reportStatusAccent(status: string | null): "info" | "revenue" | "signal
 }
 
 export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCardProps) {
-  const [statusChanging, setStatusChanging] = useState(false);
   const nextAction = suggestNextLeadAction(lead);
   const feedbackIntent = lead.feedback ? interpretFeedback(lead.feedback) : null;
 
   const handleStatusChange = (newStatus: string) => {
-    setStatusChanging(true);
     onUpdate(lead.id, { commercial_status: newStatus });
-    setTimeout(() => setStatusChanging(false), 500);
   };
 
   const handleCopyLink = () => {
@@ -86,34 +79,79 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
   };
 
   return (
-    <AdminCard
-      className="!p-4 !rounded-xl cursor-pointer hover:shadow-[var(--shadow-admin-glass-active)] transition-shadow"
+    <div
+      onClick={() => onOpenDetail(lead)}
+      className="group bg-white rounded-[10px] border border-[var(--color-admin-border)] p-3 cursor-pointer transition-all hover:-translate-y-px"
+      style={{
+        boxShadow: "var(--admin-board-card-shadow)",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "var(--admin-board-card-shadow-hover)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "var(--admin-board-card-shadow)";
+      }}
     >
-      {/* Header: email + actions — clicking the card body opens detail */}
+      {/* Header: name + actions */}
       <div
-        className="flex items-start justify-between gap-2 mb-3"
-        onClick={() => onOpenDetail(lead)}
+        className="flex items-start justify-between gap-2 mb-2"
       >
-        <div className="min-w-0 cursor-pointer">
-          <p className="admin-card-title m-0 truncate text-admin-text-primary" title={lead.name || lead.email}>
+        <div className="min-w-0">
+          <p className="m-0 truncate text-[13px] font-medium text-admin-text-primary" title={lead.name || lead.email}>
             {lead.name || lead.email}
           </p>
-          <p className="admin-meta m-0 mt-0.5 truncate text-admin-text-secondary" title={lead.email}>
+          <p className="m-0 mt-0.5 truncate text-[12px] text-admin-text-secondary" title={lead.email}>
             {lead.email}
           </p>
           {lead.handle && (
-            <p className="admin-meta m-0 mt-0.5 text-admin-text-tertiary">
+            <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary truncate">
               @{lead.handle}
             </p>
           )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="text-[13px]">
+          <DropdownMenuContent
+            align="end"
+            className="text-[13px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                Mover para…
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="text-[13px] max-h-[320px] overflow-y-auto">
+                  <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
+                    Estado comercial
+                  </DropdownMenuLabel>
+                  {KANBAN_COLUMNS.map((col) => (
+                    <DropdownMenuItem
+                      key={col.key}
+                      onClick={() => handleStatusChange(col.key)}
+                      disabled={col.key === lead.commercial_status}
+                    >
+                      <span
+                        className="inline-block w-2 h-2 rounded-full mr-2 shrink-0"
+                        style={{ backgroundColor: col.color }}
+                      />
+                      {col.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
             {lead.handle && (
               <DropdownMenuItem
                 onClick={() =>
@@ -151,7 +189,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
       </div>
 
       {/* Badges row */}
-      <div className="flex flex-wrap gap-2 mb-1">
+      <div className="flex flex-wrap gap-1.5 mb-2">
         {lead.user_type && (
           <AdminBadge
             variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}
@@ -182,50 +220,31 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
 
       {/* Purpose */}
       {lead.purpose && (
-        <p className="admin-body m-0 mb-4 line-clamp-2 text-admin-text-secondary">
+        <p className="m-0 mb-2 text-[12px] line-clamp-2 text-admin-text-secondary">
           {lead.purpose}
         </p>
       )}
 
       {/* Stats row */}
-      <div className="flex items-center gap-2.5 admin-meta text-admin-text-tertiary mb-3.5">
+      <div className="flex items-center gap-2.5 text-[12px] text-admin-text-tertiary">
         {lead.report_cost_usd != null && (
-          <span className="admin-code tabular-nums">€{lead.report_cost_usd.toFixed(2)}</span>
+          <span className="tabular-nums">€{lead.report_cost_usd.toFixed(2)}</span>
         )}
         <span>{lead.report_views} views</span>
         <span title={lead.last_interaction}>{timeAgo(lead.last_interaction)}</span>
         {lead.contacted_at && <span title="Contactado">📞</span>}
       </div>
 
-      {/* Status selector */}
-      <Select
-        value={lead.commercial_status}
-        onValueChange={handleStatusChange}
-        disabled={statusChanging}
-      >
-        <SelectTrigger className="h-8 text-[13px] rounded-lg">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {KANBAN_COLUMNS.map((col) => (
-            <SelectItem key={col.key} value={col.key} className="text-[13px]">
-              {col.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
       {/* Next action hint */}
       {nextAction.severity !== "info" && (
         <div
-          onClick={() => onOpenDetail(lead)}
-          className="mt-2 flex items-start gap-1.5 admin-meta text-admin-text-secondary"
+          className="mt-2 pt-2 border-t border-[var(--color-admin-border)] flex items-start gap-1.5 text-[12px] text-admin-text-secondary"
           title="Próxima ação sugerida"
         >
           <Lightbulb size={12} className="shrink-0 mt-0.5 text-admin-text-tertiary" />
           <span className="line-clamp-2">{nextAction.label}</span>
         </div>
       )}
-    </AdminCard>
+    </div>
   );
 }
