@@ -158,42 +158,12 @@ export function ReportShellV2({
               {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
                 {lockBoundary === "engagement" ? (
-                  <>
-                    <ReportOverviewBlock
-                      result={result}
-                      renderInsight={renderInsight}
-                      payload={payload}
-                      mode="free"
-                    />
-                    <div className="mt-8 md:mt-10">
-                      <ReportLockGate
-                        unlocked={unlocked}
-                        onUnlockClick={handleUnlockClick}
-                      >
-                        <ReportOverviewBlock
-                          result={result}
-                          renderInsight={renderInsight}
-                          payload={payload}
-                          mode="locked"
-                        />
-                        {/* Locked siblings — render the remaining blocks
-                            inside the same gate so a single overlay covers
-                            the entire post-engagement region. */}
-                        <LockedRemainingBlocks
-                          features={features}
-                          renderInsight={renderInsight}
-                          result={result}
-                          payload={payload}
-                          snapshotId={snapshotId}
-                          diagnostico={diagnostico}
-                          performance={performance}
-                          conteudo={conteudo}
-                          procura={procura}
-                          benchmark={benchmark}
-                        />
-                      </ReportLockGate>
-                    </div>
-                  </>
+                  <ReportOverviewBlock
+                    result={result}
+                    renderInsight={renderInsight}
+                    payload={payload}
+                    mode="free"
+                  />
                 ) : (
                   <ReportOverviewBlock
                     result={result}
@@ -203,6 +173,60 @@ export function ReportShellV2({
                 )}
               </ReportBlockSection>
               )}
+
+              {/* When gated, everything from the Engagement card onward
+                  lives inside one ReportLockGate so a single CTA overlay
+                  covers the entire locked region. */}
+              {gated ? (
+                <ReportLockGate
+                  unlocked={unlocked}
+                  onUnlockClick={handleUnlockClick}
+                >
+                  {features.blockOverview !== "hidden" && (
+                    <div className="mt-6 md:mt-8">
+                      <ReportOverviewBlock
+                        result={result}
+                        renderInsight={renderInsight}
+                        payload={payload}
+                        mode="locked"
+                      />
+                    </div>
+                  )}
+                  {features.blockDiagnosis !== "hidden" && (
+                    <ReportBlockSection block={diagnostico} tone="canvas">
+                      <ReportDiagnosticBlock result={result} payload={payload} />
+                    </ReportBlockSection>
+                  )}
+                  {features.blockPerformance !== "hidden" && (
+                    <ReportBlockSection block={performance} tone="canvas">
+                      <ReportFramedBlock
+                        tone="canvas"
+                        ariaLabel="Performance ao longo do tempo"
+                      >
+                        <ReportTemporalChart />
+                        <div className="mt-4">{renderInsight("evolutionChart")}</div>
+                      </ReportFramedBlock>
+                      <ReportFramedBlock
+                        tone="canvas"
+                        ariaLabel="Resposta da audiência"
+                      >
+                        <div className="space-y-10 md:space-y-12">
+                          <ReportPostingHeatmap />
+                          <div className="mt-4">{renderInsight("heatmap")}</div>
+                          {features.blockPerformance === "full" ? (
+                            <>
+                              <ReportBestDays />
+                              <div className="mt-4">{renderInsight("daysOfWeek")}</div>
+                            </>
+                          ) : (
+                            <PerformanceLockedTeaser onUnlock={scrollToCofre} />
+                          )}
+                        </div>
+                      </ReportFramedBlock>
+                    </ReportBlockSection>
+                  )}
+                </ReportLockGate>
+              ) : null}
 
               {/* 02 · Diagnóstico editorial */}
               {!gated && features.blockDiagnosis !== "hidden" && (
