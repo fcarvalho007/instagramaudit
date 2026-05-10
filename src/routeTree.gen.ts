@@ -55,6 +55,7 @@ import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/loo
 import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
 import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
+import { Route as ApiPublicBrevoTestSyncRouteImport } from './routes/api/public/brevo-test-sync'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminSimpleLoginRouteImport } from './routes/api/admin/simple-login'
 import { Route as ApiAdminSendReportLinkRouteImport } from './routes/api/admin/send-report-link'
@@ -345,6 +346,11 @@ const ApiPublicEnrichSnapshotRoute = ApiPublicEnrichSnapshotRouteImport.update({
 const ApiPublicEnrichCommentsRoute = ApiPublicEnrichCommentsRouteImport.update({
   id: '/api/public/enrich-comments',
   path: '/api/public/enrich-comments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBrevoTestSyncRoute = ApiPublicBrevoTestSyncRouteImport.update({
+  id: '/api/public/brevo-test-sync',
+  path: '/api/public/brevo-test-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminWhoamiRoute = ApiAdminWhoamiRouteImport.update({
@@ -738,6 +744,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/brevo-test-sync': typeof ApiPublicBrevoTestSyncRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
@@ -844,6 +851,7 @@ export interface FileRoutesByTo {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/brevo-test-sync': typeof ApiPublicBrevoTestSyncRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
@@ -952,6 +960,7 @@ export interface FileRoutesById {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/public/brevo-test-sync': typeof ApiPublicBrevoTestSyncRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
@@ -1061,6 +1070,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/public/brevo-test-sync'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
@@ -1167,6 +1177,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/public/brevo-test-sync'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
@@ -1274,6 +1285,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/public/brevo-test-sync'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/ig-thumb'
@@ -1364,6 +1376,7 @@ export interface RootRouteChildren {
   ApiAdminSendReportLinkRoute: typeof ApiAdminSendReportLinkRoute
   ApiAdminSimpleLoginRoute: typeof ApiAdminSimpleLoginRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
+  ApiPublicBrevoTestSyncRoute: typeof ApiPublicBrevoTestSyncRoute
   ApiPublicEnrichCommentsRoute: typeof ApiPublicEnrichCommentsRoute
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
   ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
@@ -1726,6 +1739,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/enrich-comments'
       fullPath: '/api/public/enrich-comments'
       preLoaderRoute: typeof ApiPublicEnrichCommentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/brevo-test-sync': {
+      id: '/api/public/brevo-test-sync'
+      path: '/api/public/brevo-test-sync'
+      fullPath: '/api/public/brevo-test-sync'
+      preLoaderRoute: typeof ApiPublicBrevoTestSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/whoami': {
@@ -2354,6 +2374,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSendReportLinkRoute: ApiAdminSendReportLinkRoute,
   ApiAdminSimpleLoginRoute: ApiAdminSimpleLoginRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
+  ApiPublicBrevoTestSyncRoute: ApiPublicBrevoTestSyncRoute,
   ApiPublicEnrichCommentsRoute: ApiPublicEnrichCommentsRoute,
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
   ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
@@ -2401,3 +2422,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
