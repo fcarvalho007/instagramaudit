@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import {
@@ -80,6 +81,9 @@ export function UnlockModal({
       profile_ownership: undefined as unknown as ProfileOwnership,
       goal: undefined as unknown as Goal,
       user_type: undefined as unknown as UserType,
+      goal_other_text: "",
+      user_type_other_text: "",
+      gdpr_consent: false as unknown as true,
     },
   });
 
@@ -98,9 +102,12 @@ export function UnlockModal({
   const goNext = async () => {
     setServerError(null);
     let fields: (keyof UnlockFormValues)[] = [];
-    if (step === 1) fields = ["email"];
+    if (step === 1) fields = ["email", "gdpr_consent"];
     if (step === 2) fields = ["profile_ownership"];
-    if (step === 3) fields = ["goal"];
+    if (step === 3) {
+      fields = ["goal"];
+      if (form.getValues("goal") === "other") fields.push("goal_other_text");
+    }
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
 
@@ -240,6 +247,13 @@ export function UnlockModal({
           profile_ownership: values.profile_ownership,
           goal: values.goal,
           user_type: values.user_type,
+          goal_other_text:
+            values.goal === "other" ? values.goal_other_text : undefined,
+          user_type_other_text:
+            values.user_type === "other"
+              ? values.user_type_other_text
+              : undefined,
+          gdpr_consent: values.gdpr_consent === true ? true : undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -248,11 +262,10 @@ export function UnlockModal({
         report_request_id?: string;
         returning_lead?: boolean;
         error?: string;
+        issues?: { fieldErrors?: Record<string, string[]> };
       };
       if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
-        setServerError(
-          "Não foi possível desbloquear agora. Tenta novamente em instantes.",
-        );
+        setServerError(extractServerError(data));
         return;
       }
       const r: UnlockResult = {
@@ -288,6 +301,7 @@ export function UnlockModal({
           email,
           instagram_username: instagramUsername,
           analysis_snapshot_id: snapshotId,
+          gdpr_consent: true,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
