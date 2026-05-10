@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Download, Loader2, Plus, Calendar } from "lucide-react";
+import { Check, ChevronRight, Download, Loader2, Plus } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import type {
