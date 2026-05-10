@@ -20,9 +20,9 @@ export interface PersonalAreaSavedInput {
   appUrl: string;
 }
 
-const SUBJECT = "O teu relatório InstaBench foi guardado";
-const HEADLINE = "Relatório guardado";
-const PREHEADER = "Podes voltar a consultá-lo sempre que precisares.";
+const SUBJECT = "O relatório foi guardado na tua área pessoal";
+const HEADLINE = "Área pessoal guardada";
+const PREHEADER = "Acede sempre que precisares.";
 
 export function renderPersonalAreaSaved(
   input: PersonalAreaSavedInput,
@@ -39,12 +39,12 @@ export function renderPersonalAreaSaved(
   const text = joinLines([
     greetingText(input.firstName),
     "",
-    `Guardámos a análise de ${handle} na tua área pessoal.`,
+    `A análise de ${handle} foi guardada na tua área pessoal.`,
     "",
-    "Abrir a minha área:",
+    "Abrir área pessoal:",
     url,
     "",
-    "Durante a beta, este acesso é gratuito.",
+    "Durante a beta, o acesso é gratuito e os relatórios ficam disponíveis sem prazo. Se mais tarde houver um plano pago, quem está aqui agora terá condições de utilizador inicial.",
     "",
     ...signatureText(),
   ]);
@@ -52,13 +52,15 @@ export function renderPersonalAreaSaved(
   const bodyHtml = [
     p(greetingHtml(input.firstName)),
     p(
-      `Guardámos a análise de <strong style="color:#0a0e1a;">${safeHandle}</strong> na tua área pessoal.`,
+      `A análise de <strong style="color:#0a0e1a;">${safeHandle}</strong> foi guardada na tua área pessoal.`,
     ),
-    renderButtonHtml("Abrir a minha área", url),
+    renderButtonHtml("Abrir área pessoal", url),
     `<div style="height:20px;"></div>`,
     renderUrlFallbackHtml(url),
     `<div style="height:24px;"></div>`,
-    pMuted("Durante a beta, este acesso é gratuito."),
+    pMuted(
+      "Durante a beta, o acesso é gratuito e os relatórios ficam disponíveis sem prazo. Se mais tarde houver um plano pago, quem está aqui agora terá condições de utilizador inicial.",
+    ),
     signatureHtml(),
   ].join("\n");
 
