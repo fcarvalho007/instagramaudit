@@ -4,9 +4,11 @@ import {
   renderReportReady,
   renderFeedbackRequest,
   renderCommercialFollowup,
+  renderPersonalAreaSaved,
 } from "../templates";
 
 const REPORT_URL = "https://example.com/analyze/frederico.m.carvalho";
+const APP_URL = "https://instagramaudit.lovable.app/app/reports";
 
 describe("renderRequestReceived", () => {
   it("renders subject, handle and brand sign-off", () => {
