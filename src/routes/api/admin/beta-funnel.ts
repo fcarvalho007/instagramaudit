@@ -1,18 +1,19 @@
 /**
- * GET /api/admin/beta-funnel — funil operacional do beta.
+ * GET /api/admin/beta-funnel — funil de conversão pública.
  *
- * Devolve 6 etapas do ciclo de vida beta (pedido → interesse comercial)
- * combinando `leads.commercial_status` com sinais reais em
- * `report_requests`, `product_events` e `beta_feedback`.
+ * Devolve 7 etapas do percurso público (report visto → unlock → guardado →
+ * feedback → intenção → convertido) combinando `product_events`,
+ * `beta_feedback` e `leads.commercial_status`.
+ *
+ * Notas:
+ * - Etapas 1-2 medem actores anónimos (`actor_hash`); 3-7 medem leads
+ *   identificados (`lead_id`). Há quebra estrutural na transição 2→3.
+ * - `total` corresponde à etapa 1 (views públicos únicos).
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
-import {
-  LIFECYCLE_STATUSES,
-  type LifecycleStatus,
-} from "@/lib/admin/lead-lifecycle";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
 
 function jsonResponse(body: unknown, status = 200) {
@@ -20,24 +21,6 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   });
-}
-
-const STATUS_INDEX: Record<string, number> = Object.fromEntries(
-  LIFECYCLE_STATUSES.map((s, i) => [s, i]),
-);
-
-function statusAtLeast(
-  current: string | null | undefined,
-  target: LifecycleStatus,
-): boolean {
-  if (!current) return false;
-  const ci = STATUS_INDEX[current];
-  const ti = STATUS_INDEX[target];
-  if (ci === undefined || ti === undefined) return false;
-  // `arquivado` sai da ordem normal — só conta se já tiver passado pelo
-  // estado alvo antes (não temos histórico, por isso ignoramos).
-  if (current === "arquivado") return false;
-  return ci >= ti;
 }
 
 export const Route = createFileRoute("/api/admin/beta-funnel")({
@@ -51,6 +34,91 @@ export const Route = createFileRoute("/api/admin/beta-funnel")({
           throw res;
         }
 
+        // 1) Carregar product_events relevantes para o funil público.
+        const FUNNEL_EVENTS = [
+          "report_viewed",
+          "unlock_clicked",
+          "unlock_email_submitted",
+          "unlock_completed",
+          "report_saved_to_account",
+          "feedback_submitted",
+        ];
+        const { data: events, error: evErr } = await supabaseAdmin
+          .from("product_events")
+          .select("lead_id, handle, actor_hash, event_type")
+          .in("event_type", FUNNEL_EVENTS);
+
+        if (evErr) {
+          console.error("[beta-funnel] product_events query failed", evErr);
+          return jsonResponse({ success: false, error: evErr.message }, 500);
+        }
+
+        // s1: views públicos únicos por (handle, actor_hash). Se faltar
+        // actor_hash, usamos lead_id como fallback de identificação.
+        const viewKeys = new Set<string>();
+        // s2: actor_hash distintos com unlock iniciado (anónimo).
+        const unlockStartedKeys = new Set<string>();
+        // s3..s5: lead_id distintos por evento.
+        const unlockCompletedLeads = new Set<string>();
+        const reportSavedLeads = new Set<string>();
+        const feedbackEventLeads = new Set<string>();
+
+        for (const ev of events ?? []) {
+          const id = ev.actor_hash ?? ev.lead_id ?? null;
+          switch (ev.event_type) {
+            case "report_viewed": {
+              const key = `${(ev.handle ?? "").toLowerCase()}|${id ?? "?"}`;
+              if (id) viewKeys.add(key);
+              break;
+            }
+            case "unlock_clicked":
+            case "unlock_email_submitted": {
+              if (id) unlockStartedKeys.add(id);
+              break;
+            }
+            case "unlock_completed": {
+              if (ev.lead_id) unlockCompletedLeads.add(ev.lead_id);
+              break;
+            }
+            case "report_saved_to_account": {
+              if (ev.lead_id) reportSavedLeads.add(ev.lead_id);
+              break;
+            }
+            case "feedback_submitted": {
+              if (ev.lead_id) feedbackEventLeads.add(ev.lead_id);
+              break;
+            }
+          }
+        }
+
+        // 2) beta_feedback (último por lead) — base para s5 e s6.
+        const { data: feedback, error: fbErr } = await supabaseAdmin
+          .from("beta_feedback")
+          .select(
+            "lead_id, usefulness_score, purchase_intent, pricing_preference, contact_consent, clarity_text, missing_text, created_at",
+          )
+          .order("created_at", { ascending: false });
+
+        if (fbErr) {
+          console.error("[beta-funnel] beta_feedback query failed", fbErr);
+          return jsonResponse({ success: false, error: fbErr.message }, 500);
+        }
+
+        type FeedbackRow = NonNullable<typeof feedback>[number];
+        const feedbackByLead = new Map<string, FeedbackRow>();
+        for (const f of feedback ?? []) {
+          if (!f.lead_id) continue;
+          if (!feedbackByLead.has(f.lead_id)) {
+            feedbackByLead.set(f.lead_id, f);
+          }
+        }
+
+        const feedbackLeads = new Set<string>([
+          ...feedbackEventLeads,
+          ...feedbackByLead.keys(),
+        ]);
+
+        // 3) leads.commercial_status — base para s6 (alargamento) e s7.
         const { data: leads, error: leadsErr } = await supabaseAdmin
           .from("leads")
           .select("id, commercial_status");
@@ -63,218 +131,87 @@ export const Route = createFileRoute("/api/admin/beta-funnel")({
           );
         }
 
-        const allLeadIds = new Set((leads ?? []).map((l) => l.id));
-        const total = allLeadIds.size;
-
-        // Map status by lead_id
         const statusByLead = new Map<string, string>();
-        for (const l of leads ?? []) {
-          statusByLead.set(l.id, l.commercial_status ?? "novo_pedido");
-        }
-
-        // report_requests → conjunto de leads com relatório gerado e handle map
-        const reportGenerated = new Set<string>();
-        const handleByLead = new Map<string, string>();
-        if (allLeadIds.size > 0) {
-          const { data: requests } = await supabaseAdmin
-            .from("report_requests")
-            .select(
-              "lead_id, instagram_username, request_status, analysis_snapshot_id",
-            )
-            .in("lead_id", [...allLeadIds]);
-
-          const READY = new Set(["ready", "completed", "generated"]);
-          for (const r of requests ?? []) {
-            if (!r.lead_id) continue;
-            if (
-              r.analysis_snapshot_id ||
-              (r.request_status && READY.has(r.request_status))
-            ) {
-              reportGenerated.add(r.lead_id);
-            }
-            const h = r.instagram_username?.toLowerCase();
-            if (h && !handleByLead.has(r.lead_id)) {
-              handleByLead.set(r.lead_id, h);
-            }
-          }
-        }
-
-        // product_events
-        const linkSentLeads = new Set<string>();
-        const viewedLeads = new Set<string>();
-        const handleToLeads = new Map<string, string[]>();
-        for (const [leadId, h] of handleByLead) {
-          const arr = handleToLeads.get(h) ?? [];
-          arr.push(leadId);
-          handleToLeads.set(h, arr);
-        }
-
-        if (allLeadIds.size > 0) {
-          const { data: events } = await supabaseAdmin
-            .from("product_events")
-            .select("lead_id, handle, event_type")
-            .in("event_type", ["report_link_sent", "report_viewed"]);
-
-          for (const ev of events ?? []) {
-            const target =
-              ev.event_type === "report_link_sent" ? linkSentLeads : viewedLeads;
-            if (ev.lead_id && allLeadIds.has(ev.lead_id)) {
-              target.add(ev.lead_id);
-            } else if (ev.handle) {
-              const matched = handleToLeads.get(ev.handle.toLowerCase());
-              if (matched) {
-                for (const id of matched) target.add(id);
-              }
-            }
-          }
-        }
-
-        // beta_feedback (latest per lead)
-        type FeedbackRow = {
-          lead_id: string;
-          usefulness_score: number;
-          purchase_intent: string;
-          pricing_preference: string | null;
-          contact_consent: boolean;
-          clarity_text: string | null;
-          missing_text: string | null;
-          created_at: string;
-        };
-        const feedbackByLead = new Map<string, FeedbackRow>();
-        if (allLeadIds.size > 0) {
-          const { data: feedback } = await supabaseAdmin
-            .from("beta_feedback")
-            .select(
-              "lead_id, usefulness_score, purchase_intent, pricing_preference, contact_consent, clarity_text, missing_text, created_at",
-            )
-            .in("lead_id", [...allLeadIds])
-            .order("created_at", { ascending: false });
-
-          for (const f of feedback ?? []) {
-            if (!f.lead_id) continue;
-            if (!feedbackByLead.has(f.lead_id)) {
-              feedbackByLead.set(f.lead_id, f as FeedbackRow);
-            }
-          }
-        }
-
-        // Build the 6 stage sets
-        const s1 = new Set(allLeadIds);
-
-        const s2 = new Set<string>();
-        for (const id of allLeadIds) {
-          if (
-            reportGenerated.has(id) ||
-            statusAtLeast(statusByLead.get(id), "relatorio_gerado")
-          ) {
-            s2.add(id);
-          }
-        }
-
-        const s3 = new Set<string>();
-        for (const id of allLeadIds) {
-          if (
-            linkSentLeads.has(id) ||
-            statusAtLeast(statusByLead.get(id), "link_enviado")
-          ) {
-            s3.add(id);
-          }
-        }
-
-        const s4 = new Set<string>();
-        for (const id of allLeadIds) {
-          if (
-            viewedLeads.has(id) ||
-            statusAtLeast(statusByLead.get(id), "relatorio_visto")
-          ) {
-            s4.add(id);
-          }
-        }
-
-        const s5 = new Set<string>();
-        for (const id of allLeadIds) {
-          if (
-            feedbackByLead.has(id) ||
-            statusAtLeast(statusByLead.get(id), "feedback_recebido")
-          ) {
-            s5.add(id);
-          }
-        }
-
+        const convertedLeads = new Set<string>();
         const COMMERCIAL = new Set([
           "interessado",
           "potencial_cliente",
           "convertido",
         ]);
-        const s6 = new Set<string>();
-        for (const id of allLeadIds) {
-          const st = statusByLead.get(id);
-          if (st && COMMERCIAL.has(st)) {
-            s6.add(id);
-            continue;
-          }
-          const fb = feedbackByLead.get(id);
-          if (fb) {
-            const r = interpretFeedback({
-              id: "",
-              usefulness_score: fb.usefulness_score,
-              purchase_intent: fb.purchase_intent as
-                | "sim"
-                | "talvez"
-                | "nao",
-              pricing_preference: fb.pricing_preference,
-              contact_consent: fb.contact_consent,
-              clarity_text: fb.clarity_text,
-              missing_text: fb.missing_text,
-              created_at: fb.created_at,
-            });
-            if (r.intent === "alto" || r.intent === "medio") {
-              s6.add(id);
-            }
-          }
+        for (const l of leads ?? []) {
+          const st = l.commercial_status ?? "novo_pedido";
+          statusByLead.set(l.id, st);
+          if (st === "convertido") convertedLeads.add(l.id);
         }
 
-        const s7 = new Set<string>();
-        for (const id of allLeadIds) {
-          if (statusByLead.get(id) === "convertido") s7.add(id);
+        // s6: intenção média/alta — feedback explícito OU status comercial.
+        const intentLeads = new Set<string>();
+        for (const [leadId, fb] of feedbackByLead) {
+          const r = interpretFeedback({
+            id: "",
+            usefulness_score: fb.usefulness_score,
+            purchase_intent: fb.purchase_intent as "sim" | "talvez" | "nao",
+            pricing_preference: fb.pricing_preference,
+            contact_consent: fb.contact_consent,
+            clarity_text: fb.clarity_text,
+            missing_text: fb.missing_text,
+            created_at: fb.created_at,
+          });
+          if (r.intent === "alto" || r.intent === "medio") {
+            intentLeads.add(leadId);
+          }
+        }
+        for (const [leadId, st] of statusByLead) {
+          if (COMMERCIAL.has(st)) intentLeads.add(leadId);
         }
 
-        const counts = [s1, s2, s3, s4, s5, s6, s7].map((s) => s.size);
+        const counts = [
+          viewKeys.size,
+          unlockStartedKeys.size,
+          unlockCompletedLeads.size,
+          reportSavedLeads.size,
+          feedbackLeads.size,
+          intentLeads.size,
+          convertedLeads.size,
+        ];
+        const total = counts[0];
+
         const stagesMeta = [
           {
-            key: "pedidos",
-            label: "Pedidos beta",
-            description: "Leads que submeteram o formulário de pedido beta.",
+            key: "report_visto",
+            label: "Report público visto",
+            description: "Visualizações únicas do relatório público (anónimo).",
           },
           {
-            key: "relatorios",
-            label: "Relatórios gerados",
-            description: "Pedidos com snapshot de análise pronto.",
+            key: "unlock_iniciado",
+            label: "Unlock iniciado",
+            description: "Clique no CTA ou submissão de email para desbloquear.",
           },
           {
-            key: "links",
-            label: "Links enviados",
-            description: "Lead recebeu o email com o link público do relatório.",
+            key: "unlock_concluido",
+            label: "Unlock concluído",
+            description: "Email confirmado e relatório desbloqueado (lead criada).",
           },
           {
-            key: "vistos",
-            label: "Relatórios vistos",
-            description: "Existe pelo menos um evento de visualização do relatório.",
+            key: "report_guardado",
+            label: "Report guardado",
+            description: "Lead guardou o relatório na conta.",
           },
           {
-            key: "feedback",
+            key: "feedback_recebido",
             label: "Feedback recebido",
             description: "Lead submeteu o formulário de feedback beta.",
           },
           {
-            key: "interesse",
-            label: "Interesse comercial",
-            description: "Sinal comercial alto/médio ou estado interessado/potencial/convertido.",
+            key: "intencao",
+            label: "Intenção média/alta",
+            description:
+              "Feedback com intenção alto/médio ou estado comercial interessado/potencial.",
           },
           {
-            key: "convertidos",
-            label: "Convertidos",
-            description: "Leads explicitamente marcados como convertido.",
+            key: "convertido",
+            label: "Convertido",
+            description: "Lead marcada como convertida no CRM.",
           },
         ];
 
