@@ -326,6 +326,18 @@ function AnalyzeReady({
       .catch(() => { /* silent fallback — static defaults used */ });
   }, []);
 
+  // UI-only unlock state (Phase 2): persisted in sessionStorage so that QA
+  // reloads keep the unlocked view, but never hits backend / cookies.
+  const [unlocked, setUnlocked] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.sessionStorage.getItem("ib_unlock_preview") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [unlockOpen, setUnlockOpen] = useState(false);
+
   // Track report view (fire-and-forget). Guarded por module-level Set +
   // sessionStorage para sobreviver a StrictMode double-invokes, remounts entre
   // route changes e refreshes dentro do mesmo tab.
@@ -345,20 +357,38 @@ function AnalyzeReady({
   }, [snapshotId]);
 
   return (
-    <ReportShellV2
-      result={result}
-      snapshotId={snapshotId}
-      payload={payload}
-      analyzedAtIso={analyzedAtIso}
-      variant="public_mvp"
-      featuresOverride={featuresOverride}
-      actions={{
-        onExportPdf: () => void shareActions.exportPdf(),
-        onShare: () => void shareActions.share(),
-        pdfBusy: shareActions.pdfBusy,
-        shareBusy: shareActions.shareBusy,
-        pdfDisabled: shareActions.pdfDisabled,
-      }}
-    />
+    <>
+      <ReportShellV2
+        result={result}
+        snapshotId={snapshotId}
+        payload={payload}
+        analyzedAtIso={analyzedAtIso}
+        variant="public_mvp"
+        featuresOverride={featuresOverride}
+        lockBoundary="engagement"
+        unlocked={unlocked}
+        onUnlockClick={() => setUnlockOpen(true)}
+        actions={{
+          onExportPdf: () => void shareActions.exportPdf(),
+          onShare: () => void shareActions.share(),
+          pdfBusy: shareActions.pdfBusy,
+          shareBusy: shareActions.shareBusy,
+          pdfDisabled: shareActions.pdfDisabled,
+        }}
+      />
+      <UnlockModal
+        open={unlockOpen}
+        onOpenChange={setUnlockOpen}
+        onUnlock={() => {
+          try {
+            window.sessionStorage.setItem("ib_unlock_preview", "1");
+          } catch {
+            /* ignore */
+          }
+          setUnlocked(true);
+          setUnlockOpen(false);
+        }}
+      />
+    </>
   );
 }
