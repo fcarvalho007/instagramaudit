@@ -1,109 +1,58 @@
-## Smoke test controlado — Lead magnet (1 envio real)
+## Avaliação do estado atual
 
-### Bloqueador antes de executar
+### ✅ Concluído
+- **Auditoria de consolidação Brevo/Resend** — Brevo primário, Resend fallback, contacts sync ativo
+- **`RESEND_FROM` configurado** (`relatorios@instagramaudit.pt`)
+- **Fix P0** no `UnlockModal` (`instagram_username` agora propagado em `analyze.$username.tsx`)
+- **Smoke test real executado** com `frederico.carvalho@digitalfc.pt` no snapshot `martimsilvai`:
+  - Lead `3d12d5d7-…` criado, `funnel_stage = relatorio_visto`
+  - 6 eventos esperados, todos uma única vez (idempotência OK)
+  - `brevo_email_sent × 2` (welcome + summary), **sem fallback Resend** (Brevo OK)
+  - Brevo contact `288` na lista `16` com atributos preenchidos
+- **Decisão técnica: 🟢 GO interno**
 
-Preciso do **email exato** a usar no teste.
+### ⚠️ Por concluir / a refinar
 
-Sugestão: um alias pessoal (ex: `frederico+smoke@…`) — não usar emails de equipa, nem `@digitalfc.pt` que já é o `BREVO_FROM_EMAIL` (auto-envios para o sender podem ser filtrados).
+1. **`PUBLIC_APP_BASE_URL` aponta para `instagramaudit.lovable.app`** em vez de `instagramaudit.pt` (custom domain). Confirmado no atributo Brevo `LAST_REPORT_URL` e nos defaults dos templates. Impacto: links nos emails enviados não usam o domínio de marca.
+2. **Confirmação visual do inbox** ainda não documentada (welcome-beta + report-summary recebidos, render OK, links clicáveis).
+3. **Smoke test não documentado em `.lovable/plan.md`** como concluído (checklist ainda aberto).
 
-Vou pedir via `ask_questions` antes de prosseguir.
+---
 
-### Snapshot a usar (cache existente, sem provider calls)
+## Plano de refinamentos
 
-Cache disponível (sem chamar Apify/OpenAI/DataForSEO):
+### Passo 1 — Alinhar domínio público
+- Atualizar secret `PUBLIC_APP_BASE_URL` para `https://instagramaudit.pt` (assumindo custom domain ativo; **confirmar com o utilizador** antes via `ask_questions` se o domínio já está propagado).
+- Sem deploy necessário — valor lido em runtime nas server functions de email.
+- Próximo unlock vai re-sincronizar `LAST_REPORT_URL` no Brevo automaticamente.
 
-| handle | snapshots | último |
-|---|---|---|
-| `martimsilvai` | 1 | 2026-05-04 |
-| `karmel_loja_` | 1 | 2026-05-02 |
-| `karmel` | 1 | 2026-05-02 |
-| `frederico.m.carvalho` | 1 | 2026-04-29 |
+### Passo 2 — Validação inbox (manual, do utilizador)
+Pedir ao utilizador para confirmar na caixa `frederico.carvalho@digitalfc.pt`:
+- ☐ Email "Welcome beta" recebido, render correto, CTA funcional
+- ☐ Email "Report summary" recebido, métricas visíveis, link para report e `/app/reports` funcionais
+- ☐ Sender visível: `relatorios@instagramaudit.pt` (Brevo) — não Resend
+- ☐ Sem ir para spam
 
-**Proposta**: usar **`martimsilvai`** (mais recente, não é o profile do owner → evita confusão de eventos antigos no `frederico.m.carvalho`). Mudo se preferires outro.
+### Passo 3 — Fechar documentação
+- Atualizar `.lovable/plan.md` com resultado do smoke test (status, lead_id, eventos, decisão GO).
+- Marcar checkpoints como ✅.
 
-### Pré-flight (read-only, antes do clique)
+### Passo 4 (opcional) — Re-teste curto pós-domínio
+Se `PUBLIC_APP_BASE_URL` for alterado, fazer 1 unlock adicional com email diferente (ex: `frederico+smoke2@digitalfc.pt`) **só** para validar que o novo domínio aparece nos emails e em `LAST_REPORT_URL`. Sem isto, o fix do domínio fica não-validado em produção real.
 
-1. Verificar gates de envio: `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`, `BREVO_LEAD_MAGNET_LIST_ID`, `RESEND_API_KEY`, `RESEND_FROM`, `LOVABLE_API_KEY`. Confirmar `BREVO_LEAD_MAGNET_LIST_ID == 16`.
-2. `SELECT` em `leads` pelo email do teste — se já existir, registar `lead_id` e `created_at` para comparar deltas (não apago — constraint do briefing: não mutar leads não relacionados, mas o do teste é o alvo legítimo).
-3. `SELECT` em `product_events` pelo email/lead nos últimos 7d para baseline.
+---
 
-### Execução do teste (browser, fluxo real)
+## Detalhes técnicos
 
-1. `browser--navigate_to_sandbox` para `/p/{snapshot-id-ou-handle}` ou rota pública equivalente do snapshot escolhido.
-2. Confirmar visualmente: report carrega, sem regenerar (sem chamadas a `/analyze/...`).
-3. Acionar unlock → preencher email do teste → submeter.
-4. Capturar screenshots: (a) modal antes do submit, (b) modal pós-sucesso, (c) "Welcome back" se aplicável.
-5. Validar copy do modal de sucesso contra a versão aprovada.
+- `PUBLIC_APP_BASE_URL` é lido em `send-welcome-beta.server.ts`, `send-report-summary.server.ts`, `send-personal-area-saved.server.ts` com fallback hardcoded para `https://instagramaudit.lovable.app`.
+- Brevo contact attributes (`LAST_REPORT_URL`) são populados em `lead-magnet-sequence` a partir do mesmo URL base.
+- Não tocar em `report.example`, scrapers, providers ou em outros leads.
 
-### Verificações pós-envio (sem mais sends)
+## Checkpoint
 
-#### Brevo
-- Listar contacto via gateway `GET /v3/contacts/{email}` (mocked? **não — leitura real, não envia**).
-- Confirmar:
-  - `email` correto
-  - `listIds` inclui `16`
-  - atributos populados (NOME, HANDLE, REPORT_URL, etc. — listo os reais ao ler `contacts.server.ts`)
-- Se contacto já existia: confirmar update incremental, não duplicado.
-
-#### Supabase — `product_events`
-Query por `lead_id` (do email do teste) ordenando por `created_at DESC LIMIT 30`. Esperar:
-- `unlock_email_submitted`
-- `unlock_completed`
-- `report_saved_to_account`
-- `brevo_contact_synced`
-- `beta_welcome_email_sent`
-- `report_summary_email_sent`
-
-Cada um **uma única vez** para o `metadata.report_request_id` do teste — comprova idempotência da `lead-magnet-sequence`.
-
-#### Email (caixa do tester)
-- Welcome-beta chega.
-- Report-summary chega.
-- Métricas no report-summary batem com `analysis_snapshots` row do snapshot usado (followers, engagement, top posts).
-- Links: domínio `instagramaudit.pt` (PUBLIC_APP_BASE_URL), apontam para o public report e para `/app/reports`.
-
-#### Fallback Resend
-- Inspecionar `product_events` para `brevo_email_failed` / `resend_fallback_email_sent` / `*_email_failed`.
-- Caminho esperado em sucesso: **só** `brevo_email_sent` × 2 (welcome + summary), **sem** Resend.
-- Se Brevo falhar: documentar `reason` e se Resend pegou (deve, pois `RESEND_FROM` está agora configurado).
-
-### Critérios GO / NO-GO
-
-**GO (beta interno)** se:
-- ✅ Modal flui sem erro, copy correto
-- ✅ Welcome-beta + report-summary chegam à caixa do tester
-- ✅ Brevo contacto na lista 16 com atributos
-- ✅ 6 eventos esperados, sem duplicados
-- ✅ Métricas/links consistentes
-- ✅ Sem chamadas a Apify/OpenAI/DataForSEO durante o teste
-
-**NO-GO** se qualquer falha não-recuperável (email não chega, contacto não criado, dados errados nos emails, eventos duplicados).
-
-### Constraints respeitados
-
-- 1 unlock só, 1 email só.
-- Sem regenerar report (uso snapshot cache).
-- Sem chamar paid providers (verificável nos logs).
-- Sem campanhas Brevo manuais.
-- Sem mexer em outros leads.
-
-### Output final ao briefing
-
-Retorno:
-- email usado
-- snapshot/handle usado + `report_request_id`
-- lista de eventos com timestamps
-- payload Brevo do contacto (mascarado)
-- screenshot dos 2 emails recebidos (ou colagem do HTML)
-- falhas/observações
-- decisão GO/NO-GO
-
-### Checkpoint antes de começar
-
-- ☐ Receber email exato do tester
-- ☐ Confirmar snapshot (default `martimsilvai`, ou outro)
-- ☐ Confirmar `BREVO_LEAD_MAGNET_LIST_ID == 16`
-- ☐ Pré-flight read-only (envs + baseline `product_events`)
-- ☐ Executar unlock no browser
-- ☐ Auditar Brevo + DB + caixa do tester
-- ☐ Emitir GO/NO-GO
+- ☐ Confirmar com utilizador o domínio público correto (`instagramaudit.pt` vs `lovable.app`)
+- ☐ Atualizar `PUBLIC_APP_BASE_URL` se aplicável
+- ☐ Utilizador valida inbox (2 emails)
+- ☐ Atualizar `.lovable/plan.md` com resultado do smoke
+- ☐ (Opcional) re-teste com 2º email para validar domínio
+- ☐ Emitir GO final formal para beta interno
