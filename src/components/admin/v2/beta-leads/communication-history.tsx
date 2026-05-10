@@ -9,7 +9,10 @@ import {
   ChevronDown,
   CheckCircle2,
   Clock,
+  ExternalLink,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -162,7 +165,7 @@ function StatusBadge({ kind }: { kind: BadgeKind }) {
   const token = BADGE_TOKEN[kind];
   return (
     <span
-      className="admin-meta inline-flex items-center rounded-full px-2 py-0.5 shrink-0"
+      className="admin-meta inline-flex items-center rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap"
       style={{
         backgroundColor: `rgb(var(${token}) / 0.12)`,
         color: `rgb(var(${token}))`,
@@ -185,10 +188,31 @@ export function CommunicationHistory({
   const filtered = timeline.filter((ev) =>
     COMMUNICATION_TYPES.has(ev.event_type),
   );
+  // Endpoint devolve ordem DESC (mais recente primeiro). A colapsagem de
+  // `report_viewed` agrupa runs consecutivos independentemente da direção.
   const events = groupConsecutiveViews(filtered);
 
   const INITIAL_COUNT = 10;
   const visible = expanded ? events : events.slice(0, INITIAL_COUNT);
+
+  // Stats agregados (apenas após filtragem/colapsagem).
+  const stats = events.reduce(
+    (acc, ev) => {
+      const kind = EVENT_CONFIG[ev.event_type]?.badgeKind;
+      if (kind === "sent") acc.sent += 1;
+      if (kind === "opened") acc.opened += 1;
+      if (kind === "submitted") acc.submitted += 1;
+      return acc;
+    },
+    { sent: 0, opened: 0, submitted: 0 },
+  );
+
+  const handleCopyId = (id: string) => {
+    void navigator.clipboard
+      .writeText(id)
+      .then(() => toast.success("ID copiado"))
+      .catch(() => toast.error("Não foi possível copiar"));
+  };
 
   return (
     <div className="px-6 py-5">
@@ -208,6 +232,10 @@ export function CommunicationHistory({
 
       {!loading && events.length > 0 && (
         <div className="space-y-0">
+          <p className="admin-meta text-admin-text-tertiary mb-2">
+            Enviados: {stats.sent} · Aberturas: {stats.opened} · Submissões:{" "}
+            {stats.submitted}
+          </p>
           {visible.map((ev) => {
             const cfg = EVENT_CONFIG[ev.event_type];
             const IconComp = cfg?.icon ?? Clock;
@@ -227,12 +255,22 @@ export function CommunicationHistory({
               typeof ev.metadata?.error_code === "string"
                 ? (ev.metadata.error_code as string)
                 : null;
+            const publicUrl =
+              typeof ev.metadata?.public_url === "string"
+                ? (ev.metadata.public_url as string)
+                : typeof ev.metadata?.feedback_url === "string"
+                  ? (ev.metadata.feedback_url as string)
+                  : null;
 
             return (
               <div
                 key={ev.id}
                 className="flex items-start gap-3 py-2.5"
-                style={{ borderBottom: "1px solid rgba(44,44,42,0.06)" }}
+                style={
+                  visible.indexOf(ev) < visible.length - 1
+                    ? { borderBottom: "1px solid rgba(44,44,42,0.06)" }
+                    : undefined
+                }
               >
                 <div
                   className="mt-0.5 flex items-center justify-center shrink-0 rounded-md"
@@ -267,18 +305,41 @@ export function CommunicationHistory({
                   ) : null}
 
                   {messageId ? (
-                    <p className="admin-meta text-admin-text-tertiary m-0 mt-0.5 font-mono">
-                      ID: {shortId(messageId)}
-                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="admin-code text-admin-text-tertiary">
+                        ID: {shortId(messageId)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyId(messageId)}
+                        className="text-admin-text-tertiary hover:text-admin-text-primary transition-colors"
+                        aria-label="Copiar ID"
+                        title="Copiar ID"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
                   ) : null}
 
                   {errorCode ? (
                     <p
-                      className="admin-meta m-0 mt-0.5 font-mono"
+                      className="admin-code m-0 mt-0.5"
                       style={{ color: "rgb(var(--admin-danger-700))" }}
                     >
                       Erro: {errorCode}
                     </p>
+                  ) : null}
+
+                  {publicUrl ? (
+                    <a
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="admin-meta inline-flex items-center gap-1 mt-0.5 hover:underline"
+                      style={{ color: "rgb(var(--admin-info-700))" }}
+                    >
+                      Abrir link <ExternalLink size={12} />
+                    </a>
                   ) : null}
 
                   <p className="admin-meta text-admin-text-tertiary m-0 mt-0.5">
