@@ -9,6 +9,8 @@ import {
   getLifecycleMeta,
   type LifecycleStatus,
 } from "@/lib/admin/lead-lifecycle";
+import { Link } from "@tanstack/react-router";
+import type { EmailTemplateKey } from "@/lib/admin/email-template-registry";
 
 type TriggerKind = "form" | "event" | "manual";
 type ActionKind = "email" | "manual" | "wait" | "classify";
@@ -26,6 +28,7 @@ interface AutomationNodeProps {
   recentFailures?: number;
   last24hCount?: number;
   lastEventAt?: string | null;
+  templateKey?: EmailTemplateKey;
 }
 
 const TRIGGER_LABEL: Record<TriggerKind, string> = {
@@ -67,6 +70,7 @@ export function AutomationNode({
   recentFailures = 0,
   last24hCount = 0,
   lastEventAt = null,
+  templateKey,
 }: AutomationNodeProps) {
   const meta = toStatus ? getLifecycleMeta(toStatus) : null;
   const kindColor = kind === "automatic" ? "#0E9488" : "#BA7517";
@@ -113,6 +117,15 @@ export function AutomationNode({
             >
               {recentFailures} falha{recentFailures === 1 ? "" : "s"} recente{recentFailures === 1 ? "" : "s"} (7d)
             </span>
+          )}
+          {templateKey && (
+            <Link
+              to="/admin/email-lab"
+              search={{ template: templateKey } as never}
+              className="ml-auto text-[11px] font-medium text-admin-text-tertiary hover:text-admin-text-primary hover:underline"
+            >
+              Ver template →
+            </Link>
           )}
         </div>
 
