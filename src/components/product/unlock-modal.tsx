@@ -469,7 +469,7 @@ export function UnlockModal({
   };
 
   const stepNumForBar =
-    step === "welcome-back" ? 1 : (step as number);
+    step === "welcome-back" || step === "intro" ? 1 : (step as number);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -623,7 +623,7 @@ export function UnlockModal({
                 </Alert>
               ) : null}
 
-              <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-6 sm:-mx-7 px-6 sm:px-7 pt-5 mt-2">
+              <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
                 {step > 1 ? (
                   <Button
                     type="button"
