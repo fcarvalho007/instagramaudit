@@ -16,6 +16,7 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevLoadingPreviewRouteImport } from './routes/dev-loading-preview'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
+import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as AvisoLegalRouteImport } from './routes/aviso-legal'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -149,6 +150,11 @@ const DevLoadingPreviewRoute = DevLoadingPreviewRouteImport.update({
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AvisoLegalRoute = AvisoLegalRouteImport.update({
@@ -690,6 +696,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
@@ -797,6 +804,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
@@ -906,6 +914,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
@@ -1016,6 +1025,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/aviso-legal'
+    | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
     | '/login'
@@ -1123,6 +1133,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/aviso-legal'
+    | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
     | '/login'
@@ -1231,6 +1242,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/aviso-legal'
+    | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
     | '/login'
@@ -1340,6 +1352,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
   AvisoLegalRoute: typeof AvisoLegalRoute
+  CookiesRoute: typeof CookiesRoute
   DesignSystemRoute: typeof DesignSystemRoute
   DevLoadingPreviewRoute: typeof DevLoadingPreviewRoute
   LoginRoute: typeof LoginRoute
@@ -1466,6 +1479,13 @@ declare module '@tanstack/react-router' {
       path: '/design-system'
       fullPath: '/design-system'
       preLoaderRoute: typeof DesignSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/aviso-legal': {
@@ -2338,6 +2358,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
   AvisoLegalRoute: AvisoLegalRoute,
+  CookiesRoute: CookiesRoute,
   DesignSystemRoute: DesignSystemRoute,
   DevLoadingPreviewRoute: DevLoadingPreviewRoute,
   LoginRoute: LoginRoute,
