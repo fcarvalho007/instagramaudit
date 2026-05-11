@@ -142,68 +142,35 @@ const STEP_HEADERS: Record<
   }
 > = {
   1: {
-    eyebrow: "PASSO 1 DE 5",
+    eyebrow: "PASSO 1 DE 4",
     badge: "~1 MIN",
     title: () => (
       <>
-        Desbloquear{" "}
+        Como te{" "}
         <em className="not-italic font-display italic text-primary">
-          3 secções
-        </em>{" "}
-        grátis
-      </>
-    ),
-    subtitle: (
-      <>
-        Continuam premium:{" "}
-        <strong className="text-content-primary font-medium">
-          Conteúdo · Procura · Comparação
-        </strong>
-        . Acesso gratuito durante a{" "}
-        <strong className="text-content-primary font-medium">beta privada</strong>
-        {" "}— podemos contactar-te para feedback.
-      </>
-    ),
-  },
-  2: {
-    eyebrow: "PASSO 2 DE 5",
-    title: (handle) => (
-      <>
-        Que relação tens com o perfil{" "}
-        <em className="not-italic font-display italic text-secondary">
-          @{handle}
-        </em>
-        ?
-      </>
-    ),
-    subtitle: "Ajuda-nos a personalizar o tom da análise.",
-  },
-  3: {
-    eyebrow: "PASSO 3 DE 5",
-    title: () => (
-      <>
-        O que queres{" "}
-        <em className="not-italic font-display italic text-secondary">
-          tirar daqui
+          tratamos
         </em>
         ?
       </>
     ),
     subtitle:
-      "Selecciona o objectivo principal. Ajuda-nos a destacar o que importa.",
+      "Usamos estes dados para guardar o relatório e enviar o acesso por email.",
+  },
+  2: {
+    eyebrow: "PASSO 2 DE 4",
+    title: () => <>Que relação tens com este perfil?</>,
+    subtitle: "Ajuda-nos a ajustar o tom da análise.",
+  },
+  3: {
+    eyebrow: "PASSO 3 DE 4",
+    title: () => <>O que queres perceber?</>,
+    subtitle:
+      "Escolhe o que mais te interessa. Destacamos o que importa.",
   },
   4: {
-    eyebrow: "PASSO 4 DE 5",
-    title: () => (
-      <>
-        Como te{" "}
-        <em className="not-italic font-display italic text-secondary">
-          descreves
-        </em>
-        ?
-      </>
-    ),
-    subtitle: "Última pergunta antes de abrirmos o relatório.",
+    eyebrow: "PASSO 4 DE 4",
+    title: () => <>Como te descreves?</>,
+    subtitle: "Última pergunta — depois abrimos o relatório.",
   },
 };
 
