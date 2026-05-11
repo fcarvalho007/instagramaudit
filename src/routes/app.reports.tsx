@@ -13,6 +13,7 @@ import {
   Mail,
   MailCheck,
   MailX,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProTrackingTeaser } from "@/components/app/pro-tracking-teaser";
@@ -266,16 +267,15 @@ function ReportCard({ report }: { report: UserReport }) {
           </Link>
         )}
         {hasSnapshot && retention.state === "expired" && (
-          <button
-            type="button"
-            disabled
+          <Link
+            to="/"
             title={formatRetentionMessage()}
-            aria-label="Relatório expirado"
-            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border-default/10 bg-surface-muted px-3 py-1.5 text-xs font-medium text-content-tertiary"
+            aria-label="Gerar nova análise"
+            className="inline-flex items-center gap-1.5 rounded-md bg-content-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-content-primary/90"
           >
-            <Clock className="size-3" />
-            Expirado — gerar novo
-          </button>
+            <Search className="size-3" />
+            Gerar nova análise
+          </Link>
         )}
       </div>
 
@@ -330,6 +330,16 @@ function ReportsPage() {
       <p className="mt-1 text-sm text-content-secondary">
         Análises pedidas e relatórios disponíveis para download.
       </p>
+
+      {/* Retention notice */}
+      {!loading && !error && (
+        <div className="mt-5 flex items-start gap-3 rounded-xl border border-border-default/20 bg-surface-muted px-4 py-3">
+          <Info className="mt-0.5 size-4 shrink-0 text-content-tertiary" />
+          <p className="text-sm leading-relaxed text-content-secondary">
+            Os relatórios ficam guardados durante 15 dias. Durante esse período, podes voltar a abrir exatamente a análise gerada, sem recalcular dados. Depois disso, removemos os dados antigos para manter o serviço sustentável e eficiente.
+          </p>
+        </div>
+      )}
 
       {/* Stats */}
       {!loading && !error && reports.length > 0 && (
