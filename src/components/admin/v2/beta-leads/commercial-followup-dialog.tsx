@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AdminBadge } from "../admin-badge";
 import { renderCommercialFollowup } from "@/lib/email/templates";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
@@ -29,7 +30,7 @@ interface CommercialFollowupDialogProps {
   onOpenChange: (v: boolean) => void;
   lead: EnrichedLead;
   loading: boolean;
-  onConfirm: () => void;
+  onConfirm: (args: { checkoutUrl?: string }) => void;
 }
 
 const PREVIEW_LIMIT = 600;
@@ -42,6 +43,22 @@ export function CommercialFollowupDialog({
   onConfirm,
 }: CommercialFollowupDialogProps) {
   const [expanded, setExpanded] = useState(false);
+  const [checkoutInput, setCheckoutInput] = useState("");
+
+  const trimmedCheckout = checkoutInput.trim();
+  const checkoutUrl = trimmedCheckout === "" ? undefined : trimmedCheckout;
+  const checkoutError = (() => {
+    if (!checkoutUrl) return null;
+    try {
+      const u = new URL(checkoutUrl);
+      if (u.protocol !== "http:" && u.protocol !== "https:") {
+        return "URL deve usar http:// ou https://";
+      }
+      return null;
+    } catch {
+      return "URL inválido";
+    }
+  })();
 
   const intent = interpretFeedback(lead.feedback);
   const pricingRaw = lead.feedback?.pricing_preference ?? null;
@@ -55,14 +72,14 @@ export function CommercialFollowupDialog({
       renderCommercialFollowup({
         firstName,
         instagramHandle: lead.handle,
-        pricingOption: pricingRaw,
         reportUrl:
           typeof window !== "undefined" && lead.handle
             ? `${window.location.origin}/analyze/${encodeURIComponent(lead.handle)}`
             : null,
         replyToEmail: null,
+        checkoutUrl: checkoutError ? null : checkoutUrl ?? null,
       }),
-    [firstName, lead.handle, pricingRaw],
+    [firstName, lead.handle, checkoutUrl, checkoutError],
   );
 
   const text = rendered.text ?? "";
@@ -102,6 +119,32 @@ export function CommercialFollowupDialog({
             <span className="font-medium">{rendered.subject}</span>
           </div>
 
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="commercial-followup-checkout-url"
+              className="admin-meta"
+            >
+              URL de checkout (opcional)
+            </label>
+            <Input
+              id="commercial-followup-checkout-url"
+              type="url"
+              inputMode="url"
+              placeholder="https://…"
+              value={checkoutInput}
+              onChange={(e) => setCheckoutInput(e.target.value)}
+              disabled={loading}
+              aria-invalid={Boolean(checkoutError)}
+            />
+            <p className="text-[11px] text-admin-text-tertiary">
+              {checkoutError
+                ? checkoutError
+                : checkoutUrl
+                  ? "Email mostra botão “Desbloquear” com este URL."
+                  : "Sem URL: email cai no fallback (responder por email)."}
+            </p>
+          </div>
+
           <div>
             <div className="admin-meta mb-1.5">Pré-visualização</div>
             <div
@@ -134,7 +177,10 @@ export function CommercialFollowupDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={onConfirm} disabled={loading}>
+          <Button
+            onClick={() => onConfirm({ checkoutUrl })}
+            disabled={loading || Boolean(checkoutError)}
+          >
             {loading ? "A enviar…" : "Enviar follow-up"}
           </Button>
         </DialogFooter>
