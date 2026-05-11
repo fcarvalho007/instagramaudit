@@ -194,6 +194,8 @@ export function UnlockModal({
     resolver: zodResolver(unlockFormSchema),
     mode: "onChange",
     defaultValues: {
+      first_name: "",
+      last_name: "",
       email: "",
       profile_ownership: undefined as unknown as ProfileOwnership,
       goal: undefined as unknown as Goal,
@@ -205,21 +207,7 @@ export function UnlockModal({
     },
   });
 
-  // Best-effort track of "pricing seen" once when reaching step 5.
-  const pricingSeenTracked = useRef(false);
-  useEffect(() => {
-    if (step === 5 && !pricingSeenTracked.current) {
-      pricingSeenTracked.current = true;
-      void trackEvent({
-        data: {
-          eventType: "unlock_pricing_cta_seen",
-          handle: instagramUsername,
-          snapshotId,
-          metadata: {},
-        },
-      }).catch(() => {});
-    }
-  }, [step, instagramUsername, snapshotId]);
+  // (Pricing-seen tracking removed — pricing no longer lives in this modal.)
 
   const handleClose = (next: boolean) => {
     if (submitting) return;
@@ -229,7 +217,7 @@ export function UnlockModal({
   const goNext = async () => {
     setServerError(null);
     let fields: (keyof UnlockFormValues)[] = [];
-    if (step === 1) fields = ["email", "gdpr_consent"];
+    if (step === 1) fields = ["first_name", "last_name", "email", "gdpr_consent"];
     if (step === 2) fields = ["profile_ownership"];
     if (step === 3) {
       fields = ["goal"];
@@ -237,6 +225,22 @@ export function UnlockModal({
     }
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
+
+    if (step === 1) {
+      // Manual non-empty enforcement (schema keeps these optional for back-compat).
+      const firstName = (form.getValues("first_name") ?? "").trim();
+      const lastName = (form.getValues("last_name") ?? "").trim();
+      let invalid = false;
+      if (!firstName) {
+        form.setError("first_name", { message: "Indica o teu primeiro nome" });
+        invalid = true;
+      }
+      if (!lastName) {
+        form.setError("last_name", { message: "Indica o apelido" });
+        invalid = true;
+      }
+      if (invalid) return;
+    }
 
     if (step === 1) {
       const email = form.getValues("email");
@@ -363,6 +367,8 @@ export function UnlockModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: values.email,
+          name: `${(values.first_name ?? "").trim()} ${(values.last_name ?? "").trim()}`
+            .trim() || undefined,
           instagram_username: instagramUsername,
           analysis_snapshot_id: snapshotId,
           profile_ownership: values.profile_ownership,
