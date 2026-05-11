@@ -51,14 +51,14 @@ export const PROFILE_OWNERSHIP_LABELS: Record<ProfileOwnership, string> = {
   brand_profile: "É o perfil da minha marca",
   client_profile: "É o perfil de um cliente",
   competitor_research: "Estou a observar concorrência",
-  curiosity: "Estou só a cuscar / curiosidade",
+  curiosity: "Estou só a explorar",
 };
 
 export const GOAL_LABELS: Record<Goal, string> = {
   improve_content: "Melhorar o conteúdo",
   benchmark_competitors: "Comparar com concorrentes",
-  client_report: "Apresentar a um cliente",
-  grow_audience: "Crescer audiência",
+  client_report: "Preparar uma análise para um cliente",
+  grow_audience: "Crescer a audiência",
   validate_brand: "Validar a presença da marca",
   other: "Outro",
 };
@@ -83,6 +83,10 @@ export const PRICING_PREFERENCE_LABELS: Record<PricingPreference, string> = {
 
 export const unlockFormSchema = z
   .object({
+    // Optional in the schema (back-compat with server endpoint that takes a
+    // single `name`); the modal enforces non-empty values in step 1.
+    first_name: z.string().trim().max(60).optional(),
+    last_name: z.string().trim().max(60).optional(),
     email: z.string().trim().toLowerCase().email("Email inválido").max(255),
     profile_ownership: z.enum(PROFILE_OWNERSHIPS, {
       required_error: "Escolhe uma opção",

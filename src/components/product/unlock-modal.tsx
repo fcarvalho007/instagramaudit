@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -6,7 +6,6 @@ import {
   Briefcase,
   Check,
   CheckCircle2,
-  Clock,
   HelpCircle,
   Loader2,
   Lock,
@@ -43,7 +42,7 @@ import {
 } from "@/lib/unlock-flow";
 import { trackEvent } from "@/lib/tracking.functions";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 const OPERATOR_INFO = {
   name: "DIGITALFC",
@@ -51,18 +50,11 @@ const OPERATOR_INFO = {
   nif: "509XXXXXX",
 };
 
-const PREMIUM_SECTIONS = ["Conteúdo", "Procura", "Comparação"] as const;
-
-const FREE_SECTIONS: ReadonlyArray<{
-  rank: string;
-  label: string;
-  state: "complete" | "partial";
-  badge?: string;
-}> = [
-  { rank: "01", label: "Visão geral", state: "complete" },
-  { rank: "02", label: "Diagnóstico", state: "complete" },
-  { rank: "03", label: "Desempenho", state: "partial", badge: "3/5" },
-];
+const UNLOCKED_ITEMS = [
+  "Visão geral desbloqueada",
+  "Diagnóstico desbloqueado",
+  "Desempenho desbloqueado",
+] as const;
 
 type IconCmp = typeof User;
 
@@ -86,6 +78,8 @@ const PROFILE_OWNERSHIP_ICONS: Record<
 };
 
 const FIELD_LABELS_PT: Record<string, string> = {
+  first_name: "Primeiro nome",
+  last_name: "Apelido",
   email: "Email",
   gdpr_consent: "Consentimento",
   profile_ownership: "Tipo de perfil",
@@ -148,68 +142,35 @@ const STEP_HEADERS: Record<
   }
 > = {
   1: {
-    eyebrow: "PASSO 1 DE 5",
+    eyebrow: "PASSO 1 DE 4",
     badge: "~1 MIN",
     title: () => (
       <>
-        Desbloquear{" "}
+        Como te{" "}
         <em className="not-italic font-display italic text-primary">
-          3 secções
-        </em>{" "}
-        grátis
-      </>
-    ),
-    subtitle: (
-      <>
-        Continuam premium:{" "}
-        <strong className="text-content-primary font-medium">
-          Conteúdo · Procura · Comparação
-        </strong>
-        . Acesso gratuito durante a{" "}
-        <strong className="text-content-primary font-medium">beta privada</strong>
-        {" "}— podemos contactar-te para feedback.
-      </>
-    ),
-  },
-  2: {
-    eyebrow: "PASSO 2 DE 5",
-    title: (handle) => (
-      <>
-        Que relação tens com o perfil{" "}
-        <em className="not-italic font-display italic text-secondary">
-          @{handle}
-        </em>
-        ?
-      </>
-    ),
-    subtitle: "Ajuda-nos a personalizar o tom da análise.",
-  },
-  3: {
-    eyebrow: "PASSO 3 DE 5",
-    title: () => (
-      <>
-        O que queres{" "}
-        <em className="not-italic font-display italic text-secondary">
-          tirar daqui
+          tratamos
         </em>
         ?
       </>
     ),
     subtitle:
-      "Selecciona o objectivo principal. Ajuda-nos a destacar o que importa.",
+      "Usamos estes dados para guardar o relatório e enviar o acesso por email.",
+  },
+  2: {
+    eyebrow: "PASSO 2 DE 4",
+    title: () => <>Que relação tens com este perfil?</>,
+    subtitle: "Ajuda-nos a ajustar o tom da análise.",
+  },
+  3: {
+    eyebrow: "PASSO 3 DE 4",
+    title: () => <>O que queres perceber?</>,
+    subtitle:
+      "Escolhe o que mais te interessa. Destacamos o que importa.",
   },
   4: {
-    eyebrow: "PASSO 4 DE 5",
-    title: () => (
-      <>
-        Como te{" "}
-        <em className="not-italic font-display italic text-secondary">
-          descreves
-        </em>
-        ?
-      </>
-    ),
-    subtitle: "Última pergunta antes de abrirmos o relatório.",
+    eyebrow: "PASSO 4 DE 4",
+    title: () => <>Como te descreves?</>,
+    subtitle: "Última pergunta — depois abrimos o relatório.",
   },
 };
 
@@ -233,6 +194,8 @@ export function UnlockModal({
     resolver: zodResolver(unlockFormSchema),
     mode: "onChange",
     defaultValues: {
+      first_name: "",
+      last_name: "",
       email: "",
       profile_ownership: undefined as unknown as ProfileOwnership,
       goal: undefined as unknown as Goal,
@@ -244,21 +207,7 @@ export function UnlockModal({
     },
   });
 
-  // Best-effort track of "pricing seen" once when reaching step 5.
-  const pricingSeenTracked = useRef(false);
-  useEffect(() => {
-    if (step === 5 && !pricingSeenTracked.current) {
-      pricingSeenTracked.current = true;
-      void trackEvent({
-        data: {
-          eventType: "unlock_pricing_cta_seen",
-          handle: instagramUsername,
-          snapshotId,
-          metadata: {},
-        },
-      }).catch(() => {});
-    }
-  }, [step, instagramUsername, snapshotId]);
+  // (Pricing-seen tracking removed — pricing no longer lives in this modal.)
 
   const handleClose = (next: boolean) => {
     if (submitting) return;
@@ -268,7 +217,7 @@ export function UnlockModal({
   const goNext = async () => {
     setServerError(null);
     let fields: (keyof UnlockFormValues)[] = [];
-    if (step === 1) fields = ["email", "gdpr_consent"];
+    if (step === 1) fields = ["first_name", "last_name", "email", "gdpr_consent"];
     if (step === 2) fields = ["profile_ownership"];
     if (step === 3) {
       fields = ["goal"];
@@ -276,6 +225,22 @@ export function UnlockModal({
     }
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
+
+    if (step === 1) {
+      // Manual non-empty enforcement (schema keeps these optional for back-compat).
+      const firstName = (form.getValues("first_name") ?? "").trim();
+      const lastName = (form.getValues("last_name") ?? "").trim();
+      let invalid = false;
+      if (!firstName) {
+        form.setError("first_name", { message: "Indica o teu primeiro nome" });
+        invalid = true;
+      }
+      if (!lastName) {
+        form.setError("last_name", { message: "Indica o apelido" });
+        invalid = true;
+      }
+      if (invalid) return;
+    }
 
     if (step === 1) {
       const email = form.getValues("email");
@@ -402,6 +367,8 @@ export function UnlockModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: values.email,
+          name: `${(values.first_name ?? "").trim()} ${(values.last_name ?? "").trim()}`
+            .trim() || undefined,
           instagram_username: instagramUsername,
           analysis_snapshot_id: snapshotId,
           profile_ownership: values.profile_ownership,
@@ -496,11 +463,12 @@ export function UnlockModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[480px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
+      <DialogContent className="sm:max-w-[640px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
         {step === 5 ? (
           <SuccessStep
             firstName={
               returningFirstName ??
+              (form.getValues("first_name") || null) ??
               firstNameFromEmail(form.getValues("email"))
             }
             email={form.getValues("email")}
@@ -731,6 +699,8 @@ function Step1Email({
 }) {
   const error = form.formState.errors.email?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
+  const firstNameError = form.formState.errors.first_name?.message;
+  const lastNameError = form.formState.errors.last_name?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
@@ -738,6 +708,42 @@ function Step1Email({
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="unlock-first-name" className="text-sm">
+            Primeiro nome
+          </Label>
+          <Input
+            id="unlock-first-name"
+            type="text"
+            autoFocus
+            autoComplete="given-name"
+            placeholder="Ana"
+            aria-invalid={Boolean(firstNameError)}
+            {...form.register("first_name")}
+          />
+          {firstNameError ? (
+            <p className="text-xs text-destructive">{firstNameError}</p>
+          ) : null}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="unlock-last-name" className="text-sm">
+            Apelido
+          </Label>
+          <Input
+            id="unlock-last-name"
+            type="text"
+            autoComplete="family-name"
+            placeholder="Marques"
+            aria-invalid={Boolean(lastNameError)}
+            {...form.register("last_name")}
+          />
+          {lastNameError ? (
+            <p className="text-xs text-destructive">{lastNameError}</p>
+          ) : null}
+        </div>
+      </div>
+
       <div className="space-y-1.5">
         <Label htmlFor="unlock-email" className="text-sm">
           Email
@@ -746,7 +752,6 @@ function Step1Email({
           <Input
             id="unlock-email"
             type="email"
-            autoFocus
             autoComplete="email"
             placeholder="ana@empresa.pt"
             aria-invalid={Boolean(error)}
@@ -791,7 +796,7 @@ function Step1Email({
             >
               tratamento dos meus dados
             </a>{" "}
-            para guardar e aceder a este relatório, e confirmo que li a{" "}
+            para gerar e guardar este relatório, e li a{" "}
             <a
               href="/privacidade"
               target="_blank"
@@ -824,7 +829,7 @@ function Step1Email({
             className="mt-0.5"
           />
           <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
-            Quero receber análises e dicas de marketing digital por email{" "}
+            Quero receber novidades e dicas sobre relatórios, análise de Instagram e marketing digital{" "}
             <span className="text-content-tertiary">
               (cancelas quando quiseres · ~1 email/semana)
             </span>
@@ -999,11 +1004,11 @@ function SuccessStep({
   returningLead: boolean;
   onClose: () => void;
 }) {
-  const signupHref = `/signup?email=${encodeURIComponent(email)}`;
+  void email;
+  void returningLead;
   return (
     <div>
-      {/* Green gradient header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-7">
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-8">
         <div
           className="absolute right-0 top-0 size-40 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none"
           aria-hidden
@@ -1013,177 +1018,45 @@ function SuccessStep({
             <CheckCircle2 className="size-5 text-white" aria-hidden />
           </div>
           <p className="text-eyebrow-sm text-emerald-700">
-            CONFIRMADO · OBRIGADO {firstName ? firstName.toUpperCase() : "—"}
+            RELATÓRIO ASSOCIADO{firstName ? ` · OBRIGADO ${firstName.toUpperCase()}` : ""}
           </p>
-          <h2 className="font-display text-[28px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            {returningLead ? (
-              <>
-                Bem-vindo de{" "}
-                <em className="not-italic font-display italic text-emerald-600">
-                  volta
-                </em>
-              </>
-            ) : (
-              <>
-                3 secções{" "}
-                <em className="not-italic font-display italic text-emerald-600">
-                  desbloqueadas
-                </em>
-              </>
-            )}
+          <h2 className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+            Relatório{" "}
+            <em className="not-italic font-display italic text-emerald-600">
+              desbloqueado
+            </em>
           </h2>
-          <p className="text-[13px] text-content-secondary">
-            O teu relatório está pronto. Eis o que tens acesso já:
+          <p className="text-[13px] text-content-secondary leading-relaxed">
+            O relatório ficou associado ao email indicado para poderes voltar a consultá-lo mais tarde.
           </p>
-          <ProgressSegments
-            current={TOTAL_STEPS}
-            total={TOTAL_STEPS}
-          />
         </div>
       </div>
 
-      <div className="px-6 sm:px-7 py-6 space-y-5">
-        {/* Free sections */}
-        <section className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-eyebrow-sm text-emerald-700">
-              <span className="inline-block size-1.5 rounded-full bg-emerald-600 mr-1.5 align-middle" />
-              INCLUÍDO · ABERTO
-            </p>
-            <span className="text-[11px] text-content-tertiary tabular-nums">
-              {FREE_SECTIONS.length}
-            </span>
-          </div>
-          <ul className="space-y-1.5">
-            {FREE_SECTIONS.map((sec) => (
-              <li
-                key={sec.rank}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg border",
-                  sec.state === "complete"
-                    ? "bg-emerald-50/70 border-emerald-200/70"
-                    : "bg-amber-50/70 border-amber-200/70",
-                )}
-              >
-                {sec.state === "complete" ? (
-                  <Check className="size-4 text-emerald-600" aria-hidden />
-                ) : (
-                  <Clock className="size-4 text-amber-600" aria-hidden />
-                )}
-                <span
-                  className={cn(
-                    "text-[11px] font-semibold tabular-nums tracking-wide",
-                    sec.state === "complete"
-                      ? "text-emerald-700"
-                      : "text-amber-700",
-                  )}
-                >
-                  {sec.rank}
-                </span>
-                <span className="text-[13px] text-content-primary flex-1">
-                  {sec.label}
-                </span>
-                {sec.badge ? (
-                  <span className="inline-flex items-center rounded-full bg-white/70 border border-amber-300/70 text-amber-700 px-2 py-[1px] text-[11px] font-medium tabular-nums">
-                    {sec.badge}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Premium sections */}
-        <section className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50 to-amber-50/30 p-3 space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-eyebrow-sm text-amber-800">
-              ✦ PREMIUM · POR DESBLOQUEAR
-            </p>
-            <span className="text-[11px] text-amber-700 tabular-nums">
-              {PREMIUM_SECTIONS.length}
-            </span>
-          </div>
-          <ul className="space-y-1">
-            {PREMIUM_SECTIONS.map((label, i) => (
-              <li
-                key={label}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/60"
-              >
-                <Lock className="size-3.5 text-amber-700" aria-hidden />
-                <span className="text-[11px] font-semibold tabular-nums text-amber-700 tracking-wide">
-                  {String(i + 4).padStart(2, "0")}
-                </span>
-                <span className="font-display italic text-[14px] text-content-primary">
-                  {label}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Pricing inline (visual only) */}
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div
-              role="presentation"
-              className="rounded-lg border border-border-default/60 bg-white p-3 cursor-default"
+      <div className="px-6 sm:px-8 py-6 space-y-5">
+        <ul className="space-y-2">
+          {UNLOCKED_ITEMS.map((label) => (
+            <li
+              key={label}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-emerald-50/70 border-emerald-200/70"
             >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
-                UMA VEZ
-              </p>
-              <p className="text-[18px] font-semibold text-content-primary mt-1 tabular-nums">
-                €3{" "}
-                <span className="text-[11px] font-normal text-content-tertiary">
-                  +IVA
-                </span>
-              </p>
-              <p className="text-[11px] text-content-tertiary mt-0.5">
-                só esta análise
-              </p>
-            </div>
-            <div
-              role="presentation"
-              className="relative rounded-lg border border-amber-400/60 bg-gradient-to-br from-amber-100 to-amber-200/60 p-3 cursor-default"
-            >
-              <span className="absolute -top-2 right-1.5 inline-flex items-center rounded-full bg-amber-600 text-white px-1.5 py-[1px] text-[9px] font-semibold tracking-wide whitespace-nowrap">
-                ★ POUPA €2
+              <Check className="size-4 text-emerald-600 shrink-0" aria-hidden />
+              <span className="text-[13px] text-content-primary flex-1">
+                {label}
               </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900">
-                BUNDLE 5
-              </p>
-              <p className="text-[18px] font-semibold text-amber-900 mt-1 tabular-nums">
-                €13{" "}
-                <span className="text-[11px] font-normal text-amber-800/70">
-                  +IVA
-                </span>
-              </p>
-              <p className="text-[11px] text-amber-800/80 mt-0.5">
-                5 análises completas
-              </p>
-            </div>
-          </div>
-        </section>
+            </li>
+          ))}
+        </ul>
 
-        <div className="space-y-3 pt-2 border-t border-border-default/40">
+        <div className="space-y-2 pt-2 border-t border-border-default/40">
           <Button
             size="lg"
-            className="w-full rounded-lg font-medium mt-4 bg-content-primary text-white hover:bg-content-primary/90"
+            className="w-full rounded-lg font-medium mt-4"
             onClick={onClose}
           >
-            Ver relatório agora
+            Ver relatório gratuito agora  →
           </Button>
-          <p className="text-[11px] text-content-tertiary text-center">
-            Podes desbloquear o premium quando quiseres a partir do relatório.
-          </p>
-          <a
-            href={signupHref}
-            className="block text-center text-[12px] font-medium text-primary hover:underline"
-          >
-            Criar conta com este email para aceder mais tarde
-          </a>
-          <p className="text-[11px] text-content-tertiary text-center">
-            Já tens conta?{" "}
-            <a href="/login" className="underline hover:text-content-secondary">
-              Entrar
-            </a>
+          <p className="text-xs text-content-tertiary text-center">
+            Este relatório foi associado diretamente à tua conta.
           </p>
         </div>
       </div>
