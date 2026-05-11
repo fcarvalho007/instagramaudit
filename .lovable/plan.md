@@ -1,141 +1,162 @@
-## Fase 1 — Histórico imutável de relatórios (`report_snapshots`)
+# Refinamento Fase 1 — `report_snapshots` leve e versionado
 
-Apenas fundação de armazenamento. Sem UI, sem cleanup, sem regeneração.
+Sem migrations nem código nesta fase. Apenas contrato de dados.
 
-### 1. Migração `report_snapshots`
+## 1. Princípios
 
-Ficheiro: `supabase/migrations/<timestamp>_create_report_snapshots.sql`
+- `analysis_snapshots` continua como **cache técnico** (TTL curto, payload completo, base64, blobs intermédios permitidos).
+- `report_snapshots` é **histórico imutável user-facing** (15 dias, payload mínimo necessário para reconstruir o relatório, sem nada pesado).
+- Nunca copiar bytes binários, base64 ou estruturas de enrichment cru.
+- Tudo o que não for estritamente necessário para renderizar o relatório histórico **fica fora**.
+- Versionar agressivamente para permitir migrações futuras sem partir histórico antigo.
 
-```sql
-create table public.report_snapshots (
-  id uuid primary key default gen_random_uuid(),
-  report_request_id uuid unique,                   -- 1:1 com pedido (nullable: snapshots admin/manuais)
-  lead_id uuid,
-  user_id uuid references auth.users(id) on delete set null,
-  source_analysis_snapshot_id uuid not null,       -- referência lógica à cache
-  instagram_username text not null,
-  competitor_usernames jsonb not null default '[]'::jsonb,
-  report_payload_jsonb jsonb not null,
-  payload_schema_version text not null,            -- ex.: 'report.v1'
-  report_version text not null,                    -- ex.: 'free.v3'
-  algorithm_version text not null,                 -- ex.: 'analysis.v3'
-  created_at timestamptz not null default now(),
-  expires_at timestamptz not null,
-  expired_at timestamptz,                          -- preenchido só após cleanup soft
-  pdf_storage_path text,
-  metadata jsonb
-);
+## 2. Estrutura de `report_payload_jsonb`
 
-create index report_snapshots_report_request_id_idx on public.report_snapshots(report_request_id);
-create index report_snapshots_lead_id_idx on public.report_snapshots(lead_id);
-create index report_snapshots_user_id_idx on public.report_snapshots(user_id);
-create index report_snapshots_instagram_username_idx on public.report_snapshots(lower(instagram_username));
-create index report_snapshots_expires_at_idx on public.report_snapshots(expires_at);
+Top-level fixo, schema validado por Zod no builder:
 
-alter table public.report_snapshots enable row level security;
-
--- RLS
-create policy "Users can read own report snapshots"
-  on public.report_snapshots
-  for select
-  to authenticated
-  using (user_id = auth.uid());
--- Sem policies para insert/update/delete → só service_role escreve
--- Sem policies para anon → bloqueado por defeito
-
--- report_requests: pointer para snapshot histórico
-alter table public.report_requests
-  add column if not exists report_snapshot_id uuid;
-create index if not exists report_requests_report_snapshot_id_idx
-  on public.report_requests(report_snapshot_id);
-```
-
-Reversibilidade: drop table + drop column num único migration de rollback. FKs evitadas para `report_requests` (pointer fraco) para permitir cleanup independente.
-
-### 2. Constantes de retenção
-
-Estender `src/lib/report/retention.ts` (já existe, usa `REPORT_RETENTION_DAYS=15`):
-
-```ts
-export function getReportSnapshotExpiresAt(createdAt: string | Date): Date {
-  return getReportExpiresAt(createdAt);   // alias semântico
+```text
+{
+  "schema": {
+    "payload_schema_version": "1",
+    "report_version": "r1",
+    "algorithm_version": "alg-2026-05-a"
+  },
+  "context": {
+    "instagram_username": "frederico.m.carvalho",
+    "competitor_usernames": ["...", "..."],
+    "generated_at": "ISO-8601",
+    "data_provenance": {
+      "provider": "apify",
+      "snapshot_captured_at": "ISO-8601",
+      "posts_window_days": 90
+    }
+  },
+  "profile": {
+    "handle": "...",
+    "display_name": "...",
+    "followers": 12345,
+    "following": 321,
+    "posts_count": 210,
+    "biography_text": "string truncado <= 500 chars",
+    "external_url": "https://...",
+    "is_verified": false,
+    "is_business": true,
+    "category": "...",
+    "avatar_url": "https://... (URL only, never base64)"
+  },
+  "metrics": {
+    "engagement_pct": 2.31,
+    "avg_likes": 412,
+    "avg_comments": 18,
+    "avg_views_reels": 9100,
+    "posting_frequency_per_week": 3.2,
+    "tier": "micro",
+    "benchmark_engagement_pct": 1.8
+  },
+  "format_stats": {
+    "image": { "count": 12, "engagement_pct": 1.9 },
+    "carousel": { "count": 8, "engagement_pct": 2.7 },
+    "reel": { "count": 10, "engagement_pct": 3.4 }
+  },
+  "content_summary": {
+    "top_themes": ["..."],
+    "top_hashtags": ["..."],
+    "posting_hours_histogram": [/* 24 ints */]
+  },
+  "posts": [
+    {
+      "id": "shortcode",
+      "url": "https://www.instagram.com/p/...",
+      "type": "reel|image|carousel",
+      "taken_at": "ISO-8601",
+      "caption_text": "string truncado <= 1000 chars",
+      "likes": 0,
+      "comments": 0,
+      "views": 0,
+      "engagement_pct": 0,
+      "media_url": "https://... (HTTPS only, never base64, never data:)"
+    }
+    // máx. 30 posts
+  ],
+  "competitor_summaries": [
+    {
+      "handle": "...",
+      "followers": 0,
+      "engagement_pct": 0,
+      "avg_likes": 0,
+      "avg_comments": 0,
+      "tier": "...",
+      "top_format": "reel"
+    }
+  ],
+  "insights": {
+    "strengths": ["..."],
+    "weaknesses": ["..."],
+    "opportunities": ["..."],
+    "recommendations": [
+      { "title": "...", "body": "...", "priority": "high|med|low" }
+    ]
+  }
 }
-export function isReportSnapshotExpired(expiresAt, now?): boolean {
-  return isReportExpired(expiresAt, now);
-}
 ```
 
-Sem duplicação — partilha o `REPORT_RETENTION_DAYS` central.
+## 3. Campos incluídos vs. excluídos
 
-### 3. Payload builder
+### Incluídos (whitelist explícita)
+- `schema.*` (versionamento)
+- `context.*` (handle, competitors, datas, provenance)
+- `profile.*` sem base64; `avatar_url` apenas como URL HTTPS
+- `metrics.*` agregadas finais
+- `format_stats.*` agregados por formato
+- `content_summary.*` (temas, hashtags, histograma de horas)
+- `posts[]` máx. 30, **caption truncado a 1000 chars**, apenas URLs HTTPS
+- `competitor_summaries[]` apenas agregados
+- `insights.*` texto final apresentado ao utilizador
 
-Novo: `src/lib/report-snapshots/build-report-snapshot-payload.server.ts`
+### Excluídos (nunca copiar para `report_snapshots`)
+- Qualquer `data:image/...;base64,...` (helper `stripBase64Urls()` no builder)
+- `caption_semantic_analysis` (intermediário pesado)
+- `visual_cover_analysis` (thumbnails/embeddings)
+- `ai_insights_v1` cru (apenas o resultado final entra em `insights`)
+- `market_signals_free` cru
+- `enrichment_status` (estado técnico do cache)
+- `raw_*`, `_meta`, `__debug`, blobs binários
+- Comentários completos por post (apenas contagem agregada)
+- HTML cru, screenshots, embeddings, vectors
+- Tokens, custos, IDs internos de provider
+- Avatars/thumbnails inline; só URLs
 
-Whitelist explícita (não copiar e remover) a partir de `analysis_snapshots.normalized_payload`:
+## 4. Versionamento
 
-| Inclui (mantém) | Exclui (rejeita) |
-|---|---|
-| `profile` (sem avatar `data:*`) | `caption_semantic_analysis` raw |
-| `metrics` finais + benchmark | `visual_cover_analysis` raw |
-| `format_stats`, `content_summary` | `ai_insights_v1` legacy |
-| `posts` cap 30; caption truncado a 1000 chars; só URLs HTTPS | `market_signals_free` completo |
-| `competitor_summaries` (agregado) | `enrichment_status` |
-| `insights` (final) | qualquer string `data:image/...;base64,...` em `*_url` |
-| `data_provenance` (actor, model, scraped_at) | blobs binários, `raw_*`, `_meta` |
+Três níveis, todos persistidos:
 
-Helper interno `stripBase64Urls(value)` substitui `data:` URLs por `null` + `console.warn`. Validação Zod em `src/lib/report-snapshots/schema.ts` (`ReportPayloadV1Schema`) antes do return.
+- **`payload_schema_version`** (coluna + dentro de `schema`): forma do JSON. Incrementa quando muda a estrutura do payload (ex: adicionar `posts[].saves`).
+- **`report_version`**: versão do relatório user-facing (ex: `r1`, `r2`). Incrementa quando muda o que o utilizador vê (secções, narrativa).
+- **`algorithm_version`**: versão dos cálculos/insights (ex: `alg-2026-05-a`). Incrementa quando mudam fórmulas, benchmarks ou prompts de IA.
 
-Assinatura:
-```ts
-export function buildReportSnapshotPayload(
-  source: { normalized_payload: Json; instagram_username: string;
-            competitor_usernames: string[]; algorithm_version?: string }
-): { payload: ReportPayloadV1; payload_schema_version: 'report.v1';
-     algorithm_version: string }
-```
+Regra: snapshots antigos **nunca** são recalculados. O renderer histórico lê `payload_schema_version` e escolhe o adapter apropriado.
 
-Sem efeitos secundários, sem providers, sem DB. Usado mais tarde por quem decidir persistir snapshots (Fase 2).
+## 5. Retenção e cleanup
 
-### 4. Testes
+- `report_snapshots.expires_at = created_at + 15 dias` (constante central `REPORT_RETENTION_DAYS`).
+- `analysis_snapshots` continua com TTL técnico curto independente (não muda nesta fase).
+- **Cleanup automático fica fora da Fase 1.** Apenas marcamos `expires_at`; soft-delete via `expired_at` numa fase posterior. Sem cron, sem DELETE.
+- Leitura futura filtra por `expires_at > now()`; expirados existem em DB mas não são servidos.
 
-`src/lib/report/__tests__/retention.test.ts` — adicionar casos para `getReportSnapshotExpiresAt` / `isReportSnapshotExpired`.
+## 6. O que esta fase NÃO faz
 
-`src/lib/report-snapshots/__tests__/build-report-snapshot-payload.test.ts`:
-- ☐ omite `caption_semantic_analysis`, `visual_cover_analysis`, `ai_insights_v1`, `market_signals_free`, `enrichment_status`
-- ☐ `avatar_url=data:image/png;base64,...` → `null` + warn
-- ☐ `posts[].thumbnail_url=data:...` → `null`
-- ☐ caption longa truncada a 1000
-- ☐ `posts.length > 30` → cap 30
-- ☐ Zod parse passa em payload mínimo válido
+- Sem migration ainda (próximo passo, a seguir à tua aprovação deste contrato).
+- Sem builder code, sem testes, sem types regenerados.
+- Sem alterações a `analysis_snapshots`.
+- Sem cleanup, sem cron, sem UI, sem PDF storage logic.
+- Sem alterações a Brevo/Resend/providers.
 
-### 5. Ficheiros tocados
+## 7. Próximo passo (a seguir a aprovares este refinamento)
 
-| Ficheiro | Acção |
-|---|---|
-| `supabase/migrations/<ts>_create_report_snapshots.sql` | novo |
-| `src/lib/report/retention.ts` | + 2 aliases |
-| `src/lib/report-snapshots/schema.ts` | novo (Zod + types) |
-| `src/lib/report-snapshots/build-report-snapshot-payload.server.ts` | novo |
-| `src/lib/report-snapshots/__tests__/build-report-snapshot-payload.test.ts` | novo |
-| `src/lib/report/__tests__/retention.test.ts` | estender |
-| `src/integrations/supabase/types.ts` | regenerado pela migração |
+Volto a Plan Mode da migration concreta com este contrato fixo:
+1. Migration `report_snapshots` + coluna `payload_schema_version` + FK fraco em `report_requests`.
+2. `src/lib/report-snapshots/schema.ts` com Zod refletindo exatamente esta estrutura.
+3. `build-report-snapshot-payload.server.ts` com whitelist + `stripBase64Urls()` + truncagem.
+4. Testes de exclusão (base64, campos pesados, truncagem, validação Zod).
 
-### 6. Validação
-
-- ☐ `bunx tsc --noEmit`
-- ☐ `bunx vitest run` (incluindo novos testes)
-- ☐ Migração aplica sem warnings (`supabase--linter`)
-- ☐ `select * from report_snapshots` devolve 0 linhas (sem efeitos colaterais)
-
-### 7. Fora de âmbito (Fase 2+)
-
-- Não escrever em `report_snapshots` no pipeline (Fase 2)
-- Não alterar `/app/reports` ou `/reports/$snapshotId` (Fase 3)
-- Não criar cleanup automático (já planeado em separado)
-- Não tocar Brevo/Resend, providers, regeneração
-
-### Constrangimentos
-
-- ☐ Sem providers, sem regeneração, sem deletes
-- ☐ Migrações reversíveis (drop table/column)
-- ☐ RLS fechada por defeito; só `user_id = auth.uid()` para SELECT
+☐ Aprovas esta estrutura leve + versionamento triplo antes de eu avançar para a migration?
