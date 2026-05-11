@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { withSupabaseHeaders } from "@/lib/auth-middleware-client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { recordProductEvent } from "@/lib/tracking.server";
 
 export const getAccountDetails = createServerFn({ method: "GET" })
   .middleware([withSupabaseHeaders, requireSupabaseAuth])
@@ -20,13 +21,15 @@ export const getAccountDetails = createServerFn({ method: "GET" })
     }
 
     let leadEmail: string | null = null;
+    let marketingConsent: boolean | null = null;
     if (profile.lead_id) {
       const { data: lead } = await supabaseAdmin
         .from("leads")
-        .select("email")
+        .select("email, marketing_consent")
         .eq("id", profile.lead_id)
         .single();
       leadEmail = lead?.email ?? null;
+      marketingConsent = lead?.marketing_consent ?? null;
     }
 
     return {
@@ -36,6 +39,8 @@ export const getAccountDetails = createServerFn({ method: "GET" })
       plan: profile.plan,
       createdAt: profile.created_at,
       leadEmail,
+      leadId: profile.lead_id,
+      marketingConsent,
     };
   });
 
@@ -62,6 +67,51 @@ export const updateDisplayName = createServerFn({ method: "POST" })
     }
 
     return { ok: true, displayName: trimmed || null };
+  });
+
+export const updateMarketingConsent = createServerFn({ method: "POST" })
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
+  .inputValidator((data: unknown) => {
+    const parsed = data as { consent: unknown };
+    if (typeof parsed?.consent !== "boolean") {
+      throw new Error("Consentimento inválido");
+    }
+    return { consent: parsed.consent };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("lead_id")
+      .eq("id", userId)
+      .single();
+
+    if (profileError || !profile?.lead_id) {
+      throw new Error("Sem lead associado a esta conta.");
+    }
+
+    const leadId = profile.lead_id;
+
+    const { error: updateError } = await supabaseAdmin
+      .from("leads")
+      .update({
+        marketing_consent: data.consent,
+        marketing_consent_at: new Date().toISOString(),
+      })
+      .eq("id", leadId);
+
+    if (updateError) {
+      throw new Error("Erro ao atualizar preferência de comunicações.");
+    }
+
+    await recordProductEvent({
+      eventType: "marketing_consent_updated",
+      leadId,
+      metadata: { consent: data.consent, source: "account_page" },
+    });
+
+    return { ok: true, marketingConsent: data.consent };
   });
 
 export const ensureReportAssociation = createServerFn({ method: "POST" })

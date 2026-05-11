@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getAccountDetails, updateDisplayName } from "@/server/account.functions";
-import { User, Calendar, Mail, Shield, LogOut, Pencil, Check, X, Loader2 } from "lucide-react";
+import { getAccountDetails, updateDisplayName, updateMarketingConsent } from "@/server/account.functions";
+import { User, Calendar, Mail, Shield, LogOut, Pencil, Check, X, Loader2, BellRing } from "lucide-react";
 
 export const Route = createFileRoute("/app/account")({
   component: AccountPage,
@@ -21,6 +21,8 @@ interface AccountData {
   plan: string;
   createdAt: string;
   leadEmail: string | null;
+  leadId: string | null;
+  marketingConsent: boolean | null;
 }
 
 const planLabels: Record<string, string> = {
@@ -40,6 +42,8 @@ function AccountPage() {
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [consentSaving, setConsentSaving] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const fetchAccount = useCallback(async () => {
     try {
@@ -73,6 +77,23 @@ function AccountPage() {
     setLoggingOut(true);
     await supabase.auth.signOut();
     navigate({ to: "/login" });
+  };
+
+  const handleToggleConsent = async () => {
+    if (!account || consentSaving) return;
+    const next = !(account.marketingConsent ?? false);
+    setConsentSaving(true);
+    setConsentError(null);
+    setAccount((prev) => (prev ? { ...prev, marketingConsent: next } : prev));
+    try {
+      const result = await updateMarketingConsent({ data: { consent: next } });
+      setAccount((prev) => (prev ? { ...prev, marketingConsent: result.marketingConsent } : prev));
+    } catch {
+      setAccount((prev) => (prev ? { ...prev, marketingConsent: !next } : prev));
+      setConsentError("Não foi possível atualizar a preferência. Tenta novamente.");
+    } finally {
+      setConsentSaving(false);
+    }
   };
 
   const formatDate = (iso: string) => {
@@ -222,6 +243,55 @@ function AccountPage() {
 
       {/* Logout */}
       <div className="mt-4">
+        {account.leadId && (
+          <section className="mb-4 rounded-xl border border-border-default/20 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex size-10 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+                <BellRing className="size-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-medium text-content-primary">Comunicações</h2>
+                <p className="text-xs text-content-tertiary">Gere as preferências de email.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-md">
+                <p className="text-sm text-content-primary">
+                  Receber novidades e dicas sobre relatórios, análise de Instagram e marketing digital
+                </p>
+                <p className="mt-1 text-xs text-content-tertiary">
+                  Emails estritamente necessários ao funcionamento do serviço podem continuar a ser enviados.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={account.marketingConsent ?? false}
+                aria-label="Receber comunicações de marketing"
+                onClick={handleToggleConsent}
+                disabled={consentSaving}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 disabled:opacity-60 ${
+                  account.marketingConsent ? "bg-blue-500" : "bg-surface-muted border border-border-default/30"
+                }`}
+              >
+                <span
+                  className={`inline-block size-4 transform rounded-full bg-white shadow transition-transform ${
+                    account.marketingConsent ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+                {consentSaving && (
+                  <Loader2 className="absolute -right-6 size-3.5 animate-spin text-content-tertiary" />
+                )}
+              </button>
+            </div>
+
+            {consentError && (
+              <p className="mt-3 text-xs text-signal-danger">{consentError}</p>
+            )}
+          </section>
+        )}
+
         <button
           onClick={handleLogout}
           disabled={loggingOut}
