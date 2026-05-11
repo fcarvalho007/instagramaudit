@@ -161,7 +161,12 @@ export async function persistReportSnapshotInternal(
       reportRequestId,
       err,
     );
-    return { snapshotId: null, created: false, reason: "build_error" };
+    return {
+      snapshotId: null,
+      created: false,
+      reason: "build_error",
+      errorMessage: sanitizeErrorMessage(err),
+    };
   }
 
   const nowIso = new Date().toISOString();
@@ -208,7 +213,12 @@ export async function persistReportSnapshotInternal(
           reportRequestId,
           insertErr,
         );
-        return { snapshotId: null, created: false, reason: "insert_error" };
+        return {
+          snapshotId: null,
+          created: false,
+          reason: "insert_error",
+          errorMessage: sanitizeErrorMessage(insertErr),
+        };
       }
     } else {
       console.error(
@@ -216,7 +226,12 @@ export async function persistReportSnapshotInternal(
         reportRequestId,
         insertErr,
       );
-      return { snapshotId: null, created: false, reason: "insert_error" };
+      return {
+        snapshotId: null,
+        created: false,
+        reason: "insert_error",
+        errorMessage: sanitizeErrorMessage(insertErr),
+      };
     }
   } else {
     snapshotId = inserted.id as string;
