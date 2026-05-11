@@ -9,13 +9,13 @@ export const Route = createFileRoute("/privacidade")({
       {
         name: "description",
         content:
-          "Política de Privacidade do InstaBench: que dados são recolhidos, com que finalidades, com que subcontratantes e como exercer os direitos previstos no RGPD.",
+          "Política de Privacidade do InstaBench operado pela Fomentar Sonhos, Lda.: dados tratados, finalidades, subcontratantes e direitos previstos no RGPD.",
       },
       { property: "og:title", content: "Política de Privacidade — InstaBench" },
       {
         property: "og:description",
         content:
-          "Política de Privacidade do InstaBench em conformidade com o RGPD. Dados recolhidos, finalidades, subcontratantes e direitos.",
+          "Política de Privacidade do InstaBench em conformidade com o RGPD. Dados, finalidades, subcontratantes e direitos.",
       },
     ],
   }),
@@ -24,15 +24,15 @@ export const Route = createFileRoute("/privacidade")({
 
 const TOC = [
   { id: "responsavel", label: "Responsável pelo tratamento" },
-  { id: "dados", label: "Dados recolhidos" },
+  { id: "dados", label: "Dados pessoais recolhidos" },
   { id: "finalidades", label: "Finalidades e bases legais" },
-  { id: "subcontratantes", label: "Subcontratantes" },
+  { id: "partilha", label: "Partilha com terceiros" },
   { id: "transferencias", label: "Transferências internacionais" },
-  { id: "retencao", label: "Retenção" },
+  { id: "conservacao", label: "Prazos de conservação" },
   { id: "direitos", label: "Direitos do titular" },
   { id: "seguranca", label: "Segurança" },
-  { id: "cookies", label: "Cookies" },
-  { id: "menores", label: "Menores" },
+  { id: "cookies", label: "Cookies e armazenamento local" },
+  { id: "menores", label: "Menores de idade" },
   { id: "alteracoes", label: "Alterações" },
   { id: "contacto", label: "Contacto" },
 ];
@@ -42,187 +42,165 @@ function PrivacidadePage() {
     <LegalLayout
       eyebrow="Documento legal"
       title="Política de Privacidade"
-      lede="Esta política descreve, de forma clara e prática, que dados pessoais são recolhidos pelo InstaBench, com que finalidades são tratados e quais os direitos dos titulares ao abrigo do Regulamento Geral sobre a Proteção de Dados (RGPD)."
-      lastUpdated="17 de abril de 2026"
+      lede="Esta política descreve, de forma clara e prática, que dados pessoais são tratados pelo InstaBench, com que finalidades, e quais os direitos dos titulares ao abrigo do Regulamento Geral sobre a Protecção de Dados (RGPD)."
+      lastUpdated="11 de Maio de 2026"
       toc={TOC}
     >
       <section id="responsavel">
         <h2>1. Responsável pelo tratamento</h2>
+        <p>A entidade responsável pelo tratamento dos dados pessoais é:</p>
         <p>
-          O responsável pelo tratamento dos dados pessoais é o InstaBench, projeto operado a partir
-          de Portugal através do domínio <code>instabench.pt</code>.
+          <strong>Fomentar Sonhos, Lda.</strong>
+          <br />
+          Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
+          <br />
+          Email de contacto:{" "}
+          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
         </p>
         <p>
-          <strong>Identificação completa</strong>: [Nome do responsável · NIF · morada — a indicar
-          em revisão posterior]. Todos os pedidos relacionados com privacidade podem ser dirigidos
-          ao endereço de contacto indicado no fim deste documento.
+          O InstaBench é um serviço operado pela Fomentar Sonhos, Lda. através do domínio{" "}
+          <code>instabench.pt</code>. Todos os pedidos relacionados com privacidade — incluindo
+          exercício de direitos previstos no RGPD — devem ser dirigidos ao email acima.
         </p>
       </section>
 
       <section id="dados">
         <h2>2. Dados pessoais recolhidos</h2>
-        <p>
-          Apenas são recolhidos os dados estritamente necessários para prestar o serviço. Em
-          concreto:
-        </p>
-        <h3>2.1. Dados fornecidos diretamente</h3>
+        <p>Apenas são recolhidos os dados estritamente necessários para prestar o serviço.</p>
+        <h3>2.1 Dados fornecidos directamente</h3>
+        <ul>
+          <li>Nome próprio e endereço de email, no momento de pedir o relatório.</li>
+          <li>
+            Indicação opcional de empresa, marca, função profissional e objectivo de utilização.
+          </li>
+          <li>Texto livre, quando o utilizador opta por descrever uma intenção não listada.</li>
+        </ul>
+        <h3>2.2 Dados gerados pela utilização do serviço</h3>
         <ul>
           <li>
-            <strong>Nome</strong> e <strong>email</strong> ao solicitar o relatório completo.
+            Username do Instagram analisado e, quando indicados, usernames adicionais para
+            comparação. Estes correspondem a dados públicos de terceiros.
           </li>
           <li>
-            <strong>Empresa ou marca</strong> (campo opcional) ao solicitar o relatório completo.
+            Snapshot dos dados públicos recolhidos no momento da análise (perfil, métricas
+            agregadas, publicações públicas recentes), associado ao pedido.
+          </li>
+          <li>
+            Histórico de pedidos efectuados a partir do mesmo email, para controlo da quota
+            gratuita e prevenção de abuso.
           </li>
         </ul>
-        <h3>2.2. Dados gerados pela utilização do serviço</h3>
+        <h3>2.3 Dados técnicos</h3>
         <ul>
           <li>
-            <strong>Username do Instagram analisado</strong> e, quando indicados, usernames de
-            concorrentes para comparação. Estes correspondem a dados públicos de terceiros.
-          </li>
-          <li>
-            <strong>Snapshot dos dados públicos</strong> recolhidos do Instagram no momento da
-            análise (perfil, métricas agregadas, publicações públicas recentes), associado ao
-            pedido.
-          </li>
-          <li>
-            <strong>Histórico de pedidos de relatório</strong> efetuados a partir do mesmo email,
-            para efeitos de controlo da quota mensal gratuita.
-          </li>
-        </ul>
-        <h3>2.3. Dados técnicos</h3>
-        <ul>
-          <li>
-            <strong>Endereço IP</strong>, <strong>user-agent</strong> e registos técnicos das
-            chamadas às APIs do serviço, processados pela infraestrutura para fins de segurança,
-            prevenção de abuso e diagnóstico operacional.
+            Endereço IP, user-agent e registos técnicos das chamadas às APIs do serviço,
+            processados pela infraestrutura para fins de segurança, prevenção de abuso e
+            diagnóstico operacional.
           </li>
         </ul>
       </section>
 
       <section id="finalidades">
         <h2>3. Finalidades e bases legais</h2>
-        <p>O tratamento de dados é efetuado para as seguintes finalidades:</p>
+        <p>O tratamento é efectuado para as seguintes finalidades, com as bases legais correspondentes:</p>
         <ul>
           <li>
-            <strong>Geração e entrega do relatório</strong> solicitado, incluindo envio do PDF para
-            o email indicado — base legal: execução de contrato a pedido do titular (Art.º 6.º,
-            n.º 1, alínea b) do RGPD).
+            <strong>Geração e entrega do relatório solicitado</strong>, incluindo envio de
+            notificações operacionais por email — execução de contrato a pedido do titular (Art.º
+            6.º, n.º 1, alínea b) do RGPD).
           </li>
           <li>
-            <strong>Controlo da quota mensal gratuita</strong> e prevenção de abuso do serviço —
-            base legal: interesse legítimo (Art.º 6.º, n.º 1, alínea f) do RGPD).
+            <strong>Controlo da quota mensal gratuita e prevenção de abuso</strong> do serviço —
+            interesse legítimo (Art.º 6.º, n.º 1, alínea f)).
           </li>
           <li>
-            <strong>Comunicações operacionais</strong> estritamente relacionadas com o pedido
-            efetuado (confirmações, falhas técnicas) — base legal: execução de contrato.
+            <strong>Análise interna de utilização</strong> para validação e melhoria do produto
+            durante a fase beta, sem perfilamento individual — interesse legítimo (Art.º 6.º, n.º
+            1, alínea f)).
           </li>
           <li>
-            <strong>Comunicações de marketing por email</strong> (novidades de produto, dicas
-            editoriais, convites a dar feedback) — apenas mediante consentimento expresso
-            recolhido no momento do desbloqueio. Base legal: consentimento (Art.º 6.º, n.º 1,
-            alínea a) do RGPD). O consentimento pode ser retirado a qualquer momento através do
-            link de cancelamento incluído em cada email.
+            <strong>Comunicações comerciais opcionais</strong> — apenas com consentimento expresso
+            e separado, retirável a qualquer momento (Art.º 6.º, n.º 1, alínea a)).
           </li>
           <li>
-            <strong>Análise de utilização do produto</strong> — registo de eventos
-            pseudonimizados (páginas vistas, passos do desbloqueio, secções abertas do relatório)
-            para diagnóstico, deteção de abuso e melhoria do serviço. Não são utilizados cookies
-            de tracking publicitário nem partilha com terceiros para fins de marketing. Base
-            legal: interesse legítimo (Art.º 6.º, n.º 1, alínea f) do RGPD).
-          </li>
-          <li>
-            <strong>Cumprimento de obrigações legais</strong>, sempre que aplicáveis — base legal:
-            obrigação jurídica (Art.º 6.º, n.º 1, alínea c) do RGPD).
+            <strong>Cumprimento de obrigações legais</strong>, quando aplicável (Art.º 6.º, n.º 1,
+            alínea c)).
           </li>
         </ul>
         <p>
-          O InstaBench encontra-se em fase de <strong>beta privada</strong>: o serviço pode evoluir
-          ao longo do tempo e os utilizadores podem ser contactados para recolha de feedback,
-          sempre com possibilidade de recusar e cancelar a qualquer momento.
+          Não é efectuado envio de comunicações de marketing nem a inclusão dos dados em qualquer
+          newsletter sem consentimento expresso e separado.
         </p>
       </section>
 
-      <section id="subcontratantes">
-        <h2>4. Subcontratantes</h2>
+      <section id="partilha">
+        <h2>4. Partilha de dados com terceiros</h2>
         <p>
-          Para prestar o serviço, são utilizados os seguintes subcontratantes, todos com contratos
-          ou termos de processamento de dados em vigor:
+          Os dados pessoais não são partilhados, vendidos, cedidos ou disponibilizados a empresas
+          ou entidades terceiras para fins próprios destas.
+        </p>
+        <p>
+          Para prestar o serviço, a Fomentar Sonhos, Lda. recorre a subcontratantes técnicos que
+          actuam exclusivamente em nome do responsável pelo tratamento, ao abrigo de contratos ou
+          termos de tratamento de dados em vigor:
         </p>
         <ul>
           <li>
             <strong>Supabase</strong> — base de dados, armazenamento de ficheiros e autenticação
-            (infraestrutura na União Europeia).
+            (União Europeia).
           </li>
           <li>
-            <strong>Lovable Cloud</strong> — alojamento e ambiente de execução do serviço
-            (infraestrutura na União Europeia).
+            <strong>Lovable Cloud</strong> — alojamento e ambiente de execução (União Europeia).
           </li>
           <li>
-            <strong>Cloudflare</strong> — CDN, proteção contra abuso e camada de execução de
-            funções HTTP.
+            <strong>Cloudflare</strong> — CDN, protecção contra abuso, edge functions (UE + EUA).
           </li>
           <li>
-            <strong>Apify</strong> — recolha automatizada de dados públicos do Instagram para
-            geração da análise.
+            <strong>Apify</strong> — recolha automática de dados públicos do Instagram (EUA).
           </li>
           <li>
-            <strong>Brevo</strong> — fornecedor primário de envio transacional de email e gestão
-            da lista de contactos opt-in para comunicações de marketing (infraestrutura na União
-            Europeia).
-          </li>
-          <li>
-            <strong>Resend</strong> — fornecedor de envio transacional de email utilizado como
-            fallback quando o fornecedor primário não está disponível.
-          </li>
-          <li>
-            <strong>OpenAI</strong> — geração de insights textuais a partir de dados agregados do
-            perfil analisado, sem partilha de dados pessoais identificáveis dos utilizadores
-            (tratamento nos Estados Unidos da América, com salvaguardas RGPD aplicáveis).
-          </li>
-          <li>
-            <strong>DataForSEO</strong> — pesquisa de tendências e termos relacionados utilizados
-            no enriquecimento da análise (tratamento nos Estados Unidos da América, com
-            salvaguardas RGPD aplicáveis).
+            <strong>Resend</strong> — entrega transaccional de email (EUA).
           </li>
         </ul>
         <p>
-          Os pagamentos não estão atualmente ativos no produto. Quando forem disponibilizados, esta
-          política será atualizada com a identificação do subcontratante de pagamentos.
+          Estes subcontratantes acedem apenas aos dados estritamente necessários para a função
+          técnica que prestam e não os utilizam para fins próprios. Quando forem activados
+          pagamentos no serviço, esta política será actualizada com a identificação do
+          subcontratante de pagamentos.
         </p>
       </section>
 
       <section id="transferencias">
         <h2>5. Transferências internacionais</h2>
         <p>
-          Alguns subcontratantes (nomeadamente Resend, OpenAI, DataForSEO, Apify e parte da
-          infraestrutura de Cloudflare) podem tratar dados fora do Espaço Económico Europeu, em
-          particular nos Estados Unidos da América. Estas transferências apoiam-se nas garantias
-          previstas no RGPD,
-          incluindo, consoante aplicável, o EU–U.S. Data Privacy Framework e/ou Cláusulas
-          Contratuais-Tipo aprovadas pela Comissão Europeia.
+          Alguns subcontratantes (designadamente Resend, Apify e parte da infraestrutura
+          Cloudflare) podem tratar dados fora do Espaço Económico Europeu, em particular nos
+          Estados Unidos da América. Estas transferências apoiam-se nas garantias previstas no
+          RGPD, designadamente, e consoante aplicável, o EU&ndash;U.S. Data Privacy Framework e/ou
+          Cláusulas Contratuais-Tipo aprovadas pela Comissão Europeia.
         </p>
       </section>
 
-      <section id="retencao">
-        <h2>6. Retenção</h2>
+      <section id="conservacao">
+        <h2>6. Prazos de conservação</h2>
         <ul>
           <li>
             <strong>Snapshots de análise</strong>: expiram automaticamente 24 horas após a recolha.
           </li>
           <li>
-            <strong>Ficheiros PDF dos relatórios</strong>: ficam acessíveis através de ligações
-            assinadas com validade de 7 dias; o ficheiro mantém-se em armazenamento privado para
-            permitir reenvio até pedido de eliminação.
+            <strong>Ficheiros PDF dos relatórios</strong>: acessíveis através de ligações
+            assinadas com validade de 7 dias. O ficheiro mantém-se em armazenamento privado para
+            permitir reenvio, até pedido de eliminação.
           </li>
           <li>
-            <strong>Registo de pedidos e dados de contacto</strong> (nome, email, empresa
-            opcional): conservados enquanto for necessário para apoio ao serviço e cumprimento de
-            obrigações legais, ou até pedido de eliminação por parte do titular.
+            <strong>Registo de pedidos e dados de contacto</strong> (nome, email, dados
+            opcionais): conservados enquanto for necessário para apoio ao serviço e cumprimento
+            de obrigações legais, ou até pedido de eliminação por parte do titular. Em caso de
+            inactividade prolongada (24 meses), os dados são eliminados ou anonimizados.
           </li>
           <li>
             <strong>Registos técnicos</strong>: conservados pelo período estritamente necessário
-            para diagnóstico, segurança e prevenção de abuso.
+            para diagnóstico, segurança e prevenção de abuso, no máximo 90 dias.
           </li>
         </ul>
       </section>
@@ -231,30 +209,43 @@ function PrivacidadePage() {
         <h2>7. Direitos do titular</h2>
         <p>Nos termos do RGPD, o titular pode exercer, a qualquer momento, os seguintes direitos:</p>
         <ul>
-          <li>Acesso aos dados pessoais em tratamento.</li>
-          <li>Retificação de dados incorretos ou desatualizados.</li>
-          <li>Apagamento dos dados (direito ao esquecimento).</li>
-          <li>Limitação do tratamento.</li>
-          <li>Portabilidade dos dados.</li>
-          <li>Oposição ao tratamento, quando baseado em interesse legítimo.</li>
+          <li>Acesso aos dados pessoais em tratamento;</li>
+          <li>Rectificação de dados incorrectos ou desactualizados;</li>
+          <li>Apagamento (direito ao esquecimento);</li>
+          <li>Limitação do tratamento;</li>
+          <li>Portabilidade dos dados;</li>
+          <li>Oposição ao tratamento, quando baseado em interesse legítimo;</li>
+          <li>Retirada do consentimento, quando o tratamento se baseie em consentimento;</li>
           <li>
-            Apresentação de reclamação à autoridade de controlo competente — em Portugal, a Comissão
-            Nacional de Proteção de Dados (CNPD).
+            Apresentação de reclamação à autoridade de controlo competente — em Portugal, a
+            Comissão Nacional de Protecção de Dados (CNPD) ·{" "}
+            <a href="https://www.cnpd.pt" target="_blank" rel="noreferrer">
+              www.cnpd.pt
+            </a>
+            .
           </li>
         </ul>
         <p>
-          Os direitos podem ser exercidos por email, conforme indicado no ponto{" "}
-          <a href="#contacto">12. Contacto</a>. A resposta é prestada no prazo máximo de 30 dias.
+          Os direitos podem ser exercidos por email para{" "}
+          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>. A
+          resposta é prestada no prazo máximo de 30 dias, podendo este ser prorrogado por mais
+          dois meses em casos de especial complexidade, com notificação prévia ao titular.
         </p>
       </section>
 
       <section id="seguranca">
         <h2>8. Segurança</h2>
         <p>
-          São aplicadas medidas técnicas e organizativas adequadas para proteger os dados pessoais,
-          incluindo: cifragem das ligações em trânsito (HTTPS/TLS), separação de privilégios entre
-          ambientes, armazenamento privado dos relatórios PDF com acesso por ligação assinada e
-          restrição do acesso administrativo a sessões autenticadas.
+          A Fomentar Sonhos, Lda. aplica medidas técnicas e organizativas adequadas para proteger
+          os dados pessoais, designadamente: cifragem de ligações em trânsito (HTTPS/TLS),
+          separação de privilégios entre ambientes, armazenamento privado dos relatórios PDF com
+          acesso por ligação assinada, e restrição do acesso administrativo a sessões
+          autenticadas.
+        </p>
+        <p>
+          Em caso de violação de dados pessoais com risco para os direitos e liberdades dos
+          titulares, a CNPD será notificada no prazo máximo de 72 horas, e os titulares afectados
+          serão informados sem demora injustificada, conforme exigido pelo RGPD.
         </p>
       </section>
 
@@ -266,36 +257,39 @@ function PrivacidadePage() {
         </p>
         <ul>
           <li>
-            <strong>Cookie de sessão da área de administração</strong> (estritamente necessário
-            para autenticar o acesso administrativo, marcado <code>HttpOnly</code>).
+            <strong>Cookie de sessão da área de administração</strong>: estritamente necessário
+            para autenticar o acesso administrativo, marcado <code>HttpOnly</code>.
           </li>
           <li>
-            <strong>Preferência de interface</strong> (estado expandido/colapsado da barra
-            lateral), guardada localmente para melhorar a experiência de utilização.
+            <strong>Preferências de interface</strong> (estado expandido da barra lateral, modo
+            escuro): guardadas localmente no navegador para melhorar a experiência de utilização.
+            Não saem do dispositivo.
           </li>
         </ul>
         <p>
-          Por não existir tratamento para fins de marketing ou perfil comportamental, não é exibido
-          banner de consentimento de cookies. Caso, no futuro, sejam introduzidas ferramentas que o
-          exijam, será disponibilizado um mecanismo de consentimento adequado.
+          Por não existir tratamento para fins de marketing ou perfilamento comportamental, não é
+          exibido banner de consentimento de cookies, conforme orientações da CNPD para cookies
+          estritamente necessários. Caso, no futuro, sejam introduzidas ferramentas que o exijam,
+          será disponibilizado mecanismo de consentimento adequado.
         </p>
       </section>
 
       <section id="menores">
-        <h2>10. Menores</h2>
+        <h2>10. Menores de idade</h2>
         <p>
-          O serviço destina-se a uso profissional por adultos. Não são recolhidos, conscientemente,
-          dados pessoais de menores de 16 anos. Caso seja detetada essa situação, os dados serão
-          eliminados.
+          O serviço destina-se a uso profissional, académico e de investigação por adultos. Não
+          são recolhidos, conscientemente, dados pessoais de menores de 16 anos. Caso seja
+          detectada essa situação, os dados serão eliminados sem demora.
         </p>
       </section>
 
       <section id="alteracoes">
         <h2>11. Alterações a esta política</h2>
         <p>
-          Esta política pode ser atualizada para refletir alterações ao serviço ou ao quadro legal
-          aplicável. A data de última atualização é indicada no início do documento. Recomenda-se
-          consulta periódica.
+          Esta política pode ser actualizada para reflectir alterações ao serviço ou ao quadro
+          legal aplicável. A data de última actualização é indicada no início do documento. Em
+          caso de alterações significativas, os utilizadores registados são notificados por email
+          com pelo menos 15 dias de antecedência.
         </p>
       </section>
 
@@ -303,8 +297,12 @@ function PrivacidadePage() {
         <h2>12. Contacto</h2>
         <p>
           Para questões relacionadas com privacidade, exercício de direitos ou pedidos de
-          esclarecimento, o contacto é feito através do email{" "}
-          <a href="mailto:privacidade@instabench.pt">privacidade@instabench.pt</a>.
+          esclarecimento, o contacto é feito através do email:
+        </p>
+        <p>
+          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
+          <br />
+          Fomentar Sonhos, Lda. · Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
         </p>
       </section>
     </LegalLayout>
