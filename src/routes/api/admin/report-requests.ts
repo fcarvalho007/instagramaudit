@@ -52,6 +52,7 @@ export const Route = createFileRoute("/api/admin/report-requests")({
         const pdf = url.searchParams.get("pdf") ?? undefined;
         const email = url.searchParams.get("email") ?? undefined;
         const source = url.searchParams.get("source") ?? undefined;
+        const leadId = url.searchParams.get("lead_id")?.trim() || undefined;
         const q = url.searchParams.get("q")?.trim() ?? "";
 
         const pageRaw = Number(url.searchParams.get("page") ?? "1");
@@ -81,6 +82,7 @@ export const Route = createFileRoute("/api/admin/report-requests")({
         if (pdf) query = query.eq("pdf_status", pdf);
         if (email) query = query.eq("delivery_status", email);
         if (source) query = query.eq("request_source", source);
+        if (leadId) query = query.eq("lead_id", leadId);
         if (q) {
           // Match by username (on the row) OR by lead email.
           // Supabase JS does not support ORs across joins easily — apply on the
