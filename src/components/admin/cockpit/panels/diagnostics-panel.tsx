@@ -275,10 +275,11 @@ function PanelSkeleton() {
  * Estados:
  *   ready    — APIFY_TOKEN + INTERNAL_API_TOKEN presentes, modo de teste activo
  *              com allowlist não vazia. Seguro para o smoke test.
+ *              OU modo público activo (APIFY ON + testing OFF) — protegido
+ *              por kill-switch + budget + rate-limit.
  *   warning  — falta token, allowlist vazia, ou modo de teste inactivo (mas
  *              APIFY_ENABLED também desligado, por isso não há gasto real).
- *   critical — APIFY_ENABLED=true E modo de teste inactivo (chamadas reais sem
- *              allowlist → potencial gasto descontrolado).
+ *   critical — (reservado para futuras condições de risco extremo).
  */
 
 type ReadinessTone = "ready" | "warning" | "critical";
@@ -291,6 +292,7 @@ interface ChecklistItem {
 
 function buildChecklist(data: CockpitData): ChecklistItem[] {
   const allowlistSize = data.testing_mode.allowlist.length;
+  const publicMode = Boolean(data.apify.public_mode);
   return [
     {
       ok: data.secrets.APIFY_TOKEN,
@@ -314,15 +316,19 @@ function buildChecklist(data: CockpitData): ChecklistItem[] {
         : "Sem isto, o envio de relatórios por email falha.",
     },
     {
-      ok: data.testing_mode.active && allowlistSize > 0,
+      ok: publicMode || (data.testing_mode.active && allowlistSize > 0),
       label:
-        data.testing_mode.active && allowlistSize > 0
+        publicMode
+          ? "Modo público activo — protegido por kill-switch + budget + rate-limit"
+          : data.testing_mode.active && allowlistSize > 0
           ? `Modo de teste activo (allowlist com ${allowlistSize} handle${allowlistSize === 1 ? "" : "s"})`
           : data.testing_mode.active
             ? "Modo de teste activo, mas allowlist vazia"
             : "Modo de teste inactivo",
-      hint: !data.testing_mode.active
-        ? "Sem allowlist, qualquer username dispara Apify quando activado."
+      hint: publicMode
+        ? undefined
+        : !data.testing_mode.active
+        ? "Sem allowlist e sem modo público — qualquer username dispara Apify quando activado."
         : allowlistSize === 0
           ? "Adiciona pelo menos um handle (ex.: frederico.m.carvalho)."
           : undefined,
@@ -331,9 +337,8 @@ function buildChecklist(data: CockpitData): ChecklistItem[] {
 }
 
 function readinessTone(data: CockpitData, items: ChecklistItem[]): ReadinessTone {
-  const apifyOnWithoutAllowlist =
-    data.apify.enabled && !data.testing_mode.active;
-  if (apifyOnWithoutAllowlist) return "critical";
+  // Modo público intencional (APIFY ON + testing OFF) deixou de ser "crítico":
+  // está protegido por kill-switch, budget diário e rate-limit por IP/handle.
   const allOk = items.every((i) => i.ok);
   return allOk ? "ready" : "warning";
 }
@@ -341,6 +346,7 @@ function readinessTone(data: CockpitData, items: ChecklistItem[]): ReadinessTone
 function ReadinessCard({ data }: { data: CockpitData }) {
   const items = buildChecklist(data);
   const tone = readinessTone(data, items);
+  const publicMode = Boolean(data.apify.public_mode);
 
   const meta: Record<
     ReadinessTone,
@@ -355,10 +361,13 @@ function ReadinessCard({ data }: { data: CockpitData }) {
     }
   > = {
     ready: {
-      title: "Pronto para activar Apify",
-      kicker: "Configuração segura",
-      description:
-        "Quando ligares APIFY_ENABLED, só os handles na allowlist disparam chamadas reais.",
+      title: publicMode
+        ? "Modo público activo"
+        : "Pronto para activar Apify",
+      kicker: publicMode ? "Em produção" : "Configuração segura",
+      description: publicMode
+        ? "APIFY_ENABLED ligado e allowlist desactivada. Protecção activa: kill-switch APIFY_ENABLED, budget diário (APIFY_HARD_CAP_USD) e rate-limit por IP/handle."
+        : "Quando ligares APIFY_ENABLED, só os handles na allowlist disparam chamadas reais.",
       Icon: CheckCircle2,
       iconClass: "text-signal-success",
       badgeVariant: "success",
