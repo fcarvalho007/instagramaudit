@@ -2,7 +2,7 @@
  * KanbanBoard — horizontal scrollable board for beta leads.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -15,13 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Search, ChevronDown, Inbox } from "lucide-react";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { LeadCard } from "./lead-card";
-import { LeadDetailSheet } from "./lead-detail-sheet";
 
 interface KanbanBoardProps {
   leads: EnrichedLead[];
   onUpdate: (id: string, updates: Record<string, unknown>) => void;
-  initialDetailLeadId?: string | null;
-  onDetailClose?: () => void;
+  /** Controlado pelo pai: callback ao abrir o detalhe de um lead. */
+  onOpenDetail: (lead: EnrichedLead) => void;
 }
 
 type FilterChipKey =
@@ -56,24 +55,15 @@ const FILTER_CHIPS: { key: FilterChipKey; label: string; statuses: string[] | nu
 export function KanbanBoard({
   leads,
   onUpdate,
-  initialDetailLeadId,
-  onDetailClose,
+  onOpenDetail,
 }: KanbanBoardProps) {
   const [editingLead, setEditingLead] = useState<EnrichedLead | null>(null);
   const [notesText, setNotesText] = useState("");
-  const [detailLead, setDetailLead] = useState<EnrichedLead | null>(null);
   const [search, setSearch] = useState("");
   const [filterChip, setFilterChip] = useState<FilterChipKey>("todos");
   const [openMobileSection, setOpenMobileSection] = useState<string | null>(
     KANBAN_COLUMNS[0]?.key ?? null
   );
-
-  // Sincroniza com search param `?lead=<id>` (vindo da Command Palette).
-  useEffect(() => {
-    if (!initialDetailLeadId) return;
-    const found = leads.find((l) => l.id === initialDetailLeadId);
-    if (found) setDetailLead(found);
-  }, [initialDetailLeadId, leads]);
 
   const openNotes = (lead: EnrichedLead) => {
     setEditingLead(lead);
