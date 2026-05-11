@@ -196,6 +196,9 @@ export function UnlockModal({
   const [returningFirstName, setReturningFirstName] = useState<string | null>(null);
   const [partialBanner, setPartialBanner] = useState<string | null>(null);
 
+  // Track intro view once per modal open.
+  useState<null>(); // keep React import shape
+
   const form = useForm<UnlockFormValues>({
     resolver: zodResolver(unlockFormSchema),
     mode: "onChange",
