@@ -1,258 +1,344 @@
 /**
- * AutomationNode — cartão de um passo do fluxo de automação beta.
+ * AutomationNode — cartão visual de um passo do fluxo (read-only).
  *
- * Read-only. Mostra trigger, ação, estado destino e três contagens.
+ * Layout em 3 zonas verticais:
+ *   1) Identificação (ícone + pílula tipo + status + título + subject + acções)
+ *   2) Faixa de temporização (quando dispara, com trigger técnico)
+ *   3) Stats (Enviados / A aguardar / Falhas)
  */
 
-import { AdminCard } from "../admin-card";
-import {
-  getLifecycleMeta,
-  type LifecycleStatus,
-} from "@/lib/admin/lead-lifecycle";
-import type { EmailTemplateKey } from "@/lib/admin/email-template-registry";
-
-type TriggerKind = "form" | "event" | "manual";
-type ActionKind = "email" | "manual" | "wait" | "classify";
+import { Lock, Pencil, MoreHorizontal, Mail, Settings, BarChart3, ArrowRightLeft, Clock, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type {
+  AutomationFlow,
+  FlowStage,
+  FlowStatus,
+  FlowVisualKind,
+  FlowExtraTag,
+  FlowTiming,
+} from "@/routes/api/admin/automation-flow";
 
 interface AutomationNodeProps {
-  title: string;
-  description: string;
-  trigger: { kind: TriggerKind; label: string };
-  action: { kind: ActionKind; label: string };
-  kind: "automatic" | "manual";
-  toStatus: LifecycleStatus | null;
-  eligibleCount: number;
-  inFlightCount: number;
-  completedCount: number;
-  recentFailures?: number;
-  last24hCount?: number;
-  lastEventAt?: string | null;
-  templateKey?: EmailTemplateKey;
+  flow: AutomationFlow;
+  stageColor: string;
 }
 
-const TRIGGER_LABEL: Record<TriggerKind, string> = {
-  form: "Formulário",
-  event: "Evento",
-  manual: "Manual",
-};
-
-const TRIGGER_COLOR: Record<TriggerKind, string> = {
-  form: "#3772E5",
-  event: "#7664E4",
-  manual: "#888780",
-};
-
-const ACTION_LABEL: Record<ActionKind, string> = {
+const VISUAL_LABEL: Record<FlowVisualKind, string> = {
   email: "Email",
-  manual: "Ação manual",
-  wait: "Aguardar",
-  classify: "Classificar",
+  system: "Sistema · Geração",
+  report: "Relatório",
 };
 
-const ACTION_COLOR: Record<ActionKind, string> = {
-  email: "#185FA5",
-  manual: "#BA7517",
-  wait: "#888780",
-  classify: "#0E9488",
+const VISUAL_ICON: Record<FlowVisualKind, typeof Mail> = {
+  email: Mail,
+  system: Settings,
+  report: BarChart3,
 };
 
-export function AutomationNode({
-  title,
-  description,
-  trigger,
-  action,
-  kind,
-  toStatus,
-  eligibleCount,
-  inFlightCount,
-  completedCount,
-  recentFailures = 0,
-  last24hCount = 0,
-  lastEventAt = null,
-  templateKey,
-}: AutomationNodeProps) {
-  const meta = toStatus ? getLifecycleMeta(toStatus) : null;
-  const kindColor = kind === "automatic" ? "#0E9488" : "#BA7517";
-  const kindLabel = kind === "automatic" ? "Automático" : "Manual";
+const VISUAL_BADGE: Record<FlowVisualKind, string> = {
+  email: "EM",
+  system: "SY",
+  report: "RP",
+};
+
+const STATUS_META: Record<FlowStatus, { label: string; bg: string; color: string; dot: string | null }> = {
+  active: { label: "Ativo", bg: "#E1F4E8", color: "#1D9E75", dot: "#1D9E75" },
+  blocked: { label: "Bloqueado", bg: "#EDEDEA", color: "#5A6B8C", dot: null },
+  preparing: { label: "Em preparação", bg: "#FAEEDA", color: "#BA7517", dot: "#BA7517" },
+  undefined: { label: "Sem trigger", bg: "#FAEEDA", color: "#BA7517", dot: null },
+};
+
+const EXTRA_META: Record<Exclude<FlowExtraTag, null>, { label: string; bg: string; color: string }> = {
+  primary_delivery: { label: "Entrega principal", bg: "#E0EBFB", color: "#185FA5" },
+  no_email: { label: "Sem email", bg: "#EDEDEA", color: "#5A6B8C" },
+  blocked: { label: "Bloqueado", bg: "#EDEDEA", color: "#5A6B8C" },
+};
+
+export function AutomationNode({ flow, stageColor }: AutomationNodeProps) {
+  const visual = flow.visualKind;
+  const Icon = VISUAL_ICON[visual];
+  const status = STATUS_META[flow.status];
+  const isBlocked = flow.status === "blocked";
 
   return (
-    <AdminCard variant="accent-left" accent="leads">
-      <div className="flex flex-col gap-3">
-        {/* Tag row */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+    <article
+      className="group relative rounded-2xl border bg-white transition-all"
+      style={{
+        borderColor: "#E4E8F0",
+        boxShadow: "0 1px 2px rgba(44,44,42,0.04), 0 4px 16px rgba(44,44,42,0.05)",
+      }}
+    >
+      {/* Zone 1 — identification */}
+      <div className="flex items-start gap-4 px-5 pt-5">
+        {/* Icon + badge */}
+        <div className="relative shrink-0">
+          <div
+            className="flex h-[50px] w-[50px] items-center justify-center rounded-xl"
             style={{
-              backgroundColor: `${kindColor}1A`,
-              color: kindColor,
+              background: `linear-gradient(135deg, ${stageColor}22, ${stageColor}10)`,
+              border: `1px solid ${stageColor}33`,
             }}
           >
-            {kindLabel}
+            <Icon size={22} style={{ color: stageColor }} strokeWidth={1.75} />
+          </div>
+          <span
+            className="absolute -bottom-1 -right-1 inline-flex h-5 min-w-[24px] items-center justify-center rounded-md px-1 font-mono text-[9px] font-bold tracking-tight text-white"
+            style={{ background: stageColor }}
+          >
+            {VISUAL_BADGE[visual]}
           </span>
-          <Tag color={TRIGGER_COLOR[trigger.kind]} prefix="Trigger">
-            {TRIGGER_LABEL[trigger.kind]} · {trigger.label}
-          </Tag>
-          <Tag color={ACTION_COLOR[action.kind]} prefix="Ação">
-            {ACTION_LABEL[action.kind]}
-          </Tag>
-          {meta && (
-            <span
-              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tracking-tight"
-              style={{
-                backgroundColor: `${meta.color}1A`,
-                color: meta.color,
-              }}
-            >
-              → {meta.label}
-            </span>
-          )}
-          {recentFailures > 0 && (
-            <span
-              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
-              style={{
-                backgroundColor: "#D85A301A",
-                color: "#D85A30",
-              }}
-            >
-              {recentFailures} falha{recentFailures === 1 ? "" : "s"} recente{recentFailures === 1 ? "" : "s"} (7d)
-            </span>
-          )}
-          {templateKey && (
-            <a
-              href={`/admin/email-lab?template=${templateKey}`}
-              className="ml-auto text-[11px] font-medium text-admin-text-tertiary hover:text-admin-text-primary hover:underline"
-            >
-              Ver template →
-            </a>
-          )}
         </div>
 
-        {/* Title + description */}
-        <div className="flex flex-col gap-1">
-          <h3
-            className="m-0 text-[16px] font-medium leading-tight text-admin-text-primary sm:text-[17px]"
-          >
-            {title}
+        {/* Header content */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <TypePill kind={visual} stageColor={stageColor} />
+            <StatusPill meta={status} />
+            {flow.extraTag && <ExtraPill tag={flow.extraTag} />}
+          </div>
+          <h3 className="m-0 text-[16px] font-semibold leading-tight text-admin-text-primary">
+            {flow.title}
           </h3>
-          <p className="m-0 text-[13px] leading-snug text-admin-text-secondary">
-            {description}
-          </p>
-          <p className="m-0 text-[12px] text-admin-text-tertiary">
-            {action.label}
-          </p>
-          {(lastEventAt || last24hCount > 0) && (
-            <p className="m-0 text-[11px] text-admin-text-tertiary">
-              {lastEventAt && (
-                <>Última atividade: {formatRelative(lastEventAt)}</>
-              )}
-              {lastEventAt && last24hCount > 0 && <> · </>}
-              {last24hCount > 0 && (
-                <>24h: {last24hCount} evento{last24hCount === 1 ? "" : "s"}</>
-              )}
+          {flow.subject && (
+            <p className="m-0 flex items-baseline gap-1.5 text-[12px] text-admin-text-tertiary">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-admin-text-tertiary/70">
+                Subject
+              </span>
+              <span className="text-admin-text-secondary">{flow.subject}</span>
             </p>
           )}
         </div>
 
-        {/* Counts */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <Metric
-            label="Elegíveis"
-            value={eligibleCount}
-            tone={eligibleCount > 0 ? "action" : "neutral"}
-          />
-          <Metric
-            label="Em curso"
-            value={inFlightCount}
-            tone="wait"
-          />
-          <Metric
-            label="Concluídos"
-            value={completedCount}
-            tone="done"
-          />
+        {/* Actions */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <EditButton blocked={isBlocked} templateKey={flow.templateKey} />
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled
+                  className="flex h-8 w-8 items-center justify-center rounded-md border text-admin-text-tertiary opacity-60"
+                  style={{ borderColor: "#E4E8F0", cursor: "not-allowed" }}
+                  aria-label="Mais opções"
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Disponível em breve</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
-    </AdminCard>
+
+      {/* Zone 2 — timing strip */}
+      <TimingStrip timing={flow.timing} />
+
+      {/* Zone 3 — stats */}
+      <div className="grid grid-cols-3 gap-2 px-5 pb-5 pt-3">
+        <Stat label="Enviados" value={flow.sentTotal} tone="muted" />
+        <Stat
+          label="A aguardar"
+          value={flow.eligibleCount + flow.inFlightCount}
+          tone={flow.eligibleCount + flow.inFlightCount > 0 ? "warning" : "muted"}
+        />
+        <Stat
+          label="Falhas"
+          value={flow.failuresTotal}
+          tone={flow.failuresTotal > 0 ? "danger" : "muted"}
+        />
+      </div>
+    </article>
   );
 }
 
-function Tag({
-  color,
-  prefix,
-  children,
-}: {
-  color: string;
-  prefix: string;
-  children: React.ReactNode;
-}) {
+function TypePill({ kind, stageColor }: { kind: FlowVisualKind; stageColor: string }) {
+  const Icon = VISUAL_ICON[kind];
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] tracking-tight"
-      style={{
-        borderColor: `${color}55`,
-        backgroundColor: `${color}10`,
-        color,
-      }}
+      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
+      style={{ background: `${stageColor}14`, color: stageColor }}
     >
-      <span className="font-semibold uppercase tracking-[0.08em] text-[10px]">
-        {prefix}
-      </span>
-      <span className="font-normal">{children}</span>
+      <Icon size={10} strokeWidth={2.5} />
+      {VISUAL_LABEL[kind]}
     </span>
   );
 }
 
-type MetricTone = "action" | "wait" | "done" | "neutral";
+function StatusPill({ meta }: { meta: typeof STATUS_META[FlowStatus] }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+      style={{ background: meta.bg, color: meta.color }}
+    >
+      {meta.dot && (
+        <span
+          className="inline-block h-1.5 w-1.5 rounded-full"
+          style={{ background: meta.dot }}
+        />
+      )}
+      {meta.label}
+    </span>
+  );
+}
 
-const TONE_COLOR: Record<MetricTone, string> = {
-  action: "#D85A30",
-  wait: "#BA7517",
-  done: "#1D9E75",
-  neutral: "#888780",
-};
+function ExtraPill({ tag }: { tag: Exclude<FlowExtraTag, null> }) {
+  const meta = EXTRA_META[tag];
+  return (
+    <span
+      className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+      style={{ background: meta.bg, color: meta.color }}
+    >
+      {meta.label}
+    </span>
+  );
+}
 
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: MetricTone;
-}) {
-  const color = TONE_COLOR[tone];
+function EditButton({ blocked, templateKey }: { blocked: boolean; templateKey: string | null }) {
+  if (blocked) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-[12px] font-medium text-admin-text-tertiary"
+              style={{ background: "#F1F4F9", borderColor: "#E4E8F0", cursor: "not-allowed" }}
+              aria-label="Bloqueado"
+            >
+              <Lock size={12} />
+              Bloqueado
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Sistema · não-editável</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled
+            className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-semibold text-white opacity-90"
+            style={{ background: "#0F1B3D", cursor: "not-allowed", boxShadow: "0 1px 2px rgba(15,27,61,0.2)" }}
+          >
+            <Pencil size={12} />
+            Editar
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {templateKey ? "Disponível em breve" : "Sem template editável"}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function TimingStrip({ timing }: { timing: FlowTiming }) {
+  if (timing.kind === "undefined") {
+    return (
+      <div
+        className="mx-5 mt-3 flex items-center gap-2 rounded-md border px-3 py-2 text-[12px]"
+        style={{ background: "#FFF7E8", borderColor: "#F4DCA6" }}
+      >
+        <AlertTriangle size={13} style={{ color: "#BA7517" }} />
+        <span className="text-admin-text-secondary">
+          <strong className="font-semibold text-admin-text-primary">Não definido</strong>
+          {" · falta configurar "}
+          <TriggerCode name={timing.missingTrigger} />
+          {" para disparar este email"}
+        </span>
+      </div>
+    );
+  }
+
+  if (timing.kind === "average") {
+    return (
+      <div
+        className="mx-5 mt-3 flex items-center gap-2 rounded-md px-3 py-2 text-[12px]"
+        style={{ background: "#F4F8FE" }}
+      >
+        <Clock size={13} className="text-admin-info-500" />
+        <span className="text-admin-text-secondary">
+          {"Demora "}
+          <strong className="font-semibold text-admin-text-primary">{timing.averageLabel}</strong>
+          {" · disparado pelo evento "}
+          <TriggerCode name={timing.eventName} />
+        </span>
+      </div>
+    );
+  }
+
+  if (timing.kind === "delay") {
+    return (
+      <div
+        className="mx-5 mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-md px-3 py-2 text-[12px]"
+        style={{ background: "#F4F8FE" }}
+      >
+        <Clock size={13} className="text-admin-info-500 shrink-0" />
+        <span className="text-admin-text-secondary">
+          <strong className="font-semibold text-admin-text-primary">{timing.delayLabel}</strong>
+          {" após "}
+          <TriggerCode name={timing.eventName} />
+          {timing.contextHint ? ` — ${timing.contextHint}` : ""}
+        </span>
+      </div>
+    );
+  }
+
+  // immediate
   return (
     <div
-      className="rounded-lg border px-3 py-2"
-      style={{
-        borderColor: "rgb(var(--admin-border-rgb) / 0.5)",
-        backgroundColor:
-          value > 0 ? `${color}0D` : "rgb(var(--admin-surface-elevated-rgb) / 0.6)",
-      }}
+      className="mx-5 mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-md px-3 py-2 text-[12px]"
+      style={{ background: "#F4F8FE" }}
     >
-      <div className="text-[10px] uppercase tracking-[0.1em] text-admin-text-tertiary">
-        {label}
-      </div>
-      <div
-        className="text-[20px] font-semibold tabular-nums leading-none"
-        style={{ color: value > 0 ? color : "#888780", marginTop: 4 }}
-      >
-        {value}
-      </div>
+      <ArrowRightLeft size={13} className="text-admin-info-500 shrink-0" />
+      <span className="text-admin-text-secondary">
+        <strong className="font-semibold text-admin-text-primary">Imediato</strong>
+        {" após o evento "}
+        <TriggerCode name={timing.eventName} />
+        {timing.contextHint ? ` — ${timing.contextHint}` : ""}
+      </span>
     </div>
   );
 }
 
-function formatRelative(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(diff) || diff < 0) return "agora";
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "há instantes";
-  if (m < 60) return `há ${m} min`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `há ${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `há ${d}d`;
-  const mo = Math.floor(d / 30);
-  return `há ${mo} m`;
+function TriggerCode({ name }: { name: string }) {
+  return (
+    <code
+      className="rounded px-1.5 py-0.5 font-mono text-[11px]"
+      style={{ background: "#E0EBFB", color: "#185FA5" }}
+    >
+      {name}
+    </code>
+  );
 }
+
+type Tone = "muted" | "warning" | "danger" | "success";
+const TONE_COLOR: Record<Tone, string> = {
+  muted: "#1D9E75",
+  warning: "#BA7517",
+  danger: "#D85A30",
+  success: "#1D9E75",
+};
+
+function Stat({ label, value, tone }: { label: string; value: number; tone: Tone }) {
+  const color = value > 0 ? TONE_COLOR[tone] : "#8A98B2";
+  return (
+    <div className="flex flex-col items-center gap-1 rounded-lg py-2">
+      <span className="text-[20px] font-bold leading-none tabular-nums" style={{ color }}>
+        {value}
+      </span>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-admin-text-tertiary">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// Stage prop kept for future use (badge color override) — currently not used.
+export type { FlowStage };
