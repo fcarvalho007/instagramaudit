@@ -104,6 +104,13 @@
 
   /* === Chrome ============================================================ */
   --admin-button-dark: 15 27 61;                /* #0F1B3D primary action */
+
+  /* === Aliases semânticos (success / warning) ============================
+   * Componentes admin (email-lab, templates, automações) referenciam estes
+   * nomes. Mapeiam para revenue (verde esmeralda) e expense (âmbar) já
+   * definidos acima — mantém uma única paleta-fonte. */
+  --admin-success-500: var(--admin-revenue-500);
+  --admin-warning-500: var(--admin-expense-500);
 }
 
 /**
@@ -192,6 +199,10 @@
   --color-admin-info-400: rgb(var(--admin-info-400));
   --color-admin-info-500: rgb(var(--admin-info-500));
   --color-admin-info-700: rgb(var(--admin-info-700));
+
+  /* Aliases semânticos */
+  --color-admin-success-500: rgb(var(--admin-success-500));
+  --color-admin-warning-500: rgb(var(--admin-warning-500));
 
   /* Accents — revenue alt (verde claro) */
   --color-admin-revenue-alt-100: rgb(var(--admin-revenue-alt-100));

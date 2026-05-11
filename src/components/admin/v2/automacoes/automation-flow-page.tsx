@@ -67,7 +67,12 @@ export function AutomationFlowPage() {
             Refrescar
           </button>
           <DisabledButton icon={<FileText size={13} />} label="Ver logs" dark />
-          <DisabledButton icon={<MoreHorizontal size={14} />} label="" square />
+          <DisabledButton
+            icon={<MoreHorizontal size={14} />}
+            label=""
+            square
+            ariaLabel="Mais opções"
+          />
         </div>
       </header>
 
@@ -119,11 +124,13 @@ function DisabledButton({
   label,
   dark,
   square,
+  ariaLabel,
 }: {
   icon: React.ReactNode;
   label: string;
   dark?: boolean;
   square?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <TooltipProvider delayDuration={200}>
@@ -132,6 +139,7 @@ function DisabledButton({
           <button
             type="button"
             disabled
+            aria-label={ariaLabel ?? (label || undefined)}
             className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md text-[12px] font-medium ${
               square ? "w-9 px-0" : "px-3"
             } ${

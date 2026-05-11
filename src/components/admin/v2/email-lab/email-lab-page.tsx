@@ -10,6 +10,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   FileCheck2,
@@ -24,6 +25,12 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AdminPageHeader } from "../admin-page-header";
 import { AdminCard } from "../admin-card";
 import { AdminActionButton } from "../admin-action-button";
@@ -36,6 +43,8 @@ import {
   type EmailTemplateCategory,
   type EmailTemplateEntry,
 } from "@/lib/admin/email-template-registry";
+import { adminFetch } from "@/lib/admin/fetch";
+import type { AutomationFlowResponse } from "@/lib/admin/automation-flow-types";
 
 const TEMPLATE_ICON: Record<TemplateKey, LucideIcon> = {
   request_received: CheckCircle2,
@@ -62,7 +71,6 @@ export function EmailLabPage() {
   const [previewMode, setPreviewMode] = useState<"html" | "text">("html");
   const [reloadTick, setReloadTick] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "ok">("idle");
-  const [testDialogOpen, setTestDialogOpen] = useState(false);
 
   const selected = TEMPLATES.find((t) => t.key === selectedKey)!;
   const rendered = useMemo<RenderedEmail | { error: string }>(() => {
@@ -79,6 +87,20 @@ export function EmailLabPage() {
 
   const wiredCount = TEMPLATES.filter((t) => t.wired).length;
   const orphanCount = TEMPLATES.length - wiredCount;
+
+  // Reaproveita o agregado de /api/admin/automation-flow para mostrar
+  // contagem real de envios nos últimos 30 dias (mesma fonte que o cockpit
+  // de automações). Sem novo endpoint, sem chamada extra ao DB.
+  const { data: flowData } = useQuery({
+    queryKey: ["admin", "automation-flow"],
+    queryFn: async () => {
+      const res = await adminFetch("/api/admin/automation-flow");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as AutomationFlowResponse;
+    },
+    staleTime: 30_000,
+  });
+  const sentLast30d = flowData?.kpis?.sent.last30d ?? null;
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -125,15 +147,7 @@ export function EmailLabPage() {
               <RefreshCw size={14} />
               Recarregar wiring
             </AdminActionButton>
-            <button
-              type="button"
-              onClick={() => setTestDialogOpen(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-              style={{ background: "#1f2937" }}
-            >
-              <Send size={14} />
-              Enviar teste
-            </button>
+            <SendTestButton size="md" />
           </>
         }
       />
@@ -155,10 +169,10 @@ export function EmailLabPage() {
             tone="warning"
           />
           <KpiTile
-            label="Último teste"
-            value="—"
-            sub="sem dados"
-            tone="muted"
+            label="Envios (30d)"
+            value={sentLast30d ?? "—"}
+            sub={sentLast30d === null ? "a carregar…" : "eventos registados"}
+            tone={sentLast30d && sentLast30d > 0 ? "default" : "muted"}
           />
         </div>
 
@@ -208,7 +222,6 @@ export function EmailLabPage() {
               template={selected}
               onCopy={handleCopy}
               onOpenHtml={handleOpenHtml}
-              onSendTest={() => setTestDialogOpen(true)}
               copyState={copyState}
               hasContent={Boolean(safeRendered)}
             />
@@ -233,14 +246,38 @@ export function EmailLabPage() {
           </AdminCard>
         </div>
       </div>
-
-      {testDialogOpen ? (
-        <TestSendDialog
-          template={selected}
-          onClose={() => setTestDialogOpen(false)}
-        />
-      ) : null}
     </>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Send-test button (disabled with tooltip — alinhado com /admin/automacoes) */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function SendTestButton({ size = "md" }: { size?: "sm" | "md" }) {
+  const height = size === "sm" ? "h-8" : "h-8";
+  const iconSize = size === "sm" ? 13 : 14;
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled
+            className={`inline-flex ${height} items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-white`}
+            style={{
+              background: "rgb(var(--admin-button-dark))",
+              opacity: 0.85,
+              cursor: "not-allowed",
+            }}
+          >
+            <Send size={iconSize} />
+            Enviar teste
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Disponível em breve</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -435,14 +472,12 @@ function DetailHeader({
   template,
   onCopy,
   onOpenHtml,
-  onSendTest,
   copyState,
   hasContent,
 }: {
   template: EmailTemplateEntry;
   onCopy: () => void;
   onOpenHtml: () => void;
-  onSendTest: () => void;
   copyState: "idle" | "ok";
   hasContent: boolean;
 }) {
@@ -474,15 +509,7 @@ function DetailHeader({
           <Copy size={13} />
           {copyState === "ok" ? "Copiado" : "Copiar"}
         </AdminActionButton>
-        <button
-          type="button"
-          onClick={onSendTest}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-          style={{ background: "#1f2937" }}
-        >
-          <Send size={13} />
-          Enviar teste
-        </button>
+        <SendTestButton size="sm" />
       </div>
     </div>
   );
@@ -564,7 +591,7 @@ function PreviewTab({
         ) : null}
         <MetaRow
           label="Para"
-          value="{{email}} → frederico@digitalfc.com"
+          value="{{email}}"
           mono
         />
       </div>
@@ -815,39 +842,3 @@ function categoryAccent(c: EmailTemplateCategory): string {
   }
 }
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Test send dialog (placeholder)                                             */
-/* ────────────────────────────────────────────────────────────────────────── */
-
-function TestSendDialog({
-  template,
-  onClose,
-}: {
-  template: EmailTemplateEntry;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(15, 23, 42, 0.45)" }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="m-0 text-[16px] font-semibold text-admin-text-primary">
-          Enviar teste — {template.title}
-        </h3>
-        <p className="mt-2 text-[13px] text-admin-text-secondary">
-          O envio real de testes ainda não está activado. Está reservado
-          para um sprint dedicado, com validação de email do admin e
-          rate-limit. Por agora, esta página é apenas de pré-visualização.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <AdminActionButton onClick={onClose}>Fechar</AdminActionButton>
-        </div>
-      </div>
-    </div>
-  );
-}

@@ -575,7 +575,19 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
         const activeFlows = flows.filter(
           (f) => f.status === "active" || f.status === "blocked",
         ).length;
-        const eligibleTotal = flows.reduce((a, f) => a + f.eligibleCount, 0);
+        // Leads que aguardam acção do admin = união (não soma) das fases
+        // activas do lifecycle. Somar `eligibleCount` por flow duplicava
+        // contagens entre flows que partilham as mesmas fases.
+        const WAITING_STATUSES = new Set<string>([
+          "novo_pedido",
+          "em_analise",
+          "relatorio_gerado",
+          "relatorio_visto",
+          "feedback_recebido",
+        ]);
+        const eligibleTotal = active.filter((s) =>
+          WAITING_STATUSES.has(s),
+        ).length;
         const failures30dCount = flows.reduce(
           (a, f) => a + f.failuresTotal,
           0,

@@ -18,10 +18,10 @@ export function EligibilitySummary({
   totalInFlight,
 }: Props) {
   const items: Array<{ label: string; value: number; color: string }> = [
-    { label: "Leads ativas", value: totalActive, color: "#534AB7" },
-    { label: "Aguardam ação admin", value: totalEligible, color: "#D85A30" },
-    { label: "Em curso", value: totalInFlight, color: "#BA7517" },
-    { label: "Arquivadas", value: totalArchived, color: "#888780" },
+    { label: "Leads ativas", value: totalActive, color: "rgb(var(--admin-leads-500))" },
+    { label: "Aguardam ação admin", value: totalEligible, color: "rgb(var(--admin-signal-500))" },
+    { label: "Em curso", value: totalInFlight, color: "rgb(var(--admin-warning-500))" },
+    { label: "Arquivadas", value: totalArchived, color: "rgb(var(--admin-text-tertiary))" },
   ];
 
   return (
