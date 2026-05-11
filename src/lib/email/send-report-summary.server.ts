@@ -14,8 +14,7 @@
 import { buildReportSummaryEmailData } from "./build-report-summary-data.server";
 import { renderReportSummary } from "./templates/report-summary";
 import { sendTransactionalEmail } from "./transactional-email.server";
-
-const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
+import { resolveReportUrl } from "./url";
 
 export interface SendReportSummaryArgs {
   toEmail: string;
@@ -23,22 +22,12 @@ export interface SendReportSummaryArgs {
   leadId?: string | null;
   reportRequestId?: string | null;
   snapshotId: string;
+  reportSnapshotId?: string | null;
 }
 
 export type SendReportSummaryResult =
   | { ok: true; messageId: string | null; provider: "brevo" | "resend" }
   | { ok: false; reason: string };
-
-function resolveReportUrl(handle: string): string {
-  const base = (
-    process.env.PUBLIC_APP_BASE_URL ??
-    process.env.PDF_PUBLIC_BASE_URL ??
-    DEFAULT_BASE_URL
-  ).trim();
-  const cleaned = base.replace(/\/+$/, "");
-  const safeHandle = encodeURIComponent(handle.replace(/^@/, ""));
-  return `${cleaned}/analyze/${safeHandle}`;
-}
 
 export async function sendReportSummaryEmail(
   args: SendReportSummaryArgs,
@@ -65,7 +54,10 @@ export async function sendReportSummaryEmail(
     rendered = renderReportSummary({
       firstName: args.firstName,
       instagramHandle: summary.instagramHandle,
-      reportUrl: resolveReportUrl(summary.instagramHandle),
+      reportUrl: resolveReportUrl(
+        summary.instagramHandle,
+        args.reportSnapshotId ?? null,
+      ),
       kpis: summary.kpis,
       topPost: summary.topPost,
     });

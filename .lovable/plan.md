@@ -1,46 +1,86 @@
-## Fase 2 — `report_snapshots` (já implementada — plano de verificação)
+## Fase 3 — `/reports/$snapshotId` lê de `report_snapshots`
 
-Esta Fase 2 foi totalmente implementada e validada na iteração anterior desta sessão (343/343 testes verdes, `tsc --noEmit` limpo). O pedido atual repete a mesma especificação. Não há código novo a escrever — proponho apenas **re-validar** que tudo continua íntegro e produzir o relatório pedido.
+### Decisões-chave
 
-### Estado atual confirmado
+1. **`snapshotId` na rota = `report_snapshots.id`**, não `analysis_snapshots.id`. Ambos são UUIDs sem distinção, mas a partir desta fase os links em `/app/reports` e nos emails passam a apontar para o `report_snapshot_id`. Snapshots antigos linkados a `analysis_snapshots.id` continuam a funcionar via fallback (ver §4).
+2. **Compatibilidade do payload:** `report_payload_jsonb` (ReportPayloadV1) usa os mesmos nomes de campo que `snapshotToReportData` consome (`profile`, `posts`, `metrics`, `format_stats`, `content_summary`, `insights`, `competitor_summaries`, `data_provenance`). Vai ser passado directamente ao adapter existente (cast tipado para `SnapshotPayload`). Sem reescrever o renderer.
+3. **Fallback transparente:** o novo endpoint tenta `report_snapshots` primeiro; se não encontrar, tenta `analysis_snapshots` com a mesma lógica antiga. Isto cobre URLs antigos guardados em emails/bookmarks sem partir nada.
 
-Ficheiros já presentes:
-- `src/lib/report-snapshots/persist-report-snapshot.server.ts`
-- `src/lib/report-snapshots/__tests__/persist-report-snapshot.test.ts`
-- Wiring em: `src/lib/unlock.server.ts`, `src/routes/api/request-full-report.ts`, `src/routes/api/admin/generate-beta-report.ts`
+### 1. Endpoint novo
 
-Funções:
-- `persistReportSnapshotInternal(reportRequestId, source)` — núcleo idempotente; carrega RR, short-circuit se já tem snapshot, carrega `analysis_snapshots`, constrói payload leve, insere em `report_snapshots`, recupera de race 23505, faz link no RR.
-- `ensureReportSnapshotForRequest(reportRequestId, source, ctx?)` — wrapper await-able fail-soft que emite eventos.
-- Alias deprecado `persistReportSnapshotForRequest` mantido para retro-compat.
+`src/routes/api/public/report-snapshot.by-id.$snapshotId.ts` → `GET /api/public/report-snapshot/by-id/:snapshotId`
 
-Sources suportados: `public_unlock` | `beta_request` | `admin_generate`.
+Comportamento:
+- Validar UUID
+- Lê `report_snapshots` por `id` (sem RLS, via `supabaseAdmin`):
+  - `id, instagram_username, report_payload_jsonb, payload_schema_version, report_version, algorithm_version, created_at, expires_at, expired_at`
+- Se encontrar:
+  - Detectar expiração (`expires_at < now()` OU `expired_at IS NOT NULL`) → devolver `{ success: true, snapshot: {...}, expired: true }` sem payload pesado
+  - Caso contrário, calcular `benchmark` via `buildReportBenchmarkInput(report_payload_jsonb)` e devolver shape espelho do endpoint antigo:
+    ```
+    {
+      success: true,
+      snapshot: {
+        id, instagram_username,
+        payload,                  // = report_payload_jsonb
+        meta: { generated_at: created_at, instagram_username },
+        created_at,
+        expires_at,
+        expired: false,
+        payload_schema_version,
+        report_version,
+        algorithm_version,
+        benchmark
+      }
+    }
+    ```
+- Se não encontrar em `report_snapshots`, **fallback** para `analysis_snapshots` (mesma query do endpoint antigo) → devolve shape antigo + flag `source: "legacy_analysis_snapshot"`.
+- Sem chamadas a Apify/OpenAI/DataForSEO. Read-only. `Cache-Control: no-store`.
 
-Eventos:
-- `report_snapshot_persisted` (sucesso, só quando `created === true`) — metadata: `report_request_id`, `report_snapshot_id`, `source`, `source_analysis_snapshot_id`, `created`, `payload_schema_version`, `report_version`, `algorithm_version`, `expires_at`.
-- `report_snapshot_persist_failed` (falha real) — metadata: `report_request_id`, `source`, `reason`. Não emite quando `reason === missing_analysis_snapshot`.
+### 2. Rota `/reports/$snapshotId`
 
-Comportamento confirmado:
-- `expires_at = now + 15 dias` via `getReportSnapshotExpiresAt`.
-- Race 23505 → re-SELECT por `report_request_id`.
-- Sem chamadas a providers (Apify/OpenAI/DataForSEO/Brevo/Resend) — verificado por `fetchSpy.not.toHaveBeenCalled()` nos testes.
-- Falha não bloqueia unlock/request — wrapper nunca lança.
-- Payload exclui campos pesados (`caption_semantic_analysis`, `visual_cover_analysis`, `market_signals_free`, `enrichment_status`).
+`src/routes/reports.$snapshotId.tsx`:
+- Trocar URL do `fetch` para `/api/public/report-snapshot/by-id/...`
+- Adicionar campo `expired` ao tipo `SnapshotResponse`. Se `body.snapshot.expired === true`, mostrar `ExpiredState` com handle (já existe).
+- Restante lógica (`snapshotToReportData`, `ReportShellV2`, retention, expired/not_found/error states) mantém-se.
+- Comentário do topo actualizado para refletir leitura de `report_snapshots`.
 
-### Ação proposta neste turno
+### 3. `/app/reports`
 
-1. Re-correr `bunx tsc --noEmit`
-2. Re-correr `bunx vitest run` (focando `src/lib/report-snapshots`)
-3. Devolver relatório completo: ficheiros alterados, funções criadas, eventos, fluxos ligados, resultados de validação
+`src/server/reports.functions.ts`:
+- `getUserReports`: adicionar `report_snapshot_id` ao SELECT e ao tipo `UserReport`.
+- `getOwnedReport`: adicionar `report_snapshot_id` ao SELECT e à devolução.
 
-### Nota sobre uma melhoria opcional (não incluída sem aprovação)
+`src/routes/app.reports.tsx`:
+- Botão "Abrir relatório" usa `report.reportSnapshotId ?? report.analysisSnapshotId`. `canOpenSnapshot` passa a verificar a união dos dois.
 
-A spec atual menciona `errorMessage if safe` na metadata de falha. Hoje o wrapper só envia `reason` (não há campo `errorMessage`). Se quiseres, posso adicionar isso como ajuste pequeno — caso contrário fica como está.
+`src/routes/app.reports.$id.tsx`:
+- Mesma lógica para o(s) link(s) "Abrir relatório".
 
-### Fora de scope (mantido)
+### 4. Emails
 
-- Não migrar `/reports/$snapshotId`
-- Não alterar `/app/reports`
-- Sem cleanup
-- Sem providers
-- Sem regeneração de relatórios
+Helper único `resolveReportUrl(handle, reportSnapshotId?)` em `src/lib/email/url.ts` (novo) — devolve `${PUBLIC_APP_BASE_URL}/reports/${reportSnapshotId}` quando há `reportSnapshotId`, caso contrário cai no comportamento actual baseado em handle (p.ex. `/analyze/${handle}`).
+
+Wiring:
+- `send-welcome-beta.server.ts` e `send-report-summary.server.ts`: passar `args.reportSnapshotId` (já recebem `snapshotId`; renomear semântica e ler `report_snapshot_id` no chamador).
+- `lead-magnet-sequence.server.ts`: passar `report_snapshot_id` quando o `report_request` ou snapshot já existir.
+- `brevo/sync.server.ts` e `brevo/customer-sync.server.ts`: SELECT inclui `report_snapshot_id`; passar para `latestRR.report_snapshot_id ?? latestRR.analysis_snapshot_id`.
+
+### 5. Out-of-scope (mantido)
+
+- Não eliminar `/api/public/analysis-snapshot/by-id/:snapshotId` (continua a servir `/report/print/$snapshotId` do PDFShift e legacy).
+- Sem regeneração, sem providers, sem cleanup, sem mudanças no cálculo do relatório nem na UI pública.
+
+### 6. Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run` (todos os testes existentes passam)
+- Smoke manual:
+  - Abrir um relatório recente a partir de `/app/reports` → carrega via `report_snapshots`
+  - Abrir relatório antigo (sem `report_snapshot_id`) → fallback para `analysis_snapshots`
+  - Re-analisar o mesmo handle → relatório antigo continua a mostrar números antigos (imutabilidade)
+  - Network tab: zero chamadas a Apify/OpenAI/DataForSEO
+
+### Devolução final
+
+- Endpoint criado · rotas/links actualizados · fallback documentado · resultados de tsc + vitest

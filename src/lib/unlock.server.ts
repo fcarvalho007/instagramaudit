@@ -409,11 +409,12 @@ export async function processReportUnlock(
     }
 
     // Phase 2 — persist immutable report_snapshot (fail-soft, no providers)
-    await ensureReportSnapshotForRequest(reportRequestId, "public_unlock", {
+    const reportSnapshotResult = await ensureReportSnapshotForRequest(reportRequestId, "public_unlock", {
       handle: data.instagram_username,
       leadId,
       snapshotId: data.analysis_snapshot_id,
     });
+    const reportSnapshotId = reportSnapshotResult?.snapshotId ?? null;
 
     // 5. Best-effort lifecycle advance (fail-open).
     try {
@@ -462,6 +463,7 @@ export async function processReportUnlock(
           leadId,
           reportRequestId,
           snapshotId: data.analysis_snapshot_id,
+          reportSnapshotId,
           toEmail: data.email,
           firstName,
           instagramHandle: data.instagram_username,

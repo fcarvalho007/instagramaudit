@@ -111,6 +111,7 @@ import { Route as ApiAdminKnowledgeNotesRouteImport } from './routes/api/admin/k
 import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/knowledge.export'
 import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
+import { Route as ApiPublicReportSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/report-snapshot.by-id.$snapshotId'
 import { Route as ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/analysis-snapshot.by-id.$snapshotId'
 import { Route as ApiAdminKnowledgeSuggestionsIdRouteImport } from './routes/api/admin/knowledge.suggestions.$id'
 import { Route as ApiAdminKnowledgeNotesIdRouteImport } from './routes/api/admin/knowledge.notes.$id'
@@ -660,6 +661,12 @@ const AdminReportPreviewSnapshotSnapshotIdRoute =
     path: '/report-preview/snapshot/$snapshotId',
     getParentRoute: () => AdminRoute,
   } as any)
+const ApiPublicReportSnapshotByIdSnapshotIdRoute =
+  ApiPublicReportSnapshotByIdSnapshotIdRouteImport.update({
+    id: '/api/public/report-snapshot/by-id/$snapshotId',
+    path: '/api/public/report-snapshot/by-id/$snapshotId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAnalysisSnapshotByIdSnapshotIdRoute =
   ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport.update({
     id: '/api/public/analysis-snapshot/by-id/$snapshotId',
@@ -804,6 +811,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
   '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
+  '/api/public/report-snapshot/by-id/$snapshotId': typeof ApiPublicReportSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -913,6 +921,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
   '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
+  '/api/public/report-snapshot/by-id/$snapshotId': typeof ApiPublicReportSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -1024,6 +1033,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
   '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
+  '/api/public/report-snapshot/by-id/$snapshotId': typeof ApiPublicReportSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
   '/api/admin/sistema/alerts/$id/ack': typeof ApiAdminSistemaAlertsIdAckRoute
 }
@@ -1136,6 +1146,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
     | '/api/public/analysis-snapshot/by-id/$snapshotId'
+    | '/api/public/report-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesByTo: FileRoutesByTo
@@ -1245,6 +1256,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
     | '/api/public/analysis-snapshot/by-id/$snapshotId'
+    | '/api/public/report-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   id:
@@ -1355,6 +1367,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
     | '/api/public/analysis-snapshot/by-id/$snapshotId'
+    | '/api/public/report-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
     | '/api/admin/sistema/alerts/$id/ack'
   fileRoutesById: FileRoutesById
@@ -1440,6 +1453,7 @@ export interface RootRouteChildren {
   ApiPublicHooksSyncDataforseoCostsRoute: typeof ApiPublicHooksSyncDataforseoCostsRoute
   ApiPublicHooksSyncOpenaiCostsRoute: typeof ApiPublicHooksSyncOpenaiCostsRoute
   ApiPublicAnalysisSnapshotByIdSnapshotIdRoute: typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
+  ApiPublicReportSnapshotByIdSnapshotIdRoute: typeof ApiPublicReportSnapshotByIdSnapshotIdRoute
   ApiAdminKnowledgeHistoryTypeIdRoute: typeof ApiAdminKnowledgeHistoryTypeIdRoute
 }
 
@@ -2159,6 +2173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReportPreviewSnapshotSnapshotIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/report-snapshot/by-id/$snapshotId': {
+      id: '/api/public/report-snapshot/by-id/$snapshotId'
+      path: '/api/public/report-snapshot/by-id/$snapshotId'
+      fullPath: '/api/public/report-snapshot/by-id/$snapshotId'
+      preLoaderRoute: typeof ApiPublicReportSnapshotByIdSnapshotIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/analysis-snapshot/by-id/$snapshotId': {
       id: '/api/public/analysis-snapshot/by-id/$snapshotId'
       path: '/api/public/analysis-snapshot/by-id/$snapshotId'
@@ -2459,6 +2480,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksSyncOpenaiCostsRoute: ApiPublicHooksSyncOpenaiCostsRoute,
   ApiPublicAnalysisSnapshotByIdSnapshotIdRoute:
     ApiPublicAnalysisSnapshotByIdSnapshotIdRoute,
+  ApiPublicReportSnapshotByIdSnapshotIdRoute:
+    ApiPublicReportSnapshotByIdSnapshotIdRoute,
   ApiAdminKnowledgeHistoryTypeIdRoute: ApiAdminKnowledgeHistoryTypeIdRoute,
 }
 export const routeTree = rootRouteImport

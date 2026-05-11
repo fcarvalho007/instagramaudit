@@ -14,6 +14,7 @@ export interface UserReport {
   pdfGeneratedAt: string | null;
   emailSentAt: string | null;
   analysisSnapshotId: string | null;
+  reportSnapshotId: string | null;
 }
 
 export const getUserReports = createServerFn({ method: "GET" })
@@ -34,7 +35,7 @@ export const getUserReports = createServerFn({ method: "GET" })
     let query = supabase
       .from("report_requests")
       .select(
-        "id, instagram_username, competitor_usernames, request_status, pdf_status, delivery_status, created_at, pdf_generated_at, email_sent_at, analysis_snapshot_id",
+        "id, instagram_username, competitor_usernames, request_status, pdf_status, delivery_status, created_at, pdf_generated_at, email_sent_at, analysis_snapshot_id, report_snapshot_id",
       )
       .order("created_at", { ascending: false });
 
@@ -64,6 +65,7 @@ export const getUserReports = createServerFn({ method: "GET" })
       pdfGeneratedAt: r.pdf_generated_at,
       emailSentAt: r.email_sent_at,
       analysisSnapshotId: r.analysis_snapshot_id,
+      reportSnapshotId: (r as { report_snapshot_id: string | null }).report_snapshot_id ?? null,
     }));
   });
 
@@ -84,7 +86,7 @@ export const getOwnedReport = createServerFn({ method: "POST" })
     const { data: report, error } = await supabaseAdmin
       .from("report_requests")
       .select(
-        "id, instagram_username, created_at, updated_at, request_status, pdf_status, delivery_status, email_sent_at, pdf_generated_at, analysis_snapshot_id, competitor_usernames, pdf_error_message, email_error_message, request_source, is_free_request, user_id",
+        "id, instagram_username, created_at, updated_at, request_status, pdf_status, delivery_status, email_sent_at, pdf_generated_at, analysis_snapshot_id, report_snapshot_id, competitor_usernames, pdf_error_message, email_error_message, request_source, is_free_request, user_id",
       )
       .eq("id", data.reportId)
       .eq("user_id", userId)
@@ -109,6 +111,8 @@ export const getOwnedReport = createServerFn({ method: "POST" })
       delivery_status: report.delivery_status,
       email_sent_at: report.email_sent_at,
       analysis_snapshot_id: report.analysis_snapshot_id,
+      report_snapshot_id:
+        (report as { report_snapshot_id: string | null }).report_snapshot_id ?? null,
       competitor_usernames: report.competitor_usernames,
       request_source: report.request_source,
       is_free_request: report.is_free_request,

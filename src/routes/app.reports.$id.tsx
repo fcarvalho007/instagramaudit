@@ -124,7 +124,9 @@ function ReportDetailPage() {
 
   const badge = statusBadge(report);
   const pdfReady = report.pdf_status === "generated";
-  const hasSnapshot = !!report.analysis_snapshot_id;
+  const snapshotIdForLink =
+    report.report_snapshot_id ?? report.analysis_snapshot_id ?? null;
+  const hasSnapshot = !!snapshotIdForLink;
   const competitors = Array.isArray(report.competitor_usernames)
     ? (report.competitor_usernames as string[])
     : [];
@@ -349,7 +351,7 @@ function ReportDetailPage() {
             {canOpenSnapshot ? (
               <Link
                 to="/reports/$snapshotId"
-                params={{ snapshotId: report.analysis_snapshot_id as string }}
+                params={{ snapshotId: snapshotIdForLink as string }}
                 className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-4 py-2 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-muted"
               >
                 <ExternalLink className="size-3.5" />

@@ -1,20 +1,11 @@
 /**
  * /reports/$snapshotId — abertura de relatório histórico pelo snapshot exacto.
  *
- * Rota pública, mas `noindex, nofollow`. Carrega `analysis_snapshots` por UUID
- * via `/api/public/analysis-snapshot/by-id/:id`. NÃO chama Apify, OpenAI ou
+ * Rota pública, mas `noindex, nofollow`. Carrega o snapshot via
+ * `/api/public/report-snapshot/by-id/:id`, que lê primeiro de
+ * `report_snapshots` (imutável) e cai para `analysis_snapshots` apenas
+ * quando o id pertence a um snapshot legacy. NÃO chama Apify, OpenAI ou
  * DataForSEO. NÃO regenera. NÃO escreve.
- *
- * Usada a partir de `/app/reports` para garantir que abrir um relatório antigo
- * mostra os números do snapshot ligado em `report_requests.analysis_snapshot_id`,
- * não a versão "última do handle" (o pipeline público faz upsert por
- * `cache_key` e o `/analyze/$username` resolveria sempre o snapshot mais
- * recente).
- *
- * Caveat técnica: `analysis_snapshots` faz upsert por `cache_key`. Carregar
- * por UUID é a melhor garantia disponível dentro das restrições actuais e é
- * estável dentro da janela de retenção (15d). Cloning per-report-request fica
- * fora de scope desta fase.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -61,12 +52,14 @@ interface SnapshotResponse {
   snapshot?: {
     id: string;
     instagram_username: string;
-    payload: SnapshotPayload;
-    meta: { generated_at?: string; instagram_username?: string };
+    payload?: SnapshotPayload;
+    meta?: { generated_at?: string; instagram_username?: string };
     created_at: string;
-    updated_at: string;
+    updated_at?: string;
     expires_at: string | null;
+    expired?: boolean;
     benchmark?: ReportBenchmarkInput;
+    source?: "report_snapshot" | "legacy_analysis_snapshot";
   } | null;
   error_code?: string;
   message?: string;
@@ -104,7 +97,7 @@ function SnapshotReportPage() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/public/analysis-snapshot/by-id/${encodeURIComponent(snapshotId)}`,
+          `/api/public/report-snapshot/by-id/${encodeURIComponent(snapshotId)}`,
         );
         const body = (await res.json().catch(() => null)) as SnapshotResponse | null;
         if (cancelled) return;
@@ -127,7 +120,7 @@ function SnapshotReportPage() {
         const expiresAtIso =
           snap.expires_at ?? getReportExpiresAt(snap.created_at).toISOString();
 
-        if (isReportExpired(expiresAtIso)) {
+        if (snap.expired === true || isReportExpired(expiresAtIso)) {
           setState({ status: "expired", handle: snap.instagram_username });
           return;
         }

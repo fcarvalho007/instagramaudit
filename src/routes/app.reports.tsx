@@ -190,7 +190,9 @@ function ReportCard({ report }: { report: UserReport }) {
   const delivery = deriveDeliveryBadge(report.deliveryStatus, report.emailSentAt);
   const DeliveryIcon = delivery.icon;
   const competitorCount = report.competitorUsernames.length;
-  const hasSnapshot = !!report.analysisSnapshotId;
+  const snapshotIdForLink =
+    report.reportSnapshotId ?? report.analysisSnapshotId ?? null;
+  const hasSnapshot = !!snapshotIdForLink;
   const retention = deriveRetention(report.createdAt);
   const canOpenSnapshot = hasSnapshot && retention.state !== "expired";
 
@@ -259,7 +261,7 @@ function ReportCard({ report }: { report: UserReport }) {
         {canOpenSnapshot && (
           <Link
             to="/reports/$snapshotId"
-            params={{ snapshotId: report.analysisSnapshotId as string }}
+            params={{ snapshotId: snapshotIdForLink as string }}
             className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-muted hover:border-border-default/30"
           >
             <ExternalLink className="size-3" />
