@@ -1,10 +1,13 @@
 /**
  * AutomationFlowPage — visualização read-only do ciclo de vida beta.
+ *
+ * Stages, cores e backgrounds vêm da API (`data.stages`) — nunca hardcoded
+ * no frontend. Tokens em `src/styles/admin-tokens.css` (`--admin-stage-*`).
  */
 
 import { Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, FileText, MoreHorizontal, CheckCircle2 } from "lucide-react";
+import { RefreshCw, FileText, MoreHorizontal, CheckCircle2, ShieldCheck, AlertTriangle } from "lucide-react";
 import { AdminCard } from "../admin-card";
 import { adminFetch } from "@/lib/admin/fetch";
 import { AutomationNode } from "./automation-node";
@@ -15,57 +18,17 @@ import { PeopleTab } from "./people-tab";
 import { TemplatesTab } from "./templates-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { AutomationFlow, AutomationFlowResponse, FlowStage } from "@/routes/api/admin/automation-flow";
+import type {
+  AutomationFlow,
+  AutomationFlowResponse,
+  StageDef,
+} from "@/lib/admin/automation-flow-types";
 
 async function fetchAutomationFlow(): Promise<AutomationFlowResponse> {
   const res = await adminFetch("/api/admin/automation-flow");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()) as AutomationFlowResponse;
 }
-
-interface StageDef {
-  key: FlowStage;
-  number: string;
-  eyebrow: string;
-  title: string;
-  color: string;
-  bg: string;
-}
-
-const STAGES: StageDef[] = [
-  {
-    key: "00_onboarding",
-    number: "00",
-    eyebrow: "Onboarding · Beta",
-    title: "Boas-vindas e acesso à plataforma",
-    color: "#7664E4",
-    bg: "#F2F0FE",
-  },
-  {
-    key: "01_captacao",
-    number: "01",
-    eyebrow: "Captação",
-    title: "Pedido recebido até relatório pronto",
-    color: "#3772E5",
-    bg: "#EEF4FE",
-  },
-  {
-    key: "02_entrega",
-    number: "02",
-    eyebrow: "Entrega",
-    title: "Notificação, consumo e arquivo",
-    color: "#1D9E75",
-    bg: "#EAF7F1",
-  },
-  {
-    key: "03_conversao",
-    number: "03",
-    eyebrow: "Conversão",
-    title: "Validação de utilidade e oportunidade comercial",
-    color: "#D85A30",
-    bg: "#FDEFEA",
-  },
-];
 
 export function AutomationFlowPage() {
   const queryClient = useQueryClient();
@@ -98,8 +61,7 @@ export function AutomationFlowPage() {
             type="button"
             onClick={handleRefresh}
             disabled={isFetching}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border bg-white px-3 text-[12px] font-medium text-admin-text-primary hover:bg-admin-neutral-50 disabled:opacity-60"
-            style={{ borderColor: "#E4E8F0" }}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-admin-border bg-white px-3 text-[12px] font-medium text-admin-text-primary hover:bg-admin-neutral-50 disabled:opacity-60"
           >
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
             Refrescar
@@ -132,7 +94,7 @@ export function AutomationFlowPage() {
           </div>
 
           <TabsContent value="fluxo" className="mt-0">
-            <FlowStages flows={data.flows} />
+            <FlowStages flows={data.flows} stages={data.stages} />
           </TabsContent>
 
           <TabsContent value="metricas" className="mt-0">
@@ -172,13 +134,12 @@ function DisabledButton({
             disabled
             className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md text-[12px] font-medium ${
               square ? "w-9 px-0" : "px-3"
-            } ${dark ? "text-white" : "text-admin-text-primary"}`}
-            style={{
-              background: dark ? "#0F1B3D" : "#FFFFFF",
-              border: dark ? "none" : "1px solid #E4E8F0",
-              opacity: 0.85,
-              cursor: "not-allowed",
-            }}
+            } ${
+              dark
+                ? "bg-[rgb(var(--admin-button-dark))] text-white border-0"
+                : "bg-white text-admin-text-primary border border-admin-border"
+            }`}
+            style={{ opacity: 0.85, cursor: "not-allowed" }}
           >
             {icon}
             {label}
@@ -191,45 +152,58 @@ function DisabledButton({
 }
 
 function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> }) {
+  const hasFailures = kpis.failures.last30d > 0;
+  const hasWaiting = kpis.waiting.eligibleTotal > 0;
+
   const tiles = [
     {
       label: "Sistema operacional",
       value: `${kpis.systemActive.activeCount} automações activas`,
-      headline: null,
-      hint: null,
-      color: "#1D9E75",
-      bg: "#EAF7F1",
-      icon: <CheckCircle2 size={18} style={{ color: "#1D9E75" }} />,
+      headline: null as string | null,
+      hint: `de ${kpis.systemActive.totalCount} blocos`,
+      tokenColor: "admin-pill-active-fg",
+      tokenBg: "admin-pill-active-bg",
+      icon: <CheckCircle2 size={18} className="text-[rgb(var(--admin-pill-active-fg))]" />,
     },
     {
       label: "Enviados",
       value: kpis.sent.last30d,
-      headline: "total",
+      headline: "últimos 30 dias",
       hint:
         kpis.sent.deltaVsYesterday >= 0
           ? `↑ ${kpis.sent.deltaVsYesterday} desde ontem`
           : `↓ ${Math.abs(kpis.sent.deltaVsYesterday)} desde ontem`,
-      color: "#3772E5",
-      bg: "#FFFFFF",
+      tokenColor: "admin-stage-captacao",
+      tokenBg: null,
       icon: null,
     },
     {
       label: "A aguardar",
       value: kpis.waiting.eligibleTotal,
       headline: "na fila",
-      hint: kpis.waiting.nextEtaMinutes != null ? `próximo · em ${kpis.waiting.nextEtaMinutes} min` : "—",
-      color: "#BA7517",
-      bg: "#FFFAF0",
+      hint:
+        kpis.waiting.nextEtaMinutes != null
+          ? `próximo · em ${kpis.waiting.nextEtaMinutes} min`
+          : null,
+      tokenColor: hasWaiting ? "admin-pill-warn-fg" : "admin-pill-info-fg",
+      tokenBg: hasWaiting ? "admin-pill-warn-bg" : "admin-pill-info-soft-bg",
       icon: null,
     },
     {
       label: "Falhas",
       value: kpis.failures.last30d,
-      headline: "últimos 30d",
-      hint: `taxa ${kpis.failures.deliverabilityPct}%`,
-      color: kpis.failures.last30d > 0 ? "#D85A30" : "#1D9E75",
-      bg: "#FFFFFF",
-      icon: null,
+      headline: "últimos 30 dias",
+      hint:
+        kpis.failures.deliverabilityPct != null
+          ? `taxa de entrega ${kpis.failures.deliverabilityPct}%`
+          : "sem dados",
+      tokenColor: hasFailures ? "admin-signal-500" : "admin-pill-active-fg",
+      tokenBg: null,
+      icon: hasFailures ? (
+        <AlertTriangle size={18} className="text-[rgb(var(--admin-signal-500))]" />
+      ) : (
+        <ShieldCheck size={18} className="text-[rgb(var(--admin-pill-active-fg))]" />
+      ),
     },
   ];
 
@@ -238,11 +212,16 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
       {tiles.map((t, i) => (
         <div
           key={i}
-          className="rounded-xl border px-4 py-3"
+          className="rounded-xl border border-admin-border px-4 py-3"
           style={{
-            background: t.bg,
-            borderColor: "#E4E8F0",
-            borderLeft: `3px solid ${t.color}`,
+            background: t.tokenBg
+              ? `rgb(var(--${t.tokenBg}))`
+              : "rgb(var(--admin-neutral-50) / 0)",
+            borderLeftWidth: 3,
+            borderLeftColor: `rgb(var(--${t.tokenColor}))`,
+            backgroundColor: t.tokenBg
+              ? `rgb(var(--${t.tokenBg}))`
+              : "#FFFFFF",
           }}
         >
           <div className="flex items-center gap-2">
@@ -266,13 +245,19 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
   );
 }
 
-function FlowStages({ flows }: { flows: AutomationFlow[] }) {
+function FlowStages({
+  flows,
+  stages,
+}: {
+  flows: AutomationFlow[];
+  stages: readonly StageDef[];
+}) {
   return (
     <div className="mx-auto flex max-w-[820px] flex-col gap-4">
-      {STAGES.map((stage) => {
+      {stages.map((stage) => {
         const stageFlows = flows.filter((f) => f.stage === stage.key);
         if (stageFlows.length === 0) return null;
-        const totalSent = stageFlows.reduce((a, f) => a + f.sentTotal, 0);
+        const totalSent = stageFlows.reduce((a, f) => a + f.sentEvents, 0);
         const meta =
           stage.key === "00_onboarding"
             ? `${stageFlows.length} email${stageFlows.length === 1 ? "" : "s"} · ${totalSent} envios`
@@ -285,12 +270,12 @@ function FlowStages({ flows }: { flows: AutomationFlow[] }) {
             eyebrow={stage.eyebrow}
             title={stage.title}
             meta={meta}
-            color={stage.color}
-            bg={stage.bg}
+            tokenColor={stage.tokenColor}
+            tokenBg={stage.tokenBg}
           >
             {stageFlows.map((f, i) => (
               <Fragment key={f.key}>
-                <AutomationNode flow={f} stageColor={stage.color} />
+                <AutomationNode flow={f} stageTokenColor={stage.tokenColor} />
                 {i < stageFlows.length - 1 && <AutomationEdge />}
               </Fragment>
             ))}
