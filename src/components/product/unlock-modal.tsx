@@ -699,6 +699,8 @@ function Step1Email({
 }) {
   const error = form.formState.errors.email?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
+  const firstNameError = form.formState.errors.first_name?.message;
+  const lastNameError = form.formState.errors.last_name?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
@@ -706,6 +708,42 @@ function Step1Email({
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="unlock-first-name" className="text-sm">
+            Primeiro nome
+          </Label>
+          <Input
+            id="unlock-first-name"
+            type="text"
+            autoFocus
+            autoComplete="given-name"
+            placeholder="Ana"
+            aria-invalid={Boolean(firstNameError)}
+            {...form.register("first_name")}
+          />
+          {firstNameError ? (
+            <p className="text-xs text-destructive">{firstNameError}</p>
+          ) : null}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="unlock-last-name" className="text-sm">
+            Apelido
+          </Label>
+          <Input
+            id="unlock-last-name"
+            type="text"
+            autoComplete="family-name"
+            placeholder="Marques"
+            aria-invalid={Boolean(lastNameError)}
+            {...form.register("last_name")}
+          />
+          {lastNameError ? (
+            <p className="text-xs text-destructive">{lastNameError}</p>
+          ) : null}
+        </div>
+      </div>
+
       <div className="space-y-1.5">
         <Label htmlFor="unlock-email" className="text-sm">
           Email
@@ -714,7 +752,6 @@ function Step1Email({
           <Input
             id="unlock-email"
             type="email"
-            autoFocus
             autoComplete="email"
             placeholder="ana@empresa.pt"
             aria-invalid={Boolean(error)}
@@ -759,7 +796,7 @@ function Step1Email({
             >
               tratamento dos meus dados
             </a>{" "}
-            para guardar e aceder a este relatório, e confirmo que li a{" "}
+            para gerar e guardar este relatório, e li a{" "}
             <a
               href="/privacidade"
               target="_blank"
@@ -792,7 +829,7 @@ function Step1Email({
             className="mt-0.5"
           />
           <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
-            Quero receber análises e dicas de marketing digital por email{" "}
+            Quero receber novidades e dicas sobre relatórios, análise de Instagram e marketing digital{" "}
             <span className="text-content-tertiary">
               (cancelas quando quiseres · ~1 email/semana)
             </span>
