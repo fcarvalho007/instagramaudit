@@ -15,7 +15,6 @@ import {
 export interface CommercialFollowupInput {
   firstName?: string | null;
   instagramHandle?: string | null;
-  pricingOption?: string | null;
   reportUrl?: string | null;
   /** Optional reply-to email used in the soft CTA (mailto:). */
   replyToEmail?: string | null;

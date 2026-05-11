@@ -843,14 +843,17 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
       onOpenChange={setFollowupOpen}
       lead={lead}
       loading={sendingFollowup}
-      onConfirm={async () => {
+      onConfirm={async ({ checkoutUrl }) => {
         setSendingFollowup(true);
         try {
           const res = await fetch("/api/admin/send-commercial-followup", {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lead_id: lead.id }),
+            body: JSON.stringify({
+              lead_id: lead.id,
+              ...(checkoutUrl ? { checkout_url: checkoutUrl } : {}),
+            }),
           });
           const body = await res.json().catch(() => ({}));
           if (!res.ok || !body.success) {
