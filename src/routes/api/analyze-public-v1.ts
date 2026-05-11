@@ -596,6 +596,82 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           return failure("PROVIDER_DISABLED");
         }
 
+        // 3.1) Hard daily budget gate. Apify spend across `provider_call_logs`
+        // for the trailing UTC day; if at or above `APIFY_HARD_CAP_USD`,
+        // refuse fresh calls and serve stale when possible.
+        try {
+          await assertApifyDailyBudgetAvailable();
+        } catch (err) {
+          if (err instanceof BudgetExceededError) {
+            console.warn(
+              "[analyze-public-v1] BUDGET_EXCEEDED",
+              `spent=${err.spentUsd.toFixed(2)}`,
+              `cap=${err.capUsd}`,
+              primary,
+            );
+            if (existing && isWithinStaleWindow(existing)) {
+              const stalePayload = existing.normalized_payload as unknown as {
+                profile?: { display_name?: string; followers_count?: number };
+              };
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "stale",
+                outcome: "success",
+                analysisSnapshotId: existing.id,
+                displayName: stalePayload.profile?.display_name ?? null,
+                followersLastSeen: stalePayload.profile?.followers_count ?? null,
+              });
+              return jsonResponse(
+                buildCachedResponse(existing, "stale", benchmarkData),
+                200,
+              );
+            }
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "none",
+              outcome: "blocked_allowlist",
+              errorCode: "BUDGET_EXCEEDED",
+            });
+            return failure("BUDGET_EXCEEDED");
+          }
+          throw err;
+        }
+
+        // 3.2) Per-IP / per-handle rate limit (24h). Counts only past
+        // FRESH+success events — cache and stale paths are not gated.
+        try {
+          const ipHash = await ipHashPromise;
+          await assertWithinPublicRateLimit({
+            ipHash,
+            handle: primary,
+            network: "instagram",
+          });
+        } catch (err) {
+          if (err instanceof RateLimitError) {
+            console.warn(
+              "[analyze-public-v1] RATE_LIMITED",
+              `scope=${err.scope}`,
+              `count=${err.count}`,
+              `limit=${err.limit}`,
+              primary,
+            );
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "none",
+              outcome: "blocked_allowlist",
+              errorCode: `RATE_LIMITED_${err.scope.toUpperCase()}`,
+            });
+            return failure("RATE_LIMITED");
+          }
+          throw err;
+        }
+
         try {
           // 3) One unified call per handle, in parallel. Each call returns
           // the profile details with `latestPosts[]` embedded, so there is
