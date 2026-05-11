@@ -7,7 +7,7 @@ import { EligibilitySummary } from "./eligibility-summary";
 import type {
   AutomationFlow,
   AutomationFlowResponse,
-} from "@/routes/api/admin/automation-flow";
+} from "@/lib/admin/automation-flow-types";
 
 interface Props {
   data: AutomationFlowResponse;
@@ -18,7 +18,7 @@ export function MetricsTab({ data }: Props) {
   const totalInFlight = data.flows.reduce((a, f) => a + f.inFlightCount, 0);
   const total24h = data.flows.reduce((a, f) => a + (f.last24hCount ?? 0), 0);
   const totalFailures = data.flows.reduce(
-    (a, f) => a + (f.recentFailures ?? 0),
+    (a, f) => a + (f.failuresTotal ?? 0),
     0,
   );
 
@@ -61,12 +61,17 @@ export function MetricsTab({ data }: Props) {
 
         <AdminCard>
           <h3 className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-admin-text-tertiary">
-            Falhas recentes (7d)
+            Falhas recentes (30d)
           </h3>
           <div className="mb-3 flex items-baseline gap-2">
             <span
               className="text-[28px] font-semibold tabular-nums leading-none"
-              style={{ color: totalFailures > 0 ? "#D85A30" : undefined }}
+              style={{
+                color:
+                  totalFailures > 0
+                    ? "rgb(var(--admin-signal-500))"
+                    : undefined,
+              }}
             >
               {totalFailures}
             </span>
@@ -121,7 +126,7 @@ export function MetricsTab({ data }: Props) {
                   <td className="py-2 pr-3 text-admin-text-primary">{f.title}</td>
                   <td className="py-2 pr-3 tabular-nums text-admin-text-primary">{f.eligibleCount}</td>
                   <td className="py-2 pr-3 tabular-nums text-admin-text-primary">{f.inFlightCount}</td>
-                  <td className="py-2 pr-3 tabular-nums text-admin-text-primary">{f.completedCount}</td>
+                  <td className="py-2 pr-3 tabular-nums text-admin-text-primary">{f.completedLeads ?? f.sentEvents}</td>
                   <td className="py-2 tabular-nums text-admin-text-primary">{f.last24hCount ?? 0}</td>
                 </tr>
               ))}
