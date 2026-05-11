@@ -4,7 +4,7 @@
  * Cores via tokens admin (`--admin-pill-*`, `--admin-stage-*`).
  */
 
-import { Lock, Pencil, Mail, Settings, BarChart3, ArrowRightLeft, Clock, AlertTriangle, AlertCircle } from "lucide-react";
+import { Lock, Pencil, Mail, Settings, BarChart3, ArrowRightLeft, Clock, AlertTriangle, AlertCircle, Zap } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   AutomationFlow,
@@ -108,7 +108,11 @@ export function AutomationNode({ flow, stageTokenColor }: AutomationNodeProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <EditButton blocked={isBlocked} templateKey={flow.templateKey} />
+          <EditButton
+            blocked={isBlocked}
+            templateKey={flow.templateKey}
+            needsTrigger={flow.status === "undefined"}
+          />
         </div>
       </div>
 
@@ -205,7 +209,40 @@ function ExtraPill({ tag }: { tag: Exclude<FlowExtraTag, null> }) {
   );
 }
 
-function EditButton({ blocked, templateKey }: { blocked: boolean; templateKey: string | null }) {
+function EditButton({
+  blocked,
+  templateKey,
+  needsTrigger,
+}: {
+  blocked: boolean;
+  templateKey: string | null;
+  needsTrigger: boolean;
+}) {
+  if (needsTrigger) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-semibold text-white"
+              style={{
+                background: "rgb(var(--admin-pill-warn-fg))",
+                cursor: "not-allowed",
+                boxShadow: "0 1px 2px rgb(var(--admin-pill-warn-fg) / 0.25)",
+                opacity: 0.95,
+              }}
+            >
+              <Zap size={12} />
+              Configurar trigger
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Disponível em breve</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
   if (blocked) {
     return (
       <TooltipProvider delayDuration={200}>
