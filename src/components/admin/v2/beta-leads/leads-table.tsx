@@ -5,7 +5,7 @@
  * via `onOpenDetail`, partilhando o mesmo sheet com a vista Pipeline.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -15,12 +15,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Inbox } from "lucide-react";
+import { Inbox, Search } from "lucide-react";
 import {
   KANBAN_COLUMNS,
   type EnrichedLead,
 } from "@/lib/admin/kanban-columns";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
+import {
+  FILTER_CHIPS,
+  matchesChip,
+  matchesQuery,
+  type FilterChipKey,
+} from "@/lib/admin/lead-filter-chips";
 
 interface LeadsTableProps {
   leads: EnrichedLead[];
@@ -92,28 +98,106 @@ function FeedbackCell({ lead }: { lead: EnrichedLead }) {
 }
 
 export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
-  const sorted = useMemo(
+  const [query, setQuery] = useState("");
+  const [chip, setChip] = useState<FilterChipKey>("todos");
+
+  const filtered = useMemo(
     () =>
-      [...leads].sort(
-        (a, b) =>
-          new Date(b.last_interaction).getTime() -
-          new Date(a.last_interaction).getTime(),
-      ),
-    [leads],
+      [...leads]
+        .filter((l) => matchesChip(l, chip) && matchesQuery(l, query))
+        .sort(
+          (a, b) =>
+            new Date(b.last_interaction).getTime() -
+            new Date(a.last_interaction).getTime(),
+        ),
+    [leads, chip, query],
   );
 
-  if (sorted.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-admin-text-tertiary border border-[var(--color-admin-border)] rounded-xl bg-white">
-        <Inbox size={24} className="mb-2 opacity-60" />
-        <span className="text-[13px]">Sem contactos para mostrar.</span>
-      </div>
-    );
-  }
+  const hasFilters = chip !== "todos" || query.trim() !== "";
+  const isEmptyByFilter = filtered.length === 0 && leads.length > 0;
+  const isEmpty = leads.length === 0;
+
+  const clearFilters = () => {
+    setChip("todos");
+    setQuery("");
+  };
+
+  const counterLabel = hasFilters
+    ? `${filtered.length} de ${leads.length} contactos`
+    : `${leads.length} contactos`;
 
   return (
-    <div className="border border-[var(--color-admin-border)] rounded-xl bg-white overflow-x-auto">
-      <Table>
+    <div className="border border-[var(--color-admin-border)] rounded-xl bg-white overflow-hidden">
+      {/* Toolbar: chips + search + counter */}
+      <div className="flex items-center justify-between gap-3 flex-wrap px-3 py-2.5 border-b border-[var(--color-admin-border)]">
+        <div
+          className="flex flex-wrap gap-1 p-1 bg-white border border-[var(--color-admin-border)] rounded-lg"
+          role="tablist"
+          aria-label="Filtrar por estado"
+        >
+          {FILTER_CHIPS.map((c) => {
+            const isActive = c.key === chip;
+            return (
+              <button
+                key={c.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setChip(c.key)}
+                className="px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors"
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: "var(--admin-board-chip-active-bg)",
+                        color: "var(--admin-board-chip-active-text)",
+                      }
+                    : { color: "var(--color-admin-text-secondary)" }
+                }
+              >
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-3 ml-auto">
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-tertiary pointer-events-none"
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Pesquisar nome, email, @handle…"
+              aria-label="Pesquisar contactos"
+              className="pl-8 pr-3 h-9 text-[13px] bg-white border border-[var(--color-admin-border)] rounded-lg w-full sm:w-[280px] outline-none focus:border-[var(--color-admin-info-500)] focus:ring-1 focus:ring-[var(--color-admin-info-500)]/30"
+            />
+          </div>
+          <span className="text-[12px] text-admin-text-tertiary tabular-nums whitespace-nowrap">
+            {counterLabel}
+          </span>
+        </div>
+      </div>
+
+      {isEmpty ? (
+        <div className="flex flex-col items-center justify-center py-16 text-admin-text-tertiary">
+          <Inbox size={24} className="mb-2 opacity-60" />
+          <span className="text-[13px]">Sem contactos para mostrar.</span>
+        </div>
+      ) : isEmptyByFilter ? (
+        <div className="flex flex-col items-center justify-center py-16 text-admin-text-tertiary gap-3">
+          <Inbox size={24} className="opacity-60" />
+          <span className="text-[13px]">
+            Nenhum contacto corresponde aos filtros.
+          </span>
+          <Button size="sm" variant="ghost" onClick={clearFilters}>
+            Limpar filtros
+          </Button>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
@@ -140,17 +224,15 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
             <TableHead className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
               Criado em
             </TableHead>
-            <TableHead className="text-right text-[11px] uppercase tracking-wider text-admin-text-tertiary">
-              Ações
-            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sorted.map((lead) => (
+          {filtered.map((lead) => (
             <TableRow
               key={lead.id}
               className="cursor-pointer hover:bg-[var(--admin-board-column-bg)]"
               onClick={() => onOpenDetail(lead)}
+              aria-label={`Abrir ficha de ${lead.name || lead.email}`}
             >
               <TableCell className="font-medium text-admin-text-primary text-[13px]">
                 {lead.name || "—"}
@@ -176,22 +258,12 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
               <TableCell className="text-[12px] text-admin-text-secondary tabular-nums">
                 {formatDate(lead.created_at)}
               </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenDetail(lead);
-                  }}
-                >
-                  Abrir
-                </Button>
-              </TableCell>
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+        </Table>
+        </div>
+      )}
     </div>
   );
 }
