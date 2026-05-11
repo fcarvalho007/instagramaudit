@@ -1,72 +1,59 @@
-## Root cause
+## Objetivo
 
-A `marketing_consent = true` gate was added (defesa em profundidade) to two server modules **after** the existing tests were written:
+Melhorar a validação inline do campo "URL de checkout" em `CommercialFollowupDialog`. Apenas UI — zero alterações ao backend, schema ou template.
 
-- `src/lib/brevo/sync.server.ts` — checks `lead.marketing_consent !== true` → returns `NO_MARKETING_CONSENT`.
-- `src/lib/email/lead-magnet-sequence.server.ts` — looks up `leads.marketing_consent` and short-circuits if not `true` (fail-closed if lookup throws/returns undefined).
+## Ficheiro a alterar
 
-The two failing test files predate this gate:
+`src/components/admin/v2/beta-leads/commercial-followup-dialog.tsx`
 
-- `src/lib/brevo/__tests__/sync.test.ts` — lead fixtures don't include `marketing_consent`, so success/failure paths now hit the consent-skip branch.
-- `src/lib/email/__tests__/lead-magnet-sequence.test.ts` — the supabase mock only models the `product_events` dedup chain. The new `from("leads").select(...).eq(...).maybeSingle()` call returns `undefined`, so every test hits the fail-closed branch.
+## Alterações
 
-These are **obsolete test fixtures**, not regressions in product code. The consent gate is intended behavior.
+### 1. Mensagem de erro unificada (pt-PT)
+Substituir as duas mensagens atuais (`"URL inválido"`, `"URL deve usar http:// ou https://"`) por uma única, clara:
 
-Additionally, `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` has no explicit test coverage today.
+> "Introduz um URL válido, começado por https://"
 
-## Classification
+A regra continua a aceitar `http://` e `https://` (a mensagem promove https). Strings vazias permanecem válidas (sem erro, sem CTA).
 
-| Test file | # failing | Cause | Action |
-|---|---|---|---|
-| `sync.test.ts` | 2 | Obsolete: consent gate added | Update fixtures + add 1 new test |
-| `lead-magnet-sequence.test.ts` | 7 | Obsolete: leads lookup not mocked | Extend mock + add 3 new tests |
+### 2. Helper text quando campo vazio
+Atualizar o texto auxiliar para preferir https:
 
-No production code changes. Tests are not weakened — new assertions for the consent gate and kill switch are added.
+- Vazio: "Opcional. Cola um URL https:// para ativar o botão "Desbloquear" no email."
+- Com URL válido: "Email mostra botão "Desbloquear" com este URL." (mantido)
+- Com erro: mostra a mensagem de erro
 
-## Plan
+### 3. Estado desativado do botão de envio
+Adicionar `title` ao `Button` quando `checkoutError` é truthy:
 
-### 1. `src/lib/brevo/__tests__/sync.test.ts`
+> "Corrige o URL de checkout antes de enviar."
 
-- Add `marketing_consent: true` to the lead fixtures in:
-  - "builds full attribute payload and records success event"
-  - "propagates upsert failure reason and records failure event"
-- Add new test: **"skips with NO_MARKETING_CONSENT when marketing_consent is not true"** — fixture without the flag, assert `out.reason === "NO_MARKETING_CONSENT"`, `mockUpsert` not called, and a `brevo_contact_sync_failed` event recorded with that reason.
+(Apenas se `loading` for false; durante loading mantém-se sem title.)
 
-### 2. `src/lib/email/__tests__/lead-magnet-sequence.test.ts`
+### 4. Acessibilidade
+- Adicionar `id="commercial-followup-checkout-help"` ao `<p>` do helper.
+- Adicionar `aria-describedby="commercial-followup-checkout-help"` ao `<Input>`.
+- `aria-invalid` já existente — manter.
+- Quando há erro, mudar a cor do helper para `text-admin-signal-danger` (ou token equivalente já em uso na admin); confirmar token disponível antes (fallback: `text-red-600` é proibido pela memória → usar token semântico admin).
 
-Replace the simplified supabase mock with a table-aware `from()` mock:
-- `from("leads").select("marketing_consent").eq("id", _).maybeSingle()` → returns `{ data: { marketing_consent: leadConsent } }` (configurable via `beforeEach`, default `true`).
-- `from("product_events").select(...).eq(...).eq(...).contains(...).limit(...).maybeSingle()` → keeps the existing `dedupMaybeSingle` behavior.
+### 5. Comportamento de preview (manter intacto)
+- Empty → `checkoutUrl: null` no template → sem CTA "Desbloquear".
+- Válido → CTA visível.
+- Inválido → tratado como `null` (já é o comportamento atual via `checkoutError ? null : checkoutUrl`).
 
-Update all 7 existing tests to use the new mock with `marketing_consent: true` (preserves intent).
+## Validação
 
-Add 3 new tests for kill-switch + consent:
-- **"skips entire sequence when LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED is 'false'"** — sets env, asserts both outcomes are `skipped_disabled`/`skipped_no_data`, no senders called, `lead_magnet_sequence_skipped` event recorded.
-- **"sends sequence when LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED is unset (default ON)"** — deletes env var, runs brand-new lead path, asserts both emails attempted.
-- **"skips entire sequence when lead has no marketing_consent"** — `marketing_consent: false`, asserts both outcomes skipped, neither sender called, `lead_magnet_sequence_skipped` event with `reason: "NO_MARKETING_CONSENT"`.
-
-Wrap env mutations in `beforeEach`/`afterEach` to restore `process.env`.
-
-### 3. No changes
-
-- No production code changes.
-- No changes to `templates.test.ts` or `transactional-email.test.ts` (already green).
-- No changes to email copy, UI, or DB.
-
-## Validation
-
-```bash
-bunx vitest run src/lib/email/__tests__/lead-magnet-sequence.test.ts
-bunx vitest run src/lib/brevo/__tests__/sync.test.ts
-bunx vitest run src/lib/email/__tests__/templates.test.ts
-bunx vitest run src/lib/email/__tests__/transactional-email.test.ts
-bunx vitest run
+```
 bunx tsc --noEmit
+bunx vitest run
 ```
 
-Target: 289 + 4 new = **293/293 green**.
+Manual:
+- Campo vazio: botão "Enviar follow-up" ativo, preview sem CTA.
+- `not-a-url`: erro inline em pt-PT, botão desativado com tooltip.
+- `https://instabench.app/checkout/abc`: sem erro, preview mostra CTA, botão ativo.
+- `ftp://x.com`: erro inline (protocolo bloqueado), botão desativado.
 
-## Risks
+## Riscos
 
-- The new table-aware `from()` mock must preserve the exact chain shape used by `eventAlreadyEmitted` (`select → eq → eq → contains → limit → maybeSingle`). Mismatch reintroduces fail-open dedup (`false`) which is acceptable but would mask the duplicate-skip test — verified against current source.
-- Env restoration: must snapshot `process.env.LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` before each test and restore after, to avoid cross-test bleed.
+- Token de cor para erro: verificar `text-admin-signal-danger` ou equivalente em `tokens.css`/admin tokens; se não existir, usar `text-admin-text-primary` com peso `font-medium` para destacar (sem violar a regra de tokens).
+- Nenhum teste atual cobre este componente — não são adicionados testes novos (fora do scope: "UI only").
