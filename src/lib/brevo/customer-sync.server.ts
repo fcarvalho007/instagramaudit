@@ -73,7 +73,9 @@ export async function syncCustomerToBrevo(
     const [{ data: latestRR }, { count: reportsCount }] = await Promise.all([
       (supabaseAdmin as any)
         .from("report_requests")
-        .select("id, instagram_username, analysis_snapshot_id, created_at")
+        .select(
+          "id, instagram_username, analysis_snapshot_id, report_snapshot_id, created_at",
+        )
         .eq("lead_id", leadId)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -85,6 +87,8 @@ export async function syncCustomerToBrevo(
     ]);
 
     const handle: string | null = latestRR?.instagram_username ?? null;
+    const reportSnapshotId: string | null =
+      latestRR?.report_snapshot_id ?? null;
     const baseUrl = resolveBaseUrl();
     const nowIso = new Date().toISOString();
     const plan: string | null = lead.pricing_preference ?? null;
@@ -93,7 +97,11 @@ export async function syncCustomerToBrevo(
     const attributes = {
       INSTAGRAM_HANDLE: handle,
       REPORTS_COUNT: typeof reportsCount === "number" ? reportsCount : null,
-      LAST_REPORT_URL: handle ? `${baseUrl}/analyze/${handle}` : null,
+      LAST_REPORT_URL: reportSnapshotId
+        ? `${baseUrl}/reports/${encodeURIComponent(reportSnapshotId)}`
+        : handle
+          ? `${baseUrl}/analyze/${handle}`
+          : null,
       LAST_REPORT_AT: latestRR?.created_at ?? nowIso,
       PROFILE_OWNERSHIP: lead.profile_ownership ?? null,
       GOAL: lead.purpose ?? null,
