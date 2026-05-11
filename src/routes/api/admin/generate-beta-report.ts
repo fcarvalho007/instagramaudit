@@ -17,6 +17,7 @@ import {
   isAllowed,
 } from "@/lib/security/apify-allowlist";
 import type { Json } from "@/integrations/supabase/types";
+import { persistReportSnapshotForRequest } from "@/lib/report-snapshots/persist-report-snapshot.server";
 
 const ALLOWED_SOURCE_STATUSES = ["approved", "pending_review", "failed"] as const;
 
@@ -194,6 +195,15 @@ export const Route = createFileRoute("/api/admin/generate-beta-report")({
               } as Json,
             })
             .eq("id", requestId);
+
+          // Phase 2 — persist immutable report_snapshot (fail-soft, no providers)
+          if (snapshotId) {
+            await persistReportSnapshotForRequest(requestId, "admin_generate", {
+              handle,
+              leadId: rr.lead_id,
+              snapshotId,
+            });
+          }
 
           // 11. Record product event (fire-and-forget)
           try {
