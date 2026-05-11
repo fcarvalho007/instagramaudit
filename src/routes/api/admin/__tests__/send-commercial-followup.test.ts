@@ -128,7 +128,7 @@ beforeEach(() => {
     usefulness_score: 5,
     clarity_text: "claro",
     missing_text: null,
-    purchase_intent: "sim_definitivo",
+    purchase_intent: "sim",
     pricing_preference: "30_50",
     contact_consent: true,
     created_at: new Date().toISOString(),
