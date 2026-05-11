@@ -650,8 +650,13 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Relatório ──────────────────────────── */}
           <TabsContent value="relatorio" className="flex-1 overflow-y-auto mt-0">
+            <div className="px-4 sm:px-6 py-5 border-b" style={{ borderColor: "rgb(var(--admin-border-default))" }}>
+              <SectionTitle>Histórico de pedidos</SectionTitle>
+              <LeadReportsList leadId={lead.id} />
+            </div>
+
             <div className="px-4 sm:px-6 py-5 pb-8">
-              <SectionTitle>Relatório</SectionTitle>
+              <SectionTitle>Último relatório</SectionTitle>
               <ProgressTracker
                 reportStatus={lead.report_status}
                 pdfStatus={lead.pdf_status}
