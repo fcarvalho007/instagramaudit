@@ -139,7 +139,7 @@ function DisabledButton({
           <button
             type="button"
             disabled
-            aria-label={ariaLabel ?? label || undefined}
+            aria-label={ariaLabel ?? (label || undefined)}
             className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md text-[12px] font-medium ${
               square ? "w-9 px-0" : "px-3"
             } ${
