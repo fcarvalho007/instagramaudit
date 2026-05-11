@@ -334,7 +334,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               kind: "average",
               averageMs: avgGenerationMs,
               averageLabel: formatDuration(avgGenerationMs),
-              eventName: "request_received",
+              eventName: "beta_request_created",
             },
             templateKey: null,
             counts: () => ({
