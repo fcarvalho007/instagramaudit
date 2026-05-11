@@ -117,8 +117,8 @@ function BetaRequestsPage() {
   return (
     <>
       <AdminPageHeader
-        title="Beta Requests"
-        subtitle={`${total} pedidos · ${pendingCount} pendentes`}
+        title="Pedidos de relatório"
+        subtitle={`Fila utilitária — para gestão diária usa a ficha do contacto. ${total} pedidos · ${pendingCount} pendentes`}
         actions={
           <AdminSearchInput
             value={search}
