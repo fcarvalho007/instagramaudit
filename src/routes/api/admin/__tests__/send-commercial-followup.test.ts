@@ -186,7 +186,7 @@ describe("POST /api/admin/send-commercial-followup", () => {
   });
 
   it("accepts empty checkout_url, normalises to null, omits CTA from email and metadata", async () => {
-    const fetchMock = mockResendOk();
+    mockResendOk();
     const res = await POST({
       request: buildRequest({ lead_id: VALID_LEAD_ID, checkout_url: "" }),
     });
@@ -205,7 +205,7 @@ describe("POST /api/admin/send-commercial-followup", () => {
 
     // 3) email body sent to Resend does not contain the checkout CTA
     expect(fetchMock).toHaveBeenCalled();
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0]!;
     const body = JSON.parse((init as RequestInit).body as string) as {
       html: string;
       text: string;
