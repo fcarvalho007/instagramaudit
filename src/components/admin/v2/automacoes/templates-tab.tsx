@@ -4,14 +4,27 @@
  */
 
 import { AdminCard } from "../admin-card";
-import { EMAIL_TEMPLATES } from "@/lib/admin/email-template-registry";
+import {
+  EMAIL_TEMPLATES,
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+} from "@/lib/admin/email-template-registry";
 import { Link } from "@tanstack/react-router";
 
 export function TemplatesTab() {
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {EMAIL_TEMPLATES.map((t) => (
-        <AdminCard key={t.key}>
+    <div className="flex flex-col gap-6">
+      {CATEGORY_ORDER.map((cat) => {
+        const items = EMAIL_TEMPLATES.filter((t) => t.category === cat);
+        if (items.length === 0) return null;
+        return (
+          <section key={cat}>
+            <h3 className="m-0 mb-2 text-eyebrow-sm text-admin-text-tertiary">
+              {CATEGORY_LABELS[cat]}
+            </h3>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {items.map((t) => (
+                <AdminCard key={t.key}>
           <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -61,6 +74,8 @@ export function TemplatesTab() {
               <button
                 type="button"
                 disabled
+                aria-disabled="true"
+                aria-label="Edição de template — em breve"
                 className="cursor-not-allowed rounded-md border px-2.5 py-1 text-[12px] font-medium text-admin-text-tertiary opacity-60"
                 style={{ borderColor: "rgb(var(--admin-border-default))" }}
                 title="Edição em breve"
@@ -69,8 +84,12 @@ export function TemplatesTab() {
               </button>
             </div>
           </div>
-        </AdminCard>
-      ))}
+                </AdminCard>
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

@@ -724,6 +724,24 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Comunicação ────────────────────────── */}
           <TabsContent value="comunicacao" className="flex-1 overflow-y-auto mt-0">
+            {lead.lead_magnet && lead.lead_magnet.status !== "none" && (
+              <div className="mb-4 rounded-lg border border-[var(--color-admin-border)] bg-white p-3">
+                <p className="m-0 text-eyebrow-sm text-admin-text-tertiary">
+                  Lead-magnet
+                </p>
+                <p className="m-0 mt-1 text-[13px] text-admin-text-primary">
+                  Estado: <strong>{lead.lead_magnet.status}</strong> ·{" "}
+                  {lead.lead_magnet.sent_count} envio
+                  {lead.lead_magnet.sent_count === 1 ? "" : "s"}
+                </p>
+                {lead.lead_magnet.last_event_at && (
+                  <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
+                    Último evento: {lead.lead_magnet.last_event_type} ·{" "}
+                    {new Date(lead.lead_magnet.last_event_at).toLocaleString("pt-PT")}
+                  </p>
+                )}
+              </div>
+            )}
             <LeadCommunicationTimeline timeline={timeline} loading={timelineLoading} />
           </TabsContent>
 
