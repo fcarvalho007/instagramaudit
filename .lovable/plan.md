@@ -1,9 +1,14 @@
-## Goal
-Criar ficheiros estáticos de SEO (`robots.txt` e `sitemap.xml`) para controlar o que é indexado antes do teste público do MVP.
+## Estado atual
+Os dois ficheiros já existem em disco (criados no turno anterior, mesma instrução, mesmas regras). Não há necessidade de reescrever.
 
-## Files to create
+- `public/robots.txt` — presente
+- `public/sitemap.xml` — presente
+- `bunx tsc --noEmit` → 0 erros
+- `bunx vitest run` → 33 ficheiros · 351/351 testes verdes
 
-### 1. `public/robots.txt`
+## Conteúdo já no disco
+
+**`public/robots.txt`**
 ```
 User-agent: *
 Allow: /
@@ -26,38 +31,25 @@ Disallow: /reset-password
 Sitemap: https://instagramaudit.lovable.app/sitemap.xml
 ```
 
-Notas:
-- `/beta/request` mantida em Allow (rota pública existente em `src/routes/beta.request.tsx`).
-- `/report/example` não é listado nem em Allow nem em Disallow — fica na regra default (`Allow: /`). Não é mencionado pelo utilizador, e a memória de auditoria registou-o como "polish item" para depois.
-- Sem entradas específicas por user-agent (Googlebot, etc.), conforme pedido.
+**`public/sitemap.xml`** — 5 URLs estáveis:
+- `/` (weekly, 1.0)
+- `/privacidade` (monthly, 0.5)
+- `/termos` (monthly, 0.5)
+- `/cookies` (monthly, 0.5)
+- `/aviso-legal` (monthly, 0.5)
 
-### 2. `public/sitemap.xml`
-URLs incluídos (apenas páginas estáveis públicas):
-- `https://instagramaudit.lovable.app/`
-- `https://instagramaudit.lovable.app/privacidade`
-- `https://instagramaudit.lovable.app/termos`
-- `https://instagramaudit.lovable.app/cookies`
-- `https://instagramaudit.lovable.app/aviso-legal`
+`lastmod = 2026-05-11`. Base URL: `https://instagramaudit.lovable.app` (Published URL, igual ao default em `src/lib/email/url.ts`).
 
-`<lastmod>` = data de hoje (2026-05-11). `<changefreq>` = `monthly` para legais, `weekly` para `/`. `<priority>` = `1.0` para `/`, `0.5` para legais.
+Sem URLs dinâmicos (`/analyze/*`, `/reports/*`, `/app/*`, `/admin/*`, `/api/*`).
 
-URLs explicitamente excluídos: `/analyze/*`, `/reports/*`, `/app/*`, `/admin/*`, `/api/*`, `/beta/request`, `/feedback/*`, `/login`, `/signup`, `/reset-password`, `/report/example`, `/design-system`, `/dev-loading-preview`.
+## Plano para este turno
+Como os ficheiros já estão no estado pretendido e a validação passou no turno anterior:
 
-## Domain
-Uso de `https://instagramaudit.lovable.app` (Published URL confirmado em project_urls; é também o default em `src/lib/email/url.ts`). `PUBLIC_APP_BASE_URL` em runtime apenas afeta backend — ficheiros estáticos têm de conter URL absoluto literal.
+1. Não alterar nada em disco.
+2. Re-correr `bunx tsc --noEmit` e `bunx vitest run` apenas se quiseres revalidação fresca.
+3. Devolver relatório final.
 
-## Out of scope
-- Sem alteração de rotas, sem server route `/sitemap.xml` dinâmico (pedido foi explícito: "Static files only").
-- Sem mudanças em `__root.tsx` meta tags.
-- Sem providers, sem DB, sem Brevo/Resend, sem report logic.
+Se preferires um sitemap dinâmico (server route `/sitemap.xml`) em vez de ficheiro estático, diz e proponho plano alternativo — mas o pedido foi explicitamente "static files only".
 
-## Validation
-1. `bunx tsc --noEmit` (sanity, embora ficheiros estáticos não afetem TS).
-2. `bunx vitest run` (confirmar que 351/351 continuam verdes).
-3. Manual: confirmar que `/robots.txt` e `/sitemap.xml` resolvem em preview e que nenhum URL dinâmico (`/analyze/...`, `/reports/...`, `/admin`, `/app`) aparece no sitemap.
-
-## Final report
-- Ficheiros criados (caminhos)
-- Conteúdo de robots (allow/disallow)
-- URLs do sitemap
-- Resultado tsc + vitest + checks manuais
+## Out of scope (mantido)
+Sem alterações a rotas, providers, DB, Brevo/Resend, ou lógica de reports.
