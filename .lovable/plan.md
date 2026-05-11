@@ -1,66 +1,63 @@
-## Phase 3 — Estado actual
+## Goal
+Criar ficheiros estáticos de SEO (`robots.txt` e `sitemap.xml`) para controlar o que é indexado antes do teste público do MVP.
 
-Após auditoria, **toda a Fase 3 já está implementada**. Apenas falta revalidar.
+## Files to create
 
-### O que já existe
-
-**1. Endpoint `GET /api/public/report-snapshot/by-id/:snapshotId`**
-Ficheiro: `src/routes/api/public/report-snapshot.by-id.$snapshotId.ts` (181 linhas).
-- Valida UUID; devolve `INVALID_SNAPSHOT_ID` (400) se inválido.
-- Lê primeiro de `report_snapshots` (imutável).
-- Devolve: `id`, `instagram_username`, `payload` (= `report_payload_jsonb`), `meta`, `created_at`, `expires_at`, `expired`, `payload_schema_version`, `report_version`, `algorithm_version`, `benchmark`, `source: "report_snapshot"`.
-- Quando expirado, devolve `expired: true` sem payload.
-- **Fallback** para `analysis_snapshots` (mesmo shape) com `source: "legacy_analysis_snapshot"` para URLs antigos pré-Fase 2.
-- Apenas leitura: usa `supabaseAdmin` + `buildReportBenchmarkInput`. Não chama Apify/OpenAI/DataForSEO.
-
-**2. Rota `/reports/$snapshotId`**
-Ficheiro: `src/routes/reports.$snapshotId.tsx`.
-- Faz `fetch('/api/public/report-snapshot/by-id/...')` (já não chama o endpoint legacy).
-- `meta: noindex, nofollow` mantido.
-- Estados preservados: `loading`, `not_found`, `expired`, `error`, `ready`.
-
-**3. `/app/reports` (lista)**
-Ficheiro: `src/routes/app.reports.tsx` linha 193-194:
-```ts
-const snapshotIdForLink =
-  report.reportSnapshotId ?? report.analysisSnapshotId ?? null;
+### 1. `public/robots.txt`
 ```
-"Abrir relatório" já prefere `report_snapshot_id` com fallback legacy.
+User-agent: *
+Allow: /
+Allow: /privacidade
+Allow: /termos
+Allow: /cookies
+Allow: /aviso-legal
+Allow: /beta/request
 
-**4. `/app/reports/$id` (detalhe)**
-Ficheiro: `src/routes/app.reports.$id.tsx` linha 127-128: mesma regra.
+Disallow: /admin
+Disallow: /app
+Disallow: /reports
+Disallow: /analyze
+Disallow: /api
+Disallow: /feedback
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
 
-**5. Email links**
-- Helper `src/lib/email/url.ts` → `resolveReportUrl(handle, reportSnapshotId)` devolve `/reports/{id}` quando há snapshot, senão `/analyze/{handle}`.
-- `send-welcome-beta.server.ts` e `send-report-summary.server.ts` aceitam e passam `reportSnapshotId`.
-- `lead-magnet-sequence.server.ts` propaga `reportSnapshotId` para ambos.
-- `unlock.server.ts` (linha 417, 466) passa `reportSnapshotResult.snapshotId` para a sequência.
-- Brevo `sync.server.ts` e `customer-sync.server.ts` constroem `LAST_REPORT_URL` a partir de `report_snapshot_id`.
+Sitemap: https://instagramaudit.lovable.app/sitemap.xml
+```
 
-**6. Endpoint legacy**
-`src/routes/api/public/analysis-snapshot.by-id.$snapshotId.ts` (99 linhas) mantido intacto para admin/debug.
+Notas:
+- `/beta/request` mantida em Allow (rota pública existente em `src/routes/beta.request.tsx`).
+- `/report/example` não é listado nem em Allow nem em Disallow — fica na regra default (`Allow: /`). Não é mencionado pelo utilizador, e a memória de auditoria registou-o como "polish item" para depois.
+- Sem entradas específicas por user-agent (Googlebot, etc.), conforme pedido.
 
-### O que vai ser feito neste loop
+### 2. `public/sitemap.xml`
+URLs incluídos (apenas páginas estáveis públicas):
+- `https://instagramaudit.lovable.app/`
+- `https://instagramaudit.lovable.app/privacidade`
+- `https://instagramaudit.lovable.app/termos`
+- `https://instagramaudit.lovable.app/cookies`
+- `https://instagramaudit.lovable.app/aviso-legal`
 
-**Apenas revalidação. Zero alterações de código.**
+`<lastmod>` = data de hoje (2026-05-11). `<changefreq>` = `monthly` para legais, `weekly` para `/`. `<priority>` = `1.0` para `/`, `0.5` para legais.
 
-1. `bunx tsc --noEmit`
-2. `bunx vitest run` (suite completa, ~351 testes)
+URLs explicitamente excluídos: `/analyze/*`, `/reports/*`, `/app/*`, `/admin/*`, `/api/*`, `/beta/request`, `/feedback/*`, `/login`, `/signup`, `/reset-password`, `/report/example`, `/design-system`, `/dev-loading-preview`.
 
-### Relatório final incluirá
+## Domain
+Uso de `https://instagramaudit.lovable.app` (Published URL confirmado em project_urls; é também o default em `src/lib/email/url.ts`). `PUBLIC_APP_BASE_URL` em runtime apenas afeta backend — ficheiros estáticos têm de conter URL absoluto literal.
 
-- Endpoint criado: confirmação (já existente desde Fase 2).
-- Rotas actualizadas: `/reports/$snapshotId`, `/app/reports`, `/app/reports/$id` — confirmar fonte de dados.
-- Comportamento de fallback: `report_snapshot_id` → `analysis_snapshot_id` (UI) e endpoint `report_snapshots` → `analysis_snapshots` (API).
-- Comportamento de email: `resolveReportUrl` prefere `/reports/{report_snapshot_id}`, fallback para `/analyze/{handle}`.
-- Endpoint legacy `analysis-snapshot.by-id` preservado.
-- Resultados `tsc` + `vitest`.
+## Out of scope
+- Sem alteração de rotas, sem server route `/sitemap.xml` dinâmico (pedido foi explícito: "Static files only").
+- Sem mudanças em `__root.tsx` meta tags.
+- Sem providers, sem DB, sem Brevo/Resend, sem report logic.
 
-### Fora de âmbito (confirmado)
+## Validation
+1. `bunx tsc --noEmit` (sanity, embora ficheiros estáticos não afetem TS).
+2. `bunx vitest run` (confirmar que 351/351 continuam verdes).
+3. Manual: confirmar que `/robots.txt` e `/sitemap.xml` resolvem em preview e que nenhum URL dinâmico (`/analyze/...`, `/reports/...`, `/admin`, `/app`) aparece no sitemap.
 
-- Sem chamadas a Apify/OpenAI/DataForSEO.
-- Sem regeneração de relatórios.
-- Sem alterações ao cálculo de relatório.
-- Sem alterações de schema.
-- Sem cleanup nem deletes.
-- Sem alterações a Brevo/Resend além do helper de URL (que já está implementado).
+## Final report
+- Ficheiros criados (caminhos)
+- Conteúdo de robots (allow/disallow)
+- URLs do sitemap
+- Resultado tsc + vitest + checks manuais
