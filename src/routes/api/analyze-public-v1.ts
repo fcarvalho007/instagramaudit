@@ -51,6 +51,14 @@ import {
   isApifyEnabled,
   isTestingModeActive,
 } from "@/lib/security/apify-allowlist";
+import {
+  assertApifyDailyBudgetAvailable,
+  BudgetExceededError,
+} from "@/lib/security/apify-budget.server";
+import {
+  assertWithinPublicRateLimit,
+  RateLimitError,
+} from "@/lib/security/public-rate-limit.server";
 import type {
   CompetitorAnalysis,
   PublicAnalysisErrorCode,
@@ -107,8 +115,14 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "Não foi possível encontrar este perfil. Verificar o username.",
   PROFILE_NOT_ALLOWED:
     "A análise automática está em validação. Para já, este teste está limitado aos perfis definidos.",
+  PROFILE_PRIVATE:
+    "Perfil privado. A análise pública só funciona com perfis abertos.",
   PROVIDER_DISABLED:
     "A análise automática ainda não está ativa. O sistema está preparado, mas a ligação ao fornecedor de dados está desligada.",
+  BUDGET_EXCEEDED:
+    "O limite diário de análises foi atingido. Voltar amanhã.",
+  RATE_LIMITED:
+    "Muitos pedidos recentes. Aguardar uns minutos antes de nova análise.",
   UPSTREAM_UNAVAILABLE:
     "Serviço de análise temporariamente indisponível. Tentar novamente dentro de instantes.",
   UPSTREAM_FAILED:
@@ -122,12 +136,35 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   INVALID_USERNAME: 400,
   PROFILE_NOT_FOUND: 404,
   PROFILE_NOT_ALLOWED: 403,
+  PROFILE_PRIVATE: 404,
   PROVIDER_DISABLED: 503,
+  BUDGET_EXCEEDED: 503,
+  RATE_LIMITED: 429,
   UPSTREAM_UNAVAILABLE: 503,
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
   CACHE_ONLY_NO_DATA: 503,
 };
+
+/**
+ * Fields safe to echo back to public callers. Any other key passed via
+ * `extra` to `failure()` is silently dropped to avoid leaking raw provider
+ * payloads (Apify error messages, internal IDs, JSON paths).
+ */
+const PUBLIC_ERROR_EXTRA_KEYS = new Set<string>([
+  "retry_after_seconds",
+]);
+
+export function sanitizeExtra(
+  extra: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!extra) return undefined;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(extra)) {
+    if (PUBLIC_ERROR_EXTRA_KEYS.has(k)) out[k] = extra[k];
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -143,8 +180,9 @@ function jsonResponse(body: PublicAnalysisResponse, status: number): Response {
 }
 
 function failure(code: PublicAnalysisErrorCode, extra?: Record<string, unknown>): Response {
+  const safeExtra = sanitizeExtra(extra);
   return jsonResponse(
-    { success: false, error_code: code, message: ERROR_MESSAGES[code], ...extra } as PublicAnalysisResponse,
+    { success: false, error_code: code, message: ERROR_MESSAGES[code], ...(safeExtra ?? {}) } as PublicAnalysisResponse,
     HTTP_STATUS[code],
   );
 }
@@ -558,6 +596,82 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           return failure("PROVIDER_DISABLED");
         }
 
+        // 3.1) Hard daily budget gate. Apify spend across `provider_call_logs`
+        // for the trailing UTC day; if at or above `APIFY_HARD_CAP_USD`,
+        // refuse fresh calls and serve stale when possible.
+        try {
+          await assertApifyDailyBudgetAvailable();
+        } catch (err) {
+          if (err instanceof BudgetExceededError) {
+            console.warn(
+              "[analyze-public-v1] BUDGET_EXCEEDED",
+              `spent=${err.spentUsd.toFixed(2)}`,
+              `cap=${err.capUsd}`,
+              primary,
+            );
+            if (existing && isWithinStaleWindow(existing)) {
+              const stalePayload = existing.normalized_payload as unknown as {
+                profile?: { display_name?: string; followers_count?: number };
+              };
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "stale",
+                outcome: "success",
+                analysisSnapshotId: existing.id,
+                displayName: stalePayload.profile?.display_name ?? null,
+                followersLastSeen: stalePayload.profile?.followers_count ?? null,
+              });
+              return jsonResponse(
+                buildCachedResponse(existing, "stale", benchmarkData),
+                200,
+              );
+            }
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "none",
+              outcome: "blocked_allowlist",
+              errorCode: "BUDGET_EXCEEDED",
+            });
+            return failure("BUDGET_EXCEEDED");
+          }
+          throw err;
+        }
+
+        // 3.2) Per-IP / per-handle rate limit (24h). Counts only past
+        // FRESH+success events — cache and stale paths are not gated.
+        try {
+          const ipHash = await ipHashPromise;
+          await assertWithinPublicRateLimit({
+            ipHash,
+            handle: primary,
+            network: "instagram",
+          });
+        } catch (err) {
+          if (err instanceof RateLimitError) {
+            console.warn(
+              "[analyze-public-v1] RATE_LIMITED",
+              `scope=${err.scope}`,
+              `count=${err.count}`,
+              `limit=${err.limit}`,
+              primary,
+            );
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "none",
+              outcome: "blocked_allowlist",
+              errorCode: `RATE_LIMITED_${err.scope.toUpperCase()}`,
+            });
+            return failure("RATE_LIMITED");
+          }
+          throw err;
+        }
+
         try {
           // 3) One unified call per handle, in parallel. Each call returns
           // the profile details with `latestPosts[]` embedded, so there is
@@ -604,6 +718,24 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               providerCallLogId: providerCallIds[0] ?? null,
             });
             return failure("PROFILE_NOT_FOUND");
+          }
+
+          // Private profile: Apify returns the profile shell but no posts and
+          // marks `is_private`/`private` true. Treat as a distinct UX case.
+          const rawPrimary = primaryRow as Record<string, unknown>;
+          const isPrivate =
+            rawPrimary?.is_private === true || rawPrimary?.private === true;
+          if (isPrivate) {
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "not_found",
+              errorCode: "PROFILE_PRIVATE",
+              providerCallLogId: providerCallIds[0] ?? null,
+            });
+            return failure("PROFILE_PRIVATE");
           }
 
           const primaryPosts = Array.isArray(

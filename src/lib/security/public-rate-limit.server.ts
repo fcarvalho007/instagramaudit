@@ -1,0 +1,107 @@
+/**
+ * Public analyze rate limit (server-only).
+ *
+ * Caps the number of FRESH provider calls per IP and per handle in a 24h
+ * trailing window. Cache and stale fallback are not gated.
+ *
+ * Defaults:
+ *   PUBLIC_MAX_FRESH_PER_IP_DAY     (default 10)
+ *   PUBLIC_MAX_FRESH_PER_HANDLE_DAY (default 5)
+ */
+
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+export type RateLimitScope = "ip" | "handle";
+
+export class RateLimitError extends Error {
+  readonly scope: RateLimitScope;
+  readonly count: number;
+  readonly limit: number;
+  constructor(scope: RateLimitScope, count: number, limit: number) {
+    super(`Rate limit exceeded for ${scope}: ${count} >= ${limit}`);
+    this.name = "RateLimitError";
+    this.scope = scope;
+    this.count = count;
+    this.limit = limit;
+  }
+}
+
+function readNumber(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+export function getPublicMaxFreshPerIpDay(): number {
+  return readNumber("PUBLIC_MAX_FRESH_PER_IP_DAY", 10);
+}
+
+export function getPublicMaxFreshPerHandleDay(): number {
+  return readNumber("PUBLIC_MAX_FRESH_PER_HANDLE_DAY", 5);
+}
+
+interface AssertInput {
+  ipHash: string | null | undefined;
+  handle: string;
+  network?: string;
+  now?: Date;
+}
+
+async function countFreshSuccess(opts: {
+  column: "request_ip_hash" | "handle";
+  value: string;
+  sinceIso: string;
+  network?: string;
+}): Promise<number> {
+  let q = (supabaseAdmin as any)
+    .from("analysis_events")
+    .select("id", { count: "exact", head: true })
+    .eq("data_source", "fresh")
+    .eq("outcome", "success")
+    .eq(opts.column, opts.value)
+    .gte("created_at", opts.sinceIso);
+  if (opts.network) q = q.eq("network", opts.network);
+  const { count, error } = await q;
+  if (error) {
+    console.error(
+      `[public-rate-limit] count query failed (${opts.column})`,
+      error.message,
+    );
+    return 0;
+  }
+  return count ?? 0;
+}
+
+/** Throws RateLimitError when IP or handle exceeds its 24h fresh quota. */
+export async function assertWithinPublicRateLimit(
+  input: AssertInput,
+): Promise<void> {
+  const now = input.now ?? new Date();
+  const sinceIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const network = (input.network ?? "instagram").toLowerCase();
+  const handle = input.handle.toLowerCase();
+
+  const handleLimit = getPublicMaxFreshPerHandleDay();
+  const handleCount = await countFreshSuccess({
+    column: "handle",
+    value: handle,
+    sinceIso,
+    network,
+  });
+  if (handleCount >= handleLimit) {
+    throw new RateLimitError("handle", handleCount, handleLimit);
+  }
+
+  if (input.ipHash) {
+    const ipLimit = getPublicMaxFreshPerIpDay();
+    const ipCount = await countFreshSuccess({
+      column: "request_ip_hash",
+      value: input.ipHash,
+      sinceIso,
+    });
+    if (ipCount >= ipLimit) {
+      throw new RateLimitError("ip", ipCount, ipLimit);
+    }
+  }
+}
