@@ -227,7 +227,7 @@ function AccountPage() {
           </div>
 
           {/* Lead email */}
-          {account.leadEmail && (
+          {account.leadEmail && account.leadEmail !== account.email && (
             <div>
               <label className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
                 Email associado (lead)
@@ -241,10 +241,9 @@ function AccountPage() {
         </div>
       </div>
 
-      {/* Logout */}
-      <div className="mt-4">
-        {account.leadId && (
-          <section className="mb-4 rounded-xl border border-border-default/20 bg-white p-6 shadow-sm">
+      {/* Comunicações */}
+      {account.leadId && (
+        <section className="mt-4 rounded-xl border border-border-default/20 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex size-10 items-center justify-center rounded-full bg-blue-50 text-blue-500">
                 <BellRing className="size-4" />
@@ -276,22 +275,25 @@ function AccountPage() {
                 }`}
               >
                 <span
-                  className={`inline-block size-4 transform rounded-full bg-white shadow transition-transform ${
+                  className={`inline-flex size-4 items-center justify-center transform rounded-full bg-white shadow transition-transform ${
                     account.marketingConsent ? "translate-x-6" : "translate-x-1"
                   }`}
-                />
-                {consentSaving && (
-                  <Loader2 className="absolute -right-6 size-3.5 animate-spin text-content-tertiary" />
-                )}
+                >
+                  {consentSaving && (
+                    <Loader2 className="size-3 animate-spin text-content-tertiary" />
+                  )}
+                </span>
               </button>
             </div>
 
             {consentError && (
               <p className="mt-3 text-xs text-signal-danger">{consentError}</p>
             )}
-          </section>
-        )}
+        </section>
+      )}
 
+      {/* Logout */}
+      <div className="mt-4">
         <button
           onClick={handleLogout}
           disabled={loggingOut}
