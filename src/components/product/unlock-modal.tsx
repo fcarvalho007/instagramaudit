@@ -3,9 +3,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowLeft,
+  Activity,
+  BarChart3,
+  Clock,
   Briefcase,
   Check,
   CheckCircle2,
+  Compass,
+  ShieldCheck,
+  Sparkles,
   HelpCircle,
   Loader2,
   Lock,
@@ -130,7 +136,7 @@ export interface UnlockModalProps {
   onUnlock: (result: UnlockResult) => void;
 }
 
-type Step = 1 | 2 | 3 | 4 | 5 | "welcome-back";
+type Step = "intro" | 1 | 2 | 3 | 4 | 5 | "welcome-back";
 
 const STEP_HEADERS: Record<
   1 | 2 | 3 | 4,
@@ -181,7 +187,7 @@ export function UnlockModal({
   instagramUsername,
   onUnlock,
 }: UnlockModalProps) {
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>("intro");
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [result, setResult] = useState<UnlockResult | null>(null);
@@ -346,7 +352,11 @@ export function UnlockModal({
   const goBack = () => {
     setServerError(null);
     if (step === "welcome-back") {
-      setStep(1);
+      setStep("intro");
+      return;
+    }
+    if (step === 1) {
+      setStep("intro");
       return;
     }
     if (typeof step === "number" && step > 1 && step < 5) {
@@ -463,8 +473,22 @@ export function UnlockModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[640px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
-        {step === 5 ? (
+      <DialogContent className="sm:max-w-[760px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
+        {step === "intro" ? (
+          <IntroCover
+            handle={instagramUsername}
+            onContinue={() => {
+              void trackEvent({
+                data: {
+                  eventType: "unlock_modal_intro_cta_clicked",
+                  handle: instagramUsername,
+                  snapshotId,
+                },
+              }).catch(() => {});
+              setStep(1);
+            }}
+          />
+        ) : step === 5 ? (
           <SuccessStep
             firstName={
               returningFirstName ??
@@ -476,7 +500,7 @@ export function UnlockModal({
             onClose={() => onOpenChange(false)}
           />
         ) : step === "welcome-back" ? (
-          <div className="px-6 py-7 sm:px-7 sm:py-8">
+          <div className="px-7 py-8 sm:px-9 sm:py-9">
             <WelcomeBackState
               firstName={returningFirstName}
               submitting={submitting}
@@ -486,7 +510,7 @@ export function UnlockModal({
             />
           </div>
         ) : (
-          <div className="px-6 py-7 sm:px-7 sm:py-8">
+          <div className="px-7 py-8 sm:px-9 sm:py-9">
             <DialogHeader className="text-left space-y-3">
               <div className="flex items-center gap-2">
                 <p className="text-eyebrow-sm text-content-tertiary">
