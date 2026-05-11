@@ -2,7 +2,7 @@
  * KanbanBoard — horizontal scrollable board for beta leads.
  */
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -16,9 +16,12 @@ import { Search, ChevronDown, Inbox } from "lucide-react";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import {
   FILTER_CHIPS,
+  matchesChip,
+  matchesQuery,
   type FilterChipKey,
 } from "@/lib/admin/lead-filter-chips";
 import { LeadCard } from "./lead-card";
+import { toast } from "sonner";
 
 interface KanbanBoardProps {
   leads: EnrichedLead[];
@@ -37,7 +40,7 @@ export function KanbanBoard({
   const [search, setSearch] = useState("");
   const [filterChip, setFilterChip] = useState<FilterChipKey>("todos");
   const [openMobileSection, setOpenMobileSection] = useState<string | null>(
-    KANBAN_COLUMNS[0]?.key ?? null
+    KANBAN_COLUMNS[0]?.key ?? null,
   );
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
@@ -47,9 +50,16 @@ export function KanbanBoard({
     if (!lead || lead.commercial_status === targetKey) return;
     const targetCol = KANBAN_COLUMNS.find((c) => c.key === targetKey);
     const label = targetCol?.label ?? targetKey;
-    const name = lead.name || lead.email;
-    if (!confirm(`Mover "${name}" para "${label}"?`)) return;
+    const previous = lead.commercial_status;
+    const name = lead.name?.trim() || lead.email;
     onUpdate(leadId, { commercial_status: targetKey });
+    toast.success(`"${name}" movido para "${label}"`, {
+      action: {
+        label: "Anular",
+        onClick: () => onUpdate(leadId, { commercial_status: previous }),
+      },
+      duration: 5000,
+    });
   };
 
   const openNotes = (lead: EnrichedLead) => {
@@ -69,15 +79,71 @@ export function KanbanBoard({
     ? KANBAN_COLUMNS.filter((c) => activeChip.statuses!.includes(c.key))
     : KANBAN_COLUMNS;
 
-  const q = search.trim().toLowerCase();
-  const filteredLeads = q
-    ? leads.filter(
-        (l) =>
-          (l.name && l.name.toLowerCase().includes(q)) ||
-          l.email.toLowerCase().includes(q) ||
-          (l.handle && l.handle.toLowerCase().includes(q))
-      )
-    : leads;
+  const filteredLeads = useMemo(
+    () =>
+      [...leads]
+        .filter((l) => matchesChip(l, filterChip) && matchesQuery(l, search))
+        .sort(
+          (a, b) =>
+            new Date(b.last_interaction).getTime() -
+            new Date(a.last_interaction).getTime(),
+        ),
+    [leads, filterChip, search],
+  );
+
+  const hasFilters = filterChip !== "todos" || search.trim() !== "";
+  const counterLabel = hasFilters
+    ? `${filteredLeads.length} de ${leads.length} contactos`
+    : `${leads.length} contactos`;
+
+  const clearFilters = () => {
+    setFilterChip("todos");
+    setSearch("");
+  };
+
+  // Mobile: re-sincronizar a secção aberta com as colunas visíveis quando o
+  // chip esconde a primeira (evita accordion vazio).
+  useEffect(() => {
+    if (visibleColumns.length === 0) {
+      setOpenMobileSection(null);
+      return;
+    }
+    if (
+      openMobileSection &&
+      !visibleColumns.some((c) => c.key === openMobileSection)
+    ) {
+      setOpenMobileSection(visibleColumns[0]?.key ?? null);
+    }
+  }, [visibleColumns, openMobileSection]);
+
+  const chipsByGroup = {
+    estado: FILTER_CHIPS.filter((c) => c.group === "estado"),
+    atencao: FILTER_CHIPS.filter((c) => c.group === "atencao"),
+  };
+
+  const renderChip = (chip: typeof FILTER_CHIPS[number]) => {
+    const isActive = chip.key === filterChip;
+    return (
+      <button
+        key={chip.key}
+        type="button"
+        role="tab"
+        aria-selected={isActive}
+        onClick={() => setFilterChip(chip.key)}
+        className="px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors"
+        style={
+          isActive
+            ? {
+                backgroundColor: "var(--admin-board-chip-active-bg)",
+                color: "var(--admin-board-chip-active-text)",
+              }
+            : { color: "var(--color-admin-text-secondary)" }
+        }
+      >
+        {chip.label}
+      </button>
+    );
+  };
 
   const renderColumnHeader = (col: typeof KANBAN_COLUMNS[number], count: number) => (
     <>
@@ -110,48 +176,50 @@ export function KanbanBoard({
     <>
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <div
-          className="flex flex-wrap gap-1 p-1 bg-white border border-[var(--color-admin-border)] rounded-lg"
-          role="tablist"
-        >
-          {FILTER_CHIPS.map((chip) => {
-            const isActive = chip.key === filterChip;
-            return (
-              <button
-                key={chip.key}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setFilterChip(chip.key)}
-                className="px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors"
-                style={
-                  isActive
-                    ? {
-                        backgroundColor: "var(--admin-board-chip-active-bg)",
-                        color: "var(--admin-board-chip-active-text)",
-                      }
-                    : {
-                        color: "var(--color-admin-text-secondary)",
-                      }
-                }
-              >
-                {chip.label}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div
+            className="flex flex-wrap gap-1 p-1 bg-white border border-[var(--color-admin-border)] rounded-lg"
+            role="tablist"
+            aria-label="Filtrar por estado"
+          >
+            {chipsByGroup.estado.map(renderChip)}
+          </div>
+          <div
+            className="flex flex-wrap gap-1 p-1 bg-white border border-[var(--color-admin-border)] rounded-lg"
+            role="tablist"
+            aria-label="Filtros de atenção"
+          >
+            {chipsByGroup.atencao.map(renderChip)}
+          </div>
         </div>
-        <div className="relative">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-tertiary pointer-events-none"
-          />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pesquisar lead…"
-            className="pl-8 pr-3 h-9 text-[13px] bg-white border border-[var(--color-admin-border)] rounded-lg w-full sm:w-[260px] outline-none focus:border-[var(--color-admin-info-500)] focus:ring-1 focus:ring-[var(--color-admin-info-500)]/30"
-          />
+        <div className="flex items-center gap-3 ml-auto">
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-tertiary pointer-events-none"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Pesquisar lead…"
+              aria-label="Pesquisar contactos"
+              className="pl-8 pr-3 h-9 text-[13px] bg-white border border-[var(--color-admin-border)] rounded-lg w-full sm:w-[260px] outline-none focus:border-[var(--color-admin-info-500)] focus:ring-1 focus:ring-[var(--color-admin-info-500)]/30"
+            />
+          </div>
+          <span className="text-[12px] text-admin-text-tertiary tabular-nums whitespace-nowrap">
+            {counterLabel}
+          </span>
+          {hasFilters && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={clearFilters}
+              className="h-9 text-[12px]"
+            >
+              Limpar filtros
+            </Button>
+          )}
         </div>
       </div>
 
@@ -296,7 +364,7 @@ export function KanbanBoard({
         <SheetContent>
           <SheetHeader>
             <SheetTitle className="admin-card-title">
-              Notas — {editingLead?.email}
+              Notas — {editingLead?.name?.trim() || editingLead?.email}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4 flex flex-col gap-3">

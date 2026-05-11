@@ -27,6 +27,7 @@ import {
   matchesQuery,
   type FilterChipKey,
 } from "@/lib/admin/lead-filter-chips";
+import { LEAD_MAGNET_DISPLAY } from "@/lib/admin/lead-magnet-display";
 
 interface LeadsTableProps {
   leads: EnrichedLead[];
@@ -97,6 +98,36 @@ function FeedbackCell({ lead }: { lead: EnrichedLead }) {
   );
 }
 
+function LeadMagnetCell({ lead }: { lead: EnrichedLead }) {
+  const lm = lead.lead_magnet;
+  if (!lm || lm.status === "none") {
+    return <span className="text-[12px] text-admin-text-tertiary">—</span>;
+  }
+  const display = LEAD_MAGNET_DISPLAY[lm.status];
+  const color =
+    display.variant === "revenue"
+      ? "rgb(var(--admin-revenue-500))"
+      : display.variant === "info"
+        ? "rgb(var(--admin-info-500))"
+        : display.variant === "signal"
+          ? "rgb(var(--admin-signal-500))"
+          : "rgb(var(--admin-neutral-600))";
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap"
+      style={{ backgroundColor: `${color}1a`, color }}
+      title={display.hint}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+      {lm.status === "active"
+        ? "Activo"
+        : lm.status === "completed"
+          ? "Completo"
+          : "Saltado"}
+    </span>
+  );
+}
+
 export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
   const [query, setQuery] = useState("");
   const [chip, setChip] = useState<FilterChipKey>("todos");
@@ -130,34 +161,39 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
     <div className="border border-[var(--color-admin-border)] rounded-xl bg-white overflow-hidden">
       {/* Toolbar: chips + search + counter */}
       <div className="flex items-center justify-between gap-3 flex-wrap px-3 py-2.5 border-b border-[var(--color-admin-border)]">
-        <div
-          className="flex flex-wrap gap-1 p-1 bg-white border border-[var(--color-admin-border)] rounded-lg"
-          role="tablist"
-          aria-label="Filtrar por estado"
-        >
-          {FILTER_CHIPS.map((c) => {
-            const isActive = c.key === chip;
-            return (
-              <button
-                key={c.key}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setChip(c.key)}
-                className="px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors"
-                style={
-                  isActive
-                    ? {
-                        backgroundColor: "var(--admin-board-chip-active-bg)",
-                        color: "var(--admin-board-chip-active-text)",
-                      }
-                    : { color: "var(--color-admin-text-secondary)" }
-                }
-              >
-                {c.label}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(["estado", "atencao"] as const).map((group) => (
+            <div
+              key={group}
+              className="flex flex-wrap gap-1 p-1 bg-white border border-[var(--color-admin-border)] rounded-lg"
+              role="tablist"
+              aria-label={group === "estado" ? "Filtrar por estado" : "Filtros de atenção"}
+            >
+              {FILTER_CHIPS.filter((c) => c.group === group).map((c) => {
+                const isActive = c.key === chip;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setChip(c.key)}
+                    className="px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors"
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: "var(--admin-board-chip-active-bg)",
+                            color: "var(--admin-board-chip-active-text)",
+                          }
+                        : { color: "var(--color-admin-text-secondary)" }
+                    }
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
         <div className="flex items-center gap-3 ml-auto">
           <div className="relative">
@@ -222,6 +258,9 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
               Feedback
             </TableHead>
             <TableHead className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
+              Lead-magnet
+            </TableHead>
+            <TableHead className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
               Criado em
             </TableHead>
           </TableRow>
@@ -232,10 +271,10 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
               key={lead.id}
               className="cursor-pointer hover:bg-[var(--admin-board-column-bg)]"
               onClick={() => onOpenDetail(lead)}
-              aria-label={`Abrir ficha de ${lead.name || lead.email}`}
+              aria-label={`Abrir ficha de ${lead.name?.trim() || lead.email}`}
             >
               <TableCell className="font-medium text-admin-text-primary text-[13px]">
-                {lead.name || "—"}
+                {lead.name?.trim() || "Sem nome"}
               </TableCell>
               <TableCell className="text-[12px] text-admin-text-secondary">
                 {lead.email}
@@ -254,6 +293,9 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
               </TableCell>
               <TableCell>
                 <FeedbackCell lead={lead} />
+              </TableCell>
+              <TableCell>
+                <LeadMagnetCell lead={lead} />
               </TableCell>
               <TableCell className="text-[12px] text-admin-text-secondary tabular-nums">
                 {formatDate(lead.created_at)}

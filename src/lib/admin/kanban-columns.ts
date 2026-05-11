@@ -46,6 +46,8 @@ export interface EnrichedLead {
   created_at: string;
   report_request_id: string | null;
   feedback: BetaFeedbackSummary | null;
+  lead_magnet: LeadMagnetState | null;
+  marketing_consent: boolean;
 }
 
 export interface BetaFeedbackSummary {
@@ -57,4 +59,13 @@ export interface BetaFeedbackSummary {
   pricing_preference: string | null;
   contact_consent: boolean;
   created_at: string;
+}
+
+export type LeadMagnetStatus = "active" | "completed" | "skipped" | "none";
+
+export interface LeadMagnetState {
+  status: LeadMagnetStatus;
+  last_event_at: string | null;
+  last_event_type: string | null;
+  sent_count: number;
 }
