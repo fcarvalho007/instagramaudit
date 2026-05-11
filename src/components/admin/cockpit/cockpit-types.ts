@@ -118,6 +118,8 @@ export interface CockpitData {
     enabled: boolean;
     cost_per_profile_usd: number;
     cost_per_post_usd: number;
+    /** True when APIFY_ENABLED=true and APIFY_TESTING_MODE=false (public open). */
+    public_mode?: boolean;
   };
   testing_mode: {
     active: boolean;

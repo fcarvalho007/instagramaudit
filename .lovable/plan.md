@@ -1,114 +1,130 @@
-# Auditoria de CTAs públicos antes do lançamento
+# Abertura pública: desativar allowlist do Apify em segurança
 
-Auditoria read-only feita às superfícies públicas (homepage, header, footer, `/analyze/:username`, gate de unlock, modais de paywall, `/reports/:snapshotId`, `/app/reports`, `/app/plan`, páginas legais). Abaixo: o que está, o que arriscam prometer e o que mexer.
+Auditoria read-only ao gate de produção do `Apify`, ao endpoint público e às proteções de custo/rate-limit. Conclusão: **o código já tem todos os guard-rails**. Para abrir ao público basta alterar variáveis de ambiente — não é preciso mexer em código de gating. As alterações de código propostas abaixo são pequenos polimentos de UX no admin e nada mais.
 
-## 1. CTAs encontrados
+## 1. Comportamento atual de gating
 
-### A. Header (`src/components/layout/header.tsx`)
-- Nav: `Analisar` → `/`, `Como funciona` → `/como-funciona` (**não existe**), `Preços` → `/precos` (**não existe**), `Recursos` → `/recursos` (**não existe**).
-- Botão `Analisar agora` (desktop + drawer mobile) sem `to=""` — clica e não navega.
+Sequência exata em `src/routes/api/analyze-public-v1.ts` (POST):
 
-### B. Footer (`src/components/layout/footer.tsx`)
-- Links institucionais para `/sobre`, `/contacto`, `/rgpd` — **rotas inexistentes**.
-- Os restantes (`/privacidade`, `/termos`, `/aviso-legal`, `/cookies`) existem.
+```text
+1. Parse + validação do username (zod)
+2. Cache lookup: snapshot fresh (<15d) → devolve sem tocar em provider
+3. Execution mode: cache_only → serve stale ou CACHE_ONLY_NO_DATA
+4. Allowlist gate (se APIFY_TESTING_MODE != "false"):
+   - primário fora da allowlist → PROFILE_NOT_ALLOWED (403)
+   - competidores fora da allowlist são silenciosamente removidos
+5. Kill-switch APIFY_ENABLED != "true" → PROVIDER_DISABLED (503)
+   (com fallback para snapshot stale se existir)
+6. Budget diário (APIFY_HARD_CAP_USD) → BUDGET_EXCEEDED (503)
+   (com fallback para snapshot stale se existir)
+7. Rate-limit por IP / por handle (24h) → RATE_LIMITED (429)
+8. Chamada Apify (1 actor unificado por handle, em paralelo):
+   - timeout 60s, maxItems=1, maxTotalChargeUsd=0.10 por call
+   - cada call gera linha em provider_call_logs (success/timeout/http_error/...)
+9. Erros traduzidos para PublicAnalysisErrorCode em ERROR_MESSAGES (PT)
+10. sanitizeExtra() bloqueia tudo o que não esteja em PUBLIC_ERROR_EXTRA_KEYS
+    → mensagens cruas do Apify nunca chegam ao público
+```
 
-### C. Homepage (`src/routes/index.tsx`)
-- Sem CTA comercial. Tem secção "Acesso rápido · Testes" com link para perfil de teste e mockup — visível em produção pública.
+Estado dos kill-switches no código:
 
-### D. `/analyze/:username` — `PremiumLockedSection` + `ReportGateModal` (estado `idle`)
-- CTA `Desbloquear relatório completo` abre modal que recolhe email e gera o relatório completo. **Este é o fluxo MVP real** ("relatório grátis + email"). OK funcionalmente; a palavra "Desbloquear" pode dar a entender pagamento.
+| Mecanismo | Ficheiro | Comportamento |
+|---|---|---|
+| `APIFY_ENABLED` | `src/lib/security/apify-allowlist.ts` | "true" → ON; **qualquer outro valor → OFF** (fail-closed) |
+| `APIFY_TESTING_MODE` | idem | **default ON** (≠"false" → testing mode); só `"false"` desliga |
+| `APIFY_ALLOWLIST` | idem | CSV minúsculas; vazio = bloqueio total quando testing ON |
+| `APIFY_HARD_CAP_USD` | `apify-budget.server.ts` | gasto trailing 24h; `BUDGET_EXCEEDED` se ≥ cap |
+| `PUBLIC_MAX_FRESH_PER_IP_DAY` / `_HANDLE_DAY` | `public-rate-limit.server.ts` | janela 24h sobre `analysis_events` fresh+success |
+| `OPENAI_ENABLED` / `OPENAI_DAILY_CAP_USD` | enrichment | snapshot base entrega-se mesmo sem AI; só os jobs de insights ficam vazios |
+| `DATAFORSEO_ENABLED` | market-signals | sem DFS, o bloco "Market Signals" degrada para vazio |
 
-### E. `ReportGateModal` — estado `paywall` (limite mensal)
-- Cartão "Compra pontual · 3 €" com botão `Desbloquear novo relatório` desativado, `title="Disponível em breve"`.
-- Cartão "Acesso Pro · 10 €/mês" com botão `Ver plano Pro` desativado, `title="Disponível em breve"`.
-- Preços firmes apresentados como definitivos, embora desativados.
+Estados friendly já mapeados (PT) em `ERROR_MESSAGES`: `INVALID_USERNAME`, `PROFILE_NOT_FOUND`, `PROFILE_NOT_ALLOWED`, `PROFILE_PRIVATE`, `PROVIDER_DISABLED`, `BUDGET_EXCEEDED`, `RATE_LIMITED`, `UPSTREAM_UNAVAILABLE`, `UPSTREAM_FAILED`, `NETWORK_ERROR`, `CACHE_ONLY_NO_DATA`. Sem leak de payloads upstream.
 
-### F. `PostAnalysisConversionLayer`
-- Cartão "Compra pontual · 3 €" → botão `Em breve` desativado.
-- Cartão "Pro · 10 €/mês" (Recomendado) → botão `Pedir acesso Pro` (mailto `hello@instabench.pt`).
-- Cartão "Agency · 39 €/mês" → botão `Saber mais` (mailto).
-- Mailtos funcionam, mas os preços são apresentados como tabela final e o domínio `instabench.pt` precisa de existir como caixa de email.
+## 2. Visibilidade no admin (já existe)
 
-### G. `PremiumCallout` + `PremiumInterestDialog` (relatório v2)
-- Botão `Desbloquear` (variant gold) abre dialog "Estamos a recolher interesse para definir os preços finais".
-- Dialog lista quatro opções com preços firmes: `€3 + IVA`, `€13 + IVA`, `Em estudo`, `Sob proposta`. Conflito entre "preços por definir" e preços já fixados nos cartões.
+`src/routes/api/admin/diagnostics.ts` + `src/components/admin/cockpit/panels/diagnostics-panel.tsx` já expõem:
 
-### H. `/app/plan`
-- Pro / Agency com badge `Em breve`, manifesto explícito: "Não existem cobranças nem funcionalidades ativas dos planos Pro e Agency neste momento." **OK — manter.**
+- `testing_mode.active` + `allowlist[]`
+- estado do `APIFY_ENABLED`
+- preflight `APIFY_TOKEN`
+- últimos `provider_call_logs` (status, custo, runId)
+- ledger de custo diário + saldo do cap
 
-### I. `/reports/:snapshotId`, `/app/reports`, páginas legais
-- Sem CTAs comerciais quebrados detectados.
+**Lacuna pequena:** a heurística de readiness em `diagnostics-panel.tsx` ainda considera "testing OFF + APIFY ON" como **warning** ("Sem allowlist, qualquer handle dispara o provedor"). Após abertura pública isso passa a ser o estado **desejado** e não warning. Pequeno ajuste de copy + tom proposto abaixo.
 
-## 2. Alterações propostas (apenas copy/UI)
+## 3. Alterações de ambiente necessárias (Lovable Cloud → Secrets)
 
-### Header
-- Reduzir nav a items reais: `Analisar` (`/`), `Como funciona` (âncora ou remover até existir página), `Preços` → **remover**, `Recursos` → **remover**.
-- Decisão recomendada: manter só `Analisar` no header até existir página dedicada. Em mobile drawer idem.
-- `Analisar agora` → adicionar `asChild` + `<Link to="/">` com scroll para o input do hero (ou simplesmente para `/`).
+**Não tocar no código de gating.** Definir/confirmar exatamente estas variáveis:
 
-### Footer
-- Remover `Sobre`, `Contacto`, `RGPD` (não existem).
-- Manter `Privacidade`, `Termos`, `Aviso legal`, `Cookies`. Adicionar contacto via `mailto:` em vez de página.
+| Secret | Valor produção pública | Notas |
+|---|---|---|
+| `APIFY_ENABLED` | `true` | imprescindível para destrancar provider |
+| `APIFY_TESTING_MODE` | `false` | desliga allowlist, abre a perfis públicos |
+| `APIFY_ALLOWLIST` | manter CSV atual | **não apagar** — fica disponível para reentrada em modo teste |
+| `APIFY_HARD_CAP_USD` | recomendado: `5` (ajustar conforme orçamento) | hard-cap 24h |
+| `PUBLIC_MAX_FRESH_PER_IP_DAY` | recomendado: `5` | já configurado anteriormente |
+| `PUBLIC_MAX_FRESH_PER_HANDLE_DAY` | recomendado: `3` | já configurado anteriormente |
+| `OPENAI_ENABLED` | `true` (recomendado para MVP completo) | se deixar `false`, o relatório entrega-se mas sem secção de insights AI |
+| `OPENAI_DAILY_CAP_USD` | manter cap atual (ex.: `2`) | proteção análoga ao Apify |
+| `DATAFORSEO_ENABLED` | `false` para a abertura pública | ainda não é parte do core do MVP — degrada graciosamente |
+| `INTERNAL_API_TOKEN` | manter | usado para `?refresh=1` admin |
 
-### `ReportGateModal` (estado paywall)
-- Substituir preços firmes por linguagem de fase beta:
-  - Cartão "Compra pontual": remover `3 €`; texto: "Pagamento por relatório (em estudo)".
-  - Cartão "Acesso Pro": remover `10 €/mês`; texto: "Acompanhamento contínuo (em estudo)".
-- Manter botões desativados com `title="Em breve"`.
-- Trocar copy do header de "2 relatórios gratuitos já utilizados este mês" para algo coerente com a fase beta (ex.: "Limite gratuito da fase beta atingido"). Manter quota ativa só se o backend a aplica de facto — confirmar antes; caso contrário, reescrever para "Estamos em fase beta — entra em contacto para mais relatórios" com mailto.
+Sem chamadas a Apify, sem mutações DB, sem segredos a ser tocados nesta auditoria.
 
-### `PostAnalysisConversionLayer`
-- Remover preços firmes (`3 €`, `10 €/mês`, `39 €/mês`) dos três cartões.
-- Substituir por "Em estudo durante a fase beta" / "Acesso Pro em preparação" / "Agency sob proposta".
-- Manter mailtos para Pro e Agency (são canais reais de interesse). Confirmar que `hello@instabench.pt` existe; caso contrário, usar email institucional ativo do projeto.
-- Cartão "Compra pontual": botão `Em breve` desativado já é OK.
-- `note: "Acesso recorrente disponível em breve"` — manter.
+## 4. Alterações de código (mínimas, opcionais mas recomendadas)
 
-### `PremiumInterestDialog`
-- Remover preços específicos (`€3 + IVA`, `€13 + IVA`) das opções, deixando "Em estudo" / "Em estudo" para todas, ou mover preços para uma única linha de "indicação preliminar". Coerente com header "preços finais por definir".
-- Manter o disclaimer "Sem pagamento agora".
+Apenas UX no admin, **sem tocar no gating**:
 
-### `PremiumLockedSection` / `PremiumCallout`
-- Substituir o verbo "Desbloquear" pelo mais neutro "Receber relatório completo" no botão principal do `PremiumLockedSection` (a ação real é entregar PDF por email, não desbloquear pago).
-- `PremiumCallout` (gold PRO): manter, mas trocar o microcopy do badge de `Desbloquear` para `Registar interesse` para alinhar com o dialog.
+1. `src/components/admin/cockpit/panels/diagnostics-panel.tsx`
+   - Quando `APIFY_ENABLED=true` + `testing_mode.active=false`: mudar tom de `warning` para `success` com label "Modo público activo (kill-switch + budget + rate-limit a proteger)" e hint a apontar para o budget/rate-limit.
+   - Adicionar badge "PUBLIC OPEN" / "TESTING" no topo do painel para ler de relance.
+2. `src/routes/api/admin/diagnostics.ts`
+   - Devolver também `apify.public_mode = !testing_mode.active && apify_enabled` para o painel não inferir.
 
-### Homepage
-- Esconder a secção "Acesso rápido · Testes" em produção (ela aponta para perfil pessoal e para mockup editorial). Manter visível só em dev (`import.meta.env.DEV`).
+Sem mudanças noutros ficheiros.
 
-## 3. CTAs intencionais que ficam
+## 5. Procedimento de rollback (instantâneo, sem deploy)
 
-- `Analisar agora` (header) → leva ao input do hero.
-- `Receber relatório completo` (era "Desbloquear") em `/analyze/:username` → abre `ReportGateModal` para recolher email — MVP real.
-- `Pedir acesso Pro` / `Saber mais Agency` (mailto) → canais reais de interesse, sem promessa de checkout.
-- `/app/plan` cards Pro/Agency com `Em breve` e manifesto — já transparente.
-- `PremiumInterestDialog` opções → continuam como interest capture, sem pagamento.
+Se algo correr mal após a abertura, basta reverter os secrets:
 
-## 4. Validação
+| Cenário | Acção |
+|---|---|
+| Abuso / custo a disparar | `APIFY_ENABLED=false` → bloqueia provider, cache continua a servir |
+| Voltar a allowlist | `APIFY_TESTING_MODE=true` (apagar valor `false`) → volta ao smoke-test |
+| Conter custo sem fechar | Baixar `APIFY_HARD_CAP_USD` para `1` |
+| Apertar throughput | Baixar `PUBLIC_MAX_FRESH_PER_IP_DAY` para `1` |
+| Esconder AI | `OPENAI_ENABLED=false` → relatório entrega base, secção AI fica vazia |
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Manual:
-  - Header sem links partidos.
-  - Footer sem links partidos.
-  - `/analyze/:username` sem botão que prometa pagamento.
-  - Modal de limite mensal sem preços firmes.
-  - Sem CTAs que afirmem "comprar / checkout / subscrever" em qualquer ecrã público.
+Em todos os casos, **sem redeploy** — a próxima request relê env.
 
-## 5. Detalhes técnicos
+## 6. Checklist de validação
 
-- Ficheiros a editar (apenas copy/UI):
-  - `src/components/layout/header.tsx`
-  - `src/components/layout/footer.tsx`
-  - `src/components/product/report-gate-modal.tsx`
-  - `src/components/product/post-analysis-conversion-layer.tsx`
-  - `src/components/product/premium-locked-section.tsx`
-  - `src/components/report-redesign/v2/premium-interest-dialog.tsx`
-  - `src/components/report-redesign/v2/premium-callout.tsx` (microcopy badge)
-  - `src/routes/index.tsx` (gating de dev na secção de testes)
-- Sem migrations, sem backend, sem alteração de pricing logic, sem chamadas a providers.
+Após mudar os secrets:
 
-## 6. Confirmações antes da implementação
+```
+☐ bunx tsc --noEmit
+☐ bunx vitest run
+☐ /admin/sistema mostra: APIFY_ENABLED ✓, TESTING_MODE OFF, badge "PÚBLICO ABERTO"
+☐ POST /api/analyze-public-v1 com perfil NOVO (fora da allowlist) → 200
+☐ POST com username inválido → 400 + mensagem PT
+☐ POST com perfil privado → 404 + mensagem PT (sem leak)
+☐ POST com perfil inexistente → 404 + mensagem PT
+☐ Repetir 6x mesmo IP em 24h → 429 RATE_LIMITED
+☐ Forçar APIFY_ENABLED=false → 503 PROVIDER_DISABLED + mensagem PT
+☐ Cache-hit no segundo pedido (<15d) → sem provider_call_logs novo
+☐ /admin/sistema lista o último run com custo real, sem leak
+```
 
-1. Confirma o email institucional ativo a usar nos `mailto:` (atual: `hello@instabench.pt`).
-2. Confirma se a quota mensal "2 relatórios grátis" está realmente aplicada pelo backend, ou se devemos reescrever o estado `paywall` como "fase beta — contacta para mais".
-3. Confirma se queremos remover totalmente `Preços / Recursos / Como funciona` do header, ou criar páginas mínimas de placeholder ("Em construção").
+## 7. Output a devolver no fim
+
+- gating actual: ✓ documentado em §1
+- env values exactos: ✓ §3
+- rollback: ✓ §5
+- validação: a correr depois das alterações de env
+
+## 8. Confirmações antes da implementação
+
+1. Confirmar `APIFY_HARD_CAP_USD` desejado (proposto: `5 USD/dia`).
+2. Confirmar se quer `OPENAI_ENABLED=true` na abertura (recomendado) ou MVP sem AI.
+3. Confirmar se `DATAFORSEO_ENABLED` fica `false` (proposto) ou se já queremos market-signals públicos.
+4. Aprovar polimento de UX no `diagnostics-panel` (§4) — caso contrário não toco no código.

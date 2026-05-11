@@ -586,6 +586,7 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
             enabled: isApifyEnabled(),
             cost_per_profile_usd: costRates.perProfile,
             cost_per_post_usd: costRates.perPost,
+            public_mode: isApifyEnabled() && !isTestingModeActive(),
           },
           testing_mode: {
             active: isTestingModeActive(),
