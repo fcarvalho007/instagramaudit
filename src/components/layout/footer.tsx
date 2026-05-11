@@ -7,12 +7,10 @@ import { BrandMark } from "@/components/layout/brand-mark";
  * final do relatório. Mantemos brand + links institucionais.
  */
 const INSTITUTIONAL_LINKS = [
-  { label: "Sobre", href: "/sobre" },
-  { label: "Contacto", href: "/contacto" },
+  { label: "Contacto", href: "mailto:hello@instabench.pt" },
   { label: "Privacidade", href: "/privacidade" },
   { label: "Termos", href: "/termos" },
   { label: "Aviso legal", href: "/aviso-legal" },
-  { label: "RGPD", href: "/rgpd" },
   { label: "Cookies", href: "/cookies" },
 ];
 
