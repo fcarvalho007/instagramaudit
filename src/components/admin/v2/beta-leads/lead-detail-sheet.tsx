@@ -12,6 +12,8 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
   Sheet,
   SheetContent,
@@ -236,7 +238,7 @@ type TabKey = "resumo" | "relatorio" | "feedback" | "comunicacao" | "historico";
 
 const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
   { key: "resumo", label: "Resumo" },
-  { key: "relatorio", label: "Relatório" },
+  { key: "relatorio", label: "Relatórios" },
   { key: "feedback", label: "Feedback" },
   { key: "comunicacao", label: "Comunicação" },
   { key: "historico", label: "Histórico" },
@@ -648,8 +650,13 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Relatório ──────────────────────────── */}
           <TabsContent value="relatorio" className="flex-1 overflow-y-auto mt-0">
+            <div className="px-4 sm:px-6 py-5 border-b" style={{ borderColor: "rgb(var(--admin-border-default))" }}>
+              <SectionTitle>Histórico de pedidos</SectionTitle>
+              <LeadReportsList leadId={lead.id} />
+            </div>
+
             <div className="px-4 sm:px-6 py-5 pb-8">
-              <SectionTitle>Relatório</SectionTitle>
+              <SectionTitle>Último relatório</SectionTitle>
               <ProgressTracker
                 reportStatus={lead.report_status}
                 pdfStatus={lead.pdf_status}
@@ -1511,5 +1518,117 @@ function FeedbackBetaSection({
         </div>
       </div>
     </div>
+  );
+}
+// ── LeadReportsList ──────────────────────────────────────────
+// Lista todos os report_requests deste contacto. Read-only.
+
+interface LeadReportRow {
+  id: string;
+  instagram_username: string;
+  request_status: string;
+  pdf_status: string;
+  delivery_status: string;
+  analysis_snapshot_id: string | null;
+  created_at: string;
+}
+
+function LeadReportsList({ leadId }: { leadId: string }) {
+  const { data, isLoading, error, refetch } = useQuery<{ rows: LeadReportRow[] }>({
+    queryKey: ["admin", "lead-reports", leadId],
+    queryFn: async () => {
+      const res = await adminFetch(
+        `/api/admin/report-requests?lead_id=${leadId}&pageSize=100`,
+      );
+      if (!res.ok) throw new Error("Falha ao carregar pedidos");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  if (isLoading) {
+    return (
+      <p className="text-[12px] text-admin-text-tertiary">A carregar pedidos…</p>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2">
+        <p className="text-[12px] text-admin-danger-700">
+          Não foi possível carregar pedidos.
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="text-[12px] underline text-admin-text-secondary hover:text-admin-text-primary"
+        >
+          Tentar de novo
+        </button>
+      </div>
+    );
+  }
+
+  const rows = data?.rows ?? [];
+  if (rows.length === 0) {
+    return (
+      <p className="text-[12px] text-admin-text-tertiary">
+        Ainda não existem relatórios associados a este contacto.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col">
+      {rows.map((r) => (
+        <li
+          key={r.id}
+          className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t py-2.5 first:border-t-0 first:pt-0"
+          style={{ borderColor: "rgb(var(--admin-border-default))" }}
+        >
+          <span className="text-[13px] font-medium text-admin-text-primary">
+            @{r.instagram_username}
+          </span>
+          <span className="text-[11px] text-admin-text-tertiary">
+            {formatDate(r.created_at)}
+          </span>
+          <AdminBadge variant={STATUS_ACCENT[r.request_status] ?? "neutral"}>
+            {r.request_status}
+          </AdminBadge>
+          {r.pdf_status && r.pdf_status !== "not_generated" && (
+            <AdminBadge variant={STATUS_ACCENT[r.pdf_status] ?? "neutral"}>
+              PDF: {r.pdf_status}
+            </AdminBadge>
+          )}
+          {r.delivery_status && r.delivery_status !== "not_sent" && (
+            <AdminBadge variant={STATUS_ACCENT[r.delivery_status] ?? "neutral"}>
+              Email: {r.delivery_status}
+            </AdminBadge>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {r.instagram_username && (
+              <a
+                href={`/analyze/${r.instagram_username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <ExternalLink size={11} /> Abrir
+              </a>
+            )}
+            {r.analysis_snapshot_id && (
+              <Link
+                to="/admin/report-preview/snapshot/$snapshotId"
+                params={{ snapshotId: r.analysis_snapshot_id }}
+                target="_blank"
+                className="text-[11px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <FileText size={11} /> Snapshot
+              </Link>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
