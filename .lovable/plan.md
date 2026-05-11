@@ -1,68 +1,58 @@
-## Refinar modal de unlock — capa + passo final + largura
+## Fase 1 — `report_snapshots`: ajuste do índice único
 
-### 1. Adicionar passo de capa (Step "intro") antes do Passo 1
+### O que já está feito (verificado no código e na BD)
 
-Ficheiro: `src/components/product/unlock-modal.tsx`
+- ✅ Tabela `public.report_snapshots` criada (id, instagram_username, user_id, lead_id, report_request_id, source_analysis_snapshot_id, competitor_usernames, report_payload_jsonb, payload_schema_version, report_version, algorithm_version, expires_at, expired_at, metadata, pdf_storage_path, created_at).
+- ✅ `report_request_id` é nullable.
+- ✅ RLS activa, com policy `Users can read own report snapshots` (`user_id = auth.uid()`). Sem INSERT/UPDATE/DELETE para `authenticated` — escrita só via service role (alinhado com "sem escrever ainda no pipeline").
+- ✅ Constantes em `src/lib/report-snapshots/schema.ts`: `REPORT_PAYLOAD_SCHEMA_VERSION = "report.v1"`, `REPORT_VERSION_FREE_V1 = "free.v1"`, `ALGORITHM_VERSION_V1 = "analysis.v1"`.
+- ✅ Schema Zod `ReportPayloadV1Schema` (com `httpsUrl` a barrar `data:`).
+- ✅ Builder `build-report-snapshot-payload.server.ts`.
+- ✅ Testes: `src/lib/report-snapshots/__tests__/build-report-snapshot-payload.test.ts` e `src/lib/report/__tests__/retention.test.ts`.
+- ✅ Política de retenção centralizada (`REPORT_RETENTION_DAYS`, `CACHE_TTL_DAYS`).
 
-- Acrescentar `"intro"` ao tipo `Step` e tornar o estado inicial `"intro"`.
-- Construir `IntroCover` inspirado na imagem de referência (mesma estética visual do lock-gate CTA do relatório), com:
+### O que falta (único delta pedido)
 
-  - Eyebrow esquerda em primary: **+4 secções grátis** · pílula âmbar à direita: **BETA · ACESSO GRATUITO**.
-  - Título Fraunces: `Continua a leitura do <em>@{handle}</em>`.
-  - Subtítulo Inter (13–14px):
-    > Já viste **2 das 6 secções** do relatório. Faltam 4 — desbloqueia-as agora com o teu email. Demora menos de 1 minuto.
-  - Lista de 3 cards horizontais com ícone (lucide), título Inter SemiBold e linha de apoio Inter Regular tertiary:
-    1. **Diagnóstico editorial** — o que funciona, o que falha, onde estás abaixo do mercado.
-    2. **Comparação com perfis pares** — onde estás no benchmark do teu escalão.
-    3. **Desempenho, conteúdo e procura** — envolvimento, formatos, hashtags e sinais fora do Instagram.
-  - Botão primário largo: **Desbloquear as 4 secções →** → chama `setStep(1)`.
-  - Linha inferior subtil (ícones + texto 11px tertiary): `~1 minuto · RGPD · sem spam · BETA · capacidade limitada`.
+A BD tem hoje:
+- `report_snapshots_report_request_id_key` — **UNIQUE simples** sobre `report_request_id` (criada via constraint `UNIQUE`).
+- `report_snapshots_report_request_id_idx` — índice btree não-único redundante.
 
-- Sem barra de progresso na capa. A barra `ProgressSegments` continua a aparecer apenas no fluxo 1→4 (PASSO 1 DE 4 → PASSO 4 DE 4).
-- O `goBack` no Passo 1 passa a regressar a `"intro"` em vez de ficar bloqueado.
-- Tracking: enviar `unlock_modal_intro_viewed` quando a capa monta e `unlock_modal_intro_cta_clicked` ao clicar no botão (sem PII).
+Pretendido: **índice único parcial** que torne explícita a intenção "1 snapshot por `report_request_id`, mas vários `NULL` permitidos para snapshots manuais/admin".
 
-### 2. Passo final — sem preço, um único botão (já parcialmente feito, blindar)
+### Migração
 
-Ficheiro: `src/components/product/unlock-modal.tsx` (`SuccessStep`) e `src/routes/analyze.$username.tsx`.
+```sql
+-- Remover unique constraint simples
+ALTER TABLE public.report_snapshots
+  DROP CONSTRAINT IF EXISTS report_snapshots_report_request_id_key;
 
-- Confirmar que `SuccessStep` mantém:
-  - Botão único **Ver relatório gratuito agora →** (já presente).
-  - Nota por baixo: **Este relatório foi associado diretamente à tua conta.** (já presente).
-  - Lista `UNLOCKED_ITEMS` mantém-se (visão geral / diagnóstico / desempenho desbloqueados) — sem preço, sem CTA secundário.
-- **Suprimir o `PricingFeedbackSheet`** que abre depois do unlock, porque é onde o preço aparece. Em `analyze.$username.tsx`:
-  - Remover o uso de `usePricingFeedbackTrigger` e a renderização do `PricingFeedbackSheet`.
-  - Manter o `dispatchEvent(PRICING_PDF_EVENT)` em vigor não faz mal, mas o sheet deixa de existir nesta página.
-  - Imports não usados (`PricingFeedbackSheet`, `usePricingFeedbackTrigger`, `PRICING_PDF_EVENT`) ficam removidos.
+-- Remover índice btree redundante (a versão única parcial cobre os lookups
+-- que precisamos: WHERE report_request_id = $1)
+DROP INDEX IF EXISTS public.report_snapshots_report_request_id_idx;
 
-### 3. Modal mais largo e mais respirado
+-- Índice único parcial — intenção explícita
+CREATE UNIQUE INDEX report_snapshots_report_request_id_unique
+  ON public.report_snapshots(report_request_id)
+  WHERE report_request_id IS NOT NULL;
+```
 
-Ficheiro: `src/components/product/unlock-modal.tsx` (`DialogContent`).
+Notas:
+- Em Postgres, `UNIQUE` simples já permite múltiplos `NULL`, mas o índice parcial documenta a regra e habilita o uso em `INSERT ... ON CONFLICT (report_request_id) WHERE report_request_id IS NOT NULL DO UPDATE` no futuro.
+- Sem alterações de RLS, colunas, tipos, ou seeds.
 
-- `sm:max-w-[640px]` → **`sm:max-w-[760px]`** para desktop.
-- Padding interno aumenta de `px-6 py-7 sm:px-7 sm:py-8` → `px-7 py-8 sm:px-9 sm:py-9` em todos os passos (capa, 1–4, success, welcome-back).
-- Em mobile (<640px) mantém `max-h-[92vh] overflow-y-auto` e padding compacto. Validar a 375px.
+### Fora de scope (confirmado pelo utilizador)
 
-### Fora de scope
-
-- Não alterar `unlockFormSchema`, endpoints, eventos de produto nem fluxo de welcome-back.
-- Não tocar em `report-shell-v2.tsx` nem nos cards do relatório.
-- Não introduzir nova dependência.
+- Sem UI, sem cleanup, sem providers, sem Brevo/Resend.
+- Sem escrever snapshots no pipeline ainda.
+- Sem alterações em `schema.ts`, builder, constants ou testes (todos já existem).
 
 ### Validação
 
+- Após a migração: `psql -c "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'report_snapshots';"` para confirmar que `report_snapshots_report_request_id_unique` é parcial e que o `_key` desapareceu.
 - `bunx tsc --noEmit`
-- `bunx vitest run`
-- Manual:
-  - Modal abre em **capa**, não no formulário.
-  - Capa visível e legível em 375px e desktop, sem barra de progresso.
-  - Clicar "Desbloquear as 4 secções" leva ao Passo 1 (form com nome/apelido/email).
-  - "Voltar" no Passo 1 regressa à capa.
-  - Fluxo 1→4 chega a Success com **um botão** + nota; **nenhum sheet de preço aparece** depois.
-  - Após sucesso, o relatório abre com Bloco 01 completo (correção da iteração anterior preservada).
-  - Sem erros na consola.
+- `bunx vitest run` (testes do builder e da retenção continuam verdes)
 
 ### Entrega
 
-- Ficheiros alterados: `src/components/product/unlock-modal.tsx`, `src/routes/analyze.$username.tsx`.
-- Resultado de tsc + vitest.
+- 1 migração SQL.
+- Saída de `tsc` + `vitest` + `pg_indexes`.
