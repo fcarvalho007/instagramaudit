@@ -364,7 +364,7 @@ export function KanbanBoard({
         <SheetContent>
           <SheetHeader>
             <SheetTitle className="admin-card-title">
-              Notas — {editingLead?.email}
+              Notas — {editingLead?.name?.trim() || editingLead?.email}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4 flex flex-col gap-3">
