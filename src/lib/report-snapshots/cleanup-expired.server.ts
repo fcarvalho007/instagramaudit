@@ -17,6 +17,7 @@ export interface CleanupOptions {
   batchSize?: number;
   maxBatches?: number;
   now?: Date;
+  dryRun?: boolean;
 }
 
 export interface CleanupBatchError {
@@ -31,6 +32,7 @@ export interface CleanupResult {
   batches: number;
   durationMs: number;
   errors: CleanupBatchError[];
+  dryRun: boolean;
 }
 
 const DEFAULT_BATCH_SIZE = 100;
@@ -43,6 +45,7 @@ export async function cleanupExpiredReportSnapshots(
   const maxBatches = opts.maxBatches ?? DEFAULT_MAX_BATCHES;
   const now = opts.now ?? new Date();
   const nowIso = now.toISOString();
+  const dryRun = opts.dryRun === true;
 
   const db = supabaseAdmin as any;
   const started = Date.now();
@@ -54,6 +57,7 @@ export async function cleanupExpiredReportSnapshots(
     batches: 0,
     durationMs: 0,
     errors: [],
+    dryRun,
   };
 
   for (let batchIndex = 0; batchIndex < maxBatches; batchIndex += 1) {
@@ -92,21 +96,24 @@ export async function cleanupExpiredReportSnapshots(
     result.scanned += list.length;
     const ids = list.map((r) => r.id);
 
-    const { error: updErr } = await db
-      .from("report_snapshots")
-      .update({ report_payload_jsonb: null, expired_at: nowIso })
-      .in("id", ids)
-      .is("expired_at", null);
+    let firstErr: { message?: string } | null = null;
+    if (!dryRun) {
+      const { error: updErr } = await db
+        .from("report_snapshots")
+        .update({ report_payload_jsonb: null, expired_at: nowIso })
+        .in("id", ids)
+        .is("expired_at", null);
 
-    // Segundo update para snapshots que já tinham expired_at mas ainda
-    // tinham payload (defensivo — não sobrescreve expired_at original).
-    const { error: updErr2 } = await db
-      .from("report_snapshots")
-      .update({ report_payload_jsonb: null })
-      .in("id", ids)
-      .not("expired_at", "is", null);
+      // Segundo update para snapshots que já tinham expired_at mas ainda
+      // tinham payload (defensivo — não sobrescreve expired_at original).
+      const { error: updErr2 } = await db
+        .from("report_snapshots")
+        .update({ report_payload_jsonb: null })
+        .in("id", ids)
+        .not("expired_at", "is", null);
 
-    const firstErr = updErr ?? updErr2;
+      firstErr = updErr ?? updErr2;
+    }
     if (firstErr) {
       result.ok = false;
       result.errors.push({
@@ -140,7 +147,9 @@ export async function cleanupExpiredReportSnapshots(
       : null;
 
     await recordProductEvent({
-      eventType: "report_snapshots_expired_batch",
+      eventType: dryRun
+        ? "report_snapshots_cleanup_dry_run"
+        : "report_snapshots_expired_batch",
       metadata: {
         count: list.length,
         snapshot_ids: ids,
@@ -148,10 +157,14 @@ export async function cleanupExpiredReportSnapshots(
         expires_at_max: expiresAtMax,
         run_at: nowIso,
         batch_index: batchIndex,
+        dry_run: dryRun,
       },
     });
 
     if (list.length < batchSize) break;
+    // Em dry-run não fazemos UPDATE: o próximo SELECT devolveria as mesmas
+    // rows. Reportamos o primeiro batch como amostra e saímos.
+    if (dryRun) break;
   }
 
   result.durationMs = Date.now() - started;

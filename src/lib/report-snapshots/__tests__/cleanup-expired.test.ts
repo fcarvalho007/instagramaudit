@@ -175,4 +175,26 @@ describe("cleanupExpiredReportSnapshots", () => {
     const mod = await import("../cleanup-expired.server");
     expect(typeof mod.cleanupExpiredReportSnapshots).toBe("function");
   });
+
+  it("dryRun=true conta rows mas não faz update e emite evento dry_run", async () => {
+    state.rows = [expiredRow("a"), expiredRow("b"), expiredRow("c")];
+    const r = await cleanupExpiredReportSnapshots({
+      batchSize: 10,
+      maxBatches: 5,
+      dryRun: true,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.dryRun).toBe(true);
+    expect(r.expiredCount).toBe(3);
+    expect(state.updatedIds).toEqual([]);
+    const dryEvents = recordedEvents.filter(
+      (e) => e.eventType === "report_snapshots_cleanup_dry_run",
+    );
+    expect(dryEvents).toHaveLength(1);
+    expect(dryEvents[0].metadata.count).toBe(3);
+    expect(dryEvents[0].metadata.dry_run).toBe(true);
+    expect(
+      recordedEvents.some((e) => e.eventType === "report_snapshots_expired_batch"),
+    ).toBe(false);
+  });
 });
