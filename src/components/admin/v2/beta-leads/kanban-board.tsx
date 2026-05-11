@@ -39,6 +39,18 @@ export function KanbanBoard({
   const [openMobileSection, setOpenMobileSection] = useState<string | null>(
     KANBAN_COLUMNS[0]?.key ?? null
   );
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+
+  const handleDrop = (targetKey: string, leadId: string) => {
+    setDragOverColumn(null);
+    const lead = leads.find((l) => l.id === leadId);
+    if (!lead || lead.commercial_status === targetKey) return;
+    const targetCol = KANBAN_COLUMNS.find((c) => c.key === targetKey);
+    const label = targetCol?.label ?? targetKey;
+    const name = lead.name || lead.email;
+    if (!confirm(`Mover "${name}" para "${label}"?`)) return;
+    onUpdate(leadId, { commercial_status: targetKey });
+  };
 
   const openNotes = (lead: EnrichedLead) => {
     setEditingLead(lead);
@@ -213,11 +225,30 @@ export function KanbanBoard({
             const colLeads = filteredLeads.filter(
               (l) => l.commercial_status === col.key
             );
+            const isDragOver = dragOverColumn === col.key;
             return (
               <div
                 key={col.key}
-                className="flex flex-col shrink-0"
+                className={`flex flex-col shrink-0 transition-shadow rounded-xl ${
+                  isDragOver
+                    ? "ring-2 ring-[rgb(var(--admin-info-500))] ring-offset-2 ring-offset-transparent"
+                    : ""
+                }`}
                 style={{ width: 272 }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (dragOverColumn !== col.key) setDragOverColumn(col.key);
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                  setDragOverColumn((cur) => (cur === col.key ? null : cur));
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = e.dataTransfer.getData("text/plain");
+                  if (id) handleDrop(col.key, id);
+                }}
               >
                 {/* Column header */}
                 {renderColumnHeader(col, colLeads.length)}
@@ -229,13 +260,22 @@ export function KanbanBoard({
                   {colLeads.length === 0
                     ? renderEmptyState()
                     : colLeads.map((lead) => (
-                        <LeadCard
+                        <div
                           key={lead.id}
-                          lead={lead}
-                          onUpdate={onUpdate}
-                          onEditNotes={openNotes}
-                          onOpenDetail={onOpenDetail}
-                        />
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData("text/plain", lead.id);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          className="cursor-grab active:cursor-grabbing"
+                        >
+                          <LeadCard
+                            lead={lead}
+                            onUpdate={onUpdate}
+                            onEditNotes={openNotes}
+                            onOpenDetail={onOpenDetail}
+                          />
+                        </div>
                       ))}
                 </div>
               </div>

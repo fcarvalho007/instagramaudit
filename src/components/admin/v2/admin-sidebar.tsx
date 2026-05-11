@@ -59,7 +59,6 @@ const GROUPS: NavGroup[] = [
     label: "Contactos",
     items: [
       { to: "/admin/beta-leads", label: "Pipeline", icon: Columns },
-      { to: "/admin/automacoes", label: "Automações", icon: Zap },
     ],
   },
   {
@@ -74,7 +73,8 @@ const GROUPS: NavGroup[] = [
     label: "Laboratório",
     items: [
       { to: "/admin/report-lab", label: "Report Lab", icon: FlaskConical },
-      { to: "/admin/email-lab", label: "Email Lab", icon: MailCheck },
+      { to: "/admin/automacoes", label: "Automações", icon: Zap },
+      { to: "/admin/email-lab", label: "Templates Email + SMS", icon: MailCheck },
     ],
   },
   {

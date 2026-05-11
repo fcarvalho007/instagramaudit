@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Tabs,
@@ -38,7 +38,24 @@ export const Route = createFileRoute("/admin/beta-leads")({
 
 async function fetchLeads(): Promise<EnrichedLead[]> {
   const res = await fetch("/api/admin/leads-kanban", { credentials: "include" });
-  if (!res.ok) throw new Error("Falha ao carregar leads");
+  if (!res.ok) {
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const body = await res.json();
+      code = body?.code;
+      message = body?.error ?? body?.message;
+    } catch {
+      /* sem body JSON */
+    }
+    const err = new Error(message ?? "Falha ao carregar leads") as Error & {
+      status?: number;
+      code?: string;
+    };
+    err.status = res.status;
+    err.code = code;
+    throw err;
+  }
   const json = await res.json();
   return json.leads ?? [];
 }
@@ -148,11 +165,44 @@ function BetaLeadsPage() {
         </div>
       )}
 
-      {error && (
-        <div className="py-8 text-center text-sm text-[rgb(var(--admin-expense-500))]">
-          Erro ao carregar contactos. Verifica a sessão de admin.
-        </div>
-      )}
+      {error && (() => {
+        const e = error as Error & { status?: number; code?: string };
+        const isAuth = e.status === 401 || e.status === 403;
+        return (
+          <div className="py-10 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-[rgb(var(--admin-expense-500))] font-medium">
+              {isAuth
+                ? "Sessão de admin expirada ou em falta."
+                : "Não foi possível carregar contactos."}
+            </p>
+            {(e.status || e.code) && (
+              <p className="text-eyebrow-sm text-admin-text-tertiary">
+                {e.status ? `HTTP ${e.status}` : ""}
+                {e.status && e.code ? " · " : ""}
+                {e.code ?? ""}
+              </p>
+            )}
+            {isAuth ? (
+              <Link
+                to="/admin"
+                className="inline-flex items-center px-3 py-1.5 text-[13px] font-medium rounded-md bg-[rgb(var(--admin-info-500))] text-white hover:opacity-90 transition-opacity"
+              >
+                Iniciar sessão
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: ["admin", "beta-leads"] })
+                }
+                className="inline-flex items-center px-3 py-1.5 text-[13px] font-medium rounded-md border border-[var(--color-admin-border)] text-admin-text-primary hover:bg-admin-surface-muted transition-colors"
+              >
+                Tentar de novo
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {!isLoading && !error && (
         <Tabs value={view} onValueChange={setView} className="w-full">
