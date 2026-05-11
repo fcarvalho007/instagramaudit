@@ -298,19 +298,6 @@ export function KanbanBoard({
           </div>
         </SheetContent>
       </Sheet>
-
-      {/* Lead detail sheet */}
-      <LeadDetailSheet
-        open={!!detailLead}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDetailLead(null);
-            onDetailClose?.();
-          }
-        }}
-        lead={detailLead}
-        onUpdate={onUpdate}
-      />
     </>
   );
 }
