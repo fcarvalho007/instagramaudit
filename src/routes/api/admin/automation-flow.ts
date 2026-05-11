@@ -13,6 +13,7 @@ import {
   LIFECYCLE_STATUSES,
   type LifecycleStatus,
 } from "@/lib/admin/lead-lifecycle";
+import type { EmailTemplateKey } from "@/lib/admin/email-template-registry";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -31,13 +32,43 @@ function idx(status: string | null | undefined): number {
   return i === undefined ? -1 : i;
 }
 
+export type FlowStage =
+  | "00_onboarding"
+  | "01_captacao"
+  | "02_entrega"
+  | "03_conversao";
+
+export type FlowStatus = "active" | "blocked" | "undefined" | "preparing";
+
+export type FlowVisualKind = "email" | "system" | "report";
+
+export type FlowExtraTag =
+  | "primary_delivery"
+  | "no_email"
+  | "blocked"
+  | null;
+
+export type FlowTiming =
+  | { kind: "immediate"; eventName: string; contextHint?: string }
+  | {
+      kind: "delay";
+      eventName: string;
+      delayLabel: string;
+      contextHint?: string;
+    }
+  | { kind: "average"; averageLabel: string; eventName: string }
+  | { kind: "undefined"; missingTrigger: string };
+
 export interface AutomationFlow {
   key:
+    | "welcome_beta"
     | "pedido_recebido"
     | "relatorio_gerado"
     | "link_enviado"
+    | "personal_area_saved"
     | "relatorio_visto"
     | "feedback_pedido"
+    | "report_summary"
     | "feedback_recebido"
     | "follow_up_comercial";
   title: string;
@@ -54,6 +85,22 @@ export interface AutomationFlow {
   eventTypes: string[];
   last24hCount: number;
   lastEventAt: string | null;
+  stage: FlowStage;
+  visualKind: FlowVisualKind;
+  status: FlowStatus;
+  extraTag: FlowExtraTag;
+  subject: string | null;
+  timing: FlowTiming;
+  templateKey: EmailTemplateKey | null;
+  sentTotal: number;
+  failuresTotal: number;
+}
+
+export interface AutomationKpis {
+  systemActive: { activeCount: number; totalCount: number };
+  sent: { last30d: number; deltaVsYesterday: number };
+  waiting: { eligibleTotal: number; nextEtaMinutes: number | null };
+  failures: { last30d: number; deliverabilityPct: number };
 }
 
 export interface AutomationFlowResponse {
@@ -62,6 +109,7 @@ export interface AutomationFlowResponse {
   totalActive: number;
   totalArchived: number;
   flows: AutomationFlow[];
+  kpis?: AutomationKpis;
   error?: string;
 }
 
