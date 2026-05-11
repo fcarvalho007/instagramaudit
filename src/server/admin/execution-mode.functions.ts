@@ -58,6 +58,7 @@ export interface TestProfileStatus {
   allEnrichmentsComplete: boolean;
   cacheReady: boolean;
   snapshotExpiresAt: string | null;
+  latestSnapshotId: string | null;
   latestFreshCostTotal: number | null;
   latestEventId: string | null;
 }
