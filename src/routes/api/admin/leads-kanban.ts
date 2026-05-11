@@ -190,6 +190,72 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
           }
         }
 
+        // 5c. Lead-magnet sequence status per lead, agregado a partir de
+        //     `product_events` (sem schema novo).
+        const LM_EVENT_TYPES = [
+          "beta_welcome_email_sent",
+          "report_summary_email_sent",
+          "lead_magnet_sequence_skipped",
+          "report_summary_skipped_no_data",
+          "beta_welcome_email_failed",
+          "report_summary_email_failed",
+        ] as const;
+        type LmRow = {
+          lead_id: string;
+          event_type: string;
+          created_at: string;
+        };
+        const lmByLead = new Map<
+          string,
+          {
+            status: "active" | "completed" | "skipped" | "none";
+            last_event_at: string | null;
+            last_event_type: string | null;
+            sent_count: number;
+          }
+        >();
+        if (leadIds.length > 0) {
+          const { data: lmEvents } = await supabaseAdmin
+            .from("product_events")
+            .select("lead_id, event_type, created_at")
+            .in("lead_id", leadIds)
+            .in("event_type", LM_EVENT_TYPES as unknown as string[])
+            .order("created_at", { ascending: false });
+
+          if (lmEvents) {
+            const grouped = new Map<string, LmRow[]>();
+            for (const ev of lmEvents as LmRow[]) {
+              if (!ev.lead_id) continue;
+              const arr = grouped.get(ev.lead_id) ?? [];
+              arr.push(ev);
+              grouped.set(ev.lead_id, arr);
+            }
+            for (const [leadId, rows] of grouped) {
+              const types = new Set(rows.map((r) => r.event_type));
+              const sent_count = rows.filter(
+                (r) =>
+                  r.event_type === "beta_welcome_email_sent" ||
+                  r.event_type === "report_summary_email_sent",
+              ).length;
+              const last = rows[0];
+              let status: "active" | "completed" | "skipped" | "none" = "none";
+              if (types.has("report_summary_email_sent")) status = "completed";
+              else if (types.has("beta_welcome_email_sent")) status = "active";
+              else if (
+                types.has("lead_magnet_sequence_skipped") ||
+                types.has("report_summary_skipped_no_data")
+              )
+                status = "skipped";
+              lmByLead.set(leadId, {
+                status,
+                last_event_at: last?.created_at ?? null,
+                last_event_type: last?.event_type ?? null,
+                sent_count,
+              });
+            }
+          }
+        }
+
         // 6. Assemble enriched leads
         const enriched = leads.map((lead) => {
           const req = requestByLead.get(lead.id);
@@ -223,6 +289,13 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             created_at: lead.created_at,
             report_request_id: req?.id ?? null,
             feedback: feedbackByLead.get(lead.id) ?? null,
+            lead_magnet: lmByLead.get(lead.id) ?? {
+              status: "none" as const,
+              last_event_at: null,
+              last_event_type: null,
+              sent_count: 0,
+            },
+            marketing_consent: !!lead.marketing_consent,
           };
         });
 
