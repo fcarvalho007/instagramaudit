@@ -84,6 +84,7 @@ import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.r
 import { Route as ApiPublicHooksSyncOpenaiCostsRouteImport } from './routes/api/public/hooks/sync-openai-costs'
 import { Route as ApiPublicHooksSyncDataforseoCostsRouteImport } from './routes/api/public/hooks/sync-dataforseo-costs'
 import { Route as ApiPublicHooksSyncApifyCostsRouteImport } from './routes/api/public/hooks/sync-apify-costs'
+import { Route as ApiPublicHooksCleanupExpiredReportSnapshotsRouteImport } from './routes/api/public/hooks/cleanup-expired-report-snapshots'
 import { Route as ApiPublicFeedbackRequestIdRouteImport } from './routes/api/public/feedback.$requestId'
 import { Route as ApiPublicAnalysisSnapshotUsernameRouteImport } from './routes/api/public/analysis-snapshot.$username'
 import { Route as ApiAdminSnapshotUsernameRouteImport } from './routes/api/admin/snapshot.$username'
@@ -508,6 +509,12 @@ const ApiPublicHooksSyncApifyCostsRoute =
     path: '/api/public/hooks/sync-apify-costs',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksCleanupExpiredReportSnapshotsRoute =
+  ApiPublicHooksCleanupExpiredReportSnapshotsRouteImport.update({
+    id: '/api/public/hooks/cleanup-expired-report-snapshots',
+    path: '/api/public/hooks/cleanup-expired-report-snapshots',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicFeedbackRequestIdRoute =
   ApiPublicFeedbackRequestIdRouteImport.update({
     id: '/api/public/feedback/$requestId',
@@ -804,6 +811,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
+  '/api/public/hooks/cleanup-expired-report-snapshots': typeof ApiPublicHooksCleanupExpiredReportSnapshotsRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
@@ -914,6 +922,7 @@ export interface FileRoutesByTo {
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
+  '/api/public/hooks/cleanup-expired-report-snapshots': typeof ApiPublicHooksCleanupExpiredReportSnapshotsRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
@@ -1026,6 +1035,7 @@ export interface FileRoutesById {
   '/api/admin/snapshot/$username': typeof ApiAdminSnapshotUsernameRoute
   '/api/public/analysis-snapshot/$username': typeof ApiPublicAnalysisSnapshotUsernameRoute
   '/api/public/feedback/$requestId': typeof ApiPublicFeedbackRequestIdRoute
+  '/api/public/hooks/cleanup-expired-report-snapshots': typeof ApiPublicHooksCleanupExpiredReportSnapshotsRoute
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
@@ -1139,6 +1149,7 @@ export interface FileRouteTypes {
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
+    | '/api/public/hooks/cleanup-expired-report-snapshots'
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
@@ -1249,6 +1260,7 @@ export interface FileRouteTypes {
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
+    | '/api/public/hooks/cleanup-expired-report-snapshots'
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
@@ -1360,6 +1372,7 @@ export interface FileRouteTypes {
     | '/api/admin/snapshot/$username'
     | '/api/public/analysis-snapshot/$username'
     | '/api/public/feedback/$requestId'
+    | '/api/public/hooks/cleanup-expired-report-snapshots'
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
@@ -1449,6 +1462,7 @@ export interface RootRouteChildren {
   ApiAdminSnapshotUsernameRoute: typeof ApiAdminSnapshotUsernameRoute
   ApiPublicAnalysisSnapshotUsernameRoute: typeof ApiPublicAnalysisSnapshotUsernameRoute
   ApiPublicFeedbackRequestIdRoute: typeof ApiPublicFeedbackRequestIdRoute
+  ApiPublicHooksCleanupExpiredReportSnapshotsRoute: typeof ApiPublicHooksCleanupExpiredReportSnapshotsRoute
   ApiPublicHooksSyncApifyCostsRoute: typeof ApiPublicHooksSyncApifyCostsRoute
   ApiPublicHooksSyncDataforseoCostsRoute: typeof ApiPublicHooksSyncDataforseoCostsRoute
   ApiPublicHooksSyncOpenaiCostsRoute: typeof ApiPublicHooksSyncOpenaiCostsRoute
@@ -1984,6 +1998,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncApifyCostsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/cleanup-expired-report-snapshots': {
+      id: '/api/public/hooks/cleanup-expired-report-snapshots'
+      path: '/api/public/hooks/cleanup-expired-report-snapshots'
+      fullPath: '/api/public/hooks/cleanup-expired-report-snapshots'
+      preLoaderRoute: typeof ApiPublicHooksCleanupExpiredReportSnapshotsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/feedback/$requestId': {
       id: '/api/public/feedback/$requestId'
       path: '/api/public/feedback/$requestId'
@@ -2474,6 +2495,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAnalysisSnapshotUsernameRoute:
     ApiPublicAnalysisSnapshotUsernameRoute,
   ApiPublicFeedbackRequestIdRoute: ApiPublicFeedbackRequestIdRoute,
+  ApiPublicHooksCleanupExpiredReportSnapshotsRoute:
+    ApiPublicHooksCleanupExpiredReportSnapshotsRoute,
   ApiPublicHooksSyncApifyCostsRoute: ApiPublicHooksSyncApifyCostsRoute,
   ApiPublicHooksSyncDataforseoCostsRoute:
     ApiPublicHooksSyncDataforseoCostsRoute,

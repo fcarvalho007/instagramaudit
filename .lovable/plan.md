@@ -1,86 +1,76 @@
-## Fase 3 — `/reports/$snapshotId` lê de `report_snapshots`
+## Cleanup de `report_snapshots` expirados
 
-### Decisões-chave
+Job nocturno que liberta o `report_payload_jsonb` de snapshots já fora da janela de retenção (15 dias), preservando metadata histórica e auditoria. **Não toca em `analysis_snapshots`, providers, emails ou cálculos.**
 
-1. **`snapshotId` na rota = `report_snapshots.id`**, não `analysis_snapshots.id`. Ambos são UUIDs sem distinção, mas a partir desta fase os links em `/app/reports` e nos emails passam a apontar para o `report_snapshot_id`. Snapshots antigos linkados a `analysis_snapshots.id` continuam a funcionar via fallback (ver §4).
-2. **Compatibilidade do payload:** `report_payload_jsonb` (ReportPayloadV1) usa os mesmos nomes de campo que `snapshotToReportData` consome (`profile`, `posts`, `metrics`, `format_stats`, `content_summary`, `insights`, `competitor_summaries`, `data_provenance`). Vai ser passado directamente ao adapter existente (cast tipado para `SnapshotPayload`). Sem reescrever o renderer.
-3. **Fallback transparente:** o novo endpoint tenta `report_snapshots` primeiro; se não encontrar, tenta `analysis_snapshots` com a mesma lógica antiga. Isto cobre URLs antigos guardados em emails/bookmarks sem partir nada.
+### Comportamento
 
-### 1. Endpoint novo
+1. Selecciona snapshots com `expires_at <= now()` e `expired_at IS NULL` (ainda não processados) **ou** `report_payload_jsonb IS NOT NULL` mesmo quando `expired_at` já existe (defensivo contra reprocessamento).
+2. Para cada um:
+   - `UPDATE`: `report_payload_jsonb = NULL`, `expired_at = now()` (se ainda não definido).
+   - Mantém: `id`, `instagram_username`, `competitor_usernames`, `source_analysis_snapshot_id`, `report_request_id`, `lead_id`, `user_id`, `created_at`, `expires_at`, `report_version`, `algorithm_version`, `payload_schema_version`, `metadata`, `pdf_storage_path`.
+3. Processa em **batches de 100** com limite total por execução (ex.: 1000) para evitar locks longos.
+4. Idempotente: re-correr no mesmo dia não muda nada (`payload_jsonb IS NULL` filtra).
 
-`src/routes/api/public/report-snapshot.by-id.$snapshotId.ts` → `GET /api/public/report-snapshot/by-id/:snapshotId`
+### Side-effects
 
-Comportamento:
-- Validar UUID
-- Lê `report_snapshots` por `id` (sem RLS, via `supabaseAdmin`):
-  - `id, instagram_username, report_payload_jsonb, payload_schema_version, report_version, algorithm_version, created_at, expires_at, expired_at`
-- Se encontrar:
-  - Detectar expiração (`expires_at < now()` OU `expired_at IS NOT NULL`) → devolver `{ success: true, snapshot: {...}, expired: true }` sem payload pesado
-  - Caso contrário, calcular `benchmark` via `buildReportBenchmarkInput(report_payload_jsonb)` e devolver shape espelho do endpoint antigo:
-    ```
-    {
-      success: true,
-      snapshot: {
-        id, instagram_username,
-        payload,                  // = report_payload_jsonb
-        meta: { generated_at: created_at, instagram_username },
-        created_at,
-        expires_at,
-        expired: false,
-        payload_schema_version,
-        report_version,
-        algorithm_version,
-        benchmark
-      }
-    }
-    ```
-- Se não encontrar em `report_snapshots`, **fallback** para `analysis_snapshots` (mesma query do endpoint antigo) → devolve shape antigo + flag `source: "legacy_analysis_snapshot"`.
-- Sem chamadas a Apify/OpenAI/DataForSEO. Read-only. `Cache-Control: no-store`.
+- Endpoint `/api/public/report-snapshot/by-id/$snapshotId` já trata `expired = true` (visto em `report-snapshot.by-id.$snapshotId.ts:83`). Quando `report_payload_jsonb` for `null`, devolve `expired: true` com metadata mínima (sem dados).
+- `/reports/$snapshotId` continua a renderizar o estado expirado existente — UI dedicada fica para refinamento futuro.
+- `analysis_snapshots` permanece intacto: o fallback do endpoint legacy continua a servir reports antigos pré-Fase 2.
 
-### 2. Rota `/reports/$snapshotId`
+### Arquitectura
 
-`src/routes/reports.$snapshotId.tsx`:
-- Trocar URL do `fetch` para `/api/public/report-snapshot/by-id/...`
-- Adicionar campo `expired` ao tipo `SnapshotResponse`. Se `body.snapshot.expired === true`, mostrar `ExpiredState` com handle (já existe).
-- Restante lógica (`snapshotToReportData`, `ReportShellV2`, retention, expired/not_found/error states) mantém-se.
-- Comentário do topo actualizado para refletir leitura de `report_snapshots`.
+**Novo ficheiro: `src/lib/report-snapshots/cleanup-expired.server.ts`**
+- `cleanupExpiredReportSnapshots(opts?: { batchSize?: number; maxBatches?: number; now?: Date })`
+- Usa `supabaseAdmin` (service role).
+- Devolve `{ ok, scanned, expiredCount, batches, durationMs, errors[] }`.
+- Para cada batch processado, emite **um** `product_event` agregado:
+  - `event_type: 'report_snapshots_expired_batch'`
+  - `metadata: { count, snapshot_ids: [...], expires_at_min, expires_at_max, run_at }`
+- Em erro de `UPDATE`: continua para o próximo batch e regista `report_snapshots_cleanup_failed` com `{ error_message, batch_index }`. Nunca lança.
 
-### 3. `/app/reports`
+**Novo endpoint: `src/routes/api/public/hooks/cleanup-expired-report-snapshots.ts`**
+- `POST` protegido por `authorizeCronHook` (mesmo padrão dos outros hooks de custos).
+- Chama `cleanupExpiredReportSnapshots()` e devolve o sumário JSON.
+- `Cache-Control: no-store`.
 
-`src/server/reports.functions.ts`:
-- `getUserReports`: adicionar `report_snapshot_id` ao SELECT e ao tipo `UserReport`.
-- `getOwnedReport`: adicionar `report_snapshot_id` ao SELECT e à devolução.
+**pg_cron (executado via `supabase--insert`, não migration)**
+- Job: `cleanup-expired-report-snapshots`
+- Schedule: `15 3 * * *` (03:15 UTC diário — fora dos picos europeus).
+- Body: `{}` (handler não lê parâmetros).
+- Header: `apikey` com a anon key + `Authorization: Bearer ${INTERNAL_API_TOKEN}` (consistente com os outros hooks).
 
-`src/routes/app.reports.tsx`:
-- Botão "Abrir relatório" usa `report.reportSnapshotId ?? report.analysisSnapshotId`. `canOpenSnapshot` passa a verificar a união dos dois.
+### Testes
 
-`src/routes/app.reports.$id.tsx`:
-- Mesma lógica para o(s) link(s) "Abrir relatório".
+Novo `src/lib/report-snapshots/__tests__/cleanup-expired.test.ts` com mocks do Supabase admin:
 
-### 4. Emails
+1. Snapshot expirado com payload → vira `expired_at` definido + `payload_jsonb = null`.
+2. Snapshot expirado já processado (`payload IS NULL`) → não é tocado.
+3. Snapshot ainda dentro da retenção → ignorado.
+4. Batch com vários snapshots → emite **um** evento agregado, não N.
+5. Erro de update num batch → continua, regista `report_snapshots_cleanup_failed`, devolve `ok: false` mas com `expiredCount` parcial.
+6. `maxBatches` respeitado — não corre indefinidamente.
+7. Não chama Apify / OpenAI / DataForSEO (verificar que esses módulos não são importados).
 
-Helper único `resolveReportUrl(handle, reportSnapshotId?)` em `src/lib/email/url.ts` (novo) — devolve `${PUBLIC_APP_BASE_URL}/reports/${reportSnapshotId}` quando há `reportSnapshotId`, caso contrário cai no comportamento actual baseado em handle (p.ex. `/analyze/${handle}`).
+### Out of scope (explícito)
 
-Wiring:
-- `send-welcome-beta.server.ts` e `send-report-summary.server.ts`: passar `args.reportSnapshotId` (já recebem `snapshotId`; renomear semântica e ler `report_snapshot_id` no chamador).
-- `lead-magnet-sequence.server.ts`: passar `report_snapshot_id` quando o `report_request` ou snapshot já existir.
-- `brevo/sync.server.ts` e `brevo/customer-sync.server.ts`: SELECT inclui `report_snapshot_id`; passar para `latestRR.report_snapshot_id ?? latestRR.analysis_snapshot_id`.
+- Não apaga registos de `report_snapshots` (mantemos a linha histórica).
+- Não toca em `analysis_snapshots`, `report_requests`, PDFs no Storage.
+- Não muda UI de `/reports/$snapshotId` nem `/app/reports`.
+- Não regenera reports nem chama providers.
+- Não cria connector novo nem secret novo (`INTERNAL_API_TOKEN` já existe).
 
-### 5. Out-of-scope (mantido)
-
-- Não eliminar `/api/public/analysis-snapshot/by-id/:snapshotId` (continua a servir `/report/print/$snapshotId` do PDFShift e legacy).
-- Sem regeneração, sem providers, sem cleanup, sem mudanças no cálculo do relatório nem na UI pública.
-
-### 6. Validação
+### Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (todos os testes existentes passam)
-- Smoke manual:
-  - Abrir um relatório recente a partir de `/app/reports` → carrega via `report_snapshots`
-  - Abrir relatório antigo (sem `report_snapshot_id`) → fallback para `analysis_snapshots`
-  - Re-analisar o mesmo handle → relatório antigo continua a mostrar números antigos (imutabilidade)
-  - Network tab: zero chamadas a Apify/OpenAI/DataForSEO
+- `bunx vitest run src/lib/report-snapshots`
+- `bunx vitest run` (suite completa)
+- Manual: `curl` ao endpoint com header válido → snapshot expirado de teste fica com `payload_jsonb = null` e `expired_at` preenchido.
 
-### Devolução final
+### Checkpoint (☐)
 
-- Endpoint criado · rotas/links actualizados · fallback documentado · resultados de tsc + vitest
+- ☐ `cleanup-expired.server.ts` criado e testado
+- ☐ Endpoint `/api/public/hooks/cleanup-expired-report-snapshots` criado
+- ☐ Eventos `report_snapshots_expired_batch` / `report_snapshots_cleanup_failed` emitidos
+- ☐ pg_cron agendado via `supabase--insert`
+- ☐ `tsc --noEmit` limpo
+- ☐ Suite vitest 100% verde
