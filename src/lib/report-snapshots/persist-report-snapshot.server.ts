@@ -35,9 +35,14 @@ export interface PersistResult {
   snapshotId: string | null;
   created: boolean;
   reason?: PersistReason;
+  sourceAnalysisSnapshotId?: string | null;
+  payloadSchemaVersion?: string;
+  reportVersion?: string;
+  algorithmVersion?: string;
+  expiresAt?: string;
 }
 
-export async function ensureReportSnapshotForRequest(
+export async function persistReportSnapshotInternal(
   reportRequestId: string,
   source: PersistSource,
 ): Promise<PersistResult> {
@@ -188,21 +193,54 @@ export async function ensureReportSnapshotForRequest(
       .is("report_snapshot_id", null);
   }
 
-  return { snapshotId, created };
+  return {
+    snapshotId,
+    created,
+    sourceAnalysisSnapshotId: rr.analysis_snapshot_id as string,
+    payloadSchemaVersion: REPORT_PAYLOAD_SCHEMA_VERSION,
+    reportVersion: REPORT_VERSION_FREE_V1,
+    algorithmVersion: built.algorithm_version,
+    expiresAt,
+  };
 }
 
 /**
- * Wrapper fail-soft usado pelos call sites. Em falha, regista um
- * `product_event` `report_snapshot_persist_failed` com o motivo. Nunca lança.
+ * Wrapper fail-soft usado pelos call sites (await-able). Em sucesso emite
+ * `report_snapshot_persisted`; em falha emite `report_snapshot_persist_failed`
+ * com o motivo. Nunca lança. Idempotente — só emite `_persisted` quando um
+ * novo snapshot é efectivamente criado (não em short-circuit).
  */
-export async function persistReportSnapshotForRequest(
+export async function ensureReportSnapshotForRequest(
   reportRequestId: string,
   source: PersistSource,
   ctx?: { handle?: string; leadId?: string | null; snapshotId?: string | null },
 ): Promise<PersistResult> {
   try {
-    const result = await ensureReportSnapshotForRequest(reportRequestId, source);
-    if (!result.snapshotId && result.reason && result.reason !== "missing_analysis_snapshot") {
+    const result = await persistReportSnapshotInternal(reportRequestId, source);
+
+    if (result.created && result.snapshotId) {
+      try {
+        await recordProductEvent({
+          eventType: "report_snapshot_persisted",
+          leadId: ctx?.leadId ?? null,
+          snapshotId: ctx?.snapshotId ?? null,
+          handle: ctx?.handle,
+          metadata: {
+            report_request_id: reportRequestId,
+            report_snapshot_id: result.snapshotId,
+            source,
+            source_analysis_snapshot_id: result.sourceAnalysisSnapshotId ?? null,
+            created: true,
+            payload_schema_version: result.payloadSchemaVersion,
+            report_version: result.reportVersion,
+            algorithm_version: result.algorithmVersion,
+            expires_at: result.expiresAt,
+          },
+        });
+      } catch {
+        /* event tracking is best-effort */
+      }
+    } else if (!result.snapshotId && result.reason && result.reason !== "missing_analysis_snapshot") {
       try {
         await recordProductEvent({
           eventType: "report_snapshot_persist_failed",
@@ -229,3 +267,9 @@ export async function persistReportSnapshotForRequest(
     return { snapshotId: null, created: false, reason: "insert_error" };
   }
 }
+
+/**
+ * @deprecated Usar `ensureReportSnapshotForRequest`. Mantido temporariamente
+ * para retro-compatibilidade durante a migração da Fase 2.
+ */
+export const persistReportSnapshotForRequest = ensureReportSnapshotForRequest;
