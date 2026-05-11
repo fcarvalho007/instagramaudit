@@ -396,4 +396,62 @@ describe("ensureReportSnapshotForRequest (wrapper fail-soft)", () => {
     expect(r).toEqual({ snapshotId: "rs-existing", created: false });
     expect(recordedEvents.some(e => e.eventType === "report_snapshot_persisted")).toBe(false);
   });
+
+  it("inclui error_message sanitizado e truncado (≤300 chars, sem emails/tokens)", async () => {
+    seedReportRequest({
+      id: "rr-1",
+      lead_id: "lead-1",
+      user_id: null,
+      instagram_username: "x",
+      competitor_usernames: [],
+      analysis_snapshot_id: "as-1",
+      report_snapshot_id: null,
+    });
+    seedAnalysisSnapshot({
+      id: "as-1",
+      instagram_username: "x",
+      normalized_payload: { profile: { username: "x" }, posts: [] },
+      created_at: "2026-05-11T10:00:00.000Z",
+    });
+    const longBoom = "boom ".repeat(120) + " contact user@example.com bearer abcdefghijklmnopqrstuvwxyz0123456789";
+    tables.report_snapshots = {
+      ...freshState(),
+      insertResult: { data: null, error: { code: "OTHER", message: longBoom } },
+    };
+
+    await ensureReportSnapshotForRequest("rr-1", "public_unlock", { handle: "x", leadId: "lead-1" });
+    const ev = recordedEvents.find(e => e.eventType === "report_snapshot_persist_failed");
+    expect(ev).toBeDefined();
+    const msg = (ev?.metadata as Record<string, unknown>).error_message as string;
+    expect(typeof msg).toBe("string");
+    expect(msg.length).toBeLessThanOrEqual(300);
+    expect(msg).not.toMatch(/@/);
+    expect(msg).not.toMatch(/[A-Za-z0-9_\-]{32,}/);
+  });
+
+  it("error_message é 'non_text_error' quando mensagem é JSON bruto", async () => {
+    seedReportRequest({
+      id: "rr-1",
+      lead_id: "lead-1",
+      user_id: null,
+      instagram_username: "x",
+      competitor_usernames: [],
+      analysis_snapshot_id: "as-1",
+      report_snapshot_id: null,
+    });
+    seedAnalysisSnapshot({
+      id: "as-1",
+      instagram_username: "x",
+      normalized_payload: { profile: { username: "x" }, posts: [] },
+      created_at: "2026-05-11T10:00:00.000Z",
+    });
+    tables.report_snapshots = {
+      ...freshState(),
+      insertResult: { data: null, error: { code: "OTHER", message: '{"secret":"abc"}' } },
+    };
+
+    await ensureReportSnapshotForRequest("rr-1", "public_unlock");
+    const ev = recordedEvents.find(e => e.eventType === "report_snapshot_persist_failed");
+    expect((ev?.metadata as Record<string, unknown>).error_message).toBe("non_text_error");
+  });
 });
