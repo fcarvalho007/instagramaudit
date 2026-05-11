@@ -10,6 +10,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   FileCheck2,
@@ -42,6 +43,8 @@ import {
   type EmailTemplateCategory,
   type EmailTemplateEntry,
 } from "@/lib/admin/email-template-registry";
+import { adminFetch } from "@/lib/admin/fetch";
+import type { AutomationFlowResponse } from "@/lib/admin/automation-flow-types";
 
 const TEMPLATE_ICON: Record<TemplateKey, LucideIcon> = {
   request_received: CheckCircle2,
@@ -84,6 +87,20 @@ export function EmailLabPage() {
 
   const wiredCount = TEMPLATES.filter((t) => t.wired).length;
   const orphanCount = TEMPLATES.length - wiredCount;
+
+  // Reaproveita o agregado de /api/admin/automation-flow para mostrar
+  // contagem real de envios nos últimos 30 dias (mesma fonte que o cockpit
+  // de automações). Sem novo endpoint, sem chamada extra ao DB.
+  const { data: flowData } = useQuery({
+    queryKey: ["admin", "automation-flow"],
+    queryFn: async () => {
+      const res = await adminFetch("/api/admin/automation-flow");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as AutomationFlowResponse;
+    },
+    staleTime: 30_000,
+  });
+  const sentLast30d = flowData?.kpis?.sent.last30d ?? null;
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -152,10 +169,10 @@ export function EmailLabPage() {
             tone="warning"
           />
           <KpiTile
-            label="Último teste"
-            value="—"
-            sub="sem dados"
-            tone="muted"
+            label="Envios (30d)"
+            value={sentLast30d ?? "—"}
+            sub={sentLast30d === null ? "a carregar…" : "eventos registados"}
+            tone={sentLast30d && sentLast30d > 0 ? "default" : "muted"}
           />
         </div>
 
