@@ -138,7 +138,7 @@ function BetaLeadsPage() {
   return (
     <>
       <AdminPageHeader
-        title="Pipeline"
+        title="Contactos"
         subtitle="Acompanha contactos desde o primeiro relatório até à conversão."
       />
 
