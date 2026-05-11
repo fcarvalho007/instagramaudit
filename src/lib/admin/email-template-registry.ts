@@ -22,7 +22,7 @@ export const SAMPLE = {
   reportUrl: "https://example.com/analyze/frederico.m.carvalho",
   feedbackUrl: "https://example.com/feedback/example",
   appUrl: "https://example.com/app/reports",
-  pricingOption: "monthly",
+  checkoutUrl: "https://example.com/checkout/abc123",
 } as const;
 
 export type EmailTemplateKey =
@@ -221,15 +221,15 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
-      { key: "pricingOption", value: SAMPLE.pricingOption },
       { key: "reportUrl", value: SAMPLE.reportUrl },
+      { key: "checkoutUrl (opcional)", value: SAMPLE.checkoutUrl },
     ],
     render: () =>
       renderCommercialFollowup({
         firstName: SAMPLE.firstName,
         instagramHandle: SAMPLE.instagramHandle,
-        pricingOption: SAMPLE.pricingOption,
         reportUrl: SAMPLE.reportUrl,
+        checkoutUrl: SAMPLE.checkoutUrl,
       }),
     preheader: "Sem pressão. Respondemos quando fizer sentido para ti.",
   },
