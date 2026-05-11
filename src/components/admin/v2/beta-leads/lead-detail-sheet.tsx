@@ -69,6 +69,7 @@ import { Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
+import { USER_TYPE_LABELS, type UserType } from "@/lib/unlock-flow";
 import { getEventLabel } from "@/lib/admin/event-labels";
 import { LeadCommunicationTimeline } from "./lead-communication-timeline";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
@@ -104,27 +105,20 @@ interface TimelineEvent {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const USER_TYPE_LABEL: Record<string, string> = {
-  marca: "Marca",
-  agencia: "Agência",
-  freelancer: "Freelancer",
-  criador: "Criador de conteúdo",
-  estudante: "Estudante",
-};
-
 const USER_TYPE_ACCENT: Record<string, "leads" | "revenue" | "expense" | "info" | "signal" | "neutral"> = {
-  marca: "leads",
-  agencia: "revenue",
-  freelancer: "expense",
-  criador: "info",
-  estudante: "signal",
+  brand: "leads",
+  agency: "revenue",
+  consultant: "expense",
+  creator: "info",
+  student: "signal",
+  ecommerce: "revenue",
+  other: "neutral",
 };
 
 const STATUS_ACCENT: Record<string, "revenue" | "info" | "signal" | "expense" | "danger" | "neutral"> = {
   completed: "revenue",
   ready: "revenue",
   pending: "info",
-  pending_review: "info",
   approved: "info",
   processing: "expense",
   failed: "danger",
@@ -177,6 +171,11 @@ function getInitials(name: string): string {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function displayName(lead: EnrichedLead): string {
+  const n = lead.name?.trim();
+  return n && n.length > 0 ? n : "Sem nome";
 }
 
 function daysSince(iso: string): number {
