@@ -455,14 +455,12 @@ function DetailHeader({
   template,
   onCopy,
   onOpenHtml,
-  onSendTest,
   copyState,
   hasContent,
 }: {
   template: EmailTemplateEntry;
   onCopy: () => void;
   onOpenHtml: () => void;
-  onSendTest: () => void;
   copyState: "idle" | "ok";
   hasContent: boolean;
 }) {
@@ -494,15 +492,7 @@ function DetailHeader({
           <Copy size={13} />
           {copyState === "ok" ? "Copiado" : "Copiar"}
         </AdminActionButton>
-        <button
-          type="button"
-          onClick={onSendTest}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-          style={{ background: "#1f2937" }}
-        >
-          <Send size={13} />
-          Enviar teste
-        </button>
+        <SendTestButton size="sm" />
       </div>
     </div>
   );
