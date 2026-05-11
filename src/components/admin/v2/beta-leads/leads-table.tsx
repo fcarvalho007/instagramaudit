@@ -73,9 +73,9 @@ function FeedbackCell({ lead }: { lead: EnrichedLead }) {
   }
   const intent = interpretFeedback(lead.feedback);
   const color =
-    intent.tone === "positive"
+    intent.accent === "revenue"
       ? "rgb(var(--admin-revenue-500))"
-      : intent.tone === "negative"
+      : intent.accent === "expense"
         ? "rgb(var(--admin-expense-500))"
         : "rgb(var(--admin-neutral-600))";
   return (
