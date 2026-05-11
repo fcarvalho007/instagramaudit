@@ -1,18 +1,38 @@
 /**
- * /admin/beta-leads — kanban comercial para gestão de leads beta.
+ * /admin/beta-leads — área de Contactos (Pipeline + Tabela).
+ *
+ * URL mantida por compatibilidade. Vista controlada por `?view=pipeline|tabela`
+ * e abertura de ficha por `?lead=<id>`. O `LeadDetailSheet` vive aqui,
+ * partilhado entre o Kanban e a tabela.
  */
 
-import { useState, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
 import { KanbanBoard } from "@/components/admin/v2/beta-leads/kanban-board";
+import { LeadsTable } from "@/components/admin/v2/beta-leads/leads-table";
+import { LeadDetailSheet } from "@/components/admin/v2/beta-leads/lead-detail-sheet";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
+
+type PipelineView = "pipeline" | "tabela";
 
 export const Route = createFileRoute("/admin/beta-leads")({
   component: BetaLeadsPage,
-  validateSearch: (search: Record<string, unknown>): { lead?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { lead?: string; view?: PipelineView } => ({
     lead: typeof search.lead === "string" ? search.lead : undefined,
+    view:
+      search.view === "tabela" || search.view === "pipeline"
+        ? search.view
+        : undefined,
   }),
 });
 
@@ -37,7 +57,9 @@ async function updateLead(id: string, updates: Record<string, unknown>) {
 function BetaLeadsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { lead: leadParam } = Route.useSearch();
+  const { lead: leadParam, view: viewParam } = Route.useSearch();
+  const view: PipelineView = viewParam ?? "pipeline";
+
   const { data: leads = [], isLoading, error } = useQuery({
     queryKey: ["admin", "beta-leads"],
     queryFn: fetchLeads,
@@ -46,7 +68,6 @@ function BetaLeadsPage() {
 
   const handleUpdate = useCallback(
     async (id: string, updates: Record<string, unknown>) => {
-      // Optimistic: update local cache
       queryClient.setQueryData<EnrichedLead[]>(
         ["admin", "beta-leads"],
         (old) =>
@@ -64,58 +85,104 @@ function BetaLeadsPage() {
                     ? { contacted_at: new Date().toISOString() }
                     : {}),
                 }
-              : l
-          )
+              : l,
+          ),
       );
 
       try {
         await updateLead(id, updates);
       } catch {
-        // Revert on error
         queryClient.invalidateQueries({ queryKey: ["admin", "beta-leads"] });
       }
     },
-    [queryClient]
+    [queryClient],
   );
 
-  const activeCount = leads.filter(
-    (l) => l.commercial_status !== "arquivado"
-  ).length;
+  const setActiveLeadId = useCallback(
+    (id: string | null) => {
+      navigate({
+        to: "/admin/beta-leads",
+        search: {
+          ...(id ? { lead: id } : {}),
+          ...(view !== "pipeline" ? { view } : {}),
+        },
+      });
+    },
+    [navigate, view],
+  );
 
-  const clearLeadParam = useCallback(() => {
-    navigate({ to: "/admin/beta-leads", search: {} });
-  }, [navigate]);
+  const setView = useCallback(
+    (next: string) => {
+      const v: PipelineView = next === "tabela" ? "tabela" : "pipeline";
+      navigate({
+        to: "/admin/beta-leads",
+        search: {
+          ...(leadParam ? { lead: leadParam } : {}),
+          ...(v !== "pipeline" ? { view: v } : {}),
+        },
+      });
+    },
+    [navigate, leadParam],
+  );
+
+  const activeLead = useMemo(
+    () => (leadParam ? leads.find((l) => l.id === leadParam) ?? null : null),
+    [leadParam, leads],
+  );
+
+  const openDetail = useCallback(
+    (lead: EnrichedLead) => setActiveLeadId(lead.id),
+    [setActiveLeadId],
+  );
 
   return (
     <>
       <AdminPageHeader
-        title="Beta Leads"
-        subtitle={`${leads.length} leads · ${activeCount} ativos`}
+        title="Pipeline"
+        subtitle="Acompanha contactos desde o primeiro relatório até à conversão."
       />
 
       {isLoading && (
-        <div className="py-12 text-center text-sm" style={{ color: "#888780" }}>
-          A carregar leads...
+        <div className="py-12 text-center text-sm text-admin-text-tertiary">
+          A carregar contactos…
         </div>
       )}
 
       {error && (
-        <div
-          className="py-8 text-center text-sm"
-          style={{ color: "#A32D2D" }}
-        >
-          Erro ao carregar leads. Verifica a sessão de admin.
+        <div className="py-8 text-center text-sm text-[rgb(var(--admin-expense-500))]">
+          Erro ao carregar contactos. Verifica a sessão de admin.
         </div>
       )}
 
       {!isLoading && !error && (
-        <KanbanBoard
-          leads={leads}
-          onUpdate={handleUpdate}
-          initialDetailLeadId={leadParam ?? null}
-          onDetailClose={clearLeadParam}
-        />
+        <Tabs value={view} onValueChange={setView} className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+            <TabsTrigger value="tabela">Tabela</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pipeline" className="mt-0">
+            <KanbanBoard
+              leads={leads}
+              onUpdate={handleUpdate}
+              onOpenDetail={openDetail}
+            />
+          </TabsContent>
+
+          <TabsContent value="tabela" className="mt-0">
+            <LeadsTable leads={leads} onOpenDetail={openDetail} />
+          </TabsContent>
+        </Tabs>
       )}
+
+      <LeadDetailSheet
+        open={!!activeLead}
+        onOpenChange={(open) => {
+          if (!open) setActiveLeadId(null);
+        }}
+        lead={activeLead}
+        onUpdate={handleUpdate}
+      />
     </>
   );
 }
