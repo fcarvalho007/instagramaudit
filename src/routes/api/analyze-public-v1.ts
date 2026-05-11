@@ -155,7 +155,7 @@ const PUBLIC_ERROR_EXTRA_KEYS = new Set<string>([
   "retry_after_seconds",
 ]);
 
-function sanitizeExtra(
+export function sanitizeExtra(
   extra: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
   if (!extra) return undefined;
