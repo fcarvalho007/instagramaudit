@@ -14,6 +14,7 @@ export interface UserReport {
   pdfGeneratedAt: string | null;
   emailSentAt: string | null;
   analysisSnapshotId: string | null;
+  reportSnapshotId: string | null;
 }
 
 export const getUserReports = createServerFn({ method: "GET" })
@@ -34,7 +35,7 @@ export const getUserReports = createServerFn({ method: "GET" })
     let query = supabase
       .from("report_requests")
       .select(
-        "id, instagram_username, competitor_usernames, request_status, pdf_status, delivery_status, created_at, pdf_generated_at, email_sent_at, analysis_snapshot_id",
+        "id, instagram_username, competitor_usernames, request_status, pdf_status, delivery_status, created_at, pdf_generated_at, email_sent_at, analysis_snapshot_id, report_snapshot_id",
       )
       .order("created_at", { ascending: false });
 
@@ -64,6 +65,7 @@ export const getUserReports = createServerFn({ method: "GET" })
       pdfGeneratedAt: r.pdf_generated_at,
       emailSentAt: r.email_sent_at,
       analysisSnapshotId: r.analysis_snapshot_id,
+      reportSnapshotId: (r as { report_snapshot_id: string | null }).report_snapshot_id ?? null,
     }));
   });
 
