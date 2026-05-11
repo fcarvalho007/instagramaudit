@@ -220,7 +220,7 @@ export function KanbanBoard({
                           lead={lead}
                           onUpdate={onUpdate}
                           onEditNotes={openNotes}
-                          onOpenDetail={setDetailLead}
+                          onOpenDetail={onOpenDetail}
                         />
                       ))}
                 </div>
@@ -259,7 +259,7 @@ export function KanbanBoard({
                           lead={lead}
                           onUpdate={onUpdate}
                           onEditNotes={openNotes}
-                          onOpenDetail={setDetailLead}
+                          onOpenDetail={onOpenDetail}
                         />
                       ))}
                 </div>
