@@ -1,22 +1,39 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// ---- Supabase product_events dedup mock ----------------------------------
+// ---- Supabase mock: table-aware ------------------------------------------
+// `from("leads")` → marketing_consent lookup chain.
+// `from("product_events")` → dedup chain used by eventAlreadyEmitted.
 const dedupMaybeSingle = vi.fn();
+let leadConsent: boolean | null = true;
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
+    from: (table: string) => {
+      if (table === "leads") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: { marketing_consent: leadConsent },
+              }),
+            }),
+          }),
+        };
+      }
+      // product_events dedup
+      return {
+        select: () => ({
           eq: () => ({
-            contains: () => ({
-              limit: () => ({
-                maybeSingle: () => dedupMaybeSingle(),
+            eq: () => ({
+              contains: () => ({
+                limit: () => ({
+                  maybeSingle: () => dedupMaybeSingle(),
+                }),
               }),
             }),
           }),
         }),
-      }),
-    }),
+      };
+    },
   },
 }));
 
@@ -58,8 +75,11 @@ function flushMicrotasks() {
   return new Promise((r) => setTimeout(r, 0));
 }
 
+const ORIGINAL_ENV = { ...process.env };
+
 beforeEach(() => {
   vi.clearAllMocks();
+  leadConsent = true;
   dedupMaybeSingle.mockResolvedValue({ data: null });
   sendWelcomeBetaEmail.mockResolvedValue({
     ok: true,
@@ -71,6 +91,11 @@ beforeEach(() => {
     messageId: "msg-s",
     provider: "brevo",
   });
+  delete process.env.LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED;
+});
+
+afterEach(() => {
+  process.env = { ...ORIGINAL_ENV };
 });
 
 describe("sendLeadMagnetSequence", () => {
@@ -143,5 +168,42 @@ describe("sendLeadMagnetSequence", () => {
     const call = (upsertBrevoContact.mock.calls[0] as any[])[0];
     expect(call.email).toBe("user@example.com");
     expect(call.attributes).toHaveProperty("BETA_WELCOMED_AT");
+  });
+
+  it("kill switch: skips entire sequence when LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED='false'", async () => {
+    process.env.LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED = "false";
+    const result = await sendLeadMagnetSequence({ ...baseArgs, sendWelcome: true });
+    expect(result).toEqual({
+      welcome: "skipped_disabled",
+      summary: "skipped_no_data",
+    });
+    expect(sendWelcomeBetaEmail).not.toHaveBeenCalled();
+    expect(sendReportSummaryEmail).not.toHaveBeenCalled();
+    const types = recordProductEvent.mock.calls.map((c: any[]) => c[0].eventType);
+    expect(types).toContain("lead_magnet_sequence_skipped");
+  });
+
+  it("kill switch unset: defaults to ON and sends sequence", async () => {
+    delete process.env.LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED;
+    const result = await sendLeadMagnetSequence({ ...baseArgs, sendWelcome: true });
+    expect(result).toEqual({ welcome: "sent", summary: "sent" });
+    expect(sendWelcomeBetaEmail).toHaveBeenCalledTimes(1);
+    expect(sendReportSummaryEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("consent gate: skips entire sequence when lead has no marketing_consent", async () => {
+    leadConsent = false;
+    const result = await sendLeadMagnetSequence({ ...baseArgs, sendWelcome: true });
+    expect(result).toEqual({
+      welcome: "skipped_disabled",
+      summary: "skipped_no_data",
+    });
+    expect(sendWelcomeBetaEmail).not.toHaveBeenCalled();
+    expect(sendReportSummaryEmail).not.toHaveBeenCalled();
+    const skipEvent = recordProductEvent.mock.calls.find(
+      (c: any[]) => c[0].eventType === "lead_magnet_sequence_skipped",
+    );
+    expect(skipEvent).toBeDefined();
+    expect(skipEvent![0].metadata.reason).toBe("NO_MARKETING_CONSENT");
   });
 });
