@@ -481,8 +481,12 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                 }}
               >
                 <p className="admin-eyebrow-sm m-0 mb-1">Custo</p>
-                <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
-                  {lead.report_cost_usd != null ? `€${lead.report_cost_usd.toFixed(2)}` : "—"}
+                <p
+                  className="admin-code text-admin-text-primary m-0 tabular-nums"
+                  style={{ fontSize: 18 }}
+                  title="Custo provider (USD)"
+                >
+                  {lead.report_cost_usd != null ? `$${lead.report_cost_usd.toFixed(2)}` : "—"}
                 </p>
               </div>
               <div className="text-center">
