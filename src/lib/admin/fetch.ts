@@ -14,14 +14,11 @@ export { ADMIN_GATE_STORAGE_KEY };
  * Em 401/403 o email guardado já não é válido — limpamos e recarregamos
  * para que o gate apareça outra vez.
  */
-let resetting = false;
 function handleUnauthorized(): void {
-  if (resetting) return;
-  resetting = true;
+  // Limpa o email guardado para que o gate volte a aparecer no próximo
+  // navigate/refresh, mas NÃO recarrega imediatamente para que a UI possa
+  // mostrar uma mensagem clara (estado de sessão expirada + CTA Iniciar sessão).
   clearAdminEmail();
-  if (typeof window !== "undefined") {
-    window.location.reload();
-  }
 }
 
 export async function adminFetch(
