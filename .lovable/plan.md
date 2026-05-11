@@ -1,142 +1,84 @@
-# Consolidação CRM admin — Contactos com vistas Pipeline e Tabela
+## Diagnóstico atual `/admin/beta-leads` (Contactos)
 
-## 1. Nova navegação (sidebar)
+Validações automáticas: `bunx tsc --noEmit` ✅ 0 erros. Sem ruído de runtime nos logs.
 
-**Grupo "Negócio"**
-- Visão geral
-- Receita
-- ~~Clientes~~ (removido — era mock; conteúdo absorvido pelo Pipeline real)
+Vistas Pipeline + Tabela renderizam, abertura de ficha partilhada via `?lead=` funciona, e a URL persiste a vista (`?view=`).
 
-**Grupo "Pipeline"** (renomear para **"Contactos"**)
-- ~~Leads~~ → **Pipeline** (`/admin/beta-leads`, mesma URL)
-- ~~Pedidos~~ (removido do sidebar; rota mantém-se acessível via deep-link/command palette)
-- Automações
+### Pontos a refinar (UX / coerência)
 
-**Grupos restantes**: Produto, Laboratório, Sistema — sem alterações.
+1. **Tabela não tem filtros.** Pediste explicitamente "Tabela com filtros". O Kanban tem `FILTER_CHIPS` (Todos / Em análise / Com relatório / Com feedback / Potencial / Arquivados) e a Tabela não tem nada — fica incoerente entre as duas vistas.
+2. **Não há pesquisa.** Em vista de tabela espera-se um campo de search por nome, email ou @handle.
+3. **Header diz "Pipeline" mas a área é "Contactos".** Quando estás na aba Tabela o título "Pipeline" passa a estranho. Subtítulo está bom.
+4. **Coluna "Ações" é redundante** — a linha inteira já é clicável e abre a ficha. O botão "Abrir" duplica a ação e adiciona ruído visual.
+5. **Sem totalizador.** Falta um "X contactos" discreto junto às tabs ou ao filtro, para feedback de quantos resultados estão visíveis (especialmente após filtrar).
+6. **Estado vazio depende do filtro.** Hoje o empty-state diz "Sem contactos para mostrar" — após filtrar deve dizer "Nenhum contacto corresponde aos filtros" para distinguir lista vazia de filtro restritivo.
 
-Resumo:
-- Sidebar passa de 12 para 10 itens.
-- "Pedidos" deixa de ser item primário; visível dentro da ficha de contacto (tab Relatório, já existe).
-- "Clientes" mock-only desaparece do sidebar.
+## Plano de refinamento
 
-## 2. Rotas
+Apenas frontend, sem alterações de schema, sem novos endpoints, sem mexer no Kanban.
 
-| Rota | Antes | Depois |
-| --- | --- | --- |
-| `/admin/beta-leads` | "Beta Leads" (Kanban) | **"Pipeline"** com tabs Pipeline + Tabela |
-| `/admin/beta-requests` | "Pedidos" (sidebar) | mantida, **fora do sidebar** (acessível por command palette + links existentes) |
-| `/admin/clientes` | "Clientes" mock (sidebar) | **removida do sidebar**; ficheiro de rota e componentes mock mantidos para não partir histórico (sem links de entrada) — eliminação real fica para fase de cleanup |
+### 1. `admin.beta-leads.tsx`
+- Mudar `title="Pipeline"` → `title="Contactos"`. Manter subtítulo.
+- (Opcional) Mostrar contador `{leads.length} contactos` no `AdminPageHeader` via prop existente — só se já existir; senão deixar para a barra de filtros da tabela.
 
-URLs mantidas para não partir links externos / command palette / `automacoes/people-tab`.
+### 2. `leads-table.tsx` — adicionar barra de filtros + search
+Nova faixa acima da `<Table>`, dentro do mesmo card branco:
 
-## 3. `/admin/beta-leads` — nova estrutura
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ [🔍 Pesquisar nome, email, @handle]   [chips de estado…]    │
+│                                              42 contactos   │
+├─────────────────────────────────────────────────────────────┤
+│ Tabela …                                                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
-`AdminPageHeader`:
-- title: **"Pipeline"**
-- subtitle: **"Acompanha contactos desde o primeiro relatório até à conversão."**
-- (manter contagem `N leads · N ativos` como linha secundária ou descartar — proponho descartar para alinhar com copy pedida; contagem fica visível dentro do Kanban)
+- **Search input** controlado (estado local `query`), filtra `name`, `email`, `handle` (case-insensitive).
+- **Chips de estado** reutilizam exatamente o mesmo array `FILTER_CHIPS` do Kanban — extrair para `src/lib/admin/lead-filter-chips.ts` (novo, ~30 linhas) para evitar duplicação. Kanban e Tabela passam a importar da mesma fonte.
+- **Contador** `N contactos` (ou `N de M` quando há filtro ativo) à direita da barra, em `text-[12px] text-admin-text-tertiary`.
+- Filtros são **estado local da tabela** (não vão para a URL nesta fase) — mantém URL limpa e evita conflitos com `?view=` e `?lead=`. Se quiseres persistir na URL, dizes e fazemos numa fase 2.
 
-Abaixo do header, `Tabs` (`@/components/ui/tabs`) com dois separadores:
+### 3. `leads-table.tsx` — limpeza de colunas
+- Remover coluna **Ações** + botão "Abrir". A linha continua clicável (`onClick` no `<TableRow>`) e tem `cursor-pointer`. Manter `aria-label` na row para acessibilidade.
+- Manter ordem: Nome · Email · Instagram · Estado · Último relatório · Último email · Feedback · Criado em.
 
-### Tab "Pipeline"
-- Renderiza o `KanbanBoard` existente, sem alterações de comportamento.
-- Mantém: `lead-card`, badges de feedback, próxima ação, indicadores de comunicação.
-- Mantém deep-link `?lead=<id>` que abre `LeadDetailSheet`.
+### 4. Empty states diferenciados
+Dentro de `LeadsTable`:
+- `leads.length === 0` → "Sem contactos para mostrar." (mantém atual)
+- `filtered.length === 0 && leads.length > 0` → "Nenhum contacto corresponde aos filtros." + botão ghost "Limpar filtros" que reset `query` e chip ativo para `todos`.
 
-### Tab "Tabela"
-- Novo componente `LeadsTable` (`src/components/admin/v2/beta-leads/leads-table.tsx`).
-- Recebe os mesmos `EnrichedLead[]` da query `["admin", "beta-leads"]` (sem fetch novo).
-- Colunas:
-  - Nome
-  - Email
-  - Instagram (handle do último relatório)
-  - Estado (badge de `commercial_status`, reutilizar `status-badge`)
-  - Último relatório (data + nome do report)
-  - Último email (data + tipo, do `lead-communication-timeline` data source)
-  - Feedback (ícone/badge via `interpretFeedback`)
-  - Criado em
-  - Ações (botão "Abrir" → abre `LeadDetailSheet`)
-- Linha clicável → abre o mesmo `LeadDetailSheet` via estado local (já suportado pelo `KanbanBoard`; extraio o controlo de sheet para o nível da página para o partilhar entre as duas tabs).
-- Tabela usa primitivos shadcn `Table` + tokens admin (`--admin-*`). Mobile-first: scroll horizontal numa wrapper `overflow-x-auto`.
+### 5. Tokens e tipografia
+- Search input: `bg-white border border-[var(--color-admin-border)] rounded-md h-9 text-[13px]` + ícone `Search` lucide à esquerda.
+- Chips: replicar exatamente o estilo dos chips do Kanban (mesma cor de ativo, mesmo radius) para coerência visual entre vistas.
+- Sem cores hardcoded — só tokens `--admin-*` e `text-admin-text-*` já existentes.
 
-### Estado partilhado
-- O `LeadDetailSheet` é içado para a `BetaLeadsPage` (atualmente vive dentro de `KanbanBoard`).
-- Ambas as tabs disparam `setActiveLeadId(id)`; sheet único renderizado no fim da página.
-- Search param `?lead=` continua a funcionar.
-- Tab ativa controlada por search param `?view=pipeline|tabela` (default: `pipeline`) para deep-link e refresh-safe.
+## Ficheiros afetados
 
-## 4. Ficha de contacto (LeadDetailSheet)
+- **Editar** `src/routes/admin.beta-leads.tsx` — mudar título "Pipeline" → "Contactos".
+- **Editar** `src/components/admin/v2/beta-leads/leads-table.tsx` — adicionar barra search + chips, remover coluna Ações, empty states diferenciados.
+- **Editar** `src/components/admin/v2/beta-leads/kanban-board.tsx` — passar a importar `FILTER_CHIPS` do novo ficheiro partilhado (refactor, sem mudança de comportamento).
+- **Criar** `src/lib/admin/lead-filter-chips.ts` — fonte única de chips + helper `matchesChip(lead, key)`.
+- **Criar** `src/components/admin/v2/beta-leads/__tests__/leads-table.test.tsx` — testes de filtro/search/empty-state.
 
-Sem alterações. Tabs já existentes:
-- Resumo
-- Relatório (cobre "Pedidos" — request status, PDF, ações)
-- Feedback
-- Comunicação
-- Histórico
+## Fora de âmbito
 
-Esta é a justificação para tirar "Pedidos" do sidebar primário.
+- Sem alterações no `LeadDetailSheet`, `LeadCard`, `KanbanBoard` (apenas o import dos chips muda).
+- Sem alterações na sidebar / topbar / command palette.
+- Sem alterações no DB, providers, Brevo, ou rotas públicas.
+- Sem persistência de filtros na URL nesta fase.
 
-## 5. Topbar / breadcrumbs
-
-`admin-topbar.tsx`:
-- Atualizar mapa de títulos:
-  - `/admin/beta-leads`: `"Leads"` → `"Pipeline"`
-  - `/admin/beta-requests`: `"Pedidos"` → `"Pedidos (utilitário)"` (ou apenas manter "Pedidos"; não aparece no sidebar mas pode ser deep-linked)
-- Remover qualquer referência visível a "Beta".
-
-## 6. Command palette
-
-`admin-command-palette.tsx` mantém `/admin/beta-leads?lead=<id>`. Adicionar entradas:
-- "Pipeline" → `/admin/beta-leads?view=pipeline`
-- "Contactos · Tabela" → `/admin/beta-leads?view=tabela`
-- Manter "Pedidos" como utilitário (deep link para `/admin/beta-requests`).
-
-## 7. Ficheiros a alterar / criar
-
-**Alterar**
-- `src/components/admin/v2/admin-sidebar.tsx` — remover `/admin/clientes` e `/admin/beta-requests`; renomear "Leads" → "Pipeline"; renomear grupo "Pipeline" → "Contactos".
-- `src/components/admin/v2/admin-topbar.tsx` — atualizar labels.
-- `src/components/admin/v2/admin-command-palette.tsx` — entradas para vistas.
-- `src/routes/admin.beta-leads.tsx` — adicionar `Tabs`, gerir `?view=`, içar `LeadDetailSheet`, novo header copy.
-- `src/components/admin/v2/beta-leads/kanban-board.tsx` — tornar abertura do sheet controlada do exterior (props `activeLeadId` + `onActiveLeadChange`), mantendo fallback interno se não vier prop.
-
-**Criar**
-- `src/components/admin/v2/beta-leads/leads-table.tsx` — nova tabela.
-- `src/components/admin/v2/beta-leads/__tests__/leads-table.test.tsx` — testes de render e click → callback.
-
-**Não tocar**
-- `src/routes/admin.clientes.tsx` e `src/components/admin/v2/clientes/*` — apenas deixam de ter entrada de sidebar. Cleanup numa fase posterior.
-- `src/routes/admin.beta-requests.tsx` — intacto.
-- `LeadDetailSheet`, `lead-card`, `lead-communication-timeline`, `commercial-followup-dialog`, `kanban-columns`.
-- BD, Brevo, providers, public report, `src/styles.css`.
-
-## 8. Constraints respeitados
-
-- Sem alterações de schema.
-- Sem chamadas a providers, sem envio de emails.
-- Reutiliza componentes existentes (Kanban, LeadDetailSheet, status-badge, feedback-intent).
-- Mobile-first: tabs shadcn responsivas; tabela em wrapper com scroll horizontal.
-- Apenas tokens semânticos `--admin-*` (sem hardcoded colors, sem slate-*).
-
-## 9. Validação
+## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (incluindo novo teste de `leads-table`)
-- Manual:
-  1. Sidebar mostra "Pipeline" sob grupo "Contactos"; sem "Leads", "Pedidos", "Clientes".
-  2. `/admin/beta-leads` carrega com header "Pipeline" e subtítulo correto.
-  3. Tab Pipeline mostra Kanban como hoje.
-  4. Tab Tabela mostra os mesmos leads em formato tabular.
-  5. Clicar linha ou card abre `LeadDetailSheet` em ambas as tabs.
-  6. `?lead=<id>` continua a abrir o sheet.
-  7. Nenhum título admin contém "Beta".
-  8. `/admin/beta-leads` não erra ao carregar dados (query mantida).
+- `bunx vitest run` (incluindo novo teste `leads-table.test.tsx`)
+- Manual: search filtra ao vivo; chips alternam; combinação search+chip funciona; empty-state correto; clicar linha abre ficha; mudar para Pipeline e voltar mantém vista; tabs rapidas sem flicker.
 
-## 10. Fora desta fase
+## Checklist de aceitação
 
-- Eliminar fisicamente `/admin/clientes` e componentes mock.
-- Mover `/admin/beta-requests` para `/admin/sistema/pedidos` (renomeação de URL).
-- Filtros e search na tab Tabela (próxima iteração).
-- Persistência da preferência `?view=` por utilizador.
-
-☐ Aprovas para implementar?
+- ☐ Header diz "Contactos"
+- ☐ Tabela tem search por nome/email/handle
+- ☐ Tabela tem os mesmos chips do Kanban (fonte única)
+- ☐ Coluna Ações removida; row continua clicável
+- ☐ Contador "N contactos" visível
+- ☐ Empty state diferencia lista vazia vs filtro vazio
+- ☐ `tsc` e `vitest` passam

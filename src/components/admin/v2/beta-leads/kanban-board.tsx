@@ -14,6 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronDown, Inbox } from "lucide-react";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
+import {
+  FILTER_CHIPS,
+  type FilterChipKey,
+} from "@/lib/admin/lead-filter-chips";
 import { LeadCard } from "./lead-card";
 
 interface KanbanBoardProps {
@@ -22,35 +26,6 @@ interface KanbanBoardProps {
   /** Controlado pelo pai: callback ao abrir o detalhe de um lead. */
   onOpenDetail: (lead: EnrichedLead) => void;
 }
-
-type FilterChipKey =
-  | "todos"
-  | "em_analise"
-  | "com_relatorio"
-  | "com_feedback"
-  | "potencial"
-  | "arquivados";
-
-const FILTER_CHIPS: { key: FilterChipKey; label: string; statuses: string[] | null }[] = [
-  { key: "todos", label: "Todos", statuses: null },
-  { key: "em_analise", label: "Em análise", statuses: ["novo_pedido", "em_analise"] },
-  {
-    key: "com_relatorio",
-    label: "Com relatório",
-    statuses: ["relatorio_gerado", "link_enviado", "relatorio_visto"],
-  },
-  {
-    key: "com_feedback",
-    label: "Com feedback",
-    statuses: ["feedback_pedido", "feedback_recebido"],
-  },
-  {
-    key: "potencial",
-    label: "Potencial cliente",
-    statuses: ["interessado", "potencial_cliente", "convertido"],
-  },
-  { key: "arquivados", label: "Arquivados", statuses: ["arquivado"] },
-];
 
 export function KanbanBoard({
   leads,
