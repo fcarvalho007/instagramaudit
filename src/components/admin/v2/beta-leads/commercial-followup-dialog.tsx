@@ -52,11 +52,11 @@ export function CommercialFollowupDialog({
     try {
       const u = new URL(checkoutUrl);
       if (u.protocol !== "http:" && u.protocol !== "https:") {
-        return "URL deve usar http:// ou https://";
+        return "Introduz um URL válido, começado por https://";
       }
       return null;
     } catch {
-      return "URL inválido";
+      return "Introduz um URL válido, começado por https://";
     }
   })();
 
@@ -135,13 +135,21 @@ export function CommercialFollowupDialog({
               onChange={(e) => setCheckoutInput(e.target.value)}
               disabled={loading}
               aria-invalid={Boolean(checkoutError)}
+              aria-describedby="commercial-followup-checkout-help"
             />
-            <p className="text-[11px] text-admin-text-tertiary">
+            <p
+              id="commercial-followup-checkout-help"
+              className={
+                checkoutError
+                  ? "text-[11px] text-admin-danger-700"
+                  : "text-[11px] text-admin-text-tertiary"
+              }
+            >
               {checkoutError
                 ? checkoutError
                 : checkoutUrl
                   ? "Email mostra botão “Desbloquear” com este URL."
-                  : "Sem URL: email cai no fallback (responder por email)."}
+                  : "Opcional. Cola um URL https:// para ativar o botão “Desbloquear” no email."}
             </p>
           </div>
 
@@ -180,6 +188,11 @@ export function CommercialFollowupDialog({
           <Button
             onClick={() => onConfirm({ checkoutUrl })}
             disabled={loading || Boolean(checkoutError)}
+            title={
+              !loading && checkoutError
+                ? "Corrige o URL de checkout antes de enviar."
+                : undefined
+            }
           >
             {loading ? "A enviar…" : "Enviar follow-up"}
           </Button>
