@@ -463,11 +463,12 @@ export function UnlockModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[480px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
+      <DialogContent className="sm:max-w-[640px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
         {step === 5 ? (
           <SuccessStep
             firstName={
               returningFirstName ??
+              (form.getValues("first_name") || null) ??
               firstNameFromEmail(form.getValues("email"))
             }
             email={form.getValues("email")}
