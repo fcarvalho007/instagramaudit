@@ -1,0 +1,269 @@
+/**
+ * /reports/$snapshotId — abertura de relatório histórico pelo snapshot exacto.
+ *
+ * Rota pública, mas `noindex, nofollow`. Carrega `analysis_snapshots` por UUID
+ * via `/api/public/analysis-snapshot/by-id/:id`. NÃO chama Apify, OpenAI ou
+ * DataForSEO. NÃO regenera. NÃO escreve.
+ *
+ * Usada a partir de `/app/reports` para garantir que abrir um relatório antigo
+ * mostra os números do snapshot ligado em `report_requests.analysis_snapshot_id`,
+ * não a versão "última do handle" (o pipeline público faz upsert por
+ * `cache_key` e o `/analyze/$username` resolveria sempre o snapshot mais
+ * recente).
+ *
+ * Caveat técnica: `analysis_snapshots` faz upsert por `cache_key`. Carregar
+ * por UUID é a melhor garantia disponível dentro das restrições actuais e é
+ * estável dentro da janela de retenção (15d). Cloning per-report-request fica
+ * fora de scope desta fase.
+ */
+
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { AlertTriangle, Search, Clock } from "lucide-react";
+
+import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
+import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
+import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
+import {
+  snapshotToReportData,
+  type AdapterResult,
+  type SnapshotPayload,
+  type ReportBenchmarkInput,
+} from "@/lib/report/snapshot-to-report-data";
+import {
+  getReportExpiresAt,
+  isReportExpired,
+  formatRetentionMessage,
+} from "@/lib/report/retention";
+
+export const Route = createFileRoute("/reports/$snapshotId")({
+  ssr: false,
+  beforeLoad: () => {
+    if (typeof document !== "undefined") {
+      document.body.setAttribute("data-theme", "light");
+      document.body.setAttribute("data-report-view", "true");
+    }
+  },
+  head: () => ({
+    meta: [
+      { title: "Relatório · InstaBench" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+    scripts: [
+      { children: `document.body&&document.body.setAttribute("data-theme","light")` },
+    ],
+  }),
+  component: SnapshotReportPage,
+});
+
+interface SnapshotResponse {
+  success: boolean;
+  snapshot?: {
+    id: string;
+    instagram_username: string;
+    payload: SnapshotPayload;
+    meta: { generated_at?: string; instagram_username?: string };
+    created_at: string;
+    updated_at: string;
+    expires_at: string | null;
+    benchmark?: ReportBenchmarkInput;
+  } | null;
+  error_code?: string;
+  message?: string;
+}
+
+type LoadState =
+  | { status: "loading" }
+  | { status: "not_found" }
+  | { status: "expired"; handle: string }
+  | { status: "error"; message: string }
+  | {
+      status: "ready";
+      result: AdapterResult;
+      snapshotId: string;
+      payload: SnapshotPayload;
+      handle: string;
+      analyzedAtIso: string | null;
+      expiresAtIso: string | null;
+    };
+
+function SnapshotReportPage() {
+  const { snapshotId } = Route.useParams();
+  const [state, setState] = useState<LoadState>({ status: "loading" });
+
+  useEffect(() => {
+    document.body.setAttribute("data-report-view", "true");
+    return () => {
+      document.body.removeAttribute("data-report-view");
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: "loading" });
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/public/analysis-snapshot/by-id/${encodeURIComponent(snapshotId)}`,
+        );
+        const body = (await res.json().catch(() => null)) as SnapshotResponse | null;
+        if (cancelled) return;
+
+        if (res.status === 404 || body?.error_code === "SNAPSHOT_NOT_FOUND") {
+          setState({ status: "not_found" });
+          return;
+        }
+        if (!res.ok || !body?.success || !body.snapshot) {
+          setState({
+            status: "error",
+            message:
+              body?.message ??
+              "Não foi possível carregar este relatório. Tenta novamente.",
+          });
+          return;
+        }
+
+        const snap = body.snapshot;
+        const expiresAtIso =
+          snap.expires_at ?? getReportExpiresAt(snap.created_at).toISOString();
+
+        if (isReportExpired(expiresAtIso)) {
+          setState({ status: "expired", handle: snap.instagram_username });
+          return;
+        }
+
+        const payload = snap.payload ?? {};
+        const result = snapshotToReportData({
+          payload,
+          meta: snap.meta ?? undefined,
+          benchmark: snap.benchmark,
+          isAdminPreview: false,
+        });
+
+        setState({
+          status: "ready",
+          result,
+          snapshotId: snap.id,
+          payload,
+          handle: snap.instagram_username,
+          analyzedAtIso: snap.meta?.generated_at ?? snap.created_at,
+          expiresAtIso,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setState({
+          status: "error",
+          message: e instanceof Error ? e.message : "Falha de ligação.",
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshotId]);
+
+  return (
+    <ReportThemeWrapper>
+      <div className="-mt-8 -mb-24">
+        {state.status === "loading" && <AnalysisSkeleton username="" />}
+        {state.status === "not_found" && <NotFoundState />}
+        {state.status === "expired" && <ExpiredState handle={state.handle} />}
+        {state.status === "error" && <ErrorState message={state.message} />}
+        {state.status === "ready" && (
+          <ReportShellV2
+            result={state.result}
+            snapshotId={state.snapshotId}
+            payload={state.payload}
+            analyzedAtIso={state.analyzedAtIso}
+            expiresAtIso={state.expiresAtIso}
+            variant="public_mvp"
+            actions={{}}
+          />
+        )}
+      </div>
+    </ReportThemeWrapper>
+  );
+}
+
+function EmptyShell({
+  icon: Icon,
+  title,
+  body,
+  cta,
+  tone = "neutral",
+}: {
+  icon: typeof Clock;
+  title: string;
+  body: string;
+  cta: { label: string; to: string };
+  tone?: "neutral" | "danger";
+}) {
+  const toneClasses =
+    tone === "danger"
+      ? "border-signal-danger/30 bg-tint-danger/40"
+      : "border-border-default/40 bg-surface-secondary";
+  return (
+    <div className="bg-surface-base min-h-screen">
+      <div className="mx-auto max-w-2xl px-6 py-20">
+        <div className={`rounded-xl border p-8 text-center shadow-card ${toneClasses}`}>
+          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-muted">
+            <Icon className="size-5 text-content-secondary" />
+          </div>
+          <h1 className="mt-4 font-display text-2xl text-content-primary">
+            {title}
+          </h1>
+          <p className="mt-3 text-sm text-content-secondary">{body}</p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            <Link
+              to={cta.to}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-content-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-content-primary/90"
+            >
+              <Search className="size-3.5" />
+              {cta.label}
+            </Link>
+            <Link
+              to="/app/reports"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border-default/40 bg-white px-4 py-2 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-muted"
+            >
+              Voltar aos relatórios
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotFoundState() {
+  return (
+    <EmptyShell
+      icon={AlertTriangle}
+      title="Relatório não encontrado"
+      body="Este relatório já não existe ou o identificador é inválido. Podes gerar um novo relatório quando quiseres."
+      cta={{ label: "Analisar novo perfil", to: "/" }}
+    />
+  );
+}
+
+function ExpiredState({ handle }: { handle: string }) {
+  return (
+    <EmptyShell
+      icon={Clock}
+      title="Relatório expirado"
+      body={`${formatRetentionMessage()} Para ver dados actuais de @${handle}, gera um novo relatório.`}
+      cta={{ label: "Gerar novo relatório", to: "/" }}
+    />
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <EmptyShell
+      icon={AlertTriangle}
+      title="Não foi possível carregar"
+      body={message}
+      cta={{ label: "Analisar novo perfil", to: "/" }}
+      tone="danger"
+    />
+  );
+}
