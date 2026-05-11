@@ -1,26 +1,22 @@
 /**
  * AutomationNode — cartão visual de um passo do fluxo (read-only).
- *
- * Layout em 3 zonas verticais:
- *   1) Identificação (ícone + pílula tipo + status + título + subject + acções)
- *   2) Faixa de temporização (quando dispara, com trigger técnico)
- *   3) Stats (Enviados / A aguardar / Falhas)
+ * Layout em 3 zonas: identificação · temporização · stats.
+ * Cores via tokens admin (`--admin-pill-*`, `--admin-stage-*`).
  */
 
-import { Lock, Pencil, MoreHorizontal, Mail, Settings, BarChart3, ArrowRightLeft, Clock, AlertTriangle } from "lucide-react";
+import { Lock, Pencil, Mail, Settings, BarChart3, ArrowRightLeft, Clock, AlertTriangle, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   AutomationFlow,
-  FlowStage,
   FlowStatus,
   FlowVisualKind,
   FlowExtraTag,
   FlowTiming,
-} from "@/routes/api/admin/automation-flow";
+} from "@/lib/admin/automation-flow-types";
 
 interface AutomationNodeProps {
   flow: AutomationFlow;
-  stageColor: string;
+  stageTokenColor: string;
 }
 
 const VISUAL_LABEL: Record<FlowVisualKind, string> = {
@@ -41,42 +37,45 @@ const VISUAL_BADGE: Record<FlowVisualKind, string> = {
   report: "RP",
 };
 
-const STATUS_META: Record<FlowStatus, { label: string; bg: string; color: string; dot: string | null }> = {
-  active: { label: "Ativo", bg: "#E1F4E8", color: "#1D9E75", dot: "#1D9E75" },
-  blocked: { label: "Bloqueado", bg: "#EDEDEA", color: "#5A6B8C", dot: null },
-  preparing: { label: "Em preparação", bg: "#FAEEDA", color: "#BA7517", dot: "#BA7517" },
-  undefined: { label: "Sem trigger", bg: "#FAEEDA", color: "#BA7517", dot: null },
+interface PillMeta {
+  label: string;
+  bgToken: string;
+  fgToken: string;
+  showDot: boolean;
+}
+
+const STATUS_META: Record<FlowStatus, PillMeta> = {
+  active:    { label: "Ativo",         bgToken: "admin-pill-active-bg",  fgToken: "admin-pill-active-fg",  showDot: true  },
+  blocked:   { label: "Bloqueado",     bgToken: "admin-pill-blocked-bg", fgToken: "admin-pill-blocked-fg", showDot: false },
+  preparing: { label: "Em preparação", bgToken: "admin-pill-warn-bg",    fgToken: "admin-pill-warn-fg",    showDot: true  },
+  undefined: { label: "Sem trigger",   bgToken: "admin-pill-warn-bg",    fgToken: "admin-pill-warn-fg",    showDot: false },
 };
 
-const EXTRA_META: Record<Exclude<FlowExtraTag, null>, { label: string; bg: string; color: string }> = {
-  primary_delivery: { label: "Entrega principal", bg: "#E0EBFB", color: "#185FA5" },
-  no_email: { label: "Sem email", bg: "#EDEDEA", color: "#5A6B8C" },
-  blocked: { label: "Bloqueado", bg: "#EDEDEA", color: "#5A6B8C" },
+const EXTRA_META: Record<Exclude<FlowExtraTag, null>, Omit<PillMeta, "showDot">> = {
+  primary_delivery: { label: "Entrega principal", bgToken: "admin-pill-info-bg",    fgToken: "admin-pill-info-fg" },
+  no_email:         { label: "Sem email",         bgToken: "admin-pill-blocked-bg", fgToken: "admin-pill-blocked-fg" },
+  blocked:          { label: "Bloqueado",         bgToken: "admin-pill-blocked-bg", fgToken: "admin-pill-blocked-fg" },
 };
 
-export function AutomationNode({ flow, stageColor }: AutomationNodeProps) {
+export function AutomationNode({ flow, stageTokenColor }: AutomationNodeProps) {
   const visual = flow.visualKind;
   const Icon = VISUAL_ICON[visual];
   const status = STATUS_META[flow.status];
   const isBlocked = flow.status === "blocked";
+  const stageColor = `rgb(var(--${stageTokenColor}))`;
 
   return (
     <article
-      className="group relative rounded-2xl border bg-white transition-all"
-      style={{
-        borderColor: "#E4E8F0",
-        boxShadow: "0 1px 2px rgba(44,44,42,0.04), 0 4px 16px rgba(44,44,42,0.05)",
-      }}
+      className="group relative rounded-2xl border border-admin-border bg-white shadow-admin-card transition-all"
     >
       {/* Zone 1 — identification */}
       <div className="flex items-start gap-4 px-5 pt-5">
-        {/* Icon + badge */}
         <div className="relative shrink-0">
           <div
             className="flex h-[50px] w-[50px] items-center justify-center rounded-xl"
             style={{
-              background: `linear-gradient(135deg, ${stageColor}22, ${stageColor}10)`,
-              border: `1px solid ${stageColor}33`,
+              background: `color-mix(in oklab, ${stageColor} 13%, transparent)`,
+              border: `1px solid color-mix(in oklab, ${stageColor} 22%, transparent)`,
             }}
           >
             <Icon size={22} style={{ color: stageColor }} strokeWidth={1.75} />
@@ -89,7 +88,6 @@ export function AutomationNode({ flow, stageColor }: AutomationNodeProps) {
           </span>
         </div>
 
-        {/* Header content */}
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
             <TypePill kind={visual} stageColor={stageColor} />
@@ -104,51 +102,55 @@ export function AutomationNode({ flow, stageColor }: AutomationNodeProps) {
               <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-admin-text-tertiary/70">
                 Subject
               </span>
-              <span className="text-admin-text-secondary">{flow.subject}</span>
+              <SubjectLine text={flow.subject} />
             </p>
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex shrink-0 items-center gap-1.5">
           <EditButton blocked={isBlocked} templateKey={flow.templateKey} />
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  disabled
-                  className="flex h-8 w-8 items-center justify-center rounded-md border text-admin-text-tertiary opacity-60"
-                  style={{ borderColor: "#E4E8F0", cursor: "not-allowed" }}
-                  aria-label="Mais opções"
-                >
-                  <MoreHorizontal size={14} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Disponível em breve</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       </div>
 
       {/* Zone 2 — timing strip */}
-      <TimingStrip timing={flow.timing} />
+      <TimingStrip timing={flow.timing} instrumented={flow.instrumented} />
 
       {/* Zone 3 — stats */}
       <div className="grid grid-cols-3 gap-2 px-5 pb-5 pt-3">
-        <Stat label="Enviados" value={flow.sentTotal} tone="muted" />
+        <Stat label="Enviados" value={flow.sentEvents} tone="success" />
         <Stat
           label="A aguardar"
           value={flow.eligibleCount + flow.inFlightCount}
-          tone={flow.eligibleCount + flow.inFlightCount > 0 ? "warning" : "muted"}
+          tone="warning"
         />
-        <Stat
-          label="Falhas"
-          value={flow.failuresTotal}
-          tone={flow.failuresTotal > 0 ? "danger" : "muted"}
-        />
+        <Stat label="Falhas" value={flow.failuresTotal} tone="danger" />
       </div>
     </article>
+  );
+}
+
+function SubjectLine({ text }: { text: string }) {
+  // Renderiza `{{var}}` como chip em vez de literal Liquid no UI.
+  const parts = text.split(/(\{\{[^}]+\}\})/g);
+  return (
+    <span className="text-admin-text-secondary">
+      {parts.map((p, i) => {
+        const m = p.match(/^\{\{\s*([^}\s]+)\s*\}\}$/);
+        if (!m) return <span key={i}>{p}</span>;
+        return (
+          <code
+            key={i}
+            className="rounded px-1 py-0.5 font-mono text-[11px]"
+            style={{
+              background: "rgb(var(--admin-pill-info-bg))",
+              color: "rgb(var(--admin-pill-info-fg))",
+            }}
+          >
+            {m[1]}
+          </code>
+        );
+      })}
+    </span>
   );
 }
 
@@ -157,7 +159,10 @@ function TypePill({ kind, stageColor }: { kind: FlowVisualKind; stageColor: stri
   return (
     <span
       className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
-      style={{ background: `${stageColor}14`, color: stageColor }}
+      style={{
+        background: `color-mix(in oklab, ${stageColor} 10%, transparent)`,
+        color: stageColor,
+      }}
     >
       <Icon size={10} strokeWidth={2.5} />
       {VISUAL_LABEL[kind]}
@@ -165,16 +170,19 @@ function TypePill({ kind, stageColor }: { kind: FlowVisualKind; stageColor: stri
   );
 }
 
-function StatusPill({ meta }: { meta: typeof STATUS_META[FlowStatus] }) {
+function StatusPill({ meta }: { meta: PillMeta }) {
   return (
     <span
       className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
-      style={{ background: meta.bg, color: meta.color }}
+      style={{
+        background: `rgb(var(--${meta.bgToken}))`,
+        color: `rgb(var(--${meta.fgToken}))`,
+      }}
     >
-      {meta.dot && (
+      {meta.showDot && (
         <span
           className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{ background: meta.dot }}
+          style={{ background: `rgb(var(--${meta.fgToken}))` }}
         />
       )}
       {meta.label}
@@ -187,7 +195,10 @@ function ExtraPill({ tag }: { tag: Exclude<FlowExtraTag, null> }) {
   return (
     <span
       className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
-      style={{ background: meta.bg, color: meta.color }}
+      style={{
+        background: `rgb(var(--${meta.bgToken}))`,
+        color: `rgb(var(--${meta.fgToken}))`,
+      }}
     >
       {meta.label}
     </span>
@@ -203,9 +214,8 @@ function EditButton({ blocked, templateKey }: { blocked: boolean; templateKey: s
             <button
               type="button"
               disabled
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-[12px] font-medium text-admin-text-tertiary"
-              style={{ background: "#F1F4F9", borderColor: "#E4E8F0", cursor: "not-allowed" }}
-              aria-label="Bloqueado"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-admin-border bg-admin-surface-muted px-3 text-[12px] font-medium text-admin-text-tertiary"
+              style={{ cursor: "not-allowed" }}
             >
               <Lock size={12} />
               Bloqueado
@@ -224,7 +234,11 @@ function EditButton({ blocked, templateKey }: { blocked: boolean; templateKey: s
             type="button"
             disabled
             className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-semibold text-white opacity-90"
-            style={{ background: "#0F1B3D", cursor: "not-allowed", boxShadow: "0 1px 2px rgba(15,27,61,0.2)" }}
+            style={{
+              background: "rgb(var(--admin-button-dark))",
+              cursor: "not-allowed",
+              boxShadow: "0 1px 2px rgb(var(--admin-button-dark) / 0.2)",
+            }}
           >
             <Pencil size={12} />
             Editar
@@ -238,14 +252,19 @@ function EditButton({ blocked, templateKey }: { blocked: boolean; templateKey: s
   );
 }
 
-function TimingStrip({ timing }: { timing: FlowTiming }) {
+function TimingStrip({ timing, instrumented }: { timing: FlowTiming; instrumented: boolean }) {
+  const containerInfo =
+    "mx-5 mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-md px-3 py-2 text-[12px]";
+  const bgInfo = { background: "rgb(var(--admin-pill-info-soft-bg))" };
+  const bgWarn = {
+    background: "rgb(var(--admin-pill-warn-soft-bg))",
+    border: "1px solid rgb(var(--admin-pill-warn-soft-border))",
+  };
+
   if (timing.kind === "undefined") {
     return (
-      <div
-        className="mx-5 mt-3 flex items-center gap-2 rounded-md border px-3 py-2 text-[12px]"
-        style={{ background: "#FFF7E8", borderColor: "#F4DCA6" }}
-      >
-        <AlertTriangle size={13} style={{ color: "#BA7517" }} />
+      <div className={`${containerInfo} border`} style={bgWarn}>
+        <AlertTriangle size={13} className="text-[rgb(var(--admin-pill-warn-fg))]" />
         <span className="text-admin-text-secondary">
           <strong className="font-semibold text-admin-text-primary">Não definido</strong>
           {" · falta configurar "}
@@ -258,11 +277,8 @@ function TimingStrip({ timing }: { timing: FlowTiming }) {
 
   if (timing.kind === "average") {
     return (
-      <div
-        className="mx-5 mt-3 flex items-center gap-2 rounded-md px-3 py-2 text-[12px]"
-        style={{ background: "#F4F8FE" }}
-      >
-        <Clock size={13} className="text-admin-info-500" />
+      <div className={containerInfo} style={bgInfo}>
+        <Clock size={13} className="text-admin-info-500 shrink-0" />
         <span className="text-admin-text-secondary">
           {"Demora "}
           <strong className="font-semibold text-admin-text-primary">{timing.averageLabel}</strong>
@@ -275,35 +291,39 @@ function TimingStrip({ timing }: { timing: FlowTiming }) {
 
   if (timing.kind === "delay") {
     return (
-      <div
-        className="mx-5 mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-md px-3 py-2 text-[12px]"
-        style={{ background: "#F4F8FE" }}
-      >
+      <div className={containerInfo} style={bgInfo}>
         <Clock size={13} className="text-admin-info-500 shrink-0" />
         <span className="text-admin-text-secondary">
           <strong className="font-semibold text-admin-text-primary">{timing.delayLabel}</strong>
           {" após "}
           <TriggerCode name={timing.eventName} />
           {timing.contextHint ? ` — ${timing.contextHint}` : ""}
+          {!instrumented && <NotInstrumentedHint />}
         </span>
       </div>
     );
   }
 
-  // immediate
   return (
-    <div
-      className="mx-5 mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-md px-3 py-2 text-[12px]"
-      style={{ background: "#F4F8FE" }}
-    >
+    <div className={containerInfo} style={bgInfo}>
       <ArrowRightLeft size={13} className="text-admin-info-500 shrink-0" />
       <span className="text-admin-text-secondary">
         <strong className="font-semibold text-admin-text-primary">Imediato</strong>
         {" após o evento "}
         <TriggerCode name={timing.eventName} />
         {timing.contextHint ? ` — ${timing.contextHint}` : ""}
+        {!instrumented && <NotInstrumentedHint />}
       </span>
     </div>
+  );
+}
+
+function NotInstrumentedHint() {
+  return (
+    <span className="ml-1.5 inline-flex items-center gap-1 align-baseline text-[11px] text-[rgb(var(--admin-pill-warn-fg))]">
+      <AlertCircle size={11} />
+      evento ainda não emitido
+    </span>
   );
 }
 
@@ -311,7 +331,10 @@ function TriggerCode({ name }: { name: string }) {
   return (
     <code
       className="rounded px-1.5 py-0.5 font-mono text-[11px]"
-      style={{ background: "#E0EBFB", color: "#185FA5" }}
+      style={{
+        background: "rgb(var(--admin-pill-info-bg))",
+        color: "rgb(var(--admin-pill-info-fg))",
+      }}
     >
       {name}
     </code>
@@ -319,15 +342,18 @@ function TriggerCode({ name }: { name: string }) {
 }
 
 type Tone = "muted" | "warning" | "danger" | "success";
-const TONE_COLOR: Record<Tone, string> = {
-  muted: "#1D9E75",
-  warning: "#BA7517",
-  danger: "#D85A30",
-  success: "#1D9E75",
+const TONE_TOKEN: Record<Tone, string> = {
+  muted: "admin-pill-active-fg",
+  warning: "admin-pill-warn-fg",
+  danger: "admin-signal-500",
+  success: "admin-pill-active-fg",
 };
 
 function Stat({ label, value, tone }: { label: string; value: number; tone: Tone }) {
-  const color = value > 0 ? TONE_COLOR[tone] : "#8A98B2";
+  const color =
+    value > 0
+      ? `rgb(var(--${TONE_TOKEN[tone]}))`
+      : "rgb(var(--admin-neutral-400))";
   return (
     <div className="flex flex-col items-center gap-1 rounded-lg py-2">
       <span className="text-[20px] font-bold leading-none tabular-nums" style={{ color }}>
@@ -339,6 +365,3 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: Tone
     </div>
   );
 }
-
-// Stage prop kept for future use (badge color override) — currently not used.
-export type { FlowStage };
