@@ -119,7 +119,9 @@ export async function syncLeadToBrevo(
     const [{ data: latestRR }, { count: reportsCount }] = await Promise.all([
       (supabaseAdmin as any)
         .from("report_requests")
-        .select("id, instagram_username, analysis_snapshot_id, created_at")
+        .select(
+          "id, instagram_username, analysis_snapshot_id, report_snapshot_id, created_at",
+        )
         .eq("lead_id", leadId)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -131,13 +133,19 @@ export async function syncLeadToBrevo(
     ]);
 
     const handle: string | null = latestRR?.instagram_username ?? null;
+    const reportSnapshotId: string | null =
+      latestRR?.report_snapshot_id ?? null;
     const baseUrl = resolveBaseUrl();
 
     // 4. Build payload.
     const attributes = {
       INSTAGRAM_HANDLE: handle,
       REPORTS_COUNT: typeof reportsCount === "number" ? reportsCount : null,
-      LAST_REPORT_URL: handle ? `${baseUrl}/analyze/${handle}` : null,
+      LAST_REPORT_URL: reportSnapshotId
+        ? `${baseUrl}/reports/${encodeURIComponent(reportSnapshotId)}`
+        : handle
+          ? `${baseUrl}/analyze/${handle}`
+          : null,
       LAST_REPORT_AT: latestRR?.created_at ?? new Date().toISOString(),
       PROFILE_OWNERSHIP: lead.profile_ownership ?? null,
       GOAL: lead.purpose ?? null,
