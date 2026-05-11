@@ -1,51 +1,66 @@
-Diagnóstico encontrado:
 
-1. O submenu `Tabela` já existe no código da sidebar em `src/components/admin/v2/admin-sidebar.tsx`, dentro do grupo `Contactos`, por baixo de `Pipeline`.
-2. A página que aparece na captura ainda está no gate de acesso, por isso a sidebar não é renderizada enquanto não houver email admin guardado no browser. Sem entrar no gate, é esperado não ver `Pipeline` nem `Tabela`.
-3. A Pipeline falha por 401 no preview do utilizador porque os pedidos para `/api/admin/leads-kanban` chegam sem `X-Admin-Email`.
-4. O endpoint em si funciona quando recebe o header correto: testei `/api/admin/leads-kanban` com `X-Admin-Email: fredericodigital@gmail.com` e respondeu `200` com leads reais.
-5. Ainda existem chamadas diretas com `fetch(..., { credentials: "include" })` para endpoints admin, principalmente na Command Palette, PeopleTab e LeadDetailSheet. Esse padrão não funciona com o gate simples atual, porque não há cookie/JWT; a autenticação depende do header injetado por `adminFetch`.
+Dois pedidos relacionados (cleanup da CRM). Faço-os no mesmo plano porque tocam nos mesmos ficheiros (sidebar, topbar, sheet do contacto, rota beta-requests). Se preferires separar, basta dizer.
 
-Plano de correção:
+## Fase 1 — Pedidos dentro da ficha do contacto
 
-1. Unificar chamadas admin no helper correto
-   - Substituir `fetch("/api/admin/leads-kanban", { credentials: "include" })` por `adminFetch(...)` na Command Palette.
-   - Fazer o mesmo em `PeopleTab`.
-   - No `LeadDetailSheet`, trocar as chamadas admin diretas por `adminFetch` para:
-     - `/api/admin/lead-timeline/:id`
-     - `/api/admin/generate-beta-report`
-     - `/api/admin/send-report-link`
-     - `/api/admin/send-feedback-request`
-     - `/api/admin/send-commercial-followup`
+Hoje a tab "Relatório" do `LeadDetailSheet` mostra apenas o último relatório (campos vindos do `EnrichedLead`). O utilizador quer ver **todos** os `report_requests` do contacto com handle, data, estado, snapshot, email, PDF e ação de abrir.
 
-2. Evitar recarregamento prematuro em 401
-   - Ajustar `adminFetch` para continuar a limpar a sessão inválida, mas sem recarregar automaticamente a página antes de a UI conseguir mostrar uma mensagem clara.
-   - Isto evita loops visuais em que a página volta ao gate sem explicar que a sessão local estava inválida.
+### Backend
+- `src/routes/api/admin/report-requests.ts`
+  - Adicionar suporte a `?lead_id=<uuid>` (filtro `.eq("lead_id", id)`).
+  - Sem alterações de schema, RLS ou auth — continua a usar `requireAdminSession()`.
 
-3. Tornar `Tabela` inequívoca no menu
-   - Manter `Tabela` diretamente por baixo de `Pipeline` no grupo `Contactos`.
-   - Garantir que o active state distingue corretamente:
-     - `Pipeline`: `/admin/beta-leads` sem `view`, ou `view=pipeline`
-     - `Tabela`: `/admin/beta-leads?view=tabela`
-   - Corrigir o título da topbar para mostrar `Contactos` em vez de só `Pipeline`, porque a rota serve as duas vistas.
-
-4. Refinar mensagens da página de Contactos
-   - Quando o erro for 401/403, mostrar estado de sessão/admin em falta em vez de “Não foi possível carregar contactos”.
-   - Manter botão para voltar ao gate de admin.
-
-5. Validação
-   - Repetir o teste direto do endpoint com header admin.
-   - Confirmar no preview, depois de login no gate, que:
-     - aparece `Contactos > Pipeline` e `Tabela` na sidebar;
-     - Pipeline carrega contactos;
-     - `Tabela` abre a mesma listagem em tabela;
-     - não há novos 401 em `/api/admin/leads-kanban` quando a sessão local existe.
-
-Ficheiros previstos:
-
-- `src/lib/admin/fetch.ts`
-- `src/components/admin/v2/admin-command-palette.tsx`
-- `src/components/admin/v2/automacoes/people-tab.tsx`
+### UI
 - `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
+  - Renomear a tab `"Relatório"` para `"Relatórios"`.
+  - Acima do bloco atual (que continua a mostrar o estado do último), adicionar uma lista de todos os pedidos:
+    - `useQuery` com chave `["admin","lead-reports", lead.id]`, chama `adminFetch("/api/admin/report-requests?lead_id=...&pageSize=100")`.
+    - Linhas com: handle (`@username`), data (`formatDate(created_at)`), badge de `request_status`, badge de `pdf_status`, badge de `delivery_status`, e botões:
+      - **Abrir relatório** → `/analyze/$username` (novo separador) quando `instagram_username` existir.
+      - **Abrir snapshot** → `/admin/report-preview/snapshot/$snapshotId` quando `analysis_snapshot_id` existir.
+    - Estado vazio: `"Ainda não existem relatórios associados a este contacto."`
+    - Estado loading: skeleton curto. Estado erro: `AdminCallout` com retry.
+  - Manter ações actuais (Copiar link, Enviar link, Pedir feedback, Gerar relatório) — continuam relevantes para o último relatório.
+
+### Navegação
+- `src/components/admin/v2/admin-sidebar.tsx`: a rota `/admin/beta-requests` já não está no sidebar — manter assim. Adicionar apenas um link discreto a partir do sheet ("Ver na fila completa →") opcional.
+- A rota `/admin/beta-requests` mantém-se acessível por URL directo (utilitário).
+
+## Fase 2 — Remover "Beta" da CRM principal
+
+Substituições puramente de copy (sem mexer em rotas, tabelas, eventos ou colunas).
+
+### Topbar
 - `src/components/admin/v2/admin-topbar.tsx`
-- possivelmente `src/routes/admin.beta-leads.tsx` apenas para melhorar a mensagem de erro, se necessário.
+  - `"/admin/beta-requests": "Pedidos (utilitário)"` → `"Pedidos de relatório"`.
+  - Confirmar `"/admin/beta-leads"` continua como `"Contactos"` (já corrigido).
+
+### Sheet do contacto
+- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
+  - Linha `"Consentimento beta"` → manter o label mas mostrar como pequeno badge `"Origem: Beta"` apenas quando `lead.beta_consent === true` (passa a sinalização secundária, não secção principal).
+
+### Página de pedidos
+- `src/routes/admin.beta-requests.tsx`
+  - `<AdminPageHeader title="Beta Requests" …>` → `title="Pedidos de relatório"`, subtítulo: `"Fila utilitária — para gestão diária usa a ficha do contacto."`
+
+### O que NÃO muda
+- Nomes de ficheiros, rotas (`/admin/beta-leads`, `/admin/beta-requests`), tabelas (`beta_feedback`), eventos, colunas (`beta_consent`, `beta_consent_at`), `request_source = "beta_form"`.
+- `PeopleTab` e a Visão Geral mantêm a lógica actual.
+
+## Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Manual:
+  - abrir contacto com >=1 relatório → tab "Relatórios" lista todos com badges e botões funcionais;
+  - abrir contacto sem relatórios → mensagem de estado vazio;
+  - sidebar não tem "Beta" como conceito primário;
+  - topbar e header da página `/admin/beta-requests` mostram "Pedidos de relatório";
+  - `/admin/beta-leads` continua a chamar-se "Contactos".
+
+## Ficheiros previstos
+
+- `src/routes/api/admin/report-requests.ts` (filtro `lead_id`)
+- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (lista de relatórios + copy)
+- `src/components/admin/v2/admin-topbar.tsx` (label)
+- `src/routes/admin.beta-requests.tsx` (header)
