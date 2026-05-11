@@ -1,4 +1,8 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  REPORT_RETENTION_DAYS,
+  REPORT_RETENTION_MS,
+} from "@/lib/report/retention";
 
 export type CacheStatus = "fresh" | "expiring_soon" | "stale" | "unknown";
 
@@ -7,9 +11,9 @@ interface Props {
   analyzedAtIso: string | null;
   /** ISO `expires_at` real do servidor. Quando ausente, derivado por `ttlHours`. */
   expiresAtIso?: string | null;
-  /** Fallback de TTL se `expiresAtIso` não vier. Default 24h (igual a `CACHE_TTL_MS`). */
+  /** Fallback de TTL se `expiresAtIso` não vier. Default = janela de retenção do relatório. */
   ttlHours?: number;
-  /** Janela "a expirar em breve" em horas. Default 6h. */
+  /** Janela "a expirar em breve" em horas. Default 24h (último dia da retenção). */
   warnWithinHours?: number;
   /** Variante reduzida para footers densos. */
   compact?: boolean;
@@ -57,8 +61,8 @@ export function computeCacheStatus(params: {
   const { nowMs, generatedMs, expiresMs, warnWithinMs } = params;
   if (generatedMs === null || !Number.isFinite(generatedMs)) return "unknown";
   if (expiresMs === null || !Number.isFinite(expiresMs)) {
-    // Sem expiry: tratar > 24h como stale.
-    return nowMs - generatedMs >= 24 * 60 * 60 * 1000 ? "stale" : "fresh";
+    // Sem expiry: usar a janela central de retenção como cutoff de stale.
+    return nowMs - generatedMs >= REPORT_RETENTION_MS ? "stale" : "fresh";
   }
   if (nowMs >= expiresMs) return "stale";
   if (nowMs >= expiresMs - warnWithinMs) return "expiring_soon";
@@ -68,8 +72,8 @@ export function computeCacheStatus(params: {
 export function CacheStatusBadge({
   analyzedAtIso,
   expiresAtIso = null,
-  ttlHours = 24,
-  warnWithinHours = 6,
+  ttlHours = REPORT_RETENTION_DAYS * 24,
+  warnWithinHours = 24,
   compact = false,
 }: Props) {
   const generatedMs = analyzedAtIso ? new Date(analyzedAtIso).getTime() : null;

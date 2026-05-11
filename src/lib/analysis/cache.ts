@@ -11,12 +11,26 @@
 import type { EnrichmentStatusMap } from "@/lib/enrichment/types";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  CACHE_TTL_MS as RETENTION_CACHE_TTL_MS,
+  REPORT_RETENTION_MS,
+} from "@/lib/report/retention";
 
-/** Cache TTL: snapshots are reused for 24h before triggering a new scrape. */
-export const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/**
+ * Cache TTL — re-export da constante única em `@/lib/report/retention`.
+ * Snapshots são reutilizados durante esta janela antes de despoletar um
+ * novo scrape ao provider.
+ */
+export const CACHE_TTL_MS = RETENTION_CACHE_TTL_MS;
 
-/** Stale tolerance: on provider failure we may serve a snapshot up to 7 days old. */
-export const STALE_TOLERANCE_MS = 7 * 24 * 60 * 60 * 1000;
+/**
+ * Stale tolerance: alinhado à janela de retenção do relatório. Com
+ * `CACHE_TTL_MS === REPORT_RETENTION_MS`, esta janela deixa de ser uma
+ * tolerância distinta e funciona como upper bound do que ainda é
+ * "histórico revisitável" — útil para fallbacks defensivos em rotas que
+ * já a consomem (`isWithinStaleWindow`).
+ */
+export const STALE_TOLERANCE_MS = REPORT_RETENTION_MS;
 
 /** Cache key version prefix — bump to invalidate every cached entry at once. */
 const CACHE_KEY_VERSION = "v1";
