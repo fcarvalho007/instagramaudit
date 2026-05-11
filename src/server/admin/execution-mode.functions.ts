@@ -143,6 +143,7 @@ export const getTestProfileStatuses = createServerFn({ method: "GET" }).handler(
         allEnrichmentsComplete,
         cacheReady: notExpired && allEnrichmentsComplete && !!snap,
         snapshotExpiresAt,
+        latestSnapshotId: snap?.id ?? null,
         latestFreshCostTotal,
         latestEventId: evt?.id ?? null,
         estimatedLastCostUsd:
