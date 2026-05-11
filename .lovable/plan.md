@@ -1,40 +1,56 @@
-## Auditoria — o que ficou feito e o que falta
+## Bug — cards do Bloco 1 desaparecem após unlock
 
-### Já corrigido (verificado)
-- `LeadCard`: moeda em USD com tooltip, `USER_TYPE_LABELS` (chaves EN), `REPORT_STATUS_LABELS` em pt-PT (sem `pending_review`), ícone `PhoneCall`, fallback "Sem nome", badge lead-magnet.
-- `KanbanBoard`: chips agrupados (Estado/Atenção), contador, "Limpar filtros", drag-drop com toast `Anular` (sem `confirm()`), accordion mobile re-sync, ordenação por `last_interaction desc`, optimistic update no `admin.beta-leads.tsx`.
-- `LeadsTable`: chips partilhados, contador, "Limpar filtros", coluna Lead-magnet, fallback "Sem nome".
-- `lead-filter-chips.ts`: chips `novos_hoje`, `inativos_7d`, `lead_magnet_ativo`, `marketing_ok`.
-- `leads-kanban.ts` (API): agrega `lead_magnet`, devolve `marketing_consent`, `archived_at`.
-- `EnrichedLead`: campos novos presentes.
-- `PeopleTab`: link "Pipeline", bloco de erro tipado, `staleTime 15s`/`refetchInterval 30s`, pill "LM activo".
-- `TemplatesTab`: agrupado por `CATEGORY_ORDER`, botão "Editar" com `aria-disabled` + tooltip.
-- `automation-flow-page.tsx`: eyebrow "Ciclo de vida · Automações".
+### Causa
 
-### Por corrigir (ficou pendente em `lead-detail-sheet.tsx`)
+Em `src/components/report-redesign/v2/report-shell-v2.tsx` (linhas 167–180 e 187–288), a lógica de render do Bloco 01 usa três caminhos:
 
-1. **`USER_TYPE_LABEL` e `USER_TYPE_ACCENT` desalinhados** (linhas 107–121).
-   Ainda usam chaves pt antigas (`marca`, `agencia`, `freelancer`, `criador`, `estudante`). Os leads reais chegam em EN (`brand`, `agency`, `consultant`, `creator`, `student`, `ecommerce`, `other`) → o badge cai sempre em `neutral` e mostra a string crua.
-   **Fix:** importar `USER_TYPE_LABELS` de `@/lib/unlock-flow` e reescrever `USER_TYPE_ACCENT` com as mesmas chaves do `LeadCard`.
+```text
+gated = lockBoundary === "engagement" && !unlocked
 
-2. **`STATUS_ACCENT` ainda tem `pending_review`** (linha 127).
-   Estado morto após a auditoria anterior. Remover. (Mantém `pending`, `processing`, `ready`, `completed`, `failed`, `not_generated`, `generated`, `sent`, `not_sent`, `approved`, `rejected`.)
+(A) lockBoundary === "engagement"     → ReportOverviewBlock mode="free"   (só Editorial Identity)
+                                       → caso contrário                    → mode="all"
 
-3. **KPI "Custo" mostra `€` mas o valor é USD** (linha 486).
-   `report_cost_usd` é dólares (custo provider). Trocar para `$X.XX` e adicionar `title="Custo provider (USD)"` no `<p>`, em coerência com `LeadCard`.
+(B) gated === true                     → ReportLockGate { mode="locked" + restantes blocos }
+(C) !gated                             → blocos 02–06 normais
+```
 
-4. **Nome sem fallback "Sem nome"** (linhas 386, 404, 411).
-   Quando `lead.name` é vazio, o header e o avatar ficam em branco / com iniciais erradas. Aplicar `displayName(lead)` (helper local com `lead.name?.trim() || "Sem nome"`) no `<h2>`, `getInitials(...)` e no `SheetDescription`.
+Quando o utilizador faz **unlock** (`unlocked = true`):
+- `lockBoundary` continua `"engagement"` → ramo (A) entra em `mode="free"` (só Editorial Identity).
+- `gated` passa a `false` → ramo (B) deixa de renderizar.
+- Resultado: **Engagement, Frequência, Formato e Best vs Worst Posts (mode="locked") nunca voltam a aparecer**. Os blocos 02–06 aparecem normalmente.
 
-### Fora de scope (não tocar)
-- Não alterar schema, eventos, nomes de tabelas, lógica de envio.
-- Não mexer em rotas nem em páginas públicas.
+Os componentes `FrequencyCard`, `FormatCard`, `EngagementCardRefined` e `PostComparisonBlock` continuam vivos em `report-overview-block.tsx` — não foram removidos. Só não estão a ser pedidos.
+
+### Correcção (1 ficheiro, 1 condição)
+
+`src/components/report-redesign/v2/report-shell-v2.tsx`:
+
+Trocar o ternário do bloco 01 (linhas 167–180) para considerar também `unlocked`:
+
+```text
+mode = lockBoundary === "engagement" && !unlocked  ? "free" : "all"
+```
+
+Assim:
+- **Locked** (`!unlocked`) → `mode="free"` (só Editorial Identity acima do gate); o resto continua dentro do `ReportLockGate` com `mode="locked"`. Nada muda.
+- **Unlocked** → `mode="all"` no bloco 01 → reaparecem Engagement, Frequência, Formato e Best vs Worst Posts.
+- **Sem lockBoundary** → `mode="all"` (comportamento já correcto, preservado).
+
+### Fora de scope
+
+- Não alterar `ReportOverviewBlock`, `FrequencyCard`, `FormatCard`, nem `PostComparisonBlock`.
+- Não tocar em `lockBoundary` nem na lógica de `gated`.
+- Não tocar em rotas, schema, eventos ou tracking.
 
 ### Validação
+
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Manual: abrir um lead com `user_type = "brand"` e outro sem nome → confirmar badge correcto, "Sem nome" no header, custo em USD, sem `pending_review` em lado nenhum.
+- Manual em `/analyze/<handle>`:
+  - Antes do unlock: Editorial Identity visível, restante encoberto pelo lock gate (sem alterações).
+  - Após unlock: voltam a aparecer Engagement, **Frequência**, **Formato** e Best vs Worst Posts dentro do Bloco 01, e os blocos 02–06 continuam visíveis.
 
 ### Entrega
-- Lista de ficheiros editados (apenas `lead-detail-sheet.tsx`).
+
+- Ficheiro alterado: `src/components/report-redesign/v2/report-shell-v2.tsx`.
 - Resultado de tsc + vitest.
