@@ -442,12 +442,16 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
               >
                 <Clock size={10} />
                 {isExpired ? (
-                  <span>Expirada {formatRelative(expiresAt, now)}</span>
+                  <span>Pronto para atualizar</span>
                 ) : (
-                  <span>Válida {formatRelative(expiresAt, now)}</span>
+                  <span>
+                    Expira em {Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 86_400_000))} dias
+                  </span>
                 )}
                 <span className="text-admin-text-tertiary/70">·</span>
-                <span className="font-mono tabular-nums">{formatAbsoluteShort(expiresAt)}</span>
+                <span className="font-mono tabular-nums">
+                  {isExpired ? `expirou ${formatAbsoluteShort(expiresAt)}` : `válida até ${formatAbsoluteShort(expiresAt)}`}
+                </span>
               </span>
             )}
             {/* Row-level refresh readiness badge */}
