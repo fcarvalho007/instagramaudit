@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
@@ -123,6 +124,11 @@ import { Route as ApiAdminKnowledgeHistoryTypeIdRouteImport } from './routes/api
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -723,6 +729,7 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
@@ -834,6 +841,7 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
@@ -947,6 +955,7 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/admin/automacoes': typeof AdminAutomacoesRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
@@ -1061,6 +1070,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/reset-password'
     | '/signup'
+    | '/sitemap.xml'
     | '/termos'
     | '/admin/automacoes'
     | '/admin/beta-leads'
@@ -1172,6 +1182,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/reset-password'
     | '/signup'
+    | '/sitemap.xml'
     | '/termos'
     | '/admin/automacoes'
     | '/admin/beta-leads'
@@ -1284,6 +1295,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/reset-password'
     | '/signup'
+    | '/sitemap.xml'
     | '/termos'
     | '/admin/automacoes'
     | '/admin/beta-leads'
@@ -1397,6 +1409,7 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
   AnalyzeUsernameRoute: typeof AnalyzeUsernameRoute
   ApiAnalyzePublicV1Route: typeof ApiAnalyzePublicV1Route
@@ -1478,6 +1491,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -2427,6 +2447,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
   AnalyzeUsernameRoute: AnalyzeUsernameRoute,
   ApiAnalyzePublicV1Route: ApiAnalyzePublicV1Route,

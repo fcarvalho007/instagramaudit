@@ -1,64 +1,37 @@
-## Objetivo
-Permitir ao utilizador autenticado em `/app/account` ver e alterar o estado de `marketing_consent` do lead associado.
+## Refinamentos das duas últimas tasks
 
-## Estado atual
-- `src/routes/app.account.tsx` — mostra perfil + email do lead (`account.leadEmail`).
-- `src/server/account.functions.ts` — tem `getAccountDetails` (devolve perfil + leadEmail) e `updateDisplayName`.
-- `leads.marketing_consent` (bool) e `leads.marketing_consent_at` (timestamptz) já existem. Não há coluna `unsubscribed_at` — não vou criar nenhuma migração; uso apenas `marketing_consent_at` como timestamp da última alteração (consistente com unlock).
-- `recordProductEvent()` em `src/lib/tracking.server.ts` é o helper já usado para `product_events`.
+### A. SEO — `public/robots.txt`
+- Adicionar newline final (POSIX-compliant).
 
-## Mudanças
+### B. SEO — `public/sitemap.xml` → server route
+Substituir o ficheiro estático por `src/routes/sitemap[.]xml.ts` (server route GET) que devolve XML com:
+- mesmas 5 URLs (`/`, `/privacidade`, `/termos`, `/cookies`, `/aviso-legal`)
+- `<lastmod>` = data atual em formato `YYYY-MM-DD` (calculado em runtime)
+- `Cache-Control: public, max-age=3600`
+- Apagar `public/sitemap.xml` (estático) — evita ficheiro estático shadow do server route.
+- `robots.txt` mantém-se estático e continua a apontar para `https://instagramaudit.lovable.app/sitemap.xml` (não muda).
 
-### 1. `src/server/account.functions.ts`
-- Estender `getAccountDetails` para devolver também:
-  - `leadId: string | null`
-  - `marketingConsent: boolean | null` (null se não houver lead)
-- Adicionar nova server function `updateMarketingConsent`:
-  - método `POST`, middleware `[withSupabaseHeaders, requireSupabaseAuth]`
-  - input: `{ consent: boolean }`
-  - lê `profiles.lead_id` do utilizador autenticado (`userId`)
-  - se não houver `lead_id` → erro "Sem lead associado"
-  - faz `update` em `leads` apenas onde `id = profile.lead_id` (segurança: nunca aceita id vindo do cliente) com `{ marketing_consent, marketing_consent_at: new Date().toISOString() }`
-  - chama `recordProductEvent({ eventType: "marketing_consent_updated", leadId, metadata: { consent, source: "account_page" } })`
-  - devolve `{ ok: true, marketingConsent }`
+> Confirma se preferes manter o estático em vez de migrar — se sim, salto B e fica só a alteração do `<lastmod>` para a data de hoje.
 
-### 2. `src/routes/app.account.tsx`
-Nova secção “Comunicações” (card separado por baixo do perfil), apenas visível se existir `account.leadId`:
-- Título: **Comunicações**
-- Linha descritiva: “Receber novidades e dicas sobre relatórios, análise de Instagram e marketing digital”
-- Toggle (botão acessível, role="switch", aria-checked) ligado a `marketingConsent`
-- Estado de loading durante o pedido; revert otimista se falhar
-- Nota fina: “Emails estritamente necessários ao funcionamento do serviço podem continuar a ser enviados.”
-- Estilo: tokens semânticos existentes (`bg-white`, `border-border-default/20`, `text-content-*`, `accent-primary`). Sem cores hardcoded.
+### C. Account — `src/routes/app.account.tsx`
+1. Mover a `<section>` "Comunicações" para FORA do `<div>` que contém o botão "Terminar sessão" (passa a ser um bloco irmão entre o card de perfil e o botão de logout).
+2. Trocar o spinner do toggle: em vez de absolute `-right-6` (corta no mobile), substituir o ícone do switch por `Loader2` quando `consentSaving` (mantendo a largura, sem absolute).
+3. Esconder o bloco "Email associado (lead)" quando `account.leadEmail === account.email` (evita duplicação).
 
-### 3. Mobile
-- Card empilha por defeito (`flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`).
+### Fora de scope
+- Refactor das cores hardcoded (`bg-blue-*`, `text-red-*`) — pre-existing, requer task própria.
+- Mudanças à server function `updateMarketingConsent` (já segura).
 
-## Segurança
-- `userId` vem sempre do middleware (`requireSupabaseAuth`).
-- O update filtra `leads.id = profile.lead_id` lido no servidor — o cliente nunca passa `leadId` nem `email`.
-- Nenhum outro campo do lead é alterado.
-
-## Eventos novos
-- `marketing_consent_updated` em `product_events` (metadata: `{ consent: boolean, source: "account_page" }`).
-
-## Fora de scope
-- Sem migrações de schema.
-- Sem envio de emails, sem chamadas a Brevo/Resend/Apify/OpenAI/DataForSEO.
-- Sem alteração ao fluxo de unlock nem ao endpoint público de unsubscribe (em paralelo).
-
-## Validação
+### Validação
 - `bunx tsc --noEmit`
-- `bunx vitest run`
+- `bunx vitest run` (espera-se 351/351)
 - Manual:
-  - login → `/app/account` mostra toggle com estado correto
-  - ON → OFF persiste em DB (`leads.marketing_consent = false`, `marketing_consent_at` atualizado), evento gravado
-  - OFF → ON o mesmo
-  - mobile (375px) layout legível
-  - tentar chamar `updateMarketingConsent` sem sessão → 401
+  - `/sitemap.xml` resolve com XML válido e `<lastmod>` = data de hoje
+  - `/robots.txt` resolve sem alterações funcionais
+  - `/app/account` toggle visualmente correto em mobile (375px)
+  - "Email associado (lead)" não aparece quando igual ao email da conta
 
-## Devolver no fim
-- ficheiros alterados
-- comportamento da nova server function
-- nome do evento adicionado
+### Devolver no fim
+- ficheiros alterados/criados/apagados
+- comportamento do novo `/sitemap.xml`
 - resultado da validação
