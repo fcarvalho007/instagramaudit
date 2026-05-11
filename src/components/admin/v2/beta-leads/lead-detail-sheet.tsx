@@ -69,6 +69,7 @@ import { Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
+import { USER_TYPE_LABELS, type UserType } from "@/lib/unlock-flow";
 import { getEventLabel } from "@/lib/admin/event-labels";
 import { LeadCommunicationTimeline } from "./lead-communication-timeline";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
@@ -104,27 +105,20 @@ interface TimelineEvent {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const USER_TYPE_LABEL: Record<string, string> = {
-  marca: "Marca",
-  agencia: "Agência",
-  freelancer: "Freelancer",
-  criador: "Criador de conteúdo",
-  estudante: "Estudante",
-};
-
 const USER_TYPE_ACCENT: Record<string, "leads" | "revenue" | "expense" | "info" | "signal" | "neutral"> = {
-  marca: "leads",
-  agencia: "revenue",
-  freelancer: "expense",
-  criador: "info",
-  estudante: "signal",
+  brand: "leads",
+  agency: "revenue",
+  consultant: "expense",
+  creator: "info",
+  student: "signal",
+  ecommerce: "revenue",
+  other: "neutral",
 };
 
 const STATUS_ACCENT: Record<string, "revenue" | "info" | "signal" | "expense" | "danger" | "neutral"> = {
   completed: "revenue",
   ready: "revenue",
   pending: "info",
-  pending_review: "info",
   approved: "info",
   processing: "expense",
   failed: "danger",
@@ -177,6 +171,11 @@ function getInitials(name: string): string {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function displayName(lead: EnrichedLead): string {
+  const n = lead.name?.trim();
+  return n && n.length > 0 ? n : "Sem nome";
 }
 
 function daysSince(iso: string): number {
@@ -383,7 +382,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         style={columnDef ? { borderTop: `3px solid ${columnDef.color}` } : undefined}
       >
         <SheetDescription className="sr-only">
-          Detalhes do lead {lead.name}
+          Detalhes do lead {displayName(lead)}
         </SheetDescription>
         <SheetTitle className="sr-only">Ficha de cliente</SheetTitle>
 
@@ -401,14 +400,14 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                     backgroundColor: columnDef?.color ?? "#534AB7",
                   }}
                 >
-                  {getInitials(lead.name || lead.email)}
+                  {getInitials(displayName(lead) !== "Sem nome" ? displayName(lead) : lead.email)}
                 </div>
                 <div className="min-w-0">
                   <h2
                     className="m-0 truncate text-admin-text-primary"
                     style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}
                   >
-                    {lead.name}
+                    {displayName(lead)}
                   </h2>
                   <a
                     href={`mailto:${lead.email}`}
@@ -447,7 +446,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 {lead.user_type && (
                   <AdminBadge variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}>
-                    {USER_TYPE_LABEL[lead.user_type.toLowerCase()] ?? lead.user_type}
+                    {USER_TYPE_LABELS[lead.user_type.toLowerCase() as UserType] ?? lead.user_type}
                   </AdminBadge>
                 )}
                 {lead.company && (
@@ -482,8 +481,12 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                 }}
               >
                 <p className="admin-eyebrow-sm m-0 mb-1">Custo</p>
-                <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
-                  {lead.report_cost_usd != null ? `€${lead.report_cost_usd.toFixed(2)}` : "—"}
+                <p
+                  className="admin-code text-admin-text-primary m-0 tabular-nums"
+                  style={{ fontSize: 18 }}
+                  title="Custo provider (USD)"
+                >
+                  {lead.report_cost_usd != null ? `$${lead.report_cost_usd.toFixed(2)}` : "—"}
                 </p>
               </div>
               <div className="text-center">
@@ -543,7 +546,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
             <div className="px-4 sm:px-6 py-5">
               <SectionTitle>Inteligência comercial</SectionTitle>
               <DetailRow label="Tipo de lead" icon={User}>
-                {USER_TYPE_LABEL[lead.user_type?.toLowerCase() ?? ""] ?? "Desconhecido"}
+                {USER_TYPE_LABELS[(lead.user_type?.toLowerCase() ?? "") as UserType] ?? "Desconhecido"}
               </DetailRow>
               <DetailRow label="Sinal de intenção" icon={Target}>
                 <AdminBadge variant={displayedIntent.accent}>{displayedIntent.label}</AdminBadge>
