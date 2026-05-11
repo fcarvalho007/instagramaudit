@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Receipt,
   Columns,
+  Table as TableIcon,
   Zap,
   FileText,
   AtSign,
@@ -40,6 +41,8 @@ interface NavItem {
     | "/admin/sistema";
   label: string;
   icon: typeof LayoutDashboard;
+  search?: { view?: "tabela" | "pipeline"; lead?: string };
+  matchView?: "tabela" | "pipeline";
 }
 
 interface NavGroup {
@@ -59,6 +62,13 @@ const GROUPS: NavGroup[] = [
     label: "Contactos",
     items: [
       { to: "/admin/beta-leads", label: "Pipeline", icon: Columns },
+      {
+        to: "/admin/beta-leads",
+        label: "Tabela",
+        icon: TableIcon,
+        search: { view: "tabela" },
+        matchView: "tabela",
+      },
     ],
   },
   {
