@@ -458,51 +458,49 @@ export const MOCK_INVOICES = [
   { date: "25/04 18:08", customer: "Inês Costa",     type: "avulso" as const,     item: "Report @worten",           amount: "€29.00", status: "paga" as const },
 ] as const;
 
-/* ============================================================
- * Tab Clientes
- * ============================================================ */
+/* =====================================================================
+ * Tab Relatórios — pipeline operacional (4 fases)
+ * ===================================================================== */
 
-/** Pipeline horizontal — 4 estados + 3 transições entre eles. */
-export const MOCK_PIPELINE = {
-  states: [
-    {
-      key: "lead",
-      eyebrow: "Lead · sem compra",
-      value: "187",
-      sub: "+24 novos · 38 activos esta semana",
-      // Estilo cinza-pedra (border-left + tom 50)
-      borderColor: "#B4B2A9",
-      bg: "rgb(var(--admin-neutral-50))",
-      eyebrowColor: "rgb(var(--admin-neutral-600))",
-      valueColor: "rgb(var(--admin-neutral-900))",
-      subColor: "rgb(var(--admin-neutral-600))",
-    },
-    {
-      key: "one_time",
-      eyebrow: "Avulso · 1 compra",
-      value: "73",
-      sub: "+14 este mês · €29 média",
-      borderColor: "#EF9F27",
-      bg: "#FAEEDA",
-      eyebrowColor: "#854F0B",
-      valueColor: "#412402",
-      subColor: "#854F0B",
-    },
-    {
-      key: "recurring",
-      eyebrow: "Avulso recorrente",
-      value: "14",
-      sub: "2-3 compras · €72 média",
-      borderColor: "#534AB7",
-      bg: "#EEEDFE",
-      eyebrowColor: "#3C3489",
-      valueColor: "#26215C",
-      subColor: "#3C3489",
-    },
-    {
-      key: "subscription",
-      eyebrow: "Subscrição activa",
-      value: "38",
+export type ReportPipelineHealth = "ok" | "warn" | "critical";
+
+export const MOCK_PIPELINE_PHASES: ReadonlyArray<{
+  id: "request" | "analysis" | "pdf" | "email";
+  eyebrow: string;
+  label: string;
+  value: number;
+  sub: string;
+  accentKey: "pipelineRequest" | "pipelineAnalysis" | "pipelinePdf" | "pipelineEmail";
+  health: ReportPipelineHealth;
+}> = [
+  {
+    id: "request",
+    eyebrow: "PEDIDO",
+    label: "recebido",
+    value: 152,
+    sub: "novos hoje",
+    accentKey: "pipelineRequest",
+    health: "ok",
+  },
+  {
+    id: "analysis",
+    eyebrow: "ANÁLISE",
+    label: "em curso",
+    value: 5,
+    sub: "Apify a correr",
+    accentKey: "pipelineAnalysis",
+    health: "ok",
+  },
+  {
+    id: "pdf",
+    eyebrow: "PDF",
+    label: "gerado",
+    value: 149,
+    sub: "prontos para email",
+    accentKey: "pipelinePdf",
+    health: "ok",
+  },
+  {
     id: "email",
     eyebrow: "EMAIL",
     label: "entregue",
