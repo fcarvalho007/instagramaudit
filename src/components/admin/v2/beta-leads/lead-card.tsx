@@ -16,12 +16,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ExternalLink, Copy, Phone, Archive, MessageSquare, Lightbulb, ArrowRightLeft } from "lucide-react";
+import { MoreHorizontal, ExternalLink, Copy, Phone, Archive, MessageSquare, Lightbulb, ArrowRightLeft, PhoneCall } from "lucide-react";
 import { toast } from "sonner";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 import { KANBAN_COLUMNS } from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
+import { USER_TYPE_LABELS, type UserType } from "@/lib/unlock-flow";
+import { LEAD_MAGNET_DISPLAY } from "@/lib/admin/lead-magnet-display";
 
 interface LeadCardProps {
   lead: EnrichedLead;
@@ -31,12 +33,27 @@ interface LeadCardProps {
 }
 
 const USER_TYPE_ACCENT: Record<string, "leads" | "revenue" | "expense" | "info" | "signal" | "neutral"> = {
-  marca: "leads",
-  agencia: "revenue",
-  freelancer: "expense",
-  criador: "info",
-  estudante: "signal",
+  brand: "leads",
+  agency: "revenue",
+  consultant: "expense",
+  creator: "info",
+  student: "signal",
+  ecommerce: "revenue",
+  other: "neutral",
 };
+
+const REPORT_STATUS_LABELS: Record<string, { label: string; accent: "info" | "revenue" | "signal" | "neutral" }> = {
+  pending: { label: "Em fila", accent: "info" },
+  processing: { label: "A processar", accent: "info" },
+  ready: { label: "Pronto", accent: "revenue" },
+  completed: { label: "Pronto", accent: "revenue" },
+  failed: { label: "Falhou", accent: "signal" },
+};
+
+function displayName(lead: EnrichedLead): string {
+  const n = lead.name?.trim();
+  return n && n.length > 0 ? n : "Sem nome";
+}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -48,16 +65,19 @@ function timeAgo(dateStr: string): string {
   return `${days}d`;
 }
 
-function reportStatusAccent(status: string | null): "info" | "revenue" | "signal" | "neutral" {
-  if (!status) return "neutral";
-  if (status === "completed" || status === "ready") return "revenue";
-  if (status === "pending" || status === "pending_review") return "info";
-  return "signal";
-}
-
 export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCardProps) {
   const nextAction = suggestNextLeadAction(lead);
   const feedbackIntent = lead.feedback ? interpretFeedback(lead.feedback) : null;
+  const reportStatus = lead.report_status
+    ? REPORT_STATUS_LABELS[lead.report_status] ?? null
+    : null;
+  const userTypeKey = lead.user_type?.toLowerCase() ?? null;
+  const userTypeLabel = userTypeKey
+    ? USER_TYPE_LABELS[userTypeKey as UserType] ?? lead.user_type
+    : null;
+  const lmDisplay = lead.lead_magnet
+    ? LEAD_MAGNET_DISPLAY[lead.lead_magnet.status]
+    : null;
 
   const handleStatusChange = (newStatus: string) => {
     onUpdate(lead.id, { commercial_status: newStatus });
@@ -76,6 +96,7 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
 
   const handleArchive = () => {
     onUpdate(lead.id, { commercial_status: "arquivado" });
+    toast.success("Lead arquivado");
   };
 
   return (
@@ -97,8 +118,8 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
         className="flex items-start justify-between gap-2 mb-2"
       >
         <div className="min-w-0">
-          <p className="m-0 truncate text-[13px] font-medium text-admin-text-primary" title={lead.name || lead.email}>
-            {lead.name || lead.email}
+          <p className="m-0 truncate text-[13px] font-medium text-admin-text-primary" title={displayName(lead)}>
+            {displayName(lead)}
           </p>
           <p className="m-0 mt-0.5 truncate text-[12px] text-admin-text-secondary" title={lead.email}>
             {lead.email}
@@ -190,17 +211,13 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
 
       {/* Badges row */}
       <div className="flex flex-wrap gap-1.5 mb-2">
-        {lead.user_type && (
-          <AdminBadge
-            variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}
-          >
-            {lead.user_type}
+        {userTypeLabel && (
+          <AdminBadge variant={USER_TYPE_ACCENT[userTypeKey ?? ""] ?? "neutral"}>
+            {userTypeLabel}
           </AdminBadge>
         )}
-        {lead.report_status && (
-          <AdminBadge variant={reportStatusAccent(lead.report_status)}>
-            {lead.report_status}
-          </AdminBadge>
+        {reportStatus && (
+          <AdminBadge variant={reportStatus.accent}>{reportStatus.label}</AdminBadge>
         )}
         {lead.feedback && (
           <span title={`Score ${lead.feedback.usefulness_score}/5`}>
@@ -216,6 +233,17 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
             </AdminBadge>
           </span>
         )}
+        {lmDisplay && lead.lead_magnet && lead.lead_magnet.status !== "none" && (
+          <span
+            title={`${lmDisplay.hint}${
+              lead.lead_magnet.last_event_at
+                ? ` · última: ${new Date(lead.lead_magnet.last_event_at).toLocaleDateString("pt-PT")}`
+                : ""
+            }`}
+          >
+            <AdminBadge variant={lmDisplay.variant}>{lmDisplay.label}</AdminBadge>
+          </span>
+        )}
       </div>
 
       {/* Purpose */}
@@ -228,11 +256,19 @@ export function LeadCard({ lead, onUpdate, onEditNotes, onOpenDetail }: LeadCard
       {/* Stats row */}
       <div className="flex items-center gap-2.5 text-[12px] text-admin-text-tertiary">
         {lead.report_cost_usd != null && (
-          <span className="tabular-nums">€{lead.report_cost_usd.toFixed(2)}</span>
+          <span className="tabular-nums" title="Custo provider (USD)">
+            ${lead.report_cost_usd.toFixed(2)}
+          </span>
         )}
         <span>{lead.report_views} views</span>
         <span title={lead.last_interaction}>{timeAgo(lead.last_interaction)}</span>
-        {lead.contacted_at && <span title="Contactado">📞</span>}
+        {lead.contacted_at && (
+          <PhoneCall
+            size={12}
+            className="text-admin-text-tertiary"
+            aria-label={`Contactado em ${new Date(lead.contacted_at).toLocaleDateString("pt-PT")}`}
+          />
+        )}
       </div>
 
       {/* Next action hint */}
