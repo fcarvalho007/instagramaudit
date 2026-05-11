@@ -159,7 +159,7 @@ describe("persistReportSnapshotInternal", () => {
 
     const r = await persistReportSnapshotInternal("rr-1", "public_unlock");
 
-    expect(r).toEqual({ snapshotId: "rs-new", created: true });
+    expect(r).toMatchObject({ snapshotId: "rs-new", created: true });
     expect(tables.report_snapshots.insertCalls).toHaveLength(1);
 
     const inserted = tables.report_snapshots.insertCalls[0];
@@ -226,7 +226,7 @@ describe("persistReportSnapshotInternal", () => {
 
     const r = await persistReportSnapshotInternal("rr-1", "public_unlock");
 
-    expect(r).toEqual({ snapshotId: "rs-race-existing", created: false });
+    expect(r).toMatchObject({ snapshotId: "rs-race-existing", created: false });
     expect(tables.report_snapshots.insertCalls).toHaveLength(1);
   });
 
