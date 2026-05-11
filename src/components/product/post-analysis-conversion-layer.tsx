@@ -43,10 +43,10 @@ const COPY: Record<
   },
   "limit-reached": {
     label: "Opções de upgrade",
-    title: "Continuar com mais relatórios este mês",
+    title: "Mais relatórios durante a fase beta",
     subtitle:
-      "Compra pontual disponível em breve ou acesso recorrente via Pro.",
-    note: "A quota gratuita reinicia no início do próximo mês",
+      "Pagamentos ainda não estão ativos. Contacta-nos para acesso adicional.",
+    note: "Em fase beta — sem checkout disponível",
   },
 };
 
@@ -123,10 +123,10 @@ export function PostAnalysisConversionLayer({
           </header>
           <div className="space-y-1">
             <p className="font-display text-2xl text-content-primary font-medium tracking-tight">
-              3 €
+              Em estudo
             </p>
             <p className="font-sans text-sm text-content-secondary">
-              1 relatório adicional · pagamento único
+              Relatório adicional · pagamento por unidade
             </p>
           </div>
           <ul className="space-y-1.5 text-xs text-content-secondary font-sans">
@@ -158,7 +158,7 @@ export function PostAnalysisConversionLayer({
           </header>
           <div className="space-y-1">
             <p className="font-display text-2xl text-content-primary font-medium tracking-tight">
-              10 € <span className="text-base text-content-secondary font-normal">/mês</span>
+              Em preparação
             </p>
             <p className="font-sans text-sm text-content-secondary">
               Acompanhamento contínuo · acesso recorrente
@@ -191,7 +191,7 @@ export function PostAnalysisConversionLayer({
           </header>
           <div className="space-y-1">
             <p className="font-display text-2xl text-content-primary font-medium tracking-tight">
-              39 € <span className="text-base text-content-secondary font-normal">/mês</span>
+              Sob proposta
             </p>
             <p className="font-sans text-sm text-content-secondary">
               Multi-marca · relatórios white-label

@@ -29,13 +29,13 @@ const OPTIONS: readonly OptionDef[] = [
   {
     id: "single_3_eur",
     title: "Relatório único",
-    price: "€3 + IVA",
+    price: "Em estudo",
     description: "Um perfil, um relatório completo.",
   },
   {
     id: "bundle_13_eur",
     title: "Bundle 5 relatórios",
-    price: "€13 + IVA",
+    price: "Em estudo",
     description: "Cinco perfis. Poupa face ao avulso.",
   },
   {

@@ -95,7 +95,7 @@ export function PremiumCallout({
                 )}
               >
                 <Sparkles className="size-3" aria-hidden="true" />
-                Desbloquear
+                Registar interesse
               </button>
             </div>
             <PremiumInterestDialog

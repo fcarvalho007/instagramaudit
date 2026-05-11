@@ -66,7 +66,8 @@ function Home() {
       <HowItWorksSection />
       <ProductPreviewSection />
 
-      {/* Dev/admin: acesso rápido aos reports */}
+      {/* Dev/admin: acesso rápido aos reports — só visível em desenvolvimento */}
+      {import.meta.env.DEV && (
       <section className="border-t border-border-default bg-surface-secondary/40 py-6">
         <Container size="lg">
           <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary mb-3">
@@ -91,6 +92,7 @@ function Home() {
           </div>
         </Container>
       </section>
+      )}
     </>
   );
 }
