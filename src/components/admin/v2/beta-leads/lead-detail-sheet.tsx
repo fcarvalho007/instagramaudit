@@ -382,7 +382,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         style={columnDef ? { borderTop: `3px solid ${columnDef.color}` } : undefined}
       >
         <SheetDescription className="sr-only">
-          Detalhes do lead {lead.name}
+          Detalhes do lead {displayName(lead)}
         </SheetDescription>
         <SheetTitle className="sr-only">Ficha de cliente</SheetTitle>
 
@@ -400,14 +400,14 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                     backgroundColor: columnDef?.color ?? "#534AB7",
                   }}
                 >
-                  {getInitials(lead.name || lead.email)}
+                  {getInitials(displayName(lead) !== "Sem nome" ? displayName(lead) : lead.email)}
                 </div>
                 <div className="min-w-0">
                   <h2
                     className="m-0 truncate text-admin-text-primary"
                     style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}
                   >
-                    {lead.name}
+                    {displayName(lead)}
                   </h2>
                   <a
                     href={`mailto:${lead.email}`}
