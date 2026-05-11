@@ -1,61 +1,72 @@
-## Objetivo
+## Root cause
 
-Limpar `pricingOption` da cadeia do template `commercial-followup` e ligar `checkoutUrl` como campo opcional manual no diálogo admin, sem inventar URLs no backend.
+A `marketing_consent = true` gate was added (defesa em profundidade) to two server modules **after** the existing tests were written:
 
-## Ficheiros a alterar
+- `src/lib/brevo/sync.server.ts` — checks `lead.marketing_consent !== true` → returns `NO_MARKETING_CONSENT`.
+- `src/lib/email/lead-magnet-sequence.server.ts` — looks up `leads.marketing_consent` and short-circuits if not `true` (fail-closed if lookup throws/returns undefined).
 
-1. **`src/lib/email/templates/commercial-followup.ts`**
-   - Remover `pricingOption?: string | null` de `CommercialFollowupInput`.
+The two failing test files predate this gate:
 
-2. **`src/lib/email/shared.ts`**
-   - Verificar e remover `pricingOption` se exportado e não usado por outros templates.
+- `src/lib/brevo/__tests__/sync.test.ts` — lead fixtures don't include `marketing_consent`, so success/failure paths now hit the consent-skip branch.
+- `src/lib/email/__tests__/lead-magnet-sequence.test.ts` — the supabase mock only models the `product_events` dedup chain. The new `from("leads").select(...).eq(...).maybeSingle()` call returns `undefined`, so every test hits the fail-closed branch.
 
-3. **`src/components/admin/v2/email-lab/email-template-registry.ts`**
-   - Remover `pricingOption: "monthly"` dos samples de `commercial-followup`.
-   - Adicionar dois exemplos/preview keys: um com `checkoutUrl: "https://instabench.app/checkout/abc"` e outro com `checkoutUrl: null`, para mostrar ambos os estados.
+These are **obsolete test fixtures**, not regressions in product code. The consent gate is intended behavior.
 
-4. **`src/routes/api/admin/send-commercial-followup.ts`**
-   - Adicionar `checkout_url: z.string().url().optional()` ao `RequestSchema`.
-   - Pré-processo: tratar string vazia como `undefined` antes do parse (`z.preprocess` ou normalização manual no payload).
-   - Remover `pricingOption: pricingPreference` da chamada a `renderCommercialFollowup` (manter `pricingPreference` apenas no metadata do evento, que é uso administrativo válido — não removido).
-   - Passar `checkoutUrl: payload.checkout_url ?? null` ao template.
-   - Incluir `checkout_url` no metadata de `commercial_followup_sent`.
+Additionally, `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` has no explicit test coverage today.
 
-5. **`src/components/admin/v2/beta-leads/commercial-followup-dialog.tsx`**
-   - Remover `pricingOption: pricingRaw` da chamada `renderCommercialFollowup`.
-   - Manter “Preço preferido” no grid (apenas contexto informativo).
-   - Adicionar `<Input>` controlado para “URL de checkout (opcional)” com placeholder `https://…`, validação leve client-side (`new URL(value)` em try/catch) e mensagem de erro inline.
-   - Normalizar trim + string vazia → `undefined` antes de enviar.
-   - Alterar `onConfirm` para receber `checkoutUrl?: string`. Atualizar `CommercialFollowupDialogProps`.
-   - Passar `checkoutUrl` ao preview `renderCommercialFollowup` para refletir CTA dinâmico.
+## Classification
 
-6. **Caller(s) de `CommercialFollowupDialog`** (provavelmente `src/components/admin/v2/beta-leads/...` na kanban)
-   - Atualizar `onConfirm` para receber `checkoutUrl` e enviá-lo no body do POST `/api/admin/send-commercial-followup` como `checkout_url`.
+| Test file | # failing | Cause | Action |
+|---|---|---|---|
+| `sync.test.ts` | 2 | Obsolete: consent gate added | Update fixtures + add 1 new test |
+| `lead-magnet-sequence.test.ts` | 7 | Obsolete: leads lookup not mocked | Extend mock + add 3 new tests |
 
-7. **`src/lib/email/__tests__/templates.test.ts`**
-   - Remover/ajustar testes que referenciam `pricingOption` em `commercial-followup`.
-   - Garantir cobertura: render sem `checkoutUrl` (sem botão "Desbloquear"), render com `checkoutUrl` válido (com botão).
+No production code changes. Tests are not weakened — new assertions for the consent gate and kill switch are added.
 
-## Validação
+## Plan
 
-```
+### 1. `src/lib/brevo/__tests__/sync.test.ts`
+
+- Add `marketing_consent: true` to the lead fixtures in:
+  - "builds full attribute payload and records success event"
+  - "propagates upsert failure reason and records failure event"
+- Add new test: **"skips with NO_MARKETING_CONSENT when marketing_consent is not true"** — fixture without the flag, assert `out.reason === "NO_MARKETING_CONSENT"`, `mockUpsert` not called, and a `brevo_contact_sync_failed` event recorded with that reason.
+
+### 2. `src/lib/email/__tests__/lead-magnet-sequence.test.ts`
+
+Replace the simplified supabase mock with a table-aware `from()` mock:
+- `from("leads").select("marketing_consent").eq("id", _).maybeSingle()` → returns `{ data: { marketing_consent: leadConsent } }` (configurable via `beforeEach`, default `true`).
+- `from("product_events").select(...).eq(...).eq(...).contains(...).limit(...).maybeSingle()` → keeps the existing `dedupMaybeSingle` behavior.
+
+Update all 7 existing tests to use the new mock with `marketing_consent: true` (preserves intent).
+
+Add 3 new tests for kill-switch + consent:
+- **"skips entire sequence when LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED is 'false'"** — sets env, asserts both outcomes are `skipped_disabled`/`skipped_no_data`, no senders called, `lead_magnet_sequence_skipped` event recorded.
+- **"sends sequence when LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED is unset (default ON)"** — deletes env var, runs brand-new lead path, asserts both emails attempted.
+- **"skips entire sequence when lead has no marketing_consent"** — `marketing_consent: false`, asserts both outcomes skipped, neither sender called, `lead_magnet_sequence_skipped` event with `reason: "NO_MARKETING_CONSENT"`.
+
+Wrap env mutations in `beforeEach`/`afterEach` to restore `process.env`.
+
+### 3. No changes
+
+- No production code changes.
+- No changes to `templates.test.ts` or `transactional-email.test.ts` (already green).
+- No changes to email copy, UI, or DB.
+
+## Validation
+
+```bash
+bunx vitest run src/lib/email/__tests__/lead-magnet-sequence.test.ts
+bunx vitest run src/lib/brevo/__tests__/sync.test.ts
 bunx vitest run src/lib/email/__tests__/templates.test.ts
-bunx vitest run src/lib/email/__tests__
+bunx vitest run src/lib/email/__tests__/transactional-email.test.ts
 bunx vitest run
 bunx tsc --noEmit
 ```
 
-## Riscos
+Target: 289 + 4 new = **293/293 green**.
 
-- **Caller do diálogo**: preciso localizar o componente kanban que abre o diálogo e atualizar `onConfirm` (assinatura muda). Falha aqui partiria a UI admin.
-- **String vazia vs URL**: `z.string().url().optional()` falha com `""`. Solução: normalizar `""` → `undefined` no client e/ou via `z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional())` no servidor.
-- **`shared.ts`**: se `pricingOption` for exportado num tipo partilhado por outros templates, manter; se isolado, remover. Auditar antes de tocar.
-- **Tests existentes**: rever 2-3 asserts em `templates.test.ts` que usam `pricingOption`.
+## Risks
 
-## Resumo final entregará
-
-- lista de ficheiros alterados;
-- pontos onde `pricingOption` foi removido;
-- esquema de validação de `checkoutUrl`;
-- comportamento com URL vazio (CTA omitido, sem erro);
-- resultado das 4 suites de validação.
+- The new table-aware `from()` mock must preserve the exact chain shape used by `eventAlreadyEmitted` (`select → eq → eq → contains → limit → maybeSingle`). Mismatch reintroduces fail-open dedup (`false`) which is acceptable but would mask the duplicate-skip test — verified against current source.
+- Env restoration: must snapshot `process.env.LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` before each test and restore after, to avoid cross-test bleed.
