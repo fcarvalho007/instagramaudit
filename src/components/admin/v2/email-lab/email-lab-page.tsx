@@ -842,39 +842,3 @@ function categoryAccent(c: EmailTemplateCategory): string {
   }
 }
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Test send dialog (placeholder)                                             */
-/* ────────────────────────────────────────────────────────────────────────── */
-
-function TestSendDialog({
-  template,
-  onClose,
-}: {
-  template: EmailTemplateEntry;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(15, 23, 42, 0.45)" }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="m-0 text-[16px] font-semibold text-admin-text-primary">
-          Enviar teste — {template.title}
-        </h3>
-        <p className="mt-2 text-[13px] text-admin-text-secondary">
-          O envio real de testes ainda não está activado. Está reservado
-          para um sprint dedicado, com validação de email do admin e
-          rate-limit. Por agora, esta página é apenas de pré-visualização.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <AdminActionButton onClick={onClose}>Fechar</AdminActionButton>
-        </div>
-      </div>
-    </div>
-  );
-}
