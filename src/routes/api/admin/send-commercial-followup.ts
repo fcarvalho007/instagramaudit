@@ -22,6 +22,10 @@ import type { BetaFeedbackSummary } from "@/lib/admin/kanban-columns";
 
 const RequestSchema = z.object({
   lead_id: z.string().uuid(),
+  checkout_url: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().url().optional(),
+  ),
 });
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -165,12 +169,13 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
         const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
         const pricingPreference =
           feedbackSummary?.pricing_preference ?? lead.pricing_preference ?? null;
+        const checkoutUrl = payload.checkout_url ?? null;
         const { subject, html, text } = renderCommercialFollowup({
           firstName,
           instagramHandle: handle,
-          pricingOption: pricingPreference,
           reportUrl,
           replyToEmail: null,
+          checkoutUrl,
         });
 
         const sender = resolveSender();
@@ -277,6 +282,7 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
               recipient: lead.email_normalized ?? recipientEmail,
               pricing_preference: pricingPreference,
               report_url: reportUrl,
+              checkout_url: checkoutUrl,
               detected_intent: intentResult.intent,
               previous_status: lead.commercial_status,
               new_status: targetStatus ?? lead.commercial_status,
