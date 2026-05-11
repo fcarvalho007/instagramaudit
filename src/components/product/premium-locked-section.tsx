@@ -153,7 +153,7 @@ export function PremiumLockedSection({
                 ? "Pedido enviado"
                 : isLimitReached
                   ? "Ver opções de upgrade"
-                  : "Desbloquear relatório completo"}
+                  : "Receber relatório completo"}
             </Button>
             <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
               Dois relatórios gratuitos por mês

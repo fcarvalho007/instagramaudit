@@ -25,9 +25,6 @@ function useScrollPast(threshold: number) {
 
 const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Analisar", href: "/" },
-  { label: "Como funciona", href: "/como-funciona" },
-  { label: "Preços", href: "/precos" },
-  { label: "Recursos", href: "/recursos" },
 ];
 
 function Header() {
@@ -92,8 +89,9 @@ function Header() {
                 variant="primary"
                 rightIcon={<ArrowRight />}
                 className="hidden sm:inline-flex"
+                asChild
               >
-                Analisar agora
+                <Link to="/">Analisar agora</Link>
               </Button>
             </span>
 
@@ -169,8 +167,9 @@ function Header() {
                         rightIcon={<ArrowRight />}
                         className="w-full"
                         onClick={() => setOpen(false)}
+                        asChild
                       >
-                        Analisar agora
+                        <Link to="/">Analisar agora</Link>
                       </Button>
                     </span>
                   </div>

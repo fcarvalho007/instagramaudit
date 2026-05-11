@@ -318,13 +318,13 @@ export function ReportGateModal({
           <div className="flex flex-col p-6 md:p-8 gap-6" aria-live="polite">
             <header className="space-y-2 text-center">
               <span className="text-eyebrow-sm text-[0.625rem] text-accent-gold">
-                Limite mensal atingido
+                Fase beta
               </span>
               <DialogTitle className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
-                2 relatórios gratuitos já utilizados este mês
+                Limite gratuito da fase beta atingido
               </DialogTitle>
               <DialogDescription className="font-sans text-sm md:text-base text-content-secondary">
-                Continuar com compra pontual ou acesso Pro.
+                Pagamentos ainda não estão ativos. Estamos a desenhar as opções abaixo.
               </DialogDescription>
             </header>
 
@@ -339,10 +339,10 @@ export function ReportGateModal({
                 </div>
                 <div className="space-y-1">
                   <p className="font-display text-xl text-content-primary font-medium tracking-tight">
-                    1 relatório
+                    Relatório avulso
                   </p>
                   <p className="font-sans text-sm text-content-secondary">
-                    <span className="text-content-primary font-medium">3 €</span> · pagamento único
+                    Pagamento por relatório · em estudo
                   </p>
                 </div>
                 <Button
@@ -353,7 +353,7 @@ export function ReportGateModal({
                   className="w-full mt-auto"
                   title="Disponível em breve"
                 >
-                  Desbloquear novo relatório
+                  Em breve
                 </Button>
               </div>
 
@@ -370,10 +370,10 @@ export function ReportGateModal({
                 </div>
                 <div className="space-y-1">
                   <p className="font-display text-xl text-content-primary font-medium tracking-tight">
-                    Relatórios ilimitados
+                    Acompanhamento contínuo
                   </p>
                   <p className="font-sans text-sm text-content-secondary">
-                    <span className="text-content-primary font-medium">10 €</span> /mês
+                    Acesso recorrente · em estudo
                   </p>
                 </div>
                 <Button
@@ -384,13 +384,13 @@ export function ReportGateModal({
                   className="w-full mt-auto"
                   title="Disponível em breve"
                 >
-                  Ver plano Pro
+                  Em breve
                 </Button>
               </div>
             </div>
 
             <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary text-center">
-              A quota reinicia no início do próximo mês
+              Durante a fase beta, contacta-nos em hello@instabench.pt para mais relatórios.
             </p>
 
             <DialogClose asChild>
