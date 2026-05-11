@@ -1004,11 +1004,11 @@ function SuccessStep({
   returningLead: boolean;
   onClose: () => void;
 }) {
-  const signupHref = `/signup?email=${encodeURIComponent(email)}`;
+  void email;
+  void returningLead;
   return (
     <div>
-      {/* Green gradient header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-7">
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-8">
         <div
           className="absolute right-0 top-0 size-40 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none"
           aria-hidden
@@ -1018,177 +1018,45 @@ function SuccessStep({
             <CheckCircle2 className="size-5 text-white" aria-hidden />
           </div>
           <p className="text-eyebrow-sm text-emerald-700">
-            CONFIRMADO · OBRIGADO {firstName ? firstName.toUpperCase() : "—"}
+            RELATÓRIO ASSOCIADO{firstName ? ` · OBRIGADO ${firstName.toUpperCase()}` : ""}
           </p>
-          <h2 className="font-display text-[28px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            {returningLead ? (
-              <>
-                Bem-vindo de{" "}
-                <em className="not-italic font-display italic text-emerald-600">
-                  volta
-                </em>
-              </>
-            ) : (
-              <>
-                3 secções{" "}
-                <em className="not-italic font-display italic text-emerald-600">
-                  desbloqueadas
-                </em>
-              </>
-            )}
+          <h2 className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+            Relatório{" "}
+            <em className="not-italic font-display italic text-emerald-600">
+              desbloqueado
+            </em>
           </h2>
-          <p className="text-[13px] text-content-secondary">
-            O teu relatório está pronto. Eis o que tens acesso já:
+          <p className="text-[13px] text-content-secondary leading-relaxed">
+            O relatório ficou associado ao email indicado para poderes voltar a consultá-lo mais tarde.
           </p>
-          <ProgressSegments
-            current={TOTAL_STEPS}
-            total={TOTAL_STEPS}
-          />
         </div>
       </div>
 
-      <div className="px-6 sm:px-7 py-6 space-y-5">
-        {/* Free sections */}
-        <section className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-eyebrow-sm text-emerald-700">
-              <span className="inline-block size-1.5 rounded-full bg-emerald-600 mr-1.5 align-middle" />
-              INCLUÍDO · ABERTO
-            </p>
-            <span className="text-[11px] text-content-tertiary tabular-nums">
-              {FREE_SECTIONS.length}
-            </span>
-          </div>
-          <ul className="space-y-1.5">
-            {FREE_SECTIONS.map((sec) => (
-              <li
-                key={sec.rank}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg border",
-                  sec.state === "complete"
-                    ? "bg-emerald-50/70 border-emerald-200/70"
-                    : "bg-amber-50/70 border-amber-200/70",
-                )}
-              >
-                {sec.state === "complete" ? (
-                  <Check className="size-4 text-emerald-600" aria-hidden />
-                ) : (
-                  <Clock className="size-4 text-amber-600" aria-hidden />
-                )}
-                <span
-                  className={cn(
-                    "text-[11px] font-semibold tabular-nums tracking-wide",
-                    sec.state === "complete"
-                      ? "text-emerald-700"
-                      : "text-amber-700",
-                  )}
-                >
-                  {sec.rank}
-                </span>
-                <span className="text-[13px] text-content-primary flex-1">
-                  {sec.label}
-                </span>
-                {sec.badge ? (
-                  <span className="inline-flex items-center rounded-full bg-white/70 border border-amber-300/70 text-amber-700 px-2 py-[1px] text-[11px] font-medium tabular-nums">
-                    {sec.badge}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Premium sections */}
-        <section className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50 to-amber-50/30 p-3 space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-eyebrow-sm text-amber-800">
-              ✦ PREMIUM · POR DESBLOQUEAR
-            </p>
-            <span className="text-[11px] text-amber-700 tabular-nums">
-              {PREMIUM_SECTIONS.length}
-            </span>
-          </div>
-          <ul className="space-y-1">
-            {PREMIUM_SECTIONS.map((label, i) => (
-              <li
-                key={label}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/60"
-              >
-                <Lock className="size-3.5 text-amber-700" aria-hidden />
-                <span className="text-[11px] font-semibold tabular-nums text-amber-700 tracking-wide">
-                  {String(i + 4).padStart(2, "0")}
-                </span>
-                <span className="font-display italic text-[14px] text-content-primary">
-                  {label}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Pricing inline (visual only) */}
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div
-              role="presentation"
-              className="rounded-lg border border-border-default/60 bg-white p-3 cursor-default"
+      <div className="px-6 sm:px-8 py-6 space-y-5">
+        <ul className="space-y-2">
+          {UNLOCKED_ITEMS.map((label) => (
+            <li
+              key={label}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-emerald-50/70 border-emerald-200/70"
             >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
-                UMA VEZ
-              </p>
-              <p className="text-[18px] font-semibold text-content-primary mt-1 tabular-nums">
-                €3{" "}
-                <span className="text-[11px] font-normal text-content-tertiary">
-                  +IVA
-                </span>
-              </p>
-              <p className="text-[11px] text-content-tertiary mt-0.5">
-                só esta análise
-              </p>
-            </div>
-            <div
-              role="presentation"
-              className="relative rounded-lg border border-amber-400/60 bg-gradient-to-br from-amber-100 to-amber-200/60 p-3 cursor-default"
-            >
-              <span className="absolute -top-2 right-1.5 inline-flex items-center rounded-full bg-amber-600 text-white px-1.5 py-[1px] text-[9px] font-semibold tracking-wide whitespace-nowrap">
-                ★ POUPA €2
+              <Check className="size-4 text-emerald-600 shrink-0" aria-hidden />
+              <span className="text-[13px] text-content-primary flex-1">
+                {label}
               </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900">
-                BUNDLE 5
-              </p>
-              <p className="text-[18px] font-semibold text-amber-900 mt-1 tabular-nums">
-                €13{" "}
-                <span className="text-[11px] font-normal text-amber-800/70">
-                  +IVA
-                </span>
-              </p>
-              <p className="text-[11px] text-amber-800/80 mt-0.5">
-                5 análises completas
-              </p>
-            </div>
-          </div>
-        </section>
+            </li>
+          ))}
+        </ul>
 
-        <div className="space-y-3 pt-2 border-t border-border-default/40">
+        <div className="space-y-2 pt-2 border-t border-border-default/40">
           <Button
             size="lg"
-            className="w-full rounded-lg font-medium mt-4 bg-content-primary text-white hover:bg-content-primary/90"
+            className="w-full rounded-lg font-medium mt-4"
             onClick={onClose}
           >
-            Ver relatório agora
+            Ver relatório gratuito agora  →
           </Button>
-          <p className="text-[11px] text-content-tertiary text-center">
-            Podes desbloquear o premium quando quiseres a partir do relatório.
-          </p>
-          <a
-            href={signupHref}
-            className="block text-center text-[12px] font-medium text-primary hover:underline"
-          >
-            Criar conta com este email para aceder mais tarde
-          </a>
-          <p className="text-[11px] text-content-tertiary text-center">
-            Já tens conta?{" "}
-            <a href="/login" className="underline hover:text-content-secondary">
-              Entrar
-            </a>
+          <p className="text-xs text-content-tertiary text-center">
+            Este relatório foi associado diretamente à tua conta.
           </p>
         </div>
       </div>
