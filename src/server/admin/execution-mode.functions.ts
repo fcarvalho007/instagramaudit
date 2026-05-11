@@ -58,6 +58,7 @@ export interface TestProfileStatus {
   allEnrichmentsComplete: boolean;
   cacheReady: boolean;
   snapshotExpiresAt: string | null;
+  latestSnapshotId: string | null;
   latestFreshCostTotal: number | null;
   latestEventId: string | null;
 }
@@ -142,6 +143,7 @@ export const getTestProfileStatuses = createServerFn({ method: "GET" }).handler(
         allEnrichmentsComplete,
         cacheReady: notExpired && allEnrichmentsComplete && !!snap,
         snapshotExpiresAt,
+        latestSnapshotId: snap?.id ?? null,
         latestFreshCostTotal,
         latestEventId: evt?.id ?? null,
         estimatedLastCostUsd:
