@@ -18,8 +18,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import { REPORT_RETENTION_DAYS } from "@/lib/report/retention";
 
-const RETENTION_DAYS = 5;
+const RETENTION_DAYS = REPORT_RETENTION_DAYS;
 const MS_PER_DAY = 86_400_000;
 
 function json(body: unknown, status = 200): Response {

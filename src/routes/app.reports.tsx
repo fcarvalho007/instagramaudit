@@ -16,6 +16,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProTrackingTeaser } from "@/components/app/pro-tracking-teaser";
+import {
+  getReportExpiresAt,
+  isReportExpired,
+  formatRetentionMessage,
+} from "@/lib/report/retention";
 
 export const Route = createFileRoute("/app/reports")({
   component: ReportsPage,
@@ -80,6 +85,56 @@ function deriveDeliveryBadge(status: string, emailSentAt: string | null): { labe
   return { label: "Não enviado", className: "bg-surface-muted text-content-tertiary border-border-default/20", icon: Mail };
 }
 
+/* ── Retention helpers ── */
+
+type RetentionState = "available" | "expiring" | "expired";
+
+interface Retention {
+  expiresAt: Date;
+  daysLeft: number;
+  state: RetentionState;
+}
+
+const MS_PER_DAY = 86_400_000;
+
+function deriveRetention(createdAtIso: string): Retention {
+  const expiresAt = getReportExpiresAt(createdAtIso);
+  const expired = isReportExpired(expiresAt);
+  const diffMs = expiresAt.getTime() - Date.now();
+  const daysLeft = Math.max(0, Math.ceil(diffMs / MS_PER_DAY));
+  const state: RetentionState = expired
+    ? "expired"
+    : daysLeft <= 3
+      ? "expiring"
+      : "available";
+  return { expiresAt, daysLeft, state };
+}
+
+function RetentionBadge({ retention }: { retention: Retention }) {
+  if (retention.state === "expired") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-border-default/30 bg-surface-muted px-2 py-0.5 text-xs font-medium text-content-tertiary">
+        <Clock className="size-2.5" />
+        Expirado
+      </span>
+    );
+  }
+  if (retention.state === "expiring") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+        <Clock className="size-2.5" />
+        Expira em {retention.daysLeft} dia{retention.daysLeft === 1 ? "" : "s"}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+      <CheckCircle2 className="size-2.5" />
+      Disponível
+    </span>
+  );
+}
+
 function formatDate(iso: string) {
   try {
     return new Intl.DateTimeFormat("pt-PT", {
@@ -135,6 +190,8 @@ function ReportCard({ report }: { report: UserReport }) {
   const DeliveryIcon = delivery.icon;
   const competitorCount = report.competitorUsernames.length;
   const hasSnapshot = !!report.analysisSnapshotId;
+  const retention = deriveRetention(report.createdAt);
+  const canOpenSnapshot = hasSnapshot && retention.state !== "expired";
 
   return (
     <div className="rounded-xl border border-border-default/20 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
@@ -173,6 +230,7 @@ function ReportCard({ report }: { report: UserReport }) {
 
       {/* Secondary badges */}
       <div className="mt-3 flex flex-wrap gap-1.5">
+        <RetentionBadge retention={retention} />
         <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium", pdf.className)}>
           <Download className="size-2.5" />
           {pdf.label}
@@ -183,6 +241,11 @@ function ReportCard({ report }: { report: UserReport }) {
         </span>
       </div>
 
+      {/* Retention metadata */}
+      <p className="mt-2 text-xs text-content-tertiary">
+        Gerado a {formatDate(report.createdAt)} · Expira a {formatDate(retention.expiresAt.toISOString())}
+      </p>
+
       {/* Actions */}
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
@@ -192,15 +255,27 @@ function ReportCard({ report }: { report: UserReport }) {
         >
           Ver detalhe
         </Link>
-        {hasSnapshot && (
+        {canOpenSnapshot && (
           <Link
-            to="/analyze/$username"
-            params={{ username: report.instagramUsername }}
+            to="/reports/$snapshotId"
+            params={{ snapshotId: report.analysisSnapshotId as string }}
             className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-muted hover:border-border-default/30"
           >
             <ExternalLink className="size-3" />
             Abrir relatório
           </Link>
+        )}
+        {hasSnapshot && retention.state === "expired" && (
+          <button
+            type="button"
+            disabled
+            title={formatRetentionMessage()}
+            aria-label="Relatório expirado"
+            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border-default/10 bg-surface-muted px-3 py-1.5 text-xs font-medium text-content-tertiary"
+          >
+            <Clock className="size-3" />
+            Expirado — gerar novo
+          </button>
         )}
       </div>
 

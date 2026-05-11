@@ -17,6 +17,11 @@ import {
 } from "lucide-react";
 import { getOwnedReport, getReportPdfUrl } from "@/server/reports.functions";
 import { cn } from "@/lib/utils";
+import {
+  getReportExpiresAt,
+  isReportExpired,
+  formatRetentionMessage,
+} from "@/lib/report/retention";
 
 export const Route = createFileRoute("/app/reports/$id")({
   component: ReportDetailPage,
@@ -123,6 +128,14 @@ function ReportDetailPage() {
   const competitors = Array.isArray(report.competitor_usernames)
     ? (report.competitor_usernames as string[])
     : [];
+
+  const expiresAt = getReportExpiresAt(report.created_at);
+  const expired = isReportExpired(expiresAt);
+  const daysLeft = Math.max(
+    0,
+    Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000),
+  );
+  const canOpenSnapshot = hasSnapshot && !expired;
 
   const timeline = [
     { label: "Pedido recebido", date: fmtDate(report.created_at), done: true },
@@ -327,15 +340,30 @@ function ReportDetailPage() {
       {hasSnapshot && (
         <div className="rounded-xl border border-border-default/20 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-content-primary">Relatório web</h2>
+          <p className="mt-1 text-xs text-content-tertiary">
+            {expired
+              ? `Expirou a ${fmtDate(expiresAt.toISOString())} · ${formatRetentionMessage()}`
+              : `Disponível durante mais ${daysLeft} dia${daysLeft === 1 ? "" : "s"} (até ${fmtDate(expiresAt.toISOString())}).`}
+          </p>
           <div className="mt-3">
-            <Link
-              to="/analyze/$username"
-              params={{ username: report.instagram_username }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-4 py-2 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-muted"
-            >
-              <ExternalLink className="size-3.5" />
-              Abrir relatório
-            </Link>
+            {canOpenSnapshot ? (
+              <Link
+                to="/reports/$snapshotId"
+                params={{ snapshotId: report.analysis_snapshot_id as string }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-4 py-2 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-muted"
+              >
+                <ExternalLink className="size-3.5" />
+                Abrir relatório
+              </Link>
+            ) : (
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 rounded-md bg-content-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-content-primary/90"
+              >
+                <Search className="size-3.5" />
+                Gerar novo relatório
+              </Link>
+            )}
           </div>
         </div>
       )}

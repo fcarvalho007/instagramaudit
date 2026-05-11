@@ -28,9 +28,11 @@ import {
   fetchReportCostSummariesBatch,
   type CostSummary,
 } from "@/lib/admin/report-cost-summary.server";
+import { REPORT_RETENTION_DAYS } from "@/lib/report/retention";
 
-const RETENTION_DAYS = 5;
-const EXPIRING_THRESHOLD_DAYS = 4;
+const RETENTION_DAYS = REPORT_RETENTION_DAYS;
+/** Último dia da janela passa a "a expirar em breve". */
+const EXPIRING_THRESHOLD_DAYS = REPORT_RETENTION_DAYS - 1;
 const MS_PER_DAY = 86_400_000;
 
 function json(body: unknown, status = 200): Response {

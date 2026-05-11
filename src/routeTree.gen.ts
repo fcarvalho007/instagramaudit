@@ -22,6 +22,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as ReportsSnapshotIdRouteImport } from './routes/reports.$snapshotId'
 import { Route as ReportExampleRouteImport } from './routes/report.example'
 import { Route as FeedbackRequestIdRouteImport } from './routes/feedback.$requestId'
 import { Route as BetaRequestRouteImport } from './routes/beta.request'
@@ -181,6 +182,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const ReportsSnapshotIdRoute = ReportsSnapshotIdRouteImport.update({
+  id: '/reports/$snapshotId',
+  path: '/reports/$snapshotId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ReportExampleRoute = ReportExampleRouteImport.update({
   id: '/report/example',
@@ -728,6 +734,7 @@ export interface FileRoutesByFullPath {
   '/beta/request': typeof BetaRequestRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
+  '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
@@ -836,6 +843,7 @@ export interface FileRoutesByTo {
   '/beta/request': typeof BetaRequestRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
+  '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
@@ -946,6 +954,7 @@ export interface FileRoutesById {
   '/beta/request': typeof BetaRequestRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
+  '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
@@ -1057,6 +1066,7 @@ export interface FileRouteTypes {
     | '/beta/request'
     | '/feedback/$requestId'
     | '/report/example'
+    | '/reports/$snapshotId'
     | '/admin/'
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
@@ -1165,6 +1175,7 @@ export interface FileRouteTypes {
     | '/beta/request'
     | '/feedback/$requestId'
     | '/report/example'
+    | '/reports/$snapshotId'
     | '/admin'
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
@@ -1274,6 +1285,7 @@ export interface FileRouteTypes {
     | '/beta/request'
     | '/feedback/$requestId'
     | '/report/example'
+    | '/reports/$snapshotId'
     | '/admin/'
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
@@ -1369,6 +1381,7 @@ export interface RootRouteChildren {
   BetaRequestRoute: typeof BetaRequestRoute
   FeedbackRequestIdRoute: typeof FeedbackRequestIdRoute
   ReportExampleRoute: typeof ReportExampleRoute
+  ReportsSnapshotIdRoute: typeof ReportsSnapshotIdRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
   ApiAdminAutomationFlowRoute: typeof ApiAdminAutomationFlowRoute
   ApiAdminBetaFunnelRoute: typeof ApiAdminBetaFunnelRoute
@@ -1522,6 +1535,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/reports/$snapshotId': {
+      id: '/reports/$snapshotId'
+      path: '/reports/$snapshotId'
+      fullPath: '/reports/$snapshotId'
+      preLoaderRoute: typeof ReportsSnapshotIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/report/example': {
       id: '/report/example'
@@ -2375,6 +2395,7 @@ const rootRouteChildren: RootRouteChildren = {
   BetaRequestRoute: BetaRequestRoute,
   FeedbackRequestIdRoute: FeedbackRequestIdRoute,
   ReportExampleRoute: ReportExampleRoute,
+  ReportsSnapshotIdRoute: ReportsSnapshotIdRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
   ApiAdminAutomationFlowRoute: ApiAdminAutomationFlowRoute,
   ApiAdminBetaFunnelRoute: ApiAdminBetaFunnelRoute,
