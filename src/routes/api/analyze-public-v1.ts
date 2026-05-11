@@ -720,6 +720,24 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("PROFILE_NOT_FOUND");
           }
 
+          // Private profile: Apify returns the profile shell but no posts and
+          // marks `is_private`/`private` true. Treat as a distinct UX case.
+          const rawPrimary = primaryRow as Record<string, unknown>;
+          const isPrivate =
+            rawPrimary?.is_private === true || rawPrimary?.private === true;
+          if (isPrivate) {
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "not_found",
+              errorCode: "PROFILE_PRIVATE",
+              providerCallLogId: providerCallIds[0] ?? null,
+            });
+            return failure("PROFILE_PRIVATE");
+          }
+
           const primaryPosts = Array.isArray(
             (primaryRow as { latestPosts?: unknown }).latestPosts,
           )
