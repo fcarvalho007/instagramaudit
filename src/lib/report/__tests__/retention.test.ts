@@ -6,7 +6,9 @@ import {
   REPORT_RETENTION_MS,
   formatRetentionMessage,
   getReportExpiresAt,
+  getReportSnapshotExpiresAt,
   isReportExpired,
+  isReportSnapshotExpired,
 } from "../retention";
 import { CACHE_TTL_MS as CACHE_TTL_MS_FROM_ANALYSIS } from "@/lib/analysis/cache";
 
@@ -69,5 +71,20 @@ describe("isReportExpired", () => {
 describe("formatRetentionMessage", () => {
   it("comunica a janela de 15 dias em pt-PT", () => {
     expect(formatRetentionMessage()).toContain("15 dias");
+  });
+});
+
+describe("report snapshot helpers", () => {
+  it("getReportSnapshotExpiresAt segue REPORT_RETENTION_DAYS", () => {
+    const created = new Date("2026-01-01T00:00:00Z");
+    const expires = getReportSnapshotExpiresAt(created);
+    expect(expires.getTime() - created.getTime()).toBe(REPORT_RETENTION_MS);
+  });
+
+  it("isReportSnapshotExpired espelha isReportExpired", () => {
+    const now = new Date("2026-01-20T00:00:00Z");
+    expect(isReportSnapshotExpired(new Date(now.getTime() + 1), now)).toBe(false);
+    expect(isReportSnapshotExpired(new Date(now.getTime() - 1), now)).toBe(true);
+    expect(isReportSnapshotExpired(null, now)).toBe(false);
   });
 });

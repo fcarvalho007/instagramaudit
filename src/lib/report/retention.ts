@@ -58,6 +58,22 @@ export function isReportExpired(
   return expires.getTime() <= now.getTime();
 }
 
+/**
+ * Aliases semânticos para `report_snapshots`. Hoje partilham a mesma
+ * janela `REPORT_RETENTION_DAYS` mas mantêm assinatura própria para
+ * permitir divergência futura sem refactor dos call sites.
+ */
+export function getReportSnapshotExpiresAt(createdAt: string | Date): Date {
+  return getReportExpiresAt(createdAt);
+}
+
+export function isReportSnapshotExpired(
+  expiresAt: string | Date | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  return isReportExpired(expiresAt, now);
+}
+
 /** Mensagem human-readable usada em banners / empty states. */
 export function formatRetentionMessage(): string {
   return `Os relatórios ficam disponíveis durante ${REPORT_RETENTION_DAYS} dias após a geração.`;
