@@ -86,7 +86,7 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
           return errorResponse("UNAUTHORIZED", "Admin session required.", 401);
         }
 
-        let payload: { lead_id: string };
+        let payload: z.infer<typeof RequestSchema>;
         try {
           payload = RequestSchema.parse(await request.json());
         } catch (err) {
