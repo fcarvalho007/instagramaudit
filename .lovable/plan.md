@@ -1,124 +1,124 @@
-## Auditoria — /admin/email-lab + /admin/automacoes
+## Política de retenção de 15 dias — relatórios + snapshots
 
-Encontrei **3 bugs P0** (visíveis), **3 inconsistências de dados** e algumas hardcoded colors / refinamentos.
+### Estado actual (descobertas)
+
+- `src/lib/analysis/cache.ts`:
+  - `CACHE_TTL_MS = 24h` ← snapshots expiram em 24h
+  - `STALE_TOLERANCE_MS = 7d` ← fallback "stale" em caso de falha do provider
+  - `storeSnapshot` escreve `expires_at = now + CACHE_TTL_MS` na tabela `analysis_snapshots`
+  - `isFresh(snapshot)` baseia-se em `expires_at`
+- `src/components/report-redesign/v2/cache-status-badge.tsx`:
+  - `ttlHours = 24` (default)
+  - Hardcode `24 * 60 * 60 * 1000` em `computeCacheStatus` para o ramo "sem expires"
+- `src/lib/email/report-email-template.ts`: `SIGNED_URL_TTL_DAYS = 7` (storage do PDF — não é retenção do relatório, é TTL do signed URL; **fora de scope**)
+- `report_requests`: **não tem coluna `expires_at`**. O esquema actual:
+  - `created_at`, `pdf_generated_at`, `delivery_status`, `request_status`. Retenção é derivada de `created_at`.
+- Sem schema migration: a expiry pode ser **calculada on-the-fly** a partir de `created_at + 15d`. Cumpre a restrição "não apagar dados".
+- Consumidores de `isFresh`/`isWithinStaleWindow`: `routes/api/analyze-public-v1.ts` (4 sítios) e `routes/api/admin/diagnostics.ts`.
+
+### O que muda
+
+**Constante única**: 24h → 15 dias para snapshots. `STALE_TOLERANCE_MS` (7d) torna-se redundante (já < retenção); mantemos a função `isWithinStaleWindow` mas agora alinhada à mesma janela de retenção. O distinct entre "fresh enough to avoid provider call" vs "available as historical report" fica documentado mas, **por agora**, ambos são 15d (mesmo valor) — separação semântica mantida no código.
 
 ---
 
-### P0 — Bugs visíveis
+## Plano
 
-**1. Tokens `--admin-success-500` e `--admin-warning-500` não existem em `src/styles/admin-tokens.css`.**
+### Passo 1 — Criar módulo central `src/lib/report/retention.ts`
 
-Confirmado: existem `--admin-leads-500`, `--admin-danger-500`, `--admin-info-500` mapeados para Tailwind, mas `success`/`warning` só vivem como literais nas componentes — o que significa que estes elementos renderizam **sem cor** ou caem em fallback:
+```ts
+/** Período em que um relatório gerado permanece acessível ao utilizador. */
+export const REPORT_RETENTION_DAYS = 15;
 
-- `email-lab-page.tsx`: KPIs "Ligados" e "Sem trigger", `StatusPill` (Ligado/Sem trigger), `WiringTab` aviso, `KpiTile` tone success/warning.
-- `templates-tab.tsx`: badges "Wired" / "Orphan".
-- `automation-node.tsx`: `--admin-pill-active-fg` e `--admin-pill-warn-fg` (estes existem ✓), mas `categoryAccent('comercial')` em email-lab usa `--admin-warning-500` (broken).
+/**
+ * TTL do snapshot de cache: enquanto fresco, evita uma nova chamada ao
+ * provider (Apify). Mantido separado de REPORT_RETENTION_DAYS para
+ * permitir divergência futura (ex.: cache curta + retenção longa), mas
+ * hoje partilham o mesmo valor.
+ */
+export const CACHE_TTL_DAYS = REPORT_RETENTION_DAYS;
 
-**Fix:** adicionar tokens base + Tailwind aliases:
-```css
---admin-success-500: 29 158 117;   /* #1D9E75 */
---admin-warning-500: 186 117 23;   /* #BA7517 amber */
---color-admin-success-500: rgb(var(--admin-success-500));
---color-admin-warning-500: rgb(var(--admin-warning-500));
+export const REPORT_RETENTION_MS = REPORT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+export const CACHE_TTL_MS = CACHE_TTL_DAYS * 24 * 60 * 60 * 1000;
+
+export function getReportExpiresAt(createdAt: string | Date): Date { ... }
+export function isReportExpired(
+  expiresAt: string | Date | null,
+  now?: Date,
+): boolean { ... }
+/** Mensagem human-readable usada em UIs vazias / banners. */
+export function formatRetentionMessage(): string {
+  return `Os relatórios ficam disponíveis durante ${REPORT_RETENTION_DAYS} dias após a geração.`;
+}
 ```
 
-**2. `FLOW_EVENTS` em `src/lib/admin/automation-flow-types.ts` tem nomes de evento errados** — confirmado por consulta a `product_events`:
+Pure module, sem dependências de Supabase ou React — testável directamente.
 
-| flow              | declarado                  | real em DB                  |
-|-------------------|----------------------------|-----------------------------|
-| welcome_beta      | `welcome_beta_sent`        | `beta_welcome_email_sent` ✓ |
-| report_summary    | `report_summary_sent`      | `report_summary_email_sent` ✓ |
-| personal_area_saved | `personal_area_saved_sent` | nunca emitido (genérico `brevo_email_sent`) |
+### Passo 2 — Actualizar `src/lib/analysis/cache.ts`
 
-Consequência: cards "Enviados" mostram `0` para flows que efectivamente enviam emails, e o KPI "Enviados (30d)" no topo subestima. O hint "evento ainda não emitido" aparece para flows wired no registry.
+- Remover constantes locais `CACHE_TTL_MS = 24h` e `STALE_TOLERANCE_MS = 7d`.
+- Re-exportar `CACHE_TTL_MS` a partir de `@/lib/report/retention` (mantém API publicada para consumidores existentes).
+- `STALE_TOLERANCE_MS`: alinhar com `REPORT_RETENTION_MS` (15d) e adicionar comentário a explicar que com retenção alargada deixa de ser uma janela distinta. `isWithinStaleWindow` continua a existir para back-compat mas devolve sempre `true` enquanto o snapshot estiver dentro da retenção (efectivamente igual a `isFresh`).
+- `storeSnapshot` → continua a escrever `expires_at = now + CACHE_TTL_MS` (que agora é 15d).
 
-**Fix:**
-- Trocar nomes para os reais (`beta_welcome_email_sent`, `report_summary_email_sent`).
-- Marcar `welcome_beta` e `report_summary` como `instrumented: true` (já são — agora reflecte verdade).
-- Manter `personal_area_saved` como `instrumented: false` (genuinamente sem evento dedicado) e juntar uma nota no card.
+### Passo 3 — Actualizar `cache-status-badge.tsx`
 
-**3. KPI "A aguardar" tem dupla contagem.**
+- `ttlHours = 24` → default a `REPORT_RETENTION_DAYS * 24`.
+- `warnWithinHours = 6` → manter (≈ último 1/60 da janela é razoável; opcionalmente subir para 24h dado que a janela é 15d). **Decisão:** subir para 24h (último dia) — coerente com retenção mais longa.
+- Em `computeCacheStatus`, substituir literal `24 * 60 * 60 * 1000` por import de `REPORT_RETENTION_MS`.
+- Pequena revisão de copy nos tooltips se necessário.
 
-Em `automation-flow.ts`, `eligibleTotal = sum(eligibleCount)` por flow. Mas vários flows partilham a mesma fase do lifecycle como elegível (ex.: `relatorio_gerado.eligibleCount = countEq("em_analise")` e `link_enviado.eligibleCount = countEq("relatorio_gerado")`). Não há duplicação literal, mas o utilizador lê "X leads na fila" e na realidade são contagens cumulativas de várias fases que sobrepõem ao longo do funil — não corresponde a "quantas leads esperam acção agora".
+### Passo 4 — Snapshots de teste e admin previews
 
-**Fix:** calcular `eligibleTotal` como contagem distinta de leads cujo `commercial_status` está em `[novo_pedido, em_analise, relatorio_gerado, relatorio_visto]` (estados que aguardam acção do admin) — uma única query, sem somatórios.
+- `test-profiles-card.tsx` e `admin.report-preview.*` apenas leem `expires_at`. Como o snapshot passa a ter retenção de 15d por defeito, **não precisam de override**.
+- Actualizar comentário no topo do `cache.ts` para reflectir novo TTL.
 
----
+### Passo 5 — Marcar relatórios expirados na UI (sem apagar)
 
-### P1 — Hardcoded colors / consistência
+- `report_requests` não tem `expires_at` na BD. Helpers do módulo de retenção calculam a partir de `created_at`:
+  - Quando o admin lista relatórios (panel `reports-panel.tsx`) ou histórico, derivar `expires_at = getReportExpiresAt(created_at)`.
+  - Mostrar badge "Expirado" via `isReportExpired`.
+- Para já, **não bloqueamos acesso** a snapshots/reports expirados — apenas marcamos. Isto preserva referências e permite cleanup futuro num passo dedicado.
 
-**4. `email-lab-page.tsx`** — substituir `#1f2937` (botões "Enviar teste") por `rgb(var(--admin-button-dark))` que já existe.
+### Passo 6 — Testes (Vitest)
 
-**5. `eligibility-summary.tsx`** — quatro cores hex literais (`#534AB7`, `#D85A30`, `#BA7517`, `#888780`). Substituir por tokens (`--admin-leads-500`, `--admin-signal-500`, `--admin-warning-500`, `--admin-text-tertiary`).
+Criar `src/lib/report/__tests__/retention.test.ts`:
+- `getReportExpiresAt(now)` devolve `now + 15d` exactamente.
+- `isReportExpired` → `false` para `now + 1ms`, `true` para `now - 1ms`, `false` para `null`.
+- TTL constants: assert `CACHE_TTL_DAYS === 15` e `REPORT_RETENTION_DAYS === 15`.
+- Smoke test: `CACHE_TTL_MS` exportado por `analysis/cache.ts` é igual ao do módulo central (garante a única fonte de verdade).
 
-**6. `email-lab-page.tsx` linha 567** — preview da row "Para" mostra string hardcoded `"{{email}} → frederico@digitalfc.com"` (email pessoal exposto). Trocar por apenas `{{email}}` ou usar email da sessão admin se disponível. Refinamento de privacidade.
+### Passo 7 — Validação
 
----
-
-### P2 — Refinamentos UX
-
-**7. Botão "Enviar teste" em /admin/email-lab abre um modal placeholder** ("não está activado"). Padrão actual no /admin/automacoes para acções não implementadas é botão **disabled com tooltip "Disponível em breve"**. Alinhar: substituir o handler do dialog por um botão disabled + Tooltip, removendo `TestSendDialog` (ou mantendo só como dead-code comentado).
-
-**8. KPI "Último teste" em /admin/email-lab** mostra hardcoded `—` / "sem dados" — sem utilidade. Substituir por **"Envios (30d)"** lendo de `product_events` (eventos `*_sent` agregados, mesma fonte que /admin/automacoes). Reaproveita query existente.
-
-**9. Botão "⋯" em `automation-flow-page.tsx` `DisabledButton`** — `label=""` + sem `aria-label` → leitor de ecrã não tem texto. Adicionar `aria-label="Mais opções"`.
-
-**10. `templates-tab.tsx`** usa `<a href="/admin/email-lab?...">` em vez de `<Link to>` do TanStack Router → causa full reload em vez de SPA nav. Trocar.
-
----
-
-## Plano de correcção (cirúrgico, sem mexer em DB)
-
-### Passo 1 — Tokens em falta (P0 #1)
-Editar `src/styles/admin-tokens.css`:
-- Adicionar `--admin-success-500` e `--admin-warning-500` (base + alias `--color-admin-*`).
-
-### Passo 2 — Nomes de evento corrigidos (P0 #2)
-Editar `src/lib/admin/automation-flow-types.ts`:
-- `welcome_beta.types = ["beta_welcome_email_sent"]`, `instrumented: true`.
-- `report_summary.types = ["report_summary_email_sent"]`, `instrumented: true`.
-- `personal_area_saved` mantém `instrumented: false` mas adicionar comentário.
-
-### Passo 3 — KPI "A aguardar" sem duplicação (P0 #3)
-Editar `src/routes/api/admin/automation-flow.ts`:
-- Calcular `eligibleTotal` directamente: `active.filter(s => ["novo_pedido","em_analise","relatorio_gerado","relatorio_visto"].includes(s)).length`.
-
-### Passo 4 — `eligibility-summary.tsx` tokenizado (P1 #5)
-Substituir as 4 cores hex por `rgb(var(--token))`.
-
-### Passo 5 — `email-lab` botão dark + email leak + dialog → tooltip (P1 #4, #6, P2 #7)
-- Trocar `#1f2937` → `rgb(var(--admin-button-dark))` (2 ocorrências).
-- Linha 567: `value="{{email}} → frederico@digitalfc.com"` → `value="{{email}}"`.
-- Substituir handler `onClick={() => setTestDialogOpen(true)}` por botão **disabled com `<Tooltip>`** ("Disponível em breve"). Remover `TestSendDialog` e estado `testDialogOpen` (dead code).
-
-### Passo 6 — KPI "Último teste" → "Envios (30d)" (P2 #8)
-- Adicionar fetch leve a `/api/admin/automation-flow` (já tem `kpis.sent.last30d`) e reutilizar valor; ou simples `useQuery` partilhado. Substituir tile.
-
-### Passo 7 — A11y + nav refinements (P2 #9, #10)
-- `automation-flow-page.tsx`: adicionar `aria-label="Mais opções"` ao `DisabledButton` square.
-- `templates-tab.tsx`: trocar `<a href>` por `<Link to="/admin/email-lab" search={{ template: t.key }}>`.
-
-### Passo 8 — Verificação
-- `tsc --noEmit` verde.
-- Visual: abrir `/admin/email-lab` (KPIs "Ligados"/"Sem trigger" com cor; status pills coloridas; botão "Enviar teste" disabled com tooltip).
-- Visual: abrir `/admin/automacoes` (cards `welcome_beta` e `report_summary` mostram `Enviados ≥ 1`; KPI "A aguardar" coerente; sem hint "evento não emitido").
+- `bunx tsc --noEmit` (esperado verde).
+- `bunx vitest run` (todos os testes existentes + novos).
+- Inspecção rápida: `cache-status-badge.test.ts` continua a passar (a janela de "stale" passou de 24h → 15d, ajustar test fixture se necessário).
 
 ---
 
-## Restrições
+## Restrições aplicadas (todas verificadas no plano)
 
-- Sem alterações de schema, providers, envio de emails reais.
-- Sem novos endpoints (apenas correcções nos existentes).
-- Sem mexer em `LOCKED_FILES.md` ou `src/integrations/supabase/*`.
-- Cores só via tokens admin.
+- Sem chamadas a providers, regeneração, ou apagar dados.
+- Sem alterações ao cálculo do relatório público (apenas TTL/retenção).
+- Sem mexer em Brevo/Resend (signed URL `SIGNED_URL_TTL_DAYS = 7` fica como está — é cosmética do email, não é retenção do relatório).
+- Sem migrações de schema: `expires_at` em `report_requests` é derivado por helper.
+- `REPORT_RETENTION_DAYS` e `CACHE_TTL_DAYS` ambos exportados de **um único módulo** (`src/lib/report/retention.ts`).
+
+## Ficheiros tocados (estimado)
+
+- **Novo:** `src/lib/report/retention.ts`
+- **Novo:** `src/lib/report/__tests__/retention.test.ts`
+- **Editado:** `src/lib/analysis/cache.ts` (re-export, alinhar STALE_TOLERANCE)
+- **Editado:** `src/components/report-redesign/v2/cache-status-badge.tsx` (defaults + literal)
+- **Editado:** `src/components/admin/cockpit/panels/reports-panel.tsx` (badge "Expirado" via helper)
+- (Opcional) `src/components/admin/v2/sistema/test-profiles-card.tsx`: passar a ler `getReportExpiresAt` quando `expires_at` for nulo.
 
 ## Checkpoints
 
-- ☐ Passo 1 — Tokens success/warning adicionados
-- ☐ Passo 2 — Nomes de evento corrigidos em FLOW_EVENTS
-- ☐ Passo 3 — KPI "A aguardar" sem dupla contagem
-- ☐ Passo 4 — `eligibility-summary` tokenizado
-- ☐ Passo 5 — email-lab tokens + privacidade + dialog → tooltip
-- ☐ Passo 6 — KPI "Último teste" → "Envios (30d)"
-- ☐ Passo 7 — a11y + Link router
-- ☐ Passo 8 — Build + verificação visual
+- ☐ Passo 1 — `src/lib/report/retention.ts` criado com 4 constantes + 3 helpers
+- ☐ Passo 2 — `analysis/cache.ts` consome do módulo central; `STALE_TOLERANCE` alinhado
+- ☐ Passo 3 — `cache-status-badge.tsx` sem literais 24h
+- ☐ Passo 4 — Test profiles + admin previews continuam coerentes (sem override)
+- ☐ Passo 5 — `reports-panel.tsx` mostra "Expirado" via `isReportExpired`
+- ☐ Passo 6 — Testes novos + ajuste do `cache-status-badge.test`
+- ☐ Passo 7 — `tsc --noEmit` e `vitest run` verdes
