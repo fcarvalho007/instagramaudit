@@ -89,6 +89,7 @@ describe("syncLeadToBrevo", () => {
         purpose: "improve_content",
         user_type: "creator",
         pricing_preference: "below_20",
+        marketing_consent: true,
       },
       latestRR: {
         id: "rr-1",
@@ -156,7 +157,7 @@ describe("syncLeadToBrevo", () => {
 
   it("propagates upsert failure reason and records failure event", async () => {
     setupSupabase({
-      lead: { id: "lead-2", email: "x@y.com" },
+      lead: { id: "lead-2", email: "x@y.com", marketing_consent: true },
       latestRR: null,
       count: 0,
     });
@@ -169,6 +170,24 @@ describe("syncLeadToBrevo", () => {
       expect.objectContaining({
         eventType: "brevo_contact_sync_failed",
         metadata: expect.objectContaining({ reason: "BREVO_500:boom" }),
+      }),
+    );
+  });
+
+  it("skips with NO_MARKETING_CONSENT when marketing_consent is not true", async () => {
+    setupSupabase({
+      lead: { id: "lead-nc", email: "n@c.com", marketing_consent: false },
+      latestRR: null,
+      count: 0,
+    });
+    const out = await syncLeadToBrevo("lead-nc", "report_unlock");
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.reason).toBe("NO_MARKETING_CONSENT");
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "brevo_contact_sync_skipped",
+        metadata: expect.objectContaining({ reason: "NO_MARKETING_CONSENT" }),
       }),
     );
   });
