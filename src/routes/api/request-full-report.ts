@@ -24,6 +24,7 @@ import {
   runInBackground,
   runReportPipeline,
 } from "@/lib/orchestration/run-report-pipeline";
+import { persistReportSnapshotForRequest } from "@/lib/report-snapshots/persist-report-snapshot.server";
 
 const PayloadSchema = z.object({
   email: z.string().trim().email().max(255),
@@ -298,6 +299,14 @@ export const Route = createFileRoute("/api/request-full-report")({
         // 5) Successful outcome — derive quota status from pre-insert count.
         const remaining = Math.max(0, FREE_MONTHLY_LIMIT - (used + 1));
         const quota_status: "first_free" | "last_free" = used === 0 ? "first_free" : "last_free";
+
+        // Phase 2 — persist immutable report_snapshot before pipeline kicks off.
+        // Fail-soft: never blocks the user-facing response.
+        await persistReportSnapshotForRequest(reqRow.id, "beta_request", {
+          handle: instagram_username,
+          leadId: leadRow.id,
+          snapshotId: validatedSnapshotId,
+        });
 
         // 6) Kick off the automated pipeline (PDF → email) in the background.
         // The client receives the success response immediately; the orchestrator
