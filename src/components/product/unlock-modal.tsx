@@ -51,9 +51,8 @@ import { trackEvent } from "@/lib/tracking.functions";
 const TOTAL_STEPS = 4;
 
 const OPERATOR_INFO = {
-  name: "DIGITALFC",
-  city: "Lisboa, Portugal",
-  nif: "509XXXXXX",
+  name: "Fomentar Sonhos, Lda.",
+  city: "Leiria, Portugal",
 };
 
 const UNLOCKED_ITEMS = [
