@@ -8,51 +8,6 @@
  * Não usar estas constantes em rotas públicas (`/`, `/analyze`, `/report/*`).
  */
 
-/**
- * MODELO DE DADOS — tab Clientes (futura migração Supabase).
- *
- * Documentado aqui para referência. Não criar tabelas ainda; usar apenas os
- * mocks abaixo (`MOCK_PIPELINE`, `MOCK_CUSTOMERS_LIST`, `MOCK_SELECTED_CUSTOMER`,
- * `MOCK_CUSTOMER_ACTIVITY`, `MOCK_CUSTOMER_PROFILES`, `MOCK_CUSTOMER_NOTES`).
- *
- * ```ts
- * type Customer = {
- *   id: string;
- *   name: string;
- *   email: string;
- *   location?: string;
- *   state: 'lead' | 'one_time' | 'recurring' | 'subscription' | 'churned';
- *   plan?: 'starter' | 'pro' | 'agency';
- *   monthly_value?: number;
- *   total_spent: number;          // LTV realizado
- *   reports_count: number;
- *   free_analyses_count: number;
- *   signed_up_at: Date;
- *   last_activity_at: Date;
- *   health_score?: number;        // 0-10
- *   signal?: 'active' | 'sub_candidate' | 'repeated_search' | 'at_risk' | null;
- * };
- *
- * type CustomerNote = {
- *   id: string;
- *   customer_id: string;
- *   title: string;
- *   body: string;
- *   created_at: Date;
- * };
- *
- * type CustomerActivity = {
- *   id: string;
- *   customer_id: string;
- *   type: 'payment' | 'report_generated' | 'free_analysis'
- *       | 'subscription_started' | 'subscription_changed';
- *   description: string;
- *   occurred_at: Date;
- *   metadata?: Record<string, unknown>;
- * };
- * ```
- */
-
 export const MOCK_FUNNEL = {
   visitors: { eyebrow: "Visitantes anónimos", value: "1.847" },
   freeAnalyses: { eyebrow: "Análises grátis feitas", value: "2.314" },
@@ -503,329 +458,9 @@ export const MOCK_INVOICES = [
   { date: "25/04 18:08", customer: "Inês Costa",     type: "avulso" as const,     item: "Report @worten",           amount: "€29.00", status: "paga" as const },
 ] as const;
 
-/* ============================================================
- * Tab Clientes
- * ============================================================ */
-
-/** Pipeline horizontal — 4 estados + 3 transições entre eles. */
-export const MOCK_PIPELINE = {
-  states: [
-    {
-      key: "lead",
-      eyebrow: "Lead · sem compra",
-      value: "187",
-      sub: "+24 novos · 38 activos esta semana",
-      // Estilo cinza-pedra (border-left + tom 50)
-      borderColor: "#B4B2A9",
-      bg: "rgb(var(--admin-neutral-50))",
-      eyebrowColor: "rgb(var(--admin-neutral-600))",
-      valueColor: "rgb(var(--admin-neutral-900))",
-      subColor: "rgb(var(--admin-neutral-600))",
-    },
-    {
-      key: "one_time",
-      eyebrow: "Avulso · 1 compra",
-      value: "73",
-      sub: "+14 este mês · €29 média",
-      borderColor: "#EF9F27",
-      bg: "#FAEEDA",
-      eyebrowColor: "#854F0B",
-      valueColor: "#412402",
-      subColor: "#854F0B",
-    },
-    {
-      key: "recurring",
-      eyebrow: "Avulso recorrente",
-      value: "14",
-      sub: "2-3 compras · €72 média",
-      borderColor: "#534AB7",
-      bg: "#EEEDFE",
-      eyebrowColor: "#3C3489",
-      valueColor: "#26215C",
-      subColor: "#3C3489",
-    },
-    {
-      key: "subscription",
-      eyebrow: "Subscrição activa",
-      value: "38",
-      sub: "+7 este mês · €18 ARPU",
-      borderColor: "#1D9E75",
-      bg: "#E1F5EE",
-      eyebrowColor: "#085041",
-      valueColor: "#04342C",
-      subColor: "#085041",
-    },
-  ],
-  transitions: [
-    { from: "lead", to: "one_time", qty: 23 },
-    { from: "one_time", to: "recurring", qty: 8 },
-    { from: "recurring", to: "subscription", qty: 3 },
-  ],
-} as const;
-
-export const MOCK_PIPELINE_FOOTER = {
-  conversions: [
-    { label: "lead → cliente", value: "12.3%" },
-    { label: "cliente → recorrente", value: "11.0%" },
-    { label: "recorrente → sub", value: "21.4%" },
-  ],
-  churn: "1 cancelamento",
-} as const;
-
-/** Filtros pill no header da tabela. */
-export const MOCK_CUSTOMERS_TOTALS = [
-  { key: "all", label: "Todos", count: 312 },
-  { key: "subscribers", label: "Subscritores", count: 38 },
-  { key: "one_off", label: "Avulso", count: 87 },
-  { key: "at_risk", label: "Em risco", count: 5 },
-] as const;
-
-export type CustomerSignalKind =
-  | "active"
-  | "sub_candidate"
-  | "repeated_search"
-  | "at_risk"
-  | "none";
-
-export type CustomerAvatarVariant = "revenue" | "leads" | "neutral";
-
-export type CustomerBadgeVariant =
-  | "revenue"
-  | "leads"
-  | "expense"
-  | "neutral";
-
-export interface CustomerRow {
-  id: string;
-  initials: string;
-  name: string;
-  email: string;
-  badgeLabel: string;
-  badgeVariant: CustomerBadgeVariant;
-  avatarVariant: CustomerAvatarVariant;
-  ltv: string;            // "€144" ou "—"
-  reports: string;        // "12" ou "3 grátis"
-  reportsMuted?: boolean; // true para "X grátis"
-  lastActivity: string;
-  signal: { kind: CustomerSignalKind; label?: string };
-  selected?: boolean;
-}
-
-export const MOCK_CUSTOMERS_LIST: ReadonlyArray<CustomerRow> = [
-  {
-    id: "pedro-silva",
-    initials: "PS",
-    name: "Pedro Silva",
-    email: "pedro@agencianext.pt",
-    badgeLabel: "Agency · €49",
-    badgeVariant: "revenue",
-    avatarVariant: "revenue",
-    ltv: "€392",
-    reports: "12",
-    lastActivity: "há 3h",
-    signal: { kind: "active" },
-  },
-  {
-    id: "ana-marques",
-    initials: "AM",
-    name: "Ana Marques",
-    email: "ana.marques@nike.pt",
-    badgeLabel: "Pro · €18",
-    badgeVariant: "revenue",
-    avatarVariant: "leads",
-    ltv: "€144",
-    reports: "4",
-    lastActivity: "há 12 min",
-    signal: { kind: "active" },
-    selected: true,
-  },
-  {
-    id: "ines-costa",
-    initials: "IC",
-    name: "Inês Costa",
-    email: "ines@flow.pt",
-    badgeLabel: "Avulso recorrente",
-    badgeVariant: "leads",
-    avatarVariant: "leads",
-    ltv: "€87",
-    reports: "3",
-    lastActivity: "há 1h",
-    signal: { kind: "sub_candidate", label: "candidato sub" },
-  },
-  {
-    id: "joana-costa",
-    initials: "JC",
-    name: "Joana Costa",
-    email: "joana@brandlab.pt",
-    badgeLabel: "Pro · €18",
-    badgeVariant: "revenue",
-    avatarVariant: "revenue",
-    ltv: "€126",
-    reports: "7",
-    lastActivity: "há 6h",
-    signal: { kind: "active" },
-  },
-  {
-    id: "joao-pereira",
-    initials: "JP",
-    name: "João Pereira",
-    email: "joao.p@galp.pt",
-    badgeLabel: "Avulso · 1 compra",
-    badgeVariant: "expense",
-    avatarVariant: "neutral",
-    ltv: "€29",
-    reports: "1",
-    lastActivity: "há 2h",
-    signal: { kind: "none" },
-  },
-  {
-    id: "carla-mendes",
-    initials: "CM",
-    name: "Carla Mendes",
-    email: "carla.m@gmail.com",
-    badgeLabel: "Lead",
-    badgeVariant: "neutral",
-    avatarVariant: "neutral",
-    ltv: "—",
-    reports: "3 grátis",
-    reportsMuted: true,
-    lastActivity: "há 1d",
-    signal: { kind: "repeated_search", label: "7× repetiu" },
-  },
-  {
-    id: "rui-tavares",
-    initials: "RT",
-    name: "Rui Tavares",
-    email: "rui@socialedge.pt",
-    badgeLabel: "Starter · €9",
-    badgeVariant: "revenue",
-    avatarVariant: "revenue",
-    ltv: "€36",
-    reports: "2",
-    lastActivity: "há 2 sem",
-    signal: { kind: "at_risk", label: "em risco" },
-  },
-];
-
-/** Cliente seleccionado (Ana Marques). */
-export const MOCK_SELECTED_CUSTOMER = {
-  initials: "AM",
-  name: "Ana Marques",
-  email: "ana.marques@nike.pt",
-  location: "Lisboa, PT",
-  planLabel: "Pro · €18/mês",
-  since: "desde 12 Jan 2026",
-  kpis: [
-    {
-      eyebrow: "Receita gerada",
-      value: "€144",
-      sub: "8 meses como sub",
-      info: "Soma de todos os pagamentos confirmados deste cliente desde o início da subscrição.",
-    },
-    {
-      eyebrow: "Reports gerados",
-      value: "4",
-      sub: "média 0.5/mês",
-      info: "Número total de reports premium gerados para este cliente; média mensal calculada sobre o tempo de vida activo.",
-    },
-    {
-      eyebrow: "LTV projectado",
-      value: "€692",
-      sub: "a 38 meses",
-      info: "Lifetime Value projectado: receita mensal × tempo médio de retenção esperado para o plano actual.",
-    },
-    {
-      eyebrow: "Saúde",
-      value: "8.4",
-      sub: "activa, paga em dia",
-      bars: { filled: 4, total: 5 },
-      info: "Health score 0-10 combinando frequência de uso, pontualidade de pagamento e sinais de churn.",
-    },
-  ],
-} as const;
-
-export type CustomerActivityType =
-  | "payment"
-  | "report"
-  | "free_analysis"
-  | "subscription_started";
-
-export const MOCK_CUSTOMER_ACTIVITY: ReadonlyArray<{
-  type: CustomerActivityType;
-  title: string;
-  detail: string;
-}> = [
-  {
-    type: "payment",
-    title: "Pagamento Pro · €18.00",
-    detail: "há 12 min · renovação automática",
-  },
-  {
-    type: "report",
-    title: "Report gerado · @nikeportugal",
-    detail: "há 12 min · entregue por email",
-  },
-  {
-    type: "free_analysis",
-    title: "Análise pública · @adidasportugal",
-    detail: "há 2 dias · não converteu em report",
-  },
-  {
-    type: "report",
-    title: "Report gerado · @nikeportugal",
-    detail: "há 5 dias · entregue",
-  },
-  {
-    type: "payment",
-    title: "Pagamento Pro · €18.00",
-    detail: "26 Mar · renovação automática",
-  },
-  {
-    type: "subscription_started",
-    title: "Subscreveu plano Pro",
-    detail: "12 Jan · primeira compra",
-  },
-];
-
-export const MOCK_CUSTOMER_PROFILES: ReadonlyArray<{
-  handle: string;
-  classification: string;
-  classificationMuted?: boolean;
-  count: string;
-  countMuted?: boolean;
-  when: string;
-}> = [
-  {
-    handle: "@nikeportugal",
-    classification: "marca própria",
-    count: "3 reports",
-    when: "último há 12min",
-  },
-  {
-    handle: "@adidasportugal",
-    classification: "concorrente",
-    count: "1 report",
-    when: "há 8 dias",
-  },
-  {
-    handle: "@pumaportugal",
-    classification: "concorrente",
-    count: "só análise",
-    countMuted: true,
-    when: "há 14 dias",
-  },
-];
-
-export const MOCK_CUSTOMER_NOTES = [
-  {
-    title: "Brand manager Nike Portugal",
-    body: "Cliente-âncora · contactar antes de qualquer mudança de pricing.",
-  },
-] as const;
-
-/* ============================================================
- * MOCK DATA — tab Relatórios
- * ============================================================ */
+/* =====================================================================
+ * Tab Relatórios — pipeline operacional (4 fases)
+ * ===================================================================== */
 
 export type ReportPipelineHealth = "ok" | "warn" | "critical";
 
@@ -835,7 +470,6 @@ export const MOCK_PIPELINE_PHASES: ReadonlyArray<{
   label: string;
   value: number;
   sub: string;
-  /** Literal para `border-left` — fica em `ADMIN_LITERAL.pipeline*`. */
   accentKey: "pipelineRequest" | "pipelineAnalysis" | "pipelinePdf" | "pipelineEmail";
   health: ReportPipelineHealth;
 }> = [
@@ -843,17 +477,17 @@ export const MOCK_PIPELINE_PHASES: ReadonlyArray<{
     id: "request",
     eyebrow: "PEDIDO",
     label: "recebido",
-    value: 12,
-    sub: "em fila",
+    value: 152,
+    sub: "novos hoje",
     accentKey: "pipelineRequest",
     health: "ok",
   },
   {
     id: "analysis",
     eyebrow: "ANÁLISE",
-    label: "Apify",
-    value: 3,
-    sub: "a correr",
+    label: "em curso",
+    value: 5,
+    sub: "Apify a correr",
     accentKey: "pipelineAnalysis",
     health: "ok",
   },
@@ -861,8 +495,8 @@ export const MOCK_PIPELINE_PHASES: ReadonlyArray<{
     id: "pdf",
     eyebrow: "PDF",
     label: "gerado",
-    value: 2,
-    sub: "a renderizar",
+    value: 149,
+    sub: "prontos para email",
     accentKey: "pipelinePdf",
     health: "ok",
   },
