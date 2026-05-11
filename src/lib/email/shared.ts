@@ -15,7 +15,6 @@ export interface BaseTemplateInput {
   instagramHandle?: string | null;
   reportUrl?: string | null;
   feedbackUrl?: string | null;
-  pricingOption?: string | null;
 }
 
 export const BRAND = "InstaBench";
