@@ -1,14 +1,32 @@
 /**
- * AdminCommandPalette — pesquisa rápida de leads beta em qualquer rota /admin/*.
+ * AdminCommandPalette — pesquisa rápida de leads beta + atalhos para páginas
+ * principais do admin, em qualquer rota /admin/*.
  *
  * Atalho ⌘K / Ctrl+K. Reutiliza a mesma query (`['admin','beta-leads']`) que o
  * Kanban usa para evitar um endpoint dedicado. Selecionar uma lead navega para
  * `/admin/beta-leads?lead=<id>` e a `KanbanBoard` abre a `LeadDetailSheet`.
+ *
+ * Grupo "Páginas" lista atalhos de navegação para as páginas principais do
+ * admin (Visão geral, Receita, Pipeline/Tabela de contactos, Automações,
+ * Relatórios, Perfis, Report Lab, Email Lab, Sistema). Espelha a sidebar.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import {
+  LayoutDashboard,
+  Receipt,
+  Columns,
+  Table as TableIcon,
+  Zap,
+  FileText,
+  AtSign,
+  FlaskConical,
+  MailCheck,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -27,6 +45,79 @@ async function fetchLeads(): Promise<EnrichedLead[]> {
   const json = await res.json();
   return (json.leads ?? []) as EnrichedLead[];
 }
+
+interface PageShortcut {
+  label: string;
+  to: string;
+  search?: Record<string, string>;
+  icon: LucideIcon;
+  keywords: string;
+}
+
+const PAGE_SHORTCUTS: PageShortcut[] = [
+  {
+    label: "Visão geral",
+    to: "/admin/visao-geral",
+    icon: LayoutDashboard,
+    keywords: "dashboard inicio overview kpis",
+  },
+  {
+    label: "Receita",
+    to: "/admin/receita",
+    icon: Receipt,
+    keywords: "receita revenue mrr faturacao financeiro",
+  },
+  {
+    label: "Contactos · Pipeline",
+    to: "/admin/beta-leads",
+    search: { view: "pipeline" },
+    icon: Columns,
+    keywords: "contactos crm pipeline kanban leads beta",
+  },
+  {
+    label: "Contactos · Tabela",
+    to: "/admin/beta-leads",
+    search: { view: "tabela" },
+    icon: TableIcon,
+    keywords: "contactos crm tabela lista leads beta",
+  },
+  {
+    label: "Automações",
+    to: "/admin/automacoes",
+    icon: Zap,
+    keywords: "automacoes workflows fluxos",
+  },
+  {
+    label: "Relatórios",
+    to: "/admin/relatorios",
+    icon: FileText,
+    keywords: "relatorios reports pdf",
+  },
+  {
+    label: "Perfis",
+    to: "/admin/perfis",
+    icon: AtSign,
+    keywords: "perfis instagram handles social",
+  },
+  {
+    label: "Report Lab",
+    to: "/admin/report-lab",
+    icon: FlaskConical,
+    keywords: "report lab preview variantes editor",
+  },
+  {
+    label: "Templates Email + SMS",
+    to: "/admin/email-lab",
+    icon: MailCheck,
+    keywords: "email lab templates sms mensagens",
+  },
+  {
+    label: "Sistema",
+    to: "/admin/sistema",
+    icon: Settings,
+    keywords: "sistema diagnosticos saude logs cockpit",
+  },
+];
 
 export function AdminCommandPalette() {
   const [open, setOpen] = useState(false);
@@ -66,10 +157,44 @@ export function AdminCommandPalette() {
     navigate({ to: "/admin/beta-leads", search: { lead: id } });
   };
 
+  const handleNavigate = (shortcut: PageShortcut) => {
+    setOpen(false);
+    navigate({
+      to: shortcut.to,
+      search: (shortcut.search ?? {}) as never,
+    });
+  };
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput placeholder="Pesquisar lead por nome, email, handle ou empresa..." />
       <CommandList className="max-h-[420px]">
+        <CommandGroup heading="Páginas">
+          {PAGE_SHORTCUTS.map((shortcut) => {
+            const Icon = shortcut.icon;
+            return (
+              <CommandItem
+                key={`${shortcut.to}:${shortcut.label}`}
+                value={`${shortcut.label} ${shortcut.keywords}`}
+                onSelect={() => handleNavigate(shortcut)}
+                className="flex cursor-pointer items-center gap-3"
+              >
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                  style={{
+                    background: "rgb(var(--admin-neutral-100))",
+                    color: "rgb(var(--admin-neutral-700))",
+                  }}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <span className="text-[13px] font-medium text-admin-text-primary">
+                  {shortcut.label}
+                </span>
+              </CommandItem>
+            );
+          })}
+        </CommandGroup>
         {isLoading ? (
           <div className="px-4 py-8 text-center text-[12px] text-admin-text-tertiary">
             A carregar leads...
