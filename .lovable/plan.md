@@ -1,162 +1,142 @@
-# Refinamento Fase 1 — `report_snapshots` leve e versionado
+# Consolidação CRM admin — Contactos com vistas Pipeline e Tabela
 
-Sem migrations nem código nesta fase. Apenas contrato de dados.
+## 1. Nova navegação (sidebar)
 
-## 1. Princípios
+**Grupo "Negócio"**
+- Visão geral
+- Receita
+- ~~Clientes~~ (removido — era mock; conteúdo absorvido pelo Pipeline real)
 
-- `analysis_snapshots` continua como **cache técnico** (TTL curto, payload completo, base64, blobs intermédios permitidos).
-- `report_snapshots` é **histórico imutável user-facing** (15 dias, payload mínimo necessário para reconstruir o relatório, sem nada pesado).
-- Nunca copiar bytes binários, base64 ou estruturas de enrichment cru.
-- Tudo o que não for estritamente necessário para renderizar o relatório histórico **fica fora**.
-- Versionar agressivamente para permitir migrações futuras sem partir histórico antigo.
+**Grupo "Pipeline"** (renomear para **"Contactos"**)
+- ~~Leads~~ → **Pipeline** (`/admin/beta-leads`, mesma URL)
+- ~~Pedidos~~ (removido do sidebar; rota mantém-se acessível via deep-link/command palette)
+- Automações
 
-## 2. Estrutura de `report_payload_jsonb`
+**Grupos restantes**: Produto, Laboratório, Sistema — sem alterações.
 
-Top-level fixo, schema validado por Zod no builder:
+Resumo:
+- Sidebar passa de 12 para 10 itens.
+- "Pedidos" deixa de ser item primário; visível dentro da ficha de contacto (tab Relatório, já existe).
+- "Clientes" mock-only desaparece do sidebar.
 
-```text
-{
-  "schema": {
-    "payload_schema_version": "1",
-    "report_version": "r1",
-    "algorithm_version": "alg-2026-05-a"
-  },
-  "context": {
-    "instagram_username": "frederico.m.carvalho",
-    "competitor_usernames": ["...", "..."],
-    "generated_at": "ISO-8601",
-    "data_provenance": {
-      "provider": "apify",
-      "snapshot_captured_at": "ISO-8601",
-      "posts_window_days": 90
-    }
-  },
-  "profile": {
-    "handle": "...",
-    "display_name": "...",
-    "followers": 12345,
-    "following": 321,
-    "posts_count": 210,
-    "biography_text": "string truncado <= 500 chars",
-    "external_url": "https://...",
-    "is_verified": false,
-    "is_business": true,
-    "category": "...",
-    "avatar_url": "https://... (URL only, never base64)"
-  },
-  "metrics": {
-    "engagement_pct": 2.31,
-    "avg_likes": 412,
-    "avg_comments": 18,
-    "avg_views_reels": 9100,
-    "posting_frequency_per_week": 3.2,
-    "tier": "micro",
-    "benchmark_engagement_pct": 1.8
-  },
-  "format_stats": {
-    "image": { "count": 12, "engagement_pct": 1.9 },
-    "carousel": { "count": 8, "engagement_pct": 2.7 },
-    "reel": { "count": 10, "engagement_pct": 3.4 }
-  },
-  "content_summary": {
-    "top_themes": ["..."],
-    "top_hashtags": ["..."],
-    "posting_hours_histogram": [/* 24 ints */]
-  },
-  "posts": [
-    {
-      "id": "shortcode",
-      "url": "https://www.instagram.com/p/...",
-      "type": "reel|image|carousel",
-      "taken_at": "ISO-8601",
-      "caption_text": "string truncado <= 1000 chars",
-      "likes": 0,
-      "comments": 0,
-      "views": 0,
-      "engagement_pct": 0,
-      "media_url": "https://... (HTTPS only, never base64, never data:)"
-    }
-    // máx. 30 posts
-  ],
-  "competitor_summaries": [
-    {
-      "handle": "...",
-      "followers": 0,
-      "engagement_pct": 0,
-      "avg_likes": 0,
-      "avg_comments": 0,
-      "tier": "...",
-      "top_format": "reel"
-    }
-  ],
-  "insights": {
-    "strengths": ["..."],
-    "weaknesses": ["..."],
-    "opportunities": ["..."],
-    "recommendations": [
-      { "title": "...", "body": "...", "priority": "high|med|low" }
-    ]
-  }
-}
-```
+## 2. Rotas
 
-## 3. Campos incluídos vs. excluídos
+| Rota | Antes | Depois |
+| --- | --- | --- |
+| `/admin/beta-leads` | "Beta Leads" (Kanban) | **"Pipeline"** com tabs Pipeline + Tabela |
+| `/admin/beta-requests` | "Pedidos" (sidebar) | mantida, **fora do sidebar** (acessível por command palette + links existentes) |
+| `/admin/clientes` | "Clientes" mock (sidebar) | **removida do sidebar**; ficheiro de rota e componentes mock mantidos para não partir histórico (sem links de entrada) — eliminação real fica para fase de cleanup |
 
-### Incluídos (whitelist explícita)
-- `schema.*` (versionamento)
-- `context.*` (handle, competitors, datas, provenance)
-- `profile.*` sem base64; `avatar_url` apenas como URL HTTPS
-- `metrics.*` agregadas finais
-- `format_stats.*` agregados por formato
-- `content_summary.*` (temas, hashtags, histograma de horas)
-- `posts[]` máx. 30, **caption truncado a 1000 chars**, apenas URLs HTTPS
-- `competitor_summaries[]` apenas agregados
-- `insights.*` texto final apresentado ao utilizador
+URLs mantidas para não partir links externos / command palette / `automacoes/people-tab`.
 
-### Excluídos (nunca copiar para `report_snapshots`)
-- Qualquer `data:image/...;base64,...` (helper `stripBase64Urls()` no builder)
-- `caption_semantic_analysis` (intermediário pesado)
-- `visual_cover_analysis` (thumbnails/embeddings)
-- `ai_insights_v1` cru (apenas o resultado final entra em `insights`)
-- `market_signals_free` cru
-- `enrichment_status` (estado técnico do cache)
-- `raw_*`, `_meta`, `__debug`, blobs binários
-- Comentários completos por post (apenas contagem agregada)
-- HTML cru, screenshots, embeddings, vectors
-- Tokens, custos, IDs internos de provider
-- Avatars/thumbnails inline; só URLs
+## 3. `/admin/beta-leads` — nova estrutura
 
-## 4. Versionamento
+`AdminPageHeader`:
+- title: **"Pipeline"**
+- subtitle: **"Acompanha contactos desde o primeiro relatório até à conversão."**
+- (manter contagem `N leads · N ativos` como linha secundária ou descartar — proponho descartar para alinhar com copy pedida; contagem fica visível dentro do Kanban)
 
-Três níveis, todos persistidos:
+Abaixo do header, `Tabs` (`@/components/ui/tabs`) com dois separadores:
 
-- **`payload_schema_version`** (coluna + dentro de `schema`): forma do JSON. Incrementa quando muda a estrutura do payload (ex: adicionar `posts[].saves`).
-- **`report_version`**: versão do relatório user-facing (ex: `r1`, `r2`). Incrementa quando muda o que o utilizador vê (secções, narrativa).
-- **`algorithm_version`**: versão dos cálculos/insights (ex: `alg-2026-05-a`). Incrementa quando mudam fórmulas, benchmarks ou prompts de IA.
+### Tab "Pipeline"
+- Renderiza o `KanbanBoard` existente, sem alterações de comportamento.
+- Mantém: `lead-card`, badges de feedback, próxima ação, indicadores de comunicação.
+- Mantém deep-link `?lead=<id>` que abre `LeadDetailSheet`.
 
-Regra: snapshots antigos **nunca** são recalculados. O renderer histórico lê `payload_schema_version` e escolhe o adapter apropriado.
+### Tab "Tabela"
+- Novo componente `LeadsTable` (`src/components/admin/v2/beta-leads/leads-table.tsx`).
+- Recebe os mesmos `EnrichedLead[]` da query `["admin", "beta-leads"]` (sem fetch novo).
+- Colunas:
+  - Nome
+  - Email
+  - Instagram (handle do último relatório)
+  - Estado (badge de `commercial_status`, reutilizar `status-badge`)
+  - Último relatório (data + nome do report)
+  - Último email (data + tipo, do `lead-communication-timeline` data source)
+  - Feedback (ícone/badge via `interpretFeedback`)
+  - Criado em
+  - Ações (botão "Abrir" → abre `LeadDetailSheet`)
+- Linha clicável → abre o mesmo `LeadDetailSheet` via estado local (já suportado pelo `KanbanBoard`; extraio o controlo de sheet para o nível da página para o partilhar entre as duas tabs).
+- Tabela usa primitivos shadcn `Table` + tokens admin (`--admin-*`). Mobile-first: scroll horizontal numa wrapper `overflow-x-auto`.
 
-## 5. Retenção e cleanup
+### Estado partilhado
+- O `LeadDetailSheet` é içado para a `BetaLeadsPage` (atualmente vive dentro de `KanbanBoard`).
+- Ambas as tabs disparam `setActiveLeadId(id)`; sheet único renderizado no fim da página.
+- Search param `?lead=` continua a funcionar.
+- Tab ativa controlada por search param `?view=pipeline|tabela` (default: `pipeline`) para deep-link e refresh-safe.
 
-- `report_snapshots.expires_at = created_at + 15 dias` (constante central `REPORT_RETENTION_DAYS`).
-- `analysis_snapshots` continua com TTL técnico curto independente (não muda nesta fase).
-- **Cleanup automático fica fora da Fase 1.** Apenas marcamos `expires_at`; soft-delete via `expired_at` numa fase posterior. Sem cron, sem DELETE.
-- Leitura futura filtra por `expires_at > now()`; expirados existem em DB mas não são servidos.
+## 4. Ficha de contacto (LeadDetailSheet)
 
-## 6. O que esta fase NÃO faz
+Sem alterações. Tabs já existentes:
+- Resumo
+- Relatório (cobre "Pedidos" — request status, PDF, ações)
+- Feedback
+- Comunicação
+- Histórico
 
-- Sem migration ainda (próximo passo, a seguir à tua aprovação deste contrato).
-- Sem builder code, sem testes, sem types regenerados.
-- Sem alterações a `analysis_snapshots`.
-- Sem cleanup, sem cron, sem UI, sem PDF storage logic.
-- Sem alterações a Brevo/Resend/providers.
+Esta é a justificação para tirar "Pedidos" do sidebar primário.
 
-## 7. Próximo passo (a seguir a aprovares este refinamento)
+## 5. Topbar / breadcrumbs
 
-Volto a Plan Mode da migration concreta com este contrato fixo:
-1. Migration `report_snapshots` + coluna `payload_schema_version` + FK fraco em `report_requests`.
-2. `src/lib/report-snapshots/schema.ts` com Zod refletindo exatamente esta estrutura.
-3. `build-report-snapshot-payload.server.ts` com whitelist + `stripBase64Urls()` + truncagem.
-4. Testes de exclusão (base64, campos pesados, truncagem, validação Zod).
+`admin-topbar.tsx`:
+- Atualizar mapa de títulos:
+  - `/admin/beta-leads`: `"Leads"` → `"Pipeline"`
+  - `/admin/beta-requests`: `"Pedidos"` → `"Pedidos (utilitário)"` (ou apenas manter "Pedidos"; não aparece no sidebar mas pode ser deep-linked)
+- Remover qualquer referência visível a "Beta".
 
-☐ Aprovas esta estrutura leve + versionamento triplo antes de eu avançar para a migration?
+## 6. Command palette
+
+`admin-command-palette.tsx` mantém `/admin/beta-leads?lead=<id>`. Adicionar entradas:
+- "Pipeline" → `/admin/beta-leads?view=pipeline`
+- "Contactos · Tabela" → `/admin/beta-leads?view=tabela`
+- Manter "Pedidos" como utilitário (deep link para `/admin/beta-requests`).
+
+## 7. Ficheiros a alterar / criar
+
+**Alterar**
+- `src/components/admin/v2/admin-sidebar.tsx` — remover `/admin/clientes` e `/admin/beta-requests`; renomear "Leads" → "Pipeline"; renomear grupo "Pipeline" → "Contactos".
+- `src/components/admin/v2/admin-topbar.tsx` — atualizar labels.
+- `src/components/admin/v2/admin-command-palette.tsx` — entradas para vistas.
+- `src/routes/admin.beta-leads.tsx` — adicionar `Tabs`, gerir `?view=`, içar `LeadDetailSheet`, novo header copy.
+- `src/components/admin/v2/beta-leads/kanban-board.tsx` — tornar abertura do sheet controlada do exterior (props `activeLeadId` + `onActiveLeadChange`), mantendo fallback interno se não vier prop.
+
+**Criar**
+- `src/components/admin/v2/beta-leads/leads-table.tsx` — nova tabela.
+- `src/components/admin/v2/beta-leads/__tests__/leads-table.test.tsx` — testes de render e click → callback.
+
+**Não tocar**
+- `src/routes/admin.clientes.tsx` e `src/components/admin/v2/clientes/*` — apenas deixam de ter entrada de sidebar. Cleanup numa fase posterior.
+- `src/routes/admin.beta-requests.tsx` — intacto.
+- `LeadDetailSheet`, `lead-card`, `lead-communication-timeline`, `commercial-followup-dialog`, `kanban-columns`.
+- BD, Brevo, providers, public report, `src/styles.css`.
+
+## 8. Constraints respeitados
+
+- Sem alterações de schema.
+- Sem chamadas a providers, sem envio de emails.
+- Reutiliza componentes existentes (Kanban, LeadDetailSheet, status-badge, feedback-intent).
+- Mobile-first: tabs shadcn responsivas; tabela em wrapper com scroll horizontal.
+- Apenas tokens semânticos `--admin-*` (sem hardcoded colors, sem slate-*).
+
+## 9. Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run` (incluindo novo teste de `leads-table`)
+- Manual:
+  1. Sidebar mostra "Pipeline" sob grupo "Contactos"; sem "Leads", "Pedidos", "Clientes".
+  2. `/admin/beta-leads` carrega com header "Pipeline" e subtítulo correto.
+  3. Tab Pipeline mostra Kanban como hoje.
+  4. Tab Tabela mostra os mesmos leads em formato tabular.
+  5. Clicar linha ou card abre `LeadDetailSheet` em ambas as tabs.
+  6. `?lead=<id>` continua a abrir o sheet.
+  7. Nenhum título admin contém "Beta".
+  8. `/admin/beta-leads` não erra ao carregar dados (query mantida).
+
+## 10. Fora desta fase
+
+- Eliminar fisicamente `/admin/clientes` e componentes mock.
+- Mover `/admin/beta-requests` para `/admin/sistema/pedidos` (renomeação de URL).
+- Filtros e search na tab Tabela (próxima iteração).
+- Persistência da preferência `?view=` por utilizador.
+
+☐ Aprovas para implementar?
