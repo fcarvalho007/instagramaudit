@@ -164,7 +164,7 @@ export function ReportShellV2({
               {/* 01 · Overview (redesigned) */}
               {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
-                {lockBoundary === "engagement" ? (
+                {lockBoundary === "engagement" && !unlocked ? (
                   <ReportOverviewBlock
                     result={result}
                     renderInsight={renderInsight}
