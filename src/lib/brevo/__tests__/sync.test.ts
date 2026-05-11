@@ -186,7 +186,7 @@ describe("syncLeadToBrevo", () => {
     expect(mockUpsert).not.toHaveBeenCalled();
     expect(mockRecord).toHaveBeenCalledWith(
       expect.objectContaining({
-        eventType: "brevo_contact_sync_failed",
+        eventType: "brevo_contact_sync_skipped",
         metadata: expect.objectContaining({ reason: "NO_MARKETING_CONSENT" }),
       }),
     );
