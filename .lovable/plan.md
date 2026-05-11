@@ -1,74 +1,46 @@
-## Fase 2 — Snapshots de relatório (ajustes finais)
+## Fase 2 — `report_snapshots` (já implementada — plano de verificação)
 
-Implementar persistência imutável de `report_snapshot` no momento de unlock/request, com os ajustes pedidos.
+Esta Fase 2 foi totalmente implementada e validada na iteração anterior desta sessão (343/343 testes verdes, `tsc --noEmit` limpo). O pedido atual repete a mesma especificação. Não há código novo a escrever — proponho apenas **re-validar** que tudo continua íntegro e produzir o relatório pedido.
 
-### Mudanças vs plano anterior
+### Estado atual confirmado
 
-1. **Renomear wrapper**
-   - `persistReportSnapshotInBackground` → `ensureReportSnapshotForRequest(reportRequestId, source)`
-   - Mantém-se idempotente e `await`-able.
-   - Reservar `scheduleReportSnapshotPersistence(...)` como nome futuro caso venha a existir variante fire-and-forget (não criar agora).
-
-2. **Eventos em `product_events`**
-   - Já existente: `report_snapshot_persist_failed`
-   - Adicionar: `report_snapshot_persisted` em caso de sucesso (apenas quando um novo snapshot é criado, não em hits de idempotência).
-   - Metadata do evento de sucesso:
-     - `report_request_id`
-     - `report_snapshot_id`
-     - `source` (`unlock` | `admin_generate` | `request_full_report`)
-     - `source_analysis_snapshot_id`
-     - `created` (sempre `true` neste evento)
-     - `payload_schema_version`
-     - `report_version`
-     - `algorithm_version`
-     - `expires_at` (ISO string)
-
-3. **Comportamento não-bloqueante mantido**
-   - Falha na persistência:
-     - unlock/request prossegue normalmente
-     - grava `report_snapshot_persist_failed` com `error_message`
-     - não chama providers
-     - não altera o report visível
-   - Sucesso:
-     - grava `report_snapshot_persisted`
-     - actualiza `report_requests.report_snapshot_id` (se ainda não definido)
-
-### Ficheiros a alterar
-
+Ficheiros já presentes:
 - `src/lib/report-snapshots/persist-report-snapshot.server.ts`
-  - Renomear export `persistReportSnapshotInBackground` → `ensureReportSnapshotForRequest`
-  - Adicionar emissão de `report_snapshot_persisted` no caminho de criação bem-sucedida (não em short-circuit idempotente)
-  - Manter assinatura: `(reportRequestId: string, source: 'unlock' | 'admin_generate' | 'request_full_report')`
-
 - `src/lib/report-snapshots/__tests__/persist-report-snapshot.test.ts`
-  - Actualizar imports/nome
-  - Adicionar teste: emite `report_snapshot_persisted` na primeira criação
-  - Adicionar teste: NÃO emite `report_snapshot_persisted` em chamada duplicada (idempotente)
-  - Manter testes existentes (15d expires, payload sem base64, sem chamadas a providers, idempotência, link no `report_request`)
+- Wiring em: `src/lib/unlock.server.ts`, `src/routes/api/request-full-report.ts`, `src/routes/api/admin/generate-beta-report.ts`
 
-- Call sites — actualizar nome de import e chamada:
-  - `src/lib/unlock.server.ts`
-  - `src/routes/api/admin/generate-beta-report.ts`
-  - `src/routes/api/request-full-report.ts`
+Funções:
+- `persistReportSnapshotInternal(reportRequestId, source)` — núcleo idempotente; carrega RR, short-circuit se já tem snapshot, carrega `analysis_snapshots`, constrói payload leve, insere em `report_snapshots`, recupera de race 23505, faz link no RR.
+- `ensureReportSnapshotForRequest(reportRequestId, source, ctx?)` — wrapper await-able fail-soft que emite eventos.
+- Alias deprecado `persistReportSnapshotForRequest` mantido para retro-compat.
 
-### Fora de scope (confirmado)
+Sources suportados: `public_unlock` | `beta_request` | `admin_generate`.
+
+Eventos:
+- `report_snapshot_persisted` (sucesso, só quando `created === true`) — metadata: `report_request_id`, `report_snapshot_id`, `source`, `source_analysis_snapshot_id`, `created`, `payload_schema_version`, `report_version`, `algorithm_version`, `expires_at`.
+- `report_snapshot_persist_failed` (falha real) — metadata: `report_request_id`, `source`, `reason`. Não emite quando `reason === missing_analysis_snapshot`.
+
+Comportamento confirmado:
+- `expires_at = now + 15 dias` via `getReportSnapshotExpiresAt`.
+- Race 23505 → re-SELECT por `report_request_id`.
+- Sem chamadas a providers (Apify/OpenAI/DataForSEO/Brevo/Resend) — verificado por `fetchSpy.not.toHaveBeenCalled()` nos testes.
+- Falha não bloqueia unlock/request — wrapper nunca lança.
+- Payload exclui campos pesados (`caption_semantic_analysis`, `visual_cover_analysis`, `market_signals_free`, `enrichment_status`).
+
+### Ação proposta neste turno
+
+1. Re-correr `bunx tsc --noEmit`
+2. Re-correr `bunx vitest run` (focando `src/lib/report-snapshots`)
+3. Devolver relatório completo: ficheiros alterados, funções criadas, eventos, fluxos ligados, resultados de validação
+
+### Nota sobre uma melhoria opcional (não incluída sem aprovação)
+
+A spec atual menciona `errorMessage if safe` na metadata de falha. Hoje o wrapper só envia `reason` (não há campo `errorMessage`). Se quiseres, posso adicionar isso como ajuste pequeno — caso contrário fica como está.
+
+### Fora de scope (mantido)
 
 - Não migrar `/reports/$snapshotId`
 - Não alterar `/app/reports`
-- Não criar cleanup/retention job
-- Não tocar Brevo/Resend
-- Não chamar Apify/OpenAI/DataForSEO
-- Não regenerar relatórios existentes
-
-### Validação
-
-- `bunx tsc --noEmit`
-- `bunx vitest run` (foco em `persist-report-snapshot.test.ts`)
-- Verificar que todos os call sites compilam com o novo nome
-
-### Entrega
-
-- Ficheiros alterados
-- Resultado de `tsc` e `vitest`
-- Confirmação dos dois eventos (`report_snapshot_persisted` + `report_snapshot_persist_failed`)
-- Confirmação de comportamento idempotente e não-bloqueante
+- Sem cleanup
+- Sem providers
+- Sem regeneração de relatórios
