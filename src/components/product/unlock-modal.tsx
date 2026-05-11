@@ -51,9 +51,8 @@ import { trackEvent } from "@/lib/tracking.functions";
 const TOTAL_STEPS = 4;
 
 const OPERATOR_INFO = {
-  name: "DIGITALFC",
-  city: "Lisboa, Portugal",
-  nif: "509XXXXXX",
+  name: "Fomentar Sonhos, Lda.",
+  city: "Leiria, Portugal",
 };
 
 const UNLOCKED_ITEMS = [
@@ -676,7 +675,7 @@ export function UnlockModal({
                   <strong className="font-semibold text-content-secondary">
                     {OPERATOR_INFO.name}
                   </strong>{" "}
-                  · {OPERATOR_INFO.city} · NIF {OPERATOR_INFO.nif} · Cancela quando quiseres.
+                  · {OPERATOR_INFO.city} · Cancela quando quiseres.
                 </p>
               ) : null}
             </form>
