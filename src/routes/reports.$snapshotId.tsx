@@ -52,12 +52,14 @@ interface SnapshotResponse {
   snapshot?: {
     id: string;
     instagram_username: string;
-    payload: SnapshotPayload;
-    meta: { generated_at?: string; instagram_username?: string };
+    payload?: SnapshotPayload;
+    meta?: { generated_at?: string; instagram_username?: string };
     created_at: string;
-    updated_at: string;
+    updated_at?: string;
     expires_at: string | null;
+    expired?: boolean;
     benchmark?: ReportBenchmarkInput;
+    source?: "report_snapshot" | "legacy_analysis_snapshot";
   } | null;
   error_code?: string;
   message?: string;
@@ -95,7 +97,7 @@ function SnapshotReportPage() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/public/analysis-snapshot/by-id/${encodeURIComponent(snapshotId)}`,
+          `/api/public/report-snapshot/by-id/${encodeURIComponent(snapshotId)}`,
         );
         const body = (await res.json().catch(() => null)) as SnapshotResponse | null;
         if (cancelled) return;
@@ -118,7 +120,7 @@ function SnapshotReportPage() {
         const expiresAtIso =
           snap.expires_at ?? getReportExpiresAt(snap.created_at).toISOString();
 
-        if (isReportExpired(expiresAtIso)) {
+        if (snap.expired === true || isReportExpired(expiresAtIso)) {
           setState({ status: "expired", handle: snap.instagram_username });
           return;
         }
