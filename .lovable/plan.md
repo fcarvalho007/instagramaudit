@@ -1,103 +1,70 @@
-## Abrir relatório histórico pelo snapshot exacto
+## Banner de retenção 15d em `/app/reports`
 
-### Estratégia de URL
+### Estado actual (do prompt anterior)
 
-**Escolhida: nova rota pública dedicada `/reports/$snapshotId`.**
+Já implementado:
+- `RetentionBadge` por cartão: "Disponível" / "Expira em N dias" / "Expirado".
+- Linha de metadata `Gerado a … · Expira a …` em cada cartão.
+- Link "Abrir relatório" → `/reports/$snapshotId` (snapshot exacto, sem providers).
+- Quando expirado: CTA disabled "Expirado — gerar novo" com tooltip.
+- `/app/reports/$id` mostra dias restantes + CTA "Gerar novo relatório" se expirado.
 
-Razões:
-- `analyze.$username.tsx` está em `LOCKED_FILES.md` (pre-beta lock). Não tocar.
-- Há já um endpoint pronto (`/api/public/analysis-snapshot/by-id/$snapshotId`) que devolve o payload imutável por UUID e que `/report/print/$snapshotId` já consome.
-- URL semântica e partilhável; não polui search params do `/analyze`.
-- Fluxo isolado: zero chamada a `fetchPublicAnalysis` → garante que **nenhum provider** é invocado ao abrir histórico.
+### Lacunas a corrigir neste prompt
 
-Alternativa rejeitada: `/analyze/$username?snapshot=<id>` — exigia editar ficheiro locked + branch condicional no pipeline público.
+1. **Banner explicativo** no topo de `/app/reports` (antes dos stats) com a cópia exacta pedida pelo utilizador — ainda não existe.
+2. Ajustar **CTA expirado no cartão** para texto "Gerar nova análise" (estava "Expirado — gerar novo") e torná-lo um `<Link to="/">` real, não um botão `disabled` — mais útil ao utilizador (clica e gera nova análise).
 
-### Auditoria do estado actual
+### Plano
 
-| Sítio | Comportamento hoje | Problema |
-|---|---|---|
-| `app.reports.tsx` "Abrir relatório" | `<Link to="/analyze/$username" params={{ username }}>` | Carrega snapshot mais recente; dispara pipeline público |
-| `app.reports.$id.tsx` "Abrir relatório" | mesmo `<Link to="/analyze/$username">` | Idem |
-| `app.reports.tsx` UI | Sem expiry, sem dias restantes, sem badge "Expirado" | Falta sinal de retenção 15d |
+#### Passo 1 — `RetentionNotice` no topo
 
----
+Em `src/routes/app.reports.tsx`, adicionar componente `RetentionNotice` renderizado logo a seguir ao header da página (antes do grid de stats). Card discreto com `Info` icon e cópia em pt-PT:
 
-## Plano
+> "Os relatórios ficam guardados durante 15 dias. Durante esse período, podes voltar a abrir exatamente a análise gerada, sem recalcular dados. Depois disso, removemos os dados antigos para manter o serviço sustentável e eficiente."
 
-### Passo 1 — Nova rota pública `src/routes/reports.$snapshotId.tsx`
+Estilo:
+- `rounded-xl border border-border-default/20 bg-surface-muted px-4 py-3`
+- Icon `Info` (lucide) em `text-content-tertiary`
+- Texto `text-sm text-content-secondary leading-relaxed`
+- Sem cor hardcoded, mobile-first (375px ok — flex column natural)
 
-- `createFileRoute("/reports/$snapshotId")`, SSR off, `noindex` (privado-ish; não queremos indexar).
-- `useEffect` único: `fetch("/api/public/analysis-snapshot/by-id/" + snapshotId)`.
-- Estados:
-  - `loading` → `<AnalysisSkeleton />`.
-  - `404 / SNAPSHOT_NOT_FOUND` ou `INVALID_SNAPSHOT_ID` → empty state com CTA "Analisar novo perfil" → `/`.
-  - `expired` (calculado via `isReportExpired(snapshot.expires_at)`; fallback `getReportExpiresAt(snapshot.created_at)` se a coluna estiver nula) → empty state "Relatório expirado" + `formatRetentionMessage()` + CTA "Gerar novo relatório" → `/`.
-  - `ready` → `<ReportShellV2 result snapshotId payload analyzedAtIso expiresAtIso variant="public_mvp" />` (mesmo render que o admin preview por snapshot).
-- `head()`: `noindex, nofollow`. Título "Relatório · @{handle} · InstaBench".
-- **Não** chama `fetchPublicAnalysis`. **Não** escreve na BD.
+Renderizar só quando `!loading && !error` para não competir com estados de loading.
 
-### Passo 2 — Atualizar `app.reports.tsx`
+#### Passo 2 — Cartão expirado: CTA accionável
 
-- Estender `UserReport` consumido (já tem `analysisSnapshotId` + `createdAt`).
-- Helper local `deriveRetention(createdAt)`:
-  - `expiresAt = getReportExpiresAt(createdAt)`
-  - `expired = isReportExpired(expiresAt)`
-  - `daysLeft = Math.max(0, ceil((expires - now)/dia))`
-  - `state: "available" | "expiring" | "expired"` (expiring = `daysLeft <= 3 && !expired`)
-- Novo `RetentionBadge`:
-  - "Disponível" (verde) | "Expira em X dias" (âmbar, se `daysLeft <= 3`) | "Expirado" (cinza).
-- No `ReportCard`:
-  - Adicionar linha de metadata: `Gerado a {data} · Expira a {data} · {RetentionBadge}`.
-  - Substituir `<Link to="/analyze/$username">` por **`<Link to="/reports/$snapshotId">`** quando `hasSnapshot && !expired`.
-  - Quando `expired`: substituir por botão `disabled` com label "Expirado — gerar novo" e tooltip via `formatRetentionMessage()`.
-  - Quando `!hasSnapshot`: estado actual (esconder CTA).
+No `ReportCard`, substituir o botão `disabled` "Expirado — gerar novo" por:
 
-### Passo 3 — Atualizar `app.reports.$id.tsx`
+```tsx
+<Link to="/" className="… variante primária discreta …">
+  <Search className="size-3" />
+  Gerar nova análise
+</Link>
+```
 
-- Idem helper `deriveRetention`.
-- No bloco "Relatório web":
-  - Substituir `<Link to="/analyze/$username">` por `<Link to="/reports/$snapshotId">` quando `hasSnapshot && !expired`.
-  - Se `expired`: secção mostra `RetentionBadge` "Expirado" + `formatRetentionMessage()` + CTA "Analisar novo perfil" → `/`.
-- Adicionar pequeno bloco de retenção no header card (data geração + expiry + dias restantes + badge).
+Mantém o aria/label semântico de "expirado" via badge + título do cartão; o CTA fica accionável (princípio de "não bloquear o utilizador, oferecer caminho").
 
-### Passo 4 — Constrangimentos respeitados
+#### Passo 3 — Validação
 
-- `analyze.$username.tsx` (locked) **não** tocado.
-- Sem migrações de schema.
-- Sem chamadas a Apify / OpenAI / DataForSEO (a rota nova só `SELECT` na BD via endpoint existente).
-- Sem mexer em Brevo/Resend.
-- Sem refactor de routing — uma rota nova, dois ficheiros editados.
-- Sem alterar cálculos do relatório (reusa `snapshotToReportData`).
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Manual @ 375px:
+  - Banner não causa overflow horizontal
+  - Cartão com retenção activa: badge "Disponível" ou "Expira em N dias"
+  - Cartão expirado: badge "Expirado" + CTA "Gerar nova análise" leva a `/`
 
-### Passo 5 — Caveat técnica documentada (no docstring do novo route)
+### Constrangimentos respeitados
 
-`analysis_snapshots` faz upsert por `cache_key`. Carregar por UUID é a melhor garantia disponível dentro das restrições actuais e é estável dentro da janela de 15d (nova retenção alinhada). Cloning per-report-request fica fora de scope desta fase — pode ser feito num passo futuro se exigirem imutabilidade absoluta.
+- Sem providers, sem deletes, sem cálculos alterados.
+- Sem mexer em admin nem email.
+- Tudo via tokens semânticos existentes.
 
-### Passo 6 — Testes
+### Ficheiros tocados
 
-- `bunx tsc --noEmit`.
-- `bunx vitest run` — sanity, nenhum dos novos componentes muda a lógica testada.
-- Smoke manual:
-  1. Criar relatório A → abrir via `/app/reports` → carrega `/reports/$snapshotId` → ver `expires_at` em ~15d.
-  2. Criar relatório B (handle diferente) → confirmar que abrir A continua a mostrar dados de A.
-  3. Forçar `expired` no DevTools (mock `Date.now()` ou edit `created_at` via DB) → confirmar empty state "Expirado".
-  4. Network tab: zero requests para `/api/analyze/*`.
+- `src/routes/app.reports.tsx` (banner + ajuste CTA expirado)
 
----
+### Checkpoints
 
-## Ficheiros tocados
-
-- **Novo:** `src/routes/reports.$snapshotId.tsx` (~150 linhas)
-- **Editado:** `src/routes/app.reports.tsx` — `RetentionBadge`, link target, metadata expiry
-- **Editado:** `src/routes/app.reports.$id.tsx` — link target, bloco retenção
-- (Implícito) `src/routeTree.gen.ts` regenerado pelo plugin
-
-## Checkpoints
-
-- ☐ Rota nova `/reports/$snapshotId` carrega snapshot por UUID, sem providers
-- ☐ Estado `expired` mostra empty state + CTA, **não** carrega o relatório
-- ☐ `/app/reports` aponta para `/reports/$snapshotId` em vez de `/analyze/$username`
-- ☐ `/app/reports/$id` aponta para `/reports/$snapshotId`
-- ☐ `RetentionBadge` (Disponível / Expira em X dias / Expirado) presente em `/app/reports` e detalhe
-- ☐ `analyze.$username.tsx` intocado (locked)
-- ☐ `tsc --noEmit` + `vitest run` verdes
+- ☐ Banner com a cópia exacta visível no topo de `/app/reports`
+- ☐ CTA expirado é um Link accionável "Gerar nova análise" → `/`
+- ☐ `tsc` + `vitest` verdes
+- ☐ Sem overflow a 375px
