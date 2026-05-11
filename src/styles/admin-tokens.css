@@ -74,6 +74,36 @@
 
   /* === Bordas (alinhado com tokens globais) === */
   --admin-border-rgb: 15 27 61;
+
+  /* === Stages do fluxo de automações ====================================
+   * Cada stage tem uma cor principal + um background suave. Brand-aligned
+   * (não reutiliza `--admin-info-500` etc. porque os hues divergem do
+   * sistema principal — ver memory: Primary accent #3772E5).
+   * ====================================================================== */
+  --admin-stage-onboarding: 118 100 228;        /* #7664E4 */
+  --admin-stage-onboarding-bg: 242 240 254;     /* #F2F0FE */
+  --admin-stage-captacao: 55 114 229;           /* #3772E5 brand blue */
+  --admin-stage-captacao-bg: 238 244 254;       /* #EEF4FE */
+  --admin-stage-entrega: 29 158 117;            /* alias de revenue-500 */
+  --admin-stage-entrega-bg: 234 247 241;        /* #EAF7F1 */
+  --admin-stage-conversao: 216 90 48;           /* alias de signal-500 */
+  --admin-stage-conversao-bg: 253 239 234;      /* #FDEFEA */
+
+  /* === Pílulas de estado (bg + fg) ====================================== */
+  --admin-pill-active-bg: 225 244 232;
+  --admin-pill-active-fg: 29 158 117;
+  --admin-pill-blocked-bg: 237 237 234;
+  --admin-pill-blocked-fg: 90 107 140;
+  --admin-pill-warn-bg: 250 238 218;
+  --admin-pill-warn-fg: 186 117 23;
+  --admin-pill-info-bg: 224 235 251;
+  --admin-pill-info-fg: 24 95 165;
+  --admin-pill-info-soft-bg: 244 248 254;       /* timing strip background */
+  --admin-pill-warn-soft-bg: 255 247 232;       /* undefined trigger banner */
+  --admin-pill-warn-soft-border: 244 220 166;
+
+  /* === Chrome ============================================================ */
+  --admin-button-dark: 15 27 61;                /* #0F1B3D primary action */
 }
 
 /**

@@ -1,5 +1,6 @@
 /**
  * StageGroup — agrupa cards de uma stage do ciclo de vida.
+ * Recebe tokens (sem `--`); resolve via `rgb(var(--<token>))`.
  */
 
 import type { ReactNode } from "react";
@@ -9,28 +10,31 @@ interface Props {
   eyebrow: string;
   title: string;
   meta?: string;
-  color: string;
-  bg: string;
+  tokenColor: string;
+  tokenBg: string;
   children: ReactNode;
 }
 
-export function StageGroup({ number, eyebrow, title, meta, color, bg, children }: Props) {
+export function StageGroup({ number, eyebrow, title, meta, tokenColor, tokenBg, children }: Props) {
   return (
     <section
       className="relative rounded-2xl border px-4 py-4 sm:px-5 sm:py-5"
-      style={{ background: bg, borderColor: `${color}26` }}
+      style={{
+        background: `rgb(var(--${tokenBg}))`,
+        borderColor: `color-mix(in oklab, rgb(var(--${tokenColor})) 18%, transparent)`,
+      }}
     >
       <header className="mb-3 flex flex-wrap items-end gap-x-4 gap-y-1">
         <span
           className="font-serif text-[36px] font-medium leading-none tabular-nums"
-          style={{ color }}
+          style={{ color: `rgb(var(--${tokenColor}))` }}
         >
           {number}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span
             className="text-[10px] font-bold uppercase tracking-[0.14em]"
-            style={{ color }}
+            style={{ color: `rgb(var(--${tokenColor}))` }}
           >
             {eyebrow}
           </span>
