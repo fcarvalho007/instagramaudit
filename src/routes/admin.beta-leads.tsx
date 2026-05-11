@@ -38,7 +38,24 @@ export const Route = createFileRoute("/admin/beta-leads")({
 
 async function fetchLeads(): Promise<EnrichedLead[]> {
   const res = await fetch("/api/admin/leads-kanban", { credentials: "include" });
-  if (!res.ok) throw new Error("Falha ao carregar leads");
+  if (!res.ok) {
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const body = await res.json();
+      code = body?.code;
+      message = body?.error ?? body?.message;
+    } catch {
+      /* sem body JSON */
+    }
+    const err = new Error(message ?? "Falha ao carregar leads") as Error & {
+      status?: number;
+      code?: string;
+    };
+    err.status = res.status;
+    err.code = code;
+    throw err;
+  }
   const json = await res.json();
   return json.leads ?? [];
 }
