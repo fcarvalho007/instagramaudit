@@ -96,8 +96,8 @@ vi.stubGlobal("fetch", fetchSpy);
 // ---- imports after mocks --------------------------------------------------
 
 import {
+  persistReportSnapshotInternal,
   ensureReportSnapshotForRequest,
-  persistReportSnapshotForRequest,
 } from "../persist-report-snapshot.server";
 import { REPORT_RETENTION_MS } from "@/lib/report/retention";
 
@@ -132,7 +132,7 @@ function baseAnalysisPayload() {
 
 // ---- tests ----------------------------------------------------------------
 
-describe("ensureReportSnapshotForRequest", () => {
+describe("persistReportSnapshotInternal", () => {
   beforeEach(() => {
     reset();
     vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -157,9 +157,9 @@ describe("ensureReportSnapshotForRequest", () => {
     });
     tables.report_snapshots = { ...freshState(), insertResult: { data: { id: "rs-new" }, error: null } };
 
-    const r = await ensureReportSnapshotForRequest("rr-1", "public_unlock");
+    const r = await persistReportSnapshotInternal("rr-1", "public_unlock");
 
-    expect(r).toEqual({ snapshotId: "rs-new", created: true });
+    expect(r).toMatchObject({ snapshotId: "rs-new", created: true });
     expect(tables.report_snapshots.insertCalls).toHaveLength(1);
 
     const inserted = tables.report_snapshots.insertCalls[0];
@@ -194,7 +194,7 @@ describe("ensureReportSnapshotForRequest", () => {
     tables.report_snapshots = freshState();
     tables.analysis_snapshots = freshState();
 
-    const r = await ensureReportSnapshotForRequest("rr-1", "public_unlock");
+    const r = await persistReportSnapshotInternal("rr-1", "public_unlock");
 
     expect(r).toEqual({ snapshotId: "rs-existing", created: false });
     expect(tables.analysis_snapshots.selectCalls).toBe(0);
@@ -224,9 +224,9 @@ describe("ensureReportSnapshotForRequest", () => {
       selectRow: { id: "rs-race-existing" },
     };
 
-    const r = await ensureReportSnapshotForRequest("rr-1", "public_unlock");
+    const r = await persistReportSnapshotInternal("rr-1", "public_unlock");
 
-    expect(r).toEqual({ snapshotId: "rs-race-existing", created: false });
+    expect(r).toMatchObject({ snapshotId: "rs-race-existing", created: false });
     expect(tables.report_snapshots.insertCalls).toHaveLength(1);
   });
 
@@ -242,7 +242,7 @@ describe("ensureReportSnapshotForRequest", () => {
     });
     tables.report_snapshots = freshState();
 
-    const r = await ensureReportSnapshotForRequest("rr-1", "public_unlock");
+    const r = await persistReportSnapshotInternal("rr-1", "public_unlock");
     expect(r.snapshotId).toBeNull();
     expect(r.reason).toBe("missing_analysis_snapshot");
     expect(tables.report_snapshots.insertCalls).toHaveLength(0);
@@ -269,7 +269,7 @@ describe("ensureReportSnapshotForRequest", () => {
     });
     tables.report_snapshots = { ...freshState(), insertResult: { data: { id: "rs-1" }, error: null } };
 
-    await ensureReportSnapshotForRequest("rr-1", "beta_request");
+    await persistReportSnapshotInternal("rr-1", "beta_request");
 
     const inserted = tables.report_snapshots.insertCalls[0];
     const expires = new Date(inserted.expires_at as string).getTime();
@@ -285,7 +285,7 @@ describe("ensureReportSnapshotForRequest", () => {
   });
 });
 
-describe("persistReportSnapshotForRequest (wrapper fail-soft)", () => {
+describe("ensureReportSnapshotForRequest (wrapper fail-soft)", () => {
   beforeEach(() => {
     reset();
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -312,7 +312,7 @@ describe("persistReportSnapshotForRequest (wrapper fail-soft)", () => {
       insertResult: { data: null, error: { code: "OTHER", message: "boom" } },
     };
 
-    const r = await persistReportSnapshotForRequest("rr-1", "public_unlock", {
+    const r = await ensureReportSnapshotForRequest("rr-1", "public_unlock", {
       handle: "x",
       leadId: "lead-1",
       snapshotId: "as-1",
@@ -320,6 +320,7 @@ describe("persistReportSnapshotForRequest (wrapper fail-soft)", () => {
     expect(r.snapshotId).toBeNull();
     expect(r.reason).toBe("insert_error");
     expect(recordedEvents.some(e => e.eventType === "report_snapshot_persist_failed")).toBe(true);
+    expect(recordedEvents.some(e => e.eventType === "report_snapshot_persisted")).toBe(false);
   });
 
   it("não emite evento quando reason é missing_analysis_snapshot", async () => {
@@ -334,7 +335,65 @@ describe("persistReportSnapshotForRequest (wrapper fail-soft)", () => {
     });
     tables.report_snapshots = freshState();
 
-    await persistReportSnapshotForRequest("rr-1", "public_unlock");
+    await ensureReportSnapshotForRequest("rr-1", "public_unlock");
     expect(recordedEvents).toHaveLength(0);
+  });
+
+  it("emite report_snapshot_persisted na primeira criação com metadata completa", async () => {
+    seedReportRequest({
+      id: "rr-1",
+      lead_id: "lead-1",
+      user_id: null,
+      instagram_username: "frederico.m.carvalho",
+      competitor_usernames: ["a"],
+      analysis_snapshot_id: "as-1",
+      report_snapshot_id: null,
+    });
+    seedAnalysisSnapshot({
+      id: "as-1",
+      instagram_username: "frederico.m.carvalho",
+      normalized_payload: baseAnalysisPayload(),
+      created_at: "2026-05-11T10:00:00.000Z",
+    });
+    tables.report_snapshots = { ...freshState(), insertResult: { data: { id: "rs-new" }, error: null } };
+
+    const r = await ensureReportSnapshotForRequest("rr-1", "public_unlock", {
+      handle: "frederico.m.carvalho",
+      leadId: "lead-1",
+      snapshotId: "as-1",
+    });
+
+    expect(r.created).toBe(true);
+    expect(r.snapshotId).toBe("rs-new");
+    const ev = recordedEvents.find(e => e.eventType === "report_snapshot_persisted");
+    expect(ev).toBeDefined();
+    const md = ev?.metadata as Record<string, unknown>;
+    expect(md.report_request_id).toBe("rr-1");
+    expect(md.report_snapshot_id).toBe("rs-new");
+    expect(md.source).toBe("public_unlock");
+    expect(md.source_analysis_snapshot_id).toBe("as-1");
+    expect(md.created).toBe(true);
+    expect(md.payload_schema_version).toBe("report.v1");
+    expect(md.report_version).toBe("free.v1");
+    expect(md.algorithm_version).toBe("analysis.v1");
+    expect(typeof md.expires_at).toBe("string");
+  });
+
+  it("não emite report_snapshot_persisted em chamada duplicada (idempotente)", async () => {
+    seedReportRequest({
+      id: "rr-1",
+      lead_id: "lead-1",
+      user_id: null,
+      instagram_username: "x",
+      competitor_usernames: [],
+      analysis_snapshot_id: "as-1",
+      report_snapshot_id: "rs-existing",
+    });
+    tables.report_snapshots = freshState();
+    tables.analysis_snapshots = freshState();
+
+    const r = await ensureReportSnapshotForRequest("rr-1", "public_unlock");
+    expect(r).toEqual({ snapshotId: "rs-existing", created: false });
+    expect(recordedEvents.some(e => e.eventType === "report_snapshot_persisted")).toBe(false);
   });
 });

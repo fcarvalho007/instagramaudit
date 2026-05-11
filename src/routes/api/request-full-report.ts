@@ -24,7 +24,7 @@ import {
   runInBackground,
   runReportPipeline,
 } from "@/lib/orchestration/run-report-pipeline";
-import { persistReportSnapshotForRequest } from "@/lib/report-snapshots/persist-report-snapshot.server";
+import { ensureReportSnapshotForRequest } from "@/lib/report-snapshots/persist-report-snapshot.server";
 
 const PayloadSchema = z.object({
   email: z.string().trim().email().max(255),
@@ -302,7 +302,7 @@ export const Route = createFileRoute("/api/request-full-report")({
 
         // Phase 2 — persist immutable report_snapshot before pipeline kicks off.
         // Fail-soft: never blocks the user-facing response.
-        await persistReportSnapshotForRequest(reqRow.id, "beta_request", {
+        await ensureReportSnapshotForRequest(reqRow.id, "beta_request", {
           handle: instagram_username,
           leadId: leadRow.id,
           snapshotId: validatedSnapshotId,
