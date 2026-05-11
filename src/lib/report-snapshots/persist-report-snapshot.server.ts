@@ -35,11 +35,53 @@ export interface PersistResult {
   snapshotId: string | null;
   created: boolean;
   reason?: PersistReason;
+  /**
+   * Mensagem técnica curta e sanitizada (≤300 chars). Sem emails,
+   * sem tokens longos, sem JSON bruto. Só presente em casos de falha.
+   */
+  errorMessage?: string;
   sourceAnalysisSnapshotId?: string | null;
   payloadSchemaVersion?: string;
   reportVersion?: string;
   algorithmVersion?: string;
   expiresAt?: string;
+}
+
+const MAX_ERROR_MESSAGE_LENGTH = 300;
+
+/**
+ * Extrai uma mensagem técnica curta de um erro arbitrário, garantindo
+ * que não vazam emails, tokens, secrets, payloads JSON ou stack traces.
+ */
+function sanitizeErrorMessage(err: unknown): string {
+  let raw: string | undefined;
+  if (err instanceof Error) raw = err.message;
+  else if (typeof err === "string") raw = err;
+  else if (err && typeof err === "object" && "message" in err) {
+    const m = (err as { message?: unknown }).message;
+    if (typeof m === "string") raw = m;
+  }
+  if (!raw) return "unknown_error";
+  const trimmed = raw.trim();
+  if (!trimmed) return "unknown_error";
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "non_text_error";
+
+  let cleaned = trimmed
+    // emails
+    .replace(/\S+@\S+\.\S+/g, "[email]")
+    // tokens longos / JWTs / chaves
+    .replace(/[A-Za-z0-9_\-]{32,}/g, "[token]")
+    // controle / quebras de linha
+    .replace(/[\r\n\t\u0000-\u001F]+/g, " ")
+    // colapsar whitespace
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return "unknown_error";
+  if (cleaned.length > MAX_ERROR_MESSAGE_LENGTH) {
+    cleaned = cleaned.slice(0, MAX_ERROR_MESSAGE_LENGTH - 1) + "…";
+  }
+  return cleaned;
 }
 
 export async function persistReportSnapshotInternal(
@@ -119,7 +161,12 @@ export async function persistReportSnapshotInternal(
       reportRequestId,
       err,
     );
-    return { snapshotId: null, created: false, reason: "build_error" };
+    return {
+      snapshotId: null,
+      created: false,
+      reason: "build_error",
+      errorMessage: sanitizeErrorMessage(err),
+    };
   }
 
   const nowIso = new Date().toISOString();
@@ -166,7 +213,12 @@ export async function persistReportSnapshotInternal(
           reportRequestId,
           insertErr,
         );
-        return { snapshotId: null, created: false, reason: "insert_error" };
+        return {
+          snapshotId: null,
+          created: false,
+          reason: "insert_error",
+          errorMessage: sanitizeErrorMessage(insertErr),
+        };
       }
     } else {
       console.error(
@@ -174,7 +226,12 @@ export async function persistReportSnapshotInternal(
         reportRequestId,
         insertErr,
       );
-      return { snapshotId: null, created: false, reason: "insert_error" };
+      return {
+        snapshotId: null,
+        created: false,
+        reason: "insert_error",
+        errorMessage: sanitizeErrorMessage(insertErr),
+      };
     }
   } else {
     snapshotId = inserted.id as string;
@@ -251,6 +308,7 @@ export async function ensureReportSnapshotForRequest(
             report_request_id: reportRequestId,
             source,
             reason: result.reason,
+            error_message: result.errorMessage ?? null,
           },
         });
       } catch {
@@ -264,7 +322,12 @@ export async function ensureReportSnapshotForRequest(
       reportRequestId,
       err,
     );
-    return { snapshotId: null, created: false, reason: "insert_error" };
+    return {
+      snapshotId: null,
+      created: false,
+      reason: "insert_error",
+      errorMessage: sanitizeErrorMessage(err),
+    };
   }
 }
 
