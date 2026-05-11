@@ -12,6 +12,7 @@ import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { recordProductEvent } from "@/lib/tracking.server";
+import { persistReportSnapshotForRequest } from "@/lib/report-snapshots/persist-report-snapshot.server";
 
 export const PROFILE_OWNERSHIPS = [
   "own_profile",
@@ -406,6 +407,13 @@ export async function processReportUnlock(
         },
       });
     }
+
+    // Phase 2 — persist immutable report_snapshot (fail-soft, no providers)
+    await persistReportSnapshotForRequest(reportRequestId, "public_unlock", {
+      handle: data.instagram_username,
+      leadId,
+      snapshotId: data.analysis_snapshot_id,
+    });
 
     // 5. Best-effort lifecycle advance (fail-open).
     try {
