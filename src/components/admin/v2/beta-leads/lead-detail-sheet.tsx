@@ -236,7 +236,7 @@ type TabKey = "resumo" | "relatorio" | "feedback" | "comunicacao" | "historico";
 
 const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
   { key: "resumo", label: "Resumo" },
-  { key: "relatorio", label: "Relatório" },
+  { key: "relatorio", label: "Relatórios" },
   { key: "feedback", label: "Feedback" },
   { key: "comunicacao", label: "Comunicação" },
   { key: "historico", label: "Histórico" },
