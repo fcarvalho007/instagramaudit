@@ -93,7 +93,13 @@ function BetaLeadsPage() {
               ? {
                   ...l,
                   ...(updates.commercial_status
-                    ? { commercial_status: updates.commercial_status as string }
+                    ? {
+                        commercial_status: updates.commercial_status as string,
+                        last_interaction: new Date().toISOString(),
+                        ...(updates.commercial_status === "arquivado"
+                          ? { archived_at: new Date().toISOString() }
+                          : { archived_at: null }),
+                      }
                     : {}),
                   ...(typeof updates.internal_notes === "string"
                     ? { internal_notes: updates.internal_notes }
