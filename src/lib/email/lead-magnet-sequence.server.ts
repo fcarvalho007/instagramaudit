@@ -17,6 +17,12 @@ export interface LeadMagnetSequenceArgs {
   leadId: string;
   reportRequestId: string;
   snapshotId: string;
+  /**
+   * Optional immutable historical snapshot id. When provided, email CTAs
+   * point to `/reports/{reportSnapshotId}`. Falls back to handle-based URL
+   * when missing.
+   */
+  reportSnapshotId?: string | null;
   toEmail: string;
   firstName: string | null;
   instagramHandle: string;
@@ -148,6 +154,7 @@ export async function sendLeadMagnetSequence(
           leadId: args.leadId,
           reportRequestId: args.reportRequestId,
           snapshotId: args.snapshotId,
+          reportSnapshotId: args.reportSnapshotId ?? null,
         });
         if (res.ok) {
           welcome = "sent";
@@ -232,6 +239,7 @@ export async function sendLeadMagnetSequence(
         leadId: args.leadId,
         reportRequestId: args.reportRequestId,
         snapshotId: args.snapshotId,
+        reportSnapshotId: args.reportSnapshotId ?? null,
       });
       if (res.ok) {
         summary = "sent";
