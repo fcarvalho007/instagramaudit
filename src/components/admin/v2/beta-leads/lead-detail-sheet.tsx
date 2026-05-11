@@ -310,7 +310,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     }
 
     setTimelineLoading(true);
-    fetch(`/api/admin/lead-timeline/${lead.id}`, { credentials: "include" })
+    adminFetch(`/api/admin/lead-timeline/${lead.id}`)
       .then((r) => r.json())
       .then((json) => setTimeline(json.events ?? []))
       .catch(() => setTimeline([]))
