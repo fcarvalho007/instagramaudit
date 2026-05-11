@@ -1,81 +1,65 @@
-## Auditoria — `/reports/$snapshotId` (read-only, sem alterações)
+## Auditoria — Consolidação CRM (`/admin/beta-leads`) — read-only
 
-### 1. Comportamento actual
+`bunx tsc --noEmit` → **PASS** (0 erros)
+`bunx vitest run` → **PASS** (31 ficheiros, 334 testes)
 
-**Rota:** `src/routes/reports.$snapshotId.tsx`
-- `ssr: false`, `noindex, nofollow`.
-- Faz `fetch("/api/public/analysis-snapshot/by-id/:id")`.
-- Renderiza `<ReportShellV2 variant="public_mvp">` com `snapshotId`, `payload`, `analyzedAtIso`, `expiresAtIso`. Sem chamadas a providers, sem regeneração.
+### Checklist
 
-**Endpoint:** `src/routes/api/public/analysis-snapshot.by-id.$snapshotId.ts`
-- `SELECT id, instagram_username, normalized_payload, created_at, updated_at, expires_at FROM analysis_snapshots WHERE id = :snapshotId`.
-- Calcula `benchmark` em runtime via `buildReportBenchmarkInput(payload)`. Não escreve.
+#### 1. Sidebar (`src/components/admin/v2/admin-sidebar.tsx`)
+- ✅ Sem entrada "Clientes" mock — não existe item para `/admin/clientes` na navegação primária.
+- ✅ Sem "Pedidos" como item primário — `/admin/beta-requests` não está na sidebar.
+- ✅ Group label claro: **"Contactos"** (eyebrow) com itens "Pipeline" e "Tabela".
+- ✅ "Pipeline" visível e aponta para `/admin/beta-leads` (sem `view`, default = pipeline).
+- ✅ "Tabela" aponta para `/admin/beta-leads` com `search={ view: "tabela" }`; estado activo desambiguado por `matchView` na lógica `isActive` (linhas 146-158).
 
-**Resposta à pergunta 1:** `snapshotId` representa hoje **`analysis_snapshots.id`**, não `report_snapshots.id`. A `/reports/$snapshotId.tsx` nunca toca em `report_snapshots`.
+#### 2. `/admin/beta-leads` (`src/routes/admin.beta-leads.tsx`)
+- ⚠️ **Título da página é "Contactos"** (linha 164), não "Pipeline" como no enunciado da auditoria. Decidir intencionalidade — ver "Issues" abaixo.
+- ✅ Não há texto "Beta Leads" visível no UI da rota nem no `AdminPageHeader`.
+- ✅ Tab Pipeline renderiza `<KanbanBoard leads={leads} … />` com dados reais de `/api/admin/leads-kanban` (sem mocks).
+- ✅ Tab Tabela renderiza `<LeadsTable leads={leads} … />` — mesma fonte, mesmo array; nenhum hardcode numérico.
+- ✅ `?lead=<id>` abre `LeadDetailSheet` via `activeLead` derivado do search param (linhas 151-154, 234-241).
+- ✅ Clique no card chama `onOpenDetail={openDetail}` → `setActiveLeadId` → atualiza URL → abre sheet.
+- ✅ Clique na linha da tabela usa o mesmo `openDetail`.
+- ✅ `validateSearch` aceita `view: "pipeline" | "tabela"` e ignora outros valores.
 
-### 2. Imutabilidade — risco confirmado
+#### 3. `/admin/clientes` (`src/routes/admin.clientes.tsx`)
+- ✅ Não está na sidebar.
+- ✅ É **redirect** server-side (`beforeLoad → throw redirect({ to: "/admin/beta-leads", replace: true })`) — não há números fake porque o componente nunca renderiza.
 
-`src/lib/analysis/cache.ts:193`:
-```ts
-.upsert(row as never, { onConflict: "cache_key" })
-```
-- `analysis_snapshots` tem unique em `cache_key`. Quando uma nova análise produz o mesmo `cache_key` (mesmo `network|handle|conjunto-de-competitors|...`), o Postgres faz `UPDATE` da linha existente.
-- O **`id` mantém-se**, mas `normalized_payload`, `updated_at` e `expires_at` mudam.
-- O comentário no topo da rota já reconhece a "caveat técnica" e diz que clonar por `report_request` está fora de scope desta fase.
+#### 4. `/admin/beta-requests` (`src/routes/admin.beta-requests.tsx`)
+- ✅ Não está na sidebar.
+- ✅ Continua acessível por URL directa (utilitário). Página intacta.
+- ✅ Sem imports partidos (tsc passa). Topbar mantém label "Pedidos de relatório" (`admin-topbar.tsx:25`) para mostrar título correcto se alguém aceder via URL.
 
-**Resposta à pergunta 2:** Não. Abrir `/reports/$snapshotId` **não é verdadeiramente imutável** dentro da janela de retenção. Cenários práticos onde o conteúdo muda sem o id mudar:
+#### 5. Command palette (`src/components/admin/v2/admin-command-palette.tsx`)
+- ❌ **Não tem entradas de página**. Hoje só pesquisa leads (resultados vão para `/admin/beta-leads?lead=<id>`). "Pipeline" e "Tabela / Contactos" como atalhos de navegação não estão implementados. Pesquisar "Pipeline" no palette **não funciona** como navegação.
+- ✅ Nenhum resultado primário aponta para `/admin/clientes`.
 
-- Mesmo handle re-analisado por outro utilizador (público) com a mesma combinação de competitors → `cache_key` colide → `UPDATE` do payload da linha apontada por todos os `report_requests` antigos com aquele `analysis_snapshot_id`.
-- Mesmo handle re-analisado pelo próprio utilizador antes do TTL expirar → idem.
-- Enriquecimentos (comments, DFS, OpenAI) que escrevem em cima de `normalized_payload` via `set_enrichment_status`/jobs depois da primeira leitura → o relatório histórico vê os enrichments novos.
-- `expires_at` é movido para o futuro a cada upsert → a janela de retenção "rejuvenesce" relativamente ao primeiro `report_request`.
+#### 6. Mobile (375px)
+- ✅ `TabsList` com 2 triggers cabe sem overflow a 375px (largura mínima ~28ch).
+- ✅ `LeadsTable`: container tem `overflow-hidden` no card e `overflow-x-auto` no wrapper interno (`leads-table.tsx:235`) — tabela faz scroll horizontal sem partir layout.
+- ✅ `LeadDetailSheet` é `Sheet` do shadcn (lateral) → continua usável; URL `?lead=<id>` continua a abrir o mesmo sheet em mobile.
 
-**Resposta à pergunta 3:** Sim, confirmado. `analysis_snapshots` é uma camada de cache mutável por `cache_key`, não um arquivo histórico.
+### Issues encontradas
 
-### 3. Migração desejável para `report_snapshots`
+| # | Severidade | Local | Problema |
+|---|-----------|-------|----------|
+| 1 | Média | `admin.beta-leads.tsx:164` | Título da página é "Contactos" mas a auditoria espera "Pipeline". A sidebar tem item "Pipeline" + "Tabela" sob o group "Contactos", o que sugere que o título correcto da **página** devia espelhar o item activo (Pipeline / Tabela) ou ficar simplesmente "Contactos". O actual "Contactos" é coerente com o group label. |
+| 2 | Baixa | `admin-command-palette.tsx` | Faltam entradas de navegação no palette (Pipeline, Tabela). O palette atual só tem leads — pesquisar "Pipeline" devolve `Nenhuma lead encontrada`. |
+| 3 | Cosmética | `admin-topbar.tsx:24` | Mapeamento `"/admin/beta-leads": "Contactos"` — está alinhado com o título da página, mas se decidirmos mudar o título para "Pipeline / Tabela" dinâmico, o topbar tem de seguir. |
 
-`report_snapshots` (Fase 1 já criada) foi desenhado precisamente para isto:
-- `report_payload_jsonb` é congelado no momento da geração.
-- `payload_schema_version`, `report_version`, `algorithm_version` permitem render determinístico.
-- 1 linha por `report_request_id` (índice único parcial recém-criado).
-- Sem upsert por `cache_key`; nenhum job de enriquecimento o re-escreve.
+### Recomendação de fixes (não aplicar agora — fora do scope read-only)
 
-**Resposta à pergunta 4:** Sim. `/reports/$snapshotId` deve passar a ler `report_snapshots` assim que o pipeline começar a escrever (Fase 2/3). Manter `analysis_snapshots` apenas como camada de cache para o pipeline.
+1. **Decidir título canónico de `/admin/beta-leads`** entre três opções:
+   - (A) Manter "Contactos" — coerente com group label da sidebar. Recomendada.
+   - (B) Trocar para "Pipeline" / "Tabela" dinâmico baseado em `view`. Mais explícito mas duplica info da tab activa.
+   - (C) "Contactos · Pipeline" / "Contactos · Tabela" — verboso, evitar.
+2. **Adicionar página-shortcuts ao command palette**: novo `CommandGroup heading="Páginas"` com items para Pipeline (`/admin/beta-leads`), Tabela (`/admin/beta-leads?view=tabela`), Visão geral, Receita, Relatórios, etc. Custo trivial; melhora UX.
+3. **Manter `/admin/clientes` como redirect** indefinidamente para preservar bookmarks. Não apagar.
+4. **Considerar mover `/admin/beta-requests` para sub-area** "Operações" se voltarmos a precisar dele com frequência; por agora, utilitário escondido é aceitável.
 
-### 4. Recomendação de naming final
+### Veredicto global
 
-**Recomendação: manter `/reports/$snapshotId` e trocar a fonte mais tarde.** Razões:
-
-- O parâmetro semanticamente é "o id do snapshot que estás a ver"; o utilizador final não distingue camadas técnicas. URL estável evita dead links em emails/PDFs já enviados.
-- Migrar a fonte sem mudar a URL é trivial: trocar o endpoint que ela chama. O componente já recebe `snapshotId`, `payload`, `analyzedAtIso`, `expiresAtIso` — assinatura compatível.
-- `/reports/history/$reportSnapshotId` adiciona ruído ("history" é redundante quando o conceito é "relatório guardado") e cria duas URLs por relatório, pior para SEO interno e tracking.
-
-Recomendação alternativa só se houver período de coabitação real (ambos os IDs activos durante semanas): `/reports/$id` aceita os dois e detecta tipo via prefixo de tabela ou flag. Não vale a pena para um corte único.
-
-### 5. Risco residual hoje
-
-Enquanto a fonte for `analysis_snapshots`:
-- Bloquear PDF print de relatórios "antigos" depois de o `cache_key` ter sido reutilizado é impossível sem clonar.
-- Se o pipeline aceitar competitors variáveis para o mesmo handle, o `cache_key` raramente colide em prática — o risco é menor mas não nulo.
-- A janela de retenção (15d) limita o estrago, mas não o anula.
-
-Mitigação até à Fase 2 estar viva: nada a fazer agora, conforme as restrições. Documentar a caveat (já está no header do ficheiro).
-
-### 6. Passos de migração (quando a Fase 2 ficar pronta)
-
-1. Pipeline público (`/api/public/analyze` ou equivalente) passa a escrever `report_snapshots` no fim de cada geração bem-sucedida, com `report_request_id` preenchido e payload validado por `ReportPayloadV1Schema`.
-2. Criar novo endpoint `GET /api/public/report-snapshot/by-id/:id` que lê `report_snapshots` por UUID, devolve `report_payload_jsonb` (já no shape final) + `expires_at` + `instagram_username`. RLS já permite SELECT só ao dono via `user_id`; o endpoint usa `supabaseAdmin` mas valida o id existe e está dentro do TTL.
-3. Migrar `reports.$snapshotId.tsx` para chamar o novo endpoint. O `payload` vem já no shape canónico; o `snapshotToReportData` pode ser mantido como adaptador defensivo ou substituído por mapeamento directo (decidir na Fase 2).
-4. Backfill opcional: para `report_requests` existentes com `analysis_snapshot_id` mas sem `report_snapshot_id`, escrever `report_snapshots` a partir do `analysis_snapshots.normalized_payload` + `buildReportBenchmarkInput`. Marcar `metadata.backfilled_at`. Sem isto, links antigos passam a 404 — decidir aceitabilidade na Fase 2.
-5. Actualizar `/report/print/$snapshotId` (target do PDFShift) para usar a mesma fonte. Caso contrário PDFs e versão online divergem.
-6. Manter `analysis-snapshot.by-id.$snapshotId.ts` apenas para uso admin/diagnóstico (ou apagar se ninguém mais consumir).
-
-### Saída resumida
-
-| Pergunta | Resposta |
-|---|---|
-| `snapshotId` é... | `analysis_snapshots.id` |
-| `/reports/$snapshotId` é imutável? | Não. Cache mutável por `cache_key`. |
-| `analysis_snapshots` é sobreposto mantendo o id? | Sim, via `upsert onConflict: cache_key`. |
-| Migrar para `report_snapshots`? | Sim, na Fase 2. |
-| URL final | Manter `/reports/$snapshotId`, trocar só a fonte. |
+**PASS condicional.** Os pontos críticos (sidebar limpa, sem mocks, redirect de `/admin/clientes`, deep-link `?lead=<id>`, mobile usável, build verde) estão verificados. Faltam apenas:
+- decisão sobre o título "Contactos" vs "Pipeline" (cosmética / linguística);
+- atalhos de página no command palette (UX, não bloqueador).
