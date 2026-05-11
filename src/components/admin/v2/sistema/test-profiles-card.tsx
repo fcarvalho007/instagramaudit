@@ -503,15 +503,33 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
             <Zap size={12} className={refreshMutation.isPending ? "animate-pulse" : ""} />
             {refreshMutation.isPending ? "A atualizar…" : "Atualizar agora"}
           </button>
-          <Link
-            to="/analyze/$username"
-            params={{ username: p.handle }}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted hover:text-admin-text-primary transition-colors"
-            style={{ borderColor: "#E5E3D9" }}
-          >
-            <ExternalLink size={12} />
-            Abrir relatório
-          </Link>
+          {p.latestSnapshotId && !isExpired ? (
+            <Link
+              to="/admin/report-preview/snapshot/$snapshotId"
+              params={{ snapshotId: p.latestSnapshotId }}
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted hover:text-admin-text-primary transition-colors"
+              style={{ borderColor: "#E5E3D9" }}
+              title="Abre a snapshot guardada — sem chamadas ao fornecedor."
+            >
+              <ExternalLink size={12} />
+              Abrir relatório
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-tertiary cursor-not-allowed opacity-60"
+              style={{ borderColor: "#E5E3D9" }}
+              title={
+                isExpired
+                  ? "Cache expirada — usa Atualizar agora para gerar nova snapshot."
+                  : "Sem snapshot guardada — usa Atualizar agora."
+              }
+            >
+              <ExternalLink size={12} />
+              Abrir relatório
+            </button>
+          )}
         </div>
       </div>
 
