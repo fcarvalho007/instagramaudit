@@ -24,6 +24,12 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AdminPageHeader } from "../admin-page-header";
 import { AdminCard } from "../admin-card";
 import { AdminActionButton } from "../admin-action-button";
@@ -62,7 +68,6 @@ export function EmailLabPage() {
   const [previewMode, setPreviewMode] = useState<"html" | "text">("html");
   const [reloadTick, setReloadTick] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "ok">("idle");
-  const [testDialogOpen, setTestDialogOpen] = useState(false);
 
   const selected = TEMPLATES.find((t) => t.key === selectedKey)!;
   const rendered = useMemo<RenderedEmail | { error: string }>(() => {
@@ -125,15 +130,7 @@ export function EmailLabPage() {
               <RefreshCw size={14} />
               Recarregar wiring
             </AdminActionButton>
-            <button
-              type="button"
-              onClick={() => setTestDialogOpen(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-              style={{ background: "#1f2937" }}
-            >
-              <Send size={14} />
-              Enviar teste
-            </button>
+            <SendTestButton size="md" />
           </>
         }
       />
@@ -208,7 +205,6 @@ export function EmailLabPage() {
               template={selected}
               onCopy={handleCopy}
               onOpenHtml={handleOpenHtml}
-              onSendTest={() => setTestDialogOpen(true)}
               copyState={copyState}
               hasContent={Boolean(safeRendered)}
             />
@@ -233,14 +229,38 @@ export function EmailLabPage() {
           </AdminCard>
         </div>
       </div>
-
-      {testDialogOpen ? (
-        <TestSendDialog
-          template={selected}
-          onClose={() => setTestDialogOpen(false)}
-        />
-      ) : null}
     </>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Send-test button (disabled with tooltip — alinhado com /admin/automacoes) */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function SendTestButton({ size = "md" }: { size?: "sm" | "md" }) {
+  const height = size === "sm" ? "h-8" : "h-8";
+  const iconSize = size === "sm" ? 13 : 14;
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled
+            className={`inline-flex ${height} items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-white`}
+            style={{
+              background: "rgb(var(--admin-button-dark))",
+              opacity: 0.85,
+              cursor: "not-allowed",
+            }}
+          >
+            <Send size={iconSize} />
+            Enviar teste
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Disponível em breve</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
