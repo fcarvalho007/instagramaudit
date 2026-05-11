@@ -257,11 +257,7 @@ function FlowStages({
       {stages.map((stage) => {
         const stageFlows = flows.filter((f) => f.stage === stage.key);
         if (stageFlows.length === 0) return null;
-        const totalSent = stageFlows.reduce((a, f) => a + f.sentEvents, 0);
-        const meta =
-          stage.key === "00_onboarding"
-            ? `${stageFlows.length} email${stageFlows.length === 1 ? "" : "s"} · ${totalSent} envios`
-            : `${stageFlows.length} bloco${stageFlows.length === 1 ? "" : "s"}`;
+        const meta = computeStageMeta(stage.key, stageFlows);
 
         return (
           <StageGroup
@@ -284,6 +280,43 @@ function FlowStages({
       })}
     </div>
   );
+}
+
+function computeStageMeta(stageKey: string, stageFlows: AutomationFlow[]): string {
+  if (stageKey === "00_onboarding") {
+    const sent = stageFlows.reduce((a, f) => a + f.sentEvents, 0);
+    return `${stageFlows.length} email${stageFlows.length === 1 ? "" : "s"} · ${sent} envios`;
+  }
+  if (stageKey === "01_captacao") {
+    const cycles =
+      stageFlows.find((f) => f.key === "relatorio_gerado")?.completedLeads ??
+      stageFlows.find((f) => f.key === "pedido_recebido")?.completedLeads ??
+      0;
+    const gen = stageFlows.find((f) => f.key === "relatorio_gerado");
+    const avgLabel =
+      gen && gen.timing.kind === "average" ? gen.timing.averageLabel : null;
+    return avgLabel && avgLabel !== "sem dados"
+      ? `${cycles} ciclos · ${avgLabel}`
+      : `${cycles} ciclos`;
+  }
+  if (stageKey === "02_entrega") {
+    const link = stageFlows.find((f) => f.key === "link_enviado");
+    const sent = link?.sentEvents ?? 0;
+    const seen =
+      stageFlows.find((f) => f.key === "relatorio_visto")?.completedLeads ?? 0;
+    if (sent > 0) {
+      const pct = Math.round((seen / sent) * 100);
+      return `${seen}/${sent} abertos · ${pct}%`;
+    }
+    return `${stageFlows.length} blocos`;
+  }
+  if (stageKey === "03_conversao") {
+    const followUp = stageFlows.find((f) => f.key === "follow_up_comercial");
+    const eligible = followUp?.eligibleCount ?? 0;
+    const converted = followUp?.completedLeads ?? 0;
+    return `${eligible} elegíveis · ${converted} convertido${converted === 1 ? "" : "s"}`;
+  }
+  return `${stageFlows.length} bloco${stageFlows.length === 1 ? "" : "s"}`;
 }
 
 function SummarySkeleton() {
