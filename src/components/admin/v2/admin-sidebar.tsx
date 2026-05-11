@@ -7,11 +7,12 @@
  */
 
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Receipt,
   Columns,
+  Table as TableIcon,
   Zap,
   FileText,
   AtSign,
@@ -40,6 +41,8 @@ interface NavItem {
     | "/admin/sistema";
   label: string;
   icon: typeof LayoutDashboard;
+  search?: { view?: "tabela" | "pipeline"; lead?: string };
+  matchView?: "tabela" | "pipeline";
 }
 
 interface NavGroup {
@@ -59,6 +62,13 @@ const GROUPS: NavGroup[] = [
     label: "Contactos",
     items: [
       { to: "/admin/beta-leads", label: "Pipeline", icon: Columns },
+      {
+        to: "/admin/beta-leads",
+        label: "Tabela",
+        icon: TableIcon,
+        search: { view: "tabela" },
+        matchView: "tabela",
+      },
     ],
   },
   {
@@ -95,6 +105,10 @@ interface SidebarBodyProps {
 }
 
 function SidebarBody({ logout, onNavigate }: SidebarBodyProps) {
+  const currentSearch = useRouterState({
+    select: (s) => s.location.search as { view?: string },
+  });
+  const currentPath = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="flex flex-col h-full py-4 px-3">
       {/* Brand */}
@@ -127,15 +141,30 @@ function SidebarBody({ logout, onNavigate }: SidebarBodyProps) {
             <ul className="m-0 list-none p-0 space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
+                // For routes shared by multiple sidebar items (same `to`),
+                // disambiguate active state by the `view` search param.
+                const isOnPath = currentPath === item.to;
+                const currentView = currentSearch?.view;
+                let isActive = false;
+                if (isOnPath) {
+                  if (item.matchView) {
+                    isActive = currentView === item.matchView;
+                  } else if (item.to === "/admin/beta-leads") {
+                    // Pipeline = default (no view param or "pipeline")
+                    isActive = !currentView || currentView === "pipeline";
+                  } else {
+                    isActive = true;
+                  }
+                }
                 return (
-                  <li key={item.to}>
+                  <li key={`${item.to}-${item.label}`}>
                     <Link
                       to={item.to}
+                      search={item.search ?? {}}
                       onClick={onNavigate}
-                      className={ITEM_BASE}
-                      activeProps={{ className: ITEM_ACTIVE }}
+                      className={isActive ? ITEM_ACTIVE : ITEM_BASE}
                     >
-                      {({ isActive }) => (
+                      {() => (
                         <>
                           <Icon
                             size={16}

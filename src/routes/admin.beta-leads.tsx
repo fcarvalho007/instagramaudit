@@ -20,6 +20,7 @@ import { KanbanBoard } from "@/components/admin/v2/beta-leads/kanban-board";
 import { LeadsTable } from "@/components/admin/v2/beta-leads/leads-table";
 import { LeadDetailSheet } from "@/components/admin/v2/beta-leads/lead-detail-sheet";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
+import { adminFetch } from "@/lib/admin/fetch";
 
 type PipelineView = "pipeline" | "tabela";
 
@@ -37,14 +38,14 @@ export const Route = createFileRoute("/admin/beta-leads")({
 });
 
 async function fetchLeads(): Promise<EnrichedLead[]> {
-  const res = await fetch("/api/admin/leads-kanban", { credentials: "include" });
+  const res = await adminFetch("/api/admin/leads-kanban");
   if (!res.ok) {
     let code: string | undefined;
     let message: string | undefined;
     try {
       const body = await res.json();
-      code = body?.code;
-      message = body?.error ?? body?.message;
+      code = body?.error_code ?? body?.code;
+      message = body?.message ?? body?.error;
     } catch {
       /* sem body JSON */
     }
@@ -61,9 +62,8 @@ async function fetchLeads(): Promise<EnrichedLead[]> {
 }
 
 async function updateLead(id: string, updates: Record<string, unknown>) {
-  const res = await fetch(`/api/admin/leads-kanban/${id}`, {
+  const res = await adminFetch(`/api/admin/leads-kanban/${id}`, {
     method: "PATCH",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
   });

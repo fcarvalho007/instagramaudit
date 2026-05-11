@@ -1,82 +1,50 @@
-## Objetivo
+## Causa-raiz do erro "Não foi possível carregar contactos"
 
-Reorganizar a sidebar `/admin`, melhorar o diagnóstico do erro no Pipeline de Contactos, e portar drag-and-drop entre colunas do projeto referência (CRM Webinar) para o Kanban do InstaBench.
+O endpoint `/api/admin/leads-kanban` exige o header **`X-Admin-Email`** (lido em `src/lib/admin/session.ts`). Existe um helper `adminFetch` (`src/lib/admin/fetch.ts`) que injeta automaticamente esse header a partir de `localStorage` — é o que o resto do `/admin` usa.
 
----
+Em `src/routes/admin.beta-leads.tsx` eu chamei `fetch("/api/admin/leads-kanban", { credentials: "include" })` **sem** passar pelo `adminFetch`, por isso o servidor recebe sempre o pedido sem header e devolve 401 — mesmo quando há sessão admin válida no browser. Por isso continua a aparecer "Não foi possível carregar contactos."
 
-## 1. Sidebar `/admin` (`src/components/admin/v2/admin-sidebar.tsx`)
+(O `/api/admin/snapshot/...` funciona porque outras páginas já usam `adminFetch`, e o cookie `x-admin-email` aparece no header da request — visto na network.)
 
-**a)** Mover `Automações` para a categoria **Laboratório**, posicionado **por cima** de `Email Lab`.
-**b)** Renomear `Email Lab` → **`Templates Email + SMS`**.
+## Correções
 
-Resultado dos grupos:
+### 1. Pipeline volta a carregar (root cause)
+
+`src/routes/admin.beta-leads.tsx`:
+- Importar `adminFetch` de `@/lib/admin/fetch`.
+- Substituir `fetch(...)` por `adminFetch(...)` em `fetchLeads()` e `updateLead()`.
+- Manter o tratamento de erro 401/403 que já adicionei (caso a sessão expire mesmo).
+
+Resultado: com sessão válida no browser, `useQuery` recebe os leads e o Kanban renderiza. O "Tentar de novo" e o botão "Iniciar sessão" ficam para casos reais de erro.
+
+### 2. Sidebar — adicionar "Tabela" por baixo de "Pipeline"
+
+`src/components/admin/v2/admin-sidebar.tsx`, grupo **Contactos**:
 
 ```text
-Negócio          Visão geral · Receita
-Contactos        Pipeline
-Produto          Relatórios · Perfis · Conhecimento
-Laboratório      Report Lab · Automações · Templates Email + SMS
-Sistema          Sistema
+Contactos
+  ├─ Pipeline   →  /admin/beta-leads            (vista kanban)
+  └─ Tabela     →  /admin/beta-leads?view=tabela
 ```
 
-Notas:
-- O grupo `Contactos` fica só com `Pipeline` (a tabela continua como tab dentro de `/admin/beta-leads`, não como item de sidebar separado, já que partilham a mesma rota com `?view=tabela`).
-- Adicionar `Zap` à lista de imports do Lucide já existente (já está) e remover do bloco `Contactos`.
+Detalhes:
+- Ambos os itens apontam para a rota `/admin/beta-leads`. O `view` é uma search param já suportada pela rota.
+- Para o estado activo correcto, usar `<Link>` com `search={{ view: "tabela" }}` no item Tabela e `activeOptions={{ exact: false, includeSearch: true }}` (ou um match manual via `useRouterState` lendo `location.search.view`) para que apenas um esteja realçado de cada vez.
+- A Tab interna (`TabsList` com Pipeline/Tabela) dentro da página passa a ser redundante visualmente, mas mantém-se para utilizadores que cheguem por link directo. Alinhamos o estado da tab com a search param (já está).
 
----
+### 3. Sobre o "não copiou nada do outro projecto"
 
-## 2. Auditoria Contactos — diagnóstico do erro do Pipeline
+O drag-and-drop entre colunas (padrão do `PipelineView` do CRM Webinar) **foi** portado para o `KanbanBoard` no commit anterior — `draggable` nos cards, `onDragOver/onDrop` nas colunas, diálogo de confirmação e realce visual. Não dava para ver porque o Kanban nem chegava a renderizar (erro 401). Após a correcção (1), o D&D fica visível e funcional.
 
-**Causa identificada:** `/api/admin/leads-kanban` devolve **401 `UNAUTHENTICATED`** quando não há sessão admin (cookie/email). Em `src/routes/admin.beta-leads.tsx`, o `fetchLeads` faz apenas `throw new Error("Falha ao carregar leads")` e a UI mostra a mesma mensagem genérica para qualquer falha.
+Não copiei o resto do `PipelineView`/`TableView` da referência porque o modelo de dados é incompatível (`Inscrito` com `plan`/`payment_status`/`webinar` vs `EnrichedLead` com `commercial_status`/`feedback`/`report_request`). Foi escolha alinhada na conversa.
 
-**Correções (ficheiro: `src/routes/admin.beta-leads.tsx`):**
-
-- `fetchLeads()` passa a:
-  - ler `res.status` e `res.json()` (best-effort) e atirar um `Error` enriquecido com `{ status, code, message }`.
-- O bloco de erro na UI distingue:
-  - **401/403** → mensagem clara *"Sessão de admin expirada ou em falta"* + botão **"Iniciar sessão"** com `<Link to="/admin">` (ou `/login` conforme o fluxo atual de admin).
-  - **outros** → *"Não foi possível carregar contactos."* + botão **"Tentar de novo"** (`queryClient.invalidateQueries`).
-- Mostrar o `status` e `code` em pequeno como `text-eyebrow-sm` para o admin reconhecer rapidamente.
-
-Os dois sub-menus pedidos (**Pipeline** / **Tabela**) **já existem** como `TabsTrigger` em `/admin/beta-leads` (`?view=pipeline|tabela`). Não é preciso criar novas rotas — confirmar que ambos os tabs renderizam após login válido.
-
----
-
-## 3. Portar drag-and-drop ao Kanban (inspirado no CRM Webinar)
-
-Adicionar D&D HTML5 ao `KanbanBoard` para mover cartões entre colunas (alterando `commercial_status`). Mantém o picker existente como alternativa acessível.
-
-**Ficheiro:** `src/components/admin/v2/beta-leads/kanban-board.tsx`
-
-- Em cada card (`KanbanCard`):
-  - `draggable`, `onDragStart` → `e.dataTransfer.setData("text/plain", lead.id)` + `effectAllowed = "move"`.
-  - Cursor visual `cursor-grab active:cursor-grabbing`.
-- Em cada coluna:
-  - State local `dragOverColumn: string | null`.
-  - `onDragOver` (preventDefault + `dropEffect = "move"`), `onDragLeave`, `onDrop`.
-  - Realce visual quando `dragOverColumn === col.id` (ring com `--admin-info-500`).
-  - `onDrop` → confirma diálogo *"Mover «{name}» para «{coluna}»?"* e chama `onUpdate(leadId, { commercial_status: targetStatus })` (já existe).
-- Cada coluna do `KANBAN_COLUMNS` mapeia para **um** `commercial_status` representativo (já é assim hoje); o drop atribui esse status.
-- Em mobile (accordion), o D&D é desativado — pickers continuam a funcionar.
-
-**Sem alterações** ao endpoint `/api/admin/leads-kanban/$id` (já aceita `commercial_status` no PATCH).
-
----
-
-## 4. Validação
+## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run`
-- Manual: login em `/admin`, abrir `/admin/beta-leads`, confirmar:
-  - Sidebar reflete a nova ordem e o nome `Templates Email + SMS`.
-  - Pipeline carrega leads, drag entre colunas funciona com diálogo de confirmação.
-  - Tab Tabela funciona, filtros chips e pesquisa intactos.
-  - Sem sessão: erro mostra mensagem distinta + botão de iniciar sessão.
-
----
+- Manual em `/admin/beta-leads`: kanban com leads visível; arrastar card para outra coluna pede confirmação e actualiza `commercial_status`.
+- Sidebar: Pipeline e Tabela aparecem como itens distintos; clicar em Tabela navega para `?view=tabela` e activa o item correcto.
 
 ## Fora de âmbito
 
-- Não copiar o resto do `PipelineView`/`TableView` da referência: usa modelo de dados diferente (`Inscrito` vs `EnrichedLead`) e tokens HSL incompatíveis.
-- Não criar rotas separadas `/admin/crm/pipeline` e `/admin/crm/contactos` (mantém-se `/admin/beta-leads?view=...`).
-- Sem alterações de schema, providers ou emails.
+- Nenhuma alteração ao endpoint nem ao schema.
+- Não tocar em `requireAdminSession` nem no fluxo de login do `/admin`.
