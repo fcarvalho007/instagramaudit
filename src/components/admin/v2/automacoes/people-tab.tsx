@@ -13,12 +13,30 @@ import {
   type EnrichedLead,
 } from "@/lib/admin/kanban-columns";
 import { adminFetch } from "@/lib/admin/fetch";
+import { LEAD_MAGNET_DISPLAY } from "@/lib/admin/lead-magnet-display";
 
 const MAX_PER_STAGE = 5;
 
 async function fetchLeads(): Promise<EnrichedLead[]> {
   const res = await adminFetch("/api/admin/leads-kanban");
-  if (!res.ok) throw new Error("Falha ao carregar leads");
+  if (!res.ok) {
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const body = await res.json();
+      code = body?.error_code ?? body?.code;
+      message = body?.message ?? body?.error;
+    } catch {
+      /* ignore */
+    }
+    const err = new Error(message ?? "Falha ao carregar leads") as Error & {
+      status?: number;
+      code?: string;
+    };
+    err.status = res.status;
+    err.code = code;
+    throw err;
+  }
   const json = await res.json();
   return json.leads ?? [];
 }
@@ -27,7 +45,8 @@ export function PeopleTab() {
   const { data: leads = [], isLoading, error } = useQuery({
     queryKey: ["admin", "beta-leads"],
     queryFn: fetchLeads,
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 
   if (isLoading) {
@@ -39,11 +58,22 @@ export function PeopleTab() {
   }
 
   if (error) {
+    const e = error as Error & { status?: number; code?: string };
+    const isAuth = e.status === 401 || e.status === 403;
     return (
       <AdminCard>
         <p className="text-[13px] text-admin-danger-500">
-          Não foi possível carregar leads. Verifica a sessão de admin.
+          {isAuth
+            ? "Sessão de admin expirada ou em falta."
+            : "Não foi possível carregar leads."}
         </p>
+        {(e.status || e.code) && (
+          <p className="mt-1 text-eyebrow-sm text-admin-text-tertiary">
+            {e.status ? `HTTP ${e.status}` : ""}
+            {e.status && e.code ? " · " : ""}
+            {e.code ?? ""}
+          </p>
+        )}
       </AdminCard>
     );
   }
@@ -91,7 +121,7 @@ export function PeopleTab() {
                     style={{ borderColor: "rgb(var(--admin-border-default))" }}
                   >
                     <span className="text-[13px] font-medium text-admin-text-primary">
-                      {l.name || "(sem nome)"}
+                      {l.name?.trim() || "Sem nome"}
                     </span>
                     <span className="text-[12px] text-admin-text-secondary truncate">
                       {l.email}
@@ -99,6 +129,18 @@ export function PeopleTab() {
                     {l.handle && (
                       <span className="text-[12px] text-admin-text-tertiary">
                         @{l.handle}
+                      </span>
+                    )}
+                    {l.lead_magnet?.status === "active" && (
+                      <span
+                        className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded"
+                        style={{
+                          backgroundColor: "rgb(var(--admin-info-500) / 0.12)",
+                          color: "rgb(var(--admin-info-500))",
+                        }}
+                        title={LEAD_MAGNET_DISPLAY.active.hint}
+                      >
+                        LM activo
                       </span>
                     )}
                     <span className="ml-auto text-[11px] text-admin-text-tertiary">
@@ -122,7 +164,7 @@ export function PeopleTab() {
                   to="/admin/beta-leads"
                   className="underline hover:text-admin-text-primary"
                 >
-                  Beta Leads
+                  Pipeline
                 </Link>
                 .
               </p>

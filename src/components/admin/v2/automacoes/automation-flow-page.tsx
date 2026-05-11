@@ -47,7 +47,7 @@ export function AutomationFlowPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1.5">
           <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-admin-info-500">
-            Pipeline · Automações
+            Ciclo de vida · Automações
           </span>
           <h1 className="m-0 font-serif text-[32px] font-medium leading-tight tracking-tight text-admin-text-primary sm:text-[36px]">
             Fluxo de ciclo de vida
