@@ -591,7 +591,7 @@ function PreviewTab({
         ) : null}
         <MetaRow
           label="Para"
-          value="{{email}} → frederico@digitalfc.com"
+          value="{{email}}"
           mono
         />
       </div>
