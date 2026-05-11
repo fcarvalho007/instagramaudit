@@ -1,130 +1,115 @@
-# Abertura pública: desativar allowlist do Apify em segurança
+# Final public launch smoke test — InstaBench
 
-Auditoria read-only ao gate de produção do `Apify`, ao endpoint público e às proteções de custo/rate-limit. Conclusão: **o código já tem todos os guard-rails**. Para abrir ao público basta alterar variáveis de ambiente — não é preciso mexer em código de gating. As alterações de código propostas abaixo são pequenos polimentos de UX no admin e nada mais.
+Read-only operational checklist. Sem implementação, sem mutação destrutiva. **1 análise pública** + **1 unlock** + **1 email controlado** são as únicas operações de escrita autorizadas; tudo o resto é leitura/inspecção.
 
-## 1. Comportamento atual de gating
+## A. Pré-voo (5 min, antes de tocar no preview)
 
-Sequência exata em `src/routes/api/analyze-public-v1.ts` (POST):
+| # | Verificação | Como | Esperado |
+|---|---|---|---|
+| A1 | Secrets prod | Admin → Cloud → Secrets | `APIFY_ENABLED=true`, `APIFY_TESTING_MODE=false`, `APIFY_HARD_CAP_USD` definido, `OPENAI_ENABLED` conforme decidido, `RESEND_API_KEY` presente |
+| A2 | `/admin/sistema` | abrir como admin | Card "Modo público activo" verde; APIFY_TOKEN ✓; allowlist ainda lista (dorment) |
+| A3 | Cron cleanup | `psql` ou painel: `SELECT jobname, schedule, active FROM cron.job` | job `cleanup-expired-reports` (ou equivalente) presente. Migration `20260506174050…` confirma criação |
+| A4 | Quota diária zerada | `/admin/sistema` ledger | `provider_call_logs` últimas 24h = 0 ou expectável |
 
-```text
-1. Parse + validação do username (zod)
-2. Cache lookup: snapshot fresh (<15d) → devolve sem tocar em provider
-3. Execution mode: cache_only → serve stale ou CACHE_ONLY_NO_DATA
-4. Allowlist gate (se APIFY_TESTING_MODE != "false"):
-   - primário fora da allowlist → PROFILE_NOT_ALLOWED (403)
-   - competidores fora da allowlist são silenciosamente removidos
-5. Kill-switch APIFY_ENABLED != "true" → PROVIDER_DISABLED (503)
-   (com fallback para snapshot stale se existir)
-6. Budget diário (APIFY_HARD_CAP_USD) → BUDGET_EXCEEDED (503)
-   (com fallback para snapshot stale se existir)
-7. Rate-limit por IP / por handle (24h) → RATE_LIMITED (429)
-8. Chamada Apify (1 actor unificado por handle, em paralelo):
-   - timeout 60s, maxItems=1, maxTotalChargeUsd=0.10 por call
-   - cada call gera linha em provider_call_logs (success/timeout/http_error/...)
-9. Erros traduzidos para PublicAnalysisErrorCode em ERROR_MESSAGES (PT)
-10. sanitizeExtra() bloqueia tudo o que não esteja em PUBLIC_ERROR_EXTRA_KEYS
-    → mensagens cruas do Apify nunca chegam ao público
-```
+## B. Núcleo público (1 análise real autorizada)
 
-Estado dos kill-switches no código:
+| # | Cenário | Passos | Esperado | Aceitação |
+|---|---|---|---|---|
+| B1 | Homepage anónima | abrir `/` em janela anónima | hero carrega, CTA "Analisar agora" visível, sem links partidos | UI ok, console sem erros |
+| B2 | Análise pública fora da allowlist | submeter handle público real **diferente** de `frederico.m.carvalho` | `/analyze/$username` carrega; relatório base renderiza OU mensagem de erro PT clara | 200 + payload OU 4xx/5xx com `ERROR_MESSAGES` PT (sem leak Apify) |
+| B3 | Cache hit | repetir B2 (≤15 dias) | resposta imediata; **sem nova linha em `provider_call_logs`** | `data_source=cache` em `analysis_events` |
+| B4 | Provider down (simulado) | n/a — apenas confirmar copy de `PROVIDER_DISABLED` em `analyze-public-v1.ts` | mensagem amigável PT já mapeada | inspeção de código (sem mexer em secret) |
 
-| Mecanismo | Ficheiro | Comportamento |
+## C. Unlock + lead + snapshot (1 unlock real)
+
+| # | Cenário | Passos | Esperado |
+|---|---|---|---|
+| C1 | Modal abre | clicar "Receber relatório completo" em `/analyze/$username` | `ReportGateModal` abre com 3 campos + 2 toggles |
+| C2 | Consentimento RGPD obrigatório | submeter sem `gdpr_consent` | botão bloqueado / erro inline PT |
+| C3 | Marketing opcional | submeter só com RGPD = true | aceita; `marketing_consent=false` em `leads` |
+| C4 | Unlock sucesso | submeter com email novo | redirect/estado de sucesso; email é enviado |
+| C5 | `leads` upsert | `SELECT * FROM leads ORDER BY created_at DESC LIMIT 1` | linha com `commercial_status=novo_pedido`, `beta_consent=true`, `marketing_consent` conforme C3/C4 |
+| C6 | `report_snapshots` criado | `SELECT id, instagram_username, expires_at FROM report_snapshots ORDER BY created_at DESC LIMIT 1` | linha imutável, `expires_at` no futuro |
+| C7 | `report_requests` linkado | mesma query em `report_requests` | `lead_id` + `report_snapshot_id` preenchidos, `pdf_status` evolve |
+| C8 | `/reports/$snapshotId` | abrir em janela anónima com o id | snapshot imutável renderiza (sem precisar login) |
+
+## D. Área autenticada
+
+| # | Cenário | Passos | Esperado |
+|---|---|---|---|
+| D1 | Login com email do unlock | `/login` magic-link ou password (qual estiver activo) | sessão criada |
+| D2 | `/app/reports` | listar | 1 entrada visível (a criada em C6) |
+| D3 | `/app/reports/$id` | abrir | mesmo conteúdo de C8 |
+| D4 | `/app/account` toggle | alternar consent marketing | `leads.marketing_consent` actualiza + `marketing_consent_at` |
+
+## E. Emails (1 envio controlado)
+
+| # | Cenário | Verificação | Esperado |
+|---|---|---|---|
+| E1 | Email de relatório | inbox real do email C4 + `email_send_log` ou tabela equivalente | 1 entrada `sent`, sem `error_message` |
+| E2 | Welcome / boas-vindas | mesmo log | enviado se sequência configurada (ver `lead-magnet-sequence.server.ts`) |
+| E3 | Link unsubscribe | inspecionar HTML do email | presente e aponta para handler válido |
+| E4 | Unsubscribe funciona | clicar link | confirma desinscrição; `marketing_consent=false` em `leads` |
+
+⚠️ **Limite estrito: enviar apenas para o email de teste do owner.** Não disparar nada para a lista existente.
+
+## F. Anti-abuso
+
+| # | Cenário | Passos | Esperado |
+|---|---|---|---|
+| F1 | Rate-limit por IP | repetir B2 com handles diferentes >`PUBLIC_MAX_FRESH_PER_IP_DAY` | 429 `RATE_LIMITED` com mensagem PT |
+| F2 | Rate-limit por handle | repetir B2 com mesmo handle (forçando refresh) | 429 idem |
+| F3 | Username inválido | submeter `aa$$` | 400 `INVALID_USERNAME` PT |
+| F4 | Perfil privado real conhecido | submeter handle privado | 404 `PROFILE_PRIVATE` PT, sem leak |
+
+## G. SEO / discoverability
+
+| # | Verificação | URL | Esperado |
+|---|---|---|---|
+| G1 | `robots.txt` | `https://instagramaudit.lovable.app/robots.txt` | 200 + Disallow para `/admin`, `/app`, `/api` |
+| G2 | `sitemap.xml` | `/sitemap.xml` (rota `sitemap[.]xml.ts`) | 200 + entradas para `/`, páginas legais, etc. |
+| G3 | Meta home | view-source `/` | `<title>` único, `<meta description>`, `og:image` |
+
+## H. Admin / CRM
+
+| # | Verificação | Esperado |
 |---|---|---|
-| `APIFY_ENABLED` | `src/lib/security/apify-allowlist.ts` | "true" → ON; **qualquer outro valor → OFF** (fail-closed) |
-| `APIFY_TESTING_MODE` | idem | **default ON** (≠"false" → testing mode); só `"false"` desliga |
-| `APIFY_ALLOWLIST` | idem | CSV minúsculas; vazio = bloqueio total quando testing ON |
-| `APIFY_HARD_CAP_USD` | `apify-budget.server.ts` | gasto trailing 24h; `BUDGET_EXCEEDED` se ≥ cap |
-| `PUBLIC_MAX_FRESH_PER_IP_DAY` / `_HANDLE_DAY` | `public-rate-limit.server.ts` | janela 24h sobre `analysis_events` fresh+success |
-| `OPENAI_ENABLED` / `OPENAI_DAILY_CAP_USD` | enrichment | snapshot base entrega-se mesmo sem AI; só os jobs de insights ficam vazios |
-| `DATAFORSEO_ENABLED` | market-signals | sem DFS, o bloco "Market Signals" degrada para vazio |
+| H1 | `/admin/beta-leads` | lead C5 visível em "Novo pedido" |
+| H2 | `/admin/clientes` Pipeline + Tabela | mesma lead em ambas as vistas |
+| H3 | `/admin/sistema` provider calls | última call B2 listada com custo real e `status=success` |
+| H4 | `/admin/relatorios` | report C6 listado |
 
-Estados friendly já mapeados (PT) em `ERROR_MESSAGES`: `INVALID_USERNAME`, `PROFILE_NOT_FOUND`, `PROFILE_NOT_ALLOWED`, `PROFILE_PRIVATE`, `PROVIDER_DISABLED`, `BUDGET_EXCEEDED`, `RATE_LIMITED`, `UPSTREAM_UNAVAILABLE`, `UPSTREAM_FAILED`, `NETWORK_ERROR`, `CACHE_ONLY_NO_DATA`. Sem leak de payloads upstream.
+## I. Mobile (375×667)
 
-## 2. Visibilidade no admin (já existe)
+Abrir `/`, `/analyze/$username` (cache), `/reports/$id`, `/login` em viewport 375. Verificar:
+- sem overflow horizontal
+- CTAs alcançáveis com polegar
+- modal de unlock cabe no ecrã com scroll interno
 
-`src/routes/api/admin/diagnostics.ts` + `src/components/admin/cockpit/panels/diagnostics-panel.tsx` já expõem:
-
-- `testing_mode.active` + `allowlist[]`
-- estado do `APIFY_ENABLED`
-- preflight `APIFY_TOKEN`
-- últimos `provider_call_logs` (status, custo, runId)
-- ledger de custo diário + saldo do cap
-
-**Lacuna pequena:** a heurística de readiness em `diagnostics-panel.tsx` ainda considera "testing OFF + APIFY ON" como **warning** ("Sem allowlist, qualquer handle dispara o provedor"). Após abertura pública isso passa a ser o estado **desejado** e não warning. Pequeno ajuste de copy + tom proposto abaixo.
-
-## 3. Alterações de ambiente necessárias (Lovable Cloud → Secrets)
-
-**Não tocar no código de gating.** Definir/confirmar exatamente estas variáveis:
-
-| Secret | Valor produção pública | Notas |
-|---|---|---|
-| `APIFY_ENABLED` | `true` | imprescindível para destrancar provider |
-| `APIFY_TESTING_MODE` | `false` | desliga allowlist, abre a perfis públicos |
-| `APIFY_ALLOWLIST` | manter CSV atual | **não apagar** — fica disponível para reentrada em modo teste |
-| `APIFY_HARD_CAP_USD` | recomendado: `5` (ajustar conforme orçamento) | hard-cap 24h |
-| `PUBLIC_MAX_FRESH_PER_IP_DAY` | recomendado: `5` | já configurado anteriormente |
-| `PUBLIC_MAX_FRESH_PER_HANDLE_DAY` | recomendado: `3` | já configurado anteriormente |
-| `OPENAI_ENABLED` | `true` (recomendado para MVP completo) | se deixar `false`, o relatório entrega-se mas sem secção de insights AI |
-| `OPENAI_DAILY_CAP_USD` | manter cap atual (ex.: `2`) | proteção análoga ao Apify |
-| `DATAFORSEO_ENABLED` | `false` para a abertura pública | ainda não é parte do core do MVP — degrada graciosamente |
-| `INTERNAL_API_TOKEN` | manter | usado para `?refresh=1` admin |
-
-Sem chamadas a Apify, sem mutações DB, sem segredos a ser tocados nesta auditoria.
-
-## 4. Alterações de código (mínimas, opcionais mas recomendadas)
-
-Apenas UX no admin, **sem tocar no gating**:
-
-1. `src/components/admin/cockpit/panels/diagnostics-panel.tsx`
-   - Quando `APIFY_ENABLED=true` + `testing_mode.active=false`: mudar tom de `warning` para `success` com label "Modo público activo (kill-switch + budget + rate-limit a proteger)" e hint a apontar para o budget/rate-limit.
-   - Adicionar badge "PUBLIC OPEN" / "TESTING" no topo do painel para ler de relance.
-2. `src/routes/api/admin/diagnostics.ts`
-   - Devolver também `apify.public_mode = !testing_mode.active && apify_enabled` para o painel não inferir.
-
-Sem mudanças noutros ficheiros.
-
-## 5. Procedimento de rollback (instantâneo, sem deploy)
-
-Se algo correr mal após a abertura, basta reverter os secrets:
-
-| Cenário | Acção |
-|---|---|
-| Abuso / custo a disparar | `APIFY_ENABLED=false` → bloqueia provider, cache continua a servir |
-| Voltar a allowlist | `APIFY_TESTING_MODE=true` (apagar valor `false`) → volta ao smoke-test |
-| Conter custo sem fechar | Baixar `APIFY_HARD_CAP_USD` para `1` |
-| Apertar throughput | Baixar `PUBLIC_MAX_FRESH_PER_IP_DAY` para `1` |
-| Esconder AI | `OPENAI_ENABLED=false` → relatório entrega base, secção AI fica vazia |
-
-Em todos os casos, **sem redeploy** — a próxima request relê env.
-
-## 6. Checklist de validação
-
-Após mudar os secrets:
+## J. Critérios de decisão
 
 ```
-☐ bunx tsc --noEmit
-☐ bunx vitest run
-☐ /admin/sistema mostra: APIFY_ENABLED ✓, TESTING_MODE OFF, badge "PÚBLICO ABERTO"
-☐ POST /api/analyze-public-v1 com perfil NOVO (fora da allowlist) → 200
-☐ POST com username inválido → 400 + mensagem PT
-☐ POST com perfil privado → 404 + mensagem PT (sem leak)
-☐ POST com perfil inexistente → 404 + mensagem PT
-☐ Repetir 6x mesmo IP em 24h → 429 RATE_LIMITED
-☐ Forçar APIFY_ENABLED=false → 503 PROVIDER_DISABLED + mensagem PT
-☐ Cache-hit no segundo pedido (<15d) → sem provider_call_logs novo
-☐ /admin/sistema lista o último run com custo real, sem leak
+GO          → todos os blocos A,B,C,D,E,F,G passam; H/I sem regressões
+GO LIMITED  → núcleo (A,B,C,E1) ok mas falham: G (SEO), I (mobile minor),
+              D2/D3 (área autenticada secundária) ou H (cosmético)
+NO-GO       → qualquer falha em:
+              · A1 secrets · B2 análise pública · C4/C5 unlock+lead
+              · E1 email enviado · F1/F4 anti-abuso · cleanup cron ausente
 ```
 
-## 7. Output a devolver no fim
+## K. Output a devolver no fim do smoke test
 
-- gating actual: ✓ documentado em §1
-- env values exactos: ✓ §3
-- rollback: ✓ §5
-- validação: a correr depois das alterações de env
+1. Marcar cada linha das tabelas A–I com ✅ / ⚠️ / ❌.
+2. **Veredicto único**: GO / GO LIMITED / NO-GO.
+3. Lista de issues encontrados (id da linha + descrição + severidade).
+4. Fixes restantes (ordem de prioridade).
+5. Recomendação de lançamento (publicar agora / publicar em modo limitado / adiar com plano).
 
-## 8. Confirmações antes da implementação
+## L. Confirmações antes de correr o smoke test
 
-1. Confirmar `APIFY_HARD_CAP_USD` desejado (proposto: `5 USD/dia`).
-2. Confirmar se quer `OPENAI_ENABLED=true` na abertura (recomendado) ou MVP sem AI.
-3. Confirmar se `DATAFORSEO_ENABLED` fica `false` (proposto) ou se já queremos market-signals públicos.
-4. Aprovar polimento de UX no `diagnostics-panel` (§4) — caso contrário não toco no código.
+Antes de eu (ou tu) executar, preciso confirmar:
+
+1. **Email de teste autorizado** para C4/E1 (sugerido: o teu email pessoal — não a lista).
+2. **Handle público** a usar em B2 que **não esteja** na allowlist nem em cache (sugestão: um handle público de baixo risco, ex.: `nasa`).
+3. **Posso eu correr este checklist** com `browser--*` + `supabase--read_query` + 1 chamada autorizada à `/api/analyze-public-v1`, ou prefere correr manualmente e que eu apenas valide os resultados?
+4. Confirmar que **não queres** incluir teste de pagamento (não há checkout activo — fica fora de escopo).
