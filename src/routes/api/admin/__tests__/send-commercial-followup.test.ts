@@ -185,18 +185,38 @@ describe("POST /api/admin/send-commercial-followup", () => {
     expect((await res.json()).error_code).toBe("INVALID_PAYLOAD");
   });
 
-  it("accepts empty checkout_url and sends without checkout CTA URL in metadata", async () => {
+  it("accepts empty checkout_url, normalises to null, omits CTA from email and metadata", async () => {
     mockResendOk();
     const res = await POST({
       request: buildRequest({ lead_id: VALID_LEAD_ID, checkout_url: "" }),
     });
+
+    // 1) payload accepted
     expect(res.status).toBe(200);
-    expect(mocks.recordLeadEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: "commercial_followup_sent",
-        metadata: expect.objectContaining({ checkout_url: null }),
-      }),
+
+    // 2) empty URL normalised to null in event metadata (not "" and not undefined-shaped)
+    const eventCall = mocks.recordLeadEvent.mock.calls.find(
+      ([arg]) => arg?.eventType === "commercial_followup_sent",
     );
+    expect(eventCall).toBeDefined();
+    const metadata = eventCall![0].metadata;
+    expect(metadata.checkout_url).toBeNull();
+    expect(metadata.checkout_url).not.toBe("");
+
+    // 3) email body sent to Resend does not contain the checkout CTA
+    expect(fetchMock).toHaveBeenCalled();
+    const [, init] = fetchMock.mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      html: string;
+      text: string;
+    };
+    // CTA button label is exactly ">Desbloquear</a>" inside the rendered button
+    expect(body.html).not.toContain(">Desbloquear</a>");
+    // text version uses the "Desbloquear:" prefix only when checkout_url is set
+    expect(body.text).not.toMatch(/Desbloquear:/);
+
+    // 4) metadata does not store an empty string anywhere
+    expect(JSON.stringify(metadata)).not.toContain('"checkout_url":""');
   });
 
   it("returns 500 when RESEND_API_KEY is not configured", async () => {
