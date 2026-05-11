@@ -12,8 +12,7 @@
 
 import { renderWelcomeBeta } from "./templates/welcome-beta";
 import { sendTransactionalEmail } from "./transactional-email.server";
-
-const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
+import { resolveReportUrl } from "./url";
 
 export interface SendWelcomeBetaArgs {
   toEmail: string;
@@ -22,6 +21,7 @@ export interface SendWelcomeBetaArgs {
   leadId?: string | null;
   reportRequestId?: string | null;
   snapshotId?: string | null;
+  reportSnapshotId?: string | null;
   /** Optional secondary CTA URL. Defaults to FEEDBACK_URL env var if unset. */
   feedbackUrl?: string | null;
 }
@@ -29,17 +29,6 @@ export interface SendWelcomeBetaArgs {
 export type SendWelcomeBetaResult =
   | { ok: true; messageId: string | null; provider: "brevo" | "resend" }
   | { ok: false; reason: string };
-
-function resolveReportUrl(handle: string): string {
-  const base = (
-    process.env.PUBLIC_APP_BASE_URL ??
-    process.env.PDF_PUBLIC_BASE_URL ??
-    DEFAULT_BASE_URL
-  ).trim();
-  const cleaned = base.replace(/\/+$/, "");
-  const safeHandle = encodeURIComponent(handle.replace(/^@/, ""));
-  return `${cleaned}/analyze/${safeHandle}`;
-}
 
 export async function sendWelcomeBetaEmail(
   args: SendWelcomeBetaArgs,
@@ -49,7 +38,10 @@ export async function sendWelcomeBetaEmail(
     rendered = renderWelcomeBeta({
       firstName: args.firstName,
       instagramHandle: args.instagramHandle,
-      reportUrl: resolveReportUrl(args.instagramHandle),
+      reportUrl: resolveReportUrl(
+        args.instagramHandle,
+        args.reportSnapshotId ?? null,
+      ),
       feedbackUrl:
         args.feedbackUrl ?? (process.env.FEEDBACK_URL?.trim() || null),
     });
