@@ -542,7 +542,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
             <div className="px-4 sm:px-6 py-5">
               <SectionTitle>Inteligência comercial</SectionTitle>
               <DetailRow label="Tipo de lead" icon={User}>
-                {USER_TYPE_LABEL[lead.user_type?.toLowerCase() ?? ""] ?? "Desconhecido"}
+                {USER_TYPE_LABELS[(lead.user_type?.toLowerCase() ?? "") as UserType] ?? "Desconhecido"}
               </DetailRow>
               <DetailRow label="Sinal de intenção" icon={Target}>
                 <AdminBadge variant={displayedIntent.accent}>{displayedIntent.label}</AdminBadge>
