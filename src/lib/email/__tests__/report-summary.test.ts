@@ -25,16 +25,25 @@ describe("renderReportSummary", () => {
   it("uses spec-literal subject and preheader", () => {
     const out = renderReportSummary(baseInput);
     expect(out.subject).toBe("Resumo da análise de @frederico.m.carvalho");
-    expect(out.html).toContain("Os principais sinais do teu relatório InstaBench.");
+    expect(out.html).toContain("As 3 conclusões principais em 60 segundos.");
   });
 
-  it("renders all 4 KPI values exactly from input", () => {
+  it("renders 3 numbered conclusions in plain text", () => {
     const out = renderReportSummary(baseInput);
-    // pt-PT formatting (Intl uses NBSP for thousands and before %).
-    expect(out.html).toMatch(/12.480/); // 12{NBSP}480 → escaped to &nbsp; or kept
-    expect(out.html).toMatch(/3,42.{1,6}%/);
-    expect(out.html).toContain("Carrosséis");
-    expect(out.html).toContain("+1,2 pp");
+    expect(out.text).toMatch(/1\. /);
+    expect(out.text).toMatch(/2\. /);
+    expect(out.text).toMatch(/3\. /);
+  });
+
+  it("includes handle, followers, dominant format, delta and top-post format", () => {
+    const out = renderReportSummary(baseInput);
+    expect(out.text).toContain("@frederico.m.carvalho");
+    // pt-PT thousand separator may be NBSP or regular space depending on Intl runtime
+    expect(out.text).toMatch(/12.480/);
+    expect(out.text).toContain("Carrosséis");
+    expect(out.text).toContain("+1,2 pp");
+    expect(out.text).toContain("Reel");
+    expect(out.text).toMatch(/7,85.{1,6}%/);
   });
 
   it("escapes HTML in handle to prevent injection", () => {
@@ -42,25 +51,11 @@ describe("renderReportSummary", () => {
       ...baseInput,
       instagramHandle: "a<b>c",
     });
-    expect(out.html).not.toContain("<b>c");
+    expect(out.html).not.toContain("<b>c</b>");
     expect(out.html).toContain("a&lt;b&gt;c");
   });
 
-  it("omits anchor when permalink is missing and uses gradient fallback when no thumbnail", () => {
-    const out = renderReportSummary(baseInput);
-    expect(out.html).not.toMatch(/<a href="https?:\/\/[^"]*"[^>]*>\s*<table/);
-    expect(out.html).toContain("linear-gradient(135deg,#3772E5,#7664E4)");
-  });
-
-  it("renders permalink anchor when provided", () => {
-    const out = renderReportSummary({
-      ...baseInput,
-      topPost: { ...baseInput.topPost, permalink: "https://instagram.com/p/abc" },
-    });
-    expect(out.html).toContain('href="https://instagram.com/p/abc"');
-  });
-
-  it("includes the CTA URL", () => {
+  it("includes the CTA button and URL", () => {
     const out = renderReportSummary(baseInput);
     expect(out.html).toContain(REPORT_URL);
     expect(out.html).toContain("Ver relatório completo");
@@ -69,6 +64,12 @@ describe("renderReportSummary", () => {
   it("throws when reportUrl is missing", () => {
     expect(() =>
       renderReportSummary({ ...baseInput, reportUrl: "" }),
+    ).toThrow();
+  });
+
+  it("throws when instagramHandle is missing", () => {
+    expect(() =>
+      renderReportSummary({ ...baseInput, instagramHandle: "" }),
     ).toThrow();
   });
 });

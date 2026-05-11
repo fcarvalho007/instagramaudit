@@ -11,22 +11,23 @@ const REPORT_URL = "https://example.com/analyze/frederico.m.carvalho";
 const APP_URL = "https://instagramaudit.lovable.app/app/reports";
 
 describe("renderRequestReceived", () => {
-  it("renders subject, handle and brand sign-off", () => {
+  it("renders subject with handle, greeting and brand sign-off", () => {
     const out = renderRequestReceived({
       firstName: "Maria Silva",
       instagramHandle: "frederico.m.carvalho",
     });
-    expect(out.subject).toBe("Recebemos o teu pedido beta do InstaBench");
+    expect(out.subject).toBe("Recebemos o teu pedido para @frederico.m.carvalho");
     expect(out.text).toContain("Olá Maria,");
     expect(out.text).toContain("@frederico.m.carvalho");
-    expect(out.text).toContain("revisto manualmente");
-    expect(out.text).toContain("InstaBench");
+    expect(out.text).toContain("fase beta");
+    expect(out.text).toContain("equipa InstaBench");
     expect(out.html).toMatch(/^<!DOCTYPE html>/);
     expect(out.html).toContain('<html lang="pt-PT">');
   });
 
-  it("falls back to generic greeting when no name", () => {
-    const out = renderRequestReceived({ instagramHandle: "x" });
+  it("falls back to generic subject and greeting without handle", () => {
+    const out = renderRequestReceived({});
+    expect(out.subject).toBe("Recebemos o teu pedido");
     expect(out.text).toContain("Olá,");
     expect(out.text).not.toContain("Olá undefined");
   });
@@ -42,13 +43,15 @@ describe("renderRequestReceived", () => {
 });
 
 describe("renderReportReady", () => {
-  it("includes the report URL in subject, text and html", () => {
+  it("includes the report URL and handle in subject, text and html", () => {
     const out = renderReportReady({
       firstName: "João",
       instagramHandle: "frederico.m.carvalho",
       reportUrl: REPORT_URL,
     });
-    expect(out.subject).toBe("O teu relatório InstaBench já está pronto");
+    expect(out.subject).toBe(
+      "O teu relatório de @frederico.m.carvalho está disponível",
+    );
     expect(out.text).toContain(REPORT_URL);
     expect(out.text).toContain("@frederico.m.carvalho");
     expect(out.html).toContain(REPORT_URL);
@@ -69,7 +72,7 @@ describe("renderFeedbackRequest", () => {
       instagramHandle: "x",
       feedbackUrl: "https://example.com/feedback/abc",
     });
-    expect(out.subject).toBe("Podes dar feedback ao teu relatório InstaBench?");
+    expect(out.subject).toBe("O relatório de @x foi útil?");
     expect(out.text).toContain("https://example.com/feedback/abc");
     expect(out.html).toContain("Dar feedback");
     expect(out.html).toContain("https://example.com/feedback/abc");
@@ -86,51 +89,38 @@ describe("renderFeedbackRequest", () => {
       instagramHandle: "x",
       reportViewed: false,
     });
-    expect(out.text).toContain("Quando tiveres oportunidade de consultar");
-    expect(out.text).not.toContain("Notámos que já consultaste");
+    expect(out.text).toContain("Quando tiveres oportunidade de abrir");
+    expect(out.text).not.toContain("Vimos que já abriste");
   });
 
   it("includes URL fallback block when feedbackUrl is provided", () => {
     const url = "https://example.com/feedback/abc";
     const out = renderFeedbackRequest({ instagramHandle: "x", feedbackUrl: url });
-    // Fallback block (not the button) — escaped URL rendered as text
     expect(out.html).toContain("Em alternativa, copia o seguinte endereço");
     expect(out.html).toContain(url);
   });
 });
 
 describe("renderCommercialFollowup", () => {
-  it("includes pricingOption sentence when provided", () => {
-    const out = renderCommercialFollowup({
-      firstName: "Pedro",
-      instagramHandle: "x",
-      pricingOption: "Plano mensal",
-    });
-    expect(out.subject).toBe(
-      "Próximo passo para analisar melhor o teu Instagram",
-    );
-    expect(out.text).toContain("Plano mensal");
-    expect(out.html).toContain("Plano mensal");
-  });
-
-  it("maps known pricing codes to readable labels", () => {
-    const out = renderCommercialFollowup({
-      instagramHandle: "x",
-      pricingOption: "single_3_eur",
-    });
-    expect(out.text).toContain("Relatório único (€3 + IVA)");
-    expect(out.text).not.toContain("single_3_eur");
-    expect(out.html).toContain("Relatório único (€3 + IVA)");
-  });
-
-  it("omits pricing sentence and CTA mailto when neither provided", () => {
+  it("uses spec subject and preheader", () => {
     const out = renderCommercialFollowup({ instagramHandle: "x" });
-    expect(out.text).not.toContain("Plano mensal");
-    expect(out.text).not.toContain("mostraste interesse");
-    expect(out.html).not.toContain("mailto:");
+    expect(out.subject).toBe("Próximos passos para o relatório completo");
+    expect(out.html).toContain(
+      "Acesso vitalício, bundle de 5 análises e condições para docentes.",
+    );
   });
 
-  it("emits a mailto CTA when replyToEmail is provided", () => {
+  it("renders Desbloquear button when checkoutUrl is provided", () => {
+    const out = renderCommercialFollowup({
+      instagramHandle: "x",
+      checkoutUrl: "https://pay.example.com/abc",
+    });
+    expect(out.html).toContain("Desbloquear");
+    expect(out.html).toContain("https://pay.example.com/abc");
+    expect(out.text).toContain("https://pay.example.com/abc");
+  });
+
+  it("emits a mailto CTA when replyToEmail is provided without checkoutUrl", () => {
     const out = renderCommercialFollowup({
       instagramHandle: "x",
       replyToEmail: "ola@instabench.pt",
@@ -138,23 +128,32 @@ describe("renderCommercialFollowup", () => {
     expect(out.html).toContain("mailto:ola@instabench.pt");
     expect(out.text).toContain("ola@instabench.pt");
   });
+
+  it("mentions the two pricing options and academic use", () => {
+    const out = renderCommercialFollowup({ instagramHandle: "x" });
+    expect(out.text).toContain("€3 + IVA");
+    expect(out.text).toContain("€13 + IVA");
+    expect(out.text).toContain("docentes");
+  });
 });
 
 describe("preheader + signature", () => {
   it("emits a hidden preheader block with display:none", () => {
     const out = renderRequestReceived({ instagramHandle: "x" });
     expect(out.html).toContain("display:none");
-    expect(out.html).toContain("Vamos rever manualmente");
+    expect(out.html).toContain(
+      "A análise está a ser preparada — recebes o relatório por email.",
+    );
   });
 
-  it("uses the Frederico — InstaBench sign-off", () => {
+  it("uses the equipa InstaBench sign-off", () => {
     const out = renderReportReady({
       instagramHandle: "x",
       reportUrl: REPORT_URL,
     });
-    expect(out.text).toContain("Obrigado,");
-    expect(out.text).toContain("Frederico — InstaBench");
-    expect(out.html).toContain("Frederico");
+    expect(out.text).toContain("Boa leitura,");
+    expect(out.text).toContain("— equipa InstaBench");
+    expect(out.html).toContain("equipa InstaBench");
   });
 });
 
@@ -165,15 +164,13 @@ describe("renderPersonalAreaSaved", () => {
       instagramHandle: "frederico.m.carvalho",
       appUrl: APP_URL,
     });
-    expect(out.subject).toBe("O teu relatório InstaBench foi guardado");
-    expect(out.html).toContain(
-      "Podes voltar a consultá-lo sempre que precisares.",
-    );
+    expect(out.subject).toBe("O relatório foi guardado na tua área pessoal");
+    expect(out.html).toContain("Acede sempre que precisares.");
     expect(out.text).toContain("Olá Maria,");
     expect(out.text).toContain("@frederico.m.carvalho");
     expect(out.text).toContain(APP_URL);
-    expect(out.text).toContain("Durante a beta, este acesso é gratuito.");
-    expect(out.html).toContain("Abrir a minha área");
+    expect(out.text).toContain("Durante a beta, o acesso é gratuito");
+    expect(out.html).toContain("Abrir área pessoal");
     expect(out.html).toContain(APP_URL);
   });
 
@@ -185,8 +182,6 @@ describe("renderPersonalAreaSaved", () => {
   });
 
   it("throws when appUrl is empty", () => {
-    expect(() =>
-      renderPersonalAreaSaved({ appUrl: "" }),
-    ).toThrow();
+    expect(() => renderPersonalAreaSaved({ appUrl: "" })).toThrow();
   });
 });
