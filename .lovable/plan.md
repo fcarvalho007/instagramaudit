@@ -1,133 +1,113 @@
-## Fase 2 — Persistir `report_snapshots` no momento do unlock/pedido
+# Auditoria de readiness MVP — InstaBench
 
-### Objectivo
+> Auditoria **read-only**. Sem alterações implementadas. Decisão e descobertas abaixo.
 
-Sempre que um `report_request` é criado (ou ligado a um `analysis_snapshot`), capturar **um** snapshot histórico imutável e ligar `report_requests.report_snapshot_id`. Sem alterar o report visível, sem providers, sem cleanup.
+---
 
-### Decisão sobre falha de persistência
+## 1. Sumário executivo
 
-**Não-bloqueante na Fase 2.** Critério: o unlock continua a ter sucesso (UX), mas qualquer falha emite `product_event` tipo `report_snapshot_persist_failed` com detalhe. Justificação:
+O sistema está **funcionalmente completo** para um beta controlado: TypeScript limpo (`tsc --noEmit` OK), 341/341 testes a passar, RLS activo nas tabelas sensíveis, kill-switches Apify/OpenAI/DataForSEO presentes, fluxo público (analyze → unlock → email → `/app/reports`) end-to-end implementado, snapshots imutáveis Phase 2 persistidos, página `/reports/$snapshotId` cache-only, páginas legais (privacidade, termos, aviso legal, cookies) publicadas e ligadas no footer e no modal de unlock.
 
-- Phase 1 ainda não tem consumidores que dependam do snapshot histórico — `/reports/$snapshotId` continua a ler `analysis_snapshots`.
-- Bloquear unlock por falha de snapshot historiza pioraria UX sem benefício imediato.
-- O evento de falha permite alertar / backfill manual antes de promover a bloqueante na Fase 3.
+Há, porém, **uma inconsistência crítica de identidade do operador** entre o modal de unlock (mostra `DIGITALFC` com NIF placeholder `509XXXXXX`) e a Política de Privacidade (`Fomentar Sonhos, Lda.`, morada e contactos completos em Leiria). Isto é visível ao utilizador público no momento exacto em que entrega dados pessoais e quebra credibilidade RGPD. É o único bloqueador real.
 
-### Fluxos identificados
+## 2. Decisão final
 
-| # | Fluxo | Ficheiro | Onde nasce/atribui `analysis_snapshot_id` | Acção |
-|---|-------|----------|-------------------------------------------|-------|
-| 1 | Public unlock | `src/lib/unlock.server.ts` | Linha 317 (insert RR) e merge na linha 311 | Chamar `ensureReportSnapshotForRequest` no fim do try, depois de `reportRequestId` resolvido (cobre INSERT, UPDATE/merge e race 23505) |
-| 2 | Beta request flow | `src/routes/api/request-full-report.ts` | Linha 271 (insert RR já com `analysis_snapshot_id` validado) | Chamar `ensureReportSnapshotForRequest` logo após o insert OK, antes do `runInBackground(runReportPipeline)` |
-| 3 | Admin gerar relatório beta | `src/routes/api/admin/generate-beta-report.ts` | Linha 185-196 (UPDATE liga `analysis_snapshot_id` quando análise corre com sucesso) | Chamar `ensureReportSnapshotForRequest` depois do UPDATE de `completed`, antes do `product_events.insert` |
-| 4 | PDF/email pipeline | `src/lib/orchestration/run-report-pipeline.ts`, `src/routes/api/generate-report-pdf.ts`, `src/routes/api/send-report-email.ts` | Não cria nem altera `analysis_snapshot_id`; só lê do RR | **Sem alterações.** O snapshot já foi persistido a montante. Documentar no header do orquestrador. |
+**GO LIMITED** — pronto para beta privado controlado (≤30 utilizadores conhecidos, convidados directamente, com aviso explícito de "versão beta") **assim que o P0 abaixo for corrigido** (≈ 1 prompt). Sem o P0 corrigido: NO-GO para qualquer convite externo.
 
-Outros pontos (`tracking.functions.ts`, `lead-timeline`, `automation-flow`, `feedback`, `resend-email`, `regenerate-pdf`, `report-requests` admin endpoints, `follow-ups`, `send-report-link`, etc.) só lêem ou actualizam metadata/status — **não** criam novo `analysis_snapshot_id` nem `report_request` novo, logo não persistem snapshot. Confirmado pelo grep.
+## 3. Score de readiness
 
-### Helper novo: `src/lib/report-snapshots/persist-report-snapshot.server.ts`
+**82 / 100**
 
-```ts
-ensureReportSnapshotForRequest(reportRequestId): Promise<{
-  snapshotId: string | null;
-  created: boolean;
-  reason?: "missing_request" | "missing_analysis_snapshot" | "build_error" | "insert_error";
-}>
+- Engenharia (tsc, testes, RLS, kill-switches): 95
+- Fluxo público end-to-end: 90
+- Email + Brevo + Resend: 85
+- Privacidade/consentimento: 70 (penalizado pelo P0 abaixo)
+- Admin/CRM: 85
+- Operacional (cleanup, monitoria): 75
+- Copy/UX pública: 85
+
+## 4. O que está pronto
+
+- **Build & qualidade**: `bunx tsc --noEmit` sem erros; `bunx vitest run` 32 ficheiros / 341 testes verdes.
+- **Routing público**: `/`, `/analyze/$username`, `/reports/$snapshotId`, `/app/reports`, `/app/reports/$id`, `/login`, `/signup`, `/reset-password`, `/beta/request`, `/feedback/$requestId`.
+- **Legais**: `/privacidade` (310 linhas, Fomentar Sonhos Lda. com morada e DPO), `/termos`, `/aviso-legal`, `/cookies` — todos linkados no footer e a partir do unlock modal.
+- **Unlock flow**: 4 passos, consentimento RGPD obrigatório (`gdpr_consent`), marketing opcional separado, validação Zod.
+- **Snapshots Phase 2**: `report_snapshots` persistido em unlock público, beta request e admin generate; idempotente (3 camadas); 15 dias de retenção; testes cobrem race condition e exclusão de heavy fields.
+- **`/reports/$snapshotId`**: cache-only, `ssr: false`, `noindex,nofollow`, lê via `/api/public/analysis-snapshot/by-id/:id` sem chamar Apify/OpenAI/DataForSEO.
+- **Email**: Brevo como primário (`BREVO_FROM_EMAIL`/`BREVO_FROM_NAME`), Resend como fallback (`RESEND_FROM`); ambos os secrets configurados; testes de templates e duplicate protection passam.
+- **Segurança**:
+  - RLS activo em `leads`, `report_requests`, `report_snapshots`, `analysis_snapshots`, `beta_feedback`, `product_events`, `profiles`.
+  - `report_snapshots` com policy `user_id = auth.uid()`. `report_requests` idem. `profiles` com SELECT/UPDATE próprios.
+  - `service_role` apenas em ficheiros `*.server.ts` / `client.server.ts` — nenhum leak para o bundle do browser.
+  - Kill-switches `APIFY_ENABLED`, `OPENAI_ENABLED`, `DATAFORSEO_ENABLED` (literal `"true"` necessário, fail-closed).
+  - Admin com allowlist por email (`ADMIN_ALLOWED_EMAILS`), todas as rotas `/admin/*` com `noindex,nofollow`.
+- **Admin CRM consolidado**: sidebar com 5 grupos (Negócio / Contactos / Produto / Laboratório / Sistema). Pipeline e Tabela apontam para `/admin/beta-leads` (com tabs). Sem mocks "Clientes" ou "Pedidos" expostos.
+
+## 5. O que não está pronto
+
+| Área | Problema |
+|---|---|
+| Identidade do operador | `unlock-modal.tsx` mostra `DIGITALFC` + NIF `509XXXXXX` (placeholder) ao público, em conflito directo com a Política de Privacidade que identifica `Fomentar Sonhos, Lda.` |
+| Tabelas sem policies (defesa em profundidade) | `leads`, `analysis_snapshots`, `beta_feedback`, `product_events` têm RLS ON mas zero policies → acesso só via `supabaseAdmin`. Funciona, mas se algum dia uma rota de cliente tentar SELECT directo, falha silenciosa |
+| Pagamentos | Não implementado intencionalmente — mas é preciso confirmar que nenhum CTA público promete pagamento ou liga a checkout inexistente |
+| Cleanup retention | `/api/admin/reports/cleanup-expired` existe mas não foi confirmado se há cron agendado a correr os 15 dias |
+| Smoke test email | Não confirmado registo de envio real recente (welcome + report summary) com domínio final |
+
+## 6. P0 — bloqueia testes públicos
+
+1. **Inconsistência de identidade no unlock modal** (`src/components/product/unlock-modal.tsx`, linhas 53-57). `OPERATOR_INFO` tem `name: "DIGITALFC"`, `nif: "509XXXXXX"`. A Política de Privacidade diz `Fomentar Sonhos, Lda.`, NIF real, morada em Leiria. **Mostrar um NIF inventado ao recolher dados pessoais é um problema legal e de confiança imediato.** Substituir pela entidade real ou remover a linha de NIF.
+
+## 7. P1 — corrigir antes de beta mais alargado
+
+1. **Smoke test end-to-end de email** com domínio de produção: 1 unlock real → confirmar (a) Brevo contact criado, (b) welcome email entregue, (c) report summary email entregue, (d) link no email abre `/reports/$snapshotId` correcto, (e) PDF storage signed URL funciona.
+2. **Cleanup automático** (`reports.cleanup-expired`): confirmar se há `pg_cron` ou rotina externa agendada; se não, agendar antes de o primeiro snapshot atingir 15 dias.
+3. **Auditar CTAs públicos** (`/`, `/analyze/$username` empty/locked state, footer) à procura de promessas de "premium", "subscrição", "checkout" sem destino real.
+4. **Adicionar policies SELECT explícitas** em `leads`, `beta_feedback`, `product_events` (mesmo que `false`/restritivas) — defesa em profundidade contra futura rota client-side criada por engano.
+5. **Verificar `data-lovable-blank-page-placeholder`** e mocks restantes (busca rápida) — `report.example` é intencional mas validar que não está acessível por nav pública.
+
+## 8. P2 — pode esperar
+
+1. Migrar `/reports/$snapshotId` para ler de `report_snapshots` (Phase 3 já planeada). Hoje continua a ler `analysis_snapshots`, o que tem caveat documentada (upsert por cache_key dentro de 15d).
+2. Página de erro 404/500 globais customizadas em pt-PT.
+3. Accessibility pass no unlock modal (focus trap, aria).
+4. Métrica admin de "snapshots persistidos vs falhas" (`product_event` `report_snapshot_persist_failed`).
+5. Política de cookies: implementar banner ou confirmar que não usamos cookies não-essenciais.
+
+## 9. Acções manuais necessárias (do utilizador)
+
+1. **Confirmar entidade legal** para o unlock modal: "Fomentar Sonhos, Lda." + NIF real + cidade. Sem isto o P0 não pode ser corrigido com segurança.
+2. **Smoke test manual** com email pessoal antes de convidar terceiros.
+3. **Verificar DNS** de `instagramaudit.pt` (SPF/DKIM/DMARC) para ambos Brevo e Resend.
+4. **Decidir lista inicial de convidados** para beta limitado (5-15 pessoas conhecidas).
+5. **Preparar mensagem de convite** que assume explicitamente "beta privado, podem existir bugs, dados serão preservados 15 dias".
+
+## 10. Próximos 5 prompts (ordem exacta)
+
+1. **Corrigir identidade do operador no unlock modal** — substituir `OPERATOR_INFO` por dados reais da Fomentar Sonhos, Lda., alinhado com `/privacidade`. Adicionar teste snapshot.
+2. **Smoke test de email end-to-end** — script ou checklist manual que dispara 1 unlock real, valida contacto Brevo, valida 2 emails entregues, valida link `/reports/$snapshotId` e PDF signed URL.
+3. **Auditar e corrigir CTAs públicos sem destino** — varrer landing, analyze locked state e footer; remover/marcar claramente qualquer "Premium" sem checkout activo.
+4. **Agendar cleanup de snapshots expirados** — wire `pg_cron` ou cron externo a `/api/admin/reports/cleanup-expired` com auth `INTERNAL_API_TOKEN`; logar em `product_events`.
+5. **Adicionar policies RLS restritivas explícitas** em `leads`, `beta_feedback`, `product_events` (defesa em profundidade) + Phase 3 do snapshot histórico (migrar `/reports/$snapshotId` para `report_snapshots`).
+
+## 11. Checklist de beta público
+
+```text
+☐ P0 corrigido: identidade real do operador no unlock modal
+☐ Smoke test email completo (Brevo + Resend) com email real
+☐ DNS/SPF/DKIM verificados em produção
+☐ Cleanup retention agendado e testado uma vez
+☐ Mensagem de convite preparada com expectativas claras de "beta"
+☐ Lista inicial ≤ 15 convidados conhecidos
+☐ Nenhum CTA público promete funcionalidade não entregue
+☐ Admin pode acompanhar pipeline de leads e timeline em /admin/beta-leads
+☐ Kill-switches Apify/OpenAI/DataForSEO confirmados em "true" só onde necessário
+☐ APIFY_ALLOWLIST contém só perfis seguros para teste inicial
 ```
 
-Comportamento (não lança):
+## 12. Recomendação final
 
-1. SELECT em `report_requests` por id: `id, lead_id, user_id, instagram_username, competitor_usernames, analysis_snapshot_id, report_snapshot_id`.
-2. Se `report_snapshot_id` presente → `{ snapshotId, created: false }`.
-3. Se `analysis_snapshot_id` ausente → `{ snapshotId: null, created: false, reason: "missing_analysis_snapshot" }` (caso de unlock pré-análise; nada a fazer agora).
-4. SELECT em `analysis_snapshots` por id: `id, instagram_username, normalized_payload, created_at`.
-5. `buildReportSnapshotPayload({ normalized_payload, instagram_username, competitor_usernames: rr.competitor_usernames ?? [], generated_at: analysisSnap.created_at })` — `try/catch` para `build_error`.
-6. INSERT em `report_snapshots`:
-   ```
-   {
-     report_request_id: rr.id,
-     lead_id: rr.lead_id,
-     user_id: rr.user_id ?? null,
-     source_analysis_snapshot_id: rr.analysis_snapshot_id,
-     instagram_username: rr.instagram_username,
-     competitor_usernames: rr.competitor_usernames ?? [],
-     payload_schema_version: REPORT_PAYLOAD_SCHEMA_VERSION,
-     report_payload_jsonb: payload,
-     report_version: REPORT_VERSION_FREE_V1,
-     algorithm_version,
-     expires_at: getReportSnapshotExpiresAt(new Date()).toISOString(),
-     metadata: { source: <unlock|beta_request|admin_generate>, persisted_at: <iso> },
-   }
-   ```
-7. Em conflito Postgres `23505` (índice parcial `report_snapshots_report_request_id_unique`): re-SELECT por `report_request_id` e devolver id existente com `created: false`.
-8. Em qualquer outro erro: `{ snapshotId: null, created: false, reason: "insert_error" }` + `console.error`.
-9. Best-effort: UPDATE `report_requests.report_snapshot_id = snapshotId` (se ainda NULL). Não bloqueia.
+**Após corrigir o P0 (1 prompt curto):** convidar **5 a 15 utilizadores conhecidos** (rede directa, parceiros, primeiros leads do magnet) para beta privado, com aviso explícito de "versão beta — dados retidos 15 dias — bugs esperados". Não promover publicamente em redes sociais nem indexar — manter `noindex` actual.
 
-A função aceita opção `{ source: "public_unlock" | "beta_request" | "admin_generate" }` para gravar em `metadata`.
+**Após smoke test de email + cleanup agendado (P1):** alargar para 30-50 utilizadores e abrir entrada via lead magnet sem fricção adicional.
 
-### Wrapper público (call sites curtos)
-
-`persistReportSnapshotInBackground(reportRequestId, source)` — wrapper que invoca `ensureReportSnapshotForRequest`, e em falha emite `product_event` `report_snapshot_persist_failed` com `{ report_request_id, reason }`. Devolve `void`. Os call sites usam `await` (rápido, ~2 reads + 1 insert) para garantir que existe antes do email/pipeline arrancar; só ficaria `void`/`runInBackground` se o p95 subir notavelmente.
-
-### Alterações por ficheiro
-
-1. **Novo** `src/lib/report-snapshots/persist-report-snapshot.server.ts` — helper acima.
-2. **Editar** `src/lib/unlock.server.ts`: depois da resolução de `reportRequestId` (cobrindo branch INSERT, branch existingRR e branch race 23505) e antes do `recordProductEvent("unlock_completed")`, chamar `await persistReportSnapshotInBackground(reportRequestId, "public_unlock")`. Não altera o objecto de retorno.
-3. **Editar** `src/routes/api/request-full-report.ts`: após o insert OK do RR (linha 284) e antes do `runInBackground(runReportPipeline(...))`, chamar `await persistReportSnapshotInBackground(reqRow.id, "beta_request")`.
-4. **Editar** `src/routes/api/admin/generate-beta-report.ts`: após o UPDATE para `completed` (linha 196) e antes do `product_events.insert` (linha 200), chamar `await persistReportSnapshotInBackground(requestId, "admin_generate")`.
-5. **Novo** `src/lib/report-snapshots/__tests__/persist-report-snapshot.test.ts`: cobre todos os ramos com mock do `supabaseAdmin`.
-
-### Idempotência
-
-- Garantida em três camadas:
-  1. Short-circuit quando `report_requests.report_snapshot_id` já está preenchido.
-  2. Índice único parcial `report_snapshots_report_request_id_unique` no DB.
-  3. Recovery 23505 → re-SELECT.
-- Reentrante: chamadas concorrentes do mesmo unlock só geram 1 linha. Test cobre.
-
-### Campos persistidos vs. esquema da tabela
-
-Confirmado contra `<supabase-tables>`:
-- `report_payload_jsonb` ✓ (NOT NULL)
-- `payload_schema_version` ✓
-- `competitor_usernames` ✓ (default `[]`)
-- `instagram_username` ✓
-- `source_analysis_snapshot_id` ✓ (NOT NULL — por isso skip se RR não tem analysis_snapshot_id)
-- `user_id`, `lead_id`, `report_request_id` ✓ (nullable)
-- `metadata` ✓ (jsonb nullable)
-- `expires_at` ✓ (NOT NULL — derivado por `getReportSnapshotExpiresAt`)
-- `report_version`, `algorithm_version` ✓ (NOT NULL)
-- `pdf_storage_path` ✗ (deixar default NULL — Fase 3)
-- `expired_at` ✗ (deixar NULL — preenchido por cleanup futuro)
-
-### Validação
-
-```bash
-bunx tsc --noEmit
-bunx vitest run
-```
-
-Testes unitários novos a criar em `persist-report-snapshot.test.ts`:
-
-1. `cria snapshot na primeira chamada` — RR com analysis_snapshot_id e sem report_snapshot_id → INSERT acontece, UPDATE no RR acontece, retorna `created: true`.
-2. `não duplica em chamada repetida` — RR já tem report_snapshot_id → 0 SELECT em analysis_snapshots, 0 INSERT, retorna `created: false` com mesmo id.
-3. `recupera snapshot existente em race 23505` — INSERT mock devolve PostgrestError code `23505`; segundo SELECT por report_request_id devolve linha existente; retorna `created: false`.
-4. `report_request sem analysis_snapshot_id → reason missing_analysis_snapshot` — não tenta INSERT.
-5. `expires_at = created_at + 15 dias (REPORT_RETENTION_MS)` — verifica via `Date.now()` mockado.
-6. `payload exclui campos pesados` — alinha com teste existente do builder; assert que objecto inserido não tem `caption_semantic_analysis`, `visual_cover_analysis`, `market_signals_free`, etc.
-7. `não chama providers` — assegurar que mocks de Apify/OpenAI/DataForSEO não são chamados (asserção sobre fetch global stub).
-8. `report_version = "free.v1"`, `payload_schema_version = "report.v1"`, `algorithm_version = "analysis.v1"`.
-
-### Fora de scope (Fase 3)
-
-- Migrar `/reports/$snapshotId` para ler `report_snapshots`.
-- Backfill de RRs antigos sem snapshot.
-- Cleanup baseado em `expired_at`.
-- Snapshot do PDF (`pdf_storage_path`).
-- Promover persistência a bloqueante.
-- Brevo/Resend / templates.
-
-### Saída esperada
-
-- 4 ficheiros tocados (1 novo helper, 3 wirings, 1 teste novo).
-- `tsc` 0 erros, `vitest` todos verdes.
-- 1 nova entrada por unlock em `report_snapshots`; `report_requests.report_snapshot_id` populado.
-- 0 chamadas a providers.
+**Não recomendo lançamento público aberto** enquanto não houver: pagamento decidido (gratuito vs pago vs freemium), monitoria de custos Apify a correr 7 dias sem alertas vermelhos, e Phase 3 de snapshots (imutabilidade real de relatórios históricos).
