@@ -6,7 +6,6 @@ import {
   Briefcase,
   Check,
   CheckCircle2,
-  Clock,
   HelpCircle,
   Loader2,
   Lock,
@@ -43,7 +42,7 @@ import {
 } from "@/lib/unlock-flow";
 import { trackEvent } from "@/lib/tracking.functions";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 const OPERATOR_INFO = {
   name: "DIGITALFC",
@@ -51,18 +50,11 @@ const OPERATOR_INFO = {
   nif: "509XXXXXX",
 };
 
-const PREMIUM_SECTIONS = ["Conteúdo", "Procura", "Comparação"] as const;
-
-const FREE_SECTIONS: ReadonlyArray<{
-  rank: string;
-  label: string;
-  state: "complete" | "partial";
-  badge?: string;
-}> = [
-  { rank: "01", label: "Visão geral", state: "complete" },
-  { rank: "02", label: "Diagnóstico", state: "complete" },
-  { rank: "03", label: "Desempenho", state: "partial", badge: "3/5" },
-];
+const UNLOCKED_ITEMS = [
+  "Visão geral desbloqueada",
+  "Diagnóstico desbloqueado",
+  "Desempenho desbloqueado",
+] as const;
 
 type IconCmp = typeof User;
 
@@ -86,6 +78,8 @@ const PROFILE_OWNERSHIP_ICONS: Record<
 };
 
 const FIELD_LABELS_PT: Record<string, string> = {
+  first_name: "Primeiro nome",
+  last_name: "Apelido",
   email: "Email",
   gdpr_consent: "Consentimento",
   profile_ownership: "Tipo de perfil",
