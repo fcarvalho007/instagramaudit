@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /privacidade
+Allow: /termos
+Allow: /cookies
+Allow: /aviso-legal
+Allow: /beta/request
+
+Disallow: /admin
+Disallow: /app
+Disallow: /reports
+Disallow: /analyze
+Disallow: /api
+Disallow: /feedback
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+
+Sitemap: https://instagramaudit.lovable.app/sitemap.xml
