@@ -1,61 +1,66 @@
-## Adicionar `error_message` seguro a `report_snapshot_persist_failed`
+## Phase 3 — Estado actual
 
-### Objectivo
+Após auditoria, **toda a Fase 3 já está implementada**. Apenas falta revalidar.
 
-Enriquecer a metadata do evento de falha com uma mensagem técnica curta e sanitizada, mantendo `reason` como campo principal.
+### O que já existe
 
-### Alterações em `src/lib/report-snapshots/persist-report-snapshot.server.ts`
+**1. Endpoint `GET /api/public/report-snapshot/by-id/:snapshotId`**
+Ficheiro: `src/routes/api/public/report-snapshot.by-id.$snapshotId.ts` (181 linhas).
+- Valida UUID; devolve `INVALID_SNAPSHOT_ID` (400) se inválido.
+- Lê primeiro de `report_snapshots` (imutável).
+- Devolve: `id`, `instagram_username`, `payload` (= `report_payload_jsonb`), `meta`, `created_at`, `expires_at`, `expired`, `payload_schema_version`, `report_version`, `algorithm_version`, `benchmark`, `source: "report_snapshot"`.
+- Quando expirado, devolve `expired: true` sem payload.
+- **Fallback** para `analysis_snapshots` (mesmo shape) com `source: "legacy_analysis_snapshot"` para URLs antigos pré-Fase 2.
+- Apenas leitura: usa `supabaseAdmin` + `buildReportBenchmarkInput`. Não chama Apify/OpenAI/DataForSEO.
 
-**1. Novo helper privado `sanitizeErrorMessage(err): string`**
-- Extrai apenas `err.message` (string) — ignora `err.stack`, `err.cause`, `err.toJSON`, payloads brutos.
-- Remove emails: `/\S+@\S+\.\S+/g` → `[email]`
-- Remove tokens longos (JWT, chaves, base64): `/[A-Za-z0-9_\-]{32,}/g` → `[token]`
-- Remove caracteres de controlo / quebras de linha: substitui por espaço, colapsa whitespace.
-- Strip se a string começar por `{` ou `[` (JSON bruto): devolve `"non_text_error"`.
-- Trunca a **300 caracteres** com sufixo `…` quando excedido.
-- Devolve `"unknown_error"` quando vazio.
+**2. Rota `/reports/$snapshotId`**
+Ficheiro: `src/routes/reports.$snapshotId.tsx`.
+- Faz `fetch('/api/public/report-snapshot/by-id/...')` (já não chama o endpoint legacy).
+- `meta: noindex, nofollow` mantido.
+- Estados preservados: `loading`, `not_found`, `expired`, `error`, `ready`.
 
-**2. Estender `PersistResult`**
+**3. `/app/reports` (lista)**
+Ficheiro: `src/routes/app.reports.tsx` linha 193-194:
 ```ts
-errorMessage?: string;
+const snapshotIdForLink =
+  report.reportSnapshotId ?? report.analysisSnapshotId ?? null;
 ```
+"Abrir relatório" já prefere `report_snapshot_id` com fallback legacy.
 
-**3. Popular `errorMessage` nos 3 sítios de falha**
-- `build_error` (catch do `buildReportSnapshotPayload`)
-- `insert_error` no path 23505-sem-linha
-- `insert_error` no path de erro genérico do insert
+**4. `/app/reports/$id` (detalhe)**
+Ficheiro: `src/routes/app.reports.$id.tsx` linha 127-128: mesma regra.
 
-**4. Wrapper `ensureReportSnapshotForRequest`**
-- Passa `error_message: result.errorMessage` à metadata do evento `report_snapshot_persist_failed` (a seguir a `reason`).
-- Outer `catch` no wrapper também sanitiza `err` e devolve `errorMessage`, e emite o evento com `error_message` antes de retornar (consistência — hoje o catch não emitia evento, mas a metadata ficaria útil; **manter o comportamento actual de não emitir** do outer catch para não duplicar e manter scope mínimo). → Decisão: **só popular no `result`, não emitir extra**, para não alterar semântica de quando o evento dispara.
+**5. Email links**
+- Helper `src/lib/email/url.ts` → `resolveReportUrl(handle, reportSnapshotId)` devolve `/reports/{id}` quando há snapshot, senão `/analyze/{handle}`.
+- `send-welcome-beta.server.ts` e `send-report-summary.server.ts` aceitam e passam `reportSnapshotId`.
+- `lead-magnet-sequence.server.ts` propaga `reportSnapshotId` para ambos.
+- `unlock.server.ts` (linha 417, 466) passa `reportSnapshotResult.snapshotId` para a sequência.
+- Brevo `sync.server.ts` e `customer-sync.server.ts` constroem `LAST_REPORT_URL` a partir de `report_snapshot_id`.
 
-### Garantias
+**6. Endpoint legacy**
+`src/routes/api/public/analysis-snapshot.by-id.$snapshotId.ts` (99 linhas) mantido intacto para admin/debug.
 
-- `reason` continua a ser o campo principal e único discriminador semântico.
-- Sem payloads, sem emails, sem secrets, sem JSON bruto, ≤300 chars.
-- Comportamento do unlock/request inalterado (continua não-bloqueante, fail-soft).
-- Sem chamadas a providers.
-- `missing_analysis_snapshot` continua sem emitir evento (caso esperado).
+### O que vai ser feito neste loop
 
-### Testes (`__tests__/persist-report-snapshot.test.ts`)
+**Apenas revalidação. Zero alterações de código.**
 
-Adicionar 2 casos novos (não tocar nos existentes):
+1. `bunx tsc --noEmit`
+2. `bunx vitest run` (suite completa, ~351 testes)
 
-1. **`emite report_snapshot_persist_failed com error_message sanitizado e truncado`**
-   - Forçar `insertResult.error = { message: "X".repeat(500) + " user@example.com token=abc...32+" }`.
-   - Assertir que o evento contém `metadata.error_message`, comprimento ≤ 300, sem `@`, sem `[A-Za-z0-9_\-]{32,}`.
+### Relatório final incluirá
 
-2. **`error_message é "unknown_error" quando err é vazio/non-text`**
-   - Forçar `insertResult.error = { message: "" }` ou `{ message: "{secret:'a'}" }` → `"non_text_error"` ou `"unknown_error"`.
+- Endpoint criado: confirmação (já existente desde Fase 2).
+- Rotas actualizadas: `/reports/$snapshotId`, `/app/reports`, `/app/reports/$id` — confirmar fonte de dados.
+- Comportamento de fallback: `report_snapshot_id` → `analysis_snapshot_id` (UI) e endpoint `report_snapshots` → `analysis_snapshots` (API).
+- Comportamento de email: `resolveReportUrl` prefere `/reports/{report_snapshot_id}`, fallback para `/analyze/{handle}`.
+- Endpoint legacy `analysis-snapshot.by-id` preservado.
+- Resultados `tsc` + `vitest`.
 
-### Validação
+### Fora de âmbito (confirmado)
 
-- `bunx tsc --noEmit`
-- `bunx vitest run src/lib/report-snapshots`
-- `bunx vitest run`
-
-### Out of scope
-
-- Não tocar em call sites (`unlock.server.ts`, `request-full-report.ts`, `generate-beta-report.ts`).
-- Não emitir eventos novos.
-- Não mudar schema, providers, emails, retention, cleanup.
+- Sem chamadas a Apify/OpenAI/DataForSEO.
+- Sem regeneração de relatórios.
+- Sem alterações ao cálculo de relatório.
+- Sem alterações de schema.
+- Sem cleanup nem deletes.
+- Sem alterações a Brevo/Resend além do helper de URL (que já está implementado).
