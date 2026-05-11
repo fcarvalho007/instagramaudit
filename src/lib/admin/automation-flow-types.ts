@@ -224,17 +224,19 @@ export interface FlowEventDef {
 }
 
 export const FLOW_EVENTS: Record<FlowKey, FlowEventDef> = {
-  welcome_beta: { types: ["welcome_beta_sent"], instrumented: false },
+  welcome_beta: { types: ["beta_welcome_email_sent"], instrumented: true },
   pedido_recebido: { types: ["beta_request_created"], instrumented: true },
   relatorio_gerado: { types: ["report_generated"], instrumented: true },
   link_enviado: { types: ["report_link_sent"], instrumented: true },
   personal_area_saved: {
+    // Sem evento dedicado em product_events. O envio é registado pelo
+    // template `personal_area_saved` mas não dispara um *_sent agregável.
     types: ["personal_area_saved_sent"],
     instrumented: false,
   },
   relatorio_visto: { types: ["report_viewed"], instrumented: true },
   feedback_pedido: { types: ["feedback_requested"], instrumented: true },
-  report_summary: { types: ["report_summary_sent"], instrumented: false },
+  report_summary: { types: ["report_summary_email_sent"], instrumented: true },
   feedback_recebido: { types: ["feedback_submitted"], instrumented: true },
   follow_up_comercial: {
     types: ["commercial_followup_sent"],
