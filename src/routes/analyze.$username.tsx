@@ -380,11 +380,6 @@ function AnalyzeReady({
         onUnlockClick={() => setUnlockOpen(true)}
         actions={{
           onExportPdf: () => {
-            try {
-              window.dispatchEvent(new CustomEvent(PRICING_PDF_EVENT));
-            } catch {
-              /* ignore */
-            }
             void shareActions.exportPdf();
           },
           onShare: () => void shareActions.share(),
@@ -415,7 +410,6 @@ function AnalyzeReady({
             /* ignore */
           }
           setUnlocked(true);
-          setUnlockedLeadId(result.leadId);
           // Pequena confirmação visual: scroll suave + flash subtil
           // no primeiro bloco previamente bloqueado quando o utilizador
           // fecha o modal de sucesso.
@@ -432,18 +426,6 @@ function AnalyzeReady({
           }, 350);
         }}
       />
-      {unlockedLeadId && pricingTrigger.open && pricingTrigger.trigger ? (
-        <PricingFeedbackSheet
-          open={pricingTrigger.open}
-          onOpenChange={(next) => {
-            if (!next) pricingTrigger.dismiss();
-          }}
-          leadId={unlockedLeadId}
-          snapshotId={snapshotId}
-          trigger={pricingTrigger.trigger}
-          onDone={() => pricingTrigger.dismiss()}
-        />
-      ) : null}
     </>
   );
 }
