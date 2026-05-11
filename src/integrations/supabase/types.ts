@@ -922,6 +922,7 @@ export type Database = {
           pdf_generated_at: string | null
           pdf_status: string
           pdf_storage_path: string | null
+          report_snapshot_id: string | null
           request_month: string
           request_source: string
           request_status: string
@@ -945,6 +946,7 @@ export type Database = {
           pdf_generated_at?: string | null
           pdf_status?: string
           pdf_storage_path?: string | null
+          report_snapshot_id?: string | null
           request_month?: string
           request_source?: string
           request_status?: string
@@ -968,6 +970,7 @@ export type Database = {
           pdf_generated_at?: string | null
           pdf_status?: string
           pdf_storage_path?: string | null
+          report_snapshot_id?: string | null
           request_month?: string
           request_source?: string
           request_status?: string
@@ -990,6 +993,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      report_snapshots: {
+        Row: {
+          algorithm_version: string
+          competitor_usernames: Json
+          created_at: string
+          expired_at: string | null
+          expires_at: string
+          id: string
+          instagram_username: string
+          lead_id: string | null
+          metadata: Json | null
+          payload_schema_version: string
+          pdf_storage_path: string | null
+          report_payload_jsonb: Json
+          report_request_id: string | null
+          report_version: string
+          source_analysis_snapshot_id: string
+          user_id: string | null
+        }
+        Insert: {
+          algorithm_version: string
+          competitor_usernames?: Json
+          created_at?: string
+          expired_at?: string | null
+          expires_at: string
+          id?: string
+          instagram_username: string
+          lead_id?: string | null
+          metadata?: Json | null
+          payload_schema_version: string
+          pdf_storage_path?: string | null
+          report_payload_jsonb: Json
+          report_request_id?: string | null
+          report_version: string
+          source_analysis_snapshot_id: string
+          user_id?: string | null
+        }
+        Update: {
+          algorithm_version?: string
+          competitor_usernames?: Json
+          created_at?: string
+          expired_at?: string | null
+          expires_at?: string
+          id?: string
+          instagram_username?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          payload_schema_version?: string
+          pdf_storage_path?: string | null
+          report_payload_jsonb?: Json
+          report_request_id?: string | null
+          report_version?: string
+          source_analysis_snapshot_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       report_variant_overrides: {
         Row: {
