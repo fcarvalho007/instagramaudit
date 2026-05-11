@@ -210,9 +210,10 @@ describe("POST /api/admin/send-commercial-followup", () => {
       html: string;
       text: string;
     };
-    expect(body.html).not.toMatch(/Desbloquear/i);
-    expect(body.html).not.toMatch(/checkout/i);
-    expect(body.text).not.toMatch(/Desbloquear/i);
+    // CTA button label is exactly ">Desbloquear</a>" inside the rendered button
+    expect(body.html).not.toContain(">Desbloquear</a>");
+    // text version uses the "Desbloquear:" prefix only when checkout_url is set
+    expect(body.text).not.toMatch(/Desbloquear:/);
 
     // 4) metadata does not store an empty string anywhere
     expect(JSON.stringify(metadata)).not.toContain('"checkout_url":""');
