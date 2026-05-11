@@ -11,9 +11,7 @@ import { Link } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Receipt,
-  Users,
   Columns,
-  Inbox,
   Zap,
   FileText,
   AtSign,
@@ -32,9 +30,7 @@ interface NavItem {
   to:
     | "/admin/visao-geral"
     | "/admin/receita"
-    | "/admin/clientes"
     | "/admin/beta-leads"
-    | "/admin/beta-requests"
     | "/admin/automacoes"
     | "/admin/relatorios"
     | "/admin/perfis"
@@ -57,14 +53,12 @@ const GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/visao-geral", label: "Visão geral", icon: LayoutDashboard },
       { to: "/admin/receita", label: "Receita", icon: Receipt },
-      { to: "/admin/clientes", label: "Clientes", icon: Users },
     ],
   },
   {
-    label: "Pipeline",
+    label: "Contactos",
     items: [
-      { to: "/admin/beta-leads", label: "Leads", icon: Columns },
-      { to: "/admin/beta-requests", label: "Pedidos", icon: Inbox },
+      { to: "/admin/beta-leads", label: "Pipeline", icon: Columns },
       { to: "/admin/automacoes", label: "Automações", icon: Zap },
     ],
   },
