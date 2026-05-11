@@ -30,18 +30,6 @@ import {
   type FlowStatus,
 } from "@/lib/admin/automation-flow-types";
 
-// Re-exports para retrocompatibilidade com imports antigos.
-export type {
-  AutomationFlow,
-  AutomationFlowResponse,
-  AutomationKpis,
-  FlowStage,
-  FlowStatus,
-  FlowVisualKind,
-  FlowExtraTag,
-  FlowTiming,
-} from "@/lib/admin/automation-flow-types";
-
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
