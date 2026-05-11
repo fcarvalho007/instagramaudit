@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -197,7 +197,17 @@ export function UnlockModal({
   const [partialBanner, setPartialBanner] = useState<string | null>(null);
 
   // Track intro view once per modal open.
-  useState<null>(); // keep React import shape
+  useEffect(() => {
+    if (!open || step !== "intro") return;
+    void trackEvent({
+      data: {
+        eventType: "unlock_modal_intro_viewed",
+        handle: instagramUsername,
+        snapshotId,
+      },
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const form = useForm<UnlockFormValues>({
     resolver: zodResolver(unlockFormSchema),
