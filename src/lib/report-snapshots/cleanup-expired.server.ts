@@ -162,6 +162,9 @@ export async function cleanupExpiredReportSnapshots(
     });
 
     if (list.length < batchSize) break;
+    // Em dry-run não fazemos UPDATE: o próximo SELECT devolveria as mesmas
+    // rows. Reportamos o primeiro batch como amostra e saímos.
+    if (dryRun) break;
   }
 
   result.durationMs = Date.now() - started;
