@@ -308,6 +308,7 @@ export async function ensureReportSnapshotForRequest(
             report_request_id: reportRequestId,
             source,
             reason: result.reason,
+            error_message: result.errorMessage ?? null,
           },
         });
       } catch {
@@ -321,7 +322,12 @@ export async function ensureReportSnapshotForRequest(
       reportRequestId,
       err,
     );
-    return { snapshotId: null, created: false, reason: "insert_error" };
+    return {
+      snapshotId: null,
+      created: false,
+      reason: "insert_error",
+      errorMessage: sanitizeErrorMessage(err),
+    };
   }
 }
 
