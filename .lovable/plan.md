@@ -1,50 +1,51 @@
-## Causa-raiz do erro "Não foi possível carregar contactos"
+Diagnóstico encontrado:
 
-O endpoint `/api/admin/leads-kanban` exige o header **`X-Admin-Email`** (lido em `src/lib/admin/session.ts`). Existe um helper `adminFetch` (`src/lib/admin/fetch.ts`) que injeta automaticamente esse header a partir de `localStorage` — é o que o resto do `/admin` usa.
+1. O submenu `Tabela` já existe no código da sidebar em `src/components/admin/v2/admin-sidebar.tsx`, dentro do grupo `Contactos`, por baixo de `Pipeline`.
+2. A página que aparece na captura ainda está no gate de acesso, por isso a sidebar não é renderizada enquanto não houver email admin guardado no browser. Sem entrar no gate, é esperado não ver `Pipeline` nem `Tabela`.
+3. A Pipeline falha por 401 no preview do utilizador porque os pedidos para `/api/admin/leads-kanban` chegam sem `X-Admin-Email`.
+4. O endpoint em si funciona quando recebe o header correto: testei `/api/admin/leads-kanban` com `X-Admin-Email: fredericodigital@gmail.com` e respondeu `200` com leads reais.
+5. Ainda existem chamadas diretas com `fetch(..., { credentials: "include" })` para endpoints admin, principalmente na Command Palette, PeopleTab e LeadDetailSheet. Esse padrão não funciona com o gate simples atual, porque não há cookie/JWT; a autenticação depende do header injetado por `adminFetch`.
 
-Em `src/routes/admin.beta-leads.tsx` eu chamei `fetch("/api/admin/leads-kanban", { credentials: "include" })` **sem** passar pelo `adminFetch`, por isso o servidor recebe sempre o pedido sem header e devolve 401 — mesmo quando há sessão admin válida no browser. Por isso continua a aparecer "Não foi possível carregar contactos."
+Plano de correção:
 
-(O `/api/admin/snapshot/...` funciona porque outras páginas já usam `adminFetch`, e o cookie `x-admin-email` aparece no header da request — visto na network.)
+1. Unificar chamadas admin no helper correto
+   - Substituir `fetch("/api/admin/leads-kanban", { credentials: "include" })` por `adminFetch(...)` na Command Palette.
+   - Fazer o mesmo em `PeopleTab`.
+   - No `LeadDetailSheet`, trocar as chamadas admin diretas por `adminFetch` para:
+     - `/api/admin/lead-timeline/:id`
+     - `/api/admin/generate-beta-report`
+     - `/api/admin/send-report-link`
+     - `/api/admin/send-feedback-request`
+     - `/api/admin/send-commercial-followup`
 
-## Correções
+2. Evitar recarregamento prematuro em 401
+   - Ajustar `adminFetch` para continuar a limpar a sessão inválida, mas sem recarregar automaticamente a página antes de a UI conseguir mostrar uma mensagem clara.
+   - Isto evita loops visuais em que a página volta ao gate sem explicar que a sessão local estava inválida.
 
-### 1. Pipeline volta a carregar (root cause)
+3. Tornar `Tabela` inequívoca no menu
+   - Manter `Tabela` diretamente por baixo de `Pipeline` no grupo `Contactos`.
+   - Garantir que o active state distingue corretamente:
+     - `Pipeline`: `/admin/beta-leads` sem `view`, ou `view=pipeline`
+     - `Tabela`: `/admin/beta-leads?view=tabela`
+   - Corrigir o título da topbar para mostrar `Contactos` em vez de só `Pipeline`, porque a rota serve as duas vistas.
 
-`src/routes/admin.beta-leads.tsx`:
-- Importar `adminFetch` de `@/lib/admin/fetch`.
-- Substituir `fetch(...)` por `adminFetch(...)` em `fetchLeads()` e `updateLead()`.
-- Manter o tratamento de erro 401/403 que já adicionei (caso a sessão expire mesmo).
+4. Refinar mensagens da página de Contactos
+   - Quando o erro for 401/403, mostrar estado de sessão/admin em falta em vez de “Não foi possível carregar contactos”.
+   - Manter botão para voltar ao gate de admin.
 
-Resultado: com sessão válida no browser, `useQuery` recebe os leads e o Kanban renderiza. O "Tentar de novo" e o botão "Iniciar sessão" ficam para casos reais de erro.
+5. Validação
+   - Repetir o teste direto do endpoint com header admin.
+   - Confirmar no preview, depois de login no gate, que:
+     - aparece `Contactos > Pipeline` e `Tabela` na sidebar;
+     - Pipeline carrega contactos;
+     - `Tabela` abre a mesma listagem em tabela;
+     - não há novos 401 em `/api/admin/leads-kanban` quando a sessão local existe.
 
-### 2. Sidebar — adicionar "Tabela" por baixo de "Pipeline"
+Ficheiros previstos:
 
-`src/components/admin/v2/admin-sidebar.tsx`, grupo **Contactos**:
-
-```text
-Contactos
-  ├─ Pipeline   →  /admin/beta-leads            (vista kanban)
-  └─ Tabela     →  /admin/beta-leads?view=tabela
-```
-
-Detalhes:
-- Ambos os itens apontam para a rota `/admin/beta-leads`. O `view` é uma search param já suportada pela rota.
-- Para o estado activo correcto, usar `<Link>` com `search={{ view: "tabela" }}` no item Tabela e `activeOptions={{ exact: false, includeSearch: true }}` (ou um match manual via `useRouterState` lendo `location.search.view`) para que apenas um esteja realçado de cada vez.
-- A Tab interna (`TabsList` com Pipeline/Tabela) dentro da página passa a ser redundante visualmente, mas mantém-se para utilizadores que cheguem por link directo. Alinhamos o estado da tab com a search param (já está).
-
-### 3. Sobre o "não copiou nada do outro projecto"
-
-O drag-and-drop entre colunas (padrão do `PipelineView` do CRM Webinar) **foi** portado para o `KanbanBoard` no commit anterior — `draggable` nos cards, `onDragOver/onDrop` nas colunas, diálogo de confirmação e realce visual. Não dava para ver porque o Kanban nem chegava a renderizar (erro 401). Após a correcção (1), o D&D fica visível e funcional.
-
-Não copiei o resto do `PipelineView`/`TableView` da referência porque o modelo de dados é incompatível (`Inscrito` com `plan`/`payment_status`/`webinar` vs `EnrichedLead` com `commercial_status`/`feedback`/`report_request`). Foi escolha alinhada na conversa.
-
-## Validação
-
-- `bunx tsc --noEmit`
-- Manual em `/admin/beta-leads`: kanban com leads visível; arrastar card para outra coluna pede confirmação e actualiza `commercial_status`.
-- Sidebar: Pipeline e Tabela aparecem como itens distintos; clicar em Tabela navega para `?view=tabela` e activa o item correcto.
-
-## Fora de âmbito
-
-- Nenhuma alteração ao endpoint nem ao schema.
-- Não tocar em `requireAdminSession` nem no fluxo de login do `/admin`.
+- `src/lib/admin/fetch.ts`
+- `src/components/admin/v2/admin-command-palette.tsx`
+- `src/components/admin/v2/automacoes/people-tab.tsx`
+- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
+- `src/components/admin/v2/admin-topbar.tsx`
+- possivelmente `src/routes/admin.beta-leads.tsx` apenas para melhorar a mensagem de erro, se necessário.

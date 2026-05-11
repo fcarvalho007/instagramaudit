@@ -19,9 +19,10 @@ import {
 } from "@/components/ui/command";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 import { getLifecycleMeta } from "@/lib/admin/lead-lifecycle";
+import { adminFetch } from "@/lib/admin/fetch";
 
 async function fetchLeads(): Promise<EnrichedLead[]> {
-  const res = await fetch("/api/admin/leads-kanban", { credentials: "include" });
+  const res = await adminFetch("/api/admin/leads-kanban");
   if (!res.ok) throw new Error("Falha ao carregar leads");
   const json = await res.json();
   return (json.leads ?? []) as EnrichedLead[];

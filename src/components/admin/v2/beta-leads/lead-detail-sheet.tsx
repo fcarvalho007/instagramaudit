@@ -80,6 +80,7 @@ import {
   renderFeedbackRequest,
 } from "@/lib/email/templates";
 import { CommercialFollowupDialog } from "./commercial-followup-dialog";
+import { adminFetch } from "@/lib/admin/fetch";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -309,7 +310,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     }
 
     setTimelineLoading(true);
-    fetch(`/api/admin/lead-timeline/${lead.id}`, { credentials: "include" })
+    adminFetch(`/api/admin/lead-timeline/${lead.id}`)
       .then((r) => r.json())
       .then((json) => setTimeline(json.events ?? []))
       .catch(() => setTimeline([]))
@@ -743,7 +744,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         try {
           const res = await fetch("/api/admin/generate-beta-report", {
             method: "POST",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ report_request_id: lead.report_request_id }),
           });
@@ -777,7 +777,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         try {
           const res = await fetch("/api/admin/send-report-link", {
             method: "POST",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               lead_id: lead.id,
@@ -814,7 +813,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         try {
           const res = await fetch("/api/admin/send-feedback-request", {
             method: "POST",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               lead_id: lead.id,
@@ -848,7 +846,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         try {
           const res = await fetch("/api/admin/send-commercial-followup", {
             method: "POST",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               lead_id: lead.id,

@@ -12,13 +12,12 @@ import {
   KANBAN_COLUMNS,
   type EnrichedLead,
 } from "@/lib/admin/kanban-columns";
+import { adminFetch } from "@/lib/admin/fetch";
 
 const MAX_PER_STAGE = 5;
 
 async function fetchLeads(): Promise<EnrichedLead[]> {
-  const res = await fetch("/api/admin/leads-kanban", {
-    credentials: "include",
-  });
+  const res = await adminFetch("/api/admin/leads-kanban");
   if (!res.ok) throw new Error("Falha ao carregar leads");
   const json = await res.json();
   return json.leads ?? [];
