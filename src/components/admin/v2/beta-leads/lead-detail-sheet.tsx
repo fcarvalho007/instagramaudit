@@ -446,7 +446,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 {lead.user_type && (
                   <AdminBadge variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}>
-                    {USER_TYPE_LABEL[lead.user_type.toLowerCase()] ?? lead.user_type}
+                    {USER_TYPE_LABELS[lead.user_type.toLowerCase() as UserType] ?? lead.user_type}
                   </AdminBadge>
                 )}
                 {lead.company && (
