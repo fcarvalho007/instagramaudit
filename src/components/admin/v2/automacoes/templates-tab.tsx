@@ -5,6 +5,7 @@
 
 import { AdminCard } from "../admin-card";
 import { EMAIL_TEMPLATES } from "@/lib/admin/email-template-registry";
+import { Link } from "@tanstack/react-router";
 
 export function TemplatesTab() {
   return (
@@ -49,13 +50,14 @@ export function TemplatesTab() {
             </p>
 
             <div className="flex flex-wrap items-center gap-2">
-              <a
-                href={`/admin/email-lab?template=${t.key}`}
+              <Link
+                to="/admin/email-lab"
+                search={{ template: t.key }}
                 className="rounded-md border px-2.5 py-1 text-[12px] font-medium text-admin-text-primary hover:bg-admin-surface-elevated"
                 style={{ borderColor: "rgb(var(--admin-border-default))" }}
               >
                 Pré-visualizar →
-              </a>
+              </Link>
               <button
                 type="button"
                 disabled
