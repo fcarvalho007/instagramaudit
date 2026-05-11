@@ -7,11 +7,6 @@ import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { UnlockModal } from "@/components/product/unlock-modal";
-import { PricingFeedbackSheet } from "@/components/product/pricing-feedback-sheet";
-import {
-  PRICING_PDF_EVENT,
-  usePricingFeedbackTrigger,
-} from "@/hooks/use-pricing-feedback-trigger";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import { getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
@@ -351,21 +346,6 @@ function AnalyzeReady({
     }
   });
   const [unlockOpen, setUnlockOpen] = useState(false);
-  const [unlockedLeadId, setUnlockedLeadId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return snapshotId
-        ? window.sessionStorage.getItem(`ib_unlock_lead:${snapshotId}`)
-        : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const pricingTrigger = usePricingFeedbackTrigger({
-    enabled: unlocked && Boolean(unlockedLeadId),
-    snapshotId,
-  });
 
   // Track report view (fire-and-forget). Guarded por module-level Set +
   // sessionStorage para sobreviver a StrictMode double-invokes, remounts entre
@@ -400,11 +380,6 @@ function AnalyzeReady({
         onUnlockClick={() => setUnlockOpen(true)}
         actions={{
           onExportPdf: () => {
-            try {
-              window.dispatchEvent(new CustomEvent(PRICING_PDF_EVENT));
-            } catch {
-              /* ignore */
-            }
             void shareActions.exportPdf();
           },
           onShare: () => void shareActions.share(),
@@ -435,7 +410,6 @@ function AnalyzeReady({
             /* ignore */
           }
           setUnlocked(true);
-          setUnlockedLeadId(result.leadId);
           // Pequena confirmação visual: scroll suave + flash subtil
           // no primeiro bloco previamente bloqueado quando o utilizador
           // fecha o modal de sucesso.
@@ -452,18 +426,6 @@ function AnalyzeReady({
           }, 350);
         }}
       />
-      {unlockedLeadId && pricingTrigger.open && pricingTrigger.trigger ? (
-        <PricingFeedbackSheet
-          open={pricingTrigger.open}
-          onOpenChange={(next) => {
-            if (!next) pricingTrigger.dismiss();
-          }}
-          leadId={unlockedLeadId}
-          snapshotId={snapshotId}
-          trigger={pricingTrigger.trigger}
-          onDone={() => pricingTrigger.dismiss()}
-        />
-      ) : null}
     </>
   );
 }
