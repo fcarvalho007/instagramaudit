@@ -11,6 +11,7 @@ const INSTITUTIONAL_LINKS = [
   { label: "Contacto", href: "/contacto" },
   { label: "Privacidade", href: "/privacidade" },
   { label: "Termos", href: "/termos" },
+  { label: "Aviso legal", href: "/aviso-legal" },
   { label: "RGPD", href: "/rgpd" },
   { label: "Cookies", href: "/cookies" },
 ];

@@ -1,68 +1,84 @@
-## Estado atual
-
-- Suite global: **293/293 verde** (já corrigida no turn anterior)
-- `lead-magnet-sequence.test.ts`: 10/10 com mocks corretos (table-aware supabase, env snapshot/restore, Brevo isolado)
-- `transactional-email.test.ts`: 8/8 (Brevo + Resend mockados, env override por teste)
-
-Restam apenas as tarefas adicionais — adicionar cobertura ao endpoint `send-commercial-followup`.
-
 ## Objetivo
 
-Criar `src/routes/api/admin/__tests__/send-commercial-followup.test.ts` cobrindo: validação de payload, gates de admin/lead/email, sucesso, falhas do provider (timeout, sandbox-block, 5xx), transição de `commercial_status`, e idempotência do `checkout_url`.
+Atualizar os 4 documentos legais do InstaBench com os textos completos fornecidos, alinhados com RGPD + Digital Services Act + Decreto-Lei 7/2004, e identificação completa da Fomentar Sonhos, Lda.
 
-## Estratégia
+## Estado atual
 
-Importar a `Route` real e invocar `Route.options.server.handlers.POST({ request })`. Mockar **todas** as dependências externas (sem chamadas reais a Resend/DB/Brevo):
+- `src/routes/privacidade.tsx` — existe (versão antiga, com placeholder `[Nome do responsável · NIF · morada — a indicar em revisão posterior]` e subcontratantes parcialmente diferentes).
+- `src/routes/termos.tsx` — existe (versão antiga, sem identificação da empresa).
+- `src/routes/cookies.tsx` — **não existe** (mas footer já linka `/cookies` → 404 atual).
+- `src/routes/aviso-legal.tsx` — **não existe** (footer não linka).
+- `src/components/legal/legal-layout.tsx` — wrapper reutilizável (eyebrow, title, lede, lastUpdated, TOC, slot de conteúdo).
+- `src/components/layout/footer.tsx` — tem `Privacidade`, `Termos`, `Cookies`. Falta `Aviso legal`.
 
-- `@/integrations/supabase/client.server` — `supabaseAdmin` table-aware (`leads`, `beta_feedback`, `report_requests`, update)
-- `@/lib/admin/session` — `requireAdminSession`
-- `@/lib/admin/lead-events.server` — `recordLeadEvent`
-- `@/lib/email/sender` — `resolveSender`
-- `@/lib/email/templates` — `renderCommercialFollowup` (não precisa mock, é puro)
-- `globalThis.fetch` — interceptar `https://api.resend.com/emails`
+## Tensão a confirmar antes de implementar
 
-Snapshot/restore de `process.env.RESEND_API_KEY`, `PUBLIC_APP_BASE_URL` por teste.
+**Ortografia.** O texto fornecido usa pré-AO90 ("protecção", "actualização", "directamente", "actuam", "efectuado", "electrónico", "Outubro"). A regra workspace é AO90 ("proteção", "atualização", "diretamente", "atuam", "efetuado", "eletrónico"). Em documentos legais, recomenda-se uniformidade. **Vou seguir o texto verbatim como fornecido** (preserva intenção editorial e tom jurídico do utilizador) e sinalizar este desvio. Se preferires AO90, indica e converto antes de gravar.
 
-## Casos de teste (10)
+**Data de publicação.** Substituo `[DATA]` por **"11 de maio de 2026"** (data atual). Confirma se preferes outra data.
 
-1. **401 sem sessão admin** → `requireAdminSession` rejeita → resposta `UNAUTHORIZED`.
-2. **400 payload inválido** → falta `lead_id` → `INVALID_PAYLOAD`.
-3. **400 checkout_url malformado** → `"not-a-url"` → `INVALID_PAYLOAD`.
-4. **Aceita checkout_url vazio** (preprocess → undefined) → handler prossegue, body do Resend não inclui CTA com URL custom.
-5. **500 sem RESEND_API_KEY** → `EMAIL_PROVIDER_NOT_CONFIGURED`.
-6. **404 lead não encontrado** → `leads.maybeSingle` devolve `null` → `LEAD_NOT_FOUND`.
-7. **422 lead sem email / email malformado** → `LEAD_EMAIL_MISSING` / `LEAD_EMAIL_INVALID`.
-8. **Sucesso, intent alto** → fetch Resend OK → resposta `success: true`, `new_status: "potencial_cliente"`, `recordLeadEvent` chamado com `commercial_followup_sent` + `checkout_url`, update em `leads` com `commercial_status` e `contacted_at`.
-9. **Sucesso preserva status terminal** → `commercial_status: "convertido"` + intent alto → update **não** sobrescreve `commercial_status`, apenas `contacted_at`.
-10. **Resend 422 sandbox block** → corpo "you can only send testing emails to verified" → `RESEND_SANDBOX_RECIPIENT_BLOCKED`, `recordLeadEvent` com `commercial_followup_failed`.
-11. **Resend timeout (AbortError)** → `RESEND_TIMEOUT`, evento de falha registado.
+**NIF.** O texto recomenda acrescentar o NIF da Fomentar Sonhos, Lda. Não foi fornecido. **Não vou inventar.** Deixo a identificação como nos documentos (sem NIF) e crio uma única linha pendente em `LOCKED_FILES.md`/comentário a marcar TODO. Se quiseres incluir agora, partilha o NIF.
 
-(Total: 11 testes; cobre todos os ramos relevantes.)
+## Alterações
 
-## Ficheiro a criar
+### 1. Reescrever `src/routes/privacidade.tsx`
+Substituir conteúdo do `LegalLayout` pelo Documento 1 completo:
+- 12 secções com TOC atualizado: `responsavel`, `dados`, `finalidades`, `partilha`, `transferencias`, `conservacao`, `direitos`, `seguranca`, `cookies`, `menores`, `alteracoes`, `contacto`.
+- Título permanece "Política de Privacidade".
+- `lastUpdated="11 de maio de 2026"`.
+- Identificação completa: Fomentar Sonhos, Lda. · Rua da Carvalha n.º 570 · 2400-441 Leiria · `frederico.carvalho@digitalfc.pt`.
+- Tabela de subcontratantes (5 linhas: Supabase, Lovable Cloud, Cloudflare, Apify, Resend) renderizada como `<table>` semântica dentro do `LegalLayout`. Verificar se `legal-layout.tsx` aplica estilos a `table`; caso contrário, ajustar copy para `<ul>` para garantir legibilidade sem tocar no layout.
+- Atualizar `meta` description para refletir a nova identificação.
+- Manter rodapé editorial sobre não-afiliação à Meta e disclaimer de aconselhamento jurídico.
 
-`src/routes/api/admin/__tests__/send-commercial-followup.test.ts`
+### 2. Reescrever `src/routes/termos.tsx`
+Substituir conteúdo pelo Documento 2 completo:
+- 12 secções, TOC atualizado: `prestador`, `objeto`, `aceitacao`, `conta`, `permitido`, `proibido`, `propriedade`, `responsabilidade`, `alteracoes`, `cancelamento`, `lei-foro`, `contacto`.
+- Identificação completa do prestador no topo.
+- `lastUpdated="11 de maio de 2026"`.
+- Link para plataforma europeia ODR e `consumidor.gov.pt`.
 
-Padrão: `vi.mock` no topo, `beforeEach` reseta mocks + env, `afterEach` restaura `process.env` e `globalThis.fetch`. Helper `invokePost(body)` constrói `Request` JSON e chama `Route.options.server.handlers.POST({ request })` (com fallback para `Route.update().options...` se a API interna do TanStack assim exigir — verificar à execução).
+### 3. Criar `src/routes/aviso-legal.tsx`
+Novo ficheiro com Documento 3 (DSA):
+- Mesmo padrão `createFileRoute("/aviso-legal")` + `LegalLayout`.
+- Eyebrow: "Documento legal", título "Aviso Legal".
+- TOC: `identificacao`, `natureza`, `contacto-reclamacoes`, `conteudo-gerado`, `direitos-titulares`, `publicidade`, `recomendacao`, `autoridades`.
+- Meta tags próprias (title, description, og:title, og:description) — sem reutilizar a home.
 
-## Riscos
+### 4. Criar `src/routes/cookies.tsx`
+Novo ficheiro com Documento 4:
+- Tabela com 2 cookies (`ib_session`, `ib_ui_prefs`) — render como `<table>` ou `<ul>` consoante suporte do `LegalLayout`.
+- Lista de ferramentas que NÃO são utilizadas.
+- Meta tags próprias.
 
-- **Acesso ao handler via `Route.options`**: API interna do TanStack pode mudar. Se `Route.options.server.handlers.POST` não estiver acessível, fallback é refatorar a route mantendo o handler exportado num módulo helper (`send-commercial-followup.handler.ts`) e a route apenas faz `createFileRoute(...)({ server: { handlers: { POST: handler } } })`. Decidir à execução com base no que está exposto.
-- **Side-effects de import**: importar a route não regista nada perigoso (route tree é gerada à parte). Confirmado: `routeTree.gen.ts` é o único registo real.
-- **`requireAdminSession` lê headers do request**: substituído por mock que devolve `{ email: "admin@x.pt" }`.
+> **Nota técnica:** os nomes de cookies `ib_session` e `ib_ui_prefs` no documento são **declarativos**. Verifico que correspondem à realidade do código; se a implementação real usa nomes diferentes (ex: `sb-*` do Supabase), peço orientação antes de publicar — caso contrário criamos exposição falsa. Esta verificação acontece **na implementação**, não agora.
 
-## Validação
-
-```
-bunx vitest run src/routes/api/admin/__tests__/send-commercial-followup.test.ts
-bunx vitest run
-bunx tsc --noEmit
-```
-
-Alvo: **293 + 11 = 304/304 verde**.
+### 5. Atualizar `src/components/layout/footer.tsx`
+Adicionar entrada `{ label: "Aviso legal", href: "/aviso-legal" }` na lista de links legais (entre `Termos` e `Cookies`). Sem outras alterações de design.
 
 ## Fora de scope
 
-- Sem alterações ao código de produção (a menos que `Route.options.server.handlers.POST` não seja acessível — então extração mínima do handler).
-- Sem testes ao componente do diálogo (UI).
-- Sem alterações à validação UI feita no turn anterior.
+- Não toco em `LOCKED_FILES.md` (a menos que seja necessário desbloquear `legal-layout.tsx` — não previsto).
+- Não altero `legal-layout.tsx` salvo se a tabela de subcontratantes não renderizar legivelmente (decisão durante a implementação; fallback: usar `<ul>` em vez de `<table>` para evitar editar o layout).
+- Não envio nem agendo notificação de "alterações materiais" aos utilizadores registados — é decisão do dono.
+- Não corrijo a ortografia dos textos (ver tensão acima).
+
+## Validação
+
+- `bunx tsc --noEmit`
+- Visual: abrir `/privacidade`, `/termos`, `/aviso-legal`, `/cookies` no preview e verificar TOC + secções + tabelas.
+- Confirmar que footer mostra os 4 links e nenhum dá 404.
+- Confirmar que `routeTree.gen.ts` regenera as 2 rotas novas (TanStack faz automaticamente).
+
+## Riscos
+
+- **Cookie names**: se `ib_session`/`ib_ui_prefs` não existirem no código real, a Política de Cookies fica imprecisa. Verifico em código antes de publicar e sinalizo se houver divergência.
+- **Tabela de subcontratantes**: se o `legal-layout.tsx` não estilizar `<table>`, fallback é lista — sem perder informação.
+- **Ortografia mista** (pré-AO90 nos novos vs. AO90 nos componentes do produto): aceitável em documentos legais; sinalizado.
+
+## Checkpoint
+
+☐ Confirmar data de publicação (default: 11 maio 2026)
+☐ Confirmar manter ortografia pré-AO90 dos textos legais (ou converter para AO90)
+☐ Indicar NIF da Fomentar Sonhos, Lda. (ou aceitar omissão temporária)
+☐ Aprovar plano para implementação

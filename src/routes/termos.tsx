@@ -9,13 +9,13 @@ export const Route = createFileRoute("/termos")({
       {
         name: "description",
         content:
-          "Termos e Condições de utilização do InstaBench: âmbito do serviço, uso aceitável, quotas, propriedade intelectual e limitação de responsabilidade.",
+          "Termos e Condições de utilização do InstaBench, prestado pela Fomentar Sonhos, Lda. Identificação do prestador, objecto, regras de utilização e limites de responsabilidade.",
       },
       { property: "og:title", content: "Termos e Condições — InstaBench" },
       {
         property: "og:description",
         content:
-          "Termos e Condições do InstaBench: regras de utilização do serviço, quotas, responsabilidade e propriedade intelectual.",
+          "Termos e Condições do InstaBench: identificação do prestador, regras de utilização, propriedade intelectual e limites de responsabilidade.",
       },
     ],
   }),
@@ -23,18 +23,17 @@ export const Route = createFileRoute("/termos")({
 });
 
 const TOC = [
-  { id: "objeto", label: "Objeto" },
-  { id: "aceitacao", label: "Aceitação" },
-  { id: "servico", label: "Descrição do serviço" },
-  { id: "uso-aceitavel", label: "Uso aceitável" },
-  { id: "quotas", label: "Quotas e gratuitidade" },
-  { id: "pagamentos", label: "Pagamentos" },
-  { id: "propriedade", label: "Propriedade intelectual" },
-  { id: "responsabilidade", label: "Limitação de responsabilidade" },
-  { id: "disponibilidade", label: "Disponibilidade" },
-  { id: "dados", label: "Dados pessoais" },
-  { id: "alteracoes", label: "Alterações" },
-  { id: "lei-foro", label: "Lei e foro" },
+  { id: "prestador", label: "Identificação do prestador" },
+  { id: "objeto", label: "Objecto do serviço" },
+  { id: "aceitacao", label: "Aceitação dos termos" },
+  { id: "conta", label: "Conta e elegibilidade" },
+  { id: "permitido", label: "Utilização permitida" },
+  { id: "proibido", label: "Utilização proibida" },
+  { id: "propriedade", label: "Conteúdo gerado e PI" },
+  { id: "responsabilidade", label: "Limites de responsabilidade" },
+  { id: "alteracoes", label: "Alterações ao serviço e termos" },
+  { id: "cancelamento", label: "Cancelamento e eliminação" },
+  { id: "lei-foro", label: "Lei aplicável e foro" },
   { id: "contacto", label: "Contacto" },
 ];
 
@@ -42,198 +41,191 @@ function TermosPage() {
   return (
     <LegalLayout
       eyebrow="Documento legal"
-      title="Termos e Condições"
-      lede="Estes Termos e Condições regulam a utilização do InstaBench, serviço de análise comparativa de perfis públicos do Instagram e geração de relatórios estratégicos."
-      lastUpdated="17 de abril de 2026"
+      title="Termos e Condições de Utilização"
+      lede={
+        "Os presentes termos regulam o acesso e a utilização da plataforma InstaBench (doravante \u201Co Serviço\u201D), prestada pela Fomentar Sonhos, Lda."
+      }
+      lastUpdated="11 de Maio de 2026"
       toc={TOC}
     >
-      <section id="objeto">
-        <h2>1. Objeto</h2>
+      <section id="prestador">
+        <h2>1. Identificação do prestador</h2>
+        <p>O Serviço é prestado por:</p>
         <p>
-          O presente documento estabelece as condições de utilização do InstaBench, disponibilizado
-          através do domínio <code>instabench.pt</code> (adiante designado por <strong>Serviço</strong>).
-          Ao aceder ou utilizar o Serviço, o utilizador declara ter lido, compreendido e aceitado
-          estes Termos.
+          <strong>Fomentar Sonhos, Lda.</strong>
+          <br />
+          Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
+          <br />
+          Contacto:{" "}
+          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
+        </p>
+        <p>
+          Esta identificação cumpre o disposto no Decreto-Lei n.º 7/2004 (comércio electrónico) e
+          no Regulamento (UE) 2022/2065 — Digital Services Act.
+        </p>
+      </section>
+
+      <section id="objeto">
+        <h2>2. Objecto do serviço</h2>
+        <p>
+          O InstaBench é uma ferramenta de análise editorial de perfis públicos de Instagram. A
+          partir de um username indicado pelo utilizador, gera um relatório com diagnóstico de
+          conteúdo, desempenho e oportunidade competitiva, com base em dados públicos disponíveis
+          na plataforma Instagram à data da consulta.
+        </p>
+        <p>
+          O serviço encontra-se em fase beta. As funcionalidades, condições de acesso, limites e
+          preços podem ser ajustados, com aviso prévio aos utilizadores activos sempre que tal
+          seja materialmente relevante.
         </p>
       </section>
 
       <section id="aceitacao">
-        <h2>2. Aceitação</h2>
+        <h2>3. Aceitação dos termos</h2>
         <p>
-          A utilização do Serviço, mesmo na sua versão pública gratuita, implica a aceitação plena
-          destes Termos e da{" "}
-          <a href="/privacidade" target="_blank" rel="noopener">
-            Política de Privacidade
-          </a>
-          . Caso o utilizador não concorde com qualquer ponto, deverá abster-se de utilizar o
-          Serviço.
+          Ao utilizar o Serviço, o utilizador declara ter lido, compreendido e aceite estes
+          Termos e Condições, bem como a <a href="/privacidade">Política de Privacidade</a>. Caso
+          não concorde com qualquer disposição, deve abster-se de utilizar o Serviço.
         </p>
       </section>
 
-      <section id="servico">
-        <h2>3. Descrição do serviço</h2>
+      <section id="conta">
+        <h2>4. Conta e elegibilidade</h2>
         <p>
-          O InstaBench permite analisar perfis públicos do Instagram, comparar até dois
-          concorrentes, gerar relatórios em formato PDF com leitura estratégica produzida com apoio
-          de IA, e enviar esses relatórios por email.
-        </p>
-        <p>
-          O Serviço opera exclusivamente sobre <strong>dados públicos</strong> disponibilizados pela
-          plataforma Instagram. O InstaBench não acede a perfis privados, dados de autenticação ou
-          conteúdos não públicos.
-        </p>
-        <p>
-          O InstaBench não é afiliado, patrocinado nem operado pela Meta Platforms, Inc. ou pelo
-          Instagram.
+          O Serviço destina-se a utilizadores adultos (com idade igual ou superior a 18 anos), em
+          contexto profissional, académico ou de investigação. O utilizador compromete-se a
+          fornecer informação verdadeira e a manter actualizados os dados de contacto.
         </p>
       </section>
 
-      <section id="uso-aceitavel">
-        <h2>4. Uso aceitável</h2>
-        <p>Ao utilizar o Serviço, o utilizador compromete-se a:</p>
+      <section id="permitido">
+        <h2>5. Utilização permitida</h2>
+        <p>O utilizador pode usar o Serviço para:</p>
         <ul>
-          <li>Utilizar o Serviço apenas para fins lícitos e profissionais legítimos.</li>
+          <li>Auditar perfis próprios ou de marcas que representa;</li>
+          <li>Analisar perfis de clientes, mediante autorização destes;</li>
+          <li>Comparar perfis para fins de benchmarking competitivo;</li>
+          <li>Investigação académica ou docente, com finalidade pedagógica.</li>
+        </ul>
+      </section>
+
+      <section id="proibido">
+        <h2>6. Utilização proibida</h2>
+        <p>O utilizador compromete-se a não:</p>
+        <ul>
           <li>
-            Não tentar contornar, atacar, sobrecarregar ou utilizar técnicas automatizadas
-            (incluindo scraping massivo) sobre o Serviço fora dos limites previstos.
+            Utilizar o Serviço para stalking, assédio, perseguição ou qualquer forma de abuso
+            direccionado a indivíduos;
+          </li>
+          <li>Recolher ou redistribuir dados de menores de idade;</li>
+          <li>
+            Tentar contornar limites técnicos, controlos de quota ou mecanismos de segurança da
+            plataforma;
+          </li>
+          <li>Usar a plataforma para automação ou scraping massivo dos seus resultados;</li>
+          <li>
+            Reproduzir, redistribuir ou comercializar relatórios em nome próprio sem autorização
+            escrita;
           </li>
           <li>
-            Não tentar aceder a perfis privados, áreas administrativas ou dados de outros
-            utilizadores.
-          </li>
-          <li>
-            Não revender, redistribuir ou apresentar como próprio o conteúdo dos relatórios gerados
-            sem autorização expressa.
-          </li>
-          <li>
-            Respeitar os direitos de terceiros, incluindo direitos de propriedade intelectual e os
-            termos de utilização do Instagram.
+            Apresentar o Serviço como afiliado, patrocinado ou aprovado pela Meta Platforms, Inc.
+            ou pelo Instagram.
           </li>
         </ul>
         <p>
-          O InstaBench reserva-se o direito de suspender ou bloquear acessos que violem estas
-          condições.
-        </p>
-      </section>
-
-      <section id="quotas">
-        <h2>5. Quotas e gratuitidade</h2>
-        <p>
-          Atualmente, o Serviço disponibiliza, por endereço de email, uma quota gratuita de{" "}
-          <strong>2 (dois) relatórios completos por mês</strong>. A quota reinicia no início de cada
-          mês civil. O acesso à pré-visualização pública não está sujeito a quota.
-        </p>
-        <p>
-          O número de relatórios gratuitos pode ser ajustado no futuro, com aviso razoável dentro do
-          próprio Serviço.
-        </p>
-      </section>
-
-      <section id="pagamentos">
-        <h2>6. Pagamentos</h2>
-        <p>
-          As modalidades pagas — compra pontual de relatórios adicionais e planos de subscrição —
-          encontram-se anunciadas no Serviço como funcionalidades futuras. Não estão atualmente
-          disponíveis para contratação. Quando forem disponibilizadas, os respetivos termos
-          (preço, periodicidade, faturação, reembolsos e fornecedor de pagamento) serão
-          formalizados em adenda específica a estes Termos, antes da contratação.
+          O incumprimento destas regras pode levar à suspensão ou cancelamento imediato do acesso,
+          sem direito a reembolso.
         </p>
       </section>
 
       <section id="propriedade">
-        <h2>7. Propriedade intelectual</h2>
+        <h2>7. Conteúdo gerado e propriedade intelectual</h2>
         <p>
-          A marca, o software, o desenho do produto, os modelos de relatório, os textos editoriais
-          e os algoritmos analíticos do InstaBench são propriedade do respetivo titular ou estão
-          devidamente licenciados, sendo protegidos por legislação aplicável de propriedade
-          intelectual.
+          A análise editorial, layout, copywriting e design do relatório são da titularidade
+          exclusiva da Fomentar Sonhos, Lda. O utilizador recebe uma licença não-exclusiva,
+          não-transferível e revogável para uso interno, sendo permitida a apresentação do
+          relatório a clientes ou em contexto académico desde que não seja alterado,
+          despersonalizado ou apresentado como obra própria.
         </p>
         <p>
-          O relatório PDF entregue ao utilizador é licenciado para uso interno legítimo da pessoa
-          ou entidade que o solicitou (por exemplo, análise estratégica, decisões de marketing,
-          apresentações internas). Não é permitida a revenda, redistribuição massiva ou
-          apresentação do relatório como produto próprio sem autorização expressa.
-        </p>
-        <p>
-          Os dados públicos do Instagram refletidos no relatório pertencem aos seus titulares. O
-          InstaBench limita-se a agregar, analisar e contextualizar essa informação.
+          Os dados públicos do Instagram analisados continuam a pertencer aos respectivos
+          titulares e à Meta Platforms, Inc., conforme termos da plataforma de origem.
         </p>
       </section>
 
       <section id="responsabilidade">
-        <h2>8. Limitação de responsabilidade</h2>
+        <h2>8. Limites de responsabilidade</h2>
         <p>
-          O Serviço é fornecido <em>tal como se encontra</em>, com base em dados públicos e
-          recolhidos por terceiros. Apesar do esforço aplicado em garantir qualidade, exatidão e
-          relevância:
+          O Serviço é prestado &ldquo;tal como está&rdquo;, no contexto de uma versão beta. A
+          Fomentar Sonhos, Lda. não garante:
         </p>
         <ul>
+          <li>Disponibilidade ininterrupta;</li>
+          <li>Ausência de erros nos dados ou nas conclusões editoriais;</li>
+          <li>Adequação do relatório a um fim específico;</li>
           <li>
-            Os dados recolhidos do Instagram podem variar, conter atrasos ou ficar temporariamente
-            indisponíveis por motivos alheios ao InstaBench.
-          </li>
-          <li>
-            As métricas, comparações e leituras estratégicas têm carácter <strong>orientador</strong>
-            . Não constituem aconselhamento financeiro, jurídico ou de marketing personalizado.
-          </li>
-          <li>
-            A responsabilidade pelas decisões tomadas com base no relatório recai sobre o
-            utilizador.
+            Resultados de marketing ou crescimento de audiência decorrentes da aplicação das
+            recomendações.
           </li>
         </ul>
         <p>
-          Dentro dos limites permitidos por lei, o InstaBench não pode ser responsabilizado por
-          danos indiretos, perda de oportunidade, perda de dados ou prejuízos económicos decorrentes
-          da utilização ou impossibilidade de utilização do Serviço.
-        </p>
-      </section>
-
-      <section id="disponibilidade">
-        <h2>9. Disponibilidade do serviço</h2>
-        <p>
-          O Serviço é disponibilizado em regime de melhores esforços (<em>best effort</em>), sem
-          garantia formal de níveis de serviço (SLA). Podem ocorrer interrupções para manutenção,
-          atualizações ou eventos imprevistos. Sempre que possível, eventuais janelas de manutenção
-          serão comunicadas com antecedência razoável.
-        </p>
-      </section>
-
-      <section id="dados">
-        <h2>10. Dados pessoais</h2>
-        <p>
-          O tratamento de dados pessoais associado ao Serviço é regulado pela{" "}
-          <a href="/privacidade" target="_blank" rel="noopener">
-            Política de Privacidade
-          </a>
-          , que faz parte integrante destes Termos.
+          O utilizador é o único responsável pelas decisões tomadas com base no relatório. A
+          responsabilidade da Fomentar Sonhos, Lda. limita-se, em qualquer caso, ao montante
+          efectivamente pago pelo utilizador nos 12 meses anteriores ao facto que gere a
+          responsabilidade.
         </p>
       </section>
 
       <section id="alteracoes">
-        <h2>11. Alterações aos Termos</h2>
+        <h2>9. Alterações ao serviço e aos termos</h2>
         <p>
-          Estes Termos podem ser atualizados. A data de última atualização é indicada no início do
-          documento. Alterações materiais relevantes podem ser sinalizadas adicionalmente dentro do
-          próprio Serviço ou por email, no caso de utilizadores com pedidos ativos.
+          A Fomentar Sonhos, Lda. reserva-se o direito de alterar funcionalidades, condições de
+          acesso, limites e preços. Alterações materiais aos Termos e Condições serão notificadas
+          por email com pelo menos 15 dias de antecedência. A continuação de utilização após a
+          entrada em vigor das novas condições implica a sua aceitação.
+        </p>
+      </section>
+
+      <section id="cancelamento">
+        <h2>10. Cancelamento e eliminação de conta</h2>
+        <p>
+          O utilizador pode cancelar a conta e solicitar a eliminação de dados a qualquer momento,
+          por email para{" "}
+          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>. A
+          eliminação é processada em até 30 dias, podendo subsistir registos mínimos exigidos por
+          obrigação legal (designadamente facturação).
         </p>
       </section>
 
       <section id="lei-foro">
-        <h2>12. Lei aplicável e foro</h2>
+        <h2>11. Lei aplicável e foro</h2>
         <p>
-          Os presentes Termos regem-se pela lei portuguesa. Para a resolução de qualquer litígio
-          emergente da sua interpretação ou execução, as partes elegem o foro da comarca de Lisboa,
-          com expressa renúncia a qualquer outro, sem prejuízo das normas imperativas aplicáveis a
-          consumidores.
+          Estes Termos regem-se pela legislação portuguesa. Para resolução de qualquer litígio, é
+          competente o foro da comarca de Leiria, com renúncia expressa a qualquer outro, sem
+          prejuízo dos direitos do consumidor previstos na lei portuguesa e europeia.
+        </p>
+        <p>
+          Em caso de litígio de consumo, o utilizador pode recorrer à plataforma europeia de
+          resolução de litígios em linha —{" "}
+          <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noreferrer">
+            ec.europa.eu/consumers/odr
+          </a>{" "}
+          — ou às entidades de resolução alternativa de litígios reconhecidas em Portugal (lista
+          em{" "}
+          <a href="https://www.consumidor.gov.pt" target="_blank" rel="noreferrer">
+            consumidor.gov.pt
+          </a>
+          ).
         </p>
       </section>
 
       <section id="contacto">
-        <h2>13. Contacto</h2>
+        <h2>12. Contacto</h2>
+        <p>Para qualquer questão relacionada com estes Termos:</p>
         <p>
-          Para questões relativas a estes Termos, suporte ou cumprimento legal, o contacto é feito
-          através do email{" "}
-          <a href="mailto:privacidade@instabench.pt">privacidade@instabench.pt</a>.
+          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
+          <br />
+          Fomentar Sonhos, Lda. · Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
         </p>
       </section>
     </LegalLayout>
