@@ -1,76 +1,45 @@
-## Diagnóstico
+## Objetivo
 
-Existem hoje DOIS pontos que parecem modais sobre o mesmo assunto:
+Introduzir o novo módulo "RESUMO DA SEMANA" no `FrequencyCard`, conforme o mockup, sem mexer no calendário existente nem no veredito.
 
-1. **`ReportLockGate`** (`src/components/product/report-lock-gate.tsx`) — overlay inline sobre o relatório desfocado, com card "Desbloquear análise completa" + 3 benefit rows + botão.
-2. **`UnlockModal.IntroCover`** (`src/components/product/unlock-modal.tsx`, linhas 753–836) — primeiro ecrã DENTRO do diálogo, com "+4 secções grátis", barra "2 das 6 secções", 3 highlights e badge BETA.
+## Anatomia do novo bloco (entre subtítulo e "QUANDO PUBLICOU")
 
-Resultado: o utilizador clica no card overlay e cai noutra capa quase igual antes do formulário. É a duplicação que o utilizador refere.
+Painel arredondado (`rounded-xl`, `border-default`, `surface-muted`) com:
 
-## Decisão
+1. Eyebrow `RESUMO DA SEMANA` (Inter uppercase, `text-eyebrow-sm`, `content-tertiary`).
+2. Linha com duas colunas:
+   - **MAIS ATIVO** — chip verde com seta para cima + dia da semana (a bold) + `N posts` (ex: "Quinta · 4 posts").
+   - **MAIS PARADO** — chip rosa-claro com seta para baixo + rótulo (ex: "Fim-de-semana") + `N dias s/ post`.
+3. Mini-strip de 7 barras por dia da semana (S T Q Q S S D), altura proporcional ao nº total de posts nesse weekday no período. Dia mais ativo destacado a verde sólido; restantes a verde translúcido; weekend sem posts a rosa-claro. Letras por baixo, com o dia ativo a bold.
 
-**Unificar num só gateway** que adopta o desenho do screenshot enviado:
+## Lógica de dados (derivada de `calendarDays`, sem novas props)
 
-- O card overlay (`ReportLockGate`) passa a ser o ÚNICO gateway visível e adopta o desenho minimal: badge BETA, título editorial "Continua a leitura do @handle", subtítulo cirúrgico, um CTA, 3 micro-tags no rodapé.
-- O `UnlockModal` arranca directamente no formulário (step 1). A IntroCover desaparece.
+- Agregar `postCount` por `getUTCDay()` → array de 7 entradas (ordem Seg→Dom).
+- `mostActive`: weekday com maior soma; se empate, o mais recente.
+- `quietest`:
+  - Se Sáb+Dom somam 0 e weekdays > 0 → rótulo "Fim-de-semana", contagem = nº de dias de weekend sem posts no período.
+  - Caso contrário, weekday com menor soma > 0 fallback para o que tem mais dias sem publicar.
+- Labels pt-PT: Segunda, Terça, Quarta, Quinta, Sexta, Sábado, Domingo.
 
-Regra aplicada (do brief do utilizador): **não vender o que ainda não existe** — sem lista de blocos premium, sem indicador 2/6, sem barra de progresso 2:4, sem badge "+4 PARA DESBLOQUEAR", sem menção a Conteúdo · Procura · Comparação.
+Se `calendarDays.length === 0` ou todos `postCount === 0`, não renderizar o resumo (mantém comportamento atual).
 
-## Alterações
+## Implementação
 
-### 1. `src/components/product/report-lock-gate.tsx` (rewrite do overlay)
+Ficheiros tocados:
+- `src/components/report-redesign/v2/overview/frequency-card.tsx` — adicionar helpers `aggregateByWeekday`, `pickMostActive`, `pickQuietest`, e subcomponente `WeeklySummary` renderizado antes do calendário.
 
-- Nova prop `handle: string` (Instagram username, sem @).
-- Card overlay passa a ter:
-  - **Badge** pill branca topo-esquerda: ponto verde (`bg-emerald-500`) com `animate-pulse` + texto "ACESSO GRATUITO · BETA" em eyebrow.
-  - **Título** Fraunces ~28–32px, leading-tight: `Continua a leitura\ndo @{handle}` — handle em itálico cor `text-accent-primary`.
-  - **Subtítulo** Inter 14–15px text-content-secondary: *"Indica o nome e email e responde a 3 perguntas rápidas para abrir o resto do relatório."*
-  - **CTA** único largura total, gradient `from-accent-primary to-secondary` (azul→indigo já em tokens), label "Ver relatório gratuito →".
-  - **Rodapé** 3 micro-tags em flex-wrap centrado, text-xs text-content-tertiary, com ícones lucide:
-    - `Clock` + "~1 minuto"
-    - `ShieldCheck` + "RGPD · sem spam"
-    - `Heart` + "Construído em Leiria"
-- **Remover**: eyebrow "Análise completa", título "Desbloquear análise completa", parágrafo antigo, lista `BenefitRow` (3 itens), parágrafo final "Acesso gratuito durante a beta · demora cerca de 1 minuto".
-- Manter blur do conteúdo, fade superior, `DevResetButton` em dev.
-- Mobile-first: padding `p-6`, badge e título empilham bem a 375px; CTA `w-full`.
+Tokens / estilo:
+- Verde: reutilizar `rgba(29,158,117,*)` já presente no ficheiro.
+- Vermelho/rosa fraco para "parado": `rgba(163,45,45,0.10)` fundo + `rgba(163,45,45,0.70)` ícone, alinhado com `signal-danger` do report-light.
+- Tipografia: Inter, números `tabular-nums`, sem `font-mono`.
+- Ícones: `ArrowUp` / `ArrowDown` do `lucide-react` em círculo `size-7`.
 
-### 2. `src/components/product/unlock-modal.tsx` (remover IntroCover)
-
-- `useState<Step>("intro")` → `useState<Step>(1)`.
-- Tipo `Step`: remover `"intro"` (passa a `1 | 2 | 3 | 4 | 5 | "welcome-back"`).
-- Render: remover branch `step === "intro" ? <IntroCover ... /> : ...`.
-- `goBack`: a partir de step 1 fecha o modal (`onOpenChange(false)`) em vez de voltar a intro; `welcome-back` volta a step 1.
-- `stepNumForBar`: simplificar (remover ref a `"intro"`).
-- Remover effect `unlock_modal_intro_viewed`.
-- Remover/limpar: função `IntroCover`, constante `INTRO_HIGHLIGHTS`, imports que ficam órfãos (`Activity`, `BarChart3`, `Compass`, `Sparkles`, `Clock`, `ShieldCheck` se só usados aqui — verificar antes de remover).
-- Tracking `unlock_modal_intro_cta_clicked` desaparece (deixa de existir o botão que o despoletava).
-
-### 3. `src/components/report-redesign/v2/report-shell-v2.tsx` (passar handle)
-
-- No JSX do `ReportLockGate` (linha 188), acrescentar `handle={result.data.profile.username}`.
-
-## Não mexer
-
-- Pipeline de unlock backend (`/api/public/report-unlock`, `/api/public/unlock-check`), schema Zod, snapshot, IA, restantes blocos do relatório.
-- `ReportGateModal` (usado apenas em `public-analysis-dashboard.tsx` e `premium-locked-section.tsx`, NÃO na rota `/analyze/$username`) fica como está — fora do scope deste pedido.
-- Tokens, fontes, copy dos outros blocos.
-
-## Validação
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Manual em `/analyze/frederico.m.carvalho`:
-  - Existe UM único bloco de unlock visível (o overlay).
-  - Visual igual ao screenshot: badge verde pulsante, título com handle azul itálico, subtítulo, CTA gradient, 3 micro-tags rodapé.
-  - Sem menções a "+4 secções", "6 secções", "Análise completa", lista de benefícios.
-  - Clicar no CTA abre o diálogo directamente no formulário (Primeiro nome / Apelido / Email), sem capa intermédia.
-  - Mobile 375px: card cabe, CTA tem largura total, micro-tags fazem wrap.
+Sem mudanças de props públicas, sem alterações a `score-utils`, `InsightCallout` ou ao calendário.
 
 ## Checkpoint
 
-- ☐ Rewrite `report-lock-gate.tsx` com novo desenho + prop `handle`
-- ☐ Remover `IntroCover` + estado `"intro"` em `unlock-modal.tsx`
-- ☐ Passar `handle` em `report-shell-v2.tsx`
-- ☐ `bunx tsc --noEmit` verde
-- ☐ `bunx vitest run` verde
-- ☐ Verificação visual em `/analyze/frederico.m.carvalho` (desktop + 375px)
+- ☐ Resumo da semana aparece entre subtítulo e calendário, idêntico ao mockup.
+- ☐ "Mais ativo" e "Mais parado" calculados a partir de `calendarDays`.
+- ☐ Mini-strip de 7 barras com dia mais ativo destacado.
+- ☐ Responsivo a 375px (chips empilham se necessário, sem overflow).
+- ☐ Sem novas dependências, sem novas props, sem tocar no `report-shell-v2`.
