@@ -64,10 +64,10 @@ export function ExecutionModeCard() {
           Modo de execução
         </p>
 
-        <div className="flex items-stretch gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-stretch gap-4 sm:flex-wrap">
           {/* Switch pill */}
           <div
-            className="relative inline-flex rounded-xl p-1 shrink-0"
+            className="relative grid grid-cols-2 sm:inline-flex rounded-xl p-1 shrink-0 w-full sm:w-auto"
             style={{
               backgroundColor: "#F3F2EE",
               border: "1px solid #E5E3D9",
@@ -78,7 +78,7 @@ export function ExecutionModeCard() {
               type="button"
               onClick={() => handleToggle("cache_only")}
               disabled={busy}
-              className="relative z-10 flex items-center gap-2 rounded-lg px-5 py-2.5 text-[12px] font-semibold transition-all duration-200"
+              className="relative z-10 flex items-center justify-center sm:justify-start gap-2 rounded-lg px-3 sm:px-5 py-2.5 text-[12px] font-semibold transition-all duration-200 w-full sm:w-auto"
               style={{
                 backgroundColor: isCacheOnly ? "#FFFFFF" : "transparent",
                 color: isCacheOnly ? "#1D9E75" : "#888780",
@@ -86,9 +86,9 @@ export function ExecutionModeCard() {
               }}
             >
               <Database size={14} />
-              <div className="flex flex-col items-start">
+              <div className="flex flex-col items-start min-w-0">
                 <span>Usar dados guardados</span>
-                <span className="text-[9px] font-medium uppercase tracking-wider opacity-70">
+                <span className="text-[10px] font-medium uppercase tracking-wider opacity-70">
                   sem custos
                 </span>
               </div>
@@ -97,7 +97,7 @@ export function ExecutionModeCard() {
               type="button"
               onClick={() => handleToggle("fresh")}
               disabled={busy}
-              className="relative z-10 flex items-center gap-2 rounded-lg px-5 py-2.5 text-[12px] font-semibold transition-all duration-200"
+              className="relative z-10 flex items-center justify-center sm:justify-start gap-2 rounded-lg px-3 sm:px-5 py-2.5 text-[12px] font-semibold transition-all duration-200 w-full sm:w-auto"
               style={{
                 backgroundColor: !isCacheOnly ? "#FFFFFF" : "transparent",
                 color: !isCacheOnly ? "#BA7517" : "#888780",
@@ -105,9 +105,9 @@ export function ExecutionModeCard() {
               }}
             >
               <RefreshCw size={14} />
-              <div className="flex flex-col items-start">
+              <div className="flex flex-col items-start min-w-0">
                 <span>Buscar dados novos</span>
-                <span className="text-[9px] font-medium uppercase tracking-wider opacity-70">
+                <span className="text-[10px] font-medium uppercase tracking-wider opacity-70">
                   com custos
                 </span>
               </div>
@@ -115,7 +115,7 @@ export function ExecutionModeCard() {
           </div>
 
           {/* Status panel */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-1 min-w-0 w-full">
             <div
               className="flex items-center justify-center shrink-0 rounded-full"
               style={{
