@@ -8,7 +8,7 @@
  *   Image legend dot:    bg-amber-200
  *   Video legend dot:    bg-sky-200
  */
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
 import { InsightCallout, type InsightTone } from "./insight-callout";
 
@@ -59,6 +59,22 @@ const FORMAT_STYLE: Record<string, { dot: string; iconColor: string; icon: typeo
   Video: { dot: "bg-sky-300", iconColor: "text-sky-600", icon: Play },
   unknown: { dot: "bg-slate-300", iconColor: "text-slate-500", icon: Image },
 };
+
+const FORMAT_HEX: Record<FormatKey, string> = {
+  Carousels: "#6EE7B7", // emerald-300
+  Reels: "#7DD3FC",     // sky-300
+  Imagens: "#FCD34D",   // amber-300
+  Video: "#7DD3FC",     // sky-300
+};
+
+const FORMAT_SINGULAR_PT: Record<FormatKey, string> = {
+  Carousels: "Carrossel",
+  Reels: "Reels",
+  Imagens: "Imagem",
+  Video: "Vídeo",
+};
+
+const BREAKDOWN_ORDER: FormatKey[] = ["Carousels", "Reels", "Imagens"];
 
 const TYPE_PT: Record<string, string> = {
   carousel: "carrossel",
@@ -226,6 +242,9 @@ export function FormatCard({
         </p>
       </div>
 
+      {/* Breakdown — donut + legend */}
+      <FormatBreakdown formats={formats} postsAnalyzed={postsAnalyzed} />
+
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
         <div className="px-5 md:px-6 mt-6">
@@ -309,5 +328,130 @@ function PostThumb({ src, alt }: { src: string; alt: string }) {
       onError={() => setFailed(true)}
       className="absolute inset-0 w-full h-full object-cover"
     />
+  );
+}
+
+/** Donut + per-format legend showing distribution of published formats. */
+function FormatBreakdown({
+  formats,
+  postsAnalyzed,
+}: {
+  formats: FormatEntry[];
+  postsAnalyzed: number;
+}) {
+  const byKey = new Map<FormatKey, FormatEntry>();
+  formats.forEach((f) => byKey.set(f.format, f));
+
+  // Always show Carrossel, Reels, Imagem. Add Video only if it has count.
+  const rows: FormatKey[] = [...BREAKDOWN_ORDER];
+  const video = byKey.get("Video");
+  if (video && video.count > 0) rows.push("Video");
+
+  const total = rows.reduce((s, k) => s + (byKey.get(k)?.count ?? 0), 0);
+  if (total === 0 || postsAnalyzed === 0) return null;
+
+  // Donut geometry
+  const size = 88;
+  const stroke = 11;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  let offsetAcc = 0;
+
+  return (
+    <div className="px-5 md:px-6 mt-5">
+      <div className="flex items-center gap-5 md:gap-6 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3.5">
+        {/* Donut */}
+        <div className="relative shrink-0" style={{ width: size, height: size }}>
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke="currentColor"
+              className="text-border-subtle/60"
+              strokeWidth={stroke}
+            />
+            {rows.map((k) => {
+              const entry = byKey.get(k);
+              const count = entry?.count ?? 0;
+              if (count === 0) return null;
+              const share = count / postsAnalyzed;
+              const arcLen = share * circumference;
+              const dasharray = `${arcLen} ${circumference - arcLen}`;
+              const dashoffset = -offsetAcc;
+              offsetAcc += arcLen;
+              return (
+                <circle
+                  key={k}
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  fill="none"
+                  stroke={FORMAT_HEX[k]}
+                  strokeWidth={stroke}
+                  strokeDasharray={dasharray}
+                  strokeDashoffset={dashoffset}
+                  transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                  strokeLinecap="butt"
+                />
+              );
+            })}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+            <span className="text-[1.25rem] font-semibold text-content-primary tabular-nums">
+              {postsAnalyzed}
+            </span>
+            <span className="text-eyebrow-sm text-content-tertiary mt-1">
+              Publicações
+            </span>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1.5 items-center">
+          {rows.map((k) => {
+            const entry = byKey.get(k);
+            const count = entry?.count ?? 0;
+            const pct = postsAnalyzed > 0 ? Math.round((count / postsAnalyzed) * 100) : 0;
+            const isZero = count === 0;
+            return (
+              <Fragment key={k}>
+                <span
+                  className={`flex items-center gap-2 text-[13px] ${
+                    isZero ? "text-content-tertiary" : "text-content-primary"
+                  }`}
+                >
+                  <span
+                    className="size-2 rounded-full shrink-0"
+                    style={{
+                      backgroundColor: isZero
+                        ? "var(--border-subtle, #E2E8F0)"
+                        : FORMAT_HEX[k],
+                    }}
+                    aria-hidden="true"
+                  />
+                  {FORMAT_SINGULAR_PT[k]}
+                </span>
+                <span
+                  className={`text-[13px] font-semibold tabular-nums text-right ${
+                    isZero ? "text-content-tertiary" : "text-content-primary"
+                  }`}
+                >
+                  {count}
+                </span>
+                <span
+                  className={`text-[12px] tabular-nums text-right ${
+                    isZero ? "text-content-tertiary" : "text-accent-primary"
+                  }`}
+                >
+                  {pct}%
+                </span>
+              </Fragment>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }

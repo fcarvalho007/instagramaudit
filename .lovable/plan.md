@@ -1,66 +1,50 @@
 ## Objetivo
+Adicionar, no card **Formato** (`src/components/report-redesign/v2/overview/format-card.tsx`), um módulo visual de rastreio dos formatos publicados na feed, logo abaixo do título e do subtítulo, antes da grelha de miniaturas.
 
-Validar que o pipeline `/api/analyze-public-v1` está pronto para uso público com Apify em modo controlado, sem alterar UI, schema, emails ou relatórios. Apenas leitura + 1 chamada fresh segura.
+## Referência visual (mockup do utilizador)
+- Donut chart à esquerda com o total de publicações no centro (ex: `12` + eyebrow `PUBLICAÇÕES`).
+- Legenda à direita, uma linha por formato:
+  - Bolinha colorida + nome do formato (`Carrossel`, `Reels`, `Imagem`).
+  - Contagem (Inter SemiBold, tabular-nums) + percentagem em accent azul.
+  - Formatos com `count = 0` aparecem em cinzento (estado vazio).
 
-## Como o servidor lê cada variável (confirmado por inspeção)
+## Implementação
 
-| Variável | Lida em | Default se ausente |
-|---|---|---|
-| `APIFY_TESTING_MODE` | `src/lib/security/apify-allowlist.ts:29` — `process.env.APIFY_TESTING_MODE !== "false"` (qualquer valor ≠ `"false"` mantém allowlist) | testing ON |
-| `APIFY_ENABLED` | `apify-allowlist.ts:52` — exige literal `"true"` | OFF |
-| `APIFY_HARD_CAP_USD` | `src/lib/security/apify-budget.server.ts:41` | 10 |
-| `APIFY_DAILY_CAP_USD` | `apify-budget.server.ts:37` | 5 |
-| `PUBLIC_MAX_FRESH_PER_IP_DAY` | `src/lib/security/public-rate-limit.server.ts:37` | 10 |
-| `PUBLIC_MAX_FRESH_PER_HANDLE_DAY` | `public-rate-limit.server.ts:41` | 5 |
+**Ficheiro:** `src/components/report-redesign/v2/overview/format-card.tsx`
 
-Diagnóstico admin (`/api/admin/diagnostics`) já expõe `apify.enabled`, `apify.public_mode` (= `enabled && !testing`), `testing_mode.active`, `apify_runtime_check.apify_enabled_raw_is_true`, sem revelar valores de segredos.
+1. Criar sub-componente local `FormatBreakdown` que recebe `formats: FormatEntry[]` e `postsAnalyzed: number`.
+2. Donut SVG (sem dependências novas):
+   - Tamanho ~96px, stroke ~12px, fundo `surface-muted`.
+   - Arcos por formato, na ordem `Carrossel → Reels → Imagem → Video`, usando as mesmas cores já definidas em `FORMAT_STYLE` (mantém coerência com a legenda das miniaturas em baixo).
+   - Centro: número total em Inter SemiBold com `tabular-nums`, eyebrow `PUBLICAÇÕES` em `.text-eyebrow-sm`.
+3. Lista de formatos à direita:
+   - Inclui todos os formatos canónicos mesmo com `count = 0` (estado “esbatido” em `text-content-tertiary`).
+   - Layout: `grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1.5` para alinhar nome, contagem e percentagem.
+   - Percentagem arredondada a inteiro; usar `accent-primary` (azul `#3772E5`) para formatos ativos, `content-tertiary` para zero.
+4. Posicionamento: inserir o bloco entre o header e a grelha de miniaturas, com `px-5 md:px-6 mt-5`.
+5. Responsivo: em mobile, donut + legenda continuam lado a lado (donut encolhe para 80px). Em ecrãs muito estreitos (`<360px`) cair para coluna se necessário (`flex-col sm:flex-row`).
 
-## Passos de validação (sequenciais, read-mostly)
+## Tokens e regras (memória do projeto)
+- **Apenas Fraunces + Inter.** Nada de `font-mono`.
+- Cores: usar `FORMAT_STYLE.dot` existente + `text-accent-primary` para os percentuais.
+- Número central com `tabular-nums`, nunca `font-mono`.
+- Eyebrow com `.text-eyebrow-sm` (Inter uppercase).
+- Sem hardcode de hex; usar tokens semânticos onde possível e as classes Tailwind já em uso no ficheiro.
 
-### 1. Confirmar config runtime publicada
-- Chamar `GET /api/admin/diagnostics` (autenticado como admin) via `stack_modern--invoke-server-function`.
-- Registar: `apify.enabled`, `apify.public_mode`, `testing_mode.active`, `apify_runtime_check`, `cost_per_profile_usd`, `cost_per_post_usd`.
-- Esperado: `enabled=true`, `public_mode=true`, `testing.active=false`.
+## Fora de âmbito
+- Não tocar na grelha de miniaturas, legenda inferior, headline, subtítulo nem `InsightCallout`.
+- Não alterar `snapshot-to-report-data.ts` — os dados em `formats` já chegam prontos.
+- Não adicionar libs de chart (Recharts/etc.); SVG manual.
+- Não regenerar relatórios nem mexer em backend.
 
-### 2. Confirmar caps e rate-limits ativos (sem chamar provider)
-- `supabase--read_query`: somar `actual_cost_usd` + `estimated_cost_usd` em `provider_call_logs` do dia UTC para garantir que estamos longe de `APIFY_HARD_CAP_USD=10`.
-- Mesma query agrupada por `request_ip_hash`/handle nas últimas 24h em `analysis_events` (data_source='fresh') para confirmar contadores < 10/5.
-- Se já perto do cap → STOP e reportar antes de qualquer fresh.
+## Validação
+- Verificar visualmente em `/analyze/frederico.m.carvalho` (donut + legenda + percentagens corretas).
+- Confirmar que totais batem certo: `Σ count = postsAnalyzed` e `Σ pct ≈ 100%`.
+- Estado vazio: se todos `count = 0`, o bloco não renderiza (fallback gracioso).
 
-### 3. Escolher 1 handle não-allowlisted
-- Candidato: handle Instagram público notório (ex.: `natgeo`) — apenas 1 perfil primário, sem competidores, para minimizar custo (~1 profile + 12 posts ≈ poucos cêntimos).
-- Antes da chamada: `supabase--read_query` em `analysis_snapshots` por `instagram_username='natgeo'` + `expires_at > now()` para detetar cache hit. Se existir snapshot fresh (<15d), o teste serve-se da cache e não há custo Apify.
-
-### 4. Chamada única
-- `POST /api/analyze-public-v1` com `{ "instagram_username": "<handle>" }` via `stack_modern--invoke-server-function`.
-- Capturar: HTTP status, `data_source` retornado na resposta, ausência de `details`/`run_id` em qualquer payload de erro (sanitização).
-
-### 5. Auditoria pós-chamada
-- `provider_call_logs` (último minuto, handle alvo): confirmar `provider='apify'`, `status`, `posts_returned`, `estimated_cost_usd`, `actual_cost_usd`, `duration_ms`, `apify_run_id`.
-- `analysis_events` (último minuto): confirmar `outcome` (`success` esperado, NÃO `blocked_allowlist`), `data_source` (`fresh` ou `cache`), `estimated_cost_usd`, `analysis_snapshot_id` preenchido.
-- Confirmar que NÃO existe evento `blocked_allowlist` para este handle.
-
-### 6. Validações de código
-- `bunx tsc --noEmit`
-- `bunx vitest run` (focado em `apify-budget`, `public-rate-limit`, `analyze-public-v1-sanitize`, `run-enrichment-budget`)
-
-## Critérios de paragem (abort)
-- Diagnostics revela `public_mode=false` ou `APIFY_ENABLED` raw ≠ `"true"`.
-- Soma de custos do dia ≥ 80% de `APIFY_HARD_CAP_USD`.
-- Falha de `bunx tsc` ou `vitest` antes do passo 4.
-
-## Entregável (resposta final ao utilizador, completa em chat)
-
-1. Valores efetivos detetados em runtime (booleanos + números dos caps).
-2. `Modo público activo`: sim/não + razão.
-3. Resultado do teste: cache hit / fresh / stale.
-4. Provider pago invocado? sim/não.
-5. Custo estimado e real registado em `provider_call_logs`.
-6. Linhas relevantes de `analysis_events` (outcome, data_source, snapshot_id).
-7. Sanitização de erro confirmada (sample do payload se aplicável).
-8. Lista de bloqueadores (vazia se GO).
-
-## Restrições respeitadas
-- Sem alterações a UI, schema, emails (Brevo/Resend), admin UI ou relatórios.
-- Sem novos secrets, sem mutações DB, sem envio de email.
-- Apenas 1 chamada fresh (ou 0 se cache hit detetada).
+## Checkpoint
+- ☐ `FormatBreakdown` adicionado e a render entre header e thumbnails.
+- ☐ Donut SVG com cores coerentes com a legenda atual.
+- ☐ Legenda inclui Carrossel, Reels, Imagem (Video só se `count > 0`).
+- ☐ Tipografia Inter + tabular-nums; sem `font-mono`.
+- ☐ Responsivo em 375px.
