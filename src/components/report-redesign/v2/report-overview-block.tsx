@@ -32,7 +32,15 @@ export interface Props {
   mode?: "all" | "free" | "locked";
 }
 
-export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload: _payload, mode = "all" }: Props) {
+function normaliseFormatKey(raw: string | null | undefined): "Reels" | "Carousels" | "Imagens" | null {
+  const s = (raw ?? "").toLowerCase();
+  if (s.startsWith("reel")) return "Reels";
+  if (s.startsWith("carro") || s.startsWith("carou")) return "Carousels";
+  if (s.startsWith("imag")) return "Imagens";
+  return null;
+}
+
+export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload, mode = "all" }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
 
@@ -57,13 +65,45 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
     },
   }), [k, avgComments]);
 
+  // Counts: prefer the snapshot's authoritative `format_stats[k].count`.
+  // Fallback: count per-post records in `analysedPostFormats`. Last resort:
+  // round-trip from sharePct × postsAnalyzed (legacy behaviour).
   const formatEntries: FormatEntry[] = useMemo(() => {
-    return result.data.formatBreakdown.map((f) => ({
-      format: f.format as "Reels" | "Carousels" | "Imagens",
-      sharePct: f.sharePct,
-      count: Math.round((f.sharePct / 100) * k.postsAnalyzed),
-    }));
-  }, [result.data.formatBreakdown, k.postsAnalyzed]);
+    // 1. Index counts from raw payload (authoritative).
+    const fromPayload = new Map<string, number>();
+    const stats = payload?.format_stats ?? null;
+    if (stats) {
+      for (const [rawKey, v] of Object.entries(stats)) {
+        const canonical = normaliseFormatKey(rawKey);
+        if (!canonical) continue;
+        const c = typeof v?.count === "number" && Number.isFinite(v.count) ? v.count : 0;
+        fromPayload.set(canonical, (fromPayload.get(canonical) ?? 0) + c);
+      }
+    }
+    // 2. Fallback: per-post counts.
+    const fromPosts = new Map<string, number>();
+    for (const p of enriched.analysedPostFormats) {
+      const canonical =
+        p.type === "reel" ? "Reels"
+        : p.type === "carousel" ? "Carousels"
+        : p.type === "image" ? "Imagens"
+        : null;
+      if (!canonical) continue;
+      fromPosts.set(canonical, (fromPosts.get(canonical) ?? 0) + 1);
+    }
+
+    return result.data.formatBreakdown.map((f) => {
+      const key = f.format as "Reels" | "Carousels" | "Imagens";
+      const real = fromPayload.get(key);
+      const fallbackPosts = fromPosts.get(key);
+      const fallbackRound = Math.round((f.sharePct / 100) * k.postsAnalyzed);
+      const count =
+        typeof real === "number" && real > 0 ? real
+        : typeof fallbackPosts === "number" && fallbackPosts > 0 ? fallbackPosts
+        : fallbackRound;
+      return { format: key, sharePct: f.sharePct, count };
+    });
+  }, [result.data.formatBreakdown, k.postsAnalyzed, payload, enriched.analysedPostFormats]);
 
   return (
     <div className="relative space-y-8 md:space-y-10">
