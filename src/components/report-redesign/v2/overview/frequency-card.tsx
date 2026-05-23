@@ -182,10 +182,10 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
               />
             </span>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
+              <p className="text-xs uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
                 Mais ativo
               </p>
-              <p className="text-[13px] text-content-primary leading-snug">
+              <p className="text-[15px] text-content-primary leading-relaxed">
                 <span className="font-semibold">
                   {PT_WEEKDAYS_LONG[top.weekday]}
                 </span>{" "}
@@ -210,10 +210,10 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
               />
             </span>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
+              <p className="text-xs uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
                 Mais parado
               </p>
-              <p className="text-[13px] text-content-primary leading-snug">
+              <p className="text-[15px] text-content-primary leading-relaxed">
                 <span className="font-semibold">{quiet.label}</span>{" "}
                 <span className="text-content-secondary tabular-nums">
                   · {quiet.detail}
@@ -263,7 +263,7 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
               return (
                 <span
                   key={i}
-                  className={`text-[10px] text-center leading-none select-none ${
+                  className={`text-xs text-center leading-none select-none ${
                     isTop
                       ? "font-semibold text-content-primary"
                       : "text-content-tertiary"
@@ -400,7 +400,7 @@ export function FrequencyCard({
       {/* Calendar grid */}
       {weeks.length > 0 && (
         <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6">
-          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-2">
+          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-2">
             Quando publicou
           </span>
 
@@ -409,7 +409,7 @@ export function FrequencyCard({
             {PT_WEEKDAYS_SHORT.map((wd, i) => (
               <span
                 key={i}
-                className="text-[11px] md:text-xs font-medium text-content-secondary text-center leading-none select-none"
+                className="text-xs font-medium text-content-secondary text-center leading-none select-none"
               >
                 {wd}
               </span>
@@ -443,7 +443,7 @@ export function FrequencyCard({
                   >
                     {day.postCount > 1 && (
                       <span
-                        className="text-[9px] md:text-[10px] font-bold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
+                        className="text-xs font-bold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
                         aria-hidden="true"
                       >
                         {day.postCount}
@@ -457,7 +457,7 @@ export function FrequencyCard({
 
           {/* Legend */}
           <div className="flex items-center gap-3 md:gap-4 mt-2.5 md:mt-3">
-            <span className="inline-flex items-center gap-1.5 text-[10px] md:text-[11px] text-content-secondary">
+            <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
               <span
                 className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
                 aria-hidden="true"
@@ -465,7 +465,7 @@ export function FrequencyCard({
               />
               parou ({pausedCount})
             </span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] md:text-[11px] text-content-secondary">
+            <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
               <span
                 className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
                 aria-hidden="true"
@@ -474,7 +474,7 @@ export function FrequencyCard({
               1 post
             </span>
             {maxPosts >= 2 && (
-              <span className="inline-flex items-center gap-1.5 text-[10px] md:text-[11px] text-content-secondary">
+              <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
                 <span
                   className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
                   aria-hidden="true"
@@ -483,7 +483,7 @@ export function FrequencyCard({
                 {maxPosts >= 3 ? "3+" : "2"} posts
               </span>
             )}
-            <span className="ml-auto text-[13px] md:text-sm font-medium tabular-nums text-content-secondary">
+            <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
               {publishedCount}/{calendarDays.length} dias
             </span>
           </div>
