@@ -67,11 +67,11 @@ const FORMAT_HEX: Record<FormatKey, string> = {
   Video: "#7DD3FC",     // sky-300
 };
 
-const FORMAT_SINGULAR_PT: Record<FormatKey, string> = {
-  Carousels: "Carrossel",
+const FORMAT_LEGEND_PT: Record<FormatKey, string> = {
+  Carousels: "Carrosséis",
   Reels: "Reels",
-  Imagens: "Imagem",
-  Video: "Vídeo",
+  Imagens: "Imagens",
+  Video: "Vídeos",
 };
 
 const BREAKDOWN_ORDER: FormatKey[] = ["Carousels", "Reels", "Imagens"];
