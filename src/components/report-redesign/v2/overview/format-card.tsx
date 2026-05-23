@@ -438,7 +438,7 @@ function FormatBreakdown({
             return (
               <Fragment key={k}>
                 <span
-                  className={`flex items-center gap-2 text-[13px] ${
+                  className={`flex items-center gap-2 text-[15px] ${
                     isZero ? "text-content-tertiary" : "text-content-primary"
                   }`}
                 >
@@ -454,7 +454,7 @@ function FormatBreakdown({
                   {FORMAT_LEGEND_PT[k]}
                 </span>
                 <span
-                  className={`text-[13px] font-semibold tabular-nums text-right ${
+                  className={`text-[15px] font-semibold tabular-nums text-right ${
                     isZero ? "text-content-tertiary" : "text-content-primary"
                   }`}
                 >

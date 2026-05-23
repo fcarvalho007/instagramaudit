@@ -483,7 +483,7 @@ function ReferenceBar({
           style={{ left: `${ref}%` }}
         />
       </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-content-tertiary tabular-nums">
+      <div className="mt-1.5 flex items-center justify-between text-xs text-content-tertiary tabular-nums">
         <span>0</span>
         <span>↑ referência do escalão · {ref}</span>
         <span>100</span>
