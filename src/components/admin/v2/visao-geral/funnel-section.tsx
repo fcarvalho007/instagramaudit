@@ -43,8 +43,13 @@ export function FunnelSection() {
           reason="O funil mostra-se a zero porque ainda não existem visitantes registados nem checkout ligado. Liga EuPago/Stripe para passar a contabilizar leads → clientes em tempo real."
         />
       )}
-      <AdminCard className="!p-10">
-        <FunnelDiagram data={data} />
+      <AdminCard className="!p-4 sm:!p-10">
+        <div className="hidden sm:block">
+          <FunnelDiagram data={data} />
+        </div>
+        <div className="sm:hidden">
+          <FunnelStackedMobile data={data} />
+        </div>
       </AdminCard>
 
       <AdminCard>
@@ -197,5 +202,94 @@ function FunnelText({
         {right.value}
       </text>
     </>
+  );
+}
+
+/**
+ * Versão empilhada do funil para mobile (< sm). Mantém a metáfora visual com
+ * faixas de largura decrescente e as mesmas cores do SVG desktop, mas evita a
+ * sobreposição de labels que acontecia ao escalar o viewBox em ecrãs estreitos.
+ */
+function FunnelStackedMobile({
+  data,
+}: {
+  data: typeof MOCK_FUNNEL | typeof ZERO_FUNNEL;
+}) {
+  const layers: Array<{
+    left: { eyebrow: string; value: string };
+    right: { eyebrow: string; value: string };
+    bg: string;
+    fg: string;
+    eyebrowFg: string;
+    width: string;
+  }> = [
+    {
+      left: data.visitors,
+      right: data.freeAnalyses,
+      bg: ADMIN_LITERAL.funnelTop,
+      fg: ADMIN_LITERAL.funnelBaseText,
+      eyebrowFg: ADMIN_LITERAL.funnelEyebrow,
+      width: "100%",
+    },
+    {
+      left: data.leads,
+      right: data.visitorToLead,
+      bg: ADMIN_LITERAL.funnelMid,
+      fg: ADMIN_LITERAL.funnelBaseText,
+      eyebrowFg: ADMIN_LITERAL.funnelEyebrow,
+      width: "88%",
+    },
+    {
+      left: data.customers,
+      right: data.leadToCustomer,
+      bg: ADMIN_LITERAL.funnelBase,
+      fg: "#FFFFFF",
+      eyebrowFg: ADMIN_LITERAL.funnelLightEyebrow,
+      width: "76%",
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-2">
+      {layers.map((layer, i) => (
+        <div
+          key={i}
+          className="mx-auto rounded-md px-4 py-3"
+          style={{ background: layer.bg, width: layer.width }}
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <span
+              className="text-eyebrow-sm"
+              style={{ color: layer.eyebrowFg }}
+            >
+              {layer.left.eyebrow}
+            </span>
+            <span
+              className="text-base font-semibold tabular-nums"
+              style={{ color: layer.fg }}
+            >
+              {layer.left.value}
+            </span>
+          </div>
+          <div
+            className="mt-2 flex items-baseline justify-between gap-3 border-t pt-2"
+            style={{ borderColor: `${layer.fg}1A` }}
+          >
+            <span
+              className="text-eyebrow-sm"
+              style={{ color: layer.eyebrowFg }}
+            >
+              {layer.right.eyebrow}
+            </span>
+            <span
+              className="text-sm font-semibold tabular-nums"
+              style={{ color: layer.fg }}
+            >
+              {layer.right.value}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
