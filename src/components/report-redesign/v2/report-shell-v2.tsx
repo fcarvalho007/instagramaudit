@@ -188,6 +188,7 @@ export function ReportShellV2({
                 <ReportLockGate
                   unlocked={unlocked}
                   onUnlockClick={handleUnlockClick}
+                  handle={result.data.profile.username}
                 >
                   {features.blockOverview !== "hidden" && (
                     <div className="mt-6 md:mt-8">
