@@ -1,82 +1,66 @@
-# Auditoria · Card "Frequência de publicação"
+## Objetivo
 
-Encontrei **4 inconsistências reais de dados** entre o que o card mostra e o que os números significam, mais 1 limpeza menor. Nenhuma é cosmética — todas afectam a leitura do utilizador.
+Validar que o pipeline `/api/analyze-public-v1` está pronto para uso público com Apify em modo controlado, sem alterar UI, schema, emails ou relatórios. Apenas leitura + 1 chamada fresh segura.
 
-## Problemas detectados
+## Como o servidor lê cada variável (confirmado por inspeção)
 
-### 1. `windowDays` do subtítulo ≠ nº de quadrados do calendário
-- `snapshot-to-report-data.ts` calcula `windowDays = ceil((maxTs − minTs)/86_400_000) + 1` a partir de **timestamps**.
-- `buildPostingTimeline` itera por **datas UTC** (`isoDateOnly`) → produz `(maxDate − minDate)/dia + 1` células.
-- Quando os posts mais recente/antigo não estão à mesma hora do dia, o `ceil` adiciona +1 → o subtítulo diz "X publicações em 16 dias" mas o calendário tem 15 quadrados.
+| Variável | Lida em | Default se ausente |
+|---|---|---|
+| `APIFY_TESTING_MODE` | `src/lib/security/apify-allowlist.ts:29` — `process.env.APIFY_TESTING_MODE !== "false"` (qualquer valor ≠ `"false"` mantém allowlist) | testing ON |
+| `APIFY_ENABLED` | `apify-allowlist.ts:52` — exige literal `"true"` | OFF |
+| `APIFY_HARD_CAP_USD` | `src/lib/security/apify-budget.server.ts:41` | 10 |
+| `APIFY_DAILY_CAP_USD` | `apify-budget.server.ts:37` | 5 |
+| `PUBLIC_MAX_FRESH_PER_IP_DAY` | `src/lib/security/public-rate-limit.server.ts:37` | 10 |
+| `PUBLIC_MAX_FRESH_PER_HANDLE_DAY` | `public-rate-limit.server.ts:41` | 5 |
 
-### 2. Thresholds do veredicto desalinhados com o "status" no título
-- Chip do título: `Alta ≥70`, `Média ≥40`, `Baixa <40`.
-- `getFrequencyVerdict` e `verdictLabel`: `≥90`, `≥50`, `<50`.
-- Resultado prático: score 75 mostra título "**Alta**" + veredicto "Cadência aceitável · A MELHORAR" (contraditório).
+Diagnóstico admin (`/api/admin/diagnostics`) já expõe `apify.enabled`, `apify.public_mode` (= `enabled && !testing`), `testing_mode.active`, `apify_runtime_check.apify_enabled_raw_is_true`, sem revelar valores de segredos.
 
-### 3. "Mais parado" dispara com amostra demasiado pequena
-- `pickQuietest` marca o fim-de-semana como parado se houver ≥1 dia silencioso, mesmo que a janela contenha só 1 sábado ou 1 domingo.
-- Pode marcar uma segunda-feira "1 dia s/ post" só porque a janela contém uma única segunda-feira.
-- Cria falsos alertas em janelas curtas (≤10 dias).
+## Passos de validação (sequenciais, read-mostly)
 
-### 4. Mini-bars semanais usam denominador inválido em janelas curtas
-- `aggregateByWeekday` soma `daysSilent` por dia da semana sem normalizar por `daysTotal` desse dia.
-- Numa janela de 14 dias com 2 segundas e 2 domingos, "Mais parado" pode escolher um dia da semana com 1/1 silencioso vs outro com 2/2 silencioso por mero acaso de amostra.
+### 1. Confirmar config runtime publicada
+- Chamar `GET /api/admin/diagnostics` (autenticado como admin) via `stack_modern--invoke-server-function`.
+- Registar: `apify.enabled`, `apify.public_mode`, `testing_mode.active`, `apify_runtime_check`, `cost_per_profile_usd`, `cost_per_post_usd`.
+- Esperado: `enabled=true`, `public_mode=true`, `testing.active=false`.
 
-### 5. (limpeza) Variável morta `statsLine`
-- Calculada em `FrequencyCard` mas nunca renderizada.
+### 2. Confirmar caps e rate-limits ativos (sem chamar provider)
+- `supabase--read_query`: somar `actual_cost_usd` + `estimated_cost_usd` em `provider_call_logs` do dia UTC para garantir que estamos longe de `APIFY_HARD_CAP_USD=10`.
+- Mesma query agrupada por `request_ip_hash`/handle nas últimas 24h em `analysis_events` (data_source='fresh') para confirmar contadores < 10/5.
+- Se já perto do cap → STOP e reportar antes de qualquer fresh.
 
-## Alterações propostas (apenas frontend + transformador)
+### 3. Escolher 1 handle não-allowlisted
+- Candidato: handle Instagram público notório (ex.: `natgeo`) — apenas 1 perfil primário, sem competidores, para minimizar custo (~1 profile + 12 posts ≈ poucos cêntimos).
+- Antes da chamada: `supabase--read_query` em `analysis_snapshots` por `instagram_username='natgeo'` + `expires_at > now()` para detetar cache hit. Se existir snapshot fresh (<15d), o teste serve-se da cache e não há custo Apify.
 
-### A. `src/lib/report/snapshot-to-report-data.ts`
-- Substituir o cálculo de `windowDays` por uma versão **date-based** alinhada ao calendário:
-  - Usar `isoDateOnly(min)` e `isoDateOnly(max)` em ms, `windowDays = (maxDay − minDay)/86_400_000 + 1`.
-  - Garante que `windowDays === postingTimeline.length` sempre que há posts.
-- Manter o `round1((postsAnalyzed / windowDays) * 7)` (já existe e continua correcto com o novo `windowDays`).
+### 4. Chamada única
+- `POST /api/analyze-public-v1` com `{ "instagram_username": "<handle>" }` via `stack_modern--invoke-server-function`.
+- Capturar: HTTP status, `data_source` retornado na resposta, ausência de `details`/`run_id` em qualquer payload de erro (sanitização).
 
-### B. `src/components/report-redesign/v2/overview/frequency-card.tsx`
+### 5. Auditoria pós-chamada
+- `provider_call_logs` (último minuto, handle alvo): confirmar `provider='apify'`, `status`, `posts_returned`, `estimated_cost_usd`, `actual_cost_usd`, `duration_ms`, `apify_run_id`.
+- `analysis_events` (último minuto): confirmar `outcome` (`success` esperado, NÃO `blocked_allowlist`), `data_source` (`fresh` ou `cache`), `estimated_cost_usd`, `analysis_snapshot_id` preenchido.
+- Confirmar que NÃO existe evento `blocked_allowlist` para este handle.
 
-**Veredicto alinhado ao status (thresholds 70/40):**
-```ts
-// score ≥70 → "Cadência forte e consistente." · PONTO FORTE · positive
-// score ≥40 → "Cadência aceitável." · A MELHORAR · warning
-// score <40 → "Cadência irregular." · ALERTA · danger
-```
-Substitui as três funções que ainda usam 90/50.
+### 6. Validações de código
+- `bunx tsc --noEmit`
+- `bunx vitest run` (focado em `apify-budget`, `public-rate-limit`, `analyze-public-v1-sanitize`, `run-enrichment-budget`)
 
-**`pickQuietest` com guarda de amostra:**
-- Fim-de-semana só dispara se `sat.daysTotal ≥ 1 && sun.daysTotal ≥ 1` (ambos presentes na janela) **e** `weekendPosts === 0`.
-- Dia da semana isolado: só é elegível se `daysTotal ≥ 2` (i.e. essa segunda apareceu pelo menos 2 vezes na janela). Se nenhum qualificar, omitir o item "Mais parado" em vez de mostrar ruído.
+## Critérios de paragem (abort)
+- Diagnostics revela `public_mode=false` ou `APIFY_ENABLED` raw ≠ `"true"`.
+- Soma de custos do dia ≥ 80% de `APIFY_HARD_CAP_USD`.
+- Falha de `bunx tsc` ou `vitest` antes do passo 4.
 
-**`WeeklySummary` mais robusto:**
-- Se não houver candidato "Mais parado" qualificado, renderizar só "Mais ativo" em coluna única (mantém o grid mas remove a coluna direita).
-- Manter mini-bars (já são informativas só com `posts`).
+## Entregável (resposta final ao utilizador, completa em chat)
 
-**Subtítulo coerente:**
-- Usar `calendarDays.length` como fonte para "Y dias" no subtítulo (em vez de `windowDays` prop) — defesa adicional caso o transformador mude no futuro.
-- Se `calendarDays.length === 0` ou `postsAnalyzed === 0`, esconder linha do subtítulo em vez de mostrar "0 publicações em 0 dias".
+1. Valores efetivos detetados em runtime (booleanos + números dos caps).
+2. `Modo público activo`: sim/não + razão.
+3. Resultado do teste: cache hit / fresh / stale.
+4. Provider pago invocado? sim/não.
+5. Custo estimado e real registado em `provider_call_logs`.
+6. Linhas relevantes de `analysis_events` (outcome, data_source, snapshot_id).
+7. Sanitização de erro confirmada (sample do payload se aplicável).
+8. Lista de bloqueadores (vazia se GO).
 
-**Limpeza:**
-- Remover variável `statsLine` (morta).
-
-### C. Testes
-- Adicionar/actualizar teste em `src/lib/report/__tests__/` (se existir suite para snapshot-to-report-data) confirmando `windowDays === postingTimeline.length`.
-- Caso não exista suite, criar `frequency-card-data.test.ts` mínimo cobrindo:
-  - alinhamento `windowDays` ↔ `postingTimeline.length`
-  - veredicto vs status (3 bandas)
-  - `pickQuietest` retorna `null`/omitido em janelas curtas
-
-## Fora de scope (não tocar)
-- Cálculo de `postingFrequencyWeekly` (já está correcto).
-- Estilo visual / tokens.
-- AI insights, calendário em si (cells, legend), `InsightCallout`.
-
-## Checkpoint
-
-- ☐ `windowDays` recalculado por datas em `snapshot-to-report-data.ts`
-- ☐ Veredicto/label/tone migrados para thresholds 70/40 em `frequency-card.tsx`
-- ☐ `pickQuietest` com guardas de amostra mínima
-- ☐ `WeeklySummary` esconde "Mais parado" quando não qualifica
-- ☐ Subtítulo usa `calendarDays.length` e esconde-se sem dados
-- ☐ `statsLine` removido
-- ☐ Testes passam (`bunx vitest run`)
+## Restrições respeitadas
+- Sem alterações a UI, schema, emails (Brevo/Resend), admin UI ou relatórios.
+- Sem novos secrets, sem mutações DB, sem envio de email.
+- Apenas 1 chamada fresh (ou 0 se cache hit detetada).
