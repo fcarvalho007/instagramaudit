@@ -686,14 +686,14 @@ export function TestProfilesCard() {
   return (
     <div className="flex flex-col gap-3">
       {/* Header with counter and add button */}
-      <div className="flex items-center justify-between">
-        <p className="text-[12px] font-semibold text-admin-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <p className="text-[12px] font-semibold text-admin-text-secondary uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
           <span className="text-admin-text-tertiary">◎</span>
           Perfis de teste
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
           <span
-            className="text-[12px] text-admin-text-tertiary"
+            className="text-[12px] text-admin-text-tertiary leading-snug"
             title={
               nextExpiry
                 ? `Próxima expiração: ${formatAbsoluteFull(nextExpiry)}`
@@ -704,7 +704,7 @@ export function TestProfilesCard() {
           </span>
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted transition-colors"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted transition-colors whitespace-nowrap shrink-0"
             style={{ borderColor: "#E5E3D9" }}
           >
             <Plus size={12} />
