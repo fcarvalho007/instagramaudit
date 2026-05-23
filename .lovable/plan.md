@@ -1,72 +1,71 @@
-# Padronização tipográfica do Bloco 1 do Report
+# Hero "Prism editorial" — implementação
 
-## Problema atual
+Reescrita do `src/components/report-redesign/v2/report-hero-v2.tsx` para a direção aprovada.
 
-O Bloco 1 (Editorial Identity + Engagement + Frequency + Format) usa tamanhos de fonte inconsistentes e muitos abaixo do limite legível:
-
-| Elemento | Editorial | Format | Frequency | Engagement |
-|----------|-----------|--------|-----------|------------|
-| Body / parágrafo | `text-sm` (14px) | `text-[13px]` | `text-[13px]` | `text-[13px]` |
-| Legendas / captions | — | `text-[9px]` | `text-[10px]` | — |
-| Labels de insight | `text-[11px]` | `text-[10px]` | `text-[10px]` | `text-[10px]` |
-| Contagem calendário | — | — | `text-[9px]` | — |
-
-Além disso, os paddings dos headers variam (`px-5 py-6` num card, `px-4 sm:px-5 pt-5` noutro) e as margens entre secções internas não seguem um ritmo consistente.
-
-## Solução — convenção unificada para o Bloco 1
+## Layout final
 
 ```
-Body principal (parágrafos, bullets, subtítulos):  text-[15px]  leading-relaxed
-Labels secundárias (KPI small, captions):          text-sm      (14px)
-Micro-texto mínimo (legendas, ticks, badges):      text-xs      (12px)  ← mínimo absoluto
-Títulos H3 (Fraunces):                             mantêm os tamanhos atuais
-Eyebrows:                                          .text-eyebrow / .text-eyebrow-sm
+┌──────────────────────────────────────────────────────────────────────────┐
+│                                                              ╱ prisma ╲   │
+│  [AVATAR]   @handle ✓                                       (decoração)  │
+│   112px     Nome completo                                                │
+│             ─────────────────────────────                  [ Novo relat.]│
+│             10K seguidores · 2,6K publicações ·            [ Comparar  ]│
+│             12 posts em 11 dias                            [ PDF │ Part]│
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Espaçamentos padronizados
+## Alterações em `report-hero-v2.tsx`
 
-- **Header de cada card**: `px-6 pt-7 pb-3` com `space-y-3` entre eyebrow / título / subtítulo
-- **Margem entre secções internas**: `mt-6` (padrão único)
-- **Margem entre cards do grid**: `gap-5` (já está em parte, uniformizar)
+### Removido
+- `PlatformPill` "Instagram" e `StatusPill` "Ativo"
+- Bloco `CacheStatusBadge` (header e footer) + chip "X posts em Y dias" duplicado
+- Grid 2×2 de KPIs (engagement, seguidores, delta, publicações)
+- Footer com "Facebook · TikTok · YouTube · Em breve" e datas
+- `buildProfileStats` (helper já não usado)
 
-## Ficheiros e alterações
+### Mantido / adaptado
+- `Avatar` aumentado para `size-20 md:size-28` (80→112px), borda mais subtil `border border-border-default/60 p-1`
+- `VerifiedBadge` posicionada sobreposta ao avatar (bottom-right) em vez de inline ao lado do handle
+- `@handle` em Fraunces 2xl/3xl mantém-se; nome completo abaixo em Inter 14px
 
-### 1. `editorial-identity-card.tsx`
-- Parágrafo da síntese: `text-sm` → `text-[15px] leading-relaxed`
-- Bullets fortes/limitações: `text-sm` → `text-[15px] leading-relaxed`
-- Nota de confiança baixa: `text-xs` (mantém, já é o mínimo)
-- Zona macro padding: `px-5 py-6 sm:px-7 sm:py-7` → `px-6 py-7`
-- Badge de banda: `text-[11px]` → `text-xs`
+### Adicionado
+- **Linha métrica única** (`Metric` inline component):
+  `<followers> seguidores · <postsCount> publicações · <postsAnalyzed> posts em <windowDays> dias`
+  Números em Inter SemiBold `tabular-nums`, separadores `·` em `text-content-tertiary`. Texto principal `text-[15px]`.
+- **Stack de ações** (direita no desktop, full-width empilhado no mobile):
+  1. `Novo relatório` — botão primário sólido preto (`bg-content-primary text-white`), full-width na coluna, h-10
+  2. `Comparar com concorrente` + badge `PRO` — botão outline full-width que abre `<CompetitorModal>` via `useState`
+  3. Par `PDF` │ `Partilhar` — dois botões secundários lado a lado com `surface-muted/80 backdrop-blur`, h-9
+- **Decoração "Prism glass"** atrás da coluna de ações (desktop ≥ lg):
+  Container `absolute inset-0 -z-10 pointer-events-none` com 2-3 formas SVG/divs:
+  - prisma triangular `bg-gradient-to-br from-accent-primary/15 to-accent-violet/10 rotate-12 blur-2xl`
+  - círculo `bg-accent-luminous/10 blur-3xl`
+  - retângulo `bg-white/40 backdrop-blur-xl border border-white/60 rotate-[-8deg]`
+  Tudo confinado ao card (overflow-hidden mantém-se).
 
-### 2. `report-overview-engagement.tsx`
-- Descrição do card: `text-[13px] md:text-[14px]` → `text-[15px] leading-relaxed`
-- Labels dos KPIs: `text-xs` → `text-sm`
-- Valores dos KPIs: mantêm `text-[1.6rem] sm:text-[2.25rem]`
-- Texto da caixa de leitura (via InsightCallout): coberto no ficheiro 5
+### Estado interno
+- `const [compareOpen, setCompareOpen] = useState(false)` + render condicional do `<CompetitorModal>`
 
-### 3. `frequency-card.tsx`
-- Subtítulo do header: `text-[13px] md:text-[14px]` → `text-[15px] leading-relaxed`
-- Texto do resumo semanal: `text-[13px]` → `text-[15px]`
-- Labels do resumo semanal: `text-[10px]` → `text-xs`
-- Headers dos dias da semana: `text-[11px] md:text-xs` → `text-xs`
-- Contagem no calendário: `text-[9px] md:text-[10px]` → `text-xs`
-- Legendas do calendário: `text-[10px] md:text-[11px]` → `text-xs`
-- Header padding: `px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 md:pt-8` → `px-6 pt-7 pb-3`
+## Tipografia (consistente com bloco 1)
+- `@handle`: `font-display text-[2rem] lg:text-[2.5rem] font-semibold tracking-tight`
+- Nome: `text-sm font-medium text-content-secondary`
+- Linha métrica: `text-[15px] text-content-secondary` com números `font-semibold text-content-primary tabular-nums`
+- Botões: `text-sm font-semibold`
 
-### 4. `format-card.tsx`
-- Subtítulo do header: `text-[13px] md:text-[14px]` → `text-[15px] leading-relaxed`
-- Legendas do donut: `text-[13px]` → `text-[15px]` (mantém legibilidade nos números)
-- Legendas de thumbnails: `text-[9px]` → `text-xs`
-- Label "posts analisados": `text-[10px]` → `text-xs`
-- Header padding: `px-5 md:px-6 pt-6 md:pt-8` → `px-6 pt-7 pb-3`
+## Responsivo
+- ≥ lg: 2 colunas (identidade flex-1 | stack ações w-[280px])
+- < lg: stack vertical; ações full-width abaixo da identidade; decoração de prismas oculta
 
-### 5. `insight-callout.tsx`
-- Label do callout: `text-[10px]` → `text-xs`
-- Body do callout: `text-[13px] md:text-[14px]` → `text-[15px] leading-relaxed`
+## Ficheiros tocados
+- `src/components/report-redesign/v2/report-hero-v2.tsx` — reescrita do componente
+- Nenhuma alteração noutros ficheiros; `ReportPageActions` e `CompetitorModal` já existem
 
 ## Critério de aceitação
-
-- Nenhum `text-[9px]`, `text-[10px]` ou `text-[11px]` remanescente nos 5 ficheiros do Bloco 1.
-- Body text uniformemente `text-[15px]` com `leading-relaxed`.
-- Paddings dos headers alinhados entre os 4 cards.
-- Build passa sem erros.
+- Sem Instagram pill, sem "Ativo", sem "Em breve", sem datas de atualização
+- Avatar 112px com check verde sobreposto quando verificado
+- Linha métrica única com `seguidores · publicações · X posts em Y dias`
+- 4 ações na ordem: Novo relatório (preto) → Comparar (PRO, abre modal) → PDF + Partilhar
+- Decoração de prismas visível apenas ≥ lg, sem afetar clique
+- Build passa
