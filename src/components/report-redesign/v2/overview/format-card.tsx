@@ -237,7 +237,7 @@ export function FormatCard({
             </span>
           </h3>
         </div>
-        <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
+        <p className="text-[15px] text-content-secondary leading-relaxed">
           {subtitleLine}
         </p>
       </div>
@@ -248,7 +248,7 @@ export function FormatCard({
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
         <div className="px-5 md:px-6 mt-6">
-          <span className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary block mb-1.5">
+          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-1.5">
             {postsAnalyzed} posts analisados
           </span>
           <div
@@ -289,11 +289,11 @@ export function FormatCard({
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-3 mt-1.5">
+          <div className="flex items-center gap-3 mt-2">
             {activeFormats.map((f) => {
               const style = FORMAT_STYLE[f.format];
               return (
-                <span key={f.format} className="inline-flex items-center gap-1 text-[9px] text-content-secondary">
+                <span key={f.format} className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
                   <span className={`size-[7px] rounded-full ${style.dot} shrink-0`} aria-hidden="true" />
                   {FORMAT_PT[f.format]} ({f.count})
                 </span>
@@ -438,7 +438,7 @@ function FormatBreakdown({
             return (
               <Fragment key={k}>
                 <span
-                  className={`flex items-center gap-2 text-[13px] ${
+                  className={`flex items-center gap-2 text-[15px] ${
                     isZero ? "text-content-tertiary" : "text-content-primary"
                   }`}
                 >
@@ -454,7 +454,7 @@ function FormatBreakdown({
                   {FORMAT_LEGEND_PT[k]}
                 </span>
                 <span
-                  className={`text-[13px] font-semibold tabular-nums text-right ${
+                  className={`text-[15px] font-semibold tabular-nums text-right ${
                     isZero ? "text-content-tertiary" : "text-content-primary"
                   }`}
                 >

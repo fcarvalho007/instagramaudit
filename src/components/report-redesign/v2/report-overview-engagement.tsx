@@ -118,14 +118,14 @@ export function EngagementCardRefined({ result }: Props) {
           </h3>
           <span
             className={cn(
-              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
               pillClass,
             )}
           >
             {engagementStatus}
           </span>
         </div>
-        <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
+        <p className="text-[15px] text-content-secondary leading-relaxed">
           Média de gostos + comentários + partilhas ÷ seguidores.
         </p>
       </div>
@@ -134,7 +134,6 @@ export function EngagementCardRefined({ result }: Props) {
       <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 border-t border-border-default pb-6 sm:pb-8">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
 
-          {/* KPI 1 — Profile engagement */}
           <div className="rounded-xl border border-border-default bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
             <span className="text-eyebrow-sm text-content-secondary block mb-2">
               <span className="hidden sm:inline">Avaliação deste perfil</span>
@@ -148,7 +147,7 @@ export function EngagementCardRefined({ result }: Props) {
                 %
               </span>
             </div>
-            <span className="block text-xs text-content-secondary mt-1.5 leading-snug">
+            <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
               <span className="hidden sm:inline">interação com o conteúdo</span>
               <span className="sm:hidden">interação</span>
             </span>
@@ -168,7 +167,7 @@ export function EngagementCardRefined({ result }: Props) {
                 %
               </span>
             </div>
-            <span className="block text-xs text-content-secondary mt-1.5 leading-snug">
+            <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
               <span className="hidden sm:inline">Média de perfis no mesmo escalão.</span>
               <span className="sm:hidden">média escalão</span>
             </span>
@@ -199,7 +198,7 @@ export function EngagementCardRefined({ result }: Props) {
               {pctDiffDirection && (
                 <span
                   className={cn(
-                    "text-xs sm:text-sm font-medium",
+                    "text-sm font-medium",
                     isPositive ? "text-signal-success" : "text-signal-danger"
                   )}
                 >
@@ -207,7 +206,7 @@ export function EngagementCardRefined({ result }: Props) {
                 </span>
               )}
             </div>
-            <span className="block text-xs text-content-secondary mt-1.5 leading-snug">
+            <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
               face ao benchmark do escalão
             </span>
           </div>

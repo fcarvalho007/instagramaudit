@@ -352,7 +352,7 @@ export function EditorialIdentityCard({
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
       {/* Zona macro */}
-      <div className="px-5 py-6 sm:px-7 sm:py-7 flex flex-col sm:flex-row sm:items-start gap-6 sm:gap-8">
+      <div className="px-6 py-7 flex flex-col sm:flex-row sm:items-start gap-6 sm:gap-8">
         <div className="self-center sm:self-start shrink-0">
           <ScoreGauge value={overall} band={band} />
         </div>
@@ -363,7 +363,7 @@ export function EditorialIdentityCard({
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5",
-                "text-[11px] font-semibold tracking-wide uppercase leading-none",
+                "text-xs font-semibold tracking-wide uppercase leading-none",
                 bandBadgeClass(band),
               )}
             >
@@ -375,7 +375,7 @@ export function EditorialIdentityCard({
             {copy.title}
           </h2>
 
-          <p className="text-sm leading-relaxed text-content-secondary max-w-2xl">
+          <p className="text-[15px] leading-relaxed text-content-secondary max-w-2xl">
             {copy.paragraph}
           </p>
 
@@ -483,7 +483,7 @@ function ReferenceBar({
           style={{ left: `${ref}%` }}
         />
       </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-content-tertiary tabular-nums">
+      <div className="mt-1.5 flex items-center justify-between text-xs text-content-tertiary tabular-nums">
         <span>0</span>
         <span>↑ referência do escalão · {ref}</span>
         <span>100</span>
@@ -516,9 +516,9 @@ function BulletColumn({
         <Icon className={cn("h-3.5 w-3.5", accent)} aria-hidden="true" />
         <span className={cn("text-eyebrow-sm", accent)}>{title}</span>
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-2.5">
         {items.map((it, i) => (
-          <li key={i} className="flex gap-2 text-sm leading-snug">
+          <li key={i} className="flex gap-2 text-[15px] leading-relaxed">
             <span
               className={cn(
                 "mt-1.5 h-1.5 w-1.5 rounded-full shrink-0",
