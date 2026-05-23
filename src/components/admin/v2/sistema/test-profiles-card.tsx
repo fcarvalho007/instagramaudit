@@ -378,10 +378,10 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
       style={{ borderColor: "#E5E3D9" }}
     >
       {/* Row 1: Avatar + info + actions */}
-      <div className="flex items-center gap-3">
-        <ProfileAvatar handle={p.handle} />
-
-        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1 w-full">
+          <ProfileAvatar handle={p.handle} />
+          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[14px] font-semibold text-admin-text-primary">
               @{p.handle}
@@ -481,10 +481,11 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
               </span>
             )}
           </div>
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:shrink-0 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => {
@@ -492,7 +493,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
               refetchPreflight();
             }}
             disabled={refreshMutation.isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto whitespace-nowrap"
             style={{
               borderColor: "rgba(55,114,229,0.3)",
               color: "#3772E5",
@@ -507,7 +508,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
             <Link
               to="/admin/report-preview/snapshot/$snapshotId"
               params={{ snapshotId: p.latestSnapshotId }}
-              className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted hover:text-admin-text-primary transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted hover:text-admin-text-primary transition-colors w-full sm:w-auto whitespace-nowrap"
               style={{ borderColor: "#E5E3D9" }}
               title="Abre a snapshot guardada — sem chamadas ao fornecedor."
             >
@@ -518,7 +519,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
             <button
               type="button"
               disabled
-              className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-tertiary cursor-not-allowed opacity-60"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-tertiary cursor-not-allowed opacity-60 w-full sm:w-auto whitespace-nowrap"
               style={{ borderColor: "#E5E3D9" }}
               title={
                 isExpired
@@ -534,7 +535,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
       </div>
 
       {/* Row 2: Cache breakdown chips */}
-      <div className="flex items-center gap-1.5 flex-wrap mt-3 pl-[54px]">
+      <div className="flex items-center gap-1.5 flex-wrap mt-3 pl-0 sm:pl-[54px]">
         {/* Last attempt indicator */}
         {lastAttempt && (
           <div
