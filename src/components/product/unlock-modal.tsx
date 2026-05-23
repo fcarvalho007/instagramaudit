@@ -129,7 +129,7 @@ export interface UnlockModalProps {
   onUnlock: (result: UnlockResult) => void;
 }
 
-type Step = "intro" | 1 | 2 | 3 | 4 | 5 | "welcome-back";
+type Step = 1 | 2 | 3 | 4 | 5 | "welcome-back";
 
 const STEP_HEADERS: Record<
   1 | 2 | 3 | 4,
@@ -180,7 +180,7 @@ export function UnlockModal({
   instagramUsername,
   onUnlock,
 }: UnlockModalProps) {
-  const [step, setStep] = useState<Step>("intro");
+  const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [result, setResult] = useState<UnlockResult | null>(null);
@@ -188,19 +188,6 @@ export function UnlockModal({
   const [knownFields, setKnownFields] = useState<Set<QField>>(new Set());
   const [returningFirstName, setReturningFirstName] = useState<string | null>(null);
   const [partialBanner, setPartialBanner] = useState<string | null>(null);
-
-  // Track intro view once per modal open.
-  useEffect(() => {
-    if (!open || step !== "intro") return;
-    void trackEvent({
-      data: {
-        eventType: "unlock_modal_intro_viewed",
-        handle: instagramUsername,
-        snapshotId,
-      },
-    }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const form = useForm<UnlockFormValues>({
     resolver: zodResolver(unlockFormSchema),
@@ -358,11 +345,11 @@ export function UnlockModal({
   const goBack = () => {
     setServerError(null);
     if (step === "welcome-back") {
-      setStep("intro");
+      setStep(1);
       return;
     }
     if (step === 1) {
-      setStep("intro");
+      onOpenChange(false);
       return;
     }
     if (typeof step === "number" && step > 1 && step < 5) {
@@ -475,26 +462,12 @@ export function UnlockModal({
   };
 
   const stepNumForBar =
-    step === "welcome-back" || step === "intro" ? 1 : (step as number);
+    step === "welcome-back" ? 1 : (step as number);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[760px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
-        {step === "intro" ? (
-          <IntroCover
-            handle={instagramUsername}
-            onContinue={() => {
-              void trackEvent({
-                data: {
-                  eventType: "unlock_modal_intro_cta_clicked",
-                  handle: instagramUsername,
-                  snapshotId,
-                },
-              }).catch(() => {});
-              setStep(1);
-            }}
-          />
-        ) : step === 5 ? (
+        {step === 5 ? (
           <SuccessStep
             firstName={
               returningFirstName ??
