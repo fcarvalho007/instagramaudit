@@ -1,67 +1,55 @@
 ## Objetivo
 
-Garantir que o Block 1 ("Observação editorial") mostra a informação completa gerada pela IA, mantendo o enquadramento numérico que hoje está a desaparecer.
+Recuperar o visual premium do Block 1 (anel 0–100) sem voltar à duplicação que motivou o refactor anterior. Em vez dos 3 mini-scores (Envolvimento / Frequência / Interação) — que repetem cards seguintes — repõe-se **um único anel global 0–100**, posicionado ao lado da observação editorial.
 
-## Causa raiz
+## Alteração
 
-Em `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`, a função `deriveCopyFromAi` parte sempre o texto da IA em primeira frase (título) + resto (parágrafo). Quando a 1ª frase tem mais de 5 palavras (o caso típico, porque traz métricas), o título cai para o determinístico e o parágrafo fica só com a 2ª frase. Resultado para `@frederico.m.carvalho`:
+Ficheiro único: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
 
-- IA produziu: *"Este perfil regista 0,09% de envolvimento médio, muito abaixo da referência interna de 3,70% para o tier 10–50K. Reforçar carrosséis com gancho claro e CTA para comentário."*
-- O card mostra apenas: *"Reforçar carrosséis com gancho claro e CTA para comentário."*
+### Layout
 
-A frase com o sinal mais importante (0,09% vs 3,70%) é cortada.
+- Desktop (`sm:` ≥ 640px): grid 2 colunas → texto (esquerda, flex-1) + anel (direita, ~140px, alinhado ao topo do título).
+- Mobile (375px): anel empilha ABAIXO do texto, centrado, tamanho ~120px. Mantém legibilidade e ordem narrativa (texto primeiro).
+- Card mantém `rounded-2xl border border-border-default bg-white shadow-card`, padding atual.
 
-## Alteração proposta (cirúrgica, frontend-only)
+### Anel 0–100
 
-Ficheiro único: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`.
+- SVG inline (sem dependências novas).
+- Score global = média arredondada de `scores.envolvimento.value`, `scores.frequencia.value`, `scores.interaccao.value`.
+- Track: `stroke-border-default` ~6px; progresso: `stroke-accent-primary` (azul #3772E5) com `stroke-linecap="round"`.
+- Centro: número grande Inter SemiBold tabular-nums (text-3xl sm:text-4xl) + label "PONTUAÇÃO" em eyebrow-sm por baixo.
+- Cor do progresso varia por banda (mantém calma, sem alarme):
+  - ≥ 70 → `accent-primary` (azul)
+  - 40–69 → `accent-primary` com opacidade ~0.7
+  - < 40 → `signal-warning` (âmbar subtil)
+- `aria-label="Pontuação global {n} de 100"`.
 
-Ajustar `deriveCopyFromAi` para:
+### Sem alterações em
 
-1. Tentar título a partir da 1ª frase (regra atual ≤ 5 palavras).
-2. **Se o título vier da IA**, parágrafo = `rest` (comportamento atual).
-3. **Se o título cair para o fallback determinístico**, parágrafo = **texto completo da IA** (`cleaned`), não apenas `rest`.
-4. Manter `trimParagraphToSentence` (limite ~280 chars) para evitar parágrafos demasiado longos em ecrãs pequenos, mas elevar o limite para ~320 para acomodar duas frases curtas em pt-PT.
-5. Manter sanitização do prefixo proibido ("A IA concluiu…") e o chip de benchmark inalterados.
+- Lógica de `deriveCopyFromAi`, fallback, chip de benchmark, sanitização.
+- `report-overview-block.tsx`, snapshot, pipeline IA, outros cards.
+- Tokens (`src/styles/tokens.css`, `tokens-light.css`).
 
-Sem alterações em:
-- Componente `EditorialIdentityCard` JSX/estilos.
-- `report-overview-block.tsx`.
-- Pipeline de IA, snapshot, Apify, DataForSEO, OpenAI.
-- Lock gate, modal de unlock.
-- Outros blocos.
+### Comportamento
 
-## Resultado esperado
-
-Para `@frederico.m.carvalho` o card passa a mostrar:
-
-- Eyebrow: `OBSERVAÇÃO`
-- Título: `Audiência existe, falta direção` (fallback determinístico — primeira frase tem 21 palavras)
-- Parágrafo: *"Este perfil regista 0,09% de envolvimento médio, muito abaixo da referência interna de 3,70% para o tier 10–50K. Reforçar carrosséis com gancho claro e CTA para comentário."*
-- Chip: `ABAIXO DO BENCHMARK`
-
-Quando a IA produzir uma 1ª frase curta (≤ 5 palavras), continua a usar essa frase como título e o resto como parágrafo (comportamento atual preservado).
-
-Se `aiHeroText` for ausente, mantém-se o fallback determinístico atual (título + parágrafo determinísticos).
-
-## Restrições
-
-- Apenas UI / lógica de derivação de copy.
-- Sem novas chamadas a providers.
-- Sem alterar tokens nem o layout do card.
-- Mobile-first preservado (mesmo card de banda única).
+- Anel é sempre renderizado (não depende de IA).
+- Texto + chip continuam a respeitar a regra ≤ 5 palavras / 2–3 frases.
+- Mobile-first verificado a 375px (texto em cima, anel centrado abaixo, sem overflow).
 
 ## Validação
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- Verificação manual em `/analyze/frederico.m.carvalho`: confirmar que o parágrafo passa a incluir a frase com `0,09%` e `3,70%`.
+- Manual em `/analyze/frederico.m.carvalho`:
+  - Anel visível com número 0–100 legível
+  - Observação editorial intacta
+  - Chip de benchmark intacto
+  - Mobile 375px: ordem texto → anel, sem clipping
+  - Desktop 1460px: anel à direita, alinhado ao topo
 
-## Checklist
+## Checkpoint
 
-- ☐ Editar apenas `editorial-identity-card.tsx`
-- ☐ Atualizar `deriveCopyFromAi` segundo as 5 regras acima
-- ☐ Confirmar título ≤ 5 palavras quando vem da IA
-- ☐ Confirmar parágrafo completo quando título cai para fallback
-- ☐ `bunx tsc --noEmit` sem erros
-- ☐ `bunx vitest run` verde
-- ☐ Validação visual em desktop e 375px
+- ☐ Editar `editorial-identity-card.tsx` (layout 2 colunas + SVG ring)
+- ☐ Calcular score global como média dos 3 sub-scores
+- ☐ Verificar mobile 375px e desktop
+- ☐ `bunx tsc --noEmit` + `bunx vitest run` verdes
