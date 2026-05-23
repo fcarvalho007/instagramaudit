@@ -118,6 +118,11 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             engagementBenchmark: k.engagementBenchmark,
             engagementDeltaPct: k.engagementDeltaPct,
           }}
+          dominantFormat={k.dominantFormat}
+          dominantFormatShare={k.dominantFormatShare}
+          postingFrequencyWeekly={k.postingFrequencyWeekly}
+          followers={result.data.profile.followers}
+          postsAnalyzed={k.postsAnalyzed}
         />
       )}
 
