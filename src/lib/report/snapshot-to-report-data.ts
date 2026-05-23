@@ -984,10 +984,12 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     maxTs = Math.max(maxTs, t);
   }
   if (Number.isFinite(minTs) && Number.isFinite(maxTs)) {
-    windowDays = Math.max(
-      1,
-      Math.ceil((maxTs - minTs) / 86_400_000) + 1,
-    );
+    // Use date-based (UTC) diff so windowDays === postingTimeline.length.
+    // Posts at different hours of the day must NOT inflate the window.
+    const DAY_MS = 86_400_000;
+    const minDay = Math.floor(minTs / DAY_MS) * DAY_MS;
+    const maxDay = Math.floor(maxTs / DAY_MS) * DAY_MS;
+    windowDays = Math.max(1, Math.round((maxDay - minDay) / DAY_MS) + 1);
   }
   const profileWithWindow = { ...profile, windowDays };
 
