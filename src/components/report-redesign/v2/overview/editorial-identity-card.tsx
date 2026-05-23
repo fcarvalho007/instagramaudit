@@ -92,7 +92,7 @@ function splitFirstSentence(text: string): { first: string; rest: string } {
   return { first: text.trim(), rest: "" };
 }
 
-function trimParagraphToSentence(text: string, maxChars = 280): string {
+function trimParagraphToSentence(text: string, maxChars = 320): string {
   if (text.length <= maxChars) return text;
   const slice = text.slice(0, maxChars);
   const lastStop = Math.max(slice.lastIndexOf("."), slice.lastIndexOf("!"), slice.lastIndexOf("?"));
@@ -110,10 +110,13 @@ function deriveCopyFromAi(
   const { first, rest } = splitFirstSentence(cleaned);
   const firstClean = first.replace(/[.!?]+$/, "").trim();
 
-  // Title rule: ≤ 5 words. If AI first sentence is too long, fall back to
-  // the deterministic title but keep the AI text as paragraph.
-  const title = countWords(firstClean) <= 5 ? firstClean : fallback.title;
-  const paragraphRaw = rest ? rest : cleaned;
+  // Title rule: ≤ 5 words. If AI first sentence is short enough, use it as
+  // title and let the remaining sentences be the paragraph. Otherwise fall
+  // back to the deterministic title but keep the FULL AI text as paragraph
+  // — discarding the first sentence drops the metric framing the IA wrote.
+  const titleFromAi = countWords(firstClean) <= 5;
+  const title = titleFromAi ? firstClean : fallback.title;
+  const paragraphRaw = titleFromAi ? (rest || cleaned) : cleaned;
   const paragraph = trimParagraphToSentence(paragraphRaw);
 
   return { title, paragraph: paragraph || fallback.paragraph };
