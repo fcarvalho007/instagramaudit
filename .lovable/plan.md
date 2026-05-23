@@ -1,50 +1,73 @@
-## Objetivo
-Adicionar, no card **Formato** (`src/components/report-redesign/v2/overview/format-card.tsx`), um módulo visual de rastreio dos formatos publicados na feed, logo abaixo do título e do subtítulo, antes da grelha de miniaturas.
+## Diagnóstico
 
-## Referência visual (mockup do utilizador)
-- Donut chart à esquerda com o total de publicações no centro (ex: `12` + eyebrow `PUBLICAÇÕES`).
-- Legenda à direita, uma linha por formato:
-  - Bolinha colorida + nome do formato (`Carrossel`, `Reels`, `Imagem`).
-  - Contagem (Inter SemiBold, tabular-nums) + percentagem em accent azul.
-  - Formatos com `count = 0` aparecem em cinzento (estado vazio).
+### Problemas de dados encontrados
+
+**1. `count` é estimado, não é a fonte de verdade.**
+Em `report-overview-block.tsx` (L60-66):
+```ts
+count: Math.round((f.sharePct / 100) * k.postsAnalyzed)
+```
+O snapshot já traz `format_stats[k].count` (campo real do payload — ver `SnapshotFormatStat` em `snapshot-to-report-data.ts:65-69`), mas `buildFormatBreakdown` descarta-o e só guarda `sharePct`. Round-trip via `sharePct` pode produzir **Σcount ≠ postsAnalyzed** (ex: 50%/50% em 11 posts → 6+6 = 12).
+
+**2. Total do donut pode divergir da grelha de miniaturas.**
+- Donut central mostra `postsAnalyzed` (vindo de `content_summary.posts_analyzed`).
+- Miniaturas usam `analysedPostFormats.length` (posts com data ISO válida — pode ser menor).
+- Σcount da legenda pode dar um terceiro valor.
+
+**3. Percentagens podem divergir entre subtítulo e donut.**
+- Subtítulo "X em cada Y são…" usa o `count` derivado.
+- Donut recalcula `Math.round((count/postsAnalyzed)*100)` — pode dar 74% quando o `sharePct` autoritativo era 75%.
+
+### Problemas de clareza / UX
+
+**4. Singulares vs plurais inconsistentes.**
+A legenda nova mostra "Carrossel / Reels / Imagem". O resto do card (subtítulo, legenda das miniaturas, `FORMAT_PT`) usa **plurais** ("carrosséis, reels, imagens"). Convenção pt-PT do projeto = plural.
+
+**5. Eyebrow "Publicações" no donut duplica "X posts analisados" logo abaixo.**
+São o mesmo número visto duas vezes em 40px de distância.
+
+---
 
 ## Implementação
 
-**Ficheiro:** `src/components/report-redesign/v2/overview/format-card.tsx`
+### A. `src/lib/report/snapshot-to-report-data.ts`
+1. Adicionar `count: number` ao tipo `ReportData["formatBreakdown"]` (ou ao item retornado).
+2. Em `buildFormatBreakdown` (L597+), preencher `count` a partir de `s.count` (já existe em `SnapshotFormatStat`). Fallback `0` quando ausente.
 
-1. Criar sub-componente local `FormatBreakdown` que recebe `formats: FormatEntry[]` e `postsAnalyzed: number`.
-2. Donut SVG (sem dependências novas):
-   - Tamanho ~96px, stroke ~12px, fundo `surface-muted`.
-   - Arcos por formato, na ordem `Carrossel → Reels → Imagem → Video`, usando as mesmas cores já definidas em `FORMAT_STYLE` (mantém coerência com a legenda das miniaturas em baixo).
-   - Centro: número total em Inter SemiBold com `tabular-nums`, eyebrow `PUBLICAÇÕES` em `.text-eyebrow-sm`.
-3. Lista de formatos à direita:
-   - Inclui todos os formatos canónicos mesmo com `count = 0` (estado “esbatido” em `text-content-tertiary`).
-   - Layout: `grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1.5` para alinhar nome, contagem e percentagem.
-   - Percentagem arredondada a inteiro; usar `accent-primary` (azul `#3772E5`) para formatos ativos, `content-tertiary` para zero.
-4. Posicionamento: inserir o bloco entre o header e a grelha de miniaturas, com `px-5 md:px-6 mt-5`.
-5. Responsivo: em mobile, donut + legenda continuam lado a lado (donut encolhe para 80px). Em ecrãs muito estreitos (`<360px`) cair para coluna se necessário (`flex-col sm:flex-row`).
+### B. `src/components/report-redesign/v2/report-overview-block.tsx`
+1. Em `formatEntries` (L60-66), usar `f.count` direto da fonte. Manter o cálculo round-trip apenas como fallback quando `count` for `0` e `sharePct > 0`.
+2. Garantir invariante: se `Σcount > 0` e diferir de `postsAnalyzed`, usar `Σcount` como total exibido (fonte interna coerente).
 
-## Tokens e regras (memória do projeto)
-- **Apenas Fraunces + Inter.** Nada de `font-mono`.
-- Cores: usar `FORMAT_STYLE.dot` existente + `text-accent-primary` para os percentuais.
-- Número central com `tabular-nums`, nunca `font-mono`.
-- Eyebrow com `.text-eyebrow-sm` (Inter uppercase).
-- Sem hardcode de hex; usar tokens semânticos onde possível e as classes Tailwind já em uso no ficheiro.
+### C. `src/components/report-redesign/v2/overview/format-card.tsx`
+1. **Total único**: passar a usar `total = Σ(entry.count)` em vez de `postsAnalyzed` quando os dois divergirem; isto garante coerência donut ↔ legenda ↔ percentagens.
+2. **Percentagens autoritativas**: preferir `entry.sharePct` quando presente; só recalcular a partir de `count/total` como fallback. Evita 74% vs 75%.
+3. **Labels em plural** em `FORMAT_SINGULAR_PT` → renomear para `FORMAT_LEGEND_PT` e usar: `Carrosséis`, `Reels`, `Imagens`, `Vídeos`. Capitalizada.
+4. **Remover redundância**: substituir o eyebrow `Publicações` dentro do donut por algo descritivo do que está a ser medido — ou removê-lo e manter apenas o número grande. Eu sugiro **manter o número + remover o eyebrow interno**, e renomear o eyebrow externo de "X posts analisados" para "Distribuição dos X posts" (1 leitura, 1 sítio).
+5. **Σ garantida**: snap final — se rounding produzir Σpct = 99 ou 101, somar/subtrair 1 ao maior formato. Evita "75% + 25% + 0% = 100%" virar 76+25+0.
+6. **Estado vazio**: se `total = 0`, não renderizar (já garantido).
+7. **a11y**: adicionar `aria-label` ao container do bloco breakdown a descrever a distribuição (ex: "Distribuição: 9 carrosséis, 3 reels, 0 imagens").
 
-## Fora de âmbito
-- Não tocar na grelha de miniaturas, legenda inferior, headline, subtítulo nem `InsightCallout`.
-- Não alterar `snapshot-to-report-data.ts` — os dados em `formats` já chegam prontos.
-- Não adicionar libs de chart (Recharts/etc.); SVG manual.
-- Não regenerar relatórios nem mexer em backend.
+### D. Sem alterações
+- Não tocar em `buildAnalysedPostFormats` (já correto).
+- Não tocar no subtítulo do card nem no `InsightCallout`.
+- Não tocar em `DominantFormatCard` (card diferente).
+- Sem novas libs.
+
+---
 
 ## Validação
-- Verificar visualmente em `/analyze/frederico.m.carvalho` (donut + legenda + percentagens corretas).
-- Confirmar que totais batem certo: `Σ count = postsAnalyzed` e `Σ pct ≈ 100%`.
-- Estado vazio: se todos `count = 0`, o bloco não renderiza (fallback gracioso).
+
+- `/analyze/frederico.m.carvalho`: confirmar que o número central do donut, a Σ da legenda e o número da grelha de miniaturas dão o mesmo valor.
+- Confirmar que as % batem com o `format_stats` original do payload (não recalculadas a partir de counts redondos).
+- Testar mobile 375px.
+- `bunx tsc --noEmit` para validar a mudança de tipo em `formatBreakdown`.
 
 ## Checkpoint
-- ☐ `FormatBreakdown` adicionado e a render entre header e thumbnails.
-- ☐ Donut SVG com cores coerentes com a legenda atual.
-- ☐ Legenda inclui Carrossel, Reels, Imagem (Video só se `count > 0`).
-- ☐ Tipografia Inter + tabular-nums; sem `font-mono`.
-- ☐ Responsivo em 375px.
+- ☐ `formatBreakdown` carrega `count` real do `format_stats`.
+- ☐ `formatEntries` usa esse count directamente.
+- ☐ Donut/legenda/grelha mostram o **mesmo** total.
+- ☐ Percentagens batem com `sharePct` autoritativo do payload.
+- ☐ Labels em plural pt-PT consistentes.
+- ☐ Eyebrow duplicado removido.
+- ☐ Σpct = 100% garantido por snap.
+- ☐ `tsc --noEmit` ok.
