@@ -388,7 +388,7 @@ export function FrequencyCard({
           </h3>
         </div>
         {subtitleLine && (
-          <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
+          <p className="text-[15px] text-content-secondary leading-relaxed">
             {subtitleLine}
           </p>
         )}
