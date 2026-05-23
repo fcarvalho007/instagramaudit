@@ -1,17 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowLeft,
-  Activity,
-  BarChart3,
-  Clock,
   Briefcase,
   Check,
   CheckCircle2,
-  Compass,
-  ShieldCheck,
-  Sparkles,
   HelpCircle,
   Loader2,
   Lock,
@@ -135,7 +129,7 @@ export interface UnlockModalProps {
   onUnlock: (result: UnlockResult) => void;
 }
 
-type Step = "intro" | 1 | 2 | 3 | 4 | 5 | "welcome-back";
+type Step = 1 | 2 | 3 | 4 | 5 | "welcome-back";
 
 const STEP_HEADERS: Record<
   1 | 2 | 3 | 4,
@@ -186,7 +180,7 @@ export function UnlockModal({
   instagramUsername,
   onUnlock,
 }: UnlockModalProps) {
-  const [step, setStep] = useState<Step>("intro");
+  const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [result, setResult] = useState<UnlockResult | null>(null);
@@ -194,19 +188,6 @@ export function UnlockModal({
   const [knownFields, setKnownFields] = useState<Set<QField>>(new Set());
   const [returningFirstName, setReturningFirstName] = useState<string | null>(null);
   const [partialBanner, setPartialBanner] = useState<string | null>(null);
-
-  // Track intro view once per modal open.
-  useEffect(() => {
-    if (!open || step !== "intro") return;
-    void trackEvent({
-      data: {
-        eventType: "unlock_modal_intro_viewed",
-        handle: instagramUsername,
-        snapshotId,
-      },
-    }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const form = useForm<UnlockFormValues>({
     resolver: zodResolver(unlockFormSchema),
@@ -364,11 +345,11 @@ export function UnlockModal({
   const goBack = () => {
     setServerError(null);
     if (step === "welcome-back") {
-      setStep("intro");
+      setStep(1);
       return;
     }
     if (step === 1) {
-      setStep("intro");
+      onOpenChange(false);
       return;
     }
     if (typeof step === "number" && step > 1 && step < 5) {
@@ -481,26 +462,12 @@ export function UnlockModal({
   };
 
   const stepNumForBar =
-    step === "welcome-back" || step === "intro" ? 1 : (step as number);
+    step === "welcome-back" ? 1 : (step as number);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[760px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
-        {step === "intro" ? (
-          <IntroCover
-            handle={instagramUsername}
-            onContinue={() => {
-              void trackEvent({
-                data: {
-                  eventType: "unlock_modal_intro_cta_clicked",
-                  handle: instagramUsername,
-                  snapshotId,
-                },
-              }).catch(() => {});
-              setStep(1);
-            }}
-          />
-        ) : step === 5 ? (
+        {step === 5 ? (
           <SuccessStep
             firstName={
               returningFirstName ??
@@ -724,114 +691,6 @@ function ProgressSegments({
           />
         );
       })}
-    </div>
-  );
-}
-
-const INTRO_HIGHLIGHTS: ReadonlyArray<{
-  Icon: IconCmp;
-  title: string;
-  body: string;
-}> = [
-  {
-    Icon: Activity,
-    title: "Diagnóstico editorial",
-    body: "O que funciona, o que falha e onde estás abaixo do mercado.",
-  },
-  {
-    Icon: BarChart3,
-    title: "Comparação com perfis pares",
-    body: "Onde estás no benchmark do teu escalão.",
-  },
-  {
-    Icon: Compass,
-    title: "Desempenho, conteúdo e procura",
-    body: "Envolvimento, formatos, hashtags e sinais fora do Instagram.",
-  },
-];
-
-function IntroCover({
-  handle,
-  onContinue,
-}: {
-  handle: string;
-  onContinue: () => void;
-}) {
-  const cleaned = handle.replace(/^@/, "");
-  return (
-    <div className="px-7 py-8 sm:px-9 sm:py-9">
-      <div className="flex items-center justify-between gap-3 mb-5">
-        <p className="text-eyebrow-sm text-primary">+4 secções grátis</p>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-[3px] text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-          <Sparkles className="size-3" aria-hidden />
-          Beta · acesso gratuito
-        </span>
-      </div>
-
-      <DialogHeader className="text-left space-y-3">
-        <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-          Continua a leitura
-          <br />
-          do{" "}
-          <em className="not-italic font-display italic text-primary">
-            @{cleaned}
-          </em>
-        </DialogTitle>
-        <DialogDescription className="text-[14px] text-content-secondary leading-relaxed">
-          Já viste{" "}
-          <strong className="font-semibold text-content-primary">
-            2 das 6 secções
-          </strong>{" "}
-          do relatório. Faltam 4 — desbloqueia-as agora com o teu email. Demora
-          menos de 1 minuto.
-        </DialogDescription>
-      </DialogHeader>
-
-      <ul className="mt-6 space-y-2.5">
-        {INTRO_HIGHLIGHTS.map((item) => (
-          <li
-            key={item.title}
-            className="flex items-start gap-3 px-4 py-3 rounded-xl border border-border-default/60 bg-surface-muted/30"
-          >
-            <span
-              aria-hidden
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
-            >
-              <item.Icon className="size-4" />
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold text-content-primary leading-snug">
-                {item.title}
-              </p>
-              <p className="text-[12.5px] text-content-tertiary leading-relaxed mt-0.5">
-                {item.body}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-6 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5">
-        <Button
-          type="button"
-          size="lg"
-          className="w-full rounded-lg font-medium"
-          onClick={onContinue}
-        >
-          Desbloquear as 4 secções →
-        </Button>
-        <p className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-content-tertiary">
-          <span className="inline-flex items-center gap-1">
-            <Clock className="size-3" aria-hidden /> ~1 minuto
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <ShieldCheck className="size-3" aria-hidden /> RGPD · sem spam
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Sparkles className="size-3" aria-hidden /> BETA · capacidade limitada
-          </span>
-        </p>
-      </div>
     </div>
   );
 }

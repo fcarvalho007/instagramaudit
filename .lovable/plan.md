@@ -1,55 +1,76 @@
-## Objetivo
+## Diagnóstico
 
-Recuperar o visual premium do Block 1 (anel 0–100) sem voltar à duplicação que motivou o refactor anterior. Em vez dos 3 mini-scores (Envolvimento / Frequência / Interação) — que repetem cards seguintes — repõe-se **um único anel global 0–100**, posicionado ao lado da observação editorial.
+Existem hoje DOIS pontos que parecem modais sobre o mesmo assunto:
 
-## Alteração
+1. **`ReportLockGate`** (`src/components/product/report-lock-gate.tsx`) — overlay inline sobre o relatório desfocado, com card "Desbloquear análise completa" + 3 benefit rows + botão.
+2. **`UnlockModal.IntroCover`** (`src/components/product/unlock-modal.tsx`, linhas 753–836) — primeiro ecrã DENTRO do diálogo, com "+4 secções grátis", barra "2 das 6 secções", 3 highlights e badge BETA.
 
-Ficheiro único: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
+Resultado: o utilizador clica no card overlay e cai noutra capa quase igual antes do formulário. É a duplicação que o utilizador refere.
 
-### Layout
+## Decisão
 
-- Desktop (`sm:` ≥ 640px): grid 2 colunas → texto (esquerda, flex-1) + anel (direita, ~140px, alinhado ao topo do título).
-- Mobile (375px): anel empilha ABAIXO do texto, centrado, tamanho ~120px. Mantém legibilidade e ordem narrativa (texto primeiro).
-- Card mantém `rounded-2xl border border-border-default bg-white shadow-card`, padding atual.
+**Unificar num só gateway** que adopta o desenho do screenshot enviado:
 
-### Anel 0–100
+- O card overlay (`ReportLockGate`) passa a ser o ÚNICO gateway visível e adopta o desenho minimal: badge BETA, título editorial "Continua a leitura do @handle", subtítulo cirúrgico, um CTA, 3 micro-tags no rodapé.
+- O `UnlockModal` arranca directamente no formulário (step 1). A IntroCover desaparece.
 
-- SVG inline (sem dependências novas).
-- Score global = média arredondada de `scores.envolvimento.value`, `scores.frequencia.value`, `scores.interaccao.value`.
-- Track: `stroke-border-default` ~6px; progresso: `stroke-accent-primary` (azul #3772E5) com `stroke-linecap="round"`.
-- Centro: número grande Inter SemiBold tabular-nums (text-3xl sm:text-4xl) + label "PONTUAÇÃO" em eyebrow-sm por baixo.
-- Cor do progresso varia por banda (mantém calma, sem alarme):
-  - ≥ 70 → `accent-primary` (azul)
-  - 40–69 → `accent-primary` com opacidade ~0.7
-  - < 40 → `signal-warning` (âmbar subtil)
-- `aria-label="Pontuação global {n} de 100"`.
+Regra aplicada (do brief do utilizador): **não vender o que ainda não existe** — sem lista de blocos premium, sem indicador 2/6, sem barra de progresso 2:4, sem badge "+4 PARA DESBLOQUEAR", sem menção a Conteúdo · Procura · Comparação.
 
-### Sem alterações em
+## Alterações
 
-- Lógica de `deriveCopyFromAi`, fallback, chip de benchmark, sanitização.
-- `report-overview-block.tsx`, snapshot, pipeline IA, outros cards.
-- Tokens (`src/styles/tokens.css`, `tokens-light.css`).
+### 1. `src/components/product/report-lock-gate.tsx` (rewrite do overlay)
 
-### Comportamento
+- Nova prop `handle: string` (Instagram username, sem @).
+- Card overlay passa a ter:
+  - **Badge** pill branca topo-esquerda: ponto verde (`bg-emerald-500`) com `animate-pulse` + texto "ACESSO GRATUITO · BETA" em eyebrow.
+  - **Título** Fraunces ~28–32px, leading-tight: `Continua a leitura\ndo @{handle}` — handle em itálico cor `text-accent-primary`.
+  - **Subtítulo** Inter 14–15px text-content-secondary: *"Indica o nome e email e responde a 3 perguntas rápidas para abrir o resto do relatório."*
+  - **CTA** único largura total, gradient `from-accent-primary to-secondary` (azul→indigo já em tokens), label "Ver relatório gratuito →".
+  - **Rodapé** 3 micro-tags em flex-wrap centrado, text-xs text-content-tertiary, com ícones lucide:
+    - `Clock` + "~1 minuto"
+    - `ShieldCheck` + "RGPD · sem spam"
+    - `Heart` + "Construído em Leiria"
+- **Remover**: eyebrow "Análise completa", título "Desbloquear análise completa", parágrafo antigo, lista `BenefitRow` (3 itens), parágrafo final "Acesso gratuito durante a beta · demora cerca de 1 minuto".
+- Manter blur do conteúdo, fade superior, `DevResetButton` em dev.
+- Mobile-first: padding `p-6`, badge e título empilham bem a 375px; CTA `w-full`.
 
-- Anel é sempre renderizado (não depende de IA).
-- Texto + chip continuam a respeitar a regra ≤ 5 palavras / 2–3 frases.
-- Mobile-first verificado a 375px (texto em cima, anel centrado abaixo, sem overflow).
+### 2. `src/components/product/unlock-modal.tsx` (remover IntroCover)
+
+- `useState<Step>("intro")` → `useState<Step>(1)`.
+- Tipo `Step`: remover `"intro"` (passa a `1 | 2 | 3 | 4 | 5 | "welcome-back"`).
+- Render: remover branch `step === "intro" ? <IntroCover ... /> : ...`.
+- `goBack`: a partir de step 1 fecha o modal (`onOpenChange(false)`) em vez de voltar a intro; `welcome-back` volta a step 1.
+- `stepNumForBar`: simplificar (remover ref a `"intro"`).
+- Remover effect `unlock_modal_intro_viewed`.
+- Remover/limpar: função `IntroCover`, constante `INTRO_HIGHLIGHTS`, imports que ficam órfãos (`Activity`, `BarChart3`, `Compass`, `Sparkles`, `Clock`, `ShieldCheck` se só usados aqui — verificar antes de remover).
+- Tracking `unlock_modal_intro_cta_clicked` desaparece (deixa de existir o botão que o despoletava).
+
+### 3. `src/components/report-redesign/v2/report-shell-v2.tsx` (passar handle)
+
+- No JSX do `ReportLockGate` (linha 188), acrescentar `handle={result.data.profile.username}`.
+
+## Não mexer
+
+- Pipeline de unlock backend (`/api/public/report-unlock`, `/api/public/unlock-check`), schema Zod, snapshot, IA, restantes blocos do relatório.
+- `ReportGateModal` (usado apenas em `public-analysis-dashboard.tsx` e `premium-locked-section.tsx`, NÃO na rota `/analyze/$username`) fica como está — fora do scope deste pedido.
+- Tokens, fontes, copy dos outros blocos.
 
 ## Validação
 
 - `bunx tsc --noEmit`
 - `bunx vitest run`
 - Manual em `/analyze/frederico.m.carvalho`:
-  - Anel visível com número 0–100 legível
-  - Observação editorial intacta
-  - Chip de benchmark intacto
-  - Mobile 375px: ordem texto → anel, sem clipping
-  - Desktop 1460px: anel à direita, alinhado ao topo
+  - Existe UM único bloco de unlock visível (o overlay).
+  - Visual igual ao screenshot: badge verde pulsante, título com handle azul itálico, subtítulo, CTA gradient, 3 micro-tags rodapé.
+  - Sem menções a "+4 secções", "6 secções", "Análise completa", lista de benefícios.
+  - Clicar no CTA abre o diálogo directamente no formulário (Primeiro nome / Apelido / Email), sem capa intermédia.
+  - Mobile 375px: card cabe, CTA tem largura total, micro-tags fazem wrap.
 
 ## Checkpoint
 
-- ☐ Editar `editorial-identity-card.tsx` (layout 2 colunas + SVG ring)
-- ☐ Calcular score global como média dos 3 sub-scores
-- ☐ Verificar mobile 375px e desktop
-- ☐ `bunx tsc --noEmit` + `bunx vitest run` verdes
+- ☐ Rewrite `report-lock-gate.tsx` com novo desenho + prop `handle`
+- ☐ Remover `IntroCover` + estado `"intro"` em `unlock-modal.tsx`
+- ☐ Passar `handle` em `report-shell-v2.tsx`
+- ☐ `bunx tsc --noEmit` verde
+- ☐ `bunx vitest run` verde
+- ☐ Verificação visual em `/analyze/frederico.m.carvalho` (desktop + 375px)

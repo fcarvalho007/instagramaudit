@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Lock, Sparkles, BarChart3, ShieldCheck } from "lucide-react";
+import { Clock, ShieldCheck, Heart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,8 @@ export interface ReportLockGateProps {
   unlocked: boolean;
   onUnlockClick: () => void;
   children: ReactNode;
+  /** Instagram handle without leading @ — used in the editorial title. */
+  handle: string;
   /** Optional id for scroll anchoring. */
   id?: string;
 }
@@ -24,9 +26,12 @@ export function ReportLockGate({
   unlocked,
   onUnlockClick,
   children,
+  handle,
   id,
 }: ReportLockGateProps) {
   if (unlocked) return <>{children}</>;
+
+  const cleanedHandle = handle.replace(/^@/, "");
 
   return (
     <div id={id} className="relative isolate">
@@ -54,70 +59,82 @@ export function ReportLockGate({
       <div className="pointer-events-none absolute inset-0 flex justify-center">
         <div
           role="region"
-          aria-label="Desbloquear relatório completo"
+          aria-label="Continuar a leitura do relatório"
           className={cn(
             "pointer-events-auto sticky self-start",
             "top-24 mt-24 md:mt-32",
-            "w-[calc(100%-32px)] max-w-md",
+            "w-[calc(100%-32px)] max-w-lg",
             "rounded-2xl border border-border-default bg-surface-card",
             "shadow-[0_20px_60px_-20px_rgba(15,23,42,0.25)]",
-            "p-6 md:p-8",
+            "p-6 md:p-7",
           )}
         >
-          <p className="text-eyebrow-sm text-primary">Análise completa</p>
-          <h2 className="mt-2 font-display text-2xl md:text-3xl leading-tight tracking-[-0.01em] text-content-primary">
-            Desbloquear análise completa
+          {/* Badge */}
+          <span
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full",
+              "border border-border-default/60 bg-white px-3 py-1",
+              "text-[11px] font-semibold uppercase tracking-wide leading-none",
+              "text-content-secondary",
+            )}
+          >
+            <span className="relative inline-flex size-2">
+              <span className="absolute inset-0 rounded-full bg-emerald-500 opacity-60 animate-ping" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+            </span>
+            Acesso gratuito · Beta
+          </span>
+
+          {/* Title */}
+          <h2 className="mt-5 font-display text-[28px] md:text-[32px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+            Continua a leitura
+            <br />
+            do{" "}
+            <em className="not-italic font-display italic text-accent-primary">
+              @{cleanedHandle}
+            </em>
           </h2>
-          <p className="mt-3 text-sm md:text-[15px] text-content-secondary leading-relaxed">
-            Já preparámos o resto do relatório. Indica o email e responde a
-            algumas perguntas rápidas para aceder à análise completa.
+
+          {/* Subtitle */}
+          <p className="mt-3 text-[14px] md:text-[15px] leading-relaxed text-content-secondary">
+            Indica o nome e email e responde a{" "}
+            <strong className="font-semibold text-content-primary">
+              3 perguntas rápidas
+            </strong>{" "}
+            para abrir o resto do relatório.
           </p>
 
-          <ul className="mt-5 space-y-2.5">
-            <BenefitRow
-              icon={<BarChart3 className="size-4" aria-hidden="true" />}
-              text="Comparação com o benchmark do teu escalão"
-            />
-            <BenefitRow
-              icon={<Sparkles className="size-4" aria-hidden="true" />}
-              text="Análise por formato e melhores horários"
-            />
-            <BenefitRow
-              icon={<Lock className="size-4" aria-hidden="true" />}
-              text="Insights AI personalizados ao perfil"
-            />
-          </ul>
-
+          {/* CTA */}
           <Button
             type="button"
             onClick={onUnlockClick}
-            className="mt-6 w-full"
+            className={cn(
+              "mt-6 w-full rounded-lg font-medium",
+              "bg-gradient-to-r from-accent-primary to-secondary",
+              "hover:opacity-95",
+            )}
             size="lg"
           >
-            Desbloquear relatório gratuito
+            Ver relatório gratuito →
           </Button>
 
-          <p className="mt-3 text-xs text-content-tertiary text-center">
-            Acesso gratuito durante a beta · demora cerca de 1 minuto
-          </p>
+          {/* Footer micro-tags */}
+          <div className="mt-5 pt-4 border-t border-border-default/40 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-content-tertiary">
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="size-3.5" aria-hidden /> ~1 minuto
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="size-3.5" aria-hidden /> RGPD · sem spam
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Heart className="size-3.5" aria-hidden /> Construído em Leiria
+            </span>
+          </div>
         </div>
       </div>
 
       {import.meta.env.DEV ? <DevResetButton /> : null}
     </div>
-  );
-}
-
-function BenefitRow({ icon, text }: { icon: ReactNode; text: string }) {
-  return (
-    <li className="flex items-start gap-3">
-      <span className="mt-0.5 inline-flex size-7 items-center justify-center rounded-full bg-surface-muted text-primary">
-        {icon}
-      </span>
-      <span className="text-sm text-content-secondary leading-relaxed">
-        {text}
-      </span>
-    </li>
   );
 }
 
