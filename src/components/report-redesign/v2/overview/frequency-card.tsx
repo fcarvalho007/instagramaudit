@@ -63,10 +63,6 @@ function fmtPtDate(iso: string): string {
   return `${d.getUTCDate()} de ${PT_MONTHS[d.getUTCMonth()]}`;
 }
 
-function fmtNum(n: number): string {
-  return n.toFixed(1).replace(".", ",");
-}
-
 // ─── Props ──────────────────────────────────────────────────────────
 
 export interface DayEntry {
