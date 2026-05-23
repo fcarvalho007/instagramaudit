@@ -144,37 +144,103 @@ export function EditorialIdentityCard({
   const fallback = buildFallbackCopy(scores);
   const copy = aiHeroText ? deriveCopyFromAi(aiHeroText, fallback) : fallback;
   const chipLabel = benchmarkChipLabel(keyMetrics);
+  const overall = Math.round(
+    (scores.envolvimento.value + scores.frequencia.value + scores.interaccao.value) / 3,
+  );
 
   return (
     <article
       aria-label="Observação editorial"
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
-      <div className="px-5 py-6 sm:px-7 sm:py-7 space-y-3">
-        <p className="text-eyebrow-sm text-content-tertiary">Observação</p>
+      <div className="px-5 py-6 sm:px-7 sm:py-7 flex flex-col sm:flex-row sm:items-start sm:gap-8 gap-6">
+        <div className="flex-1 min-w-0 space-y-3 order-1">
+          <p className="text-eyebrow-sm text-content-tertiary">Observação</p>
 
-        <h2 className="font-display text-xl sm:text-2xl font-semibold leading-[1.25] tracking-[-0.015em] text-content-primary max-w-2xl">
-          {copy.title}
-        </h2>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold leading-[1.25] tracking-[-0.015em] text-content-primary max-w-2xl">
+            {copy.title}
+          </h2>
 
-        <p className="text-sm leading-relaxed text-content-secondary max-w-2xl">
-          {copy.paragraph}
-        </p>
+          <p className="text-sm leading-relaxed text-content-secondary max-w-2xl">
+            {copy.paragraph}
+          </p>
 
-        {chipLabel && (
-          <div className="pt-1">
-            <span
-              className={cn(
-                "inline-flex items-center rounded-full px-2.5 py-1",
-                "text-[11px] font-semibold tracking-wide uppercase leading-none",
-                "bg-surface-muted text-content-secondary",
-              )}
-            >
-              {chipLabel}
-            </span>
-          </div>
-        )}
+          {chipLabel && (
+            <div className="pt-1">
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-2.5 py-1",
+                  "text-[11px] font-semibold tracking-wide uppercase leading-none",
+                  "bg-surface-muted text-content-secondary",
+                )}
+              >
+                {chipLabel}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="order-2 self-center sm:self-start shrink-0">
+          <ScoreRing value={overall} />
+        </div>
       </div>
     </article>
+  );
+}
+
+/* ── Score Ring ────────────────────────────────────────────────────── */
+
+function ScoreRing({ value }: { value: number }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  const size = 140;
+  const stroke = 8;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (clamped / 100) * c;
+
+  const colorClass =
+    clamped >= 70
+      ? "text-accent-primary"
+      : clamped >= 40
+        ? "text-accent-primary/70"
+        : "text-signal-warning";
+
+  return (
+    <div
+      className="relative"
+      style={{ width: size, height: size }}
+      role="img"
+      aria-label={`Pontuação global ${clamped} de 100`}
+    >
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          strokeWidth={stroke}
+          className="text-border-default/40"
+          stroke="currentColor"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          className={cn(colorClass, "transition-[stroke-dashoffset] duration-700")}
+          stroke="currentColor"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-sans text-3xl sm:text-4xl font-semibold tabular-nums leading-none text-content-primary">
+          {clamped}
+        </span>
+        <span className="text-eyebrow-sm text-content-tertiary mt-1.5">Pontuação</span>
+      </div>
+    </div>
   );
 }
