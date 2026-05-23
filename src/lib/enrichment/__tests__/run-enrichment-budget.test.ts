@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const { assertSpy, generateInsightsSpy, generateInsightsV2Spy, generateVisualCoverSpy, generateCaptionSemanticSpy } = vi.hoisted(() => ({
+  assertSpy: vi.fn(),
+  generateInsightsSpy: vi.fn(),
+  generateInsightsV2Spy: vi.fn(),
+  generateVisualCoverSpy: vi.fn(),
+  generateCaptionSemanticSpy: vi.fn(),
+}));
+
 // Mocks must be declared before importing the SUT.
 vi.mock("@/lib/security/openai-allowlist", () => ({
   isOpenAiAllowed: () => true,
 }));
 
-const assertSpy = vi.fn();
 vi.mock("@/lib/security/openai-budget.server", async () => {
   const actual = await vi.importActual<typeof import("@/lib/security/openai-budget.server")>(
     "@/lib/security/openai-budget.server",
@@ -16,19 +23,15 @@ vi.mock("@/lib/security/openai-budget.server", async () => {
   };
 });
 
-const generateInsightsSpy = vi.fn();
-const generateInsightsV2Spy = vi.fn();
 vi.mock("@/lib/insights/openai-insights.server", () => ({
   generateInsights: generateInsightsSpy,
   generateInsightsV2: generateInsightsV2Spy,
 }));
 
-const generateVisualCoverSpy = vi.fn();
 vi.mock("@/lib/report/visual-cover-analysis.server", () => ({
   generateVisualCoverAnalysis: generateVisualCoverSpy,
 }));
 
-const generateCaptionSemanticSpy = vi.fn();
 vi.mock("@/lib/report/caption-semantic-analysis.server", () => ({
   generateCaptionSemanticAnalysis: generateCaptionSemanticSpy,
 }));
