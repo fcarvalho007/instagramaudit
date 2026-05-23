@@ -50,7 +50,7 @@ export function ReportHeroV2({
       aria-label="Cabeçalho do relatório"
       className="w-full px-5 md:px-6 pt-5 pb-4"
     >
-      <div className="mx-auto max-w-[1380px]">
+      <div className="mx-auto max-w-[1520px]">
         {/* ── HERO CARD ──────────────────────────────────────────── */}
         <div className="relative rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
           {/* Prism glass decoration — desktop only */}

@@ -153,7 +153,7 @@ export function ReportShellV2({
         />
 
         {/* Layout 2-col a partir do bloco 01 */}
-        <div className="mx-auto max-w-[1380px] px-5 md:px-6">
+        <div className="mx-auto max-w-[1520px] px-5 md:px-6 lg:px-8">
           <div className="flex gap-8 lg:gap-10 pt-5 lg:pt-6">
             <ReportBlockSidebar
               variant={variant}
@@ -465,7 +465,7 @@ function BetaFeedbackBannerV2() {
       aria-label="Feedback durante a fase beta"
       className="w-full bg-surface-muted border-t border-border-default"
     >
-      <div className="mx-auto max-w-[1380px] px-5 md:px-6 py-10 md:py-12">
+      <div className="mx-auto max-w-[1520px] px-5 md:px-6 lg:px-8 py-10 md:py-12">
         <div className="rounded-2xl border border-border-default bg-white p-6 md:p-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="space-y-1.5 max-w-2xl">
             <p className="text-eyebrow text-blue-600">
