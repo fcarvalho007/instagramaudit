@@ -84,15 +84,15 @@ export function ReportHeroV2({
             </div>
 
             {/* ── Actions stack ────────────────────────────────────── */}
-            <div className="relative w-full lg:w-[280px] shrink-0 flex flex-col gap-2">
+            <div className="relative w-full lg:w-[320px] shrink-0 flex flex-col gap-2.5">
               <Link
                 to="/"
                 className={cn(
-                  "inline-flex items-center justify-center gap-2 rounded-xl h-11 px-4",
-                  "bg-content-primary text-white text-sm font-semibold",
-                  "shadow-[0_1px_2px_rgba(15,23,42,0.15)]",
+                  "inline-flex items-center justify-center gap-2 rounded-xl h-12 px-5",
+                  "bg-gradient-to-b from-content-primary to-[#0a0f1d] text-white text-[15px] font-semibold",
+                  "shadow-[0_1px_2px_rgba(15,23,42,0.18)]",
                   "transition-all duration-150",
-                  "hover:bg-content-primary/90 hover:-translate-y-[1px] hover:shadow-md",
+                  "hover:brightness-110 hover:-translate-y-[1px] hover:shadow-md",
                 )}
               >
                 <Plus className="size-4" aria-hidden="true" />
@@ -103,37 +103,37 @@ export function ReportHeroV2({
                 type="button"
                 onClick={() => setCompareOpen(true)}
                 className={cn(
-                  "inline-flex items-center justify-center gap-2 rounded-xl h-11 px-4",
-                  "border border-border-default bg-white text-content-primary text-sm font-semibold",
+                  "inline-flex items-center justify-center gap-2 rounded-xl h-12 px-4 whitespace-nowrap",
+                  "border border-border-default bg-white text-content-primary text-[15px] font-semibold",
                   "transition-colors duration-150",
-                  "hover:border-accent-primary/40 hover:text-accent-primary",
+                  "hover:border-accent-primary/40 hover:text-accent-primary hover:bg-accent-primary/[0.04]",
                 )}
               >
                 <Users className="size-4" aria-hidden="true" />
-                Comparar com concorrente
-                <span className="inline-flex items-center rounded-full bg-accent-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-primary">
+                Comparar concorrente
+                <span className="inline-flex items-center rounded-full bg-accent-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                   Pro
                 </span>
               </button>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="mt-1 grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={actions.onExportPdf}
                   disabled={actions.pdfDisabled || actions.pdfBusy}
                   aria-busy={actions.pdfBusy}
                   className={cn(
-                    "inline-flex items-center justify-center gap-1.5 rounded-xl h-10 px-3",
-                    "bg-surface-muted/80 backdrop-blur-sm text-content-secondary text-sm font-semibold",
+                    "inline-flex items-center justify-center gap-2 rounded-xl h-11 px-3",
+                    "border border-border-default bg-white text-content-secondary text-sm font-semibold",
                     "transition-colors duration-150",
-                    "hover:bg-surface-muted hover:text-content-primary",
+                    "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                   )}
                 >
                   {actions.pdfBusy ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    <Loader2 className="size-[15px] animate-spin" aria-hidden="true" />
                   ) : (
-                    <Download className="size-4" aria-hidden="true" />
+                    <Download className="size-[15px]" aria-hidden="true" />
                   )}
                   PDF
                 </button>
@@ -142,10 +142,10 @@ export function ReportHeroV2({
                   variant="ghost"
                   triggerLabel="Partilhar"
                   className={cn(
-                    "inline-flex items-center justify-center gap-1.5 rounded-xl h-10 px-3",
-                    "bg-surface-muted/80 backdrop-blur-sm text-content-secondary text-sm font-semibold",
+                    "inline-flex items-center justify-center gap-2 rounded-xl h-11 px-3",
+                    "border border-border-default bg-white text-content-secondary text-sm font-semibold",
                     "transition-colors duration-150",
-                    "hover:bg-surface-muted hover:text-content-primary",
+                    "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
                   )}
                 />
               </div>
@@ -218,7 +218,7 @@ function PrismDecoration() {
   return (
     <div
       aria-hidden="true"
-      className="hidden lg:block pointer-events-none absolute inset-y-0 right-0 w-[420px] overflow-hidden"
+      className="hidden lg:block pointer-events-none absolute inset-y-0 right-0 w-[460px] overflow-hidden"
     >
       <div className="absolute top-6 right-10 size-48 rounded-full bg-accent-luminous/15 blur-3xl" />
       <div className="absolute bottom-2 right-32 size-40 rotate-12 rounded-3xl bg-gradient-to-br from-accent-primary/20 via-accent-violet/15 to-transparent blur-2xl" />
