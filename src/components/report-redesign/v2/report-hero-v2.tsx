@@ -1,4 +1,5 @@
-import { Check, ChevronRight, Download, Loader2, Plus } from "lucide-react";
+import { useState } from "react";
+import { Check, Download, Plus, Users, Loader2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import type {
@@ -7,7 +8,7 @@ import type {
 } from "@/lib/report/snapshot-to-report-data";
 import type { ReportPageActions } from "@/components/report/report-page";
 import { ShareReportPopover } from "@/components/report-share/share-popover";
-import { CacheStatusBadge } from "./cache-status-badge";
+import { CompetitorModal } from "./overview/competitor-modal";
 import { cn } from "@/lib/utils";
 
 interface ReportHeroV2Props {
@@ -18,44 +19,31 @@ interface ReportHeroV2Props {
 }
 
 /**
- * Hero v2 — Mockup-aligned compact first fold.
+ * Hero v2 — Prism editorial.
  *
- *   Top bar: logo · breadcrumb · status pill · CTA
- *   Hero card: 3-column layout (profile | metrics | actions)
- *   Footer: comparison CTA + multi-network teaser + date
+ *   Left:  large avatar (verified badge overlay) · @handle · nome ·
+ *          single metric line "X seguidores · Y publicações · Z posts em N dias"
+ *   Right: action stack (Novo relatório / Comparar PRO / PDF + Partilhar)
+ *          with subtle prism glass decoration behind it on desktop.
  */
 export function ReportHeroV2({
   result,
   actions,
-  analyzedAtIso = null,
-  expiresAtIso = null,
 }: ReportHeroV2Props) {
   const profile = result.data.profile;
   const enriched: ReportEnriched = result.enriched;
-  const k = result.data.keyMetrics;
 
   const handle = `@${profile.username}`;
   const fullName = profile.fullName?.trim() || "";
-  const bio = enriched.profile.bio;
   const avatarUrl = enriched.profile.avatarUrl;
   const verified = Boolean(profile.verified);
 
-  const analysisMeta = buildAnalysisMeta({
-    postsAnalyzed: profile.postsAnalyzed ?? 0,
-    windowDays: result.coverage.windowDays ?? 0,
-    analyzedAt: profile.analyzedAt ?? "",
-  });
-
   const followers = profile.followers ?? 0;
   const postsCount = profile.postsCount ?? 0;
-  const engRate = k.engagementRate;
-  const engBenchmark = k.engagementBenchmark;
-  const engDelta = k.engagementDeltaPct;
+  const postsAnalyzed = profile.postsAnalyzed ?? 0;
+  const windowDays = result.coverage.windowDays ?? 0;
 
-  // Mid-tier label from benchmark
-  const midTierLabel = engBenchmark > 0
-    ? `mid-tier: ${engBenchmark.toFixed(2).replace(".", ",")}%`
-    : null;
+  const [compareOpen, setCompareOpen] = useState(false);
 
   return (
     <section
@@ -64,270 +52,114 @@ export function ReportHeroV2({
     >
       <div className="mx-auto max-w-[1380px]">
         {/* ── HERO CARD ──────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
+        <div className="relative rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
+          {/* Prism glass decoration — desktop only */}
+          <PrismDecoration />
 
-          {/* ── Main 3-zone layout ───────────────────────────────── */}
-          <div className="px-6 py-6 sm:px-8 sm:py-7 lg:px-10 lg:py-10 flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-14">
+          <div className="relative px-6 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-10 flex flex-col lg:flex-row lg:items-center gap-8 lg:gap-12">
 
-            {/* ── ZONE 1: Profile identity ─────────────────────────── */}
-            <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-5 lg:gap-6">
-              <Avatar avatarUrl={avatarUrl} fullName={fullName || handle} />
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                   <h1 className="font-display text-2xl sm:text-[1.75rem] font-semibold tracking-[-0.025em] text-content-primary leading-tight break-words">
-                    {handle}
-                  </h1>
-                  {verified && <VerifiedBadge />}
-                </div>
+            {/* ── Identity ─────────────────────────────────────────── */}
+            <div className="flex-1 min-w-0 flex items-center gap-5 lg:gap-7">
+              <Avatar
+                avatarUrl={avatarUrl}
+                fullName={fullName || handle}
+                verified={verified}
+              />
+              <div className="min-w-0 flex-1 space-y-1">
+                <h1 className="font-display text-[2rem] lg:text-[2.5rem] font-semibold tracking-[-0.025em] text-content-primary leading-[1.05] break-words">
+                  {handle}
+                </h1>
                 {fullName && (
                   <p className="text-sm font-medium text-content-secondary leading-snug">
                     {fullName}
                   </p>
                 )}
-                <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                  <PlatformPill />
-                  <StatusPill label="Ativo" />
-                </div>
-              </div>
-            </div>
-            {bio && (
-              <p className="text-sm text-content-tertiary leading-[1.65] line-clamp-2 max-w-lg mt-3">
-                {bio}
-              </p>
-            )}
-            <div className="flex items-center gap-3 mt-3 flex-wrap">
-              <CacheStatusBadge analyzedAtIso={analyzedAtIso} expiresAtIso={expiresAtIso} />
-              {analysisMeta.postsLabel && (
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-signal-success">
-                  {analysisMeta.postsLabel}
-                </span>
-              )}
-            </div>
-            </div>
-
-            {/* ── ZONE 2: KPIs 2×2 grid ───────────────────────────── */}
-            <div className="shrink-0">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-5 lg:gap-x-10 lg:gap-y-6">
-                {/* Engagement — principal anchor */}
-                 <div className="flex flex-col gap-1.5">
-                   <span className="tabular-nums text-[2.25rem] lg:text-[2.75rem] font-bold tracking-[-0.02em] text-content-primary leading-none">
-                    {engRate.toFixed(2).replace(".", ",")}%
-                  </span>
-                  <span className="text-eyebrow-sm text-content-tertiary">
-                    engagement
-                  </span>
-                </div>
-
-                {/* Seguidores */}
-                 <div className="flex flex-col gap-1.5">
-                   <span className="tabular-nums text-2xl lg:text-[1.75rem] font-bold tracking-[-0.02em] text-content-primary leading-none">
-                    {formatCompact(followers)}
-                  </span>
-                  <span className="text-eyebrow-sm text-content-tertiary">
-                    seguidores
-                  </span>
-                </div>
-
-                {/* Delta benchmark */}
-                 <div className="flex flex-col gap-1.5">
-                  <span
-                    className={cn(
-                      "tabular-nums text-xl lg:text-2xl font-bold leading-none",
-                      "tracking-[-0.02em]",
-                      engDelta >= 0 ? "text-signal-success" : "text-signal-danger",
-                    )}
-                  >
-                    {engDelta >= 0 ? "+" : ""}{Math.round(engDelta)}%
-                  </span>
-                  <span className="text-eyebrow-sm text-content-tertiary">
-                    {engDelta >= 0 ? "acima do" : "abaixo do"} benchmark
-                  </span>
-                </div>
-
-                {/* Publicações */}
-                 <div className="flex flex-col gap-1.5">
-                   <span className="tabular-nums text-2xl lg:text-[1.75rem] font-bold tracking-[-0.02em] text-content-primary leading-none">
-                    {formatCompact(postsCount)}
-                  </span>
-                  <span className="text-eyebrow-sm text-content-tertiary">
-                    publicações
-                  </span>
-                </div>
+                <MetricLine
+                  followers={followers}
+                  postsCount={postsCount}
+                  postsAnalyzed={postsAnalyzed}
+                  windowDays={windowDays}
+                />
               </div>
             </div>
 
-            {/* ── ZONE 3: Actions ──────────────────────────────────── */}
-            <div className="hidden lg:flex flex-col items-end gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={actions.onExportPdf}
-                disabled={actions.pdfDisabled || actions.pdfBusy}
-                aria-busy={actions.pdfBusy}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg h-7 px-3.5",
-                  "bg-accent-primary/90 text-white text-xs font-semibold shadow-sm",
-                  "transition-colors duration-150 hover:bg-accent-primary",
-                  "disabled:cursor-not-allowed disabled:opacity-50",
-                )}
-              >
-                {actions.pdfBusy ? (
-                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Download className="size-3.5" aria-hidden="true" />
-                )}
-                Exportar PDF
-              </button>
-              <ShareReportPopover
-                result={result}
-                variant="ghost"
-                triggerLabel="Partilhar"
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg h-7 px-3.5",
-                  "border border-border-default/60 text-content-secondary text-xs font-medium",
-                  "transition-colors duration-150",
-                  "hover:border-accent-primary/30 hover:text-accent-primary",
-                )}
-              />
+            {/* ── Actions stack ────────────────────────────────────── */}
+            <div className="relative w-full lg:w-[280px] shrink-0 flex flex-col gap-2">
               <Link
                 to="/"
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg h-7 px-3",
-                  "text-content-tertiary text-xs font-medium",
-                  "transition-colors duration-150",
-                  "hover:text-accent-primary",
+                  "inline-flex items-center justify-center gap-2 rounded-xl h-11 px-4",
+                  "bg-content-primary text-white text-sm font-semibold",
+                  "shadow-[0_1px_2px_rgba(15,23,42,0.15)]",
+                  "transition-all duration-150",
+                  "hover:bg-content-primary/90 hover:-translate-y-[1px] hover:shadow-md",
                 )}
               >
-                <Plus className="size-3.5" aria-hidden="true" />
+                <Plus className="size-4" aria-hidden="true" />
                 Novo relatório
               </Link>
+
+              <button
+                type="button"
+                onClick={() => setCompareOpen(true)}
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-xl h-11 px-4",
+                  "border border-border-default bg-white text-content-primary text-sm font-semibold",
+                  "transition-colors duration-150",
+                  "hover:border-accent-primary/40 hover:text-accent-primary",
+                )}
+              >
+                <Users className="size-4" aria-hidden="true" />
+                Comparar com concorrente
+                <span className="inline-flex items-center rounded-full bg-accent-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-primary">
+                  Pro
+                </span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={actions.onExportPdf}
+                  disabled={actions.pdfDisabled || actions.pdfBusy}
+                  aria-busy={actions.pdfBusy}
+                  className={cn(
+                    "inline-flex items-center justify-center gap-1.5 rounded-xl h-10 px-3",
+                    "bg-surface-muted/80 backdrop-blur-sm text-content-secondary text-sm font-semibold",
+                    "transition-colors duration-150",
+                    "hover:bg-surface-muted hover:text-content-primary",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                >
+                  {actions.pdfBusy ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Download className="size-4" aria-hidden="true" />
+                  )}
+                  PDF
+                </button>
+                <ShareReportPopover
+                  result={result}
+                  variant="ghost"
+                  triggerLabel="Partilhar"
+                  className={cn(
+                    "inline-flex items-center justify-center gap-1.5 rounded-xl h-10 px-3",
+                    "bg-surface-muted/80 backdrop-blur-sm text-content-secondary text-sm font-semibold",
+                    "transition-colors duration-150",
+                    "hover:bg-surface-muted hover:text-content-primary",
+                  )}
+                />
+              </div>
             </div>
-          </div>
-
-          {/* ── Mobile actions (< lg) ─────────────────────────────── */}
-          <div className="flex lg:hidden items-center gap-2 px-7 sm:px-8 pb-6">
-            <button
-              type="button"
-              onClick={actions.onExportPdf}
-              disabled={actions.pdfDisabled || actions.pdfBusy}
-              aria-busy={actions.pdfBusy}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg h-7 px-3.5",
-                "bg-accent-primary/90 text-white text-xs font-semibold shadow-sm",
-                "transition-colors duration-150 hover:bg-accent-primary",
-                "disabled:cursor-not-allowed disabled:opacity-50",
-              )}
-            >
-              {actions.pdfBusy ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="size-3.5" aria-hidden="true" />
-              )}
-              PDF
-            </button>
-            <ShareReportPopover
-              result={result}
-              variant="ghost"
-              triggerLabel="Partilhar"
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg h-7 px-3",
-                "border border-border-default/60 text-content-secondary text-xs font-medium",
-                "transition-colors duration-150",
-                "hover:border-accent-primary/30 hover:text-accent-primary",
-              )}
-            />
-            <Link
-              to="/"
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg h-7 px-3",
-                "text-content-tertiary text-xs font-medium",
-                "transition-colors duration-150",
-                "hover:text-accent-primary",
-              )}
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              Novo
-            </Link>
-          </div>
-
-          {/* ── FOOTER: Comparison + Multi-network + Date ──────────── */}
-          <div className="border-t border-border-default/50 px-7 sm:px-8 lg:px-10 py-2 flex items-center justify-between gap-4 flex-wrap text-xs text-content-tertiary">
-            <span className="inline-flex items-center gap-1.5">
-              👥 Comparar com concorrentes
-              <span className="inline-flex items-center rounded-full bg-accent-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-primary">
-                Pro
-              </span>
-              <ChevronRight className="size-3" aria-hidden="true" />
-            </span>
-
-            <span className="hidden sm:inline-flex items-center gap-1.5">
-              Facebook · TikTok · YouTube
-              <span className="inline-flex items-center rounded-full bg-signal-danger/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-signal-danger">
-                Em breve
-              </span>
-            </span>
-
-            <span className="hidden lg:inline">
-              <CacheStatusBadge
-                analyzedAtIso={analyzedAtIso}
-                expiresAtIso={expiresAtIso}
-                compact
-              />
-            </span>
           </div>
         </div>
       </div>
+
+      <CompetitorModal open={compareOpen} onOpenChange={setCompareOpen} />
     </section>
   );
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
-
-interface StatItem {
-  label: string;
-  value: string;
-}
-
-function buildProfileStats(input: {
-  postsCount: number;
-  followers: number;
-  following: number;
-}): StatItem[] {
-  return [
-    {
-      label: "seguidores",
-      value: input.followers > 0 ? formatCompact(input.followers) : "—",
-    },
-    {
-      label: "publicações",
-      value: input.postsCount > 0 ? formatCompact(input.postsCount) : "—",
-    },
-    {
-      label: "a seguir",
-      value: input.following > 0 ? formatCompact(input.following) : "—",
-    },
-  ];
-}
-
-function buildAnalysisMeta(input: {
-  postsAnalyzed: number;
-  windowDays: number;
-  analyzedAt: string;
-}): { postsLabel: string | null; dateLabel: string | null } {
-  let postsLabel: string | null = null;
-  if (input.postsAnalyzed > 0 && input.windowDays > 0) {
-    postsLabel = `${input.postsAnalyzed} posts em ${input.windowDays} dias`;
-  } else if (input.postsAnalyzed > 0) {
-    postsLabel = `${input.postsAnalyzed} posts analisados`;
-  }
-
-  let dateLabel: string | null = null;
-  if (input.analyzedAt) {
-    dateLabel = `Atualizado ${input.analyzedAt}`;
-  }
-
-  return { postsLabel, dateLabel };
-}
 
 function formatCompact(n: number): string {
   if (!Number.isFinite(n)) return "0";
@@ -344,12 +176,66 @@ function trimZero(s: string): string {
 
 // ─── Sub-components ──────────────────────────────────────────────────
 
+function MetricLine({
+  followers,
+  postsCount,
+  postsAnalyzed,
+  windowDays,
+}: {
+  followers: number;
+  postsCount: number;
+  postsAnalyzed: number;
+  windowDays: number;
+}) {
+  const parts: Array<{ value: string; label: string }> = [];
+  if (followers > 0) parts.push({ value: formatCompact(followers), label: "seguidores" });
+  if (postsCount > 0) parts.push({ value: formatCompact(postsCount), label: "publicações" });
+  if (postsAnalyzed > 0) {
+    parts.push({
+      value: String(postsAnalyzed),
+      label: windowDays > 0 ? `posts em ${windowDays} dias` : "posts analisados",
+    });
+  }
+
+  if (parts.length === 0) return null;
+
+  return (
+    <p className="text-[15px] text-content-secondary leading-relaxed mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      {parts.map((p, i) => (
+        <span key={p.label} className="inline-flex items-baseline gap-1.5">
+          {i > 0 && (
+            <span className="text-content-tertiary/60 select-none" aria-hidden="true">·</span>
+          )}
+          <span className="font-semibold text-content-primary tabular-nums">{p.value}</span>
+          <span>{p.label}</span>
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function PrismDecoration() {
+  return (
+    <div
+      aria-hidden="true"
+      className="hidden lg:block pointer-events-none absolute inset-y-0 right-0 w-[420px] overflow-hidden"
+    >
+      <div className="absolute top-6 right-10 size-48 rounded-full bg-accent-luminous/15 blur-3xl" />
+      <div className="absolute bottom-2 right-32 size-40 rotate-12 rounded-3xl bg-gradient-to-br from-accent-primary/20 via-accent-violet/15 to-transparent blur-2xl" />
+      <div className="absolute top-10 right-24 size-28 rotate-[-12deg] rounded-2xl border border-white/70 bg-white/40 backdrop-blur-xl shadow-[0_8px_24px_-12px_rgba(37,99,217,0.25)]" />
+      <div className="absolute bottom-8 right-6 size-20 rotate-[18deg] rounded-xl border border-white/60 bg-white/30 backdrop-blur-md" />
+    </div>
+  );
+}
+
 function Avatar({
   avatarUrl,
   fullName,
+  verified,
 }: {
   avatarUrl: string | null;
   fullName: string;
+  verified: boolean;
 }) {
   const initials = fullName
     .replace(/^@/, "")
@@ -359,76 +245,46 @@ function Avatar({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  const sizeMobile = "size-16 md:size-20";
+  const sizeClass = "size-20 md:size-28";
 
-  if (avatarUrl) {
-    return (
-      <div className="shrink-0 rounded-full border-2 border-border-default p-[2px]">
-        <img
-          src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
-          alt={`Avatar de ${fullName}`}
-          loading="eager"
-          decoding="async"
-          className={cn("rounded-full object-cover bg-surface-muted", sizeMobile)}
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
-      </div>
-    );
-  }
+  const inner = avatarUrl ? (
+    <img
+      src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
+      alt={`Avatar de ${fullName}`}
+      loading="eager"
+      decoding="async"
+      className={cn("rounded-full object-cover bg-surface-muted", sizeClass)}
+      onError={(e) => {
+        (e.currentTarget as HTMLImageElement).style.display = "none";
+      }}
+    />
+  ) : (
+    <div
+      className={cn(
+        "rounded-full flex items-center justify-center",
+        "font-display text-2xl md:text-3xl font-semibold text-content-tertiary",
+        "bg-surface-muted",
+        sizeClass,
+      )}
+      aria-hidden="true"
+    >
+      {initials}
+    </div>
+  );
 
   return (
-    <div className="shrink-0 rounded-full border-2 border-border-default p-[2px]" aria-hidden="true">
-      <div
-        className={cn(
-          "rounded-full flex items-center justify-center",
-          "font-display text-lg md:text-xl font-semibold text-content-tertiary",
-          "bg-surface-muted",
-          sizeMobile,
-        )}
-      >
-        {initials}
-      </div>
+    <div className="relative shrink-0 rounded-full border border-border-default/60 p-1 bg-white">
+      {inner}
+      {verified && (
+        <span
+          aria-label="Conta verificada"
+          title="Conta verificada"
+          className="absolute bottom-0.5 right-0.5 inline-flex items-center justify-center size-6 md:size-7 rounded-full bg-signal-success text-white ring-2 ring-white shadow-[0_1px_3px_rgba(15,23,42,0.18)]"
+        >
+          <Check className="size-3.5 md:size-4" strokeWidth={3.5} aria-hidden="true" />
+        </span>
+      )}
     </div>
   );
 }
 
-function VerifiedBadge() {
-  return (
-    <span
-      aria-label="Conta verificada"
-      title="Conta verificada"
-      className="inline-flex items-center justify-center shrink-0 size-[18px] md:size-5 rounded-full bg-accent-primary text-white shadow-[0_1px_2px_rgba(15,23,42,0.15)]"
-    >
-      <Check
-        className="size-2.5 md:size-3"
-        strokeWidth={3.5}
-        aria-hidden="true"
-      />
-    </span>
-  );
-}
-
-function PlatformPill() {
-  return (
-    <span
-      aria-label="Plataforma analisada: Instagram"
-      title="Instagram"
-      className="inline-flex items-center gap-1 rounded-full bg-tint-warning px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-signal-warning ring-1 ring-signal-warning/20"
-    >
-      Instagram
-    </span>
-  );
-}
-
-function StatusPill({ label }: { label: string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full bg-signal-success/10 px-2 py-0.5 text-[10px] font-semibold text-signal-success"
-    >
-      <span className="size-1.5 rounded-full bg-signal-success shrink-0" aria-hidden="true" />
-      {label}
-    </span>
-  );
-}
