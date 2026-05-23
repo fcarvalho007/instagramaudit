@@ -51,6 +51,7 @@ const ALLOWED_EVENTS = [
   // Unlock-check (per-field returning lead detection)
   "unlock_check_returning_lead",
   "unlock_check_skipped_steps",
+  "unlock_modal_intro_viewed",
 ] as const;
 
 const trackEventSchema = z.object({
