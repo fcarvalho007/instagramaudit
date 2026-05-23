@@ -1,129 +1,60 @@
-## 1. OpenAI daily budget gate
+## Estado atual (auditoria)
 
-### Novo ficheiro: `src/lib/security/openai-budget.server.ts`
+Tarefas 1–4 já implementadas em turnos anteriores:
 
-Espelha estrutura de `apify-budget.server.ts`:
+| Tarefa | Ficheiro | Estado |
+|---|---|---|
+| 1. Helper budget OpenAI | `src/lib/security/openai-budget.server.ts` | ✅ existe — cap default 5 USD, lê `OPENAI_DAILY_CAP_USD`, soma `actual ?? estimated` de `provider_call_logs` (provider='openai') desde 00:00 UTC, cache 60s, fail-open em erro de query |
+| 2. Gate antes de cada job | `src/lib/enrichment/run-enrichment.server.ts` L335/383/432/501 | ✅ `assertOpenAiDailyBudgetAvailable()` no início dos 4 jobs (insights_v1, insights_v2, visual_cover, caption_semantic) |
+| 3. Skip sem quebrar relatório | mesmo ficheiro | ✅ `catch (err instanceof OpenAiBudgetExceededError)` → `console.warn` + `return { ok: true, payloadPatch: null }` (mesma forma que `DISABLED`/`NOT_ALLOWED`); relatório fica com fallback determinístico, sem erro técnico ao público |
+| 4. Sanitização erros públicos | `src/routes/api/analyze-public-v1.ts` | ✅ `failure(code, extra?)` passa por `sanitizeExtra()` (allowlist: só `retry_after_seconds`). As 3 `failure(...)` críticas (`UPSTREAM_UNAVAILABLE`/`PROFILE_NOT_FOUND`/`UPSTREAM_FAILED`) já não passam `extra`. `provider_message`/`provider_status`/`run_id`/`err.message` ficam só em `console.error` e em `provider_call_logs.error_excerpt` |
+| 5a. Testes budget OpenAI | `src/lib/security/__tests__/openai-budget.test.ts` | ✅ 6 testes (cap default, env override, soma, abaixo do cap, ao atingir cap, fail-open) |
 
-- Classe `OpenAiBudgetExceededError extends Error` com `spentUsd`/`capUsd`.
-- `getOpenAiDailyCapUsd()` lê `OPENAI_DAILY_CAP_USD` (default **5**).
-- `getOpenAiDailySpendUsd(now)` soma `actual_cost_usd ?? estimated_cost_usd` de `provider_call_logs` com `provider='openai'` desde 00:00 UTC. Cache em memória 60s. Fail-open em erro de query (devolve 0 + console.error).
-- `assertOpenAiDailyBudgetAvailable()` — atira `OpenAiBudgetExceededError` quando `spent >= cap`.
-- `invalidateOpenAiBudgetCache()` para testes.
+## O que falta — Tarefa 5 (apenas testes adicionais)
 
-Sem "hard cap" separado (Apify distingue daily/hard porque Apify também tem cap por run; OpenAI tem um único cap). Reusar `OPENAI_DAILY_CAP_USD`.
+Faltam 3 testes pedidos no brief que não existem ainda:
 
-### Integração em `run-enrichment.server.ts`
+### 5b. Test: skipped OpenAI job não quebra o relatório
 
-Em `runInsightsV1`, `runInsightsV2`, `runVisualCover`, `runCaptionSemantic`, no `try` logo após o `isOpenAiAllowed` guard (antes de qualquer trabalho):
+Novo ficheiro `src/lib/enrichment/__tests__/run-enrichment-budget.test.ts`:
 
-```ts
-try {
-  await assertOpenAiDailyBudgetAvailable();
-} catch (err) {
-  if (err instanceof OpenAiBudgetExceededError) {
-    console.warn(`${LOG} <name> skipped — daily OpenAI budget exhausted`, {
-      spent: err.spentUsd, cap: err.capUsd,
-    });
-    return { ok: true, payloadPatch: null }; // skipped, no AI, no error to user
-  }
-  throw err;
-}
-```
+- Mock `assertOpenAiDailyBudgetAvailable` para lançar `OpenAiBudgetExceededError`
+- Mock mínimo de `supabaseAdmin` e do gate `isOpenAiAllowed` (true)
+- Chamar `runInsightsV1` (e um dos restantes) e asserir:
+  - resolve com `{ ok: true, payloadPatch: null }`
+  - `console.warn` foi invocado
+  - `OpenAI` SDK NUNCA é chamado (spy a `@/lib/insights/openai-insights.server`)
 
-Importante: devolve `{ ok: true, payloadPatch: null }` (igual ao path `DISABLED`/`NOT_ALLOWED`), portanto o job vai a `skipped`/`success` sem AI, sem propagar erro nem para o utilizador nem para o `enrichment_jobs.status='error'`. Sem patch → snapshot continua sem o campo AI, UI degrada graciosamente.
+### 5c. Test: resposta pública não expõe internos de provider
 
-### Test
-- Novo `src/lib/security/__tests__/openai-budget.test.ts` espelhando `apify-budget.test.ts`: cap default 5, lê env, soma actual/estimated, cache TTL, assert atira `OpenAiBudgetExceededError`.
+Novo ficheiro `src/routes/api/__tests__/analyze-public-v1-sanitize.test.ts` (apenas testa `sanitizeExtra`, sem subir o handler):
 
-## 2. Sanitização final de erros em `analyze-public-v1.ts`
+- Importar `sanitizeExtra` (já exportado L158)
+- Casos:
+  - `{ provider_message: "...", provider_status: 500, run_id: "abc", details: "raw" }` → `undefined`
+  - `{ retry_after_seconds: 30, provider_message: "x" }` → `{ retry_after_seconds: 30 }`
+  - `{}` e `undefined` → `undefined`
 
-`sanitizeExtra()` (linhas 158-167) já remove tudo o que não esteja em `PUBLIC_ERROR_EXTRA_KEYS = {retry_after_seconds}` — portanto `details`, `provider_message`, `provider_status`, `run_id`, `provider`, `provider_error_code` **já são droppados na response**. Mas é má prática deixar essas keys no call site, porque:
+### 5d. Test: comportamento Apify inalterado
 
-- Confunde leitor de código.
-- Se alguém alargar `PUBLIC_ERROR_EXTRA_KEYS` mais tarde, expõe acidentalmente.
-
-### Limpeza nas 3 chamadas (linhas 1084, 1115, 1133)
-
-Remover o objecto `extra` por completo das 3 `failure(...)`:
-
-```ts
-// L1084
-return failure("UPSTREAM_UNAVAILABLE");
-// L1115
-return failure("UPSTREAM_FAILED");
-// L1133
-return failure("UPSTREAM_FAILED");
-```
-
-Os campos eliminados (`provider`, `provider_error_code`, `provider_status`, `provider_message`, `run_id`, `details`) já vão para `console.error(...)` imediatamente antes de cada `failure(...)` — comprovado nas linhas 1075, 1091-1095, 1124. Para reforçar:
-
-- Em L1124 (`console.error("[analyze-public-v1] unexpected", err)`) — manter; já loga o erro completo.
-- Em L1091-1095: completar para logar `err.code` e `err.runId` também (defense in depth para post-mortems).
-
-`provider_call_logs.error_excerpt` é populado pelo `apify-client` — não tocar.
-
-### Sweep adicional
-
-`rg "details:" src/routes/api/analyze-public-v1.ts` confirma apenas estas 3 ocorrências; nenhuma outra `failure(...)` no ficheiro tem `extra`. Os `competitorFailure(...)` (L190+) usam estrutura própria e não vazam mensagem.
-
-## 3. Plano (não implementar) — Editorial Identity Card vs KPI grid
-
-### Estado actual
-
-`src/components/report-redesign/v2/overview/editorial-identity-card.tsx` renderiza:
-
-- **Band 1**: headline editorial (AI ou fallback) + ScoreRing global (0-100) + chip Forte/A melhorar/Crítico.
-- **Band 2**: 2 mini-cartões ("Ponto forte" + "A melhorar") com subtitle que inclui:
-  - `Envolvimento` → `↗ 3,42% · +12% vs benchmark`
-  - `Interação` → `↘ 8 comentários/post · abaixo da média`
-  - `Frequência` → `↗ 3,1 posts/semana`
-
-A duplicação reside em **Band 2**: cada mini-cartão repete uma métrica que volta a aparecer poucos pixels abaixo:
-
-| Mini-cartão | KPI duplicado abaixo |
-|---|---|
-| Envolvimento `X% · ±Y%` | `EngagementCardRefined` (mesmo `engagementRate` + delta) |
-| Frequência `X posts/semana` | `FrequencyCard` (mesmo `postingFrequencyWeekly`) |
-| Interação `X comentários/post` | (parcial) métrica usada em `PostComparisonBlock` médias |
-
-### Proposta editorial (sem implementar agora)
-
-Substituir **Band 2** por:
-
-1. **1 linha de observação editorial AI curta** (≈140 chars) vinda de `aiInsightsV2.sections.hero.text` partido em headline (já feito) + uma observação adicional vinda de `aiInsightsV2.sections.summary.text` ou novo campo `aiInsightsV2.sections.diagnosis.text`. Fallback determinístico já existe em `buildFallbackSentence` — usar a 2ª frase quando AI ausente.
-2. **1 chip de posicionamento vs benchmark** (única métrica preservada): "Acima da referência do escalão" / "Em linha" / "Abaixo" baseado em `engagementDeltaPct` (>+15%, ±15%, <-15%). Tons emerald/amber/rose. Sem número.
-
-Resultado:
-- Mantém ScoreRing global (única métrica numérica) — não duplica nada porque KPIs abaixo são por dimensão.
-- Remove `TrendingUp`/`AlertCircle` mini-cards.
-- Remove imports de `buildMiniCardSubtitle`, `deriveStrengthWeaknessKeys`, `SCORE_LABELS`.
-- Mantém prop `scores` (necessária para ScoreRing global) e `keyMetrics.engagementDeltaPct` (para chip).
-- Reduz altura do componente ~40%, alinha melhor com Iconosquare-pure (cards brancos com 1 KPI primário).
-
-### Decisões a confirmar antes de implementar
-
-1. Texto do chip — usar `engagementDeltaPct` (já presente) ou criar um score de posicionamento composto (engagement+frequência+interação)?
-2. Quando AI ausente: chip ainda assim ou só headline?
-3. Manter `SCORE_LABELS`/`deriveStrengthWeaknessKeys` (export?) para reutilização em outro lado, ou apagar?
-
-Não tocar:
-- `/report.example` (read-only por contrato).
-- `score-utils.ts`, `ScoreRing`, `EngagementCardRefined`, `FrequencyCard`, `FormatCard`.
-- Apify (cost source, allowlist, budget).
+Garantir que a suite existente `src/lib/security/__tests__/apify-budget.test.ts` continua verde (já existe, é regressão).
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (inclui o novo `openai-budget.test.ts`)
-- Manual:
-  - **Budget OpenAI**: forçar cap muito baixo (e.g. `OPENAI_DAILY_CAP_USD=0.001`) e correr enrichment — confirmar `enrichment_jobs.status` não fica `error`, snapshot sem campos AI, sem mensagem ao utilizador.
-  - **Error sanitization**: forçar `ApifyUpstreamError` (mock no dev) e ver response — confirmar JSON contém apenas `success`, `error_code`, `message`; nada de `details`/`provider_message`/`run_id`.
-  - **UI free com Editorial Card actual**: screenshot do `/analyze/<handle>` em modo free para registar o estado actual e comparar quando passo 3 for implementado.
+- `bunx vitest run` — esperado: suite atual (6 OpenAI + Apify + restantes) + 2 novos ficheiros, todos verdes.
 
 ## Constraints respeitadas
 
-- Read-only em `/report.example` ✓
-- Apify intacto ✓
-- Sem regeneração de relatórios ✓
-- Sem emails enviados ✓
-- Passo 3 só **plano**, sem código ✓
+- Sem alterações à UI do relatório ✓
+- Sem mudanças no Block 1/2 ✓
+- Sem chamadas OpenAI/Apify/DataForSEO ✓ (testes usam mocks)
+- Sem regeneração de relatórios, sem emails, sem Brevo/Resend ✓
+- Sem alteração ao schema de snapshots ✓
+
+## Entregáveis pós-build
+
+- Lista de ficheiros tocados (2 novos testes)
+- Confirmação do comportamento budget (cap default 5 USD, skip silencioso)
+- Confirmação da sanitização (allowlist `retry_after_seconds` apenas)
+- Output de `tsc` e `vitest`
