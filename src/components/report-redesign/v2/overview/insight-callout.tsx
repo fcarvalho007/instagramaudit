@@ -126,13 +126,13 @@ export function InsightCallout({
       <div className="min-w-0 flex-1 space-y-1">
         <p
           className={cn(
-            "text-[10px] font-semibold uppercase tracking-[0.06em] leading-none",
+            "text-xs font-semibold uppercase tracking-[0.06em] leading-none",
             cfg.labelColor,
           )}
         >
           {displayLabel}
         </p>
-        <div className="text-[13px] md:text-[14px] text-content-primary leading-relaxed">
+        <div className="text-[15px] text-content-primary leading-relaxed">
           {children}
         </div>
       </div>
