@@ -8,7 +8,7 @@
  *   Image legend dot:    bg-amber-200
  *   Video legend dot:    bg-sky-200
  */
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
 import { InsightCallout, type InsightTone } from "./insight-callout";
 
