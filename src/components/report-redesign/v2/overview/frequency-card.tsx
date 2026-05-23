@@ -2,7 +2,7 @@
  * Zone D — Card 1: Frequência de publicação.
  * Human-readable headline → stats → posting calendar → verdict.
  */
-import { CalendarDays } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { computeFrequencia } from "./score-utils";
 import { InsightCallout } from "./insight-callout";
 
@@ -20,6 +20,15 @@ const PT_MONTHS = [
 ];
 
 const PT_WEEKDAYS_SHORT = ["S", "T", "Q", "Q", "S", "S", "D"];
+const PT_WEEKDAYS_LONG = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+  "Domingo",
+];
 
 export function getFrequencyHeadline(postsPerDay: number): string {
   if (postsPerDay > 1.2) return "Mais de 1 post por dia";
@@ -71,6 +80,195 @@ export interface FrequencyCardProps {
   windowDays: number;
   postingFrequencyWeekly: number;
   calendarDays: DayEntry[];
+}
+
+// ─── Weekly summary helpers ─────────────────────────────────────────
+
+/** Aggregate posts/days by weekday (Mon=0..Sun=6). */
+function aggregateByWeekday(days: DayEntry[]): Array<{
+  weekday: number;
+  posts: number;
+  daysTotal: number;
+  daysSilent: number;
+}> {
+  const buckets = Array.from({ length: 7 }, (_, weekday) => ({
+    weekday,
+    posts: 0,
+    daysTotal: 0,
+    daysSilent: 0,
+  }));
+  for (const d of days) {
+    const date = new Date(d.date);
+    if (Number.isNaN(date.getTime())) continue;
+    const idx = (date.getUTCDay() + 6) % 7; // Mon=0
+    buckets[idx].posts += d.postCount;
+    buckets[idx].daysTotal += 1;
+    if (d.postCount === 0) buckets[idx].daysSilent += 1;
+  }
+  return buckets;
+}
+
+function pickMostActive(buckets: ReturnType<typeof aggregateByWeekday>) {
+  let best = buckets[0];
+  for (const b of buckets) if (b.posts > best.posts) best = b;
+  return best;
+}
+
+function pickQuietest(buckets: ReturnType<typeof aggregateByWeekday>) {
+  const sat = buckets[5];
+  const sun = buckets[6];
+  const weekendSilent = sat.daysSilent + sun.daysSilent;
+  const weekendPosts = sat.posts + sun.posts;
+  const weekdayPosts = buckets.slice(0, 5).reduce((sum, b) => sum + b.posts, 0);
+
+  if (weekendPosts === 0 && weekdayPosts > 0 && weekendSilent > 0) {
+    return {
+      label: "Fim-de-semana",
+      detail: `${weekendSilent} ${weekendSilent === 1 ? "dia" : "dias"} s/ post`,
+    };
+  }
+
+  // Otherwise: weekday with the most silent days (ties → least posts).
+  const sorted = [...buckets].sort(
+    (a, b) => b.daysSilent - a.daysSilent || a.posts - b.posts,
+  );
+  const worst = sorted[0];
+  if (worst.daysSilent === 0) {
+    return {
+      label: PT_WEEKDAYS_LONG[worst.weekday],
+      detail: `${worst.posts} ${worst.posts === 1 ? "post" : "posts"}`,
+    };
+  }
+  return {
+    label: PT_WEEKDAYS_LONG[worst.weekday],
+    detail: `${worst.daysSilent} ${worst.daysSilent === 1 ? "dia" : "dias"} s/ post`,
+  };
+}
+
+function WeeklySummary({ days }: { days: DayEntry[] }) {
+  const buckets = aggregateByWeekday(days);
+  const totalPosts = buckets.reduce((s, b) => s + b.posts, 0);
+  if (totalPosts === 0) return null;
+
+  const top = pickMostActive(buckets);
+  const quiet = pickQuietest(buckets);
+  const maxPosts = Math.max(...buckets.map((b) => b.posts));
+
+  return (
+    <div className="px-4 sm:px-5 md:px-6 mt-4">
+      <div className="rounded-xl border border-border-default bg-surface-muted/60 p-3.5 sm:p-4">
+        <span className="text-eyebrow-sm text-content-tertiary block mb-3">
+          Resumo da semana
+        </span>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Mais ativo */}
+          <div className="flex items-start gap-2.5">
+            <span
+              aria-hidden
+              className="flex size-7 shrink-0 items-center justify-center rounded-full"
+              style={{ background: "rgba(29,158,117,0.15)" }}
+            >
+              <ArrowUp
+                className="size-3.5"
+                style={{ color: "rgb(29,158,117)" }}
+              />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
+                Mais ativo
+              </p>
+              <p className="text-[13px] text-content-primary leading-snug">
+                <span className="font-semibold">
+                  {PT_WEEKDAYS_LONG[top.weekday]}
+                </span>{" "}
+                <span className="text-content-secondary tabular-nums">
+                  · {top.posts} {top.posts === 1 ? "post" : "posts"}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* Mais parado */}
+          <div className="flex items-start gap-2.5">
+            <span
+              aria-hidden
+              className="flex size-7 shrink-0 items-center justify-center rounded-full"
+              style={{ background: "rgba(163,45,45,0.10)" }}
+            >
+              <ArrowDown
+                className="size-3.5"
+                style={{ color: "rgba(163,45,45,0.85)" }}
+              />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
+                Mais parado
+              </p>
+              <p className="text-[13px] text-content-primary leading-snug">
+                <span className="font-semibold">{quiet.label}</span>{" "}
+                <span className="text-content-secondary tabular-nums">
+                  · {quiet.detail}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Mini bars S T Q Q S S D */}
+        <div className="mt-4">
+          <div
+            className="grid gap-1.5 items-end"
+            style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+            role="img"
+            aria-label="Distribuição de publicações por dia da semana"
+          >
+            {buckets.map((b) => {
+              const isTop = b.weekday === top.weekday && b.posts > 0;
+              const isWeekend = b.weekday >= 5;
+              const ratio = maxPosts > 0 ? b.posts / maxPosts : 0;
+              const height = b.posts > 0 ? 8 + Math.round(ratio * 18) : 5;
+              const bg =
+                b.posts === 0
+                  ? isWeekend
+                    ? "rgba(163,45,45,0.12)"
+                    : "rgba(148,163,184,0.25)"
+                  : isTop
+                    ? "rgba(29,158,117,0.90)"
+                    : "rgba(29,158,117,0.45)";
+              return (
+                <span
+                  key={b.weekday}
+                  className="rounded-[3px] w-full"
+                  style={{ height: `${height}px`, background: bg }}
+                />
+              );
+            })}
+          </div>
+          <div
+            className="grid gap-1.5 mt-1.5"
+            style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+          >
+            {PT_WEEKDAYS_SHORT.map((wd, i) => {
+              const isTop = i === top.weekday && buckets[i].posts > 0;
+              return (
+                <span
+                  key={i}
+                  className={`text-[10px] text-center leading-none select-none ${
+                    isTop
+                      ? "font-semibold text-content-primary"
+                      : "text-content-tertiary"
+                  }`}
+                >
+                  {wd}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Calendar grid helpers ──────────────────────────────────────────
@@ -179,6 +377,9 @@ export function FrequencyCard({
           {subtitleLine}
         </p>
       </div>
+
+      {/* Resumo da semana */}
+      <WeeklySummary days={calendarDays} />
 
       {/* Calendar grid */}
       {weeks.length > 0 && (
