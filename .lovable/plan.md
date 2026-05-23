@@ -1,73 +1,165 @@
-## Diagnóstico
+## Objetivo
 
-### Problemas de dados encontrados
+Reformular o **primeiro card do Bloco 1** (`EditorialIdentityCard`) para seguir o mockup: gauge circular + veredicto + barra de progresso com marca de referência + duas colunas verde/âmbar (pontos fortes / limitações). Mantendo o tom construtivo, tokens semânticos do sistema, e **sem nova chamada OpenAI** — todo o conteúdo é derivado de dados já disponíveis no snapshot.
 
-**1. `count` é estimado, não é a fonte de verdade.**
-Em `report-overview-block.tsx` (L60-66):
-```ts
-count: Math.round((f.sharePct / 100) * k.postsAnalyzed)
+Ficheiro tocado: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (+ pequeno ajuste de props em `report-overview-block.tsx` para passar dados adicionais que já existem em `result.data`).
+
+## Estrutura visual (alinhada com mockup)
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  ┌──────┐  VEREDICTO  [PRECISA DE TRABALHO]                  │
+│  │  21  │  Audiência existe, falta direção                   │
+│  │DE 100│  Síntese em 1–2 frases, pt-PT, construtivo.        │
+│  └──────┘  ▓▓▓░░░░░░░░░░░│░░░░░░░░░░░  0 · ↑ref 60 · 100     │
+├──────────────────────────────────────────────────────────────┤
+│  ↗ O QUE JÁ FUNCIONA          │  ↘ O QUE LIMITA O CRESCIMENTO│
+│  • Publicação consistente …   │  • Poucos comentários …      │
+│  • Base de seguidores …       │  • Formato repetitivo …      │
+└──────────────────────────────────────────────────────────────┘
 ```
-O snapshot já traz `format_stats[k].count` (campo real do payload — ver `SnapshotFormatStat` em `snapshot-to-report-data.ts:65-69`), mas `buildFormatBreakdown` descarta-o e só guarda `sharePct`. Round-trip via `sharePct` pode produzir **Σcount ≠ postsAnalyzed** (ex: 50%/50% em 11 posts → 6+6 = 12).
 
-**2. Total do donut pode divergir da grelha de miniaturas.**
-- Donut central mostra `postsAnalyzed` (vindo de `content_summary.posts_analyzed`).
-- Miniaturas usam `analysedPostFormats.length` (posts com data ISO válida — pode ser menor).
-- Σcount da legenda pode dar um terceiro valor.
+- Divisor horizontal (`border-t border-border-default`) separa zona macro da zona accionável.
+- Mobile: gauge centrado em cima, texto abaixo; colunas pontos fortes/limitações empilham (`grid-cols-1 md:grid-cols-2`).
+- Sem cores hardcoded — usar tokens já existentes (`signal-success`, `signal-warning`, `accent-primary`, `tint-success`, `tint-warning`, `surface-muted`, `border-default`).
 
-**3. Percentagens podem divergir entre subtítulo e donut.**
-- Subtítulo "X em cada Y são…" usa o `count` derivado.
-- Donut recalcula `Math.round((count/postsAnalyzed)*100)` — pode dar 74% quando o `sharePct` autoritativo era 75%.
+## Pontuação e bandas
 
-### Problemas de clareza / UX
+Pontuação global = média ponderada das três sub-pontuações já existentes:
 
-**4. Singulares vs plurais inconsistentes.**
-A legenda nova mostra "Carrossel / Reels / Imagem". O resto do card (subtítulo, legenda das miniaturas, `FORMAT_PT`) usa **plurais** ("carrosséis, reels, imagens"). Convenção pt-PT do projeto = plural.
+```text
+overall = round( 0.5 * envolvimento + 0.3 * frequencia + 0.2 * interaccao )
+```
 
-**5. Eyebrow "Publicações" no donut duplica "X posts analisados" logo abaixo.**
-São o mesmo número visto duas vezes em 40px de distância.
+(envolvimento pesa mais por ser o sinal mais informativo; frequência é higiénica; interação é redundante com envolvimento mas adiciona granularidade).
 
----
+Bandas de veredicto (referência da barra **fixa a 60** = piso de "sólido"):
 
-## Implementação
+| Score | Estado | Cor gauge/badge | Token base |
+|------:|--------|-----------------|------------|
+| 0–39 | Precisa de trabalho | âmbar | `signal-warning` / `tint-warning` |
+| 40–69 | Em desenvolvimento | azul calmo | `accent-primary` / `accent-primary/10` |
+| 70–100 | Sólido | verde | `signal-success` / `tint-success` |
 
-### A. `src/lib/report/snapshot-to-report-data.ts`
-1. Adicionar `count: number` ao tipo `ReportData["formatBreakdown"]` (ou ao item retornado).
-2. Em `buildFormatBreakdown` (L597+), preencher `count` a partir de `s.count` (já existe em `SnapshotFormatStat`). Fallback `0` quando ausente.
+Nunca vermelho agressivo — máximo é âmbar (tom construtivo).
 
-### B. `src/components/report-redesign/v2/report-overview-block.tsx`
-1. Em `formatEntries` (L60-66), usar `f.count` direto da fonte. Manter o cálculo round-trip apenas como fallback quando `count` for `0` e `sharePct > 0`.
-2. Garantir invariante: se `Σcount > 0` e diferir de `postsAnalyzed`, usar `Σcount` como total exibido (fonte interna coerente).
+## Conteúdo dos blocos
 
-### C. `src/components/report-redesign/v2/overview/format-card.tsx`
-1. **Total único**: passar a usar `total = Σ(entry.count)` em vez de `postsAnalyzed` quando os dois divergirem; isto garante coerência donut ↔ legenda ↔ percentagens.
-2. **Percentagens autoritativas**: preferir `entry.sharePct` quando presente; só recalcular a partir de `count/total` como fallback. Evita 74% vs 75%.
-3. **Labels em plural** em `FORMAT_SINGULAR_PT` → renomear para `FORMAT_LEGEND_PT` e usar: `Carrosséis`, `Reels`, `Imagens`, `Vídeos`. Capitalizada.
-4. **Remover redundância**: substituir o eyebrow `Publicações` dentro do donut por algo descritivo do que está a ser medido — ou removê-lo e manter apenas o número grande. Eu sugiro **manter o número + remover o eyebrow interno**, e renomear o eyebrow externo de "X posts analisados" para "Distribuição dos X posts" (1 leitura, 1 sítio).
-5. **Σ garantida**: snap final — se rounding produzir Σpct = 99 ou 101, somar/subtrair 1 ao maior formato. Evita "75% + 25% + 0% = 100%" virar 76+25+0.
-6. **Estado vazio**: se `total = 0`, não renderizar (já garantido).
-7. **a11y**: adicionar `aria-label` ao container do bloco breakdown a descrever a distribuição (ex: "Distribuição: 9 carrosséis, 3 reels, 0 imagens").
+### Título + síntese
+Continua a vir de `aiInsightsV2.hero.text` (já implementado em `deriveCopyFromAi`). Sem nova chamada IA. Fallback determinístico mantém-se.
 
-### D. Sem alterações
-- Não tocar em `buildAnalysedPostFormats` (já correto).
-- Não tocar no subtítulo do card nem no `InsightCallout`.
-- Não tocar em `DominantFormatCard` (card diferente).
-- Sem novas libs.
+### Pontos fortes (2) e limitações (2)
+**Derivados deterministicamente** de sinais já presentes em `scores` + `keyMetrics` + (novo) `dominantFormatShare`, `postingFrequencyWeekly`, `followers`. Estratégia: avaliar cada sinal, atribuir-lhe categoria `forte | limite` por threshold, ordenar por magnitude e escolher os 2 melhores para cada lado.
 
----
+Regras (resumo):
 
-## Validação
+| Sinal | Forte se… | Limite se… |
+|-------|-----------|------------|
+| Frequência semanal | 3–5 posts/sem → "Publicação consistente · ~X post/dia" | <1 ou >7 → "Cadência irregular" |
+| Base de seguidores | ≥ tier mid → "Base de seguidores · relevante para o nicho" | < metade tier → "Audiência ainda pequena" |
+| Engagement vs benchmark | delta ≥ +10% → "Envolvimento acima do escalão" | delta ≤ −30% → "Envolvimento muito abaixo do escalão" |
+| Comentários (interaccao) | score ≥ 60 → "Conversa ativa nos comentários" | score < 30 → "Poucos comentários · falta CTA claro" |
+| Concentração de formato | share <55% → "Mix de formatos equilibrado" | share ≥70% → "Formato repetitivo · X% {formato}" |
 
-- `/analyze/frederico.m.carvalho`: confirmar que o número central do donut, a Σ da legenda e o número da grelha de miniaturas dão o mesmo valor.
-- Confirmar que as % batem com o `format_stats` original do payload (não recalculadas a partir de counts redondos).
-- Testar mobile 375px.
-- `bunx tsc --noEmit` para validar a mudança de tipo em `formatBreakdown`.
+Garantias:
+- Sempre 2 + 2 (se faltarem fortes ou limites, completa com fallbacks neutros — ex.: "Perfil ativo na plataforma" / "Espaço para diversificar conteúdo").
+- Cada bullet = `destaque` (Inter 500, content-primary) + `· detalhe` (content-secondary).
+- pt-PT, sem jargão técnico.
+
+## Implementação técnica
+
+### Card layout (JSX)
+
+```tsx
+<article className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
+  {/* Zona macro */}
+  <div className="px-5 py-6 sm:px-7 sm:py-7 flex flex-col sm:flex-row sm:items-start gap-6 sm:gap-8">
+    <ScoreGauge value={overall} band={band} />        {/* 124px viewBox 42×42 */}
+    <div className="flex-1 min-w-0 space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-eyebrow-sm text-content-tertiary">Veredicto</span>
+        <VerdictBadge band={band} />
+      </div>
+      <h2 className="font-display text-xl sm:text-2xl …">{copy.title}</h2>
+      <p className="text-sm leading-relaxed text-content-secondary">{copy.paragraph}</p>
+      <ReferenceBar value={overall} reference={60} band={band} />
+    </div>
+  </div>
+
+  {/* Zona accionável */}
+  <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2">
+    <BulletColumn tone="success" icon={ArrowUpRight}
+      title="O que já funciona" items={strengths} />
+    <BulletColumn tone="warning" icon={ArrowDownRight}
+      title="O que limita o crescimento" items={limits}
+      className="border-t md:border-t-0 md:border-l border-border-default" />
+  </div>
+</article>
+```
+
+### ScoreGauge
+- SVG `viewBox="0 0 42 42"`, `stroke-linecap="round"`, `strokeWidth={3.5}`, `transform="rotate(-90)"`.
+- Track = `text-border-default/40`; arco = `currentColor` mapeado ao token da banda.
+- Texto central: número em `font-display` (Fraunces) 40px com `tabular-nums`; sublabel "DE 100" em `text-eyebrow-sm`.
+- `role="img"` + `aria-label="Pontuação global X de 100"`.
+
+### ReferenceBar
+- Track horizontal `h-1.5 rounded-full bg-surface-muted`.
+- Fill = `width: ${overall}%` na cor da banda.
+- Marca vertical em `left: ${reference}%` (linha 2px, `h-3`, cor `border-default`).
+- Labels por baixo: `0 · ↑ referência do escalão · 60 · 100` em `text-[11px] text-content-tertiary`.
+
+### Cores semânticas (sem hardcode)
+Usar tokens existentes; se `tint-success` / `tint-warning` ainda não existirem como classes Tailwind, verificar `tailwind.config.ts` antes — em caso de falta, criar via `bg-signal-success/10` / `bg-signal-warning/10` (já suportado por Tailwind v4 com cores em `--signal-*`).
+
+## Alterações de props
+
+`EditorialIdentityCardProps` ganha (todos opcionais):
+
+```ts
+dominantFormat?: "Reels" | "Carousels" | "Imagens";
+dominantFormatShare?: number;       // %
+postingFrequencyWeekly?: number;
+followers?: number;
+followerTierBenchmark?: number;     // p/ avaliar "base relevante"
+```
+
+Em `report-overview-block.tsx`:
+```tsx
+<EditorialIdentityCard
+  scores={scores}
+  aiHeroText={enriched.aiInsightsV2?.sections.hero?.text ?? null}
+  keyMetrics={{ engagementRate, engagementBenchmark, engagementDeltaPct }}
+  dominantFormat={k.dominantFormat}
+  dominantFormatShare={k.dominantFormatShare}
+  postingFrequencyWeekly={k.postingFrequencyWeekly}
+  followers={profile.followers}
+  followerTierBenchmark={…} {/* se disponível, senão omitir */}
+/>
+```
+
+## Estados
+
+- **Sem dados suficientes** (`postsAnalyzed < 5`): renderizar o gauge e o título/síntese, mas substituir a barra de referência por uma nota textual `"Baseado em apenas X posts — confiança limitada."` e mostrar apenas 1 forte + 1 limite (com texto "Análise preliminar").
+- **Loading**: não aplicável aqui (o card recebe sempre dados resolvidos pelo loader).
+- **AI hero text ausente**: usa fallback determinístico já existente.
+
+## Restrições preservadas
+
+- Sem nova chamada OpenAI / Apify / DB.
+- Tokens semânticos apenas; **sem `slate-*`** e sem hex em componentes.
+- Fraunces apenas em H2 e número do gauge; restante em Inter.
+- Mobile-first; testado mentalmente a 375px (gauge centrado, colunas empilhadas).
+- Tom construtivo — máximo de cor "negativa" é âmbar.
+- Bloco apenas no card #1; **não tocar** em Admin, Emails, Unlock, cálculos a montante, ou demais cards do Bloco 1.
 
 ## Checkpoint
-- ☐ `formatBreakdown` carrega `count` real do `format_stats`.
-- ☐ `formatEntries` usa esse count directamente.
-- ☐ Donut/legenda/grelha mostram o **mesmo** total.
-- ☐ Percentagens batem com `sharePct` autoritativo do payload.
-- ☐ Labels em plural pt-PT consistentes.
-- ☐ Eyebrow duplicado removido.
-- ☐ Σpct = 100% garantido por snap.
-- ☐ `tsc --noEmit` ok.
+
+- ☐ `EditorialIdentityCard` reescrito com gauge + veredicto + barra de referência + duas colunas accionáveis
+- ☐ Pontuação global = média ponderada 0.5/0.3/0.2 (envolvimento/frequência/interação)
+- ☐ Bandas de cor: âmbar 0–39, azul 40–69, verde 70–100; referência fixa a 60 na barra
+- ☐ Pontos fortes / limitações derivados deterministicamente (2 + 2 garantidos)
+- ☐ Tokens semânticos apenas; Fraunces só no H2 e número do gauge
+- ☐ Mobile 375px: gauge centrado, colunas empilhadas
+- ☐ Estado "poucos posts": nota de confiança limitada substitui a barra
+- ☐ Sem nova chamada OpenAI / Apify / DB
