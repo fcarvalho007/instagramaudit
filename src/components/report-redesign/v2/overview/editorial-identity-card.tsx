@@ -1,21 +1,19 @@
 /**
- * Editorial Identity Card — Executive Summary / Diagnosis
+ * Editorial Identity Card — Observação editorial (Block 1)
  *
- * Compact premium layout (Iconosquare-inspired):
- *   Band 1: Editorial headline (left) + score ring module (right)
- *   Band 2: Two insight mini-cards (strength + improvement)
+ * Single-band executive observation:
+ *   - Eyebrow "OBSERVAÇÃO"
+ *   - Editorial title (≤ 5 words)
+ *   - Short paragraph (2–3 sentences, pt-PT)
+ *   - Optional subtle chip with benchmark position
  *
- * Uses existing score data and props — no logic changes.
+ * No new provider calls. Uses aiInsightsV2.hero.text when available,
+ * deterministic fallback otherwise. Score ring and strength/weakness
+ * mini-cards were removed to avoid duplicating the KPI grid and the
+ * Engagement / Frequency / Format cards that follow.
  */
 import { cn } from "@/lib/utils";
-import { ScoreRing } from "./score-ring";
-import {
-  getScoreFamily,
-  computeGlobalScore,
-  type ScoreKey,
-  type ScoreFamily,
-} from "./score-utils";
-import { TrendingUp, AlertCircle } from "lucide-react";
+import type { ScoreKey } from "./score-utils";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -31,104 +29,106 @@ interface EditorialIdentityCardProps {
   };
 }
 
-/* ── Fallback editorial sentence (deterministic) ───────────────────── */
+/* ── Fallback determinístico ───────────────────────────────────────── */
 
-interface FallbackResult {
-  headline: string;
-  description: string;
+interface EditorialCopy {
+  title: string;
+  paragraph: string;
 }
 
-function buildFallbackSentence(
+function buildFallbackCopy(
   scores: Record<ScoreKey, { value: number; subtitle: string }>,
-): FallbackResult {
+): EditorialCopy {
   const eng = scores.envolvimento.value;
   const freq = scores.frequencia.value;
   const inter = scores.interaccao.value;
 
-  if (freq >= 60 && inter < 40) {
+  if (eng >= 60 && freq >= 60) {
     return {
-      headline: "Perfil com **cadência consistente** mas pouca conversa",
-      description: "Frequência de publicação acima da média, mas a interação nos comentários está abaixo do esperado. Maior oportunidade: aumentar a conversa pública.",
+      title: "Presença sólida e consistente",
+      paragraph:
+        "O conteúdo gera resposta de forma regular e a cadência é estável. A próxima alavanca está em diversificar formatos e abrir mais conversa nos comentários.",
     };
   }
   if (eng >= 60 && freq < 40) {
     return {
-      headline: "Perfil com **bom engagement** mas cadência irregular",
-      description: "O conteúdo gera resposta quando publicado, mas o ritmo de publicação está abaixo do ideal. Maior oportunidade: publicar com mais regularidade.",
+      title: "Bom alcance, ritmo irregular",
+      paragraph:
+        "O conteúdo funciona quando sai, mas o ritmo de publicação é descontínuo. Estabilizar a cadência semanal é o passo com maior retorno imediato.",
+    };
+  }
+  if (freq >= 60 && eng < 40) {
+    return {
+      title: "Cadência forte, sinal fraco",
+      paragraph:
+        "Existe disciplina de publicação, mas o conteúdo não está a converter em interação. O foco deve ir para o conceito editorial e o gancho inicial de cada peça.",
     };
   }
   if (eng < 40 && inter < 40) {
     return {
-      headline: "Perfil com **margem significativa** para crescer",
-      description: "O engagement e a interação estão abaixo da referência do escalão. Existem oportunidades claras de melhoria no conteúdo e na conversa.",
+      title: "Audiência existe, falta direção",
+      paragraph:
+        "A base de seguidores não está a reagir nem a comentar de forma significativa. A prioridade é redefinir ângulo editorial e formatos antes de aumentar volume.",
     };
   }
   return {
-    headline: "Perfil com **bom potencial** de crescimento",
-    description: "Engagement acima do benchmark do tier, cadência de publicação consistente. Maior oportunidade: aumentar a conversa pública e diversificar formatos.",
+    title: "Perfil ativo, oportunidade clara",
+    paragraph:
+      "Os indicadores estão próximos da referência do escalão. Há espaço para subir engagement ajustando formatos dominantes e reforçando a conversa nos comentários.",
   };
 }
 
-/* ── Strength / Weakness derivation ───────────────────────────────── */
+/* ── AI text sanitization ──────────────────────────────────────────── */
 
-const SCORE_LABELS: Record<ScoreKey, string> = {
-  envolvimento: "Engagement",
-  frequencia: "Cadência",
-  interaccao: "Comentários",
-};
+const FORBIDDEN_PREFIX = /^\s*(a\s+ia\s+(conclui|concluiu|observa|nota|identifica|deteta|detecta|analisa)|segundo\s+a\s+ia)[:,.\s-]*/i;
 
-function deriveStrengthWeaknessKeys(
-  scores: Record<ScoreKey, { value: number; subtitle: string }>,
-): { strengthKey: ScoreKey; weaknessKey: ScoreKey } {
-  const entries = (Object.keys(scores) as ScoreKey[]).map((k) => ({
-    key: k,
-    value: scores[k].value,
-  }));
-  entries.sort((a, b) => b.value - a.value);
-  return {
-    strengthKey: entries[0].key,
-    weaknessKey: entries[entries.length - 1].key,
-  };
+function countWords(s: string): number {
+  return s.trim().split(/\s+/).filter(Boolean).length;
 }
 
-/* ── Global score label ────────────────────────────────────────────── */
+function splitFirstSentence(text: string): { first: string; rest: string } {
+  const m = text.match(/^(.+?[.!?])\s+(.+)$/s);
+  if (m) return { first: m[1].trim(), rest: m[2].trim() };
+  return { first: text.trim(), rest: "" };
+}
 
-const GLOBAL_LABEL: Record<ScoreFamily, string> = {
-  danger: "Crítico",
-  warning: "A melhorar",
-  success: "Forte",
-};
+function trimParagraphToSentence(text: string, maxChars = 280): string {
+  if (text.length <= maxChars) return text;
+  const slice = text.slice(0, maxChars);
+  const lastStop = Math.max(slice.lastIndexOf("."), slice.lastIndexOf("!"), slice.lastIndexOf("?"));
+  if (lastStop > 80) return slice.slice(0, lastStop + 1).trim();
+  return slice.trim() + "…";
+}
 
-const FAMILY_CHIP: Record<ScoreFamily, string> = {
-  danger: "bg-rose-50 text-rose-600",
-  warning: "bg-amber-50 text-amber-600",
-  success: "bg-emerald-50 text-emerald-600",
-};
+function deriveCopyFromAi(
+  aiHeroText: string,
+  fallback: EditorialCopy,
+): EditorialCopy {
+  const cleaned = aiHeroText.replace(FORBIDDEN_PREFIX, "").trim();
+  if (!cleaned) return fallback;
 
-const FAMILY_DOT: Record<ScoreFamily, string> = {
-  danger: "bg-rose-400",
-  warning: "bg-amber-400",
-  success: "bg-emerald-400",
-};
+  const { first, rest } = splitFirstSentence(cleaned);
+  const firstClean = first.replace(/[.!?]+$/, "").trim();
 
-/* ── Headline bold renderer ────────────────────────────────────────── */
+  // Title rule: ≤ 5 words. If AI first sentence is too long, fall back to
+  // the deterministic title but keep the AI text as paragraph.
+  const title = countWords(firstClean) <= 5 ? firstClean : fallback.title;
+  const paragraphRaw = rest ? rest : cleaned;
+  const paragraph = trimParagraphToSentence(paragraphRaw);
 
-/**
- * Renders a string with **bold** markdown segments as React nodes.
- * e.g. "Perfil com **bom potencial** de crescimento"
- */
-function renderBoldText(text: string): React.ReactNode {
-  const parts = text.split(/\*\*(.+?)\*\*/g);
-  if (parts.length === 1) return text;
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <strong key={i} className="font-bold text-content-primary">
-        {part}
-      </strong>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
+  return { title, paragraph: paragraph || fallback.paragraph };
+}
+
+/* ── Benchmark anchor chip ─────────────────────────────────────────── */
+
+function benchmarkChipLabel(
+  keyMetrics: EditorialIdentityCardProps["keyMetrics"],
+): string | null {
+  if (!keyMetrics || keyMetrics.engagementBenchmark <= 0) return null;
+  const delta = keyMetrics.engagementDeltaPct;
+  if (delta >= 10) return "Acima do benchmark";
+  if (delta <= -10) return "Abaixo do benchmark";
+  return "Em linha com benchmark";
 }
 
 /* ── Main Component ────────────────────────────────────────────────── */
@@ -138,147 +138,40 @@ export function EditorialIdentityCard({
   aiHeroText,
   keyMetrics,
 }: EditorialIdentityCardProps) {
-  const globalScore = computeGlobalScore(
-    scores.envolvimento.value,
-    scores.frequencia.value,
-    scores.interaccao.value,
-  );
-  const globalFamily = getScoreFamily(globalScore);
-
-  const fallback = buildFallbackSentence(scores);
-  // AI text: split first sentence as headline, rest as description
-  let headlineText: string;
-  let descriptionText: string | null;
-  if (aiHeroText) {
-    const match = aiHeroText.match(/^(.+?[.!?])\s+(.+)$/s);
-    if (match) {
-      headlineText = match[1];
-      descriptionText = match[2];
-    } else {
-      headlineText = aiHeroText;
-      descriptionText = null;
-    }
-  } else {
-    headlineText = fallback.headline;
-    descriptionText = fallback.description;
-  }
-
-  const { strengthKey, weaknessKey } = deriveStrengthWeaknessKeys(scores);
-
-  // Build richer subtitles for the mini-cards
-  const strengthSubtitle = buildMiniCardSubtitle(strengthKey, scores, keyMetrics, "up");
-  const weaknessSubtitle = buildMiniCardSubtitle(weaknessKey, scores, keyMetrics, "down");
+  const fallback = buildFallbackCopy(scores);
+  const copy = aiHeroText ? deriveCopyFromAi(aiHeroText, fallback) : fallback;
+  const chipLabel = benchmarkChipLabel(keyMetrics);
 
   return (
     <article
-      aria-label={`Identidade editorial: pontuação global ${globalScore} de 100`}
+      aria-label="Observação editorial"
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
-      {/* ═══ BAND 1 — Editorial Portrait + Score ═══ */}
-      <div className="px-5 py-6 sm:px-7 sm:py-7">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-8">
-          {/* Left — editorial text */}
-          <div className="flex-1 min-w-0 space-y-2.5">
-            <p className="text-eyebrow-sm text-content-tertiary">Resumo executivo</p>
+      <div className="px-5 py-6 sm:px-7 sm:py-7 space-y-3">
+        <p className="text-eyebrow-sm text-content-tertiary">Observação</p>
 
-            <h2 className="font-display text-xl sm:text-2xl font-semibold leading-[1.3] tracking-[-0.015em] text-content-primary max-w-lg">
-              {renderBoldText(headlineText)}
-            </h2>
+        <h2 className="font-display text-xl sm:text-2xl font-semibold leading-[1.25] tracking-[-0.015em] text-content-primary max-w-2xl">
+          {copy.title}
+        </h2>
 
-            {descriptionText && (
-              <p className="text-sm leading-relaxed text-content-secondary max-w-lg">
-                {renderBoldText(descriptionText)}
-              </p>
-            )}
-          </div>
+        <p className="text-sm leading-relaxed text-content-secondary max-w-2xl">
+          {copy.paragraph}
+        </p>
 
-          {/* Right — score ring module */}
-          <div className="flex flex-col items-center shrink-0 gap-1.5">
-            <ScoreRing score={globalScore} size={110} label="Pontuação global" />
-
-            <span className="text-xs font-medium text-content-tertiary tabular-nums leading-none mt-px">
-              / 100
-            </span>
-
+        {chipLabel && (
+          <div className="pt-1">
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 mt-1",
+                "inline-flex items-center rounded-full px-2.5 py-1",
                 "text-[11px] font-semibold tracking-wide uppercase leading-none",
-                FAMILY_CHIP[globalFamily],
+                "bg-surface-muted text-content-secondary",
               )}
             >
-              <span
-                aria-hidden="true"
-                className={cn("size-1.5 rounded-full shrink-0", FAMILY_DOT[globalFamily])}
-              />
-              {GLOBAL_LABEL[globalFamily]}
-            </span>
-
-            <span className="text-[11px] text-content-tertiary leading-none mt-1">
-              Pontuação InstaBench
+              {chipLabel}
             </span>
           </div>
-        </div>
-      </div>
-
-      {/* ═══ BAND 2 — Insight Cards ═══ */}
-      <div className="border-t border-border-default px-5 py-4 sm:px-7 sm:py-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Strength mini-card */}
-          <div className="flex items-start gap-3 rounded-xl bg-emerald-50/50 border border-emerald-100/60 border-l-[3px] border-l-emerald-400 px-4 py-3.5">
-            <span className="flex items-center justify-center size-8 rounded-full bg-emerald-100/70 shrink-0 mt-0.5">
-              <TrendingUp className="size-4 text-emerald-500" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <span className="text-eyebrow-sm text-emerald-600 block">Ponto forte</span>
-              <span className="text-sm font-semibold text-content-primary block leading-snug mt-0.5">{SCORE_LABELS[strengthKey]}</span>
-              <span className="text-xs text-content-secondary block leading-relaxed mt-1">{strengthSubtitle}</span>
-            </div>
-          </div>
-
-          {/* Weakness mini-card */}
-          <div className="flex items-start gap-3 rounded-xl bg-rose-50/50 border border-rose-100/60 border-l-[3px] border-l-rose-400 px-4 py-3.5">
-            <span className="flex items-center justify-center size-8 rounded-full bg-rose-100/70 shrink-0 mt-0.5">
-              <AlertCircle className="size-4 text-rose-400" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <span className="text-eyebrow-sm text-rose-500 block">A melhorar</span>
-              <span className="text-sm font-semibold text-content-primary block leading-snug mt-0.5">{SCORE_LABELS[weaknessKey]}</span>
-              <span className="text-xs text-content-secondary block leading-relaxed mt-1">{weaknessSubtitle}</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </article>
   );
-}
-
-/* ── Mini-card subtitle builder ────────────────────────────────────── */
-
-function buildMiniCardSubtitle(
-  key: ScoreKey,
-  scores: Record<ScoreKey, { value: number; subtitle: string }>,
-  keyMetrics: EditorialIdentityCardProps["keyMetrics"],
-  direction: "up" | "down",
-): string {
-  const arrow = direction === "up" ? "↗" : "↘";
-  const s = scores[key];
-
-  if (key === "envolvimento" && keyMetrics) {
-    const er = keyMetrics.engagementRate.toFixed(2).replace(".", ",") + "%";
-    const diff = keyMetrics.engagementBenchmark > 0
-      ? Math.round(((keyMetrics.engagementRate - keyMetrics.engagementBenchmark) / keyMetrics.engagementBenchmark) * 100)
-      : 0;
-    const sign = diff >= 0 ? "+" : "";
-    return `${arrow} ${er} · ${sign}${diff}% vs benchmark`;
-  }
-
-  if (key === "interaccao") {
-    // Use the subtitle from score-utils which already has the value
-    const base = s.subtitle;
-    return `${arrow} ${base} · ${direction === "up" ? "acima" : "abaixo"} da média`;
-  }
-
-  // frequencia
-  return `${arrow} ${s.subtitle}`;
 }
