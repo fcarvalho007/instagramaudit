@@ -60,6 +60,22 @@ const FORMAT_STYLE: Record<string, { dot: string; iconColor: string; icon: typeo
   unknown: { dot: "bg-slate-300", iconColor: "text-slate-500", icon: Image },
 };
 
+const FORMAT_HEX: Record<FormatKey, string> = {
+  Carousels: "#6EE7B7", // emerald-300
+  Reels: "#7DD3FC",     // sky-300
+  Imagens: "#FCD34D",   // amber-300
+  Video: "#7DD3FC",     // sky-300
+};
+
+const FORMAT_SINGULAR_PT: Record<FormatKey, string> = {
+  Carousels: "Carrossel",
+  Reels: "Reels",
+  Imagens: "Imagem",
+  Video: "Vídeo",
+};
+
+const BREAKDOWN_ORDER: FormatKey[] = ["Carousels", "Reels", "Imagens"];
+
 const TYPE_PT: Record<string, string> = {
   carousel: "carrossel",
   reel: "reel",
@@ -225,6 +241,9 @@ export function FormatCard({
           {subtitleLine}
         </p>
       </div>
+
+      {/* Breakdown — donut + legend */}
+      <FormatBreakdown formats={formats} postsAnalyzed={postsAnalyzed} />
 
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
