@@ -39,13 +39,13 @@ export function getFrequencyHeadline(postsPerDay: number): string {
 }
 
 export function getFrequencyVerdict(score: number): { strong: string; rest: string } {
-  if (score >= 90) {
+  if (score >= 70) {
     return {
       strong: "Cadência forte e consistente.",
       rest: "Publica mais que a média de perfis com um número de seguidores semelhante.",
     };
   }
-  if (score >= 50) {
+  if (score >= 40) {
     return {
       strong: "Cadência aceitável.",
       rest: "Há espaço para regularidade mais previsível.",
@@ -114,31 +114,40 @@ function pickMostActive(buckets: ReturnType<typeof aggregateByWeekday>) {
   return best;
 }
 
-function pickQuietest(buckets: ReturnType<typeof aggregateByWeekday>) {
+function pickQuietest(
+  buckets: ReturnType<typeof aggregateByWeekday>,
+): { label: string; detail: string } | null {
   const sat = buckets[5];
   const sun = buckets[6];
   const weekendSilent = sat.daysSilent + sun.daysSilent;
   const weekendPosts = sat.posts + sun.posts;
   const weekdayPosts = buckets.slice(0, 5).reduce((sum, b) => sum + b.posts, 0);
 
-  if (weekendPosts === 0 && weekdayPosts > 0 && weekendSilent > 0) {
+  // Weekend rule: only fire when both Sat and Sun are present in the window
+  // AND the entire weekend is silent. Avoids false alerts on short windows.
+  if (
+    weekendPosts === 0 &&
+    weekdayPosts > 0 &&
+    sat.daysTotal >= 1 &&
+    sun.daysTotal >= 1 &&
+    weekendSilent >= 2
+  ) {
     return {
       label: "Fim-de-semana",
       detail: `${weekendSilent} ${weekendSilent === 1 ? "dia" : "dias"} s/ post`,
     };
   }
 
-  // Otherwise: weekday with the most silent days (ties → least posts).
-  const sorted = [...buckets].sort(
+  // Otherwise: only consider weekdays that appeared at least twice in the
+  // window (otherwise a single missed Monday looks like a pattern).
+  const eligible = buckets.filter((b) => b.daysTotal >= 2);
+  if (eligible.length === 0) return null;
+  const sorted = [...eligible].sort(
     (a, b) => b.daysSilent - a.daysSilent || a.posts - b.posts,
   );
   const worst = sorted[0];
-  if (worst.daysSilent === 0) {
-    return {
-      label: PT_WEEKDAYS_LONG[worst.weekday],
-      detail: `${worst.posts} ${worst.posts === 1 ? "post" : "posts"}`,
-    };
-  }
+  // No silent days on any eligible weekday → nothing meaningful to flag.
+  if (worst.daysSilent === 0) return null;
   return {
     label: PT_WEEKDAYS_LONG[worst.weekday],
     detail: `${worst.daysSilent} ${worst.daysSilent === 1 ? "dia" : "dias"} s/ post`,
@@ -161,7 +170,9 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
           Resumo da semana
         </span>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div
+          className={`grid gap-3 ${quiet ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}
+        >
           {/* Mais ativo */}
           <div className="flex items-start gap-2.5">
             <span
@@ -189,7 +200,8 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
             </div>
           </div>
 
-          {/* Mais parado */}
+          {/* Mais parado — only when sample qualifies */}
+          {quiet && (
           <div className="flex items-start gap-2.5">
             <span
               aria-hidden
@@ -213,6 +225,7 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
               </p>
             </div>
           </div>
+          )}
         </div>
 
         {/* Mini bars S T Q Q S S D */}
@@ -327,25 +340,30 @@ export function FrequencyCard({
   postingFrequencyWeekly,
   calendarDays,
 }: FrequencyCardProps) {
-  const postsPerDay = windowDays > 0 ? postsAnalyzed / windowDays : 0;
+  // Source-of-truth for "Y dias" is the calendar itself when present.
+  // Falls back to the windowDays prop (matches now, defensive for future).
+  const effectiveWindowDays =
+    calendarDays.length > 0 ? calendarDays.length : windowDays;
+  const postsPerDay =
+    effectiveWindowDays > 0 ? postsAnalyzed / effectiveWindowDays : 0;
   const headline = getFrequencyHeadline(postsPerDay);
   const score = computeFrequencia(postingFrequencyWeekly);
   const verdict = getFrequencyVerdict(score);
   const frequencyStatus = getFrequencyStatus(score);
-  const verdictTone = score >= 90 ? "positive" as const : score >= 50 ? "warning" as const : "danger" as const;
-  const verdictLabel = score >= 90 ? "PONTO FORTE" : score >= 50 ? "A MELHORAR" : "ALERTA";
+  const verdictTone =
+    score >= 70 ? ("positive" as const) : score >= 40 ? ("warning" as const) : ("danger" as const);
+  const verdictLabel =
+    score >= 70 ? "PONTO FORTE" : score >= 40 ? "A MELHORAR" : "ALERTA";
 
   // Dynamic subtitle: "1 post a cada 1–2 dias · 12 publicações em 18 dias"
-  const subtitleLine = `${headline} · ${postsAnalyzed} publicações em ${windowDays} dias`;
+  const hasUsableData = postsAnalyzed > 0 && effectiveWindowDays > 0;
+  const subtitleLine = hasUsableData
+    ? `${headline} · ${postsAnalyzed} publicações em ${effectiveWindowDays} dias`
+    : null;
 
   const publishedCount = calendarDays.filter((d) => d.published).length;
   const pausedCount = calendarDays.length - publishedCount;
   const maxPosts = Math.max(1, ...calendarDays.map((d) => d.postCount));
-
-  const statsLine =
-    windowDays > 0
-      ? `${postsAnalyzed} publicações em ${windowDays} dias · ${fmtNum(postingFrequencyWeekly)}/semana`
-      : `${postsAnalyzed} publicações analisadas`;
 
   const weeks = buildWeekGrid(calendarDays);
 
@@ -373,9 +391,11 @@ export function FrequencyCard({
             </span>
           </h3>
         </div>
-        <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
-          {subtitleLine}
-        </p>
+        {subtitleLine && (
+          <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
+            {subtitleLine}
+          </p>
+        )}
       </div>
 
       {/* Resumo da semana */}
