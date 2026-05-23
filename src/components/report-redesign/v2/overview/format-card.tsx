@@ -67,11 +67,11 @@ const FORMAT_HEX: Record<FormatKey, string> = {
   Video: "#7DD3FC",     // sky-300
 };
 
-const FORMAT_SINGULAR_PT: Record<FormatKey, string> = {
-  Carousels: "Carrossel",
+const FORMAT_LEGEND_PT: Record<FormatKey, string> = {
+  Carousels: "Carrosséis",
   Reels: "Reels",
-  Imagens: "Imagem",
-  Video: "Vídeo",
+  Imagens: "Imagens",
+  Video: "Vídeos",
 };
 
 const BREAKDOWN_ORDER: FormatKey[] = ["Carousels", "Reels", "Imagens"];
@@ -348,7 +348,24 @@ function FormatBreakdown({
   if (video && video.count > 0) rows.push("Video");
 
   const total = rows.reduce((s, k) => s + (byKey.get(k)?.count ?? 0), 0);
-  if (total === 0 || postsAnalyzed === 0) return null;
+  if (total === 0) return null;
+
+  // Normalised percentages that always sum to 100 (largest segment absorbs
+  // rounding drift). Anchor everything to `total` (Σcount), not the
+  // upstream `postsAnalyzed` — they can differ if format_stats is partial.
+  const rawPcts = rows.map((k) => {
+    const c = byKey.get(k)?.count ?? 0;
+    return total > 0 ? (c / total) * 100 : 0;
+  });
+  const rounded = rawPcts.map((p) => Math.round(p));
+  const drift = 100 - rounded.reduce((s, n) => s + n, 0);
+  if (drift !== 0 && rounded.length > 0) {
+    let maxIdx = 0;
+    for (let i = 1; i < rounded.length; i++) if (rounded[i] > rounded[maxIdx]) maxIdx = i;
+    rounded[maxIdx] = Math.max(0, rounded[maxIdx] + drift);
+  }
+  const pctByKey = new Map<FormatKey, number>();
+  rows.forEach((k, i) => pctByKey.set(k, rounded[i]));
 
   // Donut geometry
   const size = 88;
@@ -359,7 +376,13 @@ function FormatBreakdown({
 
   return (
     <div className="px-5 md:px-6 mt-5">
-      <div className="flex items-center gap-5 md:gap-6 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3.5">
+      <div
+        className="flex items-center gap-5 md:gap-6 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3.5"
+        role="img"
+        aria-label={`Distribuição de formatos em ${total} publicações: ${rows
+          .map((k) => `${byKey.get(k)?.count ?? 0} ${FORMAT_LEGEND_PT[k]} (${pctByKey.get(k) ?? 0}%)`)
+          .join(", ")}`}
+      >
         {/* Donut */}
         <div className="relative shrink-0" style={{ width: size, height: size }}>
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
@@ -376,7 +399,7 @@ function FormatBreakdown({
               const entry = byKey.get(k);
               const count = entry?.count ?? 0;
               if (count === 0) return null;
-              const share = count / postsAnalyzed;
+              const share = count / total;
               const arcLen = share * circumference;
               const dasharray = `${arcLen} ${circumference - arcLen}`;
               const dashoffset = -offsetAcc;
@@ -399,11 +422,8 @@ function FormatBreakdown({
             })}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-            <span className="text-[1.25rem] font-semibold text-content-primary tabular-nums">
-              {postsAnalyzed}
-            </span>
-            <span className="text-eyebrow-sm text-content-tertiary mt-1">
-              Publicações
+            <span className="text-[1.5rem] font-semibold text-content-primary tabular-nums">
+              {total}
             </span>
           </div>
         </div>
@@ -413,7 +433,7 @@ function FormatBreakdown({
           {rows.map((k) => {
             const entry = byKey.get(k);
             const count = entry?.count ?? 0;
-            const pct = postsAnalyzed > 0 ? Math.round((count / postsAnalyzed) * 100) : 0;
+            const pct = pctByKey.get(k) ?? 0;
             const isZero = count === 0;
             return (
               <Fragment key={k}>
@@ -431,7 +451,7 @@ function FormatBreakdown({
                     }}
                     aria-hidden="true"
                   />
-                  {FORMAT_SINGULAR_PT[k]}
+                  {FORMAT_LEGEND_PT[k]}
                 </span>
                 <span
                   className={`text-[13px] font-semibold tabular-nums text-right ${
