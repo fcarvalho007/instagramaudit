@@ -43,8 +43,13 @@ export function FunnelSection() {
           reason="O funil mostra-se a zero porque ainda não existem visitantes registados nem checkout ligado. Liga EuPago/Stripe para passar a contabilizar leads → clientes em tempo real."
         />
       )}
-      <AdminCard className="!p-10">
-        <FunnelDiagram data={data} />
+      <AdminCard className="!p-4 sm:!p-10">
+        <div className="hidden sm:block">
+          <FunnelDiagram data={data} />
+        </div>
+        <div className="sm:hidden">
+          <FunnelStackedMobile data={data} />
+        </div>
       </AdminCard>
 
       <AdminCard>
