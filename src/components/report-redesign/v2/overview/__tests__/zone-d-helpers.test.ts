@@ -41,31 +41,31 @@ describe("getFrequencyHeadline", () => {
 // ─── getFrequencyVerdict ────────────────────────────────────────────
 
 describe("getFrequencyVerdict", () => {
-  it("returns strong cadence for score >= 90", () => {
-    const v = getFrequencyVerdict(95);
+  it("returns strong cadence for score >= 70 (aligned with status 'Alta')", () => {
+    const v = getFrequencyVerdict(75);
     expect(v.strong).toContain("forte");
   });
 
-  it("returns acceptable cadence for score 50-89", () => {
-    const v = getFrequencyVerdict(78);
+  it("returns acceptable cadence for score 40-69 (aligned with status 'Média')", () => {
+    const v = getFrequencyVerdict(55);
     expect(v.strong).toContain("aceitável");
   });
 
-  it("returns irregular cadence for score < 50", () => {
+  it("returns irregular cadence for score < 40 (aligned with status 'Baixa')", () => {
     const v = getFrequencyVerdict(30);
     expect(v.strong).toContain("irregular");
   });
 
-  it("boundary: score 90 is strong", () => {
-    expect(getFrequencyVerdict(90).strong).toContain("forte");
+  it("boundary: score 70 is strong", () => {
+    expect(getFrequencyVerdict(70).strong).toContain("forte");
   });
 
-  it("boundary: score 50 is acceptable", () => {
-    expect(getFrequencyVerdict(50).strong).toContain("aceitável");
+  it("boundary: score 40 is acceptable", () => {
+    expect(getFrequencyVerdict(40).strong).toContain("aceitável");
   });
 
-  it("boundary: score 49 is irregular", () => {
-    expect(getFrequencyVerdict(49).strong).toContain("irregular");
+  it("boundary: score 39 is irregular", () => {
+    expect(getFrequencyVerdict(39).strong).toContain("irregular");
   });
 });
 
