@@ -29,6 +29,10 @@ import {
   isAllowed as isDfsAllowed,
 } from "@/lib/security/dataforseo-allowlist";
 import { isOpenAiAllowed } from "@/lib/security/openai-allowlist";
+import {
+  assertOpenAiDailyBudgetAvailable,
+  OpenAiBudgetExceededError,
+} from "@/lib/security/openai-budget.server";
 import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
 import {
   buildPersistedSummary,
@@ -327,6 +331,17 @@ async function runInsightsV1(
     if (!isOpenAiAllowed(ctx.profile.username)) {
       return { ok: true, payloadPatch: null };
     }
+    try {
+      await assertOpenAiDailyBudgetAvailable();
+    } catch (err) {
+      if (err instanceof OpenAiBudgetExceededError) {
+        console.warn(`${LOG} insights_v1 skipped — daily OpenAI budget exhausted`, {
+          spent: err.spentUsd, cap: err.capUsd,
+        });
+        return { ok: true, payloadPatch: null };
+      }
+      throw err;
+    }
     // Skip if already present
     if (ctx.previousPayload.ai_insights_v1) {
       console.info(`${LOG} insights_v1 already present — skipping`);
@@ -363,6 +378,17 @@ async function runInsightsV2(
   try {
     if (!isOpenAiAllowed(ctx.profile.username)) {
       return { ok: true, payloadPatch: null };
+    }
+    try {
+      await assertOpenAiDailyBudgetAvailable();
+    } catch (err) {
+      if (err instanceof OpenAiBudgetExceededError) {
+        console.warn(`${LOG} insights_v2 skipped — daily OpenAI budget exhausted`, {
+          spent: err.spentUsd, cap: err.capUsd,
+        });
+        return { ok: true, payloadPatch: null };
+      }
+      throw err;
     }
     if (ctx.previousPayload.ai_insights_v2) {
       console.info(`${LOG} insights_v2 already present — skipping`);
@@ -401,6 +427,17 @@ async function runVisualCover(
   try {
     if (!isOpenAiAllowed(ctx.profile.username)) {
       return { ok: true, payloadPatch: null };
+    }
+    try {
+      await assertOpenAiDailyBudgetAvailable();
+    } catch (err) {
+      if (err instanceof OpenAiBudgetExceededError) {
+        console.warn(`${LOG} visual_cover skipped — daily OpenAI budget exhausted`, {
+          spent: err.spentUsd, cap: err.capUsd,
+        });
+        return { ok: true, payloadPatch: null };
+      }
+      throw err;
     }
     // Skip if already present
     const existing = ctx.previousPayload.visual_cover_analysis;
@@ -459,6 +496,17 @@ async function runCaptionSemantic(
   try {
     if (!isOpenAiAllowed(ctx.profile.username)) {
       return { ok: true, payloadPatch: null };
+    }
+    try {
+      await assertOpenAiDailyBudgetAvailable();
+    } catch (err) {
+      if (err instanceof OpenAiBudgetExceededError) {
+        console.warn(`${LOG} caption_semantic skipped — daily OpenAI budget exhausted`, {
+          spent: err.spentUsd, cap: err.capUsd,
+        });
+        return { ok: true, payloadPatch: null };
+      }
+      throw err;
     }
     // Skip if already present
     const existing = ctx.previousPayload.caption_semantic_analysis;

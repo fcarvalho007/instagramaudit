@@ -1092,6 +1092,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               "[analyze-public-v1] upstream error",
               err.status,
               err.message,
+              err.code,
+              err.runId ?? null,
             );
             if (err.status === 404) {
               await logEvent({
