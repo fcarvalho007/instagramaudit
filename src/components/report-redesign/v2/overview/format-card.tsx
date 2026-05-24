@@ -10,6 +10,8 @@
  */
 import { Fragment, useState } from "react";
 import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { InsightCallout, type InsightTone } from "./insight-callout";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -38,13 +40,6 @@ export interface FormatCardProps {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-const FORMAT_PT: Record<FormatKey, string> = {
-  Carousels: "carrosséis",
-  Reels: "reels",
-  Imagens: "imagens",
-  Video: "vídeos",
-};
-
 const TYPE_TO_FORMAT_KEY: Record<string, FormatKey> = {
   carousel: "Carousels",
   reel: "Reels",
@@ -67,33 +62,44 @@ const FORMAT_HEX: Record<FormatKey, string> = {
   Video: "#7DD3FC",     // sky-300
 };
 
-const FORMAT_LEGEND_PT: Record<FormatKey, string> = {
-  Carousels: "Carrosséis",
-  Reels: "Reels",
-  Imagens: "Imagens",
-  Video: "Vídeos",
-};
-
 const BREAKDOWN_ORDER: FormatKey[] = ["Carousels", "Reels", "Imagens"];
 
-const TYPE_PT: Record<string, string> = {
-  carousel: "carrossel",
-  reel: "reel",
-  image: "imagem",
-  video: "vídeo",
-  unknown: "post",
-};
+function tFormatPlural(t: TFunction, key: FormatKey): string {
+  return t(`format.names_plural.${key}`);
+}
+function tFormatLegend(t: TFunction, key: FormatKey): string {
+  return t(`format.names_legend.${key}`);
+}
+function tTypeSingular(t: TFunction, type: string): string {
+  return t(`format.types_singular.${type}` as const, { defaultValue: type });
+}
 
 export function getFormatHeadline(formats: FormatEntry[]): string {
+  // Legacy export kept for tests; production component uses t() variant below.
   if (!formats.length) return "Sem dados de formato";
   const sorted = [...formats].sort((a, b) => b.sharePct - a.sharePct);
   const top = sorted[0];
-  const label = FORMAT_PT[top.format] ?? top.format;
+  const labelMap: Record<FormatKey, string> = {
+    Carousels: "carrosséis", Reels: "reels", Imagens: "imagens", Video: "vídeos",
+  };
+  const label = labelMap[top.format] ?? top.format;
   const capitalised = label.charAt(0).toUpperCase() + label.slice(1);
   if (top.sharePct >= 80) return `Apenas ${label}`;
   if (top.sharePct >= 60) return `${capitalised} dominam`;
   if (top.sharePct >= 40) return "Mistura equilibrada";
   return "Formato pouco definido";
+}
+
+function getFormatHeadlineT(formats: FormatEntry[], t: TFunction): string {
+  if (!formats.length) return t("format.headline.no_data");
+  const sorted = [...formats].sort((a, b) => b.sharePct - a.sharePct);
+  const top = sorted[0];
+  const label = tFormatPlural(t, top.format);
+  const capitalised = label.charAt(0).toUpperCase() + label.slice(1);
+  if (top.sharePct >= 80) return t("format.headline.only", { label });
+  if (top.sharePct >= 60) return t("format.headline.dominate", { label: capitalised });
+  if (top.sharePct >= 40) return t("format.headline.balanced");
+  return t("format.headline.undefined");
 }
 
 /** Variation status for the new editorial headline */
@@ -107,15 +113,25 @@ export function getFormatVariationStatus(formats: FormatEntry[]): string {
   return "Variado";
 }
 
-/** Build the dynamic subtitle: "Carrosséis mais frequentes · 8 em cada 12 são carrosséis · 4 são reels" */
-function buildSubtitleLine(formats: FormatEntry[], postsAnalyzed: number): string {
+function buildSubtitleLineT(
+  formats: FormatEntry[],
+  postsAnalyzed: number,
+  t: TFunction,
+): string {
   const sorted = [...formats].filter((f) => f.count > 0).sort((a, b) => b.count - a.count);
-  if (!sorted.length) return `${postsAnalyzed} publicações analisadas`;
-  const topLabel = FORMAT_PT[sorted[0].format] ?? sorted[0].format;
+  if (!sorted.length) return t("format.subtitle.no_data", { count: postsAnalyzed });
+  const topLabel = tFormatPlural(t, sorted[0].format);
   const capitalised = topLabel.charAt(0).toUpperCase() + topLabel.slice(1);
-  let line = `${capitalised} mais frequentes · ${sorted[0].count} em cada ${postsAnalyzed} são ${topLabel}`;
+  let line = t("format.subtitle.leader", {
+    label: capitalised,
+    topCount: sorted[0].count,
+    total: postsAnalyzed,
+    topLower: topLabel,
+  });
   if (sorted.length > 1) {
-    const rest = sorted.slice(1).map((f) => `${f.count} são ${FORMAT_PT[f.format] ?? f.format}`);
+    const rest = sorted.slice(1).map((f) =>
+      t("format.subtitle.extra", { count: f.count, label: tFormatPlural(t, f.format) }),
+    );
     line += ` · ${rest.join(" · ")}`;
   }
   return line;
@@ -133,38 +149,21 @@ export function toDominantKey(format: string, share: number): DominantKey {
 }
 
 export function getFormatVerdict(dk: DominantKey): { strong: string; rest: string } {
-  if (dk === "carousel") {
-    return {
-      strong: "Foco em conteúdo para guardar.",
-      rest: "Carrosséis funcionam para ensinar, listar e organizar ideias.",
-    };
-  }
-  if (dk === "reel") {
-    return {
-      strong: "Foco em alcance e descoberta.",
-      rest: "Reels funcionam para entrar em novas audiências.",
-    };
-  }
-  if (dk === "image") {
-    return {
-      strong: "Foco em comunicação direta.",
-      rest: "Imagens funcionam para mensagens claras e momentos.",
-    };
-  }
-  return {
-    strong: "Mix variado.",
-    rest: "Diferentes formatos servem objetivos diferentes — as próximas secções mostram onde cada formato rende mais.",
+  // Legacy export — kept for tests. Component uses tVerdict() below.
+  const map: Record<DominantKey, { strong: string; rest: string }> = {
+    carousel: { strong: "Foco em conteúdo para guardar.", rest: "Carrosséis funcionam para ensinar, listar e organizar ideias." },
+    reel: { strong: "Foco em alcance e descoberta.", rest: "Reels funcionam para entrar em novas audiências." },
+    image: { strong: "Foco em comunicação direta.", rest: "Imagens funcionam para mensagens claras e momentos." },
+    mixed: { strong: "Mix variado.", rest: "Diferentes formatos servem objetivos diferentes — as próximas secções mostram onde cada formato rende mais." },
   };
+  return map[dk];
 }
 
-function buildStatsLine(formats: FormatEntry[], postsAnalyzed: number): string {
-  const sorted = [...formats].filter((f) => f.count > 0).sort((a, b) => b.count - a.count);
-  if (!sorted.length) return `${postsAnalyzed} publicações analisadas`;
-  const parts = sorted.map((f) => `${f.count} são ${FORMAT_PT[f.format] ?? f.format}`);
-  if (parts.length <= 1) {
-    return `${sorted[0].count} em cada ${postsAnalyzed} são ${FORMAT_PT[sorted[0].format]}`;
-  }
-  return `${sorted[0].count} em cada ${postsAnalyzed} são ${FORMAT_PT[sorted[0].format]} · ${parts.slice(1).join(" · ")}`;
+function tVerdict(dk: DominantKey, t: TFunction): { strong: string; rest: string } {
+  return {
+    strong: t(`format.verdict.${dk}.strong`),
+    rest: t(`format.verdict.${dk}.rest`),
+  };
 }
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -176,22 +175,37 @@ export function FormatCard({
   formats,
   analysedPostFormats,
 }: FormatCardProps) {
-  const headline = getFormatHeadline(formats);
-  const variationStatus = getFormatVariationStatus(formats);
-  const subtitleLine = buildSubtitleLine(formats, postsAnalyzed);
+  const { t } = useTranslation("report");
+  // Headline kept for legacy reasons (export) but render uses t() version.
+  void getFormatHeadline(formats);
+  const variationKey: "varied_high" | "varied" | "low" = (() => {
+    if (!formats.length) return "low";
+    const sorted = [...formats].sort((a, b) => b.sharePct - a.sharePct);
+    const top = sorted[0];
+    const meaningful = sorted.filter((f) => f.count > 0);
+    if (top.sharePct >= 60) return "low";
+    if (meaningful.length >= 3 || top.sharePct < 40) return "varied_high";
+    return "varied";
+  })();
+  const variationStatus = t(`format.variation.${variationKey}`);
+  const subtitleLine = buildSubtitleLineT(formats, postsAnalyzed, t);
   const dk = toDominantKey(dominantFormat, dominantFormatShare);
-  const verdict = getFormatVerdict(dk);
-  const statsLine = buildStatsLine(formats, postsAnalyzed);
+  const verdict = tVerdict(dk, t);
+  const headlineDerived = getFormatHeadlineT(formats, t);
+  void headlineDerived;
   // Determine callout tone based on format variation
   const calloutTone: InsightTone =
-    variationStatus === "Muito variado" ? "positive"
-    : variationStatus === "Variado" ? "neutral"
+    variationKey === "varied_high" ? "positive"
+    : variationKey === "varied" ? "neutral"
     : dk === "mixed" ? "neutral"
     : "warning";
-  const calloutLabel =
-    calloutTone === "positive" ? "PONTO FORTE"
-    : calloutTone === "warning" ? "A MELHORAR"
-    : "DIAGNÓSTICO";
+  const calloutLabel = t(
+    calloutTone === "positive"
+      ? "format.verdict_label.strong"
+      : calloutTone === "warning"
+        ? "format.verdict_label.improve"
+        : "format.verdict_label.neutral",
+  );
 
   // Build thumbnails from literal per-post data, grouped by dominant format first
   const sortedFormats = [...formats].filter((f) => f.count > 0).sort((a, b) => b.count - a.count);
@@ -208,8 +222,11 @@ export function FormatCard({
   });
 
   // Aria label
-  const ariaFormatParts = sortedFormats.map((f) => `${f.count} ${FORMAT_PT[f.format]}`);
-  const ariaLabel = `Distribuição dos ${postsAnalyzed} posts analisados: ${ariaFormatParts.join(" e ")}`;
+  const ariaFormatParts = sortedFormats.map((f) => `${f.count} ${tFormatPlural(t, f.format)}`);
+  const ariaLabel = t("format.aria_distribution", {
+    count: postsAnalyzed,
+    parts: ariaFormatParts.join(", "),
+  });
 
   const activeFormats = sortedFormats;
 
@@ -219,14 +236,14 @@ export function FormatCard({
       <div className="px-5 md:px-6 pt-6 md:pt-8 space-y-2.5">
         <div className="flex items-start gap-3">
           <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
-            Formato{" "}
+            {t("format.title")}{" "}
             <span
               className="font-semibold"
               style={{
                 borderBottom: `2px solid ${
-                  variationStatus === "Muito variado"
+                  variationKey === "varied_high"
                     ? "rgba(29,158,117,0.50)"
-                    : variationStatus === "Variado"
+                    : variationKey === "varied"
                       ? "rgba(37,99,217,0.40)"
                       : "rgba(217,119,6,0.50)"
                 }`,
@@ -243,13 +260,13 @@ export function FormatCard({
       </div>
 
       {/* Breakdown — donut + legend */}
-      <FormatBreakdown formats={formats} postsAnalyzed={postsAnalyzed} />
+      <FormatBreakdown formats={formats} postsAnalyzed={postsAnalyzed} t={t} />
 
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
         <div className="px-5 md:px-6 mt-6">
           <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-1.5">
-            {postsAnalyzed} posts analisados
+            {t("format.analyzed_count", { count: postsAnalyzed })}
           </span>
           <div
             role="img"
@@ -263,11 +280,11 @@ export function FormatCard({
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
               const style = FORMAT_STYLE[fk] ?? FORMAT_STYLE.unknown;
               const Icon = style.icon;
-              const label = TYPE_PT[post.type] ?? post.type;
+              const label = tTypeSingular(t, post.type);
               return (
                 <span
                   key={`${post.date}-${idx}`}
-                  title={`${label} · ${post.date}`}
+                  title={t("format.thumb_aria", { label, date: post.date })}
                   className="relative rounded-[4px] overflow-hidden bg-slate-50 border border-border-subtle/40"
                   style={{ aspectRatio: "3/4" }}
                 >
@@ -295,7 +312,7 @@ export function FormatCard({
               return (
                 <span key={f.format} className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
                   <span className={`size-[7px] rounded-full ${style.dot} shrink-0`} aria-hidden="true" />
-                  {FORMAT_PT[f.format]} ({f.count})
+                  {tFormatPlural(t, f.format)} ({f.count})
                 </span>
               );
             })}
@@ -335,10 +352,13 @@ function PostThumb({ src, alt }: { src: string; alt: string }) {
 function FormatBreakdown({
   formats,
   postsAnalyzed,
+  t,
 }: {
   formats: FormatEntry[];
   postsAnalyzed: number;
+  t: TFunction;
 }) {
+  void postsAnalyzed;
   const byKey = new Map<FormatKey, FormatEntry>();
   formats.forEach((f) => byKey.set(f.format, f));
 
@@ -379,9 +399,18 @@ function FormatBreakdown({
       <div
         className="flex items-center gap-5 md:gap-6 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3.5"
         role="img"
-        aria-label={`Distribuição de formatos em ${total} publicações: ${rows
-          .map((k) => `${byKey.get(k)?.count ?? 0} ${FORMAT_LEGEND_PT[k]} (${pctByKey.get(k) ?? 0}%)`)
-          .join(", ")}`}
+        aria-label={t("format.aria_breakdown", {
+          total,
+          parts: rows
+            .map((k) =>
+              t("format.breakdown_part", {
+                count: byKey.get(k)?.count ?? 0,
+                label: tFormatLegend(t, k),
+                pct: pctByKey.get(k) ?? 0,
+              }),
+            )
+            .join(", "),
+        })}
       >
         {/* Donut */}
         <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -451,7 +480,7 @@ function FormatBreakdown({
                     }}
                     aria-hidden="true"
                   />
-                  {FORMAT_LEGEND_PT[k]}
+                  {tFormatLegend(t, k)}
                 </span>
                 <span
                   className={`text-[15px] font-semibold tabular-nums text-right ${
