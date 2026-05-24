@@ -1,5 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { VariantFeatures } from "@/lib/report/report-variant";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Eye,
   Stethoscope,
@@ -96,3 +98,22 @@ export const BLOCKS: readonly BlockConfig[] = [
     featureKey: "blockBenchmark",
   },
 ] as const;
+
+/**
+ * Returns a localized copy of BLOCKS using the report namespace. Keeps
+ * icon/id/featureKey from the static config and overrides text fields.
+ */
+export function useBlocks(): readonly BlockConfig[] {
+  const { t } = useTranslation("report");
+  return useMemo(() => {
+    return BLOCKS.map((b) => ({
+      ...b,
+      shortLabel: t(`blocks.${b.id}.short`, { defaultValue: b.shortLabel }),
+      question: t(`blocks.${b.id}.question`, { defaultValue: b.question }),
+      subtitle: t(`blocks.${b.id}.subtitle`, { defaultValue: b.subtitle }),
+      eyebrowOverride: b.eyebrowOverride
+        ? t(`blocks.${b.id}.eyebrow`, { defaultValue: b.eyebrowOverride })
+        : undefined,
+    }));
+  }, [t]);
+}
