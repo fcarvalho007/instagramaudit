@@ -100,37 +100,29 @@ export async function sendLeadMagnetSequence(
     return { welcome: "skipped_disabled", summary: "skipped_no_data" };
   }
 
-  // Consent gate (defesa em profundidade): mesmo com o kill-switch ON, só
-  // enviamos a sequência lead-magnet (welcome + summary) a leads que
-  // marcaram explicitamente `marketing_consent = true`. Os emails
-  // puramente transacionais não passam por aqui.
+  // Marketing-consent lookup (NÃO bloqueia entrega).
+  //
+  // A sequência lead-magnet é transacional: o utilizador pediu o relatório
+  // ao desbloquear, deu consentimento GDPR e espera receber o email com o
+  // resumo. Só o kill-switch acima pode bloquear.
+  //
+  // O valor de `marketing_consent` é apenas usado para enriquecer metadata
+  // dos eventos product_events (`transactional_delivery: true,
+  // marketing_consent: <bool>`), permitindo segmentação/auditoria
+  // posterior sem partir a entrega.
+  let marketingConsent = false;
   try {
     const { data: leadRow } = await (supabaseAdmin as any)
       .from("leads")
       .select("marketing_consent")
       .eq("id", args.leadId)
       .maybeSingle();
-    if (leadRow?.marketing_consent !== true) {
-      try {
-        await recordProductEvent({
-          eventType: "lead_magnet_sequence_skipped" as any,
-          leadId: args.leadId,
-          snapshotId: args.snapshotId,
-          handle: args.instagramHandle,
-          metadata: {
-            report_request_id: args.reportRequestId,
-            reason: "NO_MARKETING_CONSENT",
-          },
-        });
-      } catch (err) {
-        console.error("[lead-magnet] failed to record consent-skip event:", err);
-      }
-      return { welcome: "skipped_disabled", summary: "skipped_no_data" };
-    }
+    marketingConsent = leadRow?.marketing_consent === true;
   } catch (err) {
-    // Fail-closed: se não conseguimos confirmar consent, não enviamos.
-    console.error("[lead-magnet] consent lookup failed, skipping send:", err);
-    return { welcome: "skipped_disabled", summary: "skipped_no_data" };
+    // Fail-open: se não conseguimos confirmar consent, assumimos false
+    // (entrega transacional continua).
+    console.error("[lead-magnet] consent lookup failed (continuing transactional):", err);
+    marketingConsent = false;
   }
 
   // ---------- 1. welcome-beta ----------
@@ -167,6 +159,8 @@ export async function sendLeadMagnetSequence(
               message_id: res.messageId,
               provider: res.provider,
               report_request_id: args.reportRequestId,
+              transactional_delivery: true,
+              marketing_consent: marketingConsent,
             },
           });
 
@@ -252,6 +246,8 @@ export async function sendLeadMagnetSequence(
             message_id: res.messageId,
             provider: res.provider,
             report_request_id: args.reportRequestId,
+            transactional_delivery: true,
+            marketing_consent: marketingConsent,
           },
         });
       } else if (res.reason === "NO_DATA" || res.reason === "NO_SNAPSHOT_ID") {
