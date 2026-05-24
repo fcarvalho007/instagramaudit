@@ -1021,6 +1021,7 @@ function SuccessStep({
 }) {
   void email;
   void returningLead;
+  const { t } = useTranslation("gate");
   return (
     <div>
       <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-8">
@@ -1033,30 +1034,33 @@ function SuccessStep({
             <CheckCircle2 className="size-5 text-white" aria-hidden />
           </div>
           <p className="text-eyebrow-sm text-emerald-700">
-            RELATÓRIO ASSOCIADO{firstName ? ` · OBRIGADO ${firstName.toUpperCase()}` : ""}
+            {t("unlock.success.eyebrowAssoc")}
+            {firstName
+              ? ` · ${t("unlock.success.eyebrowThanks", { name: firstName.toUpperCase() })}`
+              : ""}
           </p>
           <h2 className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            Relatório{" "}
+            {t("unlock.success.titlePrefix")}{" "}
             <em className="not-italic font-display italic text-emerald-600">
-              desbloqueado
+              {t("unlock.success.titleEm")}
             </em>
           </h2>
           <p className="text-[13px] text-content-secondary leading-relaxed">
-            O relatório ficou associado ao email indicado para poderes voltar a consultá-lo mais tarde.
+            {t("unlock.success.subtitle")}
           </p>
         </div>
       </div>
 
       <div className="px-6 sm:px-8 py-6 space-y-5">
         <ul className="space-y-2">
-          {UNLOCKED_ITEMS.map((label) => (
+          {UNLOCKED_ITEM_KEYS.map((key) => (
             <li
-              key={label}
+              key={key}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-emerald-50/70 border-emerald-200/70"
             >
               <Check className="size-4 text-emerald-600 shrink-0" aria-hidden />
               <span className="text-[13px] text-content-primary flex-1">
-                {label}
+                {t(`unlock.success.items.${key}`)}
               </span>
             </li>
           ))}
@@ -1068,10 +1072,10 @@ function SuccessStep({
             className="w-full rounded-lg font-medium mt-4"
             onClick={onClose}
           >
-            Ver relatório gratuito agora  →
+            {t("unlock.success.cta")}
           </Button>
           <p className="text-xs text-content-tertiary text-center">
-            Este relatório foi associado diretamente à tua conta.
+            {t("unlock.success.footnote")}
           </p>
         </div>
       </div>
@@ -1092,6 +1096,7 @@ function WelcomeBackState({
   onContinue: () => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation("gate");
   return (
     <div className="space-y-6">
       <div className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
@@ -1099,14 +1104,14 @@ function WelcomeBackState({
       </div>
       <DialogHeader className="text-left space-y-2">
         <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-          Bem-vindo de{" "}
+          {t("unlock.welcomeBack.titlePrefix")}{" "}
           <em className="not-italic font-display italic text-emerald-600">
-            volta
+            {t("unlock.welcomeBack.titleEm")}
           </em>
           {firstName ? `, ${firstName}` : ""}
         </DialogTitle>
         <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-          Podes voltar a consultar este relatório na tua área pessoal.
+          {t("unlock.welcomeBack.subtitle")}
         </DialogDescription>
       </DialogHeader>
 
@@ -1126,7 +1131,7 @@ function WelcomeBackState({
           className="flex-shrink-0 rounded-lg"
         >
           <ArrowLeft className="size-4" aria-hidden />
-          Voltar
+          {t("unlock.back")}
         </Button>
         <Button
           type="button"
@@ -1138,10 +1143,10 @@ function WelcomeBackState({
           {submitting ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden />
-              A desbloquear…
+              {t("unlock.unlocking")}
             </>
           ) : (
-            "Continuar"
+            t("unlock.continue").replace(/\s*→\s*$/, "")
           )}
         </Button>
       </div>
