@@ -1,5 +1,6 @@
 import { AlertCircle, ArrowLeft, RotateCcw } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
@@ -20,6 +21,7 @@ export function AnalysisErrorState({
   errorCode,
   onRetry,
 }: AnalysisErrorStateProps) {
+  const { t } = useTranslation("analyze");
   const isCacheOnly = errorCode?.toUpperCase() === "CACHE_ONLY_NO_DATA";
 
   return (
@@ -31,19 +33,15 @@ export function AnalysisErrorState({
           </div>
           <div className="space-y-2">
             <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
-              Análise indisponível
+              {t("error.eyebrow")}
             </span>
             <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
-              {isCacheOnly
-                ? CACHE_ONLY_HEADING
-                : "Não foi possível concluir a análise"}
+              {isCacheOnly ? t("error.cacheOnly.title") : t("error.title")}
             </h1>
             <p className="font-sans text-sm text-content-secondary leading-relaxed">
               {isCacheOnly
-                ? CACHE_ONLY_BODY
-                : (message ??
-                "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes."
-              )}
+                ? t("error.cacheOnly.body")
+                : (message ?? t("error.fallback"))}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -53,7 +51,7 @@ export function AnalysisErrorState({
               leftIcon={<RotateCcw />}
               onClick={onRetry}
             >
-              Tentar novamente
+              {t("error.retry")}
             </Button>
             {isCacheOnly && (
               <Button
@@ -62,7 +60,7 @@ export function AnalysisErrorState({
                 leftIcon={<ArrowLeft />}
                 asChild
               >
-                <Link to="/">Voltar ao início</Link>
+                <Link to="/">{t("error.back")}</Link>
               </Button>
             )}
           </div>
