@@ -123,6 +123,10 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           postingFrequencyWeekly={k.postingFrequencyWeekly}
           followers={result.data.profile.followers}
           postsAnalyzed={k.postsAnalyzed}
+          averageLikes={payload?.content_summary?.average_likes ?? undefined}
+          averageComments={
+            payload?.content_summary?.average_comments ?? avgComments
+          }
         />
       )}
 
