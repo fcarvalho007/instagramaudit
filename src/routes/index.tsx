@@ -64,8 +64,12 @@ function Home() {
         </Container>
       </section>
       <SocialProofSection />
-      <HowItWorksSection />
-      <ProductPreviewSection />
+      <div id="como-funciona" style={{ scrollMarginTop: "5rem" }}>
+        <HowItWorksSection />
+      </div>
+      <div id="exemplos" style={{ scrollMarginTop: "5rem" }}>
+        <ProductPreviewSection />
+      </div>
 
       {/* Dev/admin: acesso rápido aos reports — só visível em desenvolvimento */}
       {import.meta.env.DEV && (
