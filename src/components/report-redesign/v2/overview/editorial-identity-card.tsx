@@ -565,3 +565,121 @@ function BulletColumn({
     </div>
   );
 }
+
+/* ── Metrics Strip ─────────────────────────────────────────────────── */
+
+function commentsBand(avg: number): "low" | "medium" | "active" {
+  if (avg >= 5) return "active";
+  if (avg >= 1) return "medium";
+  return "low";
+}
+
+function rhythmBand(ppw: number): "excess" | "good" | "low" {
+  if (ppw > 7) return "excess";
+  if (ppw >= 1) return "good";
+  return "low";
+}
+
+function formatDecimal(value: number, locale: string, digits = 1): string {
+  const sep = locale.startsWith("pt") ? "," : ".";
+  return value.toFixed(digits).replace(".", sep);
+}
+
+function MetricsStrip({
+  averageLikes,
+  averageComments,
+  postingFrequencyWeekly,
+  followers,
+  t,
+  locale,
+}: {
+  averageLikes?: number;
+  averageComments?: number;
+  postingFrequencyWeekly?: number;
+  followers?: number;
+  t: TFunction;
+  locale: string;
+}) {
+  const items: Array<{
+    key: string;
+    icon: typeof Heart;
+    label: string;
+    value: string;
+    unit: string;
+    subtitle: string;
+  }> = [];
+
+  if (typeof averageLikes === "number" && averageLikes >= 0) {
+    const subtitle =
+      typeof followers === "number" && followers > 0
+        ? t("identity.metrics.likes_subtitle", {
+            pct: formatDecimal((averageLikes / followers) * 100, locale, 2),
+          })
+        : t("identity.metrics.likes_subtitle_na");
+    items.push({
+      key: "likes",
+      icon: Heart,
+      label: t("identity.metrics.likes_label"),
+      value: formatCompactNumber(Math.round(averageLikes), locale),
+      unit: t("identity.metrics.per_post"),
+      subtitle,
+    });
+  }
+
+  if (typeof averageComments === "number" && averageComments >= 0) {
+    const band = commentsBand(averageComments);
+    items.push({
+      key: "comments",
+      icon: MessageCircle,
+      label: t("identity.metrics.comments_label"),
+      value: formatCompactNumber(Math.round(averageComments), locale),
+      unit: t("identity.metrics.per_post"),
+      subtitle: t(`identity.metrics.comments_${band}`),
+    });
+  }
+
+  if (typeof postingFrequencyWeekly === "number" && postingFrequencyWeekly >= 0) {
+    const band = rhythmBand(postingFrequencyWeekly);
+    items.push({
+      key: "rhythm",
+      icon: CalendarDays,
+      label: t("identity.metrics.rhythm_label"),
+      value: formatDecimal(postingFrequencyWeekly, locale, 1),
+      unit: t("identity.metrics.per_week"),
+      subtitle: t(`identity.metrics.rhythm_${band}`),
+    });
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {items.map((it) => {
+        const Icon = it.icon;
+        return (
+          <div
+            key={it.key}
+            className="rounded-xl border border-border-default bg-surface-muted px-4 py-3.5"
+          >
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Icon
+                className="h-3.5 w-3.5 text-accent-primary"
+                aria-hidden="true"
+              />
+              <span className="text-eyebrow-sm text-content-tertiary">
+                {it.label}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-sans text-xl font-semibold tabular-nums text-content-primary leading-none">
+                {it.value}
+              </span>
+              <span className="text-sm text-content-secondary">{it.unit}</span>
+            </div>
+            <p className="mt-1 text-xs text-content-tertiary">{it.subtitle}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
