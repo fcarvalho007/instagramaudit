@@ -1,20 +1,18 @@
+import { useTranslation } from "react-i18next";
+
 import { Container } from "@/components/layout/container";
 import { BrandMark } from "@/components/layout/brand-mark";
 
-/**
- * Footer institucional minimal. Removidas as colunas comerciais
- * (Produto/Recursos) que duplicavam navegação do header e do bloco
- * final do relatório. Mantemos brand + links institucionais.
- */
-const INSTITUTIONAL_LINKS = [
-  { label: "Contacto", href: "mailto:hello@instabench.pt" },
-  { label: "Privacidade", href: "/privacidade" },
-  { label: "Termos", href: "/termos" },
-  { label: "Aviso legal", href: "/aviso-legal" },
-  { label: "Cookies", href: "/cookies" },
-];
-
 function Footer() {
+  const { t } = useTranslation("footer");
+  const links = [
+    { label: t("links.contact"), href: "mailto:hello@instabench.pt" },
+    { label: t("links.privacy"), href: "/privacidade" },
+    { label: t("links.terms"), href: "/termos" },
+    { label: t("links.legal_notice"), href: "/aviso-legal" },
+    { label: t("links.cookies"), href: "/cookies" },
+  ];
+  const year = new Date().getFullYear();
   return (
     <footer className="bg-surface-secondary border-t border-border-subtle py-12 md:py-14">
       <Container size="xl">
@@ -27,14 +25,14 @@ function Footer() {
                 InstaBench
               </p>
               <p className="font-sans text-xs text-content-tertiary leading-snug">
-                Benchmarking de Instagram, claro e auditável.
+                {t("tagline")}
               </p>
             </div>
           </div>
 
           {/* Links institucionais em linha */}
           <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {INSTITUTIONAL_LINKS.map((link) => (
+            {links.map((link) => (
               <li key={link.href}>
                 <a
                   href={link.href}
@@ -49,7 +47,7 @@ function Footer() {
 
         <div className="mt-8 pt-6 border-t border-border-subtle">
           <p className="font-sans text-xs text-content-tertiary text-center md:text-left">
-            © 2026 InstaBench. Todos os direitos reservados.
+            {t("copyright", { year })}
           </p>
         </div>
       </Container>

@@ -1,0 +1,11 @@
+{
+  "tagline": "Benchmarking de Instagram, claro e auditável.",
+  "links": {
+    "contact": "Contacto",
+    "privacy": "Privacidade",
+    "terms": "Termos",
+    "legal_notice": "Aviso legal",
+    "cookies": "Cookies"
+  },
+  "copyright": "© {{year}} InstaBench. Todos os direitos reservados."
+}
