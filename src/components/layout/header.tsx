@@ -2,11 +2,14 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Link } from "@tanstack/react-router";
 import { Menu, Moon, X, ArrowRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { BrandMark } from "@/components/layout/brand-mark";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { useAuthSession } from "@/hooks/use-auth-session";
 
 function useScrollPast(threshold: number) {
   const [past, setPast] = React.useState(false);
@@ -23,13 +26,15 @@ function useScrollPast(threshold: number) {
   return past;
 }
 
-const NAV_ITEMS: { label: string; href: string }[] = [
-  { label: "Analisar", href: "/" },
-];
-
 function Header() {
   const scrolled = useScrollPast(40);
   const [open, setOpen] = React.useState(false);
+  const { t } = useTranslation("header");
+  const { session, loading } = useAuthSession();
+
+  const navItems: { labelKey: string; href: string }[] = [
+    { labelKey: "nav.analyze", href: "/" },
+  ];
 
   return (
     <header
@@ -57,21 +62,21 @@ function Header() {
             >
               <span className="h-5 w-px bg-border-default" />
               <span className="text-eyebrow">
-                Instagram Benchmark
+                {t("brand_subtitle")}
               </span>
             </span>
           </Link>
 
           {/* Center: Nav (desktop) */}
-          <nav className="hidden lg:block" aria-label="Navegação principal">
+          <nav className="hidden lg:block" aria-label={t("aria.primary_nav")}>
             <ul className="flex items-center gap-8">
-              {NAV_ITEMS.map((item) => (
+              {navItems.map((item) => (
                 <li key={item.href}>
                   <a
                     href={item.href}
                     className="text-sm font-medium text-content-secondary hover:text-content-primary transition-colors duration-[150ms]"
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                   </a>
                 </li>
               ))}
@@ -80,9 +85,30 @@ function Header() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            <Button size="icon" aria-label="Mudar tema">
+            <LanguageSwitcher className="hidden sm:inline-flex" />
+
+            <Button size="icon" aria-label={t("aria.theme")}>
               <Moon />
             </Button>
+
+            {/* Auth link */}
+            {loading ? (
+              <span
+                aria-hidden="true"
+                className="hidden sm:inline-block h-9 w-[72px] rounded-md bg-surface-muted/60 animate-pulse"
+              />
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden sm:inline-flex"
+                asChild
+              >
+                <Link to={session ? "/app" : "/login"}>
+                  {session ? t("cta.account") : t("cta.login")}
+                </Link>
+              </Button>
+            )}
 
             <span data-header-cta="">
               <Button
@@ -91,7 +117,7 @@ function Header() {
                 className="hidden sm:inline-flex"
                 asChild
               >
-                <Link to="/">Analisar agora</Link>
+                <Link to="/">{t("cta.new_report")}</Link>
               </Button>
             </span>
 
@@ -100,7 +126,7 @@ function Header() {
               <DialogPrimitive.Trigger asChild>
                 <Button
                   size="icon"
-                  aria-label="Abrir menu"
+                  aria-label={t("aria.open_menu")}
                   className="lg:hidden"
                 >
                   <Menu />
@@ -121,18 +147,18 @@ function Header() {
                   }
                 >
                   <DialogPrimitive.Title className="sr-only">
-                    Menu de navegação
+                    {t("mobile.title_sr")}
                   </DialogPrimitive.Title>
                   <DialogPrimitive.Description className="sr-only">
-                    Navegação principal e ações da aplicação
+                    {t("mobile.description_sr")}
                   </DialogPrimitive.Description>
 
                   <div className="flex items-center justify-between px-6 h-16 border-b border-border-subtle">
                     <span className="font-display text-lg font-semibold tracking-tight text-content-primary">
-                      Menu
+                      {t("mobile.menu_title")}
                     </span>
                     <DialogPrimitive.Close asChild>
-                      <Button size="icon" aria-label="Fechar menu">
+                      <Button size="icon" aria-label={t("aria.close_menu")}>
                         <X />
                       </Button>
                     </DialogPrimitive.Close>
@@ -140,10 +166,10 @@ function Header() {
 
                   <nav
                     className="flex-1 overflow-y-auto px-6"
-                    aria-label="Navegação móvel"
+                    aria-label={t("aria.mobile_nav")}
                   >
                     <ul>
-                      {NAV_ITEMS.map((item) => (
+                      {navItems.map((item) => (
                         <li
                           key={item.href}
                           className="border-b border-border-subtle"
@@ -153,11 +179,27 @@ function Header() {
                             onClick={() => setOpen(false)}
                             className="block py-4 text-lg text-content-primary hover:text-accent-luminous transition-colors duration-[150ms]"
                           >
-                            {item.label}
+                            {t(item.labelKey)}
                           </a>
                         </li>
                       ))}
+                      <li className="border-b border-border-subtle">
+                        <Link
+                          to={session ? "/app" : "/login"}
+                          onClick={() => setOpen(false)}
+                          className="block py-4 text-lg text-content-primary hover:text-accent-luminous transition-colors duration-[150ms]"
+                        >
+                          {session ? t("cta.account") : t("cta.login")}
+                        </Link>
+                      </li>
                     </ul>
+
+                    <div className="mt-6 flex items-center justify-between gap-3">
+                      <span className="text-eyebrow-sm text-content-tertiary">
+                        {t("language.label")}
+                      </span>
+                      <LanguageSwitcher variant="full" />
+                    </div>
                   </nav>
 
                   <div className="p-6 border-t border-border-subtle">
@@ -169,7 +211,7 @@ function Header() {
                         onClick={() => setOpen(false)}
                         asChild
                       >
-                        <Link to="/">Analisar agora</Link>
+                        <Link to="/">{t("cta.new_report")}</Link>
                       </Button>
                     </span>
                   </div>
