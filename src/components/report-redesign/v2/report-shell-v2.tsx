@@ -444,36 +444,3 @@ function PerformanceLockedTeaser({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
-/**
- * Cópia local do banner beta para evitar editar `report-shell.tsx`
- * (locked). Reutiliza `BETA_COPY.feedback` — mesma copy, mesmo visual.
- */
-function BetaFeedbackBannerV2() {
-  const { feedback } = BETA_COPY;
-  return (
-    <section
-      aria-label="Feedback durante a fase beta"
-      className="w-full bg-surface-muted border-t border-border-default"
-    >
-      <div className="mx-auto max-w-[1520px] px-5 md:px-6 lg:px-8 py-10 md:py-12">
-        <div className="rounded-2xl border border-border-default bg-white p-6 md:p-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <div className="space-y-1.5 max-w-2xl">
-            <p className="text-eyebrow text-blue-600">
-              {feedback.eyebrow}
-            </p>
-            <p className="text-sm md:text-base text-content-secondary leading-relaxed">
-              {feedback.subtitle}
-            </p>
-          </div>
-          <a
-            href={feedback.action.href}
-            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-full bg-content-primary px-5 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-content-primary/90 min-h-[44px]"
-          >
-            {feedback.action.label}
-            <span aria-hidden="true">→</span>
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}
