@@ -902,6 +902,7 @@ function RadioCardField({
   twoColumns?: boolean;
   fullWidthValues?: string[];
 }) {
+  const { t } = useTranslation("gate");
   return (
     <fieldset className="space-y-3">
       {legend ? (
@@ -984,7 +985,9 @@ function RadioCardField({
                   <Input
                     autoFocus
                     maxLength={80}
-                    placeholder={otherPlaceholder ?? "Conta-nos brevemente…"}
+                    placeholder={
+                      otherPlaceholder ?? t("unlock.options.tellUsBriefly")
+                    }
                     value={otherText ?? ""}
                     onChange={(e) => onOtherTextChange(e.target.value)}
                     aria-invalid={Boolean(otherError)}
