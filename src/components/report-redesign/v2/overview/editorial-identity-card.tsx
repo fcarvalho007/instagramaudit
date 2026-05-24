@@ -14,6 +14,8 @@
  */
 import { cn } from "@/lib/utils";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { ScoreKey } from "./score-utils";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -54,44 +56,21 @@ interface EditorialCopy {
 
 function buildFallbackCopy(
   scores: Record<ScoreKey, { value: number; subtitle: string }>,
+  t: TFunction,
 ): EditorialCopy {
   const eng = scores.envolvimento.value;
   const freq = scores.frequencia.value;
   const inter = scores.interaccao.value;
 
-  if (eng >= 60 && freq >= 60) {
-    return {
-      title: "Presença sólida e consistente",
-      paragraph:
-        "O conteúdo gera resposta de forma regular e a cadência é estável. A próxima alavanca está em diversificar formatos e abrir mais conversa nos comentários.",
-    };
-  }
-  if (eng >= 60 && freq < 40) {
-    return {
-      title: "Bom alcance, ritmo irregular",
-      paragraph:
-        "O conteúdo funciona quando sai, mas o ritmo de publicação é descontínuo. Estabilizar a cadência semanal é o passo com maior retorno imediato.",
-    };
-  }
-  if (freq >= 60 && eng < 40) {
-    return {
-      title: "Cadência forte, sinal fraco",
-      paragraph:
-        "Existe disciplina de publicação, mas o conteúdo não está a converter em interação. O foco deve ir para o conceito editorial e o gancho inicial de cada peça.",
-    };
-  }
-  if (eng < 40 && inter < 40) {
-    return {
-      title: "Audiência existe, falta direção",
-      paragraph:
-        "A base de seguidores não está a reagir nem a comentar de forma significativa. A prioridade é redefinir ângulo editorial e formatos antes de aumentar volume.",
-    };
-  }
-  return {
-    title: "Perfil ativo, oportunidade clara",
-    paragraph:
-      "Os indicadores estão próximos da referência do escalão. Há espaço para subir engagement ajustando formatos dominantes e reforçando a conversa nos comentários.",
-  };
+  const pick = (key: string): EditorialCopy => ({
+    title: t(`identity.fallback.${key}.title`),
+    paragraph: t(`identity.fallback.${key}.paragraph`),
+  });
+  if (eng >= 60 && freq >= 60) return pick("solid_consistent");
+  if (eng >= 60 && freq < 40) return pick("irregular_reach");
+  if (freq >= 60 && eng < 40) return pick("cadence_no_signal");
+  if (eng < 40 && inter < 40) return pick("no_direction");
+  return pick("opportunity");
 }
 
 /* ── AI text sanitization ──────────────────────────────────────────── */
@@ -155,10 +134,8 @@ function bandFor(score: number): Band {
   return "warning";
 }
 
-function bandLabel(band: Band): string {
-  if (band === "solid") return "Sólido";
-  if (band === "developing") return "Em desenvolvimento";
-  return "Precisa de trabalho";
+function bandLabel(band: Band, t: TFunction): string {
+  return t(`identity.bands.${band}`);
 }
 
 /** Mapeia a banda para a cor do arco/badge. Construtivo — nunca vermelho. */
@@ -197,11 +174,12 @@ function tierLabelFromFollowers(followers: number): string {
   return "Nano";
 }
 
-function formatNameSingular(fmt: string | undefined): string {
-  if (!fmt) return "formato dominante";
-  if (fmt === "Reels") return "reels";
-  if (fmt === "Carousels") return "carrosséis";
-  if (fmt === "Imagens") return "imagens";
+function formatNameSingular(fmt: string | undefined, t: TFunction): string {
+  if (!fmt) return t("identity.format_singular.default");
+  const known = ["Reels", "Carousels", "Imagens", "Video"] as const;
+  if ((known as readonly string[]).includes(fmt)) {
+    return t(`identity.format_singular.${fmt}`);
+  }
   return fmt.toLowerCase();
 }
 
@@ -212,6 +190,8 @@ function deriveSignals(
   dominantFormatShare: number | undefined,
   postingFrequencyWeekly: number | undefined,
   followers: number | undefined,
+  t: TFunction,
+  language: string,
 ): DerivedSignals {
   const strengths: Bullet[] = [];
   const limits: Bullet[] = [];
@@ -220,20 +200,21 @@ function deriveSignals(
   const ppw = typeof postingFrequencyWeekly === "number" ? postingFrequencyWeekly : null;
   if (ppw !== null) {
     if (ppw >= 3 && ppw <= 7) {
-      const perDay = (ppw / 7).toFixed(1).replace(".", ",");
+      const sep = language.startsWith("pt") ? "," : ".";
+      const perDay = (ppw / 7).toFixed(1).replace(".", sep);
       strengths.push({
-        destaque: "Publicação consistente",
-        detalhe: `cerca de ${perDay} post/dia`,
+        destaque: t("identity.signals.freq_consistent.title"),
+        detalhe: t("identity.signals.freq_consistent.detail", { perDay }),
       });
     } else if (ppw < 1) {
       limits.push({
-        destaque: "Cadência fraca",
-        detalhe: "menos de 1 post por semana",
+        destaque: t("identity.signals.freq_weak.title"),
+        detalhe: t("identity.signals.freq_weak.detail"),
       });
     } else if (ppw > 7) {
       limits.push({
-        destaque: "Volume excessivo",
-        detalhe: "acima de 1 post por dia",
+        destaque: t("identity.signals.freq_excess.title"),
+        detalhe: t("identity.signals.freq_excess.detail"),
       });
     }
   }
@@ -243,13 +224,13 @@ function deriveSignals(
     const tier = tierLabelFromFollowers(followers);
     if (tier !== "Nano") {
       strengths.push({
-        destaque: "Base de seguidores",
-        detalhe: "relevante para o nicho",
+        destaque: t("identity.signals.audience_relevant.title"),
+        detalhe: t("identity.signals.audience_relevant.detail"),
       });
     } else if (followers < 2_000) {
       limits.push({
-        destaque: "Audiência ainda pequena",
-        detalhe: "espaço claro para crescer",
+        destaque: t("identity.signals.audience_small.title"),
+        detalhe: t("identity.signals.audience_small.detail"),
       });
     }
   }
@@ -259,13 +240,13 @@ function deriveSignals(
     const delta = keyMetrics.engagementDeltaPct;
     if (delta >= 10) {
       strengths.push({
-        destaque: "Envolvimento acima do escalão",
-        detalhe: `+${Math.round(delta)}% vs benchmark`,
+        destaque: t("identity.signals.engagement_above.title"),
+        detalhe: t("identity.signals.engagement_above.detail", { delta: Math.round(delta) }),
       });
     } else if (delta <= -30) {
       limits.push({
-        destaque: "Envolvimento abaixo do escalão",
-        detalhe: `${Math.round(delta)}% vs benchmark`,
+        destaque: t("identity.signals.engagement_below.title"),
+        detalhe: t("identity.signals.engagement_below.detail", { delta: Math.round(delta) }),
       });
     }
   }
@@ -274,13 +255,13 @@ function deriveSignals(
   const inter = scores.interaccao.value;
   if (inter >= 60) {
     strengths.push({
-      destaque: "Conversa ativa nos comentários",
-      detalhe: "público responde com regularidade",
+      destaque: t("identity.signals.interaction_active.title"),
+      detalhe: t("identity.signals.interaction_active.detail"),
     });
   } else if (inter < 30) {
     limits.push({
-      destaque: "Poucos comentários",
-      detalhe: "falta CTA claro nas legendas",
+      destaque: t("identity.signals.interaction_low.title"),
+      detalhe: t("identity.signals.interaction_low.detail"),
     });
   }
 
@@ -288,13 +269,16 @@ function deriveSignals(
   if (typeof dominantFormatShare === "number" && dominantFormatShare > 0) {
     if (dominantFormatShare < 55) {
       strengths.push({
-        destaque: "Mix de formatos equilibrado",
-        detalhe: "alternância entre tipos de conteúdo",
+        destaque: t("identity.signals.format_mixed.title"),
+        detalhe: t("identity.signals.format_mixed.detail"),
       });
     } else if (dominantFormatShare >= 70) {
       limits.push({
-        destaque: "Formato repetitivo",
-        detalhe: `${Math.round(dominantFormatShare)}% ${formatNameSingular(dominantFormat)}`,
+        destaque: t("identity.signals.format_repetitive.title"),
+        detalhe: t("identity.signals.format_repetitive.detail", {
+          pct: Math.round(dominantFormatShare),
+          format: formatNameSingular(dominantFormat, t),
+        }),
       });
     }
   }
@@ -303,15 +287,27 @@ function deriveSignals(
   while (strengths.length < 2) {
     strengths.push(
       strengths.length === 0
-        ? { destaque: "Perfil ativo", detalhe: "presença regular na plataforma" }
-        : { destaque: "Histórico consistente", detalhe: "base para iterar conteúdo" },
+        ? {
+            destaque: t("identity.signals.fallback_active.title"),
+            detalhe: t("identity.signals.fallback_active.detail"),
+          }
+        : {
+            destaque: t("identity.signals.fallback_history.title"),
+            detalhe: t("identity.signals.fallback_history.detail"),
+          },
     );
   }
   while (limits.length < 2) {
     limits.push(
       limits.length === 0
-        ? { destaque: "Espaço para diversificar", detalhe: "explorar novos formatos" }
-        : { destaque: "Conversa por desenvolver", detalhe: "reforçar CTA nas legendas" },
+        ? {
+            destaque: t("identity.signals.fallback_diversify.title"),
+            detalhe: t("identity.signals.fallback_diversify.detail"),
+          }
+        : {
+            destaque: t("identity.signals.fallback_conversation.title"),
+            detalhe: t("identity.signals.fallback_conversation.detail"),
+          },
     );
   }
 
@@ -330,7 +326,8 @@ export function EditorialIdentityCard({
   followers,
   postsAnalyzed,
 }: EditorialIdentityCardProps) {
-  const fallback = buildFallbackCopy(scores);
+  const { t, i18n } = useTranslation("report");
+  const fallback = buildFallbackCopy(scores, t);
   const copy = aiHeroText ? deriveCopyFromAi(aiHeroText, fallback) : fallback;
   const overall = computeOverall(scores);
   const band = bandFor(overall);
@@ -344,22 +341,26 @@ export function EditorialIdentityCard({
     dominantFormatShare,
     postingFrequencyWeekly,
     followers,
+    t,
+    i18n.language,
   );
 
   return (
     <article
-      aria-label="Veredicto editorial"
+      aria-label={t("identity.aria_label")}
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
       {/* Zona macro */}
       <div className="px-6 py-7 flex flex-col sm:flex-row sm:items-start gap-6 sm:gap-8">
         <div className="self-center sm:self-start shrink-0">
-          <ScoreGauge value={overall} band={band} />
+          <ScoreGauge value={overall} band={band} t={t} />
         </div>
 
         <div className="flex-1 min-w-0 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-eyebrow-sm text-content-tertiary">Veredicto</span>
+            <span className="text-eyebrow-sm text-content-tertiary">
+              {t("identity.eyebrow_verdict")}
+            </span>
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5",
@@ -367,7 +368,7 @@ export function EditorialIdentityCard({
                 bandBadgeClass(band),
               )}
             >
-              {bandLabel(band)}
+              {bandLabel(band, t)}
             </span>
           </div>
 
@@ -381,10 +382,10 @@ export function EditorialIdentityCard({
 
           {lowConfidence ? (
             <p className="text-xs text-content-tertiary pt-1">
-              Baseado em apenas {postsAnalyzed} posts — confiança limitada.
+              {t("identity.low_confidence", { count: postsAnalyzed })}
             </p>
           ) : (
-            <ReferenceBar value={overall} reference={60} band={band} />
+            <ReferenceBar value={overall} reference={60} band={band} t={t} />
           )}
         </div>
       </div>
@@ -393,12 +394,12 @@ export function EditorialIdentityCard({
       <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2">
         <BulletColumn
           tone="success"
-          title="O que já funciona"
+          title={t("identity.columns.strengths")}
           items={strengths}
         />
         <BulletColumn
           tone="warning"
-          title="O que limita o crescimento"
+          title={t("identity.columns.limits")}
           items={limits}
           className="border-t md:border-t-0 md:border-l border-border-default"
         />
@@ -409,7 +410,7 @@ export function EditorialIdentityCard({
 
 /* ── Score Gauge ───────────────────────────────────────────────────── */
 
-function ScoreGauge({ value, band }: { value: number; band: Band }) {
+function ScoreGauge({ value, band, t }: { value: number; band: Band; t: TFunction }) {
   const clamped = Math.max(0, Math.min(100, value));
   const size = 124;
   const stroke = 9;
@@ -422,7 +423,7 @@ function ScoreGauge({ value, band }: { value: number; band: Band }) {
       className="relative"
       style={{ width: size, height: size }}
       role="img"
-      aria-label={`Pontuação global ${clamped} de 100`}
+      aria-label={t("identity.gauge_aria", { value: clamped })}
     >
       <svg width={size} height={size} className="-rotate-90">
         <circle
@@ -451,7 +452,9 @@ function ScoreGauge({ value, band }: { value: number; band: Band }) {
         <span className="font-display text-[2.5rem] leading-none font-semibold tabular-nums text-content-primary">
           {clamped}
         </span>
-        <span className="text-eyebrow-sm text-content-tertiary mt-1">de 100</span>
+        <span className="text-eyebrow-sm text-content-tertiary mt-1">
+          {t("identity.gauge_caption")}
+        </span>
       </div>
     </div>
   );
@@ -463,10 +466,12 @@ function ReferenceBar({
   value,
   reference,
   band,
+  t,
 }: {
   value: number;
   reference: number;
   band: Band;
+  t: TFunction;
 }) {
   const v = Math.max(0, Math.min(100, value));
   const ref = Math.max(0, Math.min(100, reference));
@@ -485,7 +490,7 @@ function ReferenceBar({
       </div>
       <div className="mt-1.5 flex items-center justify-between text-xs text-content-tertiary tabular-nums">
         <span>0</span>
-        <span>↑ referência do escalão · {ref}</span>
+        <span>{t("identity.reference_caption", { ref })}</span>
         <span>100</span>
       </div>
     </div>
