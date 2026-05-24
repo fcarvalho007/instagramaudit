@@ -418,5 +418,120 @@
     "days_other": "há {{count}} dias",
     "month_one": "há 1 mês",
     "months_other": "há {{count}} meses"
+  },
+  "diagnostic": {
+    "verdict_aria": "Veredicto editorial",
+    "verdict_eyebrow": "Veredicto editorial",
+    "verdict_source_ai": "Síntese editorial",
+    "verdict_source_fallback": "Síntese das classificações",
+    "priorities_aria": "Prioridades de ação",
+    "priorities_title": "Prioridades de ação",
+    "priorities_count_one": "{{count}} AÇÃO",
+    "priorities_count_other": "{{count}} AÇÕES",
+    "priorities_levels": {
+      "alta": "PRIORIDADE ALTA",
+      "media": "PRIORIDADE MÉDIA",
+      "oportunidade": "OPORTUNIDADE"
+    },
+    "cta_aria": "Ver análise completa",
+    "cta_lead": "Quer aprofundar?",
+    "cta_body": "A versão completa abre cada pergunta em análise por post, exemplos de captions e plano de execução a 30 dias.",
+    "cta_button": "Ver análise completa",
+    "group_questions_one": "{{count}} PERGUNTA",
+    "group_questions_other": "{{count}} PERGUNTAS",
+    "summary": {
+      "labels": {
+        "content_type": "Tipo de conteúdo",
+        "funnel": "Papel do conteúdo",
+        "audience": "Resposta do público",
+        "objective": "Objetivo deste perfil"
+      },
+      "fallback_insufficient": "Dados insuficientes",
+      "content": {
+        "headlines": {
+          "Misto / pouco claro": "Conteúdo variado"
+        },
+        "mixed_top_lead": "{{label}} lidera, mas só com {{share}}%",
+        "share_of": "{{share}}% {{label}}"
+      },
+      "funnel": {
+        "headlines": {
+          "Topo do funil": "Atrai mais do que converte",
+          "Meio do funil": "Educa antes de vender",
+          "Fundo do funil": "Foco na conversão",
+          "Pós-venda / fidelização": "Relação com a comunidade",
+          "Comunicação dispersa": "Sem direção clara"
+        },
+        "top_discovery": "{{share}}% dos posts geram descoberta",
+        "dominant_share": "{{share}}% na fase dominante"
+      },
+      "audience": {
+        "headlines": {
+          "Audiência silenciosa": "Quase sem comentários",
+          "Audiência ativa": "Conversa ativa",
+          "Resposta moderada": "Pouca conversa",
+          "Resposta concentrada": "Conversa pontual",
+          "Dados insuficientes": "Dados insuficientes"
+        },
+        "zero": "0 comentários médios por post",
+        "under_decimal": "<0,1 comentários médios por post",
+        "small": "{{count}} comentários médios por post",
+        "large": "{{count}} comentários médios por post"
+      },
+      "objective": {
+        "no_signal": "Sem sinal claro",
+        "confidence_med": "70%",
+        "confidence_low": "< 50%",
+        "detail_with_conf": "{{detail}} · {{conf}}"
+      }
+    }
+  },
+  "comparison": {
+    "cta_aria": "Comparar com concorrentes diretos",
+    "cta_title": "Compara com concorrentes diretos",
+    "cta_description": "Adiciona até 2 perfis e vê este perfil lado a lado em todos os blocos do relatório.",
+    "cta_add": "Adicionar",
+    "roadmap_aria": "Funcionalidade em breve: análise de outras redes",
+    "roadmap_title": "Em breve: análise de outras redes",
+    "roadmap_card_title": "Adicionar outra rede",
+    "roadmap_card_badge": "Em breve",
+    "roadmap_networks_alt": "Redes futuras: Facebook, TikTok e YouTube",
+    "roadmap_dialog_title": "Em breve",
+    "roadmap_dialog_body": "Análise de Facebook, TikTok e YouTube. Estamos a preparar tudo para que seja possível analisar todas as redes num único relatório.",
+    "roadmap_dialog_ok": "Entendido"
+  },
+  "competitor": {
+    "title": "Comparar com concorrentes",
+    "description": "Vê este perfil lado a lado com até 2 concorrentes diretos.",
+    "preview_caption": "Assim verias este perfil comparado com concorrentes diretos no mesmo gráfico.",
+    "benefit_compare": "Comparação direta com até 2 concorrentes",
+    "benefit_gap": "Gap competitivo por formato e dia",
+    "benefit_history": "Histórico de evolução cruzado",
+    "cta_pro": "Ver planos PRO",
+    "cta_free": "Continuar grátis"
+  },
+  "premium": {
+    "register_interest": "Registar interesse",
+    "interest_registered_aria": "Interesse registado",
+    "registered": "Registado",
+    "dialog": {
+      "title": "Desbloquear relatório completo",
+      "description": "Estamos a recolher interesse para definir os preços finais. Escolhe a opção que faz sentido — sem pagamento agora.",
+      "footer": "Sem pagamento agora. Voltamos a falar contigo.",
+      "single_title": "Relatório único",
+      "single_price": "Em estudo",
+      "single_description": "Um perfil, um relatório completo.",
+      "bundle_title": "Bundle 5 relatórios",
+      "bundle_price": "Em estudo",
+      "bundle_description": "Cinco perfis. Poupa face ao avulso.",
+      "monthly_title": "Plano mensal",
+      "monthly_price": "Em estudo",
+      "monthly_description": "Análises recorrentes do mesmo perfil.",
+      "monthly_badge": "Em breve",
+      "agency_title": "Agência",
+      "agency_price": "Sob proposta",
+      "agency_description": "Múltiplas marcas, dashboards e exportações.",
+      "agency_badge": "Falamos contigo"
+    }
   }
 }

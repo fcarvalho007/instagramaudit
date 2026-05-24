@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * Strip subtil de CTA no fim do Bloco 02. Aponta para a âncora
@@ -6,9 +7,10 @@ import { cn } from "@/lib/utils";
  * de pagamento.
  */
 export function ReportDiagnosticCta() {
+  const { t } = useTranslation("report");
   return (
     <aside
-      aria-label="Ver análise completa"
+      aria-label={t("diagnostic.cta_aria")}
       className={cn(
         "rounded-2xl border border-border-default bg-surface-secondary",
         "px-5 py-4 md:px-6 md:py-5",
@@ -17,9 +19,8 @@ export function ReportDiagnosticCta() {
       )}
     >
       <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-2xl">
-        <span className="font-semibold text-content-primary">Quer aprofundar?</span>{" "}
-        A versão completa abre cada pergunta em análise por post, exemplos de
-        captions e plano de execução a 30 dias.
+        <span className="font-semibold text-content-primary">{t("diagnostic.cta_lead")}</span>{" "}
+        {t("diagnostic.cta_body")}
       </p>
       <a
         href="#leitura-completa"
@@ -30,7 +31,7 @@ export function ReportDiagnosticCta() {
           "w-full md:w-auto",
         )}
       >
-        Ver análise completa
+        {t("diagnostic.cta_button")}
         <span aria-hidden>→</span>
       </a>
     </aside>

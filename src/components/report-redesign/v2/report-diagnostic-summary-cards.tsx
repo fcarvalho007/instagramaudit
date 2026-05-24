@@ -1,5 +1,7 @@
 import { Sparkles, Layers, MessageCircle, Compass } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { cn } from "@/lib/utils";
 import type {
@@ -16,26 +18,11 @@ interface Props {
   objective: ObjectiveResult;
 }
 
-/* ── Headline humanization lookups ─────────────────────────────────── */
-
-const CONTENT_HEADLINE: Record<string, string> = {
-  "Misto / pouco claro": "Conteúdo variado",
-};
-
-const FUNNEL_HEADLINE: Record<string, string> = {
-  "Topo do funil": "Atrai mais do que converte",
-  "Meio do funil": "Educa antes de vender",
-  "Fundo do funil": "Foco na conversão",
-  "Pós-venda / fidelização": "Relação com a comunidade",
-  "Comunicação dispersa": "Sem direção clara",
-};
-
-const AUDIENCE_HEADLINE: Record<string, string> = {
-  "Audiência silenciosa": "Quase sem comentários",
-  "Audiência ativa": "Conversa ativa",
-  "Resposta moderada": "Pouca conversa",
-  "Resposta concentrada": "Conversa pontual",
-  "Dados insuficientes": "Dados insuficientes",
+/* Headline lookup helper: resolves i18n key by raw PT key, falls back to raw */
+const tHeadline = (t: TFunction, ns: string, raw: string) => {
+  const key = `diagnostic.summary.${ns}.headlines.${raw}`;
+  const translated = t(key);
+  return translated === key ? raw : translated;
 };
 
 /* ── Tone map (pastel icon circles) ────────────────────────────────── */
@@ -72,20 +59,26 @@ interface SummaryCard {
   subtitleTone?: "danger" | "success";
 }
 
-function buildContentCard(r: ContentTypeResult): SummaryCard {
+function buildContentCard(r: ContentTypeResult, t: TFunction): SummaryCard {
   const raw = r.label ?? "Misto / pouco claro";
-  const headline = CONTENT_HEADLINE[raw] ?? raw;
+  const headline = tHeadline(t, "content", raw);
   const top = r.distribution[0];
   let subtitle: string;
   if (!r.available || !top) {
-    subtitle = "Dados insuficientes";
+    subtitle = t("diagnostic.summary.fallback_insufficient");
   } else if (raw === "Misto / pouco claro" && top) {
-    subtitle = `${top.label} lidera, mas só com ${top.sharePct}%`;
+    subtitle = t("diagnostic.summary.content.mixed_top_lead", {
+      label: top.label,
+      share: top.sharePct,
+    });
   } else {
-    subtitle = `${r.sharePct}% ${raw.toLowerCase()}`;
+    subtitle = t("diagnostic.summary.content.share_of", {
+      share: r.sharePct,
+      label: raw.toLowerCase(),
+    });
   }
   return {
-    label: "Tipo de conteúdo",
+    label: t("diagnostic.summary.labels.content_type"),
     headline,
     subtitle,
     icon: <Sparkles className="size-4" />,
@@ -93,20 +86,20 @@ function buildContentCard(r: ContentTypeResult): SummaryCard {
   };
 }
 
-function buildFunnelCard(r: FunnelStageResult): SummaryCard {
+function buildFunnelCard(r: FunnelStageResult, t: TFunction): SummaryCard {
   const raw = r.label ?? "Comunicação dispersa";
-  const headline = FUNNEL_HEADLINE[raw] ?? raw;
+  const headline = tHeadline(t, "funnel", raw);
   const topoItem = r.breakdown.find((b) => b.stage === "topo");
   let subtitle: string;
   if (!r.available) {
-    subtitle = "Dados insuficientes";
+    subtitle = t("diagnostic.summary.fallback_insufficient");
   } else if (raw === "Topo do funil" && topoItem) {
-    subtitle = `${topoItem.sharePct}% dos posts geram descoberta`;
+    subtitle = t("diagnostic.summary.funnel.top_discovery", { share: topoItem.sharePct });
   } else {
-    subtitle = `${r.sharePct}% na fase dominante`;
+    subtitle = t("diagnostic.summary.funnel.dominant_share", { share: r.sharePct });
   }
   return {
-    label: "Papel do conteúdo",
+    label: t("diagnostic.summary.labels.funnel"),
     headline,
     subtitle,
     icon: <Layers className="size-4" />,
@@ -114,23 +107,25 @@ function buildFunnelCard(r: FunnelStageResult): SummaryCard {
   };
 }
 
-function buildAudienceCard(r: AudienceResponseResult): SummaryCard {
+function buildAudienceCard(r: AudienceResponseResult, t: TFunction): SummaryCard {
   const raw = r.label;
-  const headline = AUDIENCE_HEADLINE[raw] ?? raw;
+  const headline = tHeadline(t, "audience", raw);
   const avg = r.avgComments;
   const subtitle =
     !r.available
-      ? "Dados insuficientes"
+      ? t("diagnostic.summary.fallback_insufficient")
       : avg === 0
-        ? "0 comentários médios por post"
+        ? t("diagnostic.summary.audience.zero")
         : avg > 0 && avg < 0.1
-        ? "<0,1 comentários médios por post"
+        ? t("diagnostic.summary.audience.under_decimal")
         : avg < 10
-          ? `${avg.toLocaleString("pt-PT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} comentários médios por post`
-          : `${Math.round(avg)} comentários médios por post`;
+          ? t("diagnostic.summary.audience.small", {
+              count: Number(avg.toFixed(1)),
+            })
+          : t("diagnostic.summary.audience.large", { count: Math.round(avg) });
   const isSilent = r.status === "silent" || avg === 0;
   return {
-    label: "Resposta do público",
+    label: t("diagnostic.summary.labels.audience"),
     headline,
     subtitle,
     icon: <MessageCircle className="size-4" />,
@@ -139,8 +134,8 @@ function buildAudienceCard(r: AudienceResponseResult): SummaryCard {
   };
 }
 
-function buildObjectiveCard(r: ObjectiveResult): SummaryCard {
-  const primary = r.primary ?? "Sem sinal claro";
+function buildObjectiveCard(r: ObjectiveResult, t: TFunction): SummaryCard {
+  const primary = r.primary ?? t("diagnostic.summary.objective.no_signal");
   // Extract short label: "Notoriedade · marca pessoal" → "Notoriedade"
   const headline = primary.includes("·")
     ? primary.split("·")[0].trim()
@@ -148,14 +143,20 @@ function buildObjectiveCard(r: ObjectiveResult): SummaryCard {
   const detail = primary.includes("·")
     ? primary.split("·")[1].trim()
     : null;
-  const confLabel = r.confidence === "med" ? "70%" : "< 50%";
+  const confLabel =
+    r.confidence === "med"
+      ? t("diagnostic.summary.objective.confidence_med")
+      : t("diagnostic.summary.objective.confidence_low");
   const subtitle = r.available
     ? detail
-      ? `${detail.charAt(0).toUpperCase() + detail.slice(1)} · ${confLabel}`
+      ? t("diagnostic.summary.objective.detail_with_conf", {
+          detail: detail.charAt(0).toUpperCase() + detail.slice(1),
+          conf: confLabel,
+        })
       : confLabel
-    : "Dados insuficientes";
+    : t("diagnostic.summary.fallback_insufficient");
   return {
-    label: "Objetivo deste perfil",
+    label: t("diagnostic.summary.labels.objective"),
     headline,
     subtitle,
     icon: <Compass className="size-4" />,
@@ -176,17 +177,18 @@ export function ReportDiagnosticSummaryCards({
   audience,
   objective,
 }: Props) {
+  const { t } = useTranslation("report");
   const cards: SummaryCard[] = [
-    buildContentCard(contentType),
-    buildFunnelCard(funnel),
-    buildAudienceCard(audience),
-    buildObjectiveCard(objective),
+    buildContentCard(contentType, t),
+    buildFunnelCard(funnel, t),
+    buildAudienceCard(audience, t),
+    buildObjectiveCard(objective, t),
   ];
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
       {cards.map((c) => {
-        const t = TONE_CLASSES[c.tone];
+        const tone = TONE_CLASSES[c.tone];
         return (
           <article
             key={c.label}
@@ -202,10 +204,10 @@ export function ReportDiagnosticSummaryCards({
               aria-hidden="true"
               className={cn(
                 "inline-flex size-9 items-center justify-center rounded-full shrink-0",
-                t.wrap,
+                tone.wrap,
               )}
             >
-              <span className={t.icon}>{c.icon}</span>
+              <span className={tone.icon}>{c.icon}</span>
             </span>
 
             <p className="text-eyebrow-sm text-content-secondary">

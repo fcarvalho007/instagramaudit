@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -28,29 +29,29 @@ interface OptionDef {
 const OPTIONS: readonly OptionDef[] = [
   {
     id: "single_3_eur",
-    title: "Relatório único",
-    price: "Em estudo",
-    description: "Um perfil, um relatório completo.",
+    title: "premium.dialog.single_title",
+    price: "premium.dialog.single_price",
+    description: "premium.dialog.single_description",
   },
   {
     id: "bundle_13_eur",
-    title: "Bundle 5 relatórios",
-    price: "Em estudo",
-    description: "Cinco perfis. Poupa face ao avulso.",
+    title: "premium.dialog.bundle_title",
+    price: "premium.dialog.bundle_price",
+    description: "premium.dialog.bundle_description",
   },
   {
     id: "monthly",
-    title: "Plano mensal",
-    price: "Em estudo",
-    description: "Análises recorrentes do mesmo perfil.",
-    badge: "Em breve",
+    title: "premium.dialog.monthly_title",
+    price: "premium.dialog.monthly_price",
+    description: "premium.dialog.monthly_description",
+    badge: "premium.dialog.monthly_badge",
   },
   {
     id: "agency",
-    title: "Agência",
-    price: "Sob proposta",
-    description: "Múltiplas marcas, dashboards e exportações.",
-    badge: "Falamos contigo",
+    title: "premium.dialog.agency_title",
+    price: "premium.dialog.agency_price",
+    description: "premium.dialog.agency_description",
+    badge: "premium.dialog.agency_badge",
   },
 ];
 
@@ -72,6 +73,7 @@ export function PremiumInterestDialog({
   sourceComponent,
 }: Props) {
   const [registered, setRegistered] = useState<Set<PricingOption>>(new Set());
+  const { t } = useTranslation("report");
 
   const handleSelect = (option: PricingOption) => {
     if (registered.has(option)) return;
@@ -99,11 +101,10 @@ export function PremiumInterestDialog({
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
-            Desbloquear relatório completo
+            {t("premium.dialog.title")}
           </DialogTitle>
           <DialogDescription>
-            Estamos a recolher interesse para definir os preços finais.
-            Escolhe a opção que faz sentido — sem pagamento agora.
+            {t("premium.dialog.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -126,28 +127,28 @@ export function PremiumInterestDialog({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-content-primary">
-                      {opt.title}
+                      {t(opt.title)}
                     </p>
                     <p className="text-xs text-content-secondary mt-0.5 tabular-nums">
-                      {opt.price}
+                      {t(opt.price)}
                     </p>
                   </div>
                   {done ? (
                     <span
                       className="inline-flex items-center gap-1 text-eyebrow-sm text-accent-primary shrink-0"
-                      aria-label="Interesse registado"
+                      aria-label={t("premium.interest_registered_aria")}
                     >
                       <Check className="size-3" aria-hidden="true" />
-                      Registado
+                      {t("premium.registered")}
                     </span>
                   ) : opt.badge ? (
                     <span className="text-eyebrow-sm text-content-tertiary shrink-0">
-                      {opt.badge}
+                      {t(opt.badge)}
                     </span>
                   ) : null}
                 </div>
                 <p className="text-xs text-content-tertiary mt-2 leading-relaxed">
-                  {opt.description}
+                  {t(opt.description)}
                 </p>
               </button>
             );
@@ -157,7 +158,7 @@ export function PremiumInterestDialog({
         <DialogFooter className="mt-2">
           <p className="text-xs text-content-tertiary flex items-center gap-1.5">
             <Sparkles className="size-3" aria-hidden="true" />
-            Sem pagamento agora. Voltamos a falar contigo.
+            {t("premium.dialog.footer")}
           </p>
         </DialogFooter>
       </DialogContent>

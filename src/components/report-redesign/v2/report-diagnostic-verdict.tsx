@@ -1,4 +1,5 @@
 import { Bot } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import { ReportSourceLabel } from "./report-source-label";
@@ -24,9 +25,10 @@ interface Props {
  */
 export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
   const isAi = source === "ai";
+  const { t } = useTranslation("report");
   return (
     <aside
-      aria-label="Veredicto editorial"
+      aria-label={t("diagnostic.verdict_aria")}
       className={cn(
         "rounded-2xl border border-accent-primary/20",
         "bg-tint-primary",
@@ -45,11 +47,15 @@ export function ReportDiagnosticVerdict({ text, source = "fallback" }: Props) {
         <div className="min-w-0 space-y-1.5 flex-1">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <p className="text-eyebrow-sm text-accent-primary">
-              Veredicto editorial
+              {t("diagnostic.verdict_eyebrow")}
             </p>
             <ReportSourceLabel
               type={isAi ? "ia" : "auto"}
-              detail={isAi ? "Síntese editorial" : "Síntese das classificações"}
+              detail={
+                isAi
+                  ? t("diagnostic.verdict_source_ai")
+                  : t("diagnostic.verdict_source_fallback")
+              }
             />
           </div>
           <p className="text-[15px] md:text-[16px] text-content-primary leading-relaxed">

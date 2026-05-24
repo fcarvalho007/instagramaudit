@@ -418,5 +418,120 @@
     "days_other": "{{count}} days ago",
     "month_one": "1 month ago",
     "months_other": "{{count}} months ago"
+  },
+  "diagnostic": {
+    "verdict_aria": "Editorial verdict",
+    "verdict_eyebrow": "Editorial verdict",
+    "verdict_source_ai": "Editorial synthesis",
+    "verdict_source_fallback": "Synthesis of classifications",
+    "priorities_aria": "Action priorities",
+    "priorities_title": "Action priorities",
+    "priorities_count_one": "{{count}} ACTION",
+    "priorities_count_other": "{{count}} ACTIONS",
+    "priorities_levels": {
+      "alta": "HIGH PRIORITY",
+      "media": "MEDIUM PRIORITY",
+      "oportunidade": "OPPORTUNITY"
+    },
+    "cta_aria": "See full analysis",
+    "cta_lead": "Want to go deeper?",
+    "cta_body": "The full version opens every question into post-by-post analysis, caption examples and a 30-day execution plan.",
+    "cta_button": "See full analysis",
+    "group_questions_one": "{{count}} QUESTION",
+    "group_questions_other": "{{count}} QUESTIONS",
+    "summary": {
+      "labels": {
+        "content_type": "Content type",
+        "funnel": "Content's role",
+        "audience": "Audience response",
+        "objective": "Profile objective"
+      },
+      "fallback_insufficient": "Insufficient data",
+      "content": {
+        "headlines": {
+          "Misto / pouco claro": "Varied content"
+        },
+        "mixed_top_lead": "{{label}} leads, but only with {{share}}%",
+        "share_of": "{{share}}% {{label}}"
+      },
+      "funnel": {
+        "headlines": {
+          "Topo do funil": "Attracts more than it converts",
+          "Meio do funil": "Educates before selling",
+          "Fundo do funil": "Focused on conversion",
+          "Pós-venda / fidelização": "Community relationship",
+          "Comunicação dispersa": "No clear direction"
+        },
+        "top_discovery": "{{share}}% of posts drive discovery",
+        "dominant_share": "{{share}}% in the dominant phase"
+      },
+      "audience": {
+        "headlines": {
+          "Audiência silenciosa": "Almost no comments",
+          "Audiência ativa": "Active conversation",
+          "Resposta moderada": "Little conversation",
+          "Resposta concentrada": "Occasional conversation",
+          "Dados insuficientes": "Insufficient data"
+        },
+        "zero": "0 average comments per post",
+        "under_decimal": "<0.1 average comments per post",
+        "small": "{{count}} average comments per post",
+        "large": "{{count}} average comments per post"
+      },
+      "objective": {
+        "no_signal": "No clear signal",
+        "confidence_med": "70%",
+        "confidence_low": "< 50%",
+        "detail_with_conf": "{{detail}} · {{conf}}"
+      }
+    }
+  },
+  "comparison": {
+    "cta_aria": "Compare with direct competitors",
+    "cta_title": "Compare with direct competitors",
+    "cta_description": "Add up to 2 profiles and see this profile side by side across every report block.",
+    "cta_add": "Add",
+    "roadmap_aria": "Coming soon: analysis of other networks",
+    "roadmap_title": "Coming soon: analysis of other networks",
+    "roadmap_card_title": "Add another network",
+    "roadmap_card_badge": "Coming soon",
+    "roadmap_networks_alt": "Future networks: Facebook, TikTok and YouTube",
+    "roadmap_dialog_title": "Coming soon",
+    "roadmap_dialog_body": "Analysis of Facebook, TikTok and YouTube. We're getting everything ready so you can analyse every network in a single report.",
+    "roadmap_dialog_ok": "Got it"
+  },
+  "competitor": {
+    "title": "Compare with competitors",
+    "description": "See this profile side by side with up to 2 direct competitors.",
+    "preview_caption": "This is how you'd see this profile compared with direct competitors on the same chart.",
+    "benefit_compare": "Direct comparison with up to 2 competitors",
+    "benefit_gap": "Competitive gap by format and day",
+    "benefit_history": "Cross-referenced historical evolution",
+    "cta_pro": "See PRO plans",
+    "cta_free": "Keep free"
+  },
+  "premium": {
+    "register_interest": "Register interest",
+    "interest_registered_aria": "Interest registered",
+    "registered": "Registered",
+    "dialog": {
+      "title": "Unlock full report",
+      "description": "We're gathering interest to set the final pricing. Pick the option that fits — no payment now.",
+      "footer": "No payment now. We'll be in touch.",
+      "single_title": "Single report",
+      "single_price": "Under review",
+      "single_description": "One profile, one complete report.",
+      "bundle_title": "Bundle of 5 reports",
+      "bundle_price": "Under review",
+      "bundle_description": "Five profiles. Save vs. one-off.",
+      "monthly_title": "Monthly plan",
+      "monthly_price": "Under review",
+      "monthly_description": "Recurring analyses of the same profile.",
+      "monthly_badge": "Coming soon",
+      "agency_title": "Agency",
+      "agency_price": "On request",
+      "agency_description": "Multiple brands, dashboards and exports.",
+      "agency_badge": "Talk to us"
+    }
   }
 }
