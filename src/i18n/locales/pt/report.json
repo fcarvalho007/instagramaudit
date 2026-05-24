@@ -59,21 +59,66 @@
       }
     },
     "signals": {
-      "freq_consistent": { "title": "Publicação consistente", "detail": "cerca de {{perDay}} post/dia" },
-      "freq_weak": { "title": "Cadência fraca", "detail": "menos de 1 post por semana" },
-      "freq_excess": { "title": "Volume excessivo", "detail": "acima de 1 post por dia" },
-      "audience_relevant": { "title": "Base de seguidores", "detail": "relevante para o nicho" },
-      "audience_small": { "title": "Audiência ainda pequena", "detail": "espaço claro para crescer" },
-      "engagement_above": { "title": "Envolvimento acima do escalão", "detail": "+{{delta}}% vs benchmark" },
-      "engagement_below": { "title": "Envolvimento abaixo do escalão", "detail": "{{delta}}% vs benchmark" },
-      "interaction_active": { "title": "Conversa ativa nos comentários", "detail": "público responde com regularidade" },
-      "interaction_low": { "title": "Poucos comentários", "detail": "falta CTA claro nas legendas" },
-      "format_mixed": { "title": "Mix de formatos equilibrado", "detail": "alternância entre tipos de conteúdo" },
-      "format_repetitive": { "title": "Formato repetitivo", "detail": "{{pct}}% {{format}}" },
-      "fallback_active": { "title": "Perfil ativo", "detail": "presença regular na plataforma" },
-      "fallback_history": { "title": "Histórico consistente", "detail": "base para iterar conteúdo" },
-      "fallback_diversify": { "title": "Espaço para diversificar", "detail": "explorar novos formatos" },
-      "fallback_conversation": { "title": "Conversa por desenvolver", "detail": "reforçar CTA nas legendas" }
+      "freq_consistent": {
+        "title": "Publicação consistente",
+        "detail": "cerca de {{perDay}} post/dia"
+      },
+      "freq_weak": {
+        "title": "Cadência fraca",
+        "detail": "menos de 1 post por semana"
+      },
+      "freq_excess": {
+        "title": "Volume excessivo",
+        "detail": "acima de 1 post por dia"
+      },
+      "audience_relevant": {
+        "title": "Base de seguidores",
+        "detail": "relevante para o nicho"
+      },
+      "audience_small": {
+        "title": "Audiência ainda pequena",
+        "detail": "espaço claro para crescer"
+      },
+      "engagement_above": {
+        "title": "Envolvimento acima do escalão",
+        "detail": "+{{delta}}% vs benchmark"
+      },
+      "engagement_below": {
+        "title": "Envolvimento abaixo do escalão",
+        "detail": "{{delta}}% vs benchmark"
+      },
+      "interaction_active": {
+        "title": "Conversa ativa nos comentários",
+        "detail": "público responde com regularidade"
+      },
+      "interaction_low": {
+        "title": "Poucos comentários",
+        "detail": "falta CTA claro nas legendas"
+      },
+      "format_mixed": {
+        "title": "Mix de formatos equilibrado",
+        "detail": "alternância entre tipos de conteúdo"
+      },
+      "format_repetitive": {
+        "title": "Formato repetitivo",
+        "detail": "{{pct}}% {{format}}"
+      },
+      "fallback_active": {
+        "title": "Perfil ativo",
+        "detail": "presença regular na plataforma"
+      },
+      "fallback_history": {
+        "title": "Histórico consistente",
+        "detail": "base para iterar conteúdo"
+      },
+      "fallback_diversify": {
+        "title": "Espaço para diversificar",
+        "detail": "explorar novos formatos"
+      },
+      "fallback_conversation": {
+        "title": "Conversa por desenvolver",
+        "detail": "reforçar CTA nas legendas"
+      }
     },
     "format_singular": {
       "Reels": "reels",
@@ -85,7 +130,11 @@
   },
   "frequency": {
     "title": "Frequência de publicação",
-    "status": { "high": "Alta", "medium": "Média", "low": "Baixa" },
+    "status": {
+      "high": "Alta",
+      "medium": "Média",
+      "low": "Baixa"
+    },
     "headline": {
       "very_high": "Mais de 1 post por dia",
       "daily": "Cerca de 1 post por dia",
@@ -99,11 +148,24 @@
     "days_one": "dia",
     "days_other": "dias",
     "verdict": {
-      "high": { "strong": "Cadência forte e consistente.", "rest": "Publica mais que a média de perfis com um número de seguidores semelhante." },
-      "medium": { "strong": "Cadência aceitável.", "rest": "Há espaço para regularidade mais previsível." },
-      "low": { "strong": "Cadência irregular.", "rest": "A audiência não cria hábito de te encontrar." }
+      "high": {
+        "strong": "Cadência forte e consistente.",
+        "rest": "Publica mais que a média de perfis com um número de seguidores semelhante."
+      },
+      "medium": {
+        "strong": "Cadência aceitável.",
+        "rest": "Há espaço para regularidade mais previsível."
+      },
+      "low": {
+        "strong": "Cadência irregular.",
+        "rest": "A audiência não cria hábito de te encontrar."
+      }
     },
-    "verdict_label": { "strong": "PONTO FORTE", "improve": "A MELHORAR", "alert": "ALERTA" },
+    "verdict_label": {
+      "strong": "PONTO FORTE",
+      "improve": "A MELHORAR",
+      "alert": "ALERTA"
+    },
     "weekly_summary": {
       "title": "Resumo da semana",
       "most_active": "Mais ativo",
@@ -124,12 +186,32 @@
       "legend_many": "{{label}} posts",
       "ratio": "{{published}}/{{total}} dias"
     },
-    "weekday_short": ["S", "T", "Q", "Q", "S", "S", "D"],
-    "weekday_long": ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+    "weekday_short": [
+      "S",
+      "T",
+      "Q",
+      "Q",
+      "S",
+      "S",
+      "D"
+    ],
+    "weekday_long": [
+      "Segunda",
+      "Terça",
+      "Quarta",
+      "Quinta",
+      "Sexta",
+      "Sábado",
+      "Domingo"
+    ]
   },
   "format": {
     "title": "Formato",
-    "variation": { "varied_high": "Muito variado", "varied": "Variado", "low": "Pouco variado" },
+    "variation": {
+      "varied_high": "Muito variado",
+      "varied": "Variado",
+      "low": "Pouco variado"
+    },
     "headline": {
       "no_data": "Sem dados de formato",
       "only": "Apenas {{label}}",
@@ -142,21 +224,53 @@
       "leader": "{{label}} mais frequentes · {{topCount}} em cada {{total}} são {{topLower}}",
       "extra": "{{count}} são {{label}}"
     },
-    "names_plural": { "Reels": "reels", "Carousels": "carrosséis", "Imagens": "imagens", "Video": "vídeos" },
-    "names_legend": { "Reels": "Reels", "Carousels": "Carrosséis", "Imagens": "Imagens", "Video": "Vídeos" },
-    "types_singular": { "carousel": "carrossel", "reel": "reel", "image": "imagem", "video": "vídeo", "unknown": "post" },
+    "names_plural": {
+      "Reels": "reels",
+      "Carousels": "carrosséis",
+      "Imagens": "imagens",
+      "Video": "vídeos"
+    },
+    "names_legend": {
+      "Reels": "Reels",
+      "Carousels": "Carrosséis",
+      "Imagens": "Imagens",
+      "Video": "Vídeos"
+    },
+    "types_singular": {
+      "carousel": "carrossel",
+      "reel": "reel",
+      "image": "imagem",
+      "video": "vídeo",
+      "unknown": "post"
+    },
     "analyzed_count": "{{count}} posts analisados",
     "aria_distribution": "Distribuição dos {{count}} posts analisados: {{parts}}",
     "aria_breakdown": "Distribuição de formatos em {{total}} publicações: {{parts}}",
     "breakdown_part": "{{count}} {{label}} ({{pct}}%)",
     "thumb_aria": "{{label}} · {{date}}",
     "verdict": {
-      "carousel": { "strong": "Foco em conteúdo para guardar.", "rest": "Carrosséis funcionam para ensinar, listar e organizar ideias." },
-      "reel": { "strong": "Foco em alcance e descoberta.", "rest": "Reels funcionam para entrar em novas audiências." },
-      "image": { "strong": "Foco em comunicação direta.", "rest": "Imagens funcionam para mensagens claras e momentos." },
-      "mixed": { "strong": "Mix variado.", "rest": "Diferentes formatos servem objetivos diferentes — as próximas secções mostram onde cada formato rende mais." }
+      "carousel": {
+        "strong": "Foco em conteúdo para guardar.",
+        "rest": "Carrosséis funcionam para ensinar, listar e organizar ideias."
+      },
+      "reel": {
+        "strong": "Foco em alcance e descoberta.",
+        "rest": "Reels funcionam para entrar em novas audiências."
+      },
+      "image": {
+        "strong": "Foco em comunicação direta.",
+        "rest": "Imagens funcionam para mensagens claras e momentos."
+      },
+      "mixed": {
+        "strong": "Mix variado.",
+        "rest": "Diferentes formatos servem objetivos diferentes — as próximas secções mostram onde cada formato rende mais."
+      }
     },
-    "verdict_label": { "strong": "PONTO FORTE", "improve": "A MELHORAR", "neutral": "DIAGNÓSTICO" }
+    "verdict_label": {
+      "strong": "PONTO FORTE",
+      "improve": "A MELHORAR",
+      "neutral": "DIAGNÓSTICO"
+    }
   },
   "blocks": {
     "overview": {
@@ -195,10 +309,27 @@
     }
   },
   "kpi": {
-    "engagement": { "label": "Engagement médio", "source": "Gostos + comentários", "help": "vs. {{value}}% de referência" },
-    "rhythm": { "label": "Ritmo semanal", "source": "Datas de publicação", "help": "publicações por semana" },
-    "format": { "label": "Formato dominante", "source": "Tipo de publicação", "help": "{{share}}% da amostra" },
-    "format_names": { "Carrosséis": "Carrosséis", "Reels": "Reels", "Imagens": "Imagens", "Vídeos": "Vídeos" }
+    "engagement": {
+      "label": "Engagement médio",
+      "source": "Gostos + comentários",
+      "help": "vs. {{value}}% de referência"
+    },
+    "rhythm": {
+      "label": "Ritmo semanal",
+      "source": "Datas de publicação",
+      "help": "publicações por semana"
+    },
+    "format": {
+      "label": "Formato dominante",
+      "source": "Tipo de publicação",
+      "help": "{{share}}% da amostra"
+    },
+    "format_names": {
+      "Carrosséis": "Carrosséis",
+      "Reels": "Reels",
+      "Imagens": "Imagens",
+      "Vídeos": "Vídeos"
+    }
   },
   "nav": {
     "aria": "Navegação do relatório",
@@ -238,5 +369,36 @@
       "market_position": "Posição face ao mercado",
       "peer_comparison": "Comparação com perfis pares"
     }
+  },
+  "callout": {
+    "editorial": "DIAGNÓSTICO",
+    "suggestion": "O que isto sugere",
+    "warning": "Atenção"
+  },
+  "source": {
+    "dados": "Dados extraídos do perfil público",
+    "mercado": "Referência de mercado externa",
+    "auto": "Cálculo ou classificação automática",
+    "ia": "Leitura editorial por IA",
+    "pro": "Funcionalidade disponível na versão PRO"
+  },
+  "cache": {
+    "fresh": "Dados atualizados",
+    "expiring": "A expirar em breve",
+    "stale": "Dados antigos",
+    "unknown": "Estado por confirmar",
+    "updated": "Atualizado {{relative}}",
+    "valid_until": "Válido até {{when}}",
+    "last_analysis": "Última análise: {{when}}",
+    "expired_on": "Cache expirou em {{when}}",
+    "valid_through": "Cache válida até {{when}}",
+    "just_now": "agora mesmo",
+    "minutes": "há {{count}} min",
+    "hour_one": "há 1 hora",
+    "hours_other": "há {{count}} horas",
+    "day_one": "há 1 dia",
+    "days_other": "há {{count}} dias",
+    "month_one": "há 1 mês",
+    "months_other": "há {{count}} meses"
   }
 }
