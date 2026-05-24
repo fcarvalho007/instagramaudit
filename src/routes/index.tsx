@@ -1,18 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, ExternalLink } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { Container } from "@/components/layout/container";
 import { HeroSection } from "@/components/landing/hero-section";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { ProductPreviewSection } from "@/components/landing/product-preview-section";
 import { SocialProofSection } from "@/components/landing/social-proof-section";
-
-const microProofPoints = [
-  "Análise em 30 segundos",
-  "Sem registo necessário",
-  "RGPD compliant",
-];
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,6 +37,12 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  const { t } = useTranslation("landing");
+  const microProofPoints = [
+    t("microProof.fast"),
+    t("microProof.noSignup"),
+    t("microProof.gdpr"),
+  ];
   return (
     <>
       <HeroSection />
@@ -71,7 +72,7 @@ function Home() {
       <section className="border-t border-border-default bg-surface-secondary/40 py-6">
         <Container size="lg">
           <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary mb-3">
-            Acesso rápido · Testes
+            {t("devShortcuts.label")}
           </p>
           <div className="flex flex-wrap gap-3">
             <Link
@@ -80,14 +81,14 @@ function Home() {
               className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-primary/40"
             >
               <ExternalLink className="size-3.5" aria-hidden="true" />
-              Report live · frederico.m.carvalho
+              {t("devShortcuts.live")}
             </Link>
             <Link
               to="/report/example"
               className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-primary/40"
             >
               <ExternalLink className="size-3.5" aria-hidden="true" />
-              Report mockup editorial
+              {t("devShortcuts.mockup")}
             </Link>
           </div>
         </Container>
