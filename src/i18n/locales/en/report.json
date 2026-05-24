@@ -126,6 +126,21 @@
       "Imagens": "images",
       "Video": "videos",
       "default": "dominant format"
+    },
+    "metrics": {
+      "likes_label": "Likes · Avg",
+      "comments_label": "Comments · Avg",
+      "rhythm_label": "Rhythm · Week",
+      "per_post": "per post",
+      "per_week": "posts/week",
+      "likes_subtitle": "{{pct}}% of followers",
+      "likes_subtitle_na": "no follower base",
+      "comments_low": "low conversation",
+      "comments_medium": "moderate conversation",
+      "comments_active": "healthy conversation",
+      "rhythm_excess": "above recommended",
+      "rhythm_good": "healthy cadence",
+      "rhythm_low": "below minimum"
     }
   },
   "frequency": {
