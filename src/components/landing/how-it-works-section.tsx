@@ -1,9 +1,11 @@
 import { AtSign, LineChart, Mail } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Container } from "@/components/layout/container";
 import { HowItWorksStep } from "./how-it-works-step";
 
 export function HowItWorksSection() {
+  const { t } = useTranslation("landing");
   return (
     <section className="relative py-24 md:py-32 overflow-hidden border-t border-border-subtle">
       {/* Subtle vertical lines background */}
@@ -33,15 +35,13 @@ export function HowItWorksSection() {
         {/* Section header */}
         <div className="max-w-2xl mb-16 md:mb-20">
           <span className="text-eyebrow text-accent-violet-luminous mb-4 block">
-            Como funciona
+            {t("howItWorks.eyebrow")}
           </span>
           <h2 className="font-display text-3xl md:text-5xl text-content-primary font-medium tracking-tight leading-[1.1] mb-6">
-            Relatório em 3 passos simples.
+            {t("howItWorks.title")}
           </h2>
           <p className="font-sans text-lg text-content-secondary leading-relaxed">
-            Sem fricção, sem registo, sem tempo perdido. Apenas análise
-            clara, benchmarks comparáveis e leitura estratégica pronta a
-            aplicar.
+            {t("howItWorks.lead")}
           </p>
         </div>
 
@@ -66,8 +66,8 @@ export function HowItWorksSection() {
           <div className="md:pr-8">
             <HowItWorksStep
               number="01"
-              title="Inserir o username"
-              description="Qualquer perfil público do Instagram. Opcionalmente, até dois concorrentes para comparação directa."
+              title={t("howItWorks.step1Title")}
+              description={t("howItWorks.step1Desc")}
               icon={<AtSign />}
               delay={0}
               showDivider
@@ -76,8 +76,8 @@ export function HowItWorksSection() {
           <div className="md:px-8">
             <HowItWorksStep
               number="02"
-              title="Análise automática"
-              description="Os últimos 30 posts são processados contra benchmarks atualizados da plataforma e da dimensão do perfil."
+              title={t("howItWorks.step2Title")}
+              description={t("howItWorks.step2Desc")}
               icon={<LineChart />}
               delay={150}
               emphasis="primary"
@@ -87,8 +87,8 @@ export function HowItWorksSection() {
           <div className="md:pl-8">
             <HowItWorksStep
               number="03"
-              title="Relatório no email"
-              description="PDF detalhado com métricas, ranking de concorrentes e três insights estratégicos gerados por IA."
+              title={t("howItWorks.step3Title")}
+              description={t("howItWorks.step3Desc")}
               icon={<Mail />}
               delay={300}
             />
