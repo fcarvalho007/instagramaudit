@@ -1,0 +1,161 @@
+{
+  "hero": {
+    "verified": "Verified account",
+    "metric_followers": "followers",
+    "metric_followers_one": "follower",
+    "metric_posts": "posts",
+    "metric_posts_one": "post",
+    "metric_analyzed_window": "posts in {{days}} days",
+    "metric_analyzed_window_one": "post in {{days}} days",
+    "metric_analyzed_window_days_one": "posts in {{days}} day",
+    "metric_analyzed": "analyzed posts",
+    "metric_analyzed_one": "analyzed post",
+    "actions": {
+      "new_report": "New report",
+      "compare": "Compare competitor",
+      "pro": "Pro",
+      "pdf": "PDF",
+      "share": "Share"
+    },
+    "avatar_alt": "Avatar of {{name}}"
+  },
+  "identity": {
+    "aria_label": "Editorial verdict",
+    "eyebrow_verdict": "Verdict",
+    "gauge_aria": "Overall score {{value}} out of 100",
+    "gauge_caption": "out of 100",
+    "reference_caption": "↑ tier reference · {{ref}}",
+    "low_confidence": "Based on only {{count}} posts — limited confidence.",
+    "low_confidence_one": "Based on only {{count}} post — limited confidence.",
+    "columns": {
+      "strengths": "What's already working",
+      "limits": "What's limiting growth"
+    },
+    "bands": {
+      "solid": "Solid",
+      "developing": "Developing",
+      "warning": "Needs work"
+    },
+    "fallback": {
+      "solid_consistent": {
+        "title": "Solid, consistent presence",
+        "paragraph": "Content gets a steady response and the cadence is reliable. The next lever is to diversify formats and open more conversation in the comments."
+      },
+      "irregular_reach": {
+        "title": "Strong reach, irregular rhythm",
+        "paragraph": "Content works when it ships, but publishing is uneven. Stabilising the weekly cadence is the step with the highest immediate return."
+      },
+      "cadence_no_signal": {
+        "title": "Strong cadence, weak signal",
+        "paragraph": "There is publishing discipline, but content isn't converting into interaction. Focus should shift to the editorial concept and opening hook of each post."
+      },
+      "no_direction": {
+        "title": "Audience exists, direction missing",
+        "paragraph": "The follower base isn't reacting or commenting meaningfully. The priority is to redefine editorial angle and formats before increasing volume."
+      },
+      "opportunity": {
+        "title": "Active profile, clear opportunity",
+        "paragraph": "Indicators are close to the tier reference. There is room to lift engagement by adjusting dominant formats and reinforcing conversation in the comments."
+      }
+    },
+    "signals": {
+      "freq_consistent": { "title": "Consistent publishing", "detail": "about {{perDay}} post/day" },
+      "freq_weak": { "title": "Weak cadence", "detail": "less than 1 post per week" },
+      "freq_excess": { "title": "Excessive volume", "detail": "more than 1 post per day" },
+      "audience_relevant": { "title": "Follower base", "detail": "relevant for the niche" },
+      "audience_small": { "title": "Audience still small", "detail": "clear room to grow" },
+      "engagement_above": { "title": "Engagement above tier", "detail": "+{{delta}}% vs benchmark" },
+      "engagement_below": { "title": "Engagement below tier", "detail": "{{delta}}% vs benchmark" },
+      "interaction_active": { "title": "Active comment conversation", "detail": "audience replies regularly" },
+      "interaction_low": { "title": "Few comments", "detail": "missing clear CTA in captions" },
+      "format_mixed": { "title": "Balanced format mix", "detail": "alternation between content types" },
+      "format_repetitive": { "title": "Repetitive format", "detail": "{{pct}}% {{format}}" },
+      "fallback_active": { "title": "Active profile", "detail": "regular presence on the platform" },
+      "fallback_history": { "title": "Consistent history", "detail": "foundation to iterate on" },
+      "fallback_diversify": { "title": "Room to diversify", "detail": "explore new formats" },
+      "fallback_conversation": { "title": "Conversation to develop", "detail": "reinforce CTA in captions" }
+    },
+    "format_singular": {
+      "Reels": "reels",
+      "Carousels": "carousels",
+      "Imagens": "images",
+      "Video": "videos",
+      "default": "dominant format"
+    }
+  },
+  "frequency": {
+    "title": "Posting frequency",
+    "status": { "high": "High", "medium": "Medium", "low": "Low" },
+    "headline": {
+      "very_high": "More than 1 post per day",
+      "daily": "About 1 post per day",
+      "every_1_2": "1 post every 1–2 days",
+      "every_2_3": "1 post every 2–3 days",
+      "weekly_low": "Less than 1 post per week"
+    },
+    "subtitle": "{{headline}} · {{posts}} {{postsLabel}} in {{days}} {{daysLabel}}",
+    "posts_one": "post",
+    "posts_other": "posts",
+    "days_one": "day",
+    "days_other": "days",
+    "verdict": {
+      "high": { "strong": "Strong and consistent cadence.", "rest": "Posts more than the average profile in this follower range." },
+      "medium": { "strong": "Acceptable cadence.", "rest": "There is room for more predictable regularity." },
+      "low": { "strong": "Irregular cadence.", "rest": "The audience won't build the habit of finding you." }
+    },
+    "verdict_label": { "strong": "STRENGTH", "improve": "TO IMPROVE", "alert": "ALERT" },
+    "weekly_summary": {
+      "title": "Weekly summary",
+      "most_active": "Most active",
+      "quietest": "Quietest",
+      "weekend_label": "Weekend",
+      "silent_one": "{{count}} day w/o post",
+      "silent_other": "{{count}} days w/o post",
+      "posts_one": "{{count}} post",
+      "posts_other": "{{count}} posts",
+      "aria_distribution": "Distribution of posts by weekday"
+    },
+    "calendar": {
+      "title": "When they posted",
+      "aria": "Posting calendar: {{published}} days with posts, {{paused}} without",
+      "tooltip_no_post": "no post",
+      "legend_stopped": "stopped ({{count}})",
+      "legend_one_post": "1 post",
+      "legend_many": "{{label}} posts",
+      "ratio": "{{published}}/{{total}} days"
+    },
+    "weekday_short": ["M", "T", "W", "T", "F", "S", "S"],
+    "weekday_long": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  },
+  "format": {
+    "title": "Format",
+    "variation": { "varied_high": "Very varied", "varied": "Varied", "low": "Low variety" },
+    "headline": {
+      "no_data": "No format data",
+      "only": "Only {{label}}",
+      "dominate": "{{label}} dominate",
+      "balanced": "Balanced mix",
+      "undefined": "Undefined format"
+    },
+    "subtitle": {
+      "no_data": "{{count}} posts analyzed",
+      "leader": "{{label}} most frequent · {{topCount}} of every {{total}} are {{topLower}}",
+      "extra": "{{count}} are {{label}}"
+    },
+    "names_plural": { "Reels": "reels", "Carousels": "carousels", "Imagens": "images", "Video": "videos" },
+    "names_legend": { "Reels": "Reels", "Carousels": "Carousels", "Imagens": "Images", "Video": "Videos" },
+    "types_singular": { "carousel": "carousel", "reel": "reel", "image": "image", "video": "video", "unknown": "post" },
+    "analyzed_count": "{{count}} posts analyzed",
+    "aria_distribution": "Distribution of the {{count}} analyzed posts: {{parts}}",
+    "aria_breakdown": "Format distribution across {{total}} posts: {{parts}}",
+    "breakdown_part": "{{count}} {{label}} ({{pct}}%)",
+    "thumb_aria": "{{label}} · {{date}}",
+    "verdict": {
+      "carousel": { "strong": "Focus on save-worthy content.", "rest": "Carousels work to teach, list and organize ideas." },
+      "reel": { "strong": "Focus on reach and discovery.", "rest": "Reels work to reach new audiences." },
+      "image": { "strong": "Focus on direct communication.", "rest": "Images work for clear messages and moments." },
+      "mixed": { "strong": "Varied mix.", "rest": "Different formats serve different goals — the next sections show where each format performs best." }
+    },
+    "verdict_label": { "strong": "STRENGTH", "improve": "TO IMPROVE", "neutral": "DIAGNOSTIC" }
+  }
+}
