@@ -1,29 +1,10 @@
+import { useTranslation } from "react-i18next";
+
 import { Container } from "@/components/layout/container";
 import { cn } from "@/lib/utils";
 
 import { MockupDashboard } from "./mockup-dashboard";
 import { useInView } from "./use-in-view";
-
-const highlights = [
-  {
-    label: "Dados",
-    title: "Métricas accionáveis",
-    description:
-      "Engagement, alcance, frequência e formato dominante. Tudo o que importa, nada do que distrai.",
-  },
-  {
-    label: "Benchmark",
-    title: "Comparação imediata",
-    description:
-      "Cada métrica contextualizada face ao benchmark da plataforma e da dimensão do perfil.",
-  },
-  {
-    label: "IA",
-    title: "Leitura estratégica",
-    description:
-      "Três insights prioritários gerados por IA, com recomendações concretas para os próximos 30 dias.",
-  },
-];
 
 function MockupWithReveal() {
   const { ref, inView } = useInView<HTMLDivElement>();
@@ -81,6 +62,12 @@ function MockupWithReveal() {
 }
 
 export function ProductPreviewSection() {
+  const { t } = useTranslation("landing");
+  const highlights = [
+    { key: "data", label: t("preview.highlights.data.label"), title: t("preview.highlights.data.title"), description: t("preview.highlights.data.description") },
+    { key: "benchmark", label: t("preview.highlights.benchmark.label"), title: t("preview.highlights.benchmark.title"), description: t("preview.highlights.benchmark.description") },
+    { key: "ai", label: t("preview.highlights.ai.label"), title: t("preview.highlights.ai.title"), description: t("preview.highlights.ai.description") },
+  ];
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-surface-base via-surface-light to-surface-light pt-32 md:pt-40 pb-24 md:pb-32">
       {/* Top transition fade — dark to light */}
@@ -99,15 +86,13 @@ export function ProductPreviewSection() {
         {/* Header — dark text on light surface */}
         <div className="max-w-2xl mb-12 md:mb-16">
           <span className="text-eyebrow text-accent-violet-deep mb-4 block">
-            Preview do produto
+            {t("preview.eyebrow")}
           </span>
           <h2 className="font-display text-3xl md:text-5xl font-medium tracking-tight text-on-light-primary leading-[1.1] mb-6">
-            O relatório que recebes no email.
+            {t("preview.title")}
           </h2>
           <p className="font-sans text-lg text-on-light-secondary leading-relaxed">
-            Métricas claras, benchmark visual e comparação com concorrentes.
-            Tudo exportável em PDF, partilhável em equipa, construído para
-            decisão rápida.
+            {t("preview.lead")}
           </p>
         </div>
 
@@ -117,7 +102,7 @@ export function ProductPreviewSection() {
         {/* Feature highlights — dark on light */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mt-16 md:mt-20">
           {highlights.map((item) => (
-            <div key={item.label} className="flex flex-col gap-3">
+            <div key={item.key} className="flex flex-col gap-3">
               <span className="text-eyebrow text-on-light-secondary">
                 {item.label}
               </span>
