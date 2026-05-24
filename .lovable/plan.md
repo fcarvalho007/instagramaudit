@@ -1,56 +1,71 @@
-## Plano · Refinamento do header
+## Lote G — Finalize report translation (PT/EN)
 
-Alinhar `src/components/layout/header.tsx` com o mockup: três blocos em `space-between`, navegação em pílula centrada com estado activo, e hierarquia clara nas acções à direita.
+The previous lots covered hero, KPI grid, sidebar/tabs, Identity card, Frequency and Format cards. The remaining components in the public report are still hardcoded in Portuguese. This lot closes the gap so the language switch fully localizes every block.
 
-### 1. Estrutura
-- Manter `flex justify-between` em três blocos: marca · pílula de nav · acções.
-- Altura mantém-se em `h-16 md:h-20`.
+### Scope (all under `src/components/report-redesign/v2/`)
 
-### 2. Marca (esquerda)
-- Manter `BrandMark` mas reforçar com `shadow-[0_4px_14px_-4px_rgba(99,102,241,0.45)]` para o efeito "saltar" da superfície (sombra colorida subtil).
-- Nome em Fraunces 20px (`text-xl`).
-- **Remover** o separador + tagline `INSTAGRAM BENCHMARK` (passa a viver no subtítulo do hero, como pedido). Eliminar a chave `brand_subtitle` dos JSON `pt/en/header.json`.
+Group 1 — Block 1 closure
+- `overview/diagnostic-summary.tsx` — DIAGNOSIS_MAP, primary/secondary labels
+- `overview/score-utils.ts` — score labels, family labels, aria-labels, tooltips
+- `overview/comparison-header.tsx` — "Comparar com…", "Em breve", network teasers
+- `overview/competitor-modal.tsx` — modal headings, CTAs, copy
+- `overview/frequency-card.tsx` — residual hardcoded strings (verdict short labels, weekday helpers)
 
-### 3. Navegação em pílula (centro · desktop ≥ lg)
-- Container: `inline-flex items-center gap-1 rounded-full bg-surface-muted/60 border border-border-subtle px-1.5 py-1.5`.
-- Item activo: chip branco `bg-surface-base text-content-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)] rounded-full px-4 py-1.5 text-sm font-medium`.
-- Itens inactivos: `text-content-secondary hover:text-content-primary px-4 py-1.5 text-sm`.
-- Itens propostos: **Analisar · Como funciona · Preços · Exemplos**.
-  - "Analisar" → `/` (activo quando `pathname === "/"`).
-  - **Pergunta aberta**: as outras 3 secções ainda não existem como rotas nem como âncoras na home. Proponho criá-las como âncoras (`/#como-funciona`, `/#precos`, `/#exemplos`) apontando para secções já existentes da landing (`ProductPreviewSection`, etc.) — se preferires rotas dedicadas, faço noutra task. Se não houver secção correspondente ainda, escondo o item para não criar link morto.
-- Detecção de activo via `useRouterState({ select: s => s.location.pathname })`.
+Group 2 — Diagnostic blocks (Block 2/3)
+- `report-diagnostic-grid-v2.tsx`
+- `report-diagnostic-summary-cards.tsx`
+- `report-diagnostic-verdict.tsx`
+- `report-diagnostic-priorities.tsx`
+- `report-diagnostic-group.tsx`, `report-diagnostic-card.tsx`, `report-diagnostic-cta.tsx`, `report-diagnostic-block.tsx`
+- `report-engagement-benchmark-chart.tsx` — axis labels, legends, captions
 
-### 4. Acções (direita) — três níveis
-1. **Tema** (`Moon`): `size="icon"` ghost, utilitário.
-2. **Entrar / A minha conta**: `variant="ghost"` sem fundo (mantém-se).
-3. **Analisar agora**: `variant="primary"` com gradient da marca + `shadow-[0_8px_24px_-8px_var(--accent-primary)]` + seta. Único elemento a cor no header.
-- **Remover** `LanguageSwitcher` do header (passa para o footer — já lá existe lógica de idioma, só preciso garantir o componente visível).
+Group 3 — Content/editorial blocks (Block 3/4)
+- `caption-diagnostics-card.tsx` (largest file: pills, ratings, CSV header stays code, copy/labels translated)
+- `hashtag-diagnostics-card.tsx`
+- `report-themes-feature.tsx`
+- `report-post-comparison.tsx`
+- `report-overview-attention-row.tsx`, `report-overview-cards.tsx`, `report-overview-engagement.tsx`
 
-### 5. Mobile (< lg)
-- Visível: logo + botão `Analisar agora` (compacto, sem texto longo — usar `sm:inline-flex` no texto e ícone-only no telemóvel) + hambúrguer.
-- Drawer já existente: actualizar lista para os 4 novos itens + Entrar + `LanguageSwitcher` no fundo (mantém-se aqui).
+Group 4 — Audience/visual blocks (Block 4/5)
+- `report-comment-intelligence.tsx`
+- `visual-cover-analysis-card.tsx`
 
-### 6. Footer
-- Adicionar `LanguageSwitcher` numa linha discreta do `Footer` (canto direito da barra inferior), para compensar a remoção do topo.
+Group 5 — Premium / benchmark / positioning
+- `premium-callout.tsx`, `premium-interest-dialog.tsx`
+- `report-benchmark-evidence.tsx`
+- `report-positioning-banner.tsx`
 
-### 7. i18n
-- Acrescentar chaves em `pt/header.json` e `en/header.json`:
-  - `nav.how_it_works`, `nav.pricing`, `nav.examples`.
-- Remover `brand_subtitle`.
+### Approach
 
-### Ficheiros a tocar
-- `src/components/layout/header.tsx` (refactor principal)
-- `src/components/layout/footer.tsx` (adicionar `LanguageSwitcher`)
-- `src/i18n/locales/pt/header.json`
-- `src/i18n/locales/en/header.json`
+1. Extend `src/i18n/locales/{pt,en}/report.json` with new namespaces grouped per file:
+   - `report.diagnostic.*`, `report.captions.*`, `report.hashtags.*`, `report.comments.*`, `report.visual.*`, `report.themes.*`, `report.benchmark.*`, `report.positioning.*`, `report.premium.*`, `report.comparison.*`, `report.identity.*` (extend), `report.scores.*`.
+2. Each component gains `useTranslation('report')` and replaces literal strings with `t('…')`. Helper functions that build labels (e.g. `pickQuietest`, score builders, DIAGNOSIS_MAP) receive `t` as a parameter.
+3. Pluralization handled via i18next `count` interpolation; numbers stay locale-formatted via existing `src/lib/i18n/format.ts` helpers (`formatCompactNumber`, `formatPct`, weekday from `formatDate`).
+4. Server-derived strings (AI-generated text) remain pass-through — only deterministic UI chrome and fallback copy are translated.
+5. No business logic, no data flow, no token/visual changes. No new dependencies.
 
-### Checkpoint
-- ☐ Pílula central renderiza com estado activo no item correcto
-- ☐ Logo com sombra colorida subtil
-- ☐ Apenas o CTA "Analisar agora" usa cor
-- ☐ Language switcher removido do topo e presente no footer
-- ☐ Tagline `INSTAGRAM BENCHMARK` removido
-- ☐ Mobile colapsa para logo + CTA + hambúrguer
-- ☐ Sem links mortos (decisão final sobre Como funciona / Preços / Exemplos confirmada)
+### Files NOT touched
 
-**Antes de avançar:** confirma se queres âncoras para secções da landing, rotas novas, ou esconder os itens que ainda não têm destino.
+- `src/integrations/supabase/*`, `.env`, `supabase/config.toml`
+- Legacy `report-redesign/report-*.tsx` v1 files (kept as `/report.example` mockup) per LOCKED_FILES policy
+- `report-tracking-context.tsx` (analytics events stay in English code)
+
+### Verification checklist
+
+☐ Switch language toggle and walk through Block 1 → Block 6 — no PT leak in EN mode (and vice versa).
+☐ Block 1 cards (Identity, Frequency, Format, KPI) localize verdict + diagnosis copy live.
+☐ Diagnostic verdict/priorities/grid render localized severity and CTA labels.
+☐ Caption + Hashtag cards translate ratings ("Detetados" / "Detected", "Sem repetição" / "No repetition") and helper sentences.
+☐ Comment intelligence + visual cover analysis fallback messages localized.
+☐ Premium modal, comparison header and "Em breve · Julho 2026" badges localized.
+☐ AI-generated hero text continues to render as-is (no double translation).
+☐ Numbers and dates use locale formatters (no "1,234" in PT or "1.234" in EN).
+☐ No regression: existing unit tests in `overview/__tests__` pass; add coverage for `pickQuietest` accepting `t`.
+
+### Delivery
+
+Given file count, I'll execute the groups in two build turns to keep diffs reviewable:
+- Turn 1: Groups 1 + 2 (Block 1 closure + Diagnostic blocks).
+- Turn 2: Groups 3 + 4 + 5 (Content, Audience, Premium/Benchmark/Positioning).
+
+After each turn I confirm in chat which groups landed and what remains.
