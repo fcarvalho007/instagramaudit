@@ -126,6 +126,21 @@
       "Imagens": "imagens",
       "Video": "vídeos",
       "default": "formato dominante"
+    },
+    "metrics": {
+      "likes_label": "Gostos · Média",
+      "comments_label": "Comentários · Média",
+      "rhythm_label": "Ritmo · Semana",
+      "per_post": "por post",
+      "per_week": "posts/semana",
+      "likes_subtitle": "{{pct}}% dos seguidores",
+      "likes_subtitle_na": "sem base de seguidores",
+      "comments_low": "baixa conversa",
+      "comments_medium": "conversa moderada",
+      "comments_active": "boa conversa",
+      "rhythm_excess": "acima do recomendado",
+      "rhythm_good": "ritmo saudável",
+      "rhythm_low": "abaixo do mínimo"
     }
   },
   "frequency": {
