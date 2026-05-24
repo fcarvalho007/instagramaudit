@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 /* ─── Phase steps (no repetition — one per stage) ──────────────────── */
 
 const STEPS = [
-  { label: "A recolher dados públicos do perfil…", durationMs: 3000 },
-  { label: "A organizar publicações e métricas…", durationMs: 4000 },
-  { label: "A comparar com referências de mercado…", durationMs: 5000 },
-  { label: "A identificar padrões e oportunidades…", durationMs: 6000 },
-  { label: "A preparar o relatório visual…", durationMs: 8000 },
+  { key: "1", durationMs: 3000 },
+  { key: "2", durationMs: 4000 },
+  { key: "3", durationMs: 5000 },
+  { key: "4", durationMs: 6000 },
+  { key: "5", durationMs: 8000 },
 ] as const;
 
 const TOTAL_STEPS = STEPS.length;
@@ -72,6 +73,7 @@ const LOADER_CSS = `
 /* ─── Component ────────────────────────────────────────────────────── */
 
 export function AnalysisSkeleton({ username }: { username?: string }) {
+  const { t } = useTranslation("analyze");
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -97,7 +99,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
 
   return (
     <section
-      aria-label="A analisar perfil"
+      aria-label={t("skeleton.aria")}
       className="flex min-h-screen items-center justify-center px-4 sm:px-6"
       style={{
         background: "linear-gradient(180deg, #F6FAFF 0%, #FFFFFF 100%)",
@@ -109,7 +111,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
         {/* Eyebrow + handle */}
         <div className="flex flex-col items-center gap-1.5">
           <span className="text-eyebrow-sm text-content-secondary">
-            A analisar perfil
+            {t("skeleton.eyebrow")}
           </span>
           {handle && (
             <span className="rounded-full bg-tint-primary px-3.5 py-1 font-sans text-xs font-medium text-accent-primary">
@@ -145,7 +147,7 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
             className="text-center font-sans text-base font-semibold text-content-primary sm:text-lg"
             style={{ animation: "liq-phase-in 0.4s ease-out both" }}
           >
-            {STEPS[currentStep].label}
+            {t(`skeleton.steps.${STEPS[currentStep].key}`)}
           </p>
         </div>
 
@@ -176,12 +178,12 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
 
         {/* Step counter */}
         <p className="text-center font-sans text-xs text-content-secondary tabular-nums">
-          Passo {currentStep + 1} de {TOTAL_STEPS}
+          {t("skeleton.stepCounter", { current: currentStep + 1, total: TOTAL_STEPS })}
         </p>
 
         {/* Footnote */}
         <p className="max-w-[340px] text-center font-sans text-xs leading-relaxed text-content-tertiary">
-          Não feches esta janela — o diagnóstico está a ser preparado.
+          {t("skeleton.footnote")}
         </p>
       </div>
     </section>
