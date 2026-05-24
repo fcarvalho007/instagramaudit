@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export type ReportSourceType = "dados" | "mercado" | "auto" | "ia" | "pro";
@@ -17,7 +18,7 @@ const LABEL: Record<ReportSourceType, string> = {
   pro: "◆ PRO",
 };
 
-const A11Y: Record<ReportSourceType, string> = {
+const A11Y_FALLBACK: Record<ReportSourceType, string> = {
   dados: "Dados extraídos do perfil público",
   mercado: "Referência de mercado externa",
   auto: "Cálculo ou classificação automática",
@@ -42,9 +43,11 @@ export function ReportSourceLabel({
   detail,
   className,
 }: Props) {
+  const { t } = useTranslation("report");
   const label = LABEL[type];
   const detailText = detail?.trim() || null;
-  const a11y = detailText ? `${A11Y[type]} · ${detailText}` : A11Y[type];
+  const base = t(`source.${type}`, { defaultValue: A11Y_FALLBACK[type] });
+  const a11y = detailText ? `${base} · ${detailText}` : base;
   return (
     <span
       role="note"
