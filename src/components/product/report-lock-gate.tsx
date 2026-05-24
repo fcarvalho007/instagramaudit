@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Clock, ShieldCheck, Heart } from "lucide-react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ export function ReportLockGate({
   handle,
   id,
 }: ReportLockGateProps) {
+  const { t } = useTranslation("gate");
   if (unlocked) return <>{children}</>;
 
   const cleanedHandle = handle.replace(/^@/, "");
@@ -59,7 +61,7 @@ export function ReportLockGate({
       <div className="pointer-events-none absolute inset-0 flex justify-center">
         <div
           role="region"
-          aria-label="Continuar a leitura do relatório"
+          aria-label={t("lockGate.ariaRegion")}
           className={cn(
             "pointer-events-auto sticky self-start",
             "top-24 mt-24 md:mt-32",
@@ -82,14 +84,14 @@ export function ReportLockGate({
               <span className="absolute inset-0 rounded-full bg-emerald-500 opacity-60 animate-ping" />
               <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
             </span>
-            Acesso gratuito · Beta
+            {t("lockGate.badge")}
           </span>
 
           {/* Title */}
           <h2 className="mt-5 font-display text-[28px] md:text-[32px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            Continua a leitura
+            {t("lockGate.titleLine1")}
             <br />
-            do{" "}
+            {t("lockGate.titleLine2Prefix")}{" "}
             <em className="not-italic font-display italic text-accent-primary">
               @{cleanedHandle}
             </em>
@@ -97,11 +99,13 @@ export function ReportLockGate({
 
           {/* Subtitle */}
           <p className="mt-3 text-[14px] md:text-[15px] leading-relaxed text-content-secondary">
-            Indica o nome e email e responde a{" "}
-            <strong className="font-semibold text-content-primary">
-              3 perguntas rápidas
-            </strong>{" "}
-            para abrir o resto do relatório.
+            <Trans
+              i18nKey="lockGate.subtitle"
+              ns="gate"
+              components={{
+                strong: <strong className="font-semibold text-content-primary" />,
+              }}
+            />
           </p>
 
           {/* CTA */}
@@ -115,19 +119,19 @@ export function ReportLockGate({
             )}
             size="lg"
           >
-            Ver relatório gratuito →
+            {t("lockGate.cta")}
           </Button>
 
           {/* Footer micro-tags */}
           <div className="mt-5 pt-4 border-t border-border-default/40 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-content-tertiary">
             <span className="inline-flex items-center gap-1.5">
-              <Clock className="size-3.5" aria-hidden /> ~1 minuto
+              <Clock className="size-3.5" aria-hidden /> {t("lockGate.footer.time")}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5" aria-hidden /> RGPD · sem spam
+              <ShieldCheck className="size-3.5" aria-hidden /> {t("lockGate.footer.gdpr")}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Heart className="size-3.5" aria-hidden /> Construído em Leiria
+              <Heart className="size-3.5" aria-hidden /> {t("lockGate.footer.made")}
             </span>
           </div>
         </div>
@@ -139,6 +143,7 @@ export function ReportLockGate({
 }
 
 function DevResetButton() {
+  const { t } = useTranslation("gate");
   return (
     <button
       type="button"
@@ -154,7 +159,7 @@ function DevResetButton() {
     >
       <span className="inline-flex items-center gap-1.5">
         <ShieldCheck className="size-3.5" aria-hidden="true" />
-        Reset preview unlock
+        {t("lockGate.devReset")}
       </span>
     </button>
   );

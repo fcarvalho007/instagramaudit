@@ -1,0 +1,14 @@
+{
+  "INVALID_USERNAME": "Nome de utilizador inválido. Confirma e tenta novamente.",
+  "PROFILE_NOT_FOUND": "Não encontrámos este perfil no Instagram. Confirma o nome de utilizador.",
+  "PROFILE_NOT_ALLOWED": "Este perfil ainda não está disponível para análise pública.",
+  "PROFILE_PRIVATE": "Este perfil é privado. Só conseguimos analisar perfis públicos.",
+  "PROVIDER_DISABLED": "Análise temporariamente indisponível. Tenta dentro de instantes.",
+  "UPSTREAM_FAILED": "Não foi possível concluir a análise. Tenta dentro de instantes.",
+  "UPSTREAM_UNAVAILABLE": "Serviço de análise temporariamente indisponível. Tenta dentro de instantes.",
+  "NETWORK_ERROR": "Falha de ligação. Tentar novamente.",
+  "SNAPSHOT_NOT_FOUND": "Ainda não temos um relatório guardado para este perfil. Tenta novamente dentro de instantes.",
+  "CACHE_ONLY_NO_DATA": "Este relatório ainda não tem dados públicos disponíveis. A equipa está a preparar uma nova análise.",
+  "FALLBACK": "Não foi possível concluir a análise. Tenta novamente dentro de instantes.",
+  "NETWORK_FETCH": "Falha de ligação. Tentar novamente."
+}

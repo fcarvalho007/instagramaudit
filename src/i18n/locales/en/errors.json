@@ -1,0 +1,14 @@
+{
+  "INVALID_USERNAME": "Invalid username. Please check and try again.",
+  "PROFILE_NOT_FOUND": "We couldn't find this profile on Instagram. Check the username.",
+  "PROFILE_NOT_ALLOWED": "This profile isn't available for public analysis yet.",
+  "PROFILE_PRIVATE": "This profile is private. We can only analyse public profiles.",
+  "PROVIDER_DISABLED": "Analysis temporarily unavailable. Try again in a moment.",
+  "UPSTREAM_FAILED": "We couldn't complete the analysis. Try again in a moment.",
+  "UPSTREAM_UNAVAILABLE": "Analysis service temporarily unavailable. Try again in a moment.",
+  "NETWORK_ERROR": "Connection error. Please try again.",
+  "SNAPSHOT_NOT_FOUND": "We don't have a saved report for this profile yet. Try again in a moment.",
+  "CACHE_ONLY_NO_DATA": "This report doesn't have public data available yet. The team is preparing a new analysis.",
+  "FALLBACK": "We couldn't complete the analysis. Please try again in a moment.",
+  "NETWORK_FETCH": "Connection error. Please try again."
+}

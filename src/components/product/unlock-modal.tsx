@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Briefcase,
@@ -28,11 +29,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import {
-  GOAL_LABELS,
   GOALS,
-  PROFILE_OWNERSHIP_LABELS,
   PROFILE_OWNERSHIPS,
-  USER_TYPE_LABELS,
   USER_TYPES,
   unlockFormSchema,
   type Goal,
@@ -44,16 +42,7 @@ import { trackEvent } from "@/lib/tracking.functions";
 
 const TOTAL_STEPS = 4;
 
-const OPERATOR_INFO = {
-  name: "Fomentar Sonhos, Lda.",
-  city: "Leiria, Portugal",
-};
-
-const UNLOCKED_ITEMS = [
-  "Visão geral desbloqueada",
-  "Diagnóstico desbloqueado",
-  "Desempenho desbloqueado",
-] as const;
+const UNLOCKED_ITEM_KEYS = ["overview", "diagnosis", "performance"] as const;
 
 type IconCmp = typeof User;
 
@@ -76,35 +65,28 @@ const PROFILE_OWNERSHIP_ICONS: Record<
   curiosity: { Icon: HelpCircle, bg: "bg-pink-100", fg: "text-pink-600" },
 };
 
-const FIELD_LABELS_PT: Record<string, string> = {
-  first_name: "Primeiro nome",
-  last_name: "Apelido",
-  email: "Email",
-  gdpr_consent: "Consentimento",
-  profile_ownership: "Tipo de perfil",
-  goal: "Objetivo",
-  user_type: "Como te descreves",
-  goal_other_text: "Detalhe do objetivo",
-  user_type_other_text: "Detalhe de como te descreves",
-  analysis_snapshot_id: "Relatório",
-  instagram_username: "Perfil Instagram",
-};
-
-function extractServerError(data: {
-  error?: string;
-  issues?: { fieldErrors?: Record<string, string[]> };
-}): string {
+function extractServerError(
+  data: {
+    error?: string;
+    issues?: { fieldErrors?: Record<string, string[]> };
+  },
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
   const fe = data.issues?.fieldErrors ?? {};
   const firstField = Object.keys(fe)[0];
   if (firstField) {
     const msg = fe[firstField]?.[0];
-    const label = FIELD_LABELS_PT[firstField] ?? firstField;
-    return msg ? `${label}: ${msg}` : `Campo inválido: ${label}`;
+    const label = t(`unlock.fieldLabels.${firstField}`, {
+      defaultValue: firstField,
+    });
+    return msg
+      ? t("unlock.errors.fieldWithMessage", { label, message: msg })
+      : t("unlock.errors.fieldGeneric", { label });
   }
   if (data.error === "SNAPSHOT_NOT_FOUND") {
-    return "Este relatório expirou. Volta a abrir a página e tenta de novo.";
+    return t("unlock.errors.snapshotExpired");
   }
-  return "Não foi possível desbloquear agora. Tenta novamente em instantes.";
+  return t("unlock.errors.generic");
 }
 
 type QField = "profile_ownership" | "goal" | "user_type";
@@ -131,47 +113,25 @@ export interface UnlockModalProps {
 
 type Step = 1 | 2 | 3 | 4 | 5 | "welcome-back";
 
-const STEP_HEADERS: Record<
-  1 | 2 | 3 | 4,
-  {
-    eyebrow: string;
-    badge?: string;
-    title: (handle: string) => React.ReactNode;
-    subtitle: React.ReactNode;
-  }
-> = {
-  1: {
-    eyebrow: "PASSO 1 DE 4",
-    badge: "~1 MIN",
-    title: () => (
+function useStepHeader(step: 1 | 2 | 3 | 4) {
+  const { t } = useTranslation("gate");
+  const eyebrow = t(`unlock.step${step}.eyebrow`);
+  const subtitle = t(`unlock.step${step}.subtitle`);
+  const badge = step === 1 ? t("unlock.stepBadgeMinute") : undefined;
+  const title =
+    step === 1 ? (
       <>
-        Como te{" "}
+        {t("unlock.step1.titlePrefix")}{" "}
         <em className="not-italic font-display italic text-primary">
-          tratamos
+          {t("unlock.step1.titleEm")}
         </em>
-        ?
+        {t("unlock.step1.titleSuffix")}
       </>
-    ),
-    subtitle:
-      "Usamos estes dados para guardar o relatório e enviar o acesso por email.",
-  },
-  2: {
-    eyebrow: "PASSO 2 DE 4",
-    title: () => <>Que relação tens com este perfil?</>,
-    subtitle: "Ajuda-nos a ajustar o tom da análise.",
-  },
-  3: {
-    eyebrow: "PASSO 3 DE 4",
-    title: () => <>O que queres perceber?</>,
-    subtitle:
-      "Escolhe o que mais te interessa. Destacamos o que importa.",
-  },
-  4: {
-    eyebrow: "PASSO 4 DE 4",
-    title: () => <>Como te descreves?</>,
-    subtitle: "Última pergunta — depois abrimos o relatório.",
-  },
-};
+    ) : (
+      <>{t(`unlock.step${step}.title`)}</>
+    );
+  return { eyebrow, badge, subtitle, title };
+}
 
 export function UnlockModal({
   open,
@@ -180,6 +140,7 @@ export function UnlockModal({
   instagramUsername,
   onUnlock,
 }: UnlockModalProps) {
+  const { t } = useTranslation("gate");
   const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -231,11 +192,11 @@ export function UnlockModal({
       const lastName = (form.getValues("last_name") ?? "").trim();
       let invalid = false;
       if (!firstName) {
-        form.setError("first_name", { message: "Indica o teu primeiro nome" });
+        form.setError("first_name", { message: t("unlock.step1.firstNameRequired") });
         invalid = true;
       }
       if (!lastName) {
-        form.setError("last_name", { message: "Indica o apelido" });
+        form.setError("last_name", { message: t("unlock.step1.lastNameRequired") });
         invalid = true;
       }
       if (invalid) return;
@@ -315,9 +276,7 @@ export function UnlockModal({
 
       if (exists && missing.length > 0 && missing.length < 3) {
         setPartialBanner(
-          `Já temos parte dos teus dados. Faltam só ${missing.length} ${
-            missing.length === 1 ? "passo rápido" : "passos rápidos"
-          }.`,
+          t("unlock.partialBanner", { count: missing.length }),
         );
         const firstMissing = missing[0];
         const targetStep = (Object.keys(STEP_FIELD) as Array<"2" | "3" | "4">)
@@ -396,7 +355,7 @@ export function UnlockModal({
         issues?: { fieldErrors?: Record<string, string[]> };
       };
       if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
-        setServerError(extractServerError(data));
+        setServerError(extractServerError(data, t));
         return;
       }
       const r: UnlockResult = {
@@ -408,9 +367,7 @@ export function UnlockModal({
       onUnlock(r);
       setStep(5);
     } catch {
-      setServerError(
-        "Erro de ligação. Verifica a tua internet e tenta novamente.",
-      );
+      setServerError(t("unlock.errors.network"));
     } finally {
       setSubmitting(false);
     }
@@ -438,9 +395,7 @@ export function UnlockModal({
       };
       if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
         setStep(2);
-        setServerError(
-          "Precisamos de mais 3 detalhes rápidos para desbloquear.",
-        );
+        setServerError(t("unlock.errors.needMoreDetails"));
         return;
       }
       const r: UnlockResult = {
@@ -453,9 +408,7 @@ export function UnlockModal({
       setStep(5);
     } catch {
       setStep(2);
-      setServerError(
-        "Erro de ligação. Verifica a tua internet e tenta novamente.",
-      );
+      setServerError(t("unlock.errors.network"));
     } finally {
       setSubmitting(false);
     }
@@ -489,26 +442,80 @@ export function UnlockModal({
             />
           </div>
         ) : (
-          <div className="px-7 py-8 sm:px-9 sm:py-9">
-            <DialogHeader className="text-left space-y-3">
-              <div className="flex items-center gap-2">
-                <p className="text-eyebrow-sm text-content-tertiary">
-                  {STEP_HEADERS[step].eyebrow}
-                </p>
-                {STEP_HEADERS[step].badge ? (
-                  <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-[1px] text-[10px] font-semibold tracking-wide">
-                    {STEP_HEADERS[step].badge}
-                  </span>
-                ) : null}
-              </div>
-              <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-                {STEP_HEADERS[step].title(instagramUsername)}
-              </DialogTitle>
-              <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-                {STEP_HEADERS[step].subtitle}
-              </DialogDescription>
-              <ProgressSegments current={stepNumForBar} total={TOTAL_STEPS} />
-            </DialogHeader>
+          <StepShellAndForm
+            step={step as 1 | 2 | 3 | 4}
+            instagramUsername={instagramUsername}
+            stepNumForBar={stepNumForBar}
+            partialBanner={partialBanner}
+            form={form}
+            serverError={serverError}
+            submitting={submitting}
+            lookupPending={lookupPending}
+            goBack={goBack}
+            goNext={goNext}
+            handleFinalSubmit={handleFinalSubmit}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StepShellAndForm({
+  step,
+  instagramUsername,
+  stepNumForBar,
+  partialBanner,
+  form,
+  serverError,
+  submitting,
+  lookupPending,
+  goBack,
+  goNext,
+  handleFinalSubmit,
+}: {
+  step: 1 | 2 | 3 | 4;
+  instagramUsername: string;
+  stepNumForBar: number;
+  partialBanner: string | null;
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+  serverError: string | null;
+  submitting: boolean;
+  lookupPending: boolean;
+  goBack: () => void;
+  goNext: () => Promise<void> | void;
+  handleFinalSubmit: () => Promise<void> | void;
+}) {
+  const { t } = useTranslation("gate");
+  const header = useStepHeader(step);
+  void instagramUsername;
+
+  const profileOwnershipLabels = (v: ProfileOwnership) =>
+    t(`unlock.options.profileOwnership.${v}`);
+  const goalLabels = (v: Goal) => t(`unlock.options.goal.${v}`);
+  const userTypeLabels = (v: UserType) => t(`unlock.options.userType.${v}`);
+
+  return (
+    <div className="px-7 py-8 sm:px-9 sm:py-9">
+      <DialogHeader className="text-left space-y-3">
+        <div className="flex items-center gap-2">
+          <p className="text-eyebrow-sm text-content-tertiary">
+            {header.eyebrow}
+          </p>
+          {header.badge ? (
+            <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-[1px] text-[10px] font-semibold tracking-wide">
+              {header.badge}
+            </span>
+          ) : null}
+        </div>
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+          {header.title}
+        </DialogTitle>
+        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+          {header.subtitle}
+        </DialogDescription>
+        <ProgressSegments current={stepNumForBar} total={TOTAL_STEPS} />
+      </DialogHeader>
 
             <form
               onSubmit={(e) => {
@@ -530,7 +537,7 @@ export function UnlockModal({
                   name="profile_ownership"
                   options={PROFILE_OWNERSHIPS.map((v) => ({
                     value: v,
-                    label: PROFILE_OWNERSHIP_LABELS[v],
+                    label: profileOwnershipLabels(v),
                     icon: PROFILE_OWNERSHIP_ICONS[v],
                   }))}
                   value={form.watch("profile_ownership")}
@@ -548,7 +555,7 @@ export function UnlockModal({
                   name="goal"
                   options={GOALS.map((v) => ({
                     value: v,
-                    label: GOAL_LABELS[v],
+                    label: goalLabels(v),
                   }))}
                   value={form.watch("goal")}
                   onChange={(v) =>
@@ -561,9 +568,9 @@ export function UnlockModal({
                     form.setValue("goal_other_text", v, { shouldValidate: true })
                   }
                   otherError={form.formState.errors.goal_other_text?.message}
-                  otherPlaceholder="ex: investigação académica sobre IA criativa"
-                  otherEyebrow="descreve em poucas palavras"
-                  otherHint="opcional · ajuda-nos a melhorar"
+                  otherPlaceholder={t("unlock.step3.otherPlaceholder")}
+                  otherEyebrow={t("unlock.step3.otherEyebrow")}
+                  otherHint={t("unlock.step3.otherHint")}
                 />
               ) : null}
               {step === 4 ? (
@@ -574,7 +581,7 @@ export function UnlockModal({
                   fullWidthValues={["other"]}
                   options={USER_TYPES.map((v) => ({
                     value: v,
-                    label: USER_TYPE_LABELS[v],
+                    label: userTypeLabels(v),
                   }))}
                   value={form.watch("user_type")}
                   onChange={(v) =>
@@ -591,8 +598,8 @@ export function UnlockModal({
                     })
                   }
                   otherError={form.formState.errors.user_type_other_text?.message}
-                  otherPlaceholder="ex: jornalista, investigador, curador"
-                  otherEyebrow="selecciona para descrever"
+                  otherPlaceholder={t("unlock.step4.otherPlaceholder")}
+                  otherEyebrow={t("unlock.step4.otherEyebrow")}
                 />
               ) : null}
 
@@ -613,7 +620,7 @@ export function UnlockModal({
                     className="flex-shrink-0 rounded-lg"
                   >
                     <ArrowLeft className="size-4" aria-hidden />
-                    Voltar
+                    {t("unlock.back")}
                   </Button>
                 ) : null}
                 <Button
@@ -625,12 +632,12 @@ export function UnlockModal({
                   {submitting || lookupPending ? (
                     <>
                       <Loader2 className="size-4 animate-spin" aria-hidden />
-                      {lookupPending ? "A verificar…" : "A desbloquear…"}
+                      {lookupPending ? t("unlock.verifying") : t("unlock.unlocking")}
                     </>
                   ) : step === 4 ? (
-                    "Abrir relatório  →"
+                    t("unlock.continueLong")
                   ) : (
-                    "Continuar  →"
+                    t("unlock.continue")
                   )}
                 </Button>
               </div>
@@ -638,18 +645,23 @@ export function UnlockModal({
               {step === 1 ? (
                 <p className="flex items-center justify-center gap-1.5 text-[11px] text-content-tertiary">
                   <Lock className="size-3" aria-hidden="true" />
-                  Operador:{" "}
-                  <strong className="font-semibold text-content-secondary">
-                    {OPERATOR_INFO.name}
-                  </strong>{" "}
-                  · {OPERATOR_INFO.city} · Cancela quando quiseres.
+                  <Trans
+                    i18nKey="unlock.operatorLine"
+                    ns="gate"
+                    values={{
+                      name: t("unlock.operator.name"),
+                      city: t("unlock.operator.city"),
+                    }}
+                    components={{
+                      strong: (
+                        <strong className="font-semibold text-content-secondary" />
+                      ),
+                    }}
+                  />
                 </p>
               ) : null}
             </form>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }
 
@@ -700,6 +712,7 @@ function Step1Email({
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
 }) {
+  const { t } = useTranslation("gate");
   const error = form.formState.errors.email?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const firstNameError = form.formState.errors.first_name?.message;
@@ -714,14 +727,14 @@ function Step1Email({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="unlock-first-name" className="text-sm">
-            Primeiro nome
+            {t("unlock.step1.firstNameLabel")}
           </Label>
           <Input
             id="unlock-first-name"
             type="text"
             autoFocus
             autoComplete="given-name"
-            placeholder="Ana"
+            placeholder={t("unlock.step1.firstNamePlaceholder")}
             aria-invalid={Boolean(firstNameError)}
             {...form.register("first_name")}
           />
@@ -731,13 +744,13 @@ function Step1Email({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="unlock-last-name" className="text-sm">
-            Apelido
+            {t("unlock.step1.lastNameLabel")}
           </Label>
           <Input
             id="unlock-last-name"
             type="text"
             autoComplete="family-name"
-            placeholder="Marques"
+            placeholder={t("unlock.step1.lastNamePlaceholder")}
             aria-invalid={Boolean(lastNameError)}
             {...form.register("last_name")}
           />
@@ -749,14 +762,14 @@ function Step1Email({
 
       <div className="space-y-1.5">
         <Label htmlFor="unlock-email" className="text-sm">
-          Email
+          {t("unlock.step1.emailLabel")}
         </Label>
         <div className="relative">
           <Input
             id="unlock-email"
             type="email"
             autoComplete="email"
-            placeholder="ana@empresa.pt"
+            placeholder={t("unlock.step1.emailPlaceholder")}
             aria-invalid={Boolean(error)}
             className="pr-9"
             {...form.register("email")}
@@ -790,27 +803,30 @@ function Step1Email({
             className="mt-0.5"
           />
           <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
-            Aceito o{" "}
-            <a
-              href="/privacidade"
-              target="_blank"
-              rel="noopener"
-              className="underline text-primary hover:text-primary/80"
-            >
-              tratamento dos meus dados
-            </a>{" "}
-            para gerar e guardar este relatório, e li a{" "}
-            <a
-              href="/privacidade"
-              target="_blank"
-              rel="noopener"
-              className="underline text-primary hover:text-primary/80"
-            >
-              política de privacidade
-            </a>
-            .{" "}
+            <Trans
+              i18nKey="unlock.step1.consentText"
+              ns="gate"
+              components={{
+                a: (
+                  <a
+                    href="/privacidade"
+                    target="_blank"
+                    rel="noopener"
+                    className="underline text-primary hover:text-primary/80"
+                  />
+                ),
+                a2: (
+                  <a
+                    href="/privacidade"
+                    target="_blank"
+                    rel="noopener"
+                    className="underline text-primary hover:text-primary/80"
+                  />
+                ),
+              }}
+            />{" "}
             <span className="inline-flex items-center rounded bg-pink-100 text-pink-700 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wide ml-0.5 align-middle">
-              OBRIG.
+              {t("unlock.step1.consentBadgeRequired")}
             </span>
           </span>
         </label>
@@ -832,9 +848,9 @@ function Step1Email({
             className="mt-0.5"
           />
           <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
-            Quero receber novidades e dicas sobre relatórios, análise de Instagram e marketing digital{" "}
+            {t("unlock.step1.marketingText")}{" "}
             <span className="text-content-tertiary">
-              (cancelas quando quiseres · ~1 email/semana)
+              {t("unlock.step1.marketingHint")}
             </span>
           </span>
         </label>
@@ -886,6 +902,7 @@ function RadioCardField({
   twoColumns?: boolean;
   fullWidthValues?: string[];
 }) {
+  const { t } = useTranslation("gate");
   return (
     <fieldset className="space-y-3">
       {legend ? (
@@ -968,7 +985,9 @@ function RadioCardField({
                   <Input
                     autoFocus
                     maxLength={80}
-                    placeholder={otherPlaceholder ?? "Conta-nos brevemente…"}
+                    placeholder={
+                      otherPlaceholder ?? t("unlock.options.tellUsBriefly")
+                    }
                     value={otherText ?? ""}
                     onChange={(e) => onOtherTextChange(e.target.value)}
                     aria-invalid={Boolean(otherError)}
@@ -1009,6 +1028,7 @@ function SuccessStep({
 }) {
   void email;
   void returningLead;
+  const { t } = useTranslation("gate");
   return (
     <div>
       <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-8">
@@ -1021,30 +1041,33 @@ function SuccessStep({
             <CheckCircle2 className="size-5 text-white" aria-hidden />
           </div>
           <p className="text-eyebrow-sm text-emerald-700">
-            RELATÓRIO ASSOCIADO{firstName ? ` · OBRIGADO ${firstName.toUpperCase()}` : ""}
+            {t("unlock.success.eyebrowAssoc")}
+            {firstName
+              ? ` · ${t("unlock.success.eyebrowThanks", { name: firstName.toUpperCase() })}`
+              : ""}
           </p>
           <h2 className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            Relatório{" "}
+            {t("unlock.success.titlePrefix")}{" "}
             <em className="not-italic font-display italic text-emerald-600">
-              desbloqueado
+              {t("unlock.success.titleEm")}
             </em>
           </h2>
           <p className="text-[13px] text-content-secondary leading-relaxed">
-            O relatório ficou associado ao email indicado para poderes voltar a consultá-lo mais tarde.
+            {t("unlock.success.subtitle")}
           </p>
         </div>
       </div>
 
       <div className="px-6 sm:px-8 py-6 space-y-5">
         <ul className="space-y-2">
-          {UNLOCKED_ITEMS.map((label) => (
+          {UNLOCKED_ITEM_KEYS.map((key) => (
             <li
-              key={label}
+              key={key}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-emerald-50/70 border-emerald-200/70"
             >
               <Check className="size-4 text-emerald-600 shrink-0" aria-hidden />
               <span className="text-[13px] text-content-primary flex-1">
-                {label}
+                {t(`unlock.success.items.${key}`)}
               </span>
             </li>
           ))}
@@ -1056,10 +1079,10 @@ function SuccessStep({
             className="w-full rounded-lg font-medium mt-4"
             onClick={onClose}
           >
-            Ver relatório gratuito agora  →
+            {t("unlock.success.cta")}
           </Button>
           <p className="text-xs text-content-tertiary text-center">
-            Este relatório foi associado diretamente à tua conta.
+            {t("unlock.success.footnote")}
           </p>
         </div>
       </div>
@@ -1080,6 +1103,7 @@ function WelcomeBackState({
   onContinue: () => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation("gate");
   return (
     <div className="space-y-6">
       <div className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
@@ -1087,14 +1111,14 @@ function WelcomeBackState({
       </div>
       <DialogHeader className="text-left space-y-2">
         <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-          Bem-vindo de{" "}
+          {t("unlock.welcomeBack.titlePrefix")}{" "}
           <em className="not-italic font-display italic text-emerald-600">
-            volta
+            {t("unlock.welcomeBack.titleEm")}
           </em>
           {firstName ? `, ${firstName}` : ""}
         </DialogTitle>
         <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-          Podes voltar a consultar este relatório na tua área pessoal.
+          {t("unlock.welcomeBack.subtitle")}
         </DialogDescription>
       </DialogHeader>
 
@@ -1114,7 +1138,7 @@ function WelcomeBackState({
           className="flex-shrink-0 rounded-lg"
         >
           <ArrowLeft className="size-4" aria-hidden />
-          Voltar
+          {t("unlock.back")}
         </Button>
         <Button
           type="button"
@@ -1126,10 +1150,10 @@ function WelcomeBackState({
           {submitting ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden />
-              A desbloquear…
+              {t("unlock.unlocking")}
             </>
           ) : (
-            "Continuar"
+            t("unlock.continue").replace(/\s*→\s*$/, "")
           )}
         </Button>
       </div>

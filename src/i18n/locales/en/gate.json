@@ -1,0 +1,140 @@
+{
+  "lockGate": {
+    "ariaRegion": "Continue reading the report",
+    "badge": "Free access · Beta",
+    "titleLine1": "Continue reading",
+    "titleLine2Prefix": "the",
+    "subtitle": "Share your name and email and answer <strong>3 quick questions</strong> to unlock the rest of the report.",
+    "cta": "View free report →",
+    "footer": {
+      "time": "~1 minute",
+      "gdpr": "GDPR · no spam",
+      "made": "Built in Leiria"
+    },
+    "devReset": "Reset preview unlock"
+  },
+  "unlock": {
+    "operator": {
+      "name": "Fomentar Sonhos, Lda.",
+      "city": "Leiria, Portugal"
+    },
+    "stepEyebrow": "STEP {{current}} OF {{total}}",
+    "stepBadgeMinute": "~1 MIN",
+    "verifying": "Checking…",
+    "unlocking": "Unlocking…",
+    "continueLong": "Open report  →",
+    "continue": "Continue  →",
+    "back": "Back",
+    "operatorLine": "Operator: <strong>{{name}}</strong> · {{city}} · Cancel any time.",
+    "partialBanner_one": "We already have some of your data. Only {{count}} quick step left.",
+    "partialBanner_other": "We already have some of your data. Only {{count}} quick steps left.",
+    "errors": {
+      "fieldGeneric": "Invalid field: {{label}}",
+      "fieldWithMessage": "{{label}}: {{message}}",
+      "snapshotExpired": "This report has expired. Reopen the page and try again.",
+      "generic": "We couldn't unlock right now. Please try again in a moment.",
+      "network": "Connection error. Check your internet and try again.",
+      "needMoreDetails": "We need 3 more quick details to unlock."
+    },
+    "fieldLabels": {
+      "first_name": "First name",
+      "last_name": "Last name",
+      "email": "Email",
+      "gdpr_consent": "Consent",
+      "profile_ownership": "Profile type",
+      "goal": "Goal",
+      "user_type": "About you",
+      "goal_other_text": "Goal details",
+      "user_type_other_text": "About you details",
+      "analysis_snapshot_id": "Report",
+      "instagram_username": "Instagram profile"
+    },
+    "step1": {
+      "eyebrow": "STEP 1 OF 4",
+      "badge": "~1 MIN",
+      "titlePrefix": "How should we",
+      "titleEm": "address",
+      "titleSuffix": " you?",
+      "subtitle": "We use this to save the report and email you the access link.",
+      "firstNameLabel": "First name",
+      "firstNamePlaceholder": "Ana",
+      "firstNameRequired": "Enter your first name",
+      "lastNameLabel": "Last name",
+      "lastNamePlaceholder": "Marques",
+      "lastNameRequired": "Enter your last name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "ana@company.com",
+      "consentText": "I accept the <a>processing of my data</a> to generate and store this report, and I've read the <a2>privacy policy</a2>.",
+      "consentBadgeRequired": "REQ.",
+      "marketingText": "I'd like to receive news and tips on reports, Instagram analytics and digital marketing",
+      "marketingHint": "(unsubscribe any time · ~1 email/week)"
+    },
+    "step2": {
+      "eyebrow": "STEP 2 OF 4",
+      "title": "How are you related to this profile?",
+      "subtitle": "Helps us tune the tone of the analysis."
+    },
+    "step3": {
+      "eyebrow": "STEP 3 OF 4",
+      "title": "What do you want to understand?",
+      "subtitle": "Pick what matters most. We'll highlight what counts.",
+      "otherPlaceholder": "e.g.: academic research on creative AI",
+      "otherEyebrow": "describe in a few words",
+      "otherHint": "optional · helps us improve"
+    },
+    "step4": {
+      "eyebrow": "STEP 4 OF 4",
+      "title": "How do you describe yourself?",
+      "subtitle": "Last question — then we open the report.",
+      "otherPlaceholder": "e.g.: journalist, researcher, curator",
+      "otherEyebrow": "select to describe"
+    },
+    "options": {
+      "chooseOne": "Pick an option",
+      "tellUsBriefly": "Tell us briefly…",
+      "profileOwnership": {
+        "own_profile": "It's my personal profile",
+        "brand_profile": "It's my brand's profile",
+        "client_profile": "It's a client's profile",
+        "competitor_research": "I'm watching the competition",
+        "curiosity": "Just exploring"
+      },
+      "goal": {
+        "improve_content": "Improve content",
+        "benchmark_competitors": "Benchmark competitors",
+        "client_report": "Prepare an analysis for a client",
+        "grow_audience": "Grow audience",
+        "validate_brand": "Validate brand presence",
+        "other": "Other"
+      },
+      "userType": {
+        "creator": "Creator / Influencer",
+        "brand": "Brand",
+        "agency": "Agency",
+        "consultant": "Consultant / Freelancer",
+        "ecommerce": "E-commerce",
+        "student": "Student / Academic",
+        "other": "Other"
+      }
+    },
+    "success": {
+      "eyebrowAssoc": "REPORT LINKED",
+      "eyebrowThanks": "THANK YOU {{name}}",
+      "titlePrefix": "Report",
+      "titleEm": "unlocked",
+      "subtitle": "The report has been linked to the email you provided so you can come back to it later.",
+      "items": {
+        "overview": "Overview unlocked",
+        "diagnosis": "Diagnosis unlocked",
+        "performance": "Performance unlocked"
+      },
+      "cta": "View free report now  →",
+      "footnote": "This report has been linked directly to your account."
+    },
+    "welcomeBack": {
+      "titlePrefix": "Welcome",
+      "titleEm": "back",
+      "subtitle": "You can come back to this report from your personal area."
+    }
+  }
+}

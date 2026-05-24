@@ -1,83 +1,70 @@
-## Diagnóstico
+## Lote D — Fluxo de análise pública + Unlock
 
-Audit rápido: apenas `header.tsx`, `footer.tsx` e `language-switcher.tsx` consomem i18n. Tudo o resto (~100+ ficheiros públicos) tem copy hardcoded em pt-PT. O toggle EN no header existe mas, na prática, só muda o header e footer. A landing, auth, app, analyze, report, beta e páginas legais permanecem em pt-PT mesmo com EN selecionado.
+Adicionar EN paralelo a toda a experiência pública pós-landing: rota `/analyze/$username`, dashboard, skeleton, estados de erro e modais de gateway/unlock. PT-PT continua canónico.
 
-**Veredito:** o "switch para EN" está partido na perceção do utilizador. Precisamos completar os lotes B–G.
+### 1. Novos namespaces i18n
 
-## Estratégia revista
+Criar em `src/i18n/locales/{pt,en}/`:
 
-O volume é incompatível com um único prompt. Proponho **dividir em 3 prompts sequenciais** com critério claro de sucesso em cada um:
+- **`analyze.json`** — strings da rota e do dashboard
+  - `meta.title`, `meta.description` (com `{{username}}`)
+  - `header.*` — handle, badges (Pública, Cache, Fresca), botões (Atualizar / Refresh, Nova análise / New analysis)
+  - `skeleton.*` — labels de carregamento
+  - `dashboard.*` — KPIs (Seguidores, Publicações, Engagement, Frequência…), secções (Benchmark, Concorrentes, Insights), CTAs
+  - `conversionLayer.*` — banda "Desbloquear relatório completo"
+  - `premiumLocked.*` — placeholder de secções PRO
+  - `pricingFeedback.*` — sheet de pricing
+- **`gate.json`** — gateway + unlock modal
+  - `lockGate.*` — badge "Acesso gratuito · BETA" / "Free access · BETA", título serif, subtítulo com `{{handle}}`, CTA "Ver relatório gratuito" / "View free report", footer micro-tags (tempo, GDPR, autoria)
+  - `unlockModal.*` — passos, labels de form (nome, email, consent), erros de validação, sucesso, botões
+- **`errors.json`** — mensagens canónicas de erro server-side mapeadas a UI
+  - `CACHE_ONLY_NO_DATA`, `PROFILE_NOT_ALLOWED`, `RATE_LIMITED`, `BUDGET_EXCEEDED`, `PROVIDER_ERROR`, `UNKNOWN`
+  - Cada chave: `title`, `description`, `cta` (quando aplicável)
 
-### Prompt atual (este) — Lotes B + C + D
+Registar os 3 namespaces em `src/i18n/index.ts` (resources sync, como `landing`/`auth`).
 
-Cobre as superfícies mais visíveis no primeiro contacto:
-- **B — Auth + App autenticada (15 ficheiros):** `/login`, `/signup`, `/reset-password`, `auth-card`, `/app/*` (account, plan, reports, reports/$id), `app-sidebar`, `app-topbar`, `report-card`, `pro-tracking-teaser`
-- **C — Landing (10 ficheiros):** `index.tsx`, `hero-section`, `hero-action-bar`, `social-proof-section`, `how-it-works-section`, `how-it-works-step`, `product-preview-section`, `handwritten-note`, `mockup-*`, `scroll-indicator`
-- **D — Analyze + Unlock (12 ficheiros):** `/analyze/$username`, `analysis-skeleton`, `analysis-error-state`, `analysis-header`, `public-analysis-dashboard`, `post-analysis-conversion-layer`, `unlock-modal`, `report-gate-modal`, `report-lock-gate`, `premium-locked-section`, `pricing-feedback-sheet`, `analysis-benchmark-block`, `analysis-competitor-comparison`, `analysis-metric-card`
+### 2. Ficheiros a localizar
 
-Cria namespaces `auth.json`, `app.json`, `landing.json` (substitui placeholder), `analyze.json`, `unlock.json` em PT + EN.
+Rota:
+- `src/routes/analyze.$username.tsx` — `head()` (title, description, og), boundary copy.
 
-### Próximo prompt — Lote E (Report)
+Componentes (`src/components/product/`):
+- `analysis-header.tsx`
+- `analysis-skeleton.tsx`
+- `analysis-error-state.tsx` — usar `errors.json` mapeado por código retornado pelo serverFn
+- `analysis-metric-card.tsx` — labels/tooltips
+- `analysis-benchmark-block.tsx`
+- `analysis-competitor-comparison.tsx`
+- `public-analysis-dashboard.tsx` — orquestrador
+- `post-analysis-conversion-layer.tsx`
+- `premium-locked-section.tsx`
+- `pricing-feedback-sheet.tsx`
+- `report-lock-gate.tsx` — usar `gate.lockGate.*`
+- `report-gate-modal.tsx` — duplicado/legacy; verificar se ainda é referenciado e localizar ou marcar para remoção
+- `unlock-modal.tsx` — usar `gate.unlockModal.*` (form, validações Zod com mensagens i18n, success state)
 
-35+ ficheiros do report (`report/*`, `report-redesign/*`, `report-enriched/*`, `report-market-signals/*`, `report-share/*`, `report-tier/*`, `report-beta/*`, `/report/example`, `/reports/$snapshotId`). Converte os `*-copy.ts` para `getCopy(t)`.
+### 3. Regras transversais
 
-### Prompt final — Lotes F + G
+- Hook: `useTranslation("<namespace>")` por componente (sem grandes refactors estruturais).
+- Datas/números: usar helpers existentes em `src/lib/i18n/format.ts` em qualquer label novo que use número ou data (não substituir formatadores especializados do report v2).
+- `useLanguage` já sincroniza `<html lang>` pós-hidratação — sem alterações.
+- Toggle PT↔EN no header continua a funcionar sem reload.
+- Nenhuma alteração a lógica de negócio: serverFns, validação Zod (apenas mensagens), gating, budget, sanitização permanecem intactos.
+- LOCKED_FILES.md: adicionar nota de edição autorizada para `unlock-modal.tsx` e `report-lock-gate.tsx` (já tocados anteriormente — confirmar entrada).
 
-- **F — Beta + Feedback (6 ficheiros)**
-- **G — Legais (4 páginas) + SEO meta tags (todos os `head()`)**
-- Banner "AI insights in Portuguese" em modo EN
-- `LOCKED_FILES.md` atualizado com lista de exceções
-- Verificação final: rg para detetar qualquer string PT residual em superfícies públicas
+### 4. Fora de âmbito (próximos lotes)
 
-## Trabalho deste prompt em detalhe
+- Lote E: árvore `/report/*` (Block 1-6, tiered copy, AI insight strings).
+- Lote F: beta request, feedback forms.
+- Lote G: páginas legais (`/privacidade`, `/termos`, `/aviso-legal`, `/cookies`) e meta SEO global.
+- Área `_authenticated/*` (account, plan, reports) — Lote B restante.
 
-### Namespaces a criar (PT + EN)
+### Checkpoint
 
-```
-auth.json     login/signup/reset/auth-card
-app.json      sidebar, topbar, account, plan, reports list, report detail
-landing.json  hero, social-proof, how-it-works, product-preview (substitui placeholder)
-analyze.json  loading, error, header, dashboard, conversion layer
-unlock.json   unlock modal, gate modal, lock gate, premium locked, pricing feedback
-```
-
-### Padrão aplicado em cada ficheiro
-
-1. `import { useTranslation } from "react-i18next"`
-2. `const { t } = useTranslation("<ns>")` no topo do componente
-3. Cada string visível substituída por `t("chave")`
-4. Datas/números formatados com `formatDate`/`formatNumber` do `lib/i18n/format.ts` (criado no Lote A), recebendo `language` de `useLanguage()`
-5. Mensagens de toast: `t("toast.success")`, etc.
-6. Para strings com rich text (`<strong>`, links): componente `<Trans>`
-
-### Regras de tradução EN
-
-- Tom editorial preservado, não literal
-- Termos de marketing em inglês (engagement, reach, benchmark, followers) — já era convenção
-- "Análise" → "Analysis", "Relatório" → "Report", "Publicação" → "Post"
-- "Entrar" → "Sign in", "Registar" → "Sign up", "A minha conta" → "My account"
-- Datas relativas via `Intl.RelativeTimeFormat`
-
-### Ficheiros bloqueados
-
-Vários componentes em escopo estão no `LOCKED_FILES.md` (landing components, report-redesign). Autorizar exceção para substituir texto por `t()` **sem alterar layout/estilo/animações**. Logar no final.
-
-## Riscos
-
-1. **Volume**: 37 ficheiros neste prompt. Se o budget apertar a meio do Lote D, paro depois do C e devolvo, sem deixar nada partido.
-2. **Strings dinâmicas com lógica condicional** (ex: pluralização "1 post" vs "5 posts"): usar `count` e chaves `_one`/`_other`.
-3. **Componentes com props de copy** (ex: `tier-copy.ts`): só converto os que não dependem do Lote E. Os shared copies do report ficam para o próximo prompt.
-
-## Checkpoint deste prompt
-
-☐ 5 namespaces criados em pt + en e registados em `i18n/index.ts`
-☐ Lote B: auth + app traduzidos (15 ficheiros)
-☐ Lote C: landing traduzida (10 ficheiros)
-☐ Lote D: analyze + unlock traduzidos (12 ficheiros)
-☐ Build limpo
-☐ Toggle PT↔EN testado em `/`, `/login`, `/app`, `/analyze/frederico.m.carvalho`
-☐ Mensagem final indica próximos prompts (E, depois F+G)
-
-## Pergunta
-
-Avanço com este plano? Ou preferes que comece pelo **Lote E (Report)** primeiro, dado que é a superfície mais valiosa do produto?
+- [ ] `analyze.json`, `gate.json`, `errors.json` criados (PT + EN) e registados
+- [ ] Rota `analyze.$username.tsx` com `head()` localizado
+- [ ] Todos os componentes `src/components/product/*` listados a consumir `t()`
+- [ ] `report-lock-gate.tsx` + `unlock-modal.tsx` 100% sem strings hardcoded
+- [ ] Mensagens de erro mapeadas via `errors.json` por código
+- [ ] Validações Zod do unlock devolvem chaves i18n
+- [ ] Toggle PT↔EN testado em `/analyze/<handle>` (cached e fresh) sem reload e sem hydration mismatch
