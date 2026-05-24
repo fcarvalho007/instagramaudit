@@ -712,6 +712,7 @@ function Step1Email({
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
 }) {
+  const { t } = useTranslation("gate");
   const error = form.formState.errors.email?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const firstNameError = form.formState.errors.first_name?.message;
@@ -726,14 +727,14 @@ function Step1Email({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="unlock-first-name" className="text-sm">
-            Primeiro nome
+            {t("unlock.step1.firstNameLabel")}
           </Label>
           <Input
             id="unlock-first-name"
             type="text"
             autoFocus
             autoComplete="given-name"
-            placeholder="Ana"
+            placeholder={t("unlock.step1.firstNamePlaceholder")}
             aria-invalid={Boolean(firstNameError)}
             {...form.register("first_name")}
           />
@@ -743,13 +744,13 @@ function Step1Email({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="unlock-last-name" className="text-sm">
-            Apelido
+            {t("unlock.step1.lastNameLabel")}
           </Label>
           <Input
             id="unlock-last-name"
             type="text"
             autoComplete="family-name"
-            placeholder="Marques"
+            placeholder={t("unlock.step1.lastNamePlaceholder")}
             aria-invalid={Boolean(lastNameError)}
             {...form.register("last_name")}
           />
@@ -761,14 +762,14 @@ function Step1Email({
 
       <div className="space-y-1.5">
         <Label htmlFor="unlock-email" className="text-sm">
-          Email
+          {t("unlock.step1.emailLabel")}
         </Label>
         <div className="relative">
           <Input
             id="unlock-email"
             type="email"
             autoComplete="email"
-            placeholder="ana@empresa.pt"
+            placeholder={t("unlock.step1.emailPlaceholder")}
             aria-invalid={Boolean(error)}
             className="pr-9"
             {...form.register("email")}
@@ -802,27 +803,30 @@ function Step1Email({
             className="mt-0.5"
           />
           <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
-            Aceito o{" "}
-            <a
-              href="/privacidade"
-              target="_blank"
-              rel="noopener"
-              className="underline text-primary hover:text-primary/80"
-            >
-              tratamento dos meus dados
-            </a>{" "}
-            para gerar e guardar este relatório, e li a{" "}
-            <a
-              href="/privacidade"
-              target="_blank"
-              rel="noopener"
-              className="underline text-primary hover:text-primary/80"
-            >
-              política de privacidade
-            </a>
-            .{" "}
+            <Trans
+              i18nKey="unlock.step1.consentText"
+              ns="gate"
+              components={{
+                a: (
+                  <a
+                    href="/privacidade"
+                    target="_blank"
+                    rel="noopener"
+                    className="underline text-primary hover:text-primary/80"
+                  />
+                ),
+                a2: (
+                  <a
+                    href="/privacidade"
+                    target="_blank"
+                    rel="noopener"
+                    className="underline text-primary hover:text-primary/80"
+                  />
+                ),
+              }}
+            />{" "}
             <span className="inline-flex items-center rounded bg-pink-100 text-pink-700 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wide ml-0.5 align-middle">
-              OBRIG.
+              {t("unlock.step1.consentBadgeRequired")}
             </span>
           </span>
         </label>
@@ -844,9 +848,9 @@ function Step1Email({
             className="mt-0.5"
           />
           <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
-            Quero receber novidades e dicas sobre relatórios, análise de Instagram e marketing digital{" "}
+            {t("unlock.step1.marketingText")}{" "}
             <span className="text-content-tertiary">
-              (cancelas quando quiseres · ~1 email/semana)
+              {t("unlock.step1.marketingHint")}
             </span>
           </span>
         </label>
