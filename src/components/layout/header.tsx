@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, Moon, X, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -31,9 +31,13 @@ function Header() {
   const [open, setOpen] = React.useState(false);
   const { t } = useTranslation("header");
   const { session, loading } = useAuthSession();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const navItems: { labelKey: string; href: string }[] = [
-    { labelKey: "nav.analyze", href: "/" },
+  // Nav items. "Preços" omitido até existir página dedicada.
+  const navItems: { labelKey: string; href: string; match: (p: string) => boolean }[] = [
+    { labelKey: "nav.analyze", href: "/", match: (p) => p === "/" },
+    { labelKey: "nav.how_it_works", href: "/#como-funciona", match: () => false },
+    { labelKey: "nav.examples", href: "/#exemplos", match: () => false },
   ];
 
   return (
@@ -52,42 +56,42 @@ function Header() {
         <div className="flex h-16 md:h-20 items-center justify-between gap-6">
           {/* Left: Brand */}
           <Link to="/" className="flex items-center gap-3 group">
-            <BrandMark size={32} />
-            <span className="font-display text-lg font-semibold tracking-tight text-content-primary">
-              InstaBench
+            <span className="inline-flex shadow-[0_6px_18px_-6px_rgba(99,102,241,0.45)] rounded-[10px] transition-transform duration-200 group-hover:-translate-y-px">
+              <BrandMark size={32} />
             </span>
-            <span
-              className="hidden lg:flex items-center gap-3 text-content-tertiary"
-              aria-hidden="true"
-            >
-              <span className="h-5 w-px bg-border-default" />
-              <span className="text-eyebrow">
-                {t("brand_subtitle")}
-              </span>
+            <span className="font-display text-xl font-semibold tracking-tight text-content-primary">
+              InstaBench
             </span>
           </Link>
 
-          {/* Center: Nav (desktop) */}
+          {/* Center: Pill nav (desktop) */}
           <nav className="hidden lg:block" aria-label={t("aria.primary_nav")}>
-            <ul className="flex items-center gap-8">
-              {navItems.map((item) => (
-                <li key={item.href}>
-                  <a
-                    href={item.href}
-                    className="text-sm font-medium text-content-secondary hover:text-content-primary transition-colors duration-[150ms]"
-                  >
-                    {t(item.labelKey)}
-                  </a>
-                </li>
-              ))}
+            <ul className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-surface-muted/60 p-1.5">
+              {navItems.map((item) => {
+                const active = item.match(pathname);
+                return (
+                  <li key={item.href}>
+                    <a
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "inline-flex items-center rounded-full px-4 py-1.5 text-sm transition-colors duration-[150ms]",
+                        active
+                          ? "bg-surface-base text-content-primary font-medium shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
+                          : "text-content-secondary hover:text-content-primary",
+                      )}
+                    >
+                      {t(item.labelKey)}
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            <LanguageSwitcher className="hidden sm:inline-flex" />
-
-            <Button size="icon" aria-label={t("aria.theme")}>
+            <Button size="icon" variant="ghost" aria-label={t("aria.theme")}>
               <Moon />
             </Button>
 
