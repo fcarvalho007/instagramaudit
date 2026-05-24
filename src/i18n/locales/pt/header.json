@@ -1,7 +1,8 @@
 {
-  "brand_subtitle": "Instagram Benchmark",
   "nav": {
-    "analyze": "Analisar"
+    "analyze": "Analisar",
+    "how_it_works": "Como funciona",
+    "examples": "Exemplos"
   },
   "cta": {
     "new_report": "Analisar agora",
