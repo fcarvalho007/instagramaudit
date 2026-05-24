@@ -12,10 +12,7 @@ import { ReportEnrichedMentions } from "@/components/report-enriched/report-enri
 import { ReportEnrichedCompetitorsCta } from "@/components/report-enriched/report-enriched-competitors-cta";
 
 import { ReportMarketSignalsSection } from "@/components/report-market-signals/report-market-signals";
-import { TierComparisonBlock } from "@/components/report-tier/tier-comparison-block";
-import { ReportFinalBlock } from "@/components/report-share/report-final-block";
 import type { ReportPageActions } from "@/components/report/report-page";
-import { BETA_COPY } from "@/components/report-beta/beta-copy";
 import { AIInsightBox } from "@/components/report/ai-insight-box";
 import type { AiInsightV2Section } from "@/lib/insights/types";
 
@@ -401,9 +398,6 @@ export function ReportShellV2({
 
         {/* Pós-blocos (mantêm-se fora da numeração 1–6) */}
         <ReportMethodology />
-        <TierComparisonBlock />
-        <ReportFinalBlock snapshotId={snapshotId} result={result} />
-        {features.betaFeedbackBanner !== "hidden" && <BetaFeedbackBannerV2 />}
 
         {/* Espaço inferior mobile para a bottom nav bar não tapar conteúdo */}
         <div className="h-20 lg:hidden" aria-hidden="true" />
