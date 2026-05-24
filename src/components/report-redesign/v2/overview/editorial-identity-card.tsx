@@ -13,9 +13,10 @@
  * + frequência semanal + tier de seguidores).
  */
 import { cn } from "@/lib/utils";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Heart, MessageCircle, CalendarDays } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -45,6 +46,10 @@ interface EditorialIdentityCardProps {
   postingFrequencyWeekly?: number;
   followers?: number;
   postsAnalyzed?: number;
+  /** Avg likes per analyzed post. */
+  averageLikes?: number;
+  /** Avg comments per analyzed post. */
+  averageComments?: number;
 }
 
 /* ── Fallback determinístico ───────────────────────────────────────── */
@@ -325,6 +330,8 @@ export function EditorialIdentityCard({
   postingFrequencyWeekly,
   followers,
   postsAnalyzed,
+  averageLikes,
+  averageComments,
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
   const fallback = buildFallbackCopy(scores, t);
@@ -389,6 +396,22 @@ export function EditorialIdentityCard({
           )}
         </div>
       </div>
+
+      {/* Zona métrica — gostos / comentários / ritmo */}
+      {(typeof averageLikes === "number" ||
+        typeof averageComments === "number" ||
+        typeof postingFrequencyWeekly === "number") && (
+        <div className="px-6 pb-6">
+          <MetricsStrip
+            averageLikes={averageLikes}
+            averageComments={averageComments}
+            postingFrequencyWeekly={postingFrequencyWeekly}
+            followers={followers}
+            t={t}
+            locale={i18n.language}
+          />
+        </div>
+      )}
 
       {/* Zona accionável */}
       <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2">
