@@ -36,7 +36,7 @@
     }
   },
   "handwritten": {
-    "freeReports": "{{count}} relatórios grátis"
+    "freeReportsSuffix": "relatórios grátis"
   },
   "scroll": {
     "explore": "Explorar"
