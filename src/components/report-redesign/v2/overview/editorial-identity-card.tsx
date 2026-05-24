@@ -600,6 +600,7 @@ function MetricsStrip({
   t: TFunction;
   locale: string;
 }) {
+  const lang: "pt" | "en" = locale.startsWith("pt") ? "pt" : "en";
   const items: Array<{
     key: string;
     icon: typeof Heart;
@@ -620,7 +621,7 @@ function MetricsStrip({
       key: "likes",
       icon: Heart,
       label: t("identity.metrics.likes_label"),
-      value: formatCompactNumber(Math.round(averageLikes), locale),
+          value: formatCompactNumber(Math.round(averageLikes), lang),
       unit: t("identity.metrics.per_post"),
       subtitle,
     });
@@ -632,7 +633,7 @@ function MetricsStrip({
       key: "comments",
       icon: MessageCircle,
       label: t("identity.metrics.comments_label"),
-      value: formatCompactNumber(Math.round(averageComments), locale),
+      value: formatCompactNumber(Math.round(averageComments), lang),
       unit: t("identity.metrics.per_post"),
       subtitle: t(`identity.metrics.comments_${band}`),
     });
