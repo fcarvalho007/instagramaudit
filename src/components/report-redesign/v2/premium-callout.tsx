@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Crown, Lock, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/tracking.functions";
 import { PremiumInterestDialog } from "./premium-interest-dialog";
@@ -35,6 +36,7 @@ export function PremiumCallout({
 }: Props) {
   const { snapshotId, handle, variant } = useReportTracking();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { t } = useTranslation("report");
 
   const handleUnlock = () => {
     trackEvent({
@@ -95,7 +97,7 @@ export function PremiumCallout({
                 )}
               >
                 <Sparkles className="size-3" aria-hidden="true" />
-                Registar interesse
+                {t("premium.register_interest")}
               </button>
             </div>
             <PremiumInterestDialog
