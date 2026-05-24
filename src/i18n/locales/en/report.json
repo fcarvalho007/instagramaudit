@@ -59,21 +59,66 @@
       }
     },
     "signals": {
-      "freq_consistent": { "title": "Consistent publishing", "detail": "about {{perDay}} post/day" },
-      "freq_weak": { "title": "Weak cadence", "detail": "less than 1 post per week" },
-      "freq_excess": { "title": "Excessive volume", "detail": "more than 1 post per day" },
-      "audience_relevant": { "title": "Follower base", "detail": "relevant for the niche" },
-      "audience_small": { "title": "Audience still small", "detail": "clear room to grow" },
-      "engagement_above": { "title": "Engagement above tier", "detail": "+{{delta}}% vs benchmark" },
-      "engagement_below": { "title": "Engagement below tier", "detail": "{{delta}}% vs benchmark" },
-      "interaction_active": { "title": "Active comment conversation", "detail": "audience replies regularly" },
-      "interaction_low": { "title": "Few comments", "detail": "missing clear CTA in captions" },
-      "format_mixed": { "title": "Balanced format mix", "detail": "alternation between content types" },
-      "format_repetitive": { "title": "Repetitive format", "detail": "{{pct}}% {{format}}" },
-      "fallback_active": { "title": "Active profile", "detail": "regular presence on the platform" },
-      "fallback_history": { "title": "Consistent history", "detail": "foundation to iterate on" },
-      "fallback_diversify": { "title": "Room to diversify", "detail": "explore new formats" },
-      "fallback_conversation": { "title": "Conversation to develop", "detail": "reinforce CTA in captions" }
+      "freq_consistent": {
+        "title": "Consistent publishing",
+        "detail": "about {{perDay}} post/day"
+      },
+      "freq_weak": {
+        "title": "Weak cadence",
+        "detail": "less than 1 post per week"
+      },
+      "freq_excess": {
+        "title": "Excessive volume",
+        "detail": "more than 1 post per day"
+      },
+      "audience_relevant": {
+        "title": "Follower base",
+        "detail": "relevant for the niche"
+      },
+      "audience_small": {
+        "title": "Audience still small",
+        "detail": "clear room to grow"
+      },
+      "engagement_above": {
+        "title": "Engagement above tier",
+        "detail": "+{{delta}}% vs benchmark"
+      },
+      "engagement_below": {
+        "title": "Engagement below tier",
+        "detail": "{{delta}}% vs benchmark"
+      },
+      "interaction_active": {
+        "title": "Active comment conversation",
+        "detail": "audience replies regularly"
+      },
+      "interaction_low": {
+        "title": "Few comments",
+        "detail": "missing clear CTA in captions"
+      },
+      "format_mixed": {
+        "title": "Balanced format mix",
+        "detail": "alternation between content types"
+      },
+      "format_repetitive": {
+        "title": "Repetitive format",
+        "detail": "{{pct}}% {{format}}"
+      },
+      "fallback_active": {
+        "title": "Active profile",
+        "detail": "regular presence on the platform"
+      },
+      "fallback_history": {
+        "title": "Consistent history",
+        "detail": "foundation to iterate on"
+      },
+      "fallback_diversify": {
+        "title": "Room to diversify",
+        "detail": "explore new formats"
+      },
+      "fallback_conversation": {
+        "title": "Conversation to develop",
+        "detail": "reinforce CTA in captions"
+      }
     },
     "format_singular": {
       "Reels": "reels",
@@ -85,7 +130,11 @@
   },
   "frequency": {
     "title": "Posting frequency",
-    "status": { "high": "High", "medium": "Medium", "low": "Low" },
+    "status": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
     "headline": {
       "very_high": "More than 1 post per day",
       "daily": "About 1 post per day",
@@ -99,11 +148,24 @@
     "days_one": "day",
     "days_other": "days",
     "verdict": {
-      "high": { "strong": "Strong and consistent cadence.", "rest": "Posts more than the average profile in this follower range." },
-      "medium": { "strong": "Acceptable cadence.", "rest": "There is room for more predictable regularity." },
-      "low": { "strong": "Irregular cadence.", "rest": "The audience won't build the habit of finding you." }
+      "high": {
+        "strong": "Strong and consistent cadence.",
+        "rest": "Posts more than the average profile in this follower range."
+      },
+      "medium": {
+        "strong": "Acceptable cadence.",
+        "rest": "There is room for more predictable regularity."
+      },
+      "low": {
+        "strong": "Irregular cadence.",
+        "rest": "The audience won't build the habit of finding you."
+      }
     },
-    "verdict_label": { "strong": "STRENGTH", "improve": "TO IMPROVE", "alert": "ALERT" },
+    "verdict_label": {
+      "strong": "STRENGTH",
+      "improve": "TO IMPROVE",
+      "alert": "ALERT"
+    },
     "weekly_summary": {
       "title": "Weekly summary",
       "most_active": "Most active",
@@ -124,12 +186,32 @@
       "legend_many": "{{label}} posts",
       "ratio": "{{published}}/{{total}} days"
     },
-    "weekday_short": ["M", "T", "W", "T", "F", "S", "S"],
-    "weekday_long": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    "weekday_short": [
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S",
+      "S"
+    ],
+    "weekday_long": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ]
   },
   "format": {
     "title": "Format",
-    "variation": { "varied_high": "Very varied", "varied": "Varied", "low": "Low variety" },
+    "variation": {
+      "varied_high": "Very varied",
+      "varied": "Varied",
+      "low": "Low variety"
+    },
     "headline": {
       "no_data": "No format data",
       "only": "Only {{label}}",
@@ -142,21 +224,53 @@
       "leader": "{{label}} most frequent · {{topCount}} of every {{total}} are {{topLower}}",
       "extra": "{{count}} are {{label}}"
     },
-    "names_plural": { "Reels": "reels", "Carousels": "carousels", "Imagens": "images", "Video": "videos" },
-    "names_legend": { "Reels": "Reels", "Carousels": "Carousels", "Imagens": "Images", "Video": "Videos" },
-    "types_singular": { "carousel": "carousel", "reel": "reel", "image": "image", "video": "video", "unknown": "post" },
+    "names_plural": {
+      "Reels": "reels",
+      "Carousels": "carousels",
+      "Imagens": "images",
+      "Video": "videos"
+    },
+    "names_legend": {
+      "Reels": "Reels",
+      "Carousels": "Carousels",
+      "Imagens": "Images",
+      "Video": "Videos"
+    },
+    "types_singular": {
+      "carousel": "carousel",
+      "reel": "reel",
+      "image": "image",
+      "video": "video",
+      "unknown": "post"
+    },
     "analyzed_count": "{{count}} posts analyzed",
     "aria_distribution": "Distribution of the {{count}} analyzed posts: {{parts}}",
     "aria_breakdown": "Format distribution across {{total}} posts: {{parts}}",
     "breakdown_part": "{{count}} {{label}} ({{pct}}%)",
     "thumb_aria": "{{label}} · {{date}}",
     "verdict": {
-      "carousel": { "strong": "Focus on save-worthy content.", "rest": "Carousels work to teach, list and organize ideas." },
-      "reel": { "strong": "Focus on reach and discovery.", "rest": "Reels work to reach new audiences." },
-      "image": { "strong": "Focus on direct communication.", "rest": "Images work for clear messages and moments." },
-      "mixed": { "strong": "Varied mix.", "rest": "Different formats serve different goals — the next sections show where each format performs best." }
+      "carousel": {
+        "strong": "Focus on save-worthy content.",
+        "rest": "Carousels work to teach, list and organize ideas."
+      },
+      "reel": {
+        "strong": "Focus on reach and discovery.",
+        "rest": "Reels work to reach new audiences."
+      },
+      "image": {
+        "strong": "Focus on direct communication.",
+        "rest": "Images work for clear messages and moments."
+      },
+      "mixed": {
+        "strong": "Varied mix.",
+        "rest": "Different formats serve different goals — the next sections show where each format performs best."
+      }
     },
-    "verdict_label": { "strong": "STRENGTH", "improve": "TO IMPROVE", "neutral": "DIAGNOSTIC" }
+    "verdict_label": {
+      "strong": "STRENGTH",
+      "improve": "TO IMPROVE",
+      "neutral": "DIAGNOSTIC"
+    }
   },
   "blocks": {
     "overview": {
@@ -195,10 +309,27 @@
     }
   },
   "kpi": {
-    "engagement": { "label": "Average engagement", "source": "Likes + comments", "help": "vs. {{value}}% reference" },
-    "rhythm": { "label": "Weekly rhythm", "source": "Posting dates", "help": "posts per week" },
-    "format": { "label": "Dominant format", "source": "Post type", "help": "{{share}}% of the sample" },
-    "format_names": { "Carrosséis": "Carousels", "Reels": "Reels", "Imagens": "Images", "Vídeos": "Videos" }
+    "engagement": {
+      "label": "Average engagement",
+      "source": "Likes + comments",
+      "help": "vs. {{value}}% reference"
+    },
+    "rhythm": {
+      "label": "Weekly rhythm",
+      "source": "Posting dates",
+      "help": "posts per week"
+    },
+    "format": {
+      "label": "Dominant format",
+      "source": "Post type",
+      "help": "{{share}}% of the sample"
+    },
+    "format_names": {
+      "Carrosséis": "Carousels",
+      "Reels": "Reels",
+      "Imagens": "Images",
+      "Vídeos": "Videos"
+    }
   },
   "nav": {
     "aria": "Report navigation",
@@ -238,5 +369,36 @@
       "market_position": "Position against the market",
       "peer_comparison": "Comparison with peer profiles"
     }
+  },
+  "callout": {
+    "editorial": "DIAGNOSTIC",
+    "suggestion": "What this suggests",
+    "warning": "Heads up"
+  },
+  "source": {
+    "dados": "Data extracted from the public profile",
+    "mercado": "External market benchmark",
+    "auto": "Automatic calculation or classification",
+    "ia": "Editorial reading by AI",
+    "pro": "Feature available on the PRO plan"
+  },
+  "cache": {
+    "fresh": "Up-to-date data",
+    "expiring": "Expiring soon",
+    "stale": "Outdated data",
+    "unknown": "Status unknown",
+    "updated": "Updated {{relative}}",
+    "valid_until": "Valid until {{when}}",
+    "last_analysis": "Last analysis: {{when}}",
+    "expired_on": "Cache expired on {{when}}",
+    "valid_through": "Cache valid until {{when}}",
+    "just_now": "just now",
+    "minutes": "{{count}} min ago",
+    "hour_one": "1 hour ago",
+    "hours_other": "{{count}} hours ago",
+    "day_one": "1 day ago",
+    "days_other": "{{count}} days ago",
+    "month_one": "1 month ago",
+    "months_other": "{{count}} months ago"
   }
 }
