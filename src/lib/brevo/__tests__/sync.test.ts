@@ -119,6 +119,7 @@ describe("syncLeadToBrevo", () => {
       LEAD_SOURCE: 1,
       COMMERCIAL_STATUS: 1,
       IS_CUSTOMER: false,
+      MARKETING_CONSENT: true,
     });
 
     expect(mockRecord).toHaveBeenCalledTimes(1);
@@ -174,20 +175,22 @@ describe("syncLeadToBrevo", () => {
     );
   });
 
-  it("skips with NO_MARKETING_CONSENT when marketing_consent is not true", async () => {
+  it("syncs operational contact even when marketing_consent=false, with MARKETING_CONSENT attribute", async () => {
     setupSupabase({
       lead: { id: "lead-nc", email: "n@c.com", marketing_consent: false },
       latestRR: null,
       count: 0,
     });
+    mockUpsert.mockResolvedValue({ ok: true, brevoId: 42, status: 201 });
     const out = await syncLeadToBrevo("lead-nc", "report_unlock");
-    expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.reason).toBe("NO_MARKETING_CONSENT");
-    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(out.ok).toBe(true);
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+    const payload = mockUpsert.mock.calls[0][0];
+    expect(payload.attributes.MARKETING_CONSENT).toBe(false);
     expect(mockRecord).toHaveBeenCalledWith(
       expect.objectContaining({
-        eventType: "brevo_contact_sync_skipped",
-        metadata: expect.objectContaining({ reason: "NO_MARKETING_CONSENT" }),
+        eventType: "brevo_contact_synced",
+        metadata: expect.objectContaining({ marketing_consent: false }),
       }),
     );
   });
