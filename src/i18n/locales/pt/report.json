@@ -157,5 +157,87 @@
       "mixed": { "strong": "Mix variado.", "rest": "Diferentes formatos servem objetivos diferentes — as próximas secções mostram onde cada formato rende mais." }
     },
     "verdict_label": { "strong": "PONTO FORTE", "improve": "A MELHORAR", "neutral": "DIAGNÓSTICO" }
+  },
+  "blocks": {
+    "overview": {
+      "short": "Visão geral",
+      "eyebrow": "Visão geral",
+      "question": "Como está o perfil em geral?",
+      "subtitle": "Identidade do perfil, indicadores principais e enquadramento do que este relatório mostra."
+    },
+    "diagnostico": {
+      "short": "Diagnóstico",
+      "eyebrow": "Diagnóstico editorial",
+      "question": "O que explica estes resultados?",
+      "subtitle": "Perguntas essenciais que qualquer marketer faz ao olhar para um perfil — respondidas pelo cruzamento dos dados recolhidos."
+    },
+    "performance": {
+      "short": "Desempenho",
+      "eyebrow": "Desempenho",
+      "question": "Quando e como reage o público?",
+      "subtitle": "Evolução ao longo do tempo, ritmo de publicação e melhores momentos para chegar à audiência."
+    },
+    "conteudo": {
+      "short": "Conteúdo",
+      "question": "Que conteúdos têm melhor performance?",
+      "subtitle": "Publicações com mais retorno, mistura de formatos e padrões de linguagem editorial."
+    },
+    "procura": {
+      "short": "Procura",
+      "question": "Há procura real por estes temas fora da plataforma?",
+      "subtitle": "Sinais de procura externa que ajudam a perceber se os mesmos temas têm interesse em pesquisa."
+    },
+    "benchmark": {
+      "short": "Comparação",
+      "eyebrow": "Comparação",
+      "question": "Como se compara com perfis semelhantes?",
+      "subtitle": "Posição face a referências de mercado e a perfis pares quando disponíveis."
+    }
+  },
+  "kpi": {
+    "engagement": { "label": "Engagement médio", "source": "Gostos + comentários", "help": "vs. {{value}}% de referência" },
+    "rhythm": { "label": "Ritmo semanal", "source": "Datas de publicação", "help": "publicações por semana" },
+    "format": { "label": "Formato dominante", "source": "Tipo de publicação", "help": "{{share}}% da amostra" },
+    "format_names": { "Carrosséis": "Carrosséis", "Reels": "Reels", "Imagens": "Imagens", "Vídeos": "Vídeos" }
+  },
+  "nav": {
+    "aria": "Navegação do relatório",
+    "included": "Incluído",
+    "premium": "Premium",
+    "accessible": "{{count}} acessíveis",
+    "locked": "{{count}} por desbloquear",
+    "partial": "parcial",
+    "menu": "Menu",
+    "sections": "Secções do relatório",
+    "menu_aria": "Menu de secções",
+    "lab": "Laboratório interno",
+    "pro_active": "Pro ativo",
+    "avatar_alt": "Avatar de {{handle}}",
+    "cofre": {
+      "title": "Abrir o cofre",
+      "subtitle": "3 secções premium · análise completa",
+      "single_eyebrow": "Uma vez",
+      "single_detail": "só esta análise",
+      "bundle_eyebrow": "Bundle 5",
+      "bundle_detail": "5 análises · €2,60/cada",
+      "save_badge": "POUPA €2",
+      "unlock": "Desbloquear",
+      "unlock_aria": "Abrir opções de desbloqueio",
+      "vat": "+IVA"
+    }
+  },
+  "shell": {
+    "search_intro": "O Instagram mostra como a audiência atual reage. A procura fora da plataforma ajuda a perceber se os mesmos temas também despertam interesse em pesquisa. Os valores atuais são índices relativos do Google Trends, não volume absoluto de pesquisas.",
+    "search_intro_short": "O Instagram mostra como a audiência atual reage. A procura fora da plataforma ajuda a perceber se os mesmos temas também despertam interesse em pesquisa.",
+    "aria": {
+      "performance_time": "Performance ao longo do tempo",
+      "audience_response": "Resposta da audiência",
+      "top_posts": "Top publicações",
+      "format_mix": "Mistura de formatos",
+      "hashtags": "Hashtags, palavras-chave e menções",
+      "market_position": "Posição face ao mercado",
+      "peer_comparison": "Comparação com perfis pares"
+    }
   }
+}
 }
