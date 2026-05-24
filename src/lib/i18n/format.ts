@@ -33,6 +33,26 @@ export function formatNumber(
   return new Intl.NumberFormat(resolveLocale(lang), options).format(value);
 }
 
+/**
+ * Compact number formatter (e.g. 12.4K / 1,2 M) using the active locale's
+ * conventions. Falls back gracefully when the runtime lacks `notation:
+ * "compact"` support.
+ */
+export function formatCompactNumber(
+  value: number,
+  lang: SupportedLanguage,
+): string {
+  if (!Number.isFinite(value)) return "0";
+  try {
+    return new Intl.NumberFormat(resolveLocale(lang), {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value);
+  } catch {
+    return new Intl.NumberFormat(resolveLocale(lang)).format(value);
+  }
+}
+
 const RTF_UNITS: { unit: Intl.RelativeTimeFormatUnit; seconds: number }[] = [
   { unit: "year", seconds: 60 * 60 * 24 * 365 },
   { unit: "month", seconds: 60 * 60 * 24 * 30 },
