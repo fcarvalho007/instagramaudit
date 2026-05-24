@@ -1,0 +1,29 @@
+{
+  "brand_subtitle": "Instagram Benchmark",
+  "nav": {
+    "analyze": "Analisar"
+  },
+  "cta": {
+    "new_report": "Analisar agora",
+    "login": "Entrar",
+    "account": "A minha conta"
+  },
+  "aria": {
+    "theme": "Mudar tema",
+    "open_menu": "Abrir menu",
+    "close_menu": "Fechar menu",
+    "language": "Mudar idioma",
+    "primary_nav": "Navegação principal",
+    "mobile_nav": "Navegação móvel"
+  },
+  "mobile": {
+    "menu_title": "Menu",
+    "title_sr": "Menu de navegação",
+    "description_sr": "Navegação principal e ações da aplicação"
+  },
+  "language": {
+    "label": "Idioma",
+    "pt": "Português",
+    "en": "English"
+  }
+}
