@@ -15,7 +15,10 @@
       "compare": "Comparar concorrente",
       "pro": "Pro",
       "pdf": "PDF",
-      "share": "Partilhar"
+      "share": "Partilhar",
+      "coming_soon": "Em breve",
+      "coming_soon_detail": "Julho 2026",
+      "coming_soon_tooltip": "Funcionalidade em desenvolvimento · lançamento previsto para julho de 2026 no roadmap."
     },
     "avatar_alt": "Avatar de {{name}}"
   },
