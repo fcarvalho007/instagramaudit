@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
@@ -128,41 +129,20 @@ interface SnapshotResponse {
 }
 
 /**
- * Mapeia códigos técnicos do pipeline (analyze + snapshot) em copy
- * editorial pt-PT. Garante que o utilizador nunca vê strings técnicas
- * (ex.: "APIFY_UPSTREAM_ERROR", "DATAFORSEO_RATE_LIMIT") propagadas
- * directamente do servidor.
+ * Maps server error codes to localized user-facing copy via i18n `errors`
+ * namespace. Guarantees the user never sees raw technical strings
+ * (e.g. "APIFY_UPSTREAM_ERROR") propagated from the server.
  */
-const ANALYSIS_ERROR_COPY: Record<string, string> = {
-  INVALID_USERNAME:
-    "Nome de utilizador inválido. Confirma e tenta novamente.",
-  PROFILE_NOT_FOUND:
-    "Não encontrámos este perfil no Instagram. Confirma o nome de utilizador.",
-  PROFILE_NOT_ALLOWED:
-    "Este perfil ainda não está disponível para análise pública.",
-  PROVIDER_DISABLED:
-    "Análise temporariamente indisponível. Tenta dentro de instantes.",
-  UPSTREAM_FAILED:
-    "Não foi possível concluir a análise. Tenta dentro de instantes.",
-  UPSTREAM_UNAVAILABLE:
-    "Serviço de análise temporariamente indisponível. Tenta dentro de instantes.",
-  NETWORK_ERROR: "Falha de ligação. Tentar novamente.",
-  // snapshot endpoint
-  SNAPSHOT_NOT_FOUND:
-    "Ainda não temos um relatório guardado para este perfil. Tenta novamente dentro de instantes.",
-  PROFILE_PRIVATE:
-    "Este perfil é privado. Só conseguimos analisar perfis públicos.",
-  CACHE_ONLY_NO_DATA:
-    "Este relatório ainda não tem dados públicos disponíveis. A equipa está a preparar uma nova análise.",
-};
-
-const FALLBACK_ERROR_MESSAGE =
-  "Não foi possível concluir a análise. Tenta novamente dentro de instantes.";
-
-function resolveErrorMessage(errorCode?: string | null): string {
-  if (!errorCode) return FALLBACK_ERROR_MESSAGE;
-  const upper = errorCode.toUpperCase();
-  return ANALYSIS_ERROR_COPY[upper] ?? FALLBACK_ERROR_MESSAGE;
+function useResolveErrorMessage() {
+  const { t } = useTranslation("errors");
+  return useCallback(
+    (errorCode?: string | null): string => {
+      const upper = errorCode ? errorCode.toUpperCase() : "FALLBACK";
+      const key = t(upper, { defaultValue: "" });
+      return key && key !== upper ? key : t("FALLBACK");
+    },
+    [t],
+  );
 }
 
 type LoadState =
@@ -181,6 +161,24 @@ function AnalyzePage() {
   const { username } = Route.useParams();
   const { vs, previewLoading } = Route.useSearch();
   const cleaned = username.replace(/^@/, "");
+  const { t: tAnalyze } = useTranslation("analyze");
+  const { t: tErrors } = useTranslation("errors");
+  const resolveErrorMessage = useResolveErrorMessage();
+
+  // Sync document.title / meta description with current language at runtime,
+  // without changing the SSR head() (which stays in pt-PT canonical).
+  useEffect(() => {
+    const handle = cleaned;
+    const title = tAnalyze("meta.title", { handle });
+    const description = tAnalyze("meta.description", { handle });
+    document.title = title;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute("content", description);
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute("content", title);
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute("content", description);
+  }, [cleaned, tAnalyze]);
 
   // Clean up report-view body attribute when leaving the page
   useEffect(() => {
@@ -267,11 +265,11 @@ function AnalyzePage() {
     } catch {
       setState({
         status: "error",
-        message: "Falha de ligação. Tentar novamente.",
+        message: tErrors("NETWORK_FETCH"),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cleaned, competitorsKey]);
+  }, [cleaned, competitorsKey, tErrors, resolveErrorMessage]);
 
   useEffect(() => {
     if (forceLoader) return;
