@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, AtSign, Plus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ function extractUsername(raw: string): string {
 }
 
 export function HeroActionBar() {
+  const { t } = useTranslation("landing");
   const navigate = useNavigate();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,11 +33,11 @@ export function HeroActionBar() {
     e.preventDefault();
     const username = extractUsername(value);
     if (!username) {
-      setError("Inserir um username válido para continuar");
+      setError(t("actionBar.errors.empty"));
       return;
     }
     if (!USERNAME_REGEX.test(username)) {
-      setError("Username inválido. Apenas letras, números, ponto e underscore.");
+      setError(t("actionBar.errors.invalid"));
       return;
     }
     setError(null);
@@ -47,9 +49,7 @@ export function HeroActionBar() {
       const c = extractUsername(raw);
       if (!c) continue;
       if (!USERNAME_REGEX.test(c)) {
-        setCompetitorError(
-          "Concorrente inválido. Apenas letras, números, ponto e underscore.",
-        );
+        setCompetitorError(t("actionBar.errors.competitorInvalid"));
         return;
       }
       if (c === username) continue; // skip duplicate of primary
@@ -71,7 +71,7 @@ export function HeroActionBar() {
       <div className="mb-3 flex items-center justify-center gap-2 text-content-secondary">
         <InstagramGlyph className="size-[18px]" />
         <span className="text-eyebrow-sm text-[0.625rem]">
-          Perfil público do Instagram
+          {t("actionBar.microLabel")}
         </span>
       </div>
 
@@ -94,8 +94,8 @@ export function HeroActionBar() {
                 setValue(e.target.value);
                 if (error) setError(null);
               }}
-              placeholder="@username ou URL do perfil"
-              aria-label="Username ou URL do perfil do Instagram"
+              placeholder={t("actionBar.placeholder")}
+              aria-label={t("actionBar.ariaInput")}
               aria-invalid={error ? true : undefined}
               className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg text-content-primary placeholder:text-content-tertiary/70 focus:outline-none"
             />
@@ -110,7 +110,7 @@ export function HeroActionBar() {
               rightIcon={<ArrowRight />}
               className="w-full sm:w-auto sm:h-14 px-6 sm:px-8 whitespace-nowrap shadow-md"
             >
-              Analisar
+              {t("actionBar.submit")}
             </Button>
           </div>
         </form>
@@ -134,13 +134,13 @@ export function HeroActionBar() {
             className="group inline-flex items-center gap-2 font-sans text-sm text-content-secondary hover:text-accent-luminous transition-colors duration-[150ms]"
           >
             <Plus className="size-4 transition-transform group-hover:rotate-90 duration-[250ms]" />
-            Adicionar até 2 concorrentes para comparar
+            {t("actionBar.addCompetitors")}
           </button>
         ) : (
           <div className="w-full space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
               <span className="text-eyebrow text-content-tertiary">
-                Concorrentes (opcional)
+                {t("actionBar.competitorsLabel")}
               </span>
               <button
                 type="button"
@@ -152,15 +152,15 @@ export function HeroActionBar() {
                 }}
                 className="font-sans text-xs text-content-tertiary hover:text-content-secondary transition-colors"
               >
-                Remover
+                {t("actionBar.remove")}
               </button>
             </div>
             <Input
               variant="glass"
               inputSize="md"
               leftIcon={<AtSign />}
-              placeholder="@concorrente 1"
-              aria-label="Username do primeiro concorrente"
+              placeholder={t("actionBar.competitor1Placeholder")}
+              aria-label={t("actionBar.competitor1Aria")}
               value={competitor1}
               onChange={(e) => {
                 setCompetitor1(e.target.value);
@@ -171,8 +171,8 @@ export function HeroActionBar() {
               variant="glass"
               inputSize="md"
               leftIcon={<AtSign />}
-              placeholder="@concorrente 2 (opcional)"
-              aria-label="Username do segundo concorrente"
+              placeholder={t("actionBar.competitor2Placeholder")}
+              aria-label={t("actionBar.competitor2Aria")}
               value={competitor2}
               onChange={(e) => {
                 setCompetitor2(e.target.value);
