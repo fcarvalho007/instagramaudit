@@ -533,5 +533,70 @@
       "agency_description": "Multiple brands, dashboards and exports.",
       "agency_badge": "Talk to us"
     }
+  },
+  "engagement": {
+    "eyebrow": "ENGAGEMENT",
+    "title": "Engagement Rate",
+    "subtitle": "Average likes + comments + shares ÷ followers.",
+    "status": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "kpi": {
+      "profile_full": "This profile's score",
+      "profile_short": "This profile",
+      "profile_caption_full": "interaction with content",
+      "profile_caption_short": "interaction",
+      "tier_full": "Tier average",
+      "tier_short": "Benchmark",
+      "tier_caption_full": "Average for profiles in the same tier.",
+      "tier_caption_short": "tier avg.",
+      "gap_full": "Distance to average",
+      "gap_short": "Distance",
+      "gap_caption": "vs. the tier benchmark",
+      "direction_above": "above",
+      "direction_below": "below"
+    },
+    "callout_label": "DIAGNOSIS",
+    "reading": {
+      "zero": "Even the largest tiers show a higher benchmark — the issue seems to be in how the audience reacts.",
+      "below": "Even profiles with {{tier}} followers get {{mult}} more engagement than this one — the issue isn't audience size, it's how they react.",
+      "above": "This profile beats its tier average by {{mult}} — there are engagement signals above the reference."
+    }
+  },
+  "posts": {
+    "title": "Best and Worst Posts",
+    "subtitle": "Content extremes",
+    "rank": {
+      "best_1": "Best performance",
+      "best_2": "Second best",
+      "worst_1": "Worst performance",
+      "worst_2": "Second worst"
+    },
+    "vs": {
+      "best": "Best",
+      "worst": "Worst"
+    },
+    "diff": "difference",
+    "no_caption": "No caption",
+    "format_chip": {
+      "carousel": "CAROUSEL"
+    },
+    "callout_label": "COMPARATIVE DIAGNOSIS",
+    "ai_fallback": {
+      "default": "Format and caption make the difference.",
+      "reels": "Reels outperform static formats on this account.",
+      "carousel": "Carousels generate more engagement than single posts.",
+      "caption": "Descriptive captions beat posts without context.",
+      "body_mult": "Top-performing content reached {{best}}% engagement, {{mult}} above the worst result.",
+      "body_plain": "Top-performing content reached {{best}}% engagement against {{worst}}% from the worst."
+    }
+  },
+  "insightLabels": {
+    "strength": "STRENGTH",
+    "improve": "TO IMPROVE",
+    "alert": "ALERT",
+    "diagnostic": "DIAGNOSIS"
   }
 }
