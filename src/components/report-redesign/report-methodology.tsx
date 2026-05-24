@@ -1,9 +1,9 @@
-import { Database, LineChart, Sparkles, Search, ExternalLink } from "lucide-react";
+import { Database, LineChart, Sparkles, Search, ExternalLink, Lock, BookOpen } from "lucide-react";
 import { ReportSectionFrame } from "./report-section-frame";
 import { REDESIGN_TOKENS } from "./report-tokens";
 import {
   BENCHMARK_DATASET_VERSION,
-  getActiveBenchmarkSources,
+  INSTAGRAM_BENCHMARK_CONTEXT,
 } from "@/lib/knowledge/benchmark-context";
 import { cn } from "@/lib/utils";
 
@@ -19,32 +19,33 @@ export function ReportMethodology() {
     {
       icon: Database,
       label: "Recolha automática",
-      body: "Métricas públicas extraídas directamente do perfil de Instagram analisado, sem login nem dados privados.",
+      body: "Métricas públicas extraídas diretamente do perfil, sem login nem dados privados.",
     },
     {
       icon: LineChart,
       label: "Referência de mercado",
-      body: "Dataset interno versionado de perfis pares, usado para contextualizar engagement e formato dominante.",
+      body: "Dataset interno de perfis pares, para contextualizar envolvimento e formato.",
     },
     {
       icon: Sparkles,
       label: "Leitura editorial",
-      body: "Síntese gerada por modelo de linguagem com base nos números observados — auditável insight a insight.",
+      body: "Síntese gerada por IA com base nos números observados — insight auditável.",
     },
     {
       icon: Search,
-      label: "Sinais de pesquisa",
-      body: "Indicadores públicos de procura associados aos temas do perfil, para perceber relevância fora da plataforma.",
+      label: "Sinais de procura",
+      body: "Indicadores públicos de procura associados aos temas do perfil.",
     },
   ] as const;
 
-  const benchmarkSources = getActiveBenchmarkSources();
+  // Inclui também fontes `future` (Databox) para apresentar bloqueadas.
+  const benchmarkSources = INSTAGRAM_BENCHMARK_CONTEXT.sources;
 
   return (
     <ReportSectionFrame
       eyebrow="Metodologia"
       title="Como este relatório foi feito"
-      subtitle="Três fontes públicas complementam a leitura — recolha pública, referência de mercado e leitura editorial — apoiadas por sinais de pesquisa."
+      subtitle="Quatro fontes complementam a leitura — recolha pública, referência de mercado, leitura editorial e sinais de procura."
       tone="calm"
       spacing="tight"
       ariaLabel="Metodologia e fontes de dados"
@@ -53,14 +54,17 @@ export function ReportMethodology() {
         {sources.map(({ icon: Icon, label, body }) => (
           <div
             key={label}
-            className={`${REDESIGN_TOKENS.card} p-4 md:p-5 space-y-2 min-w-0`}
+            className={`${REDESIGN_TOKENS.card} p-4 md:p-5 space-y-3 min-w-0`}
           >
-            <div className="flex items-center gap-2 text-blue-600">
-              <Icon className="size-4" aria-hidden="true" />
-              <p className="text-eyebrow-sm text-content-tertiary">
-                {label}
-              </p>
-            </div>
+            <span
+              aria-hidden="true"
+              className="inline-flex size-9 items-center justify-center rounded-lg bg-white border border-border-default text-accent-primary"
+            >
+              <Icon className="size-4" />
+            </span>
+            <p className="text-eyebrow-sm text-content-tertiary">
+              {label}
+            </p>
             <p className="text-sm text-content-secondary leading-relaxed">
               {body}
             </p>
@@ -73,86 +77,71 @@ export function ReportMethodology() {
           <p className="text-eyebrow-sm text-content-tertiary">
             Fontes de referência
           </p>
-          <p className="text-eyebrow-sm text-content-tertiary">
-            Dataset {BENCHMARK_DATASET_VERSION}
+          <p className="text-xs text-content-tertiary tabular-nums">
+            dataset {BENCHMARK_DATASET_VERSION}
           </p>
         </div>
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {benchmarkSources.map((source) => {
-            // Apenas qualidade `medium` recebe chip; `high` é o caso
-            // silencioso por omissão. Fontes `low` ficam fora da lista
-            // activa (filtradas por visibility=active).
-            const showQualityChip = source.referenceQuality === "medium";
+            const isLocked = source.visibility === "future";
             return (
               <li
                 key={source.name}
-                className="flex items-start gap-3 rounded-lg border border-border-default/70 bg-white px-3 py-2.5 min-w-0"
+                className={cn(
+                  "flex items-start gap-3 rounded-lg border border-border-default/70 bg-white px-3 py-2.5 min-w-0",
+                  isLocked && "opacity-60",
+                )}
               >
                 <span
                   aria-hidden="true"
-                  className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                  className={cn(
+                    "mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md ring-1",
+                    isLocked
+                      ? "bg-surface-muted text-content-tertiary ring-border-default"
+                      : "bg-indigo-50 text-indigo-700 ring-indigo-200",
+                  )}
                 >
-                  <BookOpenSmall />
+                  {isLocked ? (
+                    <Lock className="size-3.5" aria-hidden="true" />
+                  ) : (
+                    <BookOpen className="size-3.5" aria-hidden="true" />
+                  )}
                 </span>
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="text-sm text-content-primary leading-tight">
                     <span className="font-medium">{source.name}</span>
-                    <span className="ml-1.5 tabular-nums text-xs text-content-tertiary tabular-nums">
-                      {source.publishedYear}
-                    </span>
+                    {isLocked ? (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content-tertiary border border-border-default">
+                        em breve
+                      </span>
+                    ) : (
+                      <span className="ml-1.5 tabular-nums text-xs text-content-tertiary">
+                        {source.publishedYear}
+                      </span>
+                    )}
                   </p>
                   <p className="text-[12px] text-content-secondary leading-snug">
-                    {source.shortDescription}
+                    {isLocked
+                      ? "Métricas privadas — alcance e visitas."
+                      : source.shortDescription}
                   </p>
-                  {showQualityChip ? (
-                    <span
-                      className={cn(
-                        "text-eyebrow-sm mt-1 inline-block rounded-full px-1.5 py-0.5 ring-1",
-                        "bg-surface-muted text-content-tertiary ring-border-default",
-                      )}
-                    >
-                      Qualidade média
-                    </span>
-                  ) : null}
                 </div>
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Abrir página da ${source.name} numa nova aba`}
-                   className="shrink-0 inline-flex size-7 items-center justify-center rounded-md text-content-tertiary hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
-                >
-                  <ExternalLink aria-hidden="true" className="size-3.5" />
-                </a>
+                {isLocked ? null : (
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Abrir página da ${source.name} numa nova aba`}
+                    className="shrink-0 inline-flex size-7 items-center justify-center rounded-md text-content-tertiary hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                  >
+                    <ExternalLink aria-hidden="true" className="size-3.5" />
+                  </a>
+                )}
               </li>
             );
           })}
         </ul>
-        <p className="mt-3 text-[11.5px] text-content-tertiary leading-relaxed italic">
-          Databox fica reservado para futura ligação autenticada — métricas privadas como alcance, visitas e cliques.
-        </p>
       </div>
     </ReportSectionFrame>
-  );
-}
-
-/** Pequeno ícone livro/marca-fonte alinhado com o tom indigo de `external`. */
-function BookOpenSmall() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-    </svg>
   );
 }
