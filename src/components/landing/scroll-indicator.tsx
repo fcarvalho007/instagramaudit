@@ -1,11 +1,14 @@
+import { useTranslation } from "react-i18next";
+
 export function ScrollIndicator() {
+  const { t } = useTranslation("landing");
   return (
     <div
       className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-10"
       aria-hidden="true"
     >
       <span className="text-eyebrow-sm text-content-tertiary">
-        Explorar
+        {t("scroll.explore")}
       </span>
       <span className="scroll-indicator-line block h-8 w-px bg-content-tertiary origin-top" />
       <style>{`
