@@ -64,10 +64,10 @@
       "lastNameRequired": "Enter your last name",
       "emailLabel": "Email",
       "emailPlaceholder": "ana@company.com",
-      "consentText": "I accept the <a>processing of my data</a> to generate and store this report, and I've read the <a2>privacy policy</a2>.",
+      "consentText": "I accept the <a>processing of my data</a> to generate, store and email this report, and I've read the <a2>privacy policy</a2>.",
       "consentBadgeRequired": "REQ.",
-      "marketingText": "I'd like to receive news and tips on reports, Instagram analytics and digital marketing",
-      "marketingHint": "(unsubscribe any time · ~1 email/week)"
+      "marketingText": "I'd like to receive news and tips about reports, benchmarks and future features.",
+      "marketingHint": "Optional · unsubscribe any time"
     },
     "step2": {
       "eyebrow": "STEP 2 OF 4",
