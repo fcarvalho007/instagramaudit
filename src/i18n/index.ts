@@ -6,11 +6,17 @@ import ptHeader from "./locales/pt/header.json";
 import ptLanding from "./locales/pt/landing.json";
 import ptFooter from "./locales/pt/footer.json";
 import ptAuth from "./locales/pt/auth.json";
+import ptAnalyze from "./locales/pt/analyze.json";
+import ptGate from "./locales/pt/gate.json";
+import ptErrors from "./locales/pt/errors.json";
 import enCommon from "./locales/en/common.json";
 import enHeader from "./locales/en/header.json";
 import enLanding from "./locales/en/landing.json";
 import enFooter from "./locales/en/footer.json";
 import enAuth from "./locales/en/auth.json";
+import enAnalyze from "./locales/en/analyze.json";
+import enGate from "./locales/en/gate.json";
+import enErrors from "./locales/en/errors.json";
 
 export const SUPPORTED_LANGUAGES = ["pt", "en"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -23,13 +29,40 @@ export const LANG_STORAGE_KEY = "instabench.lang";
 if (!i18n.isInitialized) {
   void i18n.use(initReactI18next).init({
     resources: {
-      pt: { common: ptCommon, header: ptHeader, landing: ptLanding, footer: ptFooter, auth: ptAuth },
-      en: { common: enCommon, header: enHeader, landing: enLanding, footer: enFooter, auth: enAuth },
+      pt: {
+        common: ptCommon,
+        header: ptHeader,
+        landing: ptLanding,
+        footer: ptFooter,
+        auth: ptAuth,
+        analyze: ptAnalyze,
+        gate: ptGate,
+        errors: ptErrors,
+      },
+      en: {
+        common: enCommon,
+        header: enHeader,
+        landing: enLanding,
+        footer: enFooter,
+        auth: enAuth,
+        analyze: enAnalyze,
+        gate: enGate,
+        errors: enErrors,
+      },
     },
     lng: "pt",
     fallbackLng: "pt",
     defaultNS: "common",
-    ns: ["common", "header", "landing", "footer", "auth"],
+    ns: [
+      "common",
+      "header",
+      "landing",
+      "footer",
+      "auth",
+      "analyze",
+      "gate",
+      "errors",
+    ],
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
   });
