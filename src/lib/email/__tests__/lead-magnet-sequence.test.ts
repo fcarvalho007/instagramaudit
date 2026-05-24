@@ -191,19 +191,39 @@ describe("sendLeadMagnetSequence", () => {
     expect(sendReportSummaryEmail).toHaveBeenCalledTimes(1);
   });
 
-  it("consent gate: skips entire sequence when lead has no marketing_consent", async () => {
+  it("transactional delivery: sends both emails even when marketing_consent=false, with flag in metadata", async () => {
     leadConsent = false;
     const result = await sendLeadMagnetSequence({ ...baseArgs, sendWelcome: true });
-    expect(result).toEqual({
-      welcome: "skipped_disabled",
-      summary: "skipped_no_data",
-    });
-    expect(sendWelcomeBetaEmail).not.toHaveBeenCalled();
-    expect(sendReportSummaryEmail).not.toHaveBeenCalled();
-    const skipEvent = recordProductEvent.mock.calls.find(
-      (c: any[]) => c[0].eventType === "lead_magnet_sequence_skipped",
+    expect(result).toEqual({ welcome: "sent", summary: "sent" });
+    expect(sendWelcomeBetaEmail).toHaveBeenCalledTimes(1);
+    expect(sendReportSummaryEmail).toHaveBeenCalledTimes(1);
+    const types = recordProductEvent.mock.calls.map((c: any[]) => c[0].eventType);
+    expect(types).not.toContain("lead_magnet_sequence_skipped");
+    const welcomeEvt = recordProductEvent.mock.calls.find(
+      (c: any[]) => c[0].eventType === "beta_welcome_email_sent",
     );
-    expect(skipEvent).toBeDefined();
-    expect(skipEvent![0].metadata.reason).toBe("NO_MARKETING_CONSENT");
+    const summaryEvt = recordProductEvent.mock.calls.find(
+      (c: any[]) => c[0].eventType === "report_summary_email_sent",
+    );
+    expect(welcomeEvt![0].metadata).toMatchObject({
+      transactional_delivery: true,
+      marketing_consent: false,
+    });
+    expect(summaryEvt![0].metadata).toMatchObject({
+      transactional_delivery: true,
+      marketing_consent: false,
+    });
+  });
+
+  it("marketing_consent=true: metadata records marketing_consent: true", async () => {
+    leadConsent = true;
+    await sendLeadMagnetSequence({ ...baseArgs, sendWelcome: true });
+    const summaryEvt = recordProductEvent.mock.calls.find(
+      (c: any[]) => c[0].eventType === "report_summary_email_sent",
+    );
+    expect(summaryEvt![0].metadata).toMatchObject({
+      transactional_delivery: true,
+      marketing_consent: true,
+    });
   });
 });

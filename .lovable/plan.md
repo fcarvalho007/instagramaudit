@@ -1,66 +1,105 @@
 ## Objetivo
 
-1. Remover totalmente o rodapé do report que contém "Próximo nível", "Levar este relatório / Partilhar relatório" e "Feedback beta".
-2. Garantir que a sidebar do report fica sempre presente e visível enquanto o utilizador faz scroll dentro do relatório.
+Separar entrega transacional do consentimento de marketing. Hoje, `lead-magnet-sequence.server.ts` e `brevo/sync.server.ts` saltam tudo quando `marketing_consent !== true`, o que bloqueia 100% do email lead-magnet. A entrega do relatório é transacional (o utilizador pediu-a) e deve depender apenas do `gdpr_consent`.
 
 ---
 
-## Ficheiros afetados
+## Estado actual auditado
 
-- `src/components/report-redesign/v2/report-shell-v2.tsx`
-- `src/components/report-redesign/v2/report-diagnostic-cta.tsx` (CTA que aponta para a âncora `#leitura-completa` do bloco a remover)
+- `src/lib/email/lead-magnet-sequence.server.ts` (linhas 103-134) — bloco "Consent gate" carrega `leads.marketing_consent` e emite `lead_magnet_sequence_skipped` com `reason: "NO_MARKETING_CONSENT"`, devolvendo `{ welcome: skipped_disabled, summary: skipped_no_data }`. Esta é a causa raiz.
+- `src/lib/brevo/sync.server.ts` (linhas 92-116) — mesmo padrão: salta sync e regista `brevo_contact_sync_skipped` com `reason: "NO_MARKETING_CONSENT"`.
+- `src/lib/unlock.server.ts` — já trata `gdpr_consent` e `marketing_consent` como campos distintos e persiste ambos em `leads` (`beta_consent` ↔ GDPR, `marketing_consent` ↔ opt-in newsletter). Nenhuma alteração de schema necessária.
+- `src/lib/unlock-flow.ts` — schema Zod já exige `gdpr_consent: z.literal(true)` e mantém `marketing_consent: z.boolean().optional()`. OK.
+- `src/components/product/unlock-modal.tsx` — UI já tem dois checkboxes separados; precisa só de revisão de copy para deixar claro que o opcional NÃO bloqueia a entrega.
+- Testes existentes:
+  - `src/lib/email/__tests__/lead-magnet-sequence.test.ts` — tem teste "consent gate" que assume bloqueio. Vai mudar de polaridade.
+  - `src/lib/brevo/__tests__/sync.test.ts` — idem.
 
 ---
 
 ## Alterações
 
-### 1. Remover blocos de fim de relatório
+### 1. `src/lib/email/lead-magnet-sequence.server.ts`
 
-Em `report-shell-v2.tsx`:
+- Substituir o bloco "Consent gate" (linhas 103-134) por uma leitura ao lead que recolhe `marketing_consent` apenas para enriquecer metadata, **sem** bloquear envio.
+- Manter o kill-switch `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` (continua a ser o único bloqueador legítimo).
+- Em vez de gating: anexar `transactional_delivery: true` e `marketing_consent: <boolean>` aos metadados de `beta_welcome_email_sent` e `report_summary_email_sent`. Isto preserva auditoria sem partir entrega.
+- Remover emissão de `lead_magnet_sequence_skipped` com `reason: "NO_MARKETING_CONSENT"` (deixa de existir).
+- Se a leitura do lead falhar, continuar com `marketing_consent = false` em metadata (fail-open, transacional).
 
-- Eliminar a renderização de:
-  - `<TierComparisonBlock />` (bloco "Próximo nível · O que muda no relatório completo")
-  - `<ReportFinalBlock />` (bloco "Levar este relatório / Partilhar")
-  - `<BetaFeedbackBannerV2 />` (faixa "Feedback beta")
-- Eliminar a função local `BetaFeedbackBannerV2` (já não usada).
-- Eliminar os imports correspondentes:
-  - `TierComparisonBlock`
-  - `ReportFinalBlock`
-  - `BETA_COPY`
-- Manter `<ReportMethodology />` (não está incluído no pedido de remoção).
-- Manter o spacer mobile `<div class="h-20 lg:hidden" />` (continua útil porque a bottom-tab nav mobile fica fixa).
+> **Nota sobre copy do welcome-beta**: o template (`src/lib/email/send-welcome-beta.server.ts` e o seu .tsx em `templates/`) será revisto apenas se contiver linguagem promocional. Conteúdo permitido: contexto beta, confirmação de geração do relatório, link, prazo de disponibilidade. Será verificado e ajustado se houver linguagem marketing-like.
 
-### 2. Limpar CTA órfão do Bloco 02
+### 2. `src/lib/brevo/sync.server.ts`
 
-`report-diagnostic-cta.tsx` aponta para `href="#leitura-completa"`, âncora que vive dentro do `TierComparisonBlock` removido. Para evitar um link a apontar para nada:
+- Remover o gate "NO_MARKETING_CONSENT" (linhas 92-116). Sync passa a ocorrer após GDPR consent (precondição implícita do unlock).
+- Adicionar atributo Brevo `MARKETING_CONSENT: lead.marketing_consent === true` ao payload (linhas 141-160). Brevo passa a ter o flag para segmentação futura.
+- Não adicionar o contacto a nenhuma lista de marketing — projecto usa uma só lista CRM operacional, sem segmentação por lista. O atributo `MARKETING_CONSENT` é o segmentador.
+- Manter `recordProductEvent("brevo_contact_synced")` com metadata `marketing_consent` no payload.
 
-- Remover a renderização do `<ReportDiagnosticCta />` no Bloco 02. Isto é o caminho mais limpo, dado que o objetivo do CTA era enviar para a comparação free vs. PRO que deixa de existir.
+### 3. `src/components/product/unlock-modal.tsx` + i18n
 
-Vou identificar o ponto exato de renderização durante a edição (provavelmente em `report-diagnostic-block.tsx`) e remover apenas a chamada + import; o ficheiro `report-diagnostic-cta.tsx` permanece (sem referências) para manter o histórico — pode ser apagado num passo seguinte se preferir.
+- `gate.json` PT/EN: ajustar `unlock.step1.consentText` para a frase pedida:
+  - PT: "Aceito o tratamento dos meus dados para gerar, guardar e enviar este relatório."
+  - EN: equivalente.
+- Ajustar `unlock.step1.marketingText`:
+  - PT: "Quero receber novidades e dicas sobre relatórios, benchmarks e funcionalidades futuras."
+  - EN: equivalente.
+- Manter "(cancelas quando quiseres)" como hint, mas remover qualquer ligação implícita a "necessário para receber o relatório".
+- No `unlock-modal.tsx` não há referência textual a "marketing obrigatório"; apenas o badge OBRIG. fica no checkbox GDPR. Sem mudança estrutural.
 
-### 3. Sidebar sempre visível
+### 4. Testes
 
-Verificação do comportamento atual:
+- `src/lib/email/__tests__/lead-magnet-sequence.test.ts`:
+  - Reescrever o teste "consent gate" para o oposto: `marketing_consent=false` → ambos os emails são enviados, metadata contém `transactional_delivery: true, marketing_consent: false`.
+  - Adicionar teste: `marketing_consent=true` → emails enviados e metadata regista `marketing_consent: true`.
+- `src/lib/brevo/__tests__/sync.test.ts`:
+  - Reescrever teste "NO_MARKETING_CONSENT" para: `marketing_consent=false` → sync ok, atributo `MARKETING_CONSENT=false` enviado, evento `brevo_contact_synced` regista `marketing_consent=false`.
+  - Adicionar teste `marketing_consent=true` → atributo `MARKETING_CONSENT=true`.
+- Não criar testes E2E novos para o schema `gdpr_consent=false` (já coberto por `src/lib/__tests__/unlock-flow.test.ts` via Zod literal). Verificarei e adiciono caso falte.
+- Dedup por `report_request_id` mantém-se intacto (não tocado).
 
-- Desktop (`lg:`): `ReportBlockSidebar` já é `sticky top-24` com altura limitada e scroll interno. Permanece visível durante todo o scroll do report. Após remover os blocos de fim, a sidebar passa a acompanhar exatamente a área útil (sem mudança necessária).
-- Mobile (`<lg`): existe `ReportBlockTopTabs` como bottom-nav fixa (`fixed bottom-0`), com botão "Menu" que abre o `Sheet` lateral com a lista completa de blocos. Já é persistente.
+---
 
-Não é necessária alteração de layout para a sidebar — após a remoção dos blocos no fundo, a sticky-sidebar mantém-se visível até ao final do conteúdo restante.
+## Resultado esperado por cenário
+
+**A) `gdpr_consent=true`, `marketing_consent=false`**
+
+Eventos emitidos:
+- `unlock_completed`
+- `report_saved_to_account`
+- `beta_welcome_email_sent` *(metadata: `transactional_delivery: true, marketing_consent: false`)*
+- `report_summary_email_sent` *(metadata idem)*
+- `brevo_contact_synced` *(atributo `MARKETING_CONSENT=false`)*
+
+Já **não** é emitido: `lead_magnet_sequence_skipped`, `brevo_contact_sync_skipped`.
+
+**B) `gdpr_consent=true`, `marketing_consent=true`**
+
+Idêntico a (A) mas com `marketing_consent: true` em metadata e `MARKETING_CONSENT=true` em Brevo.
+
+---
+
+## Constraints respeitadas
+
+- Sem alterações de schema Supabase.
+- Sem chamadas reais a Brevo / Email (apenas mocks nos testes).
+- UI pública do relatório intacta.
+- Copy pt-PT preservada e reforçada (Acordo Ortográfico).
+- GDPR consent permanece obrigatório (Zod `z.literal(true)`).
+
+## Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run` (com foco em `lead-magnet-sequence.test.ts` e `brevo/__tests__/sync.test.ts`)
 
 ---
 
 ## Checkpoint
 
-- ☐ Bloco "Próximo nível / relatório completo" removido do report
-- ☐ Bloco "Levar este relatório / Partilhar" removido do report
-- ☐ Faixa "Feedback beta" removida do report
-- ☐ Função `BetaFeedbackBannerV2` e imports não usados apagados em `report-shell-v2.tsx`
-- ☐ CTA do Bloco 02 que apontava para `#leitura-completa` deixa de ser renderizado
-- ☐ Sidebar desktop continua sticky e visível durante todo o scroll do report
-- ☐ Nav mobile (bottom-tabs + drawer) continua sempre visível
-
----
-
-## Pergunta de confirmação
-
-Quer também que eu remova a navegação mobile (bottom-tabs) e force a sidebar/drawer sempre visível em mobile? Hoje em ecrãs `<lg` a sidebar lateral não aparece — só a barra inferior com ícones e um botão "Menu" que abre o drawer. Se a intenção for ter exatamente o mesmo painel lateral também em mobile, indique e adapto o plano.
+- ☐ `lead-magnet-sequence.server.ts` deixa de gatear por `marketing_consent`
+- ☐ Metadados dos eventos passam a incluir `transactional_delivery` e `marketing_consent`
+- ☐ `brevo/sync.server.ts` deixa de gatear; adiciona atributo `MARKETING_CONSENT`
+- ☐ Copy do checkbox GDPR e marketing actualizada (PT + EN)
+- ☐ Welcome-beta template revisto: sem linguagem marketing
+- ☐ Testes ajustados em `lead-magnet-sequence.test.ts` e `brevo/__tests__/sync.test.ts`
+- ☐ `tsc --noEmit` e `vitest run` passam

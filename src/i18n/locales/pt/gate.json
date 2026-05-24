@@ -64,10 +64,10 @@
       "lastNameRequired": "Indica o apelido",
       "emailLabel": "Email",
       "emailPlaceholder": "ana@empresa.pt",
-      "consentText": "Aceito o <a>tratamento dos meus dados</a> para gerar e guardar este relatório, e li a <a2>política de privacidade</a2>.",
+      "consentText": "Aceito o <a>tratamento dos meus dados</a> para gerar, guardar e enviar este relatório, e li a <a2>política de privacidade</a2>.",
       "consentBadgeRequired": "OBRIG.",
-      "marketingText": "Quero receber novidades e dicas sobre relatórios, análise de Instagram e marketing digital",
-      "marketingHint": "(cancelas quando quiseres · ~1 email/semana)"
+      "marketingText": "Quero receber novidades e dicas sobre relatórios, benchmarks e funcionalidades futuras.",
+      "marketingHint": "Opcional · cancelas quando quiseres"
     },
     "step2": {
       "eyebrow": "PASSO 2 DE 4",
