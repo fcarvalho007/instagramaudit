@@ -4,9 +4,11 @@ import { initReactI18next } from "react-i18next";
 import ptCommon from "./locales/pt/common.json";
 import ptHeader from "./locales/pt/header.json";
 import ptLanding from "./locales/pt/landing.json";
+import ptFooter from "./locales/pt/footer.json";
 import enCommon from "./locales/en/common.json";
 import enHeader from "./locales/en/header.json";
 import enLanding from "./locales/en/landing.json";
+import enFooter from "./locales/en/footer.json";
 
 export const SUPPORTED_LANGUAGES = ["pt", "en"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -29,13 +31,13 @@ function detectInitialLanguage(): SupportedLanguage {
 if (!i18n.isInitialized) {
   void i18n.use(initReactI18next).init({
     resources: {
-      pt: { common: ptCommon, header: ptHeader, landing: ptLanding },
-      en: { common: enCommon, header: enHeader, landing: enLanding },
+      pt: { common: ptCommon, header: ptHeader, landing: ptLanding, footer: ptFooter },
+      en: { common: enCommon, header: enHeader, landing: enLanding, footer: enFooter },
     },
     lng: detectInitialLanguage(),
     fallbackLng: "pt",
     defaultNS: "common",
-    ns: ["common", "header", "landing"],
+    ns: ["common", "header", "landing", "footer"],
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
   });
