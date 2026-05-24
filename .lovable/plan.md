@@ -1,71 +1,66 @@
-## Lote G — Finalize report translation (PT/EN)
+## Objetivo
 
-The previous lots covered hero, KPI grid, sidebar/tabs, Identity card, Frequency and Format cards. The remaining components in the public report are still hardcoded in Portuguese. This lot closes the gap so the language switch fully localizes every block.
+1. Remover totalmente o rodapé do report que contém "Próximo nível", "Levar este relatório / Partilhar relatório" e "Feedback beta".
+2. Garantir que a sidebar do report fica sempre presente e visível enquanto o utilizador faz scroll dentro do relatório.
 
-### Scope (all under `src/components/report-redesign/v2/`)
+---
 
-Group 1 — Block 1 closure
-- `overview/diagnostic-summary.tsx` — DIAGNOSIS_MAP, primary/secondary labels
-- `overview/score-utils.ts` — score labels, family labels, aria-labels, tooltips
-- `overview/comparison-header.tsx` — "Comparar com…", "Em breve", network teasers
-- `overview/competitor-modal.tsx` — modal headings, CTAs, copy
-- `overview/frequency-card.tsx` — residual hardcoded strings (verdict short labels, weekday helpers)
+## Ficheiros afetados
 
-Group 2 — Diagnostic blocks (Block 2/3)
-- `report-diagnostic-grid-v2.tsx`
-- `report-diagnostic-summary-cards.tsx`
-- `report-diagnostic-verdict.tsx`
-- `report-diagnostic-priorities.tsx`
-- `report-diagnostic-group.tsx`, `report-diagnostic-card.tsx`, `report-diagnostic-cta.tsx`, `report-diagnostic-block.tsx`
-- `report-engagement-benchmark-chart.tsx` — axis labels, legends, captions
+- `src/components/report-redesign/v2/report-shell-v2.tsx`
+- `src/components/report-redesign/v2/report-diagnostic-cta.tsx` (CTA que aponta para a âncora `#leitura-completa` do bloco a remover)
 
-Group 3 — Content/editorial blocks (Block 3/4)
-- `caption-diagnostics-card.tsx` (largest file: pills, ratings, CSV header stays code, copy/labels translated)
-- `hashtag-diagnostics-card.tsx`
-- `report-themes-feature.tsx`
-- `report-post-comparison.tsx`
-- `report-overview-attention-row.tsx`, `report-overview-cards.tsx`, `report-overview-engagement.tsx`
+---
 
-Group 4 — Audience/visual blocks (Block 4/5)
-- `report-comment-intelligence.tsx`
-- `visual-cover-analysis-card.tsx`
+## Alterações
 
-Group 5 — Premium / benchmark / positioning
-- `premium-callout.tsx`, `premium-interest-dialog.tsx`
-- `report-benchmark-evidence.tsx`
-- `report-positioning-banner.tsx`
+### 1. Remover blocos de fim de relatório
 
-### Approach
+Em `report-shell-v2.tsx`:
 
-1. Extend `src/i18n/locales/{pt,en}/report.json` with new namespaces grouped per file:
-   - `report.diagnostic.*`, `report.captions.*`, `report.hashtags.*`, `report.comments.*`, `report.visual.*`, `report.themes.*`, `report.benchmark.*`, `report.positioning.*`, `report.premium.*`, `report.comparison.*`, `report.identity.*` (extend), `report.scores.*`.
-2. Each component gains `useTranslation('report')` and replaces literal strings with `t('…')`. Helper functions that build labels (e.g. `pickQuietest`, score builders, DIAGNOSIS_MAP) receive `t` as a parameter.
-3. Pluralization handled via i18next `count` interpolation; numbers stay locale-formatted via existing `src/lib/i18n/format.ts` helpers (`formatCompactNumber`, `formatPct`, weekday from `formatDate`).
-4. Server-derived strings (AI-generated text) remain pass-through — only deterministic UI chrome and fallback copy are translated.
-5. No business logic, no data flow, no token/visual changes. No new dependencies.
+- Eliminar a renderização de:
+  - `<TierComparisonBlock />` (bloco "Próximo nível · O que muda no relatório completo")
+  - `<ReportFinalBlock />` (bloco "Levar este relatório / Partilhar")
+  - `<BetaFeedbackBannerV2 />` (faixa "Feedback beta")
+- Eliminar a função local `BetaFeedbackBannerV2` (já não usada).
+- Eliminar os imports correspondentes:
+  - `TierComparisonBlock`
+  - `ReportFinalBlock`
+  - `BETA_COPY`
+- Manter `<ReportMethodology />` (não está incluído no pedido de remoção).
+- Manter o spacer mobile `<div class="h-20 lg:hidden" />` (continua útil porque a bottom-tab nav mobile fica fixa).
 
-### Files NOT touched
+### 2. Limpar CTA órfão do Bloco 02
 
-- `src/integrations/supabase/*`, `.env`, `supabase/config.toml`
-- Legacy `report-redesign/report-*.tsx` v1 files (kept as `/report.example` mockup) per LOCKED_FILES policy
-- `report-tracking-context.tsx` (analytics events stay in English code)
+`report-diagnostic-cta.tsx` aponta para `href="#leitura-completa"`, âncora que vive dentro do `TierComparisonBlock` removido. Para evitar um link a apontar para nada:
 
-### Verification checklist
+- Remover a renderização do `<ReportDiagnosticCta />` no Bloco 02. Isto é o caminho mais limpo, dado que o objetivo do CTA era enviar para a comparação free vs. PRO que deixa de existir.
 
-☐ Switch language toggle and walk through Block 1 → Block 6 — no PT leak in EN mode (and vice versa).
-☐ Block 1 cards (Identity, Frequency, Format, KPI) localize verdict + diagnosis copy live.
-☐ Diagnostic verdict/priorities/grid render localized severity and CTA labels.
-☐ Caption + Hashtag cards translate ratings ("Detetados" / "Detected", "Sem repetição" / "No repetition") and helper sentences.
-☐ Comment intelligence + visual cover analysis fallback messages localized.
-☐ Premium modal, comparison header and "Em breve · Julho 2026" badges localized.
-☐ AI-generated hero text continues to render as-is (no double translation).
-☐ Numbers and dates use locale formatters (no "1,234" in PT or "1.234" in EN).
-☐ No regression: existing unit tests in `overview/__tests__` pass; add coverage for `pickQuietest` accepting `t`.
+Vou identificar o ponto exato de renderização durante a edição (provavelmente em `report-diagnostic-block.tsx`) e remover apenas a chamada + import; o ficheiro `report-diagnostic-cta.tsx` permanece (sem referências) para manter o histórico — pode ser apagado num passo seguinte se preferir.
 
-### Delivery
+### 3. Sidebar sempre visível
 
-Given file count, I'll execute the groups in two build turns to keep diffs reviewable:
-- Turn 1: Groups 1 + 2 (Block 1 closure + Diagnostic blocks).
-- Turn 2: Groups 3 + 4 + 5 (Content, Audience, Premium/Benchmark/Positioning).
+Verificação do comportamento atual:
 
-After each turn I confirm in chat which groups landed and what remains.
+- Desktop (`lg:`): `ReportBlockSidebar` já é `sticky top-24` com altura limitada e scroll interno. Permanece visível durante todo o scroll do report. Após remover os blocos de fim, a sidebar passa a acompanhar exatamente a área útil (sem mudança necessária).
+- Mobile (`<lg`): existe `ReportBlockTopTabs` como bottom-nav fixa (`fixed bottom-0`), com botão "Menu" que abre o `Sheet` lateral com a lista completa de blocos. Já é persistente.
+
+Não é necessária alteração de layout para a sidebar — após a remoção dos blocos no fundo, a sticky-sidebar mantém-se visível até ao final do conteúdo restante.
+
+---
+
+## Checkpoint
+
+- ☐ Bloco "Próximo nível / relatório completo" removido do report
+- ☐ Bloco "Levar este relatório / Partilhar" removido do report
+- ☐ Faixa "Feedback beta" removida do report
+- ☐ Função `BetaFeedbackBannerV2` e imports não usados apagados em `report-shell-v2.tsx`
+- ☐ CTA do Bloco 02 que apontava para `#leitura-completa` deixa de ser renderizado
+- ☐ Sidebar desktop continua sticky e visível durante todo o scroll do report
+- ☐ Nav mobile (bottom-tabs + drawer) continua sempre visível
+
+---
+
+## Pergunta de confirmação
+
+Quer também que eu remova a navegação mobile (bottom-tabs) e force a sidebar/drawer sempre visível em mobile? Hoje em ecrãs `<lg` a sidebar lateral não aparece — só a barra inferior com ícones e um botão "Menu" que abre o drawer. Se a intenção for ter exatamente o mesmo painel lateral também em mobile, indique e adapto o plano.
