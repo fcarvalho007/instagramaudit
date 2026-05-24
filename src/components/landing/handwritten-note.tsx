@@ -46,7 +46,7 @@ export function HandwrittenNote({ className }: HandwrittenNoteProps) {
       >
         <span className="block whitespace-nowrap">
           <AnimatedCounter to={2} delayMs={2100} durationMs={600} />{" "}
-          {t("handwritten.freeReports", { count: 2 }).replace(/^\s*\d+\s*/, "")}
+          {t("handwritten.freeReportsSuffix")}
         </span>
       </div>
 
