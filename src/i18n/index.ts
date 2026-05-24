@@ -70,7 +70,11 @@ if (!i18n.isInitialized) {
     ],
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
-  });
+    // Force synchronous init so SSR can read resources on the first render
+    // (default is async; otherwise t() returns the key during SSR and the
+    // client hydrates with the translated value, causing a mismatch).
+    initImmediate: false,
+  } as Parameters<typeof i18n.init>[0]);
 }
 
 export default i18n;

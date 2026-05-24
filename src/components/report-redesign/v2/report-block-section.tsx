@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import { REDESIGN_TOKENS } from "../report-tokens";
@@ -20,6 +21,7 @@ interface Props {
  * label + pergunta humana em serif + subtítulo.
  */
 export function ReportBlockSection({ block, tone = "canvas", first, children }: Props) {
+  const { t } = useTranslation("report");
   const band =
     tone === "white"
       ? REDESIGN_TOKENS.bandWhite
@@ -27,10 +29,17 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
         ? REDESIGN_TOKENS.bandSoftBlue
         : REDESIGN_TOKENS.bandCanvas;
 
+  const shortLabel = t(`blocks.${block.id}.short`, { defaultValue: block.shortLabel });
+  const question = t(`blocks.${block.id}.question`, { defaultValue: block.question });
+  const subtitle = t(`blocks.${block.id}.subtitle`, { defaultValue: block.subtitle });
+  const eyebrow = block.eyebrowOverride
+    ? t(`blocks.${block.id}.eyebrow`, { defaultValue: block.eyebrowOverride })
+    : shortLabel;
+
   return (
     <section
       id={block.id}
-      aria-label={block.question}
+      aria-label={question}
       className={cn("w-full scroll-mt-20 lg:scroll-mt-6", band)}
     >
       <div className={cn(first ? "pt-0 pb-14 md:pt-0 md:pb-20" : "py-14 md:py-20")}>
@@ -49,10 +58,10 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
             {/* Text stack */}
             <div className="min-w-0 max-w-[900px] space-y-2 md:space-y-3 md:pt-1">
               <p className={REDESIGN_TOKENS.chapterLabel}>
-                {(block.eyebrowOverride ?? block.shortLabel).toUpperCase()}
+                {eyebrow.toUpperCase()}
               </p>
-              <h2 className={REDESIGN_TOKENS.h2Section}>{block.question}</h2>
-              <p className={cn(REDESIGN_TOKENS.chapterSubtitle)}>{block.subtitle}</p>
+              <h2 className={REDESIGN_TOKENS.h2Section}>{question}</h2>
+              <p className={cn(REDESIGN_TOKENS.chapterSubtitle)}>{subtitle}</p>
             </div>
           </div>
         </header>

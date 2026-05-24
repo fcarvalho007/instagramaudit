@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Menu, Lock, ArrowRight, Star, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -12,7 +13,7 @@ import {
   type ReportVariant,
   type VariantFeatures,
 } from "@/lib/report/report-variant";
-import { BLOCKS, type BlockConfig } from "./block-config";
+import { useBlocks, type BlockConfig } from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
 import { PremiumInterestDialog, type PricingOption } from "./premium-interest-dialog";
 import { useReportTracking } from "./report-tracking-context";
@@ -47,10 +48,12 @@ const COFRE_ANCHOR_ID = "report-cofre";
 // ── Item builder ─────────────────────────────────────────────────────
 
 function buildSidebarItems(
+  blocks: readonly BlockConfig[],
   variant: ReportVariant,
   features: VariantFeatures,
+  partialLabel: string,
 ): SidebarItem[] {
-  return BLOCKS.map((block) => {
+  return blocks.map((block) => {
     const fv = features[block.featureKey];
     if (variant === "internal_lab" || variant === "pro_preview") {
       return { block, group: "incluido" as Group, access: "accessible" as AccessState };
@@ -64,7 +67,7 @@ function buildSidebarItems(
         block,
         group: "incluido" as Group,
         access: "partial" as AccessState,
-        partialBadge: block.id === "performance" ? "3/5" : "parcial",
+        partialBadge: block.id === "performance" ? "3/5" : partialLabel,
       };
     }
     return { block, group: "incluido" as Group, access: "accessible" as AccessState };
@@ -83,11 +86,12 @@ function initialOf(handle: string) {
 }
 
 function VariantBadge({ variant }: { variant: ReportVariant }) {
+  const { t } = useTranslation("report");
   if (variant === "internal_lab") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-content-secondary border border-border-default">
         <span aria-hidden="true">✦</span>
-        Laboratório interno
+        {t("nav.lab")}
       </span>
     );
   }
@@ -95,7 +99,7 @@ function VariantBadge({ variant }: { variant: ReportVariant }) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-700 border border-blue-200">
         <span aria-hidden="true">✦</span>
-        Pro ativo
+        {t("nav.pro_active")}
       </span>
     );
   }
@@ -103,6 +107,7 @@ function VariantBadge({ variant }: { variant: ReportVariant }) {
 }
 
 function ProfileHeader({ profile }: { profile: SidebarProfile }) {
+  const { t } = useTranslation("report");
   const handle = profile.handle.startsWith("@") ? profile.handle : `@${profile.handle}`;
   return (
     <div className="flex items-center gap-3 px-1 pb-3 mb-3 border-b border-border-default/60">
@@ -110,7 +115,7 @@ function ProfileHeader({ profile }: { profile: SidebarProfile }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={`/api/public/ig-thumb?url=${encodeURIComponent(profile.avatarUrl)}`}
-          alt={`Avatar de ${handle}`}
+          alt={t("nav.avatar_alt", { handle })}
           loading="eager"
           decoding="async"
           onError={(e) => {
@@ -136,6 +141,7 @@ function ProfileHeader({ profile }: { profile: SidebarProfile }) {
 }
 
 function ProgressBar({ items }: { items: SidebarItem[] }) {
+  const { t } = useTranslation("report");
   const accessible = items.filter((i) => i.access === "accessible").length;
   const partial = items.filter((i) => i.access === "partial").length;
   const locked = items.filter((i) => i.access === "locked").length;
@@ -156,9 +162,9 @@ function ProgressBar({ items }: { items: SidebarItem[] }) {
       </div>
       <div className="mt-2 flex items-center justify-between text-[11px] font-medium">
         <span className="text-emerald-600">
-          {accessible + partial} acessíveis
+          {t("nav.accessible", { count: accessible + partial })}
         </span>
-        <span className="text-accent-gold">{locked} por desbloquear</span>
+        <span className="text-accent-gold">{t("nav.locked", { count: locked })}</span>
       </div>
     </div>
   );
@@ -267,6 +273,7 @@ function GroupHeader({
 }
 
 function CofreCard() {
+  const { t } = useTranslation("report");
   const { snapshotId, handle, variant } = useReportTracking();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [registered, setRegistered] = useState<Set<PricingOption>>(new Set());
@@ -325,10 +332,10 @@ function CofreCard() {
       <div className="relative z-10">
       <div className="flex items-center gap-2">
         <span aria-hidden="true" className="text-amber-300">✦</span>
-        <h3 className="text-sm font-semibold">Abrir o cofre</h3>
+        <h3 className="text-sm font-semibold">{t("nav.cofre.title")}</h3>
       </div>
       <p className="mt-1 text-xs text-white/70">
-        3 secções premium · análise completa
+        {t("nav.cofre.subtitle")}
       </p>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -345,13 +352,13 @@ function CofreCard() {
             />
           )}
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/60">
-            Uma vez
+            {t("nav.cofre.single_eyebrow")}
           </p>
           <p className="mt-1 text-base font-bold tabular-nums">
-            €3 <span className="text-[10px] font-medium text-white/60">+IVA</span>
+            €3 <span className="text-[10px] font-medium text-white/60">{t("nav.cofre.vat")}</span>
           </p>
           <p className="mt-1 text-[10px] text-white/60 leading-tight">
-            só esta análise
+            {t("nav.cofre.single_detail")}
           </p>
         </button>
         <button
@@ -362,7 +369,7 @@ function CofreCard() {
         >
           <span className="absolute -top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-0.5 rounded-full bg-content-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
             <Star className="size-2.5 fill-amber-300" aria-hidden="true" />
-            POUPA €2
+            {t("nav.cofre.save_badge")}
           </span>
           {registered.has("bundle_13_eur") && (
             <Check
@@ -371,13 +378,13 @@ function CofreCard() {
             />
           )}
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] opacity-80">
-            Bundle 5
+            {t("nav.cofre.bundle_eyebrow")}
           </p>
           <p className="mt-1 text-base font-bold tabular-nums">
-            €13 <span className="text-[10px] font-medium opacity-70">+IVA</span>
+            €13 <span className="text-[10px] font-medium opacity-70">{t("nav.cofre.vat")}</span>
           </p>
           <p className="mt-1 text-[10px] opacity-80 leading-tight">
-            5 análises · €2,60/cada
+            {t("nav.cofre.bundle_detail")}
           </p>
         </button>
       </div>
@@ -385,10 +392,10 @@ function CofreCard() {
       <button
         type="button"
         onClick={handleUnlock}
-        aria-label="Abrir opções de desbloqueio"
+        aria-label={t("nav.cofre.unlock_aria")}
         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2.5 text-xs font-bold uppercase tracking-[0.08em] text-content-primary hover:bg-white/90 transition-colors"
       >
-        Desbloquear
+        {t("nav.cofre.unlock")}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
       </div>
@@ -419,6 +426,7 @@ function SidebarList({
   onAccessibleClick: (id: string) => void;
   onLockedClick: () => void;
 }) {
+  const { t } = useTranslation("report");
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
   const isPublic = variant === "public_mvp";
@@ -426,7 +434,7 @@ function SidebarList({
   return (
     <div className="space-y-3">
       <section>
-        <GroupHeader label="Incluído" count={incluidos.length} variant="incluido" />
+        <GroupHeader label={t("nav.included")} count={incluidos.length} variant="incluido" />
         <ul className="space-y-0.5">
           {incluidos.map((item) => (
             <li key={item.block.id}>
@@ -442,7 +450,7 @@ function SidebarList({
 
       {premium.length > 0 && (
         <section className="rounded-xl border border-signal-warning/20 bg-signal-warning/[0.04] p-2">
-          <GroupHeader label="Premium" count={premium.length} variant="premium" />
+          <GroupHeader label={t("nav.premium")} count={premium.length} variant="premium" />
           <ul className="space-y-0.5">
             {premium.map((item) => (
               <li key={item.block.id}>
@@ -466,13 +474,19 @@ function SidebarList({
 // ── Desktop sidebar ──────────────────────────────────────────────────
 
 export function ReportBlockSidebar({ variant, features, profile }: SidebarProps) {
-  const items = useMemo(() => buildSidebarItems(variant, features), [variant, features]);
+  const { t } = useTranslation("report");
+  const blocks = useBlocks();
+  const partialLabel = t("nav.partial");
+  const items = useMemo(
+    () => buildSidebarItems(blocks, variant, features, partialLabel),
+    [blocks, variant, features, partialLabel],
+  );
   const accessibleIds = items.filter((i) => i.access !== "locked").map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
 
   return (
     <nav
-      aria-label="Navegação do relatório"
+      aria-label={t("nav.aria")}
       className={cn(
         "hidden lg:block self-start shrink-0",
         "w-64 xl:w-72",
@@ -502,7 +516,13 @@ export function ReportBlockSidebar({ variant, features, profile }: SidebarProps)
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
 export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps) {
-  const items = useMemo(() => buildSidebarItems(variant, features), [variant, features]);
+  const { t } = useTranslation("report");
+  const blocks = useBlocks();
+  const partialLabel = t("nav.partial");
+  const items = useMemo(
+    () => buildSidebarItems(blocks, variant, features, partialLabel),
+    [blocks, variant, features, partialLabel],
+  );
   const accessible = items.filter((i) => i.access !== "locked");
   const accessibleIds = accessible.map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
@@ -522,7 +542,7 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
 
   return (
     <nav
-      aria-label="Navegação do relatório"
+      aria-label={t("nav.aria")}
       className={cn(
         "lg:hidden fixed bottom-0 left-0 right-0 z-40",
         "bg-white/95 supports-[backdrop-filter]:backdrop-blur-lg",
@@ -590,7 +610,7 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
           <SheetTrigger asChild>
             <button
               type="button"
-              aria-label="Menu de secções"
+              aria-label={t("nav.menu_aria")}
               className={cn(
                 "flex flex-col items-center justify-center gap-1",
                 "w-[72px] min-h-[64px] transition-colors duration-200",
@@ -600,14 +620,14 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
             >
               <Menu className="size-7" strokeWidth={1.6} aria-hidden="true" />
               <span className="text-xs font-medium leading-tight text-content-secondary">
-                Menu
+                {t("nav.menu")}
               </span>
             </button>
           </SheetTrigger>
           <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-8 pt-3 max-h-[88vh] overflow-y-auto">
             <SheetHeader className="pb-3 border-b border-border-default">
               <SheetTitle className="text-base font-semibold text-content-primary text-left">
-                Secções do relatório
+                {t("nav.sections")}
               </SheetTitle>
             </SheetHeader>
             <div className="mt-3">

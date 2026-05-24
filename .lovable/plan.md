@@ -1,46 +1,59 @@
-## Lote E — Localize the public Report (Block 1 + shell)
+## Lote F — KPI grid + restantes blocos do relatório público
 
-Following Lotes A–D (shells, auth, landing, analyze flow & gateway), the next surface to translate is the public **Report** — the most-shared page in the product. Admin stays PT-only (internal) and is deferred to Lote F.
+Concluído até agora (Lote E): hero, identidade editorial, frequência, formato.
+Falta traduzir o resto do `/analyze/$username` e do shell do relatório.
 
-### Scope
+### Âmbito deste lote
 
-Public report at `/analyze/$username`, sections rendered in `report-redesign/v2/`:
+1. **KPI grid (Bloco 1, faixa de métricas)**
+   - `report-kpi-grid-v2.tsx`, `score-card.tsx`, `score-grid.tsx`
+   - Labels: Engagement, Frequência, Interação, "vs benchmark", "do escalão", "posts analisados", estados (Acima/Abaixo/Em linha).
+   - `formatCompactNumber` para os números resumidos.
 
-1. **Shell & navigation**
-   - `report-shell-v2.tsx`, `report-block-nav.tsx`, `report-block-section.tsx`
-   - `cache-status-badge.tsx`, `source-badge.tsx`, `report-source-label.tsx`
+2. **Shell do relatório**
+   - `report-shell-v2.tsx`, `report-block-nav.tsx`, `report-block-section.tsx`, `cache-status-badge.tsx`, `source-badge.tsx`, `report-source-label.tsx`
+   - Navegação de blocos ("Visão geral", "Diagnóstico", "Conteúdo", "Conversa", "Próximos passos"), badges de cache/fonte, datas formatadas via `formatLocaleDate`.
+
+3. **Bloco 2 — Diagnóstico**
+   - `report-diagnostic-block.tsx`, `report-diagnostic-grid-v2.tsx`, `report-diagnostic-card.tsx`, `report-diagnostic-summary-cards.tsx`, `report-diagnostic-verdict.tsx`, `report-diagnostic-priorities.tsx`, `report-diagnostic-cta.tsx`, `report-diagnostic-group.tsx`
+   - Labels de severidade (Crítico / Atenção / OK), títulos de cards, CTAs ("Ver detalhe", "Próxima prioridade").
+
+4. **Blocos de conteúdo e conversa**
+   - `report-overview-block.tsx`, `report-overview-cards.tsx`, `report-overview-engagement.tsx`, `report-overview-attention-row.tsx`
+   - `report-engagement-benchmark-chart.tsx`, `report-benchmark-evidence.tsx`, `report-positioning-banner.tsx`
+   - `report-post-comparison.tsx`, `report-themes-feature.tsx`
+   - `caption-diagnostics-card.tsx`, `hashtag-diagnostics-card.tsx`, `report-comment-intelligence.tsx`, `visual-cover-analysis-card.tsx`
+   - Labels de eixos de chart, tooltips, legendas, estados vazios.
+
+5. **Componentes premium/gate dentro do relatório**
    - `premium-callout.tsx`, `premium-interest-dialog.tsx`
+   - CTAs, descrição da oferta PRO, formulário de interesse.
 
-2. **Hero (Prism editorial)**
-   - `report-hero-v2.tsx`: handle metadata, metric labels (Posts, Followers, Following, Engagement), action stack ("Novo relatório", "Comparar concorrente", PRO badge, tooltips).
+### Estratégia técnica
 
-3. **Block 1 — Overview**
-   - `overview/editorial-identity-card.tsx`: verdict bands (Excelente/Sólido/A melhorar), gauge label, "O que funciona" / "O que limita" columns, reference mark copy.
-   - `overview/frequency-card.tsx`: "Resumo da semana", "Mais ativo" / "Mais calmo", weekday short names (Seg–Dom / Mon–Sun via `format.ts`), verdict copy.
-   - `overview/format-card.tsx`: format legend (Reels, Carrossel, Imagem, Vídeo), donut tooltip, "do total" suffix.
+- Criar/expandir `src/i18n/locales/{pt,en}/report.json` com sub-secções: `kpi`, `shell`, `nav`, `diagnostic`, `content`, `conversation`, `premium`.
+- Cada componente passa a usar `useTranslation('report')`; números mantêm-se via `formatCompactNumber`/`formatPercent`.
+- Strings dinâmicas (delta vs benchmark, top-format) entregues via interpolação `{{...}}`.
+- Estados de severidade convertidos em chaves enum (`severity.critical`, `severity.warn`, `severity.ok`) reutilizadas entre cards.
+- Datas: helper `formatLocaleDate(date, lang, {month:'long', day:'numeric'})` substitui literais "de Janeiro".
+- Testes em `__tests__/zone-d-helpers.test.ts` e equivalentes mantêm cobertura PT (validam que as chaves PT continuam a render correctamente).
+- Confirmar que nenhum string permanece hard-coded com `rg "publicações|seguidores|benchmark|Próxima"` nestes ficheiros.
 
-### New i18n namespace
+### Detalhes técnicos
 
-- `src/i18n/locales/{pt,en}/report.json` with sub-sections: `shell`, `hero`, `block1.identity`, `block1.frequency`, `block1.format`, `verdicts`, `common`.
-- Re-use `errors.json` for failure states and `common.json` for shared verbs.
+- Não adicionar dependências.
+- Manter export legados (`getFormatHeadline`, etc.) intactos.
+- Documento `<head>` continua com canonical PT; client-side sync já existente cobre EN.
+- Sem alterações em servidor: tudo é frontend/presentation.
 
-### Locale-aware formatting
+### Checkpoint final
 
-- Use existing `src/lib/i18n/format.ts` for numbers (followers `1.2M` vs `1,2M`), percentages, and dates.
-- Add `formatWeekdayShort(date, lng)` helper for the Frequency mini-chart axis.
-- Keep AI-generated copy (`aiInsightsV2.sections.hero.text`) **as-is** — it already comes from the snapshot in the requested language; do not re-translate at runtime. Fallback strings (`deriveCopyFromAi` / `buildFallbackCopy`) move to `report.json`.
+☐ KPI grid e score cards traduzidos e a usar tokens existentes  
+☐ Shell, nav, badges de cache/fonte traduzidos  
+☐ Bloco diagnóstico (cards, prioridades, CTA) traduzido  
+☐ Blocos de conteúdo, conversa e premium traduzidos  
+☐ Novas chaves adicionadas a `report.json` PT/EN  
+☐ `rg` confirma ausência de strings hard-coded relevantes  
+☐ Toggle de idioma alterna o relatório completo sem reload
 
-### Out of scope (next lotes)
-
-- Blocks 2–5 (engagement, diagnostics, themes, benchmark) → Lote F
-- `/admin` interface → stays PT-only
-- `/report.example` → mockup only, untouched per project rules
-
-### Checkpoint
-
-- ☐ `report.json` created (PT + EN) with all keys used by Block 1 + shell
-- ☐ Hero, Identity, Frequency, Format cards consume `useTranslation('report')`
-- ☐ Weekday + number formatting routed through `format.ts`
-- ☐ AI hero text preserved; only fallback copy localized
-- ☐ Language toggle in header switches the entire report live (no reload)
-- ☐ Typecheck passes; 375px mobile layout unchanged
+Próximos lotes (fora deste): G — Admin/Sistema; H — Páginas legais e e-mails transaccionais.
