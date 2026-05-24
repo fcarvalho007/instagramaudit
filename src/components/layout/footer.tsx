@@ -24,8 +24,11 @@ function Footer() {
               <p className="font-display text-base font-semibold tracking-tight text-content-primary leading-tight">
                 InstaBench
               </p>
-              <p className="font-sans text-xs text-content-tertiary leading-snug">
-                {t("tagline")}
+              <p
+                className="font-sans text-xs text-content-tertiary leading-snug"
+                suppressHydrationWarning
+              >
+                {t("tagline", { defaultValue: "Benchmarking de Instagram, claro e auditável." })}
               </p>
             </div>
           </div>
@@ -46,8 +49,11 @@ function Footer() {
         </div>
 
         <div className="mt-8 pt-6 border-t border-border-subtle">
-          <p className="font-sans text-xs text-content-tertiary text-center md:text-left">
-            {t("copyright", { year })}
+          <p
+            className="font-sans text-xs text-content-tertiary text-center md:text-left"
+            suppressHydrationWarning
+          >
+            {t("copyright", { year, defaultValue: `© ${year} InstaBench. Todos os direitos reservados.` })}
           </p>
         </div>
       </Container>
