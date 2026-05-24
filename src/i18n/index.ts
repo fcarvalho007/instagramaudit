@@ -9,6 +9,7 @@ import ptAuth from "./locales/pt/auth.json";
 import ptAnalyze from "./locales/pt/analyze.json";
 import ptGate from "./locales/pt/gate.json";
 import ptErrors from "./locales/pt/errors.json";
+import ptReport from "./locales/pt/report.json";
 import enCommon from "./locales/en/common.json";
 import enHeader from "./locales/en/header.json";
 import enLanding from "./locales/en/landing.json";
@@ -17,6 +18,7 @@ import enAuth from "./locales/en/auth.json";
 import enAnalyze from "./locales/en/analyze.json";
 import enGate from "./locales/en/gate.json";
 import enErrors from "./locales/en/errors.json";
+import enReport from "./locales/en/report.json";
 
 export const SUPPORTED_LANGUAGES = ["pt", "en"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -38,6 +40,7 @@ if (!i18n.isInitialized) {
         analyze: ptAnalyze,
         gate: ptGate,
         errors: ptErrors,
+        report: ptReport,
       },
       en: {
         common: enCommon,
@@ -48,6 +51,7 @@ if (!i18n.isInitialized) {
         analyze: enAnalyze,
         gate: enGate,
         errors: enErrors,
+        report: enReport,
       },
     },
     lng: "pt",
@@ -62,6 +66,7 @@ if (!i18n.isInitialized) {
       "analyze",
       "gate",
       "errors",
+      "report",
     ],
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
