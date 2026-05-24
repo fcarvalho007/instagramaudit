@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, Cpu, Lightbulb, type LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export type InsightCalloutTone = "editorial" | "suggestion" | "warning";
@@ -18,7 +19,7 @@ interface Props {
 
 const TONE_CONFIG: Record<
   InsightCalloutTone,
-  { bg: string; ring: string; iconCls: string; labelCls: string; DefaultIcon: LucideIcon; defaultLabel: string }
+  { bg: string; ring: string; iconCls: string; labelCls: string; DefaultIcon: LucideIcon; labelKey: string; defaultLabel: string }
 > = {
   editorial: {
     bg: "bg-tint-primary",
@@ -26,6 +27,7 @@ const TONE_CONFIG: Record<
     iconCls: "text-accent-primary",
     labelCls: "text-accent-primary",
     DefaultIcon: Lightbulb,
+    labelKey: "callout.editorial",
     defaultLabel: "DIAGNÓSTICO",
   },
   suggestion: {
@@ -34,6 +36,7 @@ const TONE_CONFIG: Record<
     iconCls: "text-accent-primary",
     labelCls: "text-accent-primary",
     DefaultIcon: Cpu,
+    labelKey: "callout.suggestion",
     defaultLabel: "O que isto sugere",
   },
   warning: {
@@ -42,6 +45,7 @@ const TONE_CONFIG: Record<
     iconCls: "text-signal-warning",
     labelCls: "text-signal-warning",
     DefaultIcon: AlertTriangle,
+    labelKey: "callout.warning",
     defaultLabel: "Atenção",
   },
 };
@@ -59,9 +63,10 @@ export function InsightCallout({
   tone = "editorial",
   className,
 }: Props) {
+  const { t } = useTranslation("report");
   const cfg = TONE_CONFIG[tone];
   const Icon = icon ?? cfg.DefaultIcon;
-  const displayLabel = label ?? cfg.defaultLabel;
+  const displayLabel = label ?? t(cfg.labelKey, { defaultValue: cfg.defaultLabel });
 
   return (
     <div
