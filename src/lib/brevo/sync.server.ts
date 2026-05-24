@@ -89,31 +89,11 @@ export async function syncLeadToBrevo(
       return outcome;
     }
 
-    // Consent gate: política de privacidade promete que dados só são
-    // sincronizados com Brevo (CRM/marketing) mediante consentimento
-    // expresso. Se `marketing_consent !== true`, salta o sync e regista
-    // evento de skip. O unlock e o relatório continuam intactos.
-    if (lead.marketing_consent !== true) {
-      const outcome: BrevoSyncOutcome = {
-        ok: false,
-        reason: "NO_MARKETING_CONSENT",
-        latencyMs: Date.now() - startedAt,
-      };
-      try {
-        await recordProductEvent({
-          eventType: "brevo_contact_sync_skipped" as any,
-          leadId,
-          metadata: {
-            sync_reason: reason,
-            reason: "NO_MARKETING_CONSENT",
-            email_masked: maskEmail(lead.email),
-          },
-        });
-      } catch (err) {
-        console.error("[brevo-sync] failed to record consent-skip event:", err);
-      }
-      return outcome;
-    }
+    // Operational CRM mirror: o sync acontece após GDPR consent (precondição
+    // do unlock). O atributo `MARKETING_CONSENT` regista o opt-in de
+    // newsletter para segmentação futura — quem não opt-in fica no CRM com
+    // a flag a false e NÃO é adicionado a listas de marketing.
+    const marketingConsent = lead.marketing_consent === true;
 
     // 2. Most recent report_request + 3. count, in parallel.
     const [{ data: latestRR }, { count: reportsCount }] = await Promise.all([
@@ -157,6 +137,7 @@ export async function syncLeadToBrevo(
         "lead",
       ),
       IS_CUSTOMER: false,
+      MARKETING_CONSENT: marketingConsent,
     };
 
     // 5. Call Brevo.
@@ -197,6 +178,7 @@ export async function syncLeadToBrevo(
           latency_ms: latencyMs,
           email_masked: maskEmail(lead.email),
           reports_count: typeof reportsCount === "number" ? reportsCount : null,
+          marketing_consent: marketingConsent,
         },
       });
     } catch (eventErr) {
