@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import { Container } from "@/components/layout/container";
 import { BrandMark } from "@/components/layout/brand-mark";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
 function Footer() {
   const { t } = useTranslation("footer");
@@ -49,12 +50,15 @@ function Footer() {
         </div>
 
         <div className="mt-8 pt-6 border-t border-border-subtle">
-          <p
-            className="font-sans text-xs text-content-tertiary text-center md:text-left"
-            suppressHydrationWarning
-          >
-            {t("copyright", { year, defaultValue: `© ${year} InstaBench. Todos os direitos reservados.` })}
-          </p>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p
+              className="font-sans text-xs text-content-tertiary text-center md:text-left"
+              suppressHydrationWarning
+            >
+              {t("copyright", { year, defaultValue: `© ${year} InstaBench. Todos os direitos reservados.` })}
+            </p>
+            <LanguageSwitcher variant="full" />
+          </div>
         </div>
       </Container>
     </footer>
