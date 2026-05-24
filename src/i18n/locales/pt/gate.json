@@ -1,0 +1,140 @@
+{
+  "lockGate": {
+    "ariaRegion": "Continuar a leitura do relatório",
+    "badge": "Acesso gratuito · Beta",
+    "titleLine1": "Continua a leitura",
+    "titleLine2Prefix": "do",
+    "subtitle": "Indica o nome e email e responde a <strong>3 perguntas rápidas</strong> para abrir o resto do relatório.",
+    "cta": "Ver relatório gratuito →",
+    "footer": {
+      "time": "~1 minuto",
+      "gdpr": "RGPD · sem spam",
+      "made": "Construído em Leiria"
+    },
+    "devReset": "Reset preview unlock"
+  },
+  "unlock": {
+    "operator": {
+      "name": "Fomentar Sonhos, Lda.",
+      "city": "Leiria, Portugal"
+    },
+    "stepEyebrow": "PASSO {{current}} DE {{total}}",
+    "stepBadgeMinute": "~1 MIN",
+    "verifying": "A verificar…",
+    "unlocking": "A desbloquear…",
+    "continueLong": "Abrir relatório  →",
+    "continue": "Continuar  →",
+    "back": "Voltar",
+    "operatorLine": "Operador: <strong>{{name}}</strong> · {{city}} · Cancela quando quiseres.",
+    "partialBanner_one": "Já temos parte dos teus dados. Falta só {{count}} passo rápido.",
+    "partialBanner_other": "Já temos parte dos teus dados. Faltam só {{count}} passos rápidos.",
+    "errors": {
+      "fieldGeneric": "Campo inválido: {{label}}",
+      "fieldWithMessage": "{{label}}: {{message}}",
+      "snapshotExpired": "Este relatório expirou. Volta a abrir a página e tenta de novo.",
+      "generic": "Não foi possível desbloquear agora. Tenta novamente em instantes.",
+      "network": "Erro de ligação. Verifica a tua internet e tenta novamente.",
+      "needMoreDetails": "Precisamos de mais 3 detalhes rápidos para desbloquear."
+    },
+    "fieldLabels": {
+      "first_name": "Primeiro nome",
+      "last_name": "Apelido",
+      "email": "Email",
+      "gdpr_consent": "Consentimento",
+      "profile_ownership": "Tipo de perfil",
+      "goal": "Objetivo",
+      "user_type": "Como te descreves",
+      "goal_other_text": "Detalhe do objetivo",
+      "user_type_other_text": "Detalhe de como te descreves",
+      "analysis_snapshot_id": "Relatório",
+      "instagram_username": "Perfil Instagram"
+    },
+    "step1": {
+      "eyebrow": "PASSO 1 DE 4",
+      "badge": "~1 MIN",
+      "titlePrefix": "Como te",
+      "titleEm": "tratamos",
+      "titleSuffix": "?",
+      "subtitle": "Usamos estes dados para guardar o relatório e enviar o acesso por email.",
+      "firstNameLabel": "Primeiro nome",
+      "firstNamePlaceholder": "Ana",
+      "firstNameRequired": "Indica o teu primeiro nome",
+      "lastNameLabel": "Apelido",
+      "lastNamePlaceholder": "Marques",
+      "lastNameRequired": "Indica o apelido",
+      "emailLabel": "Email",
+      "emailPlaceholder": "ana@empresa.pt",
+      "consentText": "Aceito o <a>tratamento dos meus dados</a> para gerar e guardar este relatório, e li a <a2>política de privacidade</a2>.",
+      "consentBadgeRequired": "OBRIG.",
+      "marketingText": "Quero receber novidades e dicas sobre relatórios, análise de Instagram e marketing digital",
+      "marketingHint": "(cancelas quando quiseres · ~1 email/semana)"
+    },
+    "step2": {
+      "eyebrow": "PASSO 2 DE 4",
+      "title": "Que relação tens com este perfil?",
+      "subtitle": "Ajuda-nos a ajustar o tom da análise."
+    },
+    "step3": {
+      "eyebrow": "PASSO 3 DE 4",
+      "title": "O que queres perceber?",
+      "subtitle": "Escolhe o que mais te interessa. Destacamos o que importa.",
+      "otherPlaceholder": "ex: investigação académica sobre IA criativa",
+      "otherEyebrow": "descreve em poucas palavras",
+      "otherHint": "opcional · ajuda-nos a melhorar"
+    },
+    "step4": {
+      "eyebrow": "PASSO 4 DE 4",
+      "title": "Como te descreves?",
+      "subtitle": "Última pergunta — depois abrimos o relatório.",
+      "otherPlaceholder": "ex: jornalista, investigador, curador",
+      "otherEyebrow": "selecciona para descrever"
+    },
+    "options": {
+      "chooseOne": "Escolhe uma opção",
+      "tellUsBriefly": "Conta-nos brevemente…",
+      "profileOwnership": {
+        "own_profile": "É o meu perfil pessoal",
+        "brand_profile": "É o perfil da minha marca",
+        "client_profile": "É o perfil de um cliente",
+        "competitor_research": "Estou a observar concorrência",
+        "curiosity": "Estou só a explorar"
+      },
+      "goal": {
+        "improve_content": "Melhorar o conteúdo",
+        "benchmark_competitors": "Comparar com concorrentes",
+        "client_report": "Preparar uma análise para um cliente",
+        "grow_audience": "Crescer a audiência",
+        "validate_brand": "Validar a presença da marca",
+        "other": "Outro"
+      },
+      "userType": {
+        "creator": "Criador / Influencer",
+        "brand": "Marca",
+        "agency": "Agência",
+        "consultant": "Consultor / Freelancer",
+        "ecommerce": "E-commerce",
+        "student": "Estudante / Académico",
+        "other": "Outro"
+      }
+    },
+    "success": {
+      "eyebrowAssoc": "RELATÓRIO ASSOCIADO",
+      "eyebrowThanks": "OBRIGADO {{name}}",
+      "titlePrefix": "Relatório",
+      "titleEm": "desbloqueado",
+      "subtitle": "O relatório ficou associado ao email indicado para poderes voltar a consultá-lo mais tarde.",
+      "items": {
+        "overview": "Visão geral desbloqueada",
+        "diagnosis": "Diagnóstico desbloqueado",
+        "performance": "Desempenho desbloqueado"
+      },
+      "cta": "Ver relatório gratuito agora  →",
+      "footnote": "Este relatório foi associado diretamente à tua conta."
+    },
+    "welcomeBack": {
+      "titlePrefix": "Bem-vindo de",
+      "titleEm": "volta",
+      "subtitle": "Podes voltar a consultar este relatório na tua área pessoal."
+    }
+  }
+}
