@@ -1,12 +1,14 @@
+import { useTranslation } from "react-i18next";
+
 import { Container } from "@/components/layout/container";
 
-const metrics = [
-  { value: "35M+", label: "Posts analisados (Socialinsider 2025)" },
-  { value: "0,52%", label: "Engagement médio em reels" },
-  { value: "3×", label: "Camadas de comparação" },
-];
-
 export function SocialProofSection() {
+  const { t } = useTranslation("landing");
+  const metrics = [
+    { value: "35M+", label: t("socialProof.metrics.posts") },
+    { value: "0,52%", label: t("socialProof.metrics.engagement") },
+    { value: "3×", label: t("socialProof.metrics.layers") },
+  ];
   return (
     <section className="relative overflow-hidden bg-surface-secondary/40">
       {/* Top luminous divider */}
@@ -31,12 +33,12 @@ export function SocialProofSection() {
           {/* Left: editorial micro-statement */}
           <div className="flex-1">
             <span className="text-eyebrow text-content-tertiary mb-2 block">
-              Benchmarks atualizados
+              {t("socialProof.eyebrow")}
             </span>
             <p className="font-display text-xl md:text-2xl text-content-primary leading-snug tracking-tight">
-              Dados frescos do Instagram,{" "}
+              {t("socialProof.statementLine1")}{" "}
               <br className="hidden md:block" />
-              analisados mensalmente.
+              {t("socialProof.statementLine2")}
             </p>
           </div>
 
