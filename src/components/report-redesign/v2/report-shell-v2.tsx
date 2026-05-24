@@ -38,13 +38,14 @@ import { Lock, Sparkles } from "lucide-react";
 import { ReportMethodology } from "../report-methodology";
 import { REDESIGN_TOKENS } from "../report-tokens";
 
-import { BLOCKS } from "./block-config";
+import { useBlocks } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 import { ReportLockGate } from "@/components/product/report-lock-gate";
+import { useTranslation } from "react-i18next";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -90,6 +91,7 @@ export function ReportShellV2({
   unlocked = false,
   onUnlockClick,
 }: ReportShellV2Props) {
+  const { t } = useTranslation("report");
   const v2 = result.enriched.aiInsightsV2;
   const features = featuresOverride ?? getVariantFeatures(variant);
 
@@ -113,7 +115,7 @@ export function ReportShellV2({
   };
 
   const [overview, diagnostico, performance, conteudo, procura, benchmark] =
-    BLOCKS;
+    useBlocks();
 
   const gated = lockBoundary === "engagement" && !unlocked;
   const handleUnlockClick = onUnlockClick ?? (() => {});
@@ -209,14 +211,14 @@ export function ReportShellV2({
                     <ReportBlockSection block={performance} tone="canvas">
                       <ReportFramedBlock
                         tone="canvas"
-                        ariaLabel="Performance ao longo do tempo"
+                        ariaLabel={t("shell.aria.performance_time")}
                       >
                         <ReportTemporalChart />
                         <div className="mt-4">{renderInsight("evolutionChart")}</div>
                       </ReportFramedBlock>
                       <ReportFramedBlock
                         tone="canvas"
-                        ariaLabel="Resposta da audiência"
+                        ariaLabel={t("shell.aria.audience_response")}
                       >
                         <div className="space-y-10 md:space-y-12">
                           <ReportPostingHeatmap />
@@ -235,16 +237,16 @@ export function ReportShellV2({
                   )}
                   {features.blockContent !== "hidden" && (
                     <ReportBlockSection block={conteudo} tone="soft-blue">
-                      <ReportFramedBlock tone="soft-blue" ariaLabel="Top publicações">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.top_posts")}>
                         <div className="mt-6">
                           <ReportEnrichedTopLinks enriched={result.enriched} />
                         </div>
                       </ReportFramedBlock>
-                      <ReportFramedBlock tone="soft-blue" ariaLabel="Mistura de formatos">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.format_mix")}>
                         <ReportFormatBreakdown />
                         <div className="mt-4">{renderInsight("formats")}</div>
                       </ReportFramedBlock>
-                      <ReportFramedBlock tone="soft-blue" ariaLabel="Hashtags, palavras-chave e menções">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.hashtags")}>
                         <div className="space-y-10 md:space-y-12">
                           <ReportHashtagsKeywords />
                           <div className="mt-4">{renderInsight("language")}</div>
@@ -256,9 +258,7 @@ export function ReportShellV2({
                   {features.blockSearch !== "hidden" && (
                     <ReportBlockSection block={procura} tone="canvas">
                       <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
-                        O Instagram mostra como a audiência atual reage. A procura
-                        fora da plataforma ajuda a perceber se os mesmos temas também
-                        despertam interesse em pesquisa.
+                        {t("shell.search_intro_short")}
                       </p>
                       <ReportMarketSignalsSection
                         snapshotId={snapshotId}
@@ -271,11 +271,11 @@ export function ReportShellV2({
                   )}
                   {features.blockBenchmark !== "hidden" && (
                     <ReportBlockSection block={benchmark} tone="soft-blue">
-                      <ReportFramedBlock tone="soft-blue" ariaLabel="Posição face ao mercado">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.market_position")}>
                         <ReportBenchmarkGauge />
                         <div className="mt-4">{renderInsight("benchmark")}</div>
                       </ReportFramedBlock>
-                      <ReportFramedBlock tone="soft-blue" ariaLabel="Comparação com perfis pares">
+                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.peer_comparison")}>
                         <ReportCompetitors />
                         {result.coverage.competitors === "empty" ? (
                           <div className="mt-6">
@@ -300,14 +300,14 @@ export function ReportShellV2({
               <ReportBlockSection block={performance} tone="canvas">
                 <ReportFramedBlock
                   tone="canvas"
-                  ariaLabel="Performance ao longo do tempo"
+                  ariaLabel={t("shell.aria.performance_time")}
                 >
                   <ReportTemporalChart />
                   <div className="mt-4">{renderInsight("evolutionChart")}</div>
                 </ReportFramedBlock>
                 <ReportFramedBlock
                   tone="canvas"
-                  ariaLabel="Resposta da audiência"
+                  ariaLabel={t("shell.aria.audience_response")}
                 >
                   <div className="space-y-10 md:space-y-12">
                     <ReportPostingHeatmap />
@@ -330,7 +330,7 @@ export function ReportShellV2({
               <ReportBlockSection block={conteudo} tone="soft-blue">
                 <ReportFramedBlock
                   tone="soft-blue"
-                  ariaLabel="Top publicações"
+                  ariaLabel={t("shell.aria.top_posts")}
                 >
                   <div className="mt-6">
                     <ReportEnrichedTopLinks enriched={result.enriched} />
@@ -338,14 +338,14 @@ export function ReportShellV2({
                 </ReportFramedBlock>
                 <ReportFramedBlock
                   tone="soft-blue"
-                  ariaLabel="Mistura de formatos"
+                  ariaLabel={t("shell.aria.format_mix")}
                 >
                   <ReportFormatBreakdown />
                   <div className="mt-4">{renderInsight("formats")}</div>
                 </ReportFramedBlock>
                 <ReportFramedBlock
                   tone="soft-blue"
-                  ariaLabel="Hashtags, palavras-chave e menções"
+                  ariaLabel={t("shell.aria.hashtags")}
                 >
                   <div className="space-y-10 md:space-y-12">
                     <ReportHashtagsKeywords />
@@ -360,11 +360,7 @@ export function ReportShellV2({
               {!gated && features.blockSearch !== "hidden" && (
               <ReportBlockSection block={procura} tone="canvas">
                 <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
-                  O Instagram mostra como a audiência atual reage. A procura
-                  fora da plataforma ajuda a perceber se os mesmos temas também
-                  despertam interesse em pesquisa. Os valores atuais são
-                  índices relativos do Google Trends, não volume absoluto de
-                  pesquisas.
+                  {t("shell.search_intro")}
                 </p>
                 <ReportMarketSignalsSection
                   snapshotId={snapshotId}
@@ -381,14 +377,14 @@ export function ReportShellV2({
               <ReportBlockSection block={benchmark} tone="soft-blue">
                 <ReportFramedBlock
                   tone="soft-blue"
-                  ariaLabel="Posição face ao mercado"
+                  ariaLabel={t("shell.aria.market_position")}
                 >
                   <ReportBenchmarkGauge />
                   <div className="mt-4">{renderInsight("benchmark")}</div>
                 </ReportFramedBlock>
                 <ReportFramedBlock
                   tone="soft-blue"
-                  ariaLabel="Comparação com perfis pares"
+                  ariaLabel={t("shell.aria.peer_comparison")}
                 >
                   <ReportCompetitors />
                   {result.coverage.competitors === "empty" ? (
