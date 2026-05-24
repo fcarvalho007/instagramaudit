@@ -157,5 +157,87 @@
       "mixed": { "strong": "Varied mix.", "rest": "Different formats serve different goals — the next sections show where each format performs best." }
     },
     "verdict_label": { "strong": "STRENGTH", "improve": "TO IMPROVE", "neutral": "DIAGNOSTIC" }
+  },
+  "blocks": {
+    "overview": {
+      "short": "Overview",
+      "eyebrow": "Overview",
+      "question": "How is this profile doing overall?",
+      "subtitle": "Profile identity, key indicators and a framing of what this report covers."
+    },
+    "diagnostico": {
+      "short": "Diagnosis",
+      "eyebrow": "Editorial diagnosis",
+      "question": "What explains these results?",
+      "subtitle": "The essential questions any marketer asks about a profile — answered by cross-referencing the collected data."
+    },
+    "performance": {
+      "short": "Performance",
+      "eyebrow": "Performance",
+      "question": "When and how does the audience react?",
+      "subtitle": "Evolution over time, posting rhythm and the best moments to reach the audience."
+    },
+    "conteudo": {
+      "short": "Content",
+      "question": "Which content performs best?",
+      "subtitle": "Top-performing posts, format mix and editorial language patterns."
+    },
+    "procura": {
+      "short": "Demand",
+      "question": "Is there real demand for these topics outside the platform?",
+      "subtitle": "External demand signals that help assess whether the same topics generate search interest."
+    },
+    "benchmark": {
+      "short": "Benchmark",
+      "eyebrow": "Benchmark",
+      "question": "How does it compare to similar profiles?",
+      "subtitle": "Position against market references and peer profiles when available."
+    }
+  },
+  "kpi": {
+    "engagement": { "label": "Average engagement", "source": "Likes + comments", "help": "vs. {{value}}% reference" },
+    "rhythm": { "label": "Weekly rhythm", "source": "Posting dates", "help": "posts per week" },
+    "format": { "label": "Dominant format", "source": "Post type", "help": "{{share}}% of the sample" },
+    "format_names": { "Carrosséis": "Carousels", "Reels": "Reels", "Imagens": "Images", "Vídeos": "Videos" }
+  },
+  "nav": {
+    "aria": "Report navigation",
+    "included": "Included",
+    "premium": "Premium",
+    "accessible": "{{count}} accessible",
+    "locked": "{{count}} to unlock",
+    "partial": "partial",
+    "menu": "Menu",
+    "sections": "Report sections",
+    "menu_aria": "Sections menu",
+    "lab": "Internal lab",
+    "pro_active": "Pro active",
+    "avatar_alt": "Avatar of {{handle}}",
+    "cofre": {
+      "title": "Open the vault",
+      "subtitle": "3 premium sections · full analysis",
+      "single_eyebrow": "One-off",
+      "single_detail": "just this report",
+      "bundle_eyebrow": "Bundle of 5",
+      "bundle_detail": "5 reports · €2.60 each",
+      "save_badge": "SAVE €2",
+      "unlock": "Unlock",
+      "unlock_aria": "Open unlock options",
+      "vat": "+VAT"
+    }
+  },
+  "shell": {
+    "search_intro": "Instagram shows how the current audience reacts. Off-platform demand helps assess whether the same topics also spark search interest. Current values are Google Trends relative indices, not absolute search volume.",
+    "search_intro_short": "Instagram shows how the current audience reacts. Off-platform demand helps assess whether the same topics also spark search interest.",
+    "aria": {
+      "performance_time": "Performance over time",
+      "audience_response": "Audience response",
+      "top_posts": "Top posts",
+      "format_mix": "Format mix",
+      "hashtags": "Hashtags, keywords and mentions",
+      "market_position": "Position against the market",
+      "peer_comparison": "Comparison with peer profiles"
+    }
   }
+}
 }
