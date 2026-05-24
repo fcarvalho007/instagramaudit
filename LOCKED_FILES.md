@@ -32,6 +32,10 @@ explicitly asks for a modification in a new prompt.
 - /src/components/layout/app-shell.tsx
 - /src/components/layout/brand-mark.tsx
 
+> **Edição autorizada (2026-05-24):** `header.tsx` foi atualizado para
+> integrar i18n (PT/EN), seletor de idioma e link de login/conta. Continua
+> locked para futuras alterações.
+
 ## Landing Components (locked since Sprint 1, Prompt 1.1)
 - /src/components/landing/hero-section.tsx
 - /src/components/landing/hero-aurora-background.tsx
