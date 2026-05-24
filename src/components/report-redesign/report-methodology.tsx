@@ -39,7 +39,7 @@ export function ReportMethodology() {
   ] as const;
 
   // Inclui também fontes `future` (Databox) para apresentar bloqueadas.
-  const benchmarkSources = INSTAGRAM_BENCHMARK_CONTEXT.referenceSources;
+  const benchmarkSources = INSTAGRAM_BENCHMARK_CONTEXT.sources;
 
   return (
     <ReportSectionFrame
