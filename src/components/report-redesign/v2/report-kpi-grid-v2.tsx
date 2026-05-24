@@ -1,5 +1,6 @@
 import { Activity, CalendarDays, Film } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
@@ -32,40 +33,42 @@ const FORMAT_PT: Record<string, string> = {
  * publicações analisadas) vivem agora no hero.
  */
 export function ReportKpiGridV2({ result }: Props) {
+  const { t } = useTranslation("report");
   const k = result.data.keyMetrics;
-  const formatLabel = FORMAT_PT[k.dominantFormat] ?? k.dominantFormat;
-  const formatTone = formatChipTone(formatLabel);
+  const formatPt = FORMAT_PT[k.dominantFormat] ?? k.dominantFormat;
+  const formatLabel = t(`kpi.format_names.${formatPt}`, { defaultValue: formatPt });
+  const formatTone = formatChipTone(formatPt);
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <KpiCard
         icon={<Activity className="h-4 w-4" aria-hidden="true" />}
-        label="Engagement médio"
+        label={t("kpi.engagement.label")}
         value={`${k.engagementRate.toFixed(2)}%`}
-        sourceBadge={<ReportSourceLabel type="auto" detail="Gostos + comentários" />}
+        sourceBadge={<ReportSourceLabel type="auto" detail={t("kpi.engagement.source")} />}
         help={
           k.engagementBenchmark > 0
-            ? `vs. ${k.engagementBenchmark.toFixed(2).replace(".", ",")}% de referência`
+            ? t("kpi.engagement.help", { value: k.engagementBenchmark.toFixed(2).replace(".", ",") })
             : undefined
         }
       />
 
       <KpiCard
         icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
-        label="Ritmo semanal"
+        label={t("kpi.rhythm.label")}
         value={k.postingFrequencyWeekly.toFixed(1).replace(".", ",")}
-        help="publicações por semana"
-        sourceBadge={<ReportSourceLabel type="auto" detail="Datas de publicação" />}
+        help={t("kpi.rhythm.help")}
+        sourceBadge={<ReportSourceLabel type="auto" detail={t("kpi.rhythm.source")} />}
       />
 
       <KpiCard
         icon={<Film className="h-4 w-4" aria-hidden="true" />}
-        label="Formato dominante"
+        label={t("kpi.format.label")}
         value={<FormatChip label={formatLabel} tone={formatTone} />}
-        sourceBadge={<ReportSourceLabel type="auto" detail="Tipo de publicação" />}
+        sourceBadge={<ReportSourceLabel type="auto" detail={t("kpi.format.source")} />}
         help={
           k.dominantFormatShare > 0
-            ? `${k.dominantFormatShare}% da amostra`
+            ? t("kpi.format.help", { share: k.dominantFormatShare })
             : undefined
         }
         compact
@@ -120,10 +123,10 @@ function KpiCard({
 
 type FormatTone = "primary" | "success" | "warning" | "neutral";
 
-function formatChipTone(label: string): FormatTone {
-  if (label === "Reels") return "primary";
-  if (label === "Carrosséis") return "success";
-  if (label === "Imagens") return "warning";
+function formatChipTone(labelPt: string): FormatTone {
+  if (labelPt === "Reels") return "primary";
+  if (labelPt === "Carrosséis") return "success";
+  if (labelPt === "Imagens") return "warning";
   return "neutral";
 }
 
