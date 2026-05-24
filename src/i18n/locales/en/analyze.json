@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "title": "Analysis of @{{handle}} · InstaBench",
+    "description": "Public analysis of the @{{handle}} Instagram profile. Metrics, benchmark and competitor comparison."
+  },
+  "skeleton": {
+    "aria": "Analyzing profile",
+    "eyebrow": "Analyzing profile",
+    "steps": {
+      "1": "Collecting the profile's public data…",
+      "2": "Organising posts and metrics…",
+      "3": "Comparing against market references…",
+      "4": "Identifying patterns and opportunities…",
+      "5": "Preparing the visual report…"
+    },
+    "stepCounter": "Step {{current}} of {{total}}",
+    "footnote": "Don't close this window — the diagnosis is being prepared."
+  },
+  "error": {
+    "eyebrow": "Analysis unavailable",
+    "title": "We couldn't finish the analysis",
+    "fallback": "We couldn't analyse this profile right now. Please try again in a moment.",
+    "retry": "Try again",
+    "back": "Back to home",
+    "cacheOnly": {
+      "title": "This report doesn't have public data available yet.",
+      "body": "The data for this profile hasn't been generated yet or the saved version has expired. Try again later or request a new analysis."
+    }
+  }
+}
