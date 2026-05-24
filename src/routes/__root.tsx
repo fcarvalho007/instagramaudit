@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import appCss from "../styles.css?url";
 import { AppShell } from "@/components/layout/app-shell";
+// Ensure i18n is initialized before any component calls t() during SSR.
+import "@/i18n";
 
 interface RouterContext {
   queryClient: QueryClient;
