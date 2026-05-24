@@ -30,7 +30,7 @@ export function LanguageSwitcher({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size={variant === "compact" ? "sm" : "default"}
+          size={variant === "compact" ? "sm" : "md"}
           aria-label={t("aria.language")}
           className={cn(
             "gap-1.5 text-content-secondary hover:text-content-primary",
