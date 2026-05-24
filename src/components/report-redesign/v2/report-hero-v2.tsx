@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Download, Plus, Users, Loader2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import type {
   AdapterResult,
@@ -10,6 +11,8 @@ import type { ReportPageActions } from "@/components/report/report-page";
 import { ShareReportPopover } from "@/components/report-share/share-popover";
 import { CompetitorModal } from "./overview/competitor-modal";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/use-language";
+import { formatCompactNumber } from "@/lib/i18n/format";
 
 interface ReportHeroV2Props {
   result: AdapterResult;
@@ -30,6 +33,8 @@ export function ReportHeroV2({
   result,
   actions,
 }: ReportHeroV2Props) {
+  const { t } = useTranslation("report");
+  const { language } = useLanguage();
   const profile = result.data.profile;
   const enriched: ReportEnriched = result.enriched;
 
@@ -47,7 +52,7 @@ export function ReportHeroV2({
 
   return (
     <section
-      aria-label="Cabeçalho do relatório"
+      aria-label={t("hero.actions.new_report")}
       className="w-full px-5 md:px-6 pt-5 pb-4"
     >
       <div className="mx-auto max-w-[1520px]">
@@ -64,6 +69,8 @@ export function ReportHeroV2({
                 avatarUrl={avatarUrl}
                 fullName={fullName || handle}
                 verified={verified}
+                language={language}
+                t={t}
               />
               <div className="min-w-0 flex-1 space-y-1">
                 <h1 className="font-display text-[2rem] lg:text-[2.5rem] font-semibold tracking-[-0.025em] text-content-primary leading-[1.05] break-words">
@@ -79,6 +86,8 @@ export function ReportHeroV2({
                   postsCount={postsCount}
                   postsAnalyzed={postsAnalyzed}
                   windowDays={windowDays}
+                  language={language}
+                  t={t}
                 />
               </div>
             </div>
@@ -96,7 +105,7 @@ export function ReportHeroV2({
                 )}
               >
                 <Plus className="size-4" aria-hidden="true" />
-                Novo relatório
+                {t("hero.actions.new_report")}
               </Link>
 
               <button
@@ -110,9 +119,9 @@ export function ReportHeroV2({
                 )}
               >
                 <Users className="size-4" aria-hidden="true" />
-                Comparar concorrente
+                {t("hero.actions.compare")}
                 <span className="inline-flex items-center rounded-full bg-accent-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                  Pro
+                  {t("hero.actions.pro")}
                 </span>
               </button>
 
@@ -135,12 +144,12 @@ export function ReportHeroV2({
                   ) : (
                     <Download className="size-[15px]" aria-hidden="true" />
                   )}
-                  PDF
+                  {t("hero.actions.pdf")}
                 </button>
                 <ShareReportPopover
                   result={result}
                   variant="ghost"
-                  triggerLabel="Partilhar"
+                  triggerLabel={t("hero.actions.share")}
                   className={cn(
                     "inline-flex items-center justify-center gap-2 rounded-xl h-11 px-3",
                     "border border-border-default bg-white text-content-secondary text-sm font-semibold",
@@ -161,19 +170,6 @@ export function ReportHeroV2({
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-function formatCompact(n: number): string {
-  if (!Number.isFinite(n)) return "0";
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return trimZero((n / 1_000_000).toFixed(1)) + "M";
-  if (abs >= 10_000) return trimZero((n / 1_000).toFixed(0)) + "K";
-  if (abs >= 1_000) return trimZero((n / 1_000).toFixed(1)) + "K";
-  return new Intl.NumberFormat("pt-PT").format(n);
-}
-
-function trimZero(s: string): string {
-  return s.replace(/\.0$/, "");
-}
-
 // ─── Sub-components ──────────────────────────────────────────────────
 
 function MetricLine({
@@ -181,19 +177,46 @@ function MetricLine({
   postsCount,
   postsAnalyzed,
   windowDays,
+  language,
+  t,
 }: {
   followers: number;
   postsCount: number;
   postsAnalyzed: number;
   windowDays: number;
+  language: "pt" | "en";
+  t: (k: string, opts?: Record<string, unknown>) => string;
 }) {
+  const fmt = (n: number) => formatCompactNumber(n, language);
   const parts: Array<{ value: string; label: string }> = [];
-  if (followers > 0) parts.push({ value: formatCompact(followers), label: "seguidores" });
-  if (postsCount > 0) parts.push({ value: formatCompact(postsCount), label: "publicações" });
+  if (followers > 0) {
+    parts.push({
+      value: fmt(followers),
+      label: t(followers === 1 ? "hero.metric_followers_one" : "hero.metric_followers"),
+    });
+  }
+  if (postsCount > 0) {
+    parts.push({
+      value: fmt(postsCount),
+      label: t(postsCount === 1 ? "hero.metric_posts_one" : "hero.metric_posts"),
+    });
+  }
   if (postsAnalyzed > 0) {
+    let label: string;
+    if (windowDays > 0) {
+      const key =
+        postsAnalyzed === 1
+          ? "hero.metric_analyzed_window_one"
+          : windowDays === 1
+            ? "hero.metric_analyzed_window_days_one"
+            : "hero.metric_analyzed_window";
+      label = t(key, { days: windowDays });
+    } else {
+      label = t(postsAnalyzed === 1 ? "hero.metric_analyzed_one" : "hero.metric_analyzed");
+    }
     parts.push({
       value: String(postsAnalyzed),
-      label: windowDays > 0 ? `posts em ${windowDays} dias` : "posts analisados",
+      label,
     });
   }
 
@@ -232,10 +255,14 @@ function Avatar({
   avatarUrl,
   fullName,
   verified,
+  language: _language,
+  t,
 }: {
   avatarUrl: string | null;
   fullName: string;
   verified: boolean;
+  language: "pt" | "en";
+  t: (k: string, opts?: Record<string, unknown>) => string;
 }) {
   const initials = fullName
     .replace(/^@/, "")
@@ -250,7 +277,7 @@ function Avatar({
   const inner = avatarUrl ? (
     <img
       src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
-      alt={`Avatar de ${fullName}`}
+      alt={t("hero.avatar_alt", { name: fullName })}
       loading="eager"
       decoding="async"
       className={cn("rounded-full object-cover bg-surface-muted", sizeClass)}
@@ -277,8 +304,8 @@ function Avatar({
       {inner}
       {verified && (
         <span
-          aria-label="Conta verificada"
-          title="Conta verificada"
+          aria-label={t("hero.verified")}
+          title={t("hero.verified")}
           className="absolute bottom-0.5 right-0.5 inline-flex items-center justify-center size-6 md:size-7 rounded-full bg-signal-success text-white ring-2 ring-white shadow-[0_1px_3px_rgba(15,23,42,0.18)]"
         >
           <Check className="size-3.5 md:size-4" strokeWidth={3.5} aria-hidden="true" />

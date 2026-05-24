@@ -3,13 +3,15 @@
  * Human-readable headline → stats → posting calendar → verdict.
  */
 import { ArrowDown, ArrowUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { computeFrequencia } from "./score-utils";
 import { InsightCallout } from "./insight-callout";
 
-function getFrequencyStatus(score: number): string {
-  if (score >= 70) return "Alta";
-  if (score >= 40) return "Média";
-  return "Baixa";
+function getFrequencyStatusKey(score: number): "high" | "medium" | "low" {
+  if (score >= 70) return "high";
+  if (score >= 40) return "medium";
+  return "low";
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -19,15 +21,9 @@ const PT_MONTHS = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
-const PT_WEEKDAYS_SHORT = ["S", "T", "Q", "Q", "S", "S", "D"];
-const PT_WEEKDAYS_LONG = [
-  "Segunda",
-  "Terça",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sábado",
-  "Domingo",
+const EN_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
 export function getFrequencyHeadline(postsPerDay: number): string {
@@ -36,6 +32,14 @@ export function getFrequencyHeadline(postsPerDay: number): string {
   if (postsPerDay >= 0.5) return "1 post a cada 1–2 dias";
   if (postsPerDay >= 0.3) return "1 post a cada 2–3 dias";
   return "Menos de 1 post por semana";
+}
+
+function getFrequencyHeadlineKey(postsPerDay: number): string {
+  if (postsPerDay > 1.2) return "frequency.headline.very_high";
+  if (postsPerDay >= 0.85) return "frequency.headline.daily";
+  if (postsPerDay >= 0.5) return "frequency.headline.every_1_2";
+  if (postsPerDay >= 0.3) return "frequency.headline.every_2_3";
+  return "frequency.headline.weekly_low";
 }
 
 export function getFrequencyVerdict(score: number): { strong: string; rest: string } {
@@ -57,9 +61,12 @@ export function getFrequencyVerdict(score: number): { strong: string; rest: stri
   };
 }
 
-function fmtPtDate(iso: string): string {
+function fmtLocaleDate(iso: string, lang: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
+  if (lang.startsWith("en")) {
+    return `${EN_MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+  }
   return `${d.getUTCDate()} de ${PT_MONTHS[d.getUTCMonth()]}`;
 }
 
@@ -112,6 +119,7 @@ function pickMostActive(buckets: ReturnType<typeof aggregateByWeekday>) {
 
 function pickQuietest(
   buckets: ReturnType<typeof aggregateByWeekday>,
+  t: TFunction,
 ): { label: string; detail: string } | null {
   const sat = buckets[5];
   const sun = buckets[6];
@@ -129,8 +137,13 @@ function pickQuietest(
     weekendSilent >= 2
   ) {
     return {
-      label: "Fim-de-semana",
-      detail: `${weekendSilent} ${weekendSilent === 1 ? "dia" : "dias"} s/ post`,
+      label: t("frequency.weekly_summary.weekend_label"),
+      detail: t(
+        weekendSilent === 1
+          ? "frequency.weekly_summary.silent_one"
+          : "frequency.weekly_summary.silent_other",
+        { count: weekendSilent },
+      ),
     };
   }
 
@@ -144,26 +157,34 @@ function pickQuietest(
   const worst = sorted[0];
   // No silent days on any eligible weekday → nothing meaningful to flag.
   if (worst.daysSilent === 0) return null;
+  const weekdayLong = (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
   return {
-    label: PT_WEEKDAYS_LONG[worst.weekday],
-    detail: `${worst.daysSilent} ${worst.daysSilent === 1 ? "dia" : "dias"} s/ post`,
+    label: weekdayLong[worst.weekday] ?? "",
+    detail: t(
+      worst.daysSilent === 1
+        ? "frequency.weekly_summary.silent_one"
+        : "frequency.weekly_summary.silent_other",
+      { count: worst.daysSilent },
+    ),
   };
 }
 
-function WeeklySummary({ days }: { days: DayEntry[] }) {
+function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
   const buckets = aggregateByWeekday(days);
   const totalPosts = buckets.reduce((s, b) => s + b.posts, 0);
   if (totalPosts === 0) return null;
 
   const top = pickMostActive(buckets);
-  const quiet = pickQuietest(buckets);
+  const quiet = pickQuietest(buckets, t);
   const maxPosts = Math.max(...buckets.map((b) => b.posts));
+  const weekdayLong = (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
+  const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
   return (
     <div className="px-4 sm:px-5 md:px-6 mt-4">
       <div className="rounded-xl border border-border-default bg-surface-muted/60 p-3.5 sm:p-4">
         <span className="text-eyebrow-sm text-content-tertiary block mb-3">
-          Resumo da semana
+          {t("frequency.weekly_summary.title")}
         </span>
 
         <div
@@ -183,14 +204,19 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
             </span>
             <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
-                Mais ativo
+                {t("frequency.weekly_summary.most_active")}
               </p>
               <p className="text-[15px] text-content-primary leading-relaxed">
                 <span className="font-semibold">
-                  {PT_WEEKDAYS_LONG[top.weekday]}
+                  {weekdayLong[top.weekday]}
                 </span>{" "}
                 <span className="text-content-secondary tabular-nums">
-                  · {top.posts} {top.posts === 1 ? "post" : "posts"}
+                  · {t(
+                    top.posts === 1
+                      ? "frequency.weekly_summary.posts_one"
+                      : "frequency.weekly_summary.posts_other",
+                    { count: top.posts },
+                  )}
                 </span>
               </p>
             </div>
@@ -211,7 +237,7 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
             </span>
             <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
-                Mais parado
+                {t("frequency.weekly_summary.quietest")}
               </p>
               <p className="text-[15px] text-content-primary leading-relaxed">
                 <span className="font-semibold">{quiet.label}</span>{" "}
@@ -230,7 +256,7 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
             className="grid gap-1.5 items-end"
             style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
             role="img"
-            aria-label="Distribuição de publicações por dia da semana"
+            aria-label={t("frequency.weekly_summary.aria_distribution")}
           >
             {buckets.map((b) => {
               const isTop = b.weekday === top.weekday && b.posts > 0;
@@ -258,7 +284,7 @@ function WeeklySummary({ days }: { days: DayEntry[] }) {
             className="grid gap-1.5 mt-1.5"
             style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
           >
-            {PT_WEEKDAYS_SHORT.map((wd, i) => {
+            {weekdayShort.map((wd, i) => {
               const isTop = i === top.weekday && buckets[i].posts > 0;
               return (
                 <span
@@ -336,25 +362,47 @@ export function FrequencyCard({
   postingFrequencyWeekly,
   calendarDays,
 }: FrequencyCardProps) {
+  const { t, i18n } = useTranslation("report");
   // Source-of-truth for "Y dias" is the calendar itself when present.
   // Falls back to the windowDays prop (matches now, defensive for future).
   const effectiveWindowDays =
     calendarDays.length > 0 ? calendarDays.length : windowDays;
   const postsPerDay =
     effectiveWindowDays > 0 ? postsAnalyzed / effectiveWindowDays : 0;
-  const headline = getFrequencyHeadline(postsPerDay);
+  const headline = t(getFrequencyHeadlineKey(postsPerDay));
   const score = computeFrequencia(postingFrequencyWeekly);
-  const verdict = getFrequencyVerdict(score);
-  const frequencyStatus = getFrequencyStatus(score);
+  const statusKey = getFrequencyStatusKey(score);
+  const verdictKey = statusKey === "high" ? "high" : statusKey === "medium" ? "medium" : "low";
+  const verdict = {
+    strong: t(`frequency.verdict.${verdictKey}.strong`),
+    rest: t(`frequency.verdict.${verdictKey}.rest`),
+  };
+  const frequencyStatus = t(`frequency.status.${statusKey}`);
   const verdictTone =
     score >= 70 ? ("positive" as const) : score >= 40 ? ("warning" as const) : ("danger" as const);
-  const verdictLabel =
-    score >= 70 ? "PONTO FORTE" : score >= 40 ? "A MELHORAR" : "ALERTA";
+  const verdictLabel = t(
+    score >= 70
+      ? "frequency.verdict_label.strong"
+      : score >= 40
+        ? "frequency.verdict_label.improve"
+        : "frequency.verdict_label.alert",
+  );
+  const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
   // Dynamic subtitle: "1 post a cada 1–2 dias · 12 publicações em 18 dias"
   const hasUsableData = postsAnalyzed > 0 && effectiveWindowDays > 0;
   const subtitleLine = hasUsableData
-    ? `${headline} · ${postsAnalyzed} publicações em ${effectiveWindowDays} dias`
+    ? t("frequency.subtitle", {
+        headline,
+        posts: postsAnalyzed,
+        postsLabel: t(
+          postsAnalyzed === 1 ? "frequency.posts_one" : "frequency.posts_other",
+        ),
+        days: effectiveWindowDays,
+        daysLabel: t(
+          effectiveWindowDays === 1 ? "frequency.days_one" : "frequency.days_other",
+        ),
+      })
     : null;
 
   const publishedCount = calendarDays.filter((d) => d.published).length;
@@ -369,14 +417,14 @@ export function FrequencyCard({
       <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 md:pt-8 space-y-2.5">
         <div className="flex items-start gap-3">
           <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
-            Frequência de publicação{" "}
+            {t("frequency.title")}{" "}
             <span
               className="font-semibold"
               style={{
                 borderBottom: `2px solid ${
-                  frequencyStatus === "Alta"
+                  statusKey === "high"
                     ? "rgba(29,158,117,0.50)"
-                    : frequencyStatus === "Média"
+                    : statusKey === "medium"
                       ? "rgba(217,119,6,0.50)"
                       : "rgba(163,45,45,0.50)"
                 }`,
@@ -395,18 +443,18 @@ export function FrequencyCard({
       </div>
 
       {/* Resumo da semana */}
-      <WeeklySummary days={calendarDays} />
+      <WeeklySummary days={calendarDays} t={t} />
 
       {/* Calendar grid */}
       {weeks.length > 0 && (
         <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6">
           <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-2">
-            Quando publicou
+            {t("frequency.calendar.title")}
           </span>
 
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
-            {PT_WEEKDAYS_SHORT.map((wd, i) => (
+            {weekdayShort.map((wd, i) => (
               <span
                 key={i}
                 className="text-xs font-medium text-content-secondary text-center leading-none select-none"
@@ -419,7 +467,7 @@ export function FrequencyCard({
           {/* Week rows */}
           <div
             role="img"
-            aria-label={`Calendário de publicação: ${publishedCount} dias com publicação, ${pausedCount} sem publicação`}
+            aria-label={t("frequency.calendar.aria", { published: publishedCount, paused: pausedCount })}
             className="grid gap-1 md:gap-1.5"
             style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
           >
@@ -434,10 +482,19 @@ export function FrequencyCard({
                     />
                   );
                 }
+                const dateLabel = fmtLocaleDate(day.date, i18n.language);
+                const tooltipPosts = day.postCount > 0
+                  ? t(
+                      day.postCount === 1
+                        ? "frequency.weekly_summary.posts_one"
+                        : "frequency.weekly_summary.posts_other",
+                      { count: day.postCount },
+                    )
+                  : t("frequency.calendar.tooltip_no_post");
                 return (
                   <span
                     key={day.date}
-                    title={`${fmtPtDate(day.date)} · ${day.postCount > 0 ? `${day.postCount} post${day.postCount > 1 ? "s" : ""}` : "sem publicação"}`}
+                    title={`${dateLabel} · ${tooltipPosts}`}
                     className="relative aspect-[7/4] rounded-md flex items-center justify-center transition-colors"
                     style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
                   >
@@ -463,7 +520,7 @@ export function FrequencyCard({
                 aria-hidden="true"
                 style={{ background: legendBg(0), border: "1px solid rgba(148,163,184,0.35)" }}
               />
-              parou ({pausedCount})
+              {t("frequency.calendar.legend_stopped", { count: pausedCount })}
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
               <span
@@ -471,7 +528,7 @@ export function FrequencyCard({
                 aria-hidden="true"
                 style={{ background: legendBg(1) }}
               />
-              1 post
+              {t("frequency.calendar.legend_one_post")}
             </span>
             {maxPosts >= 2 && (
               <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
@@ -480,11 +537,11 @@ export function FrequencyCard({
                   aria-hidden="true"
                   style={{ background: legendBg(maxPosts >= 3 ? 3 : 2) }}
                 />
-                {maxPosts >= 3 ? "3+" : "2"} posts
+                {t("frequency.calendar.legend_many", { label: maxPosts >= 3 ? "3+" : "2" })}
               </span>
             )}
             <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
-              {publishedCount}/{calendarDays.length} dias
+              {t("frequency.calendar.ratio", { published: publishedCount, total: calendarDays.length })}
             </span>
           </div>
         </div>

@@ -1,70 +1,46 @@
-## Lote D — Fluxo de análise pública + Unlock
+## Lote E — Localize the public Report (Block 1 + shell)
 
-Adicionar EN paralelo a toda a experiência pública pós-landing: rota `/analyze/$username`, dashboard, skeleton, estados de erro e modais de gateway/unlock. PT-PT continua canónico.
+Following Lotes A–D (shells, auth, landing, analyze flow & gateway), the next surface to translate is the public **Report** — the most-shared page in the product. Admin stays PT-only (internal) and is deferred to Lote F.
 
-### 1. Novos namespaces i18n
+### Scope
 
-Criar em `src/i18n/locales/{pt,en}/`:
+Public report at `/analyze/$username`, sections rendered in `report-redesign/v2/`:
 
-- **`analyze.json`** — strings da rota e do dashboard
-  - `meta.title`, `meta.description` (com `{{username}}`)
-  - `header.*` — handle, badges (Pública, Cache, Fresca), botões (Atualizar / Refresh, Nova análise / New analysis)
-  - `skeleton.*` — labels de carregamento
-  - `dashboard.*` — KPIs (Seguidores, Publicações, Engagement, Frequência…), secções (Benchmark, Concorrentes, Insights), CTAs
-  - `conversionLayer.*` — banda "Desbloquear relatório completo"
-  - `premiumLocked.*` — placeholder de secções PRO
-  - `pricingFeedback.*` — sheet de pricing
-- **`gate.json`** — gateway + unlock modal
-  - `lockGate.*` — badge "Acesso gratuito · BETA" / "Free access · BETA", título serif, subtítulo com `{{handle}}`, CTA "Ver relatório gratuito" / "View free report", footer micro-tags (tempo, GDPR, autoria)
-  - `unlockModal.*` — passos, labels de form (nome, email, consent), erros de validação, sucesso, botões
-- **`errors.json`** — mensagens canónicas de erro server-side mapeadas a UI
-  - `CACHE_ONLY_NO_DATA`, `PROFILE_NOT_ALLOWED`, `RATE_LIMITED`, `BUDGET_EXCEEDED`, `PROVIDER_ERROR`, `UNKNOWN`
-  - Cada chave: `title`, `description`, `cta` (quando aplicável)
+1. **Shell & navigation**
+   - `report-shell-v2.tsx`, `report-block-nav.tsx`, `report-block-section.tsx`
+   - `cache-status-badge.tsx`, `source-badge.tsx`, `report-source-label.tsx`
+   - `premium-callout.tsx`, `premium-interest-dialog.tsx`
 
-Registar os 3 namespaces em `src/i18n/index.ts` (resources sync, como `landing`/`auth`).
+2. **Hero (Prism editorial)**
+   - `report-hero-v2.tsx`: handle metadata, metric labels (Posts, Followers, Following, Engagement), action stack ("Novo relatório", "Comparar concorrente", PRO badge, tooltips).
 
-### 2. Ficheiros a localizar
+3. **Block 1 — Overview**
+   - `overview/editorial-identity-card.tsx`: verdict bands (Excelente/Sólido/A melhorar), gauge label, "O que funciona" / "O que limita" columns, reference mark copy.
+   - `overview/frequency-card.tsx`: "Resumo da semana", "Mais ativo" / "Mais calmo", weekday short names (Seg–Dom / Mon–Sun via `format.ts`), verdict copy.
+   - `overview/format-card.tsx`: format legend (Reels, Carrossel, Imagem, Vídeo), donut tooltip, "do total" suffix.
 
-Rota:
-- `src/routes/analyze.$username.tsx` — `head()` (title, description, og), boundary copy.
+### New i18n namespace
 
-Componentes (`src/components/product/`):
-- `analysis-header.tsx`
-- `analysis-skeleton.tsx`
-- `analysis-error-state.tsx` — usar `errors.json` mapeado por código retornado pelo serverFn
-- `analysis-metric-card.tsx` — labels/tooltips
-- `analysis-benchmark-block.tsx`
-- `analysis-competitor-comparison.tsx`
-- `public-analysis-dashboard.tsx` — orquestrador
-- `post-analysis-conversion-layer.tsx`
-- `premium-locked-section.tsx`
-- `pricing-feedback-sheet.tsx`
-- `report-lock-gate.tsx` — usar `gate.lockGate.*`
-- `report-gate-modal.tsx` — duplicado/legacy; verificar se ainda é referenciado e localizar ou marcar para remoção
-- `unlock-modal.tsx` — usar `gate.unlockModal.*` (form, validações Zod com mensagens i18n, success state)
+- `src/i18n/locales/{pt,en}/report.json` with sub-sections: `shell`, `hero`, `block1.identity`, `block1.frequency`, `block1.format`, `verdicts`, `common`.
+- Re-use `errors.json` for failure states and `common.json` for shared verbs.
 
-### 3. Regras transversais
+### Locale-aware formatting
 
-- Hook: `useTranslation("<namespace>")` por componente (sem grandes refactors estruturais).
-- Datas/números: usar helpers existentes em `src/lib/i18n/format.ts` em qualquer label novo que use número ou data (não substituir formatadores especializados do report v2).
-- `useLanguage` já sincroniza `<html lang>` pós-hidratação — sem alterações.
-- Toggle PT↔EN no header continua a funcionar sem reload.
-- Nenhuma alteração a lógica de negócio: serverFns, validação Zod (apenas mensagens), gating, budget, sanitização permanecem intactos.
-- LOCKED_FILES.md: adicionar nota de edição autorizada para `unlock-modal.tsx` e `report-lock-gate.tsx` (já tocados anteriormente — confirmar entrada).
+- Use existing `src/lib/i18n/format.ts` for numbers (followers `1.2M` vs `1,2M`), percentages, and dates.
+- Add `formatWeekdayShort(date, lng)` helper for the Frequency mini-chart axis.
+- Keep AI-generated copy (`aiInsightsV2.sections.hero.text`) **as-is** — it already comes from the snapshot in the requested language; do not re-translate at runtime. Fallback strings (`deriveCopyFromAi` / `buildFallbackCopy`) move to `report.json`.
 
-### 4. Fora de âmbito (próximos lotes)
+### Out of scope (next lotes)
 
-- Lote E: árvore `/report/*` (Block 1-6, tiered copy, AI insight strings).
-- Lote F: beta request, feedback forms.
-- Lote G: páginas legais (`/privacidade`, `/termos`, `/aviso-legal`, `/cookies`) e meta SEO global.
-- Área `_authenticated/*` (account, plan, reports) — Lote B restante.
+- Blocks 2–5 (engagement, diagnostics, themes, benchmark) → Lote F
+- `/admin` interface → stays PT-only
+- `/report.example` → mockup only, untouched per project rules
 
 ### Checkpoint
 
-- [ ] `analyze.json`, `gate.json`, `errors.json` criados (PT + EN) e registados
-- [ ] Rota `analyze.$username.tsx` com `head()` localizado
-- [ ] Todos os componentes `src/components/product/*` listados a consumir `t()`
-- [ ] `report-lock-gate.tsx` + `unlock-modal.tsx` 100% sem strings hardcoded
-- [ ] Mensagens de erro mapeadas via `errors.json` por código
-- [ ] Validações Zod do unlock devolvem chaves i18n
-- [ ] Toggle PT↔EN testado em `/analyze/<handle>` (cached e fresh) sem reload e sem hydration mismatch
+- ☐ `report.json` created (PT + EN) with all keys used by Block 1 + shell
+- ☐ Hero, Identity, Frequency, Format cards consume `useTranslation('report')`
+- ☐ Weekday + number formatting routed through `format.ts`
+- ☐ AI hero text preserved; only fallback copy localized
+- ☐ Language toggle in header switches the entire report live (no reload)
+- ☐ Typecheck passes; 375px mobile layout unchanged

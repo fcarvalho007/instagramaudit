@@ -1,0 +1,161 @@
+{
+  "hero": {
+    "verified": "Conta verificada",
+    "metric_followers": "seguidores",
+    "metric_followers_one": "seguidor",
+    "metric_posts": "publicações",
+    "metric_posts_one": "publicação",
+    "metric_analyzed_window": "posts em {{days}} dias",
+    "metric_analyzed_window_one": "post em {{days}} dias",
+    "metric_analyzed_window_days_one": "posts em {{days}} dia",
+    "metric_analyzed": "posts analisados",
+    "metric_analyzed_one": "post analisado",
+    "actions": {
+      "new_report": "Novo relatório",
+      "compare": "Comparar concorrente",
+      "pro": "Pro",
+      "pdf": "PDF",
+      "share": "Partilhar"
+    },
+    "avatar_alt": "Avatar de {{name}}"
+  },
+  "identity": {
+    "aria_label": "Veredicto editorial",
+    "eyebrow_verdict": "Veredicto",
+    "gauge_aria": "Pontuação global {{value}} de 100",
+    "gauge_caption": "de 100",
+    "reference_caption": "↑ referência do escalão · {{ref}}",
+    "low_confidence": "Baseado em apenas {{count}} posts — confiança limitada.",
+    "low_confidence_one": "Baseado em apenas {{count}} post — confiança limitada.",
+    "columns": {
+      "strengths": "O que já funciona",
+      "limits": "O que limita o crescimento"
+    },
+    "bands": {
+      "solid": "Sólido",
+      "developing": "Em desenvolvimento",
+      "warning": "Precisa de trabalho"
+    },
+    "fallback": {
+      "solid_consistent": {
+        "title": "Presença sólida e consistente",
+        "paragraph": "O conteúdo gera resposta de forma regular e a cadência é estável. A próxima alavanca está em diversificar formatos e abrir mais conversa nos comentários."
+      },
+      "irregular_reach": {
+        "title": "Bom alcance, ritmo irregular",
+        "paragraph": "O conteúdo funciona quando sai, mas o ritmo de publicação é descontínuo. Estabilizar a cadência semanal é o passo com maior retorno imediato."
+      },
+      "cadence_no_signal": {
+        "title": "Cadência forte, sinal fraco",
+        "paragraph": "Existe disciplina de publicação, mas o conteúdo não está a converter em interação. O foco deve ir para o conceito editorial e o gancho inicial de cada peça."
+      },
+      "no_direction": {
+        "title": "Audiência existe, falta direção",
+        "paragraph": "A base de seguidores não está a reagir nem a comentar de forma significativa. A prioridade é redefinir ângulo editorial e formatos antes de aumentar volume."
+      },
+      "opportunity": {
+        "title": "Perfil ativo, oportunidade clara",
+        "paragraph": "Os indicadores estão próximos da referência do escalão. Há espaço para subir engagement ajustando formatos dominantes e reforçando a conversa nos comentários."
+      }
+    },
+    "signals": {
+      "freq_consistent": { "title": "Publicação consistente", "detail": "cerca de {{perDay}} post/dia" },
+      "freq_weak": { "title": "Cadência fraca", "detail": "menos de 1 post por semana" },
+      "freq_excess": { "title": "Volume excessivo", "detail": "acima de 1 post por dia" },
+      "audience_relevant": { "title": "Base de seguidores", "detail": "relevante para o nicho" },
+      "audience_small": { "title": "Audiência ainda pequena", "detail": "espaço claro para crescer" },
+      "engagement_above": { "title": "Envolvimento acima do escalão", "detail": "+{{delta}}% vs benchmark" },
+      "engagement_below": { "title": "Envolvimento abaixo do escalão", "detail": "{{delta}}% vs benchmark" },
+      "interaction_active": { "title": "Conversa ativa nos comentários", "detail": "público responde com regularidade" },
+      "interaction_low": { "title": "Poucos comentários", "detail": "falta CTA claro nas legendas" },
+      "format_mixed": { "title": "Mix de formatos equilibrado", "detail": "alternância entre tipos de conteúdo" },
+      "format_repetitive": { "title": "Formato repetitivo", "detail": "{{pct}}% {{format}}" },
+      "fallback_active": { "title": "Perfil ativo", "detail": "presença regular na plataforma" },
+      "fallback_history": { "title": "Histórico consistente", "detail": "base para iterar conteúdo" },
+      "fallback_diversify": { "title": "Espaço para diversificar", "detail": "explorar novos formatos" },
+      "fallback_conversation": { "title": "Conversa por desenvolver", "detail": "reforçar CTA nas legendas" }
+    },
+    "format_singular": {
+      "Reels": "reels",
+      "Carousels": "carrosséis",
+      "Imagens": "imagens",
+      "Video": "vídeos",
+      "default": "formato dominante"
+    }
+  },
+  "frequency": {
+    "title": "Frequência de publicação",
+    "status": { "high": "Alta", "medium": "Média", "low": "Baixa" },
+    "headline": {
+      "very_high": "Mais de 1 post por dia",
+      "daily": "Cerca de 1 post por dia",
+      "every_1_2": "1 post a cada 1–2 dias",
+      "every_2_3": "1 post a cada 2–3 dias",
+      "weekly_low": "Menos de 1 post por semana"
+    },
+    "subtitle": "{{headline}} · {{posts}} {{postsLabel}} em {{days}} {{daysLabel}}",
+    "posts_one": "publicação",
+    "posts_other": "publicações",
+    "days_one": "dia",
+    "days_other": "dias",
+    "verdict": {
+      "high": { "strong": "Cadência forte e consistente.", "rest": "Publica mais que a média de perfis com um número de seguidores semelhante." },
+      "medium": { "strong": "Cadência aceitável.", "rest": "Há espaço para regularidade mais previsível." },
+      "low": { "strong": "Cadência irregular.", "rest": "A audiência não cria hábito de te encontrar." }
+    },
+    "verdict_label": { "strong": "PONTO FORTE", "improve": "A MELHORAR", "alert": "ALERTA" },
+    "weekly_summary": {
+      "title": "Resumo da semana",
+      "most_active": "Mais ativo",
+      "quietest": "Mais parado",
+      "weekend_label": "Fim-de-semana",
+      "silent_one": "{{count}} dia s/ post",
+      "silent_other": "{{count}} dias s/ post",
+      "posts_one": "{{count}} post",
+      "posts_other": "{{count}} posts",
+      "aria_distribution": "Distribuição de publicações por dia da semana"
+    },
+    "calendar": {
+      "title": "Quando publicou",
+      "aria": "Calendário de publicação: {{published}} dias com publicação, {{paused}} sem publicação",
+      "tooltip_no_post": "sem publicação",
+      "legend_stopped": "parou ({{count}})",
+      "legend_one_post": "1 post",
+      "legend_many": "{{label}} posts",
+      "ratio": "{{published}}/{{total}} dias"
+    },
+    "weekday_short": ["S", "T", "Q", "Q", "S", "S", "D"],
+    "weekday_long": ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+  },
+  "format": {
+    "title": "Formato",
+    "variation": { "varied_high": "Muito variado", "varied": "Variado", "low": "Pouco variado" },
+    "headline": {
+      "no_data": "Sem dados de formato",
+      "only": "Apenas {{label}}",
+      "dominate": "{{label}} dominam",
+      "balanced": "Mistura equilibrada",
+      "undefined": "Formato pouco definido"
+    },
+    "subtitle": {
+      "no_data": "{{count}} publicações analisadas",
+      "leader": "{{label}} mais frequentes · {{topCount}} em cada {{total}} são {{topLower}}",
+      "extra": "{{count}} são {{label}}"
+    },
+    "names_plural": { "Reels": "reels", "Carousels": "carrosséis", "Imagens": "imagens", "Video": "vídeos" },
+    "names_legend": { "Reels": "Reels", "Carousels": "Carrosséis", "Imagens": "Imagens", "Video": "Vídeos" },
+    "types_singular": { "carousel": "carrossel", "reel": "reel", "image": "imagem", "video": "vídeo", "unknown": "post" },
+    "analyzed_count": "{{count}} posts analisados",
+    "aria_distribution": "Distribuição dos {{count}} posts analisados: {{parts}}",
+    "aria_breakdown": "Distribuição de formatos em {{total}} publicações: {{parts}}",
+    "breakdown_part": "{{count}} {{label}} ({{pct}}%)",
+    "thumb_aria": "{{label}} · {{date}}",
+    "verdict": {
+      "carousel": { "strong": "Foco em conteúdo para guardar.", "rest": "Carrosséis funcionam para ensinar, listar e organizar ideias." },
+      "reel": { "strong": "Foco em alcance e descoberta.", "rest": "Reels funcionam para entrar em novas audiências." },
+      "image": { "strong": "Foco em comunicação direta.", "rest": "Imagens funcionam para mensagens claras e momentos." },
+      "mixed": { "strong": "Mix variado.", "rest": "Diferentes formatos servem objetivos diferentes — as próximas secções mostram onde cada formato rende mais." }
+    },
+    "verdict_label": { "strong": "PONTO FORTE", "improve": "A MELHORAR", "neutral": "DIAGNÓSTICO" }
+  }
+}
