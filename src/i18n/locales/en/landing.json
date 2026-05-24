@@ -1,3 +1,94 @@
 {
-  "placeholder": "Content in English"
+  "meta": {
+    "title": "InstaBench · The Instagram benchmark the market was missing",
+    "description": "Public, instant analysis of any Instagram profile. Comparison against up-to-date benchmarks and a detailed report by email."
+  },
+  "microProof": {
+    "fast": "Analysis in 30 seconds",
+    "noSignup": "No sign-up required",
+    "gdpr": "GDPR compliant"
+  },
+  "devShortcuts": {
+    "label": "Quick access · Tests",
+    "live": "Live report · frederico.m.carvalho",
+    "mockup": "Editorial mockup report"
+  },
+  "hero": {
+    "headline": "Analyze any Instagram profile in under 30 seconds.",
+    "subtitle": "Benchmarks, comparison and clear insights to decide better."
+  },
+  "actionBar": {
+    "microLabel": "Public Instagram profile",
+    "placeholder": "@username or profile URL",
+    "ariaInput": "Instagram profile username or URL",
+    "submit": "Analyze",
+    "addCompetitors": "Add up to 2 competitors to compare",
+    "competitorsLabel": "Competitors (optional)",
+    "remove": "Remove",
+    "competitor1Placeholder": "@competitor 1",
+    "competitor1Aria": "First competitor username",
+    "competitor2Placeholder": "@competitor 2 (optional)",
+    "competitor2Aria": "Second competitor username",
+    "errors": {
+      "empty": "Enter a valid username to continue",
+      "invalid": "Invalid username. Only letters, numbers, dot and underscore.",
+      "competitorInvalid": "Invalid competitor. Only letters, numbers, dot and underscore."
+    }
+  },
+  "handwritten": {
+    "freeReportsSuffix": "free reports"
+  },
+  "scroll": {
+    "explore": "Explore"
+  },
+  "socialProof": {
+    "eyebrow": "Up-to-date benchmarks",
+    "statementLine1": "Fresh Instagram data,",
+    "statementLine2": "analyzed monthly.",
+    "metrics": {
+      "posts": "Posts analyzed (Socialinsider 2025)",
+      "engagement": "Average engagement on reels",
+      "layers": "Comparison layers"
+    }
+  },
+  "howItWorks": {
+    "eyebrow": "How it works",
+    "title": "Report in 3 simple steps.",
+    "lead": "No friction, no sign-up, no wasted time. Just clear analysis, comparable benchmarks and a strategic read ready to apply.",
+    "stepLabel": "Step {{number}}",
+    "step1Title": "Enter the username",
+    "step1Desc": "Any public Instagram profile. Optionally, up to two competitors for direct comparison.",
+    "step2Title": "Automatic analysis",
+    "step2Desc": "The last 30 posts are processed against benchmarks updated to the platform and profile size.",
+    "step3Title": "Report in your inbox",
+    "step3Desc": "Detailed PDF with metrics, competitor ranking and three strategic AI-generated insights."
+  },
+  "preview": {
+    "eyebrow": "Product preview",
+    "title": "The report you'll get by email.",
+    "lead": "Clear metrics, visual benchmark and competitor comparison. All exportable as PDF, shareable across teams, built for fast decisions.",
+    "highlights": {
+      "data": { "label": "Data", "title": "Actionable metrics", "description": "Engagement, reach, frequency and dominant format. Everything that matters, nothing that distracts." },
+      "benchmark": { "label": "Benchmark", "title": "Instant comparison", "description": "Every metric contextualized against the platform benchmark and profile size." },
+      "ai": { "label": "AI", "title": "Strategic read", "description": "Three priority AI-generated insights, with concrete recommendations for the next 30 days." }
+    }
+  },
+  "mockup": {
+    "analysisMeta": "Analysis · 30 posts · Apr 14, 2026",
+    "fullReport": "Full report",
+    "fullShort": "Full",
+    "metricEngagement": "Average engagement",
+    "metricPosts": "Posts analyzed",
+    "metricPostsSuffix": "last 30 days",
+    "metricFrequency": "Weekly frequency",
+    "metricFrequencySuffix": "posts/week",
+    "metricFormat": "Dominant format",
+    "benchmarkEyebrow": "Benchmark · Reels",
+    "benchmarkPosition": "Position vs expected",
+    "aboveBenchmark": "Above benchmark",
+    "competitorsLabel": "Competitor comparison",
+    "insightLabel": "Priority insight",
+    "insightBody": "Reels performance is 23% above benchmark. Frequency can go from 3.2 to 4 posts/week without saturating — competitors post less but with lower engagement.",
+    "lockedHint": "Full content in the report"
+  }
 }

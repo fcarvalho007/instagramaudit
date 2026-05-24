@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/login")({
 const DISPLAY_EMAIL = "fredericodigital@gmail.com";
 
 function LoginPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,7 +58,7 @@ function LoginPage() {
 
       navigate({ to: "/app/reports" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao entrar.");
+      setError(err instanceof Error ? err.message : t("login.errorGeneric"));
       setLoading(false);
     }
   };
@@ -71,8 +73,8 @@ function LoginPage() {
 
   return (
     <AuthCard
-      title="Entrar no InstaBench"
-      subtitle="Acesso restrito — fase de testes privados."
+      title={t("login.title")}
+      subtitle={t("login.subtitle")}
     >
       <div className="space-y-4">
         <div className="rounded-lg border border-border-default/20 bg-surface-muted px-4 py-3 text-center">
@@ -91,12 +93,12 @@ function LoginPage() {
           ) : (
             <LogIn className="mr-2 size-4" />
           )}
-          Entrar
+          {t("login.submit")}
         </Button>
       </div>
 
       <p className="mt-5 text-center text-xs text-content-tertiary">
-        Fase de testes — acesso restrito.
+        {t("login.footnote")}
       </p>
     </AuthCard>
   );

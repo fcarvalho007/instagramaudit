@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { Container } from "@/components/layout/container";
 import { BlurRevealText } from "@/components/landing/blur-reveal-text";
 import { HandwrittenNote } from "@/components/landing/handwritten-note";
@@ -6,6 +8,7 @@ import { HeroAuroraBackground } from "@/components/landing/hero-aurora-backgroun
 import { ScrollIndicator } from "@/components/landing/scroll-indicator";
 
 export function HeroSection() {
+  const { t } = useTranslation("landing");
   return (
     <section className="relative min-h-screen w-full overflow-hidden bg-surface-base flex items-center">
       <HeroAuroraBackground />
@@ -14,7 +17,7 @@ export function HeroSection() {
         <div className="max-w-4xl mx-auto text-center space-y-6 md:space-y-8">
           {/* Headline — blur reveal, no gradient */}
           <BlurRevealText
-            text="Analisar qualquer perfil de Instagram em menos de 30 segundos."
+            text={t("hero.headline")}
             as="h1"
             className="font-display text-4xl md:text-6xl lg:text-7xl tracking-tight font-medium leading-[1.05] text-content-primary text-balance"
             delayMs={200}
@@ -22,7 +25,7 @@ export function HeroSection() {
 
           {/* Subtitle — single line on desktop, wraps naturally on mobile */}
           <BlurRevealText
-            text="Benchmark, comparação e insights claros para decidir melhor."
+            text={t("hero.subtitle")}
             as="p"
             className="font-sans text-lg md:text-xl text-content-secondary leading-relaxed max-w-3xl mx-auto md:whitespace-nowrap"
             delayMs={800}

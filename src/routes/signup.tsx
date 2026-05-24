@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { AuthCard } from "@/components/auth/auth-card";
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { email: emailFromQuery } = Route.useSearch();
   const [email, setEmail] = useState(emailFromQuery ?? "");
@@ -48,11 +50,11 @@ function SignupPage() {
     setError("");
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
-      setError("Preenche todos os campos.");
+      setError(t("signup.errors.fillAll"));
       return;
     }
     if (password.length < 6) {
-      setError("A palavra-passe deve ter pelo menos 6 caracteres.");
+      setError(t("signup.errors.passwordShort"));
       return;
     }
     setLoading(true);
@@ -66,7 +68,7 @@ function SignupPage() {
     setLoading(false);
     if (authError) {
       if (authError.message.includes("already registered")) {
-        setError("Este email já está registado. Tenta entrar.");
+        setError(t("signup.errors.alreadyRegistered"));
       } else {
         setError(authError.message);
       }
@@ -99,19 +101,19 @@ function SignupPage() {
   if (success) {
     return (
       <AuthCard
-        title="Verifica o email"
-        subtitle="Enviámos um link de confirmação. Clica no link para ativar a conta."
+        title={t("signup.checkEmailTitle")}
+        subtitle={t("signup.checkEmailSubtitle")}
       >
         <div className="flex flex-col items-center gap-4 py-4">
           <CheckCircle2 className="size-12 text-emerald-600" />
           <p className="text-sm text-content-secondary text-center">
-            O email pode demorar alguns minutos. Verifica também a pasta de spam.
+            {t("signup.checkEmailHint")}
           </p>
           <Link
             to="/login"
             className="text-sm font-medium text-blue-600 hover:underline"
           >
-            Voltar ao login
+            {t("signup.backToLogin")}
           </Link>
         </div>
       </AuthCard>
@@ -120,29 +122,29 @@ function SignupPage() {
 
   return (
     <AuthCard
-      title="Criar conta"
-      subtitle="Guarda relatórios e prepara o acesso ao tracking PRO."
+      title={t("signup.title")}
+      subtitle={t("signup.subtitle")}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="signup-email">Email</Label>
+          <Label htmlFor="signup-email">{t("signup.emailLabel")}</Label>
           <Input
             id="signup-email"
             type="email"
             autoComplete="email"
-            placeholder="nome@exemplo.pt"
+            placeholder={t("signup.emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="signup-password">Palavra-passe</Label>
+          <Label htmlFor="signup-password">{t("signup.passwordLabel")}</Label>
           <Input
             id="signup-password"
             type="password"
             autoComplete="new-password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder={t("signup.passwordPlaceholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={6}
@@ -158,7 +160,7 @@ function SignupPage() {
 
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-          Criar conta
+          {t("signup.submit")}
         </Button>
       </form>
 
@@ -168,7 +170,7 @@ function SignupPage() {
         </div>
         <div className="relative flex justify-center text-xs">
            <span className="bg-white px-3 text-content-tertiary">
-            ou
+            {t("signup.or")}
           </span>
         </div>
       </div>
@@ -185,13 +187,13 @@ function SignupPage() {
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
         </svg>
-        Continuar com Google
+        {t("signup.google")}
       </Button>
 
       <p className="mt-6 text-center text-sm text-content-secondary">
-        Já tens conta?{" "}
+        {t("signup.alreadyHaveAccount")}{" "}
         <Link to="/login" className="font-medium text-blue-600 hover:underline">
-          Entrar
+          {t("signup.signIn")}
         </Link>
       </p>
     </AuthCard>

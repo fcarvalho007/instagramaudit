@@ -1,3 +1,94 @@
 {
-  "placeholder": "Conteúdo em português"
+  "meta": {
+    "title": "InstaBench · O benchmark de Instagram que faltava ao mercado",
+    "description": "Análise pública e imediata de qualquer perfil de Instagram. Comparação com benchmarks atualizados e relatório detalhado por email."
+  },
+  "microProof": {
+    "fast": "Análise em 30 segundos",
+    "noSignup": "Sem registo necessário",
+    "gdpr": "RGPD compliant"
+  },
+  "devShortcuts": {
+    "label": "Acesso rápido · Testes",
+    "live": "Report live · frederico.m.carvalho",
+    "mockup": "Report mockup editorial"
+  },
+  "hero": {
+    "headline": "Analisar qualquer perfil de Instagram em menos de 30 segundos.",
+    "subtitle": "Benchmark, comparação e insights claros para decidir melhor."
+  },
+  "actionBar": {
+    "microLabel": "Perfil público do Instagram",
+    "placeholder": "@username ou URL do perfil",
+    "ariaInput": "Username ou URL do perfil do Instagram",
+    "submit": "Analisar",
+    "addCompetitors": "Adicionar até 2 concorrentes para comparar",
+    "competitorsLabel": "Concorrentes (opcional)",
+    "remove": "Remover",
+    "competitor1Placeholder": "@concorrente 1",
+    "competitor1Aria": "Username do primeiro concorrente",
+    "competitor2Placeholder": "@concorrente 2 (opcional)",
+    "competitor2Aria": "Username do segundo concorrente",
+    "errors": {
+      "empty": "Inserir um username válido para continuar",
+      "invalid": "Username inválido. Apenas letras, números, ponto e underscore.",
+      "competitorInvalid": "Concorrente inválido. Apenas letras, números, ponto e underscore."
+    }
+  },
+  "handwritten": {
+    "freeReportsSuffix": "relatórios grátis"
+  },
+  "scroll": {
+    "explore": "Explorar"
+  },
+  "socialProof": {
+    "eyebrow": "Benchmarks atualizados",
+    "statementLine1": "Dados frescos do Instagram,",
+    "statementLine2": "analisados mensalmente.",
+    "metrics": {
+      "posts": "Posts analisados (Socialinsider 2025)",
+      "engagement": "Engagement médio em reels",
+      "layers": "Camadas de comparação"
+    }
+  },
+  "howItWorks": {
+    "eyebrow": "Como funciona",
+    "title": "Relatório em 3 passos simples.",
+    "lead": "Sem fricção, sem registo, sem tempo perdido. Apenas análise clara, benchmarks comparáveis e leitura estratégica pronta a aplicar.",
+    "stepLabel": "Passo {{number}}",
+    "step1Title": "Inserir o username",
+    "step1Desc": "Qualquer perfil público do Instagram. Opcionalmente, até dois concorrentes para comparação directa.",
+    "step2Title": "Análise automática",
+    "step2Desc": "Os últimos 30 posts são processados contra benchmarks atualizados da plataforma e da dimensão do perfil.",
+    "step3Title": "Relatório no email",
+    "step3Desc": "PDF detalhado com métricas, ranking de concorrentes e três insights estratégicos gerados por IA."
+  },
+  "preview": {
+    "eyebrow": "Preview do produto",
+    "title": "O relatório que recebes no email.",
+    "lead": "Métricas claras, benchmark visual e comparação com concorrentes. Tudo exportável em PDF, partilhável em equipa, construído para decisão rápida.",
+    "highlights": {
+      "data": { "label": "Dados", "title": "Métricas accionáveis", "description": "Engagement, alcance, frequência e formato dominante. Tudo o que importa, nada do que distrai." },
+      "benchmark": { "label": "Benchmark", "title": "Comparação imediata", "description": "Cada métrica contextualizada face ao benchmark da plataforma e da dimensão do perfil." },
+      "ai": { "label": "IA", "title": "Leitura estratégica", "description": "Três insights prioritários gerados por IA, com recomendações concretas para os próximos 30 dias." }
+    }
+  },
+  "mockup": {
+    "analysisMeta": "Análise · 30 publicações · 14 Abr 2026",
+    "fullReport": "Relatório completo",
+    "fullShort": "Completo",
+    "metricEngagement": "Envolvimento médio",
+    "metricPosts": "Publicações analisadas",
+    "metricPostsSuffix": "últimos 30 dias",
+    "metricFrequency": "Frequência semanal",
+    "metricFrequencySuffix": "publicações/sem",
+    "metricFormat": "Formato dominante",
+    "benchmarkEyebrow": "Benchmark · Reels",
+    "benchmarkPosition": "Posicionamento face ao esperado",
+    "aboveBenchmark": "Acima benchmark",
+    "competitorsLabel": "Comparação com concorrentes",
+    "insightLabel": "Insight prioritário",
+    "insightBody": "A performance em Reels está 23% acima do benchmark. A frequência pode subir de 3,2 para 4 publicações/semana sem saturar — os concorrentes publicam menos mas com menor envolvimento.",
+    "lockedHint": "Conteúdo completo no relatório"
+  }
 }

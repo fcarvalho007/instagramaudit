@@ -21,6 +21,27 @@ export function useLanguage() {
     }
   }, [current]);
 
+  // Sync language from localStorage / navigator AFTER hydration, so SSR and
+  // first client render always use "pt" (the i18n init default).
+  React.useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(LANG_STORAGE_KEY);
+      let next: SupportedLanguage | null = null;
+      if (stored === "pt" || stored === "en") {
+        next = stored;
+      } else {
+        const nav = window.navigator.language?.toLowerCase() ?? "";
+        if (nav.startsWith("en")) next = "en";
+      }
+      if (next && next !== i18n.language) {
+        void i18n.changeLanguage(next);
+      }
+    } catch {
+      // ignore (private mode, etc.)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const setLanguage = React.useCallback(
     (lang: SupportedLanguage) => {
       void i18n.changeLanguage(lang);

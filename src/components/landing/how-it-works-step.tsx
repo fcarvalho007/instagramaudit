@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import { useInView } from "./use-in-view";
@@ -22,6 +23,7 @@ export function HowItWorksStep({
   emphasis = "default",
   showDivider = false,
 }: HowItWorksStepProps) {
+  const { t } = useTranslation("landing");
   const { ref, inView } = useInView<HTMLDivElement>();
   const isPrimary = emphasis === "primary";
 
@@ -60,7 +62,7 @@ export function HowItWorksStep({
           </span>
         </div>
         <span className="text-eyebrow text-content-tertiary">
-          Passo {number}
+          {t("howItWorks.stepLabel", { number })}
         </span>
       </div>
 

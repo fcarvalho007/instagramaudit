@@ -1,4 +1,5 @@
 import { Lock, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -16,6 +17,7 @@ const competitors = [
 const COMPARISON_SCALE = 0.7;
 
 export function MockupDashboard() {
+  const { t } = useTranslation("landing");
   return (
     <Card
       variant="default"
@@ -34,7 +36,7 @@ export function MockupDashboard() {
               @marca_exemplo
             </span>
             <span className="text-eyebrow text-[0.625rem] text-on-light-tertiary truncate">
-              Análise · 30 publicações · 14 Abr 2026
+              {t("mockup.analysisMeta")}
             </span>
           </div>
         </div>
@@ -44,8 +46,8 @@ export function MockupDashboard() {
             className="h-1.5 w-1.5 rounded-full bg-accent-violet animate-pulse"
           />
           <span className="text-eyebrow text-[0.625rem] text-accent-violet-deep">
-            <span className="hidden sm:inline">Relatório completo</span>
-            <span className="sm:hidden">Completo</span>
+            <span className="hidden sm:inline">{t("mockup.fullReport")}</span>
+            <span className="sm:hidden">{t("mockup.fullShort")}</span>
           </span>
         </div>
       </div>
@@ -67,7 +69,7 @@ export function MockupDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <MockupMetricCard
               tone="light"
-              label="Envolvimento médio"
+              label={t("mockup.metricEngagement")}
               value="0,64%"
               trend="+0,18 vs benchmark"
               variant="success"
@@ -75,19 +77,19 @@ export function MockupDashboard() {
             />
             <MockupMetricCard
               tone="light"
-              label="Publicações analisadas"
+              label={t("mockup.metricPosts")}
               value="30"
-              suffix="últimos 30 dias"
+              suffix={t("mockup.metricPostsSuffix")}
             />
             <MockupMetricCard
               tone="light"
-              label="Frequência semanal"
+              label={t("mockup.metricFrequency")}
               value="3,2"
-              suffix="publicações/sem"
+              suffix={t("mockup.metricFrequencySuffix")}
             />
             <MockupMetricCard
               tone="light"
-              label="Formato dominante"
+              label={t("mockup.metricFormat")}
               value="Reels"
               badge="62%"
             />
@@ -98,14 +100,14 @@ export function MockupDashboard() {
             <div className="flex items-start justify-between gap-3">
               <div className="flex flex-col gap-1 min-w-0">
                 <span className="text-eyebrow-sm text-[0.625rem] text-on-light-tertiary">
-                  Benchmark · Reels
+                  {t("mockup.benchmarkEyebrow")}
                 </span>
                 <span className="font-sans text-sm text-on-light-secondary">
-                  Posicionamento face ao esperado
+                  {t("mockup.benchmarkPosition")}
                 </span>
               </div>
               <Badge variant="success" size="sm" className="shrink-0">
-                Acima benchmark
+                {t("mockup.aboveBenchmark")}
               </Badge>
             </div>
             <MockupBenchmarkGauge value={0.64} benchmark={0.52} max={1.2} />
@@ -114,7 +116,7 @@ export function MockupDashboard() {
           {/* Competitor comparison */}
           <div className="space-y-3">
             <span className="text-eyebrow-sm text-[0.625rem] text-on-light-tertiary block">
-              Comparação com concorrentes
+              {t("mockup.competitorsLabel")}
             </span>
             <div className="space-y-2.5">
               {competitors.map((row) => {
@@ -172,13 +174,10 @@ export function MockupDashboard() {
               </div>
               <div className="flex flex-col gap-2 min-w-0">
                 <span className="text-eyebrow-sm text-[0.625rem] text-accent-violet-deep">
-                  Insight prioritário
+                  {t("mockup.insightLabel")}
                 </span>
                 <p className="font-sans text-sm md:text-base text-on-light-secondary leading-relaxed">
-                  A performance em Reels está 23% acima do benchmark. A
-                  frequência pode subir de 3,2 para 4 publicações/semana sem
-                  saturar — os concorrentes publicam menos mas com menor
-                  envolvimento.
+                  {t("mockup.insightBody")}
                 </p>
               </div>
             </div>
@@ -192,7 +191,7 @@ export function MockupDashboard() {
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
           <span className="text-eyebrow-sm inline-flex items-center gap-2 text-[0.625rem] text-on-light-secondary px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-sm">
             <Lock className="h-3 w-3" aria-hidden="true" />
-            Conteúdo completo no relatório
+            {t("mockup.lockedHint")}
           </span>
         </div>
       </div>
