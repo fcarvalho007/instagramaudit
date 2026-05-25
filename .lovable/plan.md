@@ -1,59 +1,74 @@
+## Objectivo
 
-## Avaliação do estado atual
+Refinar o `ReportLockGate` em `/analyze/$username` — o cartão branco que aparece sobre o conteúdo desfocado — para ter mais presença visual e reforçar a gratuidade do acesso, mantendo o registo Iconosquare claro (sem dark navy, sem glow, sem neon).
 
-Depois do último pedido o toggle já funciona e propaga até 30s. Mas ao reler o código (`execution-mode-card.tsx`, `test-profiles-card.tsx`, `execution-mode.functions.ts`) identifiquei 4 refinamentos que vale a pena fazer:
+## Mudanças
 
-### 1. Bug: o toast "Modo bloqueado" nunca aparece
+### 1. Copy — destacar "leitura gratuita"
 
-Em `test-profiles-card.tsx` (linha 498-510), o botão "Atualizar agora" tem em simultâneo:
-- `onClick` que verifica `isCacheOnlyMode` e mostra `toast.warning(...)`
-- `disabled={refreshMutation.isPending || isCacheOnlyMode}`
+Alterar o título no `lockGate` (PT e EN) para reforçar a palavra-chave:
 
-Botões `disabled` no HTML não disparam `onClick` — logo a mensagem nunca é mostrada. O utilizador vê apenas um botão cinzento sem perceber porquê. A única pista é o `title` (tooltip), que **não existe em mobile**.
+- **Antes (PT):** "Continua a leitura / do @robs.cortez"
+- **Depois (PT):** "Continua a **leitura gratuita** / do relatório de @robs.cortez"
 
-**Fix:** trocar `disabled` por estilo "visualmente desativado" mantendo o botão clicável apenas para mostrar o toast. Ou — preferível — manter `disabled` e adicionar um chip inline "Bloqueado pelo modo cache" visível ao lado do botão.
+Implementação: usar `<Trans>` com três slots — `<free>` para "leitura gratuita" e `<accent>` para o handle. O `<free>` recebe `font-semibold`, cor `text-content-primary` e um sublinhado decorativo em `accent-primary` via `underline decoration-2 underline-offset-4 decoration-accent-primary/60`. Sem itálico (Fraunces fica reservado para o resto do título). Mantém-se a tipografia editorial.
 
-### 2. Falta caminho de saída de 1 clique
+Atualizar ambos os ficheiros `src/i18n/locales/pt/gate.json` e `src/i18n/locales/en/gate.json` substituindo `titleLine1` + `titleLine2Prefix` por uma chave única `title` com placeholders.
 
-Hoje, se o admin está em cache_only e quer atualizar um perfil, tem de:
-1. Ler o tooltip
-2. Subir até ao card de modo
-3. Mudar para "Buscar dados novos" (com diálogo de confirmação)
-4. Voltar ao perfil
-5. Clicar "Atualizar agora"
+### 2. Visual — "Clean Prism Glass" aplicado ao cartão
 
-**Fix:** quando bloqueado, o tooltip/chip mostra um botão secundário **"Mudar para fresh e atualizar"** que faz o switch + abre o diálogo de preflight no mesmo clique (com confirmação única).
+Sem hero 3D dominante (não cabe no estilo Iconosquare e o cartão tem de continuar legível por cima do conteúdo desfocado). Em vez disso, adicionar uma camada decorativa subtil que evoca prismas/vidro:
 
-### 3. Indicador de modo ativo invisível no contexto do perfil
+a. **Halo prismático atrás do cartão** — uma `div` decorativa absoluta (`-z-10`, `pointer-events-none`, `aria-hidden`) com dois blobs cónicos translúcidos:
+   - blob 1: top-left, `from-accent-primary/15 via-accent-secondary/10 to-transparent`, `blur-3xl`, `~320px`
+   - blob 2: bottom-right, `from-accent-secondary/12 to-transparent`, `blur-3xl`, `~280px`
+   - opacidade total ≤ 40% para nunca competir com o conteúdo
 
-O modo só está visível no card de cima. Quando se está a olhar para a lista de perfis, não é óbvio em que modo o sistema corre.
+b. **Glass shell no cartão** — manter `bg-surface-card` mas adicionar:
+   - borda gradiente suave (técnica `border-image` ou pseudo-elemento) com `linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 25%, transparent), transparent 60%)`
+   - `backdrop-blur-xl` (já está sobre conteúdo desfocado, reforça a sensação de vidro)
+   - sombra refinada em duas camadas: existente + `0 1px 0 0 white inset` no topo (highlight de vidro)
 
-**Fix:** adicionar uma micro-pill ao topo da `TestProfilesCard` ("Modo: dados guardados · sem custos" / "Modo: buscar novos · custos variáveis"), com a mesma cor do switch.
+c. **Prism chip no canto superior direito** — pequeno quadrado 56×56px com gradiente cónico (`conic-gradient`) translúcido em `accent-primary/secondary/transparent`, `rounded-2xl`, `rotate-[12deg]`, posicionado a `-top-3 -right-3`. Apenas decorativo (`aria-hidden`), reforça o motivo "prism glass" sem adicionar componentes pesados.
 
-### 4. Brecha de segurança ainda em aberto
+d. **Badge "Acesso gratuito"** — passa a ter um leve `bg-emerald-50` em vez de `bg-white` plano, com `ring-1 ring-emerald-200/60`, para alinhar com o reforço da gratuidade.
 
-`getExecutionMode`, `setExecutionMode`, `getTestProfileStatuses` e `expireSnapshotForHandle` em `src/server/admin/execution-mode.functions.ts` **não têm guarda de admin** — qualquer um com o URL público das serverFn consegue ler ou mudar o modo de execução.
+e. **Micro-animação de entrada** — `animate-in fade-in slide-in-from-bottom-2 duration-500` no cartão para que apareça com presença (uma única vez).
 
-**Fix:** adicionar `requireAdminSession` (middleware existente no projeto, usado pelas outras serverFn de admin) aos 4 handlers. Se o middleware ainda não existir, criar a partir de `requireSupabaseAuth` + verificação de email contra a allowlist de admin.
+### 3. Token e CSS
 
-Verifico primeiro se já existe a infra `attachSupabaseAuth` + middleware de admin no projeto antes de implementar; se não existir, faço só as 3 melhorias visuais (1-3) e deixo a 4 documentada para tarefa separada (envolve mexer em `src/start.ts` e criar middleware partilhado, fora do âmbito UI).
+Tudo via classes Tailwind + tokens existentes (`accent-primary`, `accent-secondary`, `surface-card`, `border-default`). Se for preciso o gradiente cónico do prism chip, adicionar uma única utility custom em `src/styles.css`:
+
+```css
+.bg-prism-chip {
+  background:
+    conic-gradient(from 140deg at 50% 50%,
+      color-mix(in oklab, var(--accent-primary) 35%, transparent),
+      color-mix(in oklab, var(--accent-secondary) 30%, transparent),
+      color-mix(in oklab, var(--accent-primary) 25%, transparent));
+}
+```
+
+Zero cores hardcoded em componentes.
 
 ## Ficheiros tocados
 
-- `src/components/admin/v2/sistema/test-profiles-card.tsx` — fix do bug do click, chip inline, botão "mudar e atualizar"
-- `src/components/admin/v2/sistema/execution-mode-card.tsx` — sem alterações (ou só uma melhoria mínima de copy)
-- `src/components/admin/v2/sistema/index.tsx` (ou wrapper equivalente) — micro-pill de modo na `TestProfilesCard`
-- `src/server/admin/execution-mode.functions.ts` — **só se** já houver `requireAdminSession`; caso contrário fica para depois
+- `src/components/product/report-lock-gate.tsx` — título com `<Trans>`, halo, glass shell, prism chip, badge tonal, animação
+- `src/i18n/locales/pt/gate.json` — nova chave `lockGate.title` com slots `<free>` e `<accent>`
+- `src/i18n/locales/en/gate.json` — espelho EN ("Keep reading the **free** report from @handle")
+- `src/styles.css` — uma utility `.bg-prism-chip` (5 linhas)
 
-## Fora do âmbito
+## Fora de âmbito
 
-- Mudanças à lógica de enforcement em `analyze-public-v1`
-- Bypass do `forceRefresh` admin via `INTERNAL_API_TOKEN` (já intencional)
-- RLS, pipeline, public endpoints
+- Não tocar no `UnlockModal` (o stepper que abre ao clicar no CTA).
+- Não tocar no conteúdo desfocado por baixo.
+- Não introduzir bibliotecas 3D (three.js, spline, etc.) — incompatível com o registo Iconosquare e com o budget de bundle do `/analyze`.
 
 ## Checkpoint
 
-- ☐ Botão bloqueado mostra feedback claro em desktop **e** mobile
-- ☐ Existe atalho "mudar para fresh e atualizar" no perfil
-- ☐ Modo ativo visível no contexto da lista de perfis
-- ☐ ServerFn de admin têm guarda (ou está documentado porque não)
+- ☐ Título em PT lê "Continua a **leitura gratuita** do relatório de @handle" com "leitura gratuita" a bold + sublinhado em accent
+- ☐ Cartão tem halo prismático translúcido por trás (visível mas subtil)
+- ☐ Prism chip decorativo no canto sup. direito
+- ☐ Badge com tom esmeralda suave
+- ☐ Animação de entrada subtil
+- ☐ Sem cores hardcoded, sem dark navy, sem glow, sem libs novas

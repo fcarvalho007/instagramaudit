@@ -2,8 +2,7 @@
   "lockGate": {
     "ariaRegion": "Continuar a leitura do relatório",
     "badge": "Acesso gratuito · Beta",
-    "titleLine1": "Continua a leitura",
-    "titleLine2Prefix": "do",
+    "title": "Continua a <free>leitura gratuita</free><br/>do relatório de <accent>@{{handle}}</accent>",
     "subtitle": "Indica o nome e email e responde a <strong>3 perguntas rápidas</strong> para abrir o resto do relatório.",
     "cta": "Ver relatório gratuito →",
     "footer": {
