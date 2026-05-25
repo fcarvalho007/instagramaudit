@@ -358,6 +358,47 @@ export async function generateInsights(
   }
 }
 
+/**
+ * Pós-processamento determinístico do veredicto editorial:
+ *  - calcula `warnings` a partir de sinais reais do `ctx` (não do modelo);
+ *  - força `verdict_label = "limited_data"` quando `posts_analyzed < 5`;
+ *  - rebaixa `confidence` com base no número de warnings.
+ *
+ * Pura. Não toca em I/O. Devolve sempre um novo objecto.
+ */
+export function finalizeEditorialVerdict(
+  raw: EditorialVerdict,
+  ctx: InsightsContext,
+): EditorialVerdict {
+  const warnings: EditorialVerdictWarning[] = [];
+
+  const postsAnalyzed = ctx.content_summary.posts_analyzed ?? 0;
+  if (postsAnalyzed < 5) warnings.push("low_sample");
+
+  const weekly = ctx.content_summary.estimated_posts_per_week ?? 0;
+  if (weekly < 0.25 && postsAnalyzed < 8) warnings.push("cadence_uncertain");
+
+  if (!ctx.market_signals.has_free) warnings.push("no_market_signals");
+  if (!ctx.benchmark) warnings.push("benchmark_missing");
+
+  // Force band when sample is too small to defend any other reading.
+  const verdictLabel: EditorialVerdict["verdict_label"] =
+    postsAnalyzed < 5 ? "limited_data" : raw.verdict_label;
+
+  // Confidence cap based on warnings count.
+  let confidence: EditorialVerdict["confidence"] = raw.confidence;
+  if (warnings.length >= 2) confidence = "low";
+  else if (warnings.length === 1 && confidence === "high") confidence = "medium";
+  if (verdictLabel === "limited_data") confidence = "low";
+
+  return {
+    ...raw,
+    verdict_label: verdictLabel,
+    confidence,
+    warnings,
+  };
+}
+
 interface OpenAiChatResponse {
   model?: string;
   choices?: Array<{ message?: { content?: string } }>;
