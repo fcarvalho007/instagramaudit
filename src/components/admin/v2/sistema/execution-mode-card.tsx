@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Database, RefreshCw, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   getExecutionMode,
   setExecutionMode,
@@ -34,8 +35,17 @@ export function ExecutionModeCard() {
   const mutation = useMutation({
     mutationFn: (mode: "cache_only" | "fresh") =>
       setExecutionMode({ data: { mode } }),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] }),
+    onSuccess: (_res, mode) => {
+      qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
+      qc.invalidateQueries({ queryKey: ["admin", "test-profiles"] });
+      toast.success(
+        mode === "cache_only"
+          ? "Modo alterado: usar dados guardados (sem custos)."
+          : "Modo alterado: buscar dados novos (com custos).",
+      );
+    },
+    onError: (err) =>
+      toast.error(`Falhou a alterar o modo: ${(err as Error).message}`),
   });
 
   const mode = data?.mode ?? "cache_only";
@@ -153,6 +163,10 @@ export function ExecutionModeCard() {
           </div>
         </div>
       </div>
+
+      <p className="mt-2 text-[11px] leading-relaxed text-admin-text-tertiary">
+        Pode demorar até 30 s a propagar entre instâncias do servidor.
+      </p>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
