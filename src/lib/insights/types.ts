@@ -264,6 +264,12 @@ export interface AiInsightsV2 {
    * determinístico em `block02-diagnostic.ts`.
    */
   priorities?: AiInsightsV2Priorities;
+  /**
+   * Veredicto editorial estruturado para o primeiro cartão (Bloco 1).
+   * Opcional para retrocompat com snapshots antigos — quando ausente o
+   * cartão cai para `sections.hero` + heurística determinística.
+   */
+  editorial_verdict?: EditorialVerdict | null;
 }
 
 /** Nível editorial das prioridades de ação geradas pela IA. */
