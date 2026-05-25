@@ -430,6 +430,16 @@ export function ReportShellV2({
 
         {/* Espaço inferior mobile para a bottom nav bar não tapar conteúdo */}
         <div className="h-20 lg:hidden" aria-hidden="true" />
+
+        {/* UX helpers — back to top, shortcut help, mobile unlock CTA */}
+        <BackToTopButton />
+        {gated && (
+          <StickyUnlockBar onClick={handleUnlockClick} />
+        )}
+        <ReportShortcutDialog
+          open={shortcutsOpen}
+          onOpenChange={setShortcutsOpen}
+        />
       </div>
     </ReportTrackingProvider>
     </ReportDataProvider>
