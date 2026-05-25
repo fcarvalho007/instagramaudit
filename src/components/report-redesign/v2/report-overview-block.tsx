@@ -112,10 +112,6 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         /* Zona B — Editorial Identity Card (replaces 6-card grid) */
         <EditorialIdentityCard
           scores={scores}
-          aiHeroText={enriched.aiInsightsV2?.sections.hero?.text ?? null}
-          aiHeroEmphasis={
-            enriched.aiInsightsV2?.sections.hero?.emphasis ?? null
-          }
           aiVerdict={enriched.aiInsightsV2?.editorialVerdict ?? null}
           keyMetrics={{
             engagementRate: k.engagementRate,

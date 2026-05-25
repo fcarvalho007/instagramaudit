@@ -37,10 +37,8 @@ interface Bullet {
 
 interface EditorialIdentityCardProps {
   scores: Record<ScoreKey, { value: number; subtitle: string }>;
-  aiHeroText?: string | null;
-  aiHeroEmphasis?: "positive" | "negative" | "default" | "neutral" | null;
   /** Veredicto editorial estruturado. Quando presente, tem prioridade
-   *  sobre `aiHeroText` (que continua a servir de fallback editorial). */
+   *  sobre o fallback determinístico. */
   aiVerdict?: EditorialVerdict | null;
   keyMetrics?: {
     engagementRate: number;
@@ -65,112 +63,9 @@ interface EditorialIdentityCardProps {
   competitorsCount?: number;
 }
 
-/* ── Fallback determinístico ───────────────────────────────────────── */
-
 interface EditorialCopy {
   title: string;
   paragraph: string;
-}
-
-function buildFallbackCopy(
-  scores: Record<ScoreKey, { value: number; subtitle: string }>,
-  t: TFunction,
-): EditorialCopy {
-  const eng = scores.envolvimento.value;
-  const freq = scores.frequencia.value;
-  const inter = scores.interaccao.value;
-
-  const pick = (key: string): EditorialCopy => ({
-    title: t(`identity.fallback.${key}.title`),
-    paragraph: t(`identity.fallback.${key}.paragraph`),
-  });
-  if (eng >= 60 && freq >= 60) return pick("solid_consistent");
-  if (eng >= 60 && freq < 40) return pick("irregular_reach");
-  if (freq >= 60 && eng < 40) return pick("cadence_no_signal");
-  if (eng < 40 && inter < 40) return pick("no_direction");
-  return pick("opportunity");
-}
-
-/* ── AI text sanitization ──────────────────────────────────────────── */
-
-const FORBIDDEN_PREFIX = /^\s*(a\s+ia\s+(conclui|concluiu|observa|nota|identifica|deteta|detecta|analisa)|segundo\s+a\s+ia)[:,.\s-]*/i;
-
-function countWords(s: string): number {
-  return s.trim().split(/\s+/).filter(Boolean).length;
-}
-
-function splitFirstSentence(text: string): { first: string; rest: string } {
-  const m = text.match(/^(.+?[.!?])\s+(.+)$/s);
-  if (m) return { first: m[1].trim(), rest: m[2].trim() };
-  return { first: text.trim(), rest: "" };
-}
-
-function trimParagraphToSentence(text: string, maxChars = 320): string {
-  if (text.length <= maxChars) return text;
-  const slice = text.slice(0, maxChars);
-  const lastStop = Math.max(slice.lastIndexOf("."), slice.lastIndexOf("!"), slice.lastIndexOf("?"));
-  if (lastStop > 80) return slice.slice(0, lastStop + 1).trim();
-  return slice.trim() + "…";
-}
-
-function deriveCopyFromAi(
-  aiHeroText: string,
-  fallback: EditorialCopy,
-  emphasis: "positive" | "negative" | "default" | "neutral" | null = null,
-): EditorialCopy {
-  const cleaned = aiHeroText.replace(FORBIDDEN_PREFIX, "").trim();
-  if (!cleaned) return fallback;
-
-  const { first, rest } = splitFirstSentence(cleaned);
-  const firstClean = first.replace(/[.!?]+$/, "").trim();
-  const firstWordCount = countWords(firstClean);
-
-  // Title strategy (in order of preference):
-  //   1. If the AI opens with an editorial hook (≤ 10 words and no digit),
-  //      promote that hook to the title and use the rest as paragraph.
-  //   2. Otherwise synthesize a short editorial title from `emphasis`, so
-  //      the title still reflects the AI's diagnostic instead of falling
-  //      back to a deterministic copy chosen only from score bands.
-  //   3. As last resort, keep the deterministic fallback title.
-  const looksLikeEditorialHook =
-    firstWordCount > 0 && firstWordCount <= 10 && !/\d/.test(firstClean);
-
-  let title: string;
-  let paragraphRaw: string;
-
-  if (looksLikeEditorialHook) {
-    title = firstClean;
-    paragraphRaw = rest || cleaned;
-  } else {
-    title = synthesizeTitleFromEmphasis(emphasis) ?? fallback.title;
-    // Paragraph is the full AI text — never mix with fallback copy.
-    paragraphRaw = cleaned;
-  }
-
-  const paragraph = trimParagraphToSentence(paragraphRaw);
-  return { title, paragraph: paragraph || fallback.paragraph };
-}
-
-/**
- * Synthesizes a short editorial title from the AI emphasis when the AI's
- * first sentence is too long to use directly. Keeps the card aligned with
- * the AI verdict instead of falling back to a generic band-based template.
- */
-function synthesizeTitleFromEmphasis(
-  emphasis: "positive" | "negative" | "default" | "neutral" | null,
-): string | null {
-  switch (emphasis) {
-    case "positive":
-      return "Envolvimento acima da referência";
-    case "negative":
-      return "Envolvimento abaixo da referência";
-    case "neutral":
-      return "Sinal ainda parcial";
-    case "default":
-    case null:
-    default:
-      return null;
-  }
 }
 
 /* ── Pontuação + bandas ────────────────────────────────────────────── */
@@ -372,8 +267,6 @@ export function deriveSignals(
 
 export function EditorialIdentityCard({
   scores,
-  aiHeroText,
-  aiHeroEmphasis,
   aiVerdict,
   keyMetrics,
   dominantFormat,
@@ -388,7 +281,6 @@ export function EditorialIdentityCard({
   competitorsCount,
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
-  const fallback = buildFallbackCopy(scores, t);
 
   // ── Resolução do veredicto: corre o guard determinístico ──────────
   // Constrói as métricas mínimas. Quando a IA não devolveu veredicto, o
@@ -429,13 +321,13 @@ export function EditorialIdentityCard({
     );
   const isProvisional = resolution.source !== "ai" || hasProvisionalWarning;
 
-  // Quando o resolver descartou completamente a IA e não havia hero
-  // text, mantemos o pipeline antigo (`deriveCopyFromAi`) como segunda
-  // hipótese visual; quando a IA está disponível usamos sempre `resolved`.
-  const copy: EditorialCopy =
-    resolution.source === "fallback" && !aiVerdict && aiHeroText
-      ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
-      : { title: resolved.title, paragraph: resolved.paragraph };
+  // Nunca renderizamos `ai_insights_v2.sections.hero.text`. Quando a IA
+  // não tem `editorial_verdict` válido, `resolved` é o fallback
+  // determinístico (diagnóstico, sem verbos prescritivos).
+  const copy: EditorialCopy = {
+    title: resolved.title,
+    paragraph: resolved.paragraph,
+  };
 
   const overall = computeOverall(scores);
   const band: Band = verdictLabelToBand(resolved.verdict_label);
