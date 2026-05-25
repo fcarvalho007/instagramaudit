@@ -33,13 +33,12 @@ function actionByPricing(
   fallback: string,
 ): string {
   switch (pricing) {
-    case "one_off_3":
+    case "single_report_7":
       return "Responder com proposta de relatório único";
-    case "bundle_5_13":
-      return "Sugerir bundle 5";
-    case "plano_mensal":
-    case "plano_agencia":
-      return "Explorar plano mensal";
+    case "pack_5_reports_28":
+      return "Sugerir pack de 5 relatórios";
+    case "not_ready_to_pay":
+      return "Nutrir mais tarde";
     default:
       return fallback;
   }
@@ -76,7 +75,7 @@ export function interpretFeedback(
     intent === "alto"
       ? "Responder com proposta de relatório único"
       : intent === "medio"
-        ? "Explorar plano mensal"
+        ? "Sugerir pack de 5 relatórios"
         : intent === "baixo"
           ? "Nutrir mais tarde"
           : "Arquivar / nutrir mais tarde";
