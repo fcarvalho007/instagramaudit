@@ -607,23 +607,25 @@
     "interest_registered_aria": "Interest registered",
     "registered": "Registered",
     "dialog": {
-      "title": "Unlock full report",
-      "description": "We're gathering interest to set the final pricing. Pick the option that fits — no payment now.",
-      "footer": "No payment now. We'll be in touch.",
-      "single_title": "Single report",
-      "single_price": "Under review",
-      "single_description": "One profile, one complete report.",
-      "bundle_title": "Bundle of 5 reports",
-      "bundle_price": "Under review",
-      "bundle_description": "Five profiles. Save vs. one-off.",
-      "monthly_title": "Monthly plan",
-      "monthly_price": "Under review",
-      "monthly_description": "Recurring analyses of the same profile.",
-      "monthly_badge": "Coming soon",
-      "agency_title": "Agency",
-      "agency_price": "On request",
-      "agency_description": "Multiple brands, dashboards and exports.",
-      "agency_badge": "Talk to us"
+      "title": "Unlock premium access",
+      "subtitle": "The first block remains free. During the launch phase, the Editorial diagnosis is included as a launch offer. The remaining premium sections are available with a paid unlock.",
+      "single": {
+        "title": "1 report",
+        "price": "€7",
+        "bullet_profile": "1 profile",
+        "bullet_unlock": "1 premium unlock",
+        "note": "Ideal for a one-off analysis",
+        "cta": "Choose 1 report"
+      },
+      "pack": {
+        "title": "Pack of 5 reports",
+        "price": "€28",
+        "bullet_reports": "5 reports",
+        "bullet_unit": "€5.60/report",
+        "savings_badge": "Save 20%",
+        "cta": "Choose pack of 5"
+      },
+      "trust_note": "No subscription. No automatic renewal."
     }
   },
   "engagement": {
