@@ -144,6 +144,24 @@
       "rhythm_excess": "acima do recomendado",
       "rhythm_good": "ritmo saudável",
       "rhythm_low": "abaixo do mínimo"
+    },
+    "anchor": {
+      "eyebrow": "Métrica âncora",
+      "engagement_above": "envolvimento {{delta}}% acima da referência do segmento",
+      "engagement_below": "envolvimento {{delta}}% abaixo da referência do segmento",
+      "comments": "{{value}} comentários por publicação",
+      "comments_caption": "sinal de conversa activa",
+      "rhythm": "{{value}} publicações por semana",
+      "rhythm_caption": "ritmo sustentável"
+    },
+    "why": {
+      "eyebrow": "Porque importa",
+      "solid_above": "O envolvimento acima da referência sugere que o conteúdo está calibrado para a audiência. O passo seguinte é proteger este ritmo sem perder identidade.",
+      "developing": "O perfil está em zona de aprendizagem: há sinais positivos mas ainda inconsistentes. Pequenos ajustes ao formato e à cadência decidem a próxima curva.",
+      "warning_below": "O envolvimento está claramente abaixo da referência para perfis da mesma dimensão. A análise editorial identifica onde o conteúdo perde tracção.",
+      "weak_cadence": "A cadência actual limita o alcance: o algoritmo precisa de frequência mínima para distribuir consistentemente o conteúdo.",
+      "format_concentrated": "A concentração num único formato reduz o teste editorial. Diversificar abre novas hipóteses de tracção sem abandonar o que já funciona.",
+      "neutral": "Os sinais actuais não definem uma direcção clara — a análise editorial completa o quadro com tipo de conteúdo, captions e resposta da audiência."
     }
   },
   "frequency": {

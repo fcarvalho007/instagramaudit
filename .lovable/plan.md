@@ -1,164 +1,153 @@
-# Plano — i18n PT/EN do fluxo público de relatório (scope cirúrgico)
+# Plano — Block 1 + Block 2: menos métrica, mais interpretação
 
-## 1. Estado actual (auditoria)
+## 1. Auditoria — onde está a duplicação
 
-Infra-estrutura completa, parcialmente cablada:
+Mapa do que o utilizador vê no preview público (lock="engagement"):
 
-- `src/i18n/index.ts` — i18next síncrono, init `lng:"pt"`, namespaces:
-  `common, header, landing, footer, auth, analyze, gate, errors, report, unsubscribe`.
-- `src/hooks/use-language.ts` + `src/components/layout/language-switcher.tsx`
-  já existem e mudam idioma sem reload (`i18n.changeLanguage`, sync com
-  `localStorage` + `document.documentElement.lang`).
-- Hydration-safe: SSR sempre `pt`; switch só após mount via `useEffect`.
-
-**Ficheiros in-scope e cobertura:**
-
-| Ficheiro | Estado | Acção |
+| Zona | Componente | Mostra |
 |---|---|---|
-| `routes/analyze.$username.tsx` | ✅ wired (sync title/meta em runtime via `tAnalyze.meta.*`, error codes via `errors` ns) | nenhuma |
-| `routes/reports.$snapshotId.tsx` | ❌ **PT hardcoded** em `NotFoundState`, `ExpiredState`, `ErrorState`, mensagem do `catch`, body do `EmptyShell` ("Voltar aos relatórios"), `head().title`/og | **CABLAR** |
-| `components/product/unlock-modal.tsx` | ✅ 8× `useTranslation` (gate ns completo) | scan residual |
-| `components/product/analysis-error-state.tsx` | ⚠️ 2× wired mas 2 constantes top-level com fallback PT (`DEFAULT_CACHE_ONLY_TITLE/BODY`) usadas só quando i18n falha — aceitável | scan residual |
-| `components/product/analysis-skeleton.tsx` | ✅ wired (analyze ns) | nenhuma |
-| `components/product/report-lock-gate.tsx` | ✅ 3× wired (gate ns) | scan residual |
-| `components/report-redesign/v2/*` (hero, kpi, lock CTA, block-nav, lock-gate banner, cache-status-badge, etc.) | ✅ todos têm `useTranslation` para `report` ns | scan rápido por strings PT cruas |
+| Hero | `report-hero-v2.tsx` | nome, @handle, avatar, seguidores, total posts, posts analisados, bio |
+| KPI grid | `report-kpi-grid-v2.tsx` | **Envolvimento `X.XX%` vs benchmark**, **Ritmo `Y,Y` /semana**, Formato dominante + share |
+| **Block 1 free** | `editorial-identity-card.tsx` | gauge 0-100, eyebrow VEREDICTO, título, parágrafo, barra de referência, **`MetricsStrip` (likes/post + comentários/post + ritmo/semana)**, 2+2 bullets fortes/limitações |
 
-**Componentes não usados no fluxo público (dead code, fora de scope):**
-`analysis-header.tsx`, `report-gate-modal.tsx`, `premium-locked-section.tsx`,
-`public-analysis-dashboard.tsx` — nenhum import vivo. **Não tocar.**
+**Duplicações confirmadas:**
 
-**Restante já fora do scope desta tarefa:** `/admin`, CRM, diagnósticos, beta utilities, blocos 3–6 internos.
+- `MetricsStrip.rhythm` (posts/semana) ≡ `kpi.rhythm`. **Duplicação directa.**
+- `MetricsStrip.likes` + `comments` — não estão na KPI grid mas vão aparecer logo abaixo no `EngagementCardRefined` (locked) e no `PostComparisonBlock`. Sensação de repetição mecânica.
+- Bullets `strengths`/`limits` padded com `fallback_active`, `fallback_history`, `fallback_diversify`, `fallback_conversation` — **violam "avoid generic praise or alarmism"**: são preenchidos sempre que não há sinal real, garantindo que o utilizador vê 4 bullets vagos em perfis com pouca evidência.
 
-## 2. Strings novas a adicionar
+**Não-duplicações (preservar):**
+- Gauge 0-100 (score composto, não está em mais lado nenhum).
+- Eyebrow VEREDICTO + band badge.
+- Título editorial (≤5 palavras) — já cumpre o requisito A1.
+- Parágrafo 2-3 linhas — já cumpre A2.
+- Barra de referência (referência visual ao benchmark).
 
-### 2.1 Namespace `errors` — extender com snapshot route states
+**Block 2 (`ReportDiagnosticBlock`) — análise:**
+- Só visível após unlock (no `public_mvp` está dentro do `<ReportLockGate>`).
+- Já é puramente interpretativo: classifiers `classifyContentType`, `classifyFunnelStage`, `classifyAudienceResponse`, `classifyHashtags`, `classifyChannelIntegration` + `derivePriorities` (determinístico) ou `aiInsightsV2.priorities` (OpenAI).
+- Cards mostram: tipo de conteúdo (distribuição), estágio de funil (stack), cap­tions, hashtags, audience (likes/comments por post — única zona onde aparece esta stat, sem duplicar Block 1), integração (bio link + menções).
+- **`DiagnosticAudienceHighlight` mostra `avgLikes` e `avgComments`** — se Block 1 deixar de mostrar, deixa de haver duplicação.
+- Conclusão: estrutura do Block 2 está correcta. Não há reescrita estrutural. Apenas garantimos que a remoção do `MetricsStrip` em Block 1 elimina a redundância com o Block 2.
 
-PT (`src/i18n/locales/pt/errors.json`):
-```json
-"snapshot": {
-  "loadFailed": "Não foi possível carregar este relatório. Tenta novamente.",
-  "networkFailed": "Falha de ligação.",
-  "notFoundTitle": "Relatório não encontrado",
-  "notFoundBody": "Este relatório já não existe ou o identificador é inválido. Podes gerar um novo relatório quando quiseres.",
-  "expiredTitle": "Relatório expirado",
-  "expiredBodySuffix": "Para ver dados actuais de @{{handle}}, gera um novo relatório.",
-  "errorTitle": "Não foi possível carregar",
-  "ctaNewReport": "Gerar novo relatório",
-  "ctaAnalyzeNew": "Analisar novo perfil",
-  "ctaBackToReports": "Voltar aos relatórios"
-}
+## 2. Implementação
+
+### A. Block 1 — `editorial-identity-card.tsx`
+
+A.1. **Remover `MetricsStrip` por completo do render.** Mantemos a função no ficheiro durante o sprint (comentada como dead-code com `@deprecated` JSDoc) para reverter facilmente; remove-se em sprint seguinte. *Alternativa: apagar já.* Decisão: **apagar já** — menos código morto, fácil de recuperar por git.
+
+A.2. **Novo bloco "Métrica âncora" (single, abaixo do parágrafo, acima dos bullets).**
+
+   Selector determinístico (sem nova chamada de provider):
+   - Se `keyMetrics.engagementBenchmark > 0` e `|engagementDeltaPct| ≥ 10`:
+     anchor = engagement vs benchmark (`+12% acima da referência` / `‑34% abaixo da referência`)
+   - Senão se `averageComments ≥ 1`:
+     anchor = comentários médios por post (`4,2 comentários por post · sinal de conversa activa`)
+   - Senão se `postingFrequencyWeekly ≥ 1`:
+     anchor = ritmo (`3,5 publicações por semana · ritmo sustentável`)
+   - Senão: omitir bloco âncora (não inventar).
+
+   UI: 1 linha, ícone discreto, valor `tabular-nums`, mini-caption. **Sem repetir** a label da KPI grid (chama-se "ANCORA"/"ANCHOR", não "Envolvimento").
+
+A.3. **Substituir as 2 colunas 2+2 bullets por bloco "Porque importa" (single, interpretivo).**
+
+   - 1 eyebrow `PORQUE IMPORTA` / `WHY IT MATTERS`.
+   - 1-2 frases interpretativas em texto corrido (sem bullets).
+   - Selector determinístico baseado em (band, anchor source, dominantFormat):
+     | Condição | Mensagem (template) |
+     |---|---|
+     | band=solid + delta≥10 | "O envolvimento acima da referência sugere que o conteúdo está calibrado para a tua audiência. O passo seguinte é proteger este ritmo." |
+     | band=developing + delta entre ±10 | "O perfil está em zona de aprendizagem: há sinais positivos mas ainda inconsistentes. Pequenos ajustes ao formato e cadência decidem a próxima curva." |
+     | band=warning + delta≤-30 | "O envolvimento está claramente abaixo da referência para perfis da mesma dimensão. A análise editorial identifica onde o conteúdo perde tracção." |
+     | freq<1 (regardless of band) | "A cadência actual limita o alcance: o algoritmo precisa de frequência mínima para distribuir consistentemente." |
+     | dominantFormatShare≥70 | "A concentração num único formato reduz o teste editorial. Diversificar para 60/30/10 abre novas hipóteses de tracção." |
+     | fallback | "Os sinais actuais não definem uma direcção clara — a análise editorial completa o quadro com tipo de conteúdo, captions e resposta da audiência." |
+   - Se `aiInsightsV2.hero.text` existir E tiver ≥ 2 frases após `splitFirstSentence`, usar a 2ª frase como "porque importa" (reaproveitar texto IA, sem nova chamada). Caso contrário, template.
+
+A.4. **Remover** a função `deriveSignals` e respectivos `fallback_*` keys no JSON (limpar dead code).
+
+A.5. **`ReportOverviewBlock.tsx`** — sem mudanças estruturais; a única alteração é que `EditorialIdentityCard` deixa de receber `averageLikes`/`averageComments`/`postsAnalyzed` (passamos a calcular o anchor com os 3 sinais já tipados).
+
+### B. Block 2 — `report-diagnostic-block.tsx`
+
+B.1. **Sem mudanças de código.** Razões:
+   - Estrutura já é interpretativa (classifiers puros + AI priorities opcionais).
+   - Avg likes/comments só aparece dentro de `DiagnosticAudienceHighlight` (Q05) — única instância no relatório após remoção do MetricsStrip. Não é duplicação.
+   - Priorities têm fallback determinístico (`derivePriorities`) e fonte AI quando disponível — já cumpre B requirements.
+
+B.2. **Verificação manual:** correr `bunx tsc --noEmit` + abrir um snapshot real e confirmar que nenhum card do Block 2 repete a frase "engagement rate = X%" ou "Y posts/semana" como afirmação numérica nova.
+
+## 3. i18n
+
+### Chaves a ADICIONAR (`report` ns, PT + EN)
+
+```
+identity.anchor.eyebrow                 "Métrica âncora" / "Anchor metric"
+identity.anchor.engagement_above        "+{{delta}}% acima da referência"
+identity.anchor.engagement_below        "{{delta}}% abaixo da referência" (delta já vem negativo)
+identity.anchor.comments                "{{value}} comentários por post"
+identity.anchor.comments_caption        "sinal de conversa activa"
+identity.anchor.rhythm                  "{{value}} publicações por semana"
+identity.anchor.rhythm_caption          "ritmo sustentável"
+
+identity.why.eyebrow                    "Porque importa" / "Why it matters"
+identity.why.solid_above
+identity.why.developing
+identity.why.warning_below
+identity.why.weak_cadence
+identity.why.format_concentrated
+identity.why.neutral
 ```
 
-EN (`src/i18n/locales/en/errors.json`):
-```json
-"snapshot": {
-  "loadFailed": "We couldn't load this report. Please try again.",
-  "networkFailed": "Connection failed.",
-  "notFoundTitle": "Report not found",
-  "notFoundBody": "This report no longer exists or the identifier is invalid. You can generate a new one any time.",
-  "expiredTitle": "Report expired",
-  "expiredBodySuffix": "To see current data for @{{handle}}, generate a new report.",
-  "errorTitle": "Couldn't load the report",
-  "ctaNewReport": "Generate new report",
-  "ctaAnalyzeNew": "Analyze a new profile",
-  "ctaBackToReports": "Back to reports"
-}
-```
+### Chaves a REMOVER do uso (mas manter no JSON para evitar quebrar histórico)
+- `identity.metrics.*`
+- `identity.signals.fallback_*`
+- `identity.columns.strengths` / `identity.columns.limits` (deixam de ser renderizadas)
 
-E traduzir as 12 chaves existentes `INVALID_USERNAME`…`FALLBACK` para EN (já existem em PT, faltam em EN — verificar; provavelmente já estão).
+*Decisão*: manter no JSON neste sprint (zero risco de chave faltante noutro consumidor); marcar `// @deprecated` no ficheiro de tradução por comentário externo (README do i18n se existir, senão skip).
 
-### 2.2 Namespace `report` — chaves `snapshot.meta`
+## 4. Testes
 
-```json
-"snapshot": {
-  "metaTitle": "Relatório · InstaBench" / "Report · InstaBench"
-}
-```
+- Adicionar `src/components/report-redesign/v2/overview/__tests__/editorial-anchor.test.ts`:
+  - Selector de anchor: cobre os 4 ramos + nulo.
+  - Selector de "porque importa": cobre os 6 ramos.
+  - Confirma que `MetricsStrip` deixou de ser exportado (regression guard).
+- Render smoke test (opcional, baixa prioridade): renderizar `EditorialIdentityCard` com props mínimas + props ricas; verificar que não rebenta sem `averageLikes`/`averageComments`.
 
-(Usado para sync de `document.title` em runtime no `reports.$snapshotId.tsx`.)
+## 5. Constraints respeitadas
 
-## 3. Mudanças de código
+- Sem GSAP. Sem dark mode (componente já é light-first). Sem nova provider call. Sem regenerar relatórios. Sem expor blocos locked. Mobile-first preservado (anchor + why são layouts single-column nativos). PT/EN compatível.
 
-### 3.1 `src/routes/reports.$snapshotId.tsx`
-- Importar `useTranslation`.
-- `NotFoundState`, `ExpiredState`, `ErrorState`, `EmptyShell`: aceitar strings
-  via props (já aceita) — *callers* passam `t("snapshot.notFoundTitle")`, etc.
-- Substituir `"Voltar aos relatórios"` (linha 221) por `t("snapshot.ctaBackToReports")`.
-- Substituir `formatRetentionMessage()` + sufixo PT por `formatRetentionMessage()` + `t("snapshot.expiredBodySuffix", { handle })`. (`formatRetentionMessage` é util de `lib/report/retention.ts` — verificar se já é i18n-aware; se não, deixar como está e só interpolar o sufixo traduzido.)
-- Mensagem do `catch` (`"Falha de ligação."`) e fallback (`"Não foi possível carregar este relatório…"`) → `t("snapshot.networkFailed")` / `t("snapshot.loadFailed")`.
-- Sync `document.title` em runtime via `useEffect` espelhando o padrão de `analyze.$username.tsx` (l.170-181): `t("snapshot.metaTitle")` no `report` ns.
-- `head()` SSR mantém PT canónico (não muda — i18n hidrata depois).
-
-### 3.2 `formatRetentionMessage`
-Verificar se já lê i18n. Se não, ler de `t("snapshot.retentionMessage")` no
-ns `report` (mais provável: ficheiro retorna texto fixo). **Decisão**: se
-estiver fora de componente React (lib pura), manter PT canónico e mover a
-mensagem inteira para chave dedicada `report.snapshot.retentionMessage`
-e construí-la no componente. Sub-tarefa do 3.1.
-
-### 3.3 Audit residual (passada de leitura, sem mudanças se nada surgir)
-- `unlock-modal.tsx`, `report-lock-gate.tsx`, `analysis-error-state.tsx` —
-  procurar literais PT que escaparam.
-- `report-redesign/v2/*` — grep por strings PT cruas em JSX (ex.:
-  `"Análise"`, `"Voltar"`, `"Carregar"`, `"€"` em CTAs).
-  - Esperado: vazio ou near-vazio. Quaisquer achados → ns `report` ou `gate`
-    conforme contexto.
-
-### 3.4 `analyze.$username.tsx`
-- Nenhuma alteração de lógica.
-- *Opcional, baixo risco*: alinhar `tErrors("NETWORK_FETCH")` para
-  `tErrors("snapshot.networkFailed")` se quisermos chave única. **Decisão:
-  manter** `NETWORK_FETCH` (já existe e está cablado). Não consolidar.
-
-### 3.5 Hidratação — verificar que NÃO há regressão
-- `head()` continua em PT (SSR canónico).
-- Sync de title/og em runtime via `useEffect` (espelha `analyze.$username.tsx`).
-- Nenhuma string nova lida em SSR initial render.
-
-## 4. Validação
+## 6. Validação
 
 ```bash
 bunx tsc --noEmit
 bunx vitest run
 ```
 
-Manual (browser):
-1. PT default em `/analyze/frederico.m.carvalho` — copy PT.
-2. Switcher → EN. Recarrega não — basta navegar. UI passa para EN sem reload.
-3. Forçar erro (URL inválido) — error state em EN.
-4. Abrir `/reports/<id-inexistente>` em EN — `notFoundTitle/body` em EN.
-5. `/reports/<id-expirado>` em EN — `expiredTitle` + sufixo `{{handle}}` em EN.
-6. Unlock modal — copy EN (já estava EN-pronto via `gate` ns).
+Manual:
+1. Snapshot cached com `aiInsightsV2.hero.text` → título + parágrafo IA, "porque importa" = 2ª frase IA.
+2. Snapshot cached **sem** AI → título + parágrafo determinísticos, "porque importa" = template.
+3. Snapshot com `engagementDeltaPct = +25` → anchor mostra `+25% acima da referência`.
+4. Snapshot com `engagementDeltaPct = -45` → anchor mostra `-45% abaixo`, "porque importa" = `warning_below`.
+5. Snapshot small-sample (`postsAnalyzed < 5`) → `low_confidence` continua a substituir a barra de referência (sem regressão).
+6. Free preview confirma: zero duplicação visível entre KPI grid (`Y,Y /semana`) e Block 1.
+7. EN: switch idioma → todas as novas chaves traduzem.
 
-## 5. Constraints
+## 7. Output esperado
 
-- Sem alterar lógica de análise, fetch, RLS, providers.
-- Sem mexer admin/CRM/beta utilities/dead components.
-- Sem mover copy do `gate` / `analyze` / `report` ns já existente — só
-  adicionar `errors.snapshot.*` e `report.snapshot.metaTitle`.
-- Sem mudar SSR `head()` (evita mismatch).
-- Defaults PT preservados.
+- **Componentes alterados**: `editorial-identity-card.tsx` (remove MetricsStrip + BulletColumn render, adiciona AnchorMetric + WhyItMatters), `report-overview-block.tsx` (remove props já não passadas).
+- **Componentes inalterados**: hero, kpi grid, engagement card, diagnostic block, diagnostic priorities, post comparison.
+- **Dados usados (Block 1)**: `scores`, `keyMetrics.engagementRate/Benchmark/DeltaPct`, `dominantFormat/Share`, `postingFrequencyWeekly`, `followers`, `postsAnalyzed`, `averageLikes/Comments`, `aiInsightsV2.hero.text` opcional.
+- **OpenAI**: **opcional** em ambos os blocos. Block 1 usa `aiInsightsV2.hero.text` quando existir; senão template determinístico completo. Block 2 usa `aiInsightsV2.priorities` quando existir; senão `derivePriorities`.
 
-## 6. Output esperado no fim do build
+## 8. Checkpoint
 
-- **Ficheiros alterados**: `routes/reports.$snapshotId.tsx`,
-  `i18n/locales/pt/errors.json`, `i18n/locales/en/errors.json`,
-  `i18n/locales/pt/report.json`, `i18n/locales/en/report.json` (+ eventuais
-  componentes onde a auditoria residual encontre literais).
-- **Namespaces tocados**: `errors` (adicionar `snapshot.*`), `report`
-  (adicionar `snapshot.metaTitle` ± `retentionMessage`).
-- **Strings intencionalmente não traduzidas**: handles Instagram (`@xxx`),
-  IDs de snapshot, marca `InstaBench`, error codes brutos (vivem em logs).
-- **Gaps remanescentes** (fora deste scope, listar): blocos 3–6 internos,
-  componentes dead-code, /admin completa, copy de emails transaccionais
-  (vive em `templates.ts`).
-
-## 7. Checkpoint
-
-☐ Auditar grep final por strings PT em `routes/reports.$snapshotId.tsx`.
-☐ Adicionar chaves `errors.snapshot.*` PT+EN.
-☐ Adicionar chave `report.snapshot.metaTitle` PT+EN.
-☐ Refactor `reports.$snapshotId.tsx` para usar `useTranslation` + sync title.
-☐ Audit residual rápido em `unlock-modal`, `report-lock-gate`, `analysis-error-state`, `report-redesign/v2/*` (corrigir só achados pontuais).
+☐ Remover `MetricsStrip` do render + apagar função e tipos.
+☐ Implementar `AnchorMetric` (selector puro + UI single-row).
+☐ Implementar `WhyItMatters` (selector puro + UI single-paragraph).
+☐ Remover render de `BulletColumn` + apagar `deriveSignals`.
+☐ Adicionar chaves PT+EN em `report.json` (anchor.*, why.*).
+☐ Adicionar `editorial-anchor.test.ts`.
 ☐ `bunx tsc --noEmit` + `bunx vitest run`.
-☐ Validação manual PT/EN no preview.
+☐ QA manual: cached snapshot com e sem `aiInsightsV2`.
