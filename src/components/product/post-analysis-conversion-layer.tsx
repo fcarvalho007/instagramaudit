@@ -9,6 +9,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
+import { mailtoAgency, mailtoPro } from "@/lib/brand/contact";
 
 export type ConversionState = "acquisition" | "requested" | "limit-reached";
 
@@ -17,11 +19,6 @@ interface PostAnalysisConversionLayerProps {
   onPrimaryAction: () => void;
   username?: string;
 }
-
-const PRO_MAILTO =
-  "mailto:hello@instabench.pt?subject=Acesso%20Pro%20—%20InstaBench&body=Pretendo%20saber%20mais%20sobre%20o%20plano%20Pro.";
-const AGENCY_MAILTO =
-  "mailto:hello@instabench.pt?subject=Acesso%20Agency%20—%20InstaBench&body=Pretendo%20saber%20mais%20sobre%20o%20plano%20Agency.";
 
 const COPY: Record<
   ConversionState,
@@ -54,6 +51,9 @@ export function PostAnalysisConversionLayer({
   state,
   onPrimaryAction,
 }: PostAnalysisConversionLayerProps) {
+  const { contactEmail } = usePublicAppConfig();
+  const proMailto = mailtoPro(contactEmail);
+  const agencyMailto = mailtoAgency(contactEmail);
   const copy = COPY[state];
 
   return (
@@ -177,7 +177,7 @@ export function PostAnalysisConversionLayer({
             className="w-full mt-auto"
             rightIcon={<Sparkles />}
           >
-            <a href={PRO_MAILTO}>Pedir acesso Pro</a>
+            <a href={proMailto}>Pedir acesso Pro</a>
           </Button>
         </article>
 
@@ -209,7 +209,7 @@ export function PostAnalysisConversionLayer({
             asChild
             className="w-full mt-auto"
           >
-            <a href={AGENCY_MAILTO}>Saber mais</a>
+            <a href={agencyMailto}>Saber mais</a>
           </Button>
         </article>
       </div>
