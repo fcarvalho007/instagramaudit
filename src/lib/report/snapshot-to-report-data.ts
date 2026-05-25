@@ -297,6 +297,9 @@ export interface ReportEnriched {
     date: string;
     mentions: string[];
     thumbnailUrl?: string;
+    /** True quando o post foi fixado no perfil — usado pela UI para
+     *  sinalizar conteúdo que beneficia de tempo extra no grid. */
+    isPinned?: boolean;
   }>;
   /** Bottom 2 posts by engagement — empty if fewer than 4 posts available. */
   bottomPosts: Array<{
