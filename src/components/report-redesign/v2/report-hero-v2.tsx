@@ -66,7 +66,7 @@ export function ReportHeroV2({
           <div className="relative px-6 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-10 flex flex-col lg:flex-row lg:items-center gap-10 lg:gap-14">
 
             {/* ── Identity ─────────────────────────────────────────── */}
-            <div className="flex-1 min-w-0 flex items-center gap-5 lg:gap-7">
+            <div className="flex-1 min-w-0 flex items-center gap-4 lg:gap-7">
               <Avatar
                 avatarUrl={avatarUrl}
                 fullName={fullName || handle}
@@ -75,7 +75,7 @@ export function ReportHeroV2({
                 t={t}
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <h1 className="font-display text-[1.875rem] lg:text-[2.25rem] font-bold tracking-[-0.025em] text-content-primary leading-[1.05] break-words">
+                <h1 className="font-display text-[1.5rem] sm:text-[1.75rem] lg:text-[2.25rem] font-bold tracking-[-0.03em] text-content-primary leading-[1.1] break-all sm:break-words">
                   {handle}
                 </h1>
                 {fullName && (
@@ -279,7 +279,7 @@ function Avatar({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  const sizeClass = "size-20 md:size-28";
+  const sizeClass = "size-16 md:size-28";
 
   const inner = avatarUrl ? (
     <img
@@ -313,7 +313,7 @@ function Avatar({
         <span
           aria-label={t("hero.verified")}
           title={t("hero.verified")}
-          className="absolute bottom-0.5 right-0.5 inline-flex items-center justify-center size-6 md:size-7 rounded-full bg-signal-success text-white ring-2 ring-white shadow-[0_1px_3px_rgba(15,23,42,0.18)]"
+          className="absolute bottom-0.5 right-0.5 inline-flex items-center justify-center size-5 md:size-7 rounded-full bg-signal-success text-white ring-2 ring-white shadow-[0_1px_3px_rgba(15,23,42,0.18)]"
         >
           <Check className="size-3.5 md:size-4" strokeWidth={3.5} aria-hidden="true" />
         </span>
