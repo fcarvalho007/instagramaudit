@@ -1,4 +1,6 @@
-import { Sparkles } from "lucide-react";
+import { Check, Copy, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export type AIInsightEmphasis =
   | "default"
@@ -22,9 +24,33 @@ export function AIInsightBox({
   emphasis = "default",
 }: AIInsightBoxProps) {
   const v = emphasis;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(insight);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = insight;
+        ta.style.position = "fixed";
+        ta.style.top = "-1000px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      toast.success("Diagnóstico copiado");
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  };
+
   return (
     <aside
-      className="flex items-start gap-3 md:gap-4 rounded-2xl border px-4 py-4 md:px-5 md:py-5"
+      className="relative flex items-start gap-3 md:gap-4 rounded-2xl border px-4 py-4 md:px-5 md:py-5"
       style={{
         backgroundColor: `rgb(var(--insight-${v}-bg))`,
         borderColor: `rgb(var(--insight-${v}-border))`,
@@ -58,6 +84,18 @@ export function AIInsightBox({
           {insight}
         </p>
       </div>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? "Diagnóstico copiado" : "Copiar diagnóstico"}
+        className="absolute top-2 right-2 inline-flex items-center justify-center size-7 rounded-md text-content-tertiary hover:text-content-secondary hover:bg-black/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-1"
+      >
+        {copied ? (
+          <Check className="size-3.5" aria-hidden="true" />
+        ) : (
+          <Copy className="size-3.5" aria-hidden="true" />
+        )}
+      </button>
     </aside>
   );
 }

@@ -100,12 +100,25 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
   return (
     <section
       aria-label={t("skeleton.aria")}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
       className="flex min-h-screen items-center justify-center px-4 sm:px-6"
       style={{
         background: "linear-gradient(180deg, #F6FAFF 0%, #FFFFFF 100%)",
       }}
     >
       <style>{LOADER_CSS}</style>
+
+      {/* SR-only live announcement of phase progress. */}
+      <span className="sr-only">
+        {t("skeleton.sr_progress", {
+          defaultValue: "A analisar {{handle}} — passo {{current}} de {{total}}",
+          handle: handle ?? "",
+          current: currentStep + 1,
+          total: TOTAL_STEPS,
+        })}
+      </span>
 
       <div className="flex w-full max-w-[520px] flex-col items-center gap-5 rounded-2xl border border-border-default bg-surface-secondary px-6 py-8 shadow-card sm:px-8 sm:py-10">
         {/* Eyebrow + handle */}
