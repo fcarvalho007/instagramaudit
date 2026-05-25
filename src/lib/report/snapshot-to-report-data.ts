@@ -720,6 +720,7 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
       engagementPct: round2(num(p.engagement_pct, 0)),
       caption: (p.caption ?? "").slice(0, 200),
       permalink,
+      isPinned: p.is_pinned === true,
     };
     // Cast: `thumbnailUrl` will be added to the locked `ReportData` topPosts
     // type once the unlock for `report-mock-data.ts` is granted. Emitting it
