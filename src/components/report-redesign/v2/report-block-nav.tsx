@@ -178,8 +178,21 @@ function ItemRow({
   isActive: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation("report");
   const isLocked = item.access === "locked";
-  const isPartial = item.access === "partial";
+  const badgeKey =
+    item.accessBadge === "free"
+      ? "nav.access.badge_free"
+      : item.accessBadge === "launch"
+        ? "nav.access.badge_launch"
+        : "nav.access.badge_premium";
+  const badgeLabel = t(badgeKey);
+  const badgeClass =
+    item.accessBadge === "free"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : item.accessBadge === "launch"
+        ? "bg-amber-50 text-amber-800 ring-amber-200"
+        : "bg-surface-muted text-content-secondary ring-border-default";
   return (
     <button
       type="button"
@@ -231,13 +244,14 @@ function ItemRow({
       >
         {item.block.shortLabel}
       </span>
-      {isPartial && item.partialBadge ? (
-        <span className="ml-auto inline-flex items-center rounded-full bg-signal-warning/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-accent-gold">
-          {item.partialBadge}
-        </span>
-      ) : isActive ? (
-        <span aria-hidden="true" className="ml-auto size-1.5 rounded-full bg-blue-500" />
-      ) : null}
+      <span
+        className={cn(
+          "ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ring-1",
+          badgeClass,
+        )}
+      >
+        {badgeLabel}
+      </span>
     </button>
   );
 }
