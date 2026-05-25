@@ -21,9 +21,3 @@ export function mailtoProfessionalAccess(email: string): string {
   );
   return `mailto:${email}?subject=${subject}&body=${body}`;
 }
-
-/** @deprecated Use {@link mailtoProfessionalAccess}. Retained for back-compat. */
-export const mailtoPro = mailtoProfessionalAccess;
-
-/** @deprecated Use {@link mailtoProfessionalAccess}. Retained for back-compat. */
-export const mailtoAgency = mailtoProfessionalAccess;

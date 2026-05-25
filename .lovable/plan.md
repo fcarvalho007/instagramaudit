@@ -1,118 +1,79 @@
-## Objetivo
+## Auditoria de consistência comercial — read-only
 
-Redesenhar a experiência de pricing para 3 cards claros — **Grátis**, **1 relatório (7€)**, **Pack 5 relatórios (28€)** — em `/precos` e no `PremiumInterestDialog`, com um motivo visual premium (`cleanPrism` + glass + prismas 3D subtis) que respeite o sistema light-first existente.
+**Veredicto: 🟡 GO com 2 fixes obrigatórios antes do lançamento público.**
 
-## Leitura do estado atual
+As superfícies-core (`/precos`, `PremiumInterestDialog`, `ReportBlockNav`, header, footer, emails) estão alinhadas com `7€` / `28€` / `5,60€/relatório` / `Poupa 20%` / sem subscrição. Existem **2 superfícies públicas com preços e planos antigos** (`beta.request.tsx` + i18n da cobertura visual) e **uma família de componentes obsoletos** que mostra Pro/Agency mas está desligada de qualquer rota.
 
-- `src/components/pricing/pricing-page.tsx`: hoje mostra 2 cards (single + pack) + secção "como funciona o acesso" em lista numerada. Falta o card Grátis e o motivo visual.
-- `src/components/report-redesign/v2/premium-interest-dialog.tsx`: hoje mostra 2 cards (single + pack). Falta o card Grátis "Incluído".
-- i18n `pricing.json` e `report.json` já têm a base de 7€/28€ — vão ser estendidos, nunca reduzidos.
-- Tokens existem em `src/styles/tokens-light.css`; primary `#3772E5`, secondary `#7664E4`, surfaces brancas. Memory regra: **sem dark navy, sem cyan neon, sem glow**. JetBrains Mono proibido em UI pública.
+---
 
-## Interpretação visual (cleanPrism / Glass / 3D Multiscreen)
+### Respostas diretas
 
-Reler como **decoração contida**, não como tema:
+1. **Pricing correto está em**: `/precos`, `PremiumInterestDialog`, `ReportBlockNav` (AccessSummaryCard), header/footer (link para `/precos`), `commercial-followup` email, `app/plan` (redirect → `/precos`), `app/account` (estado fixo "Conta ativa"). Todos com `7€` / `28€` / `5,60€` / `Poupa 20%` / "Sem subscrição. Sem renovação automática." / `pending_note`.
 
-- **Glass cards**: `bg-white/80` com `backdrop-blur-sm`, `border` em navy a baixa opacidade, sombra leve `shadow-[0_24px_60px_-32px_rgba(15,23,42,0.18)]`.
-- **Prismas 3D**: 2–3 formas `div`/`svg` absolutas no fundo da secção dos cards (não nos cards) — gradient suave indigo→blue, `blur-3xl`, `opacity-30`, sem animação contínua. Servem de "profundidade", não de espetáculo.
-- **3D multiscreen**: aplicado apenas no card Pack (recomendado) via um leve `translate-y-[-4px]` em desktop e uma "moldura fantasma" atrás (segundo card desfocado a 8% de opacidade) que sugere "vários relatórios empilhados".
-- **Tipografia**: Fraunces para H1/H2; Inter SemiBold para preços (tabular-nums); nada de mono.
-- **Reflexo prism**: linha gradient horizontal de 1px no topo de cada card (`from-transparent via-accent-primary/30 to-transparent`).
-- **Mobile**: prismas 3D escondidos (`hidden md:block`); cards empilham; sem moldura fantasma.
+2. **Preços antigos visíveis ao utilizador**:
+   - `beta.request.tsx` (rota pública `/beta/request`): `€9,90` / `€49,90` / `€29,90/mês` + "Plano Pro mensal" + "Pack 10 análises".
 
-## Alterações
+3. **Pro / Agency / mensal / "em breve" / "sob proposta" ainda visíveis**:
+   - **Público**: `beta-request-form.tsx` (acima) e i18n `report.json` chaves `cover.fallback.public_title` / `score_public_title` ("disponível na versão Pro" / "Score visual · Pro") consumidas pela `ScorePanelUnavailable` no estado público do relatório.
+   - **Dead code** (não montado em rota nenhuma): `report-gate-modal.tsx`, `post-analysis-conversion-layer.tsx`, `premium-locked-section.tsx`, `report-tier-teaser.tsx`, `public-analysis-dashboard.tsx` — todos com Pro/Agency/`mailtoPro`/`mailtoAgency`/"em breve"/"Sob proposta"/`€29`.
+   - **Admin only**: `admin/v2/visao-geral`, `admin/v2/receita`, `admin/v2/relatorios`, `admin/v2/automacoes`, `admin/v2/email-lab`, `mock-data.ts` (subscrição/Pro/Agency em mocks e métricas).
+   - **Back-compat interna**: `brevo/enum-mappers.ts` (`subscription`), `brand/contact.ts` (`mailtoPro` / `mailtoAgency`, JSDoc-deprecated), `unlock-schema.test` (`subscription_monthly` para validar back-compat do enum).
+   - **i18n internal-only**: `gate.json` `userType.agency` é **segmentação**, não pricing — safe.
 
-### 1. i18n — `src/i18n/locales/pt/pricing.json` + `en/pricing.json`
+4. **Safe ignore** (admin / dev / back-compat):
+   - `admin/v2/*` (todos os ficheiros), `lib/admin/mock-data.ts`, `lib/admin/event-labels.ts`.
+   - `brevo/enum-mappers.ts`, `brand/contact.ts` (deprecated).
+   - `unlock-schema.test.ts`.
+   - `gate.json` `userType.agency` (segmentação).
+   - "em breve" em contextos não-comerciais: `cache-status-badge` ("A expirar em breve" = retenção), `report.json` roadmap de redes sociais (Facebook/TikTok/LinkedIn em breve), `automacoes/templates-tab` ("Editar em breve").
 
-Reestruturar com 3 cards e copy exato do brief:
+5. **Visível ao utilizador, tem de ser corrigido**:
+   - **P0** `beta.request.tsx` "Preços indicativos" (€9,90 / €49,90 / €29,90/mês + Plano Pro mensal).
+   - **P1** `report.json` `cover.fallback.score_public_title` / `public_title` (substituir "versão Pro"/"Pro").
+   - **P1** Apagar (ou desligar) o conjunto `PublicAnalysisDashboard` + filhos para evitar risco de uma rota futura voltar a montar copy obsoleta.
 
-```
-hero.title:    "Preços simples, com acesso progressivo"  /  "Simple pricing with progressive access"
-hero.subtitle: <texto do brief>
-free.label:    "Grátis" / "Free"
-free.title:    "Visão inicial do perfil" / "Initial profile overview"
-free.bullets:  ["Bloco 1 incluído", "Diagnóstico editorial disponível como oferta de lançamento", "Ideal para conhecer o perfil antes de aprofundar"]
-free.cta:      "Começar grátis" / "Start free"
-single.label:  "Premium"
-single.price:  "7€" / "€7"
-single.bullets:["1 perfil", "1 desbloqueio premium", "Ideal para uma análise pontual"]
-single.cta:    "Escolher 1 relatório" / "Choose 1 report"
-pack.label:    "Melhor valor" / "Best value"
-pack.unit:     "5,60€/relatório" / "€5.60/report"
-pack.savings_badge: "Poupa 20%" / "Save 20%"
-pack.bullets:  ["5 relatórios", "Melhor para comparar vários perfis", "Mais flexibilidade por menos custo"]
-pack.cta:      "Escolher pack de 5" / "Choose pack of 5"
-access.title:  "Como funciona o acesso"
-access.steps:  [
-  { title: "Explora gratuitamente", body: "Vê a primeira leitura do perfil sem compromisso." },
-  { title: "Recebe o extra de lançamento", body: "O Diagnóstico editorial está atualmente aberto para mostrar melhor o valor do produto." },
-  { title: "Desbloqueia o premium", body: "As secções de Desempenho, Conteúdo, Procura e Comparação ficam disponíveis com compra." }
-]
-trust_note + pending_note: manter
-```
+6. **Copy de checkout é honesto?**
+   - **Sim** em `/precos`, `PremiumInterestDialog`, `commercial-followup`: `pending_note` "Pagamento brevemente disponível — o botão regista o teu interesse." e `trust_note` "Sem subscrição. Sem renovação automática."
+   - **Não** em `beta-request-form.tsx`: "Preços indicativos" sugere uma tabela real de preços com plano mensal, sem dizer que checkout não está ativo. E nos componentes dead-code (`post-analysis-conversion-layer` diz "Em fase beta — sem checkout disponível" mas mostra "Pedir acesso Pro" / "Sob proposta" — confuso se for reativado).
 
-`access.items` (lista plana) é substituído por `access.steps` (array de objetos). Atualizar consumidor.
+7. **CTA que finge pagamento ativo?**
+   - **Não** nas superfícies live. As CTAs em `/precos` e modal só emitem `pricing_option_clicked` e mostram `pending_note`. A CTA Free navega para `/`.
+   - **Risco latente** no `beta-request-form` ("submeter pedido beta" + preços de planos mensais) e no dead code (`Pedir acesso Pro` via `mailtoPro`).
 
-### 2. i18n — `src/i18n/locales/{pt,en}/report.json`
+---
 
-Em `premium.dialog`, adicionar bloco `free`:
-- `dialog.title`: "Desbloquear acesso premium" / "Unlock premium access"
-- `dialog.subtitle`: copy do brief (primeiro bloco grátis, diagnóstico aberto, etc.)
-- `dialog.free`: `{ label: "Incluído"/"Included", title, bullets, currentBadge }`
-- Mantém `single` e `pack`. CTAs atualizados para "Escolher …".
+### Tabela por superfície
 
-### 3. `src/components/pricing/pricing-page.tsx`
+| Surface | Current copy | Expected copy | Status | Recommended action |
+|---|---|---|---|---|
+| `/precos` | Free / 7€ / 28€ · 5,60€/relatório · Poupa 20% · "Sem subscrição. Sem renovação automática." · pending_note | idem | ✅ OK | — |
+| `PremiumInterestDialog` (sidebar `ReportBlockNav`) | Incluído / 7€ / 28€ · Poupa 20% · trust+pending notes | idem | ✅ OK | — |
+| `ReportBlockNav` AccessSummaryCard | "1 relatório ou pack de 5. Sem subscrição." + pending_note | idem | ✅ OK | — |
+| `commercial-followup` email | 7€ / 28€ · 5,60€/relatório, poupas 20% · "Sem subscrição. Sem renovação automática." | idem | ✅ OK | — |
+| Header / Footer | Link único `/precos` | idem | ✅ OK | — |
+| `/app/plan` | `redirect → /precos` | idem | ✅ OK | — |
+| `/app/account` | Badge fixo "Conta ativa" | idem | ✅ OK | — |
+| `report.json` `nav.access.pending_note` PT/EN | "Pagamento brevemente disponível — os botões registam o teu interesse." | idem | ✅ OK | — |
+| **`beta.request.tsx` "Preços indicativos"** | "Relatório único €9,90 · Pack 10 análises €49,90 · Plano Pro mensal €29,90/mês" · "Testadores beta terão condições especiais." | "1 relatório 7€ · Pack 5 28€ (5,60€/relatório)" · sem mensal · sem Pro | 🔴 needs fix (P0) | Reescrever bloco para 2 linhas (7€/28€) + remover Pro mensal; deixar nota "Pagamento brevemente disponível". |
+| **`report.json` `cover.fallback.public_title` / `score_public_title`** PT/EN | "Análise visual disponível na versão Pro." / "Score visual · Pro" | "Análise visual disponível em secção premium." / "Score visual · Premium" | 🟠 needs fix (P1) | Trocar "versão Pro" / "Pro" por "premium" em 4 chaves (2 PT + 2 EN). |
+| `report.json` `gate.tier.pro` / `tier.pro_active` | "Pro" / "Pro ativo" | "Premium" / "Premium ativo" | 🟠 needs fix (P1) | Renomear etiquetas para alinhar com "premium" usado no resto da UI pública. |
+| `gate.json` `userType.agency` | "Agência" / "Agency" | igual (é segmentação de perfil, não pricing) | ⚪ safe ignore | Nenhuma. |
+| **`public-analysis-dashboard.tsx` + `report-gate-modal.tsx` + `post-analysis-conversion-layer.tsx` + `premium-locked-section.tsx` + `report-tier-teaser.tsx`** | Pro/Agency, €29, "Em breve", "Sob proposta", `mailtoPro`, `mailtoAgency` | dead code — não montado em nenhuma rota | 🟠 needs fix (P1) | Apagar a árvore (ou marcar `@deprecated` + remover exports) para eliminar risco de regressão. |
+| `brand/contact.ts` `mailtoPro` / `mailtoAgency` | exports deprecated | nenhum consumidor live | 🟡 safe ignore agora | Remover quando os componentes dead code forem apagados. |
+| `brevo/enum-mappers.ts` `subscription` ID | back-compat de telemetria histórica | manter para não partir leads antigos | ⚪ safe ignore | Documentar como deprecated e migrar quando todos os dados antigos saírem do sistema. |
+| `admin/v2/*` (revenue/intent/relatorios/email-lab/automacoes) + `mock-data.ts` | Pro/Agency/€29/subscrição/em breve | interno admin | ⚪ safe ignore | Nenhuma. |
+| `cache-status-badge` "A expirar em breve" | retenção, não comercial | idem | ⚪ safe ignore | Nenhuma. |
+| `report.json` roadmap (TikTok/LinkedIn/Facebook "em breve") | roadmap de produto, não pricing | idem | ⚪ safe ignore | Nenhuma. |
 
-- Adicionar `PricingOption = "free" | "single_report" | "pack_5_reports"`.
-- Grelha `grid-cols-1 md:grid-cols-3 gap-4 md:gap-5`.
-- Container relativo com 2 `<div aria-hidden>` posicionados absolutamente para os prismas (gradient blur).
-- `PricingCard` aceita `tone: "free" | "premium" | "best-value"`:
-  - **free**: surface `bg-surface-muted/70`, label badge cinza, CTA `variant="outline"`.
-  - **premium**: surface branca, label badge `accent-primary/10`.
-  - **best-value**: surface branca + reflexo prism + moldura fantasma (`::before` ou div decorativa em desktop), label `accent-secondary/10`, badge "Poupa 20%" canto superior direito, CTA `variant="primary"`.
-- Linha unit price (`5,60€/relatório`) por baixo do preço no card pack.
-- Microcopy `pending_note` mantida abaixo dos cards.
-- Secção "Como funciona o acesso" passa a renderizar 3 *step cards* (não lista numerada): grelha 3 colunas em desktop, stack mobile; cada card com número grande em Fraunces (`text-3xl font-fraunces`), título Inter SemiBold, body Inter.
+---
 
-### 4. `src/components/report-redesign/v2/premium-interest-dialog.tsx`
+### Recomendação antes de partilhar publicamente
 
-- `DialogContent` aumenta para `sm:max-w-[720px]`.
-- `PricingOption` estende para incluir `"free"` (não emite tracking; só fecha o modal).
-- Grelha `grid-cols-1 sm:grid-cols-3 gap-3`.
-- Card Free com badge "Incluído", tone neutro, CTA `variant="ghost"` que fecha o modal e mantém o utilizador na secção atual.
-- Pack card emfatizado igual à página.
-- `pending_note` por baixo dos cards.
+- **Bloquear o lançamento até resolver**: bloco "Preços indicativos" em `/beta/request`. É o único ponto onde um utilizador externo vê `€29,90/mês` e "Plano Pro mensal" — contradiz frontalmente todo o resto do produto.
+- **Fix recomendado em conjunto** (mesma sprint, baixo risco):
+  1. Atualizar `beta-request-form.tsx` para 2 linhas (7€ / 28€) com microcopy honesto.
+  2. Trocar `versão Pro` → `secção premium` nas 4 chaves `cover.fallback.*` e renomear `tier.pro` / `tier.pro_active` → "Premium" / "Premium ativo".
+  3. Apagar `PublicAnalysisDashboard` + 4 filhos (e em consequência `mailtoPro` / `mailtoAgency` de `brand/contact.ts`).
+- Depois disso: 🟢 **GO** para sharing público sem reservas.
 
-### 5. Tokens
-
-Sem novos tokens globais; usar utilitários Tailwind compostos com tokens existentes (`bg-surface-base`, `border-border-default`, `text-content-*`, `accent-primary`, `accent-secondary`). Reflexo prism e prismas decorativos via classes inline locais (sem hardcode de cores fora de tokens — tudo via `accent-primary/30` etc.).
-
-### 6. Tracking
-
-- `pricing_option_clicked` mantém-se para `single_report` e `pack_5_reports`.
-- Click no card Free emite `pricing_option_clicked` com `pricing_option: "free"` (extensão back-compat — só adiciona um valor possível em metadata, não quebra schema do evento).
-
-## Fora de âmbito
-
-- Sem novos endpoints de checkout.
-- Não tocar em geração de report, Apify, OpenAI, DataForSEO, cache, snapshots, unlock logic.
-- Sem novas dependências (sem libs 3D — tudo CSS/SVG inline).
-- `app.plan.tsx` continua redirect para `/precos`.
-
-## Validação
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Visual: `/precos` e `PremiumInterestDialog` mostram 3 cards na ordem Free → 7€ → 28€; pack destacado; sem €3, €13, Pro, Agency, "plano mensal", "monthly plan".
-- Mobile 375px: cards empilham, CTAs visíveis, badge "Poupa 20%" não sobrepõe título, prismas decorativos escondidos.
-- PT/EN paridade nas chaves novas.
-
-## Checkpoint
-
-- ☐ i18n PT/EN atualizado com Free + access.steps
-- ☐ `pricing-page.tsx` reescrito para 3 cards + prismas + step cards
-- ☐ `premium-interest-dialog.tsx` reescrito para 3 cards
-- ☐ Consumidor de `access.items` migrado para `access.steps`
-- ☐ Tracking estendido (`free` adicionado, sem regressão)
-- ☐ `tsc --noEmit` e `vitest run` verdes
-- ☐ Smoke visual mobile + desktop
+Sem alterações de código nesta passagem.
