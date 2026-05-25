@@ -1,62 +1,85 @@
-## Objetivo
+## Diagnóstico
 
-1. Corrigir as datas das fontes de referência no bloco "Como este relatório foi feito" (mostrar a data de última actualização em vez do ano genérico "2025").
-2. Remover a entrada Databox da lista visível no relatório público.
-3. Aplicar uma melhoria subtil ao footer inspirada em "Clean Prism Glass 3D Shapes" (mantendo o tom Iconosquare-clean, light, minimal). A referência "3D Space Multiscreen" não se enquadra no estilo editorial do produto e fica de fora.
+O facto de `nasa` ter devolvido `PROFILE_NOT_ALLOWED` prova que `APIFY_TESTING_MODE` **não está** com o valor literal `"false"` em runtime — é a única condição que dispara esse `errorCode` (`src/routes/api/analyze-public-v1.ts:527-543` via `isTestingModeActive()` em `src/lib/security/apify-allowlist.ts:27-30`, regra `process.env.APIFY_TESTING_MODE !== "false"`).
 
-## 1. Datas das fontes (Lote A)
+Os restantes secrets pedidos (`APIFY_ENABLED`, `APIFY_HARD_CAP_USD`, `APIFY_DAILY_CAP_USD`, `PUBLIC_MAX_FRESH_PER_IP_DAY`, `PUBLIC_MAX_FRESH_PER_HANDLE_DAY`) existem em Lovable Cloud mas os valores actuais não são visíveis (são secrets, não env vars expostas). Para garantir runtime ≡ contracto, reaplico todos com o valor pretendido.
 
-Ficheiro: `src/lib/knowledge/benchmark-context.ts`
+## Plano
 
-- Adicionar um campo opcional `lastUpdatedLabel: string` em `BenchmarkSource` (string editorial pronta a render — não Date object, para evitar i18n acidental).
-- Preencher para as 3 fontes activas:
-  - **Socialinsider** → `"Fev 2026"` (URL: socialinsider.io/social-media-benchmarks/instagram, last updated Feb 20, 2026)
-  - **Buffer** → `"Mai 2026"` (Last updated May 10, 2026)
-  - **Hootsuite** → `"Abr 2026"` (April 14, 2026)
-- Manter `publishedYear` (usado por testes e prompt) — apenas alinhar para `2026`.
-- Databox mantém-se no data layer (testes dependem dela e o prompt LLM ignora-a por `visibility: "future"`), mas deixa de ser renderizada (ver §2).
+### 1. Atualizar secrets (Lovable Cloud)
 
-Ficheiro: `src/components/report-redesign/report-methodology.tsx`
+Via `secrets--update_secret` (uma única interação para o utilizador colar os 6 valores num formulário seguro):
 
-- Trocar `{source.publishedYear}` por `{source.lastUpdatedLabel ?? source.publishedYear}` no chip tabular ao lado do nome.
+| Secret | Valor a aplicar |
+|---|---|
+| `APIFY_TESTING_MODE` | `false` (literal, lowercase, sem aspas/espaços) |
+| `APIFY_ENABLED` | `true` |
+| `APIFY_HARD_CAP_USD` | `10` |
+| `APIFY_DAILY_CAP_USD` | `5` |
+| `PUBLIC_MAX_FRESH_PER_IP_DAY` | `10` |
+| `PUBLIC_MAX_FRESH_PER_HANDLE_DAY` | `5` |
 
-## 2. Remover Databox do relatório
+⚠️ `APIFY_TESTING_MODE` é case-sensitive e exact-match. Qualquer outro valor (`False`, `0`, vazio, espaços à volta) mantém o modo allowlist activo.
 
-Ficheiro: `src/components/report-redesign/report-methodology.tsx`
+Sem alterações a código, sem migrações, sem mexer em UI / lógica de análise.
 
-- Filtrar `INSTAGRAM_BENCHMARK_CONTEXT.sources` por `visibility === "active"` antes de iterar.
-- Remover toda a ramificação `isLocked` (badge "em breve", ícone `Lock`, copy alternativa, `opacity-60`) — já não há fonte locked visível.
-- Remover imports não usados (`Lock`).
+### 2. Aguardar redeploy automático
 
-Notas:
-- O ficheiro `benchmark-context.ts` e a entrada Databox **não são apagados** (testes em `__tests__/benchmark-context.test.ts` esperam as 4 fontes e a invariante "Databox é future"). Continuam como contexto interno reservado a futura ligação autenticada.
-- `sourceNote` já lista apenas Socialinsider/Buffer/Hootsuite — sem alteração.
+A actualização de secrets em Lovable Cloud reinicia o worker. Não é necessário comando manual.
 
-## 3. Melhoria subtil do footer
+### 3. Teste controlado único
 
-Ficheiro: `src/components/layout/footer.tsx`
+Após confirmação do redeploy, **uma só** chamada via `stack_modern--invoke-server-function`:
 
-Inspiração aplicada: **Clean Prism Glass 3D Shapes** — apenas o vocabulário visual leve (prisma de cor difusa, vidro suave). Sem 3D real, sem WebGL, sem multiscreen.
+```
+POST /api/analyze-public-v1
+Body: { "username": "natgeo" }
+```
 
-Alterações mínimas:
-- Substituir o `border-t border-border-subtle` flat por uma linha prismática subtil: divisor de 1px com `bg-gradient-to-r from-transparent via-[color-mix(in_oklab,var(--accent-primary)_25%,transparent)] to-transparent`.
-- Adicionar um halo glass discreto por trás do `<BrandMark />`: wrapper com `rounded-2xl bg-white/60 backdrop-blur-sm ring-1 ring-border-default/60 shadow-[0_8px_24px_-12px_color-mix(in_oklab,var(--accent-primary)_18%,transparent)] px-3 py-2`.
-- Adicionar um decorativo `aria-hidden` no canto: um pequeno blob radial accent-primary @ 8% opacity, `pointer-events-none`, posicionado `absolute -top-px right-8 size-24 rounded-full blur-3xl`, dentro de um wrapper `relative overflow-hidden` no `<footer>`.
+Escolha de handle: `natgeo` — conta institucional, fora de allowlist, baixo risco editorial, tráfego previsível. `nasa` é viável mas mantemo-lo de reserva caso `natgeo` falhe upstream.
 
-Tudo via tokens existentes (`--accent-primary`, `--border-default`). Zero novas dependências, zero alterações a tokens globais. Não toca em cor de texto, tipografia, links, copyright nem `LanguageSwitcher`.
+Custo previsto: 1 corrida Apify (1 perfil + 12 posts) ≈ **$0.01–0.03** — bem abaixo do `APIFY_DAILY_CAP_USD=5`.
 
-Rejeitado: "3D Space Multiscreen" — colide com o princípio Iconosquare-clean (sem cinematic / sem dark glow / sem 3D mock).
+### 4. Verificação no DB (read-only)
 
-## Validação
+Logo após a chamada, queries via `supabase--read_query`:
 
-- `bunx tsc --noEmit`
-- Inspecção visual em `/analyze/frederico.m.carvalho` (bloco metodologia + footer)
-- Garantir que os testes `benchmark-context.test.ts` continuam verdes (não tocamos na shape testada — só adicionamos campo opcional).
+- `analysis_events` → `outcome`, `data_source`, `estimated_cost_usd`, `error_code` para o handle/created_at recente
+- `provider_call_logs` → `status`, `actor`, `posts_returned`, `duration_ms`, `estimated_cost_usd`, `error_excerpt` (não exposto à response pública)
+- `analysis_snapshots` → existe linha nova com `provider=apify`?
+
+### 5. Verificar sanitização da resposta pública
+
+Confirmar que o JSON devolvido pelo endpoint **não contém**:
+- `APIFY_TOKEN`, `Authorization`, `Bearer`
+- mensagens raw do upstream (`ApifyUpstreamError.message`)
+- `error_excerpt` ou stack traces
+
+### 6. Relatório final (GO / NO-GO)
+
+Tabela compacta com:
+- HTTP status
+- `data_source` retornado (`fresh` esperado)
+- Apify foi chamado (sim/não — via `provider_call_logs`)
+- custo estimado vs actual
+- `analysis_event` id criado
+- `provider_call_log` id criado
+- sinal de fuga sensível (esperado: nenhum)
+
+Decisão: **GO** se `data_source=fresh`, sem `PROFILE_NOT_ALLOWED`/`CACHE_ONLY_NO_DATA`, custo logado e response sanitizada. Caso contrário **NO-GO** com causa-raiz e próximo passo.
+
+## Restrições respeitadas
+
+- Sem alterações a UI, sem alterações à lógica de análise.
+- Sem chamadas manuais a OpenAI/DataForSEO.
+- Apenas **1** chamada Apify paga.
+- Rate-limit e budgets continuam activos (caps mantidos, allowlist desactivada mas restantes guardas ficam — `apify-budget`, `public-rate-limit` continuam a contar).
 
 ## Checkpoint
 
-- ☐ `lastUpdatedLabel` adicionado a Socialinsider/Buffer/Hootsuite
-- ☐ Methodology renderiza a nova data e ignora fontes `future`
-- ☐ Branch `isLocked` + import `Lock` removidos
-- ☐ Footer com divisor prismático + halo glass na brand + blob radial decorativo
-- ☐ Testes passam, tsc sem erros
+- ☐ Secrets reaplicados (6 valores)
+- ☐ Worker reiniciado
+- ☐ 1 POST a `/api/analyze-public-v1` com `natgeo`
+- ☐ Verificação `analysis_events` + `provider_call_logs` + `analysis_snapshots`
+- ☐ Confirmação de sanitização da resposta
+- ☐ Relatório GO/NO-GO ao utilizador
