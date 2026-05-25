@@ -199,5 +199,96 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
     priorities = arr;
   }
 
-  return { ok: true, sections: out, priorities };
+  // Editorial verdict opcional — quando ausente, o UI cai para hero +
+  // heurística determinística. Quando presente, validamos rigorosamente.
+  let editorialVerdict: EditorialVerdict | null = null;
+  if (parsed.data.editorial_verdict) {
+    const v = parsed.data.editorial_verdict;
+    const title = v.title.trim();
+    const paragraph = v.paragraph.trim();
+    const priority = v.priority.trim();
+    const strengths = v.strengths.map((s) => s.trim());
+    const limitations = v.limitations.map((s) => s.trim());
+
+    if (!title || !paragraph || !priority) {
+      return fail("EMPTY_FIELD", `verdict (title/paragraph/priority)`);
+    }
+    if (strengths.some((s) => !s) || limitations.some((s) => !s)) {
+      return fail("EMPTY_FIELD", `verdict (strengths/limitations)`);
+    }
+
+    // Title: ≤ 7 palavras, sem ponto final.
+    const titleWords = title.split(/\s+/).filter(Boolean).length;
+    if (titleWords > 7) {
+      return fail(
+        "TITLE_TOO_LONG",
+        `verdict.title words=${titleWords} max=7`,
+      );
+    }
+    if (/[.!?]$/.test(title)) {
+      return fail("TITLE_HAS_PUNCT", `verdict.title ends with punctuation`);
+    }
+
+    // Paragraph: 30–75 palavras + ≥ 1 dígito (grounding).
+    const paraWords = paragraph.split(/\s+/).filter(Boolean).length;
+    if (paraWords < 30) {
+      return fail(
+        "PARAGRAPH_TOO_SHORT",
+        `verdict.paragraph words=${paraWords} min=30`,
+      );
+    }
+    if (paraWords > 75) {
+      return fail(
+        "PARAGRAPH_TOO_LONG",
+        `verdict.paragraph words=${paraWords} max=75`,
+      );
+    }
+    if (!/\d/.test(paragraph)) {
+      return fail("GENERIC_OUTPUT", `verdict.paragraph (missing number)`);
+    }
+
+    // PT-BR + technical leak em todos os campos textuais.
+    const fields: Array<[string, string]> = [
+      ["title", title],
+      ["paragraph", paragraph],
+      ["priority", priority],
+      ["strengths[0]", strengths[0]],
+      ["strengths[1]", strengths[1]],
+      ["limitations[0]", limitations[0]],
+      ["limitations[1]", limitations[1]],
+    ];
+    for (const [field, txt] of fields) {
+      const tech = detectTechnicalLeak(txt);
+      if (tech) {
+        return fail("TECHNICAL_LEAK", `verdict.${field} token=${tech}`);
+      }
+      const ptbr = detectPtBrLeak(txt);
+      if (ptbr) {
+        return fail("PTBR_LEAK", `verdict.${field} token=${ptbr}`);
+      }
+    }
+
+    // Evidence allowlist: cada rótulo deve pertencer ao set fechado.
+    const evidence: EditorialVerdictEvidence[] = [];
+    for (const ev of v.evidence_used) {
+      const trimmed = ev.trim();
+      if (!EVIDENCE_SET.has(trimmed)) {
+        return fail("EVIDENCE_UNKNOWN", `verdict.evidence="${trimmed}"`);
+      }
+      evidence.push(trimmed as EditorialVerdictEvidence);
+    }
+
+    editorialVerdict = {
+      verdict_label: v.verdict_label,
+      title,
+      paragraph,
+      priority,
+      strengths: [strengths[0], strengths[1]],
+      limitations: [limitations[0], limitations[1]],
+      confidence: v.confidence,
+      evidence_used: evidence,
+    };
+  }
+
+  return { ok: true, sections: out, priorities, editorialVerdict };
 }
