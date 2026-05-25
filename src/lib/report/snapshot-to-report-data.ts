@@ -1318,6 +1318,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     commentIntelligence: (payload as { comment_intelligence?: CommentIntelligence | null }).comment_intelligence ?? null,
     postingTimeline: buildPostingTimeline(posts),
     analysedPostFormats: buildAnalysedPostFormats(posts),
+    cadence,
   };
 
   const data: ReportData = {
