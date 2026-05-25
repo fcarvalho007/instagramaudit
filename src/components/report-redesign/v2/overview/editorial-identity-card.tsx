@@ -157,159 +157,96 @@ function bandBadgeClass(band: Band): string {
   return "bg-signal-warning/15 text-signal-warning";
 }
 
-/* ── Derivação determinística de pontos fortes / limitações ──────── */
+/* ── Selector: métrica âncora ──────────────────────────────────────── */
 
-interface DerivedSignals {
-  strengths: Bullet[];
-  limits: Bullet[];
+export type AnchorKind = "engagement" | "comments" | "rhythm" | null;
+
+export interface AnchorSelection {
+  kind: AnchorKind;
+  /** Pre-formatted display value (no label/caption). */
+  value: string;
+  /** Translation key for the full sentence (with interpolation already resolved). */
+  sentence: string;
+  /** Optional short caption appended after a separator. */
+  caption: string | null;
 }
 
-function tierLabelFromFollowers(followers: number): string {
-  if (followers >= 1_000_000) return "Mega";
-  if (followers >= 250_000) return "Macro";
-  if (followers >= 50_000) return "Mid";
-  if (followers >= 10_000) return "Micro";
-  return "Nano";
+function formatDecimal(value: number, locale: string, digits = 1): string {
+  const sep = locale.startsWith("pt") ? "," : ".";
+  return value.toFixed(digits).replace(".", sep);
 }
 
-function formatNameSingular(fmt: string | undefined, t: TFunction): string {
-  if (!fmt) return t("identity.format_singular.default");
-  const known = ["Reels", "Carousels", "Imagens", "Video"] as const;
-  if ((known as readonly string[]).includes(fmt)) {
-    return t(`identity.format_singular.${fmt}`);
-  }
-  return fmt.toLowerCase();
-}
-
-function deriveSignals(
-  scores: Record<ScoreKey, { value: number; subtitle: string }>,
+export function selectAnchor(
   keyMetrics: EditorialIdentityCardProps["keyMetrics"],
-  dominantFormat: string | undefined,
-  dominantFormatShare: number | undefined,
+  averageComments: number | undefined,
   postingFrequencyWeekly: number | undefined,
-  followers: number | undefined,
   t: TFunction,
-  language: string,
-): DerivedSignals {
-  const strengths: Bullet[] = [];
-  const limits: Bullet[] = [];
-
-  // Frequência
-  const ppw = typeof postingFrequencyWeekly === "number" ? postingFrequencyWeekly : null;
-  if (ppw !== null) {
-    if (ppw >= 3 && ppw <= 7) {
-      const sep = language.startsWith("pt") ? "," : ".";
-      const perDay = (ppw / 7).toFixed(1).replace(".", sep);
-      strengths.push({
-        destaque: t("identity.signals.freq_consistent.title"),
-        detalhe: t("identity.signals.freq_consistent.detail", { perDay }),
-      });
-    } else if (ppw < 1) {
-      limits.push({
-        destaque: t("identity.signals.freq_weak.title"),
-        detalhe: t("identity.signals.freq_weak.detail"),
-      });
-    } else if (ppw > 7) {
-      limits.push({
-        destaque: t("identity.signals.freq_excess.title"),
-        detalhe: t("identity.signals.freq_excess.detail"),
-      });
-    }
-  }
-
-  // Base de seguidores
-  if (typeof followers === "number" && followers > 0) {
-    const tier = tierLabelFromFollowers(followers);
-    if (tier !== "Nano") {
-      strengths.push({
-        destaque: t("identity.signals.audience_relevant.title"),
-        detalhe: t("identity.signals.audience_relevant.detail"),
-      });
-    } else if (followers < 2_000) {
-      limits.push({
-        destaque: t("identity.signals.audience_small.title"),
-        detalhe: t("identity.signals.audience_small.detail"),
-      });
-    }
-  }
-
-  // Engagement vs benchmark
+  locale: string,
+): AnchorSelection {
   if (keyMetrics && keyMetrics.engagementBenchmark > 0) {
-    const delta = keyMetrics.engagementDeltaPct;
-    if (delta >= 10) {
-      strengths.push({
-        destaque: t("identity.signals.engagement_above.title"),
-        detalhe: t("identity.signals.engagement_above.detail", { delta: Math.round(delta) }),
-      });
-    } else if (delta <= -30) {
-      limits.push({
-        destaque: t("identity.signals.engagement_below.title"),
-        detalhe: t("identity.signals.engagement_below.detail", { delta: Math.round(delta) }),
-      });
+    const delta = Math.round(keyMetrics.engagementDeltaPct);
+    if (Math.abs(delta) >= 10) {
+      const key = delta >= 0
+        ? "identity.anchor.engagement_above"
+        : "identity.anchor.engagement_below";
+      return {
+        kind: "engagement",
+        value: `${delta > 0 ? "+" : ""}${delta}%`,
+        sentence: t(key, { delta: Math.abs(delta) }),
+        caption: null,
+      };
     }
   }
-
-  // Interação / comentários
-  const inter = scores.interaccao.value;
-  if (inter >= 60) {
-    strengths.push({
-      destaque: t("identity.signals.interaction_active.title"),
-      detalhe: t("identity.signals.interaction_active.detail"),
-    });
-  } else if (inter < 30) {
-    limits.push({
-      destaque: t("identity.signals.interaction_low.title"),
-      detalhe: t("identity.signals.interaction_low.detail"),
-    });
+  if (typeof averageComments === "number" && averageComments >= 1) {
+    const value = formatDecimal(averageComments, locale, 1);
+    return {
+      kind: "comments",
+      value,
+      sentence: t("identity.anchor.comments", { value }),
+      caption: t("identity.anchor.comments_caption"),
+    };
   }
-
-  // Concentração de formato
-  if (typeof dominantFormatShare === "number" && dominantFormatShare > 0) {
-    if (dominantFormatShare < 55) {
-      strengths.push({
-        destaque: t("identity.signals.format_mixed.title"),
-        detalhe: t("identity.signals.format_mixed.detail"),
-      });
-    } else if (dominantFormatShare >= 70) {
-      limits.push({
-        destaque: t("identity.signals.format_repetitive.title"),
-        detalhe: t("identity.signals.format_repetitive.detail", {
-          pct: Math.round(dominantFormatShare),
-          format: formatNameSingular(dominantFormat, t),
-        }),
-      });
-    }
+  if (typeof postingFrequencyWeekly === "number" && postingFrequencyWeekly >= 1) {
+    const value = formatDecimal(postingFrequencyWeekly, locale, 1);
+    return {
+      kind: "rhythm",
+      value,
+      sentence: t("identity.anchor.rhythm", { value }),
+      caption: t("identity.anchor.rhythm_caption"),
+    };
   }
+  return { kind: null, value: "", sentence: "", caption: null };
+}
 
-  // Garantir 2+2 com fallbacks neutros (sem inflacionar)
-  while (strengths.length < 2) {
-    strengths.push(
-      strengths.length === 0
-        ? {
-            destaque: t("identity.signals.fallback_active.title"),
-            detalhe: t("identity.signals.fallback_active.detail"),
-          }
-        : {
-            destaque: t("identity.signals.fallback_history.title"),
-            detalhe: t("identity.signals.fallback_history.detail"),
-          },
-    );
-  }
-  while (limits.length < 2) {
-    limits.push(
-      limits.length === 0
-        ? {
-            destaque: t("identity.signals.fallback_diversify.title"),
-            detalhe: t("identity.signals.fallback_diversify.detail"),
-          }
-        : {
-            destaque: t("identity.signals.fallback_conversation.title"),
-            detalhe: t("identity.signals.fallback_conversation.detail"),
-          },
-    );
-  }
+/* ── Selector: "porque importa" ────────────────────────────────────── */
 
-  return { strengths: strengths.slice(0, 2), limits: limits.slice(0, 2) };
+export type WhyKind =
+  | "solid_above"
+  | "developing"
+  | "warning_below"
+  | "weak_cadence"
+  | "format_concentrated"
+  | "neutral";
+
+export function selectWhy(
+  band: Band,
+  keyMetrics: EditorialIdentityCardProps["keyMetrics"],
+  postingFrequencyWeekly: number | undefined,
+  dominantFormatShare: number | undefined,
+): WhyKind {
+  const delta = keyMetrics?.engagementBenchmark
+    ? keyMetrics.engagementDeltaPct
+    : 0;
+  if (typeof postingFrequencyWeekly === "number" && postingFrequencyWeekly < 1) {
+    return "weak_cadence";
+  }
+  if (band === "warning" && delta <= -30) return "warning_below";
+  if (band === "solid" && delta >= 10) return "solid_above";
+  if (typeof dominantFormatShare === "number" && dominantFormatShare >= 70) {
+    return "format_concentrated";
+  }
+  if (band === "developing") return "developing";
+  return "neutral";
 }
 
 /* ── Main Component ────────────────────────────────────────────────── */
