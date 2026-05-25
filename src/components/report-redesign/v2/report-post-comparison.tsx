@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/use-language";
+import { formatNumber } from "@/lib/i18n/format";
+import type { SupportedLanguage } from "@/i18n";
 import { InsightCallout } from "./overview/insight-callout";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
@@ -38,6 +41,7 @@ export function PostComparisonBlock({
   windowLabel,
 }: PostComparisonBlockProps) {
   const { t } = useTranslation("report");
+  const { language } = useLanguage();
   const bestLabels = [t("posts.rank.best_1"), t("posts.rank.best_2")] as const;
   const worstLabels = [t("posts.rank.worst_1"), t("posts.rank.worst_2")] as const;
   const best2 = topPosts.slice(0, 2);
@@ -69,14 +73,14 @@ export function PostComparisonBlock({
       headline = t("posts.ai_fallback.caption");
     }
 
-    const bestStr = bestEng.toString().replace(".", ",");
-    const worstStr = worstEng.toString().replace(".", ",");
+    const bestStr = formatNumber(bestEng, language, { maximumFractionDigits: 2 });
+    const worstStr = formatNumber(worstEng, language, { maximumFractionDigits: 2 });
     const body = multiplierLabel
       ? t("posts.ai_fallback.body_mult", { best: bestStr, mult: multiplierLabel })
       : t("posts.ai_fallback.body_plain", { best: bestStr, worst: worstStr });
 
     return { headline, body };
-  }, [hasComparison, best2, worst2, bestEng, worstEng, multiplierLabel, t]);
+  }, [hasComparison, best2, worst2, bestEng, worstEng, multiplierLabel, t, language]);
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
@@ -93,7 +97,7 @@ export function PostComparisonBlock({
       {hasComparison ? (
         <div className="px-5 md:px-6 pb-5 md:pb-6 space-y-4">
           {/* VS Bar */}
-          <VsBar bestEng={bestEng} worstEng={worstEng} t={t} />
+          <VsBar bestEng={bestEng} worstEng={worstEng} t={t} language={language} />
 
           {/* Main grid: best | divider | worst */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-5 md:gap-0">
