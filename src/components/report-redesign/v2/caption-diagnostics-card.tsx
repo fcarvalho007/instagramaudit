@@ -1096,9 +1096,10 @@ function SemanticPill({
 // ---------------------------------------------------------------------------
 
 export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDiagnosticsCardProps) {
+  const { t } = useTranslation("report");
   const hasSemantic = semantic != null;
   const themes = data.themes.items
-    .filter((t) => !isWeakThemeLabel(t.label))
+    .filter((theme) => !isWeakThemeLabel(theme.label))
     .slice(0, 5);
   const semanticThemes = semantic?.dominantThemes?.slice(0, 5) ?? [];
   const expressions = data.recurringExpressions.items;
@@ -1110,9 +1111,7 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
     return (
       <CardShell sampleSize={data.sampleSize} totalWords={stats.totalWords}>
         <p className="text-sm text-content-secondary leading-relaxed max-w-xl">
-          Legendas são curtas demais ou em número insuficiente para uma
-          leitura semântica fiável. À medida que houver mais publicações
-          com texto, este bloco abre a interpretação editorial completa.
+          {t("caption.empty")}
         </p>
       </CardShell>
     );
@@ -1128,6 +1127,7 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
         tooShortForThemes={tooShortForThemes}
         posts={posts}
         semanticAnalysisCount={hasSemantic ? semantic.analyzedCaptions : undefined}
+        t={t}
       />
 
       {/* ── B · Como escreve ── */}
@@ -1142,7 +1142,7 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
       />
 
       {/* ── C · Leitura editorial ── */}
-      <SectionEditorialReading data={data} semantic={semantic} />
+      <SectionEditorialReading data={data} semantic={semantic} t={t} />
     </CardShell>
   );
 }
