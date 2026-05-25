@@ -10,5 +10,17 @@
   "SNAPSHOT_NOT_FOUND": "Ainda não temos um relatório guardado para este perfil. Tenta novamente dentro de instantes.",
   "CACHE_ONLY_NO_DATA": "Este relatório ainda não tem dados públicos disponíveis. A equipa está a preparar uma nova análise.",
   "FALLBACK": "Não foi possível concluir a análise. Tenta novamente dentro de instantes.",
-  "NETWORK_FETCH": "Falha de ligação. Tentar novamente."
+  "NETWORK_FETCH": "Falha de ligação. Tentar novamente.",
+  "snapshot": {
+    "loadFailed": "Não foi possível carregar este relatório. Tenta novamente.",
+    "networkFailed": "Falha de ligação.",
+    "notFoundTitle": "Relatório não encontrado",
+    "notFoundBody": "Este relatório já não existe ou o identificador é inválido. Podes gerar um novo relatório quando quiseres.",
+    "expiredTitle": "Relatório expirado",
+    "expiredBodySuffix": "Para ver dados actuais de @{{handle}}, gera um novo relatório.",
+    "errorTitle": "Não foi possível carregar",
+    "ctaNewReport": "Gerar novo relatório",
+    "ctaAnalyzeNew": "Analisar novo perfil",
+    "ctaBackToReports": "Voltar aos relatórios"
+  }
 }

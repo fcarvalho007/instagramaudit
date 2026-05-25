@@ -11,6 +11,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Search, Clock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
@@ -24,7 +25,7 @@ import {
 import {
   getReportExpiresAt,
   isReportExpired,
-  formatRetentionMessage,
+  REPORT_RETENTION_DAYS,
 } from "@/lib/report/retention";
 
 export const Route = createFileRoute("/reports/$snapshotId")({
@@ -83,6 +84,14 @@ type LoadState =
 function SnapshotReportPage() {
   const { snapshotId } = Route.useParams();
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  const { t } = useTranslation("errors");
+  const { t: tReport } = useTranslation("report");
+
+  // Sync document.title with current language (SSR head stays in PT canonical).
+  useEffect(() => {
+    const title = tReport("snapshot.metaTitle");
+    document.title = title;
+  }, [tReport]);
 
   useEffect(() => {
     document.body.setAttribute("data-report-view", "true");
@@ -109,9 +118,7 @@ function SnapshotReportPage() {
         if (!res.ok || !body?.success || !body.snapshot) {
           setState({
             status: "error",
-            message:
-              body?.message ??
-              "Não foi possível carregar este relatório. Tenta novamente.",
+            message: body?.message ?? t("snapshot.loadFailed"),
           });
           return;
         }
@@ -146,14 +153,14 @@ function SnapshotReportPage() {
         if (cancelled) return;
         setState({
           status: "error",
-          message: e instanceof Error ? e.message : "Falha de ligação.",
+          message: e instanceof Error ? e.message : t("snapshot.networkFailed"),
         });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [snapshotId]);
+  }, [snapshotId, t]);
 
   return (
     <ReportThemeWrapper>
@@ -191,6 +198,7 @@ function EmptyShell({
   cta: { label: string; to: string };
   tone?: "neutral" | "danger";
 }) {
+  const { t } = useTranslation("errors");
   const toneClasses =
     tone === "danger"
       ? "border-signal-danger/30 bg-tint-danger/40"
@@ -218,7 +226,7 @@ function EmptyShell({
               to="/app/reports"
               className="inline-flex items-center gap-1.5 rounded-md border border-border-default/40 bg-white px-4 py-2 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-muted"
             >
-              Voltar aos relatórios
+              {t("snapshot.ctaBackToReports")}
             </Link>
           </div>
         </div>
@@ -228,34 +236,42 @@ function EmptyShell({
 }
 
 function NotFoundState() {
+  const { t } = useTranslation("errors");
   return (
     <EmptyShell
       icon={AlertTriangle}
-      title="Relatório não encontrado"
-      body="Este relatório já não existe ou o identificador é inválido. Podes gerar um novo relatório quando quiseres."
-      cta={{ label: "Analisar novo perfil", to: "/" }}
+      title={t("snapshot.notFoundTitle")}
+      body={t("snapshot.notFoundBody")}
+      cta={{ label: t("snapshot.ctaAnalyzeNew"), to: "/" }}
     />
   );
 }
 
 function ExpiredState({ handle }: { handle: string }) {
+  const { t } = useTranslation("errors");
+  const { t: tReport } = useTranslation("report");
+  const retention = tReport("snapshot.retentionMessage", {
+    days: REPORT_RETENTION_DAYS,
+  });
+  const suffix = t("snapshot.expiredBodySuffix", { handle });
   return (
     <EmptyShell
       icon={Clock}
-      title="Relatório expirado"
-      body={`${formatRetentionMessage()} Para ver dados actuais de @${handle}, gera um novo relatório.`}
-      cta={{ label: "Gerar novo relatório", to: "/" }}
+      title={t("snapshot.expiredTitle")}
+      body={`${retention} ${suffix}`}
+      cta={{ label: t("snapshot.ctaNewReport"), to: "/" }}
     />
   );
 }
 
 function ErrorState({ message }: { message: string }) {
+  const { t } = useTranslation("errors");
   return (
     <EmptyShell
       icon={AlertTriangle}
-      title="Não foi possível carregar"
+      title={t("snapshot.errorTitle")}
       body={message}
-      cta={{ label: "Analisar novo perfil", to: "/" }}
+      cta={{ label: t("snapshot.ctaAnalyzeNew"), to: "/" }}
       tone="danger"
     />
   );
