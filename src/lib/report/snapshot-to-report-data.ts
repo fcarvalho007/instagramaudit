@@ -910,6 +910,7 @@ function buildAiInsightsV2(
   }
   if (count === 0) return null;
   const priorities = extractPersistedPriorities(raw);
+  const editorialVerdict = extractPersistedEditorialVerdict(raw);
   return {
     generatedAt:
       typeof raw.generated_at === "string" ? raw.generated_at : null,
@@ -917,6 +918,86 @@ function buildAiInsightsV2(
       typeof raw.model === "string" && raw.model.length > 0 ? raw.model : null,
     sections: out,
     priorities,
+    editorialVerdict,
+  };
+}
+
+const VALID_VERDICT_LABELS = new Set([
+  "strong",
+  "promising",
+  "needs_work",
+  "limited_data",
+]);
+const VALID_VERDICT_CONFIDENCE = new Set(["high", "medium", "low"]);
+const VALID_VERDICT_WARNINGS = new Set([
+  "low_sample",
+  "stale_data",
+  "cadence_uncertain",
+  "no_market_signals",
+  "benchmark_missing",
+]);
+const EVIDENCE_SET: ReadonlySet<string> = new Set(
+  EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST,
+);
+
+function extractPersistedEditorialVerdict(
+  raw: SnapshotPayload["ai_insights_v2"] | null | undefined,
+): EditorialVerdict | null {
+  if (!raw || typeof raw !== "object") return null;
+  const v = (raw as { editorial_verdict?: unknown }).editorial_verdict;
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+
+  const label = typeof o.verdict_label === "string" ? o.verdict_label : "";
+  const title = typeof o.title === "string" ? o.title.trim() : "";
+  const paragraph = typeof o.paragraph === "string" ? o.paragraph.trim() : "";
+  const priority = typeof o.priority === "string" ? o.priority.trim() : "";
+  const confidence = typeof o.confidence === "string" ? o.confidence : "";
+
+  if (
+    !VALID_VERDICT_LABELS.has(label) ||
+    !title ||
+    !paragraph ||
+    !priority ||
+    !VALID_VERDICT_CONFIDENCE.has(confidence)
+  ) {
+    return null;
+  }
+
+  const toPair = (arr: unknown): [string, string] | null => {
+    if (!Array.isArray(arr) || arr.length < 2) return null;
+    const a = typeof arr[0] === "string" ? arr[0].trim() : "";
+    const b = typeof arr[1] === "string" ? arr[1].trim() : "";
+    if (!a || !b) return null;
+    return [a, b];
+  };
+  const strengths = toPair(o.strengths);
+  const limitations = toPair(o.limitations);
+  if (!strengths || !limitations) return null;
+
+  const evidence: EditorialVerdictEvidence[] = Array.isArray(o.evidence_used)
+    ? (o.evidence_used.filter(
+        (e): e is string => typeof e === "string" && EVIDENCE_SET.has(e),
+      ) as EditorialVerdictEvidence[])
+    : [];
+
+  const warnings: EditorialVerdictWarning[] = Array.isArray(o.warnings)
+    ? (o.warnings.filter(
+        (w): w is string =>
+          typeof w === "string" && VALID_VERDICT_WARNINGS.has(w),
+      ) as EditorialVerdictWarning[])
+    : [];
+
+  return {
+    verdict_label: label as EditorialVerdict["verdict_label"],
+    title,
+    paragraph,
+    priority,
+    strengths,
+    limitations,
+    confidence: confidence as EditorialVerdict["confidence"],
+    evidence_used: evidence,
+    ...(warnings.length > 0 ? { warnings } : {}),
   };
 }
 
