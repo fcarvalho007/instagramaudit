@@ -32,6 +32,7 @@ interface Bullet {
 interface EditorialIdentityCardProps {
   scores: Record<ScoreKey, { value: number; subtitle: string }>;
   aiHeroText?: string | null;
+  aiHeroEmphasis?: "positive" | "negative" | "default" | "neutral" | null;
   keyMetrics?: {
     engagementRate: number;
     engagementBenchmark: number;
