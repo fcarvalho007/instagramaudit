@@ -1,0 +1,20 @@
+{
+  "page_title": "Anular subscrição · InstaBench",
+  "success": {
+    "heading": "Subscrição anulada",
+    "body": "Já não vais receber emails de marketing nesta conta. Os emails operacionais — como a entrega do teu relatório — continuam, porque fazem parte do pedido que fizeste.",
+    "email_label": "Endereço removido das comunicações:"
+  },
+  "already": {
+    "heading": "Já estavas fora da lista",
+    "body": "Este endereço já tinha anulado as comunicações de marketing. Não há mais nada a fazer."
+  },
+  "invalid": {
+    "heading": "Não conseguimos processar este pedido",
+    "body": "O link pode ter sido truncado ou já não é válido. Podes anular as comunicações diretamente na tua área pessoal."
+  },
+  "cta": {
+    "account": "Ir para a área pessoal",
+    "home": "Voltar à página inicial"
+  }
+}
