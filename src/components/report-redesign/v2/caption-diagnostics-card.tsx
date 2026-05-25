@@ -364,6 +364,7 @@ function SectionThemes({
   tooShortForThemes,
   posts,
   semanticAnalysisCount,
+  t,
 }: {
   hasSemantic: boolean;
   semanticThemes: Array<{ label: string; postsCount: number; evidence: string[]; confidence: "high" | "medium" | "low" }>;
@@ -371,6 +372,7 @@ function SectionThemes({
   tooShortForThemes: boolean;
   posts: PostLike[];
   semanticAnalysisCount?: number;
+  t: TR;
 }) {
   const [openTheme, setOpenTheme] = useState<number | null>(null);
   const themes = hasSemantic ? semanticThemes : deterministicThemes;
@@ -379,25 +381,25 @@ function SectionThemes({
   if (!hasThemes) return null;
 
   const CONFIDENCE_STYLE = {
-    high: { label: "SINAL FORTE", cls: "text-signal-success bg-tint-success ring-signal-success/15" },
-    medium: { label: "SINAL MÉDIO", cls: "text-accent-primary bg-tint-primary ring-accent-primary/15" },
-    low: { label: "SINAL FRACO", cls: "text-content-secondary bg-surface-muted ring-border-default" },
+    high: { label: t("caption.section_a.signal_high"), cls: "text-signal-success bg-tint-success ring-signal-success/15" },
+    medium: { label: t("caption.section_a.signal_medium"), cls: "text-accent-primary bg-tint-primary ring-accent-primary/15" },
+    low: { label: t("caption.section_a.signal_low"), cls: "text-content-secondary bg-surface-muted ring-border-default" },
   } as const;
 
   return (
     <div className="space-y-4">
       <SectionHeader
-        letter="A"
-        label="SOBRE O QUE FALA"
+        letter={t("caption.section_a.letter").split(" · ")[0] ?? "A"}
+        label={t("caption.section_a.letter").split(" · ").slice(1).join(" · ") || "SOBRE O QUE FALA"}
         badge={
           <div className="flex items-center gap-2">
             {semanticAnalysisCount != null && (
               <span className="text-xs text-content-tertiary">
-                {semanticAnalysisCount} {semanticAnalysisCount === 1 ? "análise semântica" : "análises semânticas"}
+                {t("caption.section_a.analyses", { count: semanticAnalysisCount })}
               </span>
             )}
             <span className="text-xs text-content-tertiary border border-border-subtle rounded-full px-2 py-0.5">
-              {themes.length} {themes.length === 1 ? "tema detetado" : "temas detetados"}
+              {t("caption.section_a.themes", { count: themes.length })}
             </span>
           </div>
         }
@@ -406,11 +408,11 @@ function SectionThemes({
       <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-eyebrow-sm text-content-tertiary">ASSUNTOS MAIS RECORRENTES</p>
+            <p className="text-eyebrow-sm text-content-tertiary">{t("caption.section_a.card_title")}</p>
             <p className="text-xs text-content-tertiary mt-0.5">
               {hasSemantic
-                ? "Temas identificados por análise semântica das legendas"
-                : "Temas extraídos do corpo das legendas — não confundir com hashtags"}
+                ? t("caption.section_a.hint_semantic")
+                : t("caption.section_a.hint_deterministic")}
             </p>
           </div>
         </div>
@@ -444,9 +446,10 @@ function SectionThemes({
                           {t.label}
                         </p>
                         <p className="text-[12px] text-content-tertiary mt-0.5">
-                          Identificado em <strong>{t.postsCount}</strong> {t.postsCount === 1 ? "post" : "posts"}
-                          {i === 0 && t.confidence === "high" ? " · sinal mais forte da grelha" : ""}
-                          {isOpen ? " · evidência abaixo" : ""}
+                          {/* @ts-expect-error shadowing: outer t is i18n, theme.postsCount handled via direct interpolation */}
+                          {""}
+                          <RawIdentified count={t.postsCount} />
+                          {i === 0 && t.confidence === "high" ? "" : ""}
                         </p>
                       </div>
                     </div>
