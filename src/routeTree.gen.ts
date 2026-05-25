@@ -72,6 +72,7 @@ import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/re
 import { Route as ApiAdminRefreshProfilePreflightRouteImport } from './routes/api/admin/refresh-profile-preflight'
 import { Route as ApiAdminRefreshProfileRouteImport } from './routes/api/admin/refresh-profile'
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
+import { Route as ApiAdminLeadsBulkRouteImport } from './routes/api/admin/leads-bulk'
 import { Route as ApiAdminGenerateBetaReportRouteImport } from './routes/api/admin/generate-beta-report'
 import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/force-refresh'
 import { Route as ApiAdminFollowUpsRouteImport } from './routes/api/admin/follow-ups'
@@ -442,6 +443,11 @@ const ApiAdminLeadsKanbanRoute = ApiAdminLeadsKanbanRouteImport.update({
   path: '/api/admin/leads-kanban',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminLeadsBulkRoute = ApiAdminLeadsBulkRouteImport.update({
+  id: '/api/admin/leads-bulk',
+  path: '/api/admin/leads-bulk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminGenerateBetaReportRoute =
   ApiAdminGenerateBetaReportRouteImport.update({
     id: '/api/admin/generate-beta-report',
@@ -775,6 +781,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
+  '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
@@ -888,6 +895,7 @@ export interface FileRoutesByTo {
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
+  '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
@@ -1003,6 +1011,7 @@ export interface FileRoutesById {
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
+  '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
@@ -1119,6 +1128,7 @@ export interface FileRouteTypes {
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
     | '/api/admin/generate-beta-report'
+    | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
@@ -1232,6 +1242,7 @@ export interface FileRouteTypes {
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
     | '/api/admin/generate-beta-report'
+    | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
@@ -1346,6 +1357,7 @@ export interface FileRouteTypes {
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
     | '/api/admin/generate-beta-report'
+    | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
@@ -1443,6 +1455,7 @@ export interface RootRouteChildren {
   ApiAdminFollowUpsRoute: typeof ApiAdminFollowUpsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
   ApiAdminGenerateBetaReportRoute: typeof ApiAdminGenerateBetaReportRoute
+  ApiAdminLeadsBulkRoute: typeof ApiAdminLeadsBulkRoute
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
   ApiAdminRefreshProfileRoute: typeof ApiAdminRefreshProfileRoute
   ApiAdminRefreshProfilePreflightRoute: typeof ApiAdminRefreshProfilePreflightRoute
@@ -1938,6 +1951,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/leads-kanban'
       fullPath: '/api/admin/leads-kanban'
       preLoaderRoute: typeof ApiAdminLeadsKanbanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/leads-bulk': {
+      id: '/api/admin/leads-bulk'
+      path: '/api/admin/leads-bulk'
+      fullPath: '/api/admin/leads-bulk'
+      preLoaderRoute: typeof ApiAdminLeadsBulkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/generate-beta-report': {
@@ -2489,6 +2509,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminFollowUpsRoute: ApiAdminFollowUpsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,
   ApiAdminGenerateBetaReportRoute: ApiAdminGenerateBetaReportRoute,
+  ApiAdminLeadsBulkRoute: ApiAdminLeadsBulkRoute,
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
   ApiAdminRefreshProfileRoute: ApiAdminRefreshProfileRoute,
   ApiAdminRefreshProfilePreflightRoute: ApiAdminRefreshProfilePreflightRoute,
