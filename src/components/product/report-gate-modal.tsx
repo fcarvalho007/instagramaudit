@@ -83,6 +83,7 @@ export function ReportGateModal({
   onSubmit,
   onRequestOutcome,
 }: ReportGateModalProps) {
+  const { freeMonthlyReportLimit: freeLimit, contactEmail } = usePublicAppConfig();
   const [state, setState] = useState<ModalState>("idle");
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -194,13 +195,13 @@ export function ReportGateModal({
   // (e.g. parent-provided onSubmit path).
   const usedFromServer =
     remainingFree !== null
-      ? Math.max(0, FREE_MONTHLY_LIMIT - remainingFree)
+      ? Math.max(0, freeLimit - remainingFree)
       : state === "success-last"
-        ? FREE_MONTHLY_LIMIT
+        ? freeLimit
         : 1;
   const renderQuotaLine = () => (
     <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
-      {usedFromServer} de {FREE_MONTHLY_LIMIT} relatórios utilizados este mês
+      {usedFromServer} de {freeLimit} relatórios utilizados este mês
     </p>
   );
 
