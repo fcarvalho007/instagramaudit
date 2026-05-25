@@ -1,11 +1,10 @@
-import { Database, LineChart, Sparkles, Search, ExternalLink, Lock, BookOpen } from "lucide-react";
+import { Database, LineChart, Sparkles, Search, ExternalLink, BookOpen } from "lucide-react";
 import { ReportSectionFrame } from "./report-section-frame";
 import { REDESIGN_TOKENS } from "./report-tokens";
 import {
   BENCHMARK_DATASET_VERSION,
   INSTAGRAM_BENCHMARK_CONTEXT,
 } from "@/lib/knowledge/benchmark-context";
-import { cn } from "@/lib/utils";
 
 /**
  * Metodologia humana, não-técnica. Grid das três famílias de fonte
@@ -38,8 +37,10 @@ export function ReportMethodology() {
     },
   ] as const;
 
-  // Inclui também fontes `future` (Databox) para apresentar bloqueadas.
-  const benchmarkSources = INSTAGRAM_BENCHMARK_CONTEXT.sources;
+  // Só fontes activas — Databox e outras `future` ficam reservadas para futura ligação autenticada.
+  const benchmarkSources = INSTAGRAM_BENCHMARK_CONTEXT.sources.filter(
+    (source) => source.visibility === "active",
+  );
 
   return (
     <ReportSectionFrame
@@ -82,64 +83,39 @@ export function ReportMethodology() {
           </p>
         </div>
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {benchmarkSources.map((source) => {
-            const isLocked = source.visibility === "future";
-            return (
-              <li
-                key={source.name}
-                className={cn(
-                  "flex items-start gap-3 rounded-lg border border-border-default/70 bg-white px-3 py-2.5 min-w-0",
-                  isLocked && "opacity-60",
-                )}
+          {benchmarkSources.map((source) => (
+            <li
+              key={source.name}
+              className="flex items-start gap-3 rounded-lg border border-border-default/70 bg-white px-3 py-2.5 min-w-0"
+            >
+              <span
+                aria-hidden="true"
+                className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200"
               >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md ring-1",
-                    isLocked
-                      ? "bg-surface-muted text-content-tertiary ring-border-default"
-                      : "bg-indigo-50 text-indigo-700 ring-indigo-200",
-                  )}
-                >
-                  {isLocked ? (
-                    <Lock className="size-3.5" aria-hidden="true" />
-                  ) : (
-                    <BookOpen className="size-3.5" aria-hidden="true" />
-                  )}
-                </span>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="text-sm text-content-primary leading-tight">
-                    <span className="font-medium">{source.name}</span>
-                    {isLocked ? (
-                      <span className="ml-1.5 inline-flex items-center rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content-tertiary border border-border-default">
-                        em breve
-                      </span>
-                    ) : (
-                      <span className="ml-1.5 tabular-nums text-xs text-content-tertiary">
-                        {source.publishedYear}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[12px] text-content-secondary leading-snug">
-                    {isLocked
-                      ? "Métricas privadas — alcance e visitas."
-                      : source.shortDescription}
-                  </p>
-                </div>
-                {isLocked ? null : (
-                  <a
-                    href={source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Abrir página da ${source.name} numa nova aba`}
-                    className="shrink-0 inline-flex size-7 items-center justify-center rounded-md text-content-tertiary hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
-                  >
-                    <ExternalLink aria-hidden="true" className="size-3.5" />
-                  </a>
-                )}
-              </li>
-            );
-          })}
+                <BookOpen className="size-3.5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-sm text-content-primary leading-tight">
+                  <span className="font-medium">{source.name}</span>
+                  <span className="ml-1.5 tabular-nums text-xs text-content-tertiary">
+                    {source.lastUpdatedLabel ?? String(source.publishedYear)}
+                  </span>
+                </p>
+                <p className="text-[12px] text-content-secondary leading-snug">
+                  {source.shortDescription}
+                </p>
+              </div>
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Abrir página da ${source.name} numa nova aba`}
+                className="shrink-0 inline-flex size-7 items-center justify-center rounded-md text-content-tertiary hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+              >
+                <ExternalLink aria-hidden="true" className="size-3.5" />
+              </a>
+            </li>
+          ))}
         </ul>
       </div>
     </ReportSectionFrame>
