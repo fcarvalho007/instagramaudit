@@ -133,7 +133,7 @@ describe("deriveEditorialVerdict", () => {
   it("falls back completely when two contradictions stack", () => {
     const ai = makeAi({
       paragraph:
-        "A cadência é fraca e os concorrentes estão a crescer 12% acima do perfil ao longo das últimas semanas.",
+        "A cadência fraca e a concorrência crescente reduzem a tração editorial do perfil ao longo dos últimos 30 dias.",
     });
     const res = deriveEditorialVerdict(
       ai,
