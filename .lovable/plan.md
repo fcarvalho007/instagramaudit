@@ -1,99 +1,53 @@
+## Diagnóstico
 
-# Refinamentos UX & Interacção — /analyze
+Confirmei o estado real do switch "Usar dados guardados / Buscar dados novos":
 
-Escopo restrito a UX/interacção (sem alterar lógica de dados, sem tocar em `/report.example`, sem alterar ficheiros bloqueados). Trabalho 100 % frontend, em componentes existentes.
+1. **Persistência: OK.** O clique grava em `app_config.analysis_execution_mode`. DB mostra `value='fresh'`, atualizado hoje às 09:39 UTC pela ação do admin.
+2. **Leitura: OK.** `getAnalysisExecutionMode()` lê da DB com TTL em memória de 30 s.
+3. **Enforcement em `/api/analyze-public-v1`: OK.** Quando o modo é `cache_only` e não existe snapshot válido, devolve stale ou `CACHE_ONLY_NO_DATA` — nenhuma chamada Apify/OpenAI/DataForSEO acontece.
 
-## Problemas identificados
+## Por que parece que "não está a ativar/desativar a cache"
 
-1. **Navegação entre blocos sem feedback claro**
-   - Sidebar tem item activo mas sem progress visual de scroll dentro do bloco.
-   - Em mobile, as top tabs scrolling não centram o item activo.
-2. **Botão "Voltar ao topo" inexistente** em scroll longo.
-3. **Acções do hero (PDF, Partilhar) sem feedback de sucesso/erro consistente** — usam apenas `pdfBusy`/`shareBusy`, sem toast confirmando.
-4. **Sidebar cofre + CTA de unlock não persistem visualmente** — quando o utilizador rola muito, perde o gancho.
-5. **Insight boxes** abrem/fecham sem transição e não têm "copiar insight" — utilizadores frequentemente querem partilhar uma frase.
-6. **Erro/retry** (`AnalysisErrorState`) — retry sem indicação visual; se falhar de novo, fica igual.
-7. **Skeleton de loading** mostra fases mas não há `aria-live` adequado nem possibilidade de cancelar.
-8. **Atalhos de teclado** inexistentes (`g 1`…`g 6` para saltar entre blocos, `?` para mostrar atalhos).
-9. **Deep-link a um bloco** (`/analyze/x#performance`) não faz scroll suave na primeira carga depois de pronto.
-10. **Acessibilidade**: alguns botões icon-only sem `aria-label` evidente; foco visível inconsistente entre sidebar e tabs.
+São 3 efeitos reais, nenhum deles é o switch estar partido:
 
-## O que vai ser implementado
+### A. Quando o snapshot está fresco, os dois modos servem cache
+Os últimos 15 eventos em `analysis_events` são todos `data_source=cache, outcome=success`. O perfil `frederico.m.carvalho` tem cache válido até 07/06, portanto qualquer pedido devolve cache — independentemente do modo. A diferença só é visível quando a cache expira ou está em falta. Visualmente parece que "nada muda".
 
-### A · Navegação e orientação
+### B. "Atualizar agora" nos perfis de teste IGNORA o modo (by design)
+O botão "Atualizar agora" usa `/api/admin/refresh-profile` → `analyze-public-v1?refresh=1` com `INTERNAL_API_TOKEN`. Esse caminho **salta o guard de modo** propositadamente (ver comentário em `analyze-public-v1.ts:471-474`). Resultado: mesmo com "Usar dados guardados — SEM CUSTOS" ativo, clicar Atualizar agora gasta dinheiro. Isto contradiz a promessa visual do switch.
 
-1. **Indicador de progresso de leitura no bloco activo**
-   - Adicionar barra fina (`h-0.5`) no topo da `ReportBlockSection` activa, mostrando % de scroll dentro daquele bloco. Tokens semânticos (`bg-accent-primary/60`).
-2. **Top tabs mobile com auto-center**
-   - Em `ReportBlockTopTabs`, no `useActiveBlock`, fazer `scrollIntoView({ inline: "center", behavior: "smooth" })` no item activo.
-3. **Botão flutuante "Voltar ao topo"**
-   - Aparece após scroll > 800 px, canto inferior-direito acima da bottom nav mobile (`bottom-24 lg:bottom-6`). Foco visível, `aria-label`, animação `transition-opacity`.
-4. **Deep-link por hash**
-   - Em `ReportShellV2`, no mount + quando `status === "ready"`, ler `location.hash` (ex. `#performance`) e chamar `scrollToBlock(id)` com offset do sticky header.
+### C. Cache em memória de 30 s por Worker
+Cada instância serverless tem o seu próprio cache de modo. A ação do admin invalida a instância que recebeu o POST, mas outras instâncias podem servir o modo antigo até 30 s. Aceitável, mas a UI pode dar a ilusão de "não mudou".
 
-### B · Feedback de acções
+## Riscos adicionais encontrados
 
-5. **Toasts consistentes nas acções do hero**
-   - Em `AnalyzeReady`, envolver `shareActions.exportPdf` e `shareActions.share` com `sonner` (`toast.success("PDF pronto")`, `toast.error(...)`). Mantém comportamento, só adiciona feedback.
-6. **Copiar insight**
-   - Em `AIInsightBox` (componente em `src/components/report/`), botão `Copy` discreto top-right que copia o texto sanitizado para clipboard + `toast.success("Insight copiado")`.
+- **`getExecutionMode` / `setExecutionMode` não têm guard de admin.** São server functions sem `requireAdminSession`/middleware. Qualquer caller autenticado (ou não) que conheça o nome pode ler/alterar o modo. Devia exigir sessão de admin.
 
-### C · Cofre e CTA
+## Correções propostas (visuais + comportamentais, sem mexer em lógica de produto)
 
-7. **CTA "Desbloquear" sticky em mobile**
-   - Quando `lockBoundary === "engagement"` e `!unlocked`, mostrar barra fina sticky no fundo em mobile (`lg:hidden`) com botão a abrir `UnlockModal`. Reaproveita `onUnlockClick`.
+1. **Bloquear "Atualizar agora" quando o modo é `cache_only`** (`test-profiles-card.tsx`):
+   - Ler `getExecutionMode` no card; quando `cache_only`, desativar o botão "Atualizar agora" com tooltip "Modo dados guardados ativo — muda para 'Buscar dados novos' para permitir chamadas pagas".
+   - Alternativa mais permissiva: manter clicável mas abrir confirmação extra a avisar que vai chamar APIs pagas apesar de estar em modo cache_only. Recomendo a primeira (bloquear) porque alinha com a promessa "SEM CUSTOS".
 
-### D · Estados de loading e erro
+2. **Adicionar `requireAdminSession` a `getExecutionMode` e `setExecutionMode`** (`src/server/admin/execution-mode.functions.ts`):
+   - Envolver os handlers num check de sessão admin (mesmo padrão usado em `/api/admin/force-refresh.ts`). Devolver 401/403 quando não há sessão admin.
 
-8. **Skeleton acessível**
-   - Adicionar `role="status"` + `aria-live="polite"` no wrapper raiz do `AnalysisSkeleton`, com texto SR-only "A analisar @{handle}, fase X de 5".
-9. **Erro com tentativas**
-   - Em `AnalysisErrorState`, contar tentativas locais; após 2 falhas mostrar dica adicional ("O perfil pode ser privado ou inexistente. Verifica o nome.").
+3. **Feedback visual imediato após toggle** (`execution-mode-card.tsx`):
+   - Mostrar `toast.success("Modo alterado para …")` no `onSuccess` da mutation. Hoje o toggle muda silenciosamente — contribui para a sensação de "não aconteceu nada".
+   - Adicionar nota inline: "Pode demorar até 30 s a propagar entre instâncias do servidor."
 
-### E · Atalhos de teclado
-
-10. **Atalhos globais na página**
-    - `g` seguido de `1`-`6` → scroll para o bloco N (`scrollToBlock`).
-    - `t` → topo. `?` → abre um pequeno `Dialog` shadcn listando os atalhos.
-    - Hook `useReportKeyboardShortcuts` em `src/components/report-redesign/v2/`. Ignorar quando o foco está em `input`/`textarea`/`contenteditable`.
-
-### F · Acessibilidade fina
-
-11. Auditoria rápida:
-    - `aria-label` em botões icon-only do hero (`Comparar`, `PDF`, `Partilhar`) — confirmar/ajustar.
-    - Ring de foco unificado: `focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base` nos botões da sidebar, tabs, e novos botões.
-
-## Fora de scope
-
-- Alterações visuais profundas (já cobertas em Fase A/B do plano de design anterior).
-- Lógica de dados, fetch, snapshot, gating, billing.
-- `/report.example`, ficheiros em `LOCKED_FILES.md`.
-- i18n novo (reaproveitar `report.json`/`analyze.json` existentes; adicionar apenas as 4-6 chaves novas estritamente necessárias em pt + en).
+4. **Verificação ao vivo (opcional, mesmo turno):** depois das mudanças, fazer um teste manual:
+   - Pôr o modo em `cache_only`.
+   - Expirar o snapshot do `frederico.m.carvalho` via "Forçar atualização" → confirmar que o próximo `GET /api/analyze-public-v1?username=...` devolve `CACHE_ONLY_NO_DATA` (ou serve stale) e cria um `analysis_event` com `outcome='blocked_cache_only'`.
+   - Voltar a pôr `fresh` e repetir → confirmar `outcome='success'` com `data_source='fresh'` e linhas em `provider_call_logs`.
 
 ## Ficheiros a tocar
 
-- `src/components/report-redesign/v2/report-shell-v2.tsx` — deep-link hash, integração de atalhos, sticky CTA mobile.
-- `src/components/report-redesign/v2/report-block-section.tsx` — barra de progresso interna do bloco.
-- `src/components/report-redesign/v2/report-block-nav.tsx` — auto-center das top tabs.
-- `src/components/report-redesign/v2/` (novo) `use-report-keyboard-shortcuts.ts`, `report-shortcut-dialog.tsx`, `back-to-top-button.tsx`, `sticky-unlock-bar.tsx`.
-- `src/components/report/ai-insight-box.tsx` — botão copiar.
-- `src/components/product/analysis-skeleton.tsx` — `aria-live` + texto SR.
-- `src/components/product/analysis-error-state.tsx` — contador de tentativas + dica.
-- `src/routes/analyze.$username.tsx` — toasts nas acções share/PDF, passar contador de retry.
-- `src/i18n/locales/{pt,en}/report.json` + `analyze.json` — novas chaves (atalhos, copiar, "voltar ao topo", dica de retry).
+- `src/server/admin/execution-mode.functions.ts` — adicionar guard admin.
+- `src/components/admin/v2/sistema/execution-mode-card.tsx` — toast + nota de propagação.
+- `src/components/admin/v2/sistema/test-profiles-card.tsx` — desativar "Atualizar agora" quando `cache_only`.
 
-## Regras
+## Fora de âmbito
 
-- Apenas tokens semânticos (`content-*`, `surface-*`, `border-*`, `accent-*`, `signal-*`).
-- Sem novas dependências (usar `sonner` já presente, `Dialog` shadcn existente).
-- Mobile-first, testado a 375 px.
-- Copy em pt-PT correcto (Acordo 1990).
-- Não tocar em componentes/ficheiros listados em `LOCKED_FILES.md` sem confirmação.
-
-## Faseamento sugerido
-
-- **Fase 1 (rápida, alto impacto)**: A1, A2, A3, B5, D8 — navegação + feedback básico.
-- **Fase 2**: A4, B6, C7, D9 — deep-link, copiar insight, CTA sticky, retry inteligente.
-- **Fase 3**: E10, F11 — atalhos e polish a11y.
-
-Posso entregar tudo de seguida ou faseado — recomendo **tudo de uma vez** dada a baixa interdependência. Aprovo?
+- Não tocar em `/report.example`, RLS, pipeline de enriquecimento, nem nos endpoints públicos de análise.
+- Não alterar a lógica de bypass do `forceRefresh` no `analyze-public-v1` (o bypass continua válido para automações internas — o que mudamos é a UI esconder o botão quando o modo global é cache_only).
