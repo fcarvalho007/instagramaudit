@@ -181,7 +181,7 @@ function PricingCard({
         <Button
           type="button"
           onClick={() => onSelect(id)}
-          variant={recommended ? "default" : "outline"}
+          variant={recommended ? "primary" : "outline"}
           className="w-full"
           aria-pressed={selected}
         >
