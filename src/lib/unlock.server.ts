@@ -382,6 +382,27 @@ export async function processReportUnlock(
       }
     }
 
+    // Observability: when no new report_request was created (returning lead
+    // re-unlocking the same snapshot), the lead-magnet sequence is
+    // intentionally NOT invoked. Emit an event so admin/event logs do not
+    // misinterpret this as a broken email pipeline.
+    if (!createdReportRequest) {
+      await recordProductEvent({
+        eventType: "lead_magnet_sequence_not_invoked",
+        leadId,
+        snapshotId: data.analysis_snapshot_id,
+        handle: data.instagram_username,
+        metadata: {
+          reason: "returning_lead_existing_report_request",
+          lead_id: leadId,
+          report_request_id: reportRequestId,
+          analysis_snapshot_id: data.analysis_snapshot_id,
+          email_normalized: emailNormalized,
+          transactional_delivery: false,
+        },
+      });
+    }
+
     // unlock_completed (deduped within 5s)
     if (
       !(await isDuplicateEventRecent({
