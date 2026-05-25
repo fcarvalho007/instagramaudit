@@ -18,7 +18,8 @@ import { cn } from "@/lib/utils";
  * no longer pre-checks usage — it submits and maps the server's `quota_status`
  * verdict (`first_free` / `last_free` / `limit_reached`) onto UI state.
  */
-import { FREE_MONTHLY_LIMIT, normalizeEmail } from "@/lib/quota";
+import { normalizeEmail } from "@/lib/quota";
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
 import { requestFullReport } from "@/integrations/supabase/queries/report-requests";
 
 export interface GateFormData {
