@@ -4,33 +4,60 @@
     "description": "Preços simples e transparentes do InstaBench: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição."
   },
   "hero": {
-    "title": "Preços simples, sem complicação",
-    "subtitle": "Começa com uma visão gratuita do perfil. Se quiseres aprofundar, existem duas opções simples para desbloquear acesso premium."
+    "title": "Preços simples, com acesso progressivo",
+    "subtitle": "Começa pela visão gratuita do perfil. O Diagnóstico editorial está temporariamente incluído como oferta de lançamento. Para desbloquear as restantes secções premium, existem duas opções simples."
+  },
+  "free": {
+    "label": "Grátis",
+    "title": "Visão inicial do perfil",
+    "bullets": [
+      "Bloco 1 incluído",
+      "Diagnóstico editorial disponível como oferta de lançamento",
+      "Ideal para conhecer o perfil antes de aprofundar"
+    ],
+    "cta": "Começar grátis"
   },
   "single": {
+    "label": "Premium",
     "title": "1 relatório",
     "price": "7€",
-    "bullet_profile": "1 perfil",
-    "bullet_unlock": "1 desbloqueio premium",
-    "note": "Ideal para análise pontual",
-    "cta": "Comprar 1 relatório"
+    "bullets": [
+      "1 perfil",
+      "1 desbloqueio premium",
+      "Ideal para uma análise pontual"
+    ],
+    "cta": "Escolher 1 relatório"
   },
   "pack": {
+    "label": "Melhor valor",
     "title": "Pack 5 relatórios",
     "price": "28€",
-    "bullet_reports": "5 relatórios",
-    "bullet_unit": "5,60€/relatório",
+    "unit": "5,60€/relatório",
+    "bullets": [
+      "5 relatórios",
+      "Melhor para comparar vários perfis",
+      "Mais flexibilidade por menos custo"
+    ],
     "savings_badge": "Poupa 20%",
-    "cta": "Comprar pack de 5"
+    "cta": "Escolher pack de 5"
   },
   "trust_note": "Sem subscrição. Sem renovação automática.",
-  "pending_note": "Pagamento brevemente disponível — os botões registam o teu interesse.",
+  "pending_note": "Pagamento brevemente disponível — o botão regista o teu interesse.",
   "access": {
     "title": "Como funciona o acesso",
-    "items": [
-      "A Visão geral é gratuita.",
-      "O Diagnóstico editorial está temporariamente incluído como oferta de lançamento.",
-      "As secções premium permitem aprofundar desempenho, conteúdo, procura e comparação."
+    "steps": [
+      {
+        "title": "Explora gratuitamente",
+        "body": "Vê a primeira leitura do perfil sem compromisso."
+      },
+      {
+        "title": "Recebe o extra de lançamento",
+        "body": "O Diagnóstico editorial está atualmente aberto para mostrar melhor o valor do produto."
+      },
+      {
+        "title": "Desbloqueia o premium",
+        "body": "As secções de Desempenho, Conteúdo, Procura e Comparação ficam disponíveis com compra."
+      }
     ]
   }
 }
