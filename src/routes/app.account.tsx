@@ -199,12 +199,12 @@ function AccountPage() {
           {/* Plan */}
           <div>
             <label className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
-              Plano
+              Estado da conta
             </label>
             <div className="mt-1 flex items-center gap-2">
               <Shield className="size-3.5 text-content-tertiary" />
               <span className="rounded-full bg-accent-primary/10 px-2.5 py-0.5 text-xs font-medium text-accent-primary">
-                {planLabels[account.plan] ?? account.plan}
+                Conta ativa
               </span>
             </div>
           </div>
